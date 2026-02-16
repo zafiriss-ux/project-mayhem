@@ -39,3 +39,36 @@ class GlycogenModel:
             "total_carbs_range": f"{int(low * weight_kg)}-{int(high * weight_kg)}g",
             "context": ctx
         }
+
+class GlycogenEngine:
+    """Simple glycogen status checker (from original TITAN)"""
+
+    @staticmethod
+    def glycogen_flag(low_carb_day: bool, back_to_back_quality: bool, weight: float) -> tuple:
+        """
+        Glycogen availability check.
+        
+        Args:
+            low_carb_day: Is this a low-carb day?
+            back_to_back_quality: Quality sessions on consecutive days?
+            weight: Athlete weight in kg
+        
+        Returns:
+            (hammer_allowed, min_carbs, flags)
+        """
+        flags = []
+        hammer_allowed = True
+        min_carbs = None
+
+        if low_carb_day:
+            hammer_allowed = False
+            flags.append("LOW_GLYCOGEN: Hammer forbidden today")
+
+        if back_to_back_quality:
+            min_carbs = int(7 * weight)
+            flags.append(f"BACK-TO-BACK QUALITY: Carbs ≥ {min_carbs}g required")
+
+        if not flags:
+            flags.append("GLYCOGEN OK: Normal fueling rules")
+
+        return hammer_allowed, min_carbs, flags

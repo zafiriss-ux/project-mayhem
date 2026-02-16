@@ -7,21 +7,21 @@ Main Application Entry Point
 import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(__file__))
+# Add parent directory to path so we can import titan modules
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from integrations.garmin_sync import GarminSync
-from integrations.weather_api import WeatherAPI
-from integrations.telegram_bot import TitanTelegramBot
-from science.hrv_engine import HRVGuidedEngine
-from science.tsb_engine import TSBEngine
-from science.acwr_engine import ACWREngine
-from science.readiness_engine import ReadinessEngine
-from science.glycogen_model import GlycogenModel
-from features.weekly_planner import WeeklyPlanGenerator
-from features.optimal_time_calculator import OptimalTimeCalculator
-from features.nutrition_optimizer import NutritionOptimizer
-from orchestration.daily_coach import DailyCoach
+from titan.integrations.garmin_sync import GarminSync
+from titan.integrations.weather_api import WeatherAPI
+from titan.integrations.telegram_bot import TitanTelegramBot
+from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.tsb_engine import TSBEngine
+from titan.science.acwr_engine import ACWREngine
+from titan.science.readiness_engine import ReadinessEngine
+from titan.science.glycogen_model import GlycogenModel
+from titan.features.weekly_planner import WeeklyPlanGenerator
+from titan.features.optimal_time_calculator import OptimalTimeCalculator
+from titan.features.nutrition_optimizer import NutritionOptimizer
+from titan.orchestration.daily_coach import DailyCoach
 
 def main():
     """Main application entry point."""
