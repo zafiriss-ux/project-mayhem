@@ -44,6 +44,9 @@ from titan.science.durability_engine import DurabilityEngine
 from titan.science.critical_speed import CriticalSpeedEngine
 from titan.science.rcp_engine import RCPEngine
 
+# ── Core (database) ───────────────────────────────────────────────────────────
+from titan.core.database import DatabaseManager
+
 # ── Feature modules ──────────────────────────────────────────────────────────
 from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
@@ -291,6 +294,10 @@ def main():
     optimal_time_calc = OptimalTimeCalculator(weather)
     nutrition_optimizer = NutritionOptimizer(glycogen_model)
 
+    # ── Step 4b: Persistent database ─────────────────────────────────────────
+    db = DatabaseManager()
+    print("✅ Database initialised (titan_core.db)")
+
     # ── Step 5: Orchestration ────────────────────────────────────────────────
     daily_coach = DailyCoach(
         garmin_sync=garmin,
@@ -301,7 +308,8 @@ def main():
         readiness_engine=readiness_engine,
         optimal_time_calc=optimal_time_calc,
         nutrition_optimizer=nutrition_optimizer,
-        weekly_planner=weekly_planner
+        weekly_planner=weekly_planner,
+        db=db,
     )
 
     # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
@@ -343,6 +351,8 @@ def main():
         "nutrition_optimizer":  nutrition_optimizer,
         # Orchestration
         "daily_coach":          daily_coach,
+        # Persistent storage
+        "db":                   db,
         # Profile & state
         "athlete_profile":      athlete_profile,
         "last_garmin_data":     {},

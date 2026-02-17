@@ -85,6 +85,27 @@ class HRVGuidedEngine:
                         for i in range(len(rr_intervals_ms) - 1)]
         return round((sum(diffs_squared) / len(diffs_squared)) ** 0.5, 1)
 
+    def get_hrv_summary(self) -> dict:
+        """
+        Return a summary dict consumed by DailyCoach, WeeklyPlanGenerator, etc.
+
+        Keys:
+            latest_hrv  – most recent rMSSD value (0 if no data)
+            baseline    – rolling 7-day mean (0 if insufficient data)
+            std_dev     – rolling 7-day SD  (0 if insufficient data)
+            trend       – human-readable trend string
+            data_points – number of measurements loaded
+        """
+        baseline, std_dev = self.calculate_baseline(self.baseline_days)
+        latest_hrv = self.hrv_log[-1][1] if self.hrv_log else 0.0
+        return {
+            'latest_hrv' : round(latest_hrv, 1),
+            'baseline'   : round(baseline, 1) if baseline is not None else 0.0,
+            'std_dev'    : round(std_dev, 1) if std_dev is not None else 0.0,
+            'trend'      : self.get_trend_analysis(),
+            'data_points': len(self.hrv_log),
+        }
+
     def get_trend_analysis(self) -> str:
         """Analyze HRV trend over time."""
         if len(self.hrv_log) < 14:

@@ -48,7 +48,42 @@ class WeeklyPlanGenerator:
         self.tsb_engine = tsb_engine
         self.acwr_engine = acwr_engine
         self.last_plan = None
-    
+
+    def get_today_session(self) -> Dict:
+        """
+        Return the planned session for today from the last generated plan.
+
+        Looks up today's day name (Monday, Tuesday…) in last_plan['daily_sessions'].
+        Falls back to EASY if no plan has been generated yet.
+        """
+        if not self.last_plan:
+            return {
+                'session_type': 'EASY',
+                'duration_min': 45,
+                'distance_km': 8.0,
+                'details': 'Easy Run (generate a weekly plan first)',
+                'target_hr_zone': 'Z2',
+            }
+
+        today_name = datetime.now().strftime('%A')  # 'Monday', 'Tuesday', …
+        for session in self.last_plan.get('daily_sessions', []):
+            if session.get('day') == today_name:
+                result = dict(session)
+                # Inject duration_min if missing (estimate from session type)
+                if 'duration_min' not in result:
+                    pace_min_per_km = 5.0 if result['session_type'] in ('INTERVALS', 'TEMPO', 'HAMMER') else 6.0
+                    result['duration_min'] = max(1, int(result.get('distance_km', 0) * pace_min_per_km))
+                return result
+
+        # Today not found in plan (shouldn't happen for a 7-day plan)
+        return {
+            'session_type': 'REST',
+            'duration_min': 0,
+            'distance_km': 0.0,
+            'details': 'Rest day (not scheduled in current plan)',
+            'target_hr_zone': 'N/A',
+        }
+
     def analyze_past_week(self, sessions: List[Dict]) -> Dict:
         """
         Analyze past week's training.
