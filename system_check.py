@@ -49,6 +49,9 @@ def test_imports():
         ('titan.integrations', 'telegram_bot'),
         # Orchestration
         ('titan.orchestration', 'daily_coach'),
+        # UI
+        ('titan.ui', 'setup_wizard'),
+        ('titan.ui', 'menu_system'),
     ]
     
     for module_path, item in modules_to_test:
@@ -175,8 +178,8 @@ def test_threading():
     try:
         from titan.integrations.telegram_bot import TitanTelegramBot
         telegram = TitanTelegramBot()
-        assert hasattr(telegram, '_scheduler_thread')
-        assert hasattr(telegram, '_stop_bot')
+        assert hasattr(telegram, '_sched_thread')
+        assert hasattr(telegram, '_stop')
         print('  ✅ Telegram thread-aware')
     except Exception as e:
         errors.append(f'Telegram threading: {e}')
