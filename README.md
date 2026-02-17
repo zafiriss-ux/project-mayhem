@@ -82,7 +82,7 @@ titan/
 1. `integrations/garmin_sync.py` - **🆕 Live Garmin API**
 2. `integrations/weather_api.py` - **🆕 Weather + dew point**
 3. `integrations/telegram_bot.py` - **🆕 Telegram notifications**
-4. `integrations/wearables.py` - Generic wearable support
+   _(Wearable data — heart rate, HRV, sleep, weight — flows through `garmin_sync.py`)_
 
 ## 🚀 Εγκατάσταση
 

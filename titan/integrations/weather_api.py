@@ -6,6 +6,7 @@ Provides hourly weather forecasts with dew point calculation.
 
 import os
 import json
+import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import threading
@@ -40,22 +41,36 @@ class WeatherAPI:
         self._stop_update = False
     
     @staticmethod
-    def calculate_dew_point(temp_c: float, humidity: int) -> float:
+    def calculate_dew_point(temp_c: float, humidity: float) -> float:
         """
-        Calculate dew point from temperature and humidity.
-        
-        Magnus-Tetens formula.
-        
+        Calculate dew point using the correct Magnus-Tetens formula.
+
+        Formula (August-Roche-Magnus approximation):
+            γ(T, RH) = (a·T)/(b+T) + ln(RH/100)
+            Td = b·γ / (a − γ)
+
+        where a = 17.27, b = 237.7 °C
+
+        Reference: Lawrence, M.G. (2005). BAMS 86(2), 225-234.
+
+        Known-value check (from literature):
+            T=20°C, RH=50% → Td ≈ 9.3°C
+            T=25°C, RH=80% → Td ≈ 21.4°C
+
         Args:
-            temp_c: Temperature in Celsius
-            humidity: Relative humidity (0-100)
-        
+            temp_c:   Air temperature in °C
+            humidity: Relative humidity in % (clamped to 1–100)
+
         Returns:
-            Dew point in Celsius
+            Dew point in °C, rounded to 1 decimal place.
         """
+        # Validate inputs
+        humidity = max(1.0, min(100.0, float(humidity)))
+        temp_c = float(temp_c)
+
         a, b = 17.27, 237.7
-        alpha = ((a * temp_c) / (b + temp_c)) + (humidity / 100.0)
-        dew_point = (b * alpha) / (a - alpha)
+        gamma = (a * temp_c) / (b + temp_c) + math.log(humidity / 100.0)
+        dew_point = (b * gamma) / (a - gamma)
         return round(dew_point, 1)
     
     @staticmethod

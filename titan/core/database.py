@@ -198,29 +198,42 @@ class DatabaseManager:
         rpe: Optional[int] = None,
         shoe_id: Optional[int] = None,
         surface: Optional[str] = None,
+        temperature_c: Optional[float] = None,
+        notes: Optional[str] = None,
+        # Backward-compatible alias — will be removed in a future version
         temperature: Optional[float] = None,
-        notes: Optional[str] = None
     ) -> None:
         """
         Save training session.
 
         Args:
-            date: Date in ISO format (YYYY-MM-DD)
-            session_type: Type of session (EASY, TEMPO, INTERVALS, etc.)
-            distance_km: Distance in kilometers
-            duration_sec: Duration in seconds
-            avg_hr: Average heart rate in bpm
-            max_hr: Maximum heart rate in bpm
-            rpe: Rate of Perceived Exertion (1-10 scale)
-            shoe_id: ID of shoe used
-            surface: Running surface (TRACK, ROAD, TRAIL, etc.)
-            temperature: Temperature in Celsius
-            notes: Optional text notes
+            date:          Date in ISO format (YYYY-MM-DD)
+            session_type:  Type of session (EASY, TEMPO, INTERVALS, etc.)
+            distance_km:   Distance in kilometres
+            duration_sec:  Duration in seconds
+            avg_hr:        Average heart rate in bpm
+            max_hr:        Maximum heart rate in bpm
+            rpe:           Rate of Perceived Exertion (1-10 scale)
+            shoe_id:       ID of shoe used
+            surface:       Running surface (TRACK, ROAD, TRAIL, etc.)
+            temperature_c: Air temperature in °C  ← canonical name
+            notes:         Optional text notes
+            temperature:   Deprecated alias for temperature_c
 
         Training Load Calculation:
             sRPE (session RPE) = RPE × duration (minutes)
             Based on Foster et al. (2001)
         """
+        # Resolve deprecated alias; temperature_c takes precedence
+        if temperature_c is None and temperature is not None:
+            import warnings
+            warnings.warn(
+                "save_session(temperature=...) is deprecated; use temperature_c= instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            temperature_c = temperature
+
         cursor = self.conn.cursor()
 
         # Calculate training load (RPE * duration in minutes)
@@ -233,7 +246,7 @@ class DatabaseManager:
                  training_load, shoe_id, surface, temperature_c, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                  training_load, shoe_id, surface, temperature, notes))
+                  training_load, shoe_id, surface, temperature_c, notes))
             if shoe_id and distance_km:
                 cursor.execute("""
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
