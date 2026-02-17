@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+import threading
 
 from titan.core.athlete import UniversalAthleteProfile
 
@@ -52,8 +53,13 @@ class DatabaseManager:
 
         self.db_path = base_dir / db_name
 
-        # Connect to database
-        self.conn = sqlite3.connect(str(self.db_path))
+        # Thread-safe connection: allow access from multiple threads
+        # (Garmin sync, Telegram callback, and main thread all share one DB)
+        self.conn = sqlite3.connect(
+            str(self.db_path),
+            check_same_thread=False,
+        )
+        self._lock = threading.Lock()  # Serialise all writes
         self.create_tables()
 
     def create_tables(self) -> None:
@@ -70,7 +76,6 @@ class DatabaseManager:
         - gear_usage: Shoe tracking with compression recovery
         - personal_bests: PR history
         """
-        self.conn = sqlite3.connect(self.db_path)
         cursor = self.conn.cursor()
 
         # Table 1: Daily Metrics (Morning Check-in)
@@ -171,14 +176,14 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO daily_metrics
-            (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
-             soreness, fatigue_level, mood, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes))
-
-        self.conn.commit()
+        with self._lock:
+            cursor.execute("""
+                INSERT OR REPLACE INTO daily_metrics
+                (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
+                 soreness, fatigue_level, mood, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes))
+            self.conn.commit()
 
     # --- TRAINING LOG ---
 
@@ -221,19 +226,19 @@ class DatabaseManager:
         # Calculate training load (RPE * duration in minutes)
         training_load = (rpe * (duration_sec / 60)) if rpe else 0
 
-        cursor.execute("""
-            INSERT INTO training_log
-            (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-             training_load, shoe_id, surface, temperature_c, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-              training_load, shoe_id, surface, temperature, notes))
-
-        # Update shoe mileage if shoe_id provided
-        if shoe_id and distance_km:
-            self.update_shoe_mileage(shoe_id, distance_km, date)
-
-        self.conn.commit()
+        with self._lock:
+            cursor.execute("""
+                INSERT INTO training_log
+                (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
+                 training_load, shoe_id, surface, temperature_c, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
+                  training_load, shoe_id, surface, temperature, notes))
+            if shoe_id and distance_km:
+                cursor.execute("""
+                    UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
+                """, (distance_km, date, shoe_id))
+            self.conn.commit()
 
     def get_training_load_history(self, days: int = 42) -> List[Tuple[str, float]]:
         """
@@ -315,14 +320,13 @@ class DatabaseManager:
             date: Date of the run (ISO format)
         """
         cursor = self.conn.cursor()
-
-        cursor.execute("""
-            UPDATE gear_usage
-            SET total_km = total_km + ?, last_used = ?
-            WHERE id = ?
-        """, (distance_km, date, shoe_id))
-
-        self.conn.commit()
+        with self._lock:
+            cursor.execute("""
+                UPDATE gear_usage
+                SET total_km = total_km + ?, last_used = ?
+                WHERE id = ?
+            """, (distance_km, date, shoe_id))
+            self.conn.commit()
 
     def add_shoe(self, name: str, shoe_type: str = "DAILY", max_km: int = 800) -> int:
         """
@@ -338,12 +342,12 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
 
-        cursor.execute("""
-            INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit)
-            VALUES (?, ?, ?)
-        """, (name, shoe_type, max_km))
-
-        self.conn.commit()
+        with self._lock:
+            cursor.execute("""
+                INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit)
+                VALUES (?, ?, ?)
+            """, (name, shoe_type, max_km))
+            self.conn.commit()
         return cursor.lastrowid
 
     def get_active_shoes(self) -> List[Tuple]:
@@ -439,13 +443,13 @@ class DatabaseManager:
 
         pace_per_km = time_sec / distance_km
 
-        cursor.execute("""
-            INSERT INTO personal_bests
-            (distance_km, time_sec, pace_sec_per_km, date, race_name)
-            VALUES (?, ?, ?, ?, ?)
-        """, (distance_km, time_sec, pace_per_km, date, race_name))
-
-        self.conn.commit()
+        with self._lock:
+            cursor.execute("""
+                INSERT INTO personal_bests
+                (distance_km, time_sec, pace_sec_per_km, date, race_name)
+                VALUES (?, ?, ?, ?, ?)
+            """, (distance_km, time_sec, pace_per_km, date, race_name))
+            self.conn.commit()
 
     def get_pr(self, distance_km: float) -> Optional[Tuple[int, str, Optional[str]]]:
         """

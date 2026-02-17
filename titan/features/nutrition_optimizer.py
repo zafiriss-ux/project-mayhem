@@ -158,8 +158,12 @@ class NutritionOptimizer:
         # Session-specific timing
         timing = self._get_meal_timing(session_type, duration_min)
         
-        # Hydration
-        hydration_ml = self._calculate_hydration(duration_min, today_session.get('dew_point', 15))
+        # Hydration — combine dew_point and session intensity
+        hydration_ml = self._calculate_hydration(
+            duration_min,
+            today_session.get('dew_point', 15),
+            session_type,
+        )
         
         return {
             'total_calories': round(tdee, 0),
@@ -202,18 +206,57 @@ class NutritionOptimizer:
                 'post_session': "Regular meals - focus on whole foods"
             }
     
-    def _calculate_hydration(self, duration_min: int, dew_point: float) -> int:
-        """Calculate hydration needs."""
-        # Base: 500ml/hour
-        base_ml = (duration_min / 60) * 500
-        
-        # Adjust for heat
-        if dew_point > 18:
-            base_ml *= 1.3
-        elif dew_point > 15:
-            base_ml *= 1.15
-        
-        return round(base_ml, 0)
+    def _calculate_hydration(
+        self,
+        duration_min: int,
+        dew_point: float,
+        session_type: str = "EASY",
+    ) -> int:
+        """
+        Calculate hydration needs combining dew-point heat stress and
+        session intensity.
+
+        Science:
+        - Fluid loss ~10-20% per 5°C rise in perceived heat (Sawka et al. 2007)
+        - High-intensity sessions increase sweat rate independent of temperature
+        - Base rate: 500 ml/h for mild easy aerobic
+
+        Dew Point thresholds (°C):
+          ≥ 22  Oppressive  → 1000 ml/h
+          ≥ 18  Uncomfortable → 800 ml/h
+          ≥ 15  Sticky      → 650 ml/h
+          < 15  Comfortable → 500 ml/h
+
+        Intensity multipliers:
+          INTERVALS / HAMMER → ×1.4
+          TEMPO / RACE       → ×1.2
+          LONG_RUN           → ×1.1  (duration compensates naturally)
+          EASY / REST        → ×1.0
+        """
+        hours = duration_min / 60.0
+
+        # Dew-point base rate
+        if dew_point >= 22:
+            hourly_rate = 1000
+        elif dew_point >= 18:
+            hourly_rate = 800
+        elif dew_point >= 15:
+            hourly_rate = 650
+        else:
+            hourly_rate = 500
+
+        # Intensity multiplier
+        intensity_map = {
+            "INTERVALS": 1.4,
+            "HAMMER"   : 1.4,
+            "TEMPO"    : 1.2,
+            "RACE"     : 1.2,
+            "LONG_RUN" : 1.1,
+        }
+        intensity_factor = intensity_map.get(session_type, 1.0)
+
+        total_ml = hours * hourly_rate * intensity_factor
+        return int(round(total_ml))
     
     def _get_special_notes(self, session_type: str, tomorrow_session: Dict = None) -> List[str]:
         """Get special nutrition notes."""

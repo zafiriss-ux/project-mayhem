@@ -1,9 +1,9 @@
 """
 TITAN Math Core Utilities
-Weight management and system status functions
+Weight management, unit conversion, and system status functions
 """
 
-from typing import Literal
+from typing import Literal, Optional
 
 
 class MathCore:
@@ -108,4 +108,98 @@ class MathCore:
             return "CRITICAL"
         if unstable_cond:
             return "UNSTABLE"
+        return "STABLE"
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # UNIT CONVERTERS  (used by CriticalSpeedEngine, DriftEngine, etc.)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def pace_to_ms(pace_sec_per_km: float) -> float:
+        """
+        Convert running pace (sec/km) to speed (m/s).
+
+        Example: 4:00/km = 240 sec/km → 1000/240 = 4.167 m/s
+
+        Args:
+            pace_sec_per_km: Pace in seconds per kilometre
+
+        Returns:
+            Speed in metres per second (0.0 if pace is 0 or invalid)
+        """
+        if not pace_sec_per_km or pace_sec_per_km <= 0:
+            return 0.0
+        return round(1000.0 / pace_sec_per_km, 4)
+
+    @staticmethod
+    def ms_to_pace(speed_ms: float) -> float:
+        """
+        Convert speed (m/s) to running pace (sec/km).
+
+        Example: 4.167 m/s → 1000/4.167 = 240 sec/km (4:00/km)
+
+        Args:
+            speed_ms: Speed in metres per second
+
+        Returns:
+            Pace in seconds per kilometre (0.0 if speed is 0 or invalid)
+        """
+        if not speed_ms or speed_ms <= 0:
+            return 0.0
+        return round(1000.0 / speed_ms, 2)
+
+    @staticmethod
+    def format_pace(pace_sec_per_km: float) -> str:
+        """
+        Format pace as MM:SS string.
+
+        Example: 240 → "4:00"
+        """
+        if not pace_sec_per_km or pace_sec_per_km <= 0:
+            return "N/A"
+        mins = int(pace_sec_per_km) // 60
+        secs = int(pace_sec_per_km) % 60
+        return f"{mins}:{secs:02d}"
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # PROFILE-AWARE WEIGHT FUNCTION
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def weight_function_from_profile(
+        weight: float,
+        night_drop: float,
+        epoc: float,
+        target_weight: Optional[float] = 75.0,
+        critical_margin: float = 0.5,
+        emergency_margin: float = 0.0,
+    ) -> str:
+        """
+        Profile-aware weight function.
+
+        Uses athlete-specific target weight instead of hardcoded 75 kg.
+
+        Args:
+            weight: Current weight in kg
+            night_drop: Overnight weight drop in kg
+            epoc: EPOC in kcal
+            target_weight: Athlete's goal weight (from athlete_profile)
+            critical_margin: kg below target → AGGRESSIVE_CORRECTION
+            emergency_margin: kg below target → EMERGENCY_MODE
+
+        Returns:
+            Same status strings as weight_function_Wf
+        """
+        if target_weight is None:
+            target_weight = 75.0
+        if weight < (target_weight - critical_margin):
+            return "AGGRESSIVE_CORRECTION"
+        if weight < target_weight:
+            return "EMERGENCY_MODE"
+        if night_drop > 1.2:
+            return "NIGHT_DROP_ALERT"
+        if epoc > 350:
+            return "EPOC_OVERRIDE"
+        if weight <= (target_weight + 0.5):
+            return "SAFE_DROP_RULE"
         return "STABLE"

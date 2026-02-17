@@ -1,22 +1,44 @@
 """Lactate Threshold Logic - LT1/LT2 Estimation without Lactate Meter"""
+from typing import Dict
+
+
 class LactateLogic:
     @staticmethod
-    def estimate_lt1(hr_percent_max: float, drift_percent: float) -> str:
-        """LT1 ≈ drift < 3% + HR < 75-78% HRmax"""
-        if drift_percent < 3.0 and hr_percent_max <= 78.0:
-            return "LT1_ZONE: TRUE (Pure aerobic)"
-        return "LT1_ZONE: FALSE"
-    
+    def estimate_lt1(hr_percent_max: float, drift_percent: float) -> Dict:
+        """
+        LT1 ≈ drift < 3% + HR < 75-78% HRmax.
+
+        Returns a dict so callers can branch on the boolean without
+        fragile string parsing.
+        """
+        is_lt1 = drift_percent < 3.0 and hr_percent_max <= 78.0
+        return {
+            "is_lt1"      : is_lt1,
+            "status_text" : "LT1_ZONE: TRUE (Pure aerobic)" if is_lt1 else "LT1_ZONE: FALSE",
+            "hr_pct_max"  : round(hr_percent_max, 1),
+            "drift_pct"   : round(drift_percent, 1),
+        }
+
     @staticmethod
-    def estimate_lt2(hr_stable: bool, rpe: float) -> str:
-        """LT2 ≈ tempo → HR stable & RPE 6-7"""
-        if hr_stable and 6.0 <= rpe <= 7.0:
-            return "LT2_APPROX: TRUE (Threshold hit)"
-        return "LT2_APPROX: FALSE"
-    
+    def estimate_lt2(hr_stable: bool, rpe: float) -> Dict:
+        """
+        LT2 ≈ tempo → HR stable & RPE 6-7.
+
+        Returns a dict for programmatic use.
+        """
+        is_lt2 = hr_stable and 6.0 <= rpe <= 7.0
+        return {
+            "is_lt2"      : is_lt2,
+            "status_text" : "LT2_APPROX: TRUE (Threshold hit)" if is_lt2 else "LT2_APPROX: FALSE",
+            "hr_stable"   : hr_stable,
+            "rpe"         : rpe,
+        }
+
     @staticmethod
-    def tempo_volume_decision(is_lt2_true: bool) -> str:
-        """Decide if full tempo volume is safe"""
-        if is_lt2_true:
-            return "TEMPO VOLUME: OK (Full planned volume)"
-        return "TEMPO VOLUME: DOWNGRADE (Cut reps or distance)"
+    def tempo_volume_decision(is_lt2_true: bool) -> Dict:
+        """Decide if full tempo volume is safe."""
+        ok = bool(is_lt2_true)
+        return {
+            "ok"   : ok,
+            "text" : "TEMPO VOLUME: OK (Full planned volume)" if ok else "TEMPO VOLUME: DOWNGRADE (Cut reps or distance)",
+        }

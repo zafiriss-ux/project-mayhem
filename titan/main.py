@@ -371,10 +371,11 @@ def main():
     telegram.start_bot()
 
     # ── Step 9: Schedule automated tasks ─────────────────────────────────────
+    # Use async wrapper so Telegram polling isn't blocked during morning routine
     telegram.schedule_task(
         name="Morning Coaching",
         time_str="07:00",
-        callback=daily_coach.run_morning_routine,
+        callback=daily_coach.run_morning_routine_async,
     )
 
     def _send_weekly_plan():

@@ -71,8 +71,19 @@ class WeeklyPlanGenerator:
                 result = dict(session)
                 # Inject duration_min if missing (estimate from session type)
                 if 'duration_min' not in result:
-                    pace_min_per_km = 5.0 if result['session_type'] in ('INTERVALS', 'TEMPO', 'HAMMER') else 6.0
-                    result['duration_min'] = max(1, int(result.get('distance_km', 0) * pace_min_per_km))
+                    pace_map = {
+                        'INTERVALS': 5.5,  # avg including recovery
+                        'TEMPO'    : 4.5,
+                        'HAMMER'   : 5.0,
+                        'EASY'     : 6.0,
+                        'LONG_RUN' : 6.0,
+                        'RECOVERY' : 6.5,
+                        'RACE'     : 4.0,
+                        'REST'     : 0.0,
+                    }
+                    pace = pace_map.get(result.get('session_type', 'EASY'), 6.0)
+                    dist = float(result.get('distance_km', 0))
+                    result['duration_min'] = max(0, int(dist * pace))
                 return result
 
         # Today not found in plan (shouldn't happen for a 7-day plan)

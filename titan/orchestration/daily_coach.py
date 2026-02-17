@@ -13,6 +13,7 @@ Runs every morning to:
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+import threading
 from titan.core.database import DatabaseManager
 
 
@@ -59,6 +60,8 @@ class DailyCoach:
         self.weekly_planner = weekly_planner
         # Database for persistent memory (CTL/ATL/TSB, RHR baselines, etc.)
         self.db = db or DatabaseManager()
+        # Restore in-memory state of science engines from DB on startup
+        self._hydrate_engines_from_db()
 
     # ═══════════════════════════════════════════════════════════════════════
     # PUBLIC ENTRY POINT
@@ -278,15 +281,77 @@ class DailyCoach:
             pass
         return 50.0  # safe default
 
+    def run_morning_routine_async(self) -> None:
+        """
+        Schedule `run_morning_routine` in a daemon thread so the Telegram
+        polling thread is never blocked waiting for Garmin sync + calculations.
+        """
+        t = threading.Thread(
+            target=self.run_morning_routine,
+            name="DailyCoachRoutine",
+            daemon=True,
+        )
+        t.start()
+
     def _feed_load_engines(self, activities: List[Dict]) -> None:
         """
         Feed synced activities into TSB / ACWR engines so CTL/ATL are live.
         Uses training_load from DB for the full 42-day window.
         """
         try:
-            # Reload full 42d history from DB to keep CTL accurate
             loads = self.db.get_training_load_history(days=42)
             if loads:
                 self.tsb.load_history = loads  # expose for re-calc on next call
         except Exception as e:
             print(f"  ⚠️  Could not feed load engines: {e}")
+
+    def _hydrate_engines_from_db(self) -> None:
+        """
+        Restore in-memory science engine state from the database on startup.
+
+        Prevents 'Digital Amnesia' after restarts:
+        - HRVGuidedEngine needs 7-14 days of rMSSD history for baseline
+        - NutritionOptimizer needs weight history for trend analysis
+        - TSBEngine needs 42-day load history for correct CTL/ATL
+
+        Called automatically at end of __init__.
+        """
+        print("🧠 Hydrating AI memory from database...")
+        cursor = self.db.conn.cursor()
+
+        # 1. HRV history (last 14 days, oldest first so baseline builds correctly)
+        try:
+            cursor.execute(
+                """SELECT date, hrv_rmssd FROM daily_metrics
+                   WHERE hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
+                   ORDER BY date DESC LIMIT 14"""
+            )
+            rows = cursor.fetchall()
+            for date_str, rmssd in reversed(rows):
+                self.hrv.add_hrv_measurement(date_str, rmssd)
+            print(f"  ↳ HRV: {len(rows)} records loaded")
+        except Exception as e:
+            print(f"  ⚠️  HRV hydration failed: {e}")
+
+        # 2. Weight history (last 30 days, oldest first)
+        try:
+            cursor.execute(
+                """SELECT date, weight_kg FROM daily_metrics
+                   WHERE weight_kg IS NOT NULL AND weight_kg > 0
+                   ORDER BY date DESC LIMIT 30"""
+            )
+            rows = cursor.fetchall()
+            for date_str, weight in reversed(rows):
+                self.nutrition.add_weight_entry(date_str, weight)
+            print(f"  ↳ Weight: {len(rows)} records loaded")
+        except Exception as e:
+            print(f"  ⚠️  Weight hydration failed: {e}")
+
+        # 3. Training load history → TSB engine (42-day window for CTL)
+        try:
+            loads = self.db.get_training_load_history(days=42)
+            if loads:
+                self.tsb.load_history = loads
+            print(f"  ↳ Training load: {len(loads)} sessions loaded for CTL")
+        except Exception as e:
+            print(f"  ⚠️  TSB hydration failed: {e}")

@@ -38,7 +38,7 @@ class TRIMPEngine:
         Returns:
             (trimp_value, zone_multiplier)
         """
-        if max_hr == 0:
+        if not max_hr or max_hr < 100:  # Physiologically impossible below 100 bpm
             return None, 0
         
         hr_percent = (avg_hr / max_hr) * 100
@@ -82,7 +82,7 @@ class TRIMPEngine:
         Returns:
             TRIMP value
         """
-        if max_hr == resting_hr:
+        if not max_hr or max_hr < 100 or max_hr <= resting_hr:
             return None
         
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
