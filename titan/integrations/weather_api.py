@@ -197,29 +197,41 @@ class WeatherAPI:
     ) -> List[Dict]:
         """
         Find optimal training time windows based on weather.
-        
+
         Args:
             day_offset: Days from now (0 = today, 1 = tomorrow)
-            duration_hours: Training duration
-        
+            duration_hours: Training duration in hours (supports fractional values)
+
         Returns:
             List of optimal time windows sorted by favorability
+
+        Notes:
+            required_slots = ceil(duration_hours) hourly buckets are consumed per
+            window.  This ensures a 1.5-hour run occupies 2 slots (hours i and i+1)
+            rather than the previous off-by-one that used int()+1 regardless of the
+            fractional part.
         """
+        if duration_hours <= 0:
+            return []
+
         forecast = self.get_hourly_forecast(48)
-        
+
+        # Number of hourly buckets needed to cover the requested duration
+        required_slots = max(1, math.ceil(duration_hours))
+
         # Filter to target day
         target_date = (datetime.now() + timedelta(days=day_offset)).date()
-        day_forecast = [f for f in forecast 
+        day_forecast = [f for f in forecast
                        if datetime.fromisoformat(f['timestamp']).date() == target_date]
-        
+
         # Score each potential window
         windows = []
         for i, hour_data in enumerate(day_forecast):
-            if i + duration_hours > len(day_forecast):
+            if i + required_slots > len(day_forecast):
                 break
-            
+
             # Calculate average conditions for window
-            window_forecast = day_forecast[i:i+int(duration_hours)+1]
+            window_forecast = day_forecast[i:i+required_slots]
             avg_dew = sum(h['dew_point'] for h in window_forecast) / len(window_forecast)
             avg_temp = sum(h['temp_c'] for h in window_forecast) / len(window_forecast)
             

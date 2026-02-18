@@ -71,113 +71,79 @@ Transform TITAN from monolithic script to production-grade AI Training System wi
 
 ## 📁 Directory Structure
 
+> **Legend:** modules marked `[planned]` are on the roadmap but not yet present in
+> the repository.  All other entries reflect files that exist on disk as of v51.
+
+### Current Architecture
+
 ```
-titan/
+project-mayhem/
 ├── README.md                          # Main documentation
 ├── ARCHITECTURE.md                    # This file
 ├── CHANGES.md                         # Change log
+├── DEPLOYMENT_GUIDE.md                # Deployment guide
+├── FUTURE_UPGRADES.md                 # Roadmap / upcoming features
+├── CORE_MIGRATION_SUMMARY.md          # v50 → v51 migration notes
 ├── requirements.txt                   # Python dependencies
-├── config.yaml                        # Main configuration
-├── .env.example                       # Environment variables template
-├── setup.py                           # Package setup
+├── system_check.py                    # Module health check script
+├── test_core_modules.py               # pytest suite — core modules
+├── test_titan_logic.py                # pytest suite — science logic
 │
-├── titan/                             # Main package
-│   ├── __init__.py
-│   │
-│   ├── core/                          # Core foundation (7 modules)
-│   │   ├── __init__.py
-│   │   ├── athlete.py                 # UniversalAthleteProfile
-│   │   ├── database.py                # DatabaseManager + SQLite
-│   │   ├── config.py                  # ConfigManager
-│   │   ├── logger.py                  # TitanLogger
-│   │   ├── profile_manager.py         # Profile CRUD operations
-│   │   ├── periodization.py           # PeriodizationManager
-│   │   └── equipment.py               # EquipmentManager (shoes, gear)
-│   │
-│   ├── science/                       # Scientific engines (15 modules)
-│   │   ├── __init__.py
-│   │   ├── hrv_engine.py              # HRV analysis + guided training
-│   │   ├── tsb_engine.py              # CTL/ATL/TSB calculations
-│   │   ├── acwr_engine.py             # Acute:Chronic workload ratio
-│   │   ├── lactate_logic.py           # LT1/LT2 estimation
-│   │   ├── drift_engine.py            # HR drift calculation
-│   │   ├── efficiency_engine.py       # Efficiency Factor
-│   │   ├── durability_engine.py       # Pace durability
-│   │   ├── trimp_engine.py            # TRIMP calculations
-│   │   ├── glycogen_model.py          # Glycogen depletion/refueling
-│   │   ├── fatigue_engine.py          # Fatigue classification
-│   │   ├── readiness_engine.py        # Composite readiness scoring
-│   │   ├── critical_speed.py          # CS & D-prime
-│   │   ├── rcp_engine.py              # Respiratory Compensation Point
-│   │   ├── biomechanics.py            # Cadence, stride, form
-│   │   └── adaptive_memory.py         # Session history + supercompensation
-│   │
-│   ├── features/                      # Feature modules (12 modules)
-│   │   ├── __init__.py
-│   │   ├── weekly_planner.py          # 🆕 Weekly training plan generator
-│   │   ├── optimal_time.py            # 🆕 Optimal running time calculator
-│   │   ├── nutrition_optimizer.py     # 🆕 Enhanced nutrition + weight tracking
-│   │   ├── session_builder.py         # Session/workout builder
-│   │   ├── coaching_strategy.py       # Elite coaching + risk profiling
-│   │   ├── race_pacing.py             # Race pacing strategy
-│   │   ├── recovery_score.py          # Recovery scoring + trends
-│   │   ├── injury_warning.py          # Injury risk detection
-│   │   ├── taper_optimizer.py         # Taper planning
-│   │   ├── ml_predictor.py            # ML race time prediction
-│   │   ├── cognitive_monitor.py       # Cognitive load tracking
-│   │   └── team_dashboard.py          # Multi-athlete management
-│   │
-│   ├── integrations/                  # External integrations (4 modules)
-│   │   ├── __init__.py
-│   │   ├── garmin_sync.py             # 🆕 Live Garmin API integration
-│   │   ├── weather_api.py             # 🆕 Live weather API with caching
-│   │   ├── telegram_bot.py            # 🆕 Telegram bot + notifications
-│   │   └── wearables.py               # Generic wearable sync (Stryd, etc.)
-│   │
-│   ├── orchestration/                 # 🆕 High-level orchestration (3 modules)
-│   │   ├── __init__.py
-│   │   ├── weekly_coach.py            # Weekly plan generation + delivery
-│   │   ├── daily_coach.py             # Daily coaching + optimal time
-│   │   └── notification_manager.py    # Notification scheduling + delivery
-│   │
-│   ├── ui/                            # User interfaces (2 modules)
-│   │   ├── __init__.py
-│   │   ├── cli.py                     # Command-line interface
-│   │   └── menu_system.py             # Menu system (migrated from original)
-│   │
-│   └── utils/                         # Utilities (5 modules)
-│       ├── __init__.py
-│       ├── math_core.py               # Time/pace conversions
-│       ├── validators.py              # Data validation
-│       ├── helpers.py                 # Helper functions
-│       ├── exceptions.py              # Custom exceptions
-│       └── constants.py               # Constants and enums
-│
-├── tests/                             # Unit tests
-│   ├── __init__.py
-│   ├── test_core/
-│   ├── test_science/
-│   ├── test_features/
-│   ├── test_integrations/
-│   └── conftest.py
-│
-├── data/                              # Data directory
-│   ├── logs/                          # Log files
-│   ├── database/                      # SQLite databases
-│   ├── models/                        # Saved ML models
-│   └── cache/                         # 🆕 Cache for API responses
-│
-├── scripts/                           # Utility scripts
-│   ├── migrate_v50_to_v51.py          # Migration script
-│   ├── setup_telegram.py              # Telegram bot setup
-│   ├── setup_garmin.py                # Garmin credentials setup
-│   └── test_integrations.py           # Test external integrations
-│
-└── docs/                              # Documentation
-    ├── API_REFERENCE.md
-    ├── USER_GUIDE.md
-    ├── TELEGRAM_SETUP.md
-    └── GARMIN_SETUP.md
+└── titan/                             # Main package
+    ├── __init__.py
+    ├── main.py                        # Entry point / REPL demo
+    │
+    ├── core/                          # Core foundation (4 modules)
+    │   ├── __init__.py
+    │   ├── athlete.py                 # UniversalAthleteProfile + AthleteDatabase
+    │   ├── database.py                # DatabaseManager (SQLite, thread-safe)
+    │   ├── periodization.py           # PeriodizationManager
+    │   └── equipment.py               # EquipmentManager (shoes, gear)
+    │
+    ├── science/                       # Scientific engines (15 modules)
+    │   ├── __init__.py
+    │   ├── hrv_engine.py              # HRV analysis + guided training
+    │   ├── tsb_engine.py              # CTL/ATL/TSB calculations
+    │   ├── acwr_engine.py             # Acute:Chronic workload ratio
+    │   ├── lactate_logic.py           # LT1/LT2 estimation
+    │   ├── drift_engine.py            # HR drift calculation
+    │   ├── efficiency_engine.py       # Efficiency Factor
+    │   ├── durability_engine.py       # Pace durability
+    │   ├── trimp_engine.py            # TRIMP calculations
+    │   ├── glycogen_model.py          # Glycogen depletion/refueling
+    │   ├── fatigue_engine.py          # Fatigue classification
+    │   ├── readiness_engine.py        # Composite readiness scoring
+    │   ├── critical_speed.py          # CS & D-prime
+    │   ├── rcp_engine.py              # Respiratory Compensation Point
+    │   ├── biomechanics.py            # Cadence, stride, form
+    │   └── adaptive_memory.py         # Session history + supercompensation
+    │
+    ├── features/                      # Feature modules (3 modules)
+    │   ├── __init__.py
+    │   ├── weekly_planner.py          # 🆕 Weekly training plan generator
+    │   ├── optimal_time_calculator.py # 🆕 Optimal running time calculator
+    │   └── nutrition_optimizer.py     # 🆕 Enhanced nutrition + weight tracking
+    │
+    ├── integrations/                  # External integrations (3 modules)
+    │   ├── __init__.py
+    │   ├── garmin_sync.py             # 🆕 Live Garmin API integration
+    │   ├── weather_api.py             # 🆕 Live weather API with caching
+    │   └── telegram_bot.py            # 🆕 Telegram bot + notifications
+    │                                  #   (wearable data flows through garmin_sync.py)
+    │
+    ├── orchestration/                 # 🆕 High-level orchestration (1 module)
+    │   ├── __init__.py
+    │   └── daily_coach.py             # Daily coaching + optimal time
+    │
+    ├── ui/                            # User interfaces (2 modules)
+    │   ├── __init__.py
+    │   ├── menu_system.py             # Menu system (migrated from v50)
+    │   └── setup_wizard.py            # First-run setup wizard
+    │
+    └── utils/                         # Utilities (2 modules)
+        ├── __init__.py
+        ├── math_core.py               # MathCore: pace, weight, system-status
+        └── constants.py               # SESSION_TYPES, ACWR bounds, HR zones
 ```
 
 ## 🔧 Module Responsibilities
@@ -205,7 +171,7 @@ class WeeklyPlanGenerator:
     """
 ```
 
-#### 2. **Optimal Time Calculator** (`features/optimal_time.py`)
+#### 2. **Optimal Time Calculator** (`features/optimal_time_calculator.py`)
 ```python
 class OptimalTimeCalculator:
     """
@@ -521,55 +487,6 @@ CREATE TABLE weekly_plans (
     notes TEXT
 );
 ```
-
-## 🚀 Migration Strategy
-
-### Phase 1: Core Foundation (Current)
-1. Create directory structure
-2. Extract core modules (athlete, database, config)
-3. Extract science engines (HRV, TSB, ACWR, etc.)
-4. Preserve ALL 54 classes
-5. Add comprehensive logging
-
-### Phase 2: Integrations
-1. Implement Garmin live sync
-2. Implement weather API
-3. Implement Telegram bot
-4. Add threading infrastructure
-
-### Phase 3: New Features
-1. Weekly plan generator
-2. Optimal time calculator
-3. Enhanced nutrition optimizer
-4. Notification manager
-
-### Phase 4: Testing & Documentation
-1. Unit tests for all modules
-2. Integration tests
-3. User documentation
-4. Setup scripts
-
-## 🎯 Success Metrics
-
-### Functionality Preservation
-- ✅ All 54 original classes migrated
-- ✅ All menu functions working
-- ✅ Database operations preserved
-- ✅ No data loss
-
-### New Features Working
-- ✅ Garmin sync: Activities + weight + HRV
-- ✅ Weekly plan generation with lactate + drift
-- ✅ Optimal time calculation with dew point
-- ✅ Nutrition adjustment based on weight
-- ✅ Telegram notifications working
-
-### Quality Metrics
-- ✅ 80%+ test coverage
-- ✅ All threads monitored
-- ✅ No hidden classes
-- ✅ Comprehensive logging
-- ✅ Error handling on all API calls
 
 ## 🔮 Future Enhancements (Post-v51)
 

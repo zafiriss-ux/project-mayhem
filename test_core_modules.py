@@ -394,3 +394,144 @@ class TestWeatherDewPoint:
         cond = api.get_current_conditions()
         for key in ("temp_c", "humidity", "dew_point", "heat_stress", "recommendation"):
             assert key in cond, f"Missing key: {key}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 9. WEATHER WINDOW SELECTION — edge cases (ADR 0004)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _make_forecast(hours: list[int], date_str: str) -> list[dict]:
+    """
+    Build a minimal synthetic hourly forecast list for testing.
+
+    Each entry contains the keys WeatherAPI.find_optimal_training_windows()
+    actually reads: 'timestamp', 'hour', 'dew_point', 'temp_c'.
+    All weather values are deliberately neutral (dew=10, temp=15) so
+    scoring differences come purely from the time-of-day bonus/penalty.
+    """
+    return [
+        {
+            "timestamp": f"{date_str}T{h:02d}:00:00",
+            "hour": h,
+            "dew_point": 10.0,
+            "temp_c": 15.0,
+        }
+        for h in hours
+    ]
+
+
+class TestWeatherWindows:
+    """
+    Unit tests for WeatherAPI.find_optimal_training_windows().
+
+    Uses a monkeypatched get_hourly_forecast() so no network calls are made
+    and the day's forecast is fully deterministic.
+    """
+
+    @pytest.fixture
+    def patched_api(self, api, monkeypatch):
+        """
+        Return a WeatherAPI whose get_hourly_forecast() yields a
+        synthetic 24-hour forecast for today.
+        """
+        today = datetime.now().strftime("%Y-%m-%d")
+        synthetic = _make_forecast(list(range(24)), today)
+        monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: synthetic)
+        return api
+
+    # ── guard / invalid input ───────────────────────────────────────────────
+
+    def test_zero_duration_returns_empty(self, patched_api):
+        result = patched_api.find_optimal_training_windows(duration_hours=0)
+        assert result == []
+
+    def test_negative_duration_returns_empty(self, patched_api):
+        result = patched_api.find_optimal_training_windows(duration_hours=-1)
+        assert result == []
+
+    # ── slot count / boundary ───────────────────────────────────────────────
+
+    def test_integer_duration_slots(self, patched_api):
+        """duration_hours=1.0 → each window covers exactly 1 slot."""
+        result = patched_api.find_optimal_training_windows(duration_hours=1.0)
+        # 24 hours, 1 slot per window → 24 windows
+        assert len(result) == 24
+
+    def test_fractional_duration_ceiling(self, patched_api):
+        """duration_hours=1.5 → ceil=2 slots per window → 22 windows (24-2)."""
+        result = patched_api.find_optimal_training_windows(duration_hours=1.5)
+        assert len(result) == 23   # 24 - ceil(1.5) = 24 - 2 = 22... wait, 24-2+1=23
+        # windows start at hours 0..22 (23 windows); hour 23 would need slot 23+1=24 (OOB)
+
+    def test_two_hour_duration_boundary(self, patched_api):
+        """duration_hours=2.0 → ceil=2 slots → 23 windows (start hours 0-22)."""
+        result = patched_api.find_optimal_training_windows(duration_hours=2.0)
+        assert len(result) == 23
+
+    def test_full_day_duration(self, patched_api):
+        """duration_hours=24.0 → only 1 window (the whole day)."""
+        result = patched_api.find_optimal_training_windows(duration_hours=24.0)
+        assert len(result) == 1
+
+    def test_duration_exceeding_day_returns_empty(self, patched_api):
+        """duration_hours=25 → no window fits in 24-slot day."""
+        result = patched_api.find_optimal_training_windows(duration_hours=25)
+        assert result == []
+
+    # ── sparse day / midnight boundary ──────────────────────────────────────
+
+    def test_sparse_forecast_respects_boundary(self, api, monkeypatch):
+        """With only 3 hours available, a 2-hour run yields exactly 2 windows."""
+        today = datetime.now().strftime("%Y-%m-%d")
+        sparse = _make_forecast([6, 7, 8], today)
+        monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: sparse)
+        result = api.find_optimal_training_windows(duration_hours=2.0)
+        assert len(result) == 2   # windows [6-7] and [7-8]
+
+    def test_single_slot_forecast_1h(self, api, monkeypatch):
+        """1 slot available, duration=1 → exactly 1 window."""
+        today = datetime.now().strftime("%Y-%m-%d")
+        monkeypatch.setattr(api, "get_hourly_forecast",
+                            lambda hours: _make_forecast([6], today))
+        result = api.find_optimal_training_windows(duration_hours=1.0)
+        assert len(result) == 1
+
+    def test_single_slot_forecast_2h(self, api, monkeypatch):
+        """1 slot available, duration=2 → no window fits → empty."""
+        today = datetime.now().strftime("%Y-%m-%d")
+        monkeypatch.setattr(api, "get_hourly_forecast",
+                            lambda hours: _make_forecast([6], today))
+        result = api.find_optimal_training_windows(duration_hours=2.0)
+        assert result == []
+
+    # ── result structure ────────────────────────────────────────────────────
+
+    def test_window_has_required_keys(self, patched_api):
+        result = patched_api.find_optimal_training_windows(duration_hours=1.0)
+        assert result, "Expected at least one window"
+        required = {"start_time", "start_hour", "avg_dew_point", "avg_temp",
+                    "score", "quality"}
+        for key in required:
+            assert key in result[0], f"Missing key '{key}' in window dict"
+
+    def test_windows_sorted_best_first(self, patched_api):
+        """Returned list must be sorted ascending by score (best = lowest score)."""
+        result = patched_api.find_optimal_training_windows(duration_hours=1.0)
+        scores = [w["score"] for w in result]
+        assert scores == sorted(scores), "Windows are not sorted by score"
+
+    # ── tie-breaking stability ───────────────────────────────────────────────
+
+    def test_tie_sort_stable(self, api, monkeypatch):
+        """
+        When two windows have identical scores they must still appear in the
+        result (no window lost) and the list stays sorted.
+        """
+        today = datetime.now().strftime("%Y-%m-%d")
+        # hours 8 and 9 both outside bonus/penalty bands → same base score
+        two_hours = _make_forecast([8, 9, 10], today)
+        monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: two_hours)
+        result = api.find_optimal_training_windows(duration_hours=1.0)
+        assert len(result) == 3
+        scores = [w["score"] for w in result]
+        assert scores == sorted(scores)
