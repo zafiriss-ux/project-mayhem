@@ -81,16 +81,18 @@ Audit έναντι `find titan/ -name "*.py" | sort`:
 ## Consequences
 
 **Θετικά**
-- Το `ARCHITECTURE.md` είναι πλέον "source of truth" για current state.
+- Το `ARCHITECTURE.md` είναι πλέον "source of truth" μόνο για ό,τι υπάρχει.
 - Πίνακες modules: maintainable, scannable, χωρίς drift risk.
-- Ο διαχωρισμός current/planned είναι ξεκάθαρος.
-- Νέοι contributors βλέπουν ακριβώς τι υπάρχει.
+- Νέοι contributors βλέπουν ακριβώς τι υπάρχει στο filesystem.
 
 **Ουδέτερα**
 - Migration docs (`CORE_MIGRATION_SUMMARY.md`) αφήνονται αναλλοίωτα ως
   historical context.
 
-**Follow-up (v51.2 — `cc9c96a`)**
+**Αρνητικά**
+- Κανένα. Η αφαίρεση phantom entries δεν επηρεάζει λειτουργικό κώδικα.
+
+**Follow-up (v51.2 — `cc9c96a`, `c7dfae7`)**
 - "Planned tables" section αφαιρέθηκε: phantom tables χωρίς DDL δεν ανήκουν
   σε architecture docs.
 - "Future Enhancements" (Phase 5-8 λεπτομερής) αντικαταστάθηκε από compact
@@ -99,9 +101,6 @@ Audit έναντι `find titan/ -name "*.py" | sort`:
   (`weight_kg`, `hrv_rmssd`, `resting_hr`, `fatigue_level`), προσθήκη
   `zone_distribution`, `compression_recovery_hours`, `pace_sec_per_km`.
 - Startup flow (`_hydrate_engines_from_db`) προστέθηκε στο Data Flow.
-
-**Αρνητικά**
-- Κανένα. Η αφαίρεση phantom entries δεν επηρεάζει λειτουργικό κώδικα.
 
 ---
 

@@ -86,7 +86,4 @@ buckets για να υπολογιστεί ο μέσος όρος συνθηκώ
 ```bash
 pytest test_core_modules.py::TestWeatherWindows -v
 # 13 passed
-
-pytest test_core_modules.py::TestWeatherTrainingWindows -v
-# 2 passed
 ```

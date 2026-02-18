@@ -25,7 +25,7 @@
 ## Decision
 
 Αντικατάσταση ολόκληρου του `test_core_modules.py` με proper pytest suite
-(8 classes, fixtures, parametrize, tmp_path isolation). Για το
+(9 classes, fixtures, parametrize, tmp_path isolation). Για το
 weather-window συγκεκριμένα:
 
 ### `TestWeatherWindows` — monkeypatched, fully deterministic
@@ -57,15 +57,6 @@ def patched_api(self, api, monkeypatch):
 | `test_windows_sorted_best_first` | ascending sort by score |
 | `test_tie_sort_stable` | no windows lost on equal scores |
 
-### `TestWeatherTrainingWindows` — live simulated API
-
-Χρησιμοποιεί το built-in simulated forecast του `WeatherAPI` (offline):
-
-| Test | Ελέγχει |
-|------|---------|
-| `test_duration_hours_non_positive_returns_empty` | guard (0, -1) |
-| `test_fractional_duration_uses_ceil_slots` | `ceil(1.5)=2` slots στον υπολογισμό avg |
-
 ### Helper function
 
 ```python
@@ -91,9 +82,8 @@ time-of-day bonus/penalty → deterministic sort order.
 - `pytest -q` περνά καθαρά: 67 passed, 0 warnings.
 
 **Ουδέτερα**
-- `TestWeatherWindows` και `TestWeatherTrainingWindows` ελέγχουν εν μέρει
-  την ίδια συμπεριφορά (guards) — το overlap είναι σκόπιμο: δύο layers
-  (mock + real-sim) αυξάνουν εμπιστοσύνη χωρίς να είναι truly redundant.
+- Τα guard tests (`duration=0`, `duration<0`) ελέγχουν συμπεριφορά που καλύπτεται
+  και από την boundary-check λογική — το overlap είναι σκόπιμο για επιπλέον εμπιστοσύνη.
 
 **Αρνητικά**
 - Ο έλεγχος `test_fractional_duration_ceiling` κάνει assert `len == 23`
@@ -108,7 +98,6 @@ time-of-day bonus/penalty → deterministic sort order.
 pytest test_core_modules.py -q
 # 59 passed, 0 warnings in ~0.5s
 
-pytest test_core_modules.py::TestWeatherWindows \
-       test_core_modules.py::TestWeatherTrainingWindows -v
-# 15 passed
+pytest test_core_modules.py::TestWeatherWindows -v
+# 13 passed
 ```
