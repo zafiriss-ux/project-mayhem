@@ -89,7 +89,7 @@ project-mayhem/
 ├── requirements.txt                    # Python dependencies
 ├── main.py                             # Root-level launcher (python main.py)
 ├── system_check.py                     # Module health check (31 checks)
-├── test_core_modules.py                # pytest suite — core modules (59 tests)
+├── test_core_modules.py                # pytest suite — core modules (69 tests)
 ├── test_titan_logic.py                 # pytest suite — science logic (8 tests)
 ├── docs/
 │   └── adr/                            # Architecture Decision Records
@@ -97,7 +97,8 @@ project-mayhem/
 │       ├── 0002-fix-weather-window-duration-bug.md
 │       ├── 0003-align-documentation-with-current-module-layout.md
 │       ├── 0004-improve-tests-for-weather-window-edge-cases.md
-│       └── 0005-fix-runtime-startup-issues.md
+│       ├── 0005-fix-runtime-startup-issues.md
+│       └── 0006-architectural-hardening-cold-start-and-engine-sync.md
 │
 └── titan/
     ├── __init__.py
@@ -355,5 +356,5 @@ Next priorities, in order:
 
 ---
 
-**Status**: ✅ v51.2 deployed — 31 modules, 67 tests passing (59 core + 8 science)
-**Version**: 51.2.0
+**Status**: ✅ v51.3 deployed — 31 modules, 77 tests passing (69 core + 8 science)
+**Version**: 51.3.0

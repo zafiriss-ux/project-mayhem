@@ -115,7 +115,6 @@ WEATHER_LOCATION=Athens,GR
 
 ### 4. Εκκίνηση
 ```bash
-cd titan
 python main.py
 ```
 

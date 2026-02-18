@@ -13,7 +13,7 @@ class TSBEngine:
     
     def calculate_ctl(self, decay: int = 42) -> Optional[float]:
         """Chronic Training Load (42-day EMA)"""
-        if len(self.daily_loads) < 7:
+        if not self.daily_loads:
             return None
         ctl, alpha = self.daily_loads[0][1], 2.0 / (decay + 1)
         for _, load in self.daily_loads[1:]:
@@ -23,7 +23,7 @@ class TSBEngine:
     
     def calculate_atl(self, decay: int = 7) -> Optional[float]:
         """Acute Training Load (7-day EMA)"""
-        if len(self.daily_loads) < 3:
+        if not self.daily_loads:
             return None
         atl, alpha = self.daily_loads[0][1], 2.0 / (decay + 1)
         for _, load in self.daily_loads[1:]:

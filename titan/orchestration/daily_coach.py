@@ -295,15 +295,17 @@ class DailyCoach:
 
     def _feed_load_engines(self, activities: List[Dict]) -> None:
         """
-        Feed synced activities into TSB / ACWR engines so CTL/ATL are live.
-        Uses training_load from DB for the full 42-day window.
+        Refresh TSBEngine from DB after Garmin sync. Clears and reloads 42-day window.
+        Uses training_load from DB so CTL/ATL are always current.
         """
         try:
             loads = self.db.get_training_load_history(days=42)
-            if loads:
-                self.tsb.load_history = loads  # expose for re-calc on next call
+            self.tsb.daily_loads.clear()
+            for date_str, load in reversed(loads):  # oldest-first for correct EMA
+                self.tsb.add_daily_load(date_str, float(load))
+            print(f"  ↳ Load engines refreshed: {len(loads)} sessions")
         except Exception as e:
-            print(f"  ⚠️  Could not feed load engines: {e}")
+            print(f"  ⚠️  Could not refresh load engines: {e}")
 
     def _hydrate_engines_from_db(self) -> None:
         """
@@ -327,6 +329,7 @@ class DailyCoach:
                    ORDER BY date DESC LIMIT 14"""
             )
             rows = cursor.fetchall()
+            self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
             print(f"  ↳ HRV: {len(rows)} records loaded")
@@ -350,10 +353,10 @@ class DailyCoach:
         # 3. Training load history → TSB engine (42-day window for CTL)
         try:
             loads = self.db.get_training_load_history(days=42)
-            if loads:
-                # DB returns DESC; add oldest-first so EMA builds chronologically
-                for date_str, load in reversed(loads):
-                    self.tsb.add_daily_load(date_str, float(load))
+            self.tsb.daily_loads.clear()
+            # DB returns DESC; add oldest-first so EMA builds chronologically
+            for date_str, load in reversed(loads):
+                self.tsb.add_daily_load(date_str, float(load))
             print(f"  ↳ Training load: {len(loads)} sessions loaded for CTL")
         except Exception as e:
             print(f"  ⚠️  TSB hydration failed: {e}")

@@ -535,3 +535,153 @@ class TestWeatherWindows:
         assert len(result) == 3
         scores = [w["score"] for w in result]
         assert scores == sorted(scores)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TSB Engine — cold-start regression tests (ADR 0006)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTSBColdStart:
+    """
+    Guard removed: engine must work with ≥ 1 load record (not ≥ 7 / ≥ 3).
+    Regression against the < 7 / < 3 minimum-record guards that caused
+    INSUFFICIENT DATA on fresh installs and the first weeks after deployment.
+    """
+
+    @pytest.fixture
+    def engine(self):
+        from titan.science.tsb_engine import TSBEngine
+        return TSBEngine()
+
+    def test_zero_loads_returns_none(self, engine):
+        """Engine with no data must return None for both CTL and ATL."""
+        assert engine.calculate_ctl() is None
+        assert engine.calculate_atl() is None
+
+    def test_zero_loads_tsb_returns_none(self, engine):
+        """calculate_tsb() returns (None, 'INSUFFICIENT DATA') with no loads."""
+        val, status = engine.calculate_tsb()
+        assert val is None
+        assert status == "INSUFFICIENT DATA"
+
+    def test_single_load_returns_float(self, engine):
+        """One load record must be enough to produce a numeric CTL and ATL."""
+        engine.add_daily_load("2026-01-01", 80.0)
+        assert isinstance(engine.calculate_ctl(), float)
+        assert isinstance(engine.calculate_atl(), float)
+
+    def test_single_load_tsb_not_none(self, engine):
+        """calculate_tsb() must return a numeric value with just 1 record."""
+        engine.add_daily_load("2026-01-01", 80.0)
+        val, status = engine.calculate_tsb()
+        assert val is not None
+        assert status != "INSUFFICIENT DATA"
+
+    def test_three_loads_returns_float(self, engine):
+        """Three load records (previous ATL threshold) must now produce a result."""
+        for i, load in enumerate([70.0, 80.0, 75.0]):
+            engine.add_daily_load(f"2026-01-0{i+1}", load)
+        assert isinstance(engine.calculate_ctl(), float)
+        assert isinstance(engine.calculate_atl(), float)
+
+    def test_zero_tsb_treated_as_race_form(self, engine):
+        """
+        TSB = 0.0 must be returned as 0.0 (race form), not treated as falsy.
+        Seeds CTL = ATL = same value → TSB = 0.0 exactly.
+        """
+        engine.add_daily_load("2026-01-01", 50.0)
+        val, _ = engine.calculate_tsb()
+        # With one load, CTL = ATL = seed value → TSB = 0.0
+        assert val == 0.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TSB Engine — startup hydration integration test (ADR 0006)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTSBHydration:
+    """
+    Verify that clear() + add_daily_load() pattern used in _feed_load_engines()
+    and _hydrate_engines_from_db() produces correct CTL/ATL after reload.
+    """
+
+    @pytest.fixture
+    def engine(self):
+        from titan.science.tsb_engine import TSBEngine
+        return TSBEngine()
+
+    def test_clear_then_reload_gives_correct_ctl(self, engine):
+        """Clearing loads and reloading must not double-count sessions."""
+        loads = [("2026-01-01", 60.0), ("2026-01-02", 70.0), ("2026-01-03", 80.0)]
+        for date, load in loads:
+            engine.add_daily_load(date, load)
+        ctl_first = engine.calculate_ctl()
+
+        # Simulate reload (as _feed_load_engines does)
+        engine.daily_loads.clear()
+        for date, load in loads:
+            engine.add_daily_load(date, load)
+        ctl_reload = engine.calculate_ctl()
+
+        assert ctl_first == ctl_reload, "CTL changed after clear+reload — double-counting bug"
+
+    def test_double_hydrate_does_not_drift(self, engine):
+        """Calling hydration twice must produce the same TSB each time."""
+        loads = [("2026-01-01", 50.0), ("2026-01-02", 60.0)]
+        for _ in range(2):
+            engine.daily_loads.clear()
+            for date, load in loads:
+                engine.add_daily_load(date, load)
+        val1, _ = engine.calculate_tsb()
+
+        engine.daily_loads.clear()
+        for date, load in loads:
+            engine.add_daily_load(date, load)
+        val2, _ = engine.calculate_tsb()
+
+        assert val1 == val2, "TSB drifted between identical hydration calls"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WeeklyPlanGenerator — None / 0.0 TSB null-safety (ADR 0006)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestWeeklyPlannerNullSafety:
+    """
+    Regression for the tsb_value falsy bug:
+      'readiness': 'GOOD' if ... and tsb_value and tsb_value > -20 ...
+    When TSB = 0.0 (race form), the old guard treated it as False.
+    """
+
+    @pytest.fixture
+    def planner(self):
+        from titan.science.tsb_engine import TSBEngine
+        from titan.science.hrv_engine import HRVGuidedEngine
+        from titan.science.acwr_engine import ACWREngine
+        from titan.features.weekly_planner import WeeklyPlanGenerator
+        return WeeklyPlanGenerator(
+            hrv_engine=HRVGuidedEngine(),
+            tsb_engine=TSBEngine(),
+            acwr_engine=ACWREngine(),
+        )
+
+    # Minimal session stub that passes the empty-guard and has low drift
+    _SESSIONS = [{"session_type": "EASY", "distance_km": 10.0, "drift_pct": 1.0}]
+
+    def test_none_tsb_does_not_raise(self, planner, monkeypatch):
+        """analyze_past_week() must not raise when TSB returns None."""
+        monkeypatch.setattr(
+            planner.tsb_engine, "calculate_tsb", lambda: (None, "INSUFFICIENT DATA")
+        )
+        result = planner.analyze_past_week(sessions=self._SESSIONS)
+        assert result["readiness"] == "COMPROMISED"
+
+    def test_zero_tsb_gives_good_readiness(self, planner, monkeypatch):
+        """TSB = 0.0 (race form) must yield GOOD readiness, not COMPROMISED."""
+        monkeypatch.setattr(
+            planner.tsb_engine, "calculate_tsb", lambda: (0.0, "🎯 RACE FORM")
+        )
+        result = planner.analyze_past_week(sessions=self._SESSIONS)
+        assert result["readiness"] == "GOOD", (
+            "TSB=0.0 must not be treated as falsy — use 'is not None' comparison"
+        )

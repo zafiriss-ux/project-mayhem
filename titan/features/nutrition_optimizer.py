@@ -97,7 +97,9 @@ class NutritionOptimizer:
         weight_kg: float,
         today_session: Dict,
         tomorrow_session: Dict = None,
-        training_phase: str = 'BUILD'
+        training_phase: str = 'BUILD',
+        height_cm: int = 180,
+        age: int = 35,
     ) -> Dict:
         """
         Calculate today's nutrition requirements.
@@ -116,7 +118,7 @@ class NutritionOptimizer:
         
         # Base metabolic calculations
         # Using simplified Mifflin-St Jeor for male athlete (can be adjusted)
-        bmr = 10 * weight_kg + 6.25 * 180 - 5 * 35 + 5  # Assuming 180cm, 35yo male
+        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5  # Mifflin-St Jeor (male)
         
         # Activity multiplier based on session
         activity_multipliers = {

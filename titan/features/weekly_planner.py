@@ -19,7 +19,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from science.hrv_engine import HRVGuidedEngine
 from science.tsb_engine import TSBEngine
 from science.acwr_engine import ACWREngine
-from science.lactate_logic import LactateLogic
 from science.drift_engine import DriftEngine
 
 class WeeklyPlanGenerator:
@@ -140,7 +139,7 @@ class WeeklyPlanGenerator:
             'hrv_trend': hrv_trend,
             'tsb': tsb_value,
             'tsb_status': tsb_status,
-            'readiness': 'GOOD' if avg_drift < 4 and tsb_value and tsb_value > -20 else 'COMPROMISED'
+            'readiness': 'GOOD' if avg_drift < 4 and tsb_value is not None and tsb_value > -20 else 'COMPROMISED'
         }
     
     def generate_weekly_plan(
