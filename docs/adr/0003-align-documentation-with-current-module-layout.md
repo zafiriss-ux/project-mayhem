@@ -4,7 +4,7 @@
 |-------|------|
 | **Status** | Implemented |
 | **Date** | 2026-02-17 |
-| **Commits** | `421e7e1`, `eebed78`, `eb1fe54` |
+| **Commits** | `421e7e1`, `eebed78`, `eb1fe54`, `cc9c96a` (follow-up) |
 | **Files** | `ARCHITECTURE.md`, `README.md`, `CHANGES.md` |
 
 ---
@@ -60,8 +60,11 @@ Audit έναντι `find titan/ -name "*.py" | sort`:
 3. **Threading**: 5 → 3 threads (Garmin, Weather, Daily Coach).
 4. **Configuration**: αφαίρεση `config.yaml`, μόνο env variables.
 5. **DB Schema**: actual tables (`daily_metrics`, `training_log`, `gear_usage`,
-   `personal_bests`) + "Planned tables" section.
-6. **Footer**: `✅ v51.1 deployed — 31 modules, 67 tests passing`.
+   `personal_bests`) — schema corrected to match exact `CREATE TABLE` DDL.
+   A transient "Planned tables" section (phantom `weight_log`, `hrv_log`
+   etc.) appeared in intermediate drafts but was removed in the follow-up
+   pass (see below).
+6. **Footer**: `✅ v51.2 deployed — 31 modules, 67 tests passing`.
 
 ### README.md:
 
@@ -84,10 +87,18 @@ Audit έναντι `find titan/ -name "*.py" | sort`:
 - Νέοι contributors βλέπουν ακριβώς τι υπάρχει.
 
 **Ουδέτερα**
-- Aspirational content (Future Enhancements) παραμένει — αλλά σαφώς
-  διαχωρισμένο ως roadmap.
 - Migration docs (`CORE_MIGRATION_SUMMARY.md`) αφήνονται αναλλοίωτα ως
   historical context.
+
+**Follow-up (v51.2 — `cc9c96a`)**
+- "Planned tables" section αφαιρέθηκε: phantom tables χωρίς DDL δεν ανήκουν
+  σε architecture docs.
+- "Future Enhancements" (Phase 5-8 λεπτομερής) αντικαταστάθηκε από compact
+  "🗺️ Roadmap" (4 bullet points, χωρίς phantom module paths).
+- DB schema ευθυγραμμίστηκε με τον πραγματικό DDL: σωστά ονόματα columns
+  (`weight_kg`, `hrv_rmssd`, `resting_hr`, `fatigue_level`), προσθήκη
+  `zone_distribution`, `compression_recovery_hours`, `pace_sec_per_km`.
+- Startup flow (`_hydrate_engines_from_db`) προστέθηκε στο Data Flow.
 
 **Αρνητικά**
 - Κανένα. Η αφαίρεση phantom entries δεν επηρεάζει λειτουργικό κώδικα.

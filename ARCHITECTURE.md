@@ -76,7 +76,7 @@ Transform TITAN from a monolithic script to a production-grade AI Training Syste
 
 ## 📁 Directory Structure
 
-All entries below exist on disk as of v51.
+All entries below exist on disk as of v51.2.
 
 ```
 project-mayhem/
@@ -87,6 +87,7 @@ project-mayhem/
 ├── FUTURE_UPGRADES.md                  # Roadmap / upcoming features
 ├── CORE_MIGRATION_SUMMARY.md           # v50 → v51 migration notes
 ├── requirements.txt                    # Python dependencies
+├── main.py                             # Root-level launcher (python main.py)
 ├── system_check.py                     # Module health check (31 checks)
 ├── test_core_modules.py                # pytest suite — core modules (59 tests)
 ├── test_titan_logic.py                 # pytest suite — science logic (8 tests)
@@ -95,11 +96,12 @@ project-mayhem/
 │       ├── 0001-fix-typo-optimal-time-module-reference.md
 │       ├── 0002-fix-weather-window-duration-bug.md
 │       ├── 0003-align-documentation-with-current-module-layout.md
-│       └── 0004-improve-tests-for-weather-window-edge-cases.md
+│       ├── 0004-improve-tests-for-weather-window-edge-cases.md
+│       └── 0005-fix-runtime-startup-issues.md
 │
 └── titan/
     ├── __init__.py
-    ├── main.py                         # Entry point / REPL demo
+    ├── main.py                         # Entry point (also callable via root main.py)
     │
     ├── core/                           # 4 modules
     │   ├── athlete.py                  # UniversalAthleteProfile + AthleteDatabase
@@ -136,7 +138,7 @@ project-mayhem/
     │                                   # (wearable data flows through garmin_sync.py)
     │
     ├── orchestration/                  # 1 module
-    │   └── daily_coach.py              # Morning routine + optimal time dispatch
+    │   └── daily_coach.py              # Morning routine + DB hydration on startup
     │
     ├── ui/                             # 2 modules
     │   ├── menu_system.py              # Interactive menu (migrated from v50)
@@ -163,7 +165,7 @@ project-mayhem/
 
 | Module | Class | Responsibilities |
 |--------|-------|-----------------|
-| `integrations/garmin_sync.py` | `GarminSync` | Live sync: activities, weight, sleep, HRV, stress; 6-hour background thread; incremental |
+| `integrations/garmin_sync.py` | `GarminSync` | Live sync: activities, weight, sleep, HRV, stress; 6-hour background thread; graceful token-expiry recovery (`rm -rf ~/.garth`) |
 | `integrations/weather_api.py` | `WeatherAPI` | 48-hour forecast; Magnus-Tetens dew point; heat stress classification; 1-hour cache; `find_optimal_training_windows(duration_hours)` with `ceil`-based slot logic |
 | `integrations/telegram_bot.py` | `TitanTelegramBot` | Scheduled coaching messages; `/today`, `/week`, `/stats`, `/recovery`, `/nutrition` commands |
 
@@ -172,7 +174,7 @@ project-mayhem/
 | Module | Class | Responsibilities |
 |--------|-------|-----------------|
 | `core/athlete.py` | `UniversalAthleteProfile`, `AthleteDatabase` | Demographics, HR zones, BMR/TDEE, serialization, multi-athlete CRUD |
-| `core/database.py` | `DatabaseManager` | Thread-safe SQLite; sessions, daily metrics, gear, PRs; `temperature_c` canonical param |
+| `core/database.py` | `DatabaseManager` | Thread-safe SQLite; sessions, daily metrics, gear, PRs; `temperature_c` canonical param; `get_training_load_history()` feeds CTL/ATL on startup |
 | `core/periodization.py` | `PeriodizationManager` | Phase calculation (BASE/BUILD/PEAK/TAPER/POST_RACE) from days-to-race |
 | `core/equipment.py` | `EquipmentManager` | Shoe-type × session-type × surface gear checks |
 
@@ -207,6 +209,16 @@ All integrations use `threading.Lock` for SQLite writes (`check_same_thread=Fals
 ---
 
 ## 🔄 Data Flow
+
+### Startup
+
+```
+main.py
+  → DailyCoach.__init__()
+  → _hydrate_engines_from_db()   restore HRV (14d), weight (30d), load (42d)
+  → TSBEngine.add_daily_load()   rebuild CTL/ATL from DB history
+  → main_menu()                  interactive loop
+```
 
 ### Morning Routine (07:00)
 
@@ -274,22 +286,24 @@ WEATHER_CACHE_DURATION_HOURS=1
 
 ## 💾 Database Schema
 
-### Current tables (in `DatabaseManager.__init__`)
+Four tables, all created by `DatabaseManager.create_database()`.
 
 ```sql
-CREATE TABLE daily_metrics (
-    date            TEXT PRIMARY KEY,
-    weight          REAL,
-    hrv             REAL,
-    rhr             INTEGER,
+CREATE TABLE IF NOT EXISTS daily_metrics (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    date            TEXT NOT NULL UNIQUE,
+    weight_kg       REAL,
+    hrv_rmssd       REAL,
+    resting_hr      INTEGER,
     sleep_hours     REAL,
     sleep_quality   INTEGER,      -- 0-100
-    soreness        INTEGER,      -- 1-5
-    fatigue         INTEGER,      -- 1-5
-    mood            INTEGER       -- 1-5
+    soreness        INTEGER,      -- 0-5
+    fatigue_level   INTEGER,      -- 0-5
+    mood            INTEGER,      -- 0-5
+    notes           TEXT
 );
 
-CREATE TABLE training_log (
+CREATE TABLE IF NOT EXISTS training_log (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     date            TEXT NOT NULL,
     session_type    TEXT,
@@ -297,56 +311,49 @@ CREATE TABLE training_log (
     duration_sec    INTEGER,
     avg_hr          INTEGER,
     max_hr          INTEGER,
-    rpe             INTEGER,      -- 1-10
-    training_load   REAL,
-    shoe_id         TEXT,
+    rpe             INTEGER,          -- 1-10
+    training_load   INTEGER,          -- computed: rpe × (duration_sec / 60)
+    shoe_id         INTEGER,          -- FK → gear_usage.id
     surface         TEXT,
-    temperature_c   REAL,         -- canonical column name
-    notes           TEXT
+    temperature_c   REAL,             -- canonical column name
+    zone_distribution TEXT,           -- JSON HR zone breakdown
+    notes           TEXT,
+    FOREIGN KEY (shoe_id) REFERENCES gear_usage(id)
 );
 
-CREATE TABLE gear_usage (
-    shoe_id         TEXT PRIMARY KEY,
-    name            TEXT,
-    shoe_type       TEXT,
-    max_km          REAL,
-    current_km      REAL DEFAULT 0
+CREATE TABLE IF NOT EXISTS gear_usage (
+    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+    shoe_name                  TEXT NOT NULL,
+    total_km                   REAL DEFAULT 0,
+    last_used                  TEXT,
+    compression_recovery_hours INTEGER DEFAULT 24,
+    status                     TEXT DEFAULT 'ACTIVE',
+    shoe_type                  TEXT,
+    max_km_limit               REAL DEFAULT 800
 );
 
-CREATE TABLE personal_bests (
-    distance_km     REAL PRIMARY KEY,
-    time_seconds    INTEGER,
-    date            TEXT,
+CREATE TABLE IF NOT EXISTS personal_bests (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    distance_km     REAL NOT NULL,
+    time_sec        INTEGER NOT NULL,
+    pace_sec_per_km REAL,
+    date            TEXT NOT NULL,
     race_name       TEXT
 );
 ```
 
-### Planned tables (not yet created)
+---
 
-`weight_log`, `hrv_log`, `weather_cache`, `notification_log`, `weekly_plans`
-— see `FUTURE_UPGRADES.md` for schema design.
+## 🗺️ Roadmap
+
+Next priorities, in order:
+
+1. **ML load prediction** — LSTM on `training_log` for injury risk scoring and CTL forecasting
+2. **Streamlit dashboard** — visual CTL/ATL/TSB timeline, HRV trend, weekly calendar
+3. **Additional device sync** — Strava, Polar, Whoop (new `integrations/` modules)
+4. **Multi-athlete support** — team coaching via `AthleteDatabase` CRUD already in place
 
 ---
 
-## 🔮 Future Enhancements
-
-### Phase 5 — ML Enhancement
-- LSTM for training load prediction and injury risk scoring
-- Performance prediction with confidence intervals
-- Automated periodization adjustment from trend data
-
-### Phase 6 — Web UI
-- Streamlit dashboard with interactive charts
-- Training calendar and nutrition planner
-
-### Phase 7 — Extended Integrations
-- Multi-athlete coaching and team leaderboards
-- Strava, Polar, Whoop sync via `integrations/wearables.py`
-
-### Phase 8 — Mobile
-- React Native app with push notifications and offline mode
-
----
-
-**Status**: ✅ v51.1 deployed — 31 modules, 67 tests passing (59 core + 8 science)
-**Version**: 51.1.0
+**Status**: ✅ v51.2 deployed — 31 modules, 67 tests passing (59 core + 8 science)
+**Version**: 51.2.0
