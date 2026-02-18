@@ -1,6 +1,66 @@
-# TITAN v51.0 - CHANGELOG
+# TITAN v51 - CHANGELOG
 
-## 🎯 Major Restructure: v50 → v51
+---
+
+## v51.1 — Bug fixes, accuracy & documentation (2026-02-18)
+
+### 🐛 Bug fixes
+
+- **`WeatherAPI.calculate_dew_point`** — Magnus-Tetens formula was using a
+  linear `+ humidity/100.0` term instead of the required logarithm.
+  Fixed: `gamma = (a·T)/(b+T) + math.log(RH/100)`.
+  Known-value check: T=20°C / RH=50% now returns Td≈9.3°C (was ~28°C).
+  Added RH clamp `[1, 100]` to prevent `log(0)` domain error.
+
+- **`WeatherAPI.find_optimal_training_windows`** — `duration_hours` boundary
+  check and array slice used inconsistent float/int logic causing off-by-one
+  for all durations. Fixed with `required_slots = max(1, math.ceil(duration_hours))`.
+  Added early return `[]` for `duration_hours <= 0`.
+
+### 🔌 API consistency
+
+- **`DatabaseManager.save_session`** — parameter renamed from `temperature`
+  to `temperature_c` (matches the SQLite column name).
+  Backward-compatible: `temperature=` still works but emits `DeprecationWarning`.
+
+### 📝 Documentation
+
+- **`README.md`** — removed phantom module `integrations/wearables.py`;
+  wearable data flows through `garmin_sync.py`.
+
+- **`ARCHITECTURE.md`** — complete rewrite:
+  - Diagram corrected (removed non-existent module boxes)
+  - Directory tree reflects only on-disk files
+  - Module Responsibilities: verbose docstrings → concise tables
+  - Threading: 5 speculative threads → 3 real daemon threads
+  - Config: removed non-existent `config.yaml` reference
+  - DB Schema: actual tables listed; planned tables clearly marked
+  - Footer updated: `✅ v51 deployed — 31 modules, 99 tests`
+
+- **`docs/adr/`** — four Architecture Decision Records added (status: Implemented):
+  - `0001` — optimal_time.py module name typo
+  - `0002` — weather window fractional duration bug
+  - `0003` — documentation / module layout alignment
+  - `0004` — weather window edge-case test strategy
+
+- **`CHANGES.md`** (this file) — corrected stale "All tests passing" claim
+  from v51.0 release (the original `test_core_modules.py` failed under pytest).
+
+### ✅ Tests
+
+- **`test_core_modules.py`** — rewritten as proper pytest suite (8 classes):
+  - `TestAthleteProfile`, `TestPeriodization`, `TestEquipment`, `TestDatabase`,
+    `TestAthleteDatabase`, `TestMathCore`, `TestConstants`, `TestWeatherDewPoint`,
+    `TestWeatherWindows`, `TestWeatherTrainingWindows`
+  - Fixtures: `athlete`, `db(tmp_path)`, `populated_db`, `athlete_db(tmp_path)`, `api`
+  - `@pytest.mark.parametrize` for phases, weight function, system status, dew point
+  - `warnings.catch_warnings` assertion for `DeprecationWarning` on deprecated alias
+  - 13 edge-case tests for `find_optimal_training_windows` (monkeypatched + live sim)
+  - `pytest test_core_modules.py test_titan_logic.py -q` → **67 passed, 0 warnings**
+
+---
+
+## v51.0 — Major Restructure: v50 → v51
 
 ### **Release Date**: 2026-02-16
 
@@ -110,7 +170,8 @@ titan/
 
 ### Database Schema
 - ✅ All original tables preserved
-- ✅ Added: weight_log, hrv_log, weather_cache, notification_log, weekly_plans
+- ⏳ Planned: weight_log, hrv_log, weather_cache, notification_log, weekly_plans
+  (not yet created; see FUTURE_UPGRADES.md for schema design)
 - ✅ Backward compatible
 
 ### Menu System
@@ -128,10 +189,11 @@ titan/
 - ✅ PEP 8 compliant
 
 ### Testing
-- ✅ Test suite for core modules
-- ✅ Test suite for science modules
-- ✅ 300+ lines of test code
-- ✅ All tests passing
+- ✅ Test suite for core modules (`test_core_modules.py`)
+- ✅ Test suite for science modules (`test_titan_logic.py`)
+- ⚠️  Original `test_core_modules.py` used `print`/`return` style — not
+  compatible with pytest (missing fixtures, `PytestReturnNotNoneWarning`);
+  rewritten in v51.1 (see below)
 
 ### Documentation
 - ✅ README.md with full usage guide
