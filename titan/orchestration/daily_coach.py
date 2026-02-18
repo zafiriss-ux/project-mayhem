@@ -351,7 +351,9 @@ class DailyCoach:
         try:
             loads = self.db.get_training_load_history(days=42)
             if loads:
-                self.tsb.load_history = loads
+                # DB returns DESC; add oldest-first so EMA builds chronologically
+                for date_str, load in reversed(loads):
+                    self.tsb.add_daily_load(date_str, float(load))
             print(f"  ↳ Training load: {len(loads)} sessions loaded for CTL")
         except Exception as e:
             print(f"  ⚠️  TSB hydration failed: {e}")

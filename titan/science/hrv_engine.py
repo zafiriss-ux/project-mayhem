@@ -106,6 +106,10 @@ class HRVGuidedEngine:
             'data_points': len(self.hrv_log),
         }
 
+    def get_latest_hrv(self) -> float:
+        """Return most recent rMSSD value (0.0 if no data)."""
+        return round(self.hrv_log[-1][1], 1) if self.hrv_log else 0.0
+
     def get_trend_analysis(self) -> str:
         """Analyze HRV trend over time."""
         if len(self.hrv_log) < 14:

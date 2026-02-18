@@ -48,6 +48,11 @@ class TSBEngine:
         else: status = "🛑 OVERTRAINED"
         return round(tsb, 1), status
     
+    def get_latest_tsb(self) -> float:
+        """Return current TSB value (0.0 if insufficient data)."""
+        val, _ = self.calculate_tsb()
+        return val if val is not None else 0.0
+
     def predict_race_day_tsb(self, days: int, loads: List[float]) -> Optional[float]:
         """Predict future TSB"""
         if not loads or days > len(loads): return None
