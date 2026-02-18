@@ -17,7 +17,7 @@
 | [0002](0002-fix-weather-window-duration-bug.md) | Διόρθωση off-by-one στο `find_optimal_training_windows` | Bug fix | ✅ Implemented | `421e7e1` |
 | [0003](0003-align-documentation-with-current-module-layout.md) | Ευθυγράμμιση τεκμηρίωσης με πραγματικό module layout | Docs / Consistency | ✅ Implemented | `421e7e1`, `eebed78`, `eb1fe54` |
 | [0004](0004-improve-tests-for-weather-window-edge-cases.md) | Δοκιμές edge cases για `find_optimal_training_windows` | Tests | ✅ Implemented | `421e7e1` |
-| [0005](0005-fix-runtime-startup-issues.md) | Διόρθωση runtime προβλημάτων εκκίνησης (5 bugs) | Bug fix | ✅ Implemented | TBD |
+| [0005](0005-fix-runtime-startup-issues.md) | Διόρθωση runtime προβλημάτων εκκίνησης (5 bugs) | Bug fix | ✅ Implemented | `4076f2d` |
 
 ---
 

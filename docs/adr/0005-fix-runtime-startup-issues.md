@@ -4,7 +4,7 @@
 |-------|------|
 | **Status** | Implemented |
 | **Date** | 2026-02-18 |
-| **Commits** | TBD |
+| **Commits** | `4076f2d` |
 | **Files** | `main.py`, `titan/science/hrv_engine.py`, `titan/science/tsb_engine.py`, `titan/orchestration/daily_coach.py`, `titan/integrations/garmin_sync.py` |
 
 ---
