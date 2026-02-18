@@ -1,71 +1,114 @@
-# ADR 0004: Βελτίωση δοκιμών για weather-window edge cases
+# ADR 0004: Δοκιμές edge cases για `find_optimal_training_windows`
 
-- **Status:** Implemented
-- **Date:** 2026-02-17
-- **Commit:** 421e7e1
+| Πεδίο | Τιμή |
+|-------|------|
+| **Status** | Implemented |
+| **Date** | 2026-02-17 |
+| **Commits** | `421e7e1` |
+| **Files** | `test_core_modules.py` |
+
+---
 
 ## Context
 
-Πριν από αυτό το ADR δεν υπήρχαν unit tests για το
-`WeatherAPI.find_optimal_training_windows()`. Regression στη λογική
-slicing/scoring θα περνούσε απαρατήρητη.
+Πριν από αυτό το ADR δεν υπήρχαν unit tests για
+`WeatherAPI.find_optimal_training_windows()`. Το `test_core_modules.py`
+περιείχε μόνο demo-style prints χωρίς assertions. Αποτέλεσμα:
+
+- Η off-by-one ασυνέπεια του ADR 0002 παρέμεινε αδιάγνωστη.
+- Regression στο scoring/windowing θα περνούσε αθόρυβα.
+- `pytest -q` απέτυχε λόγω missing fixture (`athlete`) και
+  `PytestReturnNotNoneWarning` από `return athlete`.
+
+---
 
 ## Decision
 
-Δύο συμπληρωματικές test classes στο `test_core_modules.py`:
+Αντικατάσταση ολόκληρου του `test_core_modules.py` με proper pytest suite
+(8 classes, fixtures, parametrize, tmp_path isolation). Για το
+weather-window συγκεκριμένα:
 
-### `TestWeatherWindows` (monkeypatched, fully deterministic)
+### `TestWeatherWindows` — monkeypatched, fully deterministic
 
-Χρησιμοποιεί `monkeypatch.setattr` για να αντικαταστήσει
-`get_hourly_forecast()` με συνθετικό forecast → zero network dependency.
+```python
+@pytest.fixture
+def patched_api(self, api, monkeypatch):
+    today = datetime.now().strftime("%Y-%m-%d")
+    synthetic = _make_forecast(list(range(24)), today)
+    monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: synthetic)
+    return api
+```
 
-| Test | Τι ελέγχει |
-|------|-----------|
-| `test_zero_duration_returns_empty` | guard για `duration=0` |
-| `test_negative_duration_returns_empty` | guard για `duration<0` |
-| `test_integer_duration_slots` | `duration=1.0` → 24 windows (1 slot each) |
-| `test_fractional_duration_ceiling` | `duration=1.5` → 23 windows (ceil=2) |
-| `test_two_hour_duration_boundary` | `duration=2.0` → 23 windows |
-| `test_full_day_duration` | `duration=24` → 1 window |
-| `test_duration_exceeding_day_returns_empty` | `duration=25` → [] |
+Μηδενική εξάρτηση από network ή ώρα συστήματος (εκτός timezone).
+
+| Test | Ελέγχει |
+|------|---------|
+| `test_zero_duration_returns_empty` | guard `duration=0` |
+| `test_negative_duration_returns_empty` | guard `duration<0` |
+| `test_integer_duration_slots` | `1.0h` → 24 windows (1 slot each) |
+| `test_fractional_duration_ceiling` | `1.5h` → 23 windows (ceil=2 slots) |
+| `test_two_hour_duration_boundary` | `2.0h` → 23 windows (ceil=2 slots) |
+| `test_full_day_duration` | `24h` → 1 window |
+| `test_duration_exceeding_day_returns_empty` | `25h` → `[]` |
 | `test_sparse_forecast_respects_boundary` | 3 slots + 2h → 2 windows |
 | `test_single_slot_forecast_1h` | 1 slot + 1h → 1 window |
-| `test_single_slot_forecast_2h` | 1 slot + 2h → [] |
-| `test_window_has_required_keys` | result dict keys |
-| `test_windows_sorted_best_first` | ascending score sort |
+| `test_single_slot_forecast_2h` | 1 slot + 2h → `[]` |
+| `test_window_has_required_keys` | result dict schema |
+| `test_windows_sorted_best_first` | ascending sort by score |
 | `test_tie_sort_stable` | no windows lost on equal scores |
 
-### `TestWeatherTrainingWindows` (live simulated API)
+### `TestWeatherTrainingWindows` — live simulated API
 
-Χρησιμοποιεί το built-in simulated forecast του `WeatherAPI`
-(χωρίς network) για end-to-end validation:
+Χρησιμοποιεί το built-in simulated forecast του `WeatherAPI` (offline):
 
-| Test | Τι ελέγχει |
-|------|-----------|
+| Test | Ελέγχει |
+|------|---------|
 | `test_duration_hours_non_positive_returns_empty` | guard (0, -1) |
-| `test_fractional_duration_uses_ceil_slots` | `ceil(1.5)=2` slots χρησιμοποιούνται για averages |
+| `test_fractional_duration_uses_ceil_slots` | `ceil(1.5)=2` slots στον υπολογισμό avg |
 
-## Reasoning
+### Helper function
 
-- **Monkeypatched tests**: ελέγχουν αυστηρά τη λογική boundary/slicing
-  χωρίς εξάρτηση από εξωτερικά δεδομένα.
-- **Simulated API tests**: ελέγχουν τον ολόκληρο pipeline με realistic
-  (αλλά offline) forecast.
-- Τα δύο layers αλληλοσυμπληρώνονται χωρίς να είναι redundant.
+```python
+def _make_forecast(hours: list[int], date_str: str) -> list[dict]:
+    return [
+        {"timestamp": f"{date_str}T{h:02d}:00:00",
+         "hour": h, "dew_point": 10.0, "temp_c": 15.0}
+        for h in hours
+    ]
+```
 
-## Edge cases που ελέγχθηκαν
+Ουδέτερες τιμές (dew=10, temp=15) → score differences μόνο από
+time-of-day bonus/penalty → deterministic sort order.
 
-- `duration_hours` 0, αρνητικό, fractional (1.5), integer (1, 2, 24), over-day (25)
-- Forecast με 1 slot (boundary)
-- Forecast με 3 slots (sparse)
-- Midnight: day filtering via `datetime.date()` comparison
-- Tie sorting: score ίδιο → windows δεν χάνονται, list sorted
+---
 
-## Υλοποίηση
+## Consequences
 
-Αρχείο: `test_core_modules.py`
-- Helper function: `_make_forecast(hours, date_str)` → synthetic forecast list
-- Fixture: `patched_api(api, monkeypatch)` → WeatherAPI με synthetic data
-- 13 + 2 = 15 νέα tests, όλα pass
+**Θετικά**
+- Κάθε μελλοντική αλλαγή στη λογική windowing θα αποτύχει γρήγορα.
+- Τα monkeypatched tests τρέχουν σε < 0.1s, χωρίς I/O.
+- Το `_make_forecast` helper είναι επαναχρησιμοποιήσιμο για μελλοντικά tests.
+- `pytest -q` περνά καθαρά: 67 passed, 0 warnings.
 
-Τρέξιμο: `pytest test_core_modules.py::TestWeatherWindows test_core_modules.py::TestWeatherTrainingWindows -v`
+**Ουδέτερα**
+- `TestWeatherWindows` και `TestWeatherTrainingWindows` ελέγχουν εν μέρει
+  την ίδια συμπεριφορά (guards) — το overlap είναι σκόπιμο: δύο layers
+  (mock + real-sim) αυξάνουν εμπιστοσύνη χωρίς να είναι truly redundant.
+
+**Αρνητικά**
+- Ο έλεγχος `test_fractional_duration_ceiling` κάνει assert `len == 23`
+  (hardcoded για 24-slot day). Αν αλλάξει ο τρόπος generation του
+  simulated forecast (ώρες ανά ημέρα ≠ 24), ο test θα σπάσει.
+
+---
+
+## Επαλήθευση
+
+```bash
+pytest test_core_modules.py -q
+# 59 passed, 0 warnings in ~0.5s
+
+pytest test_core_modules.py::TestWeatherWindows \
+       test_core_modules.py::TestWeatherTrainingWindows -v
+# 15 passed
+```

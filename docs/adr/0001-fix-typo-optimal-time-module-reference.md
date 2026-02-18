@@ -1,32 +1,64 @@
-# ADR 0001: Διόρθωση τυπογραφικού λάθους σε αναφορά module
+# ADR 0001: Διόρθωση τυπογραφικού λάθους στο όνομα module `optimal_time`
 
-- **Status:** Implemented
-- **Date:** 2026-02-17
-- **Commit:** d57b6a4 / 421e7e1
+| Πεδίο | Τιμή |
+|-------|------|
+| **Status** | Implemented |
+| **Date** | 2026-02-17 |
+| **Commits** | `d57b6a4`, `421e7e1` |
+| **Files** | `ARCHITECTURE.md` |
+
+---
 
 ## Context
 
-Στο `ARCHITECTURE.md` το module του optimal time εμφανιζόταν ως
-`features/optimal_time.py`, ενώ το πραγματικό αρχείο είναι
-`features/optimal_time_calculator.py`.
+Στο `ARCHITECTURE.md` το module του optimal time εμφανιζόταν με λάθος όνομα:
+
+```
+features/optimal_time.py            # ← δεν υπάρχει
+```
+
+Το πραγματικό αρχείο στο repository είναι:
+
+```
+features/optimal_time_calculator.py  # ← αυτό υπάρχει
+```
+
+Έλεγχος όλων των doc αρχείων (`README.md`, `CHANGES.md`, `DEPLOYMENT_GUIDE.md`,
+`titan/QUICK_REFERENCE.md`, `titan/MIGRATION_CORE_MODULES.md`): μόνο το
+`ARCHITECTURE.md` περιείχε το λάθος όνομα, σε δύο σημεία:
+1. Directory Structure tree (γραμμή `├── optimal_time.py`)
+2. Module Responsibilities header (`features/optimal_time.py`)
+
+---
 
 ## Decision
 
-Στοχευμένη διόρθωση σε όλα τα active docs ώστε να χρησιμοποιείται
-το σωστό όνομα αρχείου (`optimal_time_calculator.py`).
+Στοχευμένη αντικατάσταση και στα δύο σημεία:
+`optimal_time.py` → `optimal_time_calculator.py`.
 
-## Reasoning
+Δεν χρειάστηκε αλλαγή σε migration docs (CORE_MIGRATION_SUMMARY.md) — τα
+historical paths αφήνονται ως έχουν για ιστορικό πλαίσιο.
 
-- Μειώνει onboarding friction.
-- Αποτρέπει λάθος import paths σε μελλοντικό development.
+---
 
-## Edge cases εξεταστηκών
+## Consequences
 
-- Παλαιές αναφορές σε migration docs (v50/v51): δεν υπήρχαν.
-- `README.md` αναφέρει ήδη το σωστό όνομα — δεν χρειάστηκε αλλαγή.
+**Θετικά**
+- Μηδενικό onboarding friction για νέους contributors που αναζητούν το module.
+- `grep`/`rg` για `optimal_time.py` στα docs επιστρέφει 0 αποτελέσματα.
+- Τα docs είναι consistent με το filesystem.
 
-## Υλοποίηση
+**Ουδέτερα**
+- Μικρή αλλαγή — δεν επηρεάζει κώδικα ή tests.
 
-1. `ARCHITECTURE.md` — Directory Structure tree: `optimal_time.py` → `optimal_time_calculator.py`
-2. `ARCHITECTURE.md` — Module Responsibilities section: ίδια διόρθωση
-3. Επαλήθευση: `rg "optimal_time\.py" *.md` → 0 αποτελέσματα
+**Αρνητικά**
+- Κανένα.
+
+---
+
+## Επαλήθευση
+
+```bash
+rg "optimal_time\.py" docs/ README.md ARCHITECTURE.md CHANGES.md
+# → 0 αποτελέσματα
+```

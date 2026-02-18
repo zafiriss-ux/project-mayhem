@@ -89,7 +89,7 @@ project-mayhem/
 ├── requirements.txt                    # Python dependencies
 ├── system_check.py                     # Module health check (31 checks)
 ├── test_core_modules.py                # pytest suite — core modules (59 tests)
-├── test_titan_logic.py                 # pytest suite — science logic (40 tests)
+├── test_titan_logic.py                 # pytest suite — science logic (8 tests)
 ├── docs/
 │   └── adr/                            # Architecture Decision Records
 │       ├── 0001-fix-typo-optimal-time-module-reference.md
@@ -348,5 +348,5 @@ CREATE TABLE personal_bests (
 
 ---
 
-**Status**: ✅ v51 deployed — 31 modules, 99 tests passing
-**Version**: 51.0.0
+**Status**: ✅ v51.1 deployed — 31 modules, 67 tests passing (59 core + 8 science)
+**Version**: 51.1.0
