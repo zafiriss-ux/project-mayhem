@@ -35,21 +35,37 @@ class DatabaseManager:
     - Compression recovery tracking (24h foam set)
     """
 
-    def __init__(self, db_name: str = "titan_core.db"):
+    def __init__(self, db_name: str = "titan_core.db", db_dir: Optional[Path] = None):
         """
         Initialize database connection.
 
         Args:
             db_name: Name of the SQLite database file
+            db_dir: Directory to store database (default: ~/Documents/TITAN/)
 
-        Note: Database is created in the same directory as the script
+        Note:
+            - Production: Database stored in ~/Documents/TITAN/ (persistent across updates)
+            - Development: Can override db_dir for testing
         """
-        try:
-            # Get the directory where the script is running
-            base_dir = Path(__file__).parent.parent.parent.absolute()
-        except NameError:
-            # Fallback for IDLE/Jupyter environments
-            base_dir = Path.cwd()
+        if db_dir is None:
+            # Use launcher's get_data_directory for frozen-safe path resolution
+            try:
+                from launcher.validator import get_data_directory
+                base_dir = get_data_directory()
+            except ImportError:
+                # Fallback for standalone titan module usage (development)
+                import os
+                import platform
+                if platform.system() == 'Windows':
+                    base = Path(os.environ.get('USERPROFILE', Path.home()))
+                else:
+                    base = Path.home()
+                base_dir = base / 'Documents' / 'TITAN'
+        else:
+            base_dir = db_dir
+
+        # Ensure directory exists
+        base_dir.mkdir(parents=True, exist_ok=True)
 
         self.db_path = base_dir / db_name
 
@@ -60,6 +76,13 @@ class DatabaseManager:
             check_same_thread=False,
         )
         self._lock = threading.Lock()  # Serialise all writes
+
+        # Enable WAL mode for concurrent read/write access
+        # WAL = Write-Ahead Logging (better concurrency than default rollback journal)
+        # Critical for frozen builds where multiple threads access DB simultaneously
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")  # Balance durability vs performance
+
         self.create_tables()
 
     def create_tables(self) -> None:
