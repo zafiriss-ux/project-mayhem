@@ -27,8 +27,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 
 from launcher import __version__
 from launcher.validator import validate_environment, get_data_directory
-from launcher.wizard import ensure_config, load_env
+from launcher.wizard import ensure_config, load_env, env_exists
 from launcher.errors import TitanError, translate_kernel_error
+from launcher.logger import init_launcher_logging
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -127,6 +128,13 @@ def main() -> int:
     Returns:
         Exit code: 0 = success, 1 = failure
     """
+    # Check for --debug flag
+    debug_mode = '--debug' in sys.argv
+
+    # Initialize logging
+    logger = init_launcher_logging(debug=debug_mode)
+    logger.info(f"Launcher started with args: {sys.argv}")
+
     print_banner()
 
     # Step 1: Validate environment
@@ -141,9 +149,31 @@ def main() -> int:
     print("✅ All pre-flight checks passed.\n")
 
     # Step 2: Ensure configuration (.env)
-    if not ensure_config():
-        print("\n❌ Configuration setup failed or was cancelled.\n")
-        return 1
+    if not env_exists():
+        # First-run setup needed
+        use_gui = '--console' not in sys.argv  # Default to GUI unless --console flag
+
+        if use_gui:
+            # Try GUI wizard (requires tkinter)
+            try:
+                from launcher.gui_wizard import run_gui_wizard
+                print("🎨 Launching GUI setup wizard...\n")
+                if not run_gui_wizard():
+                    print("\n❌ Setup cancelled or failed.\n")
+                    return 1
+            except ImportError:
+                # Tkinter not available — fall back to console
+                print("⚠️  GUI not available. Using console wizard.\n")
+                if not ensure_config():
+                    print("\n❌ Configuration setup failed or was cancelled.\n")
+                    return 1
+        else:
+            # Console wizard (--console flag or non-interactive environment)
+            if not ensure_config():
+                print("\n❌ Configuration setup failed or was cancelled.\n")
+                return 1
+    else:
+        print("✓ Configuration found.\n")
 
     # Step 3: Load .env into os.environ
     load_env_to_os()
