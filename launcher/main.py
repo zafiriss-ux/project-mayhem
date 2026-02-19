@@ -128,6 +128,28 @@ def main() -> int:
     Returns:
         Exit code: 0 = success, 1 = failure
     """
+    # Check for --version flag (forensic metadata)
+    if '--version' in sys.argv:
+        from datetime import datetime
+        from launcher.paths import get_path_info
+
+        path_info = get_path_info()
+        frozen = path_info['frozen']
+
+        print(f"TITAN OS v{__version__}")
+        print(f"Launcher: v{__version__}")
+        print(f"Kernel: v5.7.0")
+        print(f"Build date: 2026-02-19")
+        print(f"Frozen mode: {'Yes (TITAN.exe)' if frozen else 'No (Python script)'}")
+        print(f"Python: {sys.version.split()[0]}")
+
+        if frozen:
+            print(f"Executable: {path_info['sys.executable']}")
+        else:
+            print(f"Script: {__file__}")
+
+        return 0
+
     # Check for --debug flag
     debug_mode = '--debug' in sys.argv
 
@@ -177,6 +199,14 @@ def main() -> int:
             except ImportError:
                 # Tkinter not available — fall back to console
                 print("⚠️  GUI not available. Using console wizard.\n")
+                if not ensure_config():
+                    print("\n❌ Configuration setup failed or was cancelled.\n")
+                    return 1
+            except Exception as e:
+                # GUI crashed — fall back to console wizard
+                logger.error(f"GUI wizard crashed: {e}", exc_info=True)
+                print(f"⚠️  GUI wizard crashed: {e}")
+                print("   Falling back to console wizard...\n")
                 if not ensure_config():
                     print("\n❌ Configuration setup failed or was cancelled.\n")
                     return 1

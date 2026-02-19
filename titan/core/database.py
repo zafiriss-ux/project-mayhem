@@ -86,6 +86,10 @@ class DatabaseManager:
         cursor.execute("PRAGMA synchronous=NORMAL")
         synchronous = cursor.fetchone()[0]
 
+        # Busy timeout: wait up to 5 seconds if DB is locked
+        # Prevents "database is locked" errors during concurrent access
+        cursor.execute("PRAGMA busy_timeout=5000")
+
         # Log PRAGMA results for debugging (frozen mode validation)
         try:
             import logging
@@ -93,6 +97,7 @@ class DatabaseManager:
             logger.info(f"Database initialized: {self.db_path}")
             logger.info(f"PRAGMA journal_mode: {journal_mode}")
             logger.info(f"PRAGMA synchronous: {synchronous}")
+            logger.info(f"PRAGMA busy_timeout: 5000")
         except Exception:
             # Best-effort logging (don't fail if logger not configured)
             pass
