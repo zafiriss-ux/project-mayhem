@@ -685,3 +685,335 @@ class TestWeeklyPlannerNullSafety:
         assert result["readiness"] == "GOOD", (
             "TSB=0.0 must not be treated as falsy — use 'is not None' comparison"
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# AutonomicFusionEngine — AFI, HRR baseline, parasympathetic guard (Wave 2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestAutonomicFusionEngine:
+
+    @pytest.fixture
+    def engine(self):
+        from titan.science.autonomic_engine import AutonomicFusionEngine
+        return AutonomicFusionEngine()
+
+    def test_afi_zero_with_no_signals(self, engine):
+        """All deltas zero → AFI = 0.0 (neutral)."""
+        afi = engine.calculate_afi(ln_rmssd_deviation=0.0)
+        assert afi == 0.0
+
+    def test_afi_positive_good_hrv(self, engine):
+        """Positive ln_rmssd deviation → positive AFI."""
+        afi = engine.calculate_afi(ln_rmssd_deviation=0.5)
+        assert afi > 0.0
+
+    def test_afi_clamped_to_minus_one(self, engine):
+        """All four extreme-negative signals → AFI clamped to -1.0."""
+        # Need ≥3 varying HRR records so MAD != 0 → z-score valid
+        for i in range(5):
+            engine.add_hrr(f"2026-01-0{i+1}", 25 + i)
+        afi = engine.calculate_afi(
+            ln_rmssd_deviation=-5.0,
+            hrr_60_today=3,       # z-score << -3σ → clamped to -1.0
+            sleep_depth_delta=-5.0,
+            resp_delta=-5.0,
+        )
+        assert afi == -1.0
+
+    def test_afi_clamped_to_plus_one(self, engine):
+        """All four extreme-positive signals → AFI clamped to +1.0."""
+        for i in range(5):
+            engine.add_hrr(f"2026-01-0{i+1}", 25 + i)
+        afi = engine.calculate_afi(
+            ln_rmssd_deviation=5.0,
+            hrr_60_today=100,     # z-score >> +3σ → clamped to +1.0
+            sleep_depth_delta=5.0,
+            resp_delta=5.0,
+        )
+        assert afi == 1.0
+
+    def test_hrr_zscore_zero_insufficient_data(self, engine):
+        """Fewer than 3 HRR records → z-score = 0.0 (no penalty/bonus)."""
+        engine.add_hrr("2026-01-01", 25)
+        engine.add_hrr("2026-01-02", 27)
+        afi = engine.calculate_afi(ln_rmssd_deviation=0.0, hrr_60_today=20)
+        assert afi == 0.0
+
+    def test_hrr_zscore_impaired_lowers_afi(self, engine):
+        """HRR clearly below 28d baseline should lower AFI (negative contribution)."""
+        # Use varying values so MAD != 0 (uniform values → MAD=0 → z-score=0.0)
+        for i in range(10):
+            engine.add_hrr(f"2026-01-{i+1:02d}", 25 + i)  # 25–34 bpm range
+        afi = engine.calculate_afi(ln_rmssd_deviation=0.0, hrr_60_today=5)  # far below baseline
+        assert afi < 0.0
+
+    def test_48h_buffer_single_entry(self, engine):
+        """Single AFI entry → buffer returns same value (no yesterday)."""
+        result = engine.apply_48h_buffer(0.5)
+        assert result == 0.5
+
+    def test_48h_buffer_dampens_recovery(self, engine):
+        """After a bad day, good AFI today should be dampened by yesterday's deficit."""
+        engine.apply_48h_buffer(-0.8)   # yesterday was bad
+        buffered = engine.apply_48h_buffer(0.5)  # today looks good
+        # buffered = (0.5 + 0.5 × -0.8) / 1.5 = (0.5 - 0.4) / 1.5 = 0.067
+        assert buffered < 0.5, "CNS buffer must dampen today's AFI when yesterday was impaired"
+
+    def test_parasympathetic_guard_not_triggered_normal(self, engine):
+        """Normal HRV + normal HRR → guard not triggered."""
+        result = engine.check_parasympathetic_guard(
+            hrv_pct_above_baseline=5.0,  # slightly above
+        )
+        assert result['triggered'] is False
+
+    def test_parasympathetic_guard_triggered(self, engine):
+        """HRV +15% above baseline + impaired HRR → guard triggers."""
+        # Varying baselines so MAD != 0 → z-score is valid
+        for i in range(10):
+            engine.add_hrr(f"2026-01-{i+1:02d}", 25 + i)  # 25–34 bpm
+        result = engine.check_parasympathetic_guard(
+            hrv_pct_above_baseline=20.0,  # > 10% threshold
+            hrr_60_today=3,               # far below baseline → z < -1.5σ
+        )
+        assert result['triggered'] is True
+        assert result['readiness_clamp'] == 25
+        assert 4 in result['disabled_zones'] and 5 in result['disabled_zones']
+
+
+class TestHRVLnRmssdDeviation:
+
+    @pytest.fixture
+    def engine(self):
+        from titan.science.hrv_engine import HRVGuidedEngine
+        return HRVGuidedEngine()
+
+    def test_returns_zero_no_data(self, engine):
+        assert engine.calculate_ln_rmssd_deviation() == 0.0
+
+    def test_stable_hrv_returns_near_zero(self, engine):
+        """Uniform rMSSD → same short & long mean → deviation ≈ 0."""
+        for i in range(30):
+            engine.add_hrv_measurement(f"2026-01-{i+1:02d}", 55.0)
+        dev = engine.calculate_ln_rmssd_deviation()
+        assert abs(dev) < 0.05
+
+    def test_improved_hrv_positive_deviation(self, engine):
+        """Recent HRV higher than historical → positive deviation."""
+        for i in range(21):
+            engine.add_hrv_measurement(f"2026-01-{i+1:02d}", 45.0)
+        for i in range(7):
+            engine.add_hrv_measurement(f"2026-02-{i+1:02d}", 70.0)
+        dev = engine.calculate_ln_rmssd_deviation(short_days=7, long_days=28)
+        assert dev > 0.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CriticalSpeedTracker — EWMA, thermal, archetype, GAP, confidence (Wave 3)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestCriticalSpeedTracker:
+
+    @pytest.fixture
+    def tracker(self):
+        from titan.science.critical_speed import CriticalSpeedTracker
+        return CriticalSpeedTracker()
+
+    def test_no_data_returns_none_thermal(self, tracker):
+        assert tracker.apply_thermal(25.0) is None
+
+    def test_single_update_sets_cs_smoothed(self, tracker):
+        tracker.update("2026-01-01", cs_raw=3.5, d_prime=200.0)
+        assert tracker.cs_smoothed == 3.5
+
+    def test_ewma_smooths_spike(self, tracker):
+        """EWMA must not fully adopt a single outlier performance."""
+        tracker.update("2026-01-01", 3.5, 200.0)
+        tracker.update("2026-01-15", 4.5, 200.0)  # suspiciously fast
+        assert tracker.cs_smoothed < 4.5, "EWMA should not fully adopt spike"
+        assert tracker.cs_smoothed > 3.5, "EWMA must move toward new value"
+
+    def test_thermal_no_degradation_below_20c(self, tracker):
+        tracker.update("2026-01-01", 3.5, 200.0)
+        assert tracker.apply_thermal(15.0) == tracker.cs_smoothed
+        assert tracker.apply_thermal(20.0) == tracker.cs_smoothed
+
+    def test_thermal_degrades_above_20c(self, tracker):
+        tracker.update("2026-01-01", 3.5, 200.0)
+        cs_hot = tracker.apply_thermal(30.0)
+        assert cs_hot < tracker.cs_smoothed
+
+    def test_thermal_floor_at_85_pct(self, tracker):
+        """Thermal degradation must not exceed 15% (floor at 85% of CS)."""
+        tracker.update("2026-01-01", 4.0, 200.0)
+        cs_extreme = tracker.apply_thermal(100.0)  # extreme heat
+        assert cs_extreme >= tracker.cs_smoothed * 0.85
+
+    def test_archetype_speed_high_dprime_ratio(self, tracker):
+        """D'/CS > 300 → SPEED archetype."""
+        tracker.update("2026-01-01", cs_raw=2.0, d_prime=700.0)  # ratio=350
+        assert tracker.archetype == "SPEED"
+
+    def test_archetype_endurance_low_dprime_ratio(self, tracker):
+        """D'/CS < 150 → ENDURANCE archetype."""
+        tracker.update("2026-01-01", cs_raw=4.0, d_prime=400.0)  # ratio=100
+        assert tracker.archetype == "ENDURANCE"
+
+    def test_tau_multiplier_speed_above_one(self, tracker):
+        tracker.update("2026-01-01", cs_raw=2.0, d_prime=700.0)
+        assert tracker.tau_w_prime_multiplier > 1.0
+
+    def test_gap_flat_unchanged(self):
+        from titan.science.critical_speed import CriticalSpeedTracker
+        assert CriticalSpeedTracker.gap_correct_pace(300.0, 0.0) == 300.0
+
+    def test_gap_uphill_slows_effective_pace(self):
+        from titan.science.critical_speed import CriticalSpeedTracker
+        gapped = CriticalSpeedTracker.gap_correct_pace(300.0, 5.0)
+        assert gapped < 300.0  # uphill: subtract 50s → 250 s/km
+
+    def test_confidence_zero_no_data(self, tracker):
+        assert tracker.confidence == 0.0
+
+    def test_confidence_increases_with_data(self, tracker):
+        for i in range(5):
+            tracker.update(f"2026-01-{i+1:02d}", 3.5 + i * 0.05, 200.0)
+        assert tracker.confidence > 0.0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GlycogenDebtAccumulator — debt, Norwegian protocol, electrolyte (Wave 4)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestGlycogenDebtAccumulator:
+
+    @pytest.fixture
+    def acc(self):
+        from titan.science.glycogen_model import GlycogenDebtAccumulator
+        return GlycogenDebtAccumulator()
+
+    def test_initial_debt_zero(self, acc):
+        assert acc.daily_debt == 0.0
+
+    def test_update_increases_debt(self, acc):
+        debt = acc.update("2026-01-01", trimp=100, time_above_lt2_min=20,
+                          dprime_fraction=0.3, intra_carb_g=0, weight_kg=70)
+        assert debt > 0.0
+
+    def test_intra_carbs_offset_debt(self, acc):
+        low_carb = acc.update("2026-01-01", trimp=80, time_above_lt2_min=10,
+                              dprime_fraction=0.0, intra_carb_g=0, weight_kg=70)
+        acc2_from_module = acc.__class__()
+        high_carb = acc2_from_module.update("2026-01-01", trimp=80, time_above_lt2_min=10,
+                                            dprime_fraction=0.0, intra_carb_g=80, weight_kg=70)
+        assert high_carb < low_carb, "Intra-carbs should reduce glycogen debt"
+
+    def test_debt_capped_at_ten(self, acc):
+        for i in range(20):
+            acc.update(f"2026-01-{i+1:02d}", trimp=300, time_above_lt2_min=60,
+                       dprime_fraction=1.0, intra_carb_g=0, weight_kg=70)
+        assert acc.daily_debt <= 10.0
+
+    def test_overnight_reduces_debt(self, acc):
+        acc.update("2026-01-01", trimp=100, time_above_lt2_min=20,
+                   dprime_fraction=0.3, intra_carb_g=0, weight_kg=70)
+        debt_before = acc.daily_debt
+        acc.overnight_resynthesis(sleep_hours=8.0, carb_availability='HIGH')
+        assert acc.daily_debt < debt_before
+
+    def test_norwegian_protocol_not_triggered_low_debt(self, acc):
+        assert acc.norwegian_protocol(weight_kg=70) is None
+
+    def test_norwegian_protocol_triggered_high_debt(self, acc):
+        acc.daily_debt = 8.0
+        protocol = acc.norwegian_protocol(weight_kg=70)
+        assert protocol is not None
+        assert protocol['triggered'] is True
+        assert 'phase_a' in protocol and 'phase_b' in protocol
+
+    def test_electrolyte_guard_not_triggered_cool(self, acc):
+        from titan.science.glycogen_model import GlycogenDebtAccumulator
+        result = GlycogenDebtAccumulator.electrolyte_guard(15.0, 90, 'TEMPO')
+        assert result is None
+
+    def test_electrolyte_guard_triggered_hot(self, acc):
+        from titan.science.glycogen_model import GlycogenDebtAccumulator
+        result = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
+        assert result is not None
+        assert result['triggered'] is True
+        assert result['sodium_mg'] > 0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GovernanceEngine — hard locks (Wave 5)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestGovernanceEngine:
+
+    @pytest.fixture
+    def gov(self):
+        from titan.science.governance_engine import GovernanceEngine
+        return GovernanceEngine()
+
+    def test_no_lock_clean_state(self, gov):
+        """No overrides + confident CS (recent data) → no governance locks."""
+        from titan.science.critical_speed import CriticalSpeedTracker
+        from datetime import datetime, timedelta
+        tracker = CriticalSpeedTracker()
+        # Use recent dates so recency_score is high → confidence > 0.70
+        for i in range(5):
+            d = (datetime.now() - timedelta(days=i + 1)).strftime('%Y-%m-%d')
+            tracker.update(d, 3.5, 200.0)
+
+        class FakeDB:
+            def get_override_ratio(self, days): return 0.0
+
+        plan = {'session_type': 'INTERVALS'}
+        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker})
+        assert result['governance_clean'] is True
+        assert result['governance_locks_applied'] == []
+
+    def test_override_lockdown_fires(self, gov):
+        """Override ratio > 80% + quality session → OVERRIDE_LOCKDOWN."""
+        class HighOverrideDB:
+            def get_override_ratio(self, days): return 0.9
+
+        plan = {'session_type': 'INTERVALS'}
+        result = gov.apply_constraints(plan, context={'db': HighOverrideDB()})
+        assert 'OVERRIDE_LOCKDOWN' in result['governance_locks_applied']
+        assert result['session_type'] == 'EASY'
+
+    def test_override_lockdown_skips_easy_session(self, gov):
+        """Override lockdown must NOT downgrade already-easy sessions."""
+        class HighOverrideDB:
+            def get_override_ratio(self, days): return 0.9
+
+        plan = {'session_type': 'EASY'}
+        result = gov.apply_constraints(plan, context={'db': HighOverrideDB()})
+        assert result['session_type'] == 'EASY'
+        assert 'OVERRIDE_LOCKDOWN' not in result['governance_locks_applied']
+
+    def test_cs_confidence_lock_fires(self, gov):
+        """CS confidence < 70% → CS_CONFIDENCE_LOCK applied."""
+        from titan.science.critical_speed import CriticalSpeedTracker
+        tracker = CriticalSpeedTracker()  # confidence = 0.0 (no data)
+        plan = {'session_type': 'TEMPO'}
+        result = gov.apply_constraints(plan, context={'cs_tracker': tracker})
+        assert 'CS_CONFIDENCE_LOCK' in result['governance_locks_applied']
+        assert result.get('cs_prediction_disabled') is True
+
+    def test_parasympathetic_guard_overrides_quality(self, gov):
+        """Parasympathetic saturation guard → session forced to EASY."""
+        para_guard = {
+            'triggered': True,
+            'reason': 'HRV elevated + HRR impaired',
+            'readiness_clamp': 25,
+            'disabled_zones': [4, 5],
+        }
+        plan = {'session_type': 'INTERVALS'}
+        result = gov.apply_constraints(
+            plan,
+            context={'afi_constraints': {'parasympathetic_guard': para_guard}},
+        )
+        assert 'PARASYMPATHETIC_GUARD' in result['governance_locks_applied']
+        assert result['session_type'] == 'EASY'

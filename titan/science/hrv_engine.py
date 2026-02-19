@@ -14,6 +14,7 @@ Key Findings:
 - Better psychological adherence
 """
 
+import math
 from typing import List, Tuple, Optional
 
 
@@ -109,6 +110,37 @@ class HRVGuidedEngine:
     def get_latest_hrv(self) -> float:
         """Return most recent rMSSD value (0.0 if no data)."""
         return round(self.hrv_log[-1][1], 1) if self.hrv_log else 0.0
+
+    def calculate_ln_rmssd_deviation(
+        self, short_days: int = 7, long_days: int = 28
+    ) -> float:
+        """
+        Normalised ln(rMSSD) deviation: short-term baseline vs long-term.
+
+        Converts rMSSD to natural-log scale before averaging, as recommended
+        by Plews et al. (2013) — ln-transform stabilises variance across
+        fitness levels and makes deviations scale-independent.
+
+        Returns:
+            Float in [-1.0, +1.0].
+            Positive = short-term HRV above long-term baseline (well-recovered).
+            Typical physiological deviation ≈ ±0.3 ln-units.
+
+        Returns 0.0 if insufficient data for either window.
+        """
+        if not self.hrv_log:
+            return 0.0
+        safe_log = [math.log(r) for _, r in self.hrv_log if r > 0]
+        if not safe_log:
+            return 0.0
+        recent_log = safe_log[-short_days:]
+        long_log   = safe_log[-long_days:]
+        if not recent_log or not long_log:
+            return 0.0
+        mean_short = sum(recent_log) / len(recent_log)
+        mean_long  = sum(long_log)   / len(long_log)
+        # Normalise: ±0.3 ln-units = ±1.0 (saturates beyond that)
+        return round(max(-1.0, min(1.0, (mean_short - mean_long) / 0.3)), 3)
 
     def get_trend_analysis(self) -> str:
         """Analyze HRV trend over time."""

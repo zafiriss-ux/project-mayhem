@@ -142,6 +142,47 @@ class DatabaseManager:
             )
         """)
 
+        # Table 5: CS Calibration Performances (Critical Speed / D' model)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cs_performances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                distance_m REAL NOT NULL,
+                time_sec REAL NOT NULL,
+                surface TEXT DEFAULT 'ROAD',
+                wind_adjusted INTEGER DEFAULT 0
+            )
+        """)
+
+        # Table 6: Override Audit Log (governance — discipline engine)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS override_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                prescribed_type TEXT,
+                actual_type TEXT,
+                reason TEXT
+            )
+        """)
+
+        self.conn.commit()
+        self._run_migrations(cursor)
+
+    def _run_migrations(self, cursor) -> None:
+        """
+        Apply additive schema migrations (idempotent — safe to run on every startup).
+        Wraps each ALTER TABLE in try/except to handle already-migrated databases.
+        """
+        new_columns = [
+            "ALTER TABLE daily_metrics ADD COLUMN hrr_60 INTEGER",
+            "ALTER TABLE daily_metrics ADD COLUMN hrr_120 INTEGER",
+            "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL",
+        ]
+        for sql in new_columns:
+            try:
+                cursor.execute(sql)
+            except Exception:
+                pass  # Column already exists — safe to skip
         self.conn.commit()
 
     # --- DAILY METRICS ---
@@ -485,6 +526,148 @@ class DatabaseManager:
         """, (distance_km,))
 
         return cursor.fetchone()
+
+    # --- HRR (Heart Rate Recovery) ---
+
+    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
+        """
+        Save Heart Rate Recovery values for a date.
+        Updates existing daily_metrics row (call after save_daily_metric).
+
+        Args:
+            date:    Date in ISO format (YYYY-MM-DD)
+            hrr_60:  BPM recovered at 60 seconds post-effort
+            hrr_120: BPM recovered at 120 seconds post-effort
+        """
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                "UPDATE daily_metrics SET hrr_60 = ?, hrr_120 = ? WHERE date = ?",
+                (hrr_60, hrr_120, date),
+            )
+            self.conn.commit()
+
+    def get_hrr_history(self, days: int = 28) -> List[Tuple[str, int, int]]:
+        """
+        Get HRR history for the last N days.
+
+        Returns:
+            List of (date, hrr_60, hrr_120) tuples, ordered DESC.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT date, hrr_60, hrr_120 FROM daily_metrics
+               WHERE hrr_60 IS NOT NULL AND hrr_60 > 0
+               AND date >= date('now', '-' || ? || ' days')
+               ORDER BY date DESC""",
+            (days,),
+        )
+        return cursor.fetchall()
+
+    # --- GLYCOGEN DEBT ---
+
+    def update_glycogen_debt(self, date: str, debt_score: float) -> None:
+        """
+        Persist today's glycogen debt score (0–10) to daily_metrics.
+        Updates existing row for the date.
+        """
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                "UPDATE daily_metrics SET glycogen_debt = ? WHERE date = ?",
+                (round(debt_score, 2), date),
+            )
+            self.conn.commit()
+
+    # --- CS CALIBRATION PERFORMANCES ---
+
+    def log_cs_performance(
+        self,
+        date: str,
+        distance_m: float,
+        time_sec: float,
+        surface: str = 'ROAD',
+        wind_adjusted: bool = False,
+    ) -> None:
+        """
+        Log a time-trial / race performance for CS/D' model calibration.
+
+        Args:
+            date:         Date in ISO format
+            distance_m:   Distance in metres (e.g. 3000, 5000, 10000)
+            time_sec:     Elapsed time in seconds
+            surface:      ROAD / TRACK / TRAIL
+            wind_adjusted: True if pace was corrected for wind
+        """
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                """INSERT INTO cs_performances
+                   (date, distance_m, time_sec, surface, wind_adjusted)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (date, distance_m, time_sec, surface, int(wind_adjusted)),
+            )
+            self.conn.commit()
+
+    def get_cs_performances(self, limit: int = 10) -> List[Tuple[str, float, float]]:
+        """
+        Retrieve most recent CS calibration performances.
+
+        Returns:
+            List of (date, distance_m, time_sec) tuples, ordered DESC.
+        """
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT date, distance_m, time_sec FROM cs_performances
+               ORDER BY date DESC LIMIT ?""",
+            (limit,),
+        )
+        return cursor.fetchall()
+
+    # --- OVERRIDE AUDIT LOG ---
+
+    def log_override(
+        self,
+        date: str,
+        prescribed: str,
+        actual: str,
+        reason: str = '',
+    ) -> None:
+        """
+        Record a session override (athlete deviated from prescribed session).
+        Used by GovernanceEngine to calculate override_ratio.
+
+        Args:
+            date:       Date in ISO format
+            prescribed: Prescribed session type (e.g. 'REST')
+            actual:     Actual session performed (e.g. 'INTERVALS')
+            reason:     Optional athlete-supplied reason
+        """
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                """INSERT INTO override_log (date, prescribed_type, actual_type, reason)
+                   VALUES (?, ?, ?, ?)""",
+                (date, prescribed, actual, reason),
+            )
+            self.conn.commit()
+
+    def get_override_ratio(self, days: int = 14) -> float:
+        """
+        Calculate the fraction of days in the last N days with an override.
+
+        Returns:
+            Float 0.0–1.0 (1.0 = overrode every day in the window).
+        """
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT COUNT(*) FROM override_log
+               WHERE date >= date('now', '-' || ? || ' days')""",
+            (days,),
+        )
+        row = cursor.fetchone()
+        overrides = row[0] if row else 0
+        return round(overrides / days, 3)
 
     def close(self) -> None:
         """Close database connection."""
