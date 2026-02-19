@@ -1,6 +1,8 @@
-# TITAN v51.0 - AI Training Intelligence System
+# TITAN OS v5.7.0 — Closed-Loop Sovereign Training Intelligence
 
-🏃‍♂️ **Πλήρως Αναδομημένο Σύστημα Προπόνησης με AI**
+🏃‍♂️ **Αυτόνομο Σύστημα Προπόνησης με Επιστημονική Νοημοσύνη**
+
+> **Python ≥3.11 Required** — UTF-8 mode, tomllib stdlib, enhanced error messages
 
 ## 🎯 Τι Κάνει το TITAN
 
@@ -84,39 +86,117 @@ titan/
 3. `integrations/telegram_bot.py` - **🆕 Telegram notifications**
    _(Wearable data — heart rate, HRV, sleep, weight — flows through `garmin_sync.py`)_
 
-## 🚀 Εγκατάσταση
+## 🚀 Installation
 
-### 1. Προαπαιτούμενα
+### System Requirements
+
+| Requirement | Minimum | Recommended | Why |
+|------------|---------|-------------|-----|
+| **Python** | **3.11.0** | 3.12+ | UTF-8 mode (PEP 686), tomllib stdlib, better errors |
+| **OS** | Windows 10 | Windows 11 | Fully tested on Win10/11; Linux/macOS experimental |
+| **RAM** | 512 MB | 1 GB | SQLite + science engines |
+| **Disk** | 100 MB | 500 MB | Database + logs |
+
+> ⚠️ **Python 3.11+ is mandatory.** Older versions are not supported.
+
+---
+
+### Option 1: One-Click Launcher (Beginners — Windows)
+
+**Download pre-built executable:**
+```
+1. Go to Releases: https://github.com/zafiriss-ux/project-mayhem/releases
+2. Download TITAN-v5.7.0-win64.zip
+3. Unzip to Desktop or Documents
+4. Double-click TITAN.exe
+5. Follow setup wizard (Garmin, Telegram credentials)
+6. Done! Check Telegram for morning briefing.
+```
+
+No Python installation needed — everything is bundled.
+
+---
+
+### Option 2: Python CLI (Advanced Users)
+
+**1. Clone Repository**
 ```bash
-python >= 3.8
+git clone https://github.com/zafiriss-ux/project-mayhem.git
+cd project-mayhem
+```
+
+**2. Verify Python Version**
+```bash
+python --version  # Must show 3.11.0 or higher
+```
+
+If you have Python <3.11, install from [python.org](https://www.python.org/downloads/).
+
+**3. Install Dependencies**
+```bash
 pip install -r requirements.txt
 ```
 
-### 2. Ρύθμιση Περιβάλλοντος
+**4. Run Launcher**
 ```bash
-cp .env.example .env
-# Edit .env με τα credentials σου
+python launcher/main.py
 ```
 
-### 3. Ρύθμιση .env
+The launcher will:
+- Validate environment (Python, disk, data directory)
+- Run first-time setup wizard (if `.env` missing)
+- Create database at `~/Documents/TITAN/titan_core.db`
+- Start TITAN kernel
+
+**5. Alternative: Direct Kernel Mode (Power Users)**
 ```bash
-# Garmin
-GARMIN_EMAIL=your_email@example.com
+python -m titan
+```
+
+Skips launcher validation. Use only if you've already configured `.env`.
+
+---
+
+### Configuration (.env)
+
+The launcher wizard creates `.env` automatically. If configuring manually:
+
+**Location:** `~/Documents/TITAN/.env` (Windows: `%USERPROFILE%\Documents\TITAN\.env`)
+
+**Required Keys:**
+```bash
+# Garmin Connect
+GARMIN_USERNAME=your_email@example.com
 GARMIN_PASSWORD=your_password
 
-# Telegram
-TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
-TELEGRAM_CHAT_ID=your_chat_id
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl  # Get from @BotFather
+TELEGRAM_CHAT_ID=123456789                   # Send /start to your bot
 
-# Weather
+# OpenAI (Optional — for LLM coaching narratives)
+OPENAI_API_KEY=sk-...
+
+# Weather API (Optional)
 WEATHER_API_KEY=your_openweathermap_key
-WEATHER_LOCATION=Athens,GR
 ```
 
-### 4. Εκκίνηση
-```bash
-python main.py
-```
+---
+
+### Troubleshooting
+
+**"Python version 3.X is not supported"**
+→ Install Python 3.11+ from [python.org](https://www.python.org/downloads/)
+
+**"Cannot write to data directory"**
+→ Run as administrator or choose a different folder
+
+**"Garmin authentication failed"**
+→ Enable 2FA on Garmin Connect if required
+
+**"Database is corrupted"**
+→ Backup `~/Documents/TITAN/titan_core.db` and delete it. TITAN will create a fresh one.
+
+Check logs at `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log` for detailed errors.
 
 ## 📋 Χρήση
 
