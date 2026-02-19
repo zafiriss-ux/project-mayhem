@@ -80,8 +80,22 @@ class DatabaseManager:
         # Enable WAL mode for concurrent read/write access
         # WAL = Write-Ahead Logging (better concurrency than default rollback journal)
         # Critical for frozen builds where multiple threads access DB simultaneously
-        self.conn.execute("PRAGMA journal_mode=WAL")
-        self.conn.execute("PRAGMA synchronous=NORMAL")  # Balance durability vs performance
+        cursor = self.conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        journal_mode = cursor.fetchone()[0]
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        synchronous = cursor.fetchone()[0]
+
+        # Log PRAGMA results for debugging (frozen mode validation)
+        try:
+            import logging
+            logger = logging.getLogger('titan.database')
+            logger.info(f"Database initialized: {self.db_path}")
+            logger.info(f"PRAGMA journal_mode: {journal_mode}")
+            logger.info(f"PRAGMA synchronous: {synchronous}")
+        except Exception:
+            # Best-effort logging (don't fail if logger not configured)
+            pass
 
         self.create_tables()
 

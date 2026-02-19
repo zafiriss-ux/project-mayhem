@@ -135,6 +135,19 @@ def main() -> int:
     logger = init_launcher_logging(debug=debug_mode)
     logger.info(f"Launcher started with args: {sys.argv}")
 
+    # Debug: Print path diagnostics (frozen-safe troubleshooting)
+    if debug_mode:
+        from launcher.paths import get_path_info
+        import json
+        print("\n" + "="*70)
+        print("DEBUG: Path Diagnostics (Frozen-Safe Resolution)")
+        print("="*70)
+        path_info = get_path_info()
+        for key, value in path_info.items():
+            print(f"  {key:20} {value}")
+        print("="*70 + "\n")
+        logger.debug(f"Path info: {json.dumps(path_info, indent=2)}")
+
     print_banner()
 
     # Step 1: Validate environment

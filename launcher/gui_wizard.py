@@ -452,18 +452,74 @@ class SuccessFrame(ttk.Frame):
         )
         message.pack(pady=20)
 
+        # Button frame for horizontal layout
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(pady=20)
+
         # Start button
         start_btn = ttk.Button(
-            self,
+            btn_frame,
             text="Start TITAN",
             command=self.on_start,
-            width=25
+            width=20
         )
-        start_btn.pack(pady=30)
+        start_btn.grid(row=0, column=0, padx=10)
+
+        # Diagnostics button (optional — for troubleshooting)
+        diag_btn = ttk.Button(
+            btn_frame,
+            text="📊 Diagnostics",
+            command=self.on_diagnostics,
+            width=20
+        )
+        diag_btn.grid(row=0, column=1, padx=10)
 
     def on_start(self):
         """Close wizard and proceed to kernel."""
         self.wizard.on_complete()
+
+    def on_diagnostics(self):
+        """Show diagnostics dialog with path info + open logs folder."""
+        import subprocess
+        import platform
+        from pathlib import Path
+
+        # Get diagnostics info
+        from launcher.paths import get_path_info
+        from launcher.validator import get_data_directory
+
+        path_info = get_path_info()
+        data_dir = get_data_directory()
+        logs_dir = data_dir / 'logs'
+
+        # Build message
+        msg = "TITAN Diagnostics\n" + "="*50 + "\n\n"
+        msg += f"Frozen mode: {'Yes (TITAN.exe)' if path_info['frozen'] else 'No (Python script)'}\n"
+        msg += f"Executable: {path_info['sys.executable']}\n"
+        msg += f"Bundle dir: {path_info['bundle_dir']}\n"
+        msg += f"Data directory: {data_dir}\n"
+        msg += f"Logs directory: {logs_dir}\n\n"
+
+        if logs_dir.exists():
+            msg += "Click OK to open logs folder."
+        else:
+            msg += "Logs folder will be created on first run."
+
+        # Show dialog
+        messagebox.showinfo("Diagnostics", msg)
+
+        # Open logs folder if it exists
+        if logs_dir.exists():
+            try:
+                if platform.system() == 'Windows':
+                    subprocess.run(['explorer', str(logs_dir)])
+                elif platform.system() == 'Darwin':  # macOS
+                    subprocess.run(['open', str(logs_dir)])
+                else:  # Linux
+                    subprocess.run(['xdg-open', str(logs_dir)])
+            except Exception:
+                # Best effort — don't crash if file explorer fails
+                pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
