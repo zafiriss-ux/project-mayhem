@@ -3,6 +3,15 @@
 
 $ErrorActionPreference = "Stop"
 
+# Enforce Python 3.11.x
+$pythonVersion = & python --version 2>&1
+if ($pythonVersion -notmatch "Python 3\.11\.") {
+    Write-Host "ERROR: Python 3.11.x is required. Found: $pythonVersion" -ForegroundColor Red
+    Write-Host "       Install Python 3.11.x from https://www.python.org/downloads/" -ForegroundColor Red
+    exit 1
+}
+Write-Host "Python version OK: $pythonVersion" -ForegroundColor Green
+
 # Clean previous build
 if (Test-Path "build") { Remove-Item -Recurse -Force "build" }
 if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }

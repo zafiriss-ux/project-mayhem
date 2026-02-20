@@ -512,11 +512,11 @@ class SuccessFrame(ttk.Frame):
         if logs_dir.exists():
             try:
                 if platform.system() == 'Windows':
-                    subprocess.run(['explorer', str(logs_dir)])
+                    subprocess.Popen(['explorer', str(logs_dir)])
                 elif platform.system() == 'Darwin':  # macOS
-                    subprocess.run(['open', str(logs_dir)])
+                    subprocess.Popen(['open', str(logs_dir)])
                 else:  # Linux
-                    subprocess.run(['xdg-open', str(logs_dir)])
+                    subprocess.Popen(['xdg-open', str(logs_dir)])
             except Exception:
                 # Best effort — don't crash if file explorer fails
                 pass

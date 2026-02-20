@@ -1,9 +1,14 @@
 # TITAN Release Packager
-# Creates TITAN-v5.7.0-win64.zip with TITAN.exe + SHA256 + README
+# Creates TITAN-v<version>-win64.zip with TITAN.exe + SHA256 + README
+# Version is read dynamically from titan.__version__
 
 $ErrorActionPreference = "Stop"
 
-$version = "5.7.0"
+$version = & python -c "import titan; print(titan.__version__)" 2>&1
+if ($LASTEXITCODE -ne 0 -or $version -notmatch '^\d+\.\d+') {
+    Write-Host "ERROR: Could not read titan.__version__. Got: $version" -ForegroundColor Red
+    exit 1
+}
 $packageName = "TITAN-v$version-win64"
 $outputZip = "$packageName.zip"
 

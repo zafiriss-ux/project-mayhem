@@ -33,6 +33,35 @@ from launcher.logger import init_launcher_logging
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Argument Redaction
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _redact_argv(argv: list) -> list:
+    """
+    Return a copy of argv with sensitive flag values replaced by <redacted>.
+
+    Handles two forms:
+      --flag value      (next token is the value)
+      --flag=value      (value is part of the same token)
+    """
+    result = []
+    skip_next = False
+    for token in argv:
+        if skip_next:
+            result.append("<redacted>")
+            skip_next = False
+        elif "=" in token and token.startswith("--"):
+            flag, _ = token.split("=", 1)
+            result.append(f"{flag}=<redacted>")
+        elif token.startswith("--") and len(token) > 2:
+            result.append(token)
+            skip_next = True
+        else:
+            result.append(token)
+    return result
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Banner
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -155,7 +184,7 @@ def main() -> int:
 
     # Initialize logging
     logger = init_launcher_logging(debug=debug_mode)
-    logger.info(f"Launcher started with args: {sys.argv}")
+    logger.info("Launcher started with args: %s", _redact_argv(sys.argv))
 
     # Debug: Print path diagnostics (frozen-safe troubleshooting)
     if debug_mode:
