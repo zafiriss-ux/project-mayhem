@@ -104,3 +104,49 @@ TITAN OS είναι Protective System.
 8. Strategic Statement
 
 Performance is a byproduct of well-governed adaptation.
+
+3) Στόχος Βελτιστοποίησης (Optimization Objective)
+
+Το TITAN OS βελτιστοποιεί πρωτίστως:
+
+Μακροπρόθεσμη υγεία / βιωσιμότητα (longevity bias)
+
+Μείωση κινδύνου τραυματισμού / υπερκόπωσης
+
+Αυτόνομη σταθερότητα (HRV / RHR / ύπνος / stress)
+
+Συνέπεια και συμμόρφωση (adherence)
+
+Απόδοση (performance) ως παράγωγο της σωστής προσαρμογής
+
+Αρχή: “Performance is a byproduct of well-governed adaptation.”
+Κανόνας: Αν υπάρχει σύγκρουση μεταξύ χρόνου-στόχου και ασφάλειας, κερδίζει η ασφάλεια.
+
+4) Μορφή Προϊόντος (Product Mode)
+
+Στόχος: να μπορεί να λειτουργήσει “πολυμορφικά”, αλλά με μία ξεκάθαρη προτεραιότητα.
+
+Phase 1 (πιο ρεαλιστικό για τώρα):
+✅ Kernel/Engine (το TITAN OS) που βγάζει αποφάσεις + audit trail (explainable outputs).
+
+Τρέχει τοπικά (CLI) ή σαν service.
+
+Δίνει outputs σε αρχεία/DB/Telegram.
+
+Phase 2 (όταν ωριμάσει):
+✅ Coaching SaaS / Dashboard (UI πάνω από τον kernel).
+
+Phase 3 (αν το πας “προϊόν”):
+✅ API για coaches/apps (ο kernel σαν “decision API”).
+
+Αρχή αρχιτεκτονικής: Το UI αλλάζει, το kernel όχι.
+
+5) Ηθικός/Προστατευτικός Περιορισμός (Ethical Constraint)
+
+Το TITAN OS είναι protective system:
+
+Έχει hard gates (μη διαπραγματεύσιμα όρια).
+
+Αποφεύγει “ego-driven overload”.
+
+Καταγράφει overrides και τιμωρεί το “override normalization” (anti-bypass).
