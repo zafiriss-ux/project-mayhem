@@ -1,0 +1,34 @@
+# TITAN OS v5.7.0 — Production Requirements
+# Build Environment: Python 3.11.9 (Windows 11 x64)
+# Last Updated: 2026-02-19
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CRITICAL: Python Version Requirement
+# ══════════════════════════════════════════════════════════════════════════════
+# Python 3.11.9 (pinned for reproducible builds)
+# Download: https://www.python.org/downloads/release/python-3119/
+# Windows installer: python-3.11.9-amd64.exe
+#
+# Verify installation:
+#   python --version
+#   Expected: Python 3.11.9
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Core Dependencies
+numpy==1.26.4          # Data processing
+pandas==2.2.1          # Time series analysis
+scikit-learn==1.4.1    # ML algorithms (CTL/ATL prediction)
+pyyaml==6.0.1          # Configuration files
+
+# API Integrations
+garminconnect==0.2.13  # Garmin Connect API (activity sync)
+requests==2.31.0       # HTTP client (Garmin, weather, webhooks)
+python-telegram-bot==21.0.1  # Telegram bot framework
+
+# Build Tools (Windows only — for creating TITAN.exe)
+pyinstaller==6.4.0     # Freeze Python to executable
+pywin32==306; sys_platform == 'win32'  # Windows API bindings
+
+# Testing (development only)
+pytest==8.0.2
+pytest-cov==4.1.0
