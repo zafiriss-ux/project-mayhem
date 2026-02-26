@@ -84,6 +84,7 @@ class DatabaseManager:
         cursor.execute("PRAGMA journal_mode=WAL")
         journal_mode = cursor.fetchone()[0]
         cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA synchronous")
         synchronous = cursor.fetchone()[0]
 
         # Busy timeout: wait up to 5 seconds if DB is locked
