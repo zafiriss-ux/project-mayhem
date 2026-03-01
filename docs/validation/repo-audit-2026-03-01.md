@@ -11,11 +11,9 @@ ruff check . --statistics
 
 ruff check . --fix
 ruff check . --statistics
-=======
 
 ruff check . --fix
 ruff check . --statistics
-=======
 
 
 ```
@@ -25,7 +23,6 @@ ruff check . --statistics
 - ✅ **Runtime tests**: `275 passed`.
 - ✅ **Syntax compile check**: no syntax/import-time compile failures.
 
-=======
 
 
 - ⚠️ **Static analysis (ruff) before fixes**: `203` findings across `28` files.
@@ -102,8 +99,6 @@ ruff check . --statistics
 - `TITAN_v50_FULL_KERNEL_FINAL.py:101` — multiple statements on one line (`E701`)
 - `launcher/errors.py:270` — assigned-but-unused variable (`F841`)
 - `titan/core/database.py:396` — ambiguous variable name `l` (`E741`)
-=======
-=======
 - ❌ **Static analysis (ruff)**: `203` findings across `28` files.
 
 ### Ruff rule breakdown

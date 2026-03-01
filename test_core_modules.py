@@ -1103,6 +1103,7 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'INTERVALS'
         assert result['vo2_eligibility']['eligible'] is True
         assert result['vo2_eligibility']['failed_conditions'] == []
+        assert result['vo2_eligibility']['detailed_failed_conditions'] == []
 
     def test_vo2_gate_fail_readiness_downgrades(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
@@ -1116,6 +1117,44 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V2']
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 0.0,
+            'readiness_score': 0,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert [item['code'] for item in details] == ['V1', 'V2']
+        assert details[0]['metric'] == 'acwr'
+        assert details[0]['actual'] == 0.0
+        assert details[1]['metric'] == 'readiness_score'
+        assert details[1]['actual'] == 0.0
+
+
+    def test_vo2_gate_invalid_numeric_inputs_fail_closed(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 'bad-data',
+            'readiness_score': 'N/A',
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert details[0]['operator'] == 'numeric'
+        assert details[0]['actual'] == 'bad-data'
+        assert details[1]['operator'] == 'numeric'
+        assert details[1]['actual'] == 'N/A'
 
     def test_vo2_gate_not_applied_to_tempo(self, gov):
         plan = {'session_type': 'TEMPO', 'duration_min': 60}
@@ -1172,10 +1211,6 @@ class TestGlycogenNamedElectrolyteAccessor:
         legacy = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
         named = GlycogenDebtAccumulator.get_electrolyte_guard_status(22.0, 90, 'TEMPO')
         assert named == legacy
-
-
-
-=======
 
 
 class TestReadinessThresholdAlignment:
@@ -1277,7 +1312,6 @@ class TestGovernanceHardStopsAnd2of4:
         assert 'downgrade_2of4' not in out
 
 
-
 class TestVolumeLoadGauge:
 
     @pytest.fixture
@@ -1310,7 +1344,3 @@ class TestVolumeLoadGauge:
         assert any('TSB=' in r for r in state.rationale)
         assert any('ACWR=' in r for r in state.rationale)
         assert any('Glycogen debt=' in r for r in state.rationale)
-=======
-=======
-
-
