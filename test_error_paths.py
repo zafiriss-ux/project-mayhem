@@ -221,6 +221,33 @@ class TestWeatherAPIErrorPaths:
         cond = api.get_current_conditions()
         assert isinstance(cond["dew_point"], (int, float))
 
+    def test_get_current_conditions_uses_open_meteo_when_available(self, api, monkeypatch):
+        live_current = {
+            "timestamp": "2026-03-01T07:00:00",
+            "temp_c": 13.2,
+            "humidity": 72,
+            "wind_speed": 5.1,
+            "conditions": "Partly Cloudy",
+            "dew_point": 8.4,
+            "heat_stress": "🟦 PLEASANT",
+            "recommendation": "Ideal conditions",
+        }
+        live_hourly = [{"timestamp": "2026-03-01T07:00:00", "hour": 7}]
+
+        monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (live_current, live_hourly))
+
+        cond = api.get_current_conditions()
+        assert cond["temp_c"] == 13.2
+        assert api.cache["hourly"] == live_hourly
+
+    def test_get_hourly_forecast_fallback_when_fetch_fails(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("network")))
+
+        forecast = api.get_hourly_forecast(hours=6)
+        assert isinstance(forecast, list)
+        assert len(forecast) == 6
+        assert all("dew_point" in row for row in forecast)
+
     # ── find_optimal_training_windows with bad inputs ───────────────────────
 
     def test_find_windows_zero_duration_empty(self, api):
