@@ -66,6 +66,7 @@ class GarminSync:
         if not self._ensure_connected():
             return []
         activities = []
+        skipped_records = 0
         try:
             start = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
             end = datetime.now().strftime("%Y-%m-%d")
@@ -89,9 +90,14 @@ class GarminSync:
                         "elevation_gain_m": int(a.get("elevationGain", 0)),
                         "activity_id":     a.get("activityId"),
                     })
-                except Exception:
+                except Exception as e:
+                    skipped_records += 1
+                    activity_id = a.get("activityId", "unknown")
+                    print(f"⚠️  Skipping malformed activity ({activity_id}): {e}")
                     continue
             print(f"📥 Synced {len(activities)} activities")
+            if skipped_records:
+                print(f"⚠️  Skipped {skipped_records} malformed activity record(s)")
             self._log_sync("activities", len(activities))
         except Exception as e:
             print(f"❌ Activity sync failed: {e}")

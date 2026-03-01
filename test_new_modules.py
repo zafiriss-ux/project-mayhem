@@ -19,6 +19,7 @@ Run with:
 """
 
 import sys
+import stat
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -37,6 +38,7 @@ from titan.science.efficiency_engine import EfficiencyEngine
 from titan.science.durability_engine import DurabilityEngine
 from titan.science.adaptive_memory import AdaptiveMemory
 from titan.core.database import DatabaseManager
+from titan.ui import setup_wizard
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -541,6 +543,28 @@ class TestGarminSync:
         acts = gs.sync_activities(days_back=1)
         # bad record skipped, good record included
         assert len(acts) == 1
+
+    def test_sync_activities_logs_skipped_records(self, capsys):
+        gs = GarminSync(email="test@example.com", password="secret")
+        gs.is_connected = True
+        gs.client = MagicMock()
+        gs.client.get_activities_by_date.return_value = [
+            {"activityId": "bad-1", "duration": "oops", "distance": "1000"},
+            {
+                "activityId": "good-1",
+                "duration": "1800",
+                "distance": "5000",
+                "startTimeLocal": "2024-03-01 08:00:00",
+                "activityType": {"typeKey": "running"},
+            },
+        ]
+
+        acts = gs.sync_activities(days_back=1)
+        output = capsys.readouterr().out
+
+        assert len(acts) == 1
+        assert "Skipping malformed activity (bad-1)" in output
+        assert "Skipped 1 malformed activity record(s)" in output
 
     def test_sync_hrv_parses_rmssd(self):
         gs = GarminSync(email="test@example.com", password="secret")
@@ -1158,3 +1182,27 @@ class TestDailyCoachHelpers:
         db.save_daily_metric("2024-02-27", rhr=48)
         baseline = coach._get_baseline_rhr(days=30)
         assert 48 <= baseline <= 52
+
+
+class TestSetupWizard:
+
+    def test_save_env_sanitizes_newlines_and_sets_permissions(self, tmp_path):
+        env_file = tmp_path / ".env"
+        repo_gitignore = Path(".gitignore")
+        original_gitignore = repo_gitignore.read_text() if repo_gitignore.exists() else ""
+
+        try:
+            with patch.object(setup_wizard, "ENV_PATH", env_file):
+                setup_wizard._save_env(
+                    {
+                        "GARMIN_EMAIL": "athlete@example.com",
+                        "TELEGRAM_BOT_TOKEN": "abc\n123\r456",
+                    }
+                )
+        finally:
+            repo_gitignore.write_text(original_gitignore)
+
+        text = env_file.read_text()
+        assert "TELEGRAM_BOT_TOKEN=abc123456" in text
+        mode = stat.S_IMODE(env_file.stat().st_mode)
+        assert mode == (stat.S_IRUSR | stat.S_IWUSR)
