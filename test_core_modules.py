@@ -1120,7 +1120,10 @@ class TestGovernanceVo2AndFuelingGates:
 
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
-=======
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 
@@ -1155,6 +1158,7 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
@@ -1167,7 +1171,9 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
 
-=======
+
+
+
 
 
 
@@ -1184,9 +1190,12 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
-=======
 
-=======
+
+
+
+
+
 
 
 
@@ -1199,9 +1208,11 @@ class TestGovernanceVo2AndFuelingGates:
             'readiness_score': 'N/A',
             'glycogen_debt': 3.0,
 
-=======
 
-=======
+
+
+
+
 
 
 
@@ -1225,9 +1236,11 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
 
-=======
 
-=======
+
+
+
+
 
 
 
@@ -1242,9 +1255,12 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[1]['actual'] == 'N/A'
 
 
-=======
 
-=======
+
+
+
+
+
 
 
 
@@ -1266,7 +1282,10 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['actual'] == 'unknown'
 
 
-=======
+
+
+
+
 
 
     def test_vo2_gate_invalid_days_since_last_vo2_fails_closed(self, gov):
@@ -1288,6 +1307,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['actual'] == 'yesterday'
 
 
+
+
     def test_vo2_gate_invalid_fatigue_level_fails_closed(self, gov):
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1304,8 +1325,25 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['code'] == 'V4'
         assert details[0]['operator'] == 'in'
         assert details[0]['actual'] == 'extreme'
-=======
-=======
+
+
+
+    def test_vo2_gate_failed_conditions_are_deterministically_ordered(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 'bad-data',
+            'readiness_score': 'N/A',
+            'glycogen_debt': 'unknown',
+            'fatigue_level': 'extreme',
+            'days_since_last_vo2': 'yesterday',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['failed_conditions'] == ['V1', 'V2', 'V3', 'V4', 'V5']
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert [item['code'] for item in details] == ['V1', 'V2', 'V3', 'V4', 'V5']
+
         assert result['vo2_eligibility']['failed_conditions'] == ['V1']
 
 
