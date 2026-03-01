@@ -9,6 +9,11 @@ from titan.config.thresholds import (
     HARD_STOP_TSB_FLOOR,
     SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
+    VO2_ACWR_MAX,
+    VO2_ACWR_MIN,
+    VO2_GLYCOGEN_DEBT_MAX,
+    VO2_MIN_DAYS_SINCE_LAST,
+    VO2_READINESS_MIN,
 )
 
 
@@ -187,6 +192,16 @@ class GovernanceEngine:
 
         acwr_raw = context.get('acwr', 1.0)
         readiness_raw = context.get('readiness_score', 100)
+
+
+
+
+
+
+
+
+
+
         try:
             acwr = float(1.0 if acwr_raw is None else acwr_raw)
         except (TypeError, ValueError):
@@ -195,21 +210,34 @@ class GovernanceEngine:
             readiness = float(100 if readiness_raw is None else readiness_raw)
         except (TypeError, ValueError):
             readiness = 100
+
+
+
+
+
+
+
+        acwr = float(1.0 if acwr_raw is None else acwr_raw)
+        readiness = float(100 if readiness_raw is None else readiness_raw)
+
+
+
+
         glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
         fatigue_level = str(context.get('fatigue_level', 'LOW') or 'LOW').upper()
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
 
         failed: List[str] = []
         reasons: List[str] = []
-        if not (0.8 <= acwr <= 1.5):
+        if not (VO2_ACWR_MIN <= acwr <= VO2_ACWR_MAX):
             failed.append('V1')
-            reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
-        if readiness < 60:
+            reasons.append(f'ACWR in [{VO2_ACWR_MIN:.1f},{VO2_ACWR_MAX:.1f}] (actual: {acwr:.2f})')
+        if readiness < VO2_READINESS_MIN:
             failed.append('V2')
-            reasons.append(f'readiness >= 60 (actual: {readiness:.0f})')
-        if glycogen_debt >= 7:
+            reasons.append(f'readiness >= {VO2_READINESS_MIN:.0f} (actual: {readiness:.0f})')
+        if glycogen_debt >= VO2_GLYCOGEN_DEBT_MAX:
             failed.append('V3')
-            reasons.append(f'glycogen_debt < 7 (actual: {glycogen_debt:.1f})')
+            reasons.append(f'glycogen_debt < {VO2_GLYCOGEN_DEBT_MAX:.1f} (actual: {glycogen_debt:.1f})')
         if fatigue_level == 'HIGH':
             failed.append('V4')
             reasons.append(f'fatigue != HIGH (actual: {fatigue_level})')
@@ -219,9 +247,9 @@ class GovernanceEngine:
                 days_val = int(days_since_last_vo2)
             except (TypeError, ValueError):
                 days_val = 999
-            if days_val < 2:
+            if days_val < VO2_MIN_DAYS_SINCE_LAST:
                 failed.append('V5')
-                reasons.append(f'days_since_last_vo2 >= 2 (actual: {days_val})')
+                reasons.append(f'days_since_last_vo2 >= {VO2_MIN_DAYS_SINCE_LAST} (actual: {days_val})')
 
         original = 'INTERVALS_Z5' if session_type == 'INTERVALS' and zone == 5 else session_type
         if failed:
