@@ -91,8 +91,17 @@ class DailyCoach:
     # PUBLIC ENTRY POINT
     # ═══════════════════════════════════════════════════════════════════════
 
-    def run_morning_routine(self) -> bool:
+    def run_morning_routine(self, soreness: Optional[int] = None) -> bool:
         """Execute complete morning coaching routine."""
+        # Morning check-in: collect subjective soreness/fatigue (0-10 scale)
+        if soreness is None:
+            try:
+                raw = input("Morning check-in — Soreness / fatigue (0-10, Enter=5): ").strip()
+                soreness = int(raw) if raw else 5
+                soreness = max(0, min(10, soreness))
+            except (EOFError, ValueError):
+                soreness = 5  # neutral default for non-interactive runs
+
         print(f"\n🌅 Running morning routine: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
 
         # ── Step 1: Sync Garmin ──────────────────────────────────────────────
@@ -170,7 +179,7 @@ class DailyCoach:
             today_rhr    = today_rhr or 50,
             baseline_rhr = baseline_rhr,
             sleep_score  = today_sleep_score,
-            soreness     = 3,  # TODO: add morning check-in prompt
+            soreness     = soreness,
         )
         # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,
