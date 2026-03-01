@@ -21,7 +21,7 @@ class DurabilityEngine:
     The "new frontier" in endurance science - measuring performance
     degradation over long efforts.
     """
-    
+
     @staticmethod
     def assess_pace_durability(
         km_splits: List[float],
@@ -39,17 +39,17 @@ class DurabilityEngine:
         """
         if len(km_splits) < 10:
             return None, "Need 10+ km run for durability assessment", None
-        
+
         # Compare first third vs last third
         third = len(km_splits) // 3
         first_third = km_splits[:third]
         last_third = km_splits[-third:]
-        
+
         avg_first = sum(first_third) / len(first_third)
         avg_last = sum(last_third) / len(last_third)
-        
+
         pace_decay_pct = ((avg_last - avg_first) / avg_first) * 100
-        
+
         # Status interpretation
         if pace_decay_pct < 0:
             status = "✓ NEGATIVE SPLIT (exceptional durability)"
@@ -66,9 +66,9 @@ class DurabilityEngine:
         else:
             status = "⚠️ POOR durability (>8% fade)"
             recommendation = "Priority: Build aerobic base, add volume"
-        
+
         return round(pace_decay_pct, 1), status, recommendation
-    
+
     @staticmethod
     def calculate_durability_index(
         fresh_performance: float,
@@ -93,9 +93,9 @@ class DurabilityEngine:
         """
         if fresh_performance == 0 or fatigued_performance == 0:
             return None, "Invalid performance data", "UNKNOWN"
-        
+
         di = (fresh_performance / fatigued_performance) * 100
-        
+
         if di >= 98:
             status = "✓ ELITE durability (98%+)"
             tier = "WORLD CLASS"
@@ -111,9 +111,9 @@ class DurabilityEngine:
         else:
             status = "⚠️ NEEDS IMPROVEMENT (<85%)"
             tier = "NOVICE"
-        
+
         return round(di, 1), status, tier
-    
+
     @staticmethod
     def durability_training_protocol(current_di: float) -> List[str]:
         """
@@ -126,7 +126,7 @@ class DurabilityEngine:
             List of training recommendations
         """
         protocols = []
-        
+
         if current_di < 88:
             protocols = [
                 "⚠️ PRIORITY 1: Build aerobic base (80% of runs easy)",
@@ -155,5 +155,5 @@ class DurabilityEngine:
                 "No specific durability work needed",
                 "Use this as competitive advantage in long races"
             ]
-        
+
         return protocols

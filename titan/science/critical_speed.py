@@ -29,7 +29,7 @@ class CriticalSpeedEngine:
     
     Used to predict time to exhaustion at any pace.
     """
-    
+
     @staticmethod
     def estimate_cs_and_dprime(
         perfs: List[Tuple[float, float]]
@@ -53,7 +53,7 @@ class CriticalSpeedEngine:
         """
         if len(perfs) < 2:
             return None, None
-        
+
         xs = []
         ys = []
         for dist_m, time_s in perfs:
@@ -61,28 +61,28 @@ class CriticalSpeedEngine:
                 continue
             xs.append(time_s)
             ys.append(dist_m)
-        
+
         if len(xs) < 2:
             return None, None
-        
+
         n = len(xs)
         sum_x = sum(xs)
         sum_y = sum(ys)
         sum_xx = sum(x * x for x in xs)
         sum_xy = sum(x * y for x, y in zip(xs, ys))
-        
+
         denom = n * sum_xx - sum_x * sum_x
         if denom == 0:
             return None, None
-        
+
         a = (n * sum_xy - sum_x * sum_y) / denom
         b = (sum_y - a * sum_x) / n
-        
+
         cs = a  # Critical Speed (m/s)
         d_prime = b  # D' (meters)
-        
+
         return cs, d_prime
-    
+
     @staticmethod
     def time_to_exhaustion_at_pace(
         cs_m_per_s: Optional[float],
@@ -107,12 +107,12 @@ class CriticalSpeedEngine:
             return None
         if pace_sec_per_km <= 0:
             return None
-        
+
         v = 1000.0 / pace_sec_per_km  # Convert to m/s
-        
+
         if v <= cs_m_per_s:
             return None  # Pace is at or below CS (sustainable)
-        
+
         t = d_prime_m / (v - cs_m_per_s)
         return t
 

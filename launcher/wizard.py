@@ -47,7 +47,7 @@ def load_env() -> Dict[str, str]:
 
     env_vars = {}
     try:
-        with open(env_path, 'r', encoding='utf-8') as f:
+        with open(env_path, encoding='utf-8') as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith('#') and '=' in line:
@@ -86,7 +86,7 @@ def write_env(config: Dict[str, str]) -> None:
             code='CFG_WRITE_FAILED',
             message=f"Failed to write .env file: {e}",
             remediation="Check folder permissions.",
-        )
+        ) from e
 
 
 # ══════════════════════════════════════════════════════════════════════════════

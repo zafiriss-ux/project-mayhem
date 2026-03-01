@@ -22,7 +22,7 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-    
+
 # ==============================================================================
 # TITAN OS v47 "THE COMPLETE SCIENTIFIC ENGINE"
 # - Norwegian / Kenyan / Polarized Training Kernel
@@ -109,7 +109,7 @@ logger = logging.getLogger('TITAN')
 # Configuration
 DEFAULT_CONFIG = {'hr_zones':{'z1':(0,60),'z2':(60,70),'z3':(70,80),'z4':(80,90),'z5':(90,100)}, 'acwr':{'safe_min':0.8,'safe_max':1.3}, 'db_version':'1.0', 'weather_timeout':10}
 try:
-    with open('config.json','r') as cf:
+    with open('config.json') as cf:
         CONFIG=json.load(cf)
     logger.info('Config loaded')
 except Exception:
@@ -121,35 +121,35 @@ class UniversalAthleteProfile:
     Replaces old TitanProfile with multi-athlete support
     Corrected & Bridged for TITAN v48
     """
-    
+
     def __init__(self, athlete_id=None, name="Default Athlete"):
         self.athlete_id = athlete_id or f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         self.name = name
-        
+
         # Demographics
         self.gender = "M"  # M/F
         self.age = 43
         self.height_cm = 180
         self.weight_kg = 75.0
-        
+
         # Physiological
         self.resting_hr = 44
         self.max_hr = 191
         self.threshold_hr = 168
         self.vo2_max = 58.5
-        
+
         # Training
         self.race_day = datetime(2026, 4, 26)
         self.current_goal = None
         self.target_time = None
         self.base_5k_time_str = "19:00"
         self.base_5k_sec = 228.0
-        
+
         # Weight management
         self.weight_floor = 75.0
         self.weight_ceiling = 76.2
         self.weight_panic = 74.5
-        
+
         # Pacing
         self.paces = {
             "EASY": "5:31",
@@ -159,14 +159,14 @@ class UniversalAthleteProfile:
             "HAMMER": "3:45-3:55",
             "RECOVERY": "6:00+"
         }
-        
+
         # Critical Speed
         self.critical_speed_m_per_s = 4.1
         self.d_prime_m = 250.0
-        
+
         # Personal bests
         self.personal_bests = {}
-        
+
         # Metadata
         self.created_date = datetime.now()
         self.last_modified = datetime.now()
@@ -175,16 +175,16 @@ class UniversalAthleteProfile:
     @property
     def resting_hr_baseline(self):
         return self.resting_hr
-    
+
     @resting_hr_baseline.setter
     def resting_hr_baseline(self, value):
         self.resting_hr = value
-        
+
     @property
     def vo2_max_baseline(self):
         return self.vo2_max
     # -------------------------------------------------------------
-    
+
     def set_demographics(self, gender, age, height_cm, weight_kg):
         self.gender = gender.upper()
         self.age = age
@@ -195,7 +195,7 @@ class UniversalAthleteProfile:
             self.weight_ceiling = weight_kg + 1.2
             self.weight_panic = weight_kg - 1.5
         self.last_modified = datetime.now()
-    
+
     def set_hr_data(self, resting_hr, max_hr=None):
         self.resting_hr = resting_hr
         if max_hr:
@@ -205,17 +205,17 @@ class UniversalAthleteProfile:
         if self.max_hr:
             self.threshold_hr = int(self.max_hr * 0.88)
         self.last_modified = datetime.now()
-    
+
     def calculate_bmr(self):
         # Manual Override για τον χρήστη (2020 kcal)
         # Αν θες τον τύπο Mifflin, σβήσε το 'return 2020' και ξε-σχολίασε τα από κάτω
-        return 2020 
+        return 2020
         # if not all([self.weight_kg, self.height_cm, self.age]): return None
         # bmr = (10 * self.weight_kg) + (6.25 * self.height_cm) - (5 * self.age)
         # if self.gender == "M": bmr += 5
         # else: bmr -= 161
         # return int(bmr)
-    
+
     def calculate_tdee(self, activity_level="active"):
         # Manual Override (2800 kcal max)
         return 2800
@@ -223,7 +223,7 @@ class UniversalAthleteProfile:
         # if not bmr: return None
         # multipliers = {"sedentary": 1.2, "light": 1.375, "moderate": 1.55, "active": 1.725, "very_active": 1.9}
         # return int(bmr * multipliers.get(activity_level, 1.725))
-    
+
     @staticmethod
     def str_to_sec(time_str):
         try:
@@ -235,13 +235,13 @@ class UniversalAthleteProfile:
         except Exception:
             return 0
         return 0
-    
+
     @staticmethod
     def sec_to_str(seconds):
         m = int(seconds // 60)
         s = int(seconds % 60)
         return f"{m}:{s:02d}"
-    
+
     def to_dict(self):
         return {
             "athlete_id": self.athlete_id, "name": self.name, "gender": self.gender,
@@ -253,7 +253,7 @@ class UniversalAthleteProfile:
             "paces": self.paces, "critical_speed_m_per_s": self.critical_speed_m_per_s,
             "d_prime_m": self.d_prime_m
         }
-    
+
     @classmethod
     def from_dict(cls, data):
         profile = cls(athlete_id=data.get("athlete_id"), name=data.get("name"))
@@ -278,13 +278,13 @@ class PeriodizationManager:
     """
     Race goal and training phase management
     """
-    
+
     def __init__(self, athlete_profile):
         self.athlete = athlete_profile
         self.goals = []
         self.current_goal = None
         self.completed_goals = []
-    
+
     def add_goal(self, distance_km, target_time_str, race_date_str):
         """Add race goal"""
         goal = {
@@ -295,20 +295,20 @@ class PeriodizationManager:
             "status": "ACTIVE",
             "created": datetime.now()
         }
-        
+
         self.goals.append(goal)
         self.current_goal = goal
         self.athlete.current_goal = f"{distance_km}K in {target_time_str}"
         self.athlete.race_day = goal["race_date"]
         self.athlete.target_time = target_time_str
-        
+
         return goal
-    
+
     def calculate_phase(self, race_date):
         """Calculate training phase"""
         today = datetime.now()
         days_to_race = (race_date - today).days
-        
+
         if days_to_race < 0:
             return "POST_RACE"
         elif days_to_race <= 10:
@@ -319,27 +319,27 @@ class PeriodizationManager:
             return "BUILD"
         else:
             return "BASE"
-    
+
     def complete_goal(self, goal_id, actual_time_str):
         """Mark goal complete and suggest next"""
         goal = next((g for g in self.goals if g["goal_id"] == goal_id), None)
         if not goal:
             return None
-        
+
         goal["status"] = "COMPLETED"
         goal["actual_time"] = actual_time_str
         goal["completion_date"] = datetime.now()
-        
+
         self.completed_goals.append(goal)
         self.goals = [g for g in self.goals if g["goal_id"] != goal_id]
-        
+
         # Suggest next goals
         dist = goal["distance_km"]
         suggestions = [
             {"type": "IMPROVE", "distance": dist, "description": f"Improve {dist}K time by 2-5 percent"},
             {"type": "STEP_UP", "distance": dist * 2, "description": f"Step up to {dist*2}K"}
         ]
-        
+
         return {"completed": goal, "suggestions": suggestions}
 
 
@@ -347,16 +347,16 @@ class NutritionScience:
     """
     BMR, TDEE, and Energy Availability calculations
     """
-    
+
     @staticmethod
     def calculate_ffm(weight_kg, body_fat_percent=None):
         """Fat-Free Mass"""
         if body_fat_percent is None:
             body_fat_percent = 12  # Default estimate
-        
+
         ffm = weight_kg * (1 - body_fat_percent / 100)
         return round(ffm, 1)
-    
+
     @staticmethod
     def calculate_exercise_ee(duration_min, avg_hr, resting_hr, weight_kg, age, gender):
         """
@@ -366,10 +366,10 @@ class NutritionScience:
             kcal_per_min = ((-55.0969 + (0.6309 * avg_hr) + (0.1988 * weight_kg) + (0.2017 * age)) / 4.184)
         else:
             kcal_per_min = ((-20.4022 + (0.4472 * avg_hr) - (0.1263 * weight_kg) + (0.074 * age)) / 4.184)
-        
+
         total_kcal = kcal_per_min * duration_min
         return max(0, int(total_kcal))
-    
+
     @staticmethod
     def calculate_energy_availability(energy_intake_kcal, exercise_ee_kcal, ffm_kg):
         """
@@ -382,9 +382,9 @@ class NutritionScience:
         """
         if ffm_kg == 0:
             return None, "INVALID", "Cannot calculate"
-        
+
         ea = (energy_intake_kcal - exercise_ee_kcal) / ffm_kg
-        
+
         if ea < 30:
             status = "[!!] RED-S RISK"
             recommendation = "CRITICAL: Increase intake immediately"
@@ -394,7 +394,7 @@ class NutritionScience:
         else:
             status = "[OK] OPTIMAL EA"
             recommendation = "Energy availability sufficient"
-        
+
         return round(ea, 1), status, recommendation
 
 
@@ -403,17 +403,17 @@ class SleepArchitecture:
     Sleep phase tracking (Deep/REM separate)
     Walker (2017) - Why We Sleep
     """
-    
+
     def __init__(self):
         self.sleep_log = []
-    
+
     def add_sleep_session(self, date, total_min, deep_min, rem_min, quality_rating=None):
         """Log sleep with Deep and REM separate"""
         light_min = total_min - deep_min - rem_min
-        
+
         deep_pct = (deep_min / total_min * 100) if total_min > 0 else 0
         rem_pct = (rem_min / total_min * 100) if total_min > 0 else 0
-        
+
         session = {
             "date": date,
             "total_min": total_min,
@@ -424,10 +424,10 @@ class SleepArchitecture:
             "rem_pct": round(rem_pct, 1),
             "quality_rating": quality_rating
         }
-        
+
         self.sleep_log.append(session)
         return session
-    
+
     def analyze_quality(self, session):
         """
         Analyze sleep quality
@@ -435,26 +435,26 @@ class SleepArchitecture:
         """
         issues = []
         score = 100
-        
+
         if session["total_min"] < 420:
             score -= 20
             issues.append("Total sleep less than 7h")
-        
+
         if session["deep_pct"] < 13:
             score -= 15
             issues.append("Low deep sleep (less than 13 percent)")
-        
+
         if session["rem_pct"] < 18:
             score -= 15
             issues.append("Low REM sleep (less than 18 percent)")
-        
+
         if score >= 85:
             status = "[OK] EXCELLENT RECOVERY"
         elif score >= 70:
             status = "[OK] GOOD RECOVERY"
         else:
             status = "[WARN] POOR RECOVERY"
-        
+
         return score, status, issues
 
 
@@ -463,7 +463,7 @@ class CardiacDecouplingDetailed:
     Detailed aerobic efficiency analysis
     Esteve-Lanao (2005)
     """
-    
+
     @staticmethod
     def calculate_decoupling(pace_first_half, hr_first_half, pace_second_half, hr_second_half):
         """
@@ -472,22 +472,22 @@ class CardiacDecouplingDetailed:
         """
         if hr_first_half == 0 or hr_second_half == 0:
             return None, "Invalid HR data"
-        
+
         speed_first = 1000.0 / pace_first_half
         speed_second = 1000.0 / pace_second_half
-        
+
         ef_first = speed_first / hr_first_half
         ef_second = speed_second / hr_second_half
-        
+
         decoupling_pct = ((ef_second - ef_first) / ef_first) * 100
-        
+
         if abs(decoupling_pct) < 5:
             status = "[OK] EXCELLENT aerobic efficiency"
         elif abs(decoupling_pct) < 10:
             status = "[WARN] MODERATE drift"
         else:
             status = "[!] HIGH decoupling"
-        
+
         return round(decoupling_pct, 1), status
 
 
@@ -495,7 +495,7 @@ class CNSReadinessTest:
     """
     Central Nervous System readiness tests
     """
-    
+
     def __init__(self):
         self.test_history = []
         self.baselines = {
@@ -503,7 +503,7 @@ class CNSReadinessTest:
             "grip_strength": None,
             "vertical_jump": None
         }
-    
+
     def add_tap_test(self, date, taps_in_10_sec):
         """Finger tap test for neuromuscular fatigue"""
         test = {
@@ -511,17 +511,17 @@ class CNSReadinessTest:
             "type": "TAP_TEST",
             "value": taps_in_10_sec
         }
-        
+
         self.test_history.append(test)
-        
+
         # Set baseline from first 3 tests
         tap_tests = [t for t in self.test_history if t["type"] == "TAP_TEST"]
         if len(tap_tests) >= 3 and self.baselines["tap_test"] is None:
             self.baselines["tap_test"] = sum(t["value"] for t in tap_tests[:3]) / 3
-        
+
         if self.baselines["tap_test"]:
             percent = (taps_in_10_sec / self.baselines["tap_test"]) * 100
-            
+
             if percent >= 100:
                 status = "[OK] CNS FRESH"
             elif percent >= 95:
@@ -530,11 +530,11 @@ class CNSReadinessTest:
                 status = "[WARN] CNS FATIGUED"
             else:
                 status = "[!] CNS DEPLETED"
-            
+
             return {"test": test, "baseline": self.baselines["tap_test"], "percent": round(percent, 1), "status": status}
-        
+
         return {"test": test, "message": "Building baseline"}
-    
+
     def add_grip_strength(self, date, force_kg):
         """Grip strength test"""
         test = {
@@ -542,25 +542,25 @@ class CNSReadinessTest:
             "type": "GRIP_STRENGTH",
             "value": force_kg
         }
-        
+
         self.test_history.append(test)
-        
+
         grip_tests = [t for t in self.test_history if t["type"] == "GRIP_STRENGTH"]
         if len(grip_tests) >= 3 and self.baselines["grip_strength"] is None:
             self.baselines["grip_strength"] = max(t["value"] for t in grip_tests[:3])
-        
+
         if self.baselines["grip_strength"]:
             percent = (force_kg / self.baselines["grip_strength"]) * 100
-            
+
             if percent >= 95:
                 status = "[OK] STRENGTH OPTIMAL"
             else:
                 status = "[WARN] STRENGTH REDUCED"
-            
+
             return {"test": test, "baseline": self.baselines["grip_strength"], "percent": round(percent, 1), "status": status}
-        
+
         return {"test": test, "message": "Building baseline"}
-    
+
     def add_vertical_jump(self, date, height_cm):
         """Vertical jump test"""
         test = {
@@ -568,23 +568,23 @@ class CNSReadinessTest:
             "type": "VERTICAL_JUMP",
             "value": height_cm
         }
-        
+
         self.test_history.append(test)
-        
+
         jump_tests = [t for t in self.test_history if t["type"] == "VERTICAL_JUMP"]
         if len(jump_tests) >= 3 and self.baselines["vertical_jump"] is None:
             self.baselines["vertical_jump"] = max(t["value"] for t in jump_tests[:3])
-        
+
         if self.baselines["vertical_jump"]:
             percent = (height_cm / self.baselines["vertical_jump"]) * 100
-            
+
             if percent >= 95:
                 status = "[OK] POWER OPTIMAL"
             else:
                 status = "[WARN] POWER REDUCED"
-            
+
             return {"test": test, "baseline": self.baselines["vertical_jump"], "percent": round(percent, 1), "status": status}
-        
+
         return {"test": test, "message": "Building baseline"}
 
 
@@ -592,17 +592,17 @@ class DataImporter:
     """
     CSV import functionality
     """
-    
+
     @staticmethod
     def import_csv(filepath):
         """Import training sessions from CSV"""
         try:
             if not PANDAS_AVAILABLE:
                 return None, "pandas not installed"
-            
+
             import pandas as pd
             df = pd.read_csv(filepath)
-            
+
             sessions = []
             for _, row in df.iterrows():
                 session = {
@@ -615,9 +615,9 @@ class DataImporter:
                     "gct": float(row.get("gct", 0)) if "gct" in row else 0.0
                 }
                 sessions.append(session)
-            
+
             return sessions, f"[OK] Imported {len(sessions)} sessions"
-        
+
         except Exception as e:
             return None, f"[ERROR] {str(e)}"
 
@@ -626,7 +626,7 @@ class AthleteDatabase:
     """
     Multi-athlete management with JSON storage
     """
-    
+
     def __init__(self, db_path="athletes"):
         # Βρες τον φάκελο που βρίσκεται το αρχείο .py
         try:
@@ -634,37 +634,37 @@ class AthleteDatabase:
         except NameError:
             # Fallback για IDLE/Jupyter
             base_dir = Path.cwd()
-            
+
         self.db_path = base_dir / db_path
         self.db_path.mkdir(exist_ok=True)
         self.athletes = {}
         self.current_athlete_id = None
         self.load_all()
-    
+
     def create_athlete(self, name, gender, age, height_cm, weight_kg):
         """Create new athlete"""
         profile = UniversalAthleteProfile(name=name)
         profile.set_demographics(gender, age, height_cm, weight_kg)
-        
+
         self.athletes[profile.athlete_id] = profile
         self.current_athlete_id = profile.athlete_id
         self.save_athlete(profile)
-        
+
         return profile
-    
+
     def switch_athlete(self, athlete_id):
         """Switch to different athlete"""
         if athlete_id in self.athletes:
             self.current_athlete_id = athlete_id
             return self.athletes[athlete_id]
         return None
-    
+
     def get_current(self):
         """Get current athlete"""
         if self.current_athlete_id and self.current_athlete_id in self.athletes:
             return self.athletes[self.current_athlete_id]
         return None
-    
+
     def list_all(self):
         """List all athletes"""
         athletes_list = []
@@ -677,21 +677,21 @@ class AthleteDatabase:
                 "goal": prof.current_goal
             })
         return athletes_list
-    
+
     def save_athlete(self, profile):
         """Save athlete to JSON"""
         filepath = self.db_path / f"{profile.athlete_id}.json"
         with open(filepath, 'w') as f:
             json.dump(profile.to_dict(), f, indent=2)
-    
+
     def load_all(self):
         """Load all athletes from disk"""
         if not self.db_path.exists():
             return
-        
+
         for filepath in self.db_path.glob("*.json"):
             try:
-                with open(filepath, 'r') as f:
+                with open(filepath) as f:
                     data = json.load(f)
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
@@ -1141,7 +1141,7 @@ class DecisionRulesEngine:
     - RPE vs HR mismatch detection (neuromuscular fatigue)
     - Morning weight + HRV decision logic
     """
-    
+
     @staticmethod
     def check_hr_drift_pace_adjustment(drift_pct, session_type, current_pace_sec):
         """
@@ -1154,7 +1154,7 @@ class DecisionRulesEngine:
             msg = f" HR DRIFT >5% ({drift_pct:.1f}%)  SLOW DOWN {adjustment_sec:.0f}\" per km"
             return True, new_pace, msg
         return False, current_pace_sec, " HR Drift OK"
-    
+
     @staticmethod
     def check_neuromuscular_fatigue(rpe, avg_hr, threshold_hr):
         """
@@ -1164,7 +1164,7 @@ class DecisionRulesEngine:
             msg = " NEUROMUSCULAR FATIGUE DETECTED: RPE high but HR suppressed"
             return True, msg
         return False, " No NM fatigue signals"
-    
+
     @staticmethod
     def check_morning_abort_hammer(weight_drop_pct, hrv_status):
         """
@@ -1187,11 +1187,11 @@ class NeuromuscularLoadEngine:
     - Hammer segment = 3 units
     Rule: >5 units/week  neuromuscular deload required
     """
-    
+
     def __init__(self):
         self.session_log = []
-    
-    def add_session(self, date, session_type, has_strides=False, 
+
+    def add_session(self, date, session_type, has_strides=False,
                    has_short_intervals=False, has_hammer=False):
         nli = 0
         details = []
@@ -1206,21 +1206,21 @@ class NeuromuscularLoadEngine:
             details.append("Hammer: +3")
         self.session_log.append((date, session_type, nli, details))
         return nli, details
-    
+
     def calculate_weekly_nli(self, reference_date):
         from datetime import timedelta
         week_ago = reference_date - timedelta(days=7)
         weekly_total = sum(
-            nli for date, _, nli, _ in self.session_log 
+            nli for date, _, nli, _ in self.session_log
             if week_ago <= date <= reference_date
         )
         return weekly_total
-    
+
     def check_deload_needed(self, weekly_nli):
         if weekly_nli > 5:
             return True, f" DELOAD REQUIRED: Weekly NLI = {weekly_nli} (threshold: 5)"
         return False, f" NM Load OK: Weekly NLI = {weekly_nli}"
-    
+
     def get_status(self, reference_date):
         weekly = self.calculate_weekly_nli(reference_date)
         needs_deload, msg = self.check_deload_needed(weekly)
@@ -1238,7 +1238,7 @@ class FuelTimingEngine:
     """
     Scientific fueling strategy based on session type
     """
-    
+
     @staticmethod
     def get_fuel_strategy(session_type, has_hammer_segment=False):
         strategies = {
@@ -1292,10 +1292,10 @@ class DailyMonitoring:
     """
     Track daily readiness metrics
     """
-    
+
     def __init__(self):
         self.log = []
-    
+
     def add_entry(self, date, weight, resting_hr, stiffness, sleep_quality):
         self.log.append({
             "date": date,
@@ -1304,13 +1304,13 @@ class DailyMonitoring:
             "stiffness": stiffness,
             "sleep_quality": sleep_quality
         })
-    
+
     def get_weight_change_pct(self, baseline_weight):
         if not self.log:
             return 0.0
         current = self.log[-1]["weight"]
         return abs((baseline_weight - current) / baseline_weight * 100)
-    
+
     def get_status(self, baseline_weight, baseline_rhr):
         if not self.log:
             return "NO DATA"
@@ -1329,7 +1329,7 @@ class DailyMonitoring:
         if not flags:
             return " ALL SYSTEMS READY"
         return " | ".join(flags)
-    
+
     def display_metrics(self):
         if not self.log:
             print("No monitoring data logged.")
@@ -1355,9 +1355,9 @@ class RaceWeekEngine:
     """
     Race week philosophy: NOT peak fitness, but peak PREDICTABILITY
     """
-    
+
     @staticmethod
-    def calculate_entropy_score(days_to_race, training_consistency, 
+    def calculate_entropy_score(days_to_race, training_consistency,
                                gut_health, sleep_avg, weight_stable):
         entropy = 0
         if days_to_race > 7:
@@ -1379,7 +1379,7 @@ class RaceWeekEngine:
         else:
             status = " HIGH ENTROPY - Risk management mode"
         return entropy, status
-    
+
     @staticmethod
     def race_week_protocol(days_to_race):
         protocols = {
@@ -1416,7 +1416,7 @@ class ACWREngine:
     - ACWR >1.5: 2-4x increase in injury risk
     - ACWR <0.8: Detraining risk
     """
-    
+
     @staticmethod
     def calculate_acwr(acute_load_7d, chronic_load_28d_avg):
         """
@@ -1431,9 +1431,9 @@ class ACWREngine:
         """
         if chronic_load_28d_avg == 0 or chronic_load_28d_avg is None:
             return None, "INSUFFICIENT DATA", "Need 28 days of training data"
-        
+
         acwr = acute_load_7d / (chronic_load_28d_avg * 7)
-        
+
         if acwr < 0.5:
             status = " SEVERE DETRAINING"
             recommendation = "Increase load gradually (max +10% per week)"
@@ -1452,9 +1452,9 @@ class ACWREngine:
         else:  # >1.5
             status = " HIGH INJURY RISK"
             recommendation = "REDUCE LOAD - Spike too large (2-4x injury risk)"
-        
+
         return round(acwr, 2), status, recommendation
-    
+
     @staticmethod
     def weekly_load_recommendation(current_chronic_avg, target_acwr=1.2):
         """
@@ -1483,17 +1483,17 @@ class TSBEngine:
     
     Race Day Target: TSB = +5 to +10 (fresh but fit)
     """
-    
+
     def __init__(self):
         self.ctl = 0
         self.atl = 0
         self.tsb = 0
         self.daily_loads = []
-    
+
     def add_daily_load(self, date, load):
         """Add daily training load (can be TRIMP, sRPE, or kmRPE)"""
         self.daily_loads.append((date, load))
-    
+
     def calculate_ctl(self, decay=42):
         """
         CTL = Exponentially Weighted Moving Average (42 days)
@@ -1501,45 +1501,45 @@ class TSBEngine:
         """
         if len(self.daily_loads) < 7:
             return None
-        
+
         ctl = self.daily_loads[0][1]  # Start with first day
         alpha = 2.0 / (decay + 1)
-        
+
         for _, load in self.daily_loads[1:]:
             ctl = (load * alpha) + (ctl * (1 - alpha))
-        
+
         self.ctl = ctl
         return round(ctl, 1)
-    
+
     def calculate_atl(self, decay=7):
         """
         ATL = Exponentially Weighted Moving Average (7 days)
         """
         if len(self.daily_loads) < 3:
             return None
-        
+
         atl = self.daily_loads[0][1]
         alpha = 2.0 / (decay + 1)
-        
+
         for _, load in self.daily_loads[1:]:
             atl = (load * alpha) + (atl * (1 - alpha))
-        
+
         self.atl = atl
         return round(atl, 1)
-    
+
     def calculate_tsb(self):
         """
         TSB = CTL - ATL
         """
         ctl = self.calculate_ctl()
         atl = self.calculate_atl()
-        
+
         if ctl is None or atl is None:
             return None, "INSUFFICIENT DATA"
-        
+
         tsb = ctl - atl
         self.tsb = tsb
-        
+
         # Interpret TSB value
         if tsb > 25:
             status = " SEVERE DETRAINING"
@@ -1555,9 +1555,9 @@ class TSBEngine:
             status = " FUNCTIONAL OVERREACH (plan recovery)"
         else:  # < -50
             status = " OVERREACHED/OVERTRAINED (force rest)"
-        
+
         return round(tsb, 1), status
-    
+
     def predict_race_day_tsb(self, days_until_race, planned_loads):
         """
         Predict TSB on race day given planned training loads
@@ -1566,15 +1566,15 @@ class TSBEngine:
         # This would need simulation - simplified version
         if not planned_loads or days_until_race > len(planned_loads):
             return None
-        
+
         # Simulate future CTL/ATL
         temp_ctl = self.ctl
         temp_atl = self.atl
-        
+
         for load in planned_loads[:days_until_race]:
             temp_atl = (load * (2/8)) + (temp_atl * (6/8))
             temp_ctl = (load * (2/43)) + (temp_ctl * (41/43))
-        
+
         predicted_tsb = temp_ctl - temp_atl
         return round(predicted_tsb, 1)
 
@@ -1604,11 +1604,11 @@ class HRVGuidedEngine:
     - HRV < baseline - 1 SD: Modify session
     - HRV < baseline - 2 SD: Force rest
     """
-    
+
     def __init__(self):
         self.hrv_log = []  # (date, rmssd_value)
         self.baseline_days = 7
-    
+
     def add_hrv_measurement(self, date, rmssd):
         """
         Add morning HRV measurement (rMSSD in ms)
@@ -1617,23 +1617,23 @@ class HRVGuidedEngine:
         Standard HRV metric for training readiness
         """
         self.hrv_log.append((date, rmssd))
-    
+
     def calculate_baseline(self, days=7):
         """
         Calculate rolling baseline (mean  SD)
         """
         if len(self.hrv_log) < days:
             return None, None
-        
+
         recent = [hrv for _, hrv in self.hrv_log[-days:]]
         baseline = sum(recent) / len(recent)
-        
+
         # Standard deviation
         variance = sum((x - baseline)** 2 for x in recent) / len(recent)
         std_dev = variance** 0.5
-        
+
         return baseline, std_dev
-    
+
     def get_training_recommendation(self, today_hrv, planned_session):
         """
         Apply HRV-guided decision rules
@@ -1641,36 +1641,36 @@ class HRVGuidedEngine:
         Returns: (recommended_session, explanation, confidence)
         """
         baseline_result = self.calculate_baseline(self.baseline_days)
-        
+
         if baseline_result[0] is None:
             return planned_session, "Insufficient HRV data - proceed with plan", "LOW"
-        
+
         baseline, std_dev = baseline_result
-        
+
         # Plews thresholds (elite athletes)
         threshold_critical = baseline - (2 * std_dev)
         threshold_caution = baseline - std_dev
         threshold_optimal = baseline
-        
+
         if today_hrv < threshold_critical:
             # Severely suppressed
             return "REST", f" HRV CRITICAL: {today_hrv:.1f} < {threshold_critical:.1f} (baseline - 2SD)", "HIGH"
-        
+
         elif today_hrv < threshold_caution:
             # Moderately suppressed
             if planned_session in ["INTERVALS", "TEMPO", "PROGRESSIVE", "HAMMER"]:
                 return "EASY", f" HRV LOW: {today_hrv:.1f} < {threshold_caution:.1f} (baseline - 1SD)  Downgrade", "HIGH"
             else:
                 return planned_session, f"HRV slightly low but easy session OK: {today_hrv:.1f}", "MEDIUM"
-        
+
         elif today_hrv >= threshold_optimal:
             # Normal or elevated
             return planned_session, f" HRV NORMAL: {today_hrv:.1f}  {threshold_optimal:.1f}  Proceed", "HIGH"
-        
+
         else:
             # Between caution and optimal
             return planned_session, f"HRV acceptable: {today_hrv:.1f}", "MEDIUM"
-    
+
     @staticmethod
     def calculate_rmssd_from_rr_intervals(rr_intervals_ms):
         """
@@ -1680,32 +1680,32 @@ class HRVGuidedEngine:
         """
         if len(rr_intervals_ms) < 2:
             return None
-        
+
         diffs_squared = []
         for i in range(len(rr_intervals_ms) - 1):
             diff = rr_intervals_ms[i+1] - rr_intervals_ms[i]
             diffs_squared.append(diff** 2)
-        
+
         mean_squared = sum(diffs_squared) / len(diffs_squared)
         rmssd = mean_squared** 0.5
-        
+
         return round(rmssd, 1)
-    
+
     def get_trend_analysis(self):
         """
         Analyze HRV trend over time
         """
         if len(self.hrv_log) < 14:
             return "Need 14+ days for trend analysis"
-        
+
         recent_week = [hrv for _, hrv in self.hrv_log[-7:]]
         previous_week = [hrv for _, hrv in self.hrv_log[-14:-7]]
-        
+
         recent_avg = sum(recent_week) / len(recent_week)
         previous_avg = sum(previous_week) / len(previous_week)
-        
+
         change_pct = ((recent_avg - previous_avg) / previous_avg) * 100
-        
+
         if change_pct > 5:
             return f" IMPROVING: HRV up {change_pct:.1f}% (recovery/adaptation)"
         elif change_pct < -5:
@@ -1739,7 +1739,7 @@ class DurabilityEngine:
     Athlete B: VO2max 65  drops to 62 after 2h (-5%)
      Athlete B wins the marathon despite lower "peak"
     """
-    
+
     @staticmethod
     def assess_pace_durability(km_splits, target_pace_sec):
         """
@@ -1754,17 +1754,17 @@ class DurabilityEngine:
         """
         if len(km_splits) < 10:
             return None, "Need 10+ km run for durability assessment", None
-        
+
         # Compare first third vs last third
         third = len(km_splits) // 3
         first_third = km_splits[:third]
         last_third = km_splits[-third:]
-        
+
         avg_first = sum(first_third) / len(first_third)
         avg_last = sum(last_third) / len(last_third)
-        
+
         pace_decay_pct = ((avg_last - avg_first) / avg_first) * 100
-        
+
         # Status interpretation
         if pace_decay_pct < 0:
             status = " NEGATIVE SPLIT (exceptional durability)"
@@ -1781,9 +1781,9 @@ class DurabilityEngine:
         else:
             status = " POOR durability (>8% fade)"
             recommendation = "Priority: Build aerobic base, add volume"
-        
+
         return round(pace_decay_pct, 1), status, recommendation
-    
+
     @staticmethod
     def calculate_durability_index(fresh_performance, fatigued_performance):
         """
@@ -1802,9 +1802,9 @@ class DurabilityEngine:
         """
         if fresh_performance == 0 or fatigued_performance == 0:
             return None, "Invalid performance data"
-        
+
         di = (fresh_performance / fatigued_performance) * 100
-        
+
         if di >= 98:
             status = " ELITE durability (98%+)"
             tier = "WORLD CLASS"
@@ -1820,16 +1820,16 @@ class DurabilityEngine:
         else:
             status = " NEEDS IMPROVEMENT (<85%)"
             tier = "NOVICE"
-        
+
         return round(di, 1), status, tier
-    
+
     @staticmethod
     def durability_training_protocol(current_di):
         """
         Training recommendations based on Maunder et al. (2021)
         """
         protocols = []
-        
+
         if current_di < 88:
             protocols = [
                 " PRIORITY 1: Build aerobic base (80% of runs easy)",
@@ -1858,7 +1858,7 @@ class DurabilityEngine:
                 "No specific durability work needed",
                 "Use this as competitive advantage in long races"
             ]
-        
+
         return protocols
 
 
@@ -1883,10 +1883,10 @@ class EfficiencyEngine:
     <5% = excellent aerobic fitness
     >10% = poor aerobic base or glycogen depleted
     """
-    
+
     def __init__(self):
         self.ef_history = []
-    
+
     @staticmethod
     def calculate_efficiency_factor(avg_pace_sec_per_km, avg_hr):
         """
@@ -1900,14 +1900,14 @@ class EfficiencyEngine:
         """
         if avg_hr == 0:
             return None
-        
+
         speed_m_per_s = 1000.0 / avg_pace_sec_per_km
         ef = speed_m_per_s / avg_hr
-        
+
         return round(ef, 5)
-    
+
     @staticmethod
-    def calculate_decoupling(first_half_pace, first_half_hr, 
+    def calculate_decoupling(first_half_pace, first_half_hr,
                             second_half_pace, second_half_hr):
         """
         Decoupling = (EF_second - EF_first) / EF_first  100
@@ -1921,12 +1921,12 @@ class EfficiencyEngine:
         """
         ef_first = EfficiencyEngine.calculate_efficiency_factor(first_half_pace, first_half_hr)
         ef_second = EfficiencyEngine.calculate_efficiency_factor(second_half_pace, second_half_hr)
-        
+
         if ef_first is None or ef_second is None or ef_first == 0:
             return None, "Invalid data"
-        
+
         decoupling_pct = ((ef_second - ef_first) / ef_first) * 100
-        
+
         if abs(decoupling_pct) < 3:
             status = " ELITE aerobic fitness (<3% decoupling)"
         elif abs(decoupling_pct) < 5:
@@ -1935,13 +1935,13 @@ class EfficiencyEngine:
             status = " MODERATE drift (<10% - acceptable for long runs)"
         else:
             status = " HIGH decoupling (>10% - improve base or refuel)"
-        
+
         return round(decoupling_pct, 1), status
-    
+
     def add_ef_measurement(self, date, ef_value):
         """Log EF for trend tracking"""
         self.ef_history.append((date, ef_value))
-    
+
     def analyze_ef_trend(self, weeks=3):
         """
         Track EF improvement over time
@@ -1949,21 +1949,21 @@ class EfficiencyEngine:
         """
         if len(self.ef_history) < weeks * 2:
             return "Need more data for trend analysis"
-        
+
         days_per_week = 7
         recent_period = weeks * days_per_week
-        
+
         recent = [ef for _, ef in self.ef_history[-recent_period:]]
         previous = [ef for _, ef in self.ef_history[-(recent_period*2):-recent_period]]
-        
+
         if not previous:
             return "Need historical data"
-        
+
         recent_avg = sum(recent) / len(recent)
         previous_avg = sum(previous) / len(previous)
-        
+
         improvement_pct = ((recent_avg - previous_avg) / previous_avg) * 100
-        
+
         if improvement_pct > 3:
             return f" IMPROVING: EF up {improvement_pct:.1f}% (aerobic gains)"
         elif improvement_pct < -3:
@@ -1993,7 +1993,7 @@ class TRIMPEngine:
     10km @ 140 HR  10km @ 165 HR
     TRIMP captures this difference
     """
-    
+
     @staticmethod
     def calculate_edwards_trimp(duration_min, avg_hr, max_hr):
         """
@@ -2010,9 +2010,9 @@ class TRIMPEngine:
         """
         if max_hr == 0:
             return None
-        
+
         hr_percent = (avg_hr / max_hr) * 100
-        
+
         # Determine zone multiplier
         if hr_percent < 60:
             multiplier = 1
@@ -2024,10 +2024,10 @@ class TRIMPEngine:
             multiplier = 4
         else:  # >= 90%
             multiplier = 5
-        
+
         trimp = duration_min * multiplier
         return trimp, multiplier
-    
+
     @staticmethod
     def calculate_banister_trimp(duration_min, avg_hr, resting_hr, max_hr, gender='male'):
         """
@@ -2038,19 +2038,19 @@ class TRIMPEngine:
         """
         if max_hr == resting_hr:
             return None
-        
+
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
-        
+
         # Gender-specific exponent (Banister)
         if gender.lower() == 'male':
             y = 1.92
         else:  # female
             y = 1.67
-        
+
         trimp = duration_min * hr_reserve * 0.64 * math.exp(y * hr_reserve)
-        
+
         return round(trimp, 1)
-    
+
     @staticmethod
     def weekly_trimp_analysis(weekly_trimp, baseline_trimp):
         """
@@ -2059,9 +2059,9 @@ class TRIMPEngine:
         """
         if baseline_trimp == 0:
             return "Need baseline TRIMP value"
-        
+
         percent_change = ((weekly_trimp - baseline_trimp) / baseline_trimp) * 100
-        
+
         if percent_change > 50:
             return " DANGEROUS SPIKE: Reduce >30%", "CRITICAL"
         elif percent_change > 30:
@@ -2098,7 +2098,7 @@ class SessionRPEEngine:
     
     30 min session notes taken 30 min post-session
     """
-    
+
     @staticmethod
     def calculate_srpe(duration_min, session_rpe_1_10):
         """
@@ -2109,7 +2109,7 @@ class SessionRPEEngine:
         """
         srpe = duration_min * session_rpe_1_10
         return srpe
-    
+
     @staticmethod
     def interpret_srpe(srpe_value):
         """
@@ -2123,7 +2123,7 @@ class SessionRPEEngine:
             return "HARD session"
         else:
             return "VERY HARD session"
-    
+
     @staticmethod
     def weekly_srpe_analysis(weekly_srpe, previous_week_srpe):
         """
@@ -2131,9 +2131,9 @@ class SessionRPEEngine:
         """
         if previous_week_srpe == 0:
             return "Need previous week data"
-        
+
         change_pct = ((weekly_srpe - previous_week_srpe) / previous_week_srpe) * 100
-        
+
         if change_pct > 30:
             return f" SPIKE: +{change_pct:.0f}% vs last week (reduce load)"
         elif change_pct > 15:
@@ -2159,7 +2159,7 @@ class GlycogenModel:
     Normal glycogen stores: ~400-500g (muscle + liver)
     Depletion rate depends on intensity
     """
-    
+
     @staticmethod
     def estimate_glycogen_depletion(duration_min, intensity_pct_vo2max):
         """
@@ -2186,19 +2186,19 @@ class GlycogenModel:
         else:
             rate_g_per_min = 0.8
             intensity_desc = "EASY (fat burning)"
-        
+
         total_depleted = duration_min * rate_g_per_min
-        
+
         # Refueling recommendation (Burke et al.)
         # Optimal: 1.2-1.5 g carbs/kg bodyweight within 2h post
-        
+
         return {
             "glycogen_depleted_g": round(total_depleted, 0),
             "intensity_classification": intensity_desc,
             "depletion_rate": rate_g_per_min,
             "refuel_recommendation": "1.2-1.5 g carbs/kg within 2h post-session"
         }
-    
+
     @staticmethod
     def daily_carb_recommendation(weight_kg, training_load_category):
         """
@@ -2215,12 +2215,12 @@ class GlycogenModel:
             "HIGH": (6, 10, "Normal training load"),
             "VERY_HIGH": (8, 12, "Heavy training blocks / race prep")
         }
-        
+
         if training_load_category not in recommendations:
             training_load_category = "MODERATE"
-        
+
         low, high, context = recommendations[training_load_category]
-        
+
         return {
             "carbs_g_per_kg_low": low,
             "carbs_g_per_kg_high": high,
@@ -2498,7 +2498,7 @@ class EquipmentManager:
             return False, "Unknown Shoe"
 
         risk_flags = []
-        
+
         # 1. Mileage Check
         if shoe["km"] > shoe["max_km"]:
             risk_flags.append(f"SHOE EXPIRED ({shoe['km']}km). Risk of injury.")
@@ -2506,7 +2506,7 @@ class EquipmentManager:
         # 2. Type Mismatch (Intent Awareness)
         if session_type in ["INTERVALS", "TEMPO", "HAMMER"] and shoe["type"] == "RECOVERY":
             return False, "BLOCK: Cannot run Fast in Recovery shoes."
-        
+
         if session_type == "EASY" and shoe["type"] == "RACE":
             risk_flags.append("WASTE: Using Super Shoes for easy run.")
 
@@ -2516,7 +2516,7 @@ class EquipmentManager:
 
         if risk_flags:
             return True, " | ".join(risk_flags)
-        
+
         return True, "GEAR OK"
 
 
@@ -2524,7 +2524,7 @@ class EliteCoachingStrategy:
     """
     The Brain: Risk Score, Confidence & Block States
     """
-    
+
     @staticmethod
     def calculate_risk_profile(acwr, tsb, hrv_status, sleep_score, soreness, shoe_risk_msg):
         """
@@ -2534,7 +2534,7 @@ class EliteCoachingStrategy:
         factors = []
 
         # 1. Load Risk (ACWR)
-        if acwr > 1.5: 
+        if acwr > 1.5:
             risk_score += 40
             factors.append("ACWR Spike (>1.5)")
         elif acwr > 1.3:
@@ -2587,7 +2587,7 @@ class EliteCoachingStrategy:
                     "reason": f"HIGH RISK ({risk_score}%). Factors: {', '.join(factors)}",
                     "override_session": "RECOVERY_EASY" # Forced downgrade
                 }
-        
+
         if traffic_light == "ORANGE":
             if session_type in ["INTERVALS", "HAMMER"]:
                 return {
@@ -2610,11 +2610,11 @@ class EliteCoachingStrategy:
 
 class RacePacingStrategy:
     '''Race pacing strategy calculator'''
-    
+
     @staticmethod
     def calculate_optimal_splits(goal_time_sec, distance_km, elevation_profile, durability_index):
         base_pace = goal_time_sec / distance_km
-        
+
         if durability_index < 90:
             early_adj = 0.95
             late_adj = 1.05
@@ -2627,10 +2627,10 @@ class RacePacingStrategy:
             early_adj = 1.0
             late_adj = 1.0
             strategy = "EVEN_PACE"
-        
+
         splits = []
         cumulative = 0
-        
+
         for km in range(int(distance_km)):
             if km < len(elevation_profile):
                 elev = elevation_profile[km]
@@ -2642,30 +2642,30 @@ class RacePacingStrategy:
                     pace_adj = 1.0
             else:
                 pace_adj = 1.0
-            
+
             if km < distance_km / 3:
                 timing_adj = early_adj
             elif km > 2 * distance_km / 3:
                 timing_adj = late_adj
             else:
                 timing_adj = 1.0
-            
+
             split_pace = base_pace * pace_adj * timing_adj
             cumulative += split_pace
-            
+
             splits.append({
                 "km": km + 1,
                 "pace_sec": round(split_pace, 1),
                 "cumulative_sec": round(cumulative, 1),
                 "elevation": elevation_profile[km] if km < len(elevation_profile) else 0
             })
-        
+
         return {
             "splits": splits,
             "strategy": strategy,
             "confidence": "HIGH" if durability_index >= 90 else "MODERATE"
         }
-    
+
     @staticmethod
     def weather_adjustment(base_pace_sec, temp_c, humidity_pct):
         if temp_c <= 15:
@@ -2676,19 +2676,19 @@ class RacePacingStrategy:
             temp_factor = 1.03
         else:
             temp_factor = 1.05 + ((temp_c - 25) / 5) * 0.02
-        
+
         humidity_factor = 1.02 if humidity_pct > 70 else 1.0
-        
+
         return round(base_pace_sec * temp_factor * humidity_factor, 1)
-    
+
     @staticmethod
     def course_difficulty_score(elevation_profile):
         total_gain = sum(max(0, e) for e in elevation_profile)
         total_loss = sum(abs(min(0, e)) for e in elevation_profile)
-        
+
         distance_km = len(elevation_profile)
         avg_gain_per_km = total_gain / distance_km if distance_km > 0 else 0
-        
+
         if avg_gain_per_km < 5:
             difficulty = 10
             category = "FLAT"
@@ -2701,7 +2701,7 @@ class RacePacingStrategy:
         else:
             difficulty = 85
             category = "MOUNTAINOUS"
-        
+
         return {
             "difficulty": difficulty,
             "category": category,
@@ -2713,22 +2713,22 @@ class RacePacingStrategy:
 
 class RecoveryScoreEngine:
     '''Multi-factor recovery assessment'''
-    
+
     def __init__(self):
         self.recovery_log = []
         self.baseline_hrv = None
-    
+
     def set_baseline_hrv(self, hrv_value):
         self.baseline_hrv = hrv_value
-    
-    def calculate_recovery_score(self, hrv_value, sleep_hours, sleep_quality_1_10, 
+
+    def calculate_recovery_score(self, hrv_value, sleep_hours, sleep_quality_1_10,
                                  soreness_1_10, mood_1_10):
-        
+
         if self.baseline_hrv:
             hrv_percent = (hrv_value / self.baseline_hrv) * 100
         else:
             hrv_percent = min(100, (hrv_value / 50) * 100)
-        
+
         if hrv_percent >= 100:
             hrv_score = 100
         elif hrv_percent >= 95:
@@ -2739,21 +2739,21 @@ class RecoveryScoreEngine:
             hrv_score = 60
         else:
             hrv_score = max(20, hrv_percent - 25)
-        
+
         sleep_duration_score = min(100, (sleep_hours / 8) * 100)
         sleep_quality_score = sleep_quality_1_10 * 10
         sleep_score = (sleep_duration_score + sleep_quality_score) / 2
-        
+
         soreness_score = (10 - soreness_1_10) * 10
         mood_score = mood_1_10 * 10
-        
+
         total_score = (
             hrv_score * 0.40 +
             sleep_score * 0.30 +
             soreness_score * 0.20 +
             mood_score * 0.10
         )
-        
+
         entry = {
             "date": datetime.now(),
             "score": round(total_score, 1),
@@ -2761,7 +2761,7 @@ class RecoveryScoreEngine:
             "sleep_hours": sleep_hours
         }
         self.recovery_log.append(entry)
-        
+
         if total_score >= 85:
             status = "[OK] FULLY RECOVERED"
             rec = "Ready for hard training"
@@ -2777,34 +2777,34 @@ class RecoveryScoreEngine:
         else:
             status = "[!!] SEVERELY FATIGUED"
             rec = "MANDATORY REST"
-        
+
         return round(total_score, 1), status, rec
-    
+
     def predict_recovery_timeline(self, current_score):
         if current_score >= 85:
             return "Already fully recovered"
-        
+
         points_needed = 85 - current_score
         days_needed = points_needed / 10
-        
+
         if days_needed < 1:
             return f"{int(days_needed * 24)} hours with rest"
         else:
             return f"{days_needed:.1f} days with rest"
-    
+
     def weekly_recovery_trend(self, days=7):
         if len(self.recovery_log) < days:
             return None
-        
+
         recent = self.recovery_log[-days:]
         scores = [e["score"] for e in recent]
-        
+
         avg_score = sum(scores) / len(scores)
-        
+
         if len(scores) >= 3:
             early_avg = sum(scores[:3]) / 3
             late_avg = sum(scores[-3:]) / 3
-            
+
             if late_avg > early_avg + 5:
                 trend = "IMPROVING"
             elif late_avg < early_avg - 5:
@@ -2813,7 +2813,7 @@ class RecoveryScoreEngine:
                 trend = "STABLE"
         else:
             trend = "INSUFFICIENT_DATA"
-        
+
         return {
             "avg_score": round(avg_score, 1),
             "trend": trend,
@@ -2824,27 +2824,27 @@ class RecoveryScoreEngine:
 
 class WearableSync:
     '''Wearable data sync'''
-    
+
     def __init__(self):
         self.last_sync = None
         self.sync_history = []
-    
+
     def import_garmin_csv(self, filepath):
         if not PANDAS_AVAILABLE:
             return None, "pandas required"
-        
+
         try:
             import pandas as pd
             df = pd.read_csv(filepath)
-            
+
             sessions = []
-            
+
             for _, row in df.iterrows():
                 try:
                     date = pd.to_datetime(row.get("Date"))
                 except Exception:
                     date = datetime.now()
-                
+
                 session = {
                     "date": date,
                     "type": row.get("Activity Type", "Run"),
@@ -2853,36 +2853,36 @@ class WearableSync:
                     "avg_hr": float(row.get("Avg HR", 0)) if pd.notna(row.get("Avg HR")) else None,
                     "max_hr": float(row.get("Max HR", 0)) if pd.notna(row.get("Max HR")) else None
                 }
-                
+
                 if session["distance_km"] > 0 and session["duration_sec"] > 0:
                     session["pace_sec_per_km"] = session["duration_sec"] / session["distance_km"]
                 else:
                     session["pace_sec_per_km"] = 0
-                
+
                 sessions.append(session)
-            
+
             self.last_sync = datetime.now()
             self.sync_history.append({
                 "date": self.last_sync,
                 "source": "Garmin CSV",
                 "sessions_imported": len(sessions)
             })
-            
+
             return sessions, f"[OK] Imported {len(sessions)} sessions"
-        
+
         except Exception as e:
             return None, f"[ERROR] {str(e)}"
-    
+
     def import_stryd_csv(self, filepath):
         if not PANDAS_AVAILABLE:
             return None, "pandas required"
-        
+
         try:
             import pandas as pd
             df = pd.read_csv(filepath)
-            
+
             sessions = []
-            
+
             for _, row in df.iterrows():
                 session = {
                     "date": pd.to_datetime(row.get("Date")),
@@ -2893,26 +2893,26 @@ class WearableSync:
                     "gct_ms": float(row.get("Ground Contact Time", 0)) if pd.notna(row.get("Ground Contact Time")) else None,
                     "vert_osc_cm": float(row.get("Vertical Oscillation", 0)) if pd.notna(row.get("Vertical Oscillation")) else None
                 }
-                
+
                 sessions.append(session)
-            
+
             self.last_sync = datetime.now()
             self.sync_history.append({
                 "date": self.last_sync,
                 "source": "Stryd CSV",
                 "sessions_imported": len(sessions)
             })
-            
+
             return sessions, f"[OK] Imported {len(sessions)} Stryd sessions"
-        
+
         except Exception as e:
             return None, f"[ERROR] {str(e)}"
-    
+
     @staticmethod
     def _parse_time_str(time_str):
         try:
             parts = time_str.strip().split(':')
-            
+
             if len(parts) == 3:
                 return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
             elif len(parts) == 2:
@@ -2925,14 +2925,14 @@ class WearableSync:
     def get_sync_summary(self):
         if not self.sync_history:
             return "No syncs performed"
-        
+
         total_sessions = sum(s["sessions_imported"] for s in self.sync_history)
-        
+
         return {
             "total_syncs": len(self.sync_history),
             "total_sessions_imported": total_sessions,
             "last_sync": self.last_sync,
-            "sources_used": list(set(s["source"] for s in self.sync_history))
+            "sources_used": list({s["source"] for s in self.sync_history})
         }
 
 # ==============================================================================
@@ -2941,7 +2941,7 @@ class WearableSync:
 
 class GradeAdjustedPace:
     """Grade Adjusted Pace"""
-    
+
     @staticmethod
     def calculate_gap(pace_sec_per_km, elevation_gain_m, distance_km):
         if distance_km == 0:
@@ -2952,7 +2952,7 @@ class GradeAdjustedPace:
         else:
             adjustment = 1 + (avg_gradient * 0.05)
         return round(pace_sec_per_km / adjustment, 1)
-    
+
     @staticmethod
     def calculate_elevation_cost(elevation_gain_m, weight_kg):
         return round(elevation_gain_m * weight_kg * 0.5, 0)
@@ -2960,7 +2960,7 @@ class GradeAdjustedPace:
 
 class RunningPower:
     """Running Power"""
-    
+
     @staticmethod
     def estimate_power(speed_m_per_s, weight_kg, gradient=0):
         import math
@@ -2971,7 +2971,7 @@ class RunningPower:
         p_air = k * (speed_m_per_s** 3)
         p_base = weight_kg * 1.0
         return round(p_gravity + p_air + p_base, 0)
-    
+
     @staticmethod
     def power_zones(ftp):
         return {
@@ -2985,7 +2985,7 @@ class RunningPower:
 
 class BiomechanicsAnalysis:
     """Biomechanics"""
-    
+
     @staticmethod
     def optimal_cadence(height_cm):
         if height_cm >= 185:
@@ -2994,13 +2994,13 @@ class BiomechanicsAnalysis:
             return (170, 180)
         else:
             return (175, 185)
-    
+
     @staticmethod
     def stride_length(speed_m_s, cadence_spm):
         if cadence_spm == 0:
             return 0
         return round((speed_m_s * 60) / cadence_spm, 2)
-    
+
     @staticmethod
     def analyze_form(cadence, vert_osc, gct):
         score = 100
@@ -3020,10 +3020,10 @@ class BiomechanicsAnalysis:
 
 class MenstrualCycleTracking:
     """Cycle tracking"""
-    
+
     def __init__(self):
         self.cycle_length = 28
-    
+
     def get_phase(self, day):
         if day <= 5:
             return "MENSTRUATION"
@@ -3035,7 +3035,7 @@ class MenstrualCycleTracking:
             return "EARLY_LUTEAL"
         else:
             return "LATE_LUTEAL"
-    
+
     def get_rec(self, day):
         phase = self.get_phase(day)
         recs = {
@@ -3050,21 +3050,21 @@ class MenstrualCycleTracking:
 
 class AltitudeTracker:
     """Altitude"""
-    
+
     def __init__(self):
         self.home_alt = 0
         self.accl_days = 0
-    
+
     def set_home(self, alt):
         self.home_alt = alt
-    
+
     @staticmethod
     def pace_adj(home, training):
         if training <= 1500:
             return 1.0
         diff = training - max(home, 1500)
         return round(1 + (diff / 300) * 0.015, 3)
-    
+
     def status(self):
         if self.accl_days <= 3:
             return "ACUTE", "Easy only"
@@ -3076,13 +3076,13 @@ class AltitudeTracker:
 
 class ScheduleManager:
     """Schedule"""
-    
+
     def __init__(self):
         self.avail_days = []
-    
+
     def set_days(self, days):
         self.avail_days = sorted(days)
-    
+
     def generate(self, priorities):
         day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         sched = {}
@@ -3099,17 +3099,17 @@ class ScheduleManager:
 
 class ProgressAnalyzer:
     """Progress"""
-    
+
     def __init__(self, goal_sec, dist_km, race_date):
         self.goal_sec = goal_sec
         self.dist_km = dist_km
         self.race_date = race_date
         self.sessions = []
-    
+
     def add(self, date, distance, time_sec):
         pace = time_sec / distance if distance > 0 else 0
         self.sessions.append({"date": date, "pace": pace})
-    
+
     def probability(self):
         if not self.sessions:
             return 0, "No data"
@@ -3125,7 +3125,7 @@ class ProgressAnalyzer:
             return 50, "POSSIBLE"
         else:
             return 30, "UNLIKELY"
-    
+
     def interventions(self):
         prob, _ = self.probability()
         if prob < 50:
@@ -3157,7 +3157,7 @@ class RCPEngine:
     - 5 min @ threshold
     - Look for HR:Pace ratio inflection
     """
-    
+
     @staticmethod
     def estimate_rcp_from_progressive_test(pace_segments_sec, hr_segments, rpe_segments):
         """
@@ -3173,35 +3173,35 @@ class RCPEngine:
         """
         if len(pace_segments_sec) < 4 or len(hr_segments) < 4:
             return None, None, None, "Need 4+ segments for RCP detection"
-        
+
         # Calculate HR:Pace efficiency for each segment
         hr_pace_ratios = []
         for hr, pace in zip(hr_segments, pace_segments_sec):
             speed = 1000.0 / pace  # m/s
             ratio = hr / speed  # HR per m/s (higher = less efficient)
             hr_pace_ratios.append(ratio)
-        
+
         # Find sharp inflection point (2nd derivative)
         for i in range(1, len(hr_pace_ratios) - 1):
             delta_before = hr_pace_ratios[i] - hr_pace_ratios[i-1]
             delta_after = hr_pace_ratios[i+1] - hr_pace_ratios[i]
-            
+
             # RCP = where increase accelerates sharply
             if delta_after > delta_before * 1.5:
                 rcp_hr = hr_segments[i]
                 rcp_pace = pace_segments_sec[i]
                 rcp_rpe = rpe_segments[i] if i < len(rpe_segments) else None
-                
+
                 explanation = f"RCP detected at segment {i+1}: Sharp efficiency drop"
                 return rcp_hr, rcp_pace, rcp_rpe, explanation
-        
+
         # If no clear inflection, estimate from highest sustainable
         rcp_hr = hr_segments[-2]  # Second-to-last segment
         rcp_pace = pace_segments_sec[-2]
         rcp_rpe = rpe_segments[-2] if len(rpe_segments) >= 2 else None
-        
+
         return rcp_hr, rcp_pace, rcp_rpe, "RCP estimated (no clear inflection)"
-    
+
     @staticmethod
     def rcp_training_zones(rcp_hr, max_hr):
         """
@@ -3212,7 +3212,7 @@ class RCPEngine:
         Zone 3: Above RCP (VO2max/anaerobic)
         """
         vt1_hr = rcp_hr * 0.85  # Approximate VT1
-        
+
         zones = {
             "Zone 1 (Easy)": f"< {int(vt1_hr)} HR (< 85% RCP)",
             "Zone 2 (Threshold)": f"{int(vt1_hr)}-{int(rcp_hr)} HR (85-100% RCP)",
@@ -3220,7 +3220,7 @@ class RCPEngine:
             "RCP_HR": rcp_hr,
             "VT1_HR": int(vt1_hr)
         }
-        
+
         return zones
 
 
@@ -3243,43 +3243,43 @@ class MLPerformancePredictor:
     - Mujika et al. (2014). ML in endurance prediction
     - Borresen & Lambert (2008). Training load models
     """
-    
+
     def __init__(self):
         # ML Enhancements: Scaling and validation
         self.scaler = StandardScaler()
         self.is_trained = False
         logger.info("ML Predictor initialized with StandardScaler")
-        
+
         self.model = None
         self.training_data = []
         self.feature_names = ['ctl', 'atl', 'hrv_avg', 'sleep_avg', 'recent_pace']
-    
+
     def add_training_sample(self, ctl, atl, hrv_avg, sleep_avg, recent_pace, actual_time):
         """Add historical race data for model training"""
         self.training_data.append({
             'features': [ctl, atl, hrv_avg, sleep_avg, recent_pace],
             'result': actual_time
         })
-    
+
     def train_model(self):
         """Train prediction model on historical data"""
         if not SKLEARN_AVAILABLE:
             return False, "scikit-learn not installed"
-        
+
         if len(self.training_data) < 5:
             return False, "Need at least 5 race results for training"
-        
+
         import numpy as np
         from sklearn.ensemble import RandomForestRegressor
-        
+
         X = np.array([d['features'] for d in self.training_data])
         y = np.array([d['result'] for d in self.training_data])
-        
+
         self.model = RandomForestRegressor(n_estimators=100, random_state=42)
         self.model.fit(X, y)
-        
+
         return True, "Model trained successfully"
-    
+
     def predict_performance(self, ctl, atl, hrv_avg, sleep_avg, recent_pace):
         """
         Predict race performance
@@ -3289,19 +3289,19 @@ class MLPerformancePredictor:
         """
         if not self.model:
             return None, None, None, "Model not trained"
-        
+
         import numpy as np
         features = np.array([[ctl, atl, hrv_avg, sleep_avg, recent_pace]])
-        
+
         # Get prediction
         predicted_time = self.model.predict(features)[0]
-        
+
         # Calculate confidence interval (±3% for moderate confidence)
         uncertainty = predicted_time * 0.03  # 3% margin
-        
+
         lower_bound = predicted_time - uncertainty
         upper_bound = predicted_time + uncertainty
-        
+
         # Determine confidence
         if len(self.training_data) >= 10:
             confidence = "HIGH"
@@ -3309,7 +3309,7 @@ class MLPerformancePredictor:
             confidence = "MEDIUM"
         else:
             confidence = "LOW"
-        
+
         return int(predicted_time), int(lower_bound), int(upper_bound), confidence
 
 # Usage example:
@@ -3355,20 +3355,20 @@ class GeneticOptimization:
         Στόχος: Ελαχιστοποίηση χρόνου αγώνα (Predicted Time).
         """
         ctl, atl, hrv, sleep, pace = individual
-        
+
         # Περιορισμοί ασφαλείας (Soft Constraints)
         # Αν το ATL είναι πολύ ψηλότερο από το CTL (Risk Injury), ποινή στο fitness
         penalty = 0
         if atl > ctl * 1.3:
             penalty += 1000 # Μεγάλη ποινή σε χρόνο
-        
+
         try:
             # Καλούμε το μοντέλο ML για πρόβλεψη
             pred, _, _, _ = predictor_model.predict_performance(ctl, atl, hrv, sleep, pace)
-            
+
             if pred is None:
                 return float('inf')
-            
+
             return pred + penalty
         except Exception:
             return float('inf')
@@ -3405,29 +3405,29 @@ class GeneticOptimization:
 
         print(f"--- Genetic Optimization ({self.profile_type}) ---")
         population = [self.create_individual() for _ in range(self.pop_size)]
-        
+
         best_sol = None
         best_fit = float('inf')
 
-        for gen in range(self.generations):
+        for _gen in range(self.generations):
             fitnesses = [self.fitness(ind, predictor_model) for ind in population]
-            
+
             # Εύρεση καλύτερου γενιάς
             min_f = min(fitnesses)
             if min_f < best_fit:
                 best_fit = min_f
                 best_sol = population[fitnesses.index(min_f)]
-            
+
             # Επιλογή - Διασταύρωση - Μετάλλαξη
             parents = self.select(population, fitnesses)
             next_pop = []
-            
+
             for i in range(0, self.pop_size, 2):
                 p1, p2 = parents[i], parents[i+1]
                 c1, c2 = self.crossover(p1, p2)
                 next_pop.append(self.mutate(c1))
                 next_pop.append(self.mutate(c2))
-            
+
             population = next_pop
 
         # Μορφοποίηση αποτελέσματος
@@ -3455,12 +3455,12 @@ class TaperOptimizer:
             "AGGRESSIVE": {"days": 21, "volume_reduction": 0.50},
             "CONSERVATIVE": {"days": 10, "volume_reduction": 0.30}
         }
-    
+
     def generate_taper_plan(self, race_date, current_volume, race_importance="MODERATE"):
         model = self.taper_models.get(race_importance, self.taper_models["MODERATE"])
         days = model["days"]
         reduction = model["volume_reduction"]
-        
+
         plan = []
         for day in range(days):
             factor = 1.0 - (reduction * (day / days))
@@ -3470,7 +3470,7 @@ class TaperOptimizer:
                 "volume": round(volume, 1),
                 "intensity": "MAINTAIN" if day < days * 0.7 else "REDUCE"
             })
-        
+
         return plan
 
 
@@ -3478,31 +3478,31 @@ class ASCIIDataVisualization:
     def __init__(self):
         self.width = 60
         self.height = 15
-    
+
     def plot_tsb_chart(self, tsb_history):
         if not tsb_history:
             return "No data to plot"
-        
+
         max_val = max(tsb_history)
         min_val = min(tsb_history)
         range_val = max_val - min_val if max_val != min_val else 1
-        
+
         chart = []
         chart.append("TSB Chart (Last 30 days)")
         chart.append("=" * self.width)
-        
+
         for i in range(self.height):
             threshold = max_val - (i * range_val / self.height)
             line = f"{threshold:+5.0f} |"
-            
+
             for val in tsb_history[-30:]:
                 if abs(val - threshold) < (range_val / self.height):
                     line += "*"
                 else:
                     line += " "
-            
+
             chart.append(line)
-        
+
         chart.append("      +" + "-" * min(len(tsb_history), 30))
         return "\n".join(chart)
 
@@ -3510,20 +3510,20 @@ class ASCIIDataVisualization:
 class SimulationMode:
     def __init__(self):
         self.scenarios = []
-    
+
     def simulate_training_block(self, weeks, weekly_volume, intensity_distribution):
         # SAFETY: Use deepcopy for real data
         results = []
         cumulative_load = 0
-        
+
         for week in range(weeks):
             week_load = weekly_volume * (1 + intensity_distribution.get("hard", 0.2))
             cumulative_load += week_load
-            
+
             fatigue = cumulative_load * 0.05
             fitness = cumulative_load * 0.03
             form = fitness - fatigue
-            
+
             results.append({
                 "week": week + 1,
                 "load": week_load,
@@ -3531,14 +3531,14 @@ class SimulationMode:
                 "fatigue": round(fatigue, 1),
                 "form": round(form, 1)
             })
-        
+
         return results
 
 
 class WeeklyCommanderReport:
     def __init__(self):
         self.report_template = "WEEKLY COMMANDER REPORT"
-    
+
     def generate_report(self, athlete_name, week_data):
         report = []
         report.append(f"=== {self.report_template} ===")
@@ -3550,7 +3550,7 @@ class WeeklyCommanderReport:
         report.append(f"Avg HR: {week_data.get('avg_hr', 0)} bpm")
         report.append("")
         report.append("Status: " + week_data.get('status', 'NORMAL'))
-        
+
         return "\n".join(report)
 
 
@@ -3559,7 +3559,7 @@ class WeatherAPI:
         self.api_key = api_key
         self.city = city
         self.cache = {}
-    
+
     def get_current_weather(self):
         # Simulated weather data
         return {
@@ -3568,10 +3568,10 @@ class WeatherAPI:
             "wind": 5,
             "conditions": "Clear"
         }
-    
+
     def get_training_conditions(self):
         weather = self.get_current_weather()
-        
+
         if weather["temp"] > 25:
             return "HOT - Reduce intensity, hydrate more"
         elif weather["temp"] < 10:
@@ -3589,39 +3589,39 @@ class InjuryEarlyWarningEngine:
             "low_hrv": 0.15,
             "poor_sleep": 0.1
         }
-    
+
     def assess_injury_risk(self, athlete_data):
         risk_score = 0
         factors_triggered = []
-        
+
         # Check load increase
         if athlete_data.get("load_increase", 0) > 0.15:
             risk_score += self.risk_factors["sudden_load_increase"]
             factors_triggered.append("Sudden load increase")
-        
+
         # Check recovery
         if athlete_data.get("recovery_score", 100) < 60:
             risk_score += self.risk_factors["insufficient_recovery"]
             factors_triggered.append("Poor recovery")
-        
+
         # Check soreness
         if athlete_data.get("soreness", 0) >= 7:
             risk_score += self.risk_factors["high_soreness"]
             factors_triggered.append("High soreness")
-        
+
         risk_level = "LOW"
         if risk_score > 0.5:
             risk_level = "HIGH"
         elif risk_score > 0.3:
             risk_level = "MODERATE"
-        
+
         return {
             "risk_level": risk_level,
             "risk_score": round(risk_score, 2),
             "factors": factors_triggered,
             "recommendation": self._get_recommendation(risk_level)
         }
-    
+
     def _get_recommendation(self, risk_level):
         if risk_level == "HIGH":
             return "TAKE REST DAY. High injury risk detected."
@@ -3634,7 +3634,7 @@ class InjuryEarlyWarningEngine:
 class CognitiveLoadMonitor:
     def __init__(self):
         self.history = []
-    
+
     def log_cognitive_state(self, date, mental_fatigue, work_stress, life_stress):
         total = (mental_fatigue + work_stress + life_stress) / 3
         entry = {
@@ -3646,7 +3646,7 @@ class CognitiveLoadMonitor:
         }
         self.history.append(entry)
         return entry
-    
+
     def recovery_recommendations(self, cognitive_load):
         if cognitive_load >= 8:
             return ["Full rest day", "Meditation", "Early sleep"]
@@ -3654,7 +3654,7 @@ class CognitiveLoadMonitor:
             return ["Light activity only", "Reduce intensity"]
         else:
             return ["Normal training OK"]
-    
+
     def assess_cognitive_impact(self, cognitive_load, planned_rpe):
         if cognitive_load >= 8:
             adjustment = +2
@@ -3677,10 +3677,10 @@ class PhaseAwareLogic:
             "TAPER": {"intensity": "medium", "volume": "very_low"},
             "RACE": {"intensity": "max", "volume": "minimal"}
         }
-    
+
     def get_phase_guidelines(self, current_phase):
         return self.phases.get(current_phase, self.phases["BASE"])
-    
+
     def adjust_session_for_phase(self, session, phase):
         # Adjust session based on phase
         if phase == "TAPER":
@@ -3689,14 +3689,14 @@ class PhaseAwareLogic:
         elif phase == "PEAK":
             session["intensity"] = "HIGH"
             session["volume"] *= 0.8
-        
+
         return session
 
 
 class KnowledgeTraceability:
     def __init__(self):
         self.decisions = []
-    
+
     def log_decision(self, decision_type, reasoning, outcome=None):
         entry = {
             "type": decision_type,
@@ -3706,14 +3706,14 @@ class KnowledgeTraceability:
         }
         self.decisions.append(entry)
         return entry
-    
+
     def explain_taper_plan(self, plan, race_importance):
         explanation = "TAPER PLAN REASONING:\n"
         explanation += f"Race Importance: {race_importance}\n"
         explanation += f"Days in taper: {len(plan)}\n"
         explanation += "Strategy: Progressive volume reduction with intensity maintenance\n"
         return explanation
-    
+
     def get_decision_history(self):
         return self.decisions
 
@@ -3721,20 +3721,20 @@ class KnowledgeTraceability:
 class TeamDashboard:
     def __init__(self):
         self.athletes = {}
-    
+
     def add_athlete(self, athlete_id, athlete_data):
         self.athletes[athlete_id] = athlete_data
-    
+
     def get_team_summary(self):
         if not self.athletes:
             return "No athletes in team"
-        
+
         total = len(self.athletes)
         avg_load = sum(a.get("weekly_load", 0) for a in self.athletes.values()) / total
-        
+
         summary = f"TEAM SUMMARY ({total} athletes)\n"
         summary += f"Average weekly load: {avg_load:.1f}\n"
-        
+
         return summary
 
 
@@ -3742,10 +3742,10 @@ class TitanSystem:
     def __init__(self):
         # v48: Multi-athlete support
         self.athlete_db = AthleteDatabase()
-        
+
         # Load existing athlete or create default
         self.profile = self.athlete_db.get_current()
-        
+
         if not self.profile:
             # Create default athlete on first run
             self.profile = self.athlete_db.create_athlete(
@@ -3758,21 +3758,21 @@ class TitanSystem:
             self.profile.set_hr_data(resting_hr=44, max_hr=191)
             self.profile.race_day = datetime(2026, 4, 26)
             self.athlete_db.save_athlete(self.profile)
-        
+
         self.memory = AdaptiveMemory()
         self.today = datetime.now().strftime("%Y-%m-%d")
         self.phase = PhaseEngine.get_phase(datetime.now(), self.profile.race_day)
         self.current_dew = 12.0
         self.current_is_hot = False
-        
+
         # v46 Engines
         self.nm_load = NeuromuscularLoadEngine()
         self.daily_monitor = DailyMonitoring()
-        
+
         # v47 TIER 1: Injury Prevention & Load Management
         self.tsb_engine = TSBEngine()
         self.hrv_guided = HRVGuidedEngine()
-        
+
         # v47 TIER 2: Performance Tracking
         self.efficiency_tracker = EfficiencyEngine()
 
@@ -3808,7 +3808,7 @@ class TitanSystem:
         self.sim_engine = SimulationMode()
         self.weekly_report = WeeklyCommanderReport()
         # Βάλε το API Key σου εδώ ή άστο κενό για DEMO mode
-        self.weather_api = WeatherAPI(api_key=None, city="Thessaloniki") 
+        self.weather_api = WeatherAPI(api_key=None, city="Thessaloniki")
         self.injury_warning = InjuryEarlyWarningEngine()
         self.cognitive_monitor = CognitiveLoadMonitor()
         self.phase_logic = PhaseAwareLogic()
@@ -3935,23 +3935,23 @@ class TitanSystem:
                 self.menu_cns_readiness()
             elif cmd == "21":
                 self.menu_data_import()
-            elif cmd == "22": 
+            elif cmd == "22":
                 print("Old Exit removed. Use 30.")
-            elif cmd == "23": 
+            elif cmd == "23":
                 self.menu_gap()
-            elif cmd == "24": 
+            elif cmd == "24":
                 self.menu_power()
-            elif cmd == "25": 
+            elif cmd == "25":
                 self.menu_biomech()
-            elif cmd == "26": 
+            elif cmd == "26":
                 self.menu_cycle()
-            elif cmd == "27": 
+            elif cmd == "27":
                 self.menu_altitude()
-            elif cmd == "28": 
+            elif cmd == "28":
                 self.menu_schedule()
-            elif cmd == "29": 
+            elif cmd == "29":
                 self.menu_progress()
-            elif cmd == "30": 
+            elif cmd == "30":
                 print("Stay Hard.")
                 break
             elif cmd == "31":
@@ -4020,29 +4020,29 @@ class TitanSystem:
     # ---------------- SESSION ----------------
     def menu_session(self):
         print("\n>>> TODAY'S MISSION (ELITE COACHING MODE)")
-        
+
         # 1. Βασικά Δεδομένα
         try:
             planned = Scheduler.get_planned_session(datetime.now(), self.profile.race_day)
             print(f"📅 SCHEDULED: {planned}")
-            
+
             # Ερώτηση για override
             user_ov = input("Manual override? (Enter for Auto): ").upper()
             target_session = user_ov if user_ov else planned
-            
+
             # 2. Context Awareness (Shoes & Surface)
             print("\n👟 EQUIPMENT CHECK:")
             for k, v in self.gear_mgr.shoes.items():
                 print(f"  {k}. {v['name']} ({v['type']} - {v['km']}km)")
             shoe_choice = input("Select Shoe (1-3): ")
             surface = input("Surface (ROAD/TRACK/TRAIL/CONCRETE): ").upper()
-            
+
             # Έλεγχος Εξοπλισμού
             gear_ok, gear_msg = self.gear_mgr.check_gear(target_session, shoe_choice, surface)
             if not gear_ok:
                 print(f"\n🚫 GEAR BLOCK: {gear_msg}")
                 print("SESSION ABORTED. Change shoes or session.")
-                return 
+                return
 
             # 3. Risk Calculation (Simulated inputs for now - normally from logs)
             # Εδώ κανονικά θα τραβούσε από self.daily_monitor κλπ.
@@ -4057,7 +4057,7 @@ class TitanSystem:
                 acwr_in, hrv_stat = 1.1, "NORMAL"
 
             risk_score, risk_factors = self.coach_brain.calculate_risk_profile(
-                acwr=acwr_in, tsb=-10, hrv_status=hrv_stat, 
+                acwr=acwr_in, tsb=-10, hrv_status=hrv_stat,
                 sleep_score=sleep, soreness=soreness, shoe_risk_msg=gear_msg
             )
 
@@ -4067,28 +4067,28 @@ class TitanSystem:
             print("\n" + "="*50)
             print(f"🛡️  TITAN RISK ANALYSIS: {risk_score}%")
             print("="*50)
-            
+
             if decision['action'] == "BLOCKED":
                 print(f"❌ STATUS: {decision['action']}")
                 print(f"🛑 REASON: {decision['reason']}")
                 print(f"🔄 FORCED SWITCH TO: {decision['override_session']}")
                 final_session = decision['override_session']
-            
+
             elif decision['action'] == "CAUTION":
                 print(f"⚠️ STATUS: {decision['action']}")
                 print(f"ℹ️ NOTE: {decision['reason']}")
                 confirm = input("Proceed anyway? (y/n): ").lower()
                 final_session = target_session if confirm == 'y' else "EASY"
-            
+
             else:
                 print(f" STATUS: {decision['action']}")
                 final_session = target_session
 
             # 5. Build Final Session
             print(f"\n🚀 GENERATING: {final_session}")
-            if "RISK" in gear_msg: 
+            if "RISK" in gear_msg:
                 print(f"⚠️ GEAR WARNING: {gear_msg}")
-            
+
             is_hot = self.current_is_hot
             builder = SessionBuilder(self.profile, self.memory)
             breakdown = builder.build(final_session, is_high_heat=is_hot)
@@ -4173,12 +4173,12 @@ class TitanSystem:
         easy_today_sec = pace_sec
         easy_baseline_sec = self.profile.str_to_sec(easy_baseline_str)
         mech_msg = self.memory.mechanical_load_risk(easy_today_sec, easy_baseline_sec)
-        
+
         # === DECISION RULES APPLICATION ===
         print("\n" + "="*60)
         print("DECISION RULES ANALYSIS (Seiler / Mujika)")
         print("="*60)
-        
+
         # 1. HR Drift  Pace Adjustment
         should_adjust, new_pace, pace_msg = DecisionRulesEngine.check_hr_drift_pace_adjustment(
             drift, session_type, pace_sec
@@ -4186,7 +4186,7 @@ class TitanSystem:
         print(f"\n1  {pace_msg}")
         if should_adjust:
             print(f"   Suggested new pace: {self.profile.sec_to_str(new_pace)}/km")
-        
+
         # 2. Neuromuscular Fatigue Detection
         is_nm_fatigued, nm_msg = DecisionRulesEngine.check_neuromuscular_fatigue(
             rpe, avg_hr, self.profile.threshold_hr
@@ -4229,12 +4229,12 @@ class TitanSystem:
                 self.profile.weight_floor = w - 0.5
                 self.profile.weight_ceiling = w + 1.2
                 self.athlete_db.save_athlete(self.profile) # Σώσιμο αλλαγών
-                
+
             nt = input(f"New 5K Time (MM:SS) [Current {self.profile.base_5k_time_str}]: ").strip()
             if nt:
                 self.profile.base_5k_time_str = nt
                 self.profile.base_5k_sec = self.profile.str_to_sec(nt) / 5.0
-                
+
             print("You can also update CS/D from recent performances.")
             upd = input("Update CS/D? (y/n): ").lower()
             if upd == "y":
@@ -4289,7 +4289,7 @@ class TitanSystem:
                 date_obj = datetime.now()
             else:
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            
+
             session_type = input("Session type (TEMPO/INTERVALS/LONG/EASY): ").upper()
             has_strides = input("Did session include strides? (y/n): ").lower() == 'y'
             has_intervals = input("Did session include short intervals (<1k)? (y/n): ").lower() == 'y'
@@ -4298,18 +4298,18 @@ class TitanSystem:
             date_obj = datetime.now()
             session_type = "EASY"
             has_strides, has_intervals, has_hammer = False, False, False
-        
+
         nli_points, details = self.nm_load.add_session(
             date_obj, session_type, has_strides, has_intervals, has_hammer
         )
-        
+
         print(f"\n Session NLI: {nli_points} points")
         for detail in details:
             print(f"   {detail}")
-        
+
         status = self.nm_load.get_status(datetime.now())
         print(f"\n{status['message']}")
-        
+
         if status['needs_deload']:
             print("  RECOMMENDATION: Schedule easy week or add extra recovery day")
 
@@ -4317,7 +4317,7 @@ class TitanSystem:
     def menu_daily_monitoring(self):
         print("\n>>> DAILY MONITORING - Morning Metrics")
         choice = input("1. Add today's entry  2. View history: ").strip()
-        
+
         if choice == "1":
             try:
                 date_obj = datetime.now()
@@ -4328,25 +4328,25 @@ class TitanSystem:
             except Exception:
                 print("Invalid input. Using defaults.")
                 return
-            
+
             self.daily_monitor.add_entry(date_obj, weight, rhr, stiffness, sleep_quality)
-            
+
             weight_change = self.daily_monitor.get_weight_change_pct(self.profile.weight_floor)
             status = self.daily_monitor.get_status(
-                self.profile.weight_floor, 
+                self.profile.weight_floor,
                 self.profile.resting_hr_baseline
             )
-            
+
             print(f"\n STATUS: {status}")
             print(f"Weight change from baseline: {weight_change:.1f}%")
-            
+
             # Apply Decision Rules
             hrv_status = "LOW" if rhr > self.profile.resting_hr_baseline + 5 else "NORMAL"
             should_abort, msg = DecisionRulesEngine.check_morning_abort_hammer(
                 weight_change, hrv_status
             )
             print(f"\n DECISION RULE: {msg}")
-        
+
         elif choice == "2":
             self.daily_monitor.display_metrics()
 
@@ -4354,18 +4354,18 @@ class TitanSystem:
     def menu_race_week_entropy(self):
         print("\n>>> RACE WEEK ENTROPY CHECK")
         print("Goal: Peak PREDICTABILITY, not peak fitness")
-        
+
         days_to_race = (self.profile.race_day - datetime.now()).days
         print(f"Days to race: {days_to_race}")
-        
+
         if days_to_race > 7:
             print("Not in race week yet. Continue normal training.")
             return
-        
+
         # Get race week protocol
         protocol = RaceWeekEngine.race_week_protocol(days_to_race)
         print(f"\n TODAY'S PROTOCOL: {protocol}")
-        
+
         # Calculate entropy
         try:
             training_ok = input("Did you follow the plan this week? (y/n): ").lower() == 'y'
@@ -4374,14 +4374,14 @@ class TitanSystem:
             weight_stable = input("Has weight been stable? (y/n): ").lower() == 'y'
         except Exception:
             training_ok, gut_health, sleep_avg, weight_stable = True, 8, 4, True
-        
+
         entropy, status = RaceWeekEngine.calculate_entropy_score(
             days_to_race, training_ok, gut_health, sleep_avg, weight_stable
         )
-        
+
         print(f"\n ENTROPY SCORE: {entropy}/100")
         print(f" {status}")
-        
+
         if entropy > 30:
             print("\n  ACTIONS TO REDUCE ENTROPY:")
             if not training_ok:
@@ -4397,21 +4397,21 @@ class TitanSystem:
     def menu_fuel_timing(self):
         print("\n>>> FUEL TIMING MATRIX")
         print("Based on Jeukendrup / Burke protocols")
-        
+
         try:
             today_obj = datetime.now()
             session_type = Scheduler.get_planned_session(today_obj, self.profile.race_day)
             override = input(f"Planned: {session_type}. Override? (TEMPO/INTERVALS/LONG/EASY) or Enter: ").upper()
             if override:
                 session_type = override
-            
+
             has_hammer = False
             if session_type in ["LONG_RUN", "PROGRESSIVE"]:
                 has_hammer = input("Will this session include Hammer segment? (y/n): ").lower() == 'y'
         except Exception:
             session_type = "EASY"
             has_hammer = False
-        
+
         FuelTimingEngine.display_fuel_plan(session_type, has_hammer)
 
 
@@ -4420,12 +4420,12 @@ class TitanSystem:
     # ============================================================================
     # v47 ADVANCED MENU METHODS
     # ============================================================================
-    
+
     # ---------------- ACWR & TSB STATUS ----------------
     def menu_load_management(self):
         print("\n>>> LOAD MANAGEMENT: ACWR & TSB")
         print("="*60)
-        
+
         # Get load data
         try:
             loads_7d = []
@@ -4433,18 +4433,18 @@ class TitanSystem:
             for i in range(7):
                 load = float(input(f"Day {i+1}: "))
                 loads_7d.append(load)
-            
+
             print("\nEnter average daily load for last 28 days:")
             avg_28d = float(input("Average daily load (28d): "))
         except Exception:
             print("Using demo data...")
             loads_7d = [45, 50, 38, 55, 42, 60, 48]
             avg_28d = 42
-        
+
         # ACWR Calculation
         acute_load = sum(loads_7d)
         acwr, status, recommendation = ACWREngine.calculate_acwr(acute_load, avg_28d)
-        
+
         print("\n ACUTE:CHRONIC WORKLOAD RATIO (Gabbett 2016)")
         print("="*60)
         print(f"Acute Load (7d): {acute_load:.0f}")
@@ -4452,21 +4452,21 @@ class TitanSystem:
         print(f"ACWR: {acwr}")
         print(f"Status: {status}")
         print(f"Recommendation: {recommendation}")
-        
+
         # TSB Calculation
         print("\n TRAINING STRESS BALANCE (Banister/Coggan)")
         print("="*60)
-        
+
         # Add loads to TSB engine
         today = datetime.now()
         for i, load in enumerate(loads_7d):
             date = today - timedelta(days=7-i)
             self.tsb_engine.add_daily_load(date, load)
-        
+
         ctl = self.tsb_engine.calculate_ctl()
         atl = self.tsb_engine.calculate_atl()
         tsb, tsb_status = self.tsb_engine.calculate_tsb()
-        
+
         if tsb is not None:
             print(f"CTL (Fitness): {ctl}")
             print(f"ATL (Fatigue): {atl}")
@@ -4474,18 +4474,18 @@ class TitanSystem:
             print(f"Status: {tsb_status}")
         else:
             print("Need more training days for TSB calculation")
-    
+
     # ---------------- HRV-GUIDED DECISION ----------------
     def menu_hrv_guided(self):
         print("\n>>> HRV-GUIDED TRAINING (Kiviniemi 2007)")
         print("="*60)
-        
+
         try:
             today_hrv = float(input("Morning HRV (rMSSD in ms): "))
-            
+
             # Add to log
             self.hrv_guided.add_hrv_measurement(datetime.now(), today_hrv)
-            
+
             # Get planned session
             planned = input("Planned session (TEMPO/INTERVALS/LONG/EASY): ").upper()
 
@@ -4499,34 +4499,34 @@ class TitanSystem:
                     datetime.now() - timedelta(days=7-i),
                     58 + (i % 3) - 1
                 )
-        
+
         # Get recommendation
         recommended, explanation, confidence = self.hrv_guided.get_training_recommendation(
             today_hrv, planned
         )
-        
+
         print("\n HRV-GUIDED DECISION:")
         print("="*60)
         print(f"Planned Session: {planned}")
         print(f"Recommended Session: {recommended}")
         print(f"Explanation: {explanation}")
         print(f"Confidence: {confidence}")
-        
+
         # Trend analysis
         trend = self.hrv_guided.get_trend_analysis()
         print(f"\nTrend (7d): {trend}")
-        
+
         if recommended != planned and recommended in ["REST", "EASY"]:
             print("\n  RECOMMENDATION: Follow HRV guidance to avoid overtraining")
             print("Research shows 8.3% vs 5.6% VO2max improvement with HRV-guided training")
-    
-    # ---------------- DURABILITY ASSESSMENT ----------------  
+
+    # ---------------- DURABILITY ASSESSMENT ----------------
     def menu_durability(self):
         print("\n>>> DURABILITY ASSESSMENT (Maunder et al. 2021)")
         print("="*60)
-        
+
         choice = input("1. Pace Decay Analysis  2. Durability Index: ").strip()
-        
+
         if choice == "1":
             try:
                 n_km = int(input("How many km in your run? "))
@@ -4543,22 +4543,22 @@ class TitanSystem:
                 target = float(input("Target pace (sec/km): "))
             except Exception:
                 print("Using demo data...")
-                splits = [270, 272, 275, 278, 280, 282, 285, 288, 290, 292, 
+                splits = [270, 272, 275, 278, 280, 282, 285, 288, 290, 292,
                          295, 298, 300, 302, 305]
                 target = 280
                 n_km = len(splits)
-            
+
             decay, status, recommendation = DurabilityEngine.assess_pace_durability(
                 splits, target
             )
-            
+
             print("\n PACE DURABILITY:")
             print("="*60)
             print(f"Distance: {n_km} km")
             print(f"Pace Decay: {decay}%")
             print(f"Status: {status}")
             print(f"Recommendation: {recommendation}")
-            
+
         elif choice == "2":
             try:
                 print("\nFresh performance (e.g., fresh 5K time):")
@@ -4568,30 +4568,30 @@ class TitanSystem:
             except Exception:
                 fresh = 1140  # 19:00
                 fatigued = 1200  # 20:00
-            
+
             di, status, tier = DurabilityEngine.calculate_durability_index(
                 fresh, fatigued
             )
-            
+
             print("\n DURABILITY INDEX:")
             print("="*60)
             print(f"DI Score: {di}%")
             print(f"Status: {status}")
             print(f"Tier: {tier}")
-            
+
             # Training protocol
             protocols = DurabilityEngine.durability_training_protocol(di)
             print("\n TRAINING RECOMMENDATIONS:")
             for p in protocols:
                 print(f"  {p}")
-    
+
     # ---------------- EFFICIENCY FACTOR TRACKING ----------------
     def menu_efficiency(self):
         print("\n>>> EFFICIENCY FACTOR (Friel 2009)")
         print("="*60)
-        
+
         choice = input("1. Calculate EF  2. Decoupling Analysis  3. View Trend: ").strip()
-        
+
         if choice == "1":
             try:
                 pace = self.profile.str_to_sec(input("Average pace (MM:SS/km): "))
@@ -4599,15 +4599,15 @@ class TitanSystem:
             except Exception:
                 pace = 300
                 hr = 155
-            
+
             ef = EfficiencyEngine.calculate_efficiency_factor(pace, hr)
-            
+
             print(f"\n EFFICIENCY FACTOR: {ef:.5f}")
             print("Higher EF = more aerobically efficient")
-            
+
             # Log it
             self.efficiency_tracker.add_ef_measurement(datetime.now(), ef)
-            
+
         elif choice == "2":
             try:
                 print("First half:")
@@ -4619,20 +4619,20 @@ class TitanSystem:
             except Exception:
                 pace1, hr1 = 300, 150
                 pace2, hr2 = 310, 160
-            
+
             decoupling, status = EfficiencyEngine.calculate_decoupling(
                 pace1, hr1, pace2, hr2
             )
-            
+
             print("\n DECOUPLING ANALYSIS:")
             print("="*60)
             print(f"Decoupling: {decoupling}%")
             print(f"Status: {status}")
-            
+
         elif choice == "3":
             trend = self.efficiency_tracker.analyze_ef_trend()
             print(f"\n EF TREND: {trend}")
-    
+
     # ---------------- ADVANCED METRICS ----------------
     def menu_advanced_metrics(self):
         print("\n>>> ADVANCED METRICS (TRIMP / sRPE / Glycogen)")
@@ -4641,9 +4641,9 @@ class TitanSystem:
         print("2. Session RPE (Foster 2001)")
         print("3. Glycogen Depletion Estimate")
         print("4. Back to Main Menu")
-        
+
         choice = input("\nSelect: ").strip()
-        
+
         if choice == "1":
             try:
                 duration = float(input("Duration (minutes): "))
@@ -4651,7 +4651,7 @@ class TitanSystem:
                 method = input("Method (E)dwards or (B)anister: ").upper()
             except Exception:
                 duration, avg_hr, method = 60, 155, "E"
-            
+
             if method == "E" or method == "EDWARDS":
                 trimp, zone = TRIMPEngine.calculate_edwards_trimp(
                     duration, avg_hr, self.profile.max_hr
@@ -4660,24 +4660,24 @@ class TitanSystem:
                 print(f"HR Zone: {zone}")
             else:
                 trimp = TRIMPEngine.calculate_banister_trimp(
-                    duration, avg_hr, self.profile.resting_hr_baseline, 
+                    duration, avg_hr, self.profile.resting_hr_baseline,
                     self.profile.max_hr, 'male'
                 )
                 print(f"\nBanister TRIMP: {trimp}")
-                
+
         elif choice == "2":
             try:
                 duration = float(input("Duration (minutes): "))
                 rpe = float(input("Session RPE (1-10): "))
             except Exception:
                 duration, rpe = 60, 7
-            
+
             srpe = SessionRPEEngine.calculate_srpe(duration, rpe)
             interpretation = SessionRPEEngine.interpret_srpe(srpe)
-            
+
             print(f"\nsRPE Score: {srpe}")
             print(f"Interpretation: {interpretation}")
-            
+
         elif choice == "3":
             try:
                 duration = float(input("Duration (minutes): "))
@@ -4685,10 +4685,10 @@ class TitanSystem:
                 weight = float(input("Body weight (kg): "))
             except Exception:
                 duration, intensity, weight = 90, 75, 75
-            
+
             result = GlycogenModel.estimate_glycogen_depletion(duration, intensity)
             carb_rec = GlycogenModel.daily_carb_recommendation(weight, "HIGH")
-            
+
             print("\n GLYCOGEN DEPLETION:")
             print("="*60)
             print(f"Glycogen Depleted: {result['glycogen_depleted_g']}g")
@@ -4702,19 +4702,19 @@ class TitanSystem:
         """Manage athletes"""
         print("\n[v48 ATHLETE MANAGEMENT]")
         athletes = self.athlete_db.list_all()
-        
+
         if athletes:
             print("\nAthletes:")
             for i, ath in enumerate(athletes, 1):
                 current = " <- CURRENT" if ath["id"] == self.athlete_db.current_athlete_id else ""
                 print(f"  {i}. {ath['name']} ({ath['gender']}, Age {ath['age']}){current}")
-        
+
         print("\n1. Switch athlete")
         print("2. Create new athlete")
         print("3. View current athlete details")
-        
+
         choice = input("Select: ").strip()
-        
+
         if choice == "1" and athletes:
             try:
                 num = int(input("Athlete number: ")) - 1
@@ -4724,7 +4724,7 @@ class TitanSystem:
                     print(f"[OK] Switched to {self.profile.name}")
             except Exception:
                 print("Invalid selection.")
-        
+
         elif choice == "2":
             try:
                 name = input("Athlete name: ")
@@ -4732,19 +4732,19 @@ class TitanSystem:
                 age = int(input("Age: "))
                 height = float(input("Height (cm): "))
                 weight = float(input("Weight (kg): "))
-                
+
                 self.profile = self.athlete_db.create_athlete(name, gender, age, height, weight)
-                
+
                 # Auto HR setup
                 rhr = int(input("Resting HR: "))
                 self.profile.set_hr_data(rhr, None) # Auto max HR
                 self.athlete_db.save_athlete(self.profile)
-                
+
                 print(f"\n[OK] Created: {self.profile.name}")
                 self.periodization = PeriodizationManager(self.profile)
             except Exception:
                 print("Error creating athlete.")
-        
+
         elif choice == "3":
             print(f"\n[{self.profile.name}]")
             print(f"Gender: {self.profile.gender}")
@@ -4760,7 +4760,7 @@ class TitanSystem:
     # ========================================================================
     # v48 UNIVERSAL MENU METHODS
     # ========================================================================
-    
+
     def menu_athlete_profile(self):
         """Profile and nutrition"""
         print(f"\n[PROFILE: {self.profile.name}]")
@@ -4768,9 +4768,9 @@ class TitanSystem:
         print("2. Update weight")
         print("3. Update HR data")
         print("4. Energy Availability")
-        
+
         choice = input("Select: ").strip()
-        
+
         if choice == "1":
             print(f"\nGender: {self.profile.gender}")
             print(f"Age: {self.profile.age}")
@@ -4779,7 +4779,7 @@ class TitanSystem:
             print(f"Resting HR: {self.profile.resting_hr}")
             print(f"Max HR: {self.profile.max_hr}")
             print(f"Threshold HR: {self.profile.threshold_hr}")
-            
+
             bmr = self.profile.calculate_bmr()
             tdee = self.profile.calculate_tdee()
             if bmr:
@@ -4804,173 +4804,173 @@ class TitanSystem:
             try:
                 print(f"Current Resting HR: {self.profile.resting_hr}")
                 print(f"Current Max HR: {self.profile.max_hr}")
-                
+
                 nrhr = input("New Resting HR (Enter to keep current): ").strip()
                 if nrhr:
                     self.profile.resting_hr = int(nrhr)
-                
+
                 nmhr = input("New Max HR (Enter to keep current): ").strip()
                 if nmhr:
                     self.profile.max_hr = int(nmhr)
                     # Αυτόματη ενημέρωση Threshold αν αλλάξει το Max
                     self.profile.threshold_hr = int(self.profile.max_hr * 0.88)
-                
+
                 self.athlete_db.save_athlete(self.profile)
                 print("[OK] HR Data Updated.")
             except Exception:
                 print("Invalid input.")
-        
+
         elif choice == "4":
             ei = float(input("Energy intake (kcal): "))
             duration = float(input("Training duration (min): "))
             avg_hr = float(input("Avg HR: "))
-            
+
             eee = NutritionScience.calculate_exercise_ee(
                 duration, avg_hr, self.profile.resting_hr,
                 self.profile.weight_kg, self.profile.age, self.profile.gender
             )
-            
+
             ffm = NutritionScience.calculate_ffm(self.profile.weight_kg)
             ea, status, rec = NutritionScience.calculate_energy_availability(ei, eee, ffm)
-            
+
             print(f"\nEnergy Intake: {ei} kcal")
             print(f"Exercise EE: {eee} kcal")
             print(f"FFM: {ffm} kg")
             print(f"\nEA: {ea} kcal/kg FFM/day")
             print(f"Status: {status}")
             print(f"Action: {rec}")
-    
+
     def menu_periodization(self):
         """Goals and phases"""
         print("\n[GOALS & PERIODIZATION]")
-        
+
         if self.periodization.current_goal:
             goal = self.periodization.current_goal
             print("\nCurrent Goal:")
             print(f"  Distance: {goal['distance_km']}K")
             print(f"  Target: {goal['target_time']}")
             print(f"  Race: {goal['race_date'].strftime('%Y-%m-%d')}")
-            
+
             phase = self.periodization.calculate_phase(goal['race_date'])
             print(f"\nPhase: {phase}")
-        
+
         print("\n1. Set goal")
         print("2. Complete goal")
-        
+
         choice = input("Select: ").strip()
-        
+
         if choice == "1":
             dist = float(input("Distance (5/10/21/42): "))
             target = input("Target (MM:SS): ")
             date = input("Date (YYYY-MM-DD): ")
-            
+
             goal = self.periodization.add_goal(dist, target, date)
             self.athlete_db.save_athlete(self.profile)
             print(f"[OK] Goal: {dist}K in {target}")
-        
+
         elif choice == "2" and self.periodization.current_goal:
             actual = input("Actual time: ")
             result = self.periodization.complete_goal(
                 self.periodization.current_goal['goal_id'], actual
             )
-            
+
             print("\n[OK] COMPLETED!")
             print("\nNext goals:")
             for sug in result['suggestions']:
                 print(f"  - {sug['description']}")
-    
+
     def menu_sleep_architecture(self):
         """Sleep tracking"""
         print("\n[SLEEP ARCHITECTURE]")
         print("1. Log sleep")
         print("2. View summary")
-        
+
         choice = input("Select: ").strip()
-        
+
         if choice == "1":
             total_h = float(input("Total (hours): "))
             deep = float(input("Deep (min): "))
             rem = float(input("REM (min): "))
             quality = int(input("Quality (1-10): "))
-            
+
             session = self.sleep_tracker.add_sleep_session(
                 datetime.now(), total_h * 60, deep, rem, quality
             )
-            
+
             score, status, issues = self.sleep_tracker.analyze_quality(session)
-            
+
             print(f"\nTotal: {total_h}h")
             print(f"Deep: {deep}min ({session['deep_pct']}%)")
             print(f"REM: {rem}min ({session['rem_pct']}%)")
             print(f"\nScore: {score}/100")
             print(f"Status: {status}")
-            
+
             if issues:
                 for issue in issues:
                     print(f"  - {issue}")
-    
+
     def menu_cns_readiness(self):
         """CNS tests"""
         print("\n[CNS READINESS]")
         print("1. Tap Test")
         print("2. Grip Strength")
         print("3. Vertical Jump")
-        
+
         choice = input("Test: ").strip()
-        
+
         if choice == "1":
             taps = int(input("Taps in 10sec: "))
             result = self.cns_tracker.add_tap_test(datetime.now(), taps)
-            
+
             if 'baseline' in result:
                 print(f"\nBaseline: {result['baseline']:.0f}")
                 print(f"Today: {taps} ({result['percent']:.0f}%)")
                 print(f"{result['status']}")
             else:
                 print(result['message'])
-        
+
         elif choice == "2":
             force = float(input("Grip (kg): "))
             result = self.cns_tracker.add_grip_strength(datetime.now(), force)
-            
+
             if 'baseline' in result:
                 print(f"\nBaseline: {result['baseline']:.0f}")
                 print(f"Today: {force} ({result['percent']:.0f}%)")
                 print(f"{result['status']}")
             else:
                 print(result['message'])
-        
+
         elif choice == "3":
             height = float(input("Jump (cm): "))
             result = self.cns_tracker.add_vertical_jump(datetime.now(), height)
-            
+
             if 'baseline' in result:
                 print(f"\nBaseline: {result['baseline']:.0f}")
                 print(f"Today: {height} ({result['percent']:.0f}%)")
                 print(f"{result['status']}")
             else:
                 print(result['message'])
-    
+
     def menu_data_import(self):
         """CSV import"""
         print("\n[DATA IMPORT]")
-        
+
         if not PANDAS_AVAILABLE:
             print("[!] pandas not installed")
             print("Install: pip install pandas")
             return
-        
+
         filepath = input("CSV path: ").strip()
         sessions, msg = self.data_importer.import_csv(filepath)
         print(msg)
-        
+
         if sessions:
             print(f"\n{len(sessions)} sessions")
             for s in sessions[:3]:
                 print(f"  {s['date']}: {s['distance_km']}km")
 
         # ---------------- v48 ULTIMATE MENUS ----------------
-    
+
     def menu_gap(self):
         print("\n>>> GRADE ADJUSTED PACE (GAP)")
         try:
@@ -5058,7 +5058,7 @@ class TitanSystem:
         # Initialize dynamically with demo goal if not set
         if not hasattr(self, 'progress_engine'):
             self.progress_analyzer = ProgressAnalyzer(goal_sec=0, dist_km=0, race_date=datetime.now())
-        
+
         print("1. Add Result  2. Check Probability")
         c = input("Select: ")
         if c == "1":
@@ -5079,18 +5079,18 @@ class TitanSystem:
             time_str = input("Goal Time (HH:MM:SS): ")
             goal = self.profile.str_to_sec(time_str)
             dist = float(input("Distance (km): "))
-            
+
             # Δημιουργία Demo Υψομετρικών (αφού δεν έχουμε χάρτη ακόμα)
             print("Generating demo elevation profile...")
             elev_profile = [0, 5, 10, 5, 0, -5, -10, -5, 0, 5] * (int(dist)//10 + 1)
             elev_profile = elev_profile[:int(dist)]
-            
+
             # Υπολογισμός με βάση την αντοχή (Durability)
             # Αν δεν έχεις κάνει τεστ durability, βάζουμε default 92
-            durability = 92 
-            
+            durability = 92
+
             res = self.pacing_engine.calculate_optimal_splits(goal, dist, elev_profile, durability)
-            
+
             print(f"\nSTRATEGY: {res['strategy']}")
             print(f"Confidence: {res['confidence']}")
             print("\nSPLITS (First 5km & Last 5km):")
@@ -5099,8 +5099,8 @@ class TitanSystem:
             print(" ...")
             for s in res['splits'][-5:]:
                 print(f" KM {s['km']}: {self.profile.sec_to_str(s['pace_sec'])} (Elev: {s['elevation']}m)")
-                
-        except Exception as e: 
+
+        except Exception as e:
             print(f"Error in pacing strategy: {e}")
 
     def menu_recovery_score(self):
@@ -5111,10 +5111,10 @@ class TitanSystem:
             qual = int(input("Sleep Quality (1-10): "))
             sore = int(input("Soreness (1-10): "))
             mood = int(input("Mood (1-10): "))
-            
+
             # Πρέπει να ορίσουμε baseline αν δεν υπάρχει
             self.recovery_engine.set_baseline_hrv(self.profile.resting_hr_baseline + 20) # Rough estimate relative to RHR
-            
+
             score, status, rec = self.recovery_engine.calculate_recovery_score(
                 hrv, sleep, qual, sore, mood
             )
@@ -5130,7 +5130,7 @@ class TitanSystem:
         path = input("Path to CSV file: ").strip()
         if not path:
             return
-        
+
         # Δοκιμή Garmin
         sessions, msg = self.sync_engine.import_garmin_csv(path)
         if sessions:
@@ -5151,7 +5151,7 @@ class TitanSystem:
 
         print("1. Train Model (needs history)  2. Predict Performance")
         choice = input("Select: ")
-        
+
         if choice == "1":
             # Εδώ κανονικά θα τραβούσε δεδομένα από τη βάση (self.db)
             # Για το demo, προσθέτουμε μερικά fake data
@@ -5161,10 +5161,10 @@ class TitanSystem:
             self.ml_brain.add_training_sample(80, 60, 60, 8.0, 245, 2450) # Demo 3
             self.ml_brain.add_training_sample(95, 90, 45, 6.5, 230, 2300) # Demo 4
             self.ml_brain.add_training_sample(88, 70, 58, 7.8, 238, 2380) # Demo 5
-            
+
             success, msg = self.ml_brain.train_model()
             print(f"Result: {msg}")
-            
+
         elif choice == "2":
             try:
                 ctl = float(input("Current CTL: "))
@@ -5172,9 +5172,9 @@ class TitanSystem:
                 hrv = float(input("Avg HRV (7d): "))
                 sleep = float(input("Avg Sleep (h): "))
                 pace = float(input("Recent 10K Pace (sec/km): "))
-                
+
                 pred, low, high, conf = self.ml_brain.predict_performance(ctl, atl, hrv, sleep, pace)
-                
+
                 if pred:
                     print(f"\n🔮 PREDICTED TIME: {self.profile.sec_to_str(pred)}")
                     print(f"   Range: {self.profile.sec_to_str(low)} - {self.profile.sec_to_str(high)}")
@@ -5191,22 +5191,22 @@ class TitanSystem:
             ctl = float(input("Current CTL: "))
             imp = input("Race Importance (A/B/C): ").upper()
             fresh = int(input("Psychological Freshness (1-10): "))
-            
+
             # Δημιουργία ημερομηνίας αγώνα
             race_date = datetime.now() + timedelta(days=days)
-            
+
             plan = self.taper_engine.calculate_taper_plan(ctl, race_date, imp, fresh)
-            
+
             print(f"\n=== TAPER PLAN ({len(plan)} Days) ===")
             print(f"{'Day':<5} {'Vol%':<6} {'Intensity':<12} {'Notes'}")
             print("-" * 40)
             for day in plan:
                 print(f"{day['day']:<5} {day['volume_pct']:<6} {day['intensity']:<12} {day['neuromuscular']}")
-                
+
             # Εξήγηση από το σύστημα γνώσης
             trace = self.traceability.explain_taper_plan(ctl, days, plan[0]['volume_pct'], 40)
             print(trace)
-            
+
         except Exception as e:
             print(f"Error: {e}")
 
@@ -5219,7 +5219,7 @@ class TitanSystem:
             date = datetime.now() - timedelta(days=14-i)
             val = -15 + (i * 2) # Demo ανοδική πορεία
             demo_history.append((date, val))
-            
+
         print(self.ascii_viz.plot_tsb_trend(demo_history))
         print("\n")
         print(self.ascii_viz.plot_intensity_distribution(78, 22))
@@ -5230,18 +5230,18 @@ class TitanSystem:
             curr_ctl = float(input("Current CTL: "))
             curr_atl = float(input("Current ATL: "))
             load = float(input("Planned Session Load (TSS): "))
-            
+
             n_ctl, n_atl, n_tsb, risk, rec = self.sim_engine.simulate_session_impact(
                 curr_ctl, curr_atl, load
             )
-            
+
             print("\n🧪 SIMULATION RESULTS:")
             print(f"New CTL: {n_ctl} (+{n_ctl - curr_ctl:.1f})")
             print(f"New ATL: {n_atl} (+{n_atl - curr_atl:.1f})")
             print(f"New TSB: {n_tsb}")
             print(f"RISK LEVEL: {risk}")
             print(f"ADVICE: {rec}")
-            
+
         except Exception as e:
             print(f"Input error: {e}")
 
@@ -5253,18 +5253,18 @@ class TitanSystem:
 
         # Κλήση API (Demo Mode αν δεν έβαλες κλειδί)
         temp, hum, cond, feels = self.weather_api.get_current_weather()
-        
+
         if temp is not None:
             print(f"\n🌤️  CURRENT WEATHER ({self.weather_api.city})")
             print(f"Temp: {temp}°C (Feels like {feels}°C)")
             print(f"Humidity: {hum}%")
             print(f"Conditions: {cond}")
-            
+
             # Έλεγχος για προσαρμογή προπόνησης
             planned = {'distance_km': 12, 'intensity': 'TEMPO', 'warmup_min': 15}
             print("\nAnalyzing planned TEMPO session...")
             mod, status = self.weather_api.adjust_session_for_weather(planned, temp, hum)
-            
+
             if status == "MODIFIED":
                 print(f"⚠️  SUGGESTED MODIFICATION: {mod['note']}")
                 print(f"New Volume: {mod['distance_km']:.1f} km")
@@ -5279,19 +5279,19 @@ class TitanSystem:
             mf = int(input("Mental Fatigue (1-10): "))
             ws = int(input("Work Stress (1-10): "))
             ls = int(input("Life Stress (1-10): "))
-            
+
             # Καταγραφή
             entry = self.cognitive_monitor.log_cognitive_state(datetime.now(), mf, ws, ls)
-            
+
             # Ανάλυση επίδρασης
             planned_rpe = 7 # Υποθέτουμε μια μέτρια προπόνηση
             adj_rpe, rec = self.cognitive_monitor.assess_cognitive_impact(entry['total_load'], planned_rpe)
-            
+
             print(f"\n🧠 COGNITIVE LOAD: {entry['total_load']}/10")
             print(f"Expected RPE shift: {planned_rpe} -> {adj_rpe}")
             print("STRATEGY:")
             print(rec)
-            
+
             # Recovery advice
             print("\nRECOVERY CHECKLIST:")
             for item in self.cognitive_monitor.recovery_recommendations(entry['total_load']):
@@ -5310,7 +5310,7 @@ class TitanSystem:
             {'distance_km': 8, 'duration_sec': 2400, 'intensity': 'EASY'},
             {'distance_km': 22, 'duration_sec': 7000, 'intensity': 'LONG_RUN'}
         ]
-        
+
         target = float(input("Weekly Target (km): "))
         report = self.weekly_report.generate_report(demo_sessions, target)
         print(report)
@@ -5332,16 +5332,16 @@ class DatabaseManager:
     - gear_usage: Shoe tracking with compression recovery
     - personal_bests: PR tracking
     """
-    
+
     def __init__(self, db_name="titan_core.db"):
         # Βρίσκει τον φάκελο που τρέχει το script
         base_dir = Path(__file__).parent.absolute()
         self.db_path = base_dir / db_name
-        
+
         # Σύνδεση με τη βάση
         self.conn = sqlite3.connect(str(self.db_path))
         self.create_tables()
-    
+
 
     def create_tables(self):
         """Create tables - alias for create_database"""
@@ -5351,7 +5351,7 @@ class DatabaseManager:
         """Initialize database with all tables"""
         self.conn = sqlite3.connect(self.db_path)
         cursor = self.conn.cursor()
-        
+
         # Table 1: Daily Metrics (Morning Check-in)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS daily_metrics (
@@ -5368,7 +5368,7 @@ class DatabaseManager:
                 notes TEXT
             )
         """)
-        
+
         # Table 2: Training Log (Complete History)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS training_log (
@@ -5389,7 +5389,7 @@ class DatabaseManager:
                 FOREIGN KEY (shoe_id) REFERENCES gear_usage(id)
             )
         """)
-        
+
         # Table 3: Gear Usage (Shoe Tracking)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS gear_usage (
@@ -5403,7 +5403,7 @@ class DatabaseManager:
                 max_km_limit REAL DEFAULT 800
             )
         """)
-        
+
         # Table 4: Personal Bests
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS personal_bests (
@@ -5415,33 +5415,33 @@ class DatabaseManager:
                 race_name TEXT
             )
         """)
-        
+
         self.conn.commit()
-    
-    def save_daily_metric(self, date, weight=None, hrv=None, rhr=None, 
+
+    def save_daily_metric(self, date, weight=None, hrv=None, rhr=None,
                          sleep_hours=None, sleep_quality=None, soreness=None,
                          fatigue=None, mood=None, notes=None):
         """Save morning check-in data"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             INSERT OR REPLACE INTO daily_metrics 
             (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
              soreness, fatigue_level, mood, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes))
-        
+
         self.conn.commit()
-    
-    def save_session(self, date, session_type, distance_km, duration_sec, 
+
+    def save_session(self, date, session_type, distance_km, duration_sec,
                     avg_hr=None, max_hr=None, rpe=None, shoe_id=None,
                     surface=None, temperature=None, notes=None):
         """Save training session"""
         cursor = self.conn.cursor()
-        
+
         # Calculate training load (RPE * duration in minutes)
         training_load = (rpe * (duration_sec / 60)) if rpe else 0
-        
+
         cursor.execute("""
             INSERT INTO training_log 
             (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
@@ -5449,26 +5449,26 @@ class DatabaseManager:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
               training_load, shoe_id, surface, temperature, notes))
-        
+
         # Update shoe mileage if shoe_id provided
         if shoe_id and distance_km:
             self.update_shoe_mileage(shoe_id, distance_km, date)
-        
+
         self.conn.commit()
-    
+
     def get_training_load_history(self, days=42):
         """Get training load for last N days (for TSB calculation)"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             SELECT date, training_load 
             FROM training_log 
             WHERE date >= date('now', '-' || ? || ' days')
             ORDER BY date DESC
         """, (days,))
-        
+
         return cursor.fetchall()
-    
+
     def get_ctl_atl_tsb(self):
         """
         Calculate real TSB from database history
@@ -5477,120 +5477,120 @@ class DatabaseManager:
         TSB (Training Stress Balance): CTL - ATL
         """
         loads = self.get_training_load_history(42)
-        
+
         if not loads:
             return 0, 0, 0
-        
+
         # Calculate CTL (42-day EMA)
         ctl = 0
         ctl_decay = 2 / (42 + 1)
-        
-        for date, load in loads:
+
+        for _date, load in loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
-        
+
         # Calculate ATL (7-day EMA, last 7 days)
         recent_loads = [load for _d, load in loads if _d][:7]
         atl = 0
         atl_decay = 2 / (7 + 1)
-        
+
         for load in recent_loads:
             atl = (load * atl_decay) + (atl * (1 - atl_decay))
-        
+
         # Calculate TSB
         tsb = ctl - atl
-        
+
         return round(ctl, 1), round(atl, 1), round(tsb, 1)
-    
+
     def update_shoe_mileage(self, shoe_id, distance_km, date):
         """Update shoe mileage"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             UPDATE gear_usage 
             SET total_km = total_km + ?, last_used = ?
             WHERE id = ?
         """, (distance_km, date, shoe_id))
-        
+
         self.conn.commit()
-    
+
     def add_shoe(self, name, shoe_type="DAILY", max_km=800):
         """Add new shoe to database"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit)
             VALUES (?, ?, ?)
         """, (name, shoe_type, max_km))
-        
+
         self.conn.commit()
         return cursor.lastrowid
-    
+
     def get_active_shoes(self):
         """Get all active shoes"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             SELECT id, shoe_name, total_km, max_km_limit, last_used, shoe_type
             FROM gear_usage
             WHERE status = 'ACTIVE'
             ORDER BY shoe_name
         """)
-        
+
         return cursor.fetchall()
-    
+
     def check_shoe_availability(self, shoe_id):
         """
         Check if shoe is available for use
         Considers compression recovery (24h rest for foam)
         """
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             SELECT last_used, compression_recovery_hours, total_km, max_km_limit
             FROM gear_usage
             WHERE id = ?
         """, (shoe_id,))
-        
+
         result = cursor.fetchone()
-        
+
         if not result:
             return False, "Shoe not found"
-        
+
         last_used, recovery_hours, total_km, max_km = result
-        
+
         # Check mileage limit
         if total_km >= max_km:
             return False, f"Shoe exceeded mileage limit ({total_km}/{max_km} km)"
-        
+
         # Check compression recovery
         if last_used:
             last_used_date = datetime.fromisoformat(last_used)
             hours_since = (datetime.now() - last_used_date).total_seconds() / 3600
-            
+
             if hours_since < recovery_hours:
                 hours_left = recovery_hours - hours_since
                 return False, f"Foam needs {hours_left:.1f}h recovery (compression set)"
-        
+
         return True, "Available"
-    
+
     def save_personal_best(self, distance_km, time_sec, date, race_name=None):
         """Save PR"""
         cursor = self.conn.cursor()
-        
+
         pace_per_km = time_sec / distance_km
-        
+
         cursor.execute("""
             INSERT INTO personal_bests 
             (distance_km, time_sec, pace_sec_per_km, date, race_name)
             VALUES (?, ?, ?, ?, ?)
         """, (distance_km, time_sec, pace_per_km, date, race_name))
-        
+
         self.conn.commit()
-    
+
     def get_pr(self, distance_km):
         """Get PR for distance"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
             SELECT time_sec, date, race_name
             FROM personal_bests
@@ -5598,9 +5598,9 @@ class DatabaseManager:
             ORDER BY time_sec ASC
             LIMIT 1
         """, (distance_km,))
-        
+
         return cursor.fetchone()
-    
+
     def close(self):
         """Close database connection"""
         if self.conn:
@@ -5612,7 +5612,7 @@ class PolarizedConstraint:
     Seiler's Polarized Training Constraint
     Enforces 80/20 rule and prevents too many hard days
     """
-    
+
     @staticmethod
     def check_recent_intensity(training_history, days=7):
         """
@@ -5622,17 +5622,17 @@ class PolarizedConstraint:
             (is_violation, hard_day_count, recommendation)
         """
         hard_sessions = 0
-        
+
         for session in training_history[-days:]:
             if session.get('intensity') in ['HIGH', 'THRESHOLD', 'VO2MAX']:
                 hard_sessions += 1
-        
+
         # Seiler Rule: Max 2-3 hard days per week
         if hard_sessions >= 2:
             return True, hard_sessions, "EASY_ONLY_48H"
-        
+
         return False, hard_sessions, "NORMAL"
-    
+
     @staticmethod
     def calculate_intensity_distribution(training_history, days=7):
         """
@@ -5643,24 +5643,24 @@ class PolarizedConstraint:
         total_time = 0
         easy_time = 0
         hard_time = 0
-        
+
         for session in training_history[-days:]:
             duration = session.get('duration_sec', 0)
             intensity = session.get('intensity', 'EASY')
-            
+
             total_time += duration
-            
+
             if intensity in ['EASY', 'RECOVERY']:
                 easy_time += duration
             elif intensity in ['HIGH', 'THRESHOLD', 'VO2MAX']:
                 hard_time += duration
-        
+
         if total_time == 0:
             return 0, 0
-        
+
         easy_pct = (easy_time / total_time) * 100
         hard_pct = (hard_time / total_time) * 100
-        
+
         return round(easy_pct, 1), round(hard_pct, 1)
 
 
@@ -5669,7 +5669,7 @@ class NonLinearLogic:
     Flexible decision making: Green/Yellow/Red
     No more binary Yes/No
     """
-    
+
     @staticmethod
     def evaluate_readiness(readiness_score):
         """
@@ -5686,7 +5686,7 @@ class NonLinearLogic:
             return "ORANGE", "DOWNGRADE", "Convert to easy recovery run"
         else:
             return "RED", "REST", "Mandatory rest day"
-    
+
     @staticmethod
     def modify_session(planned_session, color):
         """
@@ -5694,14 +5694,14 @@ class NonLinearLogic:
         """
         if color == "GREEN":
             return planned_session
-        
+
         elif color == "YELLOW":
             # Reduce volume by 30%
             modified = planned_session.copy()
             modified['distance_km'] = modified.get('distance_km', 0) * 0.7
             modified['note'] = "Volume reduced 30% due to moderate readiness"
             return modified
-        
+
         elif color == "ORANGE":
             # Downgrade to easy
             return {
@@ -5710,7 +5710,7 @@ class NonLinearLogic:
                 "intensity": "RECOVERY",
                 "note": "Downgraded to recovery due to low readiness"
             }
-        
+
         else:  # RED
             return {
                 "type": "REST",
@@ -5724,7 +5724,7 @@ class StochasticReadiness:
     Probabilistic readiness with warmup decision
     Readiness is a range, not a point
     """
-    
+
     @staticmethod
     def calculate_readiness_range(hrv_value, baseline_hrv, sleep_hours, soreness):
         """
@@ -5736,23 +5736,23 @@ class StochasticReadiness:
         # Base score from HRV
         hrv_pct = (hrv_value / baseline_hrv) * 100 if baseline_hrv else 90
         base_score = min(100, hrv_pct)
-        
+
         # Adjustments
         sleep_adj = (sleep_hours / 8) * 10 if sleep_hours else 0
         soreness_adj = -((soreness - 5) * 2) if soreness else 0
-        
+
         mid_score = base_score + sleep_adj + soreness_adj
         mid_score = max(0, min(100, mid_score))
-        
+
         # Calculate range (±5 points)
         low_score = max(0, mid_score - 5)
         high_score = min(100, mid_score + 5)
-        
+
         # Confidence (higher when measurements are stable)
         confidence = "HIGH" if high_score - low_score < 8 else "MODERATE"
-        
+
         return round(low_score, 1), round(mid_score, 1), round(high_score, 1), confidence
-    
+
     @staticmethod
     def warmup_decision_protocol():
         """
@@ -5775,7 +5775,7 @@ class AdaptivePacing:
     Dynamic pace targets based on readiness
     No more fixed paces
     """
-    
+
     @staticmethod
     def calculate_adapted_pace(base_pace_sec, readiness_score):
         """
@@ -5797,9 +5797,9 @@ class AdaptivePacing:
             factor = 1.06  # 6% slower
         else:
             factor = 1.10  # 10% slower
-        
+
         return round(base_pace_sec * factor, 1)
-    
+
     @staticmethod
     def calculate_threshold_pace_today(lt2_pace_base, readiness_score):
         """
@@ -5815,7 +5815,7 @@ class AdvancedHammer:
     Hammer sessions with intensity levels
     Not just on/off switch
     """
-    
+
     LEVELS = {
         1: {
             "name": "CONTROLLED",
@@ -5836,7 +5836,7 @@ class AdvancedHammer:
             "duration": "< 30 min"
         }
     }
-    
+
     @staticmethod
     def get_hammer_level(session_type, fatigue_level):
         """
@@ -5844,7 +5844,7 @@ class AdvancedHammer:
         """
         if fatigue_level > 7:
             return None  # No hammer if fatigued
-        
+
         if session_type == "TEMPO":
             return 1  # Controlled
         elif session_type == "THRESHOLD":
@@ -5860,7 +5860,7 @@ class VO2MicroDosing:
     Billat-style micro-dosing
     Keep nervous system alive without metabolic cost
     """
-    
+
     @staticmethod
     def check_if_allowed(ctl, atl, readiness):
         """
@@ -5874,7 +5874,7 @@ class VO2MicroDosing:
             return False, "Too fatigued for any intensity"
         else:
             return False, "Not in fatigue phase"
-    
+
     @staticmethod
     def get_protocol():
         """
@@ -5895,7 +5895,7 @@ class TissueLoadProxy:
     Eccentric load calculator
     Predicts injury risk based on impact
     """
-    
+
     SURFACE_HARDNESS = {
         "TRAIL": 0.5,
         "GRASS": 0.6,
@@ -5903,24 +5903,24 @@ class TissueLoadProxy:
         "ASPHALT": 1.0,
         "CONCRETE": 1.2
     }
-    
+
     @staticmethod
     def calculate_eccentric_load(distance_km, surface, shoe_age_km, shoe_max_km=800):
         """
         Eccentric Load = Distance × Surface Hardness × Shoe Degradation
         """
         surface_factor = TissueLoadProxy.SURFACE_HARDNESS.get(surface, 1.0)
-        
+
         # Shoe degradation increases exponentially after 70% life
         shoe_degradation = 1.0
         if shoe_age_km > (shoe_max_km * 0.7):
             excess = shoe_age_km - (shoe_max_km * 0.7)
             shoe_degradation = 1 + (excess / (shoe_max_km * 0.3)) * 0.5
-        
+
         eccentric_load = distance_km * surface_factor * shoe_degradation
-        
+
         return round(eccentric_load, 2)
-    
+
     @staticmethod
     def assess_injury_risk(eccentric_load, cumulative_week_load):
         """
@@ -5939,7 +5939,7 @@ class ExplanationLayer:
     """
     The Coach Speaks - Explain WHY decisions are made
     """
-    
+
     @staticmethod
     def explain_denial(reason_code, details):
         """
@@ -5947,20 +5947,20 @@ class ExplanationLayer:
         """
         explanations = {
             "HIGH_ATL": f"Hammer Denied: Your Acute Fatigue (ATL) is {details.get('atl_pct', 0)}% above normal. Need recovery.",
-            
+
             "SHOE_BLOCKED": f"Shoe Blocked: {details.get('shoe_name', 'Shoe')} needs {details.get('hours_left', 24)}h foam recovery (compression set).",
-            
+
             "POLARIZED_VIOLATION": f"High Intensity Denied: You've done {details.get('hard_days', 0)} hard sessions in 7 days. Seiler's rule: max 2-3.",
-            
+
             "TISSUE_OVERLOAD": f"Session Modified: Eccentric load would be {details.get('eccentric_load', 0)} (threshold: 50). High tendon stress predicted.",
-            
+
             "LOW_READINESS": f"Session Downgraded: Readiness is {details.get('readiness', 0)}/100. Your body needs easier stress today.",
-            
+
             "HRV_SUPPRESSED": f"Rest Recommended: HRV is {details.get('hrv_pct', 0)}% of baseline. Autonomic nervous system needs recovery."
         }
-        
+
         return explanations.get(reason_code, f"Denied: {reason_code}")
-    
+
     @staticmethod
     def explain_modification(modification_type, before, after):
         """

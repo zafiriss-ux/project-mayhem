@@ -3,7 +3,7 @@ from typing import Tuple, List
 
 class BiomechanicsAnalysis:
     """Running biomechanics optimization"""
-    
+
     @staticmethod
     def optimal_cadence(height_cm: int) -> Tuple[int, int]:
         """
@@ -18,7 +18,7 @@ class BiomechanicsAnalysis:
             return (170, 180)
         else:
             return (175, 185)
-    
+
     @staticmethod
     def stride_length(speed_m_s: float, cadence_spm: int) -> float:
         """
@@ -29,7 +29,7 @@ class BiomechanicsAnalysis:
         if cadence_spm == 0:
             return 0.0
         return round((speed_m_s * 60) / cadence_spm, 2)
-    
+
     @staticmethod
     def analyze_form(cadence: int, vert_osc: float, gct: float) -> Tuple[int, str, List[str]]:
         """
@@ -45,7 +45,7 @@ class BiomechanicsAnalysis:
         """
         score = 100
         issues = []
-        
+
         # Cadence analysis
         if cadence < 160:
             score -= 15
@@ -53,7 +53,7 @@ class BiomechanicsAnalysis:
         elif cadence > 195:
             score -= 10
             issues.append("Very high cadence (may be inefficient)")
-        
+
         # Vertical oscillation
         if vert_osc > 12:
             score -= 15
@@ -61,7 +61,7 @@ class BiomechanicsAnalysis:
         elif vert_osc < 6:
             score -= 5
             issues.append("Very low bounce (check form)")
-        
+
         # Ground contact time
         if gct > 280:
             score -= 10
@@ -69,7 +69,7 @@ class BiomechanicsAnalysis:
         elif gct < 180:
             score -= 5
             issues.append("Very short contact (may indicate overstriding)")
-        
+
         # Status
         if score >= 80:
             status = "✅ EXCELLENT"
@@ -79,9 +79,9 @@ class BiomechanicsAnalysis:
             status = "⚠️ FAIR"
         else:
             status = "🛑 NEEDS WORK"
-        
+
         return score, status, issues
-    
+
     @staticmethod
     def form_efficiency_score(cadence: int, vert_osc: float, gct: float) -> float:
         """

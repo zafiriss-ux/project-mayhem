@@ -19,7 +19,7 @@ class FatigueEngine:
             types.append("METABOLIC")
         if soreness >= 5:
             types.append("PERIPHERAL")
-        
+
         if not types:
             return "LOW", ["NONE"]
         if "CENTRAL" in types and "METABOLIC" in types:

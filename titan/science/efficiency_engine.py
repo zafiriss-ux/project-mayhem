@@ -26,11 +26,11 @@ class EfficiencyEngine:
     Tracks the relationship between speed and heart rate to monitor
     aerobic development over time.
     """
-    
+
     def __init__(self):
         """Initialize efficiency tracking."""
         self.ef_history: List[Tuple[str, float]] = []
-    
+
     @staticmethod
     def calculate_efficiency_factor(
         avg_pace_sec_per_km: float,
@@ -54,12 +54,12 @@ class EfficiencyEngine:
         """
         if avg_hr == 0:
             return None
-        
+
         speed_m_per_s = 1000.0 / avg_pace_sec_per_km
         ef = speed_m_per_s / avg_hr
-        
+
         return round(ef, 5)
-    
+
     @staticmethod
     def calculate_decoupling(
         first_half_pace: float,
@@ -88,12 +88,12 @@ class EfficiencyEngine:
         """
         ef_first = EfficiencyEngine.calculate_efficiency_factor(first_half_pace, first_half_hr)
         ef_second = EfficiencyEngine.calculate_efficiency_factor(second_half_pace, second_half_hr)
-        
+
         if ef_first is None or ef_second is None or ef_first == 0:
             return None, "Invalid data"
-        
+
         decoupling_pct = ((ef_second - ef_first) / ef_first) * 100
-        
+
         if abs(decoupling_pct) < 3:
             status = "✓ ELITE aerobic fitness (<3% decoupling)"
         elif abs(decoupling_pct) < 5:
@@ -102,9 +102,9 @@ class EfficiencyEngine:
             status = "→ MODERATE drift (<10% - acceptable for long runs)"
         else:
             status = "⚠️ HIGH decoupling (>10% - improve base or refuel)"
-        
+
         return round(decoupling_pct, 1), status
-    
+
     def add_ef_measurement(self, date: str, ef_value: float) -> None:
         """
         Log EF for trend tracking.
@@ -114,7 +114,7 @@ class EfficiencyEngine:
             ef_value: Efficiency factor value
         """
         self.ef_history.append((date, ef_value))
-    
+
     def analyze_ef_trend(self, weeks: int = 3) -> str:
         """
         Track EF improvement over time.
@@ -129,21 +129,21 @@ class EfficiencyEngine:
         """
         if len(self.ef_history) < weeks * 2:
             return "Need more data for trend analysis"
-        
+
         days_per_week = 7
         recent_period = weeks * days_per_week
-        
+
         recent = [ef for _, ef in self.ef_history[-recent_period:]]
         previous = [ef for _, ef in self.ef_history[-(recent_period*2):-recent_period]]
-        
+
         if not previous:
             return "Need historical data"
-        
+
         recent_avg = sum(recent) / len(recent)
         previous_avg = sum(previous) / len(previous)
-        
+
         improvement_pct = ((recent_avg - previous_avg) / previous_avg) * 100
-        
+
         if improvement_pct > 3:
             return f"✓ IMPROVING: EF up {improvement_pct:.1f}% (aerobic gains)"
         elif improvement_pct < -3:

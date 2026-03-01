@@ -148,8 +148,10 @@ class HRVGuidedEngine:
             return "Need 14+ days for trend analysis"
         recent_avg = sum(hrv for _, hrv in self.hrv_log[-7:]) / 7
         previous_avg = sum(hrv for _, hrv in self.hrv_log[-14:-7]) / 7
+        if previous_avg == 0:
+            return "➡️ STABLE: HRV baseline zero"
         change_pct = ((recent_avg - previous_avg) / previous_avg) * 100
-        
+
         if change_pct > 5:
             return f"📈 IMPROVING: HRV up {change_pct:.1f}%"
         elif change_pct < -5:

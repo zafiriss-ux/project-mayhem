@@ -15,7 +15,7 @@ class AdaptiveMemory:
     Tracks session history, monotony, supercompensation windows,
     and mechanical load risk.
     """
-    
+
     def __init__(self):
         """Initialize adaptive memory system."""
         self.session_history: List[dict] = []
@@ -25,7 +25,7 @@ class AdaptiveMemory:
         self.adaptive_pace_factor: float = 1.00
         self.last_quality_sessions: List[datetime] = []
         self.last_3d_soreness: List[float] = []
-    
+
     def log_session(
         self,
         date: datetime,
@@ -56,15 +56,15 @@ class AdaptiveMemory:
             "drift": drift,
             "success": success_flag
         })
-        
+
         if session_type in ["TEMPO", "INTERVALS", "LONG_RUN", "PROGRESSIVE"]:
             self.last_quality_sessions.append(date)
             self.last_quality_sessions = self.last_quality_sessions[-5:]
-        
+
         if soreness is not None:
             self.last_3d_soreness.append(soreness)
             self.last_3d_soreness = self.last_3d_soreness[-3:]
-    
+
     def calculate_neural_adaptation(
         self,
         target_pace_sec: float,
@@ -92,7 +92,7 @@ class AdaptiveMemory:
                 f"Pace factor → {self.adaptive_pace_factor:.3f}"
             )
         return "STABLE: Neural adaptation maintained."
-    
+
     def check_monotony(self, load_7d: float, std_dev_load: float) -> str:
         """
         Check for training monotony (injury risk factor).
@@ -109,10 +109,10 @@ class AdaptiveMemory:
         """
         if std_dev_load == 0:
             return "⚠️ MONOTONY UNKNOWN (No variance)."
-        
+
         monotony = load_7d / std_dev_load
         self.monotony_index = monotony
-        
+
         if monotony > 2.5:
             return "⚠️ DANGER: Very high monotony. Force variation / rest."
         if monotony > 2.0:
@@ -120,7 +120,7 @@ class AdaptiveMemory:
         if monotony > 1.5:
             return "→ WATCH: Moderate monotony."
         return "✓ LOAD VARIATION: Healthy."
-    
+
     def supercompensation_window(self, last_hard_session_hours: float) -> str:
         """
         Identify supercompensation window after hard training.
@@ -139,7 +139,7 @@ class AdaptiveMemory:
             return "✓ SUPER-COMPENSATION PEAK (Go Hard Now)"
         self.supercomp_status = "BASELINE"
         return "→ BASELINE (Normal Training)"
-    
+
     def session_density_index(self, now_dt: datetime) -> str:
         """
         Check spacing of quality sessions.
@@ -152,10 +152,10 @@ class AdaptiveMemory:
         """
         if len(self.last_quality_sessions) < 2:
             return "SDI: Not enough data."
-        
+
         last = self.last_quality_sessions[-1]
         delta_h = (now_dt - last).total_seconds() / 3600.0
-        
+
         if delta_h < 24:
             return "⚠️ SDI: <24h since last quality. Force EASY."
         if delta_h < 36:
@@ -163,7 +163,7 @@ class AdaptiveMemory:
         if delta_h < 48:
             return "→ SDI: <48h. Caution."
         return "✓ SDI: Safe spacing."
-    
+
     def mechanical_load_risk(
         self,
         easy_pace_today_sec: float,
@@ -182,17 +182,17 @@ class AdaptiveMemory:
             Mechanical load risk status
         """
         risk_flags = []
-        
+
         if len(self.last_3d_soreness) == 3 and sum(self.last_3d_soreness) / 3.0 >= 5:
             risk_flags.append("HIGH_SORENESS_TREND")
-        
+
         if easy_pace_today_sec > easy_pace_baseline_sec * 1.08:
             risk_flags.append("EASY_PACE_DROP")
-        
+
         if not risk_flags:
             return "MECH LOAD: OK"
-        
+
         if "HIGH_SORENESS_TREND" in risk_flags and "EASY_PACE_DROP" in risk_flags:
             return "⚠️ MECH LOAD: HIGH RISK (Consider Rest / Downgrade)."
-        
+
         return "→ MECH LOAD: Watch (Adjust volume/intensity)."

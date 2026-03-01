@@ -36,11 +36,11 @@ def credentials_exist() -> bool:
                 lines.get("TELEGRAM_BOT_TOKEN","")):
                 return True
     # Check env vars
-    if (os.getenv("GARMIN_EMAIL") and
+    return bool(
+        os.getenv("GARMIN_EMAIL") and
         os.getenv("GARMIN_PASSWORD") and
-        os.getenv("TELEGRAM_BOT_TOKEN")):
-        return True
-    return False
+        os.getenv("TELEGRAM_BOT_TOKEN")
+    )
 
 
 def load_env_file():

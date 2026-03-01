@@ -15,7 +15,7 @@ class TRIMPEngine:
     10km @ 140 HR ≠ 10km @ 165 HR
     TRIMP captures this difference
     """
-    
+
     @staticmethod
     def calculate_edwards_trimp(duration_min: float, avg_hr: int, max_hr: int) -> Tuple[Optional[float], int]:
         """
@@ -40,9 +40,9 @@ class TRIMPEngine:
         """
         if not max_hr or max_hr < 100:  # Physiologically impossible below 100 bpm
             return None, 0
-        
+
         hr_percent = (avg_hr / max_hr) * 100
-        
+
         # Determine zone multiplier
         if hr_percent < 60:
             multiplier = 1
@@ -54,10 +54,10 @@ class TRIMPEngine:
             multiplier = 4
         else:  # >= 90%
             multiplier = 5
-        
+
         trimp = duration_min * multiplier
         return trimp, multiplier
-    
+
     @staticmethod
     def calculate_banister_trimp(
         duration_min: float,
@@ -84,19 +84,19 @@ class TRIMPEngine:
         """
         if not max_hr or max_hr < 100 or max_hr <= resting_hr:
             return None
-        
+
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
-        
+
         # Gender-specific exponent (Banister)
         if gender.lower() == 'male':
             y = 1.92
         else:  # female
             y = 1.67
-        
+
         trimp = duration_min * hr_reserve * 0.64 * math.exp(y * hr_reserve)
-        
+
         return round(trimp, 1)
-    
+
     @staticmethod
     def weekly_trimp_analysis(weekly_trimp: float, baseline_trimp: float) -> Tuple[str, str]:
         """
@@ -113,9 +113,9 @@ class TRIMPEngine:
         """
         if baseline_trimp == 0:
             return "Need baseline TRIMP value", "UNKNOWN"
-        
+
         percent_change = ((weekly_trimp - baseline_trimp) / baseline_trimp) * 100
-        
+
         if percent_change > 50:
             return "🛑 DANGEROUS SPIKE: Reduce >30%", "CRITICAL"
         elif percent_change > 30:
@@ -128,21 +128,23 @@ class TRIMPEngine:
             return "➡️ DELOAD WEEK (planned recovery)", "RECOVERY"
         else:
             return "⚠️ SEVERE DELOAD (risk detraining)", "LOW"
-    
+
     @staticmethod
-    def calculate_zone_time_trimp(zone_times: list, zone_multipliers: list = [1, 2, 3, 4, 5]) -> float:
+    def calculate_zone_time_trimp(zone_times: list, zone_multipliers: list | None = None) -> float:
         """
         Calculate TRIMP from time in each zone.
-        
+
         Args:
             zone_times: List of minutes in each zone [z1, z2, z3, z4, z5]
             zone_multipliers: Multipliers for each zone (default Edwards)
-        
+
         Returns:
             Total TRIMP
         """
+        if zone_multipliers is None:
+            zone_multipliers = [1, 2, 3, 4, 5]
         if len(zone_times) != len(zone_multipliers):
             return 0.0
-        
+
         trimp = sum(time * mult for time, mult in zip(zone_times, zone_multipliers))
         return round(trimp, 1)

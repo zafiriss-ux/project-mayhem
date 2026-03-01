@@ -12,7 +12,7 @@ def test_imports():
     """Test all critical imports"""
     print("🔍 Testing imports...")
     errors = []
-    
+
     # Science modules
     modules_to_test = [
         ('titan.science', 'ACWREngine'),
@@ -53,7 +53,7 @@ def test_imports():
         ('titan.ui', 'setup_wizard'),
         ('titan.ui', 'menu_system'),
     ]
-    
+
     for module_path, item in modules_to_test:
         try:
             module = __import__(module_path, fromlist=[item])
@@ -62,14 +62,14 @@ def test_imports():
         except Exception as e:
             errors.append(f'{module_path}.{item}: {e}')
             print(f'  ❌ {module_path}.{item}: {e}')
-    
+
     return len(errors) == 0, errors
 
 def test_instantiation():
     """Test that key classes can be instantiated"""
     print("\n🔍 Testing instantiation...")
     errors = []
-    
+
     try:
         from titan.science import HRVGuidedEngine, TSBEngine
         HRVGuidedEngine()
@@ -78,12 +78,12 @@ def test_instantiation():
     except Exception as e:
         errors.append(f'Science engines: {e}')
         print(f'  ❌ Science engines: {e}')
-    
+
     try:
         from titan.integrations.garmin_sync import GarminSync
         from titan.integrations.weather_api import WeatherAPI
         from titan.integrations.telegram_bot import TitanTelegramBot
-        
+
         GarminSync()
         WeatherAPI()
         TitanTelegramBot()
@@ -91,14 +91,14 @@ def test_instantiation():
     except Exception as e:
         errors.append(f'Integrations: {e}')
         print(f'  ❌ Integrations: {e}')
-    
+
     return len(errors) == 0, errors
 
 def test_basic_functionality():
     """Test basic functionality of key classes"""
     print("\n🔍 Testing functionality...")
     errors = []
-    
+
     try:
         from titan.science.hrv_engine import HRVGuidedEngine
         hrv = HRVGuidedEngine()
@@ -108,7 +108,7 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f'HRV: {e}')
         print(f'  ❌ HRV: {e}')
-    
+
     try:
         from titan.science.tsb_engine import TSBEngine
         tsb = TSBEngine()
@@ -119,7 +119,7 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f'TSB: {e}')
         print(f'  ❌ TSB: {e}')
-    
+
     try:
         from titan.science.acwr_engine import ACWREngine
         acwr, status, rec = ACWREngine.calculate_acwr(800.0, 120.0)
@@ -128,7 +128,7 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f'ACWR: {e}')
         print(f'  ❌ ACWR: {e}')
-    
+
     try:
         from titan.science.drift_engine import DriftEngine
         drift = DriftEngine.compute_drift(150, 157)
@@ -137,7 +137,7 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f'Drift: {e}')
         print(f'  ❌ Drift: {e}')
-    
+
     try:
         from titan.science.biomechanics import BiomechanicsAnalysis
         score, status, issues = BiomechanicsAnalysis.analyze_form(175, 9.5, 250)
@@ -146,14 +146,14 @@ def test_basic_functionality():
     except Exception as e:
         errors.append(f'Biomechanics: {e}')
         print(f'  ❌ Biomechanics: {e}')
-    
+
     return len(errors) == 0, errors
 
 def test_threading():
     """Test that classes are thread-aware"""
     print("\n🔍 Testing threading awareness...")
     errors = []
-    
+
     try:
         from titan.integrations.garmin_sync import GarminSync
         garmin = GarminSync()
@@ -164,7 +164,7 @@ def test_threading():
     except Exception as e:
         errors.append(f'Garmin threading: {e}')
         print(f'  ❌ Garmin threading: {e}')
-    
+
     try:
         from titan.integrations.weather_api import WeatherAPI
         weather = WeatherAPI()
@@ -174,7 +174,7 @@ def test_threading():
     except Exception as e:
         errors.append(f'Weather threading: {e}')
         print(f'  ❌ Weather threading: {e}')
-    
+
     try:
         from titan.integrations.telegram_bot import TitanTelegramBot
         telegram = TitanTelegramBot()
@@ -184,7 +184,7 @@ def test_threading():
     except Exception as e:
         errors.append(f'Telegram threading: {e}')
         print(f'  ❌ Telegram threading: {e}')
-    
+
     return len(errors) == 0, errors
 
 def main():
@@ -193,9 +193,9 @@ def main():
 ║              TITAN v51 - SYSTEM CHECK                    ║
 ╚═══════════════════════════════════════════════════════════╝
 """)
-    
+
     all_passed = True
-    
+
     # Test 1: Imports
     passed, errors = test_imports()
     if not passed:
@@ -203,7 +203,7 @@ def main():
         print(f"\n❌ Import test failed ({len(errors)} errors)")
     else:
         print("\n✅ All imports successful")
-    
+
     # Test 2: Instantiation
     passed, errors = test_instantiation()
     if not passed:
@@ -211,7 +211,7 @@ def main():
         print(f"\n❌ Instantiation test failed ({len(errors)} errors)")
     else:
         print("\n✅ All classes instantiate")
-    
+
     # Test 3: Functionality
     passed, errors = test_basic_functionality()
     if not passed:
@@ -219,7 +219,7 @@ def main():
         print(f"\n❌ Functionality test failed ({len(errors)} errors)")
     else:
         print("\n✅ All functionality works")
-    
+
     # Test 4: Threading
     passed, errors = test_threading()
     if not passed:
@@ -227,7 +227,7 @@ def main():
         print(f"\n❌ Threading test failed ({len(errors)} errors)")
     else:
         print("\n✅ All threading works")
-    
+
     # Final summary
     print("\n" + "="*60)
     if all_passed:

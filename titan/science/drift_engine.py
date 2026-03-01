@@ -6,7 +6,7 @@ class DriftEngine:
         if hr_first_half <= 0:
             return 0.0
         return ((hr_second_half - hr_first_half) / hr_first_half) * 100.0
-    
+
     @staticmethod
     def drift_rule(drift_percent: float) -> str:
         """Interpret drift for training decisions"""
@@ -15,7 +15,7 @@ class DriftEngine:
         if drift_percent < 3.0:
             return "✅ DRIFT < 3%: Hammer extension allowed"
         return "➡️ DRIFT 3-5%: Maintain, no extra load"
-    
+
     @staticmethod
     def classify_drift(drift_percent: float) -> str:
         """Classify aerobic efficiency"""

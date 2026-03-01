@@ -559,7 +559,7 @@ def menu_analytics(ctx: dict):
         print(f"\n  📊 Τελευταίες {total_runs} δραστηριότητες:")
         print(f"    Σύνολο km:   {total_km:.1f}")
         print(f"    Μέσος HR:    {avg_hr:.0f} bpm")
-        
+
         # ACWR check
         acwr_eng = ctx.get("acwr_engine")
         if acwr_eng and total_runs >= 3:

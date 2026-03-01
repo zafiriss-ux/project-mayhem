@@ -3,14 +3,14 @@ from typing import List, Tuple, Optional
 
 class TSBEngine:
     """Training Stress Balance: CTL - ATL = Form"""
-    
+
     def __init__(self):
         self.ctl, self.atl, self.tsb = 0.0, 0.0, 0.0
         self.daily_loads: List[Tuple[str, float]] = []
-    
+
     def add_daily_load(self, date: str, load: float) -> None:
         self.daily_loads.append((date, load))
-    
+
     def calculate_ctl(self, decay: int = 42) -> Optional[float]:
         """Chronic Training Load (42-day EMA)"""
         if not self.daily_loads:
@@ -20,7 +20,7 @@ class TSBEngine:
             ctl = (load * alpha) + (ctl * (1 - alpha))
         self.ctl = ctl
         return round(ctl, 1)
-    
+
     def calculate_atl(self, decay: int = 7) -> Optional[float]:
         """Acute Training Load (7-day EMA)"""
         if not self.daily_loads:
@@ -30,7 +30,7 @@ class TSBEngine:
             atl = (load * alpha) + (atl * (1 - alpha))
         self.atl = atl
         return round(atl, 1)
-    
+
     def calculate_tsb(self) -> Tuple[Optional[float], str]:
         """Training Stress Balance"""
         ctl, atl = self.calculate_ctl(), self.calculate_atl()
@@ -38,7 +38,7 @@ class TSBEngine:
             return None, "INSUFFICIENT DATA"
         tsb = ctl - atl
         self.tsb = tsb
-        
+
         if tsb > 25:
             status = "⚠️ SEVERE DETRAINING"
         elif tsb > 15:
@@ -54,7 +54,7 @@ class TSBEngine:
         else:
             status = "🛑 OVERTRAINED"
         return round(tsb, 1), status
-    
+
     def get_latest_tsb(self) -> float:
         """Return current TSB value (0.0 if insufficient data)."""
         val, _ = self.calculate_tsb()

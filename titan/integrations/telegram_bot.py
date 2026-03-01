@@ -4,6 +4,7 @@ Telegram Bot - Real polling listener + scheduler
 Uses pyTelegramBotAPI for real polling (not mock).
 """
 
+import contextlib
 import os
 import time
 import threading
@@ -286,10 +287,8 @@ class TitanTelegramBot:
         self._stop = True
         self.is_running = False
         if self.bot and TELEBOT_AVAILABLE:
-            try:
+            with contextlib.suppress(Exception):
                 self.bot.stop_polling()
-            except Exception:
-                pass
 
     def _poll_worker(self):
         """Real polling loop – listens for user commands."""
