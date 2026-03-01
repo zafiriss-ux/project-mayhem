@@ -1123,7 +1123,11 @@ class TestGovernanceVo2AndFuelingGates:
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 =======
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+=======
     def test_vo2_gate_preserves_zero_values(self, gov):
+
 
 
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
@@ -1137,6 +1141,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+
+=======
 
 
     def test_vo2_gate_acwr_above_conservative_ceiling_downgrades(self, gov):
@@ -1153,6 +1159,7 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['failed_conditions'] == ['V1']
 
 =======
+
 
     def test_vo2_gate_not_applied_to_tempo(self, gov):
         plan = {'session_type': 'TEMPO', 'duration_min': 60}

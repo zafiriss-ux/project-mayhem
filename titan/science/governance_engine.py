@@ -195,6 +195,9 @@ class GovernanceEngine:
 
 =======
 
+=======
+
+
 
         try:
             acwr = float(1.0 if acwr_raw is None else acwr_raw)
@@ -206,9 +209,12 @@ class GovernanceEngine:
             readiness = 100
 
 =======
+
+=======
 =======
         acwr = float(1.0 if acwr_raw is None else acwr_raw)
         readiness = float(100 if readiness_raw is None else readiness_raw)
+
 
 
         glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
