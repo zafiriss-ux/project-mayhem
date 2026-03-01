@@ -1133,7 +1133,11 @@ class TestGovernanceVo2AndFuelingGates:
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
     def test_vo2_gate_preserves_zero_values(self, gov):
+
 
 
 
@@ -1151,6 +1155,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
 
+
+
         details = result['vo2_eligibility']['detailed_failed_conditions']
         assert [item['code'] for item in details] == ['V1', 'V2']
         assert details[0]['metric'] == 'acwr'
@@ -1158,6 +1164,14 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[1]['metric'] == 'readiness_score'
         assert details[1]['actual'] == 0.0
 
+
+
+    def test_vo2_gate_invalid_numeric_inputs_fail_closed(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 'bad-data',
+            'readiness_score': 'N/A',
+            'glycogen_debt': 3.0,
 
 
 
@@ -1170,12 +1184,22 @@ class TestGovernanceVo2AndFuelingGates:
             'acwr': 1.4,
             'readiness_score': 80,
             'glycogen_debt': 2.0,
+
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
+
+        assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert details[0]['operator'] == 'numeric'
+        assert details[0]['actual'] == 'bad-data'
+        assert details[1]['operator'] == 'numeric'
+        assert details[1]['actual'] == 'N/A'
+
         assert result['vo2_eligibility']['failed_conditions'] == ['V1']
+
 
 
 
