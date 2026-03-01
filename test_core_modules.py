@@ -1174,6 +1174,10 @@ class TestGlycogenNamedElectrolyteAccessor:
         assert named == legacy
 
 
+
+=======
+
+
 class TestReadinessThresholdAlignment:
 
     def test_sleep_55_is_poor_penalty(self):
@@ -1273,6 +1277,7 @@ class TestGovernanceHardStopsAnd2of4:
         assert 'downgrade_2of4' not in out
 
 
+
 class TestVolumeLoadGauge:
 
     @pytest.fixture
@@ -1305,3 +1310,7 @@ class TestVolumeLoadGauge:
         assert any('TSB=' in r for r in state.rationale)
         assert any('ACWR=' in r for r in state.rationale)
         assert any('Glycogen debt=' in r for r in state.rationale)
+=======
+=======
+
+
