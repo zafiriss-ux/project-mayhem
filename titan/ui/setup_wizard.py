@@ -29,8 +29,8 @@ def credentials_exist() -> bool:
     if ENV_PATH.exists():
         text = ENV_PATH.read_text()
         if "GARMIN_EMAIL=" in text and "TELEGRAM_BOT_TOKEN=" in text:
-            lines = {l.split("=")[0]: l.split("=",1)[1].strip()
-                     for l in text.splitlines() if "=" in l and not l.startswith("#")}
+            lines = {line.split("=")[0]: line.split("=", 1)[1].strip()
+                     for line in text.splitlines() if "=" in line and not line.startswith("#")}
             if (lines.get("GARMIN_EMAIL","") and
                 lines.get("GARMIN_PASSWORD","") and
                 lines.get("TELEGRAM_BOT_TOKEN","")):

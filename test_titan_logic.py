@@ -133,7 +133,7 @@ def test_trimp():
 
     # Valid
     trimp, zone = TRIMPEngine.calculate_edwards_trimp(60, 160, 190)
-    pct = (160 / 190) * 100  # ≈ 84.2% → zone 4 (×4)
+    # (160 / 190) * 100 ≈ 84.2% → zone 4 (×4)
     check("60min @ 84% HRmax → zone 4", zone == 4)
     check("TRIMP = 60 × 4 = 240", trimp == 240)
 

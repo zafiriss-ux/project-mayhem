@@ -5,20 +5,20 @@ from pathlib import Path
 
 # --- ΕΛΕΓΧΟΣ ΒΙΒΛΙΟΘΗΚΩΝ ---
 try:
-    import pandas as pd
+    import pandas as pd  # noqa: F401
     PANDAS_AVAILABLE = True
 except ImportError:
     PANDAS_AVAILABLE = False
 
 try:
-    import requests
+    import requests  # noqa: F401
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
 
 try:
-    from sklearn.ensemble import RandomForestRegressor
-    import numpy as np
+    from sklearn.ensemble import RandomForestRegressor  # noqa: F401
+    import numpy as np  # noqa: F401
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -96,9 +96,12 @@ from sklearn.preprocessing import StandardScaler
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import random
+import sqlite3
 
 # Logging setup
-if not os.path.exists('logs'): os.makedirs('logs')
+if not os.path.exists('logs'):
+    os.makedirs('logs')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s',
                     handlers=[RotatingFileHandler('logs/titan.log', maxBytes=5*1024*1024, backupCount=3), logging.StreamHandler()])
 logger = logging.getLogger('TITAN')
@@ -106,9 +109,11 @@ logger = logging.getLogger('TITAN')
 # Configuration
 DEFAULT_CONFIG = {'hr_zones':{'z1':(0,60),'z2':(60,70),'z3':(70,80),'z4':(80,90),'z5':(90,100)}, 'acwr':{'safe_min':0.8,'safe_max':1.3}, 'db_version':'1.0', 'weather_timeout':10}
 try:
-    with open('config.json','r') as cf: CONFIG=json.load(cf)
+    with open('config.json','r') as cf:
+        CONFIG=json.load(cf)
     logger.info('Config loaded')
-except: CONFIG=DEFAULT_CONFIG
+except Exception:
+    CONFIG = DEFAULT_CONFIG
 
 class UniversalAthleteProfile:
     """
@@ -223,9 +228,12 @@ class UniversalAthleteProfile:
     def str_to_sec(time_str):
         try:
             parts = time_str.split(':')
-            if len(parts) == 2: return int(parts[0]) * 60 + int(parts[1])
-            elif len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-        except: return 0
+            if len(parts) == 2:
+                return int(parts[0]) * 60 + int(parts[1])
+            elif len(parts) == 3:
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        except Exception:
+            return 0
         return 0
     
     @staticmethod
@@ -257,7 +265,8 @@ class UniversalAthleteProfile:
         profile.max_hr = data.get("max_hr", 191)
         profile.threshold_hr = data.get("threshold_hr", 168)
         profile.vo2_max = data.get("vo2_max")
-        if data.get("race_day"): profile.race_day = datetime.fromisoformat(data["race_day"])
+        if data.get("race_day"):
+            profile.race_day = datetime.fromisoformat(data["race_day"])
         profile.current_goal = data.get("current_goal")
         profile.target_time = data.get("target_time")
         profile.personal_bests = data.get("personal_bests", {})
@@ -686,7 +695,7 @@ class AthleteDatabase:
                     data = json.load(f)
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
-            except:
+            except Exception:
                 pass
 
 class TitanProfile:
@@ -732,7 +741,7 @@ class TitanProfile:
                 return int(parts[0]) * 60 + int(parts[1])
             elif len(parts) == 3:
                 return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-        except:
+        except Exception:
             return 0
         return 0
 
@@ -2833,7 +2842,7 @@ class WearableSync:
             for _, row in df.iterrows():
                 try:
                     date = pd.to_datetime(row.get("Date"))
-                except:
+                except Exception:
                     date = datetime.now()
                 
                 session = {
@@ -2910,9 +2919,9 @@ class WearableSync:
                 return int(parts[0]) * 60 + int(parts[1])
             else:
                 return 0
-        except:
+        except Exception:
             return 0
-    
+
     def get_sync_summary(self):
         if not self.sync_history:
             return "No syncs performed"
@@ -3316,8 +3325,6 @@ if pred is not None and high is not None:
 else:
     print(f"Prediction unavailable. (Values: pred={pred}, high={high}, Confidence={conf})")
 
-import random
-
 class GeneticOptimization:
     """
     Genetic Algorithm for Training Parameters Optimization.
@@ -3363,7 +3370,7 @@ class GeneticOptimization:
                 return float('inf')
             
             return pred + penalty
-        except:
+        except Exception:
             return float('inf')
 
     def crossover(self, parent1, parent2):
@@ -3675,8 +3682,6 @@ class PhaseAwareLogic:
         return self.phases.get(current_phase, self.phases["BASE"])
     
     def adjust_session_for_phase(self, session, phase):
-        guidelines = self.get_phase_guidelines(phase)
-        
         # Adjust session based on phase
         if phase == "TAPER":
             session["volume"] *= 0.6
@@ -3949,16 +3954,26 @@ class TitanSystem:
             elif cmd == "30": 
                 print("Stay Hard.")
                 break
-            elif cmd == "31": self.menu_race_strategy()
-            elif cmd == "32": self.menu_recovery_score()
-            elif cmd == "33": self.menu_wearable_sync()
-            elif cmd == "40": self.menu_ml_predict()
-            elif cmd == "41": self.menu_taper()
-            elif cmd == "42": self.menu_ascii_viz()
-            elif cmd == "43": self.menu_simulation()
-            elif cmd == "44": self.menu_weather_live()
-            elif cmd == "45": self.menu_cognitive()
-            elif cmd == "46": self.menu_weekly_report()
+            elif cmd == "31":
+                self.menu_race_strategy()
+            elif cmd == "32":
+                self.menu_recovery_score()
+            elif cmd == "33":
+                self.menu_wearable_sync()
+            elif cmd == "40":
+                self.menu_ml_predict()
+            elif cmd == "41":
+                self.menu_taper()
+            elif cmd == "42":
+                self.menu_ascii_viz()
+            elif cmd == "43":
+                self.menu_simulation()
+            elif cmd == "44":
+                self.menu_weather_live()
+            elif cmd == "45":
+                self.menu_cognitive()
+            elif cmd == "46":
+                self.menu_weekly_report()
             input("\n(Press Enter...)")
 
     # ---------------- READINESS & MEDICAL ----------------
@@ -3970,7 +3985,7 @@ class TitanSystem:
             sleep = float(input("Sleep Score (0-100): "))
             soreness = float(input("Soreness (1-10): "))
             symptoms = input("Symptoms (None/Head/Chest/Fever): ").upper()
-        except:
+        except Exception:
             hrv, rhr, sleep, soreness, symptoms = 60.0, 46.0, 85.0, 2.0, "NONE"
 
         score, status = ReadinessEngine.analyze_readiness(
@@ -3993,7 +4008,7 @@ class TitanSystem:
         try:
             t = float(input("Temp (C): "))
             h = float(input("Humidity (%): "))
-        except:
+        except Exception:
             t, h = 15.0, 60.0
         dew, msg, is_hot, pen_msg = HeatEngine.heat_status(t, h)
         self.current_dew = dew
@@ -4037,7 +4052,7 @@ class TitanSystem:
                 hrv_stat = "NORMAL" # Placeholder
                 sleep = float(input("Last Night Sleep Score (0-100): "))
                 soreness = float(input("Leg Soreness (1-10): "))
-            except:
+            except Exception:
                 sleep, soreness = 80, 2
                 acwr_in, hrv_stat = 1.1, "NORMAL"
 
@@ -4096,7 +4111,7 @@ class TitanSystem:
             gut = int(input("Gut Health (0-10): "))
             low_carb_day = input("Is today LOW CARB day? (y/n): ").lower() == "y"
             back_to_back = input("Back-to-back quality days? (y/n): ").lower() == "y"
-        except:
+        except Exception:
             w, gut, low_carb_day, back_to_back = 75.0, 8, False, False
         dew = self.current_dew
         today_obj = datetime.now()
@@ -4132,7 +4147,7 @@ class TitanSystem:
             rpe = float(input("RPE (1-10): "))
             soreness = float(input("Soreness (1-10): "))
             easy_baseline_str = input("Baseline EASY pace (MM:SS) [for mech load]: ")
-        except:
+        except Exception:
             session_type = "TEMPO"
             dist, time_str, avg_hr, hr_first, hr_second, rpe, soreness = 10.0, "45:00", 155, 150, 160, 7, 3
             easy_baseline_str = "5:30"
@@ -4226,20 +4241,24 @@ class TitanSystem:
                 perfs = []
                 while True:
                     line = input("Enter perf (dist_m,time_s) or Enter to stop: ").strip()
-                    if not line: break
+                    if not line:
+                        break
                     try:
                         d_s = line.split(',')
                         perfs.append((float(d_s[0]), float(d_s[1])))
-                    except: print("Invalid format.")
+                    except Exception:
+                        print("Invalid format.")
                 cs, dp = CriticalSpeedEngine.estimate_cs_and_dprime(perfs)
                 if cs and dp:
                     self.profile.critical_speed_m_per_s = cs
                     self.profile.d_prime_m = dp
                     print(f"Updated CS: {cs:.3f} m/s, D: {dp:.1f} m")
                     self.athlete_db.save_athlete(self.profile)
-                else: print("Could not estimate CS/D.")
+                else:
+                    print("Could not estimate CS/D.")
             print(" Settings updated.")
-        except: print("Error in settings.")
+        except Exception:
+            print("Error in settings.")
 
     # ---------------- POST-RACE EVOLUTION ----------------
     def menu_post_race(self):
@@ -4275,7 +4294,7 @@ class TitanSystem:
             has_strides = input("Did session include strides? (y/n): ").lower() == 'y'
             has_intervals = input("Did session include short intervals (<1k)? (y/n): ").lower() == 'y'
             has_hammer = input("Did session include Hammer segment? (y/n): ").lower() == 'y'
-        except:
+        except Exception:
             date_obj = datetime.now()
             session_type = "EASY"
             has_strides, has_intervals, has_hammer = False, False, False
@@ -4306,7 +4325,7 @@ class TitanSystem:
                 rhr = float(input(f"Resting HR [Baseline: {self.profile.resting_hr_baseline}]: "))
                 stiffness = int(input("Stiffness (0-5, 0=none, 5=severe): "))
                 sleep_quality = int(input("Sleep quality (0-5, 0=terrible, 5=perfect): "))
-            except:
+            except Exception:
                 print("Invalid input. Using defaults.")
                 return
             
@@ -4353,7 +4372,7 @@ class TitanSystem:
             gut_health = int(input("Gut health (0-10): "))
             sleep_avg = int(input("Average sleep quality this week (0-5): "))
             weight_stable = input("Has weight been stable? (y/n): ").lower() == 'y'
-        except:
+        except Exception:
             training_ok, gut_health, sleep_avg, weight_stable = True, 8, 4, True
         
         entropy, status = RaceWeekEngine.calculate_entropy_score(
@@ -4389,7 +4408,7 @@ class TitanSystem:
             has_hammer = False
             if session_type in ["LONG_RUN", "PROGRESSIVE"]:
                 has_hammer = input("Will this session include Hammer segment? (y/n): ").lower() == 'y'
-        except:
+        except Exception:
             session_type = "EASY"
             has_hammer = False
         
@@ -4415,10 +4434,9 @@ class TitanSystem:
                 load = float(input(f"Day {i+1}: "))
                 loads_7d.append(load)
             
-            loads_28d = []
             print("\nEnter average daily load for last 28 days:")
             avg_28d = float(input("Average daily load (28d): "))
-        except:
+        except Exception:
             print("Using demo data...")
             loads_7d = [45, 50, 38, 55, 42, 60, 48]
             avg_28d = 42
@@ -4470,8 +4488,8 @@ class TitanSystem:
             
             # Get planned session
             planned = input("Planned session (TEMPO/INTERVALS/LONG/EASY): ").upper()
-            
-        except:
+
+        except Exception:
             print("Using demo data...")
             today_hrv = 55
             planned = "TEMPO"
@@ -4523,7 +4541,7 @@ class TitanSystem:
                         seconds = float(split_str)
                     splits.append(seconds)
                 target = float(input("Target pace (sec/km): "))
-            except:
+            except Exception:
                 print("Using demo data...")
                 splits = [270, 272, 275, 278, 280, 282, 285, 288, 290, 292, 
                          295, 298, 300, 302, 305]
@@ -4547,7 +4565,7 @@ class TitanSystem:
                 fresh = self.profile.str_to_sec(input("Time (MM:SS): "))
                 print("\nFatigued performance (e.g., 5K after 25K):")
                 fatigued = self.profile.str_to_sec(input("Time (MM:SS): "))
-            except:
+            except Exception:
                 fresh = 1140  # 19:00
                 fatigued = 1200  # 20:00
             
@@ -4578,7 +4596,7 @@ class TitanSystem:
             try:
                 pace = self.profile.str_to_sec(input("Average pace (MM:SS/km): "))
                 hr = float(input("Average HR: "))
-            except:
+            except Exception:
                 pace = 300
                 hr = 155
             
@@ -4598,7 +4616,7 @@ class TitanSystem:
                 print("Second half:")
                 pace2 = self.profile.str_to_sec(input("  Pace (MM:SS/km): "))
                 hr2 = float(input("  Avg HR: "))
-            except:
+            except Exception:
                 pace1, hr1 = 300, 150
                 pace2, hr2 = 310, 160
             
@@ -4631,7 +4649,7 @@ class TitanSystem:
                 duration = float(input("Duration (minutes): "))
                 avg_hr = float(input("Average HR: "))
                 method = input("Method (E)dwards or (B)anister: ").upper()
-            except:
+            except Exception:
                 duration, avg_hr, method = 60, 155, "E"
             
             if method == "E" or method == "EDWARDS":
@@ -4651,7 +4669,7 @@ class TitanSystem:
             try:
                 duration = float(input("Duration (minutes): "))
                 rpe = float(input("Session RPE (1-10): "))
-            except:
+            except Exception:
                 duration, rpe = 60, 7
             
             srpe = SessionRPEEngine.calculate_srpe(duration, rpe)
@@ -4665,7 +4683,7 @@ class TitanSystem:
                 duration = float(input("Duration (minutes): "))
                 intensity = float(input("Intensity (% VO2max, e.g., 75): "))
                 weight = float(input("Body weight (kg): "))
-            except:
+            except Exception:
                 duration, intensity, weight = 90, 75, 75
             
             result = GlycogenModel.estimate_glycogen_depletion(duration, intensity)
@@ -4704,7 +4722,8 @@ class TitanSystem:
                     self.profile = self.athlete_db.switch_athlete(athletes[num]["id"])
                     self.periodization = PeriodizationManager(self.profile)
                     print(f"[OK] Switched to {self.profile.name}")
-            except: print("Invalid selection.")
+            except Exception:
+                print("Invalid selection.")
         
         elif choice == "2":
             try:
@@ -4723,7 +4742,8 @@ class TitanSystem:
                 
                 print(f"\n[OK] Created: {self.profile.name}")
                 self.periodization = PeriodizationManager(self.profile)
-            except: print("Error creating athlete.")
+            except Exception:
+                print("Error creating athlete.")
         
         elif choice == "3":
             print(f"\n[{self.profile.name}]")
@@ -4777,7 +4797,7 @@ class TitanSystem:
                 self.profile.weight_panic = nw - 1.5
                 self.athlete_db.save_athlete(self.profile)
                 print("[OK] Weight Updated.")
-            except:
+            except Exception:
                 print("Invalid input.")
 
         elif choice == "3":
@@ -4797,7 +4817,7 @@ class TitanSystem:
                 
                 self.athlete_db.save_athlete(self.profile)
                 print("[OK] HR Data Updated.")
-            except:
+            except Exception:
                 print("Invalid input.")
         
         elif choice == "4":
@@ -4963,7 +4983,8 @@ class TitanSystem:
             print(f"\nACTUAL PACE: {pace_str}/km")
             print(f"GAP (Effort): {self.profile.sec_to_str(gap)}/km")
             print(f"Energy Cost of Vert: {cost} kcal")
-        except: print("Invalid input.")
+        except Exception:
+            print("Invalid input.")
 
     def menu_power(self):
         print("\n>>> RUNNING POWER ESTIMATION")
@@ -4976,7 +4997,8 @@ class TitanSystem:
             w_kg = power / self.profile.weight_kg
             print(f"\nESTIMATED POWER: {power:.0f} Watts")
             print(f"RATIO: {w_kg:.1f} W/kg")
-        except: print("Invalid input.")
+        except Exception:
+            print("Invalid input.")
 
     def menu_biomech(self):
         print("\n>>> BIOMECHANICS SCAN")
@@ -4989,8 +5011,10 @@ class TitanSystem:
             gct = float(input("Ground Contact Time (ms) [e.g. 200-300]: "))
             s, st, issues = self.bio_engine.analyze_form(cad, vo, gct)
             print(f"\nFORM SCORE: {s}/100 ({st})")
-            for i in issues: print(f" - {i}")
-        except: print("Invalid input.")
+            for i in issues:
+                print(f" - {i}")
+        except Exception:
+            print("Invalid input.")
 
     def menu_cycle(self):
         print("\n>>> MENSTRUAL CYCLE OPTIMIZATION")
@@ -5000,7 +5024,8 @@ class TitanSystem:
             rec = self.cycle_tracker.get_rec(day)
             print(f"\nPHASE: {phase}")
             print(f"RECOMMENDATION: {rec}")
-        except: print("Invalid input.")
+        except Exception:
+            print("Invalid input.")
 
     def menu_altitude(self):
         print("\n>>> ALTITUDE ADJUSTMENT")
@@ -5012,7 +5037,8 @@ class TitanSystem:
             print(f"5:00/km feels like: {self.profile.sec_to_str(ex_pace)}/km")
             s, adv = self.altitude_tracker.status()
             print(f"STATUS: {s} ({adv})")
-        except: print("Invalid input.")
+        except Exception:
+            print("Invalid input.")
 
     def menu_schedule(self):
         print("\n>>> SMART SCHEDULE GENERATOR")
@@ -5024,13 +5050,13 @@ class TitanSystem:
             print("\nSUGGESTED WEEK:")
             for d, s in sched.items():
                 print(f" {d}: {s}")
-        except: print("Invalid input.")
+        except Exception:
+            print("Invalid input.")
 
     def menu_progress(self):
         print("\n>>> PROGRESS ANALYZER")
         # Initialize dynamically with demo goal if not set
         if not hasattr(self, 'progress_engine'):
-            goal_sec = self.profile.str_to_sec(self.profile.target_time) if self.profile.target_time else 2400
             self.progress_analyzer = ProgressAnalyzer(goal_sec=0, dist_km=0, race_date=datetime.now())
         
         print("1. Add Result  2. Check Probability")
@@ -5095,14 +5121,15 @@ class TitanSystem:
             print(f"\nRECOVERY SCORE: {score}/100")
             print(f"STATUS: {status}")
             print(f"ADVICE: {rec}")
-        except Exception as e: 
+        except Exception as e:
             print(f"Invalid input: {e}")
 
     def menu_wearable_sync(self):
         print("\n>>> WEARABLE SYNC")
         print("Supported: Garmin Connect CSV, Stryd PowerCenter CSV")
         path = input("Path to CSV file: ").strip()
-        if not path: return
+        if not path:
+            return
         
         # Δοκιμή Garmin
         sessions, msg = self.sync_engine.import_garmin_csv(path)
@@ -5269,8 +5296,8 @@ class TitanSystem:
             print("\nRECOVERY CHECKLIST:")
             for item in self.cognitive_monitor.recovery_recommendations(entry['total_load']):
                 print(item)
-                
-        except:
+
+        except Exception:
             print("Invalid input.")
 
     def menu_weekly_report(self):
@@ -5293,8 +5320,6 @@ class TitanSystem:
 # ==============================================================================
 # TITAN v49 NEURAL - INTELLIGENT ADAPTIVE SYSTEM
 # ==============================================================================
-
-import sqlite3
 
 class DatabaseManager:
     """
@@ -5464,7 +5489,7 @@ class DatabaseManager:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
         
         # Calculate ATL (7-day EMA, last 7 days)
-        recent_loads = [l for d, l in loads if d][:7]
+        recent_loads = [load for _d, load in loads if _d][:7]
         atl = 0
         atl_decay = 2 / (7 + 1)
         

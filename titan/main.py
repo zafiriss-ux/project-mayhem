@@ -144,7 +144,6 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
 
     def cb_nutrition():
         nutrition: NutritionOptimizer = ctx["nutrition_optimizer"]
-        weather: WeatherAPI = ctx["weather"]
         opt_calc: OptimalTimeCalculator = ctx["optimal_time_calc"]
         try:
             trend = nutrition.analyze_weight_trend()

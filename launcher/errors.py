@@ -267,7 +267,6 @@ def translate_kernel_error(exc: Exception) -> TitanError:
         TitanError subclass with user-friendly message
     """
     exc_type = type(exc).__name__
-    error_cls = ERROR_REGISTRY.get(exc_type, TitanError)
 
     # Generic fallback
     return TitanError(

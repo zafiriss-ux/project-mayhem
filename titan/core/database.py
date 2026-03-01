@@ -393,7 +393,7 @@ class DatabaseManager:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
         # Calculate ATL (7-day EMA, last 7 days)
-        recent_loads = [l for d, l in loads if d][:7]
+        recent_loads = [load for _d, load in loads if _d][:7]
         atl = 0.0
         atl_decay = 2 / (7 + 1)
 

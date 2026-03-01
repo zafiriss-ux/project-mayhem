@@ -265,7 +265,7 @@ class TestAthleteDatabase:
 
     def test_create_and_list(self, athlete_db):
         # Athlete IDs are timestamp-based; create one and verify it appears.
-        a1 = athlete_db.create_athlete("Runner One", "M", 30, 180, 75)
+        athlete_db.create_athlete("Runner One", "M", 30, 180, 75)
         all_athletes = athlete_db.list_all()
         assert len(all_athletes) >= 1
         assert any(a["name"] == "Runner One" for a in all_athletes)

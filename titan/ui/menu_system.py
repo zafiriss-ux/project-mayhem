@@ -77,13 +77,10 @@ def menu_daily_plan(ctx: dict):
     _clear()
     _header("Σημερινό Πλάνο")
 
-    coach = ctx.get("daily_coach")
     weather = ctx.get("weather")
     hrv_eng = ctx.get("hrv_engine")
     tsb_eng = ctx.get("tsb_engine")
-    readiness = ctx.get("readiness_engine")
     opt_time = ctx.get("optimal_time_calc")
-    nutrition = ctx.get("nutrition_optimizer")
 
     # Recovery
     hrv_summary = hrv_eng.get_hrv_summary() if hrv_eng else {}
@@ -328,12 +325,10 @@ def _browser_drift(ctx: dict):
             hr2 = a.get("avg_hr_second_half", 0)
             if hr1 and hr2:
                 drift = DriftEngine.compute_drift(hr1, hr2)
-                rule = DriftEngine.drift_rule(drift)
                 cls = DriftEngine.classify_drift(drift)
             else:
                 drift = a.get("drift_pct", 0)
                 cls = DriftEngine.classify_drift(drift) if drift else "N/A"
-                rule = ""
             print(f"  {a.get('date',''):<12} "
                   f"{a.get('activity_type','run'):<12} "
                   f"{drift:>7.1f}% "

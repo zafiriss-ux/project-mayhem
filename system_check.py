@@ -72,8 +72,8 @@ def test_instantiation():
     
     try:
         from titan.science import HRVGuidedEngine, TSBEngine
-        hrv = HRVGuidedEngine()
-        tsb = TSBEngine()
+        HRVGuidedEngine()
+        TSBEngine()
         print('  ✅ Science engines instantiate')
     except Exception as e:
         errors.append(f'Science engines: {e}')
@@ -84,9 +84,9 @@ def test_instantiation():
         from titan.integrations.weather_api import WeatherAPI
         from titan.integrations.telegram_bot import TitanTelegramBot
         
-        garmin = GarminSync()
-        weather = WeatherAPI()
-        telegram = TitanTelegramBot()
+        GarminSync()
+        WeatherAPI()
+        TitanTelegramBot()
         print('  ✅ Integration classes instantiate')
     except Exception as e:
         errors.append(f'Integrations: {e}')
@@ -114,7 +114,7 @@ def test_basic_functionality():
         tsb = TSBEngine()
         tsb.add_daily_load('2026-02-16', 150.0)
         tsb.add_daily_load('2026-02-17', 160.0)
-        ctl = tsb.calculate_ctl()
+        tsb.calculate_ctl()
         print('  ✅ TSB engine works')
     except Exception as e:
         errors.append(f'TSB: {e}')
