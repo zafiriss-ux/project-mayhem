@@ -1,16 +1,7 @@
-
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
 
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
-
-=======
-
-"""Governance Engine — intensity, readiness downgrade, and safety gates."""
-
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional, Tuple
-
 
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
@@ -21,27 +12,12 @@ from titan.config.thresholds import (
 )
 
 
-
-=======
-=======
-"""Governance Engine — discipline, intensity, VO2 and fueling gates."""
-
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional
-
-
-
-
 class GovernanceEngine:
     OVERRIDE_LOCKDOWN_THRESHOLD: float = 0.80
     CS_CONFIDENCE_THRESHOLD: float = 0.70
 
     _QUALITY_SESSIONS = frozenset({'INTERVALS', 'TEMPO', 'RACE', 'HAMMER'})
     _VO2_SESSIONS = frozenset({'HAMMER', 'RACE'})
-
-
-=======
-
 
     _DOWNGRADE_MAP_2OF4 = {
         'INTERVALS': 'TEMPO',
@@ -52,11 +28,6 @@ class GovernanceEngine:
         'EASY': 'EASY',
         'REST': 'REST',
     }
-
-=======
-=======
-
-
 
     def check_override_lockdown(self, db: Any) -> Dict:
         try:
@@ -110,7 +81,6 @@ class GovernanceEngine:
             'audit': getattr(value, 'audit', {}),
         }
 
-
     def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
         indicators: List[str] = []
 
@@ -127,27 +97,6 @@ class GovernanceEngine:
             hrv_soft = bool(context.get('hrv_soft_trigger', False))
         if hrv_soft:
             indicators.append('I1_hrv_soft')
-
-=======
-
-
-    def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
-        indicators: List[str] = []
-
-        today_hrv = context.get('today_hrv')
-        baseline_hrv = context.get('baseline_hrv')
-        hrv_std_dev = context.get('hrv_std_dev')
-        hrv_soft = False
-        if today_hrv is not None and baseline_hrv is not None and hrv_std_dev is not None:
-            try:
-                hrv_soft = float(today_hrv) < (float(baseline_hrv) - float(hrv_std_dev))
-            except (TypeError, ValueError):
-                hrv_soft = False
-        else:
-            hrv_soft = bool(context.get('hrv_soft_trigger', False))
-        if hrv_soft:
-            indicators.append('I1_hrv_soft')
-
 
         try:
             sleep_score = float(context.get('sleep_score', 100))
@@ -229,12 +178,6 @@ class GovernanceEngine:
 
         return reasons
 
-
-=======
-=======
-
-
-
     def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
         session_type = str(session_plan.get('session_type', '')).upper()
         zone = int(session_plan.get('zone', session_plan.get('max_zone', 0)) or 0)
@@ -242,8 +185,16 @@ class GovernanceEngine:
         if not is_vo2_session:
             return None
 
-        acwr = float(context.get('acwr', 1.0) or 1.0)
-        readiness = float(context.get('readiness_score', 100) or 100)
+        acwr_raw = context.get('acwr', 1.0)
+        readiness_raw = context.get('readiness_score', 100)
+        try:
+            acwr = float(1.0 if acwr_raw is None else acwr_raw)
+        except (TypeError, ValueError):
+            acwr = 1.0
+        try:
+            readiness = float(100 if readiness_raw is None else readiness_raw)
+        except (TypeError, ValueError):
+            readiness = 100
         glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
         fatigue_level = str(context.get('fatigue_level', 'LOW') or 'LOW').upper()
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
@@ -366,10 +317,6 @@ class GovernanceEngine:
             elif color == 'YELLOW':
                 applied_locks.append('INTENSITY_GATE_YELLOW')
 
-
-=======
-
-
         count_2of4, indicators = self._evaluate_2of4_indicators(context)
         if count_2of4 >= 2:
             original = str(session_plan.get('session_type', 'EASY')).upper()
@@ -388,11 +335,6 @@ class GovernanceEngine:
         if hard_stop_reasons:
             session_plan['hard_stop_reasons'] = hard_stop_reasons
             applied_locks.append('HARD_STOP_SAFETY_GATES')
-
-
-=======
-=======
-
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
