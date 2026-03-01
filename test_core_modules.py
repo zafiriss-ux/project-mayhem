@@ -1172,3 +1172,105 @@ class TestGlycogenNamedElectrolyteAccessor:
         legacy = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
         named = GlycogenDebtAccumulator.get_electrolyte_guard_status(22.0, 90, 'TEMPO')
         assert named == legacy
+
+
+
+class TestReadinessThresholdAlignment:
+
+    def test_sleep_55_is_poor_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=55, soreness=0,
+        )
+        assert r['score'] == 85
+
+    def test_sleep_60_is_fair_not_poor(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=60, soreness=0,
+        )
+        assert r['score'] == 92
+
+    def test_hrv_minus_9_uses_high_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=41, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=80, soreness=0,
+        )
+        assert r['score'] == 80
+
+    def test_rhr_plus_6_uses_medium_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=56, baseline_rhr=50,
+            sleep_score=80, soreness=0,
+        )
+        assert r['score'] == 92
+
+
+class TestGovernanceHardStopsAnd2of4:
+
+    @pytest.fixture
+    def gov(self):
+        from titan.science.governance_engine import GovernanceEngine
+        return GovernanceEngine()
+
+    def test_h1_dual_collapse_forces_rest(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 28, 'baseline_hrv': 55,
+            'today_rhr': 72, 'baseline_rhr': 52,
+        })
+        assert out['session_type'] == 'REST'
+        assert out['max_zone'] == 1
+        assert 'HRV/RHR dual collapse' in out['governance_override']
+
+    def test_h2_tsb_floor_boundary(self, gov):
+        plan = {'session_type': 'HAMMER', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'tsb_value': -50})
+        assert out['session_type'] == 'EASY'
+        assert 'TSB at overtraining threshold' in out['governance_override']
+
+    def test_h3_injury_flag_forces_rest(self, gov):
+        plan = {'session_type': 'TEMPO', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'injury_flag': True})
+        assert out['session_type'] == 'REST'
+        assert out['max_zone'] == 1
+
+    def test_h4_extreme_subjective_fatigue(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'subjective_fatigue_score': 9})
+        assert out['session_type'] == 'EASY'
+        assert 'extreme fatigue' in out['governance_override']
+
+    def test_2of4_exactly_two_downgrades(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 40, 'baseline_hrv': 50, 'hrv_std_dev': 5,
+            'sleep_score': 58,
+            'readiness_score': 62,
+            'subjective_fatigue_score': 5,
+            'tsb_value': -45,
+        })
+        assert out['session_type'] == 'TEMPO'
+        assert out['downgrade_2of4']['downgrade_2of4'] is True
+        assert set(out['downgrade_2of4']['indicators_triggered']) == {'I1_hrv_soft', 'I2_sleep'}
+
+    def test_2of4_single_indicator_no_downgrade(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 40, 'baseline_hrv': 50, 'hrv_std_dev': 5,
+            'sleep_score': 72,
+            'readiness_score': 68,
+            'subjective_fatigue_score': 4,
+        })
+        assert out['session_type'] == 'INTERVALS'
+        assert 'downgrade_2of4' not in out
+=======
+

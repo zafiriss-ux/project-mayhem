@@ -1,7 +1,22 @@
+
+"""Governance Engine — intensity, readiness downgrade, and safety gates."""
+
+from dataclasses import asdict, is_dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+from titan.config.thresholds import (
+    HARD_STOP_HRV_DELTA,
+    HARD_STOP_RHR_DELTA,
+    HARD_STOP_TSB_FLOOR,
+    SUBJECTIVE_FATIGUE_2OF4,
+    SUBJECTIVE_FATIGUE_EXTREME,
+)
+=======
 """Governance Engine — discipline, intensity, VO2 and fueling gates."""
 
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional
+
 
 
 class GovernanceEngine:
@@ -10,6 +25,19 @@ class GovernanceEngine:
 
     _QUALITY_SESSIONS = frozenset({'INTERVALS', 'TEMPO', 'RACE', 'HAMMER'})
     _VO2_SESSIONS = frozenset({'HAMMER', 'RACE'})
+
+
+    _DOWNGRADE_MAP_2OF4 = {
+        'INTERVALS': 'TEMPO',
+        'TEMPO': 'EASY',
+        'HAMMER': 'EASY',
+        'RACE': 'TEMPO',
+        'PROGRESSIVE': 'EASY',
+        'EASY': 'EASY',
+        'REST': 'REST',
+    }
+=======
+
 
     def check_override_lockdown(self, db: Any) -> Dict:
         try:
@@ -62,6 +90,107 @@ class GovernanceEngine:
             'triggered_signals': list(getattr(value, 'triggered_signals', [])),
             'audit': getattr(value, 'audit', {}),
         }
+
+
+    def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
+        indicators: List[str] = []
+
+        today_hrv = context.get('today_hrv')
+        baseline_hrv = context.get('baseline_hrv')
+        hrv_std_dev = context.get('hrv_std_dev')
+        hrv_soft = False
+        if today_hrv is not None and baseline_hrv is not None and hrv_std_dev is not None:
+            try:
+                hrv_soft = float(today_hrv) < (float(baseline_hrv) - float(hrv_std_dev))
+            except (TypeError, ValueError):
+                hrv_soft = False
+        else:
+            hrv_soft = bool(context.get('hrv_soft_trigger', False))
+        if hrv_soft:
+            indicators.append('I1_hrv_soft')
+
+        try:
+            sleep_score = float(context.get('sleep_score', 100))
+        except (TypeError, ValueError):
+            sleep_score = 100
+        if sleep_score < 60:
+            indicators.append('I2_sleep')
+
+        try:
+            readiness_score = float(context.get('readiness_score', 100))
+        except (TypeError, ValueError):
+            readiness_score = 100
+        if readiness_score < 50:
+            indicators.append('I3_readiness')
+
+        try:
+            subjective_fatigue = int(context.get('subjective_fatigue_score', 0))
+        except (TypeError, ValueError):
+            subjective_fatigue = 0
+        if subjective_fatigue >= SUBJECTIVE_FATIGUE_2OF4:
+            indicators.append('I4_subjective')
+
+        return len(indicators), indicators
+
+    def _check_hard_stops(self, session_plan: Dict, context: Dict) -> List[Dict]:
+        reasons: List[Dict] = []
+
+        session_type = str(session_plan.get('session_type', 'EASY')).upper()
+
+        try:
+            today_hrv = float(context.get('today_hrv'))
+            baseline_hrv = float(context.get('baseline_hrv'))
+            today_rhr = float(context.get('today_rhr'))
+            baseline_rhr = float(context.get('baseline_rhr'))
+            h1_trigger = (
+                today_hrv < baseline_hrv - HARD_STOP_HRV_DELTA
+                and today_rhr > baseline_rhr + HARD_STOP_RHR_DELTA
+            )
+        except (TypeError, ValueError):
+            h1_trigger = False
+
+        if h1_trigger:
+            session_plan['session_type'] = 'REST'
+            session_plan['max_zone'] = 1
+            reason = 'HRV/RHR dual collapse: autonomous nervous system under acute stress'
+            session_plan['governance_override'] = reason
+            reasons.append({'gate': 'H1', 'reason': reason})
+
+        try:
+            tsb_value = float(context.get('tsb_value'))
+        except (TypeError, ValueError):
+            tsb_value = None
+        if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
+            if str(session_plan.get('session_type', session_type)).upper() in self._QUALITY_SESSIONS:
+                session_plan['session_type'] = 'EASY'
+            reason = 'TSB at overtraining threshold: mandatory load reduction'
+            session_plan['governance_override'] = reason
+            session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
+            reasons.append({'gate': 'H2', 'reason': reason})
+
+        if bool(context.get('injury_flag', False)):
+            session_plan['session_type'] = 'REST'
+            session_plan['max_zone'] = 1
+            reason = 'Active injury flag: no training permitted until cleared'
+            session_plan['governance_override'] = reason
+            reasons.append({'gate': 'H3', 'reason': reason})
+
+        try:
+            subjective_fatigue = int(context.get('subjective_fatigue_score', 0))
+        except (TypeError, ValueError):
+            subjective_fatigue = 0
+        if subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME:
+            if str(session_plan.get('session_type', 'EASY')).upper() != 'REST':
+                session_plan['session_type'] = 'EASY'
+                session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
+            reason = 'Athlete-reported extreme fatigue: session downgraded'
+            session_plan['governance_override'] = reason
+            reasons.append({'gate': 'H4', 'reason': reason})
+
+        return reasons
+
+=======
+
 
     def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
         session_type = str(session_plan.get('session_type', '')).upper()
@@ -193,6 +322,28 @@ class GovernanceEngine:
                 applied_locks.append('INTENSITY_GATE_RED')
             elif color == 'YELLOW':
                 applied_locks.append('INTENSITY_GATE_YELLOW')
+
+
+        count_2of4, indicators = self._evaluate_2of4_indicators(context)
+        if count_2of4 >= 2:
+            original = str(session_plan.get('session_type', 'EASY')).upper()
+            downgraded = self._DOWNGRADE_MAP_2OF4.get(original, 'EASY')
+            session_plan['session_type'] = downgraded
+            session_plan['downgrade_2of4'] = {
+                'downgrade_2of4': True,
+                'count': count_2of4,
+                'indicators_triggered': indicators,
+                'original_session': original,
+                'downgraded_to': downgraded,
+            }
+            applied_locks.append('READINESS_2OF4_DOWNGRADE')
+
+        hard_stop_reasons = self._check_hard_stops(session_plan, context)
+        if hard_stop_reasons:
+            session_plan['hard_stop_reasons'] = hard_stop_reasons
+            applied_locks.append('HARD_STOP_SAFETY_GATES')
+
+=======
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
