@@ -8,6 +8,7 @@ Saves to config_secrets.py (excluded from git).
 import os
 import getpass
 from pathlib import Path
+import stat
 
 
 SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
@@ -94,8 +95,10 @@ def run_setup_wizard() -> dict:
 def _save_env(creds: dict):
     lines = ["# TITAN v51 – Auto-generated credentials", "# ΜΗΝ κοινοποιήσεις αυτό το αρχείο!\n"]
     for k, v in creds.items():
-        lines.append(f"{k}={v}")
+        value = str(v).replace("\n", "").replace("\r", "")
+        lines.append(f"{k}={value}")
     ENV_PATH.write_text("\n".join(lines) + "\n")
+    ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
     # Also add to .gitignore if not already there
     gitignore = Path(__file__).parent.parent.parent / ".gitignore"
