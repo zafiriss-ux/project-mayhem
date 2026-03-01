@@ -1117,7 +1117,11 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V2']
 
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+=======
     def test_vo2_gate_preserves_zero_values(self, gov):
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
@@ -1185,10 +1189,6 @@ class TestGlycogenNamedElectrolyteAccessor:
         legacy = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
         named = GlycogenDebtAccumulator.get_electrolyte_guard_status(22.0, 90, 'TEMPO')
         assert named == legacy
-
-
-
-=======
 
 
 class TestReadinessThresholdAlignment:
@@ -1290,7 +1290,6 @@ class TestGovernanceHardStopsAnd2of4:
         assert 'downgrade_2of4' not in out
 
 
-
 class TestVolumeLoadGauge:
 
     @pytest.fixture
@@ -1323,7 +1322,3 @@ class TestVolumeLoadGauge:
         assert any('TSB=' in r for r in state.rationale)
         assert any('ACWR=' in r for r in state.rationale)
         assert any('Glycogen debt=' in r for r in state.rationale)
-=======
-=======
-
-
