@@ -6,7 +6,6 @@ Saves to config_secrets.py (excluded from git).
 """
 
 import os
-import sys
 import getpass
 from pathlib import Path
 

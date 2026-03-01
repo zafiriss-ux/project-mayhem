@@ -71,7 +71,7 @@ def test_instantiation():
     errors = []
     
     try:
-        from titan.science import HRVGuidedEngine, TSBEngine, ACWREngine
+        from titan.science import HRVGuidedEngine, TSBEngine
         hrv = HRVGuidedEngine()
         tsb = TSBEngine()
         print('  ✅ Science engines instantiate')

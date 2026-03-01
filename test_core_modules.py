@@ -231,7 +231,7 @@ class TestDatabase:
 
     def test_thread_safety_concurrent_writes(self, db):
         """Multiple threads writing sessions must not raise or corrupt DB."""
-        import threading, time
+        import threading
 
         errors = []
 

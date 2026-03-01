@@ -3,7 +3,6 @@ TITAN Core Constants and Configuration
 Session types, HR zones, and system-wide constants
 """
 
-from typing import Dict, Tuple
 
 # Default Configuration
 DEFAULT_CONFIG = {

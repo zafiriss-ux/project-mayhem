@@ -5,8 +5,7 @@ Weight-based nutrition adjustment with scientific backing.
 Integrates with Garmin weight data to provide real-time dietary recommendations.
 """
 
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 class NutritionOptimizer:
     """

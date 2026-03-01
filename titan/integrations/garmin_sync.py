@@ -5,9 +5,8 @@ REAL implementation using garminconnect library (not mock).
 """
 
 import os
-import json
 import time
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import threading
 
