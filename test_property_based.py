@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("hypothesis", reason="Install test dependencies from requirements.txt")
 from hypothesis import given, assume, settings
 from hypothesis import strategies as st
 
