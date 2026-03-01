@@ -1118,7 +1118,27 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V2']
 
+
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
+    def test_vo2_gate_preserves_zero_values(self, gov):
+
+
+
+
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
@@ -1130,12 +1150,38 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+
         details = result['vo2_eligibility']['detailed_failed_conditions']
         assert [item['code'] for item in details] == ['V1', 'V2']
         assert details[0]['metric'] == 'acwr'
         assert details[0]['actual'] == 0.0
         assert details[1]['metric'] == 'readiness_score'
         assert details[1]['actual'] == 0.0
+
+
+
+
+
+
+
+    def test_vo2_gate_acwr_above_conservative_ceiling_downgrades(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.4,
+            'readiness_score': 80,
+            'glycogen_debt': 2.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['failed_conditions'] == ['V1']
+
+
+
+
+
+
     def test_vo2_gate_not_applied_to_tempo(self, gov):
         plan = {'session_type': 'TEMPO', 'duration_min': 60}
         result = gov.apply_constraints(plan, context={
