@@ -191,6 +191,32 @@ class TestDatabase:
         assert atl is None or isinstance(atl, (int, float))
         assert tsb is None or isinstance(tsb, (int, float))
 
+    def test_ctl_atl_tsb_use_chronological_ema(self, db):
+        """EMA for CTL/ATL must be computed oldest→newest, not reverse."""
+        base = datetime.now() - timedelta(days=3)
+        sessions = [
+            ((base + timedelta(days=0)).strftime("%Y-%m-%d"), 1),
+            ((base + timedelta(days=1)).strftime("%Y-%m-%d"), 2),
+            ((base + timedelta(days=2)).strftime("%Y-%m-%d"), 3),
+            ((base + timedelta(days=3)).strftime("%Y-%m-%d"), 4),
+        ]
+        for date, load in sessions:
+            # duration_sec=60 keeps training_load equal to RPE
+            db.save_session(
+                date=date,
+                session_type="EASY",
+                distance_km=1.0,
+                duration_sec=60,
+                rpe=load,
+            )
+
+        ctl, atl, tsb = db.get_ctl_atl_tsb()
+
+        # Expected values from chronological EMA on loads [1,2,3,4]
+        assert ctl == pytest.approx(0.4, abs=0.1)
+        assert atl == pytest.approx(1.8, abs=0.1)
+        assert tsb == pytest.approx(-1.5, abs=0.1)
+
     def test_temperature_c_canonical(self, db):
         """save_session accepts temperature_c without warning."""
         with warnings.catch_warnings(record=True) as w:
