@@ -384,15 +384,19 @@ class DatabaseManager:
         if not loads:
             return 0.0, 0.0, 0.0
 
+        # Training history query returns newest-first (DESC). EMA must be
+        # applied oldest→newest to reflect how fitness/fatigue evolve over time.
+        chronological_loads = list(reversed(loads))
+
         # Calculate CTL (42-day EMA)
         ctl = 0.0
         ctl_decay = 2 / (42 + 1)
 
-        for _date, load in loads:
+        for _date, load in chronological_loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
-        # Calculate ATL (7-day EMA, last 7 days)
-        recent_loads = [load for _d, load in loads if _d][:7]
+        # Calculate ATL (7-day EMA, recent 7 entries)
+        recent_loads = [load for _d, load in chronological_loads][-7:]
         atl = 0.0
         atl_decay = 2 / (7 + 1)
 
