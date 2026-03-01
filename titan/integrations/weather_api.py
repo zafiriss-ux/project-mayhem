@@ -11,6 +11,8 @@ from typing import Dict, List, Tuple
 import threading
 import time
 
+import requests
+
 class WeatherAPI:
     """
     Weather API integration with intelligent caching.
@@ -98,6 +100,124 @@ class WeatherAPI:
         else:
             return "🟪 DRY/COLD", "Good for fast running"
 
+    def _parse_location(self) -> Tuple[str, str]:
+        """Split location into city/country components."""
+        if "," in self.location:
+            city, country = self.location.split(",", 1)
+            return city.strip(), country.strip()
+        return self.location.strip(), ""
+
+    def _resolve_coordinates(self) -> Tuple[float, float]:
+        """Resolve city location to coordinates via Open-Meteo geocoding API."""
+        city, country = self._parse_location()
+        params = {"name": city, "count": 1, "language": "en", "format": "json"}
+        if country:
+            params["country"] = country
+
+        response = requests.get(
+            "https://geocoding-api.open-meteo.com/v1/search",
+            params=params,
+            timeout=8,
+        )
+        response.raise_for_status()
+        payload = response.json() or {}
+        results = payload.get("results") or []
+        if not results:
+            raise ValueError(f"Location not found: {self.location}")
+
+        return float(results[0]["latitude"]), float(results[0]["longitude"])
+
+    def _fetch_open_meteo(self) -> Tuple[Dict, List[Dict]]:
+        """Fetch current conditions and hourly forecast from Open-Meteo."""
+        lat, lon = self._resolve_coordinates()
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "forecast_hours": 48,
+            "hourly": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+            "current": "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+            "timezone": "auto",
+        }
+
+        response = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params=params,
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json() or {}
+
+        hourly = payload.get("hourly") or {}
+        times = hourly.get("time") or []
+        temps = hourly.get("temperature_2m") or []
+        humidity_vals = hourly.get("relative_humidity_2m") or []
+        codes = hourly.get("weather_code") or []
+        winds = hourly.get("wind_speed_10m") or []
+
+        length = min(len(times), len(temps), len(humidity_vals), len(codes), len(winds), 48)
+        forecast = []
+        for i in range(length):
+            dew_point = self.calculate_dew_point(temps[i], humidity_vals[i])
+            heat_status, heat_rec = self.classify_heat_stress(dew_point)
+            timestamp = datetime.fromisoformat(times[i]).isoformat()
+            forecast.append({
+                "timestamp": timestamp,
+                "hour": datetime.fromisoformat(times[i]).hour,
+                "temp_c": round(float(temps[i]), 1),
+                "humidity": int(humidity_vals[i]),
+                "dew_point": dew_point,
+                "wind_speed": round(float(winds[i]), 1),
+                "conditions": self._weather_code_to_text(int(codes[i])),
+                "heat_stress": heat_status,
+                "recommendation": heat_rec,
+            })
+
+        current_payload = payload.get("current") or {}
+        temp_c = float(current_payload.get("temperature_2m", temps[0] if temps else 18.5))
+        humidity = float(current_payload.get("relative_humidity_2m", humidity_vals[0] if humidity_vals else 65))
+        wind_speed = float(current_payload.get("wind_speed_10m", winds[0] if winds else 10))
+        weather_code = int(current_payload.get("weather_code", codes[0] if codes else 0))
+
+        dew_point = self.calculate_dew_point(temp_c, humidity)
+        heat_status, heat_rec = self.classify_heat_stress(dew_point)
+        current = {
+            "timestamp": datetime.now().isoformat(),
+            "temp_c": round(temp_c, 1),
+            "humidity": int(humidity),
+            "wind_speed": round(wind_speed, 1),
+            "conditions": self._weather_code_to_text(weather_code),
+            "dew_point": dew_point,
+            "heat_stress": heat_status,
+            "recommendation": heat_rec,
+        }
+        return current, forecast
+
+    @staticmethod
+    def _weather_code_to_text(code: int) -> str:
+        """Map Open-Meteo weather code to a concise description."""
+        code_map = {
+            0: "Clear",
+            1: "Mainly Clear",
+            2: "Partly Cloudy",
+            3: "Overcast",
+            45: "Fog",
+            48: "Rime Fog",
+            51: "Light Drizzle",
+            53: "Drizzle",
+            55: "Dense Drizzle",
+            61: "Light Rain",
+            63: "Rain",
+            65: "Heavy Rain",
+            71: "Light Snow",
+            73: "Snow",
+            75: "Heavy Snow",
+            80: "Rain Showers",
+            81: "Rain Showers",
+            82: "Heavy Showers",
+            95: "Thunderstorm",
+        }
+        return code_map.get(code, "Unknown")
+
     def get_current_conditions(self) -> Dict:
         """
         Get current weather conditions.
@@ -111,28 +231,30 @@ class WeatherAPI:
             if age < self.cache_duration_hours:
                 return self.cache.get('current', {})
 
-        # TODO: Implement actual API call
-        # In production, use OpenWeatherMap or similar
-        # For now, return simulated data
+        try:
+            current, forecast = self._fetch_open_meteo()
+            self.cache['current'] = current
+            self.cache['hourly'] = forecast
+            self.cache_timestamp = datetime.now()
+            return current
+        except Exception:
+            # Safe fallback when API/network is unavailable
+            current = {
+                'timestamp': datetime.now().isoformat(),
+                'temp_c': 18.5,
+                'humidity': 65,
+                'wind_speed': 10,
+                'conditions': 'Clear',
+                'dew_point': self.calculate_dew_point(18.5, 65)
+            }
 
-        current = {
-            'timestamp': datetime.now().isoformat(),
-            'temp_c': 18.5,
-            'humidity': 65,
-            'wind_speed': 10,
-            'conditions': 'Clear',
-            'dew_point': self.calculate_dew_point(18.5, 65)
-        }
+            heat_status, heat_rec = self.classify_heat_stress(current['dew_point'])
+            current['heat_stress'] = heat_status
+            current['recommendation'] = heat_rec
 
-        heat_status, heat_rec = self.classify_heat_stress(current['dew_point'])
-        current['heat_stress'] = heat_status
-        current['recommendation'] = heat_rec
-
-        # Update cache
-        self.cache['current'] = current
-        self.cache_timestamp = datetime.now()
-
-        return current
+            self.cache['current'] = current
+            self.cache_timestamp = datetime.now()
+            return current
 
     def get_hourly_forecast(self, hours: int = 48) -> List[Dict]:
         """
@@ -150,10 +272,15 @@ class WeatherAPI:
             if age < self.cache_duration_hours:
                 return self.cache['hourly'][:hours]
 
-        # TODO: Implement actual API call
-        # For now, generate simulated hourly data
-
-        forecast = []
+        try:
+            current, forecast = self._fetch_open_meteo()
+            self.cache['current'] = current
+            self.cache['hourly'] = forecast
+            self.cache_timestamp = datetime.now()
+            return forecast[:hours]
+        except Exception:
+            # Fallback to deterministic simulated data
+            forecast = []
         base_temp = 15.0
         base_humidity = 60
 

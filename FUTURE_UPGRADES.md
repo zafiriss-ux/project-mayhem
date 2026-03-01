@@ -4,6 +4,68 @@
 
 ---
 
+## 🔴 Προτεινόμενη Σειρά Κρισιμότητας (Άμεσες Αναβαθμίσεις)
+
+> Με βάση την τρέχουσα κατάσταση του repository (ώριμος πυρήνας + εκτεταμένα tests), αυτή είναι η δική μου προτεραιοποίηση από το πιο κρίσιμο προς το λιγότερο κρίσιμο.
+
+### 1) Παραγωγικό πακέτο παρατηρησιμότητας (logging + metrics + alerts)
+**Γιατί πρώτο**: Χωρίς καθαρή εικόνα σε production, δεν μπορείς να εμπιστευτείς ούτε τα recommendations ούτε τα safety guardrails.
+
+**Άμεσο scope**:
+- Δομημένα logs σε κρίσιμες ροές (planner, scoring, telegram handlers)
+- Βασικά SLO metrics (error rate, response latency, fallback frequency)
+- Alerting κανόνες για silent failures
+
+### 2) Σκληροποίηση συμβατότητας/εκδόσεων (runtime + dependencies)
+**Γιατί δεύτερο**: Σταθερό runtime σημαίνει λιγότερα απρόβλεπτα failures σε deployments και reproducible αποτελέσματα.
+
+**Άμεσο scope**:
+- Κλείδωμα Python/toolchain policy με enforcement στο CI
+- Έλεγχος και pinning κρίσιμων dependencies
+- Τακτικός dependency vulnerability scan
+
+### 3) End-to-end regression suite για user journeys
+**Γιατί τρίτο**: Τα unit/integration tests είναι ισχυρά, αλλά λείπει πάντα η πλήρης επιβεβαίωση ότι το σύστημα δουλεύει «άκρη-άκρη» για πραγματικά σενάρια.
+
+**Άμεσο scope**:
+- 3-5 gold-path σενάρια (new athlete, εβδομαδιαίο πλάνο, recovery adaptation)
+- Snapshot tests για σταθερότητα αποφάσεων
+- Smoke checks μετά από κάθε release
+
+### 4) Data contract & schema governance layer
+**Γιατί τέταρτο**: Καθώς αυξάνονται modules/features, τα schema drifts γίνονται η πιο ύπουλη πηγή bugs.
+
+**Άμεσο scope**:
+- Versioned contracts για core payloads
+- Validation στο ingress/egress
+- Συμβατότητα backward changes με explicit migration notes
+
+### 5) Κυβερνητικός μηχανισμός ασφαλείας αποφάσεων (policy gates)
+**Γιατί πέμπτο**: Σε longevity-first σύστημα, ο ασφαλής περιορισμός των αποφάσεων είναι πιο σημαντικός από «έξυπνες» νέες λειτουργίες.
+
+**Άμεσο scope**:
+- Hard limits σε load/intensity jumps
+- Explainability tags σε κάθε προτεινόμενη αλλαγή
+- Audit trail για override αποφάσεων
+
+### 6) Web UI/Operator Console (πριν από advanced ML)
+**Γιατί έκτο**: Η ορατότητα και η επιχειρησιακή χρήση φέρνουν άμεση αξία νωρίτερα από βαριά ML επένδυση.
+
+**Άμεσο scope**:
+- Dashboard με readiness, load, flags
+- Basic timeline/session explorer
+- Manual review/approve workflow για κρίσιμες προσαρμογές
+
+### 7) ML features (LSTM / injury risk / auto-periodization)
+**Γιατί έβδομο**: Είναι υψηλής αξίας, αλλά πρέπει να μπουν αφού πρώτα σταθεροποιηθούν observability, contracts και safety.
+
+**Άμεσο scope**:
+- Pilot σε shadow mode
+- Model monitoring (drift, calibration)
+- Σταδιακό rollout με kill-switch
+
+---
+
 ## Phase 5: ML Enhancement (Q2 2026)
 
 ### 1. LSTM Performance Prediction
