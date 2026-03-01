@@ -8,8 +8,8 @@ Determines best time to run each day based on:
 - Session type requirements
 """
 
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from datetime import datetime
+from typing import Dict, List
 
 class OptimalTimeCalculator:
     """

@@ -18,7 +18,6 @@ Key Design Decisions:
 4. MAD-based HRR z-score — robust to outliers (fever, altitude, equipment)
 """
 
-import math
 from typing import Dict, List, Optional, Tuple
 
 

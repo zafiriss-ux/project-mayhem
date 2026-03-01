@@ -14,10 +14,10 @@ Workflow:
 
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict
 
 from launcher.validator import get_data_directory
-from launcher.errors import ConfigurationError, ValidationError
+from launcher.errors import ConfigurationError
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -5,10 +5,9 @@ Provides hourly weather forecasts with dew point calculation.
 """
 
 import os
-import json
 import math
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 import threading
 import time
 

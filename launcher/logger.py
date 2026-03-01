@@ -16,7 +16,6 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from launcher.validator import get_data_directory
 

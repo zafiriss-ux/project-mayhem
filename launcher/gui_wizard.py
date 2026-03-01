@@ -18,7 +18,7 @@ Requirements:
 import sys
 import tkinter as tk
 from tkinter import ttk, messagebox
-from typing import Dict, Optional, Callable
+from typing import Dict, Optional
 
 from launcher import __version__
 from launcher.validator import validate_environment
@@ -482,7 +482,6 @@ class SuccessFrame(ttk.Frame):
         """Show diagnostics dialog with path info + open logs folder."""
         import subprocess
         import platform
-        from pathlib import Path
 
         # Get diagnostics info
         from launcher.paths import get_path_info

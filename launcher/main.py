@@ -121,7 +121,6 @@ def main() -> int:
     """
     # Check for --version flag (forensic metadata)
     if '--version' in sys.argv:
-        from datetime import datetime
         from launcher.paths import get_path_info
 
         path_info = get_path_info()
@@ -129,8 +128,8 @@ def main() -> int:
 
         print(f"TITAN OS v{__version__}")
         print(f"Launcher: v{__version__}")
-        print(f"Kernel: v5.7.0")
-        print(f"Build date: 2026-02-19")
+        print("Kernel: v5.7.0")
+        print("Build date: 2026-02-19")
         print(f"Frozen mode: {'Yes (TITAN.exe)' if frozen else 'No (Python script)'}")
         print(f"Python: {sys.version.split()[0]}")
 

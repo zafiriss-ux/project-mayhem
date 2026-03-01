@@ -12,8 +12,7 @@ Central navigation hub:
 
 import os
 import sys
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime
 
 def _clear():
     os.system("clear" if os.name != "nt" else "cls")
@@ -194,7 +193,7 @@ def menu_nutrition(ctx: dict):
     print(f"\n  ⚖️  Βάρος: {weight} kg   (τάση: {w_trend.get('velocity_kg_per_week','N/A')} kg/εβδ)")
     print(f"  🏃 Σήμερα: {session_type}")
     _divider()
-    print(f"  📊 ΣΤΟΧΟΙ ΗΜΕΡΑΣ:")
+    print("  📊 ΣΤΟΧΟΙ ΗΜΕΡΑΣ:")
     print(f"    🔥 Θερμίδες:  {plan['total_calories']} kcal")
     print(f"    🍞 Carbs:      {plan['carbs_range']}  ({plan['carbs_g']} g)")
     print(f"    🥩 Protein:    {plan['protein_g']} g")
@@ -219,10 +218,10 @@ def menu_nutrition(ctx: dict):
     post_time = dtime((run_h + 1) % 24, run_m)
     eve_time  = dtime(19, 30)
 
-    print(f"  🍽  ΠΡΟΓΡΑΜΜΑ ΓΕΥΜΑΤΩΝ:")
+    print("  🍽  ΠΡΟΓΡΑΜΜΑ ΓΕΥΜΑΤΩΝ:")
     print(f"    ⏰ {pre_time.strftime('%H:%M')}  ΠΡΟ-ΠΡΟΠΟΝΗΤΙΚΟ")
     print(f"       {pre}")
-    print(f"    ⏰ Κατά τη διάρκεια:")
+    print("    ⏰ Κατά τη διάρκεια:")
     print(f"       {dur}")
     print(f"    ⏰ {post_time.strftime('%H:%M')}  ΜΕΤΑ-ΠΡΟΠΟΝΗΤΙΚΟ")
     print(f"       {post}")
@@ -230,7 +229,7 @@ def menu_nutrition(ctx: dict):
     if tomorrow_session and tomorrow_session.get("session_type") in ["INTERVALS","TEMPO","HAMMER"]:
         print(f"       🔋 Αύριο: {tomorrow_session['session_type']} → Φόρτωσε carbs βράδυ!")
     else:
-        print(f"       Ισορροπημένο γεύμα – lean protein + λαχανικά + σύνθετοι carbs")
+        print("       Ισορροπημένο γεύμα – lean protein + λαχανικά + σύνθετοι carbs")
 
     _divider()
     print("  ⚠️  ΕΙΔΙΚΕΣ ΣΗΜΕΙΩΣΕΙΣ:")

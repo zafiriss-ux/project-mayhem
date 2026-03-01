@@ -71,7 +71,7 @@ class HRVGuidedEngine:
             if planned_session in ["INTERVALS", "TEMPO", "PROGRESSIVE", "HAMMER"]:
                 return "EASY", f"⚠️ HRV LOW: {today_hrv:.1f} → Downgrade", "HIGH"
             else:
-                return planned_session, f"HRV slightly low but easy session OK", "MEDIUM"
+                return planned_session, "HRV slightly low but easy session OK", "MEDIUM"
         elif today_hrv >= baseline:
             return planned_session, f"✅ HRV NORMAL: {today_hrv:.1f} → Proceed", "HIGH"
         else:
