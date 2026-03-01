@@ -1043,3 +1043,132 @@ class TestGovernanceEngine:
         )
         assert 'PARASYMPATHETIC_GUARD' in result['governance_locks_applied']
         assert result['session_type'] == 'EASY'
+
+
+class TestIntensityGovernor:
+
+    @pytest.fixture
+    def governor(self):
+        from titan.science.intensity_governor import IntensityGovernor
+        return IntensityGovernor()
+
+    def test_all_green_returns_green(self, governor):
+        result = governor.evaluate({
+            'drift_pct': 2.5,
+            'glycogen_debt': 2.0,
+            'fatigue_level': 'LOW',
+            'acwr': 1.15,
+            'readiness_score': 78,
+            'planned_session': 'INTERVALS',
+        })
+        assert result.color == 'GREEN'
+        assert result.max_zone == 5
+        assert result.volume_modifier == 1.0
+        assert result.session_override is None
+        assert result.triggered_signals == []
+
+    def test_single_yellow_signal(self, governor):
+        result = governor.evaluate({'drift_pct': 4.5, 'planned_session': 'INTERVALS'})
+        assert result.color == 'YELLOW'
+        assert result.max_zone == 3
+        assert result.volume_modifier == 0.8
+        assert result.session_override is None
+        assert 'drift' in result.triggered_signals
+
+    def test_red_signal_forces_easy(self, governor):
+        result = governor.evaluate({'drift_pct': 6.2, 'planned_session': 'TEMPO'})
+        assert result.color == 'RED'
+        assert result.max_zone == 2
+        assert result.volume_modifier == 0.0
+        assert result.session_override == 'EASY'
+
+
+class TestGovernanceVo2AndFuelingGates:
+
+    @pytest.fixture
+    def gov(self):
+        from titan.science.governance_engine import GovernanceEngine
+        return GovernanceEngine()
+
+    def test_vo2_gate_all_conditions_pass(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 70}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 72,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'days_since_last_vo2': 3,
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'INTERVALS'
+        assert result['vo2_eligibility']['eligible'] is True
+        assert result['vo2_eligibility']['failed_conditions'] == []
+
+    def test_vo2_gate_fail_readiness_downgrades(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 48,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['failed_conditions'] == ['V2']
+
+    def test_vo2_gate_not_applied_to_tempo(self, gov):
+        plan = {'session_type': 'TEMPO', 'duration_min': 60}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 80,
+            'glycogen_debt': 2.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert 'vo2_eligibility' not in result
+
+    def test_fueling_phase3_lock(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'TEMPO'
+        assert result['fueling_gate']['action'] == 'LOCK'
+        assert result['fueling_gate']['phase'] == 3
+
+    def test_fueling_phase2_flag(self, gov):
+        plan = {'session_type': 'INTERVALS', 'duration_min': 70}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'INTERVALS'
+        assert result['fueling_gate']['action'] == 'FLAG'
+        assert result['fueling_gate']['session_unchanged'] is True
+
+    def test_fueling_long_run_lock(self, gov):
+        plan = {'session_type': 'LONG_RUN', 'duration_min': 110}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'PROGRESSIVE'
+        assert result['fueling_gate']['action'] == 'LOCK'
+        assert result['fueling_gate']['locked_to'] == 'PROGRESSIVE'
+
+    def test_gate_ordering_vo2_before_fueling(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 48,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': False,
+        })
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['session_type'] == 'TEMPO'
+        assert 'fueling_gate' not in result
+
+
+class TestGlycogenNamedElectrolyteAccessor:
+
+    def test_named_electrolyte_guard_accessor_matches_existing(self):
+        from titan.science.glycogen_model import GlycogenDebtAccumulator
+
+        legacy = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
+        named = GlycogenDebtAccumulator.get_electrolyte_guard_status(22.0, 90, 'TEMPO')
+        assert named == legacy

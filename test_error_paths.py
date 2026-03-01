@@ -221,6 +221,33 @@ class TestWeatherAPIErrorPaths:
         cond = api.get_current_conditions()
         assert isinstance(cond["dew_point"], (int, float))
 
+    def test_get_current_conditions_uses_open_meteo_when_available(self, api, monkeypatch):
+        live_current = {
+            "timestamp": "2026-03-01T07:00:00",
+            "temp_c": 13.2,
+            "humidity": 72,
+            "wind_speed": 5.1,
+            "conditions": "Partly Cloudy",
+            "dew_point": 8.4,
+            "heat_stress": "🟦 PLEASANT",
+            "recommendation": "Ideal conditions",
+        }
+        live_hourly = [{"timestamp": "2026-03-01T07:00:00", "hour": 7}]
+
+        monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (live_current, live_hourly))
+
+        cond = api.get_current_conditions()
+        assert cond["temp_c"] == 13.2
+        assert api.cache["hourly"] == live_hourly
+
+    def test_get_hourly_forecast_fallback_when_fetch_fails(self, api, monkeypatch):
+        monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("network")))
+
+        forecast = api.get_hourly_forecast(hours=6)
+        assert isinstance(forecast, list)
+        assert len(forecast) == 6
+        assert all("dew_point" in row for row in forecast)
+
     # ── find_optimal_training_windows with bad inputs ───────────────────────
 
     def test_find_windows_zero_duration_empty(self, api):
@@ -246,3 +273,47 @@ class TestWeatherAPIErrorPaths:
         monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: [])
         result = api.find_optimal_training_windows(duration_hours=1.0)
         assert result == []
+
+
+class TestDatabaseManagerErrorPaths:
+
+    def test_init_handles_missing_synchronous_fetchone_row(self, monkeypatch, tmp_path):
+        from titan.core.database import DatabaseManager
+        import titan.core.database as db_module
+
+        class FakeCursor:
+            def __init__(self):
+                self.calls = []
+                self._fetch_count = 0
+
+            def execute(self, sql):
+                self.calls.append(sql)
+                return self
+
+            def fetchone(self):
+                self._fetch_count += 1
+                if self._fetch_count == 1:
+                    return ("wal",)
+                return None
+
+        class FakeConnection:
+            def __init__(self):
+                self.cursor_obj = FakeCursor()
+
+            def cursor(self):
+                return self.cursor_obj
+
+            def commit(self):
+                return None
+
+        fake_conn = FakeConnection()
+
+        monkeypatch.setattr(db_module.sqlite3, "connect", lambda *args, **kwargs: fake_conn)
+        monkeypatch.setattr(DatabaseManager, "create_tables", lambda self: None)
+
+        db = DatabaseManager(db_name="test_bug17.db", db_dir=tmp_path)
+
+        assert db is not None
+        assert "PRAGMA journal_mode=WAL" in fake_conn.cursor_obj.calls
+        assert "PRAGMA synchronous=NORMAL" in fake_conn.cursor_obj.calls
+        assert "PRAGMA synchronous" in fake_conn.cursor_obj.calls
