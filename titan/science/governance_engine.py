@@ -193,6 +193,9 @@ class GovernanceEngine:
         acwr_raw = context.get('acwr', 1.0)
         readiness_raw = context.get('readiness_score', 100)
 
+
+
+
         acwr_invalid = False
         readiness_invalid = False
         try:
@@ -205,6 +208,15 @@ class GovernanceEngine:
         except (TypeError, ValueError):
             readiness = None
             readiness_invalid = True
+
+        glycogen_debt_raw = context.get('glycogen_debt', 0.0)
+        glycogen_debt_invalid = False
+        try:
+            glycogen_debt = float(0.0 if glycogen_debt_raw is None else glycogen_debt_raw)
+        except (TypeError, ValueError):
+            glycogen_debt = None
+            glycogen_debt_invalid = True
+
 
 
 
@@ -245,6 +257,7 @@ class GovernanceEngine:
 
 
         glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
+
         fatigue_level = str(context.get('fatigue_level', 'LOW') or 'LOW').upper()
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
 
@@ -257,6 +270,28 @@ class GovernanceEngine:
             reasons.append(f'ACWR must be numeric (actual: {acwr_raw!r})')
             details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'numeric', 'actual': acwr_raw})
         elif not (0.8 <= acwr <= 1.5):
+
+            failed.append('V1')
+            reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
+            details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
+
+        if readiness_invalid:
+            failed.append('V2')
+            reasons.append(f'readiness must be numeric (actual: {readiness_raw!r})')
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': 'numeric', 'actual': readiness_raw})
+        elif readiness < 60:
+            failed.append('V2')
+            reasons.append(f'readiness >= 60 (actual: {readiness:.0f})')
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': '>=', 'threshold': 60, 'actual': round(readiness, 0)})
+        if glycogen_debt_invalid:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt must be numeric (actual: {glycogen_debt_raw!r})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': 'numeric', 'actual': glycogen_debt_raw})
+        elif glycogen_debt >= 7:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt < 7 (actual: {glycogen_debt:.1f})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<', 'threshold': 7.0, 'actual': round(glycogen_debt, 1)})
+
             failed.append('V1')
             reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
             details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
@@ -296,6 +331,7 @@ class GovernanceEngine:
             reasons.append(f'glycogen_debt < {VO2_GLYCOGEN_DEBT_MAX:.1f} (actual: {glycogen_debt:.1f})')
 
 
+
         if fatigue_level == 'HIGH':
             failed.append('V4')
             reasons.append(f'fatigue != HIGH (actual: {fatigue_level})')
@@ -314,7 +350,10 @@ class GovernanceEngine:
 
 
 
+
+
                 reasons.append(f'days_since_last_vo2 >= {VO2_MIN_DAYS_SINCE_LAST} (actual: {days_val})')
+
 
 
 
