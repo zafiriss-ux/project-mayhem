@@ -13,12 +13,20 @@ ruff check . --fix
 ruff check . --statistics
 =======
 
+ruff check . --fix
+ruff check . --statistics
+=======
+
+
 ```
 
 ## Results summary
 
 - ✅ **Runtime tests**: `275 passed`.
 - ✅ **Syntax compile check**: no syntax/import-time compile failures.
+
+=======
+
 
 - ⚠️ **Static analysis (ruff) before fixes**: `203` findings across `28` files.
 - ✅ **Auto-fix pass** (`ruff --fix`): `63` findings fixed automatically.
@@ -58,6 +66,43 @@ ruff check . --statistics
 3. **Finalize cleanup:** Remove remaining unused vars/imports (`F841`, `F401`).
 4. **Legacy containment:** Decide whether `TITAN_v50_FULL_KERNEL_FINAL.py` is production-critical; if not, isolate or exclude it from lint scope.
 5. **Integrations:** Implement real weather API calls or explicitly mark module as simulation-only.
+
+
+---
+
+## Refresh scan — 2026-03-01 (follow-up)
+
+Re-ran the same checks to verify current state after merge/conflict handling.
+
+### Commands re-run
+
+```bash
+pytest -q
+python -m compileall -q .
+ruff check . --statistics
+```
+
+### Follow-up results
+
+- ✅ `pytest -q`: `275 passed`.
+- ✅ `python -m compileall -q .`: no syntax/import-time failures.
+- ⚠️ `ruff check . --statistics`: still `138` findings.
+
+### Current highest-impact files (follow-up)
+
+1. `TITAN_v50_FULL_KERNEL_FINAL.py` — 79 findings
+2. `titan/science/readiness_engine.py` — 15 findings
+3. `titan/science/acwr_engine.py` — 13 findings
+4. `titan/science/tsb_engine.py` — 8 findings
+5. `system_check.py` — 6 findings
+
+### Concrete remaining examples (follow-up)
+
+- `TITAN_v50_FULL_KERNEL_FINAL.py:111` — bare `except` (`E722`)
+- `TITAN_v50_FULL_KERNEL_FINAL.py:101` — multiple statements on one line (`E701`)
+- `launcher/errors.py:270` — assigned-but-unused variable (`F841`)
+- `titan/core/database.py:396` — ambiguous variable name `l` (`E741`)
+=======
 =======
 - ❌ **Static analysis (ruff)**: `203` findings across `28` files.
 
@@ -96,5 +141,6 @@ ruff check . --statistics
 3. **Noise reduction:** Remove unused imports/variables (`F401`, `F841`) to make real warnings visible.
 4. **Legacy containment:** Decide whether `TITAN_v50_FULL_KERNEL_FINAL.py` is production-critical; if not, isolate or exclude it from lint scope.
 5. **Integrations:** Implement real weather API calls or mark module as simulation-only in docs/config.
+
 
 
