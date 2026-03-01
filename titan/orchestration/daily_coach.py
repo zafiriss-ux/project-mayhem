@@ -23,6 +23,7 @@ Architectural Boundary:
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+import sys
 import threading
 from titan.core.database import DatabaseManager
 from titan.science.autonomic_engine import AutonomicFusionEngine
@@ -383,7 +384,13 @@ class DailyCoach:
 
         Accepts a value from 1 (none) to 10 (extreme).  Falls back to
         *default* if the session is non-interactive or the input is invalid.
+
+        Non-blocking in automated contexts (background threads, Telegram
+        callbacks): when stdin is not a TTY the default is returned immediately
+        without calling input(), so the morning routine is never blocked.
         """
+        if not sys.stdin.isatty():
+            return default
         try:
             raw = input("🤸 Morning check-in — Muscle soreness (1–10, Enter to skip): ").strip()
             if not raw:
