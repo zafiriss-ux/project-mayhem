@@ -534,7 +534,7 @@ def run_gui_wizard() -> bool:
     """
     try:
         root = tk.Tk()
-        wizard = WizardWindow(root)
+        WizardWindow(root)
         root.mainloop()
         return True
     except KeyboardInterrupt:

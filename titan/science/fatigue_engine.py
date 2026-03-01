@@ -11,10 +11,14 @@ class FatigueEngine:
     ) -> Tuple[str, List[str]]:
         """Classify fatigue type and severity"""
         types = []
-        if hr_suppression: types.append("CENTRAL")
-        if rpe_mismatch: types.append("CENTRAL")
-        if pace_hr_divergence: types.append("METABOLIC")
-        if soreness >= 5: types.append("PERIPHERAL")
+        if hr_suppression:
+            types.append("CENTRAL")
+        if rpe_mismatch:
+            types.append("CENTRAL")
+        if pace_hr_divergence:
+            types.append("METABOLIC")
+        if soreness >= 5:
+            types.append("PERIPHERAL")
         
         if not types:
             return "LOW", ["NONE"]

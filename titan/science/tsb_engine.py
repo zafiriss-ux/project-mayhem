@@ -39,13 +39,20 @@ class TSBEngine:
         tsb = ctl - atl
         self.tsb = tsb
         
-        if tsb > 25: status = "⚠️ SEVERE DETRAINING"
-        elif tsb > 15: status = "⚠️ DETRAINING"
-        elif 5 < tsb <= 15: status = "✅ FRESH"
-        elif -10 <= tsb <= 5: status = "🎯 RACE FORM"
-        elif -30 < tsb < -10: status = "💪 PRODUCTIVE OVERLOAD"
-        elif -50 < tsb <= -30: status = "⚠️ FUNCTIONAL OVERREACH"
-        else: status = "🛑 OVERTRAINED"
+        if tsb > 25:
+            status = "⚠️ SEVERE DETRAINING"
+        elif tsb > 15:
+            status = "⚠️ DETRAINING"
+        elif 5 < tsb <= 15:
+            status = "✅ FRESH"
+        elif -10 <= tsb <= 5:
+            status = "🎯 RACE FORM"
+        elif -30 < tsb < -10:
+            status = "💪 PRODUCTIVE OVERLOAD"
+        elif -50 < tsb <= -30:
+            status = "⚠️ FUNCTIONAL OVERREACH"
+        else:
+            status = "🛑 OVERTRAINED"
         return round(tsb, 1), status
     
     def get_latest_tsb(self) -> float:
@@ -55,7 +62,8 @@ class TSBEngine:
 
     def predict_race_day_tsb(self, days: int, loads: List[float]) -> Optional[float]:
         """Predict future TSB"""
-        if not loads or days > len(loads): return None
+        if not loads or days > len(loads):
+            return None
         temp_ctl, temp_atl = self.ctl, self.atl
         for load in loads[:days]:
             temp_atl = (load * (2/8)) + (temp_atl * (6/8))

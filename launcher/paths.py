@@ -99,7 +99,6 @@ def validate_paths() -> bool:
     """
     try:
         bundle_dir = get_bundle_dir()
-        exe_dir = get_executable_dir()
 
         # Check bundle directory exists
         if not bundle_dir.exists():
