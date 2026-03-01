@@ -1,16 +1,7 @@
-
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
 
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
-
-=======
-
-"""Governance Engine — intensity, readiness downgrade, and safety gates."""
-
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional, Tuple
-
 
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
@@ -21,27 +12,12 @@ from titan.config.thresholds import (
 )
 
 
-
-=======
-=======
-"""Governance Engine — discipline, intensity, VO2 and fueling gates."""
-
-from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional
-
-
-
-
 class GovernanceEngine:
     OVERRIDE_LOCKDOWN_THRESHOLD: float = 0.80
     CS_CONFIDENCE_THRESHOLD: float = 0.70
 
     _QUALITY_SESSIONS = frozenset({'INTERVALS', 'TEMPO', 'RACE', 'HAMMER'})
     _VO2_SESSIONS = frozenset({'HAMMER', 'RACE'})
-
-
-=======
-
 
     _DOWNGRADE_MAP_2OF4 = {
         'INTERVALS': 'TEMPO',
@@ -52,11 +28,6 @@ class GovernanceEngine:
         'EASY': 'EASY',
         'REST': 'REST',
     }
-
-=======
-=======
-
-
 
     def check_override_lockdown(self, db: Any) -> Dict:
         try:
@@ -110,7 +81,6 @@ class GovernanceEngine:
             'audit': getattr(value, 'audit', {}),
         }
 
-
     def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
         indicators: List[str] = []
 
@@ -127,27 +97,6 @@ class GovernanceEngine:
             hrv_soft = bool(context.get('hrv_soft_trigger', False))
         if hrv_soft:
             indicators.append('I1_hrv_soft')
-
-=======
-
-
-    def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
-        indicators: List[str] = []
-
-        today_hrv = context.get('today_hrv')
-        baseline_hrv = context.get('baseline_hrv')
-        hrv_std_dev = context.get('hrv_std_dev')
-        hrv_soft = False
-        if today_hrv is not None and baseline_hrv is not None and hrv_std_dev is not None:
-            try:
-                hrv_soft = float(today_hrv) < (float(baseline_hrv) - float(hrv_std_dev))
-            except (TypeError, ValueError):
-                hrv_soft = False
-        else:
-            hrv_soft = bool(context.get('hrv_soft_trigger', False))
-        if hrv_soft:
-            indicators.append('I1_hrv_soft')
-
 
         try:
             sleep_score = float(context.get('sleep_score', 100))
@@ -229,12 +178,6 @@ class GovernanceEngine:
 
         return reasons
 
-
-=======
-=======
-
-
-
     def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
         session_type = str(session_plan.get('session_type', '')).upper()
         zone = int(session_plan.get('zone', session_plan.get('max_zone', 0)) or 0)
@@ -242,26 +185,62 @@ class GovernanceEngine:
         if not is_vo2_session:
             return None
 
-        acwr = float(context.get('acwr', 1.0) or 1.0)
-        readiness = float(context.get('readiness_score', 100) or 100)
-        glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
+        acwr_raw = context.get('acwr', 1.0)
+        readiness_raw = context.get('readiness_score', 100)
+        acwr_invalid = False
+        readiness_invalid = False
+        try:
+            acwr = float(1.0 if acwr_raw is None else acwr_raw)
+        except (TypeError, ValueError):
+            acwr = None
+            acwr_invalid = True
+        try:
+            readiness = float(100 if readiness_raw is None else readiness_raw)
+        except (TypeError, ValueError):
+            readiness = None
+            readiness_invalid = True
+        glycogen_debt_raw = context.get('glycogen_debt', 0.0)
+        glycogen_debt_invalid = False
+        try:
+            glycogen_debt = float(0.0 if glycogen_debt_raw is None else glycogen_debt_raw)
+        except (TypeError, ValueError):
+            glycogen_debt = None
+            glycogen_debt_invalid = True
         fatigue_level = str(context.get('fatigue_level', 'LOW') or 'LOW').upper()
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
 
         failed: List[str] = []
         reasons: List[str] = []
-        if not (0.8 <= acwr <= 1.5):
+        details: List[Dict[str, Any]] = []
+        if acwr_invalid:
+            failed.append('V1')
+            reasons.append(f'ACWR must be numeric (actual: {acwr_raw!r})')
+            details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'numeric', 'actual': acwr_raw})
+        elif not (0.8 <= acwr <= 1.5):
             failed.append('V1')
             reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
-        if readiness < 60:
+            details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
+
+        if readiness_invalid:
+            failed.append('V2')
+            reasons.append(f'readiness must be numeric (actual: {readiness_raw!r})')
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': 'numeric', 'actual': readiness_raw})
+        elif readiness < 60:
             failed.append('V2')
             reasons.append(f'readiness >= 60 (actual: {readiness:.0f})')
-        if glycogen_debt >= 7:
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': '>=', 'threshold': 60, 'actual': round(readiness, 0)})
+        if glycogen_debt_invalid:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt must be numeric (actual: {glycogen_debt_raw!r})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': 'numeric', 'actual': glycogen_debt_raw})
+        elif glycogen_debt >= 7:
             failed.append('V3')
             reasons.append(f'glycogen_debt < 7 (actual: {glycogen_debt:.1f})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<', 'threshold': 7.0, 'actual': round(glycogen_debt, 1)})
         if fatigue_level == 'HIGH':
             failed.append('V4')
             reasons.append(f'fatigue != HIGH (actual: {fatigue_level})')
+            details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': '!=', 'threshold': 'HIGH', 'actual': fatigue_level})
 
         if days_since_last_vo2 is not None:
             try:
@@ -271,6 +250,7 @@ class GovernanceEngine:
             if days_val < 2:
                 failed.append('V5')
                 reasons.append(f'days_since_last_vo2 >= 2 (actual: {days_val})')
+                details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=', 'threshold': 2, 'actual': days_val})
 
         original = 'INTERVALS_Z5' if session_type == 'INTERVALS' and zone == 5 else session_type
         if failed:
@@ -280,6 +260,7 @@ class GovernanceEngine:
                 'failed_conditions': failed,
                 'original_session': original,
                 'downgraded_to': 'TEMPO',
+                'detailed_failed_conditions': details,
                 'reason': 'VO2max session requires: ' + ', '.join(reasons),
             }
         return {
@@ -287,6 +268,7 @@ class GovernanceEngine:
             'failed_conditions': [],
             'original_session': original,
             'downgraded_to': None,
+            'detailed_failed_conditions': [],
             'reason': 'All VO2 eligibility conditions satisfied',
         }
 
@@ -366,10 +348,6 @@ class GovernanceEngine:
             elif color == 'YELLOW':
                 applied_locks.append('INTENSITY_GATE_YELLOW')
 
-
-=======
-
-
         count_2of4, indicators = self._evaluate_2of4_indicators(context)
         if count_2of4 >= 2:
             original = str(session_plan.get('session_type', 'EASY')).upper()
@@ -388,11 +366,6 @@ class GovernanceEngine:
         if hard_stop_reasons:
             session_plan['hard_stop_reasons'] = hard_stop_reasons
             applied_locks.append('HARD_STOP_SAFETY_GATES')
-
-
-=======
-=======
-
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
