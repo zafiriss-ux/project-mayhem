@@ -187,6 +187,7 @@ class GovernanceEngine:
 
         acwr_raw = context.get('acwr', 1.0)
         readiness_raw = context.get('readiness_score', 100)
+
         try:
             acwr = float(1.0 if acwr_raw is None else acwr_raw)
         except (TypeError, ValueError):
@@ -195,6 +196,10 @@ class GovernanceEngine:
             readiness = float(100 if readiness_raw is None else readiness_raw)
         except (TypeError, ValueError):
             readiness = 100
+=======
+        acwr = float(1.0 if acwr_raw is None else acwr_raw)
+        readiness = float(100 if readiness_raw is None else readiness_raw)
+
         glycogen_debt = float(context.get('glycogen_debt', 0.0) or 0.0)
         fatigue_level = str(context.get('fatigue_level', 'LOW') or 'LOW').upper()
         days_since_last_vo2 = context.get('days_since_last_vo2', None)

@@ -1117,7 +1117,11 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V2']
 
+
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+=======
+    def test_vo2_gate_preserves_zero_values(self, gov):
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
