@@ -30,6 +30,7 @@ from titan.science.autonomic_engine import AutonomicFusionEngine
 from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
+from titan.science.intensity_governor import IntensityGovernor
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -189,9 +190,22 @@ class DailyCoach:
         # Apply clamp if parasympathetic guard triggered
         readiness['score'] = min(readiness['score'], afi_constraints.get('readiness_clamp', 100))
 
+        # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
+        ig = IntensityGovernor()
+
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         print("📋 Fetching today's session from weekly plan...")
         today_session = self.weekly_planner.get_today_session()
+
+        intensity_gate = ig.evaluate({
+            'drift_pct': garmin_data.get('drift_pct', 0.0),
+            'glycogen_debt': self.glycogen.daily_debt,
+            'fatigue_level': 'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
+            'acwr': garmin_data.get('acwr', 1.0),
+            'readiness_score': readiness.get('score', 50),
+            'planned_session': today_session.get('session_type', 'EASY'),
+            'planned_volume_pct': today_session.get('volume_pct', 1.0),
+        })
 
         # ── Step 9: Feed activities into load engines ─────────────────────
         self._feed_load_engines(garmin_data.get('activities', []))
@@ -201,9 +215,17 @@ class DailyCoach:
         today_session = self.governance.apply_constraints(
             session_plan = today_session,
             context      = {
-                'db':             self.db,
-                'cs_tracker':     self.cs_tracker,
-                'afi_constraints': afi_constraints,
+                'db':                  self.db,
+                'cs_tracker':          self.cs_tracker,
+                'afi_constraints':     afi_constraints,
+                'intensity_gate_result': intensity_gate,
+                'readiness_score':     readiness.get('score', 50),
+                'glycogen_debt':       self.glycogen.daily_debt,
+                'fatigue_level':       'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
+                'acwr':                garmin_data.get('acwr', 1.0),
+                'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
+                'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
+                'planned_duration_min': today_session.get('duration_min', 45),
             },
         )
         if today_session.get('governance_locks_applied'):
@@ -285,6 +307,9 @@ class DailyCoach:
             ),
             # Governance report (for LLM narrative only)
             'governance_report' : governance_report,
+            'intensity_gate_result': today_session.get('intensity_gate_result'),
+            'fueling_gate': today_session.get('fueling_gate'),
+            'vo2_eligibility': today_session.get('vo2_eligibility'),
         }
 
         success = self.telegram.send_daily_coaching(coaching_data)
