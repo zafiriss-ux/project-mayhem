@@ -92,13 +92,13 @@ project-mayhem/
 ├── test_core_modules.py                # pytest suite — core modules (69 tests)
 ├── test_titan_logic.py                 # pytest suite — science logic (8 tests)
 ├── docs/
-│   └── adr/                            # Architecture Decision Records
-│       ├── 0001-fix-typo-optimal-time-module-reference.md
-│       ├── 0002-fix-weather-window-duration-bug.md
-│       ├── 0003-align-documentation-with-current-module-layout.md
-│       ├── 0004-improve-tests-for-weather-window-edge-cases.md
-│       ├── 0005-fix-runtime-startup-issues.md
-│       └── 0006-architectural-hardening-cold-start-and-engine-sync.md
+│   ├── adr/                            # Architecture Decision Records
+│   │   ├── 0001–0006 (previous fixes and hardening)
+│   │   ├── 0007-intensity-governance-architecture-audit.md
+│   │   └── 0008-adaptive-priority-lock-and-vlg-specs.md
+│   └── specs/                          # Component specifications
+│       ├── adaptive_priority_lock.md   # APL spec (Status: Implemented ← v5.7.1)
+│       └── volume_load_gauge.md        # VLG spec (Status: Implemented)
 │
 └── titan/
     ├── __init__.py
@@ -110,7 +110,7 @@ project-mayhem/
     │   ├── periodization.py            # PeriodizationManager
     │   └── equipment.py                # EquipmentManager (shoes, gear)
     │
-    ├── science/                        # 15 modules
+    ├── science/                        # 21 modules
     │   ├── hrv_engine.py               # HRV analysis + guided training
     │   ├── tsb_engine.py               # CTL/ATL/TSB calculations
     │   ├── acwr_engine.py              # Acute:Chronic workload ratio
@@ -125,7 +125,14 @@ project-mayhem/
     │   ├── critical_speed.py           # CS & D-prime
     │   ├── rcp_engine.py               # Respiratory Compensation Point
     │   ├── biomechanics.py             # Cadence, stride, form
-    │   └── adaptive_memory.py          # Session history + supercompensation
+    │   ├── adaptive_memory.py          # Session history + supercompensation
+    │   ├── autonomic_engine.py         # AutonomicFusionEngine (AFI)
+    │   ├── governance_engine.py        # GovernanceEngine (7 safety gates)
+    │   ├── governance_contracts.py     # GovernanceContracts (output shape guard)
+    │   ├── intensity_governor.py       # IntensityGovernor (GREEN/YELLOW/RED)
+    │   ├── volume_load_gauge.py        # VolumeLoadGauge — TSB+ACWR+glycogen aggregator
+    │   ├── adaptive_priority_lock.py   # AdaptivePriorityLock — pre-governance resolver ← v5.7.1
+    │   └── outcome_tracker.py          # OutcomeTracker — decision→outcome foundation ← v5.7.1
     │
     ├── features/                       # 3 modules
     │   ├── weekly_planner.py           # Weekly training plan generator
@@ -144,6 +151,10 @@ project-mayhem/
     ├── ui/                             # 2 modules
     │   ├── menu_system.py              # Interactive menu (migrated from v50)
     │   └── setup_wizard.py             # First-run setup wizard
+    │
+    ├── config/                         # 2 files
+    │   ├── thresholds.py               # Safety threshold constants (single source of truth)
+    │   └── evidence_registry.py        # Parameter provenance: source, evidence level ← v5.7.1
     │
     └── utils/                          # 2 modules
         ├── math_core.py                # MathCore: pace, weight function, system status

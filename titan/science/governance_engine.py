@@ -44,18 +44,19 @@ class GovernanceEngine:
         'REST': 'REST',
     }
 
-    def check_override_lockdown(self, db: Any) -> Dict:
+    def check_override_lockdown(self, db: Any, threshold: Optional[float] = None) -> Dict:
+        effective_threshold = threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
         try:
             ratio = db.get_override_ratio(days=14)
         except Exception:
             ratio = 0.0
 
-        if ratio > self.OVERRIDE_LOCKDOWN_THRESHOLD:
+        if ratio > effective_threshold:
             return {
                 'locked': True,
                 'ratio': ratio,
                 'reason': (
-                    f'Override ratio {ratio:.0%} (14d) > {self.OVERRIDE_LOCKDOWN_THRESHOLD:.0%} '
+                    f'Override ratio {ratio:.0%} (14d) > {effective_threshold:.0%} '
                     f'threshold — periodization integrity compromised'
                 ),
                 'max_zone': 2,
@@ -64,14 +65,15 @@ class GovernanceEngine:
             }
         return {'locked': False, 'ratio': ratio, 'max_zone': 5, 'disabled_sessions': []}
 
-    def check_cs_confidence_lock(self, cs_tracker: Any) -> Dict:
+    def check_cs_confidence_lock(self, cs_tracker: Any, threshold: Optional[float] = None) -> Dict:
+        effective_threshold = threshold if threshold is not None else self.CS_CONFIDENCE_THRESHOLD
         confidence = getattr(cs_tracker, 'confidence', 1.0)
-        if confidence < self.CS_CONFIDENCE_THRESHOLD:
+        if confidence < effective_threshold:
             return {
                 'locked': True,
                 'confidence': confidence,
                 'reason': (
-                    f'CS confidence {confidence:.0%} < {self.CS_CONFIDENCE_THRESHOLD:.0%} — '
+                    f'CS confidence {confidence:.0%} < {effective_threshold:.0%} — '
                     f'calibration time-trial required before race simulation'
                 ),
                 'required_session': 'CS_CALIBRATION',
@@ -159,7 +161,7 @@ class GovernanceEngine:
             reason = 'HRV/RHR dual collapse: autonomous nervous system under acute stress'
             session_plan['governance_override'] = reason
             reasons.append({'gate': 'H1', 'reason': reason})
-            _gate_event('H1', 'REST', reason=reason,
+            _gate_event('H1', 'REST', reason=reason, cause='TRAINING_LOGIC',
                         today_hrv=context.get('today_hrv'), baseline_hrv=context.get('baseline_hrv'))
 
         try:
@@ -173,7 +175,7 @@ class GovernanceEngine:
             session_plan['governance_override'] = reason
             session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
             reasons.append({'gate': 'H2', 'reason': reason})
-            _gate_event('H2', 'EASY', reason=reason, tsb_value=tsb_value)
+            _gate_event('H2', 'EASY', reason=reason, cause='TRAINING_LOGIC', tsb_value=tsb_value)
 
         if bool(context.get('injury_flag', False)):
             session_plan['session_type'] = 'REST'
@@ -181,7 +183,7 @@ class GovernanceEngine:
             reason = 'Active injury flag: no training permitted until cleared'
             session_plan['governance_override'] = reason
             reasons.append({'gate': 'H3', 'reason': reason})
-            _gate_event('H3', 'REST', reason=reason)
+            _gate_event('H3', 'REST', reason=reason, cause='TRAINING_LOGIC')
 
         try:
             subjective_fatigue = int(context.get('subjective_fatigue_score', 0))
@@ -194,7 +196,8 @@ class GovernanceEngine:
             reason = 'Athlete-reported extreme fatigue: session downgraded'
             session_plan['governance_override'] = reason
             reasons.append({'gate': 'H4', 'reason': reason})
-            _gate_event('H4', 'EASY', reason=reason, subjective_fatigue=subjective_fatigue)
+            _gate_event('H4', 'EASY', reason=reason, cause='TRAINING_LOGIC',
+                        subjective_fatigue=subjective_fatigue)
 
         return reasons
 
@@ -319,10 +322,15 @@ class GovernanceEngine:
                 'detailed_failed_conditions': details,
                 'reason': 'VO2max session requires: ' + ', '.join(reasons),
             }
+            _has_invalid_input = (
+                acwr_invalid or readiness_invalid
+                or glycogen_debt_invalid or fatigue_level_invalid
+            )
             _gate_event('VO2_ELIGIBILITY', 'DOWNGRADE',
                         original_session=original,
                         downgraded_to='TEMPO',
                         failed_conditions=failed,
+                        cause='DATA_PROBLEM' if _has_invalid_input else 'TRAINING_LOGIC',
                         input_flags={
                             'acwr_invalid': acwr_invalid,
                             'readiness_invalid': readiness_invalid,
@@ -417,6 +425,12 @@ class GovernanceEngine:
         afi_constr = context.get('afi_constraints', {})
         applied_locks: List[str] = []
 
+        # APL injections — adaptive thresholds and gate priority vector.
+        # If APL was not invoked upstream, these default to {} and all gate
+        # checks fall back to their static class-level constants (no behaviour change).
+        lock_thresholds = context.get('lock_thresholds', {})
+        priority_vector = context.get('priority_vector', {})
+
         intensity_gate = self._to_dict_maybe(context.get('intensity_gate_result'))
         if intensity_gate:
             session_plan['intensity_gate_result'] = intensity_gate
@@ -445,8 +459,9 @@ class GovernanceEngine:
                 'downgraded_to': downgraded,
             }
             applied_locks.append('READINESS_2OF4_DOWNGRADE')
-            _gate_event('2OF4', 'DOWNGRADE', count=count_2of4,
-                        indicators=indicators, original=original, downgraded_to=downgraded)
+            _gate_event('2OF4', 'DOWNGRADE', cause='TRAINING_LOGIC',
+                        count=count_2of4, indicators=indicators,
+                        original=original, downgraded_to=downgraded)
 
         hard_stop_reasons = self._check_hard_stops(session_plan, context)
         if hard_stop_reasons:
@@ -480,23 +495,29 @@ class GovernanceEngine:
             _gate_event('PARASYMPATHETIC_GUARD', 'EASY', reason=para_guard.get('reason'))
 
         if db:
-            lock = self.check_override_lockdown(db)
+            override_threshold = lock_thresholds.get('override_ratio_ceiling') or None
+            lock = self.check_override_lockdown(db, threshold=override_threshold)
             if lock['locked'] and session_plan.get('session_type') in lock['disabled_sessions']:
                 session_plan['session_type'] = 'EASY'
                 session_plan['max_zone'] = lock['max_zone']
                 session_plan['governance_override'] = lock['reason']
                 applied_locks.append('OVERRIDE_LOCKDOWN')
-                _gate_event('OVERRIDE_LOCKDOWN', 'ZONE_2_ONLY', ratio=lock.get('ratio'))
+                _gate_event('OVERRIDE_LOCKDOWN', 'ZONE_2_ONLY', cause='TRAINING_LOGIC',
+                            ratio=lock.get('ratio'),
+                            apl_threshold_override=override_threshold)
 
         if cs_tracker:
-            cs_lock = self.check_cs_confidence_lock(cs_tracker)
+            cs_threshold = lock_thresholds.get('cs_min_confidence') or None
+            cs_lock = self.check_cs_confidence_lock(cs_tracker, threshold=cs_threshold)
             if cs_lock['locked']:
                 session_plan['cs_prediction_disabled'] = True
                 session_plan['required_calibration'] = True
                 session_plan['cs_lock_reason'] = cs_lock['reason']
                 applied_locks.append('CS_CONFIDENCE_LOCK')
                 _gate_event('CS_CONFIDENCE_LOCK', 'CALIBRATION_REQUIRED',
-                            confidence=cs_lock.get('confidence'))
+                            cause='DATA_PROBLEM',
+                            confidence=cs_lock.get('confidence'),
+                            apl_threshold_override=cs_threshold)
 
         session_plan['governance_locks_applied'] = applied_locks
         session_plan['governance_clean'] = len(applied_locks) == 0
@@ -504,7 +525,9 @@ class GovernanceEngine:
         _gate_event('APPLY_CONSTRAINTS', 'COMPLETE',
                     final_session=session_plan.get('session_type'),
                     locks_applied=applied_locks,
-                    governance_clean=session_plan['governance_clean'])
+                    governance_clean=session_plan['governance_clean'],
+                    priority_vector=priority_vector or None,
+                    apl_active=bool(priority_vector))
         return session_plan
 
     def get_governance_report(
