@@ -180,14 +180,7 @@ class DailyCoach:
             today_rhr    = today_rhr or 50,
             baseline_rhr = baseline_rhr,
             sleep_score  = today_sleep_score,
-readiness = self.readiness.analyze_readiness(
-    today_hrv    = latest_hrv,
-    baseline_hrv = baseline_hrv,
-    today_rhr    = today_rhr or 50,
-    baseline_rhr = baseline_rhr,
-    sleep_score  = today_sleep_score,
-    soreness     = soreness,
-)
+            soreness     = soreness,
         )
         # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,

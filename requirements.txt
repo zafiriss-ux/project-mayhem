@@ -33,3 +33,4 @@ pywin32==306; sys_platform == 'win32'  # Windows API bindings
 # Testing (development only)
 pytest>=8,<9
 pytest-cov==4.1.0
+hypothesis>=6.100          # Property-based testing
