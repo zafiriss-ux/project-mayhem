@@ -27,7 +27,7 @@ class WeeklyPlanGenerator:
     Analyzes past week performance and generates next week's plan
     considering lactate threshold, drift, HRV, and recovery status.
     """
-    
+
     def __init__(
         self,
         hrv_engine: HRVGuidedEngine,
@@ -111,25 +111,25 @@ class WeeklyPlanGenerator:
                 'lactate_status': 'UNKNOWN',
                 'readiness': 'UNKNOWN'
             }
-        
+
         total_km = sum(s.get('distance_km', 0) for s in sessions)
-        quality_sessions = sum(1 for s in sessions 
+        quality_sessions = sum(1 for s in sessions
                               if s.get('session_type') in ['INTERVALS', 'TEMPO', 'HAMMER'])
-        
+
         # Calculate average drift
         drifts = [s.get('drift_pct', 0) for s in sessions if 'drift_pct' in s]
         avg_drift = sum(drifts) / len(drifts) if drifts else 0
-        
+
         # Analyze lactate threshold approximation
         lt_sessions = [s for s in sessions if s.get('session_type') == 'TEMPO']
         lactate_status = 'IMPROVING' if lt_sessions and avg_drift < 3.5 else 'STABLE'
-        
+
         # HRV trend
         hrv_trend = self.hrv_engine.get_trend_analysis()
-        
+
         # TSB status
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
-        
+
         return {
             'total_km': total_km,
             'quality_sessions': quality_sessions,
@@ -140,7 +140,7 @@ class WeeklyPlanGenerator:
             'tsb_status': tsb_status,
             'readiness': 'GOOD' if avg_drift < 4 and tsb_value is not None and tsb_value > -20 else 'COMPROMISED'
         }
-    
+
     def generate_weekly_plan(
         self,
         athlete_profile: Dict,
@@ -161,7 +161,7 @@ class WeeklyPlanGenerator:
         # Get current status
         hrv_summary = self.hrv_engine.get_hrv_summary()
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
-        
+
         # Determine weekly structure based on phase
         if phase == 'BASE':
             structure = self._generate_base_week(athlete_profile, tsb_value)
@@ -173,14 +173,14 @@ class WeeklyPlanGenerator:
             structure = self._generate_taper_week(athlete_profile, tsb_value)
         else:
             structure = self._generate_build_week(athlete_profile, tsb_value)
-        
+
         # Apply HRV adjustments
         structure = self._apply_hrv_adjustments(structure, hrv_summary)
-        
+
         # Apply weather adjustments if available
         if weather_forecast:
             structure = self._apply_weather_adjustments(structure, weather_forecast)
-        
+
         # Package the plan
         plan = {
             'week_start': (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d'),
@@ -196,10 +196,10 @@ class WeeklyPlanGenerator:
             'daily_sessions': structure,
             'motivation': self._get_motivational_message(phase, tsb_value)
         }
-        
+
         self.last_plan = plan
         return plan
-    
+
     def _generate_base_week(self, profile: Dict, tsb: float) -> List[Dict]:
         """Generate BASE phase week (volume focus)."""
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -212,7 +212,7 @@ class WeeklyPlanGenerator:
             {'day': days[5], 'session_type': 'LONG_RUN', 'distance_km': 20, 'details': 'Long aerobic run'},
             {'day': days[6], 'session_type': 'REST', 'distance_km': 0, 'details': 'Complete rest or cross-training'}
         ]
-    
+
     def _generate_build_week(self, profile: Dict, tsb: float) -> List[Dict]:
         """Generate BUILD phase week (intensity + volume)."""
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -225,7 +225,7 @@ class WeeklyPlanGenerator:
             {'day': days[5], 'session_type': 'LONG_RUN', 'distance_km': 22, 'details': 'Long run with progression'},
             {'day': days[6], 'session_type': 'REST', 'distance_km': 0, 'details': 'Complete rest'}
         ]
-    
+
     def _generate_peak_week(self, profile: Dict, tsb: float) -> List[Dict]:
         """Generate PEAK phase week (race-specific)."""
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -238,7 +238,7 @@ class WeeklyPlanGenerator:
             {'day': days[5], 'session_type': 'LONG_RUN', 'distance_km': 18, 'details': 'Moderate long run'},
             {'day': days[6], 'session_type': 'REST', 'distance_km': 0, 'details': 'Rest'}
         ]
-    
+
     def _generate_taper_week(self, profile: Dict, tsb: float) -> List[Dict]:
         """Generate TAPER week (pre-race)."""
         days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -251,12 +251,12 @@ class WeeklyPlanGenerator:
             {'day': days[5], 'session_type': 'REST', 'distance_km': 0, 'details': 'Rest before race'},
             {'day': days[6], 'session_type': 'RACE', 'distance_km': 42.195, 'details': 'RACE DAY!'}
         ]
-    
+
     def _apply_hrv_adjustments(self, structure: List[Dict], hrv_summary: Dict) -> List[Dict]:
         """Adjust plan based on HRV status."""
         baseline = hrv_summary.get('baseline')
         latest = hrv_summary.get('latest_hrv')
-        
+
         if baseline and latest:
             if latest < baseline - 10:  # HRV significantly suppressed
                 # Reduce intensity across the week
@@ -267,9 +267,9 @@ class WeeklyPlanGenerator:
                     elif day['session_type'] == 'TEMPO':
                         day['session_type'] = 'EASY'
                         day['details'] += ' (downgraded due to HRV)'
-        
+
         return structure
-    
+
     def _apply_weather_adjustments(self, structure: List[Dict], forecast: List[Dict]) -> List[Dict]:
         """Adjust plan based on weather forecast."""
         # Add optimal time suggestions based on dew point
@@ -279,9 +279,9 @@ class WeeklyPlanGenerator:
                 # Find best time window
                 if day_forecast.get('min_dew_hour'):
                     day['optimal_time'] = f"{day_forecast['min_dew_hour']}:00 (best conditions)"
-        
+
         return structure
-    
+
     def _get_motivational_message(self, phase: str, tsb: float) -> str:
         """Get phase-appropriate motivational message."""
         messages = {

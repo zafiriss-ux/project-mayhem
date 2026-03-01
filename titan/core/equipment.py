@@ -198,5 +198,5 @@ class EquipmentManager:
         """
         return {
             shoe_id: self.get_shoe_status(shoe_id)
-            for shoe_id in self.shoes.keys()
+            for shoe_id in self.shoes
         }

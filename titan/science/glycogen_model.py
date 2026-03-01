@@ -20,7 +20,7 @@ from typing import Dict, List, Optional, Tuple
 
 class GlycogenModel:
     """Estimate glycogen cost and refueling needs"""
-    
+
     @staticmethod
     def estimate_glycogen_depletion(duration_min: float, intensity_pct_vo2max: float) -> Dict:
         """Estimate glycogen cost of session"""
@@ -32,14 +32,14 @@ class GlycogenModel:
             rate, desc = 1.2, "MODERATE (steady)"
         else:
             rate, desc = 0.8, "EASY (fat burning)"
-        
+
         return {
             "glycogen_depleted_g": round(duration_min * rate, 0),
             "intensity_classification": desc,
             "depletion_rate": rate,
             "refuel_recommendation": "1.2-1.5 g carbs/kg within 2h"
         }
-    
+
     @staticmethod
     def daily_carb_recommendation(weight_kg: float, training_load: str) -> Dict:
         """Daily carb needs (Burke et al. 2011)"""

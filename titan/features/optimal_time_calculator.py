@@ -15,7 +15,7 @@ class OptimalTimeCalculator:
     """
     Calculate optimal running times based on environmental and physiological factors.
     """
-    
+
     def __init__(self, weather_api):
         """
         Initialize calculator.
@@ -24,7 +24,7 @@ class OptimalTimeCalculator:
             weather_api: WeatherAPI instance for forecast data
         """
         self.weather_api = weather_api
-    
+
     def calculate_optimal_time(
         self,
         session_type: str,
@@ -51,30 +51,30 @@ class OptimalTimeCalculator:
             day_offset=day_offset,
             duration_hours=duration_hours
         )
-        
+
         if not windows:
             return {
                 'recommended_time': 'No data available',
                 'quality': 'UNKNOWN',
                 'reasoning': []
             }
-        
+
         # Apply session-type specific adjustments
         windows = self._apply_session_type_preferences(windows, session_type)
-        
+
         # Apply TSB adjustments
         if tsb_value:
             windows = self._apply_tsb_adjustments(windows, tsb_value)
-        
+
         # Apply athlete preferences
         if athlete_preferences:
             windows = self._apply_athlete_preferences(windows, athlete_preferences)
-        
+
         # Re-sort after adjustments
         windows.sort(key=lambda x: x['score'])
-        
+
         best_window = windows[0]
-        
+
         return {
             'recommended_time': datetime.fromisoformat(best_window['start_time']).strftime('%H:%M'),
             'recommended_hour': best_window['start_hour'],
@@ -84,7 +84,7 @@ class OptimalTimeCalculator:
             'reasoning': self._generate_reasoning(best_window, session_type, tsb_value),
             'alternatives': windows[1:3] if len(windows) > 1 else []
         }
-    
+
     def _apply_session_type_preferences(
         self,
         windows: List[Dict],
@@ -101,32 +101,32 @@ class OptimalTimeCalculator:
         """
         for window in windows:
             hour = window['start_hour']
-            
+
             if session_type == 'INTERVALS':
                 # Prefer late morning
                 if 9 <= hour <= 11:
                     window['score'] -= 15  # Bonus
                 elif hour < 7 or hour > 17:
                     window['score'] += 10  # Penalty
-            
+
             elif session_type == 'LONG_RUN':
                 # Prefer early morning
                 if 5 <= hour <= 7:
                     window['score'] -= 20  # Big bonus
                 elif hour > 10:
                     window['score'] += 15  # Penalty (heat risk)
-            
+
             elif session_type == 'TEMPO':
                 # Prefer early morning or evening
                 if (6 <= hour <= 8) or (17 <= hour <= 19):
                     window['score'] -= 10
                 elif 11 <= hour <= 15:
                     window['score'] += 15  # Midday penalty
-            
+
             # EASY sessions are flexible - no adjustments needed
-        
+
         return windows
-    
+
     def _apply_tsb_adjustments(
         self,
         windows: List[Dict],
@@ -140,21 +140,21 @@ class OptimalTimeCalculator:
         """
         for window in windows:
             hour = window['start_hour']
-            
+
             if tsb_value < -20:  # Fatigued
                 # Prefer later in day (muscles need more warm-up)
                 if hour < 8:
                     window['score'] += 10  # Penalty for early
                 elif 9 <= hour <= 11:
                     window['score'] -= 5  # Bonus for mid-morning
-            
+
             elif tsb_value > 5:  # Fresh
                 # Can handle early morning well
                 if 5 <= hour <= 7:
                     window['score'] -= 5  # Slight bonus
-        
+
         return windows
-    
+
     def _apply_athlete_preferences(
         self,
         windows: List[Dict],
@@ -167,23 +167,23 @@ class OptimalTimeCalculator:
             preferences: Dict with 'circadian_preference' ('morning', 'evening', 'flexible')
         """
         circadian = preferences.get('circadian_preference', 'flexible')
-        
+
         if circadian == 'morning':
             for window in windows:
                 if window['start_hour'] < 9:
                     window['score'] -= 10  # Morning person bonus
                 elif window['start_hour'] > 16:
                     window['score'] += 10  # Evening penalty
-        
+
         elif circadian == 'evening':
             for window in windows:
                 if window['start_hour'] >= 16:
                     window['score'] -= 10  # Evening person bonus
                 elif window['start_hour'] < 9:
                     window['score'] += 10  # Morning penalty
-        
+
         return windows
-    
+
     def _generate_reasoning(
         self,
         window: Dict,
@@ -192,7 +192,7 @@ class OptimalTimeCalculator:
     ) -> List[str]:
         """Generate human-readable reasoning for the recommendation."""
         reasons = []
-        
+
         # Dew point reasoning
         dew = window['avg_dew_point']
         if dew < 12:
@@ -203,7 +203,7 @@ class OptimalTimeCalculator:
             reasons.append(f"⚠️ Moderate dew point ({dew}°C) - stay hydrated")
         else:
             reasons.append(f"🔥 High dew point ({dew}°C) - challenging conditions")
-        
+
         # Temperature reasoning
         temp = window['avg_temp']
         if 12 <= temp <= 18:
@@ -212,7 +212,7 @@ class OptimalTimeCalculator:
             reasons.append(f"❄️ Cool ({temp}°C) - extra warm-up needed")
         elif temp > 20:
             reasons.append(f"☀️ Warm ({temp}°C) - pace conservatively")
-        
+
         # Time of day reasoning
         hour = window['start_hour']
         if 5 <= hour <= 7:
@@ -221,18 +221,18 @@ class OptimalTimeCalculator:
             reasons.append("☀️ Late morning - body temperature peaked")
         elif 17 <= hour <= 19:
             reasons.append("🌆 Evening - good for tempo work")
-        
+
         # Session-type specific
         if session_type == 'LONG_RUN' and hour <= 7:
             reasons.append("🏃 Perfect for long run - beat the heat")
         elif session_type == 'INTERVALS' and 9 <= hour <= 11:
             reasons.append("⚡ Optimal for intervals - neuromuscular readiness peaked")
-        
+
         # TSB-based reasoning
         if tsb_value:
             if tsb_value < -20 and hour > 8:
                 reasons.append("💪 Later start recommended due to accumulated fatigue")
             elif tsb_value > 5 and hour < 8:
                 reasons.append("✅ Early run OK - you're well-recovered")
-        
+
         return reasons

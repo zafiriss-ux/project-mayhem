@@ -12,6 +12,7 @@ Features:
   - Thread-safe (for Garmin sync, Telegram callbacks)
 """
 
+import contextlib
 import sys
 import logging
 from datetime import datetime
@@ -59,10 +60,8 @@ def rotate_logs(keep_days: int = 7):
     cutoff = datetime.now().timestamp() - (keep_days * 86400)
     for log_file in log_dir.glob('*.log'):
         if log_file.stat().st_mtime < cutoff:
-            try:
-                log_file.unlink()
-            except Exception:
-                pass  # Best-effort cleanup
+            with contextlib.suppress(Exception):
+                log_file.unlink()  # Best-effort cleanup
 
 
 # ══════════════════════════════════════════════════════════════════════════════

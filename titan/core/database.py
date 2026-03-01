@@ -3,6 +3,7 @@ TITAN Database Management
 Persistent storage for training data, athlete profiles, and performance metrics
 """
 
+import contextlib
 import sqlite3
 import json
 from datetime import datetime
@@ -222,10 +223,8 @@ class DatabaseManager:
             "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL",
         ]
         for sql in new_columns:
-            try:
+            with contextlib.suppress(Exception):  # Column already exists — safe to skip
                 cursor.execute(sql)
-            except Exception:
-                pass  # Column already exists — safe to skip
         self.conn.commit()
 
     # --- DAILY METRICS ---
@@ -389,7 +388,7 @@ class DatabaseManager:
         ctl = 0.0
         ctl_decay = 2 / (42 + 1)
 
-        for date, load in loads:
+        for _date, load in loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
         # Calculate ATL (7-day EMA, last 7 days)
@@ -844,7 +843,7 @@ class AthleteDatabase:
 
         for filepath in self.db_path.glob("*.json"):
             try:
-                with open(filepath, 'r') as f:
+                with open(filepath) as f:
                     data = json.load(f)
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile

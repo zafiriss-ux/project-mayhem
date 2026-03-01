@@ -12,6 +12,7 @@ Flow:
   6. Launch interactive main menu
 """
 
+import contextlib
 import sys
 import os
 
@@ -400,10 +401,8 @@ def main():
     print()
 
     # ── Step 10: Interactive menu ─────────────────────────────────────────────
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         main_menu(titan_ctx)
-    except KeyboardInterrupt:
-        pass
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     print("\n\n🛑 Stopping TITAN...")

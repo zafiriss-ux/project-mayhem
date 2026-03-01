@@ -102,10 +102,10 @@ def run_titan_kernel():
             message="Could not import TITAN kernel.",
             remediation="Ensure titan/ directory exists in project root.",
             details=str(e),
-        )
+        ) from e
     except Exception as e:
         # Translate raw kernel exceptions to TitanError
-        raise translate_kernel_error(e)
+        raise translate_kernel_error(e) from e
 
 
 # ══════════════════════════════════════════════════════════════════════════════

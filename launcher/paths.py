@@ -114,7 +114,6 @@ def validate_paths() -> bool:
         launcher_module = bundle_dir / 'launcher'
         if not launcher_module.exists() and not is_frozen():
             return False
-
         return True
 
     except Exception:
