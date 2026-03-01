@@ -1120,6 +1120,9 @@ class TestGovernanceVo2AndFuelingGates:
 
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+=======
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
@@ -1151,6 +1154,7 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
@@ -1162,6 +1166,9 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+
+=======
+
 
 
 
@@ -1179,6 +1186,9 @@ class TestGovernanceVo2AndFuelingGates:
 
 =======
 
+=======
+
+
 
 
 
@@ -1188,6 +1198,8 @@ class TestGovernanceVo2AndFuelingGates:
             'acwr': 'bad-data',
             'readiness_score': 'N/A',
             'glycogen_debt': 3.0,
+
+=======
 
 =======
 
@@ -1206,6 +1218,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 2.0,
 
 
+
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
         })
@@ -1213,6 +1226,9 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['eligible'] is False
 
 =======
+
+=======
+
 
 
 
@@ -1227,6 +1243,9 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 =======
+
+=======
+
 
 
     def test_vo2_gate_invalid_glycogen_input_fails_closed(self, gov):
@@ -1247,6 +1266,9 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['actual'] == 'unknown'
 
 
+=======
+
+
     def test_vo2_gate_invalid_days_since_last_vo2_fails_closed(self, gov):
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1264,8 +1286,28 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['code'] == 'V5'
         assert details[0]['operator'] == 'numeric'
         assert details[0]['actual'] == 'yesterday'
+
+
+    def test_vo2_gate_invalid_fatigue_level_fails_closed(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 80,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'extreme',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['failed_conditions'] == ['V4']
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert details[0]['code'] == 'V4'
+        assert details[0]['operator'] == 'in'
+        assert details[0]['actual'] == 'extreme'
+=======
 =======
         assert result['vo2_eligibility']['failed_conditions'] == ['V1']
+
 
 
 
