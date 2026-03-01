@@ -273,3 +273,47 @@ class TestWeatherAPIErrorPaths:
         monkeypatch.setattr(api, "get_hourly_forecast", lambda hours: [])
         result = api.find_optimal_training_windows(duration_hours=1.0)
         assert result == []
+
+
+class TestDatabaseManagerErrorPaths:
+
+    def test_init_handles_missing_synchronous_fetchone_row(self, monkeypatch, tmp_path):
+        from titan.core.database import DatabaseManager
+        import titan.core.database as db_module
+
+        class FakeCursor:
+            def __init__(self):
+                self.calls = []
+                self._fetch_count = 0
+
+            def execute(self, sql):
+                self.calls.append(sql)
+                return self
+
+            def fetchone(self):
+                self._fetch_count += 1
+                if self._fetch_count == 1:
+                    return ("wal",)
+                return None
+
+        class FakeConnection:
+            def __init__(self):
+                self.cursor_obj = FakeCursor()
+
+            def cursor(self):
+                return self.cursor_obj
+
+            def commit(self):
+                return None
+
+        fake_conn = FakeConnection()
+
+        monkeypatch.setattr(db_module.sqlite3, "connect", lambda *args, **kwargs: fake_conn)
+        monkeypatch.setattr(DatabaseManager, "create_tables", lambda self: None)
+
+        db = DatabaseManager(db_name="test_bug17.db", db_dir=tmp_path)
+
+        assert db is not None
+        assert "PRAGMA journal_mode=WAL" in fake_conn.cursor_obj.calls
+        assert "PRAGMA synchronous=NORMAL" in fake_conn.cursor_obj.calls
+        assert "PRAGMA synchronous" in fake_conn.cursor_obj.calls
