@@ -170,7 +170,7 @@ class DailyCoach:
             today_rhr    = today_rhr or 50,
             baseline_rhr = baseline_rhr,
             sleep_score  = today_sleep_score,
-            soreness     = 3,  # TODO: add morning check-in prompt
+            soreness     = self._prompt_soreness(),
         )
         # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,
@@ -376,6 +376,25 @@ class DailyCoach:
             print(f"  ⚠️  Could not save daily metrics: {e}")
 
         return today_rhr, today_sleep_score, today_sleep_hours
+
+    def _prompt_soreness(self, default: int = 3) -> int:
+        """
+        Prompt the user for their current muscle soreness level.
+
+        Accepts a value from 1 (none) to 10 (extreme).  Falls back to
+        *default* if the session is non-interactive or the input is invalid.
+        """
+        try:
+            raw = input("🤸 Morning check-in — Muscle soreness (1–10, Enter to skip): ").strip()
+            if not raw:
+                return default
+            value = int(raw)
+            if 1 <= value <= 10:
+                return value
+            print(f"  ⚠️  Soreness must be 1–10; using default ({default})")
+        except (EOFError, ValueError):
+            pass
+        return default
 
     def _get_baseline_rhr(self, days: int = 7) -> float:
         """
