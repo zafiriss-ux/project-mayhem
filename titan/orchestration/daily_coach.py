@@ -35,6 +35,10 @@ from titan.science.intensity_governor import IntensityGovernor
 from titan.science.fatigue_engine import FatigueEngine
 =======
 
+from titan.science.fatigue_engine import FatigueEngine
+=======
+
+
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -212,6 +216,9 @@ class DailyCoach:
         readiness['score'] = min(readiness['score'], afi_constraints.get('readiness_clamp', 100))
 
 
+=======
+
+
         fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
             hr_suppression=bool(garmin_data.get('hr_suppression', False)),
             rpe_mismatch=bool(garmin_data.get('rpe_mismatch', False)),
@@ -219,7 +226,10 @@ class DailyCoach:
             soreness=subjective_fatigue_score,
         )
 
+
 =======
+=======
+
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
         ig = IntensityGovernor()
@@ -234,7 +244,11 @@ class DailyCoach:
 
             'fatigue_level': fatigue_level,
 =======
+
+            'fatigue_level': fatigue_level,
+=======
             'fatigue_level': 'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
+
 
             'acwr': garmin_data.get('acwr', 1.0),
             'readiness_score': readiness.get('score', 50),
@@ -259,12 +273,19 @@ class DailyCoach:
 
                 'fatigue_level':       fatigue_level,
 =======
+
+                'fatigue_level':       fatigue_level,
+=======
                 'fatigue_level':       'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
+
 
                 'acwr':                garmin_data.get('acwr', 1.0),
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
                 'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
                 'planned_duration_min': today_session.get('duration_min', 45),
+
+=======
+
 
                 'today_hrv':          latest_hrv,
                 'baseline_hrv':       baseline_hrv,
@@ -275,7 +296,10 @@ class DailyCoach:
                 'subjective_fatigue_score': subjective_fatigue_score,
                 'tsb_value':          tsb_value,
                 'injury_flag':        bool(garmin_data.get('injury_flag', False)),
+
 =======
+=======
+
 
             },
         )

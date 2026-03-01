@@ -1175,6 +1175,9 @@ class TestGlycogenNamedElectrolyteAccessor:
 
 
 
+=======
+
+
 class TestReadinessThresholdAlignment:
 
     def test_sleep_55_is_poor_penalty(self):
@@ -1272,5 +1275,42 @@ class TestGovernanceHardStopsAnd2of4:
         })
         assert out['session_type'] == 'INTERVALS'
         assert 'downgrade_2of4' not in out
+
+
+
+class TestVolumeLoadGauge:
+
+    @pytest.fixture
+    def gauge(self):
+        from titan.science.volume_load_gauge import VolumeLoadGauge
+        return VolumeLoadGauge()
+
+    def test_green_state_when_all_inputs_green(self, gauge):
+        state = gauge.resolve(tsb_value=-12.0, acwr=1.05, glycogen_debt=2.0)
+        assert state.color == 'GREEN'
+        assert state.score == 0
+        assert state.components == {'tsb': 'GREEN', 'acwr': 'GREEN', 'glycogen': 'GREEN'}
+
+    def test_yellow_state_on_single_yellow_component(self, gauge):
+        state = gauge.resolve(tsb_value=-35.0, acwr=1.0, glycogen_debt=2.0)
+        assert state.color == 'YELLOW'
+        assert state.components['tsb'] == 'YELLOW'
+        assert state.score == 1
+
+    def test_red_state_when_any_component_red(self, gauge):
+        state = gauge.resolve(tsb_value=-20.0, acwr=1.65, glycogen_debt=3.0)
+        assert state.color == 'RED'
+        assert state.components['acwr'] == 'RED'
+        assert state.score == 2
+
+    def test_mixed_components_score_and_rationale(self, gauge):
+        state = gauge.resolve(tsb_value=-55.0, acwr=1.4, glycogen_debt=5.0)
+        assert state.color == 'RED'
+        assert state.score == 4  # one red + two yellow
+        assert any('TSB=' in r for r in state.rationale)
+        assert any('ACWR=' in r for r in state.rationale)
+        assert any('Glycogen debt=' in r for r in state.rationale)
 =======
+=======
+
 

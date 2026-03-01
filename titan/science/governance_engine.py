@@ -4,6 +4,14 @@
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+=======
+
+"""Governance Engine — intensity, readiness downgrade, and safety gates."""
+
+from dataclasses import asdict, is_dataclass
+from typing import Any, Dict, List, Optional, Tuple
+
+
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
@@ -11,11 +19,16 @@ from titan.config.thresholds import (
     SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
 )
+
+
+
+=======
 =======
 """Governance Engine — discipline, intensity, VO2 and fueling gates."""
 
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional
+
 
 
 
@@ -27,6 +40,9 @@ class GovernanceEngine:
     _VO2_SESSIONS = frozenset({'HAMMER', 'RACE'})
 
 
+=======
+
+
     _DOWNGRADE_MAP_2OF4 = {
         'INTERVALS': 'TEMPO',
         'TEMPO': 'EASY',
@@ -36,7 +52,10 @@ class GovernanceEngine:
         'EASY': 'EASY',
         'REST': 'REST',
     }
+
 =======
+=======
+
 
 
     def check_override_lockdown(self, db: Any) -> Dict:
@@ -108,6 +127,27 @@ class GovernanceEngine:
             hrv_soft = bool(context.get('hrv_soft_trigger', False))
         if hrv_soft:
             indicators.append('I1_hrv_soft')
+
+=======
+
+
+    def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
+        indicators: List[str] = []
+
+        today_hrv = context.get('today_hrv')
+        baseline_hrv = context.get('baseline_hrv')
+        hrv_std_dev = context.get('hrv_std_dev')
+        hrv_soft = False
+        if today_hrv is not None and baseline_hrv is not None and hrv_std_dev is not None:
+            try:
+                hrv_soft = float(today_hrv) < (float(baseline_hrv) - float(hrv_std_dev))
+            except (TypeError, ValueError):
+                hrv_soft = False
+        else:
+            hrv_soft = bool(context.get('hrv_soft_trigger', False))
+        if hrv_soft:
+            indicators.append('I1_hrv_soft')
+
 
         try:
             sleep_score = float(context.get('sleep_score', 100))
@@ -189,7 +229,10 @@ class GovernanceEngine:
 
         return reasons
 
+
 =======
+=======
+
 
 
     def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
@@ -324,6 +367,9 @@ class GovernanceEngine:
                 applied_locks.append('INTENSITY_GATE_YELLOW')
 
 
+=======
+
+
         count_2of4, indicators = self._evaluate_2of4_indicators(context)
         if count_2of4 >= 2:
             original = str(session_plan.get('session_type', 'EASY')).upper()
@@ -343,7 +389,10 @@ class GovernanceEngine:
             session_plan['hard_stop_reasons'] = hard_stop_reasons
             applied_locks.append('HARD_STOP_SAFETY_GATES')
 
+
 =======
+=======
+
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
