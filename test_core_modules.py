@@ -1174,6 +1174,7 @@ class TestGlycogenNamedElectrolyteAccessor:
         assert named == legacy
 
 
+
 class TestReadinessThresholdAlignment:
 
     def test_sleep_55_is_poor_penalty(self):
@@ -1271,3 +1272,5 @@ class TestGovernanceHardStopsAnd2of4:
         })
         assert out['session_type'] == 'INTERVALS'
         assert 'downgrade_2of4' not in out
+=======
+

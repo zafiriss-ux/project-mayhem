@@ -1,3 +1,4 @@
+
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
 
 from dataclasses import asdict, is_dataclass
@@ -10,6 +11,12 @@ from titan.config.thresholds import (
     SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
 )
+=======
+"""Governance Engine — discipline, intensity, VO2 and fueling gates."""
+
+from dataclasses import asdict, is_dataclass
+from typing import Any, Dict, List, Optional
+
 
 
 class GovernanceEngine:
@@ -18,6 +25,7 @@ class GovernanceEngine:
 
     _QUALITY_SESSIONS = frozenset({'INTERVALS', 'TEMPO', 'RACE', 'HAMMER'})
     _VO2_SESSIONS = frozenset({'HAMMER', 'RACE'})
+
 
     _DOWNGRADE_MAP_2OF4 = {
         'INTERVALS': 'TEMPO',
@@ -28,6 +36,8 @@ class GovernanceEngine:
         'EASY': 'EASY',
         'REST': 'REST',
     }
+=======
+
 
     def check_override_lockdown(self, db: Any) -> Dict:
         try:
@@ -80,6 +90,7 @@ class GovernanceEngine:
             'triggered_signals': list(getattr(value, 'triggered_signals', [])),
             'audit': getattr(value, 'audit', {}),
         }
+
 
     def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
         indicators: List[str] = []
@@ -177,6 +188,9 @@ class GovernanceEngine:
             reasons.append({'gate': 'H4', 'reason': reason})
 
         return reasons
+
+=======
+
 
     def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
         session_type = str(session_plan.get('session_type', '')).upper()
@@ -309,6 +323,7 @@ class GovernanceEngine:
             elif color == 'YELLOW':
                 applied_locks.append('INTENSITY_GATE_YELLOW')
 
+
         count_2of4, indicators = self._evaluate_2of4_indicators(context)
         if count_2of4 >= 2:
             original = str(session_plan.get('session_type', 'EASY')).upper()
@@ -327,6 +342,8 @@ class GovernanceEngine:
         if hard_stop_reasons:
             session_plan['hard_stop_reasons'] = hard_stop_reasons
             applied_locks.append('HARD_STOP_SAFETY_GATES')
+
+=======
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
