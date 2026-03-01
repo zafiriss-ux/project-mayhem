@@ -1,0 +1,8 @@
+"""Centralized governance and safety thresholds."""
+
+HARD_STOP_HRV_DELTA = 15.0
+HARD_STOP_RHR_DELTA = 8.0
+HARD_STOP_TSB_FLOOR = -50.0
+
+SUBJECTIVE_FATIGUE_EXTREME = 8
+SUBJECTIVE_FATIGUE_2OF4 = 6

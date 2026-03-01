@@ -83,10 +83,14 @@ class DatabaseManager:
         # Critical for frozen builds where multiple threads access DB simultaneously
         cursor = self.conn.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
-        journal_mode = cursor.fetchone()[0]
+        journal_row = cursor.fetchone()
+        journal_mode = journal_row[0] if journal_row else "WAL"
+
+        # Setter PRAGMA may not return a row; read it explicitly afterwards.
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.execute("PRAGMA synchronous")
-        synchronous = cursor.fetchone()[0]
+        synchronous_row = cursor.fetchone()
+        synchronous = synchronous_row[0] if synchronous_row else "NORMAL"
 
         # Busy timeout: wait up to 5 seconds if DB is locked
         # Prevents "database is locked" errors during concurrent access
