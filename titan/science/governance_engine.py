@@ -202,6 +202,9 @@ class GovernanceEngine:
 
 
 
+
+
+
         try:
             acwr = float(1.0 if acwr_raw is None else acwr_raw)
         except (TypeError, ValueError):
@@ -217,8 +220,11 @@ class GovernanceEngine:
 
 
 
+
+
         acwr = float(1.0 if acwr_raw is None else acwr_raw)
         readiness = float(100 if readiness_raw is None else readiness_raw)
+
 
 
 
@@ -229,6 +235,21 @@ class GovernanceEngine:
 
         failed: List[str] = []
         reasons: List[str] = []
+
+        details: List[Dict[str, Any]] = []
+        if not (0.8 <= acwr <= 1.5):
+            failed.append('V1')
+            reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
+            details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
+        if readiness < 60:
+            failed.append('V2')
+            reasons.append(f'readiness >= 60 (actual: {readiness:.0f})')
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': '>=', 'threshold': 60, 'actual': round(readiness, 0)})
+        if glycogen_debt >= 7:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt < 7 (actual: {glycogen_debt:.1f})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<', 'threshold': 7.0, 'actual': round(glycogen_debt, 1)})
+
         if not (VO2_ACWR_MIN <= acwr <= VO2_ACWR_MAX):
             failed.append('V1')
             reasons.append(f'ACWR in [{VO2_ACWR_MIN:.1f},{VO2_ACWR_MAX:.1f}] (actual: {acwr:.2f})')
@@ -238,9 +259,11 @@ class GovernanceEngine:
         if glycogen_debt >= VO2_GLYCOGEN_DEBT_MAX:
             failed.append('V3')
             reasons.append(f'glycogen_debt < {VO2_GLYCOGEN_DEBT_MAX:.1f} (actual: {glycogen_debt:.1f})')
+
         if fatigue_level == 'HIGH':
             failed.append('V4')
             reasons.append(f'fatigue != HIGH (actual: {fatigue_level})')
+            details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': '!=', 'threshold': 'HIGH', 'actual': fatigue_level})
 
         if days_since_last_vo2 is not None:
             try:
@@ -249,7 +272,12 @@ class GovernanceEngine:
                 days_val = 999
             if days_val < VO2_MIN_DAYS_SINCE_LAST:
                 failed.append('V5')
+
+                reasons.append(f'days_since_last_vo2 >= 2 (actual: {days_val})')
+                details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=', 'threshold': 2, 'actual': days_val})
+
                 reasons.append(f'days_since_last_vo2 >= {VO2_MIN_DAYS_SINCE_LAST} (actual: {days_val})')
+
 
         original = 'INTERVALS_Z5' if session_type == 'INTERVALS' and zone == 5 else session_type
         if failed:
@@ -259,6 +287,7 @@ class GovernanceEngine:
                 'failed_conditions': failed,
                 'original_session': original,
                 'downgraded_to': 'TEMPO',
+                'detailed_failed_conditions': details,
                 'reason': 'VO2max session requires: ' + ', '.join(reasons),
             }
         return {
@@ -266,6 +295,7 @@ class GovernanceEngine:
             'failed_conditions': [],
             'original_session': original,
             'downgraded_to': None,
+            'detailed_failed_conditions': [],
             'reason': 'All VO2 eligibility conditions satisfied',
         }
 

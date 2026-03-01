@@ -1103,6 +1103,7 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'INTERVALS'
         assert result['vo2_eligibility']['eligible'] is True
         assert result['vo2_eligibility']['failed_conditions'] == []
+        assert result['vo2_eligibility']['detailed_failed_conditions'] == []
 
     def test_vo2_gate_fail_readiness_downgrades(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
@@ -1129,7 +1130,11 @@ class TestGovernanceVo2AndFuelingGates:
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
+
     def test_vo2_gate_preserves_zero_values(self, gov):
+
 
 
 
@@ -1145,6 +1150,14 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+
+        details = result['vo2_eligibility']['detailed_failed_conditions']
+        assert [item['code'] for item in details] == ['V1', 'V2']
+        assert details[0]['metric'] == 'acwr'
+        assert details[0]['actual'] == 0.0
+        assert details[1]['metric'] == 'readiness_score'
+        assert details[1]['actual'] == 0.0
+
 
 
 
@@ -1163,6 +1176,7 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V1']
+
 
 
 
