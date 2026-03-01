@@ -90,20 +90,11 @@ def run_titan_kernel():
         import titan
         print(f"   Kernel version: {getattr(titan, '__version__', 'unknown')}")
 
-        # For now, we just print a success message
-        # In the real implementation, titan.__main__ would have a main() function
-        # that runs the morning routine or interactive CLI
-
         print("   Status: Kernel initialized successfully.")
         print("=" * 70)
-        print("\n✅ TITAN is ready.\n")
-        print("   Next steps:")
-        print("   • Run 'python -m titan' to start daily coaching")
-        print("   • Check logs in ~/Documents/TITAN/logs/")
-        print("   • Configure Telegram bot to receive morning briefings\n")
 
-        # TODO: Actually call titan.__main__.main() when it exists
-        # For now, this is a successful dry-run
+        import titan.__main__ as titan_main
+        titan_main.main()
 
     except ImportError as e:
         raise TitanError(
