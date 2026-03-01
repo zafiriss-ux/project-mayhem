@@ -193,9 +193,12 @@ class GovernanceEngine:
         acwr_raw = context.get('acwr', 1.0)
         readiness_raw = context.get('readiness_score', 100)
 
-=======
 
-=======
+
+
+
+
+
 
 
 
@@ -208,12 +211,15 @@ class GovernanceEngine:
         except (TypeError, ValueError):
             readiness = 100
 
-=======
 
-=======
-=======
+
+
+
+
+
         acwr = float(1.0 if acwr_raw is None else acwr_raw)
         readiness = float(100 if readiness_raw is None else readiness_raw)
+
 
 
 
