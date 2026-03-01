@@ -1,4 +1,88 @@
-# TITAN v51 - CHANGELOG
+# TITAN v51 — CHANGELOG
+
+---
+
+## v5.7.0 / v51.4 — Governance hardening, contract guard, CI baseline (2026-03-01)
+
+### Safety & Governance
+
+- **`GovernanceEngine` rewrite** (`titan/science/governance_engine.py`)
+  Complete rewrite of `_check_vo2_eligibility` which had accumulated ~300 lines of
+  duplicate/broken code from bad merges. Key fixes:
+  - V4 gate was appending V1/V2/V3 codes instead of V4
+  - V5 gate used `days_val = 999` anti-pattern making the gate unreachable
+  - ACWR ceiling was hardcoded `1.5` instead of `VO2_ACWR_MAX = 1.30` from thresholds
+  - Rewrote all V1–V5 gates to use canonical constants from `titan/config/thresholds.py`
+  - V5 now correctly fails closed on `None` / non-integer inputs
+
+- **`GovernanceContracts`** (`titan/science/governance_contracts.py`) — NEW MODULE
+  Output shape guard for `vo2_eligibility` dicts at the governance → orchestration boundary.
+  - `ContractViolation(ValueError)` — raised on shape/invariant violations
+  - `assert_vo2_eligibility_contract(result)` — strict assertion (raises)
+  - `validate_vo2_eligibility(result)` — non-raising variant (returns error string or None)
+  - Validates: required keys, type safety, structural invariants, failure code set {V1–V5},
+    order-consistency between `failed_conditions` and `detailed_failed_conditions`
+  - Wired into `GovernanceEngine.apply_constraints()` — violations logged as structured JSON
+
+- **Structured gate logging** — every governance gate event emits a JSON log line via
+  `_gate_event(gate, action, **fields)`, enabling observability without code coupling.
+  Lock codes now form a canonical set: `HARD_STOP_SAFETY_GATES`, `VO2_ELIGIBILITY_GATE`,
+  `FUELING_GATE_LOCK`, `FUELING_GATE_FLAG`, `READINESS_2OF4_DOWNGRADE`,
+  `INTENSITY_GATE_RED/YELLOW`, `PARASYMPATHETIC_GUARD`, `OVERRIDE_LOCKDOWN`,
+  `CS_CONFIDENCE_LOCK`.
+
+### Security
+
+- **`launcher/main.py`** — argument redaction before logging.
+  `sys.argv` was logged verbatim at startup. Added `_redact_argv(argv)` which replaces
+  `--flag=value` and `--flag value` forms with `<redacted>`, preventing credential leakage
+  into log files when flags like `--password` or `--token` are passed.
+
+### Tests
+
+- **`tests/test_governance_integration.py`** — NEW (27 tests across 3 classes)
+  - `TestVo2EligibilityContract` — contract guard: valid pass/fail, missing key,
+    invariant violations, unknown codes, `validate_*` None-input handling
+  - `TestGovernanceOutputContract` — every V1–V5 gate path + all-fail + invalid-numeric
+    produces contract-valid output from the live `GovernanceEngine`
+  - `TestOrchestrationBoundaryBackwardCompat` — `governance_locks_applied` always list,
+    `governance_clean` always bool, `vo2_eligibility` 6-field shape stable across paths,
+    lock codes from canonical set only
+
+- **`tests/test_p0_safety_gates.py`** — NEW (14 tests, P0 criticality)
+  Extracted from stale branch, fixed import alias (`SUBJECTIVE_FATIGUE_EXTREME`)
+  and lock-code assertions (`HARD_STOP_SAFETY_GATES` + `hard_stop_reasons[].gate`).
+
+- **`test_core_modules.py`** — corruption recovery
+  Removed 10 duplicate empty test definitions left by bad merges. Restored correct
+  assertions for `test_vo2_gate_invalid_numeric_inputs_fail_closed`,
+  `test_vo2_gate_acwr_above_conservative_ceiling_downgrades`, and
+  `test_vo2_gate_failed_conditions_are_deterministically_ordered`.
+
+### CI / Build
+
+- **`.github/workflows/ci.yml`** — NEW — 3-job CI pipeline:
+  - `test` — matrix Python 3.11 / 3.12; full pytest + `--cov-fail-under=80` for
+    `governance_engine` and `governance_contracts`
+  - `determinism` — 3 consecutive identical runs of governance tests must produce
+    identical exit codes
+  - `env-policy` — Python 3.11+ enforcement, pip dry-run, `.env` file guard,
+    `system_check.py` module health
+
+### Documentation
+
+- Cherry-picked from stale branches into main:
+  - `docs/specs/adaptive_priority_lock.md` — APL architecture spec (Status: Proposed)
+  - `docs/specs/volume_load_gauge.md` — VLG aggregation spec (Status: Implemented)
+  - `docs/adr/0008-adaptive-priority-lock-and-vlg-specs.md` — ADR for both specs
+- **`ARCHITECTURE.md`** — complete rewrite reflecting v5.7.0:
+  - Governance layer added to architecture diagram
+  - Directory tree updated: `titan/config/`, `tests/`, `docs/specs/`, `docs/training/`,
+    `.github/workflows/`, all 21 science modules
+  - Module responsibilities tables for all governance/autonomic modules
+  - 12-step DailyCoach morning routine documented
+  - Governance safety model section (gate hierarchy, output contracts)
+  - ADR table updated through ADR-0008
 
 ---
 
