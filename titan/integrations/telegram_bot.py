@@ -211,7 +211,7 @@ class TitanTelegramBot:
             f"  └ Dew point: {data.get('dew_point', 'N/A')}°C  |  {data.get('conditions', '')}\n\n"
             f"💊 *Recovery:*\n"
             f"  • HRV: {data.get('hrv_status', 'N/A')}\n"
-            f"  • Sleep: {data.get('sleep_quality', 'N/A')}/10\n"
+            f"  • Sleep: {data.get('sleep_quality', 'N/A')}/100\n"
             f"  • Readiness: {data.get('readiness_score', 'N/A')}/100\n\n"
             f"🍽 *Nutrition:* {data.get('nutrition_plan', 'See /nutrition')}\n\n"
             f"👟 *Shoe:* {data.get('shoe', 'See /shoes')}\n"

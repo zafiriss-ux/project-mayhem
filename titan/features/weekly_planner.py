@@ -12,13 +12,10 @@ Generates intelligent weekly plans based on:
 
 from datetime import datetime, timedelta
 from typing import Dict, List
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from science.hrv_engine import HRVGuidedEngine
-from science.tsb_engine import TSBEngine
-from science.acwr_engine import ACWREngine
+from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.tsb_engine import TSBEngine
+from titan.science.acwr_engine import ACWREngine
 
 class WeeklyPlanGenerator:
     """

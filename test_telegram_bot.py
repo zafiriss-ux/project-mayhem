@@ -211,6 +211,13 @@ class TestMessageFormatters:
         bot.send_alert("T", "B", level="unknown_level")
         assert any("ℹ️" in t for t in captured)
 
+
+    def test_send_daily_coaching_sleep_scale_is_100(self, bot, _coaching_data):
+        captured = []
+        bot.send_message = lambda text, **kw: captured.append(text) or True
+        bot.send_daily_coaching(_coaching_data)
+        assert any("Sleep: 80/100" in t for t in captured)
+
     def test_send_daily_coaching_includes_session_type(self, bot, _coaching_data):
         captured = []
         bot.send_message = lambda text, **kw: captured.append(text) or True
