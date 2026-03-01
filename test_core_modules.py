@@ -1043,3 +1043,265 @@ class TestGovernanceEngine:
         )
         assert 'PARASYMPATHETIC_GUARD' in result['governance_locks_applied']
         assert result['session_type'] == 'EASY'
+
+
+class TestIntensityGovernor:
+
+    @pytest.fixture
+    def governor(self):
+        from titan.science.intensity_governor import IntensityGovernor
+        return IntensityGovernor()
+
+    def test_all_green_returns_green(self, governor):
+        result = governor.evaluate({
+            'drift_pct': 2.5,
+            'glycogen_debt': 2.0,
+            'fatigue_level': 'LOW',
+            'acwr': 1.15,
+            'readiness_score': 78,
+            'planned_session': 'INTERVALS',
+        })
+        assert result.color == 'GREEN'
+        assert result.max_zone == 5
+        assert result.volume_modifier == 1.0
+        assert result.session_override is None
+        assert result.triggered_signals == []
+
+    def test_single_yellow_signal(self, governor):
+        result = governor.evaluate({'drift_pct': 4.5, 'planned_session': 'INTERVALS'})
+        assert result.color == 'YELLOW'
+        assert result.max_zone == 3
+        assert result.volume_modifier == 0.8
+        assert result.session_override is None
+        assert 'drift' in result.triggered_signals
+
+    def test_red_signal_forces_easy(self, governor):
+        result = governor.evaluate({'drift_pct': 6.2, 'planned_session': 'TEMPO'})
+        assert result.color == 'RED'
+        assert result.max_zone == 2
+        assert result.volume_modifier == 0.0
+        assert result.session_override == 'EASY'
+
+
+class TestGovernanceVo2AndFuelingGates:
+
+    @pytest.fixture
+    def gov(self):
+        from titan.science.governance_engine import GovernanceEngine
+        return GovernanceEngine()
+
+    def test_vo2_gate_all_conditions_pass(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 70}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 72,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'days_since_last_vo2': 3,
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'INTERVALS'
+        assert result['vo2_eligibility']['eligible'] is True
+        assert result['vo2_eligibility']['failed_conditions'] == []
+
+    def test_vo2_gate_fail_readiness_downgrades(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 48,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['failed_conditions'] == ['V2']
+
+    def test_vo2_gate_not_applied_to_tempo(self, gov):
+        plan = {'session_type': 'TEMPO', 'duration_min': 60}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 80,
+            'glycogen_debt': 2.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': True,
+        })
+        assert result['session_type'] == 'TEMPO'
+        assert 'vo2_eligibility' not in result
+
+    def test_fueling_phase3_lock(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'TEMPO'
+        assert result['fueling_gate']['action'] == 'LOCK'
+        assert result['fueling_gate']['phase'] == 3
+
+    def test_fueling_phase2_flag(self, gov):
+        plan = {'session_type': 'INTERVALS', 'duration_min': 70}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'INTERVALS'
+        assert result['fueling_gate']['action'] == 'FLAG'
+        assert result['fueling_gate']['session_unchanged'] is True
+
+    def test_fueling_long_run_lock(self, gov):
+        plan = {'session_type': 'LONG_RUN', 'duration_min': 110}
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        assert result['session_type'] == 'PROGRESSIVE'
+        assert result['fueling_gate']['action'] == 'LOCK'
+        assert result['fueling_gate']['locked_to'] == 'PROGRESSIVE'
+
+    def test_gate_ordering_vo2_before_fueling(self, gov):
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        result = gov.apply_constraints(plan, context={
+            'acwr': 1.1,
+            'readiness_score': 48,
+            'glycogen_debt': 3.0,
+            'fatigue_level': 'LOW',
+            'fueling_confirmed': False,
+        })
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['session_type'] == 'TEMPO'
+        assert 'fueling_gate' not in result
+
+
+class TestGlycogenNamedElectrolyteAccessor:
+
+    def test_named_electrolyte_guard_accessor_matches_existing(self):
+        from titan.science.glycogen_model import GlycogenDebtAccumulator
+
+        legacy = GlycogenDebtAccumulator.electrolyte_guard(22.0, 90, 'TEMPO')
+        named = GlycogenDebtAccumulator.get_electrolyte_guard_status(22.0, 90, 'TEMPO')
+        assert named == legacy
+
+
+class TestReadinessThresholdAlignment:
+
+    def test_sleep_55_is_poor_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=55, soreness=0,
+        )
+        assert r['score'] == 85
+
+    def test_sleep_60_is_fair_not_poor(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=60, soreness=0,
+        )
+        assert r['score'] == 92
+
+    def test_hrv_minus_9_uses_high_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=41, baseline_hrv=50,
+            today_rhr=50, baseline_rhr=50,
+            sleep_score=80, soreness=0,
+        )
+        assert r['score'] == 80
+
+    def test_rhr_plus_6_uses_medium_penalty(self):
+        from titan.science.readiness_engine import ReadinessEngine
+        r = ReadinessEngine.analyze_readiness(
+            today_hrv=50, baseline_hrv=50,
+            today_rhr=56, baseline_rhr=50,
+            sleep_score=80, soreness=0,
+        )
+        assert r['score'] == 92
+
+
+class TestGovernanceHardStopsAnd2of4:
+
+    @pytest.fixture
+    def gov(self):
+        from titan.science.governance_engine import GovernanceEngine
+        return GovernanceEngine()
+
+    def test_h1_dual_collapse_forces_rest(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 28, 'baseline_hrv': 55,
+            'today_rhr': 72, 'baseline_rhr': 52,
+        })
+        assert out['session_type'] == 'REST'
+        assert out['max_zone'] == 1
+        assert 'HRV/RHR dual collapse' in out['governance_override']
+
+    def test_h2_tsb_floor_boundary(self, gov):
+        plan = {'session_type': 'HAMMER', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'tsb_value': -50})
+        assert out['session_type'] == 'EASY'
+        assert 'TSB at overtraining threshold' in out['governance_override']
+
+    def test_h3_injury_flag_forces_rest(self, gov):
+        plan = {'session_type': 'TEMPO', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'injury_flag': True})
+        assert out['session_type'] == 'REST'
+        assert out['max_zone'] == 1
+
+    def test_h4_extreme_subjective_fatigue(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={'subjective_fatigue_score': 9})
+        assert out['session_type'] == 'EASY'
+        assert 'extreme fatigue' in out['governance_override']
+
+    def test_2of4_exactly_two_downgrades(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 40, 'baseline_hrv': 50, 'hrv_std_dev': 5,
+            'sleep_score': 58,
+            'readiness_score': 62,
+            'subjective_fatigue_score': 5,
+            'tsb_value': -45,
+        })
+        assert out['session_type'] == 'TEMPO'
+        assert out['downgrade_2of4']['downgrade_2of4'] is True
+        assert set(out['downgrade_2of4']['indicators_triggered']) == {'I1_hrv_soft', 'I2_sleep'}
+
+    def test_2of4_single_indicator_no_downgrade(self, gov):
+        plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        out = gov.apply_constraints(plan, context={
+            'today_hrv': 40, 'baseline_hrv': 50, 'hrv_std_dev': 5,
+            'sleep_score': 72,
+            'readiness_score': 68,
+            'subjective_fatigue_score': 4,
+        })
+        assert out['session_type'] == 'INTERVALS'
+        assert 'downgrade_2of4' not in out
+
+
+class TestVolumeLoadGauge:
+
+    @pytest.fixture
+    def gauge(self):
+        from titan.science.volume_load_gauge import VolumeLoadGauge
+        return VolumeLoadGauge()
+
+    def test_green_state_when_all_inputs_green(self, gauge):
+        state = gauge.resolve(tsb_value=-12.0, acwr=1.05, glycogen_debt=2.0)
+        assert state.color == 'GREEN'
+        assert state.score == 0
+        assert state.components == {'tsb': 'GREEN', 'acwr': 'GREEN', 'glycogen': 'GREEN'}
+
+    def test_yellow_state_on_single_yellow_component(self, gauge):
+        state = gauge.resolve(tsb_value=-35.0, acwr=1.0, glycogen_debt=2.0)
+        assert state.color == 'YELLOW'
+        assert state.components['tsb'] == 'YELLOW'
+        assert state.score == 1
+
+    def test_red_state_when_any_component_red(self, gauge):
+        state = gauge.resolve(tsb_value=-20.0, acwr=1.65, glycogen_debt=3.0)
+        assert state.color == 'RED'
+        assert state.components['acwr'] == 'RED'
+        assert state.score == 2
+
+    def test_mixed_components_score_and_rationale(self, gauge):
+        state = gauge.resolve(tsb_value=-55.0, acwr=1.4, glycogen_debt=5.0)
+        assert state.color == 'RED'
+        assert state.score == 4  # one red + two yellow
+        assert any('TSB=' in r for r in state.rationale)
+        assert any('ACWR=' in r for r in state.rationale)
+        assert any('Glycogen debt=' in r for r in state.rationale)

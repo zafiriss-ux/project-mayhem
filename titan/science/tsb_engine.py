@@ -55,6 +55,12 @@ class TSBEngine:
             status = "🛑 OVERTRAINED"
         return round(tsb, 1), status
 
+
+    def get_tsb_status(self) -> dict:
+        """Return named TSB payload for governance/context wiring."""
+        tsb_value, status = self.calculate_tsb()
+        return {"tsb_value": tsb_value, "status": status}
+
     def get_latest_tsb(self) -> float:
         """Return current TSB value (0.0 if insufficient data)."""
         val, _ = self.calculate_tsb()

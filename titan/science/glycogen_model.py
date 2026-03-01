@@ -235,6 +235,19 @@ class GlycogenDebtAccumulator:
     # ── Electrolyte Guard ────────────────────────────────────────────────────
 
     @staticmethod
+    def get_electrolyte_guard_status(
+        dew_point_c: float,
+        duration_min: float,
+        session_type: str,
+    ) -> Optional[Dict]:
+        """Named accessor for electrolyte guard status (no logic change)."""
+        return GlycogenDebtAccumulator.electrolyte_guard(
+            dew_point_c=dew_point_c,
+            duration_min=duration_min,
+            session_type=session_type,
+        )
+
+    @staticmethod
     def electrolyte_guard(
         dew_point_c: float,
         duration_min: float,
