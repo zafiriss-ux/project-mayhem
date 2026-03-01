@@ -23,6 +23,7 @@ Architectural Boundary:
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+import sys
 import threading
 from titan.core.database import DatabaseManager
 from titan.science.autonomic_engine import AutonomicFusionEngine
@@ -179,7 +180,14 @@ class DailyCoach:
             today_rhr    = today_rhr or 50,
             baseline_rhr = baseline_rhr,
             sleep_score  = today_sleep_score,
-            soreness     = soreness,
+readiness = self.readiness.analyze_readiness(
+    today_hrv    = latest_hrv,
+    baseline_hrv = baseline_hrv,
+    today_rhr    = today_rhr or 50,
+    baseline_rhr = baseline_rhr,
+    sleep_score  = today_sleep_score,
+    soreness     = soreness,
+)
         )
         # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,
@@ -385,6 +393,31 @@ class DailyCoach:
             print(f"  ⚠️  Could not save daily metrics: {e}")
 
         return today_rhr, today_sleep_score, today_sleep_hours
+
+    def _prompt_soreness(self, default: int = 3) -> int:
+        """
+        Prompt the user for their current muscle soreness level.
+
+        Accepts a value from 1 (none) to 10 (extreme).  Falls back to
+        *default* if the session is non-interactive or the input is invalid.
+
+        Non-blocking in automated contexts (background threads, Telegram
+        callbacks): when stdin is not a TTY the default is returned immediately
+        without calling input(), so the morning routine is never blocked.
+        """
+        if not sys.stdin.isatty():
+            return default
+        try:
+            raw = input("🤸 Morning check-in — Muscle soreness (1–10, Enter to skip): ").strip()
+            if not raw:
+                return default
+            value = int(raw)
+            if 1 <= value <= 10:
+                return value
+            print(f"  ⚠️  Soreness must be 1–10; using default ({default})")
+        except (EOFError, ValueError):
+            pass
+        return default
 
     def _get_baseline_rhr(self, days: int = 7) -> float:
         """
