@@ -19,7 +19,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from science.hrv_engine import HRVGuidedEngine
 from science.tsb_engine import TSBEngine
 from science.acwr_engine import ACWREngine
-from science.drift_engine import DriftEngine
 
 class WeeklyPlanGenerator:
     """

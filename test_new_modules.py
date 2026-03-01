@@ -19,10 +19,9 @@ Run with:
 """
 
 import sys
-import threading
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -175,20 +175,20 @@ class TitanTelegramBot:
 
     def send_weekly_plan(self, plan: Dict) -> bool:
         lines = [
-            f"🎯 *WEEKLY TRAINING PLAN*",
+            "🎯 *WEEKLY TRAINING PLAN*",
             f"Week of: {plan.get('week_start', 'N/A')}  |  Phase: {plan.get('phase', 'N/A')}",
-            f"",
-            f"📊 *Summary:*",
+            "",
+            "📊 *Summary:*",
             f"• Volume: {plan.get('total_km', 0)} km",
             f"• Quality sessions: {plan.get('quality_count', 0)}",
             f"• Easy days: {plan.get('easy_count', 0)}  |  Rest: {plan.get('rest_count', 0)}",
-            f"",
-            f"💡 *Key Status:*",
+            "",
+            "💡 *Key Status:*",
             f"• Lactate threshold: {plan.get('lactate_threshold', 'N/A')} bpm",
             f"• HRV baseline: {plan.get('hrv_baseline', 'N/A')}",
             f"• TSB: {plan.get('tsb_status', 'N/A')}",
-            f"",
-            f"📅 *Daily Breakdown:*",
+            "",
+            "📅 *Daily Breakdown:*",
         ]
         for d in plan.get("daily_sessions", []):
             lines.append(

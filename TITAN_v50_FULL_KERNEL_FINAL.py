@@ -1,5 +1,4 @@
 import math
-import sys
 from datetime import datetime, timedelta
 import json
 from pathlib import Path
@@ -94,8 +93,6 @@ except ImportError:
 # CRITICAL ENHANCEMENTS
 # ============================================================================
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from copy import deepcopy
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -3437,7 +3434,6 @@ class GeneticOptimization:
         )
         return best_sol, result_str
 
-import random
 
 
 
@@ -3707,7 +3703,7 @@ class KnowledgeTraceability:
         return entry
     
     def explain_taper_plan(self, plan, race_importance):
-        explanation = f"TAPER PLAN REASONING:\n"
+        explanation = "TAPER PLAN REASONING:\n"
         explanation += f"Race Importance: {race_importance}\n"
         explanation += f"Days in taper: {len(plan)}\n"
         explanation += "Strategy: Progressive volume reduction with intensity maintenance\n"
@@ -3815,7 +3811,7 @@ class TitanSystem:
 
     def run(self):
         while True:
-            print(f"\n==== TITAN OS v48 UNIVERSAL ====")
+            print("\n==== TITAN OS v48 UNIVERSAL ====")
             print(f"Athlete: {self.profile.name} | Age: {self.profile.age} | Phase: {self.phase}")
             print(f"Race: {self.profile.race_day.date()} | Goal: {self.profile.current_goal or 'Not set'}")
             print("-" * 60)
@@ -4431,7 +4427,7 @@ class TitanSystem:
         acute_load = sum(loads_7d)
         acwr, status, recommendation = ACWREngine.calculate_acwr(acute_load, avg_28d)
         
-        print(f"\n ACUTE:CHRONIC WORKLOAD RATIO (Gabbett 2016)")
+        print("\n ACUTE:CHRONIC WORKLOAD RATIO (Gabbett 2016)")
         print("="*60)
         print(f"Acute Load (7d): {acute_load:.0f}")
         print(f"Chronic Load (28d avg): {avg_28d:.0f}")
@@ -4440,7 +4436,7 @@ class TitanSystem:
         print(f"Recommendation: {recommendation}")
         
         # TSB Calculation
-        print(f"\n TRAINING STRESS BALANCE (Banister/Coggan)")
+        print("\n TRAINING STRESS BALANCE (Banister/Coggan)")
         print("="*60)
         
         # Add loads to TSB engine
@@ -4491,7 +4487,7 @@ class TitanSystem:
             today_hrv, planned
         )
         
-        print(f"\n HRV-GUIDED DECISION:")
+        print("\n HRV-GUIDED DECISION:")
         print("="*60)
         print(f"Planned Session: {planned}")
         print(f"Recommended Session: {recommended}")
@@ -4538,7 +4534,7 @@ class TitanSystem:
                 splits, target
             )
             
-            print(f"\n PACE DURABILITY:")
+            print("\n PACE DURABILITY:")
             print("="*60)
             print(f"Distance: {n_km} km")
             print(f"Pace Decay: {decay}%")
@@ -4559,7 +4555,7 @@ class TitanSystem:
                 fresh, fatigued
             )
             
-            print(f"\n DURABILITY INDEX:")
+            print("\n DURABILITY INDEX:")
             print("="*60)
             print(f"DI Score: {di}%")
             print(f"Status: {status}")
@@ -4567,7 +4563,7 @@ class TitanSystem:
             
             # Training protocol
             protocols = DurabilityEngine.durability_training_protocol(di)
-            print(f"\n TRAINING RECOMMENDATIONS:")
+            print("\n TRAINING RECOMMENDATIONS:")
             for p in protocols:
                 print(f"  {p}")
     
@@ -4610,7 +4606,7 @@ class TitanSystem:
                 pace1, hr1, pace2, hr2
             )
             
-            print(f"\n DECOUPLING ANALYSIS:")
+            print("\n DECOUPLING ANALYSIS:")
             print("="*60)
             print(f"Decoupling: {decoupling}%")
             print(f"Status: {status}")
@@ -4675,7 +4671,7 @@ class TitanSystem:
             result = GlycogenModel.estimate_glycogen_depletion(duration, intensity)
             carb_rec = GlycogenModel.daily_carb_recommendation(weight, "HIGH")
             
-            print(f"\n GLYCOGEN DEPLETION:")
+            print("\n GLYCOGEN DEPLETION:")
             print("="*60)
             print(f"Glycogen Depleted: {result['glycogen_depleted_g']}g")
             print(f"Intensity: {result['intensity_classification']}")
@@ -4830,7 +4826,7 @@ class TitanSystem:
         
         if self.periodization.current_goal:
             goal = self.periodization.current_goal
-            print(f"\nCurrent Goal:")
+            print("\nCurrent Goal:")
             print(f"  Distance: {goal['distance_km']}K")
             print(f"  Target: {goal['target_time']}")
             print(f"  Race: {goal['race_date'].strftime('%Y-%m-%d')}")
@@ -5212,7 +5208,7 @@ class TitanSystem:
                 curr_ctl, curr_atl, load
             )
             
-            print(f"\n🧪 SIMULATION RESULTS:")
+            print("\n🧪 SIMULATION RESULTS:")
             print(f"New CTL: {n_ctl} (+{n_ctl - curr_ctl:.1f})")
             print(f"New ATL: {n_atl} (+{n_atl - curr_atl:.1f})")
             print(f"New TSB: {n_tsb}")
@@ -5299,7 +5295,6 @@ class TitanSystem:
 # ==============================================================================
 
 import sqlite3
-from typing import List, Dict, Tuple, Optional
 
 class DatabaseManager:
     """
