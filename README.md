@@ -163,6 +163,8 @@ The launcher wizard creates `.env` automatically. If configuring manually:
 
 **Location:** `~/Documents/TITAN/.env` (Windows: `%USERPROFILE%\Documents\TITAN\.env`)
 
+> **Windows note:** TITAN cannot enforce Unix-style `0600` permissions on `.env` under Windows. Review file/folder ACLs manually if the system is shared.
+
 **Required Keys:**
 ```bash
 # Garmin Connect
