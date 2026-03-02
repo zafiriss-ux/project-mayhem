@@ -10,12 +10,22 @@ Generates intelligent weekly plans based on:
 - Periodization phase
 """
 
+import json
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
 from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.tsb_engine import TSBEngine
 from titan.science.acwr_engine import ACWREngine
+
+
+_log = logging.getLogger(__name__)
+
+
+def _planner_event(action: str, **fields) -> None:
+    """Emit a structured weekly planner event as a single JSON log line."""
+    _log.info(json.dumps({"flow": "weekly_planner", "action": action, **fields}, default=str))
 
 class WeeklyPlanGenerator:
     """
@@ -101,6 +111,7 @@ class WeeklyPlanGenerator:
             Analysis summary
         """
         if not sessions:
+            _planner_event("past_week_analyzed", sessions=0, readiness="UNKNOWN")
             return {
                 'total_km': 0,
                 'quality_sessions': 0,
@@ -127,7 +138,7 @@ class WeeklyPlanGenerator:
         # TSB status
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
 
-        return {
+        analysis = {
             'total_km': total_km,
             'quality_sessions': quality_sessions,
             'avg_drift': round(avg_drift, 1),
@@ -137,6 +148,14 @@ class WeeklyPlanGenerator:
             'tsb_status': tsb_status,
             'readiness': 'GOOD' if avg_drift < 4 and tsb_value is not None and tsb_value > -20 else 'COMPROMISED'
         }
+        _planner_event(
+            'past_week_analyzed',
+            sessions=len(sessions),
+            total_km=analysis['total_km'],
+            quality_sessions=analysis['quality_sessions'],
+            readiness=analysis['readiness'],
+        )
+        return analysis
 
     def generate_weekly_plan(
         self,
@@ -158,6 +177,14 @@ class WeeklyPlanGenerator:
         # Get current status
         hrv_summary = self.hrv_engine.get_hrv_summary()
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
+
+        _planner_event(
+            "plan_generation_started",
+            phase=phase,
+            tsb_value=tsb_value,
+            tsb_status=tsb_status,
+            weather_days=len(weather_forecast or []),
+        )
 
         # Determine weekly structure based on phase
         if phase == 'BASE':
@@ -195,6 +222,14 @@ class WeeklyPlanGenerator:
         }
 
         self.last_plan = plan
+        _planner_event(
+            "plan_generated",
+            phase=phase,
+            sessions=len(structure),
+            weekly_km=plan['total_km'],
+            quality_sessions=plan['quality_count'],
+            recovery_days=plan['rest_count'],
+        )
         return plan
 
     def _generate_base_week(self, profile: Dict, tsb: float) -> List[Dict]:

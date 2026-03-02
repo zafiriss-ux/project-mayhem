@@ -68,13 +68,13 @@ Goal: Production-grade visibility and regression safety.
 - Snapshot tests for decision stability — DONE (additional coverage in E2E suite)
 - OutcomeTracker DB persistence — DONE (`governance_outcomes` table, `tests/test_outcome_tracker_persistence.py`)
 - Structured observability for governance gates — DONE (`_gate_event()` + cause tagging + audit summary)
+- Structured logs for remaining flows — DONE (`WeeklyPlanGenerator`, `ReadinessEngine`, `NutritionOptimizer`)
 
 ### Remaining (in order)
 
-1. Structured logs for remaining flows: `WeeklyPlanGenerator`, `ReadinessEngine`, `NutritionOptimizer`
-2. `/calibration` Telegram command: lock_rate_by_phase, completion_rate from `governance_outcomes`
-3. SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
-4. Smoke checks post-release (import + instantiate + run 1 step, CI-gated)
+1. `/calibration` Telegram command: lock_rate_by_phase, completion_rate from `governance_outcomes`
+2. SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
+3. Smoke checks post-release (import + instantiate + run 1 step, CI-gated)
 
 ---
 

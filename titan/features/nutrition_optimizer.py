@@ -5,7 +5,19 @@ Weight-based nutrition adjustment with scientific backing.
 Integrates with Garmin weight data to provide real-time dietary recommendations.
 """
 
+import json
+import logging
 from typing import Dict, List
+
+
+
+_log = logging.getLogger(__name__)
+
+
+def _nutrition_event(action: str, **fields) -> None:
+    """Emit a structured nutrition event as a single JSON log line."""
+    _log.info(json.dumps({"flow": "nutrition", "action": action, **fields}, default=str))
+
 
 class NutritionOptimizer:
     """
@@ -81,7 +93,7 @@ class NutritionOptimizer:
             status = "STABLE"
             rec = "Continue current approach"
 
-        return {
+        result = {
             'status': status,
             'change_kg': round(change_kg, 2),
             'change_pct': round(change_pct, 2),
@@ -90,6 +102,14 @@ class NutritionOptimizer:
             'first_weight': first_weight,
             'current_weight': last_weight
         }
+        _nutrition_event(
+            'weight_trend_analyzed',
+            days=days,
+            status=result['status'],
+            velocity_kg_per_week=result['velocity_kg_per_week'],
+            change_pct=result['change_pct'],
+        )
+        return result
 
     def calculate_daily_nutrition(
         self,
@@ -166,7 +186,7 @@ class NutritionOptimizer:
             session_type,
         )
 
-        return {
+        plan = {
             'total_calories': round(tdee, 0),
             'carbs_g': round(carb_g, 0),
             'carbs_range': f"{int(weight_kg * carb_low)}-{int(weight_kg * carb_high)}g",
@@ -179,6 +199,19 @@ class NutritionOptimizer:
             'special_notes': self._get_special_notes(session_type, tomorrow_session),
             'weight_trend': self.analyze_weight_trend()
         }
+
+        _nutrition_event(
+            'daily_plan_calculated',
+            session_type=session_type,
+            duration_min=duration_min,
+            training_phase=training_phase,
+            calories=plan['total_calories'],
+            carbs_g=plan['carbs_g'],
+            hydration_ml=hydration_ml,
+            weight_status=plan['weight_trend'].get('status'),
+        )
+
+        return plan
 
     def _get_meal_timing(self, session_type: str, duration_min: int) -> Dict:
         """Get session-specific meal timing recommendations."""
