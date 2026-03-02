@@ -35,6 +35,7 @@ from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.outcome_tracker import OutcomeTracker, GovernanceDecision
 from titan.science.load_prediction_shadow import LoadPredictionShadowModel, ShadowLoadPrediction
 from titan.science.injury_risk_model import InjuryRiskEnsembleModel, InjuryRiskAssessment
+from titan.science.automated_periodization import AutomatedPeriodizationEngine, PeriodizationSuggestion
 
 __all__ = [
     # Core engines
@@ -67,4 +68,6 @@ __all__ = [
     'ShadowLoadPrediction',
     'InjuryRiskEnsembleModel',
     'InjuryRiskAssessment',
+    'AutomatedPeriodizationEngine',
+    'PeriodizationSuggestion',
 ]
