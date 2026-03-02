@@ -2,6 +2,73 @@
 
 ---
 
+## v5.7.4 / v51.8 — Safety gate hardening: ADR-0009 (C1 & C2 resolution) (2026-03-02)
+
+### Safety — Critical Fix
+
+- **`titan/science/governance_engine.py`** — `_check_hard_stops()` rewritten
+  to implement DECISION_MODEL Gate 2 OR semantics and Gate 1 priority order
+  (per ADR-0009).
+
+  **C1 resolved — HRV Collapse Gate (was AND, now independent OR):**
+  HRV collapse (`today_hrv < baseline_hrv − HARD_STOP_HRV_DELTA`) now fires
+  a REST hard stop independently. Previously required simultaneous RHR spike
+  (AND logic), meaning HRV-only collapse passed all hard stops silently.
+
+  **C2 resolved — RHR Spike Gate (was AND, now independent OR):**
+  RHR spike (`today_rhr > baseline_rhr + HARD_STOP_RHR_DELTA`) now fires
+  a REST hard stop independently. Previously silent without concurrent HRV
+  collapse.
+
+  **Gate evaluation order corrected (DECISION_MODEL §4 canonical order):**
+  Injury/Medical Flag (H1) is now evaluated first, before autonomic gates,
+  matching DECISION_MODEL Gate 1 as the non-bypassable highest-priority gate.
+
+  **New gate labeling (H1–H5):**
+
+  | Label | Condition | Outcome |
+  |-------|-----------|---------|
+  | H1 | `injury_flag == True` | REST |
+  | H2 | HRV collapse (OR, individually sufficient) | REST |
+  | H3 | RHR spike (OR, individually sufficient) | REST |
+  | H4 | `tsb ≤ HARD_STOP_TSB_FLOOR` | EASY |
+  | H5 | `subjective_fatigue ≥ SUBJECTIVE_FATIGUE_EXTREME` | EASY |
+
+  Threshold constants (`HARD_STOP_HRV_DELTA`, `HARD_STOP_RHR_DELTA`,
+  `HARD_STOP_TSB_FLOOR`, `SUBJECTIVE_FATIGUE_EXTREME`) unchanged.
+
+### Architecture
+
+- **`docs/adr/0009-safety-gate-hardening-C1-C2-resolution.md`** — NEW.
+  Documents the remaining two unresolved conflicts from ADR-0007 (C1 and C2),
+  the decision to implement OR semantics, the gate relabeling rationale, and
+  the ADR-0007 full resolution status table (all five C1–C5 now CLOSED).
+
+### Tests
+
+- **`tests/test_p0_safety_gates.py`** — complete update (14 → 18 tests):
+  - Removed: `test_H1_only_hrv_drops_does_not_fire` — was documenting
+    incorrect AND behavior; contradicts DECISION_MODEL and GOVERNANCE_PHILOSOPHY.
+  - Removed: `test_H1_only_rhr_spikes_does_not_fire` — same reason.
+  - Added: `test_H2_hrv_collapse_alone_forces_rest` — verifies OR semantics.
+  - Added: `test_H2_hrv_just_above_threshold_does_not_fire` — boundary check.
+  - Added: `test_H2_hrv_exactly_at_threshold_fires` — boundary check.
+  - Added: `test_H3_rhr_spike_alone_forces_rest` — verifies OR semantics.
+  - Added: `test_H3_rhr_just_below_threshold_does_not_fire` — boundary check.
+  - Added: `test_H3_rhr_exactly_at_threshold_fires` — boundary check.
+  - Added: `test_H2_H3_dual_collapse_fires_both_gates` — verifies both H2
+    and H3 fire and appear in hard_stop_reasons on dual collapse.
+  - Renamed/updated: all gate-label assertions updated to H1–H5 scheme.
+  - Config tests split: `test_config_hrv_delta_respected` (HRV only) and
+    `test_config_rhr_delta_respected` (RHR only) — each uses a clean baseline
+    for the other signal to prevent cross-gate interference.
+
+- **`tests/test_phase3_hygiene.py`** — comment updated: H4 → H5 gate
+  reference in `test_subjective_fatigue_exception_in_2of4_and_hard_stop`;
+  line-number references removed (governance_engine.py line layout changed).
+
+---
+
 ## v5.7.3 / v51.7 — Phase 5 closure: maintenance & documentation sync (2026-03-02)
 
 ### Phase Status
