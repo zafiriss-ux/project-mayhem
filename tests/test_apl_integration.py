@@ -618,7 +618,27 @@ class TestEvidenceRegistry:
         summary = get_registry_summary()
         assert 'total_parameters' in summary
         assert 'by_evidence_level' in summary
+        assert 'promoted_parameters' in summary
         assert summary['total_parameters'] == len(EVIDENCE_REGISTRY)
+
+    def test_promotion_metadata_is_consistent(self):
+        for k, v in EVIDENCE_REGISTRY.items():
+            if v.promoted_from_level is None:
+                assert v.promotion_evidence_count is None, (
+                    f'{k} has promotion_evidence_count without promoted_from_level'
+                )
+                assert v.promotion_date is None, (
+                    f'{k} has promotion_date without promoted_from_level'
+                )
+                continue
+
+            assert v.promoted_from_level in {'HEURISTIC', 'MODERATE'}, (
+                f'{k} has invalid promoted_from_level: {v.promoted_from_level!r}'
+            )
+            assert isinstance(v.promotion_evidence_count, int)
+            assert v.promotion_evidence_count > 0
+            assert isinstance(v.promotion_date, str)
+            assert len(v.promotion_date) == 10
 
     def test_vo2_min_days_is_strong_evidence(self):
         record = get_evidence('VO2_MIN_DAYS_SINCE_LAST')
