@@ -34,5 +34,18 @@ def test_as_dict_has_stable_contract_keys():
     pred = model.predict_7d_load([50, 50, 50, 50])
     payload = model.as_dict(pred)
 
-    assert set(payload) == {'predicted_load_7d', 'trend', 'model_name', 'mode'}
+    assert set(payload) == {
+        'predicted_load_7d',
+        'trend',
+        'model_name',
+        'mode',
+        'evidence_label',
+    }
     assert payload['mode'] == 'SHADOW'
+
+
+def test_prediction_carries_default_heuristic_evidence_label():
+    model = LoadPredictionShadowModel()
+    pred = model.predict_7d_load([80, 85, 90])
+
+    assert pred.evidence_label == 'HEURISTIC'
