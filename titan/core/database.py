@@ -233,6 +233,31 @@ class DatabaseManager:
             )
         """)
 
+        # Table 7: Governance outcomes (decision snapshot + post-session outcome)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS governance_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_planned TEXT NOT NULL,
+                session_post_governance TEXT NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                vlg_color TEXT NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr REAL NOT NULL,
+                tsb_value REAL NOT NULL,
+                readiness_score REAL NOT NULL,
+                glycogen_debt REAL NOT NULL,
+                afi_value REAL,
+                outcome_rpe INTEGER,
+                outcome_completed INTEGER,
+                outcome_session_type_actual TEXT,
+                outcome_notes TEXT
+            )
+        """)
+
         self.conn.commit()
         self._run_migrations(cursor)
 
@@ -739,6 +764,117 @@ class DatabaseManager:
         overrides = row[0] if row else 0
         return round(overrides / days, 3)
 
+    # --- GOVERNANCE OUTCOMES ---
+
+    def save_governance_decision(self, decision: Dict[str, Any]) -> None:
+        """Persist a governance decision snapshot into governance_outcomes."""
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                """INSERT INTO governance_outcomes (
+                       date, session_planned, session_post_governance,
+                       locks_applied_json, governance_clean, phase, vlg_color,
+                       apl_priority_vector_json, lock_thresholds_active_json,
+                       acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
+                       outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    decision['date'],
+                    decision['session_planned'],
+                    decision['session_post_governance'],
+                    json.dumps(decision.get('locks_applied', []), default=str),
+                    int(bool(decision.get('governance_clean', False))),
+                    decision.get('phase', ''),
+                    decision.get('vlg_color', ''),
+                    json.dumps(decision.get('apl_priority_vector', {}), default=str),
+                    json.dumps(decision.get('lock_thresholds_active', {}), default=str),
+                    float(decision.get('acwr', 0.0)),
+                    float(decision.get('tsb_value', 0.0)),
+                    float(decision.get('readiness_score', 0.0)),
+                    float(decision.get('glycogen_debt', 0.0)),
+                    decision.get('afi_value'),
+                    decision.get('outcome_rpe'),
+                    int(decision['outcome_completed']) if decision.get('outcome_completed') is not None else None,
+                    decision.get('outcome_session_type_actual'),
+                    decision.get('outcome_notes'),
+                ),
+            )
+            self.conn.commit()
+
+    def update_governance_outcome(
+        self,
+        date: str,
+        rpe: Optional[int] = None,
+        completed: Optional[bool] = None,
+        actual_session_type: Optional[str] = None,
+        notes: Optional[str] = None,
+    ) -> bool:
+        """Update latest governance decision for date with post-session outcome."""
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                """UPDATE governance_outcomes
+                   SET outcome_rpe = ?,
+                       outcome_completed = ?,
+                       outcome_session_type_actual = ?,
+                       outcome_notes = ?
+                   WHERE id = (
+                       SELECT id FROM governance_outcomes
+                       WHERE date = ?
+                       ORDER BY id DESC
+                       LIMIT 1
+                   )""",
+                (
+                    rpe,
+                    int(completed) if completed is not None else None,
+                    actual_session_type,
+                    notes,
+                    date,
+                ),
+            )
+            self.conn.commit()
+            return cursor.rowcount > 0
+
+    def get_governance_decisions(self, limit: int = 1000) -> List[Dict[str, Any]]:
+        """Fetch governance decisions ordered by insertion order (oldest first)."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT date, session_planned, session_post_governance,
+                      locks_applied_json, governance_clean, phase, vlg_color,
+                      apl_priority_vector_json, lock_thresholds_active_json,
+                      acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
+                      outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
+               FROM governance_outcomes
+               ORDER BY id ASC
+               LIMIT ?""",
+            (limit,),
+        )
+
+        rows = cursor.fetchall()
+        decisions: List[Dict[str, Any]] = []
+        for row in rows:
+            decisions.append({
+                'date': row[0],
+                'session_planned': row[1],
+                'session_post_governance': row[2],
+                'locks_applied': json.loads(row[3]) if row[3] else [],
+                'governance_clean': bool(row[4]),
+                'phase': row[5],
+                'vlg_color': row[6],
+                'apl_priority_vector': json.loads(row[7]) if row[7] else {},
+                'lock_thresholds_active': json.loads(row[8]) if row[8] else {},
+                'acwr': float(row[9]),
+                'tsb_value': float(row[10]),
+                'readiness_score': float(row[11]),
+                'glycogen_debt': float(row[12]),
+                'afi_value': float(row[13]) if row[13] is not None else None,
+                'outcome_rpe': row[14],
+                'outcome_completed': bool(row[15]) if row[15] is not None else None,
+                'outcome_session_type_actual': row[16],
+                'outcome_notes': row[17],
+            })
+        return decisions
+
     def close(self) -> None:
         """Close database connection."""
         if self.conn:
@@ -922,4 +1058,3 @@ class AthleteDatabase:
 
         if "race_day" in data and data["race_day"] is not None:
             datetime.fromisoformat(data["race_day"])
-

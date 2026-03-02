@@ -102,7 +102,7 @@ class DailyCoach:
         # v5.7.1: APL governance infrastructure
         self.apl            = apl             or AdaptivePriorityLock()
         self.vlg            = volume_load_gauge or VolumeLoadGauge()
-        self.outcome_tracker = outcome_tracker or OutcomeTracker()
+        self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
         # Restore in-memory state of science engines from DB on startup
         self._hydrate_engines_from_db()
 

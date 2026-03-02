@@ -26,6 +26,8 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from titan.core.database import DatabaseManager
+
 _log = logging.getLogger(__name__)
 
 
@@ -110,12 +112,26 @@ class OutcomeTracker:
       3. get_calibration_summary() surfaces aggregate statistics
          once enough outcomes have accumulated (recommended ≥ 30 sessions)
 
-    The tracker does not access the database. It does not write files.
+    By default it runs in-memory only. If constructed with a DatabaseManager,
+    decisions/outcomes are also persisted to SQLite and hydrated on startup.
     It emits structured JSON log lines at INFO level for every event.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, db: Optional[DatabaseManager] = None) -> None:
+        self._db = db
         self._decisions: List[GovernanceDecision] = []
+        if self._db is not None:
+            self._hydrate_from_db()
+
+    def _hydrate_from_db(self) -> None:
+        """Restore in-memory tracker state from persisted governance outcomes."""
+        try:
+            persisted = self._db.get_governance_decisions()
+        except Exception as exc:
+            _log.warning('OutcomeTracker DB hydration failed: %s', exc)
+            return
+
+        self._decisions = [GovernanceDecision(**entry) for entry in persisted]
 
     # ── Recording ────────────────────────────────────────────────────────────
 
@@ -164,6 +180,8 @@ class OutcomeTracker:
             afi_value=float(afi_value) if afi_value is not None else None,
         )
         self._decisions.append(decision)
+        if self._db is not None:
+            self._db.save_governance_decision(asdict(decision))
 
         _log.info(json.dumps({
             'outcome_tracker': 'decision_recorded',
@@ -219,6 +237,14 @@ class OutcomeTracker:
                     'completed': completed,
                     'locks_applied': decision.locks_applied,
                 }, default=str))
+                if self._db is not None:
+                    self._db.update_governance_outcome(
+                        date=date,
+                        rpe=rpe,
+                        completed=completed,
+                        actual_session_type=actual_session_type,
+                        notes=notes,
+                    )
                 return True
 
         _log.warning(json.dumps({
