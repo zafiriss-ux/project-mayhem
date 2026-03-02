@@ -10,53 +10,29 @@
 
 ## IMMEDIATE — Next Cycle
 
-### 0) Security Hardening
+### 0) Security Hardening — Εκκρεμεί
 
-Security audit (2026-03-02) identified the following issues, in fix-priority order:
+Security audit (2026-03-02). Τα SEC-1, SEC-2 (μερικώς), SEC-3, SEC-4, SEC-6, SEC-8
+διορθώθηκαν στο commit `6585c02` (2026-03-02). Εκκρεμούν:
 
-**[SEC-1] — CRITICAL: Unsafe env var type conversion** (`titan/main.py:317–321`)
-Direct `int()`/`float()` conversion of env vars without try/except. An invalid
-value (e.g. `ATHLETE_AGE=abc`) crashes the process at startup.
-- Wrap conversions in try/except with descriptive error message and safe exit.
-
-**[SEC-2] — CRITICAL: Weak input validation in setup wizard** (`titan/ui/setup_wizard.py:71–86`)
-No format validation on Garmin email, API keys, or location string. Chat ID stored
-as string but used as int (silent coercion).
-- Validate email format (regex), enforce numeric Chat ID at collection time,
-  add minimum-length checks for API keys.
-
-**[SEC-3] — HIGH: `os.system()` for terminal clear** (`titan/ui/menu_system.py:18`)
-Anti-pattern: spawns a shell subprocess. Safe to replace with `subprocess.run()`
-or `os.system` avoided entirely via ANSI escape codes.
-- Replace with `print("\033[2J\033[H", end="")` or `subprocess.run(["clear"])`.
-
-**[SEC-4] — HIGH: Unpinned dependencies** (`requirements.txt:20,34,36`)
-`scikit-learn>=1.4,<1.5`, `pytest>=8,<9`, `hypothesis>=6.100` use version ranges.
-Different environments may resolve to incompatible minor versions.
-- Pin to exact versions: `pytest==8.1.0`, `hypothesis==6.100.0`, `scikit-learn==1.4.2`.
+**[SEC-2] — PARTIAL: Validation setup wizard** (`titan/ui/setup_wizard.py`)
+Chat ID και token format ελέγχονται πλέον. Απομένει:
+- Regex validation για Garmin email (έλεγχος `@` + domain)
+- Minimum-length check για Weather API key
 
 **[SEC-5] — HIGH: Plaintext credential storage** (`garmin_sync.py:21–22`, `telegram_bot.py:31–32`)
-Garmin and Telegram credentials held in plaintext object attributes.
-Memory dump or exception trace could expose them.
-- Move to `keyring` or `SecretStr` wrapper; never store raw credentials in instance vars.
+Garmin και Telegram credentials κρατιούνται ως plaintext σε instance attributes.
+Memory dump ή exception trace μπορεί να τα εκθέσει.
+- Μετάβαση σε `keyring` ή `SecretStr` wrapper.
 
-**[SEC-6] — MEDIUM: No explicit SSL verify flag** (`integrations/weather_api.py:117–147`)
-`requests.get()` calls rely on the default `verify=True`. Implicit reliance on
-defaults is fragile across library versions.
-- Add `verify=True` explicitly to all `requests` calls.
+**[SEC-7] — MEDIUM: Χωρίς JSON schema validation** (`core/database.py:855`)
+`json.load()` + `from_dict()` χωρίς schema guard. Malformed αρχεία προκαλούν
+`KeyError`/`TypeError` runtime.
+- Προσθήκη ελαφρού schema check (παρουσία πεδίων + τύπος) πριν το `from_dict()`.
 
-**[SEC-7] — MEDIUM: No JSON schema validation on profile load** (`core/database.py:855`)
-`json.load()` + `from_dict()` with no schema guard. Malformed backup files cause
-`KeyError`/`TypeError` at runtime.
-- Add a lightweight schema check (field presence + type) before `from_dict()`.
-
-**[SEC-8] — MEDIUM: Exception details leaked in Garmin error message** (`garmin_sync.py:44–54`)
-`f"(Detail: {e})"` in user-facing print may expose OAuth token fragments or paths.
-- Log detail at DEBUG level only; show a generic message to the user.
-
-**[SEC-9] — LOW: `.env` file permissions not verified on Windows** (`setup_wizard.py:101`)
-`Path.chmod(0o600)` is a no-op on Windows — the file stays world-readable.
-- Document the limitation; add a platform check and warn the user on Windows.
+**[SEC-9] — LOW: `.env` permissions αδιάφορα σε Windows** (`setup_wizard.py:101`)
+`Path.chmod(0o600)` είναι no-op σε Windows — το αρχείο παραμένει αναγνώσιμο.
+- Platform check + προειδοποίηση στον χρήστη σε Windows.
 
 ---
 
@@ -97,6 +73,14 @@ require a DB-backed accumulation cycle across multiple restarts.
 
 | # | Item | Status | Where |
 |---|------|--------|-------|
+| SEC-1 | Safe env var type conversion (`_env_int`/`_env_float`) | DONE | `titan/main.py:315–325` |
+| SEC-2 | Chat ID numeric validation + token format check | DONE | `titan/ui/setup_wizard.py:77–87` |
+| SEC-3 | `os.system("clear")` → ANSI escape; rimosso `import os` | DONE | `titan/ui/menu_system.py:16–17` |
+| SEC-4 | Pin scikit-learn==1.4.2, pytest==8.3.3, hypothesis==6.112.1 | DONE | `requirements.txt` |
+| SEC-6 | `verify=True` esplicito + cache coordinate geocoding | DONE | `titan/integrations/weather_api.py` |
+| SEC-8 | Exception Garmin → `_log.debug(exc_info=True)`, stdout pulito | DONE | `titan/integrations/garmin_sync.py:45–59` |
+| — | `database.py` bare `except: pass` → `_log.warning()` | DONE | `titan/core/database.py:861–862` |
+| — | Weather fallback contrassegnato con `is_fallback: True` + warning | DONE | `titan/integrations/weather_api.py:247–265` |
 | — | Adaptive Priority Lock (APL) | DONE | `titan/science/adaptive_priority_lock.py` |
 | — | VolumeLoadGauge (VLG) | DONE | `titan/science/volume_load_gauge.py` |
 | — | Outcome Tracker | DONE | `titan/science/outcome_tracker.py` |
