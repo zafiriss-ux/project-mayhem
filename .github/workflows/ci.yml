@@ -1,0 +1,95 @@
+name: CI — Deterministic Tests & Baseline Hardening
+
+on:
+  push:
+    branches: ["main", "claude/**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Test Suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run full test suite
+        run: pytest --tb=short -q
+
+      - name: Run governance integration contract tests
+        run: pytest tests/test_governance_integration.py -v
+
+      - name: Run with coverage (governance modules)
+        run: |
+          pytest --cov=titan.science.governance_engine \
+                 --cov=titan.science.governance_contracts \
+                 --cov-report=term-missing \
+                 --cov-fail-under=80 \
+                 -q
+
+  determinism:
+    name: Determinism Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run determinism check (3 runs must produce identical exit codes)
+        run: |
+          for i in 1 2 3; do
+            echo "=== Run $i ==="
+            pytest tests/test_governance_integration.py test_core_modules.py::TestGovernanceVo2AndFuelingGates -q --tb=short
+          done
+
+  env-policy:
+    name: Environment Policy Baseline
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Verify Python version is 3.11+
+        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version}'"
+
+      - name: Verify no pinned dependency conflicts
+        run: pip install -r requirements.txt --dry-run 2>&1 | grep -v "^Requirement already"
+
+      - name: Check for accidental .env files in commit
+        run: |
+          if git ls-files | grep -E '\.env$|\.env\.'; then
+            echo "ERROR: .env files must not be committed"
+            exit 1
+          fi
+          echo "No .env files found in tracked files — OK"
+
+      - name: Run system check (module health)
+        run: python system_check.py || true

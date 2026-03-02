@@ -1,484 +1,241 @@
-# 🔮 TITAN - Επερχόμενες Αναβαθμίσεις
+# TITAN OS — Upcoming Upgrades
 
-## Roadmap για το 2026
+## Priority Order (as of 2026-03-02)
 
----
-
-## 🔴 Προτεινόμενη Σειρά Κρισιμότητας (Άμεσες Αναβαθμίσεις)
-
-> Με βάση την τρέχουσα κατάσταση του repository (ώριμος πυρήνας + εκτεταμένα tests), αυτή είναι η δική μου προτεραιοποίηση από το πιο κρίσιμο προς το λιγότερο κρίσιμο.
-
-### 1) Παραγωγικό πακέτο παρατηρησιμότητας (logging + metrics + alerts)
-**Γιατί πρώτο**: Χωρίς καθαρή εικόνα σε production, δεν μπορείς να εμπιστευτείς ούτε τα recommendations ούτε τα safety guardrails.
-
-**Άμεσο scope**:
-- Δομημένα logs σε κρίσιμες ροές (planner, scoring, telegram handlers)
-- Βασικά SLO metrics (error rate, response latency, fallback frequency)
-- Alerting κανόνες για silent failures
-
-### 2) Σκληροποίηση συμβατότητας/εκδόσεων (runtime + dependencies)
-**Γιατί δεύτερο**: Σταθερό runtime σημαίνει λιγότερα απρόβλεπτα failures σε deployments και reproducible αποτελέσματα.
-
-**Άμεσο scope**:
-- Κλείδωμα Python/toolchain policy με enforcement στο CI
-- Έλεγχος και pinning κρίσιμων dependencies
-- Τακτικός dependency vulnerability scan
-
-### 3) End-to-end regression suite για user journeys
-**Γιατί τρίτο**: Τα unit/integration tests είναι ισχυρά, αλλά λείπει πάντα η πλήρης επιβεβαίωση ότι το σύστημα δουλεύει «άκρη-άκρη» για πραγματικά σενάρια.
-
-**Άμεσο scope**:
-- 3-5 gold-path σενάρια (new athlete, εβδομαδιαίο πλάνο, recovery adaptation)
-- Snapshot tests για σταθερότητα αποφάσεων
-- Smoke checks μετά από κάθε release
-
-### 4) Data contract & schema governance layer
-**Γιατί τέταρτο**: Καθώς αυξάνονται modules/features, τα schema drifts γίνονται η πιο ύπουλη πηγή bugs.
-
-**Άμεσο scope**:
-- Versioned contracts για core payloads
-- Validation στο ingress/egress
-- Συμβατότητα backward changes με explicit migration notes
-
-### 5) Κυβερνητικός μηχανισμός ασφαλείας αποφάσεων (policy gates)
-**Γιατί πέμπτο**: Σε longevity-first σύστημα, ο ασφαλής περιορισμός των αποφάσεων είναι πιο σημαντικός από «έξυπνες» νέες λειτουργίες.
-
-**Άμεσο scope**:
-- Hard limits σε load/intensity jumps
-- Explainability tags σε κάθε προτεινόμενη αλλαγή
-- Audit trail για override αποφάσεων
-
-### 6) Web UI/Operator Console (πριν από advanced ML)
-**Γιατί έκτο**: Η ορατότητα και η επιχειρησιακή χρήση φέρνουν άμεση αξία νωρίτερα από βαριά ML επένδυση.
-
-**Άμεσο scope**:
-- Dashboard με readiness, load, flags
-- Basic timeline/session explorer
-- Manual review/approve workflow για κρίσιμες προσαρμογές
-
-### 7) ML features (LSTM / injury risk / auto-periodization)
-**Γιατί έβδομο**: Είναι υψηλής αξίας, αλλά πρέπει να μπουν αφού πρώτα σταθεροποιηθούν observability, contracts και safety.
-
-**Άμεσο scope**:
-- Pilot σε shadow mode
-- Model monitoring (drift, calibration)
-- Σταδιακό rollout με kill-switch
+> Based on current repo state: mature core + 650+ tests + full governance layer.
+> APL, VLG, OutcomeTracker, and EvidenceRegistry are now implemented.
+> Updated priorities reflect what remains before science-tuning is legitimate.
 
 ---
 
-## Phase 5: ML Enhancement (Q2 2026)
+## IMMEDIATE — Next Cycle
 
-### 1. LSTM Performance Prediction
-**Στόχος**: Πρόβλεψη μελλοντικής απόδοσης με βάση training patterns
+### 0) Security Hardening
 
-**Features**:
-- 📊 LSTM neural network για time-series analysis
-- 📈 Πρόβλεψη race times με confidence intervals
-- 🎯 Προσωποποιημένα training zones
-- ⚠️ Early warning για overtraining
+Security audit (2026-03-02) identified the following issues, in fix-priority order:
 
-**Technical**:
-```python
-# titan/science/ml_lstm_predictor.py
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
+**[SEC-1] — CRITICAL: Unsafe env var type conversion** (`titan/main.py:317–321`)
+Direct `int()`/`float()` conversion of env vars without try/except. An invalid
+value (e.g. `ATHLETE_AGE=abc`) crashes the process at startup.
+- Wrap conversions in try/except with descriptive error message and safe exit.
 
-class LSTMPerformancePredictor:
-    """
-    Predict race times using LSTM networks.
-    
-    Features:
-    - Multi-week training load patterns
-    - HRV trend analysis
-    - Performance trajectory
-    - Confidence intervals
-    """
-```
+**[SEC-2] — CRITICAL: Weak input validation in setup wizard** (`titan/ui/setup_wizard.py:71–86`)
+No format validation on Garmin email, API keys, or location string. Chat ID stored
+as string but used as int (silent coercion).
+- Validate email format (regex), enforce numeric Chat ID at collection time,
+  add minimum-length checks for API keys.
 
-**Data Requirements**:
-- Minimum 6 months training history
-- Daily HRV measurements
-- Weekly performance tests
+**[SEC-3] — HIGH: `os.system()` for terminal clear** (`titan/ui/menu_system.py:18`)
+Anti-pattern: spawns a shell subprocess. Safe to replace with `subprocess.run()`
+or `os.system` avoided entirely via ANSI escape codes.
+- Replace with `print("\033[2J\033[H", end="")` or `subprocess.run(["clear"])`.
 
-### 2. Injury Risk ML Model
-**Στόχος**: Πρόβλεψη τραυματισμών με machine learning
+**[SEC-4] — HIGH: Unpinned dependencies** (`requirements.txt:20,34,36`)
+`scikit-learn>=1.4,<1.5`, `pytest>=8,<9`, `hypothesis>=6.100` use version ranges.
+Different environments may resolve to incompatible minor versions.
+- Pin to exact versions: `pytest==8.1.0`, `hypothesis==6.100.0`, `scikit-learn==1.4.2`.
 
-**Features**:
-- 🚨 Real-time injury risk score (0-100)
-- 📊 Multi-factor analysis (ACWR, HRV, sleep, biomechanics)
-- 🎯 Personalized risk thresholds
-- 📈 Historical injury pattern recognition
+**[SEC-5] — HIGH: Plaintext credential storage** (`garmin_sync.py:21–22`, `telegram_bot.py:31–32`)
+Garmin and Telegram credentials held in plaintext object attributes.
+Memory dump or exception trace could expose them.
+- Move to `keyring` or `SecretStr` wrapper; never store raw credentials in instance vars.
 
-**Technical**:
-```python
-# titan/features/ml_injury_predictor.py
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.neural_network import MLPClassifier
+**[SEC-6] — MEDIUM: No explicit SSL verify flag** (`integrations/weather_api.py:117–147`)
+`requests.get()` calls rely on the default `verify=True`. Implicit reliance on
+defaults is fragile across library versions.
+- Add `verify=True` explicitly to all `requests` calls.
 
-class InjuryRiskPredictor:
-    """
-    Predict injury risk using ensemble ML.
-    
-    Features:
-    - Random Forest + Gradient Boosting ensemble
-    - 15+ input features (ACWR, HRV, sleep, soreness, etc.)
-    - Binary classification: high_risk vs safe
-    - Feature importance analysis
-    """
-```
+**[SEC-7] — MEDIUM: No JSON schema validation on profile load** (`core/database.py:855`)
+`json.load()` + `from_dict()` with no schema guard. Malformed backup files cause
+`KeyError`/`TypeError` at runtime.
+- Add a lightweight schema check (field presence + type) before `from_dict()`.
 
-**Input Features**:
-1. ACWR (Acute:Chronic ratio)
-2. HRV deviation from baseline
-3. Sleep quality trend
-4. Muscle soreness levels
-5. Training monotony
-6. Previous injury history
-7. Weekly volume change
-8. Quality session frequency
-9. Recovery days between quality
-10. Biomechanics (cadence, stride)
+**[SEC-8] — MEDIUM: Exception details leaked in Garmin error message** (`garmin_sync.py:44–54`)
+`f"(Detail: {e})"` in user-facing print may expose OAuth token fragments or paths.
+- Log detail at DEBUG level only; show a generic message to the user.
+
+**[SEC-9] — LOW: `.env` file permissions not verified on Windows** (`setup_wizard.py:101`)
+`Path.chmod(0o600)` is a no-op on Windows — the file stays world-readable.
+- Document the limitation; add a platform check and warn the user on Windows.
+
+---
+
+### 1) E2E Regression Suite
+**Why**: Unit and integration tests are strong (650+ tests), but full user
+journey coverage is missing. Without gold-path E2E tests, each release carries
+unknown risk that inter-module wiring regressed.
+
+**Scope**:
+- 3–5 gold-path scenarios: new athlete onboarding, weekly plan generation, recovery adaptation
+- Snapshot tests for decision stability (same inputs → same output, every run)
+- Smoke checks after each release (smoke = import + instantiate + run 1 step)
+
+### 2) Observability — Remaining Flows
+**Why**: Governance gates now emit structured JSON with `cause` tags.
+The remaining high-value flows (planner, readiness, nutrition) still use
+unstructured logging. Silent failures in these paths are invisible.
+
+**Scope**:
+- Structured decision events for `WeeklyPlanGenerator` (why was this session chosen?)
+- Structured events for `ReadinessEngine` (which component drove the score?)
+- Structured events for `NutritionOptimizer` (why RED-S warning? which metric?)
+- SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
+
+### 3) Outcome Tracker — DB persistence
+**Why**: `OutcomeTracker` is implemented in-memory. Calibration analytics
+require a DB-backed accumulation cycle across multiple restarts.
+
+**Scope**:
+- `governance_outcomes` table in SQLite (schema: GovernanceDecision fields)
+- Restore tracker state on DailyCoach startup from DB
+- `/calibration` Telegram command: show lock_rate_by_phase, completion_rate
+- Minimum 30 paired decisions before calibration recommendations surface
+
+---
+
+## COMPLETED (this cycle)
+
+| # | Item | Status | Where |
+|---|------|--------|-------|
+| — | Adaptive Priority Lock (APL) | DONE | `titan/science/adaptive_priority_lock.py` |
+| — | VolumeLoadGauge (VLG) | DONE | `titan/science/volume_load_gauge.py` |
+| — | Outcome Tracker | DONE | `titan/science/outcome_tracker.py` |
+| — | Evidence Registry | DONE | `titan/config/evidence_registry.py` |
+| — | Structured observability (governance gates) | DONE | `_gate_event()` + `cause` tagging |
+| — | APL context injection in GovernanceEngine | DONE | `lock_thresholds` + `priority_vector` in context |
+| — | GovernanceContracts (vo2_eligibility shape guard) | DONE | `governance_contracts.py` |
+| — | CI pipeline (3-job: test + determinism + env-policy) | DONE | `.github/workflows/ci.yml` |
+| — | P0 safety gate tests | DONE | `tests/test_p0_safety_gates.py` (14 tests) |
+| — | Governance integration tests | DONE | `tests/test_governance_integration.py` (27 tests) |
+| — | APL integration tests | DONE | `tests/test_apl_integration.py` (64 tests) |
+
+---
+
+## Phase 5 — Science Calibration (after ≥30 outcomes in OutcomeTracker)
+
+**Why after outcome accumulation**: Thresholds are currently policy heuristics.
+Science-tuning before correlated outcome data exists would be noise, not signal.
+
+### Calibration priorities (from EvidenceRegistry):
+
+| Parameter | Current Level | Why Calibrate First |
+|-----------|--------------|---------------------|
+| `VO2_READINESS_MIN` | HEURISTIC | Internal composite, highest-value calibration candidate |
+| `HARD_STOP_TSB_FLOOR` | HEURISTIC | Coaching convention, no injury event correlation yet |
+| `SUBJECTIVE_FATIGUE_2OF4` | HEURISTIC | 2-of-4 composite threshold not externally validated |
+| `VO2_GLYCOGEN_DEBT_MAX` | MODERATE | Internal model units not externally validated |
+| `HARD_STOP_HRV_DELTA` | MODERATE | 15% value is a policy choice within a validated range |
+
+### Evidence promotion path:
+1. HEURISTIC → MODERATE: correlate gate triggers with session outcomes (RPE, completion)
+2. MODERATE → STRONG: replicated across multiple athlete profiles and phases
+
+---
+
+## Phase 6 — Web UI / Operator Console (Q2–Q3 2026)
+
+**Why before ML**: Visibility and operational control deliver immediate value
+earlier than heavy ML investment.
+
+**Scope**:
+- Dashboard: readiness score, TSB/CTL/ATL timeline, HRV trend, VLG color
+- Session explorer: log review, manual annotation, governance decision trail
+- Calibration review: lock rates by phase, threshold calibration candidates
+- Manual override workflow with audit trail (currently in DB, not surfaced)
+- Technology: Streamlit (rapid) → React + FastAPI (production)
+
+---
+
+## Phase 7 — ML Features (Q3–Q4 2026)
+
+**Why after Web UI**: ML must land on a stable foundation of observability,
+contracts, calibrated thresholds, and safety gates.
+
+### 1. LSTM Load Prediction
+- Time-series training load forecasting
+- Shadow mode pilot first — no auto-application
+- Model drift monitoring + calibration alerts
+- Kill-switch mandatory before any athlete-facing deployment
+
+### 2. Injury Risk Scoring
+- Ensemble model (Random Forest + Gradient Boosting)
+- Input features: ACWR, HRV deviation, sleep trend, soreness, weekly volume change
+- Binary: high_risk vs safe; threshold tunable per athlete profile
+- Recall target > 80%; validated against OutcomeTracker injury events
 
 ### 3. Automated Periodization
-**Στόχος**: AI που σχεδιάζει αυτόματα περιοδικοποίηση
+- AI-driven macrocycle / mesocycle planning
+- Genetic algorithm optimization over periodization principles (Lydiard, Daniels, Seiler)
+- Staged rollout: suggest-only → athlete-confirm → auto-apply
+- Each AI recommendation must carry an evidence label (STRONG/MODERATE/HEURISTIC)
 
-**Features**:
-- 📅 Auto-generated macrocycles (16-20 weeks)
-- 📊 Mesocycle planning (4-week blocks)
-- 🎯 Race-specific preparation
-- 🔄 Dynamic adjustments based on performance
+---
 
-**Technical**:
-```python
-# titan/features/auto_periodization.py
-class AutoPeriodizationEngine:
-    """
-    AI-driven periodization planning.
-    
-    Uses:
-    - Genetic algorithms for optimization
-    - Historical response patterns
-    - Scientific periodization principles (Lydiard, Daniels, Seiler)
-    """
+## Phase 8 — Multi-Platform & Social (2027)
+
+### Additional Device Sync
+- Strava, Polar, Whoop, COROS integrations
+- Unified adapter interface in `integrations/`
+- All new sources must provide HRV, RHR, sleep — otherwise read-only
+
+### Multi-Athlete Team Dashboard
+- Coach view: 10–50 athletes
+- Comparative load/readiness grid
+- High-risk alert system (VLG RED for any athlete triggers notification)
+
+### Mobile App
+- React Native (iOS + Android)
+- Native notifications replacing Telegram for mobile users
+- Offline mode with SQLite sync
+
+---
+
+## Technology Stack (Current)
+
+| Layer | Technology |
+|-------|-----------|
+| Language | Python 3.11+ |
+| Database | SQLite (via DatabaseManager) |
+| Garmin | garth / garminconnect |
+| Weather | OpenWeatherMap API |
+| Bot | python-telegram-bot |
+| Testing | pytest, hypothesis |
+| CI | GitHub Actions (3-job pipeline) |
+| ML (planned) | TensorFlow / scikit-learn |
+| Web UI (planned) | Streamlit → React + FastAPI |
+| Mobile (planned) | React Native |
+
+---
+
+## Governance Maturity Ladder
+
+```
+Level 0  Gates exist but not wired              [PAST]
+Level 1  Gates wired, contracts on key boundary  [v5.7.0 ✓]
+Level 2  APL: phase-aware gate ordering          [v5.7.1 ✓ THIS CYCLE]
+Level 3  Outcome tracking + cause classification [v5.7.1 ✓ THIS CYCLE]
+Level 4  Parameter provenance for all thresholds [v5.7.1 ✓ THIS CYCLE]
+Level 5  DB-persisted outcomes + lock rates      [NEXT]
+Level 6  Science calibration (≥30 outcomes)      [Phase 5]
+Level 7  ML layer on calibrated foundation       [Phase 7]
 ```
 
----
+### Success Metrics
 
-## Phase 6: Web UI (Q3 2026)
+**Next Cycle (Security + E2E + Observability)**
+- All SEC-1–SEC-5 fixes merged and CI-green
+- E2E gold paths pass on every PR merge
+- No unstructured log lines in any governance or orchestration path
 
-### 1. Streamlit Dashboard
-**Στόχος**: Interactive web interface για TITAN
+**Web UI**
+- Dashboard load time < 2s
+- Manual override workflow usable without CLI
 
-**Features**:
-- 📊 **Training Dashboard**
-  - Weekly volume charts
-  - TSB/CTL/ATL graphs
-  - HRV trend visualization
-  - Session calendar
-  
-- 📈 **Performance Analytics**
-  - Race time predictions
-  - PR tracking
-  - Efficiency factor trends
-  - Durability index
-
-- 🎯 **Plan Management**
-  - Drag-and-drop session scheduling
-  - Custom workout builder
-  - Race goal setting
-  - Phase management
-
-- 💊 **Recovery Dashboard**
-  - HRV status
-  - Sleep quality
-  - Readiness score
-  - Fatigue indicators
-
-**Technical Stack**:
-```python
-# requirements.txt additions
-streamlit==1.30.0
-plotly==5.18.0
-altair==5.2.0
-
-# titan/ui/streamlit_app.py
-import streamlit as st
-import plotly.graph_objects as go
-
-def main():
-    st.set_page_config(page_title="TITAN Dashboard", layout="wide")
-    
-    # Sidebar
-    page = st.sidebar.selectbox("Navigation", [
-        "Dashboard",
-        "Training Plan",
-        "Analytics",
-        "Recovery",
-        "Settings"
-    ])
-    
-    if page == "Dashboard":
-        render_dashboard()
-    elif page == "Training Plan":
-        render_plan_page()
-    # ...
-```
-
-**Launch**:
-```bash
-streamlit run titan/ui/streamlit_app.py
-```
-
-### 2. Interactive Charts
-**Στόχος**: Rich data visualizations
-
-**Chart Types**:
-- 📊 Training load (CTL/ATL/TSB) over time
-- 📈 HRV baseline with daily measurements
-- 🎯 Pace progression by session type
-- 🏃 Weekly volume distribution
-- 💪 Injury risk heatmap
-- 🍽 Nutrition compliance tracker
-
-**Example**:
-```python
-import plotly.graph_objects as go
-
-def plot_tsb_chart(tsb_engine):
-    """Plot TSB/CTL/ATL over time."""
-    fig = go.Figure()
-    
-    fig.add_trace(go.Scatter(
-        x=dates, y=ctl_values,
-        name='CTL (Fitness)',
-        line=dict(color='blue', width=2)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=dates, y=atl_values,
-        name='ATL (Fatigue)',
-        line=dict(color='red', width=2)
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=dates, y=tsb_values,
-        name='TSB (Form)',
-        fill='tozeroy',
-        line=dict(color='green', width=2)
-    ))
-    
-    return fig
-```
+**ML**
+- LSTM accuracy > 85% on holdout set
+- Injury recall > 80%
+- All ML paths have kill-switch
 
 ---
 
-## Phase 7: Advanced Features (Q4 2026)
-
-### 1. Multi-Athlete Team Dashboard
-**Στόχος**: Coach dashboard για πολλούς αθλητές
-
-**Features**:
-- 👥 Team overview (10-50 athletes)
-- 📊 Comparative analytics
-- 🚨 Alert system για high-risk athletes
-- 📱 Mass messaging
-- 📈 Team performance trends
-
-**Technical**:
-```python
-# titan/features/team_dashboard.py
-class TeamDashboard:
-    """
-    Coach interface for multi-athlete management.
-    
-    Features:
-    - Athlete health status grid
-    - Training load comparison
-    - Injury risk alerts
-    - Communication hub
-    """
-    
-    def get_team_overview(self):
-        """Get aggregated team metrics."""
-        return {
-            'total_athletes': 25,
-            'high_risk_count': 3,
-            'peak_form_count': 8,
-            'avg_weekly_volume': 65.5,
-            'compliance_rate': 0.87
-        }
-```
-
-### 2. Strava/Polar Integration
-**Στόχος**: Multi-platform wearable support
-
-**Platforms**:
-- ✅ Garmin (already implemented)
-- 🆕 Strava
-- 🆕 Polar
-- 🆕 Whoop
-- 🆕 COROS
-
-**Technical**:
-```python
-# titan/integrations/strava_sync.py
-from stravalib.client import Client
-
-class StravaSync:
-    """Strava API integration."""
-    
-    def sync_activities(self, days_back=7):
-        """Sync recent activities from Strava."""
-        activities = self.client.get_activities(after=start_date)
-        # Convert to TITAN format
-        return parsed_activities
-```
-
-### 3. Social Features
-**Στόχος**: Community και competition
-
-**Features**:
-- 🏆 Leaderboards (volume, consistency, PRs)
-- 💬 Training group chats
-- 🎯 Challenges (monthly volume, streak days)
-- 📊 Public profile sharing
-
----
-
-## Phase 8: Mobile App (2027)
-
-### 1. React Native App
-**Στόχος**: Native iOS/Android app
-
-**Features**:
-- 📱 Native notifications
-- 🏃 Live workout tracking (GPS)
-- 💬 Telegram-like chat interface
-- 📊 Offline mode
-- ⌚ Apple Watch / Wear OS support
-
-**Tech Stack**:
-```javascript
-// React Native + TypeScript
-// Redux for state management
-// SQLite for offline storage
-
-const App = () => {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Dashboard" component={DashboardScreen} />
-        <Stack.Screen name="Workout" component={WorkoutScreen} />
-        <Stack.Screen name="Analytics" component={AnalyticsScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-};
-```
-
-### 2. Push Notifications
-**Στόχος**: Real-time mobile notifications
-
-**Notification Types**:
-- 🌅 Morning coaching (07:00)
-- 📅 Weekly plan (Sunday)
-- 🚨 Recovery alerts
-- 🏆 Achievement unlocks
-- ⚠️ Injury risk warnings
-
----
-
-## Prioritization
-
-### High Priority (Next 3 months)
-1. ✅ Complete Garmin integration with real API
-2. ✅ Production Telegram bot
-3. ✅ Weather API integration
-4. 🔄 LSTM performance prediction (start development)
-
-### Medium Priority (3-6 months)
-1. Streamlit web dashboard
-2. Injury risk ML model
-3. Strava integration
-4. Team dashboard (basic)
-
-### Low Priority (6-12 months)
-1. Mobile app
-2. Social features
-3. Advanced periodization AI
-
----
-
-## Technology Decisions
-
-### ML Frameworks
-- **TensorFlow**: LSTM networks
-- **scikit-learn**: Traditional ML (Random Forest, SVM)
-- **PyTorch**: Experimental models
-
-### Web Stack
-- **Frontend**: Streamlit (rapid development) → React (production)
-- **Backend**: FastAPI for REST API
-- **Database**: PostgreSQL για production (από SQLite)
-
-### Mobile
-- **Framework**: React Native (cross-platform)
-- **State**: Redux Toolkit
-- **Storage**: SQLite + cloud sync
-
----
-
-## Estimated Effort
-
-| Phase | Features | Developer Hours | Cost (if outsourced) |
-|-------|----------|----------------|---------------------|
-| Phase 5 (ML) | 3 major features | 120 hours | €6,000 - €12,000 |
-| Phase 6 (Web UI) | Dashboard + charts | 80 hours | €4,000 - €8,000 |
-| Phase 7 (Advanced) | 3 features | 100 hours | €5,000 - €10,000 |
-| Phase 8 (Mobile) | Full app | 200 hours | €10,000 - €20,000 |
-| **TOTAL** | | **500 hours** | **€25,000 - €50,000** |
-
----
-
-## Success Metrics
-
-### Phase 5 Success
-- ML model accuracy > 85%
-- Injury prediction recall > 80%
-- Performance prediction RMSE < 5%
-
-### Phase 6 Success
-- Web dashboard load time < 2s
-- User engagement > 3 sessions/week
-- Feature adoption > 70%
-
-### Phase 7 Success
-- Team adoption by 5+ coaches
-- Multi-platform sync reliability > 95%
-- Social engagement > 50% of users
-
-### Phase 8 Success
-- Mobile app rating > 4.5 stars
-- Daily active users > 1,000
-- GPS tracking accuracy < 2% error
-
----
-
-## Community Feedback Loop
-
-### Beta Testing Program
-1. Recruit 10-20 beta testers
-2. Weekly feedback sessions
-3. Feature voting system
-4. Bug bounty program
-
-### Open Source Contributions
-- Core algorithms: Open source (MIT license)
-- Integrations: Plugin architecture
-- Community modules: Marketplace
-
----
-
-**TITAN** - From Personal Tool to Training Platform 🚀
+**TITAN OS** — Longevity-first, safety-first, transparency-first.

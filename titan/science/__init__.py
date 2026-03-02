@@ -29,6 +29,11 @@ from titan.science.adaptive_memory import AdaptiveMemory
 # Biomechanics
 from titan.science.biomechanics import BiomechanicsAnalysis
 
+# Governance infrastructure (v5.7+)
+from titan.science.volume_load_gauge import VolumeLoadGauge, VLGState
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+from titan.science.outcome_tracker import OutcomeTracker, GovernanceDecision
+
 __all__ = [
     # Core engines
     'ACWREngine',
@@ -50,4 +55,10 @@ __all__ = [
     # Systems
     'AdaptiveMemory',
     'BiomechanicsAnalysis',
+    # Governance infrastructure
+    'VolumeLoadGauge',
+    'VLGState',
+    'AdaptivePriorityLock',
+    'OutcomeTracker',
+    'GovernanceDecision',
 ]
