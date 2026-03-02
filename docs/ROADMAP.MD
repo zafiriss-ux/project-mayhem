@@ -117,14 +117,18 @@ Goal: Operational visibility before advanced ML investment.
 
 ---
 
-## Phase 7 — ML Features (PLANNED, Q3–Q4 2026, after Phase 6)
+## Phase 7 — ML Features (IN PROGRESS, Q3–Q4 2026, after Phase 6)
 Goal: Machine learning on a stable, calibrated, observable foundation.
 
-1. LSTM load prediction — shadow mode first, then graduated rollout
+1. LSTM load prediction — shadow mode first, then graduated rollout — DONE (2026-03-02: shadow predictor scaffold in `titan/science/load_prediction_shadow.py` with contract tests in `tests/test_load_prediction_shadow.py`)
 2. Injury risk model — ensemble (Random Forest + Gradient Boosting), recall > 80%
 3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply
 4. Kill-switch mandatory for all ML paths before any athlete-facing deployment
 5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC)
+
+### Remaining
+
+- 4 tasks.
 
 ---
 
@@ -173,4 +177,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 6 closed)
+Last updated: 2026-03-02 (Phase 7 started; task 1 completed)
