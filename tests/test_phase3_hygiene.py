@@ -157,12 +157,12 @@ class TestGovernanceEngineExceptionPaths:
         assert "session_type" in result
 
     def test_subjective_fatigue_exception_in_2of4_and_hard_stop(self):
-        """subjective_fatigue_score non-castable → lines 134-135 (_evaluate_2of4)
-        and lines 190-191 (_check_hard_stops)."""
+        """subjective_fatigue_score non-castable → TypeError except in _evaluate_2of4
+        and int() except in _check_hard_stops (H5 gate): both fall back to 0."""
         plan = {"session_type": "INTERVALS", "duration_min": 60}
         ctx = {"subjective_fatigue_score": "extreme"}
         result = gov.apply_constraints(plan, ctx)
-        # Falls back to 0 → no H4 gate fires
+        # Falls back to 0 → no H5 gate fires
         assert result.get("session_type") == "INTERVALS"
 
     def test_override_lockdown_db_raises_falls_back_to_zero_ratio(self):

@@ -139,52 +139,81 @@ class GovernanceEngine:
         return len(indicators), indicators
 
     def _check_hard_stops(self, session_plan: Dict, context: Dict) -> List[Dict]:
+        """Evaluate hard-stop safety gates in DECISION_MODEL canonical order.
+
+        Gate order (per DECISION_MODEL §4):
+          H1 — Injury / Medical Flag (Gate 1: highest priority, non-bypassable)
+          H2 — HRV Collapse (Gate 2a: independently sufficient for REST)
+          H3 — RHR Spike   (Gate 2b: independently sufficient for REST)
+          H4 — TSB Critical Floor (Gate 4: mandatory load reduction)
+          H5 — Extreme Subjective Fatigue (Gate 3/aggregate contribution)
+
+        H2 and H3 use OR semantics per DECISION_MODEL Gate 2:
+          IF hrv_collapse OR rhr_collapse → RED hard stop
+        Either signal alone is sufficient; dual collapse fires both.
+        """
         reasons: List[Dict] = []
 
-        session_type = str(session_plan.get('session_type', 'EASY')).upper()
-
-        try:
-            today_hrv = float(context.get('today_hrv'))
-            baseline_hrv = float(context.get('baseline_hrv'))
-            today_rhr = float(context.get('today_rhr'))
-            baseline_rhr = float(context.get('baseline_rhr'))
-            h1_trigger = (
-                today_hrv < baseline_hrv - HARD_STOP_HRV_DELTA
-                and today_rhr > baseline_rhr + HARD_STOP_RHR_DELTA
-            )
-        except (TypeError, ValueError):
-            h1_trigger = False
-
-        if h1_trigger:
-            session_plan['session_type'] = 'REST'
-            session_plan['max_zone'] = 1
-            reason = 'HRV/RHR dual collapse: autonomous nervous system under acute stress'
-            session_plan['governance_override'] = reason
-            reasons.append({'gate': 'H1', 'reason': reason})
-            _gate_event('H1', 'REST', reason=reason, cause='TRAINING_LOGIC',
-                        today_hrv=context.get('today_hrv'), baseline_hrv=context.get('baseline_hrv'))
-
-        try:
-            tsb_value = float(context.get('tsb_value'))
-        except (TypeError, ValueError):
-            tsb_value = None
-        if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
-            if str(session_plan.get('session_type', session_type)).upper() in self._QUALITY_SESSIONS:
-                session_plan['session_type'] = 'EASY'
-            reason = 'TSB at overtraining threshold: mandatory load reduction'
-            session_plan['governance_override'] = reason
-            session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
-            reasons.append({'gate': 'H2', 'reason': reason})
-            _gate_event('H2', 'EASY', reason=reason, cause='TRAINING_LOGIC', tsb_value=tsb_value)
-
+        # H1 — Injury / Medical Flag (Gate 1: evaluated first, before all others)
         if bool(context.get('injury_flag', False)):
             session_plan['session_type'] = 'REST'
             session_plan['max_zone'] = 1
             reason = 'Active injury flag: no training permitted until cleared'
             session_plan['governance_override'] = reason
-            reasons.append({'gate': 'H3', 'reason': reason})
-            _gate_event('H3', 'REST', reason=reason, cause='TRAINING_LOGIC')
+            reasons.append({'gate': 'H1', 'reason': reason})
+            _gate_event('H1', 'REST', reason=reason, cause='TRAINING_LOGIC')
 
+        # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
+        try:
+            h2_trigger = (
+                float(context.get('today_hrv')) <
+                float(context.get('baseline_hrv')) - HARD_STOP_HRV_DELTA
+            )
+        except (TypeError, ValueError):
+            h2_trigger = False
+        if h2_trigger:
+            session_plan['session_type'] = 'REST'
+            session_plan['max_zone'] = 1
+            reason = 'HRV collapse: autonomic stress — hard stop'
+            session_plan['governance_override'] = reason
+            reasons.append({'gate': 'H2', 'reason': reason})
+            _gate_event('H2', 'REST', reason=reason, cause='TRAINING_LOGIC',
+                        today_hrv=context.get('today_hrv'),
+                        baseline_hrv=context.get('baseline_hrv'))
+
+        # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
+        try:
+            h3_trigger = (
+                float(context.get('today_rhr')) >
+                float(context.get('baseline_rhr')) + HARD_STOP_RHR_DELTA
+            )
+        except (TypeError, ValueError):
+            h3_trigger = False
+        if h3_trigger:
+            session_plan['session_type'] = 'REST'
+            session_plan['max_zone'] = 1
+            reason = 'RHR spike: autonomic stress — hard stop'
+            session_plan['governance_override'] = reason
+            reasons.append({'gate': 'H3', 'reason': reason})
+            _gate_event('H3', 'REST', reason=reason, cause='TRAINING_LOGIC',
+                        today_rhr=context.get('today_rhr'),
+                        baseline_rhr=context.get('baseline_rhr'))
+
+        # H4 — TSB Critical Floor (Gate 4: load gate)
+        try:
+            tsb_value = float(context.get('tsb_value'))
+        except (TypeError, ValueError):
+            tsb_value = None
+        if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
+            if str(session_plan.get('session_type', 'EASY')).upper() in self._QUALITY_SESSIONS:
+                session_plan['session_type'] = 'EASY'
+            reason = 'TSB at overtraining threshold: mandatory load reduction'
+            session_plan['governance_override'] = reason
+            session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
+            reasons.append({'gate': 'H4', 'reason': reason})
+            _gate_event('H4', 'EASY', reason=reason, cause='TRAINING_LOGIC', tsb_value=tsb_value)
+
+        # H5 — Extreme Subjective Fatigue
         try:
             subjective_fatigue = int(context.get('subjective_fatigue_score', 0))
         except (TypeError, ValueError):
@@ -195,8 +224,8 @@ class GovernanceEngine:
                 session_plan['max_zone'] = min(int(session_plan.get('max_zone', 5)), 2)
             reason = 'Athlete-reported extreme fatigue: session downgraded'
             session_plan['governance_override'] = reason
-            reasons.append({'gate': 'H4', 'reason': reason})
-            _gate_event('H4', 'EASY', reason=reason, cause='TRAINING_LOGIC',
+            reasons.append({'gate': 'H5', 'reason': reason})
+            _gate_event('H5', 'EASY', reason=reason, cause='TRAINING_LOGIC',
                         subjective_fatigue=subjective_fatigue)
 
         return reasons
