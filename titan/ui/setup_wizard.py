@@ -74,10 +74,17 @@ def run_setup_wizard() -> dict:
     # ── Telegram ─────────────────────────────────────────────────────────
     print("\n━━━  TELEGRAM BOT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Πήγαινε στο @BotFather → /newbot → Πάρε το token")
-    creds["TELEGRAM_BOT_TOKEN"] = input("  Bot Token: ").strip()
+    token = input("  Bot Token: ").strip()
+    if ":" not in token or len(token) < 20:
+        print("  ⚠️  Token μοιάζει άκυρο (αναμένεται μορφή NNNNNNNN:ΑΛΦΑΡΙΘΜΗΤΙΚΟ)")
+    creds["TELEGRAM_BOT_TOKEN"] = token
     print("  Πήγαινε στο @userinfobot → Πάρε το Chat ID σου")
-    chat_raw = input("  Chat ID (αριθμός): ").strip()
-    creds["TELEGRAM_CHAT_ID"] = chat_raw  # Αποθηκεύεται ως string, χρησιμοποιείται ως int
+    while True:
+        chat_raw = input("  Chat ID (αριθμός): ").strip()
+        if chat_raw.lstrip("-").isdigit():
+            creds["TELEGRAM_CHAT_ID"] = chat_raw
+            break
+        print("  ⚠️  Το Chat ID πρέπει να είναι αριθμός. Δοκίμασε ξανά.")
 
     # ── Weather ──────────────────────────────────────────────────────────
     print("\n━━━  WEATHER API (openweathermap.org)  ━━━━━━━━━━━━━━━━━━━━━━━")
@@ -119,6 +126,9 @@ def ensure_credentials() -> bool:
     If not → run wizard → return True/False.
     """
     load_env_file()
+    # credentials_exist() re-reads the file only when env vars are absent
+    if os.getenv("GARMIN_EMAIL") and os.getenv("GARMIN_PASSWORD") and os.getenv("TELEGRAM_BOT_TOKEN"):
+        return True
     if credentials_exist():
         return True
     print("\n🔑 Δεν βρέθηκαν credentials. Ξεκινώ setup wizard...\n")
