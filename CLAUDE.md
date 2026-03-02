@@ -6,7 +6,7 @@
 
 - **Language**: Python 3.11+ (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
 - **Database**: SQLite (thread-safe, via `DatabaseManager`)
-- **External APIs**: Garmin Connect, OpenWeatherMap, Telegram Bot API
+- **External APIs**: Garmin Connect, Open-Meteo (weather), Telegram Bot API (via `pyTelegramBotAPI`)
 
 ---
 
@@ -28,7 +28,7 @@ project-mayhem/
 ├── test_logic_pytest.py     # Logic tests (pytest)
 ├── test_telegram_bot.py     # Telegram integration tests
 ├── test_property_based.py   # Property-based tests (hypothesis)
-├── tests/                   # Integration + hygiene tests (14 files)
+├── tests/                   # Integration + hygiene tests (21 files)
 │   ├── test_governance_integration.py       # Contract + boundary tests (27 tests)
 │   ├── test_p0_safety_gates.py              # P0 hard-stop gate tests (20 tests)
 │   ├── test_apl_integration.py              # APL contract + invariant tests (64 tests)
@@ -43,21 +43,31 @@ project-mayhem/
 │   ├── test_phase4_slo_alerts.py            # SLO alert firing tests
 │   ├── test_todo_fix_recommendations.py    # P0/P1/P2 gate coverage (boundary tests)
 │   ├── test_operator_console_dashboard.py  # Operator Console service payload tests (Phase 6)
-│   └── test_phase6_hygiene.py              # Phase 6 branch-coverage sweep (24 tests)
+│   ├── test_phase6_hygiene.py              # Phase 6 branch-coverage sweep (24 tests)
+│   ├── test_automated_periodization.py     # AutomatedPeriodizationEngine contract tests (Phase 7)
+│   ├── test_injury_risk_model.py           # InjuryRiskEnsembleModel contract tests (Phase 7)
+│   ├── test_load_prediction_shadow.py      # LoadPredictionShadowModel contract tests (Phase 7)
+│   ├── test_ml_kill_switch.py              # ML kill-switch env toggle tests (Phase 7)
+│   ├── test_phase7_hardening.py            # Phase 7 version + DailyCoach hardening tests
+│   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0013)
+│   ├── adr/                 # Architecture Decision Records (0001–0014)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
-│   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md
+│   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
+│   │                        # operator_console_readiness_dashboard.md,
+│   │                        # operator_console_session_explorer.md,
+│   │                        # operator_console_manual_override_workflow.md,
+│   │                        # operator_console_technology_path.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (49 modules)
+└── titan/                   # Main package (46 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment
-    ├── science/             # 23 modules (engines + governance infrastructure)
+    ├── science/             # 26 modules (engines + governance + ML scaffold)
     ├── features/            # Weekly planner, optimal time, nutrition optimizer
     ├── integrations/        # Garmin, Weather API, Telegram bot
-    ├── orchestration/       # DailyCoach v5.7 (12-step morning routine)
-    ├── ui/                  # Menu system, setup wizard
+    ├── orchestration/       # DailyCoach v5.8 (12-step morning routine)
+    ├── ui/                  # Menu system, setup wizard, OperatorConsole
     └── utils/               # MathCore, constants
 ```
 
@@ -91,7 +101,7 @@ GARMIN_EMAIL=your_email@example.com
 GARMIN_PASSWORD=your_password
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
-WEATHER_API_KEY=your_openweathermap_key
+WEATHER_API_KEY=unused           # kept for backwards-compat; Open-Meteo requires no key
 WEATHER_LOCATION=Athens,GR
 
 # Optional overrides
@@ -106,7 +116,7 @@ WEATHER_CACHE_DURATION_HOURS=1
 ## Running Tests
 
 ```bash
-# Run all tests (1026 total, all green as of v5.8.0)
+# Run all tests (1122 total, all green as of v5.8.0 Phase 7 close)
 pytest
 
 # Run with coverage
@@ -124,7 +134,7 @@ pytest --cov=titan.science.governance_engine \
 pytest tests/test_apl_integration.py -v
 
 # Run phase hygiene sweeps
-pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests/test_phase6_hygiene.py -v
+pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests/test_phase6_hygiene.py tests/test_phase7_hygiene.py -v
 
 # Run specific test files
 pytest test_core_modules.py
@@ -143,11 +153,12 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 
 1. **Config** (`titan/config/`) — `thresholds.py`: single source of truth for all safety threshold constants
 2. **Core** (`titan/core/`) — `UniversalAthleteProfile`, `DatabaseManager` (SQLite, thread-safe), `PeriodizationManager`, `EquipmentManager`
-3. **Science** (`titan/science/`) — 23 modules:
+3. **Science** (`titan/science/`) — 26 modules:
    - Foundational engines (11): HRV, TSB/CTL/ATL, ACWR, lactate, drift, efficiency, durability, TRIMP, glycogen, fatigue, readiness
    - Autonomic & critical (4): `AutonomicFusionEngine` (AFI), `CriticalSpeedEngine`, `RCPEngine`, `BiomechanicsEngine`
-   - Advanced (2): `AdaptiveMemory`, `DurabilityEngine`
+   - Advanced (1): `AdaptiveMemory`
    - Governance infrastructure (6): `GovernanceEngine`, `GovernanceContracts`, `IntensityGovernor`, `VolumeLoadGauge`, `AdaptivePriorityLock`, `OutcomeTracker`
+   - ML scaffold — shadow/advisory mode (4): `LoadPredictionShadowModel`, `InjuryRiskEnsembleModel`, `AutomatedPeriodizationEngine`, `MLSafety` (kill-switch)
 4. **Governance Layer** (within science/) — 7-gate safety system; must run before every session recommendation; non-bypassable
 5. **Integrations** (`titan/integrations/`) — `GarminSync` (6h background thread), `WeatherAPI` (1h cache, 48h forecast), `TitanTelegramBot`
 6. **Features** (`titan/features/`) — `WeeklyPlanGenerator`, `OptimalTimeCalculator`, `NutritionOptimizer`
@@ -207,6 +218,7 @@ See `docs/adr/` for Architecture Decision Records:
 - `0011` — Operator Console: Session Explorer payload + manual annotation (Implemented — v5.8.0)
 - `0012` — Operator Console: Manual Override Workflow (Accepted — v5.8.0)
 - `0013` — Operator Console: Technology path — Streamlit → React + FastAPI (Accepted — v5.8.0)
+- `0014` — Phase 7 ML scaffold: shadow/advisory mode, kill-switch, evidence labels (Implemented — v5.8.0)
 
 ---
 
@@ -227,7 +239,7 @@ See `docs/adr/` for Architecture Decision Records:
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–6 CLOSED |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7 CLOSED |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
@@ -238,5 +250,10 @@ See `docs/adr/` for Architecture Decision Records:
 | `titan/science/adaptive_priority_lock.py` | APL: phase × load matrix → priority vector + lock thresholds |
 | `titan/science/outcome_tracker.py` | Decision→outcome correlation; calibration analytics; `governance_outcomes` DB |
 | `titan/ui/operator_console.py` | `OperatorConsoleService`: dashboard, session explorer, override workflow, calibration review (v5.8.0) |
-| `titan/utils/constants.py` | `SESSION_TYPES`, `ACWR_SAFE_MIN/MAX`, `DEFAULT_CONFIG` |
+| `titan/utils/constants.py` | `SESSION_TYPES`, `DEFAULT_CONFIG` (note: `ACWR_SAFE_MIN/MAX` are dead — use `thresholds.py`) |
+| `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env); enforced by all Phase 7 engines |
+| `titan/science/load_prediction_shadow.py` | LSTM shadow load predictor (shadow mode only; kill-switch enforced) |
+| `titan/science/injury_risk_model.py` | Ensemble injury risk model (advisory; recall > 80% target; kill-switch enforced) |
+| `titan/science/automated_periodization.py` | Genetic-algorithm periodization suggester (suggest-only; kill-switch enforced) |
+| `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
