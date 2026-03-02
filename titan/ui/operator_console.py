@@ -114,3 +114,117 @@ class OperatorConsoleService:
     def add_manual_annotation(self, date: str, note: str) -> bool:
         """Persist manual note for a session explorer record."""
         return self.db.annotate_governance_outcome(date=date, note=note)
+
+    def calibration_review(self, limit: int = 365) -> Dict[str, Any]:
+        """Build calibration review payload for lock rates and promotion candidates."""
+        decisions = self.db.get_governance_decisions(limit=limit)
+
+        decided = [d for d in decisions if d["outcome_completed"] is not None]
+        if not decided:
+            return {
+                "summary": {
+                    "samples": 0,
+                    "governance_lock_rate": None,
+                    "lock_rate_by_phase": {},
+                },
+                "heuristic_promotion_candidates": [],
+                "moderate_promotion_candidates": [],
+            }
+
+        lock_rate_by_phase: Dict[str, float] = {}
+        phases = sorted({d["phase"] for d in decided})
+        for phase in phases:
+            phase_rows = [d for d in decided if d["phase"] == phase]
+            lock_rate_by_phase[phase] = round(
+                sum(1 for d in phase_rows if not d["governance_clean"]) / len(phase_rows), 3
+            )
+
+        locks = sorted({lock for d in decided for lock in d["locks_applied"]})
+        correlations: Dict[str, Dict[str, Any]] = {}
+        for lock in locks:
+            with_lock = [d for d in decided if lock in d["locks_applied"]]
+            without_lock = [d for d in decided if lock not in d["locks_applied"]]
+            if len(with_lock) < 3 or len(without_lock) < 3:
+                continue
+
+            completion_with = sum(1 for d in with_lock if d["outcome_completed"]) / len(with_lock)
+            completion_without = (
+                sum(1 for d in without_lock if d["outcome_completed"]) / len(without_lock)
+            )
+            correlations[lock] = {
+                "n_with_lock": len(with_lock),
+                "n_without_lock": len(without_lock),
+                "completion_delta_pp": round((completion_with - completion_without) * 100, 1),
+                "phases": sorted({d["phase"] for d in with_lock}),
+            }
+
+        heuristic_candidates = []
+        heuristic_lock_map = {
+            "READINESS_2OF4_DOWNGRADE": "SUBJECTIVE_FATIGUE_2OF4",
+            "HARD_STOP_SAFETY_GATES": "HARD_STOP_TSB_FLOOR",
+            "VO2_ELIGIBILITY_GATE": "VO2_READINESS_MIN",
+        }
+        for lock, parameter in heuristic_lock_map.items():
+            metrics = correlations.get(lock)
+            if not metrics:
+                continue
+            if (
+                metrics["n_with_lock"] >= 5
+                and metrics["n_without_lock"] >= 5
+                and abs(metrics["completion_delta_pp"]) >= 8.0
+            ):
+                heuristic_candidates.append(
+                    {
+                        "parameter": parameter,
+                        "trigger_lock": lock,
+                        "n_with_lock": metrics["n_with_lock"],
+                        "n_without_lock": metrics["n_without_lock"],
+                        "completion_delta_pp": metrics["completion_delta_pp"],
+                    }
+                )
+
+        moderate_candidates = []
+        moderate_lock_map = {
+            "HARD_STOP_SAFETY_GATES": "HARD_STOP_HRV_DELTA",
+            "VO2_ELIGIBILITY_GATE": "VO2_GLYCOGEN_DEBT_MAX",
+        }
+        for lock, parameter in moderate_lock_map.items():
+            metrics = correlations.get(lock)
+            if not metrics:
+                continue
+            if (
+                metrics["n_with_lock"] >= 8
+                and metrics["n_without_lock"] >= 8
+                and abs(metrics["completion_delta_pp"]) >= 10.0
+                and len(metrics["phases"]) >= 2
+            ):
+                moderate_candidates.append(
+                    {
+                        "parameter": parameter,
+                        "trigger_lock": lock,
+                        "n_with_lock": metrics["n_with_lock"],
+                        "n_without_lock": metrics["n_without_lock"],
+                        "completion_delta_pp": metrics["completion_delta_pp"],
+                        "phase_replication_count": len(metrics["phases"]),
+                    }
+                )
+
+        return {
+            "summary": {
+                "samples": len(decided),
+                "governance_lock_rate": round(
+                    sum(1 for d in decided if not d["governance_clean"]) / len(decided), 3
+                ),
+                "lock_rate_by_phase": lock_rate_by_phase,
+            },
+            "heuristic_promotion_candidates": sorted(
+                heuristic_candidates,
+                key=lambda item: abs(item["completion_delta_pp"]),
+                reverse=True,
+            ),
+            "moderate_promotion_candidates": sorted(
+                moderate_candidates,
+                key=lambda item: abs(item["completion_delta_pp"]),
+                reverse=True,
+            ),
+        }
