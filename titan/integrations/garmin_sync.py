@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import threading
 
+from titan.utils.secrets import SecretStr
+
 _log = logging.getLogger(__name__)
 
 
@@ -21,8 +23,8 @@ class GarminSync:
     """
 
     def __init__(self, email: str = None, password: str = None):
-        self.email = email or os.getenv('GARMIN_EMAIL', '')
-        self.password = password or os.getenv('GARMIN_PASSWORD', '')
+        self._email_secret = SecretStr(email or os.getenv('GARMIN_EMAIL', ''))
+        self._password_secret = SecretStr(password or os.getenv('GARMIN_PASSWORD', ''))
         self.client = None
         self.is_connected = False
         self.last_sync: Optional[str] = None
@@ -34,12 +36,14 @@ class GarminSync:
     # CONNECTION
     # ------------------------------------------------------------------ #
     def connect(self) -> bool:
-        if not self.email or not self.password:
+        email = self._email_secret.get_secret_value()
+        password = self._password_secret.get_secret_value()
+        if not email or not password:
             print("⚠️  Garmin credentials missing – run setup first.")
             return False
         try:
             from garminconnect import Garmin
-            self.client = Garmin(self.email, self.password)
+            self.client = Garmin(email, password)
             self.client.login()
             self.is_connected = True
             print("✅ Connected to Garmin Connect")
