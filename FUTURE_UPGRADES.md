@@ -8,32 +8,7 @@
 
 ---
 
-## Phase 4 — Observability & E2E (IN PROGRESS)
-
-### Remaining
-
-#### 1) Observability — Remaining Flows
-**Why**: Governance gates now emit structured JSON with `cause` tags.
-The remaining high-value flows (planner, readiness, nutrition) still use
-unstructured logging. Silent failures in these paths are invisible.
-
-**Scope**:
-- Structured decision events for `WeeklyPlanGenerator` (why was this session chosen?)
-- Structured events for `ReadinessEngine` (which component drove the score?)
-- Structured events for `NutritionOptimizer` (why RED-S warning? which metric?)
-- SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
-
-#### 2) `/calibration` Telegram Command
-**Why**: OutcomeTracker now persists decisions to DB. The data exists but is
-not yet surfaced to the operator. Without a query interface, calibration
-evidence is invisible during live operation.
-
-**Scope**:
-- `/calibration` Telegram handler: show `lock_rate_by_phase`, `completion_rate`
-- Surface governance_outcomes aggregates (locks applied, phase breakdown)
-- Gate trigger behind minimum 30 paired decisions before surfacing recommendations
-
----
+## Phase 4 — Observability & E2E (COMPLETED)
 
 ### Completed (this cycle)
 
@@ -68,6 +43,9 @@ evidence is invisible during live operation.
 | — | E2E gold-path regression suite (onboarding, planning, recovery adaptation) | DONE | `tests/test_e2e_regression_suite.py` |
 | — | Snapshot stability coverage | DONE | additional coverage in `test_e2e_regression_suite.py` |
 | — | OutcomeTracker persistence integration tests | DONE | `tests/test_outcome_tracker_persistence.py` |
+| — | `/calibration` Telegram command with 30-outcome gate + phase lock breakdown | DONE | `titan/main.py` + `titan/integrations/telegram_bot.py` |
+| — | Structured flow logs for planner + readiness + nutrition | DONE | `titan/features/weekly_planner.py` + `titan/science/readiness_engine.py` + `titan/features/nutrition_optimizer.py` |
+| — | SLO alerts for Telegram delivery, Garmin sync latency, nutrition plan missing | DONE | `titan/integrations/telegram_bot.py` + `titan/integrations/garmin_sync.py` + `titan/orchestration/daily_coach.py` |
 
 ---
 
@@ -213,7 +191,7 @@ Level 2  APL: phase-aware gate ordering               [v5.7.1 ✓]
 Level 3  Outcome tracking + cause classification      [v5.7.1 ✓]
 Level 4  Parameter provenance for all thresholds      [v5.7.1 ✓]
 Level 5  DB-persisted outcomes + lock rates           [v5.7.1 ✓]
-Level 6  /calibration command + structured flow logs  [Phase 4 — NEXT]
+Level 6  /calibration command + structured flow logs  [Phase 4 ✓]
 Level 7  Science calibration (≥30 outcomes)           [Phase 5]
 Level 8  ML layer on calibrated foundation            [Phase 7]
 Level 9  Autonomous self-calibration from evidence    [Phase 9]

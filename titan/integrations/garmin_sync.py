@@ -4,6 +4,7 @@ Garmin Connect Live API Integration
 REAL implementation using garminconnect library (not mock).
 """
 
+import json
 import logging
 import os
 import time
@@ -18,6 +19,10 @@ from titan.utils.secrets import SecretStr
 
 
 _log = logging.getLogger(__name__)
+
+def _garmin_event(action: str, **fields) -> None:
+    """Emit a structured Garmin sync event as a single JSON log line."""
+    _log.info(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
 
 
 class GarminSync:
@@ -201,12 +206,26 @@ class GarminSync:
     def sync_all(self, days_back: int = 7) -> Dict[str, List]:
         print("🔄 Full Garmin sync starting...")
         self.last_sync = datetime.now().isoformat()
-        return {
+        started = time.monotonic()
+        payload = {
             "activities": self.sync_activities(days_back),
             "weight":     self.sync_weight(max(days_back, 14)),
             "sleep":      self.sync_sleep(days_back),
             "hrv":        self.sync_hrv(days_back),
         }
+        elapsed_s = round(time.monotonic() - started, 3)
+        timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
+        if elapsed_s >= timeout_s:
+            _garmin_event(
+                "slo_alert",
+                slo_key="garmin_sync_timeout",
+                elapsed_s=elapsed_s,
+                timeout_s=timeout_s,
+                cause="INTEGRATION_LATENCY",
+            )
+        else:
+            _garmin_event("sync_complete", elapsed_s=elapsed_s, timeout_s=timeout_s)
+        return payload
 
     # ------------------------------------------------------------------ #
     # BACKGROUND THREAD

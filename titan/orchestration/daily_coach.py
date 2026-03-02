@@ -22,6 +22,8 @@ Architectural Boundary:
 """
 
 from datetime import datetime, timedelta
+import json
+import logging
 from typing import Dict, List, Optional
 import sys
 import threading
@@ -37,7 +39,12 @@ from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.fatigue_engine import FatigueEngine
 
 
+_log = logging.getLogger(__name__)
 
+
+def _daily_coach_event(action: str, **fields) -> None:
+    """Emit a structured orchestration event as a single JSON log line."""
+    _log.info(json.dumps({"flow": "daily_coach", "action": action, **fields}, default=str))
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -393,6 +400,13 @@ class DailyCoach:
             weight_kg    = current_weight,
             today_session= today_session,
         )
+        if not nutrition_plan:
+            _daily_coach_event(
+                "slo_alert",
+                slo_key="nutrition_plan_missing",
+                cause="NUTRITION_PIPELINE",
+                session_type=today_session.get("session_type", "EASY"),
+            )
 
         # ── Step 12: Send Telegram message (LLM explains, kernel decided) ────
         print("📱 Sending coaching message...")
@@ -454,6 +468,13 @@ class DailyCoach:
         }
 
         success = self.telegram.send_daily_coaching(coaching_data)
+        if not success:
+            _daily_coach_event(
+                "slo_alert",
+                slo_key="telegram_delivery_failed",
+                cause="INTEGRATION_DELIVERY",
+                session_type=today_session.get("session_type", "EASY"),
+            )
         print(f"\n{'✅' if success else '❌'} Morning routine completed\n")
         return success
 
