@@ -40,6 +40,7 @@ class WeatherAPI:
         self.cache_duration_hours = 1
         self._update_thread = None
         self._stop_update = False
+        self._coords: Tuple[float, float] | None = None  # cached geocoding result
 
     @staticmethod
     def calculate_dew_point(temp_c: float, humidity: float) -> float:
@@ -108,7 +109,10 @@ class WeatherAPI:
         return self.location.strip(), ""
 
     def _resolve_coordinates(self) -> Tuple[float, float]:
-        """Resolve city location to coordinates via Open-Meteo geocoding API."""
+        """Resolve city location to coordinates via Open-Meteo geocoding API (cached)."""
+        if self._coords is not None:
+            return self._coords
+
         city, country = self._parse_location()
         params = {"name": city, "count": 1, "language": "en", "format": "json"}
         if country:
@@ -118,6 +122,7 @@ class WeatherAPI:
             "https://geocoding-api.open-meteo.com/v1/search",
             params=params,
             timeout=8,
+            verify=True,
         )
         response.raise_for_status()
         payload = response.json() or {}
@@ -125,7 +130,8 @@ class WeatherAPI:
         if not results:
             raise ValueError(f"Location not found: {self.location}")
 
-        return float(results[0]["latitude"]), float(results[0]["longitude"])
+        self._coords = float(results[0]["latitude"]), float(results[0]["longitude"])
+        return self._coords
 
     def _fetch_open_meteo(self) -> Tuple[Dict, List[Dict]]:
         """Fetch current conditions and hourly forecast from Open-Meteo."""
@@ -143,6 +149,7 @@ class WeatherAPI:
             "https://api.open-meteo.com/v1/forecast",
             params=params,
             timeout=10,
+            verify=True,
         )
         response.raise_for_status()
         payload = response.json() or {}
@@ -238,20 +245,21 @@ class WeatherAPI:
             self.cache_timestamp = datetime.now()
             return current
         except Exception:
-            # Safe fallback when API/network is unavailable
+            # Fallback when API/network is unavailable — data is synthetic
+            print("⚠️  Weather API unavailable – using fallback conditions")
+            dew_point = self.calculate_dew_point(18.5, 65)
+            heat_status, heat_rec = self.classify_heat_stress(dew_point)
             current = {
                 'timestamp': datetime.now().isoformat(),
                 'temp_c': 18.5,
                 'humidity': 65,
                 'wind_speed': 10,
                 'conditions': 'Clear',
-                'dew_point': self.calculate_dew_point(18.5, 65)
+                'dew_point': dew_point,
+                'heat_stress': heat_status,
+                'recommendation': heat_rec,
+                'is_fallback': True,
             }
-
-            heat_status, heat_rec = self.classify_heat_stress(current['dew_point'])
-            current['heat_stress'] = heat_status
-            current['recommendation'] = heat_rec
-
             self.cache['current'] = current
             self.cache_timestamp = datetime.now()
             return current
