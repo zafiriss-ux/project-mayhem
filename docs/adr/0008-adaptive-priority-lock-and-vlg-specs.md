@@ -2,8 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Proposed |
+| **Status** | Implemented |
 | **Date** | 2026-02-20 |
+| **Implemented** | 2026-03-02 (Phase 3 CLOSED) |
 | **Author** | Architectural audit — `claude/audit-kernel-architecture-CuZiG` |
 | **Files** | `docs/adr/0007-adaptive-priority-lock-placement.md` (this file), `docs/specs/adaptive_priority_lock.md`, `docs/specs/volume_load_gauge.md` |
 | **Companion specs** | [APL spec](../specs/adaptive_priority_lock.md) · [VLG spec](../specs/volume_load_gauge.md) |
@@ -172,3 +173,17 @@ titan/science/
 - `titan/science/critical_speed.py` — CS confidence source
 - [APL full specification](../specs/adaptive_priority_lock.md)
 - [VLG specification](../specs/volume_load_gauge.md)
+
+---
+
+## Implementation Note (2026-03-02)
+
+Both deliverables from this ADR were fully implemented in **Phase 3 (CLOSED)**:
+
+- `titan/science/adaptive_priority_lock.py` — `AdaptivePriorityLock`: phase × load matrix
+  → priority vector; integrated in `DailyCoach` Step 9 governance call.
+- `titan/science/volume_load_gauge.py` — `VolumeLoadGauge` / `VLGState`: pure aggregation
+  of TSB + ACWR + glycogen → GREEN / YELLOW / RED color signal.
+
+Test coverage: `tests/test_apl_integration.py` (64 tests), `tests/test_phase3_hygiene.py` (27 tests).
+Status promoted from **Proposed → Implemented** as part of v5.8.0 audit pass.
