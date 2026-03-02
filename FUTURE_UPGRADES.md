@@ -1,22 +1,67 @@
 # TITAN OS — Upcoming Upgrades
 
-## Priority Order (as of 2026-03-01)
-
+## Priority Order (as of 2026-03-02)
 
 > Based on current repo state: mature core + 650+ tests + full governance layer.
 > APL, VLG, OutcomeTracker, and EvidenceRegistry are now implemented.
 > Updated priorities reflect what remains before science-tuning is legitimate.
-> Based on current repo state: mature core + 600+ tests + governance layer in place.
-> Items 1–5 from the previous list are substantially completed. Updated priorities below.
-
 
 ---
 
 ## IMMEDIATE — Next Cycle
 
+### 0) Security Hardening
+
+Security audit (2026-03-02) identified the following issues, in fix-priority order:
+
+**[SEC-1] — CRITICAL: Unsafe env var type conversion** (`titan/main.py:317–321`)
+Direct `int()`/`float()` conversion of env vars without try/except. An invalid
+value (e.g. `ATHLETE_AGE=abc`) crashes the process at startup.
+- Wrap conversions in try/except with descriptive error message and safe exit.
+
+**[SEC-2] — CRITICAL: Weak input validation in setup wizard** (`titan/ui/setup_wizard.py:71–86`)
+No format validation on Garmin email, API keys, or location string. Chat ID stored
+as string but used as int (silent coercion).
+- Validate email format (regex), enforce numeric Chat ID at collection time,
+  add minimum-length checks for API keys.
+
+**[SEC-3] — HIGH: `os.system()` for terminal clear** (`titan/ui/menu_system.py:18`)
+Anti-pattern: spawns a shell subprocess. Safe to replace with `subprocess.run()`
+or `os.system` avoided entirely via ANSI escape codes.
+- Replace with `print("\033[2J\033[H", end="")` or `subprocess.run(["clear"])`.
+
+**[SEC-4] — HIGH: Unpinned dependencies** (`requirements.txt:20,34,36`)
+`scikit-learn>=1.4,<1.5`, `pytest>=8,<9`, `hypothesis>=6.100` use version ranges.
+Different environments may resolve to incompatible minor versions.
+- Pin to exact versions: `pytest==8.1.0`, `hypothesis==6.100.0`, `scikit-learn==1.4.2`.
+
+**[SEC-5] — HIGH: Plaintext credential storage** (`garmin_sync.py:21–22`, `telegram_bot.py:31–32`)
+Garmin and Telegram credentials held in plaintext object attributes.
+Memory dump or exception trace could expose them.
+- Move to `keyring` or `SecretStr` wrapper; never store raw credentials in instance vars.
+
+**[SEC-6] — MEDIUM: No explicit SSL verify flag** (`integrations/weather_api.py:117–147`)
+`requests.get()` calls rely on the default `verify=True`. Implicit reliance on
+defaults is fragile across library versions.
+- Add `verify=True` explicitly to all `requests` calls.
+
+**[SEC-7] — MEDIUM: No JSON schema validation on profile load** (`core/database.py:855`)
+`json.load()` + `from_dict()` with no schema guard. Malformed backup files cause
+`KeyError`/`TypeError` at runtime.
+- Add a lightweight schema check (field presence + type) before `from_dict()`.
+
+**[SEC-8] — MEDIUM: Exception details leaked in Garmin error message** (`garmin_sync.py:44–54`)
+`f"(Detail: {e})"` in user-facing print may expose OAuth token fragments or paths.
+- Log detail at DEBUG level only; show a generic message to the user.
+
+**[SEC-9] — LOW: `.env` file permissions not verified on Windows** (`setup_wizard.py:101`)
+`Path.chmod(0o600)` is a no-op on Windows — the file stays world-readable.
+- Document the limitation; add a platform check and warn the user on Windows.
+
+---
 
 ### 1) E2E Regression Suite
-**Why first**: Unit and integration tests are strong (650+ tests), but full user
+**Why**: Unit and integration tests are strong (650+ tests), but full user
 journey coverage is missing. Without gold-path E2E tests, each release carries
 unknown risk that inter-module wiring regressed.
 
@@ -26,7 +71,7 @@ unknown risk that inter-module wiring regressed.
 - Smoke checks after each release (smoke = import + instantiate + run 1 step)
 
 ### 2) Observability — Remaining Flows
-**Why second**: Governance gates now emit structured JSON with `cause` tags.
+**Why**: Governance gates now emit structured JSON with `cause` tags.
 The remaining high-value flows (planner, readiness, nutrition) still use
 unstructured logging. Silent failures in these paths are invisible.
 
@@ -37,7 +82,7 @@ unstructured logging. Silent failures in these paths are invisible.
 - SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
 
 ### 3) Outcome Tracker — DB persistence
-**Why third**: `OutcomeTracker` is implemented in-memory. Calibration analytics
+**Why**: `OutcomeTracker` is implemented in-memory. Calibration analytics
 require a DB-backed accumulation cycle across multiple restarts.
 
 **Scope**:
@@ -49,8 +94,6 @@ require a DB-backed accumulation cycle across multiple restarts.
 ---
 
 ## COMPLETED (this cycle)
-
-These items are now implemented:
 
 | # | Item | Status | Where |
 |---|------|--------|-------|
@@ -65,56 +108,13 @@ These items are now implemented:
 | — | P0 safety gate tests | DONE | `tests/test_p0_safety_gates.py` (14 tests) |
 | — | Governance integration tests | DONE | `tests/test_governance_integration.py` (27 tests) |
 | — | APL integration tests | DONE | `tests/test_apl_integration.py` (64 tests) |
-=======
-### 1) Adaptive Priority Lock (`adaptive_priority_lock.py`) — NEXT
-**Why first**: The VLG is implemented and the spec is written. APL is the last missing piece
-of the governance infrastructure before the layer is fully sealed.
-
-**Scope**:
-- Implement per `docs/specs/adaptive_priority_lock.md`
-- Pure resolver: VLGState + GovernanceEngine output → final session intent
-- No gate logic modification
-- Unit tests + integration with GovernanceEngine
-- ADR entry for any deviations from spec
-
-### 2) E2E Regression Suite
-**Why second**: Unit and integration tests are strong, but full user journey coverage is missing.
-
-**Scope**:
-- 3–5 gold-path scenarios: new athlete onboarding, weekly plan generation, recovery adaptation
-- Snapshot tests for decision stability (same inputs → same output every time)
-- Smoke checks after each release
-
-### 3) Observability — Remaining Flows
-**Why third**: Governance gates now emit structured JSON. The remaining flows (planner,
-scoring, Telegram handlers) still use unstructured logging.
-
-**Scope**:
-- Structured logs for `WeeklyPlanGenerator`, `ReadinessEngine`, `NutritionOptimizer`
-- SLO metrics: error rate, response latency, fallback frequency
-- Alert rules for silent failures (no Telegram delivery, Garmin sync timeout)
 
 ---
 
-## COMPLETED (previously listed as immediate)
-
-
-These items from the previous priority list are now implemented:
-
-
 ## Phase 5 — Science Calibration (after ≥30 outcomes in OutcomeTracker)
-
-| # | Item | Status | Where |
-|---|------|--------|-------|
-| 1 | Structured observability for governance | DONE | `_gate_event()` in `governance_engine.py` |
-| 2 | Runtime / dependency hardening + CI | DONE | `.github/workflows/ci.yml` |
-| 4 | Data contract & schema governance | DONE | `governance_contracts.py` + `validate_vo2_eligibility()` |
-| 5 | Safety policy gates | DONE | `GovernanceEngine` 7-gate system + `IntensityGovernor` |
-
 
 **Why after outcome accumulation**: Thresholds are currently policy heuristics.
 Science-tuning before correlated outcome data exists would be noise, not signal.
-
 
 ### Calibration priorities (from EvidenceRegistry):
 
@@ -173,81 +173,10 @@ contracts, calibrated thresholds, and safety gates.
 
 ## Phase 8 — Multi-Platform & Social (2027)
 
-## Phase 5 — Web UI / Operator Console (Q2–Q3 2026)
-**Why before ML**: Visibility and operational control deliver immediate value earlier than
-heavy ML investment.
-
-**Scope**:
-- Dashboard: readiness score, TSB/CTL/ATL timeline, HRV trend
-- Session explorer: log review, manual annotation
-- Manual review/approve workflow for critical governance overrides
-- Technology: Streamlit (rapid) → React (production)
-
----
-
-## Phase 6 — ML Features (Q3–Q4 2026)
-**Why after Web UI**: ML must land on a foundation of stable observability, contracts, and safety.
-
-### 1. LSTM Load Prediction
-- Time-series training load forecasting
-- Shadow mode pilot first (no auto-application)
-- Model drift monitoring + calibration alerts
-- Kill-switch mandatory
-
-### 2. Injury Risk Scoring
-- Ensemble model (Random Forest + Gradient Boosting)
-- 15+ features: ACWR, HRV deviation, sleep trend, soreness, weekly volume change
-- Binary: high_risk vs safe; threshold tunable per athlete profile
-- Recall target > 80%
-
-### 3. Automated Periodization
-- AI-driven macrocycle / mesocycle planning
-- Genetic algorithm optimization over periodization principles
-- Staged rollout with athlete confirmation gate
-
----
-
-## Phase 7 — Multi-Platform & Social (2027)
-
-### Additional Device Sync
-- Strava, Polar, Whoop, COROS integrations
-- Unified adapter interface in `integrations/`
-
-### Multi-Athlete Team Dashboard
-- Coach view: 10–50 athletes
-- Comparative load/readiness grid
-- High-risk alert system
-
-### Mobile App
-- React Native (iOS + Android)
-- Native notifications replacing Telegram for mobile users
-- Offline mode with SQLite sync
-
----
-
-## Technology Stack (Current)
-
-| Layer | Technology |
-|-------|-----------|
-| Language | Python 3.11+ |
-| Database | SQLite (via DatabaseManager) |
-| Garmin | garth / garminconnect |
-| Weather | OpenWeatherMap API |
-| Bot | python-telegram-bot |
-| Testing | pytest, hypothesis |
-| CI | GitHub Actions |
-| ML (planned) | TensorFlow / scikit-learn |
-| Web UI (planned) | Streamlit → React + FastAPI |
-| Mobile (planned) | React Native |
-
----
-
-
 ### Additional Device Sync
 - Strava, Polar, Whoop, COROS integrations
 - Unified adapter interface in `integrations/`
 - All new sources must provide HRV, RHR, sleep — otherwise read-only
-
 
 ### Multi-Athlete Team Dashboard
 - Coach view: 10–50 athletes
@@ -291,25 +220,21 @@ Level 6  Science calibration (≥30 outcomes)      [Phase 5]
 Level 7  ML layer on calibrated foundation       [Phase 7]
 ```
 
-### Governance (current cycle)
-- All V1–V5 gate paths contract-valid: ACHIEVED
-- Governance coverage ≥ 80%: ENFORCED in CI
-- P0 safety gate tests passing: ACHIEVED (14 tests)
+### Success Metrics
 
-### Next Cycle (APL + E2E)
-- APL resolves session intent deterministically for all VLGState/GovernanceEngine combinations
+**Next Cycle (Security + E2E + Observability)**
+- All SEC-1–SEC-5 fixes merged and CI-green
 - E2E gold paths pass on every PR merge
 - No unstructured log lines in any governance or orchestration path
 
-### Web UI
+**Web UI**
 - Dashboard load time < 2s
 - Manual override workflow usable without CLI
 
-### ML
+**ML**
 - LSTM accuracy > 85% on holdout set
 - Injury recall > 80%
 - All ML paths have kill-switch
-
 
 ---
 
