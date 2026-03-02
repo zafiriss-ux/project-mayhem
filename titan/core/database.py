@@ -764,6 +764,27 @@ class DatabaseManager:
         overrides = row[0] if row else 0
         return round(overrides / days, 3)
 
+    def get_override_log(self, limit: int = 50) -> List[Dict[str, str]]:
+        """Return recent override audit rows (oldest first) for operator review."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT date, prescribed_type, actual_type, reason
+               FROM override_log
+               ORDER BY id ASC
+               LIMIT ?""",
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        return [
+            {
+                'date': row[0],
+                'prescribed_type': row[1],
+                'actual_type': row[2],
+                'reason': row[3],
+            }
+            for row in rows
+        ]
+
     # --- GOVERNANCE OUTCOMES ---
 
     def save_governance_decision(self, decision: Dict[str, Any]) -> None:

@@ -205,3 +205,61 @@ def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
             "phase_replication_count": 2,
         }
     ]
+
+
+def test_manual_override_workflow_empty_payload(tmp_path):
+    db = _make_db(tmp_path)
+    service = OperatorConsoleService(db)
+
+    payload = service.manual_override_workflow(limit=20, days=7)
+
+    assert payload == {
+        "summary": {
+            "samples": 0,
+            "override_ratio_window_days": 7,
+            "override_ratio": 0.0,
+            "latest_override_date": None,
+        },
+        "overrides": [],
+    }
+
+
+def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
+    db = _make_db(tmp_path)
+    service = OperatorConsoleService(db)
+
+    assert service.record_manual_override(
+        date="2026-05-01",
+        prescribed_type="REST",
+        actual_type="EASY",
+        reason="Travel day schedule shift",
+    ) is True
+    assert service.record_manual_override(
+        date="2026-05-03",
+        prescribed_type="TEMPO",
+        actual_type="VO2",
+        reason="Race simulation",
+    ) is True
+
+    payload = service.manual_override_workflow(limit=10, days=14)
+
+    assert payload["summary"] == {
+        "samples": 2,
+        "override_ratio_window_days": 14,
+        "override_ratio": 0.143,
+        "latest_override_date": "2026-05-03",
+    }
+    assert payload["overrides"] == [
+        {
+            "date": "2026-05-01",
+            "prescribed_type": "REST",
+            "actual_type": "EASY",
+            "reason": "Travel day schedule shift",
+        },
+        {
+            "date": "2026-05-03",
+            "prescribed_type": "TEMPO",
+            "actual_type": "VO2",
+            "reason": "Race simulation",
+        },
+    ]
