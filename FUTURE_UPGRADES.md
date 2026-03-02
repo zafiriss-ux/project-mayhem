@@ -8,7 +8,36 @@
 
 ---
 
+
 ## Phase 4 — Observability & E2E (COMPLETED)
+=======
+## Phase 4 — Observability & E2E (IN PROGRESS)
+
+### Remaining
+
+#### 1) Observability — Remaining Flows
+**Why**: Governance gates now emit structured JSON with `cause` tags.
+The remaining high-value flows (planner, readiness, nutrition) still use
+unstructured logging. Silent failures in these paths are invisible.
+
+**Scope**:
+- Structured decision events for `WeeklyPlanGenerator` (why was this session chosen?)
+- Structured events for `ReadinessEngine` (which component drove the score?)
+- Structured events for `NutritionOptimizer` (why RED-S warning? which metric?)
+- SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
+
+#### 2) `/calibration` Telegram Command
+**Why**: OutcomeTracker now persists decisions to DB. The data exists but is
+not yet surfaced to the operator. Without a query interface, calibration
+evidence is invisible during live operation.
+
+**Scope**:
+- `/calibration` Telegram handler: show `lock_rate_by_phase`, `completion_rate` *(DONE)*
+- Surface governance_outcomes aggregates (locks applied, phase breakdown) *(DONE)*
+- Gate trigger behind minimum 30 paired decisions before surfacing recommendations *(DONE)*
+
+---
+
 
 ### Completed (this cycle)
 
@@ -44,8 +73,11 @@
 | — | Snapshot stability coverage | DONE | additional coverage in `test_e2e_regression_suite.py` |
 | — | OutcomeTracker persistence integration tests | DONE | `tests/test_outcome_tracker_persistence.py` |
 | — | `/calibration` Telegram command with 30-outcome gate + phase lock breakdown | DONE | `titan/main.py` + `titan/integrations/telegram_bot.py` |
+
 | — | Structured flow logs for planner + readiness + nutrition | DONE | `titan/features/weekly_planner.py` + `titan/science/readiness_engine.py` + `titan/features/nutrition_optimizer.py` |
 | — | SLO alerts for Telegram delivery, Garmin sync latency, nutrition plan missing | DONE | `titan/integrations/telegram_bot.py` + `titan/integrations/garmin_sync.py` + `titan/orchestration/daily_coach.py` |
+
+
 
 ---
 
