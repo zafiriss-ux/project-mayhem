@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**TITAN OS** (v5.7.3) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
+**TITAN OS** (v5.7.5) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
 
 - **Language**: Python 3.11+ (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
 - **Database**: SQLite (thread-safe, via `DatabaseManager`)
@@ -28,9 +28,9 @@ project-mayhem/
 ├── test_logic_pytest.py     # Logic tests (pytest)
 ├── test_telegram_bot.py     # Telegram integration tests
 ├── test_property_based.py   # Property-based tests (hypothesis)
-├── tests/                   # Integration + hygiene tests (13 files)
+├── tests/                   # Integration + hygiene tests (14 files)
 │   ├── test_governance_integration.py       # Contract + boundary tests (27 tests)
-│   ├── test_p0_safety_gates.py              # P0 hard-stop gate tests (14 tests)
+│   ├── test_p0_safety_gates.py              # P0 hard-stop gate tests (20 tests)
 │   ├── test_apl_integration.py              # APL contract + invariant tests (64 tests)
 │   ├── test_phase3_hygiene.py               # Phase 3 branch-coverage sweep (27 tests)
 │   ├── test_phase4_hygiene.py               # Phase 4 observability sweep (24 tests)
@@ -40,10 +40,11 @@ project-mayhem/
 │   ├── test_athlete_database_schema_validation.py  # Schema validation
 │   ├── test_telegram_calibration_command.py # /calibration Telegram command
 │   ├── test_phase4_observability_flows.py   # Structured flow log tests
-│   └── test_phase4_slo_alerts.py            # SLO alert firing tests
+│   ├── test_phase4_slo_alerts.py            # SLO alert firing tests
+│   └── test_todo_fix_recommendations.py    # P0/P1/P2 gate coverage (boundary tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0008)
+│   ├── adr/                 # Architecture Decision Records (0001–0009)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
@@ -103,7 +104,7 @@ WEATHER_CACHE_DURATION_HOURS=1
 ## Running Tests
 
 ```bash
-# Run all tests (963 total, all green as of v5.7.3)
+# Run all tests (1014 total, all green as of v5.7.5)
 pytest
 
 # Run with coverage
@@ -153,10 +154,10 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 ### Key Safety Constants (`titan/config/thresholds.py`)
 
 ```python
-HARD_STOP_HRV_DELTA       = 15.0   # % drop triggering H1 gate
-HARD_STOP_RHR_DELTA       = 8.0    # bpm rise triggering H2 gate
-HARD_STOP_TSB_FLOOR       = -50.0  # TSB floor triggering H3 gate
-SUBJECTIVE_FATIGUE_EXTREME = 8     # RPE/10 score triggering H4 gate
+HARD_STOP_HRV_DELTA       = 15.0   # ms drop (>=) triggering H2 gate
+HARD_STOP_RHR_DELTA       = 8.0    # bpm rise (>=) triggering H3 gate
+HARD_STOP_TSB_FLOOR       = -50.0  # TSB floor (<=) triggering H4 gate
+SUBJECTIVE_FATIGUE_EXTREME = 8     # RPE/10 score (>=) triggering H5 gate
 SUBJECTIVE_FATIGUE_2OF4   = 6      # Score for 2-of-4 soft downgrade
 VO2_ACWR_MIN              = 0.80
 VO2_ACWR_MAX              = 1.30
@@ -199,6 +200,7 @@ See `docs/adr/` for Architecture Decision Records:
 - `0006` — Architectural hardening: cold start and engine sync
 - `0007` — Intensity governance architecture audit (read-only assessment)
 - `0008` — Adaptive Priority Lock and VLG specs (VLG: implemented; APL: implemented — v5.7.1)
+- `0009` — Safety gate hardening: C1 & C2 resolution (OR semantics + gate reorder — v5.7.4)
 
 ---
 

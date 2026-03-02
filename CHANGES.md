@@ -2,6 +2,55 @@
 
 ---
 
+## v5.7.5 / v51.9 — Pre-Phase 6 repo cleanup + H2/H3 boundary hardening (2026-03-02)
+
+### Safety — Boundary Fix
+
+- **`titan/science/governance_engine.py`** — H2 and H3 gate comparators tightened:
+  - H2 (HRV Collapse): `today_hrv < baseline - delta` → `today_hrv <= baseline - delta`.
+    A drop of *exactly* `HARD_STOP_HRV_DELTA` now triggers a REST hard stop (was silently
+    passing through with strict `<`).
+  - H3 (RHR Spike): `today_rhr > baseline + delta` → `today_rhr >= baseline + delta`.
+    Same inclusive boundary fix.
+  - Dual-collapse: when both H2 and H3 fire simultaneously, `governance_override` now
+    reads `'HRV/RHR dual collapse: autonomic stress — hard stop'` instead of H3 silently
+    overwriting H2's message.
+
+### Tests
+
+- **`tests/test_p0_safety_gates.py`** — 18 → 20 tests (added exact-boundary variants):
+  - `test_H2_hrv_exactly_at_threshold_fires` — verifies `<=` inclusive semantics.
+  - `test_H3_rhr_exactly_at_threshold_fires` — verifies `>=` inclusive semantics.
+- **`tests/test_todo_fix_recommendations.py`** — `test_does_not_fire_at_exact_threshold`
+  renamed to `test_fires_at_exact_threshold`; assertion inverted to align with the
+  canonical inclusive boundary (was contradicting `test_p0_safety_gates.py` / ADR-0009).
+
+### Documentation / Repo Hygiene
+
+- **`CLAUDE.md`** — accuracy pass to v5.7.5 reality:
+  - Version badge: v5.7.3 → v5.7.5.
+  - Test count: 963 → 1014.
+  - P0 safety gate test count: 14 → 20.
+  - Safety constants comments: gate labels corrected (H2/H3/H4/H5, not H1/H2/H3/H4).
+  - ADR range: 0001–0008 → 0001–0009; ADR-0009 entry added.
+  - `tests/` directory listing: 13 → 14 files; `test_todo_fix_recommendations.py` added.
+- **`FUTURE_UPGRADES.md`**:
+  - Merge-conflict artifact removed (stale `=======` / `## Phase 4 IN PROGRESS` block).
+  - Phase 4 status: `(CLOSED)`.
+  - Phase 5 status: `(CLOSED)` (was `PLANNED`).
+  - Test count in intro: 932 → 1014.
+  - Governance Maturity Ladder Level 7: `[Phase 5]` → `[Phase 5 ✓]`.
+- **`launcher/main.py`** — hardcoded `"Kernel: v5.7.0"` updated to `v5.7.5`.
+- **`requirements.txt`** — removed unused `withings-sync==4.2.5`; header version updated.
+- **`TITAN_v50_FULL_KERNEL_FINAL.py`** — moved to `archive/` (5 994-line legacy monolith).
+- **`docs/adr/0007`** — footer added cross-referencing ADR-0009 as C1/C2 resolution.
+
+### Result
+
+1014 tests, 0 failures (was 1011 passed / 3 failed before boundary fix).
+
+---
+
 ## v5.7.4 / v51.8 — Safety gate hardening: ADR-0009 (C1 & C2 resolution) (2026-03-02)
 
 ### Safety — Critical Fix

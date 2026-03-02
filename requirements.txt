@@ -1,4 +1,4 @@
-# TITAN OS v5.7.0 — Production Requirements
+# TITAN OS v5.7.5 — Production Requirements
 # Build Environment: Python 3.11.9 (Windows 11 x64)
 # Last Updated: 2026-03-02
 
@@ -24,7 +24,6 @@ pyyaml==6.0.1          # Configuration files
 garminconnect==0.2.13  # Garmin Connect API (activity sync)
 requests==2.32.4       # HTTP client (Garmin, weather, webhooks)
 python-telegram-bot==21.0.1  # Telegram bot framework
-withings-sync==4.2.5
 
 # Build Tools (Windows only — for creating TITAN.exe)
 pyinstaller==6.4.0     # Freeze Python to executable
