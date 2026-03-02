@@ -89,7 +89,7 @@ Goal: Evidence-based threshold tuning on a foundation of real outcome data.
 
 1. Correlate gate triggers with session outcomes (RPE, completion rate) — DONE (lock/outcome correlation analytics in OutcomeTracker + `/calibration` output)
 2. Promote HEURISTIC thresholds to MODERATE where correlation is confirmed — DONE (heuristic promotion candidates now surfaced from lock/outcome correlation analytics)
-3. Promote MODERATE thresholds to STRONG where replication across profiles is confirmed
+3. Promote MODERATE thresholds to STRONG where replication across profiles is confirmed — DONE (moderate-promotion candidates now require replicated lock/outcome signal across ≥2 athlete profiles and ≥2 phases)
 4. Surface calibration candidates via `/calibration` Telegram command
 5. Document every promoted threshold in `EvidenceRegistry` with evidence count and date
 

@@ -442,6 +442,80 @@ class TestOutcomeTracker:
         assert candidates[0]['parameter'] == 'VO2_READINESS_MIN'
         assert candidates[0]['trigger_lock'] == 'VO2_ELIGIBILITY_GATE'
 
+
+    def test_moderate_promotion_candidates_require_cross_profile_replication(self, tracker, dummy_apl_result):
+        for i in range(8):
+            date = f'2026-06-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='TEMPO',
+                locks_applied=['VO2_ELIGIBILITY_GATE'], governance_clean=False,
+                phase='BUILD', vlg_color='YELLOW',
+                apl_result=dummy_apl_result,
+                acwr=1.2, tsb_value=-15.0, readiness_score=60.0,
+                glycogen_debt=6.0, athlete_profile_id='ATHLETE_A', date=date,
+            )
+            tracker.record_outcome(date=date, rpe=8, completed=False)
+
+        for i in range(8):
+            date = f'2026-07-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='TEMPO',
+                locks_applied=['VO2_ELIGIBILITY_GATE'], governance_clean=False,
+                phase='PEAK', vlg_color='YELLOW',
+                apl_result=dummy_apl_result,
+                acwr=1.18, tsb_value=-13.0, readiness_score=62.0,
+                glycogen_debt=5.5, athlete_profile_id='ATHLETE_B', date=date,
+            )
+            tracker.record_outcome(date=date, rpe=8, completed=False)
+
+        for i in range(20):
+            date = f'2026-08-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='INTERVALS',
+                locks_applied=[], governance_clean=True,
+                phase='BUILD', vlg_color='GREEN',
+                apl_result=dummy_apl_result,
+                acwr=1.0, tsb_value=-5.0, readiness_score=75.0,
+                glycogen_debt=2.0, athlete_profile_id='ATHLETE_A', date=date,
+            )
+            tracker.record_outcome(date=date, rpe=5, completed=True)
+
+        summary = tracker.get_calibration_summary()
+        candidates = summary['moderate_promotion_candidates']
+
+        assert candidates
+        assert candidates[0]['parameter'] == 'VO2_GLYCOGEN_DEBT_MAX'
+        assert candidates[0]['profile_replication_count'] == 2
+        assert candidates[0]['phase_replication_count'] == 2
+
+    def test_moderate_promotion_candidates_block_single_profile_signal(self, tracker, dummy_apl_result):
+        for i in range(10):
+            date = f'2026-09-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='TEMPO',
+                locks_applied=['VO2_ELIGIBILITY_GATE'], governance_clean=False,
+                phase='BUILD', vlg_color='YELLOW',
+                apl_result=dummy_apl_result,
+                acwr=1.2, tsb_value=-16.0, readiness_score=58.0,
+                glycogen_debt=6.5, athlete_profile_id='ATHLETE_A', date=date,
+            )
+            tracker.record_outcome(date=date, rpe=8, completed=False)
+
+        for i in range(12):
+            date = f'2026-10-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='INTERVALS',
+                locks_applied=[], governance_clean=True,
+                phase='PEAK', vlg_color='GREEN',
+                apl_result=dummy_apl_result,
+                acwr=1.02, tsb_value=-4.0, readiness_score=76.0,
+                glycogen_debt=2.0, athlete_profile_id='ATHLETE_A', date=date,
+            )
+            tracker.record_outcome(date=date, rpe=5, completed=True)
+
+        summary = tracker.get_calibration_summary()
+        assert summary['moderate_promotion_candidates'] == []
+
     def test_get_lock_rate_by_phase(self, tracker, dummy_apl_result):
         tracker.record_decision(
             'INTERVALS', 'TEMPO', ['VO2_ELIGIBILITY_GATE'], False,

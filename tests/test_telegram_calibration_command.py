@@ -150,6 +150,7 @@ def test_calibration_callback_formats_moderate_promotion_candidates():
                 "n_with_lock": 10,
                 "n_without_lock": 50,
                 "phase_replication_count": 2,
+                "profile_replication_count": 2,
                 "trigger_lock": "VO2_ELIGIBILITY_GATE",
             }
         ],
@@ -160,4 +161,4 @@ def test_calibration_callback_formats_moderate_promotion_candidates():
     response = callbacks["calibration"]()
     assert "MODERATE→STRONG candidates" in response
     assert "VO2_GLYCOGEN_DEBT_MAX" in response
-    assert "2 phases" in response
+    assert "2 phases / 2 profiles" in response
