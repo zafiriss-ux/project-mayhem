@@ -2,6 +2,41 @@
 
 ---
 
+## v5.7.3 / v51.7 — Phase 5 closure: maintenance & documentation sync (2026-03-02)
+
+### Phase Status
+
+- **Phase 5 — Science Calibration** — marked **CLOSED** in `docs/ROADMAP.MD`.
+  All five deliverables completed in prior commits (lock/outcome correlation
+  analytics, HEURISTIC→MODERATE promotion surfacing, MODERATE→STRONG cross-profile
+  replication gate, `/calibration` Telegram output, `EvidenceRegistry` promotion
+  metadata schema). No remaining items.
+
+### Housekeeping
+
+- **`CLAUDE.md`** — full accuracy pass to reflect v5.7.2 reality:
+  - Version badge updated: v5.7.0 → v5.7.2.
+  - Science module count corrected: 21 → 23 (includes `AdaptivePriorityLock`
+    and `OutcomeTracker` introduced in v5.7.1).
+  - `titan/config/` entry updated to list `evidence_registry.py` alongside
+    `thresholds.py`.
+  - Repository layout `tests/` section expanded from 2 files to the full
+    13-file suite (added phase3/4 hygiene, E2E regression, observability,
+    SLO, outcome tracker persistence, science engines, schema validation,
+    Telegram calibration, and APL integration tests).
+  - Governance infrastructure module count corrected: 4 → 6 (APL and
+    OutcomeTracker now listed explicitly).
+  - Database section updated: `governance_outcomes` table added (fifth table,
+    created by `OutcomeTracker` in v5.7.1).
+  - ADR-0008 note corrected: "(APL: proposed)" → "(APL: implemented)".
+  - Key Files table updated: APL spec note corrected to "(implemented; v5.7.1)";
+    `EvidenceRegistry` and `OutcomeTracker` added as first-class references;
+    ROADMAP.MD phase range updated to "Phase 0–9".
+  - Test count updated from 932 to 963 (Phase 4 hygiene sweep).
+  - Running Tests section: added Phase 5 APL + phase hygiene commands.
+
+---
+
 ## v5.7.2 / v51.6 — Phase 3 hygiene: branch coverage sweep (2026-03-02)
 
 ### Test Hygiene

@@ -82,7 +82,7 @@ Goal: Production-grade visibility and regression safety.
 
 ---
 
-## Phase 5 — Science Calibration (PLANNED, after ≥30 outcomes)
+## Phase 5 — Science Calibration (CLOSED)
 Goal: Evidence-based threshold tuning on a foundation of real outcome data.
 
 **Prerequisite**: ≥30 paired governance decisions in `governance_outcomes` table.
@@ -173,4 +173,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02
+Last updated: 2026-03-02 (Phase 5 closed)
