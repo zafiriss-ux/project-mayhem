@@ -164,9 +164,10 @@ class GovernanceEngine:
             _gate_event('H1', 'REST', reason=reason, cause='TRAINING_LOGIC')
 
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
+        # Fires when drop >= HARD_STOP_HRV_DELTA (inclusive boundary).
         try:
             h2_trigger = (
-                float(context.get('today_hrv')) <
+                float(context.get('today_hrv')) <=
                 float(context.get('baseline_hrv')) - HARD_STOP_HRV_DELTA
             )
         except (TypeError, ValueError):
@@ -182,9 +183,10 @@ class GovernanceEngine:
                         baseline_hrv=context.get('baseline_hrv'))
 
         # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
+        # Fires when rise >= HARD_STOP_RHR_DELTA (inclusive boundary).
         try:
             h3_trigger = (
-                float(context.get('today_rhr')) >
+                float(context.get('today_rhr')) >=
                 float(context.get('baseline_rhr')) + HARD_STOP_RHR_DELTA
             )
         except (TypeError, ValueError):
@@ -198,6 +200,12 @@ class GovernanceEngine:
             _gate_event('H3', 'REST', reason=reason, cause='TRAINING_LOGIC',
                         today_rhr=context.get('today_rhr'),
                         baseline_rhr=context.get('baseline_rhr'))
+
+        # Dual collapse: both H2 and H3 fired — set combined override message.
+        if h2_trigger and h3_trigger:
+            reason = 'HRV/RHR dual collapse: autonomic stress — hard stop'
+            session_plan['governance_override'] = reason
+            _gate_event('H2+H3', 'REST', reason=reason, cause='TRAINING_LOGIC')
 
         # H4 — TSB Critical Floor (Gate 4: load gate)
         try:
