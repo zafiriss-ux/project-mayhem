@@ -263,8 +263,9 @@ class DailyCoach:
         # Both results are injected into the governance context so that
         # GovernanceEngine reads them without any gate logic being altered.
         _acwr_for_vlg = _safe_float(garmin_data.get('acwr', 1.0), 1.0)
+        _tsb_for_vlg = _safe_float(tsb_value, 0.0)
         vlg_state = self.vlg.resolve(
-            tsb_value    = tsb_value,
+            tsb_value    = _tsb_for_vlg,
             acwr         = _acwr_for_vlg,
             glycogen_debt = self.glycogen.daily_debt,
         )
@@ -359,7 +360,7 @@ class DailyCoach:
             vlg_color             = getattr(vlg_state, 'color', 'GREEN'),
             apl_result            = apl_result,
             acwr                  = _acwr_for_vlg,
-            tsb_value             = tsb_value,
+            tsb_value             = _tsb_for_vlg,
             readiness_score       = _safe_float(readiness.get('score', 50), 50),
             glycogen_debt         = self.glycogen.daily_debt,
             afi_value             = afi_final,

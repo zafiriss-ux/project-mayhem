@@ -17,7 +17,7 @@ from titan.core.athlete import UniversalAthleteProfile
 _log = logging.getLogger(__name__)
 
 # Ελάχιστα πεδία που πρέπει να υπάρχουν σε κάθε αρχείο JSON αθλητή
-_REQUIRED_ATHLETE_KEYS: frozenset = frozenset({"athlete_id", "name"})
+_REQUIRED_ATHLETE_KEYS: frozenset = frozenset({"athlete_id"})
 
 
 def _validate_athlete_dict(data: object) -> None:
@@ -1009,6 +1009,9 @@ class AthleteDatabase:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
+
+                if isinstance(data, dict) and not str(data.get('name', '')).strip():
+                    data['name'] = 'Default Athlete'
 
                 _validate_athlete_dict(data)
 
