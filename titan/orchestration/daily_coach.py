@@ -33,10 +33,7 @@ from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
 
 from titan.science.fatigue_engine import FatigueEngine
-=======
 
-from titan.science.fatigue_engine import FatigueEngine
-=======
 
 
 
@@ -216,7 +213,6 @@ class DailyCoach:
         readiness['score'] = min(readiness['score'], afi_constraints.get('readiness_clamp', 100))
 
 
-=======
 
 
         fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
@@ -227,8 +223,6 @@ class DailyCoach:
         )
 
 
-=======
-=======
 
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
@@ -243,12 +237,6 @@ class DailyCoach:
             'glycogen_debt': self.glycogen.daily_debt,
 
             'fatigue_level': fatigue_level,
-=======
-
-            'fatigue_level': fatigue_level,
-=======
-            'fatigue_level': 'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
-
 
             'acwr': garmin_data.get('acwr', 1.0),
             'readiness_score': readiness.get('score', 50),
@@ -272,19 +260,12 @@ class DailyCoach:
                 'glycogen_debt':       self.glycogen.daily_debt,
 
                 'fatigue_level':       fatigue_level,
-=======
-
-                'fatigue_level':       fatigue_level,
-=======
-                'fatigue_level':       'HIGH' if soreness >= 8 else 'MEDIUM' if soreness >= 5 else 'LOW',
-
 
                 'acwr':                garmin_data.get('acwr', 1.0),
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
                 'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
                 'planned_duration_min': today_session.get('duration_min', 45),
 
-=======
 
 
                 'today_hrv':          latest_hrv,
@@ -297,14 +278,14 @@ class DailyCoach:
                 'tsb_value':          tsb_value,
                 'injury_flag':        bool(garmin_data.get('injury_flag', False)),
 
-=======
-=======
 
 
             },
         )
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
+
+        self._ensure_vo2_eligibility_contract(today_session)
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
         print("⏰ Calculating optimal running time...")
@@ -397,6 +378,24 @@ class DailyCoach:
     # ═══════════════════════════════════════════════════════════════════════
     # PRIVATE HELPERS
     # ═══════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _ensure_vo2_eligibility_contract(session_plan: Dict) -> None:
+        """Normalize VO2 gate payload shape for downstream consumers."""
+        vo2 = session_plan.get('vo2_eligibility')
+        if not isinstance(vo2, dict):
+            return
+
+        failed = vo2.get('failed_conditions', [])
+        if not isinstance(failed, list):
+            failed = [str(failed)] if failed else []
+        vo2['failed_conditions'] = [str(code) for code in failed]
+
+        details = vo2.get('detailed_failed_conditions', [])
+        if not isinstance(details, list):
+            details = []
+        normalized = [d for d in details if isinstance(d, dict) and 'code' in d]
+        vo2['detailed_failed_conditions'] = normalized
 
     def _persist_garmin_data(
         self, garmin_data: Dict, today_str: str
