@@ -4,11 +4,14 @@ Garmin Connect Live API Integration
 REAL implementation using garminconnect library (not mock).
 """
 
+import logging
 import os
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import threading
+
+_log = logging.getLogger(__name__)
 
 
 class GarminSync:
@@ -42,15 +45,15 @@ class GarminSync:
             print("✅ Connected to Garmin Connect")
             return True
         except Exception as e:
+            _log.debug("Garmin connection failed", exc_info=True)
             err = str(e)
             if any(k in err for k in ("OAuth", "token", "401", "403", "Unauthorized")):
                 print(
-                    f"❌ Garmin token expired. Clear cached tokens and retry:\n"
-                    f"   rm -rf ~/.garth\n"
-                    f"   (Detail: {e})"
+                    "❌ Garmin token expired. Clear cached tokens and retry:\n"
+                    "   rm -rf ~/.garth"
                 )
             else:
-                print(f"❌ Garmin connection failed: {e}")
+                print("❌ Garmin connection failed (check logs for details)")
             self.is_connected = False
             return False
 
