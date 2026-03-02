@@ -115,6 +115,41 @@ class OperatorConsoleService:
         """Persist manual note for a session explorer record."""
         return self.db.annotate_governance_outcome(date=date, note=note)
 
+    def manual_override_workflow(self, limit: int = 50, days: int = 14) -> Dict[str, Any]:
+        """Build payload for manual override review + audit trail visibility."""
+        overrides = self.db.get_override_log(limit=limit)
+
+        summary = {
+            "samples": len(overrides),
+            "override_ratio_window_days": days,
+            "override_ratio": self.db.get_override_ratio(days=days),
+        }
+        if overrides:
+            summary["latest_override_date"] = overrides[-1]["date"]
+        else:
+            summary["latest_override_date"] = None
+
+        return {
+            "summary": summary,
+            "overrides": overrides,
+        }
+
+    def record_manual_override(
+        self,
+        date: str,
+        prescribed_type: str,
+        actual_type: str,
+        reason: str = "",
+    ) -> bool:
+        """Persist a manual override row for the operator audit trail."""
+        self.db.log_override(
+            date=date,
+            prescribed=prescribed_type,
+            actual=actual_type,
+            reason=reason,
+        )
+        return True
+
     def calibration_review(self, limit: int = 365) -> Dict[str, Any]:
         """Build calibration review payload for lock rates and promotion candidates."""
         decisions = self.db.get_governance_decisions(limit=limit)
