@@ -31,6 +31,30 @@ def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation():
     assert plan['total_km'] > 0
 
 
+def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs():
+    athlete = UniversalAthleteProfile(name='New Athlete Snapshot')
+    athlete.set_demographics(gender='F', age=31, height_cm=168, weight_kg=61.5)
+    athlete.set_hr_data(resting_hr=48, max_hr=186)
+
+    planner = _planner(hrv_baseline=52.0, hrv_latest=53.0, tsb_value=-8.0, tsb_status='NEUTRAL')
+
+    def snapshot(plan):
+        return {
+            'phase': plan['phase'],
+            'total_km': plan['total_km'],
+            'quality_count': plan['quality_count'],
+            'sessions': [
+                (s['day'], s['session_type'], s['distance_km'], s['details'])
+                for s in plan['daily_sessions']
+            ],
+        }
+
+    snap1 = snapshot(planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD'))
+    snap2 = snapshot(planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD'))
+
+    assert snap1 == snap2
+
+
 def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs():
     athlete = UniversalAthleteProfile(name='Determinism Check')
     planner = _planner(hrv_baseline=50.0, hrv_latest=50.0, tsb_value=-5.0, tsb_status='NEUTRAL')
@@ -62,6 +86,25 @@ def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppress
 
     assert 'INTERVALS' not in session_types
     assert details.count('downgraded') >= 1
+
+
+def test_gold_path_recovery_adaptation_snapshot_is_stable_for_same_inputs():
+    athlete = UniversalAthleteProfile(name='Recovery Snapshot')
+    planner = _planner(hrv_baseline=52.0, hrv_latest=38.0, tsb_value=-18.0, tsb_status='FATIGUED')
+
+    def snapshot(plan):
+        return {
+            'phase': plan['phase'],
+            'total_km': plan['total_km'],
+            'quality_count': plan['quality_count'],
+            'session_types': [s['session_type'] for s in plan['daily_sessions']],
+            'details': [s['details'] for s in plan['daily_sessions']],
+        }
+
+    snap1 = snapshot(planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD'))
+    snap2 = snapshot(planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD'))
+
+    assert snap1 == snap2
 
 
 def test_smoke_today_session_fallback_without_generated_plan():
