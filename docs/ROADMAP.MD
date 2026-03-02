@@ -109,7 +109,7 @@ Priority calibration targets (from `EvidenceRegistry`):
 ## Phase 6 — Web UI / Operator Console (PLANNED, Q2–Q3 2026)
 Goal: Operational visibility before advanced ML investment.
 
-1. Readiness + load dashboard (TSB/CTL/ATL timeline, HRV trend, VLG color)
+1. Readiness + load dashboard (TSB/CTL/ATL timeline, HRV trend, VLG color) — DONE (service payload in `titan/ui/operator_console.py`, tested in `tests/test_operator_console_dashboard.py`)
 2. Session explorer: log review, manual annotation, governance decision trail
 3. Calibration review: lock rates by phase, threshold calibration candidates
 4. Manual override workflow with audit trail (currently in DB, not surfaced)
