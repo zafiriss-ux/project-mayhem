@@ -38,6 +38,11 @@ _LOCK_TO_HEURISTIC_PARAMETERS: Dict[str, List[str]] = {
     'VO2_ELIGIBILITY_GATE': ['VO2_READINESS_MIN'],
 }
 
+_LOCK_TO_MODERATE_PARAMETERS: Dict[str, List[str]] = {
+    'HARD_STOP_SAFETY_GATES': ['HARD_STOP_HRV_DELTA'],
+    'VO2_ELIGIBILITY_GATE': ['VO2_GLYCOGEN_DEBT_MAX'],
+}
+
 
 @dataclass
 class GovernanceDecision:
@@ -401,6 +406,9 @@ class OutcomeTracker:
             'heuristic_promotion_candidates': self._get_heuristic_promotion_candidates(
                 lock_outcome_correlation
             ),
+            'moderate_promotion_candidates': self._get_moderate_promotion_candidates(
+                lock_outcome_correlation
+            ),
             'calibration_note': (
                 'Ready for threshold calibration review.'
                 if calibration_ready else
@@ -449,6 +457,64 @@ class OutcomeTracker:
                     'completion_delta_pp': round(completion_delta_pp, 1),
                     'recommendation': (
                         'Review for HEURISTIC→MODERATE promotion with ADR + EvidenceRegistry update.'
+                    ),
+                })
+
+        return sorted(candidates, key=lambda x: abs(x['completion_delta_pp']), reverse=True)
+
+    def _get_moderate_promotion_candidates(
+        self,
+        lock_outcome_correlation: Dict[str, Dict],
+    ) -> List[Dict]:
+        """
+        Build candidate list for MODERATE → STRONG promotion review.
+
+        A candidate is surfaced only when:
+          - the lock maps to a MODERATE parameter,
+          - there are at least 8 sessions in both with-lock / without-lock groups,
+          - absolute completion delta is at least 10 percentage points,
+          - lock behavior appears in at least 2 distinct phases.
+        """
+        candidates: List[Dict] = []
+
+        for lock_name, params in _LOCK_TO_MODERATE_PARAMETERS.items():
+            metrics = lock_outcome_correlation.get(lock_name)
+            if not metrics:
+                continue
+
+            n_with = int(metrics.get('n_with_lock', 0) or 0)
+            n_without = int(metrics.get('n_without_lock', 0) or 0)
+            completion_delta_pp = float(metrics.get('completion_delta_pp', 0.0) or 0.0)
+
+            with_lock_phases = {
+                d.phase for d in self._decisions
+                if d.outcome_completed is not None and lock_name in d.locks_applied
+            }
+            phase_replication_count = len(with_lock_phases)
+
+            if (
+                n_with < 8
+                or n_without < 8
+                or abs(completion_delta_pp) < 10.0
+                or phase_replication_count < 2
+            ):
+                continue
+
+            for parameter in params:
+                evidence = get_evidence(parameter)
+                if evidence is None or evidence.evidence_level != 'MODERATE':
+                    continue
+
+                candidates.append({
+                    'parameter': parameter,
+                    'trigger_lock': lock_name,
+                    'n_with_lock': n_with,
+                    'n_without_lock': n_without,
+                    'completion_delta_pp': round(completion_delta_pp, 1),
+                    'phase_replication_count': phase_replication_count,
+                    'recommendation': (
+                        'Review for MODERATE→STRONG promotion after cross-profile replication '
+                        'and EvidenceRegistry update.'
                     ),
                 })
 

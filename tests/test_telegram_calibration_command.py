@@ -126,3 +126,38 @@ def test_calibration_callback_formats_heuristic_promotion_candidates():
     assert "HEURISTIC→MODERATE candidates" in response
     assert "VO2_READINESS_MIN" in response
     assert "VO2_ELIGIBILITY_GATE" in response
+
+
+def test_calibration_callback_formats_moderate_promotion_candidates():
+    telegram = MagicMock()
+    callbacks = {}
+    telegram.register_command = lambda command, cb: callbacks.setdefault(command, cb)
+
+    summary = {
+        "status": "CALIBRATION_AVAILABLE",
+        "n_decisions": 75,
+        "n_with_outcome": 60,
+        "completion_rate": 0.82,
+        "governance_lock_rate": 0.31,
+        "athlete_override_rate": 0.06,
+        "avg_rpe_when_completed": 6.0,
+        "lock_rate_by_phase": {"BUILD": 0.333},
+        "lock_outcome_correlation": {},
+        "moderate_promotion_candidates": [
+            {
+                "parameter": "VO2_GLYCOGEN_DEBT_MAX",
+                "completion_delta_pp": -12.2,
+                "n_with_lock": 10,
+                "n_without_lock": 50,
+                "phase_replication_count": 2,
+                "trigger_lock": "VO2_ELIGIBILITY_GATE",
+            }
+        ],
+        "calibration_note": "Ready for threshold calibration review.",
+    }
+    _register_telegram_callbacks(telegram, _build_ctx(summary))
+
+    response = callbacks["calibration"]()
+    assert "MODERATE→STRONG candidates" in response
+    assert "VO2_GLYCOGEN_DEBT_MAX" in response
+    assert "2 phases" in response
