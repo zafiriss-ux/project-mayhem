@@ -122,13 +122,13 @@ Goal: Machine learning on a stable, calibrated, observable foundation.
 
 1. LSTM load prediction — shadow mode first, then graduated rollout — DONE (2026-03-02: shadow predictor scaffold in `titan/science/load_prediction_shadow.py` with contract tests in `tests/test_load_prediction_shadow.py`)
 2. Injury risk model — ensemble (Random Forest + Gradient Boosting), recall > 80% — DONE (2026-03-02: advisory scaffold in `titan/science/injury_risk_model.py` with contract tests in `tests/test_injury_risk_model.py`)
-3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply
+3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply — DONE (2026-03-02: suggest-only scaffold in `titan/science/automated_periodization.py` with contract tests in `tests/test_automated_periodization.py`)
 4. Kill-switch mandatory for all ML paths before any athlete-facing deployment
 5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC)
 
 ### Remaining
 
-- 3 tasks.
+- 2 tasks.
 
 ---
 
@@ -177,4 +177,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 7 tasks 1–2 completed)
+Last updated: 2026-03-02 (Phase 7 task 3 completed; 2 tasks remaining)
