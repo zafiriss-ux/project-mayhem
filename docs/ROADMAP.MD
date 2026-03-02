@@ -50,8 +50,8 @@ Goal: Introduce governance infrastructure and safety rails safely.
 - Specs cherry-picked to main: `docs/specs/adaptive_priority_lock.md`, `docs/specs/volume_load_gauge.md`
 - ADR-0008: Adaptive Priority Lock and VLG specs
 - Phase 3 hygiene sweep — DONE (2026-03-02): `tests/test_phase3_hygiene.py` (27 tests);
-  all five Phase 3 modules at 99 % aggregate coverage; `governance_contracts` and
-  `adaptive_priority_lock` at 100 %; total suite 932 tests, all green.
+  all five Phase 3 modules at 99% aggregate coverage; `governance_contracts` and
+  `adaptive_priority_lock` at 100%; total suite 932 tests, all green.
 
 ### Remaining
 
@@ -59,32 +59,94 @@ Goal: Introduce governance infrastructure and safety rails safely.
 
 ---
 
-## Phase 4 — Observability & E2E (IN PROGRESS)
+## Phase 4 — Observability & E2E (PARTIALLY COMPLETE)
 Goal: Production-grade visibility and regression safety.
 
-Order:
-1. Structured logs for remaining flows (planner, scoring, Telegram handlers)
-2. E2E gold-path scenarios (new athlete, weekly plan, recovery adaptation)
-3. Snapshot tests for decision stability
-4. Smoke checks post-release
-5. SLO metrics (error rate, response latency, fallback frequency)
+### Completed
+
+- E2E gold-path scenarios — DONE (`tests/test_e2e_regression_suite.py`)
+- Snapshot tests for decision stability — DONE (additional coverage in E2E suite)
+- OutcomeTracker DB persistence — DONE (`governance_outcomes` table, `tests/test_outcome_tracker_persistence.py`)
+- Structured observability for governance gates — DONE (`_gate_event()` + cause tagging + audit summary)
+
+### Remaining (in order)
+
+1. Structured logs for remaining flows: `WeeklyPlanGenerator`, `ReadinessEngine`, `NutritionOptimizer`
+2. `/calibration` Telegram command: lock_rate_by_phase, completion_rate from `governance_outcomes`
+3. SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
+4. Smoke checks post-release (import + instantiate + run 1 step, CI-gated)
 
 ---
 
-## Phase 5 — Web UI / Operator Console (PLANNED)
+## Phase 5 — Science Calibration (PLANNED, after ≥30 outcomes)
+Goal: Evidence-based threshold tuning on a foundation of real outcome data.
+
+**Prerequisite**: ≥30 paired governance decisions in `governance_outcomes` table.
+
+1. Correlate gate triggers with session outcomes (RPE, completion rate)
+2. Promote HEURISTIC thresholds to MODERATE where correlation is confirmed
+3. Promote MODERATE thresholds to STRONG where replication across profiles is confirmed
+4. Surface calibration candidates via `/calibration` Telegram command
+5. Document every promoted threshold in `EvidenceRegistry` with evidence count and date
+
+Priority calibration targets (from `EvidenceRegistry`):
+- `VO2_READINESS_MIN` — HEURISTIC
+- `HARD_STOP_TSB_FLOOR` — HEURISTIC
+- `SUBJECTIVE_FATIGUE_2OF4` — HEURISTIC
+- `VO2_GLYCOGEN_DEBT_MAX` — MODERATE
+- `HARD_STOP_HRV_DELTA` — MODERATE
+
+---
+
+## Phase 6 — Web UI / Operator Console (PLANNED, Q2–Q3 2026)
 Goal: Operational visibility before advanced ML investment.
 
-- Readiness + load dashboard
-- TSB/CTL/ATL timeline
-- Manual review/approve workflow for critical recommendations
+1. Readiness + load dashboard (TSB/CTL/ATL timeline, HRV trend, VLG color)
+2. Session explorer: log review, manual annotation, governance decision trail
+3. Calibration review: lock rates by phase, threshold calibration candidates
+4. Manual override workflow with audit trail (currently in DB, not surfaced)
+5. Technology path: Streamlit (rapid prototype) → React + FastAPI (production)
 
 ---
 
-## Phase 6 — ML Features (PLANNED, after Phase 5)
-- LSTM load prediction (shadow mode first, then graduated rollout)
-- Injury risk model (ensemble, 15+ features)
-- Automated periodization (genetic algorithm)
-- Kill-switch for all ML paths
+## Phase 7 — ML Features (PLANNED, Q3–Q4 2026, after Phase 6)
+Goal: Machine learning on a stable, calibrated, observable foundation.
+
+1. LSTM load prediction — shadow mode first, then graduated rollout
+2. Injury risk model — ensemble (Random Forest + Gradient Boosting), recall > 80%
+3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply
+4. Kill-switch mandatory for all ML paths before any athlete-facing deployment
+5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC)
+
+---
+
+## Phase 8 — Multi-Platform & Social (PLANNED, 2027)
+Goal: Expand reach beyond single-athlete CLI to team and mobile contexts.
+
+1. Additional device sync: Strava, Polar, Whoop, COROS — unified adapter interface
+2. All new sync sources must provide HRV, RHR, sleep — otherwise read-only
+3. Multi-athlete team dashboard (10–50 athletes, coach view, comparative load grid)
+4. High-risk alert system: VLG RED for any athlete triggers coach notification
+5. Mobile app: React Native (iOS + Android), offline SQLite sync, native notifications
+
+---
+
+## Phase 9 — Autonomous Coaching Intelligence (PLANNED, 2028)
+Goal: Close the adaptive loop — the system self-improves from accumulated evidence
+across multiple athlete profiles without requiring manual threshold edits.
+
+**Prerequisite**: Phases 5–8 complete; ≥3 athlete profiles with ≥90 paired decisions each.
+
+1. Auto-threshold calibration: MODERATE → STRONG without manual intervention
+   when confidence bounds are met; every change recorded in `threshold_changelog` table
+2. Rollback gate: revert if calibrated threshold degrades completion_rate or
+   increases injury events within a 30-day observation window
+3. Athlete DNA profile: athlete-specific learned thresholds replacing population heuristics;
+   versioned in DB; previous versions retained for rollback
+4. Proactive load modulation: predictive volume reduction before metrics breach safety bands;
+   advisory mode first (3+ correct predictions required before auto-apply)
+5. Multi-modal biometric ingestion: lab VO2max, lactate curve, HRV4Training exports;
+   weighted by provenance (lab > wearable > self-reported)
 
 ---
 
@@ -94,6 +156,11 @@ No feature development without:
 1. Written specification
 2. ADR entry
 3. Clear integration boundary
+
+Detailed scope, calibration parameters, success metrics, and tech stack are in
+`FUTURE_UPGRADES.md` at the repository root. The two documents are complementary:
+this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
+*scope and implementation detail*.
 
 ---
 
