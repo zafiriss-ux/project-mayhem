@@ -4,6 +4,7 @@ Persistent storage for training data, athlete profiles, and performance metrics
 """
 
 import contextlib
+import logging
 import sqlite3
 import json
 from datetime import datetime
@@ -12,6 +13,8 @@ from typing import Dict, List, Optional, Tuple, Any
 import threading
 
 from titan.core.athlete import UniversalAthleteProfile
+
+_log = logging.getLogger(__name__)
 
 
 class DatabaseManager:
@@ -855,6 +858,5 @@ class AthleteDatabase:
                     data = json.load(f)
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
-            except Exception:
-                # Skip corrupted files
-                pass
+            except Exception as e:
+                _log.warning("Skipped corrupted athlete file: %s (%s)", filepath.name, type(e).__name__)

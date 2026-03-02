@@ -1,6 +1,6 @@
 # TITAN OS v5.7.0 — Production Requirements
 # Build Environment: Python 3.11.9 (Windows 11 x64)
-# Last Updated: 2026-02-19
+# Last Updated: 2026-03-02
 
 # ══════════════════════════════════════════════════════════════════════════════
 # CRITICAL: Python Version Requirement
@@ -17,7 +17,7 @@
 # Core Dependencies
 numpy==1.26.4          # Data processing
 pandas==2.2.1          # Time series analysis
-scikit-learn>=1.4,<1.5 # ML algorithms (CTL/ATL prediction)
+scikit-learn==1.4.2    # ML algorithms (CTL/ATL prediction)
 pyyaml==6.0.1          # Configuration files
 
 # API Integrations
@@ -31,6 +31,6 @@ pyinstaller==6.4.0     # Freeze Python to executable
 pywin32==306; sys_platform == 'win32'  # Windows API bindings
 
 # Testing (development only)
-pytest>=8,<9
+pytest==8.3.3
 pytest-cov==4.1.0
-hypothesis>=6.100          # Property-based testing
+hypothesis==6.112.1        # Property-based testing

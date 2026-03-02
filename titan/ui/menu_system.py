@@ -10,12 +10,11 @@ Central navigation hub:
 - Settings
 """
 
-import os
 import sys
 from datetime import datetime
 
 def _clear():
-    os.system("clear" if os.name != "nt" else "cls")
+    print("\033[2J\033[H", end="", flush=True)
 
 def _header(title: str = "TITAN v51"):
     print(f"""
