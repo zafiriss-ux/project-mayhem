@@ -92,3 +92,37 @@ def test_calibration_callback_formats_lock_correlation_section():
     assert "Lock/outcome correlation" in response
     assert "LOCK_A" in response
     assert "Δcompletion -12.5pp" in response
+
+
+def test_calibration_callback_formats_heuristic_promotion_candidates():
+    telegram = MagicMock()
+    callbacks = {}
+    telegram.register_command = lambda command, cb: callbacks.setdefault(command, cb)
+
+    summary = {
+        "status": "CALIBRATION_AVAILABLE",
+        "n_decisions": 50,
+        "n_with_outcome": 33,
+        "completion_rate": 0.8,
+        "governance_lock_rate": 0.36,
+        "athlete_override_rate": 0.09,
+        "avg_rpe_when_completed": 6.2,
+        "lock_rate_by_phase": {"BUILD": 0.333},
+        "lock_outcome_correlation": {},
+        "heuristic_promotion_candidates": [
+            {
+                "parameter": "VO2_READINESS_MIN",
+                "completion_delta_pp": -20.0,
+                "n_with_lock": 7,
+                "n_without_lock": 26,
+                "trigger_lock": "VO2_ELIGIBILITY_GATE",
+            }
+        ],
+        "calibration_note": "Ready for threshold calibration review.",
+    }
+    _register_telegram_callbacks(telegram, _build_ctx(summary))
+
+    response = callbacks["calibration"]()
+    assert "HEURISTIC→MODERATE candidates" in response
+    assert "VO2_READINESS_MIN" in response
+    assert "VO2_ELIGIBILITY_GATE" in response

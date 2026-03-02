@@ -27,8 +27,16 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from titan.core.database import DatabaseManager
+from titan.config.evidence_registry import get_evidence
 
 _log = logging.getLogger(__name__)
+
+
+_LOCK_TO_HEURISTIC_PARAMETERS: Dict[str, List[str]] = {
+    'READINESS_2OF4_DOWNGRADE': ['SUBJECTIVE_FATIGUE_2OF4'],
+    'HARD_STOP_SAFETY_GATES': ['HARD_STOP_TSB_FLOOR'],
+    'VO2_ELIGIBILITY_GATE': ['VO2_READINESS_MIN'],
+}
 
 
 @dataclass
@@ -378,6 +386,7 @@ class OutcomeTracker:
         athlete_override_rate = round(n_deviated / n_with_outcome, 3)
 
         calibration_ready = n_with_outcome >= 30
+        lock_outcome_correlation = self.get_lock_outcome_correlation()
 
         return {
             'status': 'CALIBRATION_AVAILABLE' if calibration_ready else 'ACCUMULATING',
@@ -388,7 +397,10 @@ class OutcomeTracker:
             'athlete_override_rate': athlete_override_rate,
             'avg_rpe_when_completed': avg_rpe,
             'lock_rate_by_phase': self.get_lock_rate_by_phase(),
-            'lock_outcome_correlation': self.get_lock_outcome_correlation(),
+            'lock_outcome_correlation': lock_outcome_correlation,
+            'heuristic_promotion_candidates': self._get_heuristic_promotion_candidates(
+                lock_outcome_correlation
+            ),
             'calibration_note': (
                 'Ready for threshold calibration review.'
                 if calibration_ready else
@@ -397,3 +409,47 @@ class OutcomeTracker:
                 f'at least 30 correlated outcomes exist.'
             ),
         }
+
+    def _get_heuristic_promotion_candidates(
+        self,
+        lock_outcome_correlation: Dict[str, Dict],
+    ) -> List[Dict]:
+        """
+        Build candidate list for HEURISTIC → MODERATE promotion review.
+
+        A candidate is surfaced only when:
+          - the lock maps to a HEURISTIC parameter,
+          - there are at least 5 sessions in both with-lock / without-lock groups,
+          - absolute completion delta is at least 8 percentage points.
+        """
+        candidates: List[Dict] = []
+
+        for lock_name, params in _LOCK_TO_HEURISTIC_PARAMETERS.items():
+            metrics = lock_outcome_correlation.get(lock_name)
+            if not metrics:
+                continue
+
+            n_with = int(metrics.get('n_with_lock', 0) or 0)
+            n_without = int(metrics.get('n_without_lock', 0) or 0)
+            completion_delta_pp = float(metrics.get('completion_delta_pp', 0.0) or 0.0)
+
+            if n_with < 5 or n_without < 5 or abs(completion_delta_pp) < 8.0:
+                continue
+
+            for parameter in params:
+                evidence = get_evidence(parameter)
+                if evidence is None or evidence.evidence_level != 'HEURISTIC':
+                    continue
+
+                candidates.append({
+                    'parameter': parameter,
+                    'trigger_lock': lock_name,
+                    'n_with_lock': n_with,
+                    'n_without_lock': n_without,
+                    'completion_delta_pp': round(completion_delta_pp, 1),
+                    'recommendation': (
+                        'Review for HEURISTIC→MODERATE promotion with ADR + EvidenceRegistry update.'
+                    ),
+                })
+
+        return sorted(candidates, key=lambda x: abs(x['completion_delta_pp']), reverse=True)

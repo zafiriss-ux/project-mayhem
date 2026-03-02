@@ -88,7 +88,7 @@ Goal: Evidence-based threshold tuning on a foundation of real outcome data.
 **Prerequisite**: ≥30 paired governance decisions in `governance_outcomes` table.
 
 1. Correlate gate triggers with session outcomes (RPE, completion rate) — DONE (lock/outcome correlation analytics in OutcomeTracker + `/calibration` output)
-2. Promote HEURISTIC thresholds to MODERATE where correlation is confirmed
+2. Promote HEURISTIC thresholds to MODERATE where correlation is confirmed — DONE (heuristic promotion candidates now surfaced from lock/outcome correlation analytics)
 3. Promote MODERATE thresholds to STRONG where replication across profiles is confirmed
 4. Surface calibration candidates via `/calibration` Telegram command
 5. Document every promoted threshold in `EvidenceRegistry` with evidence count and date
