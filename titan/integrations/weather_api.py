@@ -13,6 +13,9 @@ import time
 
 import requests
 
+
+REQUESTS_VERIFY_SSL = True
+
 class WeatherAPI:
     """
     Weather API integration with intelligent caching.
@@ -122,7 +125,7 @@ class WeatherAPI:
             "https://geocoding-api.open-meteo.com/v1/search",
             params=params,
             timeout=8,
-            verify=True,
+            verify=REQUESTS_VERIFY_SSL,
         )
         response.raise_for_status()
         payload = response.json() or {}
@@ -149,7 +152,7 @@ class WeatherAPI:
             "https://api.open-meteo.com/v1/forecast",
             params=params,
             timeout=10,
-            verify=True,
+            verify=REQUESTS_VERIFY_SSL,
         )
         response.raise_for_status()
         payload = response.json() or {}
