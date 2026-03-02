@@ -8,6 +8,8 @@ monitor recall, and gate rollout before any autonomous intervention.
 from dataclasses import dataclass
 from typing import Dict, Mapping
 
+from titan.science.ml_safety import enforce_ml_kill_switch
+
 
 @dataclass(frozen=True)
 class InjuryRiskAssessment:
@@ -30,7 +32,15 @@ class InjuryRiskEnsembleModel:
     - Enforce advisory mode only during shadow calibration.
     """
 
-    def assess_risk(self, features: Mapping[str, float]) -> InjuryRiskAssessment:
+    def assess_risk(
+        self,
+        features: Mapping[str, float],
+        athlete_facing: bool = False,
+    ) -> InjuryRiskAssessment:
+        enforce_ml_kill_switch(
+            path_name='injury_risk_model', athlete_facing=athlete_facing
+        )
+
         normalized = self._normalize(features)
         rf_score = self._rf_proxy(normalized)
         gb_score = self._gb_proxy(normalized)

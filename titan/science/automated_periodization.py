@@ -7,6 +7,8 @@ microcycle adjustment while preserving human confirmation before any apply step.
 from dataclasses import dataclass
 from typing import Dict, Mapping
 
+from titan.science.ml_safety import enforce_ml_kill_switch
+
 
 @dataclass(frozen=True)
 class PeriodizationSuggestion:
@@ -30,7 +32,15 @@ class AutomatedPeriodizationEngine:
     - Enforce suggest-only mode until athlete confirmation is implemented.
     """
 
-    def suggest(self, state: Mapping[str, float]) -> PeriodizationSuggestion:
+    def suggest(
+        self,
+        state: Mapping[str, float],
+        athlete_facing: bool = False,
+    ) -> PeriodizationSuggestion:
+        enforce_ml_kill_switch(
+            path_name='automated_periodization', athlete_facing=athlete_facing
+        )
+
         readiness = max(0.0, min(1.0, float(state.get('readiness', 0.5))))
         fatigue = max(0.0, min(1.0, float(state.get('fatigue', 0.5))))
         monotony = max(0.0, float(state.get('monotony', 1.3)))

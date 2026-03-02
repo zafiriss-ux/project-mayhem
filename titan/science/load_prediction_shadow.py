@@ -8,6 +8,8 @@ so ML paths can be validated before any athlete-facing activation.
 from dataclasses import dataclass
 from typing import Iterable, List, Dict
 
+from titan.science.ml_safety import enforce_ml_kill_switch
+
 
 @dataclass(frozen=True)
 class ShadowLoadPrediction:
@@ -33,7 +35,11 @@ class LoadPredictionShadowModel:
             raise ValueError('alpha must be in (0, 1]')
         self.alpha = float(alpha)
 
-    def predict_7d_load(self, recent_loads: Iterable[float]) -> ShadowLoadPrediction:
+    def predict_7d_load(
+        self,
+        recent_loads: Iterable[float],
+        athlete_facing: bool = False,
+    ) -> ShadowLoadPrediction:
         """Estimate next-7-day aggregate load from recent daily loads.
 
         Args:
@@ -42,6 +48,10 @@ class LoadPredictionShadowModel:
         Returns:
             ShadowLoadPrediction payload for audit dashboards.
         """
+        enforce_ml_kill_switch(
+            path_name='load_prediction_shadow', athlete_facing=athlete_facing
+        )
+
         values: List[float] = [max(0.0, float(v)) for v in recent_loads]
         if not values:
             return ShadowLoadPrediction(predicted_load_7d=0.0, trend='FLAT')
