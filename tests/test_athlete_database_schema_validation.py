@@ -47,3 +47,31 @@ def test_load_all_accepts_valid_profile_schema(tmp_path):
     db = AthleteDatabase(db_path=str(db_dir))
 
     assert "ATH_20200101010101" in db.athletes
+
+
+
+def test_load_all_skips_missing_athlete_id(tmp_path):
+    db_dir = tmp_path / "athletes"
+    db_dir.mkdir()
+    (db_dir / "missing_id.json").write_text(json.dumps({"name": "Runner"}))
+
+    db = AthleteDatabase(db_path=str(db_dir))
+
+    assert db.athletes == {}
+
+
+def test_load_all_accepts_missing_name_uses_default(tmp_path):
+    db_dir = tmp_path / "athletes"
+    db_dir.mkdir()
+
+    valid_without_name = {
+        "athlete_id": "ATH_20200101010102",
+        "age": 43,
+        "personal_bests": {},
+    }
+    (db_dir / "missing_name.json").write_text(json.dumps(valid_without_name))
+
+    db = AthleteDatabase(db_path=str(db_dir))
+
+    assert db.athletes["ATH_20200101010102"].name == "Default Athlete"
+main

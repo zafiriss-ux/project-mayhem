@@ -864,6 +864,18 @@ class AthleteDatabase:
 
     @staticmethod
     def _validate_profile_schema(data: Any) -> None:
+
+        """Lightweight schema validation before profile deserialization."""
+        if not isinstance(data, dict):
+            raise TypeError("Athlete profile must be a JSON object")
+
+        athlete_id = data.get("athlete_id")
+        if not isinstance(athlete_id, str) or not athlete_id.strip():
+            raise ValueError("Invalid field: athlete_id")
+
+        typed_fields = {
+            "name": str,
+
         """Validate shape/types for athlete JSON before profile deserialization."""
         if not isinstance(data, dict):
             raise TypeError("Athlete profile must be a JSON object")
@@ -878,6 +890,7 @@ class AthleteDatabase:
                 raise ValueError(f"Invalid field: {field}")
 
         typed_fields = {
+
             "gender": str,
             "age": int,
             "height_cm": (int, float),
@@ -896,8 +909,18 @@ class AthleteDatabase:
             "d_prime_m": (int, float),
         }
         for field, expected_type in typed_fields.items():
+
+            value = data.get(field)
+            if value is not None and not isinstance(value, expected_type):
+                raise TypeError(f"Invalid type for field: {field}")
+
+        race_day = data.get("race_day")
+        if race_day:
+            datetime.fromisoformat(race_day)
+
             if field in data and data[field] is not None and not isinstance(data[field], expected_type):
                 raise TypeError(f"Invalid type for field: {field}")
 
         if "race_day" in data and data["race_day"] is not None:
             datetime.fromisoformat(data["race_day"])
+
