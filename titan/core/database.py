@@ -875,6 +875,24 @@ class DatabaseManager:
             })
         return decisions
 
+    def annotate_governance_outcome(self, date: str, note: str) -> bool:
+        """Attach or replace manual operator note for latest governance decision on date."""
+        cursor = self.conn.cursor()
+        with self._lock:
+            cursor.execute(
+                """UPDATE governance_outcomes
+                   SET outcome_notes = ?
+                   WHERE id = (
+                       SELECT id FROM governance_outcomes
+                       WHERE date = ?
+                       ORDER BY id DESC
+                       LIMIT 1
+                   )""",
+                (note, date),
+            )
+            self.conn.commit()
+            return cursor.rowcount > 0
+
     def close(self) -> None:
         """Close database connection."""
         if self.conn:
