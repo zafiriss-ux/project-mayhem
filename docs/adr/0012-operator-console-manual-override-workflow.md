@@ -20,4 +20,4 @@ writes/reads on top of the existing `DatabaseManager` API:
 ## Consequences
 - Operator Console can review override discipline without direct SQL usage.
 - Existing governance architecture and DB schema remain unchanged.
-- Phase 6 task 4 is complete; task 5 (technology path) remains.
+- Phase 6 task 4 is complete and aligned with ADR-0013 technology path.
