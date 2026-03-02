@@ -323,18 +323,6 @@ def main():
     )
 
     # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
-    def _env_int(key: str, default: int) -> int:
-        try:
-            return int(os.getenv(key, str(default)))
-        except (ValueError, TypeError):
-            return default
-
-    def _env_float(key: str, default: float) -> float:
-        try:
-            return float(os.getenv(key, str(default)))
-        except (ValueError, TypeError):
-            return default
-
     athlete_profile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
 
@@ -343,12 +331,6 @@ def main():
         "height_cm":      _parse_env_number("ATHLETE_HEIGHT", "175", float),
         "max_hr":         _parse_env_number("ATHLETE_MAX_HR", "190", int),
         "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", "168", int),
-
-        "age":            _env_int("ATHLETE_AGE", 35),
-        "weight_kg":      _env_float("ATHLETE_WEIGHT", 75.0),
-        "height_cm":      _env_float("ATHLETE_HEIGHT", 175.0),
-        "max_hr":         _env_int("ATHLETE_MAX_HR", 190),
-        "threshold_hr":   _env_int("ATHLETE_THRESHOLD_HR", 168),
 
         "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
