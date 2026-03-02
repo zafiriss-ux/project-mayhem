@@ -107,12 +107,13 @@ class TestHRVCollapseHardStop:
         result = gov.apply_constraints(make_plan("INTERVALS"), ctx)
         assert "HARD_STOP_SAFETY_GATES" in result.get("governance_locks_applied", [])
 
-    def test_does_not_fire_at_exact_threshold(self, gov):
-        # Boundary: today_hrv == baseline - HARD_STOP_HRV_DELTA → strictly NOT < floor
+    def test_fires_at_exact_threshold(self, gov):
+        # Boundary: today_hrv == baseline - HARD_STOP_HRV_DELTA → inclusive (<=), H2 fires.
+        # Per ADR-0009 and test_p0_safety_gates::test_H2_hrv_exactly_at_threshold_fires.
         baseline = 50.0
         ctx = make_context(today_hrv=baseline - HARD_STOP_HRV_DELTA, baseline_hrv=baseline)
         result = gov.apply_constraints(make_plan("EASY"), ctx)
-        assert "HARD_STOP_SAFETY_GATES" not in result.get("governance_locks_applied", [])
+        assert "HARD_STOP_SAFETY_GATES" in result.get("governance_locks_applied", [])
 
     def test_does_not_fire_within_threshold(self, gov):
         baseline = 50.0
