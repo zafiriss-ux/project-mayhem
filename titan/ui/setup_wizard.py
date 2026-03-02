@@ -71,12 +71,19 @@ def run_setup_wizard() -> dict:
 
     # ── Garmin ──────────────────────────────────────────────────────────
     print("━━━  GARMIN CONNECT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    email = input("  Email Garmin: ").strip()
+    if "@" not in email or "." not in email.split("@", 1)[-1]:
+        print("  ⚠️  Email μοιάζει άκυρο (αναμένεται μορφή user@example.com)")
+    creds["GARMIN_EMAIL"]    = email
+
     while True:
         garmin_email = input("  Email Garmin: ").strip()
         if EMAIL_REGEX.fullmatch(garmin_email):
             creds["GARMIN_EMAIL"] = garmin_email
             break
         print("  ⚠️  Μη έγκυρο email. Χρησιμοποίησε μορφή name@example.com.")
+
 
     creds["GARMIN_PASSWORD"] = getpass.getpass("  Password (κρυφό): ")
 
@@ -100,6 +107,13 @@ def run_setup_wizard() -> dict:
     # ── Weather ──────────────────────────────────────────────────────────
     print("\n━━━  WEATHER API (openweathermap.org)  ━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Δωρεάν εγγραφή → API keys → Πάρε το key")
+
+    api_key = input("  API Key: ").strip()
+    if len(api_key) < 20:
+        print("  ⚠️  API key μοιάζει άκυρο (OpenWeatherMap keys είναι 32 χαρακτήρες)")
+    creds["WEATHER_API_KEY"]  = api_key
+    creds["WEATHER_LOCATION"] = input("  Τοποθεσία (π.χ. Athens,GR): ").strip() or "Athens,GR"
+
     while True:
         weather_key = input("  API Key: ").strip()
         if len(weather_key) >= 16:
@@ -114,6 +128,7 @@ def run_setup_wizard() -> dict:
             break
         print("  ⚠️  Μη έγκυρη τοποθεσία. Χρησιμοποίησε μορφή City,CC (π.χ. Athens,GR).")
 
+
     # ── Save ─────────────────────────────────────────────────────────────
     _save_env(creds)
     load_env_file()
@@ -127,6 +142,12 @@ def _save_env(creds: dict):
         value = str(v).replace("\n", "").replace("\r", "")
         lines.append(f"{k}={value}")
     ENV_PATH.write_text("\n".join(lines) + "\n")
+    ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
+    if os.name == "nt":
+        print(
+            "  ⚠️  Windows: τα permissions του .env δεν εφαρμόζονται αυτόματα.\n"
+            "  Προστάτεψε το χειροκίνητα: Ιδιότητες → Ασφάλεια → αφαίρεσε άλλους χρήστες."
+        )
     if os.name == "nt":
         print("  ⚠️  Windows limitation: .env file permissions could not be restricted automatically.")
         print("     Verify .env access manually if this machine is shared.")

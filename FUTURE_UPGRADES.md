@@ -10,54 +10,6 @@
 
 ## IMMEDIATE — Next Cycle
 
-### 0) Security Hardening
-
-Security audit (2026-03-02) identified the following issues, in fix-priority order:
-
-**[SEC-1] — CRITICAL: Unsafe env var type conversion** (`titan/main.py:317–321`)
-Direct `int()`/`float()` conversion of env vars without try/except. An invalid
-value (e.g. `ATHLETE_AGE=abc`) crashes the process at startup.
-- Wrap conversions in try/except with descriptive error message and safe exit.
-
-**[SEC-2] — CRITICAL: Weak input validation in setup wizard** (`titan/ui/setup_wizard.py:71–86`)
-No format validation on Garmin email, API keys, or location string. Chat ID stored
-as string but used as int (silent coercion).
-- Validate email format (regex), enforce numeric Chat ID at collection time,
-  add minimum-length checks for API keys.
-
-**[SEC-3] — HIGH: `os.system()` for terminal clear** (`titan/ui/menu_system.py:18`)
-Anti-pattern: spawns a shell subprocess. Safe to replace with `subprocess.run()`
-or `os.system` avoided entirely via ANSI escape codes.
-- Replace with `print("\033[2J\033[H", end="")` or `subprocess.run(["clear"])`.
-
-**[SEC-4] — HIGH: Unpinned dependencies** (`requirements.txt:20,34,36`)
-`scikit-learn>=1.4,<1.5`, `pytest>=8,<9`, `hypothesis>=6.100` use version ranges.
-Different environments may resolve to incompatible minor versions.
-- Pin to exact versions: `pytest==8.1.0`, `hypothesis==6.100.0`, `scikit-learn==1.4.2`.
-
-**[SEC-5] — HIGH: Plaintext credential storage** (`garmin_sync.py:21–22`, `telegram_bot.py:31–32`)
-Garmin and Telegram credentials held in plaintext object attributes.
-Memory dump or exception trace could expose them.
-- Move to `keyring` or `SecretStr` wrapper; never store raw credentials in instance vars.
-
-**[SEC-6] — MEDIUM: No explicit SSL verify flag** (`integrations/weather_api.py:117–147`)
-`requests.get()` calls rely on the default `verify=True`. Implicit reliance on
-defaults is fragile across library versions.
-- Add `verify=True` explicitly to all `requests` calls.
-
-**[SEC-7] — MEDIUM: No JSON schema validation on profile load** (`core/database.py:855`)
-`json.load()` + `from_dict()` with no schema guard. Malformed backup files cause
-`KeyError`/`TypeError` at runtime.
-- Add a lightweight schema check (field presence + type) before `from_dict()`.
-
-**[SEC-8] — MEDIUM: Exception details leaked in Garmin error message** (`garmin_sync.py:44–54`)
-`f"(Detail: {e})"` in user-facing print may expose OAuth token fragments or paths.
-- Log detail at DEBUG level only; show a generic message to the user.
-
-**[SEC-9] — LOW: `.env` file permissions not verified on Windows** (`setup_wizard.py:101`)
-`Path.chmod(0o600)` is a no-op on Windows — the file stays world-readable.
-- Document the limitation; add a platform check and warn the user on Windows.
-
 ---
 
 ### 1) E2E Regression Suite
@@ -97,6 +49,17 @@ require a DB-backed accumulation cycle across multiple restarts.
 
 | # | Item | Status | Where |
 |---|------|--------|-------|
+| SEC-1 | Safe env var conversion: `_env_int`/`_env_float` helpers | DONE | `titan/main.py:315–325` |
+| SEC-2 | Email format check + Chat ID loop + token format + API key length | DONE | `titan/ui/setup_wizard.py` |
+| SEC-3 | `os.system("clear")` → ANSI escape; αφαίρεση `import os` | DONE | `titan/ui/menu_system.py:16–17` |
+| SEC-4 | Pin scikit-learn==1.4.2, pytest==8.3.3, hypothesis==6.112.1 | DONE | `requirements.txt` |
+| SEC-5 | `_Secret(str)` wrapper: redacts credentials σε repr/tracebacks | DONE | `titan/utils/constants.py` + `garmin_sync.py` + `telegram_bot.py` |
+| SEC-6 | `verify=True` + cache geocoding coordinates | DONE | `titan/integrations/weather_api.py` |
+| SEC-7 | `_validate_athlete_dict()`: schema guard πριν το `from_dict()` | DONE | `titan/core/database.py:18–30` |
+| SEC-8 | Exception Garmin → `_log.debug(exc_info=True)`, stdout καθαρός | DONE | `titan/integrations/garmin_sync.py:45–59` |
+| SEC-9 | Windows `.env` permission warning στο `_save_env()` | DONE | `titan/ui/setup_wizard.py:108–111` |
+| — | `database.py` bare `except: pass` → `_log.warning()` | DONE | `titan/core/database.py` |
+| — | Weather fallback: `is_fallback: True` + warning stdout | DONE | `titan/integrations/weather_api.py` |
 | — | Adaptive Priority Lock (APL) | DONE | `titan/science/adaptive_priority_lock.py` |
 | — | VolumeLoadGauge (VLG) | DONE | `titan/science/volume_load_gauge.py` |
 | — | Outcome Tracker | DONE | `titan/science/outcome_tracker.py` |

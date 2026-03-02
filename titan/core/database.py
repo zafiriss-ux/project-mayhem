@@ -16,6 +16,23 @@ from titan.core.athlete import UniversalAthleteProfile
 
 _log = logging.getLogger(__name__)
 
+# Ελάχιστα πεδία που πρέπει να υπάρχουν σε κάθε αρχείο JSON αθλητή
+_REQUIRED_ATHLETE_KEYS: frozenset = frozenset({"athlete_id", "name"})
+
+
+def _validate_athlete_dict(data: object) -> None:
+    """Ελαφρύς έλεγχος σχήματος πριν το from_dict().
+
+    Raises:
+        TypeError: αν το data δεν είναι dict
+        ValueError: αν λείπουν υποχρεωτικά πεδία
+    """
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected dict, got {type(data).__name__}")
+    missing = _REQUIRED_ATHLETE_KEYS - data.keys()
+    if missing:
+        raise ValueError(f"Missing required athlete fields: {missing}")
+
 
 class DatabaseManager:
     """
@@ -856,7 +873,11 @@ class AthleteDatabase:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
+
+                _validate_athlete_dict(data)
+
                 self._validate_profile_schema(data)
+
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
             except Exception as e:

@@ -4,6 +4,19 @@ Session types, HR zones, and system-wide constants
 """
 
 
+class _Secret(str):
+    """String subclass για sensitive δεδομένα (credentials).
+
+    Η τιμή λειτουργεί κανονικά ως string σε όλες τις κλήσεις API,
+    αλλά εμφανίζεται ως '***' σε repr/tracebacks ώστε να μην
+    εκτίθεται σε logs ή exception messages.
+    """
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "'***'"
+
+
 # Default Configuration
 DEFAULT_CONFIG = {
     'hr_zones': {
