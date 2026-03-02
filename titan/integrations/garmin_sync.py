@@ -48,16 +48,9 @@ class GarminSync:
             self.is_connected = True
             print("✅ Connected to Garmin Connect")
             return True
-        except Exception as e:
+        except Exception:
             _log.debug("Garmin connection failed", exc_info=True)
-            err = str(e)
-            if any(k in err for k in ("OAuth", "token", "401", "403", "Unauthorized")):
-                print(
-                    "❌ Garmin token expired. Clear cached tokens and retry:\n"
-                    "   rm -rf ~/.garth"
-                )
-            else:
-                print("❌ Garmin connection failed (check logs for details)")
+            print("❌ Garmin connection failed. Please retry or re-run Garmin setup.")
             self.is_connected = False
             return False
 
