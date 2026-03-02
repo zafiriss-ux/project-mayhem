@@ -29,9 +29,9 @@ not yet surfaced to the operator. Without a query interface, calibration
 evidence is invisible during live operation.
 
 **Scope**:
-- `/calibration` Telegram handler: show `lock_rate_by_phase`, `completion_rate`
-- Surface governance_outcomes aggregates (locks applied, phase breakdown)
-- Gate trigger behind minimum 30 paired decisions before surfacing recommendations
+- `/calibration` Telegram handler: show `lock_rate_by_phase`, `completion_rate` *(DONE)*
+- Surface governance_outcomes aggregates (locks applied, phase breakdown) *(DONE)*
+- Gate trigger behind minimum 30 paired decisions before surfacing recommendations *(DONE)*
 
 ---
 
@@ -68,6 +68,7 @@ evidence is invisible during live operation.
 | — | E2E gold-path regression suite (onboarding, planning, recovery adaptation) | DONE | `tests/test_e2e_regression_suite.py` |
 | — | Snapshot stability coverage | DONE | additional coverage in `test_e2e_regression_suite.py` |
 | — | OutcomeTracker persistence integration tests | DONE | `tests/test_outcome_tracker_persistence.py` |
+| — | `/calibration` Telegram command with 30-outcome gate + phase lock breakdown | DONE | `titan/main.py` + `titan/integrations/telegram_bot.py` |
 
 ---
 

@@ -82,6 +82,7 @@ class TitanTelegramBot:
                 "/activities – Recent runs\n"
                 "/drift – Cardiac drift analysis\n"
                 "/shoes – Shoe recommendation for today\n"
+                "/calibration – Governance calibration summary\n"
             )
             self.bot.reply_to(message, text)
 
@@ -157,6 +158,14 @@ class TitanTelegramBot:
                 self.bot.reply_to(message, result or "No shoe data configured.")
             else:
                 self.bot.reply_to(message, "⏳ Equipment manager not ready.")
+
+        @self.bot.message_handler(commands=["calibration"])
+        def cmd_calibration(message):
+            if "calibration" in self.cmd_callbacks:
+                result = self.cmd_callbacks["calibration"]()
+                self.bot.reply_to(message, result or "⏳ No calibration data yet.")
+            else:
+                self.bot.reply_to(message, "⏳ Outcome tracker not ready.")
 
     def register_command(self, command: str, callback: Callable):
         """Register a callback for a slash command."""
