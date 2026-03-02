@@ -487,37 +487,52 @@ class GovernanceEngine:
                 applied_locks.append('FUELING_GATE_FLAG')
 
         para_guard = afi_constr.get('parasympathetic_guard', {})
-        if para_guard.get('triggered'):
-            session_plan['session_type'] = 'EASY'
-            session_plan['max_zone'] = 2
-            session_plan['governance_override'] = para_guard['reason']
-            applied_locks.append('PARASYMPATHETIC_GUARD')
-            _gate_event('PARASYMPATHETIC_GUARD', 'EASY', reason=para_guard.get('reason'))
 
-        if db:
-            override_threshold = lock_thresholds.get('override_ratio_ceiling') or None
-            lock = self.check_override_lockdown(db, threshold=override_threshold)
-            if lock['locked'] and session_plan.get('session_type') in lock['disabled_sessions']:
-                session_plan['session_type'] = 'EASY'
-                session_plan['max_zone'] = lock['max_zone']
-                session_plan['governance_override'] = lock['reason']
-                applied_locks.append('OVERRIDE_LOCKDOWN')
-                _gate_event('OVERRIDE_LOCKDOWN', 'ZONE_2_ONLY', cause='TRAINING_LOGIC',
-                            ratio=lock.get('ratio'),
-                            apl_threshold_override=override_threshold)
+        gate_order = {
+            'PARASYMPATHETIC_GUARD': int(priority_vector.get('PARASYMPATHETIC_GUARD', 1) or 1),
+            'OVERRIDE_LOCKDOWN': int(priority_vector.get('OVERRIDE_LOCKDOWN', 2) or 2),
+            'CS_CONFIDENCE_LOCK': int(priority_vector.get('CS_CONFIDENCE_LOCK', 3) or 3),
+        }
 
-        if cs_tracker:
-            cs_threshold = lock_thresholds.get('cs_min_confidence') or None
-            cs_lock = self.check_cs_confidence_lock(cs_tracker, threshold=cs_threshold)
-            if cs_lock['locked']:
-                session_plan['cs_prediction_disabled'] = True
-                session_plan['required_calibration'] = True
-                session_plan['cs_lock_reason'] = cs_lock['reason']
-                applied_locks.append('CS_CONFIDENCE_LOCK')
-                _gate_event('CS_CONFIDENCE_LOCK', 'CALIBRATION_REQUIRED',
-                            cause='DATA_PROBLEM',
-                            confidence=cs_lock.get('confidence'),
-                            apl_threshold_override=cs_threshold)
+        for gate_name, _rank in sorted(gate_order.items(), key=lambda x: x[1]):
+            if gate_name == 'PARASYMPATHETIC_GUARD':
+                if para_guard.get('triggered'):
+                    session_plan['session_type'] = 'EASY'
+                    session_plan['max_zone'] = 2
+                    session_plan['governance_override'] = para_guard['reason']
+                    applied_locks.append('PARASYMPATHETIC_GUARD')
+                    _gate_event('PARASYMPATHETIC_GUARD', 'EASY', reason=para_guard.get('reason'))
+                continue
+
+            if gate_name == 'OVERRIDE_LOCKDOWN':
+                if not db:
+                    continue
+                override_threshold = lock_thresholds.get('override_ratio_ceiling') or None
+                lock = self.check_override_lockdown(db, threshold=override_threshold)
+                if lock['locked'] and session_plan.get('session_type') in lock['disabled_sessions']:
+                    session_plan['session_type'] = 'EASY'
+                    session_plan['max_zone'] = lock['max_zone']
+                    session_plan['governance_override'] = lock['reason']
+                    applied_locks.append('OVERRIDE_LOCKDOWN')
+                    _gate_event('OVERRIDE_LOCKDOWN', 'ZONE_2_ONLY', cause='TRAINING_LOGIC',
+                                ratio=lock.get('ratio'),
+                                apl_threshold_override=override_threshold)
+                continue
+
+            if gate_name == 'CS_CONFIDENCE_LOCK':
+                if not cs_tracker:
+                    continue
+                cs_threshold = lock_thresholds.get('cs_min_confidence') or None
+                cs_lock = self.check_cs_confidence_lock(cs_tracker, threshold=cs_threshold)
+                if cs_lock['locked']:
+                    session_plan['cs_prediction_disabled'] = True
+                    session_plan['required_calibration'] = True
+                    session_plan['cs_lock_reason'] = cs_lock['reason']
+                    applied_locks.append('CS_CONFIDENCE_LOCK')
+                    _gate_event('CS_CONFIDENCE_LOCK', 'CALIBRATION_REQUIRED',
+                                cause='DATA_PROBLEM',
+                                confidence=cs_lock.get('confidence'),
+                                apl_threshold_override=cs_threshold)
 
         session_plan['governance_locks_applied'] = applied_locks
         session_plan['governance_clean'] = len(applied_locks) == 0

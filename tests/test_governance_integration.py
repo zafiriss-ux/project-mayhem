@@ -325,3 +325,43 @@ class TestOrchestrationBoundaryBackwardCompat:
             assert set(vo2.keys()) >= expected_keys, (
                 f'vo2_eligibility missing fields: {expected_keys - set(vo2.keys())}'
             )
+
+
+class _StubDB:
+    def get_override_ratio(self, days=14):
+        return 0.95
+
+
+class _StubCsTracker:
+    confidence = 0.40
+
+
+class TestAdaptivePriorityOrder:
+    """APL priority_vector should control relative ordering for override vs CS lock."""
+
+    def test_default_order_keeps_override_before_cs(self, gov):
+        plan = {'session_type': 'RACE', 'duration_min': 30}
+        context = {
+            'db': _StubDB(),
+            'cs_tracker': _StubCsTracker(),
+            'afi_constraints': {'parasympathetic_guard': {'triggered': False}},
+        }
+        result = gov.apply_constraints(plan, context)
+        assert result['governance_locks_applied'].index('OVERRIDE_LOCKDOWN') < \
+            result['governance_locks_applied'].index('CS_CONFIDENCE_LOCK')
+
+    def test_priority_vector_can_promote_cs_before_override(self, gov):
+        plan = {'session_type': 'RACE', 'duration_min': 30}
+        context = {
+            'db': _StubDB(),
+            'cs_tracker': _StubCsTracker(),
+            'afi_constraints': {'parasympathetic_guard': {'triggered': False}},
+            'priority_vector': {
+                'PARASYMPATHETIC_GUARD': 1,
+                'CS_CONFIDENCE_LOCK': 2,
+                'OVERRIDE_LOCKDOWN': 3,
+            },
+        }
+        result = gov.apply_constraints(plan, context)
+        assert result['governance_locks_applied'].index('CS_CONFIDENCE_LOCK') < \
+            result['governance_locks_applied'].index('OVERRIDE_LOCKDOWN')

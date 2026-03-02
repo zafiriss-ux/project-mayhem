@@ -34,7 +34,7 @@ Deliverable: Controlled development pipeline
 
 ---
 
-## Phase 3 — Engine Implementation (IN PROGRESS)
+## Phase 3 — Engine Implementation (CLOSED)
 Goal: Introduce governance infrastructure and safety rails safely.
 
 ### Completed
@@ -52,12 +52,11 @@ Goal: Introduce governance infrastructure and safety rails safely.
 
 ### Remaining
 
-- `adaptive_priority_lock.py` — NEXT (follow spec in `docs/specs/adaptive_priority_lock.md`)
-  Non-negotiable rule: no gate modification before APL exists.
+- None. `adaptive_priority_lock.py` has been implemented and integrated.
 
 ---
 
-## Phase 4 — Observability & E2E (PLANNED)
+## Phase 4 — Observability & E2E (IN PROGRESS)
 Goal: Production-grade visibility and regression safety.
 
 Order:
