@@ -121,25 +121,28 @@ class DailyCoach:
         soreness: Optional[int] = None,
         subjective_fatigue_score: Optional[int] = None,
     ) -> bool:
-        """Execute complete morning coaching routine."""
-        # Morning check-in: collect subjective soreness/fatigue (0-10 scale)
+        """Execute complete morning coaching routine.
+
+        Args:
+            soreness: Subjective soreness/fatigue score 0-10. Defaults to 5
+                (neutral) when not provided. Pass explicitly when calling
+                from a UI or Telegram handler that has already collected
+                the value interactively.
+            subjective_fatigue_score: Explicit fatigue score 0-10. Defaults
+                to ``soreness`` when omitted.
+
+        Note:
+            This method contains no console I/O. All interactive prompts must
+            be handled by the caller (e.g. UI layer, Telegram command handler)
+            before invoking this method.
+        """
+        # Apply neutral defaults — no console I/O in the orchestration core
         if soreness is None:
-            try:
-                raw = input("Morning check-in — Soreness / fatigue (0-10, Enter=5): ").strip()
-                soreness = int(raw) if raw else 5
-                soreness = max(0, min(10, soreness))
-            except (EOFError, ValueError):
-                soreness = 5  # neutral default for non-interactive runs
+            soreness = 5  # neutral default for headless / service runs
+        soreness = max(0, min(10, int(soreness)))
 
         if subjective_fatigue_score is None:
-            if soreness is not None:
-                subjective_fatigue_score = int(soreness)
-            else:
-                try:
-                    raw_subj = input("Morning check-in — Subjective fatigue (0-10, Enter=5): ").strip()
-                    subjective_fatigue_score = int(raw_subj) if raw_subj else 5
-                except (EOFError, ValueError):
-                    subjective_fatigue_score = 5
+            subjective_fatigue_score = soreness
         subjective_fatigue_score = max(0, min(10, int(subjective_fatigue_score)))
 
         print(f"\n🌅 Running morning routine: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")

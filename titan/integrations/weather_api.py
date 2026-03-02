@@ -1,9 +1,19 @@
 """
-Weather API Integration with Optimal Time Analysis
+Weather Integration — Open-Meteo (free, no API key required)
 
-Provides hourly weather forecasts with dew point calculation.
+Provides 48-hour hourly forecasts, current conditions, dew-point calculation,
+heat-stress classification, and optimal training window scoring.
+
+Provider: https://open-meteo.com
+  - Geocoding:  https://geocoding-api.open-meteo.com/v1/search
+  - Forecast:   https://api.open-meteo.com/v1/forecast
+
+No authentication needed.  WEATHER_API_KEY env var is accepted for
+backward-compatibility but is not used.
 """
 
+import json
+import logging
 import os
 import math
 from datetime import datetime, timedelta
@@ -12,6 +22,8 @@ import threading
 import time
 
 import requests
+
+_log = logging.getLogger(__name__)
 
 
 REQUESTS_VERIFY_SSL = True
@@ -30,13 +42,14 @@ class WeatherAPI:
 
     def __init__(self, api_key: str = None, location: str = None):
         """
-        Initialize Weather API.
-        
+        Initialize WeatherAPI.
+
         Args:
-            api_key: OpenWeatherMap API key (or load from env)
+            api_key: Ignored — Open-Meteo requires no authentication.
+                     Accepted for backward-compatibility only.
             location: Location string (e.g., "Athens,GR")
         """
-        self.api_key = api_key or os.getenv('WEATHER_API_KEY')
+        self.api_key = api_key or os.getenv('WEATHER_API_KEY')  # unused; kept for compat
         self.location = location or os.getenv('WEATHER_LOCATION', 'Athens,GR')
         self.cache = {}
         self.cache_timestamp = None
@@ -247,9 +260,16 @@ class WeatherAPI:
             self.cache['hourly'] = forecast
             self.cache_timestamp = datetime.now()
             return current
-        except Exception:
+        except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
             print("⚠️  Weather API unavailable – using fallback conditions")
+            _log.warning(json.dumps({
+                "flow": "weather_api",
+                "action": "fallback_activated",
+                "source": "get_current_conditions",
+                "reason": str(exc),
+                "is_fallback": True,
+            }))
             dew_point = self.calculate_dew_point(18.5, 65)
             heat_status, heat_rec = self.classify_heat_stress(dew_point)
             current = {
@@ -289,43 +309,52 @@ class WeatherAPI:
             self.cache['hourly'] = forecast
             self.cache_timestamp = datetime.now()
             return forecast[:hours]
-        except Exception:
-            # Fallback to deterministic simulated data
+        except Exception as exc:
+            # Fallback to deterministic simulated data when API is unavailable
+            print("⚠️  Weather API unavailable – using fallback forecast")
+            _log.warning(json.dumps({
+                "flow": "weather_api",
+                "action": "fallback_activated",
+                "source": "get_hourly_forecast",
+                "reason": str(exc),
+                "is_fallback": True,
+            }))
             forecast = []
-        base_temp = 15.0
-        base_humidity = 60
+            base_temp = 15.0
+            base_humidity = 60
 
-        for i in range(hours):
-            hour_time = datetime.now() + timedelta(hours=i)
+            for i in range(hours):
+                hour_time = datetime.now() + timedelta(hours=i)
 
-            # Simulate temperature variation (cooler at night)
-            hour_of_day = hour_time.hour
-            temp_variation = 5 * (1 - abs(hour_of_day - 14) / 12)  # Peak at 2 PM
-            temp = base_temp + temp_variation + (i * 0.1 if i < 24 else -i * 0.05)
+                # Simulate temperature variation (cooler at night)
+                hour_of_day = hour_time.hour
+                temp_variation = 5 * (1 - abs(hour_of_day - 14) / 12)  # Peak at 2 PM
+                temp = base_temp + temp_variation + (i * 0.1 if i < 24 else -i * 0.05)
 
-            # Humidity inversely correlates with temperature
-            humidity = max(40, min(90, base_humidity + (20 - temp_variation)))
+                # Humidity inversely correlates with temperature
+                humidity = max(40, min(90, base_humidity + (20 - temp_variation)))
 
-            dew_point = self.calculate_dew_point(temp, humidity)
-            heat_status, heat_rec = self.classify_heat_stress(dew_point)
+                dew_point = self.calculate_dew_point(temp, humidity)
+                heat_status, heat_rec = self.classify_heat_stress(dew_point)
 
-            forecast.append({
-                'timestamp': hour_time.isoformat(),
-                'hour': hour_time.hour,
-                'temp_c': round(temp, 1),
-                'humidity': int(humidity),
-                'dew_point': dew_point,
-                'wind_speed': 8 + (i % 5),
-                'conditions': 'Clear' if i % 3 != 0 else 'Partly Cloudy',
-                'heat_stress': heat_status,
-                'recommendation': heat_rec
-            })
+                forecast.append({
+                    'timestamp': hour_time.isoformat(),
+                    'hour': hour_time.hour,
+                    'temp_c': round(temp, 1),
+                    'humidity': int(humidity),
+                    'dew_point': dew_point,
+                    'wind_speed': 8 + (i % 5),
+                    'conditions': 'Clear' if i % 3 != 0 else 'Partly Cloudy',
+                    'heat_stress': heat_status,
+                    'recommendation': heat_rec,
+                    'is_fallback': True,
+                })
 
-        # Update cache
-        self.cache['hourly'] = forecast
-        self.cache_timestamp = datetime.now()
+            # Update cache
+            self.cache['hourly'] = forecast
+            self.cache_timestamp = datetime.now()
 
-        return forecast
+            return forecast
 
     def find_optimal_training_windows(
         self,
