@@ -91,7 +91,11 @@ Goal: Evidence-based threshold tuning on a foundation of real outcome data.
 2. Promote HEURISTIC thresholds to MODERATE where correlation is confirmed — DONE (heuristic promotion candidates now surfaced from lock/outcome correlation analytics)
 3. Promote MODERATE thresholds to STRONG where replication across profiles is confirmed — DONE (moderate-promotion candidates now require replicated lock/outcome signal across ≥2 athlete profiles and ≥2 phases)
 4. Surface calibration candidates via `/calibration` Telegram command — DONE (Telegram output now includes both HEURISTIC→MODERATE and MODERATE→STRONG candidate sections with trigger lock and sample context)
-5. Document every promoted threshold in `EvidenceRegistry` with evidence count and date
+5. Document every promoted threshold in `EvidenceRegistry` with evidence count and date — DONE (promotion metadata fields now enforced in registry schema and validation tests)
+
+### Remaining
+
+- None.
 
 Priority calibration targets (from `EvidenceRegistry`):
 - `VO2_READINESS_MIN` — HEURISTIC

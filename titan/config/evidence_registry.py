@@ -49,6 +49,9 @@ class ThresholdEvidence:
     source: str             # Author (year). Journal. Citation details.
     rationale: str          # Why this specific value was chosen
     policy_note: Optional[str] = None   # Deviations, caveats, calibration path
+    promoted_from_level: Optional[str] = None  # Prior evidence level, if promoted
+    promotion_evidence_count: Optional[int] = None  # Paired outcomes backing promotion
+    promotion_date: Optional[str] = None  # YYYY-MM-DD date promotion was approved
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -415,4 +418,9 @@ def get_registry_summary() -> dict:
         'by_population': by_population,
         'policy_parameters': get_policy_parameters(),
         'calibration_candidates': get_calibration_candidates(),
+        'promoted_parameters': [
+            v.parameter
+            for v in EVIDENCE_REGISTRY.values()
+            if v.promoted_from_level is not None
+        ],
     }
