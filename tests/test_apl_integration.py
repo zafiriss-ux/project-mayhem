@@ -409,6 +409,39 @@ class TestOutcomeTracker:
         assert summary['completion_rate'] == 1.0
         assert summary['avg_rpe_when_completed'] == pytest.approx(4.0)
 
+
+    def test_heuristic_promotion_candidates_require_confirmed_signal(self, tracker, dummy_apl_result):
+        for i in range(6):
+            date = f'2026-04-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='TEMPO',
+                locks_applied=['VO2_ELIGIBILITY_GATE'], governance_clean=False,
+                phase='BUILD', vlg_color='YELLOW',
+                apl_result=dummy_apl_result,
+                acwr=1.2, tsb_value=-20.0, readiness_score=58.0,
+                glycogen_debt=5.0, date=date,
+            )
+            tracker.record_outcome(date=date, rpe=7, completed=False)
+
+        for i in range(6):
+            date = f'2026-05-{i+1:02d}'
+            tracker.record_decision(
+                session_planned='INTERVALS', session_post_governance='INTERVALS',
+                locks_applied=[], governance_clean=True,
+                phase='BUILD', vlg_color='GREEN',
+                apl_result=dummy_apl_result,
+                acwr=1.05, tsb_value=-8.0, readiness_score=72.0,
+                glycogen_debt=2.0, date=date,
+            )
+            tracker.record_outcome(date=date, rpe=5, completed=True)
+
+        summary = tracker.get_calibration_summary()
+        candidates = summary['heuristic_promotion_candidates']
+
+        assert candidates
+        assert candidates[0]['parameter'] == 'VO2_READINESS_MIN'
+        assert candidates[0]['trigger_lock'] == 'VO2_ELIGIBILITY_GATE'
+
     def test_get_lock_rate_by_phase(self, tracker, dummy_apl_result):
         tracker.record_decision(
             'INTERVALS', 'TEMPO', ['VO2_ELIGIBILITY_GATE'], False,
