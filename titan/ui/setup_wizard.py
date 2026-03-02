@@ -7,12 +7,15 @@ Saves to config_secrets.py (excluded from git).
 
 import os
 import getpass
+import re
 from pathlib import Path
 import stat
 
 
 SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
 ENV_PATH     = Path(__file__).parent.parent.parent / ".env"
+EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+LOCATION_REGEX = re.compile(r"^[A-Za-zÀ-ÿ\s.'-]+,[A-Za-z]{2}$")
 
 
 def _banner():
@@ -68,35 +71,63 @@ def run_setup_wizard() -> dict:
 
     # ── Garmin ──────────────────────────────────────────────────────────
     print("━━━  GARMIN CONNECT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
     email = input("  Email Garmin: ").strip()
     if "@" not in email or "." not in email.split("@", 1)[-1]:
         print("  ⚠️  Email μοιάζει άκυρο (αναμένεται μορφή user@example.com)")
     creds["GARMIN_EMAIL"]    = email
+
+    while True:
+        garmin_email = input("  Email Garmin: ").strip()
+        if EMAIL_REGEX.fullmatch(garmin_email):
+            creds["GARMIN_EMAIL"] = garmin_email
+            break
+        print("  ⚠️  Μη έγκυρο email. Χρησιμοποίησε μορφή name@example.com.")
+
+
     creds["GARMIN_PASSWORD"] = getpass.getpass("  Password (κρυφό): ")
 
     # ── Telegram ─────────────────────────────────────────────────────────
     print("\n━━━  TELEGRAM BOT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Πήγαινε στο @BotFather → /newbot → Πάρε το token")
-    token = input("  Bot Token: ").strip()
-    if ":" not in token or len(token) < 20:
-        print("  ⚠️  Token μοιάζει άκυρο (αναμένεται μορφή NNNNNNNN:ΑΛΦΑΡΙΘΜΗΤΙΚΟ)")
-    creds["TELEGRAM_BOT_TOKEN"] = token
+    while True:
+        token = input("  Bot Token: ").strip()
+        if ":" in token and len(token) >= 20:
+            creds["TELEGRAM_BOT_TOKEN"] = token
+            break
+        print("  ⚠️  Token άκυρο: ελάχιστο μήκος 20 και μορφή NNNNNNNN:ΑΛΦΑΡΙΘΜΗΤΙΚΟ")
     print("  Πήγαινε στο @userinfobot → Πάρε το Chat ID σου")
     while True:
         chat_raw = input("  Chat ID (αριθμός): ").strip()
         if chat_raw.lstrip("-").isdigit():
-            creds["TELEGRAM_CHAT_ID"] = chat_raw
+            creds["TELEGRAM_CHAT_ID"] = str(int(chat_raw))
             break
         print("  ⚠️  Το Chat ID πρέπει να είναι αριθμός. Δοκίμασε ξανά.")
 
     # ── Weather ──────────────────────────────────────────────────────────
     print("\n━━━  WEATHER API (openweathermap.org)  ━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Δωρεάν εγγραφή → API keys → Πάρε το key")
+
     api_key = input("  API Key: ").strip()
     if len(api_key) < 20:
         print("  ⚠️  API key μοιάζει άκυρο (OpenWeatherMap keys είναι 32 χαρακτήρες)")
     creds["WEATHER_API_KEY"]  = api_key
     creds["WEATHER_LOCATION"] = input("  Τοποθεσία (π.χ. Athens,GR): ").strip() or "Athens,GR"
+
+    while True:
+        weather_key = input("  API Key: ").strip()
+        if len(weather_key) >= 16:
+            creds["WEATHER_API_KEY"] = weather_key
+            break
+        print("  ⚠️  API key πολύ μικρό. Ελάχιστο μήκος: 16 χαρακτήρες.")
+
+    while True:
+        location = input("  Τοποθεσία (π.χ. Athens,GR): ").strip() or "Athens,GR"
+        if LOCATION_REGEX.fullmatch(location):
+            creds["WEATHER_LOCATION"] = location
+            break
+        print("  ⚠️  Μη έγκυρη τοποθεσία. Χρησιμοποίησε μορφή City,CC (π.χ. Athens,GR).")
+
 
     # ── Save ─────────────────────────────────────────────────────────────
     _save_env(creds)
@@ -117,6 +148,11 @@ def _save_env(creds: dict):
             "  ⚠️  Windows: τα permissions του .env δεν εφαρμόζονται αυτόματα.\n"
             "  Προστάτεψε το χειροκίνητα: Ιδιότητες → Ασφάλεια → αφαίρεσε άλλους χρήστες."
         )
+    if os.name == "nt":
+        print("  ⚠️  Windows limitation: .env file permissions could not be restricted automatically.")
+        print("     Verify .env access manually if this machine is shared.")
+    else:
+        ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
 
     # Also add to .gitignore if not already there
     gitignore = Path(__file__).parent.parent.parent / ".gitignore"

@@ -253,6 +253,17 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
     print("✅ Telegram command callbacks registered (9 commands)")
 
 
+
+
+def _parse_env_number(name: str, default: str, caster):
+    """Parse numeric env var and exit safely with a clear message on invalid input."""
+    raw = os.getenv(name, default)
+    try:
+        return caster(raw)
+    except (TypeError, ValueError):
+        print(f"❌ Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.")
+        sys.exit(1)
+
 # ════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════════════════
@@ -312,25 +323,15 @@ def main():
     )
 
     # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
-    def _env_int(key: str, default: int) -> int:
-        try:
-            return int(os.getenv(key, str(default)))
-        except (ValueError, TypeError):
-            return default
-
-    def _env_float(key: str, default: float) -> float:
-        try:
-            return float(os.getenv(key, str(default)))
-        except (ValueError, TypeError):
-            return default
-
     athlete_profile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
-        "age":            _env_int("ATHLETE_AGE", 35),
-        "weight_kg":      _env_float("ATHLETE_WEIGHT", 75.0),
-        "height_cm":      _env_float("ATHLETE_HEIGHT", 175.0),
-        "max_hr":         _env_int("ATHLETE_MAX_HR", 190),
-        "threshold_hr":   _env_int("ATHLETE_THRESHOLD_HR", 168),
+
+        "age":            _parse_env_number("ATHLETE_AGE", "35", int),
+        "weight_kg":      _parse_env_number("ATHLETE_WEIGHT", "75", float),
+        "height_cm":      _parse_env_number("ATHLETE_HEIGHT", "175", float),
+        "max_hr":         _parse_env_number("ATHLETE_MAX_HR", "190", int),
+        "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", "168", int),
+
         "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
     }

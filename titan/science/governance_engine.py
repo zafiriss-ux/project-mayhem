@@ -5,7 +5,14 @@ import logging
 from dataclasses import asdict, is_dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
+
+
+
+
 from titan.science.governance_contracts import validate_vo2_eligibility
+
+
+
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
@@ -22,9 +29,16 @@ from titan.config.thresholds import (
 _log = logging.getLogger(__name__)
 
 
+
+
+
+
 def _gate_event(gate: str, action: str, **fields: Any) -> None:
     """Emit a structured governance gate event as a single log line."""
     _log.info(json.dumps({'governance_gate': gate, 'action': action, **fields}, default=str))
+
+
+
 
 
 class GovernanceEngine:
@@ -44,8 +58,18 @@ class GovernanceEngine:
         'REST': 'REST',
     }
 
+
+
+    def check_override_lockdown(self, db: Any) -> Dict:
+
+
+
+    def check_override_lockdown(self, db: Any) -> Dict:
+
     def check_override_lockdown(self, db: Any, threshold: Optional[float] = None) -> Dict:
         effective_threshold = threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
+
+
         try:
             ratio = db.get_override_ratio(days=14)
         except Exception:
@@ -210,8 +234,42 @@ class GovernanceEngine:
 
         acwr_raw = context.get('acwr', 1.0)
         readiness_raw = context.get('readiness_score', 100)
+
+
+
+
+
+        acwr_invalid = False
+        readiness_invalid = False
+        try:
+            acwr = float(1.0 if acwr_raw is None else acwr_raw)
+        except (TypeError, ValueError):
+            acwr = None
+            acwr_invalid = True
+        try:
+            readiness = float(100 if readiness_raw is None else readiness_raw)
+        except (TypeError, ValueError):
+            readiness = None
+            readiness_invalid = True
+        glycogen_debt_raw = context.get('glycogen_debt', 0.0)
+        glycogen_debt_invalid = False
+        try:
+            glycogen_debt = float(0.0 if glycogen_debt_raw is None else glycogen_debt_raw)
+        except (TypeError, ValueError):
+            glycogen_debt = None
+            glycogen_debt_invalid = True
+        fatigue_level_raw = context.get('fatigue_level', 'LOW')
+        fatigue_level = str(fatigue_level_raw or 'LOW').upper()
+        valid_fatigue_levels = {'LOW', 'MEDIUM', 'HIGH'}
+        fatigue_level_invalid = fatigue_level not in valid_fatigue_levels
+
+
+
         glycogen_debt_raw = context.get('glycogen_debt', 0.0)
         fatigue_level_raw = context.get('fatigue_level', 'LOW')
+
+
+
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
 
         acwr_invalid = False
@@ -243,11 +301,32 @@ class GovernanceEngine:
         reasons: List[str] = []
         details: List[Dict[str, Any]] = []
 
+
+
+
+
         # V1: ACWR in [VO2_ACWR_MIN, VO2_ACWR_MAX]
+
+
+
         if acwr_invalid:
             failed.append('V1')
             reasons.append(f'ACWR must be numeric (actual: {acwr_raw!r})')
             details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'numeric', 'actual': acwr_raw})
+
+
+
+
+
+
+        elif not (0.8 <= acwr <= 1.5):
+            failed.append('V1')
+            reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
+            details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
+
+
+
+
         elif not (VO2_ACWR_MIN <= acwr <= VO2_ACWR_MAX):
             failed.append('V1')
             reasons.append(f'ACWR in [{VO2_ACWR_MIN:.1f},{VO2_ACWR_MAX:.1f}] (actual: {acwr:.2f})')
@@ -255,10 +334,42 @@ class GovernanceEngine:
                             'min': VO2_ACWR_MIN, 'max': VO2_ACWR_MAX, 'actual': round(acwr, 2)})
 
         # V2: readiness >= VO2_READINESS_MIN
+
+
+
         if readiness_invalid:
             failed.append('V2')
             reasons.append(f'readiness must be numeric (actual: {readiness_raw!r})')
             details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': 'numeric', 'actual': readiness_raw})
+
+
+
+
+
+
+        elif readiness < 60:
+            failed.append('V2')
+            reasons.append(f'readiness >= 60 (actual: {readiness:.0f})')
+            details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': '>=', 'threshold': 60, 'actual': round(readiness, 0)})
+        if glycogen_debt_invalid:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt must be numeric (actual: {glycogen_debt_raw!r})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': 'numeric', 'actual': glycogen_debt_raw})
+        elif glycogen_debt >= 7:
+            failed.append('V3')
+            reasons.append(f'glycogen_debt < 7 (actual: {glycogen_debt:.1f})')
+            details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<', 'threshold': 7.0, 'actual': round(glycogen_debt, 1)})
+        if fatigue_level_invalid:
+            failed.append('V4')
+            reasons.append(f'fatigue_level must be one of LOW/MEDIUM/HIGH (actual: {fatigue_level_raw!r})')
+            details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': 'in', 'allowed': ['LOW', 'MEDIUM', 'HIGH'], 'actual': fatigue_level_raw})
+        elif fatigue_level == 'HIGH':
+            failed.append('V4')
+            reasons.append(f'fatigue != HIGH (actual: {fatigue_level})')
+            details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': '!=', 'threshold': 'HIGH', 'actual': fatigue_level})
+
+
+
         elif readiness < VO2_READINESS_MIN:
             failed.append('V2')
             reasons.append(f'readiness >= {VO2_READINESS_MIN:.0f} (actual: {readiness:.0f})')
@@ -276,6 +387,8 @@ class GovernanceEngine:
             details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<',
                             'threshold': VO2_GLYCOGEN_DEBT_MAX, 'actual': round(glycogen_debt, 1)})
 
+
+
         # V4: fatigue_level not HIGH
         if fatigue_level_invalid:
             failed.append('V4')
@@ -288,6 +401,7 @@ class GovernanceEngine:
             details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': '!=',
                             'threshold': 'HIGH', 'actual': fatigue_level})
 
+
         # V5: days_since_last_vo2 >= VO2_MIN_DAYS_SINCE_LAST (only if provided)
         if days_since_last_vo2 is not None:
             try:
@@ -299,6 +413,14 @@ class GovernanceEngine:
             if days_invalid:
                 failed.append('V5')
                 reasons.append(f'days_since_last_vo2 must be numeric (actual: {days_since_last_vo2!r})')
+                details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': 'numeric', 'actual': days_since_last_vo2})
+            elif days_val < 2:
+                failed.append('V5')
+                reasons.append(f'days_since_last_vo2 >= 2 (actual: {days_val})')
+                details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=', 'threshold': 2, 'actual': days_val})
+
+
+
                 details.append({'code': 'V5', 'metric': 'days_since_last_vo2',
                                 'operator': 'numeric', 'actual': days_since_last_vo2})
             elif days_val < VO2_MIN_DAYS_SINCE_LAST:
@@ -306,6 +428,8 @@ class GovernanceEngine:
                 reasons.append(f'days_since_last_vo2 >= {VO2_MIN_DAYS_SINCE_LAST} (actual: {days_val})')
                 details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=',
                                 'threshold': VO2_MIN_DAYS_SINCE_LAST, 'actual': days_val})
+
+
 
         original = 'INTERVALS_Z5' if session_type == 'INTERVALS' and zone == 5 else session_type
 
@@ -522,12 +646,26 @@ class GovernanceEngine:
         session_plan['governance_locks_applied'] = applied_locks
         session_plan['governance_clean'] = len(applied_locks) == 0
 
+
+
+        session_plan['governance_audit'] = {
+            'locks_count': len(applied_locks),
+            'locks': list(applied_locks),
+            'vo2_failed_conditions': list(session_plan.get('vo2_eligibility', {}).get('failed_conditions', [])),
+            'fueling_action': session_plan.get('fueling_gate', {}).get('action') if isinstance(session_plan.get('fueling_gate'), dict) else None,
+            'hard_stop_gates': [item.get('gate') for item in session_plan.get('hard_stop_reasons', []) if isinstance(item, dict)],
+        }
+
+
+
         _gate_event('APPLY_CONSTRAINTS', 'COMPLETE',
                     final_session=session_plan.get('session_type'),
                     locks_applied=applied_locks,
                     governance_clean=session_plan['governance_clean'],
                     priority_vector=priority_vector or None,
                     apl_active=bool(priority_vector))
+
+
         return session_plan
 
     def get_governance_report(

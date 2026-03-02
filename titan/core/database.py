@@ -873,8 +873,53 @@ class AthleteDatabase:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
+
                 _validate_athlete_dict(data)
+
+                self._validate_profile_schema(data)
+
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
             except Exception as e:
                 _log.warning("Skipped corrupted athlete file: %s (%s)", filepath.name, type(e).__name__)
+
+    @staticmethod
+    def _validate_profile_schema(data: Any) -> None:
+        """Validate shape/types for athlete JSON before profile deserialization."""
+        if not isinstance(data, dict):
+            raise TypeError("Athlete profile must be a JSON object")
+
+        required_fields = {
+            "athlete_id": str,
+            "name": str,
+        }
+        for field, expected_type in required_fields.items():
+            value = data.get(field)
+            if not isinstance(value, expected_type) or not value.strip():
+                raise ValueError(f"Invalid field: {field}")
+
+        typed_fields = {
+            "gender": str,
+            "age": int,
+            "height_cm": (int, float),
+            "weight_kg": (int, float),
+            "resting_hr": int,
+            "max_hr": int,
+            "threshold_hr": int,
+            "vo2_max": (int, float),
+            "race_day": str,
+            "current_goal": str,
+            "target_time": str,
+            "personal_bests": dict,
+            "weight_floor": (int, float),
+            "paces": dict,
+            "critical_speed_m_per_s": (int, float),
+            "d_prime_m": (int, float),
+        }
+        for field, expected_type in typed_fields.items():
+            if field in data and data[field] is not None and not isinstance(data[field], expected_type):
+                raise TypeError(f"Invalid type for field: {field}")
+
+        if "race_day" in data and data["race_day"] is not None:
+            datetime.fromisoformat(data["race_day"])
+
