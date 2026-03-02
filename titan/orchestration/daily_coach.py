@@ -306,8 +306,6 @@ class DailyCoach:
 
 
 
-                'acwr':                garmin_data.get('acwr', 1.0),
-
                 'acwr':                _acwr_for_vlg,
 
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
@@ -345,14 +343,6 @@ class DailyCoach:
         )
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
-
-
-        self._ensure_vo2_eligibility_contract(today_session)
-
-
-
-        self._ensure_vo2_eligibility_contract(today_session)
-
 
 
         self._ensure_vo2_eligibility_contract(today_session)
@@ -591,31 +581,6 @@ class DailyCoach:
             print(f"  ⚠️  Could not save daily metrics: {e}")
 
         return today_rhr, today_sleep_score, today_sleep_hours
-
-    def _prompt_soreness(self, default: int = 3) -> int:
-        """
-        Prompt the user for their current muscle soreness level.
-
-        Accepts a value from 1 (none) to 10 (extreme).  Falls back to
-        *default* if the session is non-interactive or the input is invalid.
-
-        Non-blocking in automated contexts (background threads, Telegram
-        callbacks): when stdin is not a TTY the default is returned immediately
-        without calling input(), so the morning routine is never blocked.
-        """
-        if not sys.stdin.isatty():
-            return default
-        try:
-            raw = input("🤸 Morning check-in — Muscle soreness (1–10, Enter to skip): ").strip()
-            if not raw:
-                return default
-            value = int(raw)
-            if 1 <= value <= 10:
-                return value
-            print(f"  ⚠️  Soreness must be 1–10; using default ({default})")
-        except (EOFError, ValueError):
-            pass
-        return default
 
     def _get_baseline_rhr(self, days: int = 7) -> float:
         """
