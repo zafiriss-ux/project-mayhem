@@ -8,7 +8,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 
+
 from titan.science.governance_contracts import validate_vo2_eligibility
+
 
 
 from titan.config.thresholds import (
@@ -30,9 +32,11 @@ _log = logging.getLogger(__name__)
 
 
 
+
 def _gate_event(gate: str, action: str, **fields: Any) -> None:
     """Emit a structured governance gate event as a single log line."""
     _log.info(json.dumps({'governance_gate': gate, 'action': action, **fields}, default=str))
+
 
 
 
@@ -55,7 +59,9 @@ class GovernanceEngine:
     }
 
 
+
     def check_override_lockdown(self, db: Any) -> Dict:
+
 
 
     def check_override_lockdown(self, db: Any) -> Dict:
@@ -231,6 +237,8 @@ class GovernanceEngine:
 
 
 
+
+
         acwr_invalid = False
         readiness_invalid = False
         try:
@@ -256,8 +264,10 @@ class GovernanceEngine:
         fatigue_level_invalid = fatigue_level not in valid_fatigue_levels
 
 
+
         glycogen_debt_raw = context.get('glycogen_debt', 0.0)
         fatigue_level_raw = context.get('fatigue_level', 'LOW')
+
 
 
         days_since_last_vo2 = context.get('days_since_last_vo2', None)
@@ -294,7 +304,9 @@ class GovernanceEngine:
 
 
 
+
         # V1: ACWR in [VO2_ACWR_MIN, VO2_ACWR_MAX]
+
 
 
         if acwr_invalid:
@@ -305,10 +317,13 @@ class GovernanceEngine:
 
 
 
+
+
         elif not (0.8 <= acwr <= 1.5):
             failed.append('V1')
             reasons.append(f'ACWR in [0.8,1.5] (actual: {acwr:.2f})')
             details.append({'code': 'V1', 'metric': 'acwr', 'operator': 'between', 'min': 0.8, 'max': 1.5, 'actual': round(acwr, 2)})
+
 
 
 
@@ -321,10 +336,13 @@ class GovernanceEngine:
         # V2: readiness >= VO2_READINESS_MIN
 
 
+
         if readiness_invalid:
             failed.append('V2')
             reasons.append(f'readiness must be numeric (actual: {readiness_raw!r})')
             details.append({'code': 'V2', 'metric': 'readiness_score', 'operator': 'numeric', 'actual': readiness_raw})
+
+
 
 
 
@@ -351,6 +369,7 @@ class GovernanceEngine:
             details.append({'code': 'V4', 'metric': 'fatigue_level', 'operator': '!=', 'threshold': 'HIGH', 'actual': fatigue_level})
 
 
+
         elif readiness < VO2_READINESS_MIN:
             failed.append('V2')
             reasons.append(f'readiness >= {VO2_READINESS_MIN:.0f} (actual: {readiness:.0f})')
@@ -367,6 +386,7 @@ class GovernanceEngine:
             reasons.append(f'glycogen_debt < {VO2_GLYCOGEN_DEBT_MAX:.1f} (actual: {glycogen_debt:.1f})')
             details.append({'code': 'V3', 'metric': 'glycogen_debt', 'operator': '<',
                             'threshold': VO2_GLYCOGEN_DEBT_MAX, 'actual': round(glycogen_debt, 1)})
+
 
 
         # V4: fatigue_level not HIGH
@@ -400,6 +420,7 @@ class GovernanceEngine:
                 details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=', 'threshold': 2, 'actual': days_val})
 
 
+
                 details.append({'code': 'V5', 'metric': 'days_since_last_vo2',
                                 'operator': 'numeric', 'actual': days_since_last_vo2})
             elif days_val < VO2_MIN_DAYS_SINCE_LAST:
@@ -407,6 +428,7 @@ class GovernanceEngine:
                 reasons.append(f'days_since_last_vo2 >= {VO2_MIN_DAYS_SINCE_LAST} (actual: {days_val})')
                 details.append({'code': 'V5', 'metric': 'days_since_last_vo2', 'operator': '>=',
                                 'threshold': VO2_MIN_DAYS_SINCE_LAST, 'actual': days_val})
+
 
 
         original = 'INTERVALS_Z5' if session_type == 'INTERVALS' and zone == 5 else session_type
@@ -624,6 +646,8 @@ class GovernanceEngine:
         session_plan['governance_locks_applied'] = applied_locks
         session_plan['governance_clean'] = len(applied_locks) == 0
 
+
+
         session_plan['governance_audit'] = {
             'locks_count': len(applied_locks),
             'locks': list(applied_locks),
@@ -633,12 +657,14 @@ class GovernanceEngine:
         }
 
 
+
         _gate_event('APPLY_CONSTRAINTS', 'COMPLETE',
                     final_session=session_plan.get('session_type'),
                     locks_applied=applied_locks,
                     governance_clean=session_plan['governance_clean'],
                     priority_vector=priority_vector or None,
                     apl_active=bool(priority_vector))
+
 
         return session_plan
 

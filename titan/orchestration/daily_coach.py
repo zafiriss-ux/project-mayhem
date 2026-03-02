@@ -296,6 +296,8 @@ class DailyCoach:
 
 
 
+
+
                 'acwr':                garmin_data.get('acwr', 1.0),
 
                 'acwr':                _acwr_for_vlg,
@@ -303,6 +305,8 @@ class DailyCoach:
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
                 'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
                 'planned_duration_min': today_session.get('duration_min', 45),
+
+
 
 
 
@@ -341,6 +345,10 @@ class DailyCoach:
 
         self._ensure_vo2_eligibility_contract(today_session)
 
+
+
+        self._ensure_vo2_eligibility_contract(today_session)
+
         # ── Step 9c: Record governance decision for outcome tracking ─────────
         self.outcome_tracker.record_decision(
             session_planned       = _session_planned,
@@ -356,6 +364,7 @@ class DailyCoach:
             glycogen_debt         = self.glycogen.daily_debt,
             afi_value             = afi_final,
         )
+
 
 
 

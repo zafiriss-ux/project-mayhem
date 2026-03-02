@@ -1106,6 +1106,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['detailed_failed_conditions'] == []
 
 
+
+
     def test_governance_audit_includes_vo2_and_fueling_summary(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1123,6 +1125,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert audit['fueling_action'] is None
 
 
+
+
     def test_vo2_gate_fail_readiness_downgrades(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1135,6 +1139,9 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert result['vo2_eligibility']['failed_conditions'] == ['V2']
+
+
+    def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
 
 
     def test_vo2_gate_zero_inputs_do_not_fallback(self, gov):
@@ -1163,6 +1170,7 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
+
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
             'acwr': 0.0,
@@ -1174,6 +1182,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
         assert set(result['vo2_eligibility']['failed_conditions']) == {'V1', 'V2'}
+
+
 
 
 
@@ -1212,6 +1222,7 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
+
     def test_vo2_gate_acwr_above_conservative_ceiling_downgrades(self, gov):
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1227,6 +1238,7 @@ class TestGovernanceVo2AndFuelingGates:
         details = result['vo2_eligibility']['detailed_failed_conditions']
         assert details[0]['operator'] == 'between'
         assert details[0]['actual'] == 1.4
+
 
 
 
@@ -1254,6 +1266,8 @@ class TestGovernanceVo2AndFuelingGates:
 
 
 
+
+
     def test_vo2_gate_invalid_days_since_last_vo2_fails_closed(self, gov):
         plan = {'session_type': 'INTERVALS', 'zone': 5, 'duration_min': 45}
         result = gov.apply_constraints(plan, context={
@@ -1271,6 +1285,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert details[0]['code'] == 'V5'
         assert details[0]['operator'] == 'numeric'
         assert details[0]['actual'] == 'yesterday'
+
+
 
 
 
@@ -1312,6 +1328,8 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['vo2_eligibility']['failed_conditions'] == ['V1', 'V2', 'V3', 'V4', 'V5']
         details = result['vo2_eligibility']['detailed_failed_conditions']
         assert [item['code'] for item in details] == ['V1', 'V2', 'V3', 'V4', 'V5']
+
+
 
 
 
