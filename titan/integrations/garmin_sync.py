@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import threading
 
+from titan.utils.constants import _Secret
+
 _log = logging.getLogger(__name__)
 
 
@@ -22,7 +24,7 @@ class GarminSync:
 
     def __init__(self, email: str = None, password: str = None):
         self.email = email or os.getenv('GARMIN_EMAIL', '')
-        self.password = password or os.getenv('GARMIN_PASSWORD', '')
+        self.password = _Secret(password or os.getenv('GARMIN_PASSWORD', ''))
         self.client = None
         self.is_connected = False
         self.last_sync: Optional[str] = None

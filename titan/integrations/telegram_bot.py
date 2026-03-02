@@ -11,6 +11,8 @@ import threading
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
 
+from titan.utils.constants import _Secret
+
 try:
     import telebot
     from telebot import types  # noqa: F401
@@ -28,7 +30,7 @@ class TitanTelegramBot:
     """
 
     def __init__(self, bot_token: str = None, chat_id=None):
-        self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self.bot_token = _Secret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         try:
             self.chat_id = int(raw_id)

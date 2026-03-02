@@ -10,30 +10,6 @@
 
 ## IMMEDIATE — Next Cycle
 
-### 0) Security Hardening — Εκκρεμεί
-
-Security audit (2026-03-02). Τα SEC-1, SEC-2 (μερικώς), SEC-3, SEC-4, SEC-6, SEC-8
-διορθώθηκαν στο commit `6585c02` (2026-03-02). Εκκρεμούν:
-
-**[SEC-2] — PARTIAL: Validation setup wizard** (`titan/ui/setup_wizard.py`)
-Chat ID και token format ελέγχονται πλέον. Απομένει:
-- Regex validation για Garmin email (έλεγχος `@` + domain)
-- Minimum-length check για Weather API key
-
-**[SEC-5] — HIGH: Plaintext credential storage** (`garmin_sync.py:21–22`, `telegram_bot.py:31–32`)
-Garmin και Telegram credentials κρατιούνται ως plaintext σε instance attributes.
-Memory dump ή exception trace μπορεί να τα εκθέσει.
-- Μετάβαση σε `keyring` ή `SecretStr` wrapper.
-
-**[SEC-7] — MEDIUM: Χωρίς JSON schema validation** (`core/database.py:855`)
-`json.load()` + `from_dict()` χωρίς schema guard. Malformed αρχεία προκαλούν
-`KeyError`/`TypeError` runtime.
-- Προσθήκη ελαφρού schema check (παρουσία πεδίων + τύπος) πριν το `from_dict()`.
-
-**[SEC-9] — LOW: `.env` permissions αδιάφορα σε Windows** (`setup_wizard.py:101`)
-`Path.chmod(0o600)` είναι no-op σε Windows — το αρχείο παραμένει αναγνώσιμο.
-- Platform check + προειδοποίηση στον χρήστη σε Windows.
-
 ---
 
 ### 1) E2E Regression Suite
@@ -73,14 +49,17 @@ require a DB-backed accumulation cycle across multiple restarts.
 
 | # | Item | Status | Where |
 |---|------|--------|-------|
-| SEC-1 | Safe env var type conversion (`_env_int`/`_env_float`) | DONE | `titan/main.py:315–325` |
-| SEC-2 | Chat ID numeric validation + token format check | DONE | `titan/ui/setup_wizard.py:77–87` |
-| SEC-3 | `os.system("clear")` → ANSI escape; rimosso `import os` | DONE | `titan/ui/menu_system.py:16–17` |
+| SEC-1 | Safe env var conversion: `_env_int`/`_env_float` helpers | DONE | `titan/main.py:315–325` |
+| SEC-2 | Email format check + Chat ID loop + token format + API key length | DONE | `titan/ui/setup_wizard.py` |
+| SEC-3 | `os.system("clear")` → ANSI escape; αφαίρεση `import os` | DONE | `titan/ui/menu_system.py:16–17` |
 | SEC-4 | Pin scikit-learn==1.4.2, pytest==8.3.3, hypothesis==6.112.1 | DONE | `requirements.txt` |
-| SEC-6 | `verify=True` esplicito + cache coordinate geocoding | DONE | `titan/integrations/weather_api.py` |
-| SEC-8 | Exception Garmin → `_log.debug(exc_info=True)`, stdout pulito | DONE | `titan/integrations/garmin_sync.py:45–59` |
-| — | `database.py` bare `except: pass` → `_log.warning()` | DONE | `titan/core/database.py:861–862` |
-| — | Weather fallback contrassegnato con `is_fallback: True` + warning | DONE | `titan/integrations/weather_api.py:247–265` |
+| SEC-5 | `_Secret(str)` wrapper: redacts credentials σε repr/tracebacks | DONE | `titan/utils/constants.py` + `garmin_sync.py` + `telegram_bot.py` |
+| SEC-6 | `verify=True` + cache geocoding coordinates | DONE | `titan/integrations/weather_api.py` |
+| SEC-7 | `_validate_athlete_dict()`: schema guard πριν το `from_dict()` | DONE | `titan/core/database.py:18–30` |
+| SEC-8 | Exception Garmin → `_log.debug(exc_info=True)`, stdout καθαρός | DONE | `titan/integrations/garmin_sync.py:45–59` |
+| SEC-9 | Windows `.env` permission warning στο `_save_env()` | DONE | `titan/ui/setup_wizard.py:108–111` |
+| — | `database.py` bare `except: pass` → `_log.warning()` | DONE | `titan/core/database.py` |
+| — | Weather fallback: `is_fallback: True` + warning stdout | DONE | `titan/integrations/weather_api.py` |
 | — | Adaptive Priority Lock (APL) | DONE | `titan/science/adaptive_priority_lock.py` |
 | — | VolumeLoadGauge (VLG) | DONE | `titan/science/volume_load_gauge.py` |
 | — | Outcome Tracker | DONE | `titan/science/outcome_tracker.py` |

@@ -68,7 +68,10 @@ def run_setup_wizard() -> dict:
 
     # ── Garmin ──────────────────────────────────────────────────────────
     print("━━━  GARMIN CONNECT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    creds["GARMIN_EMAIL"]    = input("  Email Garmin: ").strip()
+    email = input("  Email Garmin: ").strip()
+    if "@" not in email or "." not in email.split("@", 1)[-1]:
+        print("  ⚠️  Email μοιάζει άκυρο (αναμένεται μορφή user@example.com)")
+    creds["GARMIN_EMAIL"]    = email
     creds["GARMIN_PASSWORD"] = getpass.getpass("  Password (κρυφό): ")
 
     # ── Telegram ─────────────────────────────────────────────────────────
@@ -89,7 +92,10 @@ def run_setup_wizard() -> dict:
     # ── Weather ──────────────────────────────────────────────────────────
     print("\n━━━  WEATHER API (openweathermap.org)  ━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Δωρεάν εγγραφή → API keys → Πάρε το key")
-    creds["WEATHER_API_KEY"]  = input("  API Key: ").strip()
+    api_key = input("  API Key: ").strip()
+    if len(api_key) < 20:
+        print("  ⚠️  API key μοιάζει άκυρο (OpenWeatherMap keys είναι 32 χαρακτήρες)")
+    creds["WEATHER_API_KEY"]  = api_key
     creds["WEATHER_LOCATION"] = input("  Τοποθεσία (π.χ. Athens,GR): ").strip() or "Athens,GR"
 
     # ── Save ─────────────────────────────────────────────────────────────
@@ -106,6 +112,11 @@ def _save_env(creds: dict):
         lines.append(f"{k}={value}")
     ENV_PATH.write_text("\n".join(lines) + "\n")
     ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
+    if os.name == "nt":
+        print(
+            "  ⚠️  Windows: τα permissions του .env δεν εφαρμόζονται αυτόματα.\n"
+            "  Προστάτεψε το χειροκίνητα: Ιδιότητες → Ασφάλεια → αφαίρεσε άλλους χρήστες."
+        )
 
     # Also add to .gitignore if not already there
     gitignore = Path(__file__).parent.parent.parent / ".gitignore"
