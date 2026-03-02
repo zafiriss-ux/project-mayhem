@@ -34,6 +34,7 @@ from titan.science.volume_load_gauge import VolumeLoadGauge, VLGState
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.outcome_tracker import OutcomeTracker, GovernanceDecision
 from titan.science.load_prediction_shadow import LoadPredictionShadowModel, ShadowLoadPrediction
+from titan.science.injury_risk_model import InjuryRiskEnsembleModel, InjuryRiskAssessment
 
 __all__ = [
     # Core engines
@@ -64,4 +65,6 @@ __all__ = [
     'GovernanceDecision',
     'LoadPredictionShadowModel',
     'ShadowLoadPrediction',
+    'InjuryRiskEnsembleModel',
+    'InjuryRiskAssessment',
 ]
