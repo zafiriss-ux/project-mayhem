@@ -49,10 +49,13 @@ Goal: Introduce governance infrastructure and safety rails safely.
 - Security: argv redaction in launcher — IMPLEMENTED
 - Specs cherry-picked to main: `docs/specs/adaptive_priority_lock.md`, `docs/specs/volume_load_gauge.md`
 - ADR-0008: Adaptive Priority Lock and VLG specs
+- Phase 3 hygiene sweep — DONE (2026-03-02): `tests/test_phase3_hygiene.py` (27 tests);
+  all five Phase 3 modules at 99 % aggregate coverage; `governance_contracts` and
+  `adaptive_priority_lock` at 100 %; total suite 932 tests, all green.
 
 ### Remaining
 
-- None. `adaptive_priority_lock.py` has been implemented and integrated.
+- None.
 
 ---
 
@@ -95,4 +98,4 @@ No feature development without:
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-01
+Last updated: 2026-03-02
