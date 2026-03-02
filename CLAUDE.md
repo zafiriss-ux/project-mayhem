@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**TITAN OS** (v5.7.5) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
+**TITAN OS** (v5.8.0) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
 
 - **Language**: Python 3.11+ (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
 - **Database**: SQLite (thread-safe, via `DatabaseManager`)
@@ -41,10 +41,12 @@ project-mayhem/
 │   ├── test_telegram_calibration_command.py # /calibration Telegram command
 │   ├── test_phase4_observability_flows.py   # Structured flow log tests
 │   ├── test_phase4_slo_alerts.py            # SLO alert firing tests
-│   └── test_todo_fix_recommendations.py    # P0/P1/P2 gate coverage (boundary tests)
+│   ├── test_todo_fix_recommendations.py    # P0/P1/P2 gate coverage (boundary tests)
+│   ├── test_operator_console_dashboard.py  # Operator Console service payload tests (Phase 6)
+│   └── test_phase6_hygiene.py              # Phase 6 branch-coverage sweep (24 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0009)
+│   ├── adr/                 # Architecture Decision Records (0001–0013)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
@@ -104,7 +106,7 @@ WEATHER_CACHE_DURATION_HOURS=1
 ## Running Tests
 
 ```bash
-# Run all tests (1014 total, all green as of v5.7.5)
+# Run all tests (1026 total, all green as of v5.8.0)
 pytest
 
 # Run with coverage
@@ -122,7 +124,7 @@ pytest --cov=titan.science.governance_engine \
 pytest tests/test_apl_integration.py -v
 
 # Run phase hygiene sweeps
-pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py -v
+pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests/test_phase6_hygiene.py -v
 
 # Run specific test files
 pytest test_core_modules.py
@@ -201,6 +203,10 @@ See `docs/adr/` for Architecture Decision Records:
 - `0007` — Intensity governance architecture audit (read-only assessment)
 - `0008` — Adaptive Priority Lock and VLG specs (VLG: implemented; APL: implemented — v5.7.1)
 - `0009` — Safety gate hardening: C1 & C2 resolution (OR semantics + gate reorder — v5.7.4)
+- `0010` — Operator Console: Readiness Dashboard MVP payload (Implemented — v5.8.0)
+- `0011` — Operator Console: Session Explorer payload + manual annotation (Implemented — v5.8.0)
+- `0012` — Operator Console: Manual Override Workflow (Accepted — v5.8.0)
+- `0013` — Operator Console: Technology path — Streamlit → React + FastAPI (Accepted — v5.8.0)
 
 ---
 
@@ -221,7 +227,7 @@ See `docs/adr/` for Architecture Decision Records:
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–5 CLOSED |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–6 CLOSED |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
@@ -231,5 +237,6 @@ See `docs/adr/` for Architecture Decision Records:
 | `titan/config/evidence_registry.py` | Parameter provenance for all thresholds (STRONG/MODERATE/HEURISTIC) |
 | `titan/science/adaptive_priority_lock.py` | APL: phase × load matrix → priority vector + lock thresholds |
 | `titan/science/outcome_tracker.py` | Decision→outcome correlation; calibration analytics; `governance_outcomes` DB |
+| `titan/ui/operator_console.py` | `OperatorConsoleService`: dashboard, session explorer, override workflow, calibration review (v5.8.0) |
 | `titan/utils/constants.py` | `SESSION_TYPES`, `ACWR_SAFE_MIN/MAX`, `DEFAULT_CONFIG` |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |

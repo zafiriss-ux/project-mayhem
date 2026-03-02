@@ -2,6 +2,50 @@
 
 ---
 
+## v5.8.0 / v51.10 — Phase 6 closure: Web UI / Operator Console (2026-03-02)
+
+### New Module
+
+- **`titan/ui/operator_console.py`** — `OperatorConsoleService`: four read/write service
+  payloads for the Operator Console (Web UI / Operator Console phase deliverables):
+  - `readiness_load_dashboard()` — TSB/ACWR/readiness timeline + VLG distribution summary
+  - `session_explorer()` — governance decision trail + manual annotation read/write
+  - `add_manual_annotation()` — persists operator notes to `governance_outcomes` table
+  - `manual_override_workflow()` — override audit log + ratio calculation
+  - `record_manual_override()` — persists override rows via `DatabaseManager.log_override()`
+  - `calibration_review()` — lock rates by phase, heuristic/moderate promotion candidates
+
+### Architecture
+
+- **`titan/ui/__init__.py`** — exports `OperatorConsoleService` in `__all__`
+- **`docs/adr/0010`** — Readiness Dashboard MVP payload (Implemented)
+- **`docs/adr/0011`** — Session Explorer payload + manual annotation (Implemented)
+- **`docs/adr/0012`** — Manual Override Workflow (Accepted)
+- **`docs/adr/0013`** — Technology path: Streamlit prototype → React + FastAPI (Accepted)
+- **`docs/specs/operator_console_readiness_dashboard.md`** — payload contract spec
+- **`docs/specs/operator_console_session_explorer.md`** — session explorer spec
+- **`docs/specs/operator_console_manual_override_workflow.md`** — override workflow spec
+- **`docs/specs/operator_console_technology_path.md`** — two-stage UI delivery spec
+
+### Tests
+
+- **`tests/test_operator_console_dashboard.py`** — 8 contract tests for all four service
+  payloads (happy path + empty state for each workflow)
+- **`tests/test_phase6_hygiene.py`** — 24 hygiene tests:
+  - `TestCalibrationReviewSparseLockSkip` (4): covers the sparse-lock `continue` branch
+    (line 183 in `operator_console.py`), reaching 100% module coverage
+  - `TestOperatorConsoleServiceInterface` (6): verifies all six methods present + callable,
+    correct return-key contracts for each payload
+  - `TestTitanUiPublicApi` (2): `OperatorConsoleService` in `titan.ui.__all__` + importable
+  - `TestPhase6DeliverableSmoke` (12): ADRs 0010–0013 present and non-empty; all four specs
+    present; module importable; roadmap marks Phase 6 CLOSED; ADR-0013 status Accepted
+
+### Result
+
+1026 tests, 0 failures. `titan/ui/operator_console.py` at 100% coverage.
+
+---
+
 ## v5.7.5 / v51.9 — Pre-Phase 6 repo cleanup + H2/H3 boundary hardening (2026-03-02)
 
 ### Safety — Boundary Fix
