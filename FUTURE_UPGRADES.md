@@ -71,6 +71,7 @@ require a DB-backed accumulation cycle across multiple restarts.
 | — | P0 safety gate tests | DONE | `tests/test_p0_safety_gates.py` (14 tests) |
 | — | Governance integration tests | DONE | `tests/test_governance_integration.py` (27 tests) |
 | — | APL integration tests | DONE | `tests/test_apl_integration.py` (64 tests) |
+| — | E2E gold-path regression suite (onboarding, planning, recovery adaptation) | DONE | `tests/test_e2e_regression_suite.py` |
 
 ---
 
