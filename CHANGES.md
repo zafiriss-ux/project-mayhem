@@ -2,6 +2,33 @@
 
 ---
 
+## v5.7.2 / v51.6 — Phase 3 hygiene: branch coverage sweep (2026-03-02)
+
+### Test Hygiene
+
+- **`tests/test_phase3_hygiene.py`** — **NEW** (27 tests)
+  Branch-coverage sweep closing all remaining uncovered defensive paths in
+  the five Phase 3 science modules:
+  - `governance_contracts.py` 78 % → **100 %**: all 11 `isinstance` guard
+    violations and structural-invariant raise branches now documented as tests.
+  - `governance_engine.py` 93 % → **99 %**: exception-handler fallbacks in
+    `_evaluate_2of4_indicators` (HRV, sleep, subjective fatigue conversions),
+    `_check_hard_stops` subjective-fatigue except path, `check_override_lockdown`
+    DB-exception fallback, `_to_dict_maybe` dict-passthrough and arbitrary-object
+    paths, fueling gate LOCK (TEMPO/INTERVALS ≥ 90 min) and FLAG
+    (EASY/PROGRESSIVE 60–89 min) branches, intensity gate RED/YELLOW lock codes,
+    and session_override passthrough.
+  - `adaptive_priority_lock.py` 94 % → **100 %**: matrix-miss fallback (lines
+    237–239) covered via monkeypatch; unknown-phase normalisation and
+    cs_confidence < 0.50 tightening also explicitly tested.
+  - `intensity_governor.py` 98 %, `volume_load_gauge.py` 100 % — unchanged.
+  - Total Phase 3 module coverage: **99 %** (579 stmts, 3 missed).
+  - One intentionally uncovered line remains: `governance_engine.py:475`
+    (`_log.error` on self-produced contract violation — unreachable in
+    production; defensive guard only).
+
+---
+
 ## v5.7.1 / v51.5 — Platform maturity: APL, Outcome Tracker, Evidence Registry (2026-03-01)
 
 ### Governance Infrastructure
