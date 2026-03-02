@@ -102,6 +102,16 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
         else:
             phase_lines = "  • N/A"
 
+        lock_corr = summary.get("lock_outcome_correlation", {})
+        if lock_corr:
+            corr_lines = "\n".join(
+                f"  • {lock}: Δcompletion {metrics.get('completion_delta_pp', 0)}pp "
+                f"({metrics.get('n_with_lock', 0)} vs {metrics.get('n_without_lock', 0)} sessions)"
+                for lock, metrics in sorted(lock_corr.items())
+            )
+        else:
+            corr_lines = "  • N/A (need >=3 with-lock and >=3 without-lock samples per trigger)"
+
         return (
             "🧪 *CALIBRATION*\n"
             f"• Status: {status}\n"
@@ -113,6 +123,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
             f"• Avg RPE (completed): {summary.get('avg_rpe_when_completed', 'N/A')}\n"
             "• Lock rate by phase:\n"
             f"{phase_lines}\n"
+            "• Lock/outcome correlation:\n"
+            f"{corr_lines}\n"
             f"• Note: {summary.get('calibration_note', 'No calibration note available.')}"
         )
 

@@ -289,6 +289,54 @@ class OutcomeTracker:
             if locked
         }
 
+    def get_lock_outcome_correlation(self, min_samples: int = 3) -> Dict[str, Dict]:
+        """
+        Correlate each lock trigger with downstream completion + RPE outcomes.
+
+        This is a Phase-5 calibration primitive used to identify which gates
+        are most strongly associated with session success/failure.
+        """
+        decided = [d for d in self._decisions if d.outcome_completed is not None]
+        if not decided:
+            return {}
+
+        lock_names = sorted({lock for d in decided for lock in d.locks_applied})
+        correlation: Dict[str, Dict] = {}
+
+        for lock in lock_names:
+            with_lock = [d for d in decided if lock in d.locks_applied]
+            without_lock = [d for d in decided if lock not in d.locks_applied]
+
+            if len(with_lock) < min_samples or len(without_lock) < min_samples:
+                continue
+
+            completion_with = sum(1 for d in with_lock if d.outcome_completed) / len(with_lock)
+            completion_without = (
+                sum(1 for d in without_lock if d.outcome_completed) / len(without_lock)
+            )
+            rpe_with_values = [d.outcome_rpe for d in with_lock if d.outcome_rpe is not None]
+            rpe_without_values = [d.outcome_rpe for d in without_lock if d.outcome_rpe is not None]
+            rpe_with = (
+                round(sum(rpe_with_values) / len(rpe_with_values), 1)
+                if rpe_with_values else None
+            )
+            rpe_without = (
+                round(sum(rpe_without_values) / len(rpe_without_values), 1)
+                if rpe_without_values else None
+            )
+
+            correlation[lock] = {
+                'n_with_lock': len(with_lock),
+                'n_without_lock': len(without_lock),
+                'completion_with_lock': round(completion_with, 3),
+                'completion_without_lock': round(completion_without, 3),
+                'completion_delta_pp': round((completion_with - completion_without) * 100, 1),
+                'avg_rpe_with_lock': rpe_with,
+                'avg_rpe_without_lock': rpe_without,
+            }
+
+        return correlation
+
     # ── Calibration summary ──────────────────────────────────────────────────
 
     def get_calibration_summary(self) -> Dict:
@@ -340,6 +388,7 @@ class OutcomeTracker:
             'athlete_override_rate': athlete_override_rate,
             'avg_rpe_when_completed': avg_rpe,
             'lock_rate_by_phase': self.get_lock_rate_by_phase(),
+            'lock_outcome_correlation': self.get_lock_outcome_correlation(),
             'calibration_note': (
                 'Ready for threshold calibration review.'
                 if calibration_ready else
