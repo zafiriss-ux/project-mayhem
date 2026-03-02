@@ -117,7 +117,7 @@ Goal: Operational visibility before advanced ML investment.
 
 ---
 
-## Phase 7 — ML Features (IN PROGRESS, Q3–Q4 2026, after Phase 6)
+## Phase 7 — ML Features (CLOSED, 2026-03-02)
 Goal: Machine learning on a stable, calibrated, observable foundation.
 
 1. LSTM load prediction — shadow mode first, then graduated rollout — DONE (2026-03-02: shadow predictor scaffold in `titan/science/load_prediction_shadow.py` with contract tests in `tests/test_load_prediction_shadow.py`)
@@ -125,6 +125,11 @@ Goal: Machine learning on a stable, calibrated, observable foundation.
 3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply — DONE (2026-03-02: suggest-only scaffold in `titan/science/automated_periodization.py` with contract tests in `tests/test_automated_periodization.py`)
 4. Kill-switch mandatory for all ML paths before any athlete-facing deployment — DONE (2026-03-02: shared ML kill-switch enforcement in `titan/science/ml_safety.py`; athlete-facing guards wired in `load_prediction_shadow.py`, `injury_risk_model.py`, and `automated_periodization.py` with coverage in `tests/test_ml_kill_switch.py`)
 5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC) — DONE (2026-03-02: `ShadowLoadPrediction` now includes `evidence_label` so all Phase 7 recommendation payloads expose evidence context)
+6. Phase 7 hygiene sweep — DONE (2026-03-02): `tests/test_phase7_hygiene.py` (31 tests);
+   all four Phase 7 modules at 100% coverage (`load_prediction_shadow`, `injury_risk_model`,
+   `automated_periodization`, `ml_safety`); missing branches closed (invalid-alpha guard,
+   FLAT trend path, MEDIUM risk band); public-API, evidence-label, mode-string, kill-switch,
+   dict-contract, and immutability invariants validated; total suite 1122 tests, all green.
 
 ### Remaining
 
@@ -177,4 +182,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 7 task 5 completed; 0 tasks remaining)
+Last updated: 2026-03-02 (Phase 7 hygiene sweep completed; Phase 7 CLOSED)
