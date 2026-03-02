@@ -5,6 +5,8 @@ Uses pyTelegramBotAPI for real polling (not mock).
 """
 
 import contextlib
+import json
+import logging
 import os
 import time
 import threading
@@ -15,6 +17,14 @@ from typing import Dict, List, Optional, Callable
 from titan.utils.constants import _Secret
 
 from titan.utils.secrets import SecretStr
+
+
+_log = logging.getLogger(__name__)
+
+
+def _telegram_event(action: str, **fields) -> None:
+    """Emit a structured Telegram delivery event as a single JSON log line."""
+    _log.info(json.dumps({"flow": "telegram", "action": action, **fields}, default=str))
 
 
 try:
@@ -176,6 +186,7 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         if not self.chat_id:
+            _telegram_event("slo_alert", slo_key="telegram_delivery_missing_chat_id", cause="INTEGRATION_CONFIG")
             print("⚠️  No chat_id – message not sent")
             return False
         if self.bot and TELEBOT_AVAILABLE:
@@ -184,6 +195,7 @@ class TitanTelegramBot:
                 self.message_history.append({"ts": datetime.now().isoformat(), "text": text[:80]})
                 return True
             except Exception as e:
+                _telegram_event("slo_alert", slo_key="telegram_delivery_failed", cause="INTEGRATION_DELIVERY", error=str(e))
                 print(f"❌ Telegram send error: {e}")
                 return False
         else:

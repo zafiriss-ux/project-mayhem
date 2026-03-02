@@ -8,6 +8,9 @@
 
 ---
 
+
+## Phase 4 — Observability & E2E (COMPLETED)
+=======
 ## Phase 4 — Observability & E2E (IN PROGRESS)
 
 ### Remaining
@@ -34,6 +37,7 @@ evidence is invisible during live operation.
 - Gate trigger behind minimum 30 paired decisions before surfacing recommendations *(DONE)*
 
 ---
+
 
 ### Completed (this cycle)
 
@@ -69,6 +73,11 @@ evidence is invisible during live operation.
 | — | Snapshot stability coverage | DONE | additional coverage in `test_e2e_regression_suite.py` |
 | — | OutcomeTracker persistence integration tests | DONE | `tests/test_outcome_tracker_persistence.py` |
 | — | `/calibration` Telegram command with 30-outcome gate + phase lock breakdown | DONE | `titan/main.py` + `titan/integrations/telegram_bot.py` |
+
+| — | Structured flow logs for planner + readiness + nutrition | DONE | `titan/features/weekly_planner.py` + `titan/science/readiness_engine.py` + `titan/features/nutrition_optimizer.py` |
+| — | SLO alerts for Telegram delivery, Garmin sync latency, nutrition plan missing | DONE | `titan/integrations/telegram_bot.py` + `titan/integrations/garmin_sync.py` + `titan/orchestration/daily_coach.py` |
+
+
 
 ---
 
@@ -214,7 +223,7 @@ Level 2  APL: phase-aware gate ordering               [v5.7.1 ✓]
 Level 3  Outcome tracking + cause classification      [v5.7.1 ✓]
 Level 4  Parameter provenance for all thresholds      [v5.7.1 ✓]
 Level 5  DB-persisted outcomes + lock rates           [v5.7.1 ✓]
-Level 6  /calibration command + structured flow logs  [Phase 4 — NEXT]
+Level 6  /calibration command + structured flow logs  [Phase 4 ✓]
 Level 7  Science calibration (≥30 outcomes)           [Phase 5]
 Level 8  ML layer on calibrated foundation            [Phase 7]
 Level 9  Autonomous self-calibration from evidence    [Phase 9]
