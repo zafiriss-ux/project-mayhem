@@ -68,3 +68,74 @@ def test_readiness_dashboard_aggregates_timeline_and_distribution(tmp_path):
     assert payload["summary"]["avg_acwr"] == 1.07
     assert payload["summary"]["latest_vlg_color"] == "GREEN"
     assert payload["summary"]["vlg_distribution"] == {"YELLOW": 1, "GREEN": 1}
+
+
+def test_session_explorer_includes_governance_trail_and_annotations(tmp_path):
+    db = _make_db(tmp_path)
+    db.save_governance_decision(
+        {
+            "date": "2026-03-03",
+            "session_planned": "INTERVALS",
+            "session_post_governance": "TEMPO",
+            "locks_applied": ["HARD_STOP_TSB_FLOOR"],
+            "governance_clean": False,
+            "phase": "BUILD",
+            "vlg_color": "RED",
+            "apl_priority_vector": {},
+            "lock_thresholds_active": {},
+            "acwr": 1.3,
+            "tsb_value": -28.0,
+            "readiness_score": 49.0,
+            "glycogen_debt": 0.2,
+            "afi_value": -0.3,
+            "outcome_rpe": 7,
+            "outcome_completed": True,
+            "outcome_session_type_actual": "TEMPO",
+            "outcome_notes": "Cut volume due to fatigue.",
+        }
+    )
+
+    service = OperatorConsoleService(db)
+    payload = service.session_explorer(limit=10)
+
+    assert payload["summary"] == {
+        "samples": 1,
+        "annotated_sessions": 1,
+        "sessions_with_locks": 1,
+    }
+    session = payload["sessions"][0]
+    assert session["date"] == "2026-03-03"
+    assert session["manual_annotation"] == "Cut volume due to fatigue."
+    assert [step["step"] for step in session["decision_trail"]] == [
+        "planned",
+        "post_governance",
+        "completed",
+    ]
+
+
+def test_add_manual_annotation_updates_latest_decision_note(tmp_path):
+    db = _make_db(tmp_path)
+    db.save_governance_decision(
+        {
+            "date": "2026-03-04",
+            "session_planned": "VO2",
+            "session_post_governance": "EASY",
+            "locks_applied": ["OVERRIDE_LOCKDOWN"],
+            "governance_clean": False,
+            "phase": "BUILD",
+            "vlg_color": "YELLOW",
+            "apl_priority_vector": {},
+            "lock_thresholds_active": {},
+            "acwr": 1.12,
+            "tsb_value": -10.0,
+            "readiness_score": 58.0,
+            "glycogen_debt": 0.11,
+            "afi_value": -0.05,
+        }
+    )
+
+    service = OperatorConsoleService(db)
+    assert service.add_manual_annotation("2026-03-04", "Operator overrode due to travel day.") is True
+
+    payload = service.session_explorer(limit=10)
+    assert payload["sessions"][0]["manual_annotation"] == "Operator overrode due to travel day."
