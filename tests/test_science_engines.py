@@ -1038,6 +1038,40 @@ class TestOutcomeTracker:
         assert "governance_lock_rate" in summary
         assert "completion_rate" in summary
         assert summary["completion_rate"] == 1.0
+        assert "lock_outcome_correlation" in summary
+
+    def test_lock_outcome_correlation_returns_empty_without_outcomes(self, tracker):
+        self._make_decision(tracker, locks_applied=["LOCK_A"], governance_clean=False)
+        assert tracker.get_lock_outcome_correlation() == {}
+
+    def test_lock_outcome_correlation_computes_completion_delta(self, tracker):
+        for i in range(4):
+            day = f"2026-02-{i+1:02d}"
+            self._make_decision(
+                tracker,
+                date=day,
+                governance_clean=False,
+                locks_applied=["LOCK_A"],
+            )
+            tracker.record_outcome(day, completed=(i != 0), rpe=8)
+
+        for i in range(4):
+            day = f"2026-03-{i+1:02d}"
+            self._make_decision(
+                tracker,
+                date=day,
+                governance_clean=True,
+                locks_applied=[],
+            )
+            tracker.record_outcome(day, completed=True, rpe=5)
+
+        corr = tracker.get_lock_outcome_correlation()
+        assert "LOCK_A" in corr
+        assert corr["LOCK_A"]["n_with_lock"] == 4
+        assert corr["LOCK_A"]["n_without_lock"] == 4
+        assert corr["LOCK_A"]["completion_with_lock"] == 0.75
+        assert corr["LOCK_A"]["completion_without_lock"] == 1.0
+        assert corr["LOCK_A"]["completion_delta_pp"] == -25.0
 
     def test_calibration_summary_avg_rpe(self, tracker):
         for i, rpe in enumerate([5, 7]):

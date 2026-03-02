@@ -65,3 +65,30 @@ def test_calibration_callback_formats_accumulating_summary():
     assert "Outcomes paired: 12" in response
     assert "BUILD" in response
     assert "Need 18 more paired outcomes." in response
+
+
+def test_calibration_callback_formats_lock_correlation_section():
+    telegram = MagicMock()
+    callbacks = {}
+    telegram.register_command = lambda command, cb: callbacks.setdefault(command, cb)
+
+    summary = {
+        "status": "CALIBRATION_AVAILABLE",
+        "n_decisions": 40,
+        "n_with_outcome": 32,
+        "completion_rate": 0.81,
+        "governance_lock_rate": 0.34,
+        "athlete_override_rate": 0.08,
+        "avg_rpe_when_completed": 6.1,
+        "lock_rate_by_phase": {"BUILD": 0.333},
+        "lock_outcome_correlation": {
+            "LOCK_A": {"completion_delta_pp": -12.5, "n_with_lock": 8, "n_without_lock": 24}
+        },
+        "calibration_note": "Ready for threshold calibration review.",
+    }
+    _register_telegram_callbacks(telegram, _build_ctx(summary))
+
+    response = callbacks["calibration"]()
+    assert "Lock/outcome correlation" in response
+    assert "LOCK_A" in response
+    assert "Δcompletion -12.5pp" in response
