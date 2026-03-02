@@ -59,7 +59,7 @@ Goal: Introduce governance infrastructure and safety rails safely.
 
 ---
 
-## Phase 4 — Observability & E2E (PARTIALLY COMPLETE)
+## Phase 4 — Observability & E2E (CLOSED)
 Goal: Production-grade visibility and regression safety.
 
 ### Completed
@@ -69,12 +69,16 @@ Goal: Production-grade visibility and regression safety.
 - OutcomeTracker DB persistence — DONE (`governance_outcomes` table, `tests/test_outcome_tracker_persistence.py`)
 - Structured observability for governance gates — DONE (`_gate_event()` + cause tagging + audit summary)
 - Structured logs for remaining flows — DONE (`WeeklyPlanGenerator`, `ReadinessEngine`, `NutritionOptimizer`)
+- `/calibration` Telegram command — DONE (lock_rate_by_phase, completion_rate from `governance_outcomes`)
+- SLO alerts — DONE (no Telegram delivery, Garmin sync timeout, nutrition plan missing)
+- Smoke checks post-release — DONE (import + instantiate + run 1 step, CI-gated via `test_main_smoke.py`)
+- Phase 4 hygiene sweep — DONE (2026-03-02): `tests/test_phase4_hygiene.py` (24 tests);
+  `outcome_tracker` and `governance_engine` at 100%, `intensity_governor` at 100%;
+  total suite 963 tests, all green.
 
-### Remaining (in order)
+### Remaining
 
-1. `/calibration` Telegram command: lock_rate_by_phase, completion_rate from `governance_outcomes`
-2. SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
-3. Smoke checks post-release (import + instantiate + run 1 step, CI-gated)
+- None.
 
 ---
 

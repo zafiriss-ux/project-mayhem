@@ -93,3 +93,41 @@ jobs:
 
       - name: Run system check (module health)
         run: python system_check.py || true
+
+  phase4-observability:
+    name: Phase 4 Observability & E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Phase 4 observability & SLO alert tests
+        run: |
+          pytest tests/test_phase4_observability_flows.py \
+                 tests/test_phase4_slo_alerts.py \
+                 tests/test_telegram_calibration_command.py \
+                 tests/test_outcome_tracker_persistence.py \
+                 tests/test_e2e_regression_suite.py \
+                 tests/test_phase4_hygiene.py \
+                 -v
+
+      - name: Phase 4 coverage gate (outcome_tracker + intensity_governor)
+        run: |
+          pytest --cov=titan.science.outcome_tracker \
+                 --cov=titan.science.intensity_governor \
+                 --cov=titan.science.governance_engine \
+                 --cov-report=term-missing \
+                 --cov-fail-under=98 \
+                 -q
+
+      - name: Smoke checks (import + instantiate + 1 step)
+        run: pytest test_main_smoke.py -q
