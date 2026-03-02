@@ -106,14 +106,14 @@ Priority calibration targets (from `EvidenceRegistry`):
 
 ---
 
-## Phase 6 — Web UI / Operator Console (PLANNED, Q2–Q3 2026)
+## Phase 6 — Web UI / Operator Console (CLOSED, 2026-03-02)
 Goal: Operational visibility before advanced ML investment.
 
 1. Readiness + load dashboard (TSB/CTL/ATL timeline, HRV trend, VLG color) — DONE (service payload in `titan/ui/operator_console.py`, tested in `tests/test_operator_console_dashboard.py`)
 2. Session explorer: log review, manual annotation, governance decision trail — DONE (explorer payload + annotation write path in `titan/ui/operator_console.py`, tested in `tests/test_operator_console_dashboard.py`)
 3. Calibration review: lock rates by phase, threshold calibration candidates — DONE (calibration review payload in `titan/ui/operator_console.py`, tested in `tests/test_operator_console_dashboard.py`)
 4. Manual override workflow with audit trail — DONE (override workflow payload + write path in `titan/ui/operator_console.py`, tested in `tests/test_operator_console_dashboard.py`)
-5. Technology path: Streamlit (rapid prototype) → React + FastAPI (production)
+5. Technology path: Streamlit (rapid prototype) → React + FastAPI (production) — DONE (ADR-0013 + `docs/specs/operator_console_technology_path.md`)
 
 ---
 
@@ -173,4 +173,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 5 closed)
+Last updated: 2026-03-02 (Phase 6 closed)
