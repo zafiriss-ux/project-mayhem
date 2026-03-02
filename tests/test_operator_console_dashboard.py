@@ -139,3 +139,69 @@ def test_add_manual_annotation_updates_latest_decision_note(tmp_path):
 
     payload = service.session_explorer(limit=10)
     assert payload["sessions"][0]["manual_annotation"] == "Operator overrode due to travel day."
+
+
+def test_calibration_review_empty_without_outcomes(tmp_path):
+    db = _make_db(tmp_path)
+    service = OperatorConsoleService(db)
+
+    payload = service.calibration_review()
+
+    assert payload["summary"]["samples"] == 0
+    assert payload["summary"]["governance_lock_rate"] is None
+    assert payload["summary"]["lock_rate_by_phase"] == {}
+    assert payload["heuristic_promotion_candidates"] == []
+    assert payload["moderate_promotion_candidates"] == []
+
+
+def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
+    db = _make_db(tmp_path)
+    for day in range(1, 17):
+        is_locked = day <= 8
+        db.save_governance_decision(
+            {
+                "date": f"2026-04-{day:02d}",
+                "session_planned": "VO2",
+                "session_post_governance": "TEMPO" if is_locked else "VO2",
+                "locks_applied": ["VO2_ELIGIBILITY_GATE"] if is_locked else [],
+                "governance_clean": not is_locked,
+                "phase": "BUILD" if day <= 4 or (9 <= day <= 12) else "PEAK",
+                "vlg_color": "YELLOW" if is_locked else "GREEN",
+                "apl_priority_vector": {},
+                "lock_thresholds_active": {},
+                "acwr": 1.2 if is_locked else 0.95,
+                "tsb_value": -18.0 if is_locked else -6.0,
+                "readiness_score": 58.0 if is_locked else 78.0,
+                "glycogen_debt": 0.18 if is_locked else 0.06,
+                "afi_value": -0.1 if is_locked else 0.1,
+                "outcome_completed": not is_locked,
+            }
+        )
+
+    service = OperatorConsoleService(db)
+    payload = service.calibration_review()
+
+    assert payload["summary"] == {
+        "samples": 16,
+        "governance_lock_rate": 0.5,
+        "lock_rate_by_phase": {"BUILD": 0.5, "PEAK": 0.5},
+    }
+    assert payload["heuristic_promotion_candidates"] == [
+        {
+            "parameter": "VO2_READINESS_MIN",
+            "trigger_lock": "VO2_ELIGIBILITY_GATE",
+            "n_with_lock": 8,
+            "n_without_lock": 8,
+            "completion_delta_pp": -100.0,
+        }
+    ]
+    assert payload["moderate_promotion_candidates"] == [
+        {
+            "parameter": "VO2_GLYCOGEN_DEBT_MAX",
+            "trigger_lock": "VO2_ELIGIBILITY_GATE",
+            "n_with_lock": 8,
+            "n_without_lock": 8,
+            "completion_delta_pp": -100.0,
+            "phase_replication_count": 2,
+        }
+    ]
