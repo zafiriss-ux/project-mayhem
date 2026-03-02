@@ -19,6 +19,7 @@ class ShadowLoadPrediction:
     trend: str
     model_name: str = 'LSTM_SHADOW_BASELINE'
     mode: str = 'SHADOW'
+    evidence_label: str = 'HEURISTIC'
 
 
 class LoadPredictionShadowModel:
@@ -81,4 +82,5 @@ class LoadPredictionShadowModel:
             'trend': prediction.trend,
             'model_name': prediction.model_name,
             'mode': prediction.mode,
+            'evidence_label': prediction.evidence_label,
         }

@@ -124,11 +124,11 @@ Goal: Machine learning on a stable, calibrated, observable foundation.
 2. Injury risk model — ensemble (Random Forest + Gradient Boosting), recall > 80% — DONE (2026-03-02: advisory scaffold in `titan/science/injury_risk_model.py` with contract tests in `tests/test_injury_risk_model.py`)
 3. Automated periodization — genetic algorithm, suggest-only → athlete-confirm → auto-apply — DONE (2026-03-02: suggest-only scaffold in `titan/science/automated_periodization.py` with contract tests in `tests/test_automated_periodization.py`)
 4. Kill-switch mandatory for all ML paths before any athlete-facing deployment — DONE (2026-03-02: shared ML kill-switch enforcement in `titan/science/ml_safety.py`; athlete-facing guards wired in `load_prediction_shadow.py`, `injury_risk_model.py`, and `automated_periodization.py` with coverage in `tests/test_ml_kill_switch.py`)
-5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC)
+5. Each ML recommendation carries an evidence label (STRONG/MODERATE/HEURISTIC) — DONE (2026-03-02: `ShadowLoadPrediction` now includes `evidence_label` so all Phase 7 recommendation payloads expose evidence context)
 
 ### Remaining
 
-- 1 task.
+- None.
 
 ---
 
@@ -177,4 +177,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 7 task 4 completed; 1 task remaining)
+Last updated: 2026-03-02 (Phase 7 task 5 completed; 0 tasks remaining)
