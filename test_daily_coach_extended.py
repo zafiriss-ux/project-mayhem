@@ -413,3 +413,23 @@ class TestRunMorningRoutineSmoke:
         coach.run_morning_routine(soreness=3)
         loads = coach.db.get_training_load_history(7)
         assert len(loads) >= 1
+
+
+    def test_morning_routine_normalizes_vo2_contract(self, coach_mocks):
+        coach, mocks = coach_mocks
+
+        def fake_apply_constraints(session_plan, context):
+            out = dict(session_plan)
+            out['vo2_eligibility'] = {
+                'eligible': False,
+                'failed_conditions': 'V1',
+                'detailed_failed_conditions': {'code': 'V1'},
+            }
+            return out
+
+        coach.governance.apply_constraints = fake_apply_constraints
+        coach.run_morning_routine(soreness=3)
+        payload = mocks["telegram"].send_daily_coaching.call_args[0][0]
+        vo2 = payload['vo2_eligibility']
+        assert vo2['failed_conditions'] == ['V1']
+        assert vo2['detailed_failed_conditions'] == []

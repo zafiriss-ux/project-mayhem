@@ -204,6 +204,23 @@ class TestPrintBanner:
         out = capsys.readouterr().out
         assert "HRV" in out or "TSB" in out or "Garmin" in out
 
+class TestEnvNumericParsing:
+
+    def test_parse_env_number_valid_int(self, monkeypatch):
+        from titan.main import _parse_env_number
+        monkeypatch.setenv("ATHLETE_AGE", "42")
+        assert _parse_env_number("ATHLETE_AGE", "35", int) == 42
+
+    def test_parse_env_number_invalid_exits(self, monkeypatch, capsys):
+        from titan.main import _parse_env_number
+        monkeypatch.setenv("ATHLETE_AGE", "abc")
+        with pytest.raises(SystemExit) as exc:
+            _parse_env_number("ATHLETE_AGE", "35", int)
+        assert exc.value.code == 1
+        out = capsys.readouterr().out
+        assert "Invalid environment variable ATHLETE_AGE" in out
+
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # 4. _register_telegram_callbacks

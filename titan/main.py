@@ -253,6 +253,17 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
     print("✅ Telegram command callbacks registered (9 commands)")
 
 
+
+
+def _parse_env_number(name: str, default: str, caster):
+    """Parse numeric env var and exit safely with a clear message on invalid input."""
+    raw = os.getenv(name, default)
+    try:
+        return caster(raw)
+    except (TypeError, ValueError):
+        print(f"❌ Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.")
+        sys.exit(1)
+
 # ════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ════════════════════════════════════════════════════════════════════════════
@@ -314,11 +325,11 @@ def main():
     # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
     athlete_profile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
-        "age":            int(os.getenv("ATHLETE_AGE", "35")),
-        "weight_kg":      float(os.getenv("ATHLETE_WEIGHT", "75")),
-        "height_cm":      float(os.getenv("ATHLETE_HEIGHT", "175")),
-        "max_hr":         int(os.getenv("ATHLETE_MAX_HR", "190")),
-        "threshold_hr":   int(os.getenv("ATHLETE_THRESHOLD_HR", "168")),
+        "age":            _parse_env_number("ATHLETE_AGE", "35", int),
+        "weight_kg":      _parse_env_number("ATHLETE_WEIGHT", "75", float),
+        "height_cm":      _parse_env_number("ATHLETE_HEIGHT", "175", float),
+        "max_hr":         _parse_env_number("ATHLETE_MAX_HR", "190", int),
+        "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", "168", int),
         "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
     }
