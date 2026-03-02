@@ -293,10 +293,19 @@ class DailyCoach:
 
                 'fatigue_level':       fatigue_level,
 
+
+                'acwr':                garmin_data.get('acwr', 1.0),
+
                 'acwr':                _acwr_for_vlg,
+
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
                 'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
                 'planned_duration_min': today_session.get('duration_min', 45),
+
+
+
+
+
 
                 'today_hrv':          latest_hrv,
                 'baseline_hrv':       baseline_hrv,
@@ -308,13 +317,21 @@ class DailyCoach:
                 'tsb_value':          tsb_value,
                 'injury_flag':        bool(garmin_data.get('injury_flag', False)),
 
+
+
+
+
                 # APL injections: adaptive gate ordering + threshold overrides
                 'priority_vector':    apl_result.get('priority_vector', {}),
                 'lock_thresholds':    apl_result.get('lock_thresholds', {}),
+
             },
         )
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
+
+
+        self._ensure_vo2_eligibility_contract(today_session)
 
         # ── Step 9c: Record governance decision for outcome tracking ─────────
         self.outcome_tracker.record_decision(
@@ -331,6 +348,7 @@ class DailyCoach:
             glycogen_debt         = self.glycogen.daily_debt,
             afi_value             = afi_final,
         )
+
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
         print("⏰ Calculating optimal running time...")
@@ -423,6 +441,24 @@ class DailyCoach:
     # ═══════════════════════════════════════════════════════════════════════
     # PRIVATE HELPERS
     # ═══════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _ensure_vo2_eligibility_contract(session_plan: Dict) -> None:
+        """Normalize VO2 gate payload shape for downstream consumers."""
+        vo2 = session_plan.get('vo2_eligibility')
+        if not isinstance(vo2, dict):
+            return
+
+        failed = vo2.get('failed_conditions', [])
+        if not isinstance(failed, list):
+            failed = [str(failed)] if failed else []
+        vo2['failed_conditions'] = [str(code) for code in failed]
+
+        details = vo2.get('detailed_failed_conditions', [])
+        if not isinstance(details, list):
+            details = []
+        normalized = [d for d in details if isinstance(d, dict) and 'code' in d]
+        vo2['detailed_failed_conditions'] = normalized
 
     def _persist_garmin_data(
         self, garmin_data: Dict, today_str: str
