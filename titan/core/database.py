@@ -856,7 +856,46 @@ class AthleteDatabase:
             try:
                 with open(filepath) as f:
                     data = json.load(f)
+                self._validate_profile_schema(data)
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
             except Exception as e:
                 _log.warning("Skipped corrupted athlete file: %s (%s)", filepath.name, type(e).__name__)
+
+    @staticmethod
+    def _validate_profile_schema(data: Any) -> None:
+        """Lightweight schema validation before profile deserialization."""
+        if not isinstance(data, dict):
+            raise TypeError("Athlete profile must be a JSON object")
+
+        athlete_id = data.get("athlete_id")
+        if not isinstance(athlete_id, str) or not athlete_id.strip():
+            raise ValueError("Invalid field: athlete_id")
+
+        typed_fields = {
+            "name": str,
+            "gender": str,
+            "age": int,
+            "height_cm": (int, float),
+            "weight_kg": (int, float),
+            "resting_hr": int,
+            "max_hr": int,
+            "threshold_hr": int,
+            "vo2_max": (int, float),
+            "race_day": str,
+            "current_goal": str,
+            "target_time": str,
+            "personal_bests": dict,
+            "weight_floor": (int, float),
+            "paces": dict,
+            "critical_speed_m_per_s": (int, float),
+            "d_prime_m": (int, float),
+        }
+        for field, expected_type in typed_fields.items():
+            value = data.get(field)
+            if value is not None and not isinstance(value, expected_type):
+                raise TypeError(f"Invalid type for field: {field}")
+
+        race_day = data.get("race_day")
+        if race_day:
+            datetime.fromisoformat(race_day)
