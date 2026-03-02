@@ -82,6 +82,40 @@ def _print_banner():
 def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
     """Wire engine methods to Telegram slash commands."""
 
+    def _format_calibration_summary(summary: dict) -> str:
+        status = summary.get("status", "UNKNOWN")
+        if status == "NO_OUTCOMES_YET":
+            return (
+                "🧪 *CALIBRATION*\n"
+                f"• Decisions logged: {summary.get('n_decisions', 0)}\n"
+                "• Outcomes paired: 0\n"
+                "• Status: NO_OUTCOMES_YET\n"
+                f"• Note: {summary.get('note', 'No calibration data yet.')}"
+            )
+
+        phase_rates = summary.get("lock_rate_by_phase", {})
+        if phase_rates:
+            phase_lines = "\n".join(
+                f"  • {phase}: {round(rate * 100, 1)}%"
+                for phase, rate in sorted(phase_rates.items())
+            )
+        else:
+            phase_lines = "  • N/A"
+
+        return (
+            "🧪 *CALIBRATION*\n"
+            f"• Status: {status}\n"
+            f"• Decisions logged: {summary.get('n_decisions', 0)}\n"
+            f"• Outcomes paired: {summary.get('n_with_outcome', 0)}\n"
+            f"• Completion rate: {round(summary.get('completion_rate', 0) * 100, 1)}%\n"
+            f"• Governance lock rate: {round(summary.get('governance_lock_rate', 0) * 100, 1)}%\n"
+            f"• Athlete override rate: {round(summary.get('athlete_override_rate', 0) * 100, 1)}%\n"
+            f"• Avg RPE (completed): {summary.get('avg_rpe_when_completed', 'N/A')}\n"
+            "• Lock rate by phase:\n"
+            f"{phase_lines}\n"
+            f"• Note: {summary.get('calibration_note', 'No calibration note available.')}"
+        )
+
     def cb_today():
         coach: DailyCoach = ctx["daily_coach"]
         try:
@@ -239,6 +273,14 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
 
+    def cb_calibration():
+        coach: DailyCoach = ctx["daily_coach"]
+        try:
+            summary = coach.outcome_tracker.get_calibration_summary()
+            return _format_calibration_summary(summary)
+        except Exception as e:
+            return f"❌ Σφάλμα: {e}"
+
     # Register all callbacks
     telegram.register_command("today",      cb_today)
     telegram.register_command("week",       cb_week)
@@ -249,8 +291,9 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
     telegram.register_command("activities", cb_activities)
     telegram.register_command("drift",      cb_drift)
     telegram.register_command("shoes",      cb_shoes)
+    telegram.register_command("calibration", cb_calibration)
 
-    print("✅ Telegram command callbacks registered (9 commands)")
+    print("✅ Telegram command callbacks registered (10 commands)")
 
 
 
