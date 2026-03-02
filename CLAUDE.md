@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**TITAN OS** (v5.7.0) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
+**TITAN OS** (v5.7.3) is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect to sync training data and wearables, applies science-based algorithms (HRV, TSB/CTL/ATL, ACWR, lactate threshold, drift analysis, autonomic fusion), enforces safety-first governance gates, generates weekly training plans, calculates optimal workout timing based on weather/dew point, optimizes nutrition macros, and delivers coaching via a Telegram bot.
 
 - **Language**: Python 3.11+ (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
 - **Database**: SQLite (thread-safe, via `DatabaseManager`)
@@ -28,19 +28,29 @@ project-mayhem/
 ├── test_logic_pytest.py     # Logic tests (pytest)
 ├── test_telegram_bot.py     # Telegram integration tests
 ├── test_property_based.py   # Property-based tests (hypothesis)
-├── tests/                   # Additional integration tests
-│   ├── test_governance_integration.py  # Contract + boundary tests (27 tests)
-│   └── test_p0_safety_gates.py         # P0 hard-stop gate tests (14 tests)
+├── tests/                   # Integration + hygiene tests (13 files)
+│   ├── test_governance_integration.py       # Contract + boundary tests (27 tests)
+│   ├── test_p0_safety_gates.py              # P0 hard-stop gate tests (14 tests)
+│   ├── test_apl_integration.py              # APL contract + invariant tests (64 tests)
+│   ├── test_phase3_hygiene.py               # Phase 3 branch-coverage sweep (27 tests)
+│   ├── test_phase4_hygiene.py               # Phase 4 observability sweep (24 tests)
+│   ├── test_e2e_regression_suite.py         # Gold-path E2E regression scenarios
+│   ├── test_outcome_tracker_persistence.py  # OutcomeTracker DB persistence
+│   ├── test_science_engines.py              # Comprehensive science engine tests
+│   ├── test_athlete_database_schema_validation.py  # Schema validation
+│   ├── test_telegram_calibration_command.py # /calibration Telegram command
+│   ├── test_phase4_observability_flows.py   # Structured flow log tests
+│   └── test_phase4_slo_alerts.py            # SLO alert firing tests
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
 │   ├── adr/                 # Architecture Decision Records (0001–0008)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (47 modules)
-    ├── config/              # thresholds.py (safety constants)
+└── titan/                   # Main package (49 modules)
+    ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment
-    ├── science/             # 21 modules (engines + governance infrastructure)
+    ├── science/             # 23 modules (engines + governance infrastructure)
     ├── features/            # Weekly planner, optimal time, nutrition optimizer
     ├── integrations/        # Garmin, Weather API, Telegram bot
     ├── orchestration/       # DailyCoach v5.7 (12-step morning routine)
@@ -93,7 +103,7 @@ WEATHER_CACHE_DURATION_HOURS=1
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (963 total, all green as of v5.7.3)
 pytest
 
 # Run with coverage
@@ -107,10 +117,17 @@ pytest --cov=titan.science.governance_engine \
        --cov=titan.science.governance_contracts \
        --cov-fail-under=80 -q
 
+# Run APL integration tests
+pytest tests/test_apl_integration.py -v
+
+# Run phase hygiene sweeps
+pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py -v
+
 # Run specific test files
 pytest test_core_modules.py
 pytest test_titan_logic.py
 pytest tests/test_p0_safety_gates.py
+pytest tests/test_science_engines.py
 ```
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
@@ -123,11 +140,11 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 
 1. **Config** (`titan/config/`) — `thresholds.py`: single source of truth for all safety threshold constants
 2. **Core** (`titan/core/`) — `UniversalAthleteProfile`, `DatabaseManager` (SQLite, thread-safe), `PeriodizationManager`, `EquipmentManager`
-3. **Science** (`titan/science/`) — 21 modules:
+3. **Science** (`titan/science/`) — 23 modules:
    - Foundational engines (11): HRV, TSB/CTL/ATL, ACWR, lactate, drift, efficiency, durability, TRIMP, glycogen, fatigue, readiness
    - Autonomic & critical (4): `AutonomicFusionEngine` (AFI), `CriticalSpeedEngine`, `RCPEngine`, `BiomechanicsEngine`
    - Advanced (2): `AdaptiveMemory`, `DurabilityEngine`
-   - Governance infrastructure (4): `GovernanceEngine`, `GovernanceContracts`, `IntensityGovernor`, `VolumeLoadGauge`
+   - Governance infrastructure (6): `GovernanceEngine`, `GovernanceContracts`, `IntensityGovernor`, `VolumeLoadGauge`, `AdaptivePriorityLock`, `OutcomeTracker`
 4. **Governance Layer** (within science/) — 7-gate safety system; must run before every session recommendation; non-bypassable
 5. **Integrations** (`titan/integrations/`) — `GarminSync` (6h background thread), `WeatherAPI` (1h cache, 48h forecast), `TitanTelegramBot`
 6. **Features** (`titan/features/`) — `WeeklyPlanGenerator`, `OptimalTimeCalculator`, `NutritionOptimizer`
@@ -166,7 +183,8 @@ All SQLite writes use `threading.Lock` (`check_same_thread=False`).
 
 ### Database
 
-Four SQLite tables: `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`.
+Five SQLite tables: `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`.
+- `governance_outcomes` — created by `OutcomeTracker` (v5.7.1); stores paired governance decisions + post-session outcomes for threshold calibration.
 Canonical column name for temperature: `temperature_c`.
 `get_training_load_history()` is used to rebuild CTL/ATL on startup.
 
@@ -180,7 +198,7 @@ See `docs/adr/` for Architecture Decision Records:
 - `0005` — Fix runtime startup issues
 - `0006` — Architectural hardening: cold start and engine sync
 - `0007` — Intensity governance architecture audit (read-only assessment)
-- `0008` — Adaptive Priority Lock and VLG specs (VLG: implemented; APL: proposed)
+- `0008` — Adaptive Priority Lock and VLG specs (VLG: implemented; APL: implemented — v5.7.1)
 
 ---
 
@@ -201,12 +219,15 @@ See `docs/adr/` for Architecture Decision Records:
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–3) |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–5 CLOSED |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
-| `docs/specs/adaptive_priority_lock.md` | APL spec (implementation: next cycle) |
-| `docs/specs/volume_load_gauge.md` | VLG spec (implementation: complete) |
+| `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
+| `docs/specs/volume_load_gauge.md` | VLG spec (implemented) |
 | `CORE_MIGRATION_SUMMARY.md` | v50 → v51 migration notes |
 | `titan/config/thresholds.py` | Safety threshold constants (single source of truth) |
+| `titan/config/evidence_registry.py` | Parameter provenance for all thresholds (STRONG/MODERATE/HEURISTIC) |
+| `titan/science/adaptive_priority_lock.py` | APL: phase × load matrix → priority vector + lock thresholds |
+| `titan/science/outcome_tracker.py` | Decision→outcome correlation; calibration analytics; `governance_outcomes` DB |
 | `titan/utils/constants.py` | `SESSION_TYPES`, `ACWR_SAFE_MIN/MAX`, `DEFAULT_CONFIG` |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
