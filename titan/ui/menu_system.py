@@ -13,8 +13,13 @@ Central navigation hub:
 import sys
 from datetime import datetime
 
+
+ANSI_CLEAR_SCREEN = "\033[2J\033[H"
+
+
 def _clear():
-    print("\033[2J\033[H", end="", flush=True)
+    """Clear terminal safely without spawning a shell subprocess."""
+    print(ANSI_CLEAR_SCREEN, end="", flush=True)
 
 def _header(title: str = "TITAN v51"):
     print(f"""
