@@ -122,6 +122,19 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
         else:
             candidate_lines = "  • None yet (need confirmed lock/outcome signal on HEURISTIC thresholds)"
 
+        moderate_candidates = summary.get("moderate_promotion_candidates", [])
+        if moderate_candidates:
+            moderate_lines = "\n".join(
+                f"  • {c.get('parameter')}: {c.get('completion_delta_pp')}pp "
+                f"({c.get('n_with_lock')} vs {c.get('n_without_lock')} sessions, "
+                f"{c.get('phase_replication_count')} phases, via {c.get('trigger_lock')})"
+                for c in moderate_candidates
+            )
+        else:
+            moderate_lines = (
+                "  • None yet (need replicated lock/outcome signal across phases for MODERATE thresholds)"
+            )
+
         return (
             "🧪 *CALIBRATION*\n"
             f"• Status: {status}\n"
@@ -137,6 +150,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
             f"{corr_lines}\n"
             "• HEURISTIC→MODERATE candidates:\n"
             f"{candidate_lines}\n"
+            "• MODERATE→STRONG candidates:\n"
+            f"{moderate_lines}\n"
             f"• Note: {summary.get('calibration_note', 'No calibration note available.')}"
         )
 
