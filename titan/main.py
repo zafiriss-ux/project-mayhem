@@ -127,12 +127,12 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
             moderate_lines = "\n".join(
                 f"  • {c.get('parameter')}: {c.get('completion_delta_pp')}pp "
                 f"({c.get('n_with_lock')} vs {c.get('n_without_lock')} sessions, "
-                f"{c.get('phase_replication_count')} phases, via {c.get('trigger_lock')})"
+                f"{c.get('phase_replication_count')} phases / {c.get('profile_replication_count', 1)} profiles, via {c.get('trigger_lock')})"
                 for c in moderate_candidates
             )
         else:
             moderate_lines = (
-                "  • None yet (need replicated lock/outcome signal across phases for MODERATE thresholds)"
+                "  • None yet (need replicated lock/outcome signal across profiles and phases for MODERATE thresholds)"
             )
 
         return (

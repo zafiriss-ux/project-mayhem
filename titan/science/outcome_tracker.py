@@ -68,6 +68,7 @@ class GovernanceDecision:
     readiness_score: float
     glycogen_debt: float
     afi_value: Optional[float]
+    athlete_profile_id: str = 'DEFAULT'
 
     # Outcome — filled post-session via record_outcome()
     outcome_rpe: Optional[int] = None
@@ -161,6 +162,7 @@ class OutcomeTracker:
         tsb_value: float,
         readiness_score: float,
         glycogen_debt: float,
+        athlete_profile_id: Optional[str] = None,
         afi_value: Optional[float] = None,
         date: Optional[str] = None,
     ) -> GovernanceDecision:
@@ -183,6 +185,7 @@ class OutcomeTracker:
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
+            athlete_profile_id=str(athlete_profile_id or 'DEFAULT'),
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get('priority_vector', {})),
             lock_thresholds_active=dict(apl_result.get('lock_thresholds', {})),
@@ -204,6 +207,7 @@ class OutcomeTracker:
             'locks_applied': decision.locks_applied,
             'governance_clean': decision.governance_clean,
             'phase': decision.phase,
+            'athlete_profile_id': decision.athlete_profile_id,
             'vlg_color': decision.vlg_color,
             'cause': cause,
             'acwr': round(decision.acwr, 3),
@@ -473,7 +477,8 @@ class OutcomeTracker:
           - the lock maps to a MODERATE parameter,
           - there are at least 8 sessions in both with-lock / without-lock groups,
           - absolute completion delta is at least 10 percentage points,
-          - lock behavior appears in at least 2 distinct phases.
+          - lock behavior appears in at least 2 distinct phases,
+          - lock behavior appears in at least 2 distinct athlete profiles.
         """
         candidates: List[Dict] = []
 
@@ -491,12 +496,18 @@ class OutcomeTracker:
                 if d.outcome_completed is not None and lock_name in d.locks_applied
             }
             phase_replication_count = len(with_lock_phases)
+            with_lock_profiles = {
+                d.athlete_profile_id for d in self._decisions
+                if d.outcome_completed is not None and lock_name in d.locks_applied
+            }
+            profile_replication_count = len(with_lock_profiles)
 
             if (
                 n_with < 8
                 or n_without < 8
                 or abs(completion_delta_pp) < 10.0
                 or phase_replication_count < 2
+                or profile_replication_count < 2
             ):
                 continue
 
@@ -512,8 +523,9 @@ class OutcomeTracker:
                     'n_without_lock': n_without,
                     'completion_delta_pp': round(completion_delta_pp, 1),
                     'phase_replication_count': phase_replication_count,
+                    'profile_replication_count': profile_replication_count,
                     'recommendation': (
-                        'Review for MODERATE→STRONG promotion after cross-profile replication '
+                        'Review for MODERATE→STRONG promotion after replicated cross-profile '
                         'and EvidenceRegistry update.'
                     ),
                 })
