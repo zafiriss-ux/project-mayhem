@@ -1,4 +1,4 @@
-# TITAN OS v5.7.0 — Closed-Loop Sovereign Training Intelligence
+# TITAN OS v5.8.0 — Closed-Loop Sovereign Training Intelligence
 
 🏃‍♂️ **Αυτόνομο Σύστημα Προπόνησης με Επιστημονική Νοημοσύνη**
 
@@ -106,7 +106,7 @@ titan/
 **Download pre-built executable:**
 ```
 1. Go to Releases: https://github.com/zafiriss-ux/project-mayhem/releases
-2. Download TITAN-v5.7.0-win64.zip
+2. Download TITAN-v5.8.0-win64.zip
 3. Unzip to Desktop or Documents
 4. Double-click TITAN.exe
 5. Follow setup wizard (Garmin, Telegram credentials)
@@ -178,8 +178,8 @@ TELEGRAM_CHAT_ID=123456789                   # Send /start to your bot
 # OpenAI (Optional — for LLM coaching narratives)
 OPENAI_API_KEY=sk-...
 
-# Weather API (Optional)
-WEATHER_API_KEY=your_openweathermap_key
+# Weather API — Open-Meteo (no key needed; leave blank or omit)
+# WEATHER_API_KEY is ignored; Open-Meteo is free and requires no authentication.
 ```
 
 ---
@@ -365,11 +365,12 @@ echo $TELEGRAM_CHAT_ID
 
 ### Weather API Issues
 ```bash
-# Έλεγξε API key
-echo $WEATHER_API_KEY
+# TITAN χρησιμοποιεί Open-Meteo (δωρεάν, χωρίς API key)
+# Test geocoding API
+curl "https://geocoding-api.open-meteo.com/v1/search?name=Athens&count=1"
 
-# Test API call
-curl "https://api.openweathermap.org/data/2.5/weather?q=Athens&appid=<YOUR_KEY>"
+# Test forecast API
+curl "https://api.open-meteo.com/v1/forecast?latitude=37.98&longitude=23.73&current=temperature_2m"
 ```
 
 ## 📖 Αναλυτικό Documentation

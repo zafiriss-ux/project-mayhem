@@ -1,4 +1,4 @@
-# TITAN OS v5.7.5 — Production Requirements
+# TITAN OS v5.8.0 — Production Requirements
 # Build Environment: Python 3.11.9 (Windows 11 x64)
 # Last Updated: 2026-03-02
 
