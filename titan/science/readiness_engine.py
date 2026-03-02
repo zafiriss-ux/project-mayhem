@@ -1,5 +1,14 @@
 """Readiness Score Engine - Composite Recovery Analysis"""
+import json
+import logging
 from typing import Dict
+
+_log = logging.getLogger(__name__)
+
+
+def _readiness_event(action: str, **fields) -> None:
+    """Emit structured readiness events as single-line JSON logs."""
+    _log.info(json.dumps({'readiness_flow': action, **fields}, default=str))
 
 class ReadinessEngine:
     @staticmethod
@@ -12,6 +21,15 @@ class ReadinessEngine:
         soreness: int
     ) -> Dict:
         """Calculate composite readiness score (0-100)"""
+        _readiness_event(
+            'ANALYZE_START',
+            today_hrv=today_hrv,
+            baseline_hrv=baseline_hrv,
+            today_rhr=today_rhr,
+            baseline_rhr=baseline_rhr,
+            sleep_score=sleep_score,
+            soreness=soreness,
+        )
         score = 100
 
         # HRV component
@@ -60,7 +78,7 @@ class ReadinessEngine:
         else:
             status = "🛑 POOR"
 
-        return {
+        result = {
             "score": score,
             "status": status,
             "hrv_contribution": hrv_diff,
@@ -70,3 +88,12 @@ class ReadinessEngine:
             "hrv_delta_pts": hrv_diff,
             "rhr_delta_pts": rhr_diff,
         }
+
+        _readiness_event(
+            'ANALYZE_COMPLETE',
+            score=result['score'],
+            status=result['status'],
+            hrv_delta_pts=result['hrv_delta_pts'],
+            rhr_delta_pts=result['rhr_delta_pts'],
+        )
+        return result

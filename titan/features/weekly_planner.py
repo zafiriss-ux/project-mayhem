@@ -10,12 +10,21 @@ Generates intelligent weekly plans based on:
 - Periodization phase
 """
 
+import json
+import logging
 from datetime import datetime, timedelta
 from typing import Dict, List
 
 from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.tsb_engine import TSBEngine
 from titan.science.acwr_engine import ACWREngine
+
+_log = logging.getLogger(__name__)
+
+
+def _planner_event(action: str, **fields) -> None:
+    """Emit structured planner events as single-line JSON logs."""
+    _log.info(json.dumps({'weekly_planner_flow': action, **fields}, default=str))
 
 class WeeklyPlanGenerator:
     """
@@ -100,14 +109,17 @@ class WeeklyPlanGenerator:
         Returns:
             Analysis summary
         """
+        _planner_event('ANALYZE_PAST_WEEK_START', session_count=len(sessions))
         if not sessions:
-            return {
+            result = {
                 'total_km': 0,
                 'quality_sessions': 0,
                 'avg_drift': 0,
                 'lactate_status': 'UNKNOWN',
                 'readiness': 'UNKNOWN'
             }
+            _planner_event('ANALYZE_PAST_WEEK_COMPLETE', **result)
+            return result
 
         total_km = sum(s.get('distance_km', 0) for s in sessions)
         quality_sessions = sum(1 for s in sessions
@@ -127,7 +139,7 @@ class WeeklyPlanGenerator:
         # TSB status
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
 
-        return {
+        result = {
             'total_km': total_km,
             'quality_sessions': quality_sessions,
             'avg_drift': round(avg_drift, 1),
@@ -137,6 +149,15 @@ class WeeklyPlanGenerator:
             'tsb_status': tsb_status,
             'readiness': 'GOOD' if avg_drift < 4 and tsb_value is not None and tsb_value > -20 else 'COMPROMISED'
         }
+        _planner_event(
+            'ANALYZE_PAST_WEEK_COMPLETE',
+            total_km=result['total_km'],
+            quality_sessions=result['quality_sessions'],
+            avg_drift=result['avg_drift'],
+            readiness=result['readiness'],
+            tsb_status=result.get('tsb_status'),
+        )
+        return result
 
     def generate_weekly_plan(
         self,
@@ -155,6 +176,12 @@ class WeeklyPlanGenerator:
         Returns:
             Weekly plan dictionary
         """
+        _planner_event(
+            'GENERATE_WEEKLY_PLAN_START',
+            phase=phase,
+            athlete_threshold_hr=athlete_profile.get('threshold_hr'),
+            has_weather=bool(weather_forecast),
+        )
         # Get current status
         hrv_summary = self.hrv_engine.get_hrv_summary()
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
@@ -195,6 +222,15 @@ class WeeklyPlanGenerator:
         }
 
         self.last_plan = plan
+        _planner_event(
+            'GENERATE_WEEKLY_PLAN_COMPLETE',
+            phase=phase,
+            total_km=plan['total_km'],
+            quality_count=plan['quality_count'],
+            easy_count=plan['easy_count'],
+            rest_count=plan['rest_count'],
+            tsb_status=plan['tsb_status'],
+        )
         return plan
 
     def _generate_base_week(self, profile: Dict, tsb: float) -> List[Dict]:

@@ -15,6 +15,8 @@ Run with:
 
 import os
 import sys
+import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -118,6 +120,13 @@ class TestReadinessEnginePytest:
         low_pain  = self._analyze(today_hrv=60, baseline_hrv=60, today_rhr=48,
                                   baseline_rhr=48, sleep_score=80, soreness=1)
         assert high_pain["score"] < low_pain["score"]
+
+    def test_emits_structured_logs(self, caplog):
+        caplog.set_level(logging.INFO)
+        self._analyze(**self._GOOD)
+        events = [json.loads(r.message) for r in caplog.records if 'readiness_flow' in r.message]
+        actions = {e['readiness_flow'] for e in events}
+        assert {'ANALYZE_START', 'ANALYZE_COMPLETE'}.issubset(actions)
 
     def test_elevated_rhr_lowers_score(self):
         normal = self._analyze(today_hrv=60, baseline_hrv=60, today_rhr=48,
@@ -441,6 +450,13 @@ class TestNutritionOptimizerPytest:
             nut.add_weight_entry(f"2025-{(i // 30) + 1:02d}-{(i % 28) + 1:02d}", 75.0)
         assert len(nut.weight_history) <= 90
 
+    def test_emits_structured_logs(self, nut, caplog):
+        caplog.set_level(logging.INFO)
+        self._plan(nut, 75.0, {"session_type": "TEMPO", "duration_min": 60})
+        events = [json.loads(r.message) for r in caplog.records if 'nutrition_flow' in r.message]
+        actions = {e['nutrition_flow'] for e in events}
+        assert {'CALCULATE_DAILY_NUTRITION_START', 'CALCULATE_DAILY_NUTRITION_COMPLETE'}.issubset(actions)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 7. WEEKLY PLANNER  (pytest migration)
@@ -480,6 +496,13 @@ class TestWeeklyPlannerPytest:
         s = planner.get_today_session()
         if s["session_type"] != "REST":
             assert s["duration_min"] > 0
+
+    def test_emits_structured_logs(self, planner, caplog):
+        caplog.set_level(logging.INFO)
+        planner.generate_weekly_plan({"threshold_hr": 170}, phase="BUILD")
+        events = [json.loads(r.message) for r in caplog.records if 'weekly_planner_flow' in r.message]
+        actions = {e['weekly_planner_flow'] for e in events}
+        assert {'GENERATE_WEEKLY_PLAN_START', 'GENERATE_WEEKLY_PLAN_COMPLETE'}.issubset(actions)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -5,7 +5,16 @@ Weight-based nutrition adjustment with scientific backing.
 Integrates with Garmin weight data to provide real-time dietary recommendations.
 """
 
+import json
+import logging
 from typing import Dict, List
+
+_log = logging.getLogger(__name__)
+
+
+def _nutrition_event(action: str, **fields) -> None:
+    """Emit structured nutrition events as single-line JSON logs."""
+    _log.info(json.dumps({'nutrition_flow': action, **fields}, default=str))
 
 class NutritionOptimizer:
     """
@@ -44,14 +53,17 @@ class NutritionOptimizer:
         Returns:
             Dictionary with trend analysis
         """
+        _nutrition_event('ANALYZE_WEIGHT_TREND_START', days=days, samples=len(self.weight_history))
         if len(self.weight_history) < days:
-            return {
+            result = {
                 'status': 'INSUFFICIENT_DATA',
                 'change_kg': 0,
                 'change_pct': 0,
                 'velocity': 0,
                 'recommendation': 'Need more weight data'
             }
+            _nutrition_event('ANALYZE_WEIGHT_TREND_COMPLETE', status=result['status'])
+            return result
 
         recent = self.weight_history[-days:]
         first_weight = recent[0][1]
@@ -81,7 +93,7 @@ class NutritionOptimizer:
             status = "STABLE"
             rec = "Continue current approach"
 
-        return {
+        result = {
             'status': status,
             'change_kg': round(change_kg, 2),
             'change_pct': round(change_pct, 2),
@@ -90,6 +102,13 @@ class NutritionOptimizer:
             'first_weight': first_weight,
             'current_weight': last_weight
         }
+        _nutrition_event(
+            'ANALYZE_WEIGHT_TREND_COMPLETE',
+            status=result['status'],
+            velocity_kg_per_week=result['velocity_kg_per_week'],
+            change_kg=result['change_kg'],
+        )
+        return result
 
     def calculate_daily_nutrition(
         self,
@@ -114,6 +133,13 @@ class NutritionOptimizer:
         """
         session_type = today_session.get('session_type', 'REST')
         duration_min = today_session.get('duration_min', 0)
+        _nutrition_event(
+            'CALCULATE_DAILY_NUTRITION_START',
+            session_type=session_type,
+            duration_min=duration_min,
+            training_phase=training_phase,
+            weight_kg=weight_kg,
+        )
 
         # Base metabolic calculations
         # Using simplified Mifflin-St Jeor for male athlete (can be adjusted)
@@ -166,7 +192,7 @@ class NutritionOptimizer:
             session_type,
         )
 
-        return {
+        result = {
             'total_calories': round(tdee, 0),
             'carbs_g': round(carb_g, 0),
             'carbs_range': f"{int(weight_kg * carb_low)}-{int(weight_kg * carb_high)}g",
@@ -179,6 +205,14 @@ class NutritionOptimizer:
             'special_notes': self._get_special_notes(session_type, tomorrow_session),
             'weight_trend': self.analyze_weight_trend()
         }
+        _nutrition_event(
+            'CALCULATE_DAILY_NUTRITION_COMPLETE',
+            session_type=session_type,
+            calories=result['total_calories'],
+            carbs_g=result['carbs_g'],
+            hydration_ml=result['hydration_ml'],
+        )
+        return result
 
     def _get_meal_timing(self, session_type: str, duration_min: int) -> Dict:
         """Get session-specific meal timing recommendations."""
