@@ -221,3 +221,20 @@ They are not a pre-session gate concern and must not be conflated with the morni
 ---
 
 *Assessment only. No `.py` files modified.*
+
+---
+
+## Resolution Status (updated 2026-03-02)
+
+All five conflicts identified in this audit have been resolved:
+
+| Conflict | Status | Resolution |
+|----------|--------|-----------|
+| C1 — HRV Collapse (no hard stop) | **CLOSED** | ADR-0009: OR semantics; H2 gate fires independently |
+| C2 — RHR Collapse (no hard stop) | **CLOSED** | ADR-0009: OR semantics; H3 gate fires independently |
+| C3 — TSB Critical Floor (no load gate) | **CLOSED** | `GovernanceEngine._check_hard_stops()` H4 gate |
+| C4 — Injury Flag Gate (Gate 1 absent) | **CLOSED** | `GovernanceEngine._check_hard_stops()` H1 gate |
+| C5 — Subjective Fatigue (hardcoded/incomplete) | **CLOSED** | `GovernanceEngine._evaluate_2of4_indicators()` |
+
+See **ADR-0009** (`docs/adr/0009-safety-gate-hardening-C1-C2-resolution.md`) for the
+full resolution rationale, gate-reordering decision, and OR-semantics justification.

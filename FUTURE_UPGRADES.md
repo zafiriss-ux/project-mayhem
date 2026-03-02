@@ -2,44 +2,16 @@
 
 ## Priority Order (as of 2026-03-02)
 
-> Based on current repo state: mature core + 932 tests + full governance layer.
+> Based on current repo state: mature core + 1014 tests + full governance layer.
 > APL, VLG, OutcomeTracker (DB-persisted), EvidenceRegistry, and E2E suite are now implemented.
 > Updated priorities reflect what remains before science-tuning is legitimate.
 
 ---
 
 
-## Phase 4 — Observability & E2E (COMPLETED)
-=======
-## Phase 4 — Observability & E2E (IN PROGRESS)
+## Phase 4 — Observability & E2E (CLOSED)
 
-### Remaining
-
-#### 1) Observability — Remaining Flows
-**Why**: Governance gates now emit structured JSON with `cause` tags.
-The remaining high-value flows (planner, readiness, nutrition) still use
-unstructured logging. Silent failures in these paths are invisible.
-
-**Scope**:
-- Structured decision events for `WeeklyPlanGenerator` (why was this session chosen?)
-- Structured events for `ReadinessEngine` (which component drove the score?)
-- Structured events for `NutritionOptimizer` (why RED-S warning? which metric?)
-- SLO alerts: no Telegram delivery, Garmin sync timeout, nutrition plan missing
-
-#### 2) `/calibration` Telegram Command
-**Why**: OutcomeTracker now persists decisions to DB. The data exists but is
-not yet surfaced to the operator. Without a query interface, calibration
-evidence is invisible during live operation.
-
-**Scope**:
-- `/calibration` Telegram handler: show `lock_rate_by_phase`, `completion_rate` *(DONE)*
-- Surface governance_outcomes aggregates (locks applied, phase breakdown) *(DONE)*
-- Gate trigger behind minimum 30 paired decisions before surfacing recommendations *(DONE)*
-
----
-
-
-### Completed (this cycle)
+### Completed
 
 | # | Item | Status | Where |
 |---|------|--------|-------|
@@ -65,7 +37,7 @@ evidence is invisible during live operation.
 | — | APL context injection in GovernanceEngine | DONE | `lock_thresholds` + `priority_vector` in context |
 | — | GovernanceContracts (vo2_eligibility shape guard) | DONE | `governance_contracts.py` |
 | — | CI pipeline (3-job: test + determinism + env-policy) | DONE | `.github/workflows/ci.yml` |
-| — | P0 safety gate tests | DONE | `tests/test_p0_safety_gates.py` (14 tests) |
+| — | P0 safety gate tests | DONE | `tests/test_p0_safety_gates.py` (20 tests) |
 | — | Governance integration tests | DONE | `tests/test_governance_integration.py` (27 tests) |
 | — | APL integration tests | DONE | `tests/test_apl_integration.py` (64 tests) |
 | — | Phase 3 hygiene sweep | DONE | `tests/test_phase3_hygiene.py` (27 tests, 99% Phase 3 coverage) |
@@ -81,12 +53,13 @@ evidence is invisible during live operation.
 
 ---
 
-## Phase 5 — Science Calibration (PLANNED, after ≥30 outcomes in OutcomeTracker)
+## Phase 5 — Science Calibration (CLOSED)
 
-**Why after outcome accumulation**: Thresholds are currently policy heuristics.
-Science-tuning before correlated outcome data exists would be noise, not signal.
+All five deliverables completed (lock/outcome correlation analytics, HEURISTIC→MODERATE
+promotion surfacing, MODERATE→STRONG cross-profile replication gate, `/calibration`
+Telegram output, `EvidenceRegistry` promotion metadata schema enforcement).
 
-### Calibration priorities (from EvidenceRegistry):
+### Calibration priorities (from EvidenceRegistry — for Phase 9 tuning):
 
 | Parameter | Current Level | Why Calibrate First |
 |-----------|--------------|---------------------|
@@ -224,7 +197,7 @@ Level 3  Outcome tracking + cause classification      [v5.7.1 ✓]
 Level 4  Parameter provenance for all thresholds      [v5.7.1 ✓]
 Level 5  DB-persisted outcomes + lock rates           [v5.7.1 ✓]
 Level 6  /calibration command + structured flow logs  [Phase 4 ✓]
-Level 7  Science calibration (≥30 outcomes)           [Phase 5]
+Level 7  Science calibration (≥30 outcomes)           [Phase 5 ✓]
 Level 8  ML layer on calibrated foundation            [Phase 7]
 Level 9  Autonomous self-calibration from evidence    [Phase 9]
 ```
