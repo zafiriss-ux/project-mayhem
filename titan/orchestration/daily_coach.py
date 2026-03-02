@@ -31,7 +31,9 @@ from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
-
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+from titan.science.volume_load_gauge import VolumeLoadGauge
+from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.fatigue_engine import FatigueEngine
 
 
@@ -75,6 +77,10 @@ class DailyCoach:
         glycogen_accum:   Optional[GlycogenDebtAccumulator] = None,
         governance:       Optional[GovernanceEngine]      = None,
         fatigue_engine:    Optional[FatigueEngine]         = None,
+        # v5.7.1: APL governance infrastructure
+        apl:              Optional[AdaptivePriorityLock]  = None,
+        volume_load_gauge: Optional[VolumeLoadGauge]      = None,
+        outcome_tracker:  Optional[OutcomeTracker]        = None,
     ):
         self.garmin         = garmin_sync
         self.weather        = weather_api
@@ -93,6 +99,10 @@ class DailyCoach:
         self.glycogen   = glycogen_accum   or GlycogenDebtAccumulator()
         self.governance = governance       or GovernanceEngine()
         self.fatigue    = fatigue_engine    or FatigueEngine()
+        # v5.7.1: APL governance infrastructure
+        self.apl            = apl             or AdaptivePriorityLock()
+        self.vlg            = volume_load_gauge or VolumeLoadGauge()
+        self.outcome_tracker = outcome_tracker or OutcomeTracker()
         # Restore in-memory state of science engines from DB on startup
         self._hydrate_engines_from_db()
 
@@ -247,6 +257,28 @@ class DailyCoach:
         # ── Step 9: Feed activities into load engines ─────────────────────
         self._feed_load_engines(garmin_data.get('activities', []))
 
+        # ── Step 9a: VLG + APL priority resolution ────────────────────────
+        # Aggregate the three load signals into a unified VLGState, then let
+        # the APL resolve phase-aware gate ordering and adaptive thresholds.
+        # Both results are injected into the governance context so that
+        # GovernanceEngine reads them without any gate logic being altered.
+        _acwr_for_vlg = _safe_float(garmin_data.get('acwr', 1.0), 1.0)
+        vlg_state = self.vlg.resolve(
+            tsb_value    = tsb_value,
+            acwr         = _acwr_for_vlg,
+            glycogen_debt = self.glycogen.daily_debt,
+        )
+        _phase = str(today_session.get('phase', 'BASE') or 'BASE').upper()
+        apl_result = self.apl.resolve(
+            vlg_state      = vlg_state,
+            afi_constraints = afi_constraints,
+            phase          = _phase,
+            cs_confidence  = getattr(self.cs_tracker, 'confidence', 1.0),
+        )
+
+        # Capture session type before governance modifies it (for outcome tracking)
+        _session_planned = str(today_session.get('session_type', 'EASY')).upper()
+
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         print("🔒 Applying governance constraints...")
         today_session = self.governance.apply_constraints(
@@ -261,12 +293,10 @@ class DailyCoach:
 
                 'fatigue_level':       fatigue_level,
 
-                'acwr':                garmin_data.get('acwr', 1.0),
+                'acwr':                _acwr_for_vlg,
                 'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
                 'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
                 'planned_duration_min': today_session.get('duration_min', 45),
-
-
 
                 'today_hrv':          latest_hrv,
                 'baseline_hrv':       baseline_hrv,
@@ -278,12 +308,29 @@ class DailyCoach:
                 'tsb_value':          tsb_value,
                 'injury_flag':        bool(garmin_data.get('injury_flag', False)),
 
-
-
+                # APL injections: adaptive gate ordering + threshold overrides
+                'priority_vector':    apl_result.get('priority_vector', {}),
+                'lock_thresholds':    apl_result.get('lock_thresholds', {}),
             },
         )
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
+
+        # ── Step 9c: Record governance decision for outcome tracking ─────────
+        self.outcome_tracker.record_decision(
+            session_planned       = _session_planned,
+            session_post_governance = today_session.get('session_type', 'EASY'),
+            locks_applied         = today_session.get('governance_locks_applied', []),
+            governance_clean      = today_session.get('governance_clean', True),
+            phase                 = _phase,
+            vlg_color             = getattr(vlg_state, 'color', 'GREEN'),
+            apl_result            = apl_result,
+            acwr                  = _acwr_for_vlg,
+            tsb_value             = tsb_value,
+            readiness_score       = _safe_float(readiness.get('score', 50), 50),
+            glycogen_debt         = self.glycogen.daily_debt,
+            afi_value             = afi_final,
+        )
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
         print("⏰ Calculating optimal running time...")

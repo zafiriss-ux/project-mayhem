@@ -2,6 +2,86 @@
 
 ---
 
+## v5.7.1 / v51.5 — Platform maturity: APL, Outcome Tracker, Evidence Registry (2026-03-01)
+
+### Governance Infrastructure
+
+- **`AdaptivePriorityLock`** (`titan/science/adaptive_priority_lock.py`) — **NEW**
+  Pre-governance priority resolver completing the governance infrastructure layer.
+  - Phase × load_band matrix (5 phases × 4 bands) produces a `priority_vector`
+    that reorders `{PARASYMPATHETIC_GUARD, CS_CONFIDENCE_LOCK, OVERRIDE_LOCKDOWN}` evaluation.
+  - `PARASYMPATHETIC_GUARD` is rank 1 without exception — non-negotiable safety gate.
+  - Adaptive threshold scaling per phase: PEAK tightens ACWR to 1.10 and cs_confidence
+    to 0.85; TAPER sets ACWR to 1.25 and tsb_floor to -15.
+  - `GovernanceEngine.apply_constraints()` reads `context.get('lock_thresholds', {})`
+    and passes threshold overrides to `check_cs_confidence_lock()` and
+    `check_override_lockdown()`. Static fallback when APL is absent — no behaviour change.
+  - `DailyCoach.run_morning_routine()` now includes Step 9a (VLG + APL resolution)
+    before Step 9b (governance). APL result injected into governance context.
+  - Stateless, no DB access, no side effects.
+
+- **`GovernanceEngine`** — threshold override support
+  - `check_override_lockdown(db, threshold=None)` — accepts optional APL threshold override.
+  - `check_cs_confidence_lock(cs_tracker, threshold=None)` — same pattern.
+  - `apply_constraints()` extracts `lock_thresholds` and `priority_vector` from context;
+    logs `apl_active=True/False` and `priority_vector` in the COMPLETE gate event.
+
+### Observability — cause tagging
+
+  Every governance gate event now includes a `cause` field:
+  - `cause='TRAINING_LOGIC'` — gate fired on valid data exceeding a threshold
+    (H1, H2, H3, H4, 2OF4, FUELING, OVERRIDE_LOCKDOWN).
+  - `cause='DATA_PROBLEM'` — gate fired because input data was missing, invalid,
+    or uncomputable (VO2 gate when `acwr_invalid/readiness_invalid` etc.; CS_CONFIDENCE_LOCK
+    which is by definition a calibration data availability problem).
+  This distinction is the key observability primitive: a DATA_PROBLEM in production
+  means a pipeline or integration issue, not overtraining.
+
+### Outcome Tracking
+
+- **`OutcomeTracker`** (`titan/science/outcome_tracker.py`) — **NEW**
+  Foundational decision→outcome connection. Without this, thresholds cannot be calibrated.
+  - `record_decision()` — captures governance output + input signal snapshot + APL state.
+  - `record_outcome()` — attaches post-session RPE, completion, actual session type.
+  - `classify_lock_cause()` — classifies each decision as DATA_PROBLEM/TRAINING_LOGIC/CLEAN.
+  - `get_calibration_summary()` — aggregate lock rates, completion rates, override rates.
+  - `get_lock_rate_by_phase()` — reveals if specific phases systematically over-gate.
+  - `DailyCoach` automatically records every governance decision (Step 9c).
+  - Phase 2: persist to DB table `governance_outcomes`; compute threshold accuracy metrics.
+
+### Parameter Provenance
+
+- **`EvidenceRegistry`** (`titan/config/evidence_registry.py`) — **NEW**
+  Source evidence for every constant in `titan/config/thresholds.py`.
+  This is the mandatory prerequisite before any science-tuning of threshold values.
+  - `ThresholdEvidence` dataclass: parameter, value, evidence_level, population, source,
+    rationale, policy_note.
+  - Evidence levels: STRONG / MODERATE / HEURISTIC — all 10 thresholds annotated.
+  - `VO2_MIN_DAYS_SINCE_LAST` — STRONG (Billat 2001, Laursen 2002, Seiler 2009).
+  - `VO2_READINESS_MIN` — HEURISTIC (internal composite, highest calibration priority).
+  - `HARD_STOP_TSB_FLOOR` — HEURISTIC (coaching convention, not a measured injury threshold).
+  - `get_policy_parameters()`, `get_calibration_candidates()`, `get_registry_summary()`.
+
+### Documentation
+
+- `docs/specs/adaptive_priority_lock.md` — status updated to **Implemented**.
+- `docs/specs/volume_load_gauge.md` — extracted from stale branch, on-disk.
+- `docs/adr/0008-adaptive-priority-lock-and-vlg-specs.md` — extracted from stale branch.
+
+### Tests
+
+- **`tests/test_apl_integration.py`** — **NEW** (64 tests, 6 test classes)
+  - `TestAPLOutputContract` — all required keys present for all phases (parametrized)
+  - `TestParasympatheticGuardInvariant` — rank 1 across all phases × loads × cs_confidence values
+  - `TestPhaseLoadMatrix` — gate ordering verified for PEAK, TAPER, POST_RACE, BASE, BUILD
+  - `TestAdaptiveThresholds` — PEAK/TAPER/BUILD overrides, default fallback, float types
+  - `TestAPLStateless` — determinism, no state accumulation across calls
+  - `TestAPLEdgeCases` — unknown phase, None/empty AFI, invalid cs_confidence
+  - `TestOutcomeTracker` — record/retrieve, outcome miss, calibration summary, lock rates
+  - `TestEvidenceRegistry` — all canonical parameters registered, values mirror thresholds.py,
+    evidence levels valid, rationale non-empty
+
+- All 91 tests pass (64 new + 27 existing governance integration tests).
 ## v5.7.0 / v51.4 — Governance hardening, contract guard, CI baseline (2026-03-01)
 
 ### Safety & Governance

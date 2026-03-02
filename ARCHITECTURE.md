@@ -133,6 +133,13 @@ project-mayhem/
 │   └── secret-scan.yml                 # Secret detection
 │
 ├── docs/
+│   ├── adr/                            # Architecture Decision Records
+│   │   ├── 0001–0006 (previous fixes and hardening)
+│   │   ├── 0007-intensity-governance-architecture-audit.md
+│   │   └── 0008-adaptive-priority-lock-and-vlg-specs.md
+│   └── specs/                          # Component specifications
+│       ├── adaptive_priority_lock.md   # APL spec (Status: Implemented ← v5.7.1)
+│       └── volume_load_gauge.md        # VLG spec (Status: Implemented)
 │   ├── ROADMAP.MD                      # Development workflow roadmap (Phase 0–3)
 │   ├── adr/                            # Architecture Decision Records (0001–0008)
 │   │   ├── README.md
@@ -170,6 +177,9 @@ project-mayhem/
     │   └── equipment.py                # EquipmentManager (shoes, gear)
     │
     ├── science/                        # 21 modules
+    │   ├── hrv_engine.py               # HRV analysis + guided training
+    │   ├── tsb_engine.py               # CTL/ATL/TSB calculations
+    │   ├── acwr_engine.py              # Acute:Chronic workload ratio
     │   │   — Foundational engines —
     │   ├── hrv_engine.py               # HRV analysis + guided training (Kiviniemi 2007)
     │   ├── tsb_engine.py               # CTL/ATL/TSB (CTL α=2/43, ATL α=2/8)
@@ -186,6 +196,15 @@ project-mayhem/
     │   ├── autonomic_engine.py         # Autonomic Fusion Index (HRV 0.40 + HRR 0.35 + sleep 0.15 + resp 0.10)
     │   ├── critical_speed.py           # CS & D' tracker with thermal degradation + calibration confidence
     │   ├── rcp_engine.py               # Respiratory Compensation Point
+    │   ├── biomechanics.py             # Cadence, stride, form
+    │   ├── adaptive_memory.py          # Session history + supercompensation
+    │   ├── autonomic_engine.py         # AutonomicFusionEngine (AFI)
+    │   ├── governance_engine.py        # GovernanceEngine (7 safety gates)
+    │   ├── governance_contracts.py     # GovernanceContracts (output shape guard)
+    │   ├── intensity_governor.py       # IntensityGovernor (GREEN/YELLOW/RED)
+    │   ├── volume_load_gauge.py        # VolumeLoadGauge — TSB+ACWR+glycogen aggregator
+    │   ├── adaptive_priority_lock.py   # AdaptivePriorityLock — pre-governance resolver ← v5.7.1
+    │   └── outcome_tracker.py          # OutcomeTracker — decision→outcome foundation ← v5.7.1
     │   │   — Advanced —
     │   ├── biomechanics.py             # Cadence, stride, form analysis
     │   ├── adaptive_memory.py          # Session history + supercompensation
@@ -211,6 +230,10 @@ project-mayhem/
     ├── ui/                             # 2 modules
     │   ├── menu_system.py              # Interactive menu
     │   └── setup_wizard.py             # First-run setup wizard
+    │
+    ├── config/                         # 2 files
+    │   ├── thresholds.py               # Safety threshold constants (single source of truth)
+    │   └── evidence_registry.py        # Parameter provenance: source, evidence level ← v5.7.1
     │
     └── utils/                          # 2 modules
         ├── math_core.py                # MathCore: pace conversion, weight function, system status

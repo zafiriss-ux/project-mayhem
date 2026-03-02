@@ -2,10 +2,18 @@
 
 | Field | Value |
 |-------|-------|
+
+| **Status** | **Implemented** — `titan/science/adaptive_priority_lock.py` |
+| **Layer** | `titan/science/` |
+| **Module** | `titan/science/adaptive_priority_lock.py` |
+| **Tests** | `tests/test_apl_integration.py` — 64 tests |
+| **Related ADR** | [0007-intensity-governance-architecture-audit.md](../adr/0007-intensity-governance-architecture-audit.md) · [0008-adaptive-priority-lock-and-vlg-specs.md](../adr/0008-adaptive-priority-lock-and-vlg-specs.md) |
+
 | **Status** | Proposed — documentation only |
 | **Layer** | `titan/science/` |
 | **Proposed module** | `titan/science/adaptive_priority_lock.py` |
 | **Related ADR** | [0007-adaptive-priority-lock-placement.md](../adr/0007-adaptive-priority-lock-placement.md) |
+
 | **Related spec** | [volume_load_gauge.md](./volume_load_gauge.md) |
 
 ---
