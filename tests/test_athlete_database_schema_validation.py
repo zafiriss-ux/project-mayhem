@@ -74,4 +74,3 @@ def test_load_all_accepts_missing_name_uses_default(tmp_path):
     db = AthleteDatabase(db_path=str(db_dir))
 
     assert db.athletes["ATH_20200101010102"].name == "Default Athlete"
-main
