@@ -9,7 +9,7 @@ Architecture Layers:
   Integration — Garmin sync, Telegram bot, weather API
   Orchestration — Daily coach, weekly planner, optimal time calculator
 
-Version: 5.7.0 (Closed-Loop Sovereign)
+Version: 5.8.0 (Operator Console / Phase 6 Closed)
 """
 
-__version__ = "5.7.0"
+__version__ = "5.8.0"

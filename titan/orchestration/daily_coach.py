@@ -25,7 +25,6 @@ from datetime import datetime, timedelta
 import json
 import logging
 from typing import Dict, List, Optional
-import sys
 import threading
 from titan.core.database import DatabaseManager
 from titan.science.autonomic_engine import AutonomicFusionEngine
