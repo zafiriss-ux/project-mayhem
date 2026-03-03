@@ -605,6 +605,7 @@ class TestGarminSync:
         gs._stop_sync = False
         gs.stop_background_sync()
         assert gs._stop_sync is True
+        assert gs._stop_event.is_set() is True
 
     def test_ensure_connected_when_already_connected(self):
         gs = GarminSync(email="test@example.com", password="secret")
