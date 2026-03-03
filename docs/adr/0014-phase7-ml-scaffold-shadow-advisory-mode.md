@@ -1,6 +1,6 @@
 # ADR-0014 — Phase 7 ML Scaffold: Shadow/Advisory Mode with Mandatory Kill-Switch
 
-**Date:** 2026-03-02
+**Date:** 2026-03-03
 **Status:** Implemented (v5.8.0)
 **Phase:** Phase 7 — ML Features
 
@@ -107,6 +107,18 @@ Rejected for Phase 7. A single kill-switch is simpler and less error-prone. Per-
 - `InjuryRiskEnsembleModel`: recall ≥ 0.80 on holdout set; false positive rate < 0.30
 - `AutomatedPeriodizationEngine`: ≥10 athlete-confirmed suggestions with ≥80% adoption rate
 - All promotions require ADR update and `evidence_label` upgrade (HEURISTIC → MODERATE)
+
+### Promotion Control Requirements (T5-04)
+
+Before any Phase 7 engine moves from shadow/advisory to athlete-facing Stage 1+:
+
+1. **Gate metrics must pass** for the specific engine (criteria above).
+2. **ADR must be updated** to record the promotion evidence and explicitly upgrade
+   the recommendation payload evidence label from `HEURISTIC` to `MODERATE`.
+3. **Deployment docs must explicitly disable the kill-switch** by setting
+   `TITAN_ML_KILL_SWITCH=0` (or `false` / `off`) for the target environment.
+4. **Operator Console calibration review must show promotion readiness** with
+   the gate checklist visible to operators before rollout.
 
 ---
 

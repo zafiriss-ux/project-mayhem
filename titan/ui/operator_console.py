@@ -150,6 +150,30 @@ class OperatorConsoleService:
 
     def calibration_review(self, limit: int = 365) -> dict[str, Any]:
         """Build calibration review payload for lock rates and promotion candidates."""
+        ml_promotion_readiness = {
+            "stage_target": "Stage 1+",
+            "status": "REVIEW_REQUIRED",
+            "engines": [
+                {
+                    "engine": "LoadPredictionShadowModel",
+                    "promotion_gate": "at least 30 predictions with RMSE < 10% of actual",
+                },
+                {
+                    "engine": "InjuryRiskEnsembleModel",
+                    "promotion_gate": "recall >= 0.80 and false_positive_rate < 0.30 on holdout",
+                },
+                {
+                    "engine": "AutomatedPeriodizationEngine",
+                    "promotion_gate": "at least 10 confirmed suggestions with adoption_rate >= 0.80",
+                },
+            ],
+            "required_controls": [
+                "ADR updated with evidence_label upgrade HEURISTIC -> MODERATE",
+                "deployment docs set TITAN_ML_KILL_SWITCH=0 explicitly",
+                "Operator Console calibration review marked promotion-ready",
+            ],
+        }
+
         decisions = self.db.get_governance_decisions(limit=limit)
 
         decided = [d for d in decisions if d["outcome_completed"] is not None]
@@ -160,6 +184,7 @@ class OperatorConsoleService:
                     "governance_lock_rate": None,
                     "lock_rate_by_phase": {},
                 },
+                "ml_promotion_readiness": ml_promotion_readiness,
                 "heuristic_promotion_candidates": [],
                 "moderate_promotion_candidates": [],
             }
@@ -250,6 +275,7 @@ class OperatorConsoleService:
                 ),
                 "lock_rate_by_phase": lock_rate_by_phase,
             },
+            "ml_promotion_readiness": ml_promotion_readiness,
             "heuristic_promotion_candidates": sorted(
                 heuristic_candidates,
                 key=lambda item: abs(item["completion_delta_pp"]),
