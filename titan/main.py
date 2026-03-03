@@ -24,7 +24,6 @@ from titan.ui.setup_wizard import ensure_credentials
 
 # ── Core integrations ────────────────────────────────────────────────────────
 from titan.integrations.garmin_sync import GarminSync
-from titan.integrations.weather_api import WeatherAPI
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 # ── Science engines ──────────────────────────────────────────────────────────
@@ -350,6 +349,8 @@ def _parse_env_number(name: str, default: str, caster):
 # MAIN
 # ════════════════════════════════════════════════════════════════════════════
 def main():
+    from titan.integrations.weather_api import WeatherAPI
+
     _print_banner()
 
     # ── Step 1: Credentials ──────────────────────────────────────────────────
