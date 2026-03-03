@@ -22,11 +22,12 @@ def _get_blocking_targets() -> list[str]:
     return [line.strip() for line in blocking_section.splitlines() if line.strip()]
 
 
-def test_ruff_blocking_gate_includes_promoted_core_targets() -> None:
+def test_ruff_blocking_gate_includes_promoted_targets() -> None:
     targets = _get_blocking_targets()
     assert targets == [
         "titan/config",
         "titan/core",
+        "titan/integrations",
         "titan/science/governance_contracts.py",
         "titan/science/governance_engine.py",
     ], f"Unexpected blocking targets: {targets}"

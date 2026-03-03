@@ -10,8 +10,8 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable, Dict, List, Optional
 
 from titan.utils.constants import _Secret
 

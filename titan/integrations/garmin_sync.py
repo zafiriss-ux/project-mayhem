@@ -10,7 +10,7 @@ import os
 import threading
 import time
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from titan.orchestration.contracts import GarminSyncResult
 from titan.utils.constants import _Secret
