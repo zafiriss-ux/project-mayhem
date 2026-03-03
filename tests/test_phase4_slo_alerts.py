@@ -2,7 +2,14 @@ import json
 import logging
 from datetime import datetime
 
-from titan.integrations.garmin_sync import GarminSync
+import pytest
+
+from titan.integrations.garmin_sync import (
+    GARMIN_PAYLOAD_MALFORMED,
+    GARMIN_RATE_LIMIT,
+    GARMIN_TIMEOUT,
+    GarminSync,
+)
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 
@@ -72,9 +79,12 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
     skipped = [
         e
         for e in events
-        if e.get("flow") == "garmin_sync" and e.get("action") == "hrv_day_skipped"
+        if e.get("flow") == "garmin_sync"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "sync_hrv"
     ]
     assert len(skipped) == 1
+    assert skipped[0]["failure_class"] == GARMIN_PAYLOAD_MALFORMED
     assert skipped[0]["error_class"] == "ValueError"
     assert skipped[0]["error_message"] == "bad payload"
 
@@ -130,3 +140,38 @@ def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):
     assert out == []
     assert sync.get_sync_summary()["last_hrv_sync_metrics"]["skipped_days"] == 0
     assert not any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.parametrize(
+    "method_name,error,expected_failure",
+    [
+        ("sync_activities", Exception("429 Too Many Requests"), GARMIN_RATE_LIMIT),
+        ("sync_weight", TimeoutError("timed out"), GARMIN_TIMEOUT),
+        ("sync_sleep", RuntimeError("service unavailable"), "GARMIN_API_UNAVAILABLE"),
+    ],
+)
+def test_sync_methods_emit_structured_failure_events(caplog, method_name, error, expected_failure):
+    caplog.set_level(logging.INFO)
+    sync = GarminSync(email="x", password="y")
+    sync.is_connected = True
+    sync.client = type("Client", (), {})()
+
+    if method_name == "sync_activities":
+        sync.client.get_activities_by_date = lambda *_: (_ for _ in ()).throw(error)
+    elif method_name == "sync_weight":
+        sync.client.get_weigh_ins = lambda *_: (_ for _ in ()).throw(error)
+    else:
+        sync.client.get_sleep_data = lambda *_: (_ for _ in ()).throw(error)
+
+    getattr(sync, method_name)(days_back=1)
+
+    events = _json_messages(caplog)
+    failures = [
+        e
+        for e in events
+        if e.get("flow") == "garmin_sync"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == method_name
+    ]
+    assert failures
+    assert failures[0]["failure_class"] == expected_failure
