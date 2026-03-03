@@ -6,6 +6,7 @@ Persistent storage for training data, athlete profiles, and performance metrics
 import logging
 import sqlite3
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
@@ -31,6 +32,26 @@ def _validate_athlete_dict(data: object) -> None:
     missing = _REQUIRED_ATHLETE_KEYS - data.keys()
     if missing:
         raise ValueError(f"Missing required athlete fields: {missing}")
+
+
+def _derive_field_hint(error: Exception) -> str:
+    """Infer likely problematic field from exception text when loading athlete JSON."""
+    error_msg = str(error)
+
+    match = re.search(r"field: ([a-zA-Z0-9_]+)", error_msg)
+    if match:
+        return match.group(1)
+
+    match = re.search(r"Missing required athlete fields: \{([^}]+)\}", error_msg)
+    if match:
+        first_missing = match.group(1).replace("'", "").split(",")[0].strip()
+        if first_missing:
+            return first_missing
+
+    if isinstance(error, json.JSONDecodeError):
+        return f"json_pos_{error.lineno}:{error.colno}"
+
+    return "unknown"
 
 
 class DatabaseManager:
@@ -1069,7 +1090,13 @@ class AthleteDatabase:
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
             except Exception as e:
-                _log.warning("Skipped corrupted athlete file: %s (%s)", filepath.name, type(e).__name__)
+                _log.warning(
+                    "Skipped corrupted athlete file: filename=%s error_class=%s error_message=%s field_hint=%s",
+                    filepath.name,
+                    type(e).__name__,
+                    str(e),
+                    _derive_field_hint(e),
+                )
 
     @staticmethod
     def _validate_profile_schema(data: Any) -> None:
