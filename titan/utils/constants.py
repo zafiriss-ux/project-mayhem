@@ -71,8 +71,6 @@ WEIGHT_DROP_CRITICAL = 1.2  # % drop
 EPOC_OVERRIDE_THRESHOLD = 350  # kcal
 
 # Training Load Constants
-ACWR_SAFE_MIN = 0.8  # Acute:Chronic Workload Ratio
-ACWR_SAFE_MAX = 1.3
 ACWR_INJURY_RISK = 1.5  # >1.5 = 2-4x injury risk
 
 # TSB (Training Stress Balance) Ranges
