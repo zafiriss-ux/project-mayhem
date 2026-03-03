@@ -27,11 +27,13 @@ from __future__ import annotations
 
 import pytest
 
+from titan.science.automated_periodization import (
+    AutomatedPeriodizationEngine,
+    PeriodizationSuggestion,
+)
+from titan.science.injury_risk_model import InjuryRiskAssessment, InjuryRiskEnsembleModel
 from titan.science.load_prediction_shadow import LoadPredictionShadowModel, ShadowLoadPrediction
-from titan.science.injury_risk_model import InjuryRiskEnsembleModel, InjuryRiskAssessment
-from titan.science.automated_periodization import AutomatedPeriodizationEngine, PeriodizationSuggestion
-from titan.science.ml_safety import is_ml_kill_switch_enabled, enforce_ml_kill_switch
-
+from titan.science.ml_safety import enforce_ml_kill_switch, is_ml_kill_switch_enabled
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1 · load_prediction_shadow — missing branches

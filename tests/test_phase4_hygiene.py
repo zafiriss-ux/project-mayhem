@@ -28,10 +28,9 @@ from __future__ import annotations
 
 import pytest
 
-from titan.science.outcome_tracker import _classify_lock_cause, OutcomeTracker
-from titan.science.intensity_governor import IntensityGovernor
 from titan.science.governance_engine import GovernanceEngine
-
+from titan.science.intensity_governor import IntensityGovernor
+from titan.science.outcome_tracker import OutcomeTracker, _classify_lock_cause
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1 · outcome_tracker — _classify_lock_cause branch paths

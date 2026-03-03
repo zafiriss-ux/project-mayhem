@@ -170,7 +170,7 @@ class MathCore:
         weight: float,
         night_drop: float,
         epoc: float,
-        target_weight: Optional[float] = 75.0,
+        target_weight: float | None = 75.0,
         critical_margin: float = 0.5,
         emergency_margin: float = 0.0,
     ) -> str:

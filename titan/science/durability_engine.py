@@ -11,29 +11,28 @@ Traditional metrics (VO2max, FTP, LT) are measured FRESH.
 But races are won by those who maintain performance when FATIGUED.
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 
 class DurabilityEngine:
     """
     Durability = How well you maintain performance when fatigued.
-    
+
     The "new frontier" in endurance science - measuring performance
     degradation over long efforts.
     """
 
     @staticmethod
     def assess_pace_durability(
-        km_splits: List[float],
-        target_pace_sec: float
-    ) -> Tuple[Optional[float], str, Optional[str]]:
+        km_splits: list[float], target_pace_sec: float
+    ) -> tuple[float | None, str, str | None]:
         """
         Analyze pace decay across a long run.
-        
+
         Args:
             km_splits: List of km split times (seconds)
             target_pace_sec: Target pace per km
-        
+
         Returns:
             Tuple of (decay_percentage, status, recommendation)
         """
@@ -71,23 +70,22 @@ class DurabilityEngine:
 
     @staticmethod
     def calculate_durability_index(
-        fresh_performance: float,
-        fatigued_performance: float
-    ) -> Tuple[Optional[float], str, str]:
+        fresh_performance: float, fatigued_performance: float
+    ) -> tuple[float | None, str, str]:
         """
         Durability Index = (Fresh Performance / Fatigued Performance) × 100.
-        
+
         Higher = better durability
-        
+
         Example:
         - Fresh 5K: 19:00 (3:48/km = 228 sec)
         - After 25K: 5K @ 20:00 (4:00/km = 240 sec)
         - DI = (228 / 240) × 100 = 95%
-        
+
         Args:
             fresh_performance: Time in seconds (shorter = better)
             fatigued_performance: Time in seconds (shorter = better)
-            
+
         Returns:
             Tuple of (durability_index, status, tier)
         """
@@ -115,13 +113,13 @@ class DurabilityEngine:
         return round(di, 1), status, tier
 
     @staticmethod
-    def durability_training_protocol(current_di: float) -> List[str]:
+    def durability_training_protocol(current_di: float) -> list[str]:
         """
         Training recommendations based on Maunder et al. (2021).
-        
+
         Args:
             current_di: Current durability index (%)
-            
+
         Returns:
             List of training recommendations
         """
@@ -134,26 +132,26 @@ class DurabilityEngine:
                 "Include 'depleted state' runs (morning fasted, 60-90 min)",
                 "Progressive long runs: Start easy, finish at tempo",
                 "Back-to-back quality: Saturday tempo + Sunday long",
-                "Reduce intervals temporarily - focus on volume"
+                "Reduce intervals temporarily - focus on volume",
             ]
         elif current_di < 93:
             protocols = [
                 "Maintain weekly long run (2h+)",
                 "Add 'fatigued intervals': Easy run → then intervals",
                 "Monthly: Tempo after easy mileage (durability stimulus)",
-                "One long run per month: Progressive with Hammer finish"
+                "One long run per month: Progressive with Hammer finish",
             ]
         elif current_di < 96:
             protocols = [
                 "✓ Durability strong - maintain current approach",
                 "Occasional durability check: Long run with fast finish",
-                "Focus can shift to speed/power work"
+                "Focus can shift to speed/power work",
             ]
         else:
             protocols = [
                 "✓ ELITE durability maintained",
                 "No specific durability work needed",
-                "Use this as competitive advantage in long races"
+                "Use this as competitive advantage in long races",
             ]
 
         return protocols

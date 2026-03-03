@@ -1,40 +1,40 @@
 """RCP Engine - Respiratory Compensation Point Analysis"""
-from typing import List, Tuple, Optional, Dict
+
+from typing import Dict, List, Optional, Tuple
+
 
 class RCPEngine:
     """
     Respiratory Compensation Point - More precise than LTHR.
-    
+
     Scientific Basis:
     - Meyer, T. et al. (2005). Int J Sports Med, 26(S1), S38-S48
     - Luca, A. et al. (2000). Med Sci Sports Exerc, 32(10), 1777-1782
     - Wasserman, K. et al. (1986). Original RCP concept
-    
+
     RCP = Point where lactate "explodes"
     More reliable than LT2/LTHR for threshold work
     """
 
     @staticmethod
     def estimate_rcp_from_progressive_test(
-        pace_segments_sec: List[float],
-        hr_segments: List[int],
-        rpe_segments: List[float]
-    ) -> Tuple[Optional[int], Optional[float], Optional[float], str]:
+        pace_segments_sec: list[float], hr_segments: list[int], rpe_segments: list[float]
+    ) -> tuple[int | None, float | None, float | None, str]:
         """
         Detect RCP from progressive field test.
-        
+
         Field Test Protocol:
         - 5 min @ easy
         - 5 min @ moderate
         - 5 min @ tempo
         - 5 min @ threshold
         - Look for HR:Pace ratio inflection
-        
+
         Args:
             pace_segments_sec: Avg pace/km for each segment (seconds)
             hr_segments: Avg HR for each segment
             rpe_segments: RPE for each segment
-        
+
         Returns:
             (rcp_hr, rcp_pace, rcp_rpe, explanation)
         """
@@ -50,8 +50,8 @@ class RCPEngine:
 
         # Find sharp inflection point (2nd derivative)
         for i in range(1, len(hr_pace_ratios) - 1):
-            delta_before = hr_pace_ratios[i] - hr_pace_ratios[i-1]
-            delta_after = hr_pace_ratios[i+1] - hr_pace_ratios[i]
+            delta_before = hr_pace_ratios[i] - hr_pace_ratios[i - 1]
+            delta_after = hr_pace_ratios[i + 1] - hr_pace_ratios[i]
 
             # RCP = where increase accelerates sharply
             if delta_after > delta_before * 1.5:
@@ -59,7 +59,7 @@ class RCPEngine:
                 rcp_pace = pace_segments_sec[i]
                 rcp_rpe = rpe_segments[i] if i < len(rpe_segments) else None
 
-                explanation = f"RCP detected at segment {i+1}: Sharp efficiency drop"
+                explanation = f"RCP detected at segment {i + 1}: Sharp efficiency drop"
                 return rcp_hr, rcp_pace, rcp_rpe, explanation
 
         # If no clear inflection, estimate from highest sustainable
@@ -70,18 +70,18 @@ class RCPEngine:
         return rcp_hr, rcp_pace, rcp_rpe, "RCP estimated (no clear inflection)"
 
     @staticmethod
-    def rcp_training_zones(rcp_hr: int, max_hr: int) -> Dict[str, any]:
+    def rcp_training_zones(rcp_hr: int, max_hr: int) -> dict[str, any]:
         """
         Training zones based on RCP (Luca et al. 2000).
-        
+
         Zone 1: Below VT1 (easy aerobic)
         Zone 2: VT1 to RCP (tempo/threshold)
         Zone 3: Above RCP (VO2max/anaerobic)
-        
+
         Args:
             rcp_hr: Respiratory Compensation Point HR
             max_hr: Maximum heart rate
-        
+
         Returns:
             Dictionary with zone definitions
         """
@@ -93,16 +93,16 @@ class RCPEngine:
             "Zone 3 (VO2max)": f"> {int(rcp_hr)} HR (> RCP)",
             "RCP_HR": rcp_hr,
             "VT1_HR": int(vt1_hr),
-            "Max_HR": max_hr
+            "Max_HR": max_hr,
         }
 
         return zones
 
     @staticmethod
-    def calculate_rcp_training_zones(rcp_hr: int, max_hr: int) -> Dict[str, Tuple[int, int]]:
+    def calculate_rcp_training_zones(rcp_hr: int, max_hr: int) -> dict[str, tuple[int, int]]:
         """
         Calculate precise HR zones based on RCP.
-        
+
         Returns dict with (low, high) HR for each zone.
         """
         vt1_hr = int(rcp_hr * 0.85)
@@ -112,5 +112,5 @@ class RCPEngine:
             "zone_2_threshold": (vt1_hr, rcp_hr),
             "zone_3_vo2max": (rcp_hr, max_hr),
             "rcp_hr": rcp_hr,
-            "vt1_hr": vt1_hr
+            "vt1_hr": vt1_hr,
         }

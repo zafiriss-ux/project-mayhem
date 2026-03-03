@@ -12,11 +12,11 @@ class OperatorConsoleService:
     def __init__(self, db: DatabaseManager):
         self.db = db
 
-    def readiness_load_dashboard(self, limit: int = 90) -> Dict[str, Any]:
+    def readiness_load_dashboard(self, limit: int = 90) -> dict[str, Any]:
         """Build timeline + summary payload for readiness/load dashboard widgets."""
         decisions = self.db.get_governance_decisions(limit=limit)
 
-        timeline: List[Dict[str, Any]] = [
+        timeline: list[dict[str, Any]] = [
             {
                 "date": d["date"],
                 "tsb": d["tsb_value"],
@@ -55,11 +55,11 @@ class OperatorConsoleService:
 
         return {"timeline": timeline, "summary": summary}
 
-    def session_explorer(self, limit: int = 50) -> Dict[str, Any]:
+    def session_explorer(self, limit: int = 50) -> dict[str, Any]:
         """Build payload for session log review and governance decision trail."""
         decisions = self.db.get_governance_decisions(limit=limit)
 
-        sessions: List[Dict[str, Any]] = []
+        sessions: list[dict[str, Any]] = []
         for decision in decisions:
             trail = [
                 {
@@ -113,7 +113,7 @@ class OperatorConsoleService:
         """Persist manual note for a session explorer record."""
         return self.db.annotate_governance_outcome(date=date, note=note)
 
-    def manual_override_workflow(self, limit: int = 50, days: int = 14) -> Dict[str, Any]:
+    def manual_override_workflow(self, limit: int = 50, days: int = 14) -> dict[str, Any]:
         """Build payload for manual override review + audit trail visibility."""
         overrides = self.db.get_override_log(limit=limit)
 
@@ -148,7 +148,7 @@ class OperatorConsoleService:
         )
         return True
 
-    def calibration_review(self, limit: int = 365) -> Dict[str, Any]:
+    def calibration_review(self, limit: int = 365) -> dict[str, Any]:
         """Build calibration review payload for lock rates and promotion candidates."""
         decisions = self.db.get_governance_decisions(limit=limit)
 
@@ -164,7 +164,7 @@ class OperatorConsoleService:
                 "moderate_promotion_candidates": [],
             }
 
-        lock_rate_by_phase: Dict[str, float] = {}
+        lock_rate_by_phase: dict[str, float] = {}
         phases = sorted({d["phase"] for d in decided})
         for phase in phases:
             phase_rows = [d for d in decided if d["phase"] == phase]
@@ -173,7 +173,7 @@ class OperatorConsoleService:
             )
 
         locks = sorted({lock for d in decided for lock in d["locks_applied"]})
-        correlations: Dict[str, Dict[str, Any]] = {}
+        correlations: dict[str, dict[str, Any]] = {}
         for lock in locks:
             with_lock = [d for d in decided if lock in d["locks_applied"]]
             without_lock = [d for d in decided if lock not in d["locks_applied"]]

@@ -13,7 +13,6 @@ Central navigation hub:
 import sys
 from datetime import datetime
 
-
 ANSI_CLEAR_SCREEN = "\033[2J\033[H"
 
 

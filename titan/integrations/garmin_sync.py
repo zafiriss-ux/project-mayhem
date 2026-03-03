@@ -7,15 +7,13 @@ REAL implementation using garminconnect library (not mock).
 import json
 import logging
 import os
+import threading
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
-import threading
 
 from titan.orchestration.contracts import GarminSyncResult
-
 from titan.utils.constants import _Secret
-
 
 _log = logging.getLogger(__name__)
 
@@ -24,6 +22,7 @@ GARMIN_RATE_LIMIT = "GARMIN_RATE_LIMIT"
 GARMIN_PAYLOAD_MALFORMED = "GARMIN_PAYLOAD_MALFORMED"
 GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
+
 
 def _garmin_event(action: str, **fields) -> None:
     """Emit a structured Garmin sync event as a single JSON log line."""
@@ -36,7 +35,12 @@ def _classify_failure(error: Exception) -> str:
     message = str(error).lower()
     combined = f"{error_name} {message}"
 
-    if "auth" in combined or "credential" in combined or "unauthoriz" in combined or "forbidden" in combined:
+    if (
+        "auth" in combined
+        or "credential" in combined
+        or "unauthoriz" in combined
+        or "forbidden" in combined
+    ):
         return GARMIN_AUTH_FAIL
     if "429" in combined or "rate" in combined or "too many requests" in combined:
         return GARMIN_RATE_LIMIT
@@ -72,18 +76,18 @@ class GarminSync:
     """
 
     def __init__(self, email: str = None, password: str = None):
-        self.email = _Secret(email or os.getenv('GARMIN_EMAIL', ''))
-        self.password = _Secret(password or os.getenv('GARMIN_PASSWORD', ''))
+        self.email = _Secret(email or os.getenv("GARMIN_EMAIL", ""))
+        self.password = _Secret(password or os.getenv("GARMIN_PASSWORD", ""))
         self.client = None
         self.is_connected = False
-        self.last_sync: Optional[str] = None
-        self.sync_history: List = []
-        self.last_hrv_sync_metrics: Dict[str, int] = {
+        self.last_sync: str | None = None
+        self.sync_history: list = []
+        self.last_hrv_sync_metrics: dict[str, int] = {
             "days_back": 0,
             "synced_days": 0,
             "skipped_days": 0,
         }
-        self._sync_thread: Optional[threading.Thread] = None
+        self._sync_thread: threading.Thread | None = None
         self._stop_sync = False
         self._stop_event = threading.Event()
 
@@ -98,6 +102,7 @@ class GarminSync:
             return False
         try:
             from garminconnect import Garmin
+
             self.client = Garmin(email, password)
             self.client.login()
             self.is_connected = True
@@ -117,7 +122,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # ACTIVITIES
     # ------------------------------------------------------------------ #
-    def sync_activities(self, days_back: int = 7) -> List[Dict]:
+    def sync_activities(self, days_back: int = 7) -> list[dict]:
         if not self._ensure_connected():
             return []
         activities = []
@@ -129,22 +134,24 @@ class GarminSync:
             for a in raw:
                 try:
                     dur_sec = int(a.get("duration", 0))
-                    dist_m  = float(a.get("distance", 0))
-                    avg_hr  = a.get("averageHR") or a.get("averageHeartRate", 0)
-                    max_hr  = a.get("maxHR") or a.get("maxHeartRate", 0)
+                    dist_m = float(a.get("distance", 0))
+                    avg_hr = a.get("averageHR") or a.get("averageHeartRate", 0)
+                    max_hr = a.get("maxHR") or a.get("maxHeartRate", 0)
                     pace_sec = int(dur_sec / (dist_m / 1000)) if dist_m > 0 else 0
-                    activities.append({
-                        "date":            a.get("startTimeLocal", "")[:10],
-                        "activity_type":   a.get("activityType", {}).get("typeKey", "running"),
-                        "distance_km":     round(dist_m / 1000, 2),
-                        "duration_sec":    dur_sec,
-                        "avg_hr":          int(avg_hr) if avg_hr else 0,
-                        "max_hr":          int(max_hr) if max_hr else 0,
-                        "avg_pace_sec_per_km": pace_sec,
-                        "calories":        int(a.get("calories", 0)),
-                        "elevation_gain_m": int(a.get("elevationGain", 0)),
-                        "activity_id":     a.get("activityId"),
-                    })
+                    activities.append(
+                        {
+                            "date": a.get("startTimeLocal", "")[:10],
+                            "activity_type": a.get("activityType", {}).get("typeKey", "running"),
+                            "distance_km": round(dist_m / 1000, 2),
+                            "duration_sec": dur_sec,
+                            "avg_hr": int(avg_hr) if avg_hr else 0,
+                            "max_hr": int(max_hr) if max_hr else 0,
+                            "avg_pace_sec_per_km": pace_sec,
+                            "calories": int(a.get("calories", 0)),
+                            "elevation_gain_m": int(a.get("elevationGain", 0)),
+                            "activity_id": a.get("activityId"),
+                        }
+                    )
                 except Exception as e:
                     skipped_records += 1
                     activity_id = a.get("activityId", "unknown")
@@ -168,7 +175,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # WEIGHT
     # ------------------------------------------------------------------ #
-    def sync_weight(self, days_back: int = 30) -> List[Dict]:
+    def sync_weight(self, days_back: int = 30) -> list[dict]:
         if not self._ensure_connected():
             return []
         entries = []
@@ -181,12 +188,14 @@ class GarminSync:
                 summ = d.get("allDayWeightSummaries", [{}])[0]
                 w_g = summ.get("latestWeight", summ.get("minWeight", 0))
                 if w_g and w_g > 0:
-                    entries.append({
-                        "date":       d.get("calendarDate", ""),
-                        "weight_kg":  round(w_g / 1000, 2),  # grams → kg
-                        "bmi":        summ.get("bmi"),
-                        "source":     "garmin",
-                    })
+                    entries.append(
+                        {
+                            "date": d.get("calendarDate", ""),
+                            "weight_kg": round(w_g / 1000, 2),  # grams → kg
+                            "bmi": summ.get("bmi"),
+                            "source": "garmin",
+                        }
+                    )
             print(f"⚖️  Synced {len(entries)} weight entries")
             self._log_sync("weight", len(entries))
         except Exception as e:
@@ -197,7 +206,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # SLEEP
     # ------------------------------------------------------------------ #
-    def sync_sleep(self, days_back: int = 7) -> List[Dict]:
+    def sync_sleep(self, days_back: int = 7) -> list[dict]:
         if not self._ensure_connected():
             return []
         sessions = []
@@ -208,15 +217,19 @@ class GarminSync:
                 summary = raw.get("dailySleepDTO", {})
                 if summary.get("sleepTimeSeconds"):
                     total_h = summary["sleepTimeSeconds"] / 3600
-                    deep_h  = summary.get("deepSleepSeconds", 0) / 3600
-                    rem_h   = summary.get("remSleepSeconds", 0) / 3600
-                    sessions.append({
-                        "date":               d,
-                        "total_sleep_hours":  round(total_h, 2),
-                        "deep_sleep_hours":   round(deep_h, 2),
-                        "rem_sleep_hours":    round(rem_h, 2),
-                        "sleep_score":        summary.get("sleepScores", {}).get("overall", {}).get("value"),
-                    })
+                    deep_h = summary.get("deepSleepSeconds", 0) / 3600
+                    rem_h = summary.get("remSleepSeconds", 0) / 3600
+                    sessions.append(
+                        {
+                            "date": d,
+                            "total_sleep_hours": round(total_h, 2),
+                            "deep_sleep_hours": round(deep_h, 2),
+                            "rem_sleep_hours": round(rem_h, 2),
+                            "sleep_score": summary.get("sleepScores", {})
+                            .get("overall", {})
+                            .get("value"),
+                        }
+                    )
         except Exception as e:
             _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
             print(f"❌ Sleep sync failed: {e}")
@@ -227,7 +240,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # HRV
     # ------------------------------------------------------------------ #
-    def sync_hrv(self, days_back: int = 7) -> List[Dict]:
+    def sync_hrv(self, days_back: int = 7) -> list[dict]:
         if not self._ensure_connected():
             self.last_hrv_sync_metrics = {
                 "days_back": days_back,
@@ -246,12 +259,14 @@ class GarminSync:
                     summary = raw.get("hrvSummary", {})
                     rmssd = summary.get("lastNight5MinHigh") or summary.get("weeklyAvg")
                     if rmssd:
-                        hrv_data.append({
-                            "date":   d,
-                            "rmssd":  round(float(rmssd), 1),
-                            "status": summary.get("status", ""),
-                            "source": "garmin",
-                        })
+                        hrv_data.append(
+                            {
+                                "date": d,
+                                "rmssd": round(float(rmssd), 1),
+                                "status": summary.get("status", ""),
+                                "source": "garmin",
+                            }
+                        )
                 except Exception as e:
                     skipped_days += 1
                     error_class = e.__class__.__name__
@@ -293,9 +308,9 @@ class GarminSync:
         started = time.monotonic()
         payload: GarminSyncResult = {
             "activities": self.sync_activities(days_back),
-            "weight":     self.sync_weight(max(days_back, 14)),
-            "sleep":      self.sync_sleep(days_back),
-            "hrv":        self.sync_hrv(days_back),
+            "weight": self.sync_weight(max(days_back, 14)),
+            "sleep": self.sync_sleep(days_back),
+            "hrv": self.sync_hrv(days_back),
             "hrv_sync_metrics": dict(self.last_hrv_sync_metrics),
         }
         elapsed_s = round(time.monotonic() - started, 3)
@@ -347,11 +362,11 @@ class GarminSync:
         if len(self.sync_history) > 100:
             self.sync_history = self.sync_history[-100:]
 
-    def get_sync_summary(self) -> Dict:
+    def get_sync_summary(self) -> dict:
         return {
-            "last_sync":      self.last_sync,
-            "total_syncs":    len(self.sync_history),
-            "is_connected":   self.is_connected,
-            "recent_syncs":   self.sync_history[-5:],
+            "last_sync": self.last_sync,
+            "total_syncs": len(self.sync_history),
+            "is_connected": self.is_connected,
+            "recent_syncs": self.sync_history[-5:],
             "last_hrv_sync_metrics": self.last_hrv_sync_metrics,
         }

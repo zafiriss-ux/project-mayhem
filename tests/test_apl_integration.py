@@ -13,29 +13,29 @@ Test scope:
 """
 
 import pytest
-from titan.science.volume_load_gauge import VolumeLoadGauge, VLGState
-from titan.science.adaptive_priority_lock import AdaptivePriorityLock
-from titan.science.outcome_tracker import OutcomeTracker
+
 from titan.config.evidence_registry import (
+    EVIDENCE_REGISTRY,
+    get_calibration_candidates,
     get_evidence,
     get_policy_parameters,
-    get_calibration_candidates,
     get_registry_summary,
-    EVIDENCE_REGISTRY,
 )
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
-    SUBJECTIVE_FATIGUE_EXTREME,
     SUBJECTIVE_FATIGUE_2OF4,
-    VO2_ACWR_MIN,
+    SUBJECTIVE_FATIGUE_EXTREME,
     VO2_ACWR_MAX,
-    VO2_READINESS_MIN,
+    VO2_ACWR_MIN,
     VO2_GLYCOGEN_DEBT_MAX,
     VO2_MIN_DAYS_SINCE_LAST,
+    VO2_READINESS_MIN,
 )
-
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+from titan.science.outcome_tracker import OutcomeTracker
+from titan.science.volume_load_gauge import VLGState, VolumeLoadGauge
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures

@@ -12,8 +12,8 @@ class VLGState:
 
     color: str
     score: int
-    components: Dict[str, str]
-    rationale: List[str]
+    components: dict[str, str]
+    rationale: list[str]
 
 
 class VolumeLoadGauge:
@@ -67,7 +67,7 @@ class VolumeLoadGauge:
 
         score = red_count * 2 + yellow_count
 
-        rationale: List[str] = []
+        rationale: list[str] = []
         if components["tsb"] != "GREEN":
             rationale.append(f"TSB={tsb:.1f} ({components['tsb']})")
         if components["acwr"] != "GREEN":

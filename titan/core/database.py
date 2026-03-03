@@ -3,14 +3,14 @@ TITAN Database Management
 Persistent storage for training data, athlete profiles, and performance metrics
 """
 
-import logging
-import sqlite3
 import json
+import logging
 import re
+import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-import threading
+from typing import Any, Dict, List, Optional, Tuple
 
 from titan.core.athlete import UniversalAthleteProfile
 
@@ -99,7 +99,7 @@ class DatabaseManager:
     - Compression recovery tracking (24h foam set)
     """
 
-    def __init__(self, db_name: str = "titan_core.db", db_dir: Optional[Path] = None):
+    def __init__(self, db_name: str = "titan_core.db", db_dir: Path | None = None):
         """
         Initialize database connection.
 
@@ -335,15 +335,15 @@ class DatabaseManager:
     def save_daily_metric(
         self,
         date: str,
-        weight: Optional[float] = None,
-        hrv: Optional[float] = None,
-        rhr: Optional[int] = None,
-        sleep_hours: Optional[float] = None,
-        sleep_quality: Optional[int] = None,
-        soreness: Optional[int] = None,
-        fatigue: Optional[int] = None,
-        mood: Optional[int] = None,
-        notes: Optional[str] = None
+        weight: float | None = None,
+        hrv: float | None = None,
+        rhr: int | None = None,
+        sleep_hours: float | None = None,
+        sleep_quality: int | None = None,
+        soreness: int | None = None,
+        fatigue: int | None = None,
+        mood: int | None = None,
+        notes: str | None = None
     ) -> None:
         """
         Save morning check-in data.
@@ -379,15 +379,15 @@ class DatabaseManager:
         session_type: str,
         distance_km: float,
         duration_sec: int,
-        avg_hr: Optional[int] = None,
-        max_hr: Optional[int] = None,
-        rpe: Optional[int] = None,
-        shoe_id: Optional[int] = None,
-        surface: Optional[str] = None,
-        temperature_c: Optional[float] = None,
-        notes: Optional[str] = None,
+        avg_hr: int | None = None,
+        max_hr: int | None = None,
+        rpe: int | None = None,
+        shoe_id: int | None = None,
+        surface: str | None = None,
+        temperature_c: float | None = None,
+        notes: str | None = None,
         # Backward-compatible alias — will be removed in a future version
-        temperature: Optional[float] = None,
+        temperature: float | None = None,
     ) -> None:
         """
         Save training session.
@@ -439,7 +439,7 @@ class DatabaseManager:
                 """, (distance_km, date, shoe_id))
             self.conn.commit()
 
-    def get_training_load_history(self, days: int = 42) -> List[Tuple[str, float]]:
+    def get_training_load_history(self, days: int = 42) -> list[tuple[str, float]]:
         """
         Get training load for last N days (for TSB calculation).
 
@@ -460,7 +460,7 @@ class DatabaseManager:
 
         return cursor.fetchall()
 
-    def get_ctl_atl_tsb(self) -> Tuple[float, float, float]:
+    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
         """
         Calculate Training Stress Balance from database history.
 
@@ -553,7 +553,7 @@ class DatabaseManager:
             self.conn.commit()
         return cursor.lastrowid
 
-    def get_active_shoes(self) -> List[Tuple]:
+    def get_active_shoes(self) -> list[tuple]:
         """
         Get all active shoes.
 
@@ -571,7 +571,7 @@ class DatabaseManager:
 
         return cursor.fetchall()
 
-    def check_shoe_availability(self, shoe_id: int) -> Tuple[bool, str]:
+    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
         """
         Check if shoe is available for use.
 
@@ -631,7 +631,7 @@ class DatabaseManager:
         distance_km: float,
         time_sec: int,
         date: str,
-        race_name: Optional[str] = None
+        race_name: str | None = None
     ) -> None:
         """
         Save a personal best.
@@ -654,7 +654,7 @@ class DatabaseManager:
             """, (distance_km, time_sec, pace_per_km, date, race_name))
             self.conn.commit()
 
-    def get_pr(self, distance_km: float) -> Optional[Tuple[int, str, Optional[str]]]:
+    def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
         """
         Get personal best for a distance.
 
@@ -696,7 +696,7 @@ class DatabaseManager:
             )
             self.conn.commit()
 
-    def get_hrr_history(self, days: int = 28) -> List[Tuple[str, int, int]]:
+    def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
         """
         Get HRR history for the last N days.
 
@@ -758,7 +758,7 @@ class DatabaseManager:
             )
             self.conn.commit()
 
-    def get_cs_performances(self, limit: int = 10) -> List[Tuple[str, float, float]]:
+    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
         """
         Retrieve most recent CS calibration performances.
 
@@ -818,7 +818,7 @@ class DatabaseManager:
         overrides = row[0] if row else 0
         return round(overrides / days, 3)
 
-    def get_override_log(self, limit: int = 50) -> List[Dict[str, str]]:
+    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
         """Return recent override audit rows (oldest first) for operator review."""
         cursor = self.conn.cursor()
         cursor.execute(
@@ -841,7 +841,7 @@ class DatabaseManager:
 
     # --- GOVERNANCE OUTCOMES ---
 
-    def save_governance_decision(self, decision: Dict[str, Any]) -> None:
+    def save_governance_decision(self, decision: dict[str, Any]) -> None:
         """Persist a governance decision snapshot into governance_outcomes."""
         cursor = self.conn.cursor()
         with self._lock:
@@ -879,10 +879,10 @@ class DatabaseManager:
     def update_governance_outcome(
         self,
         date: str,
-        rpe: Optional[int] = None,
-        completed: Optional[bool] = None,
-        actual_session_type: Optional[str] = None,
-        notes: Optional[str] = None,
+        rpe: int | None = None,
+        completed: bool | None = None,
+        actual_session_type: str | None = None,
+        notes: str | None = None,
     ) -> bool:
         """Update latest governance decision for date with post-session outcome."""
         cursor = self.conn.cursor()
@@ -910,7 +910,7 @@ class DatabaseManager:
             self.conn.commit()
             return cursor.rowcount > 0
 
-    def get_governance_decisions(self, limit: int = 1000) -> List[Dict[str, Any]]:
+    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Fetch governance decisions ordered by insertion order (oldest first)."""
         cursor = self.conn.cursor()
         cursor.execute(
@@ -926,7 +926,7 @@ class DatabaseManager:
         )
 
         rows = cursor.fetchall()
-        decisions: List[Dict[str, Any]] = []
+        decisions: list[dict[str, Any]] = []
         for row in rows:
             decisions.append({
                 'date': row[0],
@@ -1004,8 +1004,8 @@ class AthleteDatabase:
 
         self.db_path = base_dir / db_path
         self.db_path.mkdir(exist_ok=True)
-        self.athletes: Dict[str, UniversalAthleteProfile] = {}
-        self.current_athlete_id: Optional[str] = None
+        self.athletes: dict[str, UniversalAthleteProfile] = {}
+        self.current_athlete_id: str | None = None
         self.load_all()
 
     def create_athlete(
@@ -1038,7 +1038,7 @@ class AthleteDatabase:
 
         return profile
 
-    def switch_athlete(self, athlete_id: str) -> Optional[UniversalAthleteProfile]:
+    def switch_athlete(self, athlete_id: str) -> UniversalAthleteProfile | None:
         """
         Switch to a different athlete.
 
@@ -1053,7 +1053,7 @@ class AthleteDatabase:
             return self.athletes[athlete_id]
         return None
 
-    def get_current(self) -> Optional[UniversalAthleteProfile]:
+    def get_current(self) -> UniversalAthleteProfile | None:
         """
         Get current active athlete.
 
@@ -1064,7 +1064,7 @@ class AthleteDatabase:
             return self.athletes[self.current_athlete_id]
         return None
 
-    def list_all(self) -> List[Dict[str, Any]]:
+    def list_all(self) -> list[dict[str, Any]]:
         """
         List all athletes with basic info.
 

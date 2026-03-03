@@ -11,10 +11,11 @@ Modules covered (P0 / P1 priority gaps identified in coverage audit):
   - LactateLogic           (LT1/LT2 boundary conditions, tempo volume decision)
 """
 
-import pytest
 from typing import List, Tuple
-from titan.config.thresholds import HARD_STOP_TSB_FLOOR
 
+import pytest
+
+from titan.config.thresholds import HARD_STOP_TSB_FLOOR
 
 # ──────────────────────────────────────────────────────────────────────────────
 # AutonomicFusionEngine
@@ -28,7 +29,7 @@ class TestAutonomicFusionEngine:
         from titan.science.autonomic_engine import AutonomicFusionEngine
         return AutonomicFusionEngine()
 
-    def _add_hrr_history(self, afe, values: List[int]) -> None:
+    def _add_hrr_history(self, afe, values: list[int]) -> None:
         """Helper: populate HRR log with dated entries."""
         for i, v in enumerate(values):
             afe.add_hrr(f"2026-01-{i+1:02d}", v)
@@ -248,7 +249,7 @@ class TestIntensityGovernor:
 
     @pytest.fixture
     def gov(self):
-        from titan.science.intensity_governor import IntensityGovernor, GateResult
+        from titan.science.intensity_governor import GateResult, IntensityGovernor
         return IntensityGovernor()
 
     # ── Signal color helpers ───────────────────────────────────────────────

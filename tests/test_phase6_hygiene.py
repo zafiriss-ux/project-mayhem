@@ -25,7 +25,6 @@ import pytest
 from titan.core.database import DatabaseManager
 from titan.ui.operator_console import OperatorConsoleService
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────

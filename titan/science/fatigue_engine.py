@@ -1,14 +1,13 @@
 """Fatigue Classification Engine"""
+
 from typing import List, Tuple
+
 
 class FatigueEngine:
     @staticmethod
     def classify_fatigue(
-        hr_suppression: bool,
-        rpe_mismatch: bool,
-        pace_hr_divergence: bool,
-        soreness: int
-    ) -> Tuple[str, List[str]]:
+        hr_suppression: bool, rpe_mismatch: bool, pace_hr_divergence: bool, soreness: int
+    ) -> tuple[str, list[str]]:
         """Classify fatigue type and severity"""
         types = []
         if hr_suppression:

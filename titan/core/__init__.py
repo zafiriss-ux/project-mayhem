@@ -4,7 +4,7 @@ Foundational classes for athlete management, equipment tracking, and periodizati
 """
 
 from titan.core.athlete import UniversalAthleteProfile
-from titan.core.database import DatabaseManager, AthleteDatabase
+from titan.core.database import AthleteDatabase, DatabaseManager
 from titan.core.equipment import EquipmentManager
 from titan.core.periodization import PeriodizationManager
 

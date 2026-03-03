@@ -1,11 +1,13 @@
 """ACWR Engine - Injury Prevention via Workload Monitoring"""
-from typing import Tuple, Optional
+
+from typing import Optional, Tuple
+
 
 class ACWREngine:
     """Acute:Chronic Workload Ratio (Gabbett 2016)"""
 
     @staticmethod
-    def calculate_acwr(acute_7d: float, chronic_28d_avg: float) -> Tuple[Optional[float], str, str]:
+    def calculate_acwr(acute_7d: float, chronic_28d_avg: float) -> tuple[float | None, str, str]:
         """Calculate ACWR = Acute / (Chronic * 7)"""
         if not chronic_28d_avg:
             return None, "INSUFFICIENT DATA", "Need 28 days"
@@ -29,7 +31,7 @@ class ACWREngine:
         return round(chronic_avg * 7 * target, 1)
 
     @staticmethod
-    def injury_risk_score(acwr: float) -> Tuple[int, str]:
+    def injury_risk_score(acwr: float) -> tuple[int, str]:
         if acwr < 0.8:
             return 1, "Very Low"
         elif acwr <= 1.0:

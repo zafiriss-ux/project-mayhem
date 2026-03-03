@@ -4,7 +4,7 @@ Complete athlete demographics, physiology, and training data
 """
 
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 
 class UniversalAthleteProfile:
@@ -36,7 +36,7 @@ class UniversalAthleteProfile:
         personal_bests: Dictionary of PRs by distance
     """
 
-    def __init__(self, athlete_id: Optional[str] = None, name: str = "Default Athlete"):
+    def __init__(self, athlete_id: str | None = None, name: str = "Default Athlete"):
         """
         Initialize athlete profile.
 
@@ -145,7 +145,7 @@ class UniversalAthleteProfile:
     def set_hr_data(
         self,
         resting_hr: int,
-        max_hr: Optional[int] = None
+        max_hr: int | None = None
     ) -> None:
         """
         Update heart rate data and calculate threshold.
@@ -262,7 +262,7 @@ class UniversalAthleteProfile:
 
     # --- SERIALIZATION METHODS ---
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert profile to dictionary for JSON serialization.
 
@@ -291,7 +291,7 @@ class UniversalAthleteProfile:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'UniversalAthleteProfile':
+    def from_dict(cls, data: dict[str, Any]) -> 'UniversalAthleteProfile':
         """
         Create profile from dictionary.
 

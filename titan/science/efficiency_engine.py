@@ -16,39 +16,36 @@ First half EF vs Second half EF
 >10% = poor aerobic base or glycogen depleted
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 
 class EfficiencyEngine:
     """
     Efficiency Factor = Aerobic fitness proxy.
-    
+
     Tracks the relationship between speed and heart rate to monitor
     aerobic development over time.
     """
 
     def __init__(self):
         """Initialize efficiency tracking."""
-        self.ef_history: List[Tuple[str, float]] = []
+        self.ef_history: list[tuple[str, float]] = []
 
     @staticmethod
-    def calculate_efficiency_factor(
-        avg_pace_sec_per_km: float,
-        avg_hr: float
-    ) -> Optional[float]:
+    def calculate_efficiency_factor(avg_pace_sec_per_km: float, avg_hr: float) -> float | None:
         """
         EF = speed (m/s) / HR.
-        
+
         Example:
         5:00/km = 3.33 m/s @ 150 HR
         EF = 3.33 / 150 = 0.0222
-        
+
         Higher = more efficient
-        
+
         Args:
             avg_pace_sec_per_km: Average pace in seconds per kilometer
             avg_hr: Average heart rate
-            
+
         Returns:
             Efficiency factor value
         """
@@ -62,27 +59,24 @@ class EfficiencyEngine:
 
     @staticmethod
     def calculate_decoupling(
-        first_half_pace: float,
-        first_half_hr: float,
-        second_half_pace: float,
-        second_half_hr: float
-    ) -> Tuple[Optional[float], str]:
+        first_half_pace: float, first_half_hr: float, second_half_pace: float, second_half_hr: float
+    ) -> tuple[float | None, str]:
         """
         Decoupling = (EF_second - EF_first) / EF_first × 100.
-        
+
         Negative = worsening efficiency (normal for long runs)
-        
+
         Interpretation (Friel 2009):
         <5%: Excellent aerobic fitness
         5-10%: Moderate drift (acceptable)
         >10%: Poor aerobic base or nutritional issue
-        
+
         Args:
             first_half_pace: First half average pace (sec/km)
             first_half_hr: First half average HR
             second_half_pace: Second half average pace (sec/km)
             second_half_hr: Second half average HR
-            
+
         Returns:
             Tuple of (decoupling_percentage, status_interpretation)
         """
@@ -108,7 +102,7 @@ class EfficiencyEngine:
     def add_ef_measurement(self, date: str, ef_value: float) -> None:
         """
         Log EF for trend tracking.
-        
+
         Args:
             date: Measurement date
             ef_value: Efficiency factor value
@@ -118,12 +112,12 @@ class EfficiencyEngine:
     def analyze_ef_trend(self, weeks: int = 3) -> str:
         """
         Track EF improvement over time.
-        
+
         Rising EF = improving aerobic fitness at same HR
-        
+
         Args:
             weeks: Number of weeks to analyze
-            
+
         Returns:
             Trend analysis string
         """
@@ -134,7 +128,7 @@ class EfficiencyEngine:
         recent_period = weeks * days_per_week
 
         recent = [ef for _, ef in self.ef_history[-recent_period:]]
-        previous = [ef for _, ef in self.ef_history[-(recent_period*2):-recent_period]]
+        previous = [ef for _, ef in self.ef_history[-(recent_period * 2) : -recent_period]]
 
         if not previous:
             return "Need historical data"

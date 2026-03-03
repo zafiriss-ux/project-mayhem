@@ -4,7 +4,7 @@ Race goal and training phase management based on scientific periodization princi
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 
 class PeriodizationManager:
@@ -32,16 +32,16 @@ class PeriodizationManager:
             athlete_profile: UniversalAthleteProfile instance
         """
         self.athlete = athlete_profile
-        self.goals: List[Dict[str, Any]] = []
-        self.current_goal: Optional[Dict[str, Any]] = None
-        self.completed_goals: List[Dict[str, Any]] = []
+        self.goals: list[dict[str, Any]] = []
+        self.current_goal: dict[str, Any] | None = None
+        self.completed_goals: list[dict[str, Any]] = []
 
     def add_goal(
         self,
         distance_km: float,
         target_time_str: str,
         race_date_str: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Add a new race goal.
 
@@ -119,7 +119,7 @@ class PeriodizationManager:
         self,
         goal_id: str,
         actual_time_str: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Mark a goal as completed and generate next goal suggestions.
 

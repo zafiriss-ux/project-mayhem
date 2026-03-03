@@ -18,14 +18,13 @@ import logging
 
 import pytest
 
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.governance_contracts import (
     ContractViolation,
     assert_vo2_eligibility_contract,
 )
 from titan.science.governance_engine import GovernanceEngine
-from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.volume_load_gauge import VLGState
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

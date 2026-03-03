@@ -21,28 +21,28 @@ Architectural Boundary:
   governance.apply_constraints() is the final, non-bypassable gate.
 """
 
-from datetime import datetime, timedelta
 import json
 import logging
-from typing import Any, Dict, List, Optional
 import threading
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from titan.core.database import DatabaseManager
-from titan.science.autonomic_engine import AutonomicFusionEngine
-from titan.science.critical_speed import CriticalSpeedTracker
-from titan.science.glycogen_model import GlycogenDebtAccumulator
-from titan.science.governance_engine import GovernanceEngine
-from titan.science.intensity_governor import IntensityGovernor
-from titan.science.adaptive_priority_lock import AdaptivePriorityLock
-from titan.science.volume_load_gauge import VolumeLoadGauge
-from titan.science.outcome_tracker import OutcomeTracker
-from titan.science.fatigue_engine import FatigueEngine
 from titan.orchestration.contracts import (
     DailyCoachContext,
     DailyCoachingPayload,
     GarminSyncResult,
     TodaySessionPlan,
 )
-
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+from titan.science.autonomic_engine import AutonomicFusionEngine
+from titan.science.critical_speed import CriticalSpeedTracker
+from titan.science.fatigue_engine import FatigueEngine
+from titan.science.glycogen_model import GlycogenDebtAccumulator
+from titan.science.governance_engine import GovernanceEngine
+from titan.science.intensity_governor import IntensityGovernor
+from titan.science.outcome_tracker import OutcomeTracker
+from titan.science.volume_load_gauge import VolumeLoadGauge
 
 _log = logging.getLogger(__name__)
 
@@ -98,17 +98,17 @@ class DailyCoach:
         optimal_time_calc,
         nutrition_optimizer,
         weekly_planner,
-        db: Optional[DatabaseManager] = None,
+        db: DatabaseManager | None = None,
         # v5.7 Closed-Loop engines (optional — auto-instantiated if None)
-        autonomic_engine: Optional[AutonomicFusionEngine] = None,
-        cs_tracker:       Optional[CriticalSpeedTracker]  = None,
-        glycogen_accum:   Optional[GlycogenDebtAccumulator] = None,
-        governance:       Optional[GovernanceEngine]      = None,
-        fatigue_engine:    Optional[FatigueEngine]         = None,
+        autonomic_engine: AutonomicFusionEngine | None = None,
+        cs_tracker:       CriticalSpeedTracker | None  = None,
+        glycogen_accum:   GlycogenDebtAccumulator | None = None,
+        governance:       GovernanceEngine | None      = None,
+        fatigue_engine:    FatigueEngine | None         = None,
         # v5.7.1: APL governance infrastructure
-        apl:              Optional[AdaptivePriorityLock]  = None,
-        volume_load_gauge: Optional[VolumeLoadGauge]      = None,
-        outcome_tracker:  Optional[OutcomeTracker]        = None,
+        apl:              AdaptivePriorityLock | None  = None,
+        volume_load_gauge: VolumeLoadGauge | None      = None,
+        outcome_tracker:  OutcomeTracker | None        = None,
     ):
         self.garmin         = garmin_sync
         self.weather        = weather_api
@@ -140,8 +140,8 @@ class DailyCoach:
 
     def run_morning_routine(
         self,
-        soreness: Optional[int] = None,
-        subjective_fatigue_score: Optional[int] = None,
+        soreness: int | None = None,
+        subjective_fatigue_score: int | None = None,
     ) -> bool:
         """Execute complete morning coaching routine.
 
@@ -506,7 +506,7 @@ class DailyCoach:
     # ═══════════════════════════════════════════════════════════════════════
 
     @staticmethod
-    def _ensure_vo2_eligibility_contract(session_plan: Dict) -> None:
+    def _ensure_vo2_eligibility_contract(session_plan: dict) -> None:
         """Normalize VO2 gate payload shape for downstream consumers."""
         vo2 = session_plan.get('vo2_eligibility')
         if not isinstance(vo2, dict):
@@ -526,8 +526,8 @@ class DailyCoach:
     def _build_daily_coach_context(
         self,
         *,
-        afi_constraints: Dict[str, Any],
-        intensity_gate: Dict[str, Any],
+        afi_constraints: dict[str, Any],
+        intensity_gate: dict[str, Any],
         readiness_score: float,
         glycogen_debt: float,
         fatigue_level: str,
@@ -544,8 +544,8 @@ class DailyCoach:
         subjective_fatigue_score: int,
         tsb_value: float,
         injury_flag: bool,
-        priority_vector: Dict[str, Any],
-        lock_thresholds: Dict[str, Any],
+        priority_vector: dict[str, Any],
+        lock_thresholds: dict[str, Any],
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
         return {
@@ -574,7 +574,7 @@ class DailyCoach:
         }
 
     def _persist_garmin_data(
-        self, garmin_data: Dict, today_str: str
+        self, garmin_data: dict, today_str: str
     ):
         """
         Persist all synced Garmin data to the database.
@@ -716,7 +716,7 @@ class DailyCoach:
         )
         t.start()
 
-    def _get_recent_trimp(self, activities: List[Dict]) -> float:
+    def _get_recent_trimp(self, activities: list[dict]) -> float:
         """
         Extract TRIMP from synced activities for glycogen debt update.
         Falls back to sRPE-based estimate if no Garmin TRIMP available.
@@ -731,7 +731,7 @@ class DailyCoach:
                 total += _safe_float(act.get('training_load', 0)) * 0.6
         return round(total, 1)
 
-    def _feed_load_engines(self, activities: List[Dict]) -> None:
+    def _feed_load_engines(self, activities: list[dict]) -> None:
         """
         Refresh TSBEngine from DB after Garmin sync. Clears and reloads 42-day window.
         Uses training_load from DB so CTL/ATL are always current.

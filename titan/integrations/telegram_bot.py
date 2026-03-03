@@ -8,14 +8,12 @@ import contextlib
 import json
 import logging
 import os
-import time
 import threading
+import time
 from datetime import datetime
-from typing import Dict, List, Optional, Callable
-
+from typing import Callable, Dict, List, Optional
 
 from titan.utils.constants import _Secret
-
 
 _log = logging.getLogger(__name__)
 
@@ -27,6 +25,7 @@ def _telegram_event(action: str, **fields) -> None:
 
 try:
     import telebot
+
     TELEBOT_AVAILABLE = True
 except ImportError:
     TELEBOT_AVAILABLE = False
@@ -50,15 +49,15 @@ class TitanTelegramBot:
 
         self.bot = None
         self.is_running = False
-        self._poll_thread: Optional[threading.Thread] = None
-        self._sched_thread: Optional[threading.Thread] = None
+        self._poll_thread: threading.Thread | None = None
+        self._sched_thread: threading.Thread | None = None
         self._stop = False
         self._stop_event = threading.Event()
-        self.scheduled_tasks: List[Dict] = []
-        self.message_history: List[Dict] = []
+        self.scheduled_tasks: list[dict] = []
+        self.message_history: list[dict] = []
 
         # Callbacks for commands – set by orchestration layer
-        self.cmd_callbacks: Dict[str, Callable] = {}
+        self.cmd_callbacks: dict[str, Callable] = {}
 
         bot_token_value = self.bot_token
         if TELEBOT_AVAILABLE and bot_token_value:
@@ -190,7 +189,9 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         if not self.chat_id:
-            _telegram_event("slo_alert", slo_key="telegram_delivery_missing_chat_id", cause="INTEGRATION_CONFIG")
+            _telegram_event(
+                "slo_alert", slo_key="telegram_delivery_missing_chat_id", cause="INTEGRATION_CONFIG"
+            )
             _telegram_event(
                 "failure",
                 failure_class="SEND_FAIL",
@@ -205,7 +206,12 @@ class TitanTelegramBot:
                 self.message_history.append({"ts": datetime.now().isoformat(), "text": text[:80]})
                 return True
             except Exception as e:
-                _telegram_event("slo_alert", slo_key="telegram_delivery_failed", cause="INTEGRATION_DELIVERY", error=str(e))
+                _telegram_event(
+                    "slo_alert",
+                    slo_key="telegram_delivery_failed",
+                    cause="INTEGRATION_DELIVERY",
+                    error=str(e),
+                )
                 _telegram_event(
                     "failure",
                     failure_class="SEND_FAIL",
@@ -220,7 +226,7 @@ class TitanTelegramBot:
             print(f"📱 [Telegram] {text[:200]}")
             return True
 
-    def send_weekly_plan(self, plan: Dict) -> bool:
+    def send_weekly_plan(self, plan: dict) -> bool:
         lines = [
             "🎯 *WEEKLY TRAINING PLAN*",
             f"Week of: {plan.get('week_start', 'N/A')}  |  Phase: {plan.get('phase', 'N/A')}",
@@ -238,17 +244,14 @@ class TitanTelegramBot:
             "📅 *Daily Breakdown:*",
         ]
         for d in plan.get("daily_sessions", []):
-            lines.append(
-                f"*{d['day']}* – {d['session_type']} "
-                f"({d.get('distance_km', 0)} km)"
-            )
+            lines.append(f"*{d['day']}* – {d['session_type']} ({d.get('distance_km', 0)} km)")
             lines.append(f"  └ {d.get('details', '')}")
             if d.get("optimal_time"):
                 lines.append(f"  └ ⏰ Best time: {d['optimal_time']}")
         lines += ["", f"💪 {plan.get('motivation', 'Train smart!')}"]
         return self.send_message("\n".join(lines))
 
-    def send_daily_coaching(self, data: Dict) -> bool:
+    def send_daily_coaching(self, data: dict) -> bool:
         text = (
             f"🌅 *GOOD MORNING!*\n"
             f"{datetime.now().strftime('%A, %B %d, %Y')}\n\n"
@@ -266,7 +269,7 @@ class TitanTelegramBot:
             text += f"\n⚠️ {data['special_note']}"
         return self.send_message(text)
 
-    def send_post_run_analysis(self, data: Dict) -> bool:
+    def send_post_run_analysis(self, data: dict) -> bool:
         text = (
             f"✅ *RUN ANALYSIS*\n\n"
             f"📊 *Stats:*\n"
@@ -289,19 +292,16 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     # SCHEDULER
     # ------------------------------------------------------------------ #
-    def schedule_task(
-        self,
-        name: str,
-        time_str: str,
-        callback: Callable,
-        days: List[str] = None
-    ):
-        all_days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-        self.scheduled_tasks.append({
-            "name": name, "time": time_str,
-            "callback": callback,
-            "days": days or all_days,
-        })
+    def schedule_task(self, name: str, time_str: str, callback: Callable, days: list[str] = None):
+        all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.scheduled_tasks.append(
+            {
+                "name": name,
+                "time": time_str,
+                "callback": callback,
+                "days": days or all_days,
+            }
+        )
         print(f"📅 Scheduled: {name} at {time_str}")
 
     # ------------------------------------------------------------------ #
@@ -328,7 +328,9 @@ class TitanTelegramBot:
             self._poll_thread.start()
             print("✅ Telegram bot started (polling + scheduler)")
         else:
-            print("✅ Telegram scheduler started (no polling – token missing or library unavailable)")
+            print(
+                "✅ Telegram scheduler started (no polling – token missing or library unavailable)"
+            )
 
     def stop_bot(self):
         self._stop = True
@@ -361,7 +363,7 @@ class TitanTelegramBot:
 
     def _scheduler_worker(self):
         """Fires scheduled tasks at the right time."""
-        expected_wakeup: Optional[float] = None
+        expected_wakeup: float | None = None
         while not self._stop_event.is_set():
             now_ts = time.time()
             if expected_wakeup is not None:
@@ -376,7 +378,7 @@ class TitanTelegramBot:
 
             now = datetime.now()
             cur_time = now.strftime("%H:%M")
-            cur_day  = now.strftime("%A")
+            cur_day = now.strftime("%A")
             for task in self.scheduled_tasks:
                 if task["time"] == cur_time and cur_day in task["days"]:
                     try:

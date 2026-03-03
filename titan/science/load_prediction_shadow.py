@@ -6,7 +6,7 @@ so ML paths can be validated before any athlete-facing activation.
 """
 
 from dataclasses import dataclass
-from typing import Iterable, List, Dict
+from typing import Dict, Iterable, List
 
 from titan.science.ml_safety import enforce_ml_kill_switch
 
@@ -17,9 +17,9 @@ class ShadowLoadPrediction:
 
     predicted_load_7d: float
     trend: str
-    model_name: str = 'LSTM_SHADOW_BASELINE'
-    mode: str = 'SHADOW'
-    evidence_label: str = 'HEURISTIC'
+    model_name: str = "LSTM_SHADOW_BASELINE"
+    mode: str = "SHADOW"
+    evidence_label: str = "HEURISTIC"
 
 
 class LoadPredictionShadowModel:
@@ -33,7 +33,7 @@ class LoadPredictionShadowModel:
 
     def __init__(self, alpha: float = 0.35) -> None:
         if not (0.0 < float(alpha) <= 1.0):
-            raise ValueError('alpha must be in (0, 1]')
+            raise ValueError("alpha must be in (0, 1]")
         self.alpha = float(alpha)
 
     def predict_7d_load(
@@ -49,13 +49,11 @@ class LoadPredictionShadowModel:
         Returns:
             ShadowLoadPrediction payload for audit dashboards.
         """
-        enforce_ml_kill_switch(
-            path_name='load_prediction_shadow', athlete_facing=athlete_facing
-        )
+        enforce_ml_kill_switch(path_name="load_prediction_shadow", athlete_facing=athlete_facing)
 
-        values: List[float] = [max(0.0, float(v)) for v in recent_loads]
+        values: list[float] = [max(0.0, float(v)) for v in recent_loads]
         if not values:
-            return ShadowLoadPrediction(predicted_load_7d=0.0, trend='FLAT')
+            return ShadowLoadPrediction(predicted_load_7d=0.0, trend="FLAT")
 
         # EWMA over supplied sequence; deterministic and dependency-free.
         ewma = values[0]
@@ -63,24 +61,24 @@ class LoadPredictionShadowModel:
             ewma = self.alpha * load + (1.0 - self.alpha) * ewma
 
         predicted = round(ewma * 7.0, 1)
-        baseline = sum(values[-min(7, len(values)):])
+        baseline = sum(values[-min(7, len(values)) :])
 
         if predicted > baseline * 1.08:
-            trend = 'UP'
+            trend = "UP"
         elif predicted < baseline * 0.92:
-            trend = 'DOWN'
+            trend = "DOWN"
         else:
-            trend = 'FLAT'
+            trend = "FLAT"
 
         return ShadowLoadPrediction(predicted_load_7d=predicted, trend=trend)
 
     @staticmethod
-    def as_dict(prediction: ShadowLoadPrediction) -> Dict[str, object]:
+    def as_dict(prediction: ShadowLoadPrediction) -> dict[str, object]:
         """Serialize prediction payload for API/UI consumers."""
         return {
-            'predicted_load_7d': prediction.predicted_load_7d,
-            'trend': prediction.trend,
-            'model_name': prediction.model_name,
-            'mode': prediction.mode,
-            'evidence_label': prediction.evidence_label,
+            "predicted_load_7d": prediction.predicted_load_7d,
+            "trend": prediction.trend,
+            "model_name": prediction.model_name,
+            "mode": prediction.mode,
+            "evidence_label": prediction.evidence_label,
         }

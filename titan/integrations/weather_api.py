@@ -12,26 +12,64 @@ No authentication needed.  WEATHER_API_KEY env var is accepted for
 backward-compatibility but is not used.
 """
 
+import importlib
+import importlib.util
 import json
 import logging
-import os
 import math
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
+import os
+import ssl
 import threading
 import time
-
-import requests
+import urllib.parse
+import urllib.request
+from datetime import datetime, timedelta
+from typing import Any
 
 _log = logging.getLogger(__name__)
 
 
 REQUESTS_VERIFY_SSL = True
+_HAS_REQUESTS = importlib.util.find_spec("requests") is not None
+requests = importlib.import_module("requests") if _HAS_REQUESTS else None
+
+
+class _UrllibResponse:
+    """Tiny response adapter for urllib to match the subset we use from requests."""
+
+    def __init__(self, body: bytes, status_code: int):
+        self._body = body
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise RuntimeError(f"HTTP error status: {self.status_code}")
+
+    def json(self) -> dict[str, Any]:
+        if not self._body:
+            return {}
+        return json.loads(self._body.decode("utf-8"))
+
+
+def _http_get(url: str, *, params: dict[str, Any], timeout: int, verify: bool):
+    """Issue HTTP GET via requests when installed, otherwise urllib fallback."""
+    if _HAS_REQUESTS:
+        return requests.get(url, params=params, timeout=timeout, verify=verify)
+
+    query = urllib.parse.urlencode(params)
+    full_url = f"{url}?{query}" if query else url
+    context = ssl.create_default_context() if verify else ssl._create_unverified_context()
+
+    with urllib.request.urlopen(full_url, timeout=timeout, context=context) as resp:
+        body = resp.read()
+        status_code = getattr(resp, "status", 200)
+    return _UrllibResponse(body=body, status_code=status_code)
+
 
 class WeatherAPI:
     """
     Weather API integration with intelligent caching.
-    
+
     Features:
     - Hourly forecast (next 48 hours)
     - Dew point calculation
@@ -49,14 +87,14 @@ class WeatherAPI:
                      Accepted for backward-compatibility only.
             location: Location string (e.g., "Athens,GR")
         """
-        self.api_key = api_key or os.getenv('WEATHER_API_KEY')  # unused; kept for compat
-        self.location = location or os.getenv('WEATHER_LOCATION', 'Athens,GR')
+        self.api_key = api_key or os.getenv("WEATHER_API_KEY")  # unused; kept for compat
+        self.location = location or os.getenv("WEATHER_LOCATION", "Athens,GR")
         self.cache = {}
         self.cache_timestamp = None
         self.cache_duration_hours = 1
         self._update_thread = None
         self._stop_update = False
-        self._coords: Tuple[float, float] | None = None  # cached geocoding result
+        self._coords: tuple[float, float] | None = None  # cached geocoding result
 
     @staticmethod
     def calculate_dew_point(temp_c: float, humidity: float) -> float:
@@ -92,13 +130,13 @@ class WeatherAPI:
         return round(dew_point, 1)
 
     @staticmethod
-    def classify_heat_stress(dew_point: float) -> Tuple[str, str]:
+    def classify_heat_stress(dew_point: float) -> tuple[str, str]:
         """
         Classify training conditions based on dew point.
-        
+
         Args:
             dew_point: Dew point in Celsius
-        
+
         Returns:
             Tuple of (status, recommendation)
         """
@@ -117,14 +155,14 @@ class WeatherAPI:
         else:
             return "🟪 DRY/COLD", "Good for fast running"
 
-    def _parse_location(self) -> Tuple[str, str]:
+    def _parse_location(self) -> tuple[str, str]:
         """Split location into city/country components."""
         if "," in self.location:
             city, country = self.location.split(",", 1)
             return city.strip(), country.strip()
         return self.location.strip(), ""
 
-    def _resolve_coordinates(self) -> Tuple[float, float]:
+    def _resolve_coordinates(self) -> tuple[float, float]:
         """Resolve city location to coordinates via Open-Meteo geocoding API (cached)."""
         if self._coords is not None:
             return self._coords
@@ -134,7 +172,7 @@ class WeatherAPI:
         if country:
             params["country"] = country
 
-        response = requests.get(
+        response = _http_get(
             "https://geocoding-api.open-meteo.com/v1/search",
             params=params,
             timeout=8,
@@ -149,7 +187,7 @@ class WeatherAPI:
         self._coords = float(results[0]["latitude"]), float(results[0]["longitude"])
         return self._coords
 
-    def _fetch_open_meteo(self) -> Tuple[Dict, List[Dict]]:
+    def _fetch_open_meteo(self) -> tuple[dict, list[dict]]:
         """Fetch current conditions and hourly forecast from Open-Meteo."""
         lat, lon = self._resolve_coordinates()
         params = {
@@ -161,7 +199,7 @@ class WeatherAPI:
             "timezone": "auto",
         }
 
-        response = requests.get(
+        response = _http_get(
             "https://api.open-meteo.com/v1/forecast",
             params=params,
             timeout=10,
@@ -183,21 +221,25 @@ class WeatherAPI:
             dew_point = self.calculate_dew_point(temps[i], humidity_vals[i])
             heat_status, heat_rec = self.classify_heat_stress(dew_point)
             timestamp = datetime.fromisoformat(times[i]).isoformat()
-            forecast.append({
-                "timestamp": timestamp,
-                "hour": datetime.fromisoformat(times[i]).hour,
-                "temp_c": round(float(temps[i]), 1),
-                "humidity": int(humidity_vals[i]),
-                "dew_point": dew_point,
-                "wind_speed": round(float(winds[i]), 1),
-                "conditions": self._weather_code_to_text(int(codes[i])),
-                "heat_stress": heat_status,
-                "recommendation": heat_rec,
-            })
+            forecast.append(
+                {
+                    "timestamp": timestamp,
+                    "hour": datetime.fromisoformat(times[i]).hour,
+                    "temp_c": round(float(temps[i]), 1),
+                    "humidity": int(humidity_vals[i]),
+                    "dew_point": dew_point,
+                    "wind_speed": round(float(winds[i]), 1),
+                    "conditions": self._weather_code_to_text(int(codes[i])),
+                    "heat_stress": heat_status,
+                    "recommendation": heat_rec,
+                }
+            )
 
         current_payload = payload.get("current") or {}
         temp_c = float(current_payload.get("temperature_2m", temps[0] if temps else 18.5))
-        humidity = float(current_payload.get("relative_humidity_2m", humidity_vals[0] if humidity_vals else 65))
+        humidity = float(
+            current_payload.get("relative_humidity_2m", humidity_vals[0] if humidity_vals else 65)
+        )
         wind_speed = float(current_payload.get("wind_speed_10m", winds[0] if winds else 10))
         weather_code = int(current_payload.get("weather_code", codes[0] if codes else 0))
 
@@ -241,10 +283,10 @@ class WeatherAPI:
         }
         return code_map.get(code, "Unknown")
 
-    def get_current_conditions(self) -> Dict:
+    def get_current_conditions(self) -> dict:
         """
         Get current weather conditions.
-        
+
         Returns:
             Dictionary with current conditions
         """
@@ -252,73 +294,81 @@ class WeatherAPI:
         if self.cache and self.cache_timestamp:
             age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
-                return self.cache.get('current', {})
+                return self.cache.get("current", {})
 
         try:
             current, forecast = self._fetch_open_meteo()
-            self.cache['current'] = current
-            self.cache['hourly'] = forecast
+            self.cache["current"] = current
+            self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
             return current
         except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
             print("⚠️  Weather API unavailable – using fallback conditions")
-            _log.warning(json.dumps({
-                "flow": "weather_api",
-                "action": "fallback_activated",
-                "source": "get_current_conditions",
-                "reason": str(exc),
-                "is_fallback": True,
-            }))
+            _log.warning(
+                json.dumps(
+                    {
+                        "flow": "weather_api",
+                        "action": "fallback_activated",
+                        "source": "get_current_conditions",
+                        "reason": str(exc),
+                        "is_fallback": True,
+                    }
+                )
+            )
             dew_point = self.calculate_dew_point(18.5, 65)
             heat_status, heat_rec = self.classify_heat_stress(dew_point)
             current = {
-                'timestamp': datetime.now().isoformat(),
-                'temp_c': 18.5,
-                'humidity': 65,
-                'wind_speed': 10,
-                'conditions': 'Clear',
-                'dew_point': dew_point,
-                'heat_stress': heat_status,
-                'recommendation': heat_rec,
-                'is_fallback': True,
+                "timestamp": datetime.now().isoformat(),
+                "temp_c": 18.5,
+                "humidity": 65,
+                "wind_speed": 10,
+                "conditions": "Clear",
+                "dew_point": dew_point,
+                "heat_stress": heat_status,
+                "recommendation": heat_rec,
+                "is_fallback": True,
             }
-            self.cache['current'] = current
+            self.cache["current"] = current
             self.cache_timestamp = datetime.now()
             return current
 
-    def get_hourly_forecast(self, hours: int = 48) -> List[Dict]:
+    def get_hourly_forecast(self, hours: int = 48) -> list[dict]:
         """
         Get hourly weather forecast.
-        
+
         Args:
             hours: Number of hours to forecast
-        
+
         Returns:
             List of hourly forecast dictionaries
         """
         # Check cache
-        if self.cache and 'hourly' in self.cache:
+        if self.cache and "hourly" in self.cache:
             age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
-                return self.cache['hourly'][:hours]
+                return self.cache["hourly"][:hours]
 
         try:
             current, forecast = self._fetch_open_meteo()
-            self.cache['current'] = current
-            self.cache['hourly'] = forecast
+            self.cache["current"] = current
+            self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
             return forecast[:hours]
         except Exception as exc:
             # Fallback to deterministic simulated data when API is unavailable
             print("⚠️  Weather API unavailable – using fallback forecast")
-            _log.warning(json.dumps({
-                "flow": "weather_api",
-                "action": "fallback_activated",
-                "source": "get_hourly_forecast",
-                "reason": str(exc),
-                "is_fallback": True,
-            }))
+            _log.warning(
+                json.dumps(
+                    {
+                        "flow": "weather_api",
+                        "action": "fallback_activated",
+                        "source": "get_hourly_forecast",
+                        "reason": str(exc),
+                        "is_fallback": True,
+                    }
+                )
+            )
             forecast = []
             base_temp = 15.0
             base_humidity = 60
@@ -337,30 +387,30 @@ class WeatherAPI:
                 dew_point = self.calculate_dew_point(temp, humidity)
                 heat_status, heat_rec = self.classify_heat_stress(dew_point)
 
-                forecast.append({
-                    'timestamp': hour_time.isoformat(),
-                    'hour': hour_time.hour,
-                    'temp_c': round(temp, 1),
-                    'humidity': int(humidity),
-                    'dew_point': dew_point,
-                    'wind_speed': 8 + (i % 5),
-                    'conditions': 'Clear' if i % 3 != 0 else 'Partly Cloudy',
-                    'heat_stress': heat_status,
-                    'recommendation': heat_rec,
-                    'is_fallback': True,
-                })
+                forecast.append(
+                    {
+                        "timestamp": hour_time.isoformat(),
+                        "hour": hour_time.hour,
+                        "temp_c": round(temp, 1),
+                        "humidity": int(humidity),
+                        "dew_point": dew_point,
+                        "wind_speed": 8 + (i % 5),
+                        "conditions": "Clear" if i % 3 != 0 else "Partly Cloudy",
+                        "heat_stress": heat_status,
+                        "recommendation": heat_rec,
+                        "is_fallback": True,
+                    }
+                )
 
             # Update cache
-            self.cache['hourly'] = forecast
+            self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
 
             return forecast
 
     def find_optimal_training_windows(
-        self,
-        day_offset: int = 0,
-        duration_hours: float = 1.0
-    ) -> List[Dict]:
+        self, day_offset: int = 0, duration_hours: float = 1.0
+    ) -> list[dict]:
         """
         Find optimal training time windows based on weather.
 
@@ -387,8 +437,9 @@ class WeatherAPI:
 
         # Filter to target day
         target_date = (datetime.now() + timedelta(days=day_offset)).date()
-        day_forecast = [f for f in forecast
-                       if datetime.fromisoformat(f['timestamp']).date() == target_date]
+        day_forecast = [
+            f for f in forecast if datetime.fromisoformat(f["timestamp"]).date() == target_date
+        ]
 
         # Score each potential window
         windows = []
@@ -397,9 +448,9 @@ class WeatherAPI:
                 break
 
             # Calculate average conditions for window
-            window_forecast = day_forecast[i:i+required_slots]
-            avg_dew = sum(h['dew_point'] for h in window_forecast) / len(window_forecast)
-            avg_temp = sum(h['temp_c'] for h in window_forecast) / len(window_forecast)
+            window_forecast = day_forecast[i : i + required_slots]
+            avg_dew = sum(h["dew_point"] for h in window_forecast) / len(window_forecast)
+            avg_temp = sum(h["temp_c"] for h in window_forecast) / len(window_forecast)
 
             # Score (lower is better)
             score = 0
@@ -419,7 +470,7 @@ class WeatherAPI:
             score += temp_diff * 2
 
             # Time of day preference (prefer early morning or evening)
-            hour = hour_data['hour']
+            hour = hour_data["hour"]
             if 5 <= hour <= 7:  # Early morning - best
                 score -= 15
             elif 17 <= hour <= 19:  # Evening - good
@@ -427,19 +478,25 @@ class WeatherAPI:
             elif 11 <= hour <= 15:  # Midday - worst
                 score += 20
 
-            windows.append({
-                'start_time': hour_data['timestamp'],
-                'start_hour': hour,
-                'avg_dew_point': round(avg_dew, 1),
-                'avg_temp': round(avg_temp, 1),
-                'score': score,
-                'quality': '🟩 EXCELLENT' if score < 10 else
-                          '🟨 GOOD' if score < 25 else
-                          '🟧 FAIR' if score < 40 else '🟥 POOR'
-            })
+            windows.append(
+                {
+                    "start_time": hour_data["timestamp"],
+                    "start_hour": hour,
+                    "avg_dew_point": round(avg_dew, 1),
+                    "avg_temp": round(avg_temp, 1),
+                    "score": score,
+                    "quality": "🟩 EXCELLENT"
+                    if score < 10
+                    else "🟨 GOOD"
+                    if score < 25
+                    else "🟧 FAIR"
+                    if score < 40
+                    else "🟥 POOR",
+                }
+            )
 
         # Sort by score (best first)
-        windows.sort(key=lambda x: x['score'])
+        windows.sort(key=lambda x: x["score"])
 
         return windows
 
@@ -450,9 +507,7 @@ class WeatherAPI:
 
         self._stop_update = False
         self._update_thread = threading.Thread(
-            target=self._background_update_worker,
-            args=(interval_hours,),
-            daemon=True
+            target=self._background_update_worker, args=(interval_hours,), daemon=True
         )
         self._update_thread.start()
         print(f"✅ Weather updates started (every {interval_hours}h)")
