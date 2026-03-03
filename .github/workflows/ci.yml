@@ -33,7 +33,6 @@ jobs:
             titan/integrations
             titan/orchestration
             titan/features
-            titan/ui
           )
 
           python -m ruff check "${TARGET_FOLDERS[@]}"
@@ -63,6 +62,7 @@ jobs:
             titan/integrations
             titan/orchestration
             titan/features
+            titan/ui
             titan/science/governance_contracts.py
             titan/science/governance_engine.py
           )

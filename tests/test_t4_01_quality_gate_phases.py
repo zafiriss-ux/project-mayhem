@@ -2,9 +2,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-TARGET_FOLDERS = [
+PHASE_A_TARGET_FOLDERS = [
     "titan/config",
     "titan/science",
+    "titan/core",
+    "titan/integrations",
+    "titan/orchestration",
+    "titan/features",
+]
+
+PHASE_B_BLOCKING_TARGETS = [
+    "titan/config",
     "titan/core",
     "titan/integrations",
     "titan/orchestration",
@@ -26,11 +34,11 @@ def test_ci_has_two_phase_ruff_gate() -> None:
     assert "needs: [ruff-phase-a]" in content
 
 
-def test_phase_a_covers_t4_01_target_folders() -> None:
+def test_phase_a_covers_current_warning_targets() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
 
-    for folder in TARGET_FOLDERS:
+    for folder in PHASE_A_TARGET_FOLDERS:
         assert folder in content
 
 
@@ -39,8 +47,6 @@ def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
     content = workflow.read_text(encoding="utf-8")
 
     assert "BLOCKING_TARGETS=(" in content
-    assert "titan/config" in content
-    assert "titan/core" in content
-    assert "titan/integrations" in content
-    assert "titan/orchestration" in content
-    assert "titan/features" in content
+
+    for folder in PHASE_B_BLOCKING_TARGETS:
+        assert folder in content

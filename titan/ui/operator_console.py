@@ -1,7 +1,7 @@
 """Operator Console services for Phase 6 dashboard workflows."""
 
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any
 
 from titan.core.database import DatabaseManager
 
