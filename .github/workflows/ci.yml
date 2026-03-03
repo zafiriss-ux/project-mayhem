@@ -33,6 +33,8 @@ jobs:
             titan/integrations
             titan/orchestration
             titan/features
+            titan/ui
+            launcher
           )
 
           python -m ruff check "${TARGET_FOLDERS[@]}"
