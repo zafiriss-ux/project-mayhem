@@ -1,3 +1,4 @@
+# ARCHITECTURE LOCK — see ADR-0009 before modifying
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
 
 import json
