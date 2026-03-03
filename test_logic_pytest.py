@@ -89,10 +89,22 @@ class TestReadinessEnginePytest:
         from titan.science.readiness_engine import ReadinessEngine
         return ReadinessEngine.analyze_readiness(**kwargs)
 
-    _GOOD = dict(today_hrv=62, baseline_hrv=60, today_rhr=47, baseline_rhr=48,
-                 sleep_score=85, soreness=2)
-    _BAD  = dict(today_hrv=50, baseline_hrv=62, today_rhr=55, baseline_rhr=48,
-                 sleep_score=40, soreness=4)
+    _GOOD = {
+        "today_hrv": 62,
+        "baseline_hrv": 60,
+        "today_rhr": 47,
+        "baseline_rhr": 48,
+        "sleep_score": 85,
+        "soreness": 2,
+    }
+    _BAD = {
+        "today_hrv": 50,
+        "baseline_hrv": 62,
+        "today_rhr": 55,
+        "baseline_rhr": 48,
+        "sleep_score": 40,
+        "soreness": 4,
+    }
 
     def test_good_night_score_above_80(self):
         assert self._analyze(**self._GOOD)["score"] > 80
@@ -369,8 +381,9 @@ class TestNutritionOptimizerPytest:
 
     @pytest.fixture
     def nut(self):
-        from titan.science.glycogen_model import GlycogenModel
         from titan.features.nutrition_optimizer import NutritionOptimizer
+        from titan.science.glycogen_model import GlycogenModel
+
         return NutritionOptimizer(GlycogenModel())
 
     def _plan(self, nut, weight, session):
@@ -451,10 +464,11 @@ class TestWeeklyPlannerPytest:
 
     @pytest.fixture
     def planner(self):
+        from titan.features.weekly_planner import WeeklyPlanGenerator
+        from titan.science.acwr_engine import ACWREngine
         from titan.science.hrv_engine import HRVGuidedEngine
         from titan.science.tsb_engine import TSBEngine
-        from titan.science.acwr_engine import ACWREngine
-        from titan.features.weekly_planner import WeeklyPlanGenerator
+
         return WeeklyPlanGenerator(HRVGuidedEngine(), TSBEngine(), ACWREngine())
 
     def test_no_plan_fallback_type_easy(self, planner):
@@ -491,6 +505,7 @@ class TestDatabaseThreadSafetyPytest:
 
     def test_concurrent_reads_and_writes(self, tmp_path):
         import threading
+
         from titan.core.database import DatabaseManager
 
         db = DatabaseManager(str(tmp_path / "thread_test.db"))
