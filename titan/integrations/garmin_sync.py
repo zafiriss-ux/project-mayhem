@@ -40,6 +40,11 @@ class GarminSync:
         self.is_connected = False
         self.last_sync: Optional[str] = None
         self.sync_history: List = []
+        self.last_hrv_sync_metrics: Dict[str, int] = {
+            "days_back": 0,
+            "synced_days": 0,
+            "skipped_days": 0,
+        }
         self._sync_thread: Optional[threading.Thread] = None
         self._stop_sync = False
 
@@ -199,8 +204,8 @@ class GarminSync:
                     _garmin_event(
                         "hrv_day_skipped",
                         date=d,
-                        reason="malformed_hrv_payload",
-                        error=str(e),
+                        error_class=e.__class__.__name__,
+                        error_message=str(e),
                     )
                     continue
         except Exception as e:
@@ -208,12 +213,12 @@ class GarminSync:
         print(f"💓 Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
             print(f"⚠️  Skipped {skipped_days} malformed HRV record(s)")
-        _garmin_event(
-            "hrv_sync_metrics",
-            days_back=days_back,
-            synced_days=len(hrv_data),
-            skipped_days=skipped_days,
-        )
+        self.last_hrv_sync_metrics = {
+            "days_back": days_back,
+            "synced_days": len(hrv_data),
+            "skipped_days": skipped_days,
+        }
+        _garmin_event("hrv_sync_metrics", **self.last_hrv_sync_metrics)
         self._log_sync("hrv", len(hrv_data))
         return hrv_data
 
@@ -282,4 +287,5 @@ class GarminSync:
             "total_syncs":    len(self.sync_history),
             "is_connected":   self.is_connected,
             "recent_syncs":   self.sync_history[-5:],
+            "last_hrv_sync_metrics": self.last_hrv_sync_metrics,
         }
