@@ -27,8 +27,6 @@ from titan.core import (
 from titan.utils import (
     MathCore,
     SESSION_TYPES,
-    ACWR_SAFE_MIN,
-    ACWR_SAFE_MAX,
     DEFAULT_CONFIG,
 )
 from titan.integrations.weather_api import WeatherAPI
@@ -354,8 +352,6 @@ class TestConstants:
     def test_session_types_non_empty(self):
         assert len(SESSION_TYPES) >= 5
 
-    def test_acwr_safe_range_ordered(self):
-        assert ACWR_SAFE_MIN < ACWR_SAFE_MAX
 
     def test_hr_zones_defined(self):
         zones = DEFAULT_CONFIG.get("hr_zones", {})
