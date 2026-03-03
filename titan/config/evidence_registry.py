@@ -30,7 +30,6 @@ Calibration opportunity codes (policy_note field):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -48,10 +47,10 @@ class ThresholdEvidence:
     population: str         # ELITE / RECREATIONAL / MASTER / MIXED
     source: str             # Author (year). Journal. Citation details.
     rationale: str          # Why this specific value was chosen
-    policy_note: Optional[str] = None   # Deviations, caveats, calibration path
-    promoted_from_level: Optional[str] = None  # Prior evidence level, if promoted
-    promotion_evidence_count: Optional[int] = None  # Paired outcomes backing promotion
-    promotion_date: Optional[str] = None  # YYYY-MM-DD date promotion was approved
+    policy_note: str | None = None   # Deviations, caveats, calibration path
+    promoted_from_level: str | None = None  # Prior evidence level, if promoted
+    promotion_evidence_count: int | None = None  # Paired outcomes backing promotion
+    promotion_date: str | None = None  # YYYY-MM-DD date promotion was approved
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -371,7 +370,7 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
 # Query helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def get_evidence(parameter: str) -> Optional[ThresholdEvidence]:
+def get_evidence(parameter: str) -> ThresholdEvidence | None:
     """Look up provenance record by parameter name. Returns None if not found."""
     return EVIDENCE_REGISTRY.get(parameter)
 
@@ -397,9 +396,7 @@ def get_calibration_candidates() -> list[str]:
     """
     candidates = []
     for k, v in EVIDENCE_REGISTRY.items():
-        if v.evidence_level == 'HEURISTIC':
-            candidates.append(k)
-        elif v.evidence_level == 'MODERATE' and 'internal' in v.source.lower():
+        if v.evidence_level == 'HEURISTIC' or v.evidence_level == 'MODERATE' and 'internal' in v.source.lower():
             candidates.append(k)
     return candidates
 
