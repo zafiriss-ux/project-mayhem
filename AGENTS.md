@@ -37,8 +37,7 @@
 | **Architect (Claude / owner)** | System design, ADR authorship, tier ordering, scope approval |
 | **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions |
 
-Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding" and stop.
-
+Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding". Do NOT implement it as part of this task. 
 ---
 
 ## 2. Runtime & Git Rules
@@ -47,7 +46,7 @@ Agents must not redesign, restructure, or re-architect any system component unle
 - Repository root: `/workspace/project-mayhem`
 - Python: **3.11+** (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
 - Do NOT add or remove git remotes
-- Do NOT fetch or push unless operating in a push-enabled environment
+- Do NOT fetch or push in runtime / non-push-enabled environments.
 - Do NOT use `gh` CLI or call GitHub APIs from inside Codex runtime
 
 ### 2.2 Deliverable format (Codex runtime)
