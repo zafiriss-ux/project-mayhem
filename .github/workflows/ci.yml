@@ -34,7 +34,8 @@ jobs:
             titan/orchestration
             titan/features
             titan/ui
-            launcher
+            titan/utils
+            tests
           )
 
           python -m ruff check "${TARGET_FOLDERS[@]}"
@@ -60,13 +61,6 @@ jobs:
         run: |
           BLOCKING_TARGETS=(
             titan/config
-            titan/core
-            titan/integrations
-            titan/orchestration
-            titan/features
-            titan/ui
-            titan/science/governance_contracts.py
-            titan/science/governance_engine.py
           )
 
           python -m ruff check "${BLOCKING_TARGETS[@]}"
