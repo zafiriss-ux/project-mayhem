@@ -178,6 +178,7 @@ class GarminSync:
         if not self._ensure_connected():
             return []
         hrv_data = []
+        skipped_days = 0
         try:
             for i in range(days_back):
                 d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -192,11 +193,15 @@ class GarminSync:
                             "status": summary.get("status", ""),
                             "source": "garmin",
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    skipped_days += 1
+                    _log.warning("Skipping malformed HRV record for %s: %s", d, e)
+                    continue
         except Exception as e:
             print(f"❌ HRV sync failed: {e}")
         print(f"💓 Synced {len(hrv_data)} HRV measurements")
+        if skipped_days:
+            print(f"⚠️  Skipped {skipped_days} malformed HRV record(s)")
         self._log_sync("hrv", len(hrv_data))
         return hrv_data
 
