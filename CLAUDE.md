@@ -195,7 +195,8 @@ ruff check <subsystem_path>
 
 **Acceptance gate:**
 - Run `ruff check <subsystem_path>` → must report **zero findings**.
-- Run `pytest` → must be **100% green** (same count as before or higher).
+- Run `python -m pytest -q` → must be **100% green** (same count as before or higher).
+  - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
 - If either check is not 100%: answer must be exactly:
 
   > `NOT 100% — Missing: [list the specific check that failed]`
@@ -222,8 +223,9 @@ When executing a debt item:
 - Do not refactor adjacent code.
 - Do not add features, remove unrelated imports, or "improve" things nearby.
 - Do not add comments, docstrings, or type annotations to code you did not explicitly change.
+  - Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
 
-If you notice a new issue while working: **add it to `TECHNICAL_DEBT.md`**, do not fix it now.
+If you notice a new issue while working: **add it to `TECHNICAL_DEBT.md`** under the appropriate tier. Do NOT fix it as part of this task. Continue only with the original scoped task.
 
 ---
 
@@ -321,12 +323,14 @@ Following this protocol prevents: random refactors, mass file changes, silenced 
 Every task that touches a module — regardless of how small the change — must follow this rule:
 
 1. Check whether a test file for that module exists.
-2. If **no test file exists** → create `tests/test_<module_name>.py` with:
+2. If **no test file exists** → create a mirrored test file:
+   - Source: `titan/<path>/<module>.py` → Test: `tests/titan/<path>/test_<module>.py`
+   - If the project's test layout differs, follow the nearest existing test convention in `tests/`.
    - At minimum: one happy-path test and one boundary/error test per public function.
 3. If a **test file exists** → check whether the changed logic is covered.
    - If not → add tests for the new/changed behaviour.
 4. Never delete tests. If a test is wrong, fix it (not the other way around).
-5. After adding/updating tests: run `pytest` and confirm 100% green before delivering.
+5. After adding/updating tests: run `python -m pytest -q` and confirm 100% green before delivering.
 
 There are no exceptions. A change that ships without a test for its new behaviour is incomplete.
 
