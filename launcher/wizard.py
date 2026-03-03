@@ -14,11 +14,9 @@ Workflow:
 
 import sys
 from pathlib import Path
-from typing import Dict
 
-from launcher.validator import get_data_directory
 from launcher.errors import ConfigurationError
-
+from launcher.validator import get_data_directory
 
 # ══════════════════════════════════════════════════════════════════════════════
 # .env Management
@@ -34,7 +32,7 @@ def env_exists() -> bool:
     return get_env_path().exists()
 
 
-def load_env() -> Dict[str, str]:
+def load_env() -> dict[str, str]:
     """
     Load existing .env file.
 
@@ -58,7 +56,7 @@ def load_env() -> Dict[str, str]:
     return env_vars
 
 
-def write_env(config: Dict[str, str]) -> None:
+def write_env(config: dict[str, str]) -> None:
     """
     Write .env file to data directory.
 
@@ -144,7 +142,7 @@ def prompt_input(prompt: str, validator=None, optional: bool = False) -> str:
         return value
 
 
-def run_wizard() -> Dict[str, str]:
+def run_wizard() -> dict[str, str]:
     """
     Run interactive setup wizard.
 

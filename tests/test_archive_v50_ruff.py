@@ -1,5 +1,5 @@
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 
 def test_archive_kernel_is_ruff_clean() -> None:
