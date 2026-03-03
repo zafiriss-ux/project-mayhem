@@ -40,10 +40,26 @@ from titan.science.fatigue_engine import FatigueEngine
 
 _log = logging.getLogger(__name__)
 
+DATA_MISSING = "DATA_MISSING"
+ENGINE_ERROR = "ENGINE_ERROR"
+PERSIST_ERROR = "PERSIST_ERROR"
+DELIVERY_ERROR = "DELIVERY_ERROR"
+
 
 def _daily_coach_event(action: str, **fields) -> None:
     """Emit a structured orchestration event as a single JSON log line."""
     _log.info(json.dumps({"flow": "daily_coach", "action": action, **fields}, default=str))
+
+
+def _failure_class_for_step(step_number: int, error: Exception) -> str:
+    """Map a step failure to the canonical daily coach failure taxonomy."""
+    if step_number == 2:
+        return PERSIST_ERROR
+    if step_number == 12:
+        return DELIVERY_ERROR
+    if isinstance(error, (KeyError, TypeError, ValueError)):
+        return DATA_MISSING
+    return ENGINE_ERROR
 
 
 def _safe_float(value, default: float = 0.0) -> float:
@@ -147,27 +163,55 @@ class DailyCoach:
 
         print(f"\n🌅 Running morning routine: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
 
+        def _run_step(step_number: int, step_name: str, fn):
+            try:
+                result = fn()
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="SUCCESS",
+                    failure_class=None,
+                )
+                return result
+            except Exception as exc:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="FAILED",
+                    failure_class=_failure_class_for_step(step_number, exc),
+                    error_class=type(exc).__name__,
+                    error_message=str(exc),
+                )
+                raise
+
         # ── Step 1: Sync Garmin ──────────────────────────────────────────────
         print("📥 Syncing Garmin data...")
-        garmin_data = self.garmin.sync_all()
+        garmin_data = _run_step(1, "sync_garmin", self.garmin.sync_all)
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
         today_str = datetime.now().strftime('%Y-%m-%d')
-        today_rhr, today_sleep_score, today_sleep_hours = self._persist_garmin_data(
-            garmin_data, today_str
+        today_rhr, today_sleep_score, today_sleep_hours = _run_step(
+            2,
+            "persist_garmin_data",
+            lambda: self._persist_garmin_data(garmin_data, today_str),
         )
 
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
-        if garmin_data.get('hrv'):
-            for entry in garmin_data['hrv']:
-                self.hrv.add_hrv_measurement(entry['date'], entry['rmssd'])
-        if garmin_data.get('hrr'):
-            for entry in garmin_data['hrr']:
-                hrr60  = _safe_int(entry.get('hrr_60', 0)) or None
-                hrr120 = _safe_int(entry.get('hrr_120', 0))
-                if hrr60:
-                    self.autonomic.add_hrr(entry['date'], hrr60, hrr120)
-                    self.db.save_hrr(entry['date'], hrr60, hrr120)
+        def _step3_feed_hrv_hrr() -> None:
+            if garmin_data.get('hrv'):
+                for entry in garmin_data['hrv']:
+                    self.hrv.add_hrv_measurement(entry['date'], entry['rmssd'])
+            if garmin_data.get('hrr'):
+                for entry in garmin_data['hrr']:
+                    hrr60  = _safe_int(entry.get('hrr_60', 0)) or None
+                    hrr120 = _safe_int(entry.get('hrr_120', 0))
+                    if hrr60:
+                        self.autonomic.add_hrr(entry['date'], hrr60, hrr120)
+                        self.db.save_hrr(entry['date'], hrr60, hrr120)
+
+        _run_step(3, "feed_hrv_hrr", _step3_feed_hrv_hrr)
 
         # ── Step 4: AFI — Autonomic Fusion Index ────────────────────────────
         print("🧬 Computing Autonomic Fusion Index...")
@@ -180,19 +224,26 @@ class DailyCoach:
 
         # Sleep depth delta: map Garmin sleep score to -1..+1 (70 = baseline)
         sleep_delta = max(-1.0, min(1.0, (today_sleep_score - 70) / 30))
-        afi_raw  = self.autonomic.calculate_afi(
-            ln_rmssd_deviation = ln_dev,
-            hrr_60_today       = today_hrr60,
-            sleep_depth_delta  = sleep_delta,
-        )
-        afi_final = self.autonomic.apply_48h_buffer(afi_raw)
-        afi_constraints = self.autonomic.get_readiness_constraints(
-            afi_final, hrv_pct_above, today_hrr60
-        )
+
+        def _step4_compute_afi():
+            afi_raw_local = self.autonomic.calculate_afi(
+                ln_rmssd_deviation=ln_dev,
+                hrr_60_today=today_hrr60,
+                sleep_depth_delta=sleep_delta,
+            )
+            afi_final_local = self.autonomic.apply_48h_buffer(afi_raw_local)
+            afi_constraints_local = self.autonomic.get_readiness_constraints(
+                afi_final_local,
+                hrv_pct_above,
+                today_hrr60,
+            )
+            return afi_final_local, afi_constraints_local
+
+        afi_final, afi_constraints = _run_step(4, "compute_afi", _step4_compute_afi)
         print(f"  ↳ AFI: {afi_final:+.3f} | archetype: {self.cs_tracker.archetype}")
 
         # ── Step 5: TSB + kinetic state ──────────────────────────────────────
-        tsb_value, tsb_status = self.tsb.calculate_tsb()
+        tsb_value, tsb_status = _run_step(5, "calculate_tsb", self.tsb.calculate_tsb)
         today_temp = garmin_data.get('temperature_c') or 20.0
         cs_thermal = self.cs_tracker.apply_thermal(today_temp)
 
@@ -211,19 +262,19 @@ class DailyCoach:
             sleep_hours       = today_sleep_hours,
             carb_availability = 'MODERATE',
         )
-        self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt)
+        _run_step(6, "update_glycogen", lambda: self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt))
 
         # ── Step 7: Composite readiness ──────────────────────────────────────
         print("💊 Analyzing recovery status...")
         baseline_rhr = self._get_baseline_rhr(days=7)
-        readiness = self.readiness.analyze_readiness(
+        readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
             today_hrv    = latest_hrv,
             baseline_hrv = baseline_hrv,
             today_rhr    = today_rhr or 50,
             baseline_rhr = baseline_rhr,
             sleep_score  = today_sleep_score,
             soreness     = soreness,
-        )
+        ))
         # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,
             readiness.get('score', 50) + afi_constraints.get('afi_modifier', 0)
@@ -249,7 +300,7 @@ class DailyCoach:
 
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         print("📋 Fetching today's session from weekly plan...")
-        today_session = self.weekly_planner.get_today_session()
+        today_session = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
 
         intensity_gate = ig.evaluate({
             'drift_pct': garmin_data.get('drift_pct', 0.0),
@@ -291,7 +342,7 @@ class DailyCoach:
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         print("🔒 Applying governance constraints...")
-        today_session = self.governance.apply_constraints(
+        today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
             session_plan = today_session,
             context      = {
                 'db':                  self.db,
@@ -342,7 +393,7 @@ class DailyCoach:
                 'lock_thresholds':    apl_result.get('lock_thresholds', {}),
 
             },
-        )
+        ))
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
 
@@ -370,12 +421,12 @@ class DailyCoach:
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
         print("⏰ Calculating optimal running time...")
-        optimal_time = self.optimal_time.calculate_optimal_time(
+        optimal_time = _run_step(10, "calculate_optimal_time", lambda: self.optimal_time.calculate_optimal_time(
             session_type  = today_session.get('session_type', 'EASY'),
             duration_hours= today_session.get('duration_min', 45) / 60.0,
             day_offset    = 0,
             tsb_value     = tsb_value,
-        )
+        ))
 
         # ── Step 11: Nutrition ───────────────────────────────────────────────
         print("🍽 Generating nutrition plan...")
@@ -388,10 +439,10 @@ class DailyCoach:
             self.nutrition.add_weight_entry(latest_w['date'], latest_w['weight_kg'])
             current_weight = latest_w['weight_kg']
 
-        nutrition_plan = self.nutrition.calculate_daily_nutrition(
+        nutrition_plan = _run_step(11, "calculate_nutrition", lambda: self.nutrition.calculate_daily_nutrition(
             weight_kg    = current_weight,
             today_session= today_session,
-        )
+        ))
         if not nutrition_plan:
             _daily_coach_event(
                 "slo_alert",
@@ -459,7 +510,7 @@ class DailyCoach:
             'vo2_eligibility': today_session.get('vo2_eligibility'),
         }
 
-        success = self.telegram.send_daily_coaching(coaching_data)
+        success = _run_step(12, "send_telegram", lambda: self.telegram.send_daily_coaching(coaching_data))
         if not success:
             _daily_coach_event(
                 "slo_alert",
@@ -508,10 +559,11 @@ class DailyCoach:
         # ── Activities → training_log ─────────────────────────────────────
         activities = garmin_data.get('activities', [])
         saved_count = 0
-        for act in activities:
+        for idx, act in enumerate(activities, start=1):
+            activity_date = act.get('date', today_str)
             try:
                 self.db.save_session(
-                    date        = act.get('date', today_str),
+                    date        = activity_date,
                     session_type= act.get('session_type', 'EASY'),
                     distance_km = _safe_float(act.get('distance_km', 0)),
                     duration_sec= _safe_int(act.get('duration_sec', 0)),
@@ -521,8 +573,24 @@ class DailyCoach:
                     notes       = act.get('name', ''),
                 )
                 saved_count += 1
+                _daily_coach_event(
+                    "activity_persist",
+                    activity_index=idx,
+                    activity_date=activity_date,
+                    outcome="ACTIVITY_PERSISTED",
+                    failure_class=None,
+                )
             except Exception as e:
-                print(f"  ⚠️  Could not save activity {act.get('date')}: {e}")
+                _daily_coach_event(
+                    "activity_persist",
+                    activity_index=idx,
+                    activity_date=activity_date,
+                    outcome="ACTIVITY_SKIPPED",
+                    failure_class=PERSIST_ERROR,
+                    error_class=type(e).__name__,
+                    error_message=str(e),
+                )
+                print(f"  ⚠️  Could not save activity {activity_date}: {e}")
         if saved_count:
             print(f"  💾 Saved {saved_count} activities to database")
 
