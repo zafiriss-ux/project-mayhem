@@ -74,7 +74,8 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
         if e.get("flow") == "garmin_sync" and e.get("action") == "hrv_day_skipped"
     ]
     assert len(skipped) == 1
-    assert skipped[0]["reason"] == "malformed_hrv_payload"
+    assert skipped[0]["error_class"] == "ValueError"
+    assert skipped[0]["error_message"] == "bad payload"
 
     metrics = [
         e
@@ -84,6 +85,8 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
     assert metrics
     assert metrics[0]["skipped_days"] == 1
     assert metrics[0]["synced_days"] == 1
+    assert sync.last_hrv_sync_metrics == {"days_back": 2, "synced_days": 1, "skipped_days": 1}
+
 
 
 def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):
@@ -99,4 +102,5 @@ def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):
     out = sync.sync_hrv(days_back=2)
 
     assert out == []
+    assert sync.get_sync_summary()["last_hrv_sync_metrics"]["skipped_days"] == 0
     assert not any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
