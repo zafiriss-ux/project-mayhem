@@ -56,7 +56,7 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
                 raise ValueError("bad payload")
             return {"hrvSummary": {"weeklyAvg": 46.2, "status": "BALANCED"}}
 
-    caplog.set_level(logging.WARNING)
+    caplog.set_level(logging.INFO)
     sync = GarminSync(email="x", password="y")
     sync.client = _Client()
     sync.is_connected = True
@@ -66,6 +66,24 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
     assert len(out) == 1
     assert out[0]["rmssd"] == 46.2
     assert any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
+
+    events = _json_messages(caplog)
+    skipped = [
+        e
+        for e in events
+        if e.get("flow") == "garmin_sync" and e.get("action") == "hrv_day_skipped"
+    ]
+    assert len(skipped) == 1
+    assert skipped[0]["reason"] == "malformed_hrv_payload"
+
+    metrics = [
+        e
+        for e in events
+        if e.get("flow") == "garmin_sync" and e.get("action") == "hrv_sync_metrics"
+    ]
+    assert metrics
+    assert metrics[0]["skipped_days"] == 1
+    assert metrics[0]["synced_days"] == 1
 
 
 def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):

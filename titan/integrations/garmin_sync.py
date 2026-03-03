@@ -196,12 +196,24 @@ class GarminSync:
                 except Exception as e:
                     skipped_days += 1
                     _log.warning("Skipping malformed HRV record for %s: %s", d, e)
+                    _garmin_event(
+                        "hrv_day_skipped",
+                        date=d,
+                        reason="malformed_hrv_payload",
+                        error=str(e),
+                    )
                     continue
         except Exception as e:
             print(f"❌ HRV sync failed: {e}")
         print(f"💓 Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
             print(f"⚠️  Skipped {skipped_days} malformed HRV record(s)")
+        _garmin_event(
+            "hrv_sync_metrics",
+            days_back=days_back,
+            synced_days=len(hrv_data),
+            skipped_days=skipped_days,
+        )
         self._log_sync("hrv", len(hrv_data))
         return hrv_data
 
