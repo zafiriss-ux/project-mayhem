@@ -179,6 +179,19 @@ across multiple athlete profiles without requiring manual threshold edits.
   data lifecycle policy (rolling retention window, per-athlete vs shared DB
   topology, and archival/export format + restore procedure).
 
+
+### T5-02 · UI evolution path (PLANNED)
+
+- **Evolution path (ADR-0013)**:
+  - Phase A: terminal facelift (retro-HUD startup snapshot, action rail,
+    status cards with VLG colour + readiness score)
+  - Phase B: Streamlit operator prototype (direct `OperatorConsoleService`
+    payload reuse)
+  - Phase C: React + FastAPI production implementation
+- **Hard constraint**: do not invest in Phase A terminal cosmetics until Tier
+  1–2 hardening is complete. UI cosmetics are lower priority than data
+  integrity and observability.
+
 ---
 
 ## Core Rule
