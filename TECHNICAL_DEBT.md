@@ -332,6 +332,13 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 
 ## TIER 4 — Maintainability (Sprint 4+)
 
+### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
+
+Ruff lint debt burn-down remains open until `ruff check . --statistics` reaches zero findings.
+Keep this item open while any findings remain; close only when the burn-down is complete.
+
+---
+
 ### T4-02 · Remove confirmed unused imports 🟡
 
 5 confirmed unused imports in production code (not `__init__.py` re-exports):
@@ -401,6 +408,23 @@ system safety.
 ---
 
 ## TIER 5 — Future Optionality
+
+### T5-01 · SQLite retention / archival strategy 🟢
+
+**Decision status:** CLOSED.
+**Wording status:** LOCKED/CLOSED.
+Decision locked (ADR-0015).
+No further decision is open in T5-01.
+Scope remains single-athlete, single-lifetime.
+Phase 8 gate (mandatory): no implementation before ADR acceptance.
+
+---
+
+### T5-03 · Multi-sport scope decision 🟢
+
+Decision locked (ADR-0016).
+
+---
 
 All Tier 5 decisions have been locked. See Tracking table for completion dates and PRs.
 Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport).
