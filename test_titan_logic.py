@@ -7,8 +7,8 @@ Usage:
     python test_titan_logic.py
 """
 
-import sys
 import os
+import sys
 
 # Fake credentials so integration classes don't crash on import
 os.environ.setdefault("GARMIN_EMAIL",     "test@example.com")
@@ -177,8 +177,8 @@ def test_math_core():
 # ════════════════════════════════════════════════════════════════════════════
 def test_nutrition():
     print("\n🧪 Nutrition Optimizer")
-    from titan.science.glycogen_model import GlycogenModel
     from titan.features.nutrition_optimizer import NutritionOptimizer
+    from titan.science.glycogen_model import GlycogenModel
 
     nut = NutritionOptimizer(GlycogenModel())
 
@@ -216,10 +216,10 @@ def test_nutrition():
 # ════════════════════════════════════════════════════════════════════════════
 def test_planner():
     print("\n🧪 Weekly Planner")
+    from titan.features.weekly_planner import WeeklyPlanGenerator
+    from titan.science.acwr_engine import ACWREngine
     from titan.science.hrv_engine import HRVGuidedEngine
     from titan.science.tsb_engine import TSBEngine
-    from titan.science.acwr_engine import ACWREngine
-    from titan.features.weekly_planner import WeeklyPlanGenerator
 
     planner = WeeklyPlanGenerator(HRVGuidedEngine(), TSBEngine(), ACWREngine())
 
@@ -245,6 +245,7 @@ def test_planner():
 def test_database():
     print("\n🧪 Database Thread Safety")
     import threading
+
     from titan.core.database import DatabaseManager
 
     db = DatabaseManager("test_thread_check.db")
