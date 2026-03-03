@@ -11,8 +11,6 @@ Modules covered (P0 / P1 priority gaps identified in coverage audit):
   - LactateLogic           (LT1/LT2 boundary conditions, tempo volume decision)
 """
 
-from typing import List, Tuple
-
 import pytest
 
 from titan.config.thresholds import HARD_STOP_TSB_FLOOR
@@ -836,20 +834,20 @@ class TestOutcomeTracker:
     _APL_RESULT = {"priority_vector": {"HARD_STOP_SAFETY_GATES": 1}, "lock_thresholds": {}}
 
     def _make_decision(self, tracker, **kwargs):
-        defaults = dict(
-            session_planned="VO2MAX",
-            session_post_governance="EASY",
-            locks_applied=["HARD_STOP_SAFETY_GATES"],
-            governance_clean=False,
-            phase="BUILD",
-            vlg_color="YELLOW",
-            apl_result=self._APL_RESULT,
-            acwr=1.1,
-            tsb_value=-20.0,
-            readiness_score=70.0,
-            glycogen_debt=3.0,
-            date="2026-03-01",
-        )
+        defaults = {
+            "session_planned": "VO2MAX",
+            "session_post_governance": "EASY",
+            "locks_applied": ["HARD_STOP_SAFETY_GATES"],
+            "governance_clean": False,
+            "phase": "BUILD",
+            "vlg_color": "YELLOW",
+            "apl_result": self._APL_RESULT,
+            "acwr": 1.1,
+            "tsb_value": -20.0,
+            "readiness_score": 70.0,
+            "glycogen_debt": 3.0,
+            "date": "2026-03-01",
+        }
         defaults.update(kwargs)
         return tracker.record_decision(**defaults)
 
@@ -1015,7 +1013,7 @@ class TestOutcomeTracker:
 
     def test_calibration_summary_accumulating(self, tracker):
         for i in range(5):
-            d = self._make_decision(tracker, date=f"2026-01-{i+1:02d}")
+            self._make_decision(tracker, date=f"2026-01-{i+1:02d}")
             tracker.record_outcome(f"2026-01-{i+1:02d}", completed=True, rpe=6)
         summary = tracker.get_calibration_summary()
         assert summary["status"] == "ACCUMULATING"
