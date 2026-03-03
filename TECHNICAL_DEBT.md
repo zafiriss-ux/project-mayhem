@@ -310,6 +310,22 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 - Whitespace / line-length
 - Unused imports (5 confirmed in production code — see T4-02)
 
+**Operational closure status:** **OPEN**. Configuration exists in `pyproject.toml`, but
+burn-down execution is still pending.
+
+**Latest measured baseline (2026-03-03):** `ruff check . --statistics` reports
+**~750 errors** (exact count may shift as files change).
+
+Top categories currently are:
+- `UP006` (non-PEP585 annotation)
+- `W293` (blank-line-with-whitespace)
+- `UP045` (non-PEP604 optional annotation)
+- `I001` (unsorted imports)
+- `UP035` (deprecated imports)
+
+**Closure criterion:** T4-01 closes only after a substantive subsystem-by-subsystem
+reduction of Ruff findings (not only policy/config presence).
+
 **Strategy:** Burn down per subsystem, not all at once. Suggested order:
 1. `titan/config/` (smallest, highest reference value)
 2. `titan/science/governance_*.py` (policy-critical, high read frequency)
