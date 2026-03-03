@@ -167,6 +167,20 @@ across multiple athlete profiles without requiring manual threshold edits.
 
 ---
 
+## Tier 5 — Future Optionality (Plan now, implement later)
+
+### T5-01 · SQLite retention / archival strategy (DECIDED)
+
+- **Decision locked in ADR-0015**: TITAN OS is intentionally treated as
+  **single-athlete, single-lifetime** until Phase 8 implementation begins.
+- **Current policy**: `governance_outcomes` and `training_log` remain append-only;
+  no retention pruning is introduced in the current scope.
+- **Phase 8 gate**: multi-athlete work cannot begin before a dedicated ADR defines
+  data lifecycle policy (rolling retention window, per-athlete vs shared DB
+  topology, and archival/export format + restore procedure).
+
+---
+
 ## Core Rule
 
 No feature development without:
@@ -182,4 +196,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-02 (Phase 7 hygiene sweep completed; Phase 7 CLOSED)
+Last updated: 2026-03-03 (Tier 5/T5-01 retention decision documented via ADR-0015)
