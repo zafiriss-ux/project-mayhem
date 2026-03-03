@@ -40,7 +40,8 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     sync.sync_hrv = lambda days_back=7: []
 
     payload = sync.sync_all(days_back=1)
-    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv"}
+    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics"}
+    assert payload["hrv_sync_metrics"] == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
 
     events = _json_messages(caplog)
     alerts = [e for e in events if e.get("flow") == "garmin_sync" and e.get("action") == "slo_alert"]
@@ -85,9 +86,34 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
     assert metrics
     assert metrics[0]["skipped_days"] == 1
     assert metrics[0]["synced_days"] == 1
+    assert metrics[0]["days_back"] == 2
     assert sync.last_hrv_sync_metrics == {"days_back": 2, "synced_days": 1, "skipped_days": 1}
 
 
+
+def test_sync_hrv_emits_metrics_when_disconnected(caplog):
+    caplog.set_level(logging.INFO)
+
+    sync = GarminSync(email="", password="")
+    out = sync.sync_hrv(days_back=3)
+
+    assert out == []
+    assert sync.last_hrv_sync_metrics == {"days_back": 3, "synced_days": 0, "skipped_days": 0}
+
+    events = _json_messages(caplog)
+    metrics = [
+        e
+        for e in events
+        if e.get("flow") == "garmin_sync" and e.get("action") == "hrv_sync_metrics"
+    ]
+    assert metrics
+    assert metrics[0] == {
+        "flow": "garmin_sync",
+        "action": "hrv_sync_metrics",
+        "days_back": 3,
+        "synced_days": 0,
+        "skipped_days": 0,
+    }
 
 def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):
     class _Client:

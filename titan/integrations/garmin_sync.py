@@ -9,7 +9,7 @@ import logging
 import os
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import threading
 
 
@@ -181,6 +181,12 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     def sync_hrv(self, days_back: int = 7) -> List[Dict]:
         if not self._ensure_connected():
+            self.last_hrv_sync_metrics = {
+                "days_back": days_back,
+                "synced_days": 0,
+                "skipped_days": 0,
+            }
+            _garmin_event("hrv_sync_metrics", **self.last_hrv_sync_metrics)
             return []
         hrv_data = []
         skipped_days = 0
@@ -225,7 +231,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # FULL SYNC
     # ------------------------------------------------------------------ #
-    def sync_all(self, days_back: int = 7) -> Dict[str, List]:
+    def sync_all(self, days_back: int = 7) -> Dict[str, Any]:
         print("🔄 Full Garmin sync starting...")
         self.last_sync = datetime.now().isoformat()
         started = time.monotonic()
@@ -234,6 +240,7 @@ class GarminSync:
             "weight":     self.sync_weight(max(days_back, 14)),
             "sleep":      self.sync_sleep(days_back),
             "hrv":        self.sync_hrv(days_back),
+            "hrv_sync_metrics": dict(self.last_hrv_sync_metrics),
         }
         elapsed_s = round(time.monotonic() - started, 3)
         timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
