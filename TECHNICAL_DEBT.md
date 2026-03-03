@@ -406,6 +406,9 @@ is not made ad-hoc under pressure.
 **Decision status:** CLOSED. `governance_outcomes` and `training_log` remain
 append-only by design in the current single-athlete scope.
 
+**Wording status:** LOCKED/CLOSED. Legacy open-decision phrasing
+is no longer valid for this item.
+
 **Decision locked (ADR-0015):** TITAN OS is intentionally constrained to
 **single-athlete, single-lifetime** until Phase 8 implementation begins.
 
@@ -506,7 +509,7 @@ When an item is completed, mark it here with date and PR reference:
 |---|---|---|
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
-| T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173) |
+| T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
 | T5-03 | 2026-03-03 | [#170](https://github.com/zafiriss-ux/project-mayhem/pull/170) |
 | T5-04 | 2026-03-03 | [#171](https://github.com/zafiriss-ux/project-mayhem/pull/171) |

@@ -42,6 +42,7 @@ def test_technical_debt_register_locks_t5_01_decision():
 
     assert "### T5-01 · SQLite retention / archival strategy 🟢" in debt_text
     assert "**Decision status:** CLOSED." in debt_text
+    assert "**Wording status:** LOCKED/CLOSED." in debt_text
     assert "Decision locked (ADR-0015)" in debt_text
     assert "No further decision is open in T5-01" in debt_text
     assert "single-athlete, single-lifetime" in debt_text
@@ -63,5 +64,8 @@ def test_technical_debt_tracking_table_lists_completed_items_with_prs():
 
     for row in expected_rows:
         assert row in debt_text, f"Missing tracking row: {row}"
+
+    assert "[#174]" in debt_text
+    assert "[#175]" in debt_text
 
     assert "| (open) | — | — |" not in debt_text
