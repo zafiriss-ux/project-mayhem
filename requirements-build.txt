@@ -1,0 +1,5 @@
+# TITAN OS v5.8.0 — Build Requirements
+# Windows packaging dependencies for TITAN.exe builds.
+
+pyinstaller==6.4.0
+pywin32==306; sys_platform == 'win32'
