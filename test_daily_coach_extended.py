@@ -15,6 +15,8 @@ Run with:
     pytest test_daily_coach_extended.py -v
 """
 
+import json
+import logging
 import os
 import sys
 from datetime import datetime, timedelta
@@ -31,6 +33,17 @@ os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+def _json_events(caplog):
+    events = []
+    for record in caplog.records:
+        try:
+            events.append(json.loads(record.getMessage()))
+        except json.JSONDecodeError:
+            continue
+    return events
+
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -433,3 +446,58 @@ class TestRunMorningRoutineSmoke:
         vo2 = payload['vo2_eligibility']
         assert vo2['failed_conditions'] == ['V1']
         assert vo2['detailed_failed_conditions'] == []
+
+
+class TestDailyCoachErrorTaxonomy:
+
+    @pytest.fixture
+    def coach_mocks(self, tmp_path):
+        return _make_coach(tmp_path)
+
+    def test_step_event_logs_failure_class_for_delivery(self, coach_mocks, caplog):
+        coach, mocks = coach_mocks
+        caplog.set_level(logging.INFO)
+
+        mocks["telegram"].send_daily_coaching.side_effect = RuntimeError("telegram down")
+
+        with pytest.raises(RuntimeError):
+            coach.run_morning_routine(soreness=3)
+
+        events = _json_events(caplog)
+        step12 = [
+            e for e in events
+            if e.get("flow") == "daily_coach"
+            and e.get("action") == "step_event"
+            and e.get("step_number") == 12
+        ]
+        assert step12
+        assert step12[-1]["outcome"] == "FAILED"
+        assert step12[-1]["failure_class"] == "DELIVERY_ERROR"
+
+    def test_activity_persist_emits_per_activity_outcomes(self, coach_mocks, caplog):
+        coach, _ = coach_mocks
+        caplog.set_level(logging.INFO)
+
+        coach.db.save_session = MagicMock(side_effect=[None, RuntimeError("db busy")])
+        today = datetime.now().strftime("%Y-%m-%d")
+        coach._persist_garmin_data(
+            {
+                "activities": [
+                    {"date": today, "session_type": "EASY"},
+                    {"date": today, "session_type": "EASY"},
+                ],
+                "sleep": [],
+                "hrv": [],
+                "weight": [],
+            },
+            today,
+        )
+
+        events = _json_events(caplog)
+        activity_events = [
+            e for e in events
+            if e.get("flow") == "daily_coach" and e.get("action") == "activity_persist"
+        ]
+        outcomes = [e.get("outcome") for e in activity_events]
+        assert "ACTIVITY_PERSISTED" in outcomes
+        assert "ACTIVITY_SKIPPED" in outcomes
