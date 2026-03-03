@@ -265,26 +265,6 @@ impossible.
 
 Independent of Tier 2. Can be done in parallel once Tier 1 is complete.
 
-### T3-01 · Split `requirements.txt` into runtime vs build vs dev 🟡
-
-**Current problem:**
-- `scikit-learn==1.4.2` — not imported anywhere in `titan/`; legacy from archived monolith
-- `pandas==2.2.1` — not imported anywhere in `titan/`; same reason
-- `pyyaml==6.0.1` — not imported anywhere in `titan/`
-- `pyinstaller==6.4.0` — build tool, not a runtime dep
-- `pywin32==306` — Windows-only build dep, not a runtime dep
-
-**Fix:**
-```
-requirements.txt          → runtime only (garminconnect, requests, pyTelegramBotAPI, numpy)
-requirements-dev.txt      → pytest, pytest-cov, hypothesis, ruff, mypy
-requirements-build.txt    → pyinstaller, pywin32 (Windows only)
-```
-
-**Effort:** ~1h. Reduces fresh-install footprint significantly.
-
----
-
 ### T3-02 · Add `ruff` and `mypy` to dev requirements 🟡
 
 **Current problem:** `pyproject.toml` has full `[tool.ruff]` and `[tool.mypy]`
@@ -351,42 +331,6 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 ---
 
 ## TIER 4 — Maintainability (Sprint 4+)
-
-### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
-
-**Current state:** Significant Ruff findings across the codebase, primarily:
-- Typing modernisations (`Optional[X]` → `X | None`, `Union[A, B]` → `A | B`)
-- Import ordering
-- Whitespace / line-length
-- Unused imports (5 confirmed in production code — see T4-02)
-
-**Operational closure status:** **CLOSED**. Ruff burn-down execution has been completed across active subsystems.
-
-**Latest measured baseline (2026-03-03):** `ruff check . --statistics` reports
-**0 errors**.
-
-**Pre-closure error categories (historical record — do not treat as current state):**
-Before the burn-down completed, the dominant finding categories were: `UP006` (non-PEP585 annotation), `W293` (blank-line-with-whitespace), `UP045` (non-PEP604 optional annotation), `I001` (unsorted imports), `UP035` (deprecated imports). Preserved for audit trail only. Current verified measurement: **0 errors** as of 2026-03-03.
-
-**Closure verified (2026-03-03):** Subsystem-by-subsystem burn-down completed across all active modules. `ruff check .` reports zero findings.
-
-**Strategy:** Burn down per subsystem, not all at once. Suggested order:
-1. `titan/config/` (smallest, highest reference value)
-2. `titan/science/governance_*.py` (policy-critical, high read frequency)
-3. `titan/core/`
-4. `titan/integrations/` (after Tier 2 error taxonomy work)
-5. `titan/orchestration/` + `titan/features/`
-6. `titan/ui/`
-
-Add Ruff to CI as a 2-phase gate:
-- **Phase A (non-blocking warning):** run on target folders
-  (`titan/config`, `titan/science`, `titan/core`, `titan/integrations`,
-  `titan/orchestration`, `titan/features`, `titan/ui`) to keep debt visible.
-- **Phase B (blocking):** run only on folders that are fully clean. Start with
-  `titan/config` and extend the blocking list one folder at a time as each
-  subsystem reaches zero findings.
-
----
 
 ### T4-02 · Remove confirmed unused imports 🟡
 
@@ -456,72 +400,10 @@ system safety.
 
 ---
 
-## TIER 5 — Future Optionality (Plan now, implement when the time comes)
+## TIER 5 — Future Optionality
 
-Do not implement these until Tiers 1–3 are complete. Document the decision now so it
-is not made ad-hoc under pressure.
-
-### T5-01 · SQLite retention / archival strategy 🟢
-
-**Decision status:** CLOSED. `governance_outcomes` and `training_log` remain
-append-only by design in the current single-athlete scope.
-
-**Wording status:** LOCKED/CLOSED. Legacy open-decision phrasing
-is no longer valid for this item.
-
-**Decision locked (ADR-0015):** TITAN OS is intentionally constrained to
-**single-athlete, single-lifetime** until Phase 8 implementation begins.
-
-**Phase 8 gate (mandatory):** No multi-athlete implementation may begin until a dedicated
-ADR defines and approves:
-- retention window policy (what remains hot vs archived)
-- per-athlete SQLite files vs shared database model
-- archival export contract (CSV, JSON, or SQLite snapshot)
-
-This gate is binding and must be satisfied before any Phase 8 execution starts.
-No further decision is open in T5-01 until the Phase 8 ADR is authored.
-
----
-
-### T5-02 · UI evolution path 🟢
-
-**Current state:** Terminal menu system (80s DOS aesthetic, functional, loved).
-
-**Planned path (from ADR-0013):**
-- Phase A (terminal facelift): retro-HUD dashboard snapshot on startup; action rail
-  (primary / secondary actions); status cards with VLG colour + readiness score
-- Phase B: Streamlit operator prototype (rapid; reuses `OperatorConsoleService` payloads directly)
-- Phase C: React + FastAPI production (ADR-0013)
-
-**Constraint:** Do not invest in Phase A terminal changes until Tier 1–2 hardening is
-complete. The terminal UI is cosmetic; data integrity and observability are not.
-
----
-
-### T5-03 · Multi-sport scope decision 🟢
-
-**Current state:** `garmin_sync.get_activities_by_date(..., "running")` is hardcoded
-to running only.
-
-**Decision locked (ADR-0016):** Multi-sport **is** in scope for Phase 8, while
-current implementation remains running-only.
-
-**Phase 8 gate:** A unified adapter interface must be designed and accepted before
-adding non-running ingestion across Garmin / Strava / Polar / Whoop / COROS.
-
----
-
-### T5-04 · ML promotion gates (Phase 7 → Stage 1+) 🟢
-
-Before any Phase 7 engine is promoted from shadow/advisory to athlete-facing:
-- `LoadPredictionShadowModel`: ≥30 predictions with RMSE < 10% of actual
-- `InjuryRiskEnsembleModel`: recall ≥ 0.80 on holdout; false positive rate < 0.30
-- `AutomatedPeriodizationEngine`: ≥10 confirmed suggestions with ≥80% adoption
-
-Each promotion requires:
-1. ADR update (evidence label upgrade: HEURISTIC → MODERATE)
-2. Kill-switch env var explicitly set to disabled in deployment docs
-3. Operator Console calibration review showing promotion readiness
+All Tier 5 decisions have been locked. See Tracking table for completion dates and PRs.
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport).
 
 ---
 
