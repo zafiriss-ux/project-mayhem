@@ -4,7 +4,7 @@ Complete athlete demographics, physiology, and training data
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class UniversalAthleteProfile:

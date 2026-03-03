@@ -4,7 +4,7 @@ Race goal and training phase management based on scientific periodization princi
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 
 class PeriodizationManager:

@@ -3,7 +3,6 @@ TITAN Equipment Manager
 Shoe tracking, surface analysis, and training intent awareness
 """
 
-from typing import Dict, Optional, Tuple
 
 
 class EquipmentManager:
