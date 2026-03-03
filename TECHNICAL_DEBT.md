@@ -334,8 +334,13 @@ reduction of Ruff findings (not only policy/config presence).
 5. `titan/orchestration/` + `titan/features/`
 6. `titan/ui/`
 
-Add Ruff to CI as a non-blocking warning gate first, then promote to blocking after
-each subsystem is clean.
+Add Ruff to CI as a 2-phase gate:
+- **Phase A (non-blocking warning):** run on target folders
+  (`titan/config`, `titan/science`, `titan/core`, `titan/integrations`,
+  `titan/orchestration`, `titan/features`, `titan/ui`) to keep debt visible.
+- **Phase B (blocking):** run only on folders that are fully clean. Start with
+  `titan/config` and extend the blocking list one folder at a time as each
+  subsystem reaches zero findings.
 
 ---
 
