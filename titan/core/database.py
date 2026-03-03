@@ -3,7 +3,6 @@ TITAN Database Management
 Persistent storage for training data, athlete profiles, and performance metrics
 """
 
-import contextlib
 import logging
 import sqlite3
 import json
@@ -264,16 +263,27 @@ class DatabaseManager:
     def _run_migrations(self, cursor) -> None:
         """
         Apply additive schema migrations (idempotent — safe to run on every startup).
-        Wraps each ALTER TABLE in try/except to handle already-migrated databases.
+        Suppresses only duplicate-column errors for already-applied migrations.
         """
-        new_columns = [
-            "ALTER TABLE daily_metrics ADD COLUMN hrr_60 INTEGER",
-            "ALTER TABLE daily_metrics ADD COLUMN hrr_120 INTEGER",
-            "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL",
+        migrations = [
+            ("daily_metrics", "hrr_60", "ALTER TABLE daily_metrics ADD COLUMN hrr_60 INTEGER"),
+            ("daily_metrics", "hrr_120", "ALTER TABLE daily_metrics ADD COLUMN hrr_120 INTEGER"),
+            ("daily_metrics", "glycogen_debt", "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL"),
         ]
-        for sql in new_columns:
-            with contextlib.suppress(Exception):  # Column already exists — safe to skip
+        for table_name, column_name, sql in migrations:
+            try:
                 cursor.execute(sql)
+                _log.info(
+                    "db_schema_migration",
+                    extra={
+                        "column_added": column_name,
+                        "table": table_name,
+                        "timestamp": datetime.utcnow().isoformat() + "Z",
+                    },
+                )
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
         self.conn.commit()
 
     # --- DAILY METRICS ---
