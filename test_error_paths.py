@@ -117,7 +117,7 @@ class TestGarminSyncErrorPaths:
             except TimeoutError:
                 # If the exception propagates, that's also fine (test documents behavior)
                 result = False
-        assert result is False or True  # documenting: either False or exception is acceptable
+        assert isinstance(result, bool)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -278,8 +278,8 @@ class TestWeatherAPIErrorPaths:
 class TestDatabaseManagerErrorPaths:
 
     def test_init_handles_missing_synchronous_fetchone_row(self, monkeypatch, tmp_path):
-        from titan.core.database import DatabaseManager
         import titan.core.database as db_module
+        from titan.core.database import DatabaseManager
 
         class FakeCursor:
             def __init__(self):

@@ -18,8 +18,8 @@ Run with:
     pytest test_new_modules.py -v
 """
 
-import sys
 import stat
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -28,18 +28,17 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from titan.science.drift_engine import DriftEngine
-from titan.science.fatigue_engine import FatigueEngine
-from titan.science.biomechanics import BiomechanicsAnalysis
+from titan.core.database import DatabaseManager
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
 from titan.integrations.garmin_sync import GarminSync
-from titan.science.rcp_engine import RCPEngine
-from titan.science.efficiency_engine import EfficiencyEngine
-from titan.science.durability_engine import DurabilityEngine
 from titan.science.adaptive_memory import AdaptiveMemory
-from titan.core.database import DatabaseManager
+from titan.science.biomechanics import BiomechanicsAnalysis
+from titan.science.drift_engine import DriftEngine
+from titan.science.durability_engine import DurabilityEngine
+from titan.science.efficiency_engine import EfficiencyEngine
+from titan.science.fatigue_engine import FatigueEngine
+from titan.science.rcp_engine import RCPEngine
 from titan.ui import setup_wizard
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS

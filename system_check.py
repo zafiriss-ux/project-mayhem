@@ -4,11 +4,12 @@ TITAN v51 - Complete System Check
 Tests all modules and functionality
 """
 
-import sys
 import os
+import sys
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def test_imports():
+def test_imports(return_results=False):
     """Test all critical imports"""
     print("🔍 Testing imports...")
     errors = []
@@ -63,9 +64,11 @@ def test_imports():
             errors.append(f'{module_path}.{item}: {e}')
             print(f'  ❌ {module_path}.{item}: {e}')
 
-    return len(errors) == 0, errors
+    if return_results:
+        return len(errors) == 0, errors
+    assert not errors, f"Import check failed: {errors}"
 
-def test_instantiation():
+def test_instantiation(return_results=False):
     """Test that key classes can be instantiated"""
     print("\n🔍 Testing instantiation...")
     errors = []
@@ -81,8 +84,8 @@ def test_instantiation():
 
     try:
         from titan.integrations.garmin_sync import GarminSync
-        from titan.integrations.weather_api import WeatherAPI
         from titan.integrations.telegram_bot import TitanTelegramBot
+        from titan.integrations.weather_api import WeatherAPI
 
         GarminSync()
         WeatherAPI()
@@ -92,9 +95,11 @@ def test_instantiation():
         errors.append(f'Integrations: {e}')
         print(f'  ❌ Integrations: {e}')
 
-    return len(errors) == 0, errors
+    if return_results:
+        return len(errors) == 0, errors
+    assert not errors, f"Instantiation check failed: {errors}"
 
-def test_basic_functionality():
+def test_basic_functionality(return_results=False):
     """Test basic functionality of key classes"""
     print("\n🔍 Testing functionality...")
     errors = []
@@ -147,9 +152,11 @@ def test_basic_functionality():
         errors.append(f'Biomechanics: {e}')
         print(f'  ❌ Biomechanics: {e}')
 
-    return len(errors) == 0, errors
+    if return_results:
+        return len(errors) == 0, errors
+    assert not errors, f"Functionality check failed: {errors}"
 
-def test_threading():
+def test_threading(return_results=False):
     """Test that classes are thread-aware"""
     print("\n🔍 Testing threading awareness...")
     errors = []
@@ -185,7 +192,9 @@ def test_threading():
         errors.append(f'Telegram threading: {e}')
         print(f'  ❌ Telegram threading: {e}')
 
-    return len(errors) == 0, errors
+    if return_results:
+        return len(errors) == 0, errors
+    assert not errors, f"Threading check failed: {errors}"
 
 def main():
     print("""
@@ -197,7 +206,7 @@ def main():
     all_passed = True
 
     # Test 1: Imports
-    passed, errors = test_imports()
+    passed, errors = test_imports(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Import test failed ({len(errors)} errors)")
@@ -205,7 +214,7 @@ def main():
         print("\n✅ All imports successful")
 
     # Test 2: Instantiation
-    passed, errors = test_instantiation()
+    passed, errors = test_instantiation(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Instantiation test failed ({len(errors)} errors)")
@@ -213,7 +222,7 @@ def main():
         print("\n✅ All classes instantiate")
 
     # Test 3: Functionality
-    passed, errors = test_basic_functionality()
+    passed, errors = test_basic_functionality(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Functionality test failed ({len(errors)} errors)")
@@ -221,7 +230,7 @@ def main():
         print("\n✅ All functionality works")
 
     # Test 4: Threading
-    passed, errors = test_threading()
+    passed, errors = test_threading(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Threading test failed ({len(errors)} errors)")
