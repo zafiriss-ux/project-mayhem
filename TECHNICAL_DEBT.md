@@ -228,6 +228,39 @@ impossible.
 
 ---
 
+### T2-07 · Launcher and startup error path observability 🟠
+
+**Location:** `main.py`, `titan/main.py`, integration init paths (`titan/integrations/garmin_sync.py` `connect()`, `titan/integrations/telegram_bot.py` `__init__()`)
+
+**Current state:** Launch-time errors in the startup guard and integration init paths emit `print()` rather than structured log events. Startup failures are indistinguishable from runtime failures in aggregated log output, degrading incident RCA accuracy.
+
+**Fix direction:**
+- Replace `print(f"Error: ...")` in startup/init paths with `log.error("startup_failure", component=..., error_class=..., detail=...)`
+- Applies to: `main.py` startup guard, `GarminSync.connect()` auth failure path, `TitanTelegramBot.__init__()` token validation failure
+- User-facing friendly messages may remain; each must be paired with a machine-readable structured event
+
+**Effort:** ~2h. Surgical; no architecture change.
+
+---
+
+### T2-08 · Residual broad catches in DB best-effort branches 🟠
+
+**Location:** `titan/core/database.py` — init and non-migration best-effort paths
+
+**Current state:** Beyond T2-05 (JSON guard on governance rows) and T2-06 (athlete file load detail), additional broad `except Exception` clauses exist in DB init and best-effort load paths. These silently absorb failure classes beyond their intended idempotency guard, hiding error categories from operators.
+
+**Fix direction:**
+- Audit all `except Exception` / bare `except` clauses in `database.py` outside of `_run_migrations()` (already scoped in T1-03)
+- Narrow each to the minimal expected exception type
+- Emit a structured log event for any catch that survives narrowing
+- Conservative default: when uncertain, emit a warning and re-raise
+
+**Works best after:** T1-03 and T2-05 complete (they establish the narrowing pattern for this file).
+
+**Effort:** ~2h.
+
+---
+
 ## TIER 3 — Dependency Hygiene (Sprint 3)
 
 Independent of Tier 2. Can be done in parallel once Tier 1 is complete.
@@ -300,6 +333,23 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 
 ---
 
+### T3-05 · Threading lifecycle: weather updater `Event.wait()` pattern 🟡
+
+**Affected:** `titan/integrations/weather_api.py` background update loop
+
+**Current state:** T3-04 applied `threading.Event` to the Garmin sync and Telegram scheduler workers. The weather background update loop was not included and continues to use a boolean flag + `time.sleep(1)` second-by-second polling pattern, making its shutdown less deterministic than the other two workers.
+
+**Fix direction:** Apply the identical pattern from T3-04:
+- Replace the boolean stop flag with `self._stop_event = threading.Event()`
+- Replace the inner `time.sleep(interval)` with `self._stop_event.wait(timeout=interval_seconds)`
+- In `stop()`: call `self._stop_event.set()` before joining the thread
+
+**Independent:** Can proceed immediately; no dependency on T3-01 through T3-04.
+
+**Effort:** ~30 minutes. Mirrors T3-04 exactly.
+
+---
+
 ## TIER 4 — Maintainability (Sprint 4+)
 
 ### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
@@ -315,15 +365,10 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 **Latest measured baseline (2026-03-03):** `ruff check . --statistics` reports
 **0 errors**.
 
-Top categories currently are:
-- `UP006` (non-PEP585 annotation)
-- `W293` (blank-line-with-whitespace)
-- `UP045` (non-PEP604 optional annotation)
-- `I001` (unsorted imports)
-- `UP035` (deprecated imports)
+**Pre-closure error categories (historical record — do not treat as current state):**
+Before the burn-down completed, the dominant finding categories were: `UP006` (non-PEP585 annotation), `W293` (blank-line-with-whitespace), `UP045` (non-PEP604 optional annotation), `I001` (unsorted imports), `UP035` (deprecated imports). Preserved for audit trail only. Current verified measurement: **0 errors** as of 2026-03-03.
 
-**Closure criterion:** T4-01 closes only after a substantive subsystem-by-subsystem
-reduction of Ruff findings (not only policy/config presence).
+**Closure verified (2026-03-03):** Subsystem-by-subsystem burn-down completed across all active modules. `ruff check .` reports zero findings.
 
 **Strategy:** Burn down per subsystem, not all at once. Suggested order:
 1. `titan/config/` (smallest, highest reference value)
@@ -393,6 +438,21 @@ system safety.
 - Add a comment header to the file: `# ARCHITECTURE LOCK — see ADR-0009 before modifying`
 - Consider a CI lint check that fails if `governance_engine.py` is modified without
   a corresponding ADR reference in the commit message
+
+---
+
+### T4-06 · Doc freshness maintenance process 🟡
+
+**Risk (28%):** Historical metric snapshots embedded in closed debt entries (error counts, test counts, date-bound measurements) drift out of sync with the actual codebase state over time. Without explicit date-annotation, future contributors may treat recorded closure measurements as current readings, leading to incorrect triage decisions.
+
+**Fix direction:**
+- **Annotation policy:** Any closed item containing a numeric baseline or measurement must carry an explicit date annotation and a note that the value is a historical closure snapshot, not a live reading. Use "as of [date] at closure" — never "currently X".
+- **Review checkpoint:** At the close of each phase sprint, scan `TECHNICAL_DEBT.md` for stale present-tense measurements and annotate or remove them.
+- **Forbidden language in closed items:** Avoid present-tense claims ("currently X errors", "currently are"). Use past-tense or explicitly dated language.
+
+**Immediate action applied (2026-03-03):** T4-01 historical error-category list re-annotated as a pre-closure snapshot (see T4-01 above).
+
+**Effort:** ~1h for initial policy pass; ~15 min per sprint close for ongoing maintenance.
 
 ---
 
@@ -481,6 +541,7 @@ The following doc inconsistencies were corrected directly in this commit:
 | CLAUDE.md: `WEATHER_API_KEY` | Annotated as unused (Open-Meteo requires no key) |
 | CLAUDE.md: DailyCoach v5.7 | Fixed to v5.8 |
 | CLAUDE.md: `ACWR_SAFE_MIN/MAX` reference | Annotated as dead/duplicate |
+| TECHNICAL_DEBT.md: T4-01 "Top categories currently are" list | Re-annotated as pre-closure historical snapshot; present-tense wording removed (T4-06 policy applied) |
 
 ---
 
