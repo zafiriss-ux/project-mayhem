@@ -180,6 +180,11 @@ OPENAI_API_KEY=sk-...
 
 # Weather API — Open-Meteo (no key needed; leave blank or omit)
 # WEATHER_API_KEY is ignored; Open-Meteo is free and requires no authentication.
+
+# Phase 7 ML promotion control
+# Default is safe/blocking (1). Set to 0 only for athlete-facing Stage 1+ deployments
+# after promotion gates and ADR evidence updates are approved.
+TITAN_ML_KILL_SWITCH=0
 ```
 
 ---

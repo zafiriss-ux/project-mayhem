@@ -152,6 +152,9 @@ def test_calibration_review_empty_without_outcomes(tmp_path):
     assert payload["summary"]["lock_rate_by_phase"] == {}
     assert payload["heuristic_promotion_candidates"] == []
     assert payload["moderate_promotion_candidates"] == []
+    assert payload["ml_promotion_readiness"]["stage_target"] == "Stage 1+"
+    assert payload["ml_promotion_readiness"]["status"] == "REVIEW_REQUIRED"
+    assert payload["ml_promotion_readiness"]["engines"][0]["engine"] == "LoadPredictionShadowModel"
 
 
 def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
@@ -204,6 +207,11 @@ def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
             "completion_delta_pp": -100.0,
             "phase_replication_count": 2,
         }
+    ]
+    assert payload["ml_promotion_readiness"]["required_controls"] == [
+        "ADR updated with evidence_label upgrade HEURISTIC -> MODERATE",
+        "deployment docs set TITAN_ML_KILL_SWITCH=0 explicitly",
+        "Operator Console calibration review marked promotion-ready",
     ]
 
 

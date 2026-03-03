@@ -201,6 +201,18 @@ across multiple athlete profiles without requiring manual threshold edits.
   Polar / Whoop / COROS, a unified adapter interface must be documented and
   accepted.
 
+### T5-04 · ML promotion gates (DECIDED)
+
+- **Decision locked in ADR-0014 update**: no Phase 7 ML engine is promoted to
+  athlete-facing Stage 1+ without passing explicit gate metrics:
+  - `LoadPredictionShadowModel`: ≥30 predictions with RMSE <10% of actual
+  - `InjuryRiskEnsembleModel`: recall ≥0.80 and false positive rate <0.30 on holdout
+  - `AutomatedPeriodizationEngine`: ≥10 confirmed suggestions with ≥80% adoption
+- **Promotion controls are mandatory** for each engine promotion:
+  1. ADR evidence update (`HEURISTIC -> MODERATE`)
+  2. Deployment docs explicitly set `TITAN_ML_KILL_SWITCH=0`
+  3. Operator Console calibration review shows promotion readiness checklist
+
 ---
 
 ## Core Rule
@@ -218,4 +230,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-03 (Tier 5/T5-01 and T5-03 decisions documented via ADR-0015 and ADR-0016)
+Last updated: 2026-03-03 (Tier 5/T5-01, T5-03, and T5-04 decisions documented via ADR-0015, ADR-0016, and ADR-0014 update)
