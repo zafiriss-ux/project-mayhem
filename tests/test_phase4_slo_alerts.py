@@ -201,18 +201,17 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
 
     assert len(out) == 1
     assert out[0]["rmssd"] == 46.2
-    assert any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
+    assert any("Skipping HRV day" in r.getMessage() for r in caplog.records)
 
     events = _json_messages(caplog)
     skipped = [
         e
         for e in events
         if e.get("flow") == "garmin_sync"
-        and e.get("action") == "failure"
-        and e.get("subsystem") == "sync_hrv"
+        and e.get("action") == "hrv_day_skipped"
     ]
     assert len(skipped) == 1
-    assert skipped[0]["failure_class"] == GARMIN_PAYLOAD_MALFORMED
+    assert "date" in skipped[0]
     assert skipped[0]["error_class"] == "ValueError"
     assert skipped[0]["error_message"] == "bad payload"
 

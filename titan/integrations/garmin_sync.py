@@ -256,12 +256,19 @@ class GarminSync:
                         })
                 except Exception as e:
                     skipped_days += 1
-                    _log.warning("Skipping malformed HRV record for %s: %s", d, e)
-                    _emit_failure(
-                        "sync_hrv",
-                        GARMIN_PAYLOAD_MALFORMED,
-                        e,
+                    error_class = e.__class__.__name__
+                    error_message = str(e)
+                    _log.warning(
+                        "Skipping HRV day %s (%s): %s",
+                        d,
+                        error_class,
+                        error_message,
+                    )
+                    _garmin_event(
+                        "hrv_day_skipped",
                         date=d,
+                        error_class=error_class,
+                        error_message=error_message,
                     )
                     continue
         except Exception as e:
