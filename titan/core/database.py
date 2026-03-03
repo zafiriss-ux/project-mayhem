@@ -20,6 +20,29 @@ _log = logging.getLogger(__name__)
 _REQUIRED_ATHLETE_KEYS: frozenset = frozenset({"athlete_id"})
 
 
+def _database_event(action: str, level: int = logging.INFO, **fields: Any) -> None:
+    """Emit a structured database event as a single JSON log line."""
+    payload = {"flow": "database", "action": action, **fields}
+    _log.log(level, json.dumps(payload, default=str))
+
+
+def _safe_json(raw: Any, fallback: Any, field_name: str) -> Any:
+    """Safely decode JSON payloads from governance rows with warning fallback."""
+    if raw is None or raw == "":
+        return fallback
+
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        _database_event(
+            "governance_decision_json_fallback",
+            level=logging.WARNING,
+            field=field_name,
+            raw_preview=str(raw)[:120],
+        )
+        return fallback
+
+
 def _validate_athlete_dict(data: object) -> None:
     """Ελαφρύς έλεγχος σχήματος πριν το from_dict().
 
@@ -909,12 +932,12 @@ class DatabaseManager:
                 'date': row[0],
                 'session_planned': row[1],
                 'session_post_governance': row[2],
-                'locks_applied': json.loads(row[3]) if row[3] else [],
+                'locks_applied': _safe_json(row[3], [], 'locks_applied_json'),
                 'governance_clean': bool(row[4]),
                 'phase': row[5],
                 'vlg_color': row[6],
-                'apl_priority_vector': json.loads(row[7]) if row[7] else {},
-                'lock_thresholds_active': json.loads(row[8]) if row[8] else {},
+                'apl_priority_vector': _safe_json(row[7], {}, 'apl_priority_vector_json'),
+                'lock_thresholds_active': _safe_json(row[8], {}, 'lock_thresholds_active_json'),
                 'acwr': float(row[9]),
                 'tsb_value': float(row[10]),
                 'readiness_score': float(row[11]),
