@@ -13,6 +13,7 @@ Modules covered (P0 / P1 priority gaps identified in coverage audit):
 
 import pytest
 from typing import List, Tuple
+from titan.config.thresholds import HARD_STOP_TSB_FLOOR
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -704,7 +705,7 @@ class TestVolumeLoadGauge:
         (-29.0, "GREEN"),
         (-30.0, "YELLOW"),  # ≤ -30
         (-49.0, "YELLOW"),
-        (-50.0, "RED"),     # ≤ -50
+        (HARD_STOP_TSB_FLOOR, "RED"),     # ≤ HARD_STOP_TSB_FLOOR
         (-100.0, "RED"),
     ])
     def test_tsb_color(self, vlg, tsb, expected):

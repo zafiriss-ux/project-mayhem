@@ -263,8 +263,8 @@ class TestAdaptiveThresholds:
     def test_base_uses_default_thresholds(self, apl, green_vlg_state, no_para_guard):
         result = apl.resolve(green_vlg_state, no_para_guard, 'BASE', 0.8)
         lt = result['lock_thresholds']
-        assert lt['acwr_ceiling'] == pytest.approx(1.30)
-        assert lt['tsb_floor'] == pytest.approx(-50.0)
+        assert lt['acwr_ceiling'] == pytest.approx(VO2_ACWR_MAX)
+        assert lt['tsb_floor'] == pytest.approx(HARD_STOP_TSB_FLOOR)
         assert lt['cs_min_confidence'] == pytest.approx(0.70)
 
     def test_very_low_cs_confidence_raises_cs_threshold(self, apl, green_vlg_state, no_para_guard):
@@ -297,7 +297,7 @@ class TestAPLStateless:
         apl.resolve(red_vlg_state, no_para_guard, 'BUILD', 0.4)
         result = apl.resolve(green_vlg_state, no_para_guard, 'BASE', 0.8)
         lt = result['lock_thresholds']
-        assert lt['acwr_ceiling'] == pytest.approx(1.30)
+        assert lt['acwr_ceiling'] == pytest.approx(VO2_ACWR_MAX)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
