@@ -20,9 +20,50 @@ from titan.utils.secrets import SecretStr
 
 _log = logging.getLogger(__name__)
 
+GARMIN_AUTH_FAIL = "GARMIN_AUTH_FAIL"
+GARMIN_RATE_LIMIT = "GARMIN_RATE_LIMIT"
+GARMIN_PAYLOAD_MALFORMED = "GARMIN_PAYLOAD_MALFORMED"
+GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
+GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
+
 def _garmin_event(action: str, **fields) -> None:
     """Emit a structured Garmin sync event as a single JSON log line."""
     _log.info(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
+
+
+def _classify_failure(error: Exception) -> str:
+    """Map integration/runtime exceptions to a stable Garmin failure class."""
+    error_name = error.__class__.__name__.lower()
+    message = str(error).lower()
+    combined = f"{error_name} {message}"
+
+    if "auth" in combined or "credential" in combined or "unauthoriz" in combined or "forbidden" in combined:
+        return GARMIN_AUTH_FAIL
+    if "429" in combined or "rate" in combined or "too many requests" in combined:
+        return GARMIN_RATE_LIMIT
+    if "timeout" in combined or isinstance(error, TimeoutError):
+        return GARMIN_TIMEOUT
+    if (
+        "json" in combined
+        or "keyerror" in combined
+        or "valueerror" in combined
+        or "typeerror" in combined
+        or "malformed" in combined
+        or "payload" in combined
+    ):
+        return GARMIN_PAYLOAD_MALFORMED
+    return GARMIN_API_UNAVAILABLE
+
+
+def _emit_failure(subsystem: str, failure_class: str, error: Exception, **fields: Any) -> None:
+    _garmin_event(
+        "failure",
+        subsystem=subsystem,
+        failure_class=failure_class,
+        error_class=error.__class__.__name__,
+        error_message=str(error),
+        **fields,
+    )
 
 
 class GarminSync:
@@ -109,6 +150,12 @@ class GarminSync:
                 except Exception as e:
                     skipped_records += 1
                     activity_id = a.get("activityId", "unknown")
+                    _emit_failure(
+                        "sync_activities",
+                        GARMIN_PAYLOAD_MALFORMED,
+                        e,
+                        activity_id=activity_id,
+                    )
                     print(f"⚠️  Skipping malformed activity ({activity_id}): {e}")
                     continue
             print(f"📥 Synced {len(activities)} activities")
@@ -116,6 +163,7 @@ class GarminSync:
                 print(f"⚠️  Skipped {skipped_records} malformed activity record(s)")
             self._log_sync("activities", len(activities))
         except Exception as e:
+            _emit_failure("sync_activities", _classify_failure(e), e, days_back=days_back)
             print(f"❌ Activity sync failed: {e}")
         return activities
 
@@ -144,6 +192,7 @@ class GarminSync:
             print(f"⚖️  Synced {len(entries)} weight entries")
             self._log_sync("weight", len(entries))
         except Exception as e:
+            _emit_failure("sync_weight", _classify_failure(e), e, days_back=days_back)
             print(f"❌ Weight sync failed: {e}")
         return entries
 
@@ -171,6 +220,7 @@ class GarminSync:
                         "sleep_score":        summary.get("sleepScores", {}).get("overall", {}).get("value"),
                     })
         except Exception as e:
+            _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
             print(f"❌ Sleep sync failed: {e}")
         print(f"😴 Synced {len(sessions)} sleep sessions")
         self._log_sync("sleep", len(sessions))
@@ -207,14 +257,15 @@ class GarminSync:
                 except Exception as e:
                     skipped_days += 1
                     _log.warning("Skipping malformed HRV record for %s: %s", d, e)
-                    _garmin_event(
-                        "hrv_day_skipped",
+                    _emit_failure(
+                        "sync_hrv",
+                        GARMIN_PAYLOAD_MALFORMED,
+                        e,
                         date=d,
-                        error_class=e.__class__.__name__,
-                        error_message=str(e),
                     )
                     continue
         except Exception as e:
+            _emit_failure("sync_hrv", _classify_failure(e), e, days_back=days_back)
             print(f"❌ HRV sync failed: {e}")
         print(f"💓 Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
