@@ -35,6 +35,134 @@ def test_telegram_logs_slo_alert_without_chat_id(caplog, monkeypatch):
     assert alerts
     assert alerts[0]["slo_key"] == "telegram_delivery_missing_chat_id"
 
+    failures = [
+        e
+        for e in events
+        if e.get("flow") == "telegram"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "send_message"
+    ]
+    assert failures
+    assert failures[0]["failure_class"] == "SEND_FAIL"
+
+
+def test_telegram_logs_send_failure_when_delivery_raises(caplog, monkeypatch):
+    class _Bot:
+        def send_message(self, *_args, **_kwargs):
+            raise RuntimeError("downstream error")
+
+    caplog.set_level(logging.INFO)
+    monkeypatch.setattr("titan.integrations.telegram_bot.TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id="12345")
+    bot.bot = _Bot()
+
+    assert bot.send_message("payload") is False
+
+    events = _json_messages(caplog)
+    failures = [
+        e
+        for e in events
+        if e.get("flow") == "telegram"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "send_message"
+    ]
+    assert failures
+    assert failures[0]["failure_class"] == "SEND_FAIL"
+    assert failures[0]["error_class"] == "RuntimeError"
+
+
+def test_telegram_logs_poll_failures(caplog, monkeypatch):
+    class _Bot:
+        def infinity_polling(self, **_kwargs):
+            raise RuntimeError("poll exploded")
+
+    caplog.set_level(logging.INFO)
+    bot = TitanTelegramBot(bot_token="", chat_id="12345")
+    bot.bot = _Bot()
+
+    def _stop_after_retry(_seconds):
+        bot._stop = True
+
+    monkeypatch.setattr("titan.integrations.telegram_bot.time.sleep", _stop_after_retry)
+    bot._poll_worker()
+
+    events = _json_messages(caplog)
+    failures = [
+        e
+        for e in events
+        if e.get("flow") == "telegram"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "poll_worker"
+    ]
+    assert failures
+    assert failures[0]["failure_class"] == "POLL_FAIL"
+
+
+def test_telegram_scheduler_logs_callback_error_and_drift(caplog, monkeypatch):
+    caplog.set_level(logging.INFO)
+    bot = TitanTelegramBot(bot_token="", chat_id="12345")
+    bot.schedule_task("boom", "10:00", lambda: (_ for _ in ()).throw(ValueError("callback fail")), days=["Monday"])
+
+    class _Now:
+        second = 10
+
+        @staticmethod
+        def strftime(fmt):
+            if fmt == "%H:%M":
+                return "10:00"
+            if fmt == "%A":
+                return "Monday"
+            raise AssertionError(f"Unexpected format: {fmt}")
+
+    class _Datetime:
+        @staticmethod
+        def now():
+            return _Now()
+
+    times = iter([100.0, 200.0])
+    monkeypatch.setattr("titan.integrations.telegram_bot.datetime", _Datetime)
+
+    def _time_now():
+        try:
+            return next(times)
+        except StopIteration:
+            return 200.0
+
+    monkeypatch.setattr("titan.integrations.telegram_bot.time.time", _time_now)
+
+    call_count = {"n": 0}
+
+    def _sleep(_seconds):
+        call_count["n"] += 1
+        if call_count["n"] >= 2:
+            bot._stop = True
+
+    monkeypatch.setattr("titan.integrations.telegram_bot.time.sleep", _sleep)
+    bot._scheduler_worker()
+
+    events = _json_messages(caplog)
+    callback_failures = [
+        e
+        for e in events
+        if e.get("flow") == "telegram"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "scheduler_worker"
+        and e.get("failure_class") == "CALLBACK_ERROR"
+    ]
+    assert callback_failures
+    assert callback_failures[0]["task_name"] == "boom"
+
+    drift_failures = [
+        e
+        for e in events
+        if e.get("flow") == "telegram"
+        and e.get("action") == "failure"
+        and e.get("subsystem") == "scheduler_worker"
+        and e.get("failure_class") == "SCHEDULER_DRIFT"
+    ]
+    assert drift_failures
+    assert drift_failures[0]["drift_seconds"] > 0
+
 
 def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     caplog.set_level(logging.INFO)

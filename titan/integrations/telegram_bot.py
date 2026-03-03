@@ -69,6 +69,13 @@ class TitanTelegramBot:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
                 self._register_handlers()
             except Exception as e:
+                _telegram_event(
+                    "failure",
+                    failure_class="CALLBACK_ERROR",
+                    subsystem="init",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                )
                 print(f"⚠️  Telegram init warning: {e}")
 
     # ------------------------------------------------------------------ #
@@ -187,6 +194,12 @@ class TitanTelegramBot:
     def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         if not self.chat_id:
             _telegram_event("slo_alert", slo_key="telegram_delivery_missing_chat_id", cause="INTEGRATION_CONFIG")
+            _telegram_event(
+                "failure",
+                failure_class="SEND_FAIL",
+                subsystem="send_message",
+                reason="missing_chat_id",
+            )
             print("⚠️  No chat_id – message not sent")
             return False
         if self.bot and TELEBOT_AVAILABLE:
@@ -196,6 +209,13 @@ class TitanTelegramBot:
                 return True
             except Exception as e:
                 _telegram_event("slo_alert", slo_key="telegram_delivery_failed", cause="INTEGRATION_DELIVERY", error=str(e))
+                _telegram_event(
+                    "failure",
+                    failure_class="SEND_FAIL",
+                    subsystem="send_message",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                )
                 print(f"❌ Telegram send error: {e}")
                 return False
         else:
@@ -326,12 +346,31 @@ class TitanTelegramBot:
                 self.bot.infinity_polling(timeout=10, long_polling_timeout=5)
             except Exception as e:
                 if not self._stop:
+                    _telegram_event(
+                        "failure",
+                        failure_class="POLL_FAIL",
+                        subsystem="poll_worker",
+                        error_class=e.__class__.__name__,
+                        error_message=str(e),
+                    )
                     print(f"⚠️  Polling error (retrying): {e}")
                     time.sleep(5)
 
     def _scheduler_worker(self):
         """Fires scheduled tasks at the right time."""
+        expected_wakeup: Optional[float] = None
         while not self._stop:
+            now_ts = time.time()
+            if expected_wakeup is not None:
+                drift_seconds = now_ts - expected_wakeup
+                if drift_seconds > 1:
+                    _telegram_event(
+                        "failure",
+                        failure_class="SCHEDULER_DRIFT",
+                        subsystem="scheduler_worker",
+                        drift_seconds=round(drift_seconds, 3),
+                    )
+
             now = datetime.now()
             cur_time = now.strftime("%H:%M")
             cur_day  = now.strftime("%A")
@@ -340,6 +379,16 @@ class TitanTelegramBot:
                     try:
                         task["callback"]()
                     except Exception as e:
+                        _telegram_event(
+                            "failure",
+                            failure_class="CALLBACK_ERROR",
+                            subsystem="scheduler_worker",
+                            task_name=task["name"],
+                            error_class=e.__class__.__name__,
+                            error_message=str(e),
+                        )
                         print(f"❌ Task '{task['name']}' error: {e}")
             # Sleep until next full minute
-            time.sleep(60 - now.second)
+            sleep_seconds = max(1, 60 - now.second)
+            expected_wakeup = now_ts + sleep_seconds
+            time.sleep(sleep_seconds)
