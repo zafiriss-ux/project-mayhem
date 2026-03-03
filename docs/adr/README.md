@@ -21,6 +21,7 @@
 | [0006](0006-architectural-hardening-cold-start-and-engine-sync.md) | Architectural hardening: cold-start, engine sync, null safety | Bug fix / Tests | ✅ Implemented | TBD |
 | [0010](0010-operator-console-readiness-dashboard-mvp.md) | Operator Console readiness/load dashboard MVP payload service | Architecture / UI | ✅ Implemented | TBD |
 | [0015](0015-sqlite-retention-and-phase8-data-lifecycle-gate.md) | SQLite retention strategy and Phase 8 data lifecycle gate | Architecture / Data lifecycle | ✅ Accepted | TBD |
+| [0016](0016-phase8-multisport-scope-and-adapter-gate.md) | Phase 8 multi-sport scope and unified adapter gate | Architecture / Integrations | ✅ Accepted | TBD |
 
 ---
 
