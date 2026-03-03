@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 import threading
 
+from titan.orchestration.contracts import GarminSyncResult
 
 from titan.utils.constants import _Secret
 
@@ -286,11 +287,11 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # FULL SYNC
     # ------------------------------------------------------------------ #
-    def sync_all(self, days_back: int = 7) -> Dict[str, Any]:
+    def sync_all(self, days_back: int = 7) -> GarminSyncResult:
         print("🔄 Full Garmin sync starting...")
         self.last_sync = datetime.now().isoformat()
         started = time.monotonic()
-        payload = {
+        payload: GarminSyncResult = {
             "activities": self.sync_activities(days_back),
             "weight":     self.sync_weight(max(days_back, 14)),
             "sleep":      self.sync_sleep(days_back),

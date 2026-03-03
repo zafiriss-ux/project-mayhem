@@ -24,7 +24,7 @@ Architectural Boundary:
 from datetime import datetime, timedelta
 import json
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import threading
 from titan.core.database import DatabaseManager
 from titan.science.autonomic_engine import AutonomicFusionEngine
@@ -36,6 +36,12 @@ from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.volume_load_gauge import VolumeLoadGauge
 from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.fatigue_engine import FatigueEngine
+from titan.orchestration.contracts import (
+    DailyCoachContext,
+    DailyCoachingPayload,
+    GarminSyncResult,
+    TodaySessionPlan,
+)
 
 
 _log = logging.getLogger(__name__)
@@ -188,7 +194,7 @@ class DailyCoach:
 
         # ── Step 1: Sync Garmin ──────────────────────────────────────────────
         print("📥 Syncing Garmin data...")
-        garmin_data = _run_step(1, "sync_garmin", self.garmin.sync_all)
+        garmin_data: GarminSyncResult = _run_step(1, "sync_garmin", self.garmin.sync_all)
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
         today_str = datetime.now().strftime('%Y-%m-%d')
@@ -300,7 +306,7 @@ class DailyCoach:
 
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         print("📋 Fetching today's session from weekly plan...")
-        today_session = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
+        today_session: TodaySessionPlan = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
 
         intensity_gate = ig.evaluate({
             'drift_pct': garmin_data.get('drift_pct', 0.0),
@@ -342,57 +348,31 @@ class DailyCoach:
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         print("🔒 Applying governance constraints...")
+        context_payload = self._build_daily_coach_context(
+            afi_constraints=afi_constraints,
+            intensity_gate=intensity_gate,
+            readiness_score=_safe_float(readiness.get('score', 50), 50),
+            glycogen_debt=self.glycogen.daily_debt,
+            fatigue_level=fatigue_level,
+            acwr=_acwr_for_vlg,
+            days_since_last_vo2=garmin_data.get('days_since_last_vo2'),
+            fueling_confirmed=bool(garmin_data.get('fueling_confirmed', False)),
+            planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
+            today_hrv=latest_hrv,
+            baseline_hrv=baseline_hrv,
+            hrv_std_dev=_safe_float(hrv_summary.get('std_dev'), 0.0),
+            today_rhr=today_rhr or 50,
+            baseline_rhr=baseline_rhr,
+            sleep_score=today_sleep_score,
+            subjective_fatigue_score=subjective_fatigue_score,
+            tsb_value=_safe_float(tsb_value, 0.0),
+            injury_flag=bool(garmin_data.get('injury_flag', False)),
+            priority_vector=apl_result.get('priority_vector', {}),
+            lock_thresholds=apl_result.get('lock_thresholds', {}),
+        )
         today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
-            session_plan = today_session,
-            context      = {
-                'db':                  self.db,
-                'cs_tracker':          self.cs_tracker,
-                'afi_constraints':     afi_constraints,
-                'intensity_gate_result': intensity_gate,
-                'readiness_score':     readiness.get('score', 50),
-                'glycogen_debt':       self.glycogen.daily_debt,
-
-                'fatigue_level':       fatigue_level,
-
-
-
-
-
-
-                'acwr':                _acwr_for_vlg,
-
-                'days_since_last_vo2': garmin_data.get('days_since_last_vo2'),
-                'fueling_confirmed':   bool(garmin_data.get('fueling_confirmed', False)),
-                'planned_duration_min': today_session.get('duration_min', 45),
-
-
-
-
-
-
-
-
-
-
-                'today_hrv':          latest_hrv,
-                'baseline_hrv':       baseline_hrv,
-                'hrv_std_dev':        _safe_float(hrv_summary.get('std_dev'), 0.0),
-                'today_rhr':          today_rhr or 50,
-                'baseline_rhr':       baseline_rhr,
-                'sleep_score':        today_sleep_score,
-                'subjective_fatigue_score': subjective_fatigue_score,
-                'tsb_value':          tsb_value,
-                'injury_flag':        bool(garmin_data.get('injury_flag', False)),
-
-
-
-
-
-                # APL injections: adaptive gate ordering + threshold overrides
-                'priority_vector':    apl_result.get('priority_vector', {}),
-                'lock_thresholds':    apl_result.get('lock_thresholds', {}),
-
-            },
+            session_plan=today_session,
+            context=context_payload,
         ))
         if today_session.get('governance_locks_applied'):
             print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
@@ -464,7 +444,7 @@ class DailyCoach:
             db=self.db, cs_tracker=self.cs_tracker, afi_constraints=afi_constraints
         )
 
-        coaching_data = {
+        coaching_data: DailyCoachingPayload = {
             # Session (post-governance)
             'session_type'      : today_session.get('session_type', 'EASY'),
             'duration'          : f"{today_session.get('distance_km', '?')} km",
@@ -542,6 +522,56 @@ class DailyCoach:
             details = []
         normalized = [d for d in details if isinstance(d, dict) and 'code' in d]
         vo2['detailed_failed_conditions'] = normalized
+
+    def _build_daily_coach_context(
+        self,
+        *,
+        afi_constraints: Dict[str, Any],
+        intensity_gate: Dict[str, Any],
+        readiness_score: float,
+        glycogen_debt: float,
+        fatigue_level: str,
+        acwr: float,
+        days_since_last_vo2: Any,
+        fueling_confirmed: bool,
+        planned_duration_min: int,
+        today_hrv: float,
+        baseline_hrv: float,
+        hrv_std_dev: float,
+        today_rhr: int,
+        baseline_rhr: float,
+        sleep_score: int,
+        subjective_fatigue_score: int,
+        tsb_value: float,
+        injury_flag: bool,
+        priority_vector: Dict[str, Any],
+        lock_thresholds: Dict[str, Any],
+    ) -> DailyCoachContext:
+        """Construct typed governance context payload consumed by GovernanceEngine."""
+        return {
+            'db': self.db,
+            'cs_tracker': self.cs_tracker,
+            'afi_constraints': afi_constraints,
+            'intensity_gate_result': intensity_gate,
+            'readiness_score': readiness_score,
+            'glycogen_debt': glycogen_debt,
+            'fatigue_level': fatigue_level,
+            'acwr': acwr,
+            'days_since_last_vo2': days_since_last_vo2,
+            'fueling_confirmed': fueling_confirmed,
+            'planned_duration_min': planned_duration_min,
+            'today_hrv': today_hrv,
+            'baseline_hrv': baseline_hrv,
+            'hrv_std_dev': hrv_std_dev,
+            'today_rhr': today_rhr,
+            'baseline_rhr': baseline_rhr,
+            'sleep_score': sleep_score,
+            'subjective_fatigue_score': subjective_fatigue_score,
+            'tsb_value': tsb_value,
+            'injury_flag': injury_flag,
+            'priority_vector': priority_vector,
+            'lock_thresholds': lock_thresholds,
+        }
 
     def _persist_garmin_data(
         self, garmin_data: Dict, today_str: str
