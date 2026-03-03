@@ -17,13 +17,16 @@ Requirements:
 
 import sys
 import tkinter as tk
-from tkinter import ttk, messagebox
-from typing import Dict, Optional
+from tkinter import messagebox, ttk
 
 from launcher import __version__
 from launcher.validator import validate_environment
-from launcher.wizard import write_env, validate_garmin_username, validate_telegram_token, validate_openai_key
-
+from launcher.wizard import (
+    validate_garmin_username,
+    validate_openai_key,
+    validate_telegram_token,
+    write_env,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Main Wizard Window
@@ -43,11 +46,11 @@ class WizardWindow:
         self.root.resizable(False, False)
 
         # Data storage
-        self.config: Dict[str, str] = {}
+        self.config: dict[str, str] = {}
         self.validation_passed = False
 
         # Current frame
-        self.current_frame: Optional[tk.Frame] = None
+        self.current_frame: tk.Frame | None = None
 
         # Start with welcome screen
         self.show_welcome()
@@ -369,10 +372,9 @@ class CredentialsFrame(ttk.Frame):
         if not garmin_user or not garmin_pass:
             messagebox.showerror("Error", "Garmin credentials are required.")
             return
-        if hasattr(self.garmin_user, 'validator') and self.garmin_user.validator:
-            if not self.garmin_user.validator(garmin_user):
-                messagebox.showerror("Error", "Invalid Garmin username format.")
-                return
+        if hasattr(self.garmin_user, 'validator') and self.garmin_user.validator and not self.garmin_user.validator(garmin_user):
+            messagebox.showerror("Error", "Invalid Garmin username format.")
+            return
         config['GARMIN_USERNAME'] = garmin_user
         config['GARMIN_PASSWORD'] = garmin_pass
 
@@ -382,20 +384,18 @@ class CredentialsFrame(ttk.Frame):
         if not telegram_token or not telegram_chat:
             messagebox.showerror("Error", "Telegram bot token and chat ID are required.")
             return
-        if hasattr(self.telegram_token, 'validator') and self.telegram_token.validator:
-            if not self.telegram_token.validator(telegram_token):
-                messagebox.showerror("Error", "Invalid Telegram bot token format.")
-                return
+        if hasattr(self.telegram_token, 'validator') and self.telegram_token.validator and not self.telegram_token.validator(telegram_token):
+            messagebox.showerror("Error", "Invalid Telegram bot token format.")
+            return
         config['TELEGRAM_BOT_TOKEN'] = telegram_token
         config['TELEGRAM_CHAT_ID'] = telegram_chat
 
         # OpenAI (optional)
         openai_key = self.openai_key.get().strip()
         if openai_key and openai_key != "sk-...":
-            if hasattr(self.openai_key, 'validator') and self.openai_key.validator:
-                if not self.openai_key.validator(openai_key):
-                    messagebox.showerror("Error", "Invalid OpenAI API key format (must start with sk-).")
-                    return
+            if hasattr(self.openai_key, 'validator') and self.openai_key.validator and not self.openai_key.validator(openai_key):
+                messagebox.showerror("Error", "Invalid OpenAI API key format (must start with sk-).")
+                return
             config['OPENAI_API_KEY'] = openai_key
 
         # Weather (optional)
@@ -480,8 +480,8 @@ class SuccessFrame(ttk.Frame):
 
     def on_diagnostics(self):
         """Show diagnostics dialog with path info + open logs folder."""
-        import subprocess
         import platform
+        import subprocess
 
         # Get diagnostics info
         from launcher.paths import get_path_info
