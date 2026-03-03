@@ -5,6 +5,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ADR_0015_PATH = REPO_ROOT / "docs" / "adr" / "0015-sqlite-retention-and-phase8-data-lifecycle-gate.md"
 ROADMAP_PATH = REPO_ROOT / "docs" / "ROADMAP.MD"
+DEBT_REGISTER_PATH = REPO_ROOT / "TECHNICAL_DEBT.md"
 
 
 def test_adr_0015_exists_and_is_non_empty():
@@ -34,3 +35,29 @@ def test_roadmap_references_t5_01_and_adr_0015():
     assert "Tier 5 — Future Optionality" in roadmap_text
     assert "T5-01" in roadmap_text
     assert "ADR-0015" in roadmap_text
+
+
+def test_technical_debt_register_locks_t5_01_decision():
+    debt_text = DEBT_REGISTER_PATH.read_text(encoding="utf-8")
+
+    assert "### T5-01 · SQLite retention / archival strategy 🟢" in debt_text
+    assert "Decision locked (ADR-0015)" in debt_text
+    assert "single-athlete, single-lifetime" in debt_text
+    assert "Phase 8 gate (mandatory)" in debt_text
+    assert "Decision needed" not in debt_text
+
+
+def test_technical_debt_tracking_table_lists_completed_items_with_prs():
+    debt_text = DEBT_REGISTER_PATH.read_text(encoding="utf-8")
+
+    expected_rows = [
+        "| T3-01 | 2026-03-03 | [#172]",
+        "| T4-01 | 2026-03-03 | [#167]",
+        "| T5-01 | 2026-03-03 | [#173]",
+        "| T5-02 | 2026-03-03 | [#169]",
+        "| T5-03 | 2026-03-03 | [#170]",
+        "| T5-04 | 2026-03-03 | [#171]",
+    ]
+
+    for row in expected_rows:
+        assert row in debt_text, f"Missing tracking row: {row}"
