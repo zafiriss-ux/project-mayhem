@@ -19,6 +19,7 @@ import json
 import logging
 from typing import Dict, Optional
 
+from titan.config.thresholds import HARD_STOP_TSB_FLOOR, VO2_ACWR_MAX
 from titan.science.volume_load_gauge import VLGState
 
 _log = logging.getLogger(__name__)
@@ -28,8 +29,8 @@ _log = logging.getLogger(__name__)
 # APL may tighten or relax these per phase × load context.
 # ──────────────────────────────────────────────────────────────────────────────
 _DEFAULT_THRESHOLDS: Dict[str, float] = {
-    'acwr_ceiling':      1.30,   # VO2_ACWR_MAX from thresholds.py
-    'tsb_floor':         -50.0,  # HARD_STOP_TSB_FLOOR from thresholds.py
+    'acwr_ceiling':      VO2_ACWR_MAX,
+    'tsb_floor':         HARD_STOP_TSB_FLOOR,
     'cs_min_confidence': 0.70,   # GovernanceEngine.CS_CONFIDENCE_THRESHOLD
 }
 

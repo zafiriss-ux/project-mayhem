@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Dict, List
 
+from titan.config.thresholds import HARD_STOP_TSB_FLOOR
+
 
 @dataclass(frozen=True)
 class VLGState:
@@ -19,7 +21,7 @@ class VolumeLoadGauge:
 
     @staticmethod
     def _tsb_color(tsb_value: float) -> str:
-        if tsb_value <= -50:
+        if tsb_value <= HARD_STOP_TSB_FLOOR:
             return "RED"
         if tsb_value <= -30:
             return "YELLOW"
