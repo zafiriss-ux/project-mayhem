@@ -2,7 +2,6 @@
 
 import json
 import logging
-from typing import Dict
 
 _log = logging.getLogger(__name__)
 

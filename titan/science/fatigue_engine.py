@@ -1,6 +1,5 @@
 """Fatigue Classification Engine"""
 
-from typing import List, Tuple
 
 
 class FatigueEngine:

@@ -17,7 +17,6 @@ Scientific Basis:
   Plasma volume / sodium guard for heat + duration.
 """
 
-from typing import Dict, List, Optional, Tuple
 
 
 class GlycogenModel:

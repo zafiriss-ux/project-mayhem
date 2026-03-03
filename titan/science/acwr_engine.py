@@ -1,6 +1,5 @@
 """ACWR Engine - Injury Prevention via Workload Monitoring"""
 
-from typing import Optional, Tuple
 
 
 class ACWREngine:

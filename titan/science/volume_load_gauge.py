@@ -1,7 +1,6 @@
 """Volume Load Gauge (VLG) — pure aggregation over TSB, ACWR and glycogen."""
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 from titan.config.thresholds import HARD_STOP_TSB_FLOOR
 

@@ -5,8 +5,8 @@ contract and deterministic scoring so we can validate integration,
 monitor recall, and gate rollout before any autonomous intervention.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Mapping
 
 from titan.science.ml_safety import enforce_ml_kill_switch
 

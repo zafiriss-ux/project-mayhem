@@ -1,7 +1,6 @@
 """TRIMP Engine - Training Impulse Calculation"""
 
 import math
-from typing import Optional, Tuple
 
 
 class TRIMPEngine:
@@ -88,10 +87,7 @@ class TRIMPEngine:
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
 
         # Gender-specific exponent (Banister)
-        if gender.lower() == "male":
-            y = 1.92
-        else:  # female
-            y = 1.67
+        y = 1.92 if gender.lower() == "male" else 1.67  # female exponent
 
         trimp = duration_min * hr_reserve * 0.64 * math.exp(y * hr_reserve)
 
@@ -146,5 +142,5 @@ class TRIMPEngine:
         if len(zone_times) != len(zone_multipliers):
             return 0.0
 
-        trimp = sum(time * mult for time, mult in zip(zone_times, zone_multipliers))
+        trimp = sum(time * mult for time, mult in zip(zone_times, zone_multipliers, strict=False))
         return round(trimp, 1)

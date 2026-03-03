@@ -24,7 +24,6 @@ import json
 import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from titan.config.evidence_registry import get_evidence
 from titan.core.database import DatabaseManager
