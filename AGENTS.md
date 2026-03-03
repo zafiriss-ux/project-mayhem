@@ -73,8 +73,7 @@ Agents must not redesign, restructure, or re-architect any system component unle
 - Style or formatting changes outside the task
 - Architectural redesign
 - Adding comments, docstrings, or type annotations to code you did not explicitly change
-  - Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
-- Adding features not required by the task
+- Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
 
 ### 3.3 Before writing a single line of code
 1. List every file that must change.
