@@ -403,8 +403,8 @@ is not made ad-hoc under pressure.
 
 ### T5-01 · SQLite retention / archival strategy 🟢
 
-**Current state:** `governance_outcomes` and `training_log` grow indefinitely. No
-retention policy exists.
+**Decision status:** CLOSED. `governance_outcomes` and `training_log` remain
+append-only by design in the current single-athlete scope.
 
 **Decision locked (ADR-0015):** TITAN OS is intentionally constrained to
 **single-athlete, single-lifetime** until Phase 8 implementation begins.
@@ -416,6 +416,7 @@ ADR defines and approves:
 - archival export contract (CSV, JSON, or SQLite snapshot)
 
 This gate is binding and must be satisfied before any Phase 8 execution starts.
+No further decision is open in T5-01 until the Phase 8 ADR is authored.
 
 ---
 
