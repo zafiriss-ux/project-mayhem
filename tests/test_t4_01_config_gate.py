@@ -28,6 +28,8 @@ def test_ruff_blocking_gate_includes_promoted_targets() -> None:
         "titan/config",
         "titan/core",
         "titan/integrations",
+        "titan/orchestration",
+        "titan/features",
         "titan/science/governance_contracts.py",
         "titan/science/governance_engine.py",
     ], f"Unexpected blocking targets: {targets}"

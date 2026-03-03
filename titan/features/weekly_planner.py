@@ -13,7 +13,6 @@ Generates intelligent weekly plans based on:
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List
 
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
@@ -361,16 +360,15 @@ class WeeklyPlanGenerator:
         baseline = hrv_summary.get("baseline")
         latest = hrv_summary.get("latest_hrv")
 
-        if baseline and latest:
-            if latest < baseline - 10:  # HRV significantly suppressed
-                # Reduce intensity across the week
-                for day in structure:
-                    if day["session_type"] in ["INTERVALS", "HAMMER"]:
-                        day["session_type"] = "TEMPO"
-                        day["details"] += " (downgraded from intervals due to HRV)"
-                    elif day["session_type"] == "TEMPO":
-                        day["session_type"] = "EASY"
-                        day["details"] += " (downgraded due to HRV)"
+        if baseline and latest and latest < baseline - 10:  # HRV significantly suppressed
+            # Reduce intensity across the week
+            for day in structure:
+                if day["session_type"] in ["INTERVALS", "HAMMER"]:
+                    day["session_type"] = "TEMPO"
+                    day["details"] += " (downgraded from intervals due to HRV)"
+                elif day["session_type"] == "TEMPO":
+                    day["session_type"] = "EASY"
+                    day["details"] += " (downgraded due to HRV)"
 
         return structure
 

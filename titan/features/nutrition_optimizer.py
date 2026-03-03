@@ -7,7 +7,6 @@ Integrates with Garmin weight data to provide real-time dietary recommendations.
 
 import json
 import logging
-from typing import Dict, List
 
 _log = logging.getLogger(__name__)
 
