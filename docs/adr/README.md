@@ -20,6 +20,7 @@
 | [0005](0005-fix-runtime-startup-issues.md) | Διόρθωση runtime προβλημάτων εκκίνησης (5 bugs) | Bug fix | ✅ Implemented | `4076f2d` |
 | [0006](0006-architectural-hardening-cold-start-and-engine-sync.md) | Architectural hardening: cold-start, engine sync, null safety | Bug fix / Tests | ✅ Implemented | TBD |
 | [0010](0010-operator-console-readiness-dashboard-mvp.md) | Operator Console readiness/load dashboard MVP payload service | Architecture / UI | ✅ Implemented | TBD |
+| [0015](0015-sqlite-retention-and-phase8-data-lifecycle-gate.md) | SQLite retention strategy and Phase 8 data lifecycle gate | Architecture / Data lifecycle | ✅ Accepted | TBD |
 
 ---
 
