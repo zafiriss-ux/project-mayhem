@@ -16,8 +16,6 @@ from typing import Dict, List, Optional, Callable
 
 from titan.utils.constants import _Secret
 
-from titan.utils.secrets import SecretStr
-
 
 _log = logging.getLogger(__name__)
 
@@ -45,7 +43,6 @@ class TitanTelegramBot:
 
     def __init__(self, bot_token: str = None, chat_id=None):
         self.bot_token = _Secret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
-        self._bot_token_secret = SecretStr(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         try:
             self.chat_id = int(raw_id)
@@ -63,7 +60,7 @@ class TitanTelegramBot:
         # Callbacks for commands – set by orchestration layer
         self.cmd_callbacks: Dict[str, Callable] = {}
 
-        bot_token_value = self._bot_token_secret.get_secret_value()
+        bot_token_value = self.bot_token
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
