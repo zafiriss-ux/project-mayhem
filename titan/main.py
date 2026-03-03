@@ -15,7 +15,7 @@ Flow:
 import contextlib
 import os
 import sys
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

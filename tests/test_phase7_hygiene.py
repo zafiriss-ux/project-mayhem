@@ -25,6 +25,8 @@ Phase 7 deliverable smoke checks:
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
+
 import pytest
 
 from titan.science.automated_periodization import (
@@ -292,15 +294,15 @@ class TestPayloadImmutability:
 
     def test_shadow_load_prediction_is_frozen(self):
         pred = LoadPredictionShadowModel().predict_7d_load([60])
-        with pytest.raises(Exception):  # dataclasses.FrozenInstanceError
+        with pytest.raises(FrozenInstanceError):
             pred.trend = 'MUTATED'  # type: ignore[misc]
 
     def test_injury_risk_assessment_is_frozen(self):
         assessment = InjuryRiskEnsembleModel().assess_risk({})
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             assessment.risk_band = 'MUTATED'  # type: ignore[misc]
 
     def test_periodization_suggestion_is_frozen(self):
         suggestion = AutomatedPeriodizationEngine().suggest({})
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             suggestion.recommended_focus = 'MUTATED'  # type: ignore[misc]
