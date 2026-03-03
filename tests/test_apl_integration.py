@@ -127,7 +127,7 @@ class TestAPLOutputContract:
             phase=phase,
             cs_confidence=0.8,
         )
-        assert self.REQUIRED_KEYS == set(result.keys()), (
+        assert set(result.keys()) == self.REQUIRED_KEYS, (
             f'Missing keys for phase={phase}: {self.REQUIRED_KEYS - set(result.keys())}'
         )
 

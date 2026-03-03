@@ -38,15 +38,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 def _make_ctx(tmp_path):
     """Build a minimal titan_ctx dict with real (but light) engine instances."""
+    from titan.core.equipment import EquipmentManager
+    from titan.features.nutrition_optimizer import NutritionOptimizer
+    from titan.features.optimal_time_calculator import OptimalTimeCalculator
+    from titan.features.weekly_planner import WeeklyPlanGenerator
+    from titan.integrations.weather_api import WeatherAPI
+    from titan.science.acwr_engine import ACWREngine
+    from titan.science.glycogen_model import GlycogenModel
     from titan.science.hrv_engine import HRVGuidedEngine
     from titan.science.tsb_engine import TSBEngine
-    from titan.science.acwr_engine import ACWREngine
-    from titan.features.weekly_planner import WeeklyPlanGenerator
-    from titan.features.optimal_time_calculator import OptimalTimeCalculator
-    from titan.science.glycogen_model import GlycogenModel
-    from titan.features.nutrition_optimizer import NutritionOptimizer
-    from titan.core.equipment import EquipmentManager
-    from titan.integrations.weather_api import WeatherAPI
 
     hrv_eng  = HRVGuidedEngine()
     tsb_eng  = TSBEngine()

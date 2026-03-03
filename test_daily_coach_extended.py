@@ -56,14 +56,14 @@ def _make_coach(tmp_path):
     Returns (coach, mocks_dict).
     """
     from titan.core.database import DatabaseManager
-    from titan.science.hrv_engine import HRVGuidedEngine
-    from titan.science.tsb_engine import TSBEngine
-    from titan.science.acwr_engine import ACWREngine
-    from titan.science.readiness_engine import ReadinessEngine
-    from titan.science.glycogen_model import GlycogenModel
     from titan.features.nutrition_optimizer import NutritionOptimizer
     from titan.features.weekly_planner import WeeklyPlanGenerator
     from titan.orchestration.daily_coach import DailyCoach
+    from titan.science.acwr_engine import ACWREngine
+    from titan.science.glycogen_model import GlycogenModel
+    from titan.science.hrv_engine import HRVGuidedEngine
+    from titan.science.readiness_engine import ReadinessEngine
+    from titan.science.tsb_engine import TSBEngine
 
     db       = DatabaseManager(str(tmp_path / "coach_test.db"))
     hrv_eng  = HRVGuidedEngine()
