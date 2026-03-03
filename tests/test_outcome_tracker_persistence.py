@@ -1,3 +1,6 @@
+import json
+import logging
+
 from titan.core.database import DatabaseManager
 from titan.science.outcome_tracker import OutcomeTracker
 
@@ -75,5 +78,59 @@ def test_outcome_tracker_persists_post_session_outcome(tmp_path):
     assert decisions[0].outcome_completed is True
     assert decisions[0].outcome_session_type_actual == 'TEMPO'
     assert decisions[0].outcome_notes == 'completed at reduced pace'
+
+    db.close()
+
+
+def test_get_governance_decisions_safe_json_fallback_and_warning(tmp_path, caplog):
+    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+
+    db.save_governance_decision(
+        {
+            'date': '2026-03-04',
+            'session_planned': 'EASY',
+            'session_post_governance': 'EASY',
+            'locks_applied': ['FUELING_LOCK'],
+            'governance_clean': False,
+            'phase': 'BUILD',
+            'vlg_color': 'YELLOW',
+            'apl_priority_vector': {'FUELING_LOCK': 1},
+            'lock_thresholds_active': {'glycogen_debt': 6.0},
+            'acwr': 1.0,
+            'tsb_value': -8.0,
+            'readiness_score': 63.0,
+            'glycogen_debt': 5.7,
+        }
+    )
+
+    db.conn.execute(
+        """UPDATE governance_outcomes
+           SET locks_applied_json = '{broken',
+               apl_priority_vector_json = '[oops',
+               lock_thresholds_active_json = '{oops'
+           WHERE date = ?""",
+        ('2026-03-04',),
+    )
+    db.conn.commit()
+
+    caplog.set_level(logging.WARNING, logger='titan.core.database')
+    decisions = db.get_governance_decisions()
+
+    assert len(decisions) == 1
+    assert decisions[0]['locks_applied'] == []
+    assert decisions[0]['apl_priority_vector'] == {}
+    assert decisions[0]['lock_thresholds_active'] == {}
+
+    events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if 'governance_decision_json_fallback' in record.message
+    ]
+    assert len(events) == 3
+    assert {event['field'] for event in events} == {
+        'locks_applied_json',
+        'apl_priority_vector_json',
+        'lock_thresholds_active_json',
+    }
 
     db.close()
