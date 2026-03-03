@@ -23,7 +23,7 @@ pyyaml==6.0.1          # Configuration files
 # API Integrations
 garminconnect==0.2.13  # Garmin Connect API (activity sync)
 requests==2.32.4       # HTTP client (Garmin, weather, webhooks)
-python-telegram-bot==21.0.1  # Telegram bot framework
+pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
 
 # Build Tools (Windows only — for creating TITAN.exe)
 pyinstaller==6.4.0     # Freeze Python to executable
