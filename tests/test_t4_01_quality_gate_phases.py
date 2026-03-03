@@ -10,16 +10,12 @@ PHASE_A_TARGET_FOLDERS = [
     "titan/orchestration",
     "titan/features",
     "titan/ui",
-    "launcher",
+    "titan/utils",
+    "tests",
 ]
 
 PHASE_B_BLOCKING_TARGETS = [
     "titan/config",
-    "titan/core",
-    "titan/integrations",
-    "titan/orchestration",
-    "titan/features",
-    "titan/ui",
 ]
 
 
@@ -54,9 +50,14 @@ def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
         assert folder in content
 
 
-def test_phase_b_excludes_launcher_until_clean() -> None:
+def test_phase_b_starts_with_only_titan_config() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
 
     phase_b_section = content.split("BLOCKING_TARGETS=(", maxsplit=1)[1].split(")", maxsplit=1)[0]
-    assert "launcher" not in phase_b_section
+    assert "titan/config" in phase_b_section
+    assert "titan/core" not in phase_b_section
+    assert "titan/integrations" not in phase_b_section
+    assert "titan/orchestration" not in phase_b_section
+    assert "titan/features" not in phase_b_section
+    assert "titan/ui" not in phase_b_section
