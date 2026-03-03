@@ -27,7 +27,6 @@ def _telegram_event(action: str, **fields) -> None:
 
 try:
     import telebot
-    from telebot import types  # noqa: F401
     TELEBOT_AVAILABLE = True
 except ImportError:
     TELEBOT_AVAILABLE = False

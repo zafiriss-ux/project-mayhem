@@ -1,7 +1,5 @@
 """Operator Console services for Phase 6 dashboard workflows."""
 
-from __future__ import annotations
-
 from collections import Counter
 from typing import Any, Dict, List
 
