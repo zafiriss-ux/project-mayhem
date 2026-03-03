@@ -237,9 +237,9 @@ There is no "mostly done", "should be fine", or "looks good". Binary only.
 
 ---
 
-## Test Failure Protocol (MANDATORY)
+## Test Failure Protocol — For All Contributors (MANDATORY)
 
-When any test fails, do not improvise. Identify the category and follow the exact protocol below.
+This protocol applies to every engineer and AI assistant working on this codebase. When any test fails, do not improvise. Identify the category and follow the exact protocol below. These rules are non-negotiable.
 
 ---
 
@@ -312,11 +312,13 @@ Banned responses when tests fail:
 - `pytest.mark.skip` / `xfail` without documented justification
 - Scope creep ("while I'm here...")
 
+Following this protocol prevents: random refactors, mass file changes, silenced tests, and scope creep. Every engineer who skips it will eventually re-introduce the exact failure mode they were trying to avoid.
+
 ---
 
-### 📋 Test Creation / Update Rule
+### 📋 Test Creation / Update Rule — For All Contributors (MANDATORY)
 
-When any task touches a module:
+Every task that touches a module — regardless of how small the change — must follow this rule:
 
 1. Check whether a test file for that module exists.
 2. If **no test file exists** → create `tests/test_<module_name>.py` with:
@@ -325,6 +327,8 @@ When any task touches a module:
    - If not → add tests for the new/changed behaviour.
 4. Never delete tests. If a test is wrong, fix it (not the other way around).
 5. After adding/updating tests: run `pytest` and confirm 100% green before delivering.
+
+There are no exceptions. A change that ships without a test for its new behaviour is incomplete.
 
 ---
 

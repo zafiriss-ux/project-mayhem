@@ -228,29 +228,42 @@ impossible.
 
 ---
 
+### T2-07 · Launcher and startup error path observability 🟠
+
+**Location:** `main.py`, `titan/main.py`, integration init paths (`titan/integrations/garmin_sync.py` `connect()`, `titan/integrations/telegram_bot.py` `__init__()`)
+
+**Current state:** Launch-time errors in the startup guard and integration init paths emit `print()` rather than structured log events. Startup failures are indistinguishable from runtime failures in aggregated log output, degrading incident RCA accuracy.
+
+**Fix direction:**
+- Replace `print(f"Error: ...")` in startup/init paths with `log.error("startup_failure", component=..., error_class=..., detail=...)`
+- Applies to: `main.py` startup guard, `GarminSync.connect()` auth failure path, `TitanTelegramBot.__init__()` token validation failure
+- User-facing friendly messages may remain; each must be paired with a machine-readable structured event
+
+**Effort:** ~2h. Surgical; no architecture change.
+
+---
+
+### T2-08 · Residual broad catches in DB best-effort branches 🟠
+
+**Location:** `titan/core/database.py` — init and non-migration best-effort paths
+
+**Current state:** Beyond T2-05 (JSON guard on governance rows) and T2-06 (athlete file load detail), additional broad `except Exception` clauses exist in DB init and best-effort load paths. These silently absorb failure classes beyond their intended idempotency guard, hiding error categories from operators.
+
+**Fix direction:**
+- Audit all `except Exception` / bare `except` clauses in `database.py` outside of `_run_migrations()` (already scoped in T1-03)
+- Narrow each to the minimal expected exception type
+- Emit a structured log event for any catch that survives narrowing
+- Conservative default: when uncertain, emit a warning and re-raise
+
+**Works best after:** T1-03 and T2-05 complete (they establish the narrowing pattern for this file).
+
+**Effort:** ~2h.
+
+---
+
 ## TIER 3 — Dependency Hygiene (Sprint 3)
 
 Independent of Tier 2. Can be done in parallel once Tier 1 is complete.
-
-### T3-01 · Split `requirements.txt` into runtime vs build vs dev 🟡
-
-**Current problem:**
-- `scikit-learn==1.4.2` — not imported anywhere in `titan/`; legacy from archived monolith
-- `pandas==2.2.1` — not imported anywhere in `titan/`; same reason
-- `pyyaml==6.0.1` — not imported anywhere in `titan/`
-- `pyinstaller==6.4.0` — build tool, not a runtime dep
-- `pywin32==306` — Windows-only build dep, not a runtime dep
-
-**Fix:**
-```
-requirements.txt          → runtime only (garminconnect, requests, pyTelegramBotAPI, numpy)
-requirements-dev.txt      → pytest, pytest-cov, hypothesis, ruff, mypy
-requirements-build.txt    → pyinstaller, pywin32 (Windows only)
-```
-
-**Effort:** ~1h. Reduces fresh-install footprint significantly.
-
----
 
 ### T3-02 · Add `ruff` and `mypy` to dev requirements 🟡
 
@@ -300,48 +313,24 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 
 ---
 
-## TIER 4 — Maintainability (Sprint 4+)
+### T3-05 · Threading lifecycle: weather updater `Event.wait()` pattern 🟡
 
-### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
+**Affected:** `titan/integrations/weather_api.py` background update loop
 
-**Current state:** Significant Ruff findings across the codebase, primarily:
-- Typing modernisations (`Optional[X]` → `X | None`, `Union[A, B]` → `A | B`)
-- Import ordering
-- Whitespace / line-length
-- Unused imports (5 confirmed in production code — see T4-02)
+**Current state:** T3-04 applied `threading.Event` to the Garmin sync and Telegram scheduler workers. The weather background update loop was not included and continues to use a boolean flag + `time.sleep(1)` second-by-second polling pattern, making its shutdown less deterministic than the other two workers.
 
-**Operational closure status:** **CLOSED**. Ruff burn-down execution has been completed across active subsystems.
+**Fix direction:** Apply the identical pattern from T3-04:
+- Replace the boolean stop flag with `self._stop_event = threading.Event()`
+- Replace the inner `time.sleep(interval)` with `self._stop_event.wait(timeout=interval_seconds)`
+- In `stop()`: call `self._stop_event.set()` before joining the thread
 
-**Latest measured baseline (2026-03-03):** `ruff check . --statistics` reports
-**0 errors**.
+**Independent:** Can proceed immediately; no dependency on T3-01 through T3-04.
 
-Top categories currently are:
-- `UP006` (non-PEP585 annotation)
-- `W293` (blank-line-with-whitespace)
-- `UP045` (non-PEP604 optional annotation)
-- `I001` (unsorted imports)
-- `UP035` (deprecated imports)
-
-**Closure criterion:** T4-01 closes only after a substantive subsystem-by-subsystem
-reduction of Ruff findings (not only policy/config presence).
-
-**Strategy:** Burn down per subsystem, not all at once. Suggested order:
-1. `titan/config/` (smallest, highest reference value)
-2. `titan/science/governance_*.py` (policy-critical, high read frequency)
-3. `titan/core/`
-4. `titan/integrations/` (after Tier 2 error taxonomy work)
-5. `titan/orchestration/` + `titan/features/`
-6. `titan/ui/`
-
-Add Ruff to CI as a 2-phase gate:
-- **Phase A (non-blocking warning):** run on target folders
-  (`titan/config`, `titan/science`, `titan/core`, `titan/integrations`,
-  `titan/orchestration`, `titan/features`, `titan/ui`) to keep debt visible.
-- **Phase B (blocking):** run only on folders that are fully clean. Start with
-  `titan/config` and extend the blocking list one folder at a time as each
-  subsystem reaches zero findings.
+**Effort:** ~30 minutes. Mirrors T3-04 exactly.
 
 ---
+
+## TIER 4 — Maintainability (Sprint 4+)
 
 ### T4-02 · Remove confirmed unused imports 🟡
 
@@ -396,72 +385,25 @@ system safety.
 
 ---
 
-## TIER 5 — Future Optionality (Plan now, implement when the time comes)
+### T4-06 · Doc freshness maintenance process 🟡
 
-Do not implement these until Tiers 1–3 are complete. Document the decision now so it
-is not made ad-hoc under pressure.
+**Risk (28%):** Historical metric snapshots embedded in closed debt entries (error counts, test counts, date-bound measurements) drift out of sync with the actual codebase state over time. Without explicit date-annotation, future contributors may treat recorded closure measurements as current readings, leading to incorrect triage decisions.
 
-### T5-01 · SQLite retention / archival strategy 🟢
+**Fix direction:**
+- **Annotation policy:** Any closed item containing a numeric baseline or measurement must carry an explicit date annotation and a note that the value is a historical closure snapshot, not a live reading. Use "as of [date] at closure" — never "currently X".
+- **Review checkpoint:** At the close of each phase sprint, scan `TECHNICAL_DEBT.md` for stale present-tense measurements and annotate or remove them.
+- **Forbidden language in closed items:** Avoid present-tense claims ("currently X errors", "currently are"). Use past-tense or explicitly dated language.
 
-**Decision status:** CLOSED. `governance_outcomes` and `training_log` remain
-append-only by design in the current single-athlete scope.
+**Immediate action applied (2026-03-03):** T4-01 historical error-category list re-annotated as a pre-closure snapshot (see T4-01 above).
 
-**Wording status:** LOCKED/CLOSED. Legacy open-decision phrasing
-is no longer valid for this item.
-
-**Decision locked (ADR-0015):** TITAN OS is intentionally constrained to
-**single-athlete, single-lifetime** until Phase 8 implementation begins.
-
-**Phase 8 gate (mandatory):** No multi-athlete implementation may begin until a dedicated
-ADR defines and approves:
-- retention window policy (what remains hot vs archived)
-- per-athlete SQLite files vs shared database model
-- archival export contract (CSV, JSON, or SQLite snapshot)
-
-This gate is binding and must be satisfied before any Phase 8 execution starts.
-No further decision is open in T5-01 until the Phase 8 ADR is authored.
+**Effort:** ~1h for initial policy pass; ~15 min per sprint close for ongoing maintenance.
 
 ---
 
-### T5-02 · UI evolution path 🟢
+## TIER 5 — Future Optionality
 
-**Current state:** Terminal menu system (80s DOS aesthetic, functional, loved).
-
-**Planned path (from ADR-0013):**
-- Phase A (terminal facelift): retro-HUD dashboard snapshot on startup; action rail
-  (primary / secondary actions); status cards with VLG colour + readiness score
-- Phase B: Streamlit operator prototype (rapid; reuses `OperatorConsoleService` payloads directly)
-- Phase C: React + FastAPI production (ADR-0013)
-
-**Constraint:** Do not invest in Phase A terminal changes until Tier 1–2 hardening is
-complete. The terminal UI is cosmetic; data integrity and observability are not.
-
----
-
-### T5-03 · Multi-sport scope decision 🟢
-
-**Current state:** `garmin_sync.get_activities_by_date(..., "running")` is hardcoded
-to running only.
-
-**Decision locked (ADR-0016):** Multi-sport **is** in scope for Phase 8, while
-current implementation remains running-only.
-
-**Phase 8 gate:** A unified adapter interface must be designed and accepted before
-adding non-running ingestion across Garmin / Strava / Polar / Whoop / COROS.
-
----
-
-### T5-04 · ML promotion gates (Phase 7 → Stage 1+) 🟢
-
-Before any Phase 7 engine is promoted from shadow/advisory to athlete-facing:
-- `LoadPredictionShadowModel`: ≥30 predictions with RMSE < 10% of actual
-- `InjuryRiskEnsembleModel`: recall ≥ 0.80 on holdout; false positive rate < 0.30
-- `AutomatedPeriodizationEngine`: ≥10 confirmed suggestions with ≥80% adoption
-
-Each promotion requires:
-1. ADR update (evidence label upgrade: HEURISTIC → MODERATE)
-2. Kill-switch env var explicitly set to disabled in deployment docs
-3. Operator Console calibration review showing promotion readiness
+All Tier 5 decisions have been locked. See Tracking table for completion dates and PRs.
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport).
 
 ---
 
@@ -481,6 +423,7 @@ The following doc inconsistencies were corrected directly in this commit:
 | CLAUDE.md: `WEATHER_API_KEY` | Annotated as unused (Open-Meteo requires no key) |
 | CLAUDE.md: DailyCoach v5.7 | Fixed to v5.8 |
 | CLAUDE.md: `ACWR_SAFE_MIN/MAX` reference | Annotated as dead/duplicate |
+| TECHNICAL_DEBT.md: T4-01 "Top categories currently are" list | Re-annotated as pre-closure historical snapshot; present-tense wording removed (T4-06 policy applied) |
 
 ---
 
