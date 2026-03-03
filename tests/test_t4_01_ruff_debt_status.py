@@ -12,6 +12,17 @@ DEBT_DOC = Path("TECHNICAL_DEBT.md")
 T4_01_HEADER = "### T4-01 · Ruff debt burn-down (lint hygiene)"
 
 
+def _parse_ruff_error_count(output: str, returncode: int) -> int | None:
+    match = re.search(r"Found\s+(\d+)\s+error[s]?", output)
+    if match:
+        return int(match.group(1))
+
+    if returncode == 0 and (not output.strip() or "All checks passed" in output):
+        return 0
+
+    return None
+
+
 def _ruff_error_count() -> int:
     ruff_bin = shutil.which("ruff")
     cmd = ["ruff", "check", ".", "--statistics"] if ruff_bin else [sys.executable, "-m", "ruff", "check", ".", "--statistics"]
@@ -26,9 +37,23 @@ def _ruff_error_count() -> int:
     if proc.returncode == 127:
         pytest.skip("ruff is not installed in this environment")
 
-    match = re.search(r"Found\s+(\d+)\s+error[s]?", out)
-    assert match, f"Could not parse Ruff statistics output (cmd={cmd!r}, rc={proc.returncode}):\n{out}"
-    return int(match.group(1))
+    parsed = _parse_ruff_error_count(out, proc.returncode)
+    assert parsed is not None, (
+        f"Could not parse Ruff statistics output (cmd={cmd!r}, rc={proc.returncode}):\n{out}"
+    )
+    return parsed
+
+
+@pytest.mark.parametrize(
+    ("output", "returncode", "expected"),
+    [
+        ("I001\t1\nFound 1 error.", 1, 1),
+        ("All checks passed!", 0, 0),
+        ("", 0, 0),
+    ],
+)
+def test_parse_ruff_error_count(output: str, returncode: int, expected: int):
+    assert _parse_ruff_error_count(output, returncode) == expected
 
 
 def test_t4_01_remains_open_until_ruff_findings_are_burned_down():

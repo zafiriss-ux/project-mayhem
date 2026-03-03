@@ -391,7 +391,6 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach = self._make_coach()
         captured = {}
 
-        original_analyze = coach.readiness.analyze_readiness.side_effect
 
         def capture_analyze(**kwargs):
             captured["soreness"] = kwargs.get("soreness")

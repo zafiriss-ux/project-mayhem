@@ -302,7 +302,7 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 
 ## TIER 4 — Maintainability (Sprint 4+)
 
-### T4-01 · Ruff debt burn-down (lint hygiene) 🟡
+### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
 
 **Current state:** Significant Ruff findings across the codebase, primarily:
 - Typing modernisations (`Optional[X]` → `X | None`, `Union[A, B]` → `A | B`)
@@ -310,11 +310,10 @@ Optionally add `thread.join(timeout=5)` in the shutdown path.
 - Whitespace / line-length
 - Unused imports (5 confirmed in production code — see T4-02)
 
-**Operational closure status:** **OPEN**. Configuration exists in `pyproject.toml`, but
-burn-down execution is still pending.
+**Operational closure status:** **CLOSED**. Ruff burn-down execution has been completed across active subsystems.
 
 **Latest measured baseline (2026-03-03):** `ruff check . --statistics` reports
-**~750 errors** (exact count may shift as files change).
+**0 errors**.
 
 Top categories currently are:
 - `UP006` (non-PEP585 annotation)

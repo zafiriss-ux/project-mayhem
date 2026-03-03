@@ -28,7 +28,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from titan.integrations.telegram_bot import TitanTelegramBot
 
-
 # ════════════════════════════════════════════════════════════════════════════
 # FIXTURES
 # ════════════════════════════════════════════════════════════════════════════
@@ -251,7 +250,7 @@ class TestCommandCallbacks:
 
     def test_multiple_commands_registered(self, bot):
         for cmd in ("today", "week", "stats", "recovery", "nutrition"):
-            bot.register_command(cmd, lambda: cmd)
+            bot.register_command(cmd, lambda cmd=cmd: cmd)
         assert set(bot.cmd_callbacks.keys()) >= {"today", "week", "stats"}
 
 

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 RUNTIME_DEPENDENCIES = {
     "numpy==1.26.4",
     "garminconnect==0.2.13",

@@ -13,7 +13,6 @@ Categories:
   SYS_*    — System-level issues (permissions, disk space)
 """
 
-from typing import Optional
 
 
 class TitanError(Exception):
@@ -32,7 +31,7 @@ class TitanError(Exception):
         code: str,
         message: str,
         remediation: str = '',
-        details: Optional[str] = None,
+        details: str | None = None,
     ):
         self.code = code
         self.message = message
