@@ -15,6 +15,7 @@ Flow:
 import contextlib
 import sys
 import os
+from typing import Any, Optional, TypedDict
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -58,6 +59,53 @@ from titan.orchestration.daily_coach import DailyCoach
 from titan.ui.menu_system import main_menu
 
 
+class AthleteProfile(TypedDict):
+    name: str
+    age: int
+    weight_kg: float
+    height_cm: float
+    max_hr: int
+    threshold_hr: int
+    phase: str
+    goal: str
+
+
+class TitanContext(TypedDict):
+    # Integrations
+    garmin: GarminSync
+    weather: Any
+    telegram: TitanTelegramBot
+    # Science engines
+    hrv_engine: HRVGuidedEngine
+    tsb_engine: TSBEngine
+    acwr_engine: ACWREngine
+    readiness_engine: ReadinessEngine
+    glycogen_model: GlycogenModel
+    drift_engine: DriftEngine
+    lactate_logic: LactateLogic
+    trimp_engine: TRIMPEngine
+    fatigue_engine: FatigueEngine
+    adaptive_memory: AdaptiveMemory
+    biomechanics: BiomechanicsAnalysis
+    efficiency_engine: EfficiencyEngine
+    durability_engine: DurabilityEngine
+    critical_speed: CriticalSpeedEngine
+    rcp_engine: RCPEngine
+    # Features
+    weekly_planner: WeeklyPlanGenerator
+    optimal_time_calc: OptimalTimeCalculator
+    nutrition_optimizer: NutritionOptimizer
+    # Orchestration
+    daily_coach: DailyCoach
+    # Persistent storage
+    db: DatabaseManager
+    # Profile & state
+    athlete_profile: AthleteProfile
+    last_garmin_data: dict[str, Any]
+    last_weekly_plan: Optional[dict[str, Any]]
+    today_session_type: str
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # BANNER
 # ════════════════════════════════════════════════════════════════════════════
@@ -78,7 +126,7 @@ def _print_banner():
 # ════════════════════════════════════════════════════════════════════════════
 # TELEGRAM COMMAND CALLBACKS
 # ════════════════════════════════════════════════════════════════════════════
-def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: dict):
+def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
     """Wire engine methods to Telegram slash commands."""
 
     def _format_calibration_summary(summary: dict) -> str:
@@ -406,7 +454,7 @@ def main():
     )
 
     # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
-    athlete_profile = {
+    athlete_profile: AthleteProfile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
 
         "age":            _parse_env_number("ATHLETE_AGE", "35", int),
@@ -419,7 +467,7 @@ def main():
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
     }
 
-    titan_ctx = {
+    titan_ctx: TitanContext = {
         # Integrations
         "garmin":               garmin,
         "weather":              weather,

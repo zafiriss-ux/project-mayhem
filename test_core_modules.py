@@ -14,6 +14,9 @@ from pathlib import Path
 
 import pytest
 
+# Environment stabilization: weather integration requires optional dependency.
+pytest.importorskip("requests", reason="WeatherAPI tests require optional requests dependency")
+
 # ── path setup ──────────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).parent))
 
