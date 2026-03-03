@@ -20,6 +20,15 @@ pressure.
 
 ## Decision
 
+### Decision record for T5-01
+
+The explicit decision requested in T5-01 is **YES**:
+TITAN OS is intentionally constrained to a **single-athlete, single-lifetime**
+operating model for the current architecture phase.
+
+If/when this becomes **NO** (Phase 8 multi-athlete execution), the Phase 8 gate
+below becomes a hard prerequisite before implementation work can start.
+
 1. **Current architectural constraint (effective now):** TITAN OS is treated as
    **single-athlete, single-lifetime** until Phase 8 execution starts.
 2. **Retention policy for current scope:**

@@ -15,6 +15,7 @@ def test_adr_0015_exists_and_is_non_empty():
 def test_adr_0015_locks_single_athlete_constraint_and_phase8_gate():
     adr_text = ADR_0015_PATH.read_text(encoding="utf-8")
 
+    assert "The explicit decision requested in T5-01 is **YES**" in adr_text
     assert "single-athlete, single-lifetime" in adr_text
     assert "No Phase 8 implementation may start until that ADR is accepted." in adr_text
 
