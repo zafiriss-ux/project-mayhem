@@ -8,19 +8,17 @@ All checks return (success: bool, error: Optional[TitanError]).
 """
 
 import os
-import sys
-import shutil
 import platform
+import shutil
+import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
 from launcher.errors import (
-    EnvironmentError,
     ConfigurationError,
+    EnvironmentError,
     SystemError,
     TitanError,
 )
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # System Requirements
@@ -49,7 +47,7 @@ def get_data_directory() -> Path:
 # Validation Checks
 # ══════════════════════════════════════════════════════════════════════════════
 
-def check_python_version() -> Tuple[bool, Optional[TitanError]]:
+def check_python_version() -> tuple[bool, TitanError | None]:
     """
     Validate Python version >= 3.11.
 
@@ -64,7 +62,7 @@ def check_python_version() -> Tuple[bool, Optional[TitanError]]:
     return True, None
 
 
-def check_os_compatibility() -> Tuple[bool, Optional[TitanError]]:
+def check_os_compatibility() -> tuple[bool, TitanError | None]:
     """
     Check if OS is supported.
 
@@ -81,7 +79,7 @@ def check_os_compatibility() -> Tuple[bool, Optional[TitanError]]:
     return True, None
 
 
-def check_utf8_environment() -> Tuple[bool, Optional[TitanError]]:
+def check_utf8_environment() -> tuple[bool, TitanError | None]:
     """
     Ensure UTF-8 encoding is active.
 
@@ -103,7 +101,7 @@ def check_utf8_environment() -> Tuple[bool, Optional[TitanError]]:
     return True, None
 
 
-def check_data_directory() -> Tuple[bool, Optional[TitanError]]:
+def check_data_directory() -> tuple[bool, TitanError | None]:
     """
     Ensure data directory exists and is writable.
 
@@ -131,7 +129,7 @@ def check_data_directory() -> Tuple[bool, Optional[TitanError]]:
         return False, SystemError.permission_denied(str(data_dir), 'create', details=str(e))
 
 
-def check_disk_space() -> Tuple[bool, Optional[TitanError]]:
+def check_disk_space() -> tuple[bool, TitanError | None]:
     """
     Ensure at least 100 MB free disk space in data directory.
 
@@ -150,7 +148,7 @@ def check_disk_space() -> Tuple[bool, Optional[TitanError]]:
         return True, None
 
 
-def check_database() -> Tuple[bool, Optional[TitanError]]:
+def check_database() -> tuple[bool, TitanError | None]:
     """
     Check if database exists. If not, flag for creation.
 
@@ -182,7 +180,7 @@ def check_database() -> Tuple[bool, Optional[TitanError]]:
 # Run All Checks
 # ══════════════════════════════════════════════════════════════════════════════
 
-def validate_environment() -> Tuple[bool, list]:
+def validate_environment() -> tuple[bool, list]:
     """
     Run all pre-flight checks.
 
