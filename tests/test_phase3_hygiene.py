@@ -13,6 +13,9 @@ hard to reach through happy-path or integration tests:
 
 from __future__ import annotations
 
+import json
+import logging
+
 import pytest
 
 from titan.science.governance_contracts import (
@@ -165,17 +168,48 @@ class TestGovernanceEngineExceptionPaths:
         # Falls back to 0 → no H5 gate fires
         assert result.get("session_type") == "INTERVALS"
 
-    def test_override_lockdown_db_raises_falls_back_to_zero_ratio(self):
-        """db.get_override_ratio() raises → lines 51-52: ratio defaults to 0.0
-        → check_override_lockdown returns locked=False."""
+    def test_override_lockdown_db_failure_is_fail_safe_and_alerted(self, caplog):
+        """Generic DB read failures must lock conservatively and emit structured alert."""
 
         class _RaisingDB:
             def get_override_ratio(self, days=14):
                 raise RuntimeError("db unavailable")
 
+        caplog.set_level(logging.INFO)
         result = gov.check_override_lockdown(_RaisingDB())
-        assert result["locked"] is False
-        assert result["ratio"] == 0.0
+
+        assert result["locked"] is True
+        assert result["error_code"] == "DB_READ_ERROR"
+        assert result["action"] == "ZONE_2_ONLY"
+
+        events = [
+            json.loads(record.getMessage())
+            for record in caplog.records
+            if 'governance_gate' in record.getMessage()
+        ]
+        event = next(
+            e for e in events
+            if e.get("governance_gate") == "OVERRIDE_LOCKDOWN" and e.get("action") == "FAIL_SAFE_LOCK"
+        )
+        assert event["error_code"] == "DB_READ_ERROR"
+
+    def test_override_lockdown_schema_mismatch_classification(self):
+        class _SchemaMismatchDB:
+            def get_override_ratio(self, days=14):
+                raise RuntimeError("no such table: override_log")
+
+        result = gov.check_override_lockdown(_SchemaMismatchDB())
+        assert result["locked"] is True
+        assert result["error_code"] == "SCHEMA_MISMATCH"
+
+    def test_override_lockdown_computation_error_classification(self):
+        class _BadRatioDB:
+            def get_override_ratio(self, days=14):
+                return "invalid-float"
+
+        result = gov.check_override_lockdown(_BadRatioDB())
+        assert result["locked"] is True
+        assert result["error_code"] == "COMPUTATION_ERROR"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

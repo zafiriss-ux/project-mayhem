@@ -46,10 +46,39 @@ class GovernanceEngine:
 
     def check_override_lockdown(self, db: Any, threshold: Optional[float] = None) -> Dict:
         effective_threshold = threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
+
+        def _classify_override_lockdown_failure(exc: Exception) -> str:
+            message = str(exc).lower()
+            if 'no such table' in message or 'schema' in message:
+                return 'SCHEMA_MISMATCH'
+            if isinstance(exc, (AttributeError, TypeError, ValueError, ZeroDivisionError)):
+                return 'COMPUTATION_ERROR'
+            return 'DB_READ_ERROR'
+
         try:
-            ratio = db.get_override_ratio(days=14)
-        except Exception:
-            ratio = 0.0
+            ratio = float(db.get_override_ratio(days=14))
+        except Exception as exc:
+            error_class = _classify_override_lockdown_failure(exc)
+            _gate_event(
+                'OVERRIDE_LOCKDOWN',
+                'FAIL_SAFE_LOCK',
+                cause='SYSTEM_ERROR',
+                error_code=error_class,
+                reason='Override lockdown read failure — applying conservative lockdown',
+                details=str(exc),
+            )
+            return {
+                'locked': True,
+                'ratio': None,
+                'reason': (
+                    'Override lockdown failure fallback (fail-safe): '
+                    f'{error_class}. Zone 2 only until data path is healthy.'
+                ),
+                'max_zone': 2,
+                'disabled_sessions': list(self._QUALITY_SESSIONS),
+                'action': 'ZONE_2_ONLY',
+                'error_code': error_class,
+            }
 
         if ratio > effective_threshold:
             return {
