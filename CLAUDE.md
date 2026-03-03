@@ -147,6 +147,187 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 
 ---
 
+## Engineering Discipline: Strategy Gates (MANDATORY — never deviate)
+
+These rules exist because T4-01 (Ruff lint debt, ~750 errors) remains open after multiple
+sessions. The root cause was not unclear intent — it was execution discipline: the engineer
+started broad changes, skipped binary acceptance checks, and delivered "partially done" work.
+The rules below are a hard contract. They apply to every task, not just lint work.
+
+---
+
+### Rule E1 — Tier ordering is strict
+
+Work items from `TECHNICAL_DEBT.md` must be completed **in tier order**:
+
+```
+TIER 1 (Data Integrity) → TIER 2 (Observability) → TIER 3 (Deps) → TIER 4 (Maintainability) → TIER 5 (Future)
+```
+
+- **Do NOT start Tier N+1 work while any Tier N item is OPEN.**
+- Exception: items explicitly marked `independent` in the register.
+- If you receive a task from a higher tier while a lower tier is open, flag it:
+  > "⛔ TIER ORDERING VIOLATION: T[lower]-[XX] is still OPEN. Completing that first."
+
+---
+
+### Rule E2 — T4-01 burn-down follows a fixed subsystem sequence
+
+The Ruff burn-down (T4-01) proceeds **one subsystem at a time**, in this exact order:
+
+```
+1. titan/config/
+2. titan/science/governance_*.py
+3. titan/core/
+4. titan/integrations/
+5. titan/orchestration/ + titan/features/
+6. titan/ui/
+```
+
+Do not skip ahead. Do not "quick-fix" across subsystems simultaneously.
+
+**Definition of Done for each subsystem (BINARY — PASS or FAIL, never "mostly done"):**
+
+```bash
+ruff check <subsystem_path>
+# Must return: exit code 0, zero findings. Anything else = NOT DONE.
+```
+
+**Acceptance gate:**
+- Run `ruff check <subsystem_path>` → must report **zero findings**.
+- Run `pytest` → must be **100% green** (same count as before or higher).
+- If either check is not 100%: answer must be exactly:
+
+  > `NOT 100% — Missing: [list the specific check that failed]`
+
+  Do not deliver partial progress as "complete."
+
+---
+
+### Rule E3 — Stop-the-line
+
+If any acceptance criterion fails mid-task:
+1. **Stop immediately.** Do not continue to other files or subsystems.
+2. Report what failed and what the root cause is.
+3. Fix only the specific failing criterion.
+4. Re-run the acceptance gate from scratch.
+5. Only then continue.
+
+---
+
+### Rule E4 — No scope creep, ever
+
+When executing a debt item:
+- Fix **only** what the item says.
+- Do not refactor adjacent code.
+- Do not add features, remove unrelated imports, or "improve" things nearby.
+- Do not add comments, docstrings, or type annotations to code you did not explicitly change.
+
+If you notice a new issue while working: **add it to `TECHNICAL_DEBT.md`**, do not fix it now.
+
+---
+
+### Rule E5 — Definition of Done is binary
+
+A task is either:
+- ✅ **DONE** — all acceptance criteria pass, 100%, no caveats.
+- ❌ **NOT DONE** — at least one criterion fails.
+
+There is no "mostly done", "should be fine", or "looks good". Binary only.
+
+---
+
+## Test Failure Protocol (MANDATORY)
+
+When any test fails, do not improvise. Identify the category and follow the exact protocol below.
+
+---
+
+### 🔴 RED — A test is failing (assertion / runtime error)
+
+Send this **verbatim** before doing anything else:
+
+> A test is failing.
+> 1) Run the full suite and identify the FIRST failing test.
+> 2) Do NOT modify the test unless it is objectively incorrect.
+> 3) Determine whether the failure is:
+>    A) Code regression
+>    B) Test bug
+>    C) Environment/dependency issue
+> 4) Fix ONLY the minimal root cause.
+> 5) Re-run the full suite.
+> 6) If any other tests fail, stop and report.
+> 7) Do not refactor unrelated code.
+> 8) Do not introduce new behavior.
+
+---
+
+### 🟡 YELLOW — Warnings / flaky / lint-related
+
+Send this **verbatim** before doing anything else:
+
+> The test suite has warnings or unstable behavior.
+> 1) Identify the exact warning source.
+> 2) If it is deprecation-related, fix the call site.
+> 3) If it is environment-specific, stabilize it.
+> 4) Do NOT silence warnings globally.
+> 5) Keep changes minimal and scoped.
+> 6) Re-run full suite and confirm clean output.
+
+---
+
+### 🟣 PURPLE — Dependency / import error (collection failure)
+
+Send this **verbatim** before doing anything else:
+
+> A test fails during collection (import error).
+> 1) Confirm full dependency installation using:
+>    pip install -r requirements.txt -c constraints.txt
+> 2) Verify the missing module explicitly via python -c import.
+> 3) Fix dependency resolution only.
+> 4) Do not modify application logic.
+> 5) Re-run full suite.
+
+---
+
+### ⚖️ Key Rule — never break this
+
+> **Fix root cause. Not symptom. Not workaround. Not silence.**
+
+---
+
+### 🧠 Mental model — category → action (exhaustive)
+
+| Category | Action |
+|---|---|
+| Code regression | Fix the code |
+| Test bug | Fix the test |
+| Env / deps | Fix the environment |
+
+Nothing else. No other action is valid.
+
+Banned responses when tests fail:
+- Random refactor of surrounding code
+- Mass changes across files
+- `pytest.mark.skip` / `xfail` without documented justification
+- Scope creep ("while I'm here...")
+
+---
+
+### 📋 Test Creation / Update Rule
+
+When any task touches a module:
+
+1. Check whether a test file for that module exists.
+2. If **no test file exists** → create `tests/test_<module_name>.py` with:
+   - At minimum: one happy-path test and one boundary/error test per public function.
+3. If a **test file exists** → check whether the changed logic is covered.
+   - If not → add tests for the new/changed behaviour.
+4. Never delete tests. If a test is wrong, fix it (not the other way around).
+5. After adding/updating tests: run `pytest` and confirm 100% green before delivering.
+
+---
+
 ## Architecture Notes
 
 ### Layered Architecture (bottom-up)
