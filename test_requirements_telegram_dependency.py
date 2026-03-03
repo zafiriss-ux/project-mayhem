@@ -20,6 +20,28 @@ BUILD_DEPENDENCIES = {
     "pywin32==306; sys_platform == 'win32'",
 }
 
+REMOVED_LEGACY_DEPENDENCIES = {
+    "scikit-learn==1.4.2",
+    "pandas==2.2.1",
+    "pyyaml==6.0.1",
+}
+
+
+def _read_dependency_lines(path: str) -> set[str]:
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    dependencies: set[str] = set()
+
+    for raw_line in lines:
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        dependency = stripped.split("#", maxsplit=1)[0].strip()
+        if dependency:
+            dependencies.add(dependency)
+
+    return dependencies
+
 
 def test_telegram_dependency_matches_telebot_import():
     """requirements.txt must install the package that provides `import telebot`."""
@@ -30,26 +52,19 @@ def test_telegram_dependency_matches_telebot_import():
 
 
 def test_runtime_requirements_are_runtime_only():
-    requirements = Path("requirements.txt").read_text(encoding="utf-8")
+    runtime_dependencies = _read_dependency_lines("requirements.txt")
 
-    for dep in RUNTIME_DEPENDENCIES:
-        assert dep in requirements
+    assert runtime_dependencies == RUNTIME_DEPENDENCIES
 
-    for dep in DEV_DEPENDENCIES | BUILD_DEPENDENCIES:
-        assert dep not in requirements
-
-    for removed in {"scikit-learn==1.4.2", "pandas==2.2.1", "pyyaml==6.0.1"}:
-        assert removed not in requirements
+    for removed in REMOVED_LEGACY_DEPENDENCIES:
+        assert removed not in runtime_dependencies
 
 
 def test_dev_and_build_requirements_are_split_correctly():
-    dev_requirements = Path("requirements-dev.txt").read_text(encoding="utf-8")
-    build_requirements = Path("requirements-build.txt").read_text(encoding="utf-8")
+    dev_requirements = _read_dependency_lines("requirements-dev.txt")
+    build_requirements = _read_dependency_lines("requirements-build.txt")
 
-    for dep in DEV_DEPENDENCIES:
-        assert dep in dev_requirements
-        assert dep not in build_requirements
+    assert dev_requirements == DEV_DEPENDENCIES
+    assert build_requirements == BUILD_DEPENDENCIES
 
-    for dep in BUILD_DEPENDENCIES:
-        assert dep in build_requirements
-        assert dep not in dev_requirements
+    assert dev_requirements.isdisjoint(build_requirements)
