@@ -9,6 +9,8 @@ PHASE_A_TARGET_FOLDERS = [
     "titan/integrations",
     "titan/orchestration",
     "titan/features",
+    "titan/ui",
+    "launcher",
 ]
 
 PHASE_B_BLOCKING_TARGETS = [
@@ -50,3 +52,11 @@ def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
 
     for folder in PHASE_B_BLOCKING_TARGETS:
         assert folder in content
+
+
+def test_phase_b_excludes_launcher_until_clean() -> None:
+    workflow = ROOT / ".github/workflows/ci.yml"
+    content = workflow.read_text(encoding="utf-8")
+
+    phase_b_section = content.split("BLOCKING_TARGETS=(", maxsplit=1)[1].split(")", maxsplit=1)[0]
+    assert "launcher" not in phase_b_section
