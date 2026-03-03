@@ -1,6 +1,5 @@
 """Lactate Threshold Logic - LT1/LT2 Estimation without Lactate Meter"""
 
-from typing import Dict
 
 
 class LactateLogic:

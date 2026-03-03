@@ -1,6 +1,5 @@
 """TSB (Training Stress Balance) Engine - Performance Management"""
 
-from typing import List, Optional, Tuple
 
 
 class TSBEngine:

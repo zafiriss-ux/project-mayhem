@@ -1,6 +1,5 @@
 """RCP Engine - Respiratory Compensation Point Analysis"""
 
-from typing import Dict, List, Optional, Tuple
 
 
 class RCPEngine:
@@ -43,7 +42,7 @@ class RCPEngine:
 
         # Calculate HR:Pace efficiency for each segment
         hr_pace_ratios = []
-        for hr, pace in zip(hr_segments, pace_segments_sec):
+        for hr, pace in zip(hr_segments, pace_segments_sec, strict=False):
             speed = 1000.0 / pace  # m/s
             ratio = hr / speed  # HR per m/s (higher = less efficient)
             hr_pace_ratios.append(ratio)

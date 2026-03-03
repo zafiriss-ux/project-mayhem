@@ -11,7 +11,6 @@ Traditional metrics (VO2max, FTP, LT) are measured FRESH.
 But races are won by those who maintain performance when FATIGUED.
 """
 
-from typing import List, Optional, Tuple
 
 
 class DurabilityEngine:

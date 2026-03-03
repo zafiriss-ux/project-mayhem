@@ -1,7 +1,6 @@
 """Intensity Governor — graduated GREEN/YELLOW/RED enforcement."""
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass

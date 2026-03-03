@@ -17,7 +17,6 @@ Scientific Basis:
 """
 
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 
 class CriticalSpeedEngine:
@@ -69,7 +68,7 @@ class CriticalSpeedEngine:
         sum_x = sum(xs)
         sum_y = sum(ys)
         sum_xx = sum(x * x for x in xs)
-        sum_xy = sum(x * y for x, y in zip(xs, ys))
+        sum_xy = sum(x * y for x, y in zip(xs, ys, strict=False))
 
         denom = n * sum_xx - sum_x * sum_x
         if denom == 0:
@@ -248,8 +247,6 @@ class CriticalSpeedTracker:
         Returns:
             Flat-equivalent pace in sec/km. Floored at 60 s/km (≈16.7 km/h).
         """
-        if gradient_pct >= 0:
-            adjustment = gradient_pct * 10.0
-        else:
-            adjustment = gradient_pct * 5.0  # downhill: smaller benefit
+        adjustment = gradient_pct * 10.0 if gradient_pct >= 0 else gradient_pct * 5.0
+        # downhill: smaller benefit
         return max(60.0, pace_sec_per_km - adjustment)

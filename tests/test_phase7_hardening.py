@@ -534,7 +534,7 @@ class TestWeatherApiProviderContract(unittest.TestCase):
             }
             return m
 
-        with patch("requests.get", side_effect=fake_get):
+        with patch("titan.integrations.weather_api._http_get", side_effect=fake_get):
             api._fetch_open_meteo()
 
         for call in calls:

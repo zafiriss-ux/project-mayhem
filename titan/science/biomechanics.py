@@ -1,6 +1,5 @@
 """Biomechanics Analysis - Cadence, Stride, Form"""
 
-from typing import List, Tuple
 
 
 class BiomechanicsAnalysis:

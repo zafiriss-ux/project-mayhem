@@ -5,7 +5,6 @@ Tracks training history to detect patterns and adaptations.
 """
 
 from datetime import datetime
-from typing import List, Optional
 
 
 class AdaptiveMemory:

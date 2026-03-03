@@ -16,7 +16,6 @@ First half EF vs Second half EF
 >10% = poor aerobic base or glycogen depleted
 """
 
-from typing import List, Optional, Tuple
 
 
 class EfficiencyEngine:

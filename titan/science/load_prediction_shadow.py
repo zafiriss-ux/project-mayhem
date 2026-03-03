@@ -5,8 +5,8 @@ It produces a forward-looking load estimate for observability only,
 so ML paths can be validated before any athlete-facing activation.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
 
 from titan.science.ml_safety import enforce_ml_kill_switch
 

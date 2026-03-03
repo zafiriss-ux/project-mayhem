@@ -15,7 +15,6 @@ Key Findings:
 """
 
 import math
-from typing import List, Optional, Tuple
 
 
 class HRVGuidedEngine:

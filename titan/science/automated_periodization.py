@@ -4,8 +4,8 @@ This module is intentionally suggest-only. It proposes a conservative weekly
 microcycle adjustment while preserving human confirmation before any apply step.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Dict, Mapping
 
 from titan.science.ml_safety import enforce_ml_kill_switch
 
