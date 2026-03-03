@@ -162,21 +162,21 @@ class TestEngineInstantiation:
         assert ACWREngine() is not None
 
     def test_weekly_planner_instantiates(self):
+        from titan.features.weekly_planner import WeeklyPlanGenerator
+        from titan.science.acwr_engine import ACWREngine
         from titan.science.hrv_engine import HRVGuidedEngine
         from titan.science.tsb_engine import TSBEngine
-        from titan.science.acwr_engine import ACWREngine
-        from titan.features.weekly_planner import WeeklyPlanGenerator
         p = WeeklyPlanGenerator(HRVGuidedEngine(), TSBEngine(), ACWREngine())
         assert p is not None
 
     def test_optimal_time_calculator_instantiates(self):
-        from titan.integrations.weather_api import WeatherAPI
         from titan.features.optimal_time_calculator import OptimalTimeCalculator
+        from titan.integrations.weather_api import WeatherAPI
         assert OptimalTimeCalculator(WeatherAPI()) is not None
 
     def test_nutrition_optimizer_instantiates(self):
-        from titan.science.glycogen_model import GlycogenModel
         from titan.features.nutrition_optimizer import NutritionOptimizer
+        from titan.science.glycogen_model import GlycogenModel
         assert NutritionOptimizer(GlycogenModel()) is not None
 
     def test_database_manager_instantiates(self, tmp_path):
@@ -231,14 +231,14 @@ class TestRegisterTelegramCallbacks:
     @pytest.fixture
     def minimal_ctx(self, tmp_path):
         from titan.core.database import DatabaseManager
-        from titan.science.hrv_engine import HRVGuidedEngine
-        from titan.science.tsb_engine import TSBEngine
+        from titan.features.nutrition_optimizer import NutritionOptimizer
+        from titan.features.optimal_time_calculator import OptimalTimeCalculator
+        from titan.features.weekly_planner import WeeklyPlanGenerator
+        from titan.orchestration.daily_coach import DailyCoach
         from titan.science.acwr_engine import ACWREngine
         from titan.science.glycogen_model import GlycogenModel
-        from titan.features.weekly_planner import WeeklyPlanGenerator
-        from titan.features.optimal_time_calculator import OptimalTimeCalculator
-        from titan.features.nutrition_optimizer import NutritionOptimizer
-        from titan.orchestration.daily_coach import DailyCoach
+        from titan.science.hrv_engine import HRVGuidedEngine
+        from titan.science.tsb_engine import TSBEngine
 
         db = DatabaseManager(str(tmp_path / "cb_test.db"))
         hrv = HRVGuidedEngine()
