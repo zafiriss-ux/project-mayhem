@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
@@ -45,3 +46,39 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     alerts = [e for e in events if e.get("flow") == "garmin_sync" and e.get("action") == "slo_alert"]
     assert alerts
     assert alerts[0]["slo_key"] == "garmin_sync_timeout"
+
+
+def test_sync_hrv_logs_skipped_malformed_records(caplog):
+    class _Client:
+        def get_hrv_data(self, day):
+            today = datetime.now().strftime("%Y-%m-%d")
+            if day == today:
+                raise ValueError("bad payload")
+            return {"hrvSummary": {"weeklyAvg": 46.2, "status": "BALANCED"}}
+
+    caplog.set_level(logging.WARNING)
+    sync = GarminSync(email="x", password="y")
+    sync.client = _Client()
+    sync.is_connected = True
+
+    out = sync.sync_hrv(days_back=2)
+
+    assert len(out) == 1
+    assert out[0]["rmssd"] == 46.2
+    assert any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
+
+
+def test_sync_hrv_ignores_missing_values_without_logging_warning(caplog):
+    class _Client:
+        def get_hrv_data(self, day):
+            return {"hrvSummary": {"status": "UNKNOWN"}}
+
+    caplog.set_level(logging.WARNING)
+    sync = GarminSync(email="x", password="y")
+    sync.client = _Client()
+    sync.is_connected = True
+
+    out = sync.sync_hrv(days_back=2)
+
+    assert out == []
+    assert not any("Skipping malformed HRV record" in r.getMessage() for r in caplog.records)
