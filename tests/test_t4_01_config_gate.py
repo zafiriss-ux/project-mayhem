@@ -12,29 +12,37 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
 
-
-def test_ruff_blocking_gate_is_config_only() -> None:
+def _get_blocking_targets() -> list[str]:
     content = WORKFLOW.read_text(encoding="utf-8")
 
-    match = re.search(r"BLOCKING_FOLDERS=\((.*?)\)", content, flags=re.DOTALL)
-    assert match, "BLOCKING_FOLDERS section is missing in CI workflow"
+    match = re.search(r"BLOCKING_TARGETS=\((.*?)\)", content, flags=re.DOTALL)
+    assert match, "BLOCKING_TARGETS section is missing in CI workflow"
 
     blocking_section = match.group(1)
-    folders = [line.strip() for line in blocking_section.splitlines() if line.strip()]
-    assert folders == ["titan/config"], f"Expected config-only blocking gate, got: {folders}"
+    return [line.strip() for line in blocking_section.splitlines() if line.strip()]
 
 
+def test_ruff_blocking_gate_includes_promoted_core_targets() -> None:
+    targets = _get_blocking_targets()
+    assert targets == [
+        "titan/config",
+        "titan/core",
+        "titan/science/governance_contracts.py",
+        "titan/science/governance_engine.py",
+    ], f"Unexpected blocking targets: {targets}"
 
-def test_titan_config_is_ruff_clean() -> None:
+
+def test_blocking_targets_are_ruff_clean() -> None:
     if importlib.util.find_spec("ruff") is None:
         pytest.skip("ruff is not installed in this environment")
 
-    cmd = [sys.executable, "-m", "ruff", "check", "titan/config"]
+    targets = _get_blocking_targets()
+    cmd = [sys.executable, "-m", "ruff", "check", *targets]
 
     proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
 
     assert proc.returncode == 0, (
-        "Expected titan/config to be Ruff-clean for blocking CI gate.\n"
+        "Expected CI blocking Ruff targets to be clean.\n"
         f"Command: {cmd!r}\n"
         f"stdout:\n{proc.stdout}\n"
         f"stderr:\n{proc.stderr}"
