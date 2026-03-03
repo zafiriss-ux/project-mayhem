@@ -18,19 +18,18 @@ Usage:
     TITAN.exe                              # PyInstaller bundle (future)
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add project root to path so we can import titan
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 
 from launcher import __version__
-from launcher.validator import validate_environment, get_data_directory
-from launcher.wizard import ensure_config, load_env, env_exists
 from launcher.errors import TitanError, translate_kernel_error
 from launcher.logger import init_launcher_logging
-
+from launcher.validator import get_data_directory, validate_environment
+from launcher.wizard import ensure_config, env_exists, load_env
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Argument Redaction
@@ -172,8 +171,9 @@ def main() -> int:
 
     # Debug: Print path diagnostics (frozen-safe troubleshooting)
     if debug_mode:
-        from launcher.paths import get_path_info
         import json
+
+        from launcher.paths import get_path_info
         print("\n" + "="*70)
         print("DEBUG: Path Diagnostics (Frozen-Safe Resolution)")
         print("="*70)

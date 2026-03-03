@@ -15,7 +15,6 @@ References:
 import sys
 from pathlib import Path
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Frozen Detection
 # ══════════════════════════════════════════════════════════════════════════════
@@ -112,9 +111,7 @@ def validate_paths() -> bool:
 
         # Check launcher module
         launcher_module = bundle_dir / 'launcher'
-        if not launcher_module.exists() and not is_frozen():
-            return False
-        return True
+        return is_frozen() or launcher_module.exists()
 
     except Exception:
         return False
