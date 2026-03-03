@@ -34,10 +34,11 @@ def test_phase_a_covers_t4_01_target_folders() -> None:
         assert folder in content
 
 
-def test_phase_b_includes_core_in_blocking_gate() -> None:
+def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
 
     assert "BLOCKING_TARGETS=(" in content
     assert "titan/config" in content
     assert "titan/core" in content
+    assert "titan/integrations" in content

@@ -9,3 +9,4 @@ numpy==1.26.4          # Data processing
 garminconnect==0.2.13  # Garmin Connect API (activity sync)
 requests==2.32.4       # HTTP client (Garmin, weather, webhooks)
 pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
+hypothesis==6.151.9           # Property-based tests used by test suite
