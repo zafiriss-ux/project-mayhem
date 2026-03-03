@@ -57,11 +57,13 @@ jobs:
 
       - name: Run Ruff Phase B blocking gate (clean folders only)
         run: |
-          BLOCKING_FOLDERS=(
+          BLOCKING_TARGETS=(
             titan/config
+            titan/science/governance_contracts.py
+            titan/science/governance_engine.py
           )
 
-          python -m ruff check "${BLOCKING_FOLDERS[@]}"
+          python -m ruff check "${BLOCKING_TARGETS[@]}"
 
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
