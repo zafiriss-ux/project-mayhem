@@ -4,9 +4,8 @@
 import json
 import logging
 from dataclasses import asdict, is_dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from titan.science.governance_contracts import validate_vo2_eligibility
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
@@ -19,6 +18,7 @@ from titan.config.thresholds import (
     VO2_MIN_DAYS_SINCE_LAST,
     VO2_READINESS_MIN,
 )
+from titan.science.governance_contracts import validate_vo2_eligibility
 
 _log = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class GovernanceEngine:
         'REST': 'REST',
     }
 
-    def check_override_lockdown(self, db: Any, threshold: Optional[float] = None) -> Dict:
+    def check_override_lockdown(self, db: Any, threshold: float | None = None) -> dict:
         effective_threshold = threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
 
         def _classify_override_lockdown_failure(exc: Exception) -> str:
@@ -95,7 +95,7 @@ class GovernanceEngine:
             }
         return {'locked': False, 'ratio': ratio, 'max_zone': 5, 'disabled_sessions': []}
 
-    def check_cs_confidence_lock(self, cs_tracker: Any, threshold: Optional[float] = None) -> Dict:
+    def check_cs_confidence_lock(self, cs_tracker: Any, threshold: float | None = None) -> dict:
         effective_threshold = threshold if threshold is not None else self.CS_CONFIDENCE_THRESHOLD
         confidence = getattr(cs_tracker, 'confidence', 1.0)
         if confidence < effective_threshold:
@@ -112,7 +112,7 @@ class GovernanceEngine:
         return {'locked': False, 'confidence': confidence}
 
     @staticmethod
-    def _to_dict_maybe(value: Any) -> Dict:
+    def _to_dict_maybe(value: Any) -> dict:
         if isinstance(value, dict):
             return value
         if value is None:
@@ -128,8 +128,8 @@ class GovernanceEngine:
             'audit': getattr(value, 'audit', {}),
         }
 
-    def _evaluate_2of4_indicators(self, context: Dict) -> Tuple[int, List[str]]:
-        indicators: List[str] = []
+    def _evaluate_2of4_indicators(self, context: dict) -> tuple[int, list[str]]:
+        indicators: list[str] = []
 
         today_hrv = context.get('today_hrv')
         baseline_hrv = context.get('baseline_hrv')
@@ -168,7 +168,7 @@ class GovernanceEngine:
 
         return len(indicators), indicators
 
-    def _check_hard_stops(self, session_plan: Dict, context: Dict) -> List[Dict]:
+    def _check_hard_stops(self, session_plan: dict, context: dict) -> list[dict]:
         """Evaluate hard-stop safety gates in DECISION_MODEL canonical order.
 
         Gate order (per DECISION_MODEL §4):
@@ -182,7 +182,7 @@ class GovernanceEngine:
           IF hrv_collapse OR rhr_collapse → RED hard stop
         Either signal alone is sufficient; dual collapse fires both.
         """
-        reasons: List[Dict] = []
+        reasons: list[dict] = []
 
         # H1 — Injury / Medical Flag (Gate 1: evaluated first, before all others)
         if bool(context.get('injury_flag', False)):
@@ -268,7 +268,7 @@ class GovernanceEngine:
 
         return reasons
 
-    def _check_vo2_eligibility(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
+    def _check_vo2_eligibility(self, session_plan: dict, context: dict) -> dict | None:
         session_type = str(session_plan.get('session_type', '')).upper()
         zone = int(session_plan.get('zone', session_plan.get('max_zone', 0)) or 0)
         is_vo2_session = session_type in self._VO2_SESSIONS or (session_type == 'INTERVALS' and zone == 5)
@@ -279,7 +279,7 @@ class GovernanceEngine:
         readiness_raw = context.get('readiness_score', 100)
         glycogen_debt_raw = context.get('glycogen_debt', 0.0)
         fatigue_level_raw = context.get('fatigue_level', 'LOW')
-        days_since_last_vo2 = context.get('days_since_last_vo2', None)
+        days_since_last_vo2 = context.get('days_since_last_vo2')
 
         acwr_invalid = False
         try:
@@ -306,9 +306,9 @@ class GovernanceEngine:
         valid_fatigue_levels = {'LOW', 'MEDIUM', 'HIGH'}
         fatigue_level_invalid = fatigue_level not in valid_fatigue_levels
 
-        failed: List[str] = []
-        reasons: List[str] = []
-        details: List[Dict[str, Any]] = []
+        failed: list[str] = []
+        reasons: list[str] = []
+        details: list[dict[str, Any]] = []
 
         # V1: ACWR in [VO2_ACWR_MIN, VO2_ACWR_MAX]
         if acwr_invalid:
@@ -381,7 +381,7 @@ class GovernanceEngine:
             details = sorted(details, key=lambda item: order.get(str(item.get('code')), 999))
             failed = [item['code'] for item in details]
             session_plan['session_type'] = 'TEMPO'
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 'eligible': False,
                 'failed_conditions': failed,
                 'original_session': original,
@@ -417,7 +417,7 @@ class GovernanceEngine:
         _gate_event('VO2_ELIGIBILITY', 'PASS', original_session=original)
         return result
 
-    def _check_fueling_gate(self, session_plan: Dict, context: Dict) -> Optional[Dict]:
+    def _check_fueling_gate(self, session_plan: dict, context: dict) -> dict | None:
         session_type = str(session_plan.get('session_type', '')).upper()
         duration = int(session_plan.get('duration_min', context.get('planned_duration_min', 0)) or 0)
         fueling_confirmed = bool(context.get('fueling_confirmed', False))
@@ -427,7 +427,7 @@ class GovernanceEngine:
 
         if session_type in {'HAMMER', 'RACE'}:
             session_plan['session_type'] = 'TEMPO'
-            result: Dict[str, Any] = {
+            result: dict[str, Any] = {
                 'action': 'LOCK',
                 'phase': 3,
                 'reason': f'{session_type} session without confirmed fueling: unsafe glycogen depletion risk',
@@ -486,11 +486,11 @@ class GovernanceEngine:
 
         return None
 
-    def apply_constraints(self, session_plan: Dict, context: Dict) -> Dict:
+    def apply_constraints(self, session_plan: dict, context: dict) -> dict:
         db = context.get('db')
         cs_tracker = context.get('cs_tracker')
         afi_constr = context.get('afi_constraints', {})
-        applied_locks: List[str] = []
+        applied_locks: list[str] = []
 
         # APL injections — adaptive thresholds and gate priority vector.
         # If APL was not invoked upstream, these default to {} and all gate
@@ -614,10 +614,10 @@ class GovernanceEngine:
 
     def get_governance_report(
         self,
-        db: Optional[Any] = None,
-        cs_tracker: Optional[Any] = None,
-        afi_constraints: Optional[Dict] = None,
-    ) -> Dict:
+        db: Any | None = None,
+        cs_tracker: Any | None = None,
+        afi_constraints: dict | None = None,
+    ) -> dict:
         return {
             'override_lockdown': self.check_override_lockdown(db) if db else {'locked': False},
             'cs_confidence_lock': self.check_cs_confidence_lock(cs_tracker) if cs_tracker else {'locked': False},

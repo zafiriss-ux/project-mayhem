@@ -5,14 +5,13 @@ These contracts enforce that governance outputs have a stable, predictable shape
 before being consumed by orchestration (DailyCoach) and downstream (Telegram payload).
 """
 
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Contract: vo2_eligibility
 # ─────────────────────────────────────────────────────────────────────────────
 
-_VO2_REQUIRED_KEYS: List[str] = [
+_VO2_REQUIRED_KEYS: list[str] = [
     'eligible',
     'failed_conditions',
     'original_session',
@@ -29,7 +28,7 @@ class ContractViolation(ValueError):
     """Raised when a governance output violates its declared contract."""
 
 
-def assert_vo2_eligibility_contract(result: Dict[str, Any]) -> None:
+def assert_vo2_eligibility_contract(result: dict[str, Any]) -> None:
     """
     Assert that a vo2_eligibility dict satisfies the governance output contract.
 
@@ -111,7 +110,7 @@ def assert_vo2_eligibility_contract(result: Dict[str, Any]) -> None:
         )
 
 
-def validate_vo2_eligibility(result: Optional[Dict[str, Any]]) -> Optional[str]:
+def validate_vo2_eligibility(result: dict[str, Any] | None) -> str | None:
     """
     Validate a vo2_eligibility dict against the contract.
 
