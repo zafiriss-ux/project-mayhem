@@ -1,6 +1,6 @@
+import json
 import math
 from datetime import datetime, timedelta
-import json
 from pathlib import Path
 
 # --- ΕΛΕΓΧΟΣ ΒΙΒΛΙΟΘΗΚΩΝ ---
@@ -17,8 +17,8 @@ except ImportError:
     REQUESTS_AVAILABLE = False
 
 try:
-    from sklearn.ensemble import RandomForestRegressor  # noqa: F401
     import numpy as np  # noqa: F401
+    from sklearn.ensemble import RandomForestRegressor  # noqa: F401
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -92,12 +92,13 @@ except ImportError:
 # ============================================================================
 # CRITICAL ENHANCEMENTS
 # ============================================================================
-from sklearn.preprocessing import StandardScaler
 import logging
-from logging.handlers import RotatingFileHandler
 import os
 import random
 import sqlite3
+from logging.handlers import RotatingFileHandler
+
+from sklearn.preprocessing import StandardScaler
 
 # Logging setup
 if not os.path.exists('logs'):
@@ -374,7 +375,7 @@ class NutritionScience:
     def calculate_energy_availability(energy_intake_kcal, exercise_ee_kcal, ffm_kg):
         """
         Energy Availability = (EI - EEE) / FFM
-        
+
         Thresholds (Loucks 2011):
         - EA less than 30: RED-S risk
         - EA 30-45: Suboptimal
@@ -552,10 +553,7 @@ class CNSReadinessTest:
         if self.baselines["grip_strength"]:
             percent = (force_kg / self.baselines["grip_strength"]) * 100
 
-            if percent >= 95:
-                status = "[OK] STRENGTH OPTIMAL"
-            else:
-                status = "[WARN] STRENGTH REDUCED"
+            status = "[OK] STRENGTH OPTIMAL" if percent >= 95 else "[WARN] STRENGTH REDUCED"
 
             return {"test": test, "baseline": self.baselines["grip_strength"], "percent": round(percent, 1), "status": status}
 
@@ -578,10 +576,7 @@ class CNSReadinessTest:
         if self.baselines["vertical_jump"]:
             percent = (height_cm / self.baselines["vertical_jump"]) * 100
 
-            if percent >= 95:
-                status = "[OK] POWER OPTIMAL"
-            else:
-                status = "[WARN] POWER REDUCED"
+            status = "[OK] POWER OPTIMAL" if percent >= 95 else "[WARN] POWER REDUCED"
 
             return {"test": test, "baseline": self.baselines["vertical_jump"], "percent": round(percent, 1), "status": status}
 
@@ -995,7 +990,7 @@ class AdaptiveMemory:
     def mechanical_load_risk(self, easy_pace_today_sec, easy_pace_baseline_sec):
         """
         Proxy:
-        - soreness trend 3 
+        - soreness trend 3
         - pace drop  easy runs
         """
         risk_flags = []
@@ -1031,7 +1026,7 @@ class CriticalSpeedEngine:
         sum_x = sum(xs)
         sum_y = sum(ys)
         sum_xx = sum(x * x for x in xs)
-        sum_xy = sum(x * y for x, y in zip(xs, ys))
+        sum_xy = sum(x * y for x, y in zip(xs, ys, strict=False))
         denom = n * sum_xx - sum_x * sum_x
         if denom == 0:
             return None, None
@@ -1405,12 +1400,12 @@ class RaceWeekEngine:
 class ACWREngine:
     """
     Acute:Chronic Workload Ratio - Gold standard for injury prevention
-    
+
     Scientific Basis:
     - Gabbett, T.J. (2016). Br J Sports Med, 50(5), 273-280.
     - Malone, S. et al. (2017). J Sci Med Sport, 20(6), 561-565.
     - Meta-analysis: 28,000+ athletes
-    
+
     Key Findings:
     - ACWR 0.8-1.3: Optimal adaptation zone
     - ACWR >1.5: 2-4x increase in injury risk
@@ -1421,11 +1416,11 @@ class ACWREngine:
     def calculate_acwr(acute_load_7d, chronic_load_28d_avg):
         """
         ACWR = Acute Load (7 days) / Chronic Load (28-day average)
-        
+
         Args:
             acute_load_7d: Sum of last 7 days load
             chronic_load_28d_avg: Average daily load over 28 days
-        
+
         Returns:
             (acwr_value, status, recommendation)
         """
@@ -1470,17 +1465,17 @@ class ACWREngine:
 class TSBEngine:
     """
     Training Stress Balance - The "Performance Management Chart"
-    
+
     Scientific Basis:
     - Banister, E.W. (1975). Impulse-Response Model
     - Busso, T. (2003). Med Sci Sports Exerc, 35(7), 1188-1195.
     - Coggan, A.R. (2010). Training and Racing with a Power Meter
-    
+
     Components:
     - CTL (Chronic Training Load): 42-day exponential average = "Fitness"
     - ATL (Acute Training Load): 7-day exponential average = "Fatigue"
     - TSB (Training Stress Balance): CTL - ATL = "Form"
-    
+
     Race Day Target: TSB = +5 to +10 (fresh but fit)
     """
 
@@ -1585,21 +1580,21 @@ class TSBEngine:
 class HRVGuidedEngine:
     """
     Adaptive training based on Heart Rate Variability
-    
+
     Scientific Basis:
     - Kiviniemi, A.M. et al. (2007). Eur J Appl Physiol, 101(6), 743-751.
     - Plews, D.J. et al. (2013). Int J Sports Physiol Perform, 8(5), 512-521.
     - Vesterinen, V. et al. (2016). Med Sci Sports Exerc, 48(7), 1347-1354.
-    
+
     Key Findings:
     - HRV-guided: +8.3% VO2max vs +5.6% predefined training
     - Fewer overtraining symptoms
     - Better psychological adherence
-    
+
     Protocol (Kiviniemi):
     - HRV  baseline: Proceed with planned intensity
     - HRV < baseline: Downgrade to easy/rest
-    
+
     Advanced (Plews - elite athletes):
     - HRV < baseline - 1 SD: Modify session
     - HRV < baseline - 2 SD: Force rest
@@ -1612,7 +1607,7 @@ class HRVGuidedEngine:
     def add_hrv_measurement(self, date, rmssd):
         """
         Add morning HRV measurement (rMSSD in ms)
-        
+
         rMSSD = Root Mean Square of Successive Differences
         Standard HRV metric for training readiness
         """
@@ -1637,7 +1632,7 @@ class HRVGuidedEngine:
     def get_training_recommendation(self, today_hrv, planned_session):
         """
         Apply HRV-guided decision rules
-        
+
         Returns: (recommended_session, explanation, confidence)
         """
         baseline_result = self.calculate_baseline(self.baseline_days)
@@ -1675,7 +1670,7 @@ class HRVGuidedEngine:
     def calculate_rmssd_from_rr_intervals(rr_intervals_ms):
         """
         Calculate rMSSD from RR intervals (for those with HRV monitors)
-        
+
         rMSSD = sqrt(mean(successive_differences))
         """
         if len(rr_intervals_ms) < 2:
@@ -1724,16 +1719,16 @@ class HRVGuidedEngine:
 class DurabilityEngine:
     """
     Durability = How well you maintain performance when fatigued
-    
+
     Scientific Basis:
     - Maunder, E. et al. (2021). Sports Med, 51, 1619-1628.
     - Spragg, J. et al. (2023). Med Sci Sports Exerc, 55(12), 2241-2250.
     - Clark et al. (2019). "Durability: A new dimension of fitness"
-    
+
     Key Insight:
     Traditional metrics (VO2max, FTP, LT) are measured FRESH.
     But races are won by those who maintain performance when FATIGUED.
-    
+
     Example:
     Athlete A: VO2max 70  drops to 60 after 2h (-14%)
     Athlete B: VO2max 65  drops to 62 after 2h (-5%)
@@ -1744,11 +1739,11 @@ class DurabilityEngine:
     def assess_pace_durability(km_splits, target_pace_sec):
         """
         Analyze pace decay across a long run
-        
+
         Args:
             km_splits: List of km split times (seconds)
             target_pace_sec: Target pace per km
-        
+
         Returns:
             (decay_percentage, status, recommendation)
         """
@@ -1788,14 +1783,14 @@ class DurabilityEngine:
     def calculate_durability_index(fresh_performance, fatigued_performance):
         """
         Durability Index = (Fresh Performance / Fatigued Performance)  100
-        
+
         Higher = better durability
-        
+
         Example:
         - Fresh 5K: 19:00 (3:48/km = 228 sec)
         - After 25K: 5K @ 20:00 (4:00/km = 240 sec)
         - DI = (228 / 240)  100 = 95%
-        
+
         Args:
             fresh_performance: Time in seconds (shorter = better)
             fatigued_performance: Time in seconds (shorter = better)
@@ -1868,16 +1863,16 @@ class DurabilityEngine:
 class EfficiencyEngine:
     """
     Efficiency Factor = Aerobic fitness proxy
-    
+
     Scientific Basis:
     - Friel, J. (2009). The Triathlete's Training Bible
     - Esteve-Lanao et al. (2005). Med Sci Sports Exerc (cardiac drift)
     - Lamberts, R.P. et al. (2011). Int J Sports Physiol Perform, 6(4), 461-473
-    
+
     Concept:
     EF = Speed / Heart Rate
     Higher EF = more aerobically efficient
-    
+
     Decoupling:
     First half EF vs Second half EF
     <5% = excellent aerobic fitness
@@ -1891,11 +1886,11 @@ class EfficiencyEngine:
     def calculate_efficiency_factor(avg_pace_sec_per_km, avg_hr):
         """
         EF = speed (m/s) / HR
-        
+
         Example:
         5:00/km = 3.33 m/s @ 150 HR
         EF = 3.33 / 150 = 0.0222
-        
+
         Higher = more efficient
         """
         if avg_hr == 0:
@@ -1911,9 +1906,9 @@ class EfficiencyEngine:
                             second_half_pace, second_half_hr):
         """
         Decoupling = (EF_second - EF_first) / EF_first  100
-        
+
         Negative = worsening efficiency (normal for long runs)
-        
+
         Interpretation (Friel 2009):
         <5%: Excellent aerobic fitness
         5-10%: Moderate drift (acceptable)
@@ -1982,13 +1977,13 @@ class EfficiencyEngine:
 class TRIMPEngine:
     """
     Training Impulse - HR-weighted load quantification
-    
+
     Scientific Basis:
     - Banister, E.W. (1975). Aust J Sports Med, 7(3), 57-61
     - Edwards, S. (1993). The Heart Rate Monitor Book
     - Manzi, V. et al. (2009). Int J Sports Physiol Perform, 4(3), 347-357
     - Lucia, A. et al. (2003). Med Sci Sports Exerc (validation in cyclists)
-    
+
     Why better than volume alone:
     10km @ 140 HR  10km @ 165 HR
     TRIMP captures this difference
@@ -1998,14 +1993,14 @@ class TRIMPEngine:
     def calculate_edwards_trimp(duration_min, avg_hr, max_hr):
         """
         Edwards (1993) TRIMP - Zone-based method
-        
+
         Zones:
         1 (50-60% HRmax): 1
       ** 2 (60-70% HRmax): 2
         3 (70-80% HRmax): 3
         4 (80-90% HRmax): 4
         5 (90-100% HRmax): 5
-        
+
         TRIMP = duration  zone_multiplier
         """
         if max_hr == 0:
@@ -2032,7 +2027,7 @@ class TRIMPEngine:
     def calculate_banister_trimp(duration_min, avg_hr, resting_hr, max_hr, gender='male'):
         """
         Banister (1975) TRIMP - Original exponential method
-        
+
         More complex but more accurate
         Uses exponential weighting for intensity
         """
@@ -2042,10 +2037,7 @@ class TRIMPEngine:
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
 
         # Gender-specific exponent (Banister)
-        if gender.lower() == 'male':
-            y = 1.92
-        else:  # female
-            y = 1.67
+        y = 1.92 if gender.lower() == 'male' else 1.67
 
         trimp = duration_min * hr_reserve * 0.64 * math.exp(y * hr_reserve)
 
@@ -2082,20 +2074,20 @@ class TRIMPEngine:
 class SessionRPEEngine:
     """
     Session RPE - Simple but effective load metric
-    
+
     Scientific Basis:
     - Foster, C. et al. (2001). J Strength Cond Res, 15(1), 109-115
     - Correlation with TRIMP: r = 0.85
     - Validation: 1000+ athletes across sports
-    
+
     Formula:
     sRPE = Duration (minutes)  RPE (1-10 scale)
-    
+
     Advantages:
     - No HR monitor needed
     - Captures all stress (heat, altitude, illness)
     - Works for all sports
-    
+
     30 min session notes taken 30 min post-session
     """
 
@@ -2103,7 +2095,7 @@ class SessionRPEEngine:
     def calculate_srpe(duration_min, session_rpe_1_10):
         """
         sRPE = Duration  RPE
-        
+
         Example:
         60 min run @ RPE 7 = 420 sRPE
         """
@@ -2150,12 +2142,12 @@ class SessionRPEEngine:
 class GlycogenModel:
     """
     Estimate glycogen cost and refueling needs
-    
+
     Scientific Basis:
     - Impellizzeri, F.M. & Marcora, S.M. (2007)
     - Bergstrm, J. & Hultman, E. (1967). Classic muscle biopsy studies
     - Burke, L.M. et al. (2011). Carbohydrate periodization
-    
+
     Normal glycogen stores: ~400-500g (muscle + liver)
     Depletion rate depends on intensity
     """
@@ -2164,12 +2156,12 @@ class GlycogenModel:
     def estimate_glycogen_depletion(duration_min, intensity_pct_vo2max):
         """
         Estimate glycogen cost of session
-        
+
         Depletion rates (approximate):
         <70% VO2max: ~1.0 g/min (mostly fat burning)
         70-85% VO2max: ~1.8 g/min (mixed fuel)
         >85% VO2max: ~2.5 g/min (glycogen-dependent)
-        
+
         Args:
             duration_min: Session duration
             intensity_pct_vo2max: Average intensity (% VO2max)
@@ -2204,7 +2196,7 @@ class GlycogenModel:
         """
         Daily carb needs based on training load
         Burke et al. (2011) guidelines
-        
+
         Args:
             weight_kg: Body weight
             training_load_category: "LIGHT", "MODERATE", "HIGH", "VERY_HIGH"
@@ -2579,23 +2571,21 @@ class EliteCoachingStrategy:
             traffic_light = "GREEN"
 
         # BLOCK LOGIC (The "No" state)
-        if traffic_light == "RED":
-            if session_type in ["INTERVALS", "TEMPO", "LONG_RUN", "HAMMER", "PROGRESSIVE"]:
-                return {
-                    "allowed": False,
-                    "action": "BLOCKED",
-                    "reason": f"HIGH RISK ({risk_score}%). Factors: {', '.join(factors)}",
-                    "override_session": "RECOVERY_EASY" # Forced downgrade
-                }
+        if traffic_light == "RED" and session_type in ["INTERVALS", "TEMPO", "LONG_RUN", "HAMMER", "PROGRESSIVE"]:
+            return {
+                "allowed": False,
+                "action": "BLOCKED",
+                "reason": f"HIGH RISK ({risk_score}%). Factors: {', '.join(factors)}",
+                "override_session": "RECOVERY_EASY" # Forced downgrade
+            }
 
-        if traffic_light == "ORANGE":
-            if session_type in ["INTERVALS", "HAMMER"]:
-                return {
-                    "allowed": True, # Allowed but warned
-                    "action": "CAUTION",
-                    "reason": f"MODERATE RISK ({risk_score}%). Consider downgrading intensity.",
-                    "override_session": None
-                }
+        if traffic_light == "ORANGE" and session_type in ["INTERVALS", "HAMMER"]:
+            return {
+                "allowed": True, # Allowed but warned
+                "action": "CAUTION",
+                "reason": f"MODERATE RISK ({risk_score}%). Consider downgrading intensity.",
+                "override_session": None
+            }
 
         return {
             "allowed": True,
@@ -2947,10 +2937,7 @@ class GradeAdjustedPace:
         if distance_km == 0:
             return pace_sec_per_km
         avg_gradient = (elevation_gain_m / (distance_km * 1000)) * 100
-        if avg_gradient > 0:
-            adjustment = 1 + (avg_gradient * 0.10)
-        else:
-            adjustment = 1 + (avg_gradient * 0.05)
+        adjustment = 1 + avg_gradient * 0.1 if avg_gradient > 0 else 1 + avg_gradient * 0.05
         return round(pace_sec_per_km / adjustment, 1)
 
     @staticmethod
@@ -3141,15 +3128,15 @@ class ProgressAnalyzer:
 class RCPEngine:
     """
     Respiratory Compensation Point - More precise than LTHR
-    
+
     Scientific Basis:
     - Meyer, T. et al. (2005). Int J Sports Med, 26(S1), S38-S48
     - Luca, A. et al. (2000). Med Sci Sports Exerc, 32(10), 1777-1782
     - Wasserman, K. et al. (1986). Original RCP concept
-    
+
     RCP = Point where lactate "explodes"
     More reliable than LT2/LTHR for threshold work
-    
+
     Field Test Protocol:
     - 5 min @ easy
     - 5 min @ moderate
@@ -3162,12 +3149,12 @@ class RCPEngine:
     def estimate_rcp_from_progressive_test(pace_segments_sec, hr_segments, rpe_segments):
         """
         Detect RCP from progressive field test
-        
+
         Args:
             pace_segments_sec: List of avg pace/km for each segment (seconds)
             hr_segments: List of avg HR for each segment
             rpe_segments: List of RPE for each segment
-        
+
         Returns:
             (rcp_hr, rcp_pace, rcp_rpe, explanation)
         """
@@ -3176,7 +3163,7 @@ class RCPEngine:
 
         # Calculate HR:Pace efficiency for each segment
         hr_pace_ratios = []
-        for hr, pace in zip(hr_segments, pace_segments_sec):
+        for hr, pace in zip(hr_segments, pace_segments_sec, strict=False):
             speed = 1000.0 / pace  # m/s
             ratio = hr / speed  # HR per m/s (higher = less efficient)
             hr_pace_ratios.append(ratio)
@@ -3206,7 +3193,7 @@ class RCPEngine:
     def rcp_training_zones(rcp_hr, max_hr):
         """
         Training zones based on RCP (Luca et al. 2000)
-        
+
         Zone 1: Below VT1 (easy aerobic)
         Zone 2: VT1 to RCP (tempo/threshold)
         Zone 3: Above RCP (VO2max/anaerobic)
@@ -3235,10 +3222,10 @@ class RCPEngine:
 class MLPerformancePredictor:
     """
     Machine Learning Performance Predictor
-    
+
     IMPORTANT: Provides predictions, NOT decisions
     Decision layer remains rule-based
-    
+
     Scientific Basis:
     - Mujika et al. (2014). ML in endurance prediction
     - Borresen & Lambert (2008). Training load models
@@ -3283,7 +3270,7 @@ class MLPerformancePredictor:
     def predict_performance(self, ctl, atl, hrv_avg, sleep_avg, recent_pace):
         """
         Predict race performance
-        
+
         Returns:
             (predicted_time_sec, lower_bound, upper_bound, confidence)
         """
@@ -3393,7 +3380,7 @@ class GeneticOptimization:
         selected = []
         for _ in range(self.pop_size):
             # Επιλογή 3 τυχαίων και κράτημα του καλύτερου
-            candidates = random.sample(list(zip(population, fitnesses)), 3)
+            candidates = random.sample(list(zip(population, fitnesses, strict=False)), 3)
             winner = min(candidates, key=lambda x: x[1])[0]
             selected.append(winner)
         return selected
@@ -3792,11 +3779,11 @@ class TitanSystem:
         # Baselines for ACWR & TRIMP (will be set after initial logging)
         self.chronic_load_baseline = None
         self.trimp_baseline = None
-	# --- v48 PROFESSIONAL ENGINES ---
+        # --- v48 PROFESSIONAL ENGINES ---
         self.pacing_engine = RacePacingStrategy()
         self.recovery_engine = RecoveryScoreEngine()
         self.sync_engine = WearableSync()
-	# --- v49 ELITE ENGINES ---
+        # --- v49 ELITE ENGINES ---
         self.gear_mgr = EquipmentManager()
         self.coach_brain = EliteCoachingStrategy()
         # --- v50 ULTRA FEATURES (ADDONS) ---
@@ -4285,10 +4272,7 @@ class TitanSystem:
         print("Log today's session to track CNS load.")
         try:
             date_str = input("Date (YYYY-MM-DD) [Enter for today]: ").strip()
-            if not date_str:
-                date_obj = datetime.now()
-            else:
-                date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            date_obj = datetime.now() if not date_str else datetime.strptime(date_str, "%Y-%m-%d")
 
             session_type = input("Session type (TEMPO/INTERVALS/LONG/EASY): ").upper()
             has_strides = input("Did session include strides? (y/n): ").lower() == 'y'
@@ -5325,7 +5309,7 @@ class DatabaseManager:
     """
     Permanent memory system for TITAN
     Stores all training history, daily metrics, gear usage, and PRs
-    
+
     Tables:
     - daily_metrics: Morning check-in data
     - training_log: Complete training history
@@ -5425,7 +5409,7 @@ class DatabaseManager:
         cursor = self.conn.cursor()
 
         cursor.execute("""
-            INSERT OR REPLACE INTO daily_metrics 
+            INSERT OR REPLACE INTO daily_metrics
             (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
              soreness, fatigue_level, mood, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -5443,7 +5427,7 @@ class DatabaseManager:
         training_load = (rpe * (duration_sec / 60)) if rpe else 0
 
         cursor.execute("""
-            INSERT INTO training_log 
+            INSERT INTO training_log
             (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
              training_load, shoe_id, surface, temperature_c, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -5461,8 +5445,8 @@ class DatabaseManager:
         cursor = self.conn.cursor()
 
         cursor.execute("""
-            SELECT date, training_load 
-            FROM training_log 
+            SELECT date, training_load
+            FROM training_log
             WHERE date >= date('now', '-' || ? || ' days')
             ORDER BY date DESC
         """, (days,))
@@ -5506,7 +5490,7 @@ class DatabaseManager:
         cursor = self.conn.cursor()
 
         cursor.execute("""
-            UPDATE gear_usage 
+            UPDATE gear_usage
             SET total_km = total_km + ?, last_used = ?
             WHERE id = ?
         """, (distance_km, date, shoe_id))
@@ -5580,7 +5564,7 @@ class DatabaseManager:
         pace_per_km = time_sec / distance_km
 
         cursor.execute("""
-            INSERT INTO personal_bests 
+            INSERT INTO personal_bests
             (distance_km, time_sec, pace_sec_per_km, date, race_name)
             VALUES (?, ?, ?, ?, ?)
         """, (distance_km, time_sec, pace_per_km, date, race_name))
@@ -5617,7 +5601,7 @@ class PolarizedConstraint:
     def check_recent_intensity(training_history, days=7):
         """
         Check last 7 days for high-intensity sessions
-        
+
         Returns:
             (is_violation, hard_day_count, recommendation)
         """
@@ -5637,7 +5621,7 @@ class PolarizedConstraint:
     def calculate_intensity_distribution(training_history, days=7):
         """
         Calculate actual vs ideal intensity distribution
-        
+
         Ideal (Polarized): 80% easy, 20% hard
         """
         total_time = 0
@@ -5674,7 +5658,7 @@ class NonLinearLogic:
     def evaluate_readiness(readiness_score):
         """
         Evaluate readiness and return action
-        
+
         Returns:
             (color, action, modification)
         """
@@ -5729,7 +5713,7 @@ class StochasticReadiness:
     def calculate_readiness_range(hrv_value, baseline_hrv, sleep_hours, soreness):
         """
         Calculate readiness as a range with confidence interval
-        
+
         Returns:
             (low, mid, high, confidence)
         """
@@ -5780,10 +5764,10 @@ class AdaptivePacing:
     def calculate_adapted_pace(base_pace_sec, readiness_score):
         """
         Adjust target pace based on readiness
-        
+
         base_pace_sec: Your normal pace for the session type
         readiness_score: Current readiness (0-100)
-        
+
         Returns:
             adapted_pace_sec
         """
@@ -5845,14 +5829,11 @@ class AdvancedHammer:
         if fatigue_level > 7:
             return None  # No hammer if fatigued
 
-        if session_type == "TEMPO":
-            return 1  # Controlled
-        elif session_type == "THRESHOLD":
-            return 2  # Aggressive
-        elif session_type == "VO2MAX":
-            return 3  # Full send
-        else:
-            return 1  # Default to controlled
+        return {
+            "TEMPO": 1,
+            "THRESHOLD": 2,
+            "VO2MAX": 3,
+        }.get(session_type, 1)  # Default to controlled
 
 
 class VO2MicroDosing:
