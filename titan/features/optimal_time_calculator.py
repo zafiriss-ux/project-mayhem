@@ -9,7 +9,6 @@ Determines best time to run each day based on:
 """
 
 from datetime import datetime
-from typing import Dict, List
 
 
 class OptimalTimeCalculator:
@@ -136,10 +135,9 @@ class OptimalTimeCalculator:
                 elif 9 <= hour <= 11:
                     window["score"] -= 5  # Bonus for mid-morning
 
-            elif tsb_value > 5:  # Fresh
+            elif tsb_value > 5 and 5 <= hour <= 7:  # Fresh
                 # Can handle early morning well
-                if 5 <= hour <= 7:
-                    window["score"] -= 5  # Slight bonus
+                window["score"] -= 5  # Slight bonus
 
         return windows
 

@@ -42,3 +42,5 @@ def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
     assert "titan/config" in content
     assert "titan/core" in content
     assert "titan/integrations" in content
+    assert "titan/orchestration" in content
+    assert "titan/features" in content

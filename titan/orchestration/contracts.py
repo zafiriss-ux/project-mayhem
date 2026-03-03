@@ -1,6 +1,6 @@
 """Typed payload contracts for critical orchestration boundaries."""
 
-from typing import Any, Dict, List, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 
 class HRVSyncMetrics(TypedDict):

@@ -494,7 +494,13 @@ class TestWeatherApiProviderContract(unittest.TestCase):
 
     def test_api_key_not_required_for_fetch(self):
         """_fetch_open_meteo must not pass an api_key to requests.get."""
-        from titan.integrations.weather_api import WeatherAPI
+        try:
+            from titan.integrations.weather_api import WeatherAPI
+        except ModuleNotFoundError as exc:
+            if exc.name == "requests":
+                self.skipTest("requests is not installed in this environment")
+            raise
+
         api = WeatherAPI.__new__(WeatherAPI)
         api.api_key = None
         api.location = "Athens,GR"
@@ -506,8 +512,6 @@ class TestWeatherApiProviderContract(unittest.TestCase):
         api._coords = (37.98, 23.73)
 
         calls = []
-        original_get = __import__("requests").get
-
         def fake_get(url, params=None, **kwargs):
             calls.append({"url": url, "params": params or {}})
             # Return a fake response
