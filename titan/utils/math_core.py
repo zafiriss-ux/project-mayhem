@@ -3,7 +3,7 @@ TITAN Math Core Utilities
 Weight management, unit conversion, and system status functions
 """
 
-from typing import Literal, Optional
+from typing import Literal
 
 
 class MathCore:
