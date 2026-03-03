@@ -192,6 +192,15 @@ across multiple athlete profiles without requiring manual threshold edits.
   1–2 hardening is complete. UI cosmetics are lower priority than data
   integrity and observability.
 
+### T5-03 · Multi-sport scope decision (DECIDED)
+
+- **Decision locked in ADR-0016**: multi-sport is in scope for Phase 8.
+- **Current scope remains running-only**: Garmin ingestion keeps the explicit
+  `get_activities_by_date(..., "running")` filter until Phase 8 begins.
+- **Phase 8 gate**: before adding non-running ingestion for Garmin / Strava /
+  Polar / Whoop / COROS, a unified adapter interface must be documented and
+  accepted.
+
 ---
 
 ## Core Rule
@@ -209,4 +218,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-03 (Tier 5/T5-01 retention decision documented via ADR-0015)
+Last updated: 2026-03-03 (Tier 5/T5-01 and T5-03 decisions documented via ADR-0015 and ADR-0016)

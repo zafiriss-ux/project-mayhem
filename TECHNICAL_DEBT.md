@@ -438,10 +438,11 @@ complete. The terminal UI is cosmetic; data integrity and observability are not.
 **Current state:** `garmin_sync.get_activities_by_date(..., "running")` is hardcoded
 to running only.
 
-**Decision needed:** Is multi-sport in scope for Phase 8?
-- If yes: design a unified adapter interface before implementing additional sports (Strava,
-  Polar, Whoop, COROS already in Phase 8 roadmap)
-- If no (longevity running focus): document explicitly to prevent scope creep
+**Decision locked (ADR-0016):** Multi-sport **is** in scope for Phase 8, while
+current implementation remains running-only.
+
+**Phase 8 gate:** A unified adapter interface must be designed and accepted before
+adding non-running ingestion across Garmin / Strava / Polar / Whoop / COROS.
 
 ---
 
