@@ -84,6 +84,7 @@ class GarminSync:
         }
         self._sync_thread: Optional[threading.Thread] = None
         self._stop_sync = False
+        self._stop_event = threading.Event()
 
     # ------------------------------------------------------------------ #
     # CONNECTION
@@ -317,6 +318,7 @@ class GarminSync:
         if self._sync_thread and self._sync_thread.is_alive():
             return
         self._stop_sync = False
+        self._stop_event.clear()
         self._sync_thread = threading.Thread(
             target=self._bg_worker, args=(interval_hours,), daemon=True, name="GarminSync"
         )
@@ -325,17 +327,19 @@ class GarminSync:
 
     def stop_background_sync(self):
         self._stop_sync = True
+        self._stop_event.set()
+        if self._sync_thread and self._sync_thread.is_alive():
+            self._sync_thread.join(timeout=5)
 
     def _bg_worker(self, interval_hours: int):
-        while not self._stop_sync:
+        while not self._stop_event.is_set():
             try:
                 self.sync_all()
             except Exception as e:
                 print(f"❌ BG sync error: {e}")
             for _ in range(interval_hours * 3600):
-                if self._stop_sync:
+                if self._stop_event.wait(timeout=1.0):
                     return
-                time.sleep(1)
 
     def _log_sync(self, data_type: str, count: int):
         self.sync_history.append((data_type, datetime.now().isoformat(), count))

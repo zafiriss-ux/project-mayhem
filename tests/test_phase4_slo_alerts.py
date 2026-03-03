@@ -80,10 +80,11 @@ def test_telegram_logs_poll_failures(caplog, monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id="12345")
     bot.bot = _Bot()
 
-    def _stop_after_retry(_seconds):
-        bot._stop = True
+    def _stop_after_retry(timeout):
+        bot._stop_event.set()
+        return True
 
-    monkeypatch.setattr("titan.integrations.telegram_bot.time.sleep", _stop_after_retry)
+    monkeypatch.setattr(bot._stop_event, "wait", _stop_after_retry)
     bot._poll_worker()
 
     events = _json_messages(caplog)
@@ -132,12 +133,14 @@ def test_telegram_scheduler_logs_callback_error_and_drift(caplog, monkeypatch):
 
     call_count = {"n": 0}
 
-    def _sleep(_seconds):
+    def _wait(timeout):
         call_count["n"] += 1
         if call_count["n"] >= 2:
-            bot._stop = True
+            bot._stop_event.set()
+            return True
+        return False
 
-    monkeypatch.setattr("titan.integrations.telegram_bot.time.sleep", _sleep)
+    monkeypatch.setattr(bot._stop_event, "wait", _wait)
     bot._scheduler_worker()
 
     events = _json_messages(caplog)

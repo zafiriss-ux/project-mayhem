@@ -54,6 +54,7 @@ class TitanTelegramBot:
         self._poll_thread: Optional[threading.Thread] = None
         self._sched_thread: Optional[threading.Thread] = None
         self._stop = False
+        self._stop_event = threading.Event()
         self.scheduled_tasks: List[Dict] = []
         self.message_history: List[Dict] = []
 
@@ -312,6 +313,7 @@ class TitanTelegramBot:
             return
         self.is_running = True
         self._stop = False
+        self._stop_event.clear()
 
         # Scheduler thread
         self._sched_thread = threading.Thread(
@@ -331,18 +333,23 @@ class TitanTelegramBot:
 
     def stop_bot(self):
         self._stop = True
+        self._stop_event.set()
         self.is_running = False
         if self.bot and TELEBOT_AVAILABLE:
             with contextlib.suppress(Exception):
                 self.bot.stop_polling()
+        if self._sched_thread and self._sched_thread.is_alive():
+            self._sched_thread.join(timeout=5)
+        if self._poll_thread and self._poll_thread.is_alive():
+            self._poll_thread.join(timeout=5)
 
     def _poll_worker(self):
         """Real polling loop – listens for user commands."""
-        while not self._stop:
+        while not self._stop_event.is_set():
             try:
                 self.bot.infinity_polling(timeout=10, long_polling_timeout=5)
             except Exception as e:
-                if not self._stop:
+                if not self._stop_event.is_set():
                     _telegram_event(
                         "failure",
                         failure_class="POLL_FAIL",
@@ -351,12 +358,12 @@ class TitanTelegramBot:
                         error_message=str(e),
                     )
                     print(f"⚠️  Polling error (retrying): {e}")
-                    time.sleep(5)
+                    self._stop_event.wait(timeout=5)
 
     def _scheduler_worker(self):
         """Fires scheduled tasks at the right time."""
         expected_wakeup: Optional[float] = None
-        while not self._stop:
+        while not self._stop_event.is_set():
             now_ts = time.time()
             if expected_wakeup is not None:
                 drift_seconds = now_ts - expected_wakeup
@@ -388,4 +395,4 @@ class TitanTelegramBot:
             # Sleep until next full minute
             sleep_seconds = max(1, 60 - now.second)
             expected_wakeup = now_ts + sleep_seconds
-            time.sleep(sleep_seconds)
+            self._stop_event.wait(timeout=sleep_seconds)

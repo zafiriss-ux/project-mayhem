@@ -128,6 +128,7 @@ class TestTelegramBotInit:
 
     def test_stop_flag_false_on_init(self, bot):
         assert bot._stop is False
+        assert bot._stop_event.is_set() is False
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -305,6 +306,7 @@ class TestStartStop:
         bot.start_bot()
         bot.stop_bot()
         assert bot.is_running is False
+        assert bot._stop_event.is_set() is True
 
     def test_double_start_is_idempotent(self, bot):
         """Calling start_bot() twice on the same instance must not raise."""
