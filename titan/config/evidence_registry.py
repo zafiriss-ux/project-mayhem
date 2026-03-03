@@ -27,8 +27,6 @@ Calibration opportunity codes (policy_note field):
   the infrastructure to collect that data.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

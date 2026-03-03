@@ -17,7 +17,7 @@ Design principles (from ADR-0008 / docs/specs/adaptive_priority_lock.md):
 
 import json
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 from titan.config.thresholds import HARD_STOP_TSB_FLOOR, VO2_ACWR_MAX
 from titan.science.volume_load_gauge import VLGState
