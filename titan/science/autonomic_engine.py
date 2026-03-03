@@ -42,18 +42,18 @@ class AutonomicFusionEngine:
         → Readiness clamp ≤ 25, disable Z4/Z5
     """
 
-    _WEIGHTS: Dict[str, float] = {
-        'ln_rmssd': 0.40,
-        'hrr':      0.35,
-        'sleep':    0.15,
-        'resp':     0.10,
+    _WEIGHTS: dict[str, float] = {
+        "ln_rmssd": 0.40,
+        "hrr": 0.35,
+        "sleep": 0.15,
+        "resp": 0.10,
     }
 
     def __init__(self) -> None:
         # (date, hrr_60, hrr_120) — 60s and 120s post-effort HR recovery
-        self.hrr_log: List[Tuple[str, int, int]] = []
+        self.hrr_log: list[tuple[str, int, int]] = []
         # Rolling AFI history for 48h CNS buffer
-        self._afi_history: List[float] = []
+        self._afi_history: list[float] = []
 
     # ── HRR Input ───────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ class AutonomicFusionEngine:
     def calculate_afi(
         self,
         ln_rmssd_deviation: float,
-        hrr_60_today: Optional[int] = None,
+        hrr_60_today: int | None = None,
         sleep_depth_delta: float = 0.0,
         resp_delta: float = 0.0,
     ) -> float:
@@ -120,10 +120,10 @@ class AutonomicFusionEngine:
             return max(-1.0, min(1.0, v))
 
         afi = (
-            W['ln_rmssd'] * clamp(ln_rmssd_deviation) +
-            W['hrr']      * hrr_norm +
-            W['sleep']    * clamp(sleep_depth_delta) +
-            W['resp']     * clamp(resp_delta)
+            W["ln_rmssd"] * clamp(ln_rmssd_deviation)
+            + W["hrr"] * hrr_norm
+            + W["sleep"] * clamp(sleep_depth_delta)
+            + W["resp"] * clamp(resp_delta)
         )
         return round(afi, 3)
 
@@ -151,8 +151,8 @@ class AutonomicFusionEngine:
     def check_parasympathetic_guard(
         self,
         hrv_pct_above_baseline: float,
-        hrr_60_today: Optional[int] = None,
-    ) -> Dict:
+        hrr_60_today: int | None = None,
+    ) -> dict:
         """
         Detect parasympathetic saturation: HRV appears high but autonomic
         system is actually unstable (functional overreaching risk).
@@ -176,17 +176,17 @@ class AutonomicFusionEngine:
 
         if hrv_elevated and hrr_impaired:
             return {
-                'triggered':        True,
-                'reason':           (
-                    f'Parasympathetic saturation: HRV +{hrv_pct_above_baseline:.0f}% above baseline '
-                    f'with impaired HRR — autonomic instability risk'
+                "triggered": True,
+                "reason": (
+                    f"Parasympathetic saturation: HRV +{hrv_pct_above_baseline:.0f}% above baseline "
+                    f"with impaired HRR — autonomic instability risk"
                 ),
-                'readiness_clamp':  25,
-                'disabled_zones':   [4, 5],
-                'prescribed_type':  'EASY',
-                'action':           'HARD_REST',
+                "readiness_clamp": 25,
+                "disabled_zones": [4, 5],
+                "prescribed_type": "EASY",
+                "action": "HARD_REST",
             }
-        return {'triggered': False, 'readiness_clamp': 100, 'disabled_zones': []}
+        return {"triggered": False, "readiness_clamp": 100, "disabled_zones": []}
 
     # ── Unified Readiness Constraints ────────────────────────────────────────
 
@@ -194,8 +194,8 @@ class AutonomicFusionEngine:
         self,
         afi_final: float,
         hrv_pct_above_baseline: float,
-        hrr_60_today: Optional[int] = None,
-    ) -> Dict:
+        hrr_60_today: int | None = None,
+    ) -> dict:
         """
         Translate AFI + guard signals into readiness constraints for governance.
 
@@ -211,9 +211,9 @@ class AutonomicFusionEngine:
         # Map AFI linearly to readiness modifier: -1 → -20, +1 → +10
         afi_modifier = round(afi_final * 15)
         return {
-            'afi':                 afi_final,
-            'afi_modifier':        afi_modifier,
-            'parasympathetic_guard': guard,
-            'readiness_clamp':     guard['readiness_clamp'],
-            'disabled_zones':      guard['disabled_zones'],
+            "afi": afi_final,
+            "afi_modifier": afi_modifier,
+            "parasympathetic_guard": guard,
+            "readiness_clamp": guard["readiness_clamp"],
+            "disabled_zones": guard["disabled_zones"],
         }

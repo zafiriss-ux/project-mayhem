@@ -1,8 +1,8 @@
 """Readiness Score Engine - Composite Recovery Analysis"""
+
 import json
 import logging
 from typing import Dict
-
 
 _log = logging.getLogger(__name__)
 
@@ -10,6 +10,7 @@ _log = logging.getLogger(__name__)
 def _readiness_event(action: str, **fields) -> None:
     """Emit a structured readiness event as a single JSON log line."""
     _log.info(json.dumps({"flow": "readiness", "action": action, **fields}, default=str))
+
 
 class ReadinessEngine:
     @staticmethod
@@ -19,8 +20,8 @@ class ReadinessEngine:
         today_rhr: float,
         baseline_rhr: float,
         sleep_score: int,
-        soreness: int
-    ) -> Dict:
+        soreness: int,
+    ) -> dict:
         """Calculate composite readiness score (0-100)"""
         score = 100
         deductions = {
@@ -54,7 +55,7 @@ class ReadinessEngine:
             deductions["rhr"] = 8
 
         # Sleep component — Garmin scale 0-100
-         # (<60 = poor, 60-69 = fair, 70-84 = good, >=85 = excellent)
+        # (<60 = poor, 60-69 = fair, 70-84 = good, >=85 = excellent)
         if sleep_score < 60:
             score -= 15
             deductions["sleep"] = 15

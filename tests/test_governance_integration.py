@@ -11,13 +11,12 @@ These tests verify:
 
 import pytest
 
-from titan.science.governance_engine import GovernanceEngine
 from titan.science.governance_contracts import (
+    ContractViolation,
     assert_vo2_eligibility_contract,
     validate_vo2_eligibility,
-    ContractViolation,
 )
-
+from titan.science.governance_engine import GovernanceEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures

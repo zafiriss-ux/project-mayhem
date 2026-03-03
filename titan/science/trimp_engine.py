@@ -1,40 +1,44 @@
 """TRIMP Engine - Training Impulse Calculation"""
-from typing import Tuple, Optional
+
 import math
+from typing import Optional, Tuple
+
 
 class TRIMPEngine:
     """
     Training Impulse - HR-weighted load quantification.
-    
+
     Scientific Basis:
     - Banister, E.W. (1975). Aust J Sports Med, 7(3), 57-61
     - Edwards, S. (1993). The Heart Rate Monitor Book
     - Manzi, V. et al. (2009). Int J Sports Physiol Perform, 4(3), 347-357
-    
+
     Why better than volume alone:
     10km @ 140 HR ≠ 10km @ 165 HR
     TRIMP captures this difference
     """
 
     @staticmethod
-    def calculate_edwards_trimp(duration_min: float, avg_hr: int, max_hr: int) -> Tuple[Optional[float], int]:
+    def calculate_edwards_trimp(
+        duration_min: float, avg_hr: int, max_hr: int
+    ) -> tuple[float | None, int]:
         """
         Edwards (1993) TRIMP - Zone-based method.
-        
+
         Zones:
         1 (50-60% HRmax): 1×
         2 (60-70% HRmax): 2×
         3 (70-80% HRmax): 3×
         4 (80-90% HRmax): 4×
         5 (90-100% HRmax): 5×
-        
+
         TRIMP = duration × zone_multiplier
-        
+
         Args:
             duration_min: Session duration in minutes
             avg_hr: Average heart rate
             max_hr: Maximum heart rate
-        
+
         Returns:
             (trimp_value, zone_multiplier)
         """
@@ -60,25 +64,21 @@ class TRIMPEngine:
 
     @staticmethod
     def calculate_banister_trimp(
-        duration_min: float,
-        avg_hr: int,
-        resting_hr: int,
-        max_hr: int,
-        gender: str = 'male'
-    ) -> Optional[float]:
+        duration_min: float, avg_hr: int, resting_hr: int, max_hr: int, gender: str = "male"
+    ) -> float | None:
         """
         Banister (1975) TRIMP - Original exponential method.
-        
+
         More complex but more accurate.
         Uses exponential weighting for intensity.
-        
+
         Args:
             duration_min: Session duration
             avg_hr: Average heart rate
             resting_hr: Resting heart rate
             max_hr: Maximum heart rate
             gender: 'male' or 'female' (affects exponent)
-        
+
         Returns:
             TRIMP value
         """
@@ -88,7 +88,7 @@ class TRIMPEngine:
         hr_reserve = (avg_hr - resting_hr) / (max_hr - resting_hr)
 
         # Gender-specific exponent (Banister)
-        if gender.lower() == 'male':
+        if gender.lower() == "male":
             y = 1.92
         else:  # female
             y = 1.67
@@ -98,16 +98,16 @@ class TRIMPEngine:
         return round(trimp, 1)
 
     @staticmethod
-    def weekly_trimp_analysis(weekly_trimp: float, baseline_trimp: float) -> Tuple[str, str]:
+    def weekly_trimp_analysis(weekly_trimp: float, baseline_trimp: float) -> tuple[str, str]:
         """
         Compare weekly TRIMP to athlete's baseline.
-        
+
         Based on Manzi et al. (2009).
-        
+
         Args:
             weekly_trimp: This week's total TRIMP
             baseline_trimp: Athlete's normal weekly TRIMP
-        
+
         Returns:
             (message, risk_level)
         """

@@ -9,9 +9,9 @@ class GateResult:
     color: str
     max_zone: int
     volume_modifier: float
-    session_override: Optional[str]
-    triggered_signals: List[str]
-    audit: Dict
+    session_override: str | None
+    triggered_signals: list[str]
+    audit: dict
 
 
 class IntensityGovernor:
@@ -53,10 +53,10 @@ class IntensityGovernor:
             return "YELLOW"
         return "GREEN"
 
-    def evaluate(self, signals: Dict) -> GateResult:
+    def evaluate(self, signals: dict) -> GateResult:
         signals = signals or {}
-        audit: Dict = {}
-        triggered_signals: List[str] = []
+        audit: dict = {}
+        triggered_signals: list[str] = []
 
         def evaluate_numeric(key: str, signal_key: str, yellow: float, red: float, color_fn):
             if signal_key not in signals:
@@ -93,7 +93,11 @@ class IntensityGovernor:
             if fatigue_color in {"YELLOW", "RED"}:
                 triggered_signals.append("fatigue")
 
-        signal_colors = [entry["signal_color"] for entry in audit.values() if isinstance(entry, dict) and "signal_color" in entry]
+        signal_colors = [
+            entry["signal_color"]
+            for entry in audit.values()
+            if isinstance(entry, dict) and "signal_color" in entry
+        ]
         if "RED" in signal_colors:
             aggregate = "RED"
         elif "YELLOW" in signal_colors:

@@ -23,29 +23,29 @@ from typing import List, Optional, Tuple
 class CriticalSpeedEngine:
     """
     Critical Speed (CS) and D' (D-prime) modeling.
-    
+
     CS = Maximum sustainable speed indefinitely
     D' = Finite work capacity above CS
-    
+
     Used to predict time to exhaustion at any pace.
     """
 
     @staticmethod
     def estimate_cs_and_dprime(
-        perfs: List[Tuple[float, float]]
-    ) -> Tuple[Optional[float], Optional[float]]:
+        perfs: list[tuple[float, float]],
+    ) -> tuple[float | None, float | None]:
         """
         Estimate CS and D' from multiple performances.
-        
+
         Uses linear regression on distance-time data.
-        
+
         Args:
             perfs: List of (distance_meters, time_seconds) tuples
                    Example: [(3000, 720), (5000, 1260), (10000, 2700)]
-        
+
         Returns:
             Tuple of (critical_speed_m_per_s, d_prime_meters) or (None, None)
-            
+
         Example:
             >>> perfs = [(3000, 720), (5000, 1260), (10000, 2700)]
             >>> cs, dprime = CriticalSpeedEngine.estimate_cs_and_dprime(perfs)
@@ -85,21 +85,19 @@ class CriticalSpeedEngine:
 
     @staticmethod
     def time_to_exhaustion_at_pace(
-        cs_m_per_s: Optional[float],
-        d_prime_m: Optional[float],
-        pace_sec_per_km: float
-    ) -> Optional[float]:
+        cs_m_per_s: float | None, d_prime_m: float | None, pace_sec_per_km: float
+    ) -> float | None:
         """
         Predict time to exhaustion at a given pace.
-        
+
         Formula: t = D' / (v - CS)
         where v = pace in m/s
-        
+
         Args:
             cs_m_per_s: Critical speed in m/s
             d_prime_m: D' in meters
             pace_sec_per_km: Target pace in seconds per km
-            
+
         Returns:
             Time to exhaustion in seconds, or None if pace is sustainable
         """
@@ -138,11 +136,11 @@ class CriticalSpeedTracker:
     EWMA_ALPHA = 0.3  # Bellenger et al. — balances responsiveness vs stability
 
     def __init__(self) -> None:
-        self.cs_raw_history: List[Tuple[str, float]] = []  # (date, cs_m_per_s)
-        self.cs_smoothed:    Optional[float] = None
-        self.d_prime:        Optional[float] = None
-        self.archetype:      str   = "HYBRID"
-        self.confidence:     float = 0.0
+        self.cs_raw_history: list[tuple[str, float]] = []  # (date, cs_m_per_s)
+        self.cs_smoothed: float | None = None
+        self.d_prime: float | None = None
+        self.archetype: str = "HYBRID"
+        self.confidence: float = 0.0
 
     # ── Calibration Update ───────────────────────────────────────────────────
 
@@ -158,10 +156,7 @@ class CriticalSpeedTracker:
         if self.cs_smoothed is None:
             self.cs_smoothed = cs_raw
         else:
-            self.cs_smoothed = (
-                self.EWMA_ALPHA * cs_raw +
-                (1 - self.EWMA_ALPHA) * self.cs_smoothed
-            )
+            self.cs_smoothed = self.EWMA_ALPHA * cs_raw + (1 - self.EWMA_ALPHA) * self.cs_smoothed
         self._update_archetype()
         self._update_confidence()
 
@@ -195,7 +190,7 @@ class CriticalSpeedTracker:
         Speed-dominant athletes reconstitute D′ more slowly (larger reservoir,
         slower clearance kinetics).
         """
-        return {'SPEED': 1.175, 'ENDURANCE': 0.925, 'HYBRID': 1.0}[self.archetype]
+        return {"SPEED": 1.175, "ENDURANCE": 0.925, "HYBRID": 1.0}[self.archetype]
 
     # ── Calibration Confidence ───────────────────────────────────────────────
 
@@ -217,7 +212,7 @@ class CriticalSpeedTracker:
 
     # ── Thermal Degradation ──────────────────────────────────────────────────
 
-    def apply_thermal(self, temp_c: float) -> Optional[float]:
+    def apply_thermal(self, temp_c: float) -> float | None:
         """
         Return heat-adjusted CS.
 
@@ -256,5 +251,5 @@ class CriticalSpeedTracker:
         if gradient_pct >= 0:
             adjustment = gradient_pct * 10.0
         else:
-            adjustment = gradient_pct * 5.0   # downhill: smaller benefit
+            adjustment = gradient_pct * 5.0  # downhill: smaller benefit
         return max(60.0, pace_sec_per_km - adjustment)

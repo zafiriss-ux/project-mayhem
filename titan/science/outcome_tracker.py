@@ -22,25 +22,25 @@ Observability contract:
 
 import json
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from titan.core.database import DatabaseManager
 from titan.config.evidence_registry import get_evidence
+from titan.core.database import DatabaseManager
 
 _log = logging.getLogger(__name__)
 
 
-_LOCK_TO_HEURISTIC_PARAMETERS: Dict[str, List[str]] = {
-    'READINESS_2OF4_DOWNGRADE': ['SUBJECTIVE_FATIGUE_2OF4'],
-    'HARD_STOP_SAFETY_GATES': ['HARD_STOP_TSB_FLOOR'],
-    'VO2_ELIGIBILITY_GATE': ['VO2_READINESS_MIN'],
+_LOCK_TO_HEURISTIC_PARAMETERS: dict[str, list[str]] = {
+    "READINESS_2OF4_DOWNGRADE": ["SUBJECTIVE_FATIGUE_2OF4"],
+    "HARD_STOP_SAFETY_GATES": ["HARD_STOP_TSB_FLOOR"],
+    "VO2_ELIGIBILITY_GATE": ["VO2_READINESS_MIN"],
 }
 
-_LOCK_TO_MODERATE_PARAMETERS: Dict[str, List[str]] = {
-    'HARD_STOP_SAFETY_GATES': ['HARD_STOP_HRV_DELTA'],
-    'VO2_ELIGIBILITY_GATE': ['VO2_GLYCOGEN_DEBT_MAX'],
+_LOCK_TO_MODERATE_PARAMETERS: dict[str, list[str]] = {
+    "HARD_STOP_SAFETY_GATES": ["HARD_STOP_HRV_DELTA"],
+    "VO2_ELIGIBILITY_GATE": ["VO2_GLYCOGEN_DEBT_MAX"],
 }
 
 
@@ -52,33 +52,34 @@ class GovernanceDecision:
     Captures the input signal state at decision time so that if a threshold
     later proves miscalibrated, we can correlate it against historical decisions.
     """
+
     date: str
-    session_planned: str          # session_type BEFORE governance
+    session_planned: str  # session_type BEFORE governance
     session_post_governance: str  # session_type AFTER all gates
-    locks_applied: List[str]
+    locks_applied: list[str]
     governance_clean: bool
     phase: str
-    vlg_color: str                # GREEN / YELLOW / RED at decision time
-    apl_priority_vector: Dict[str, int]
-    lock_thresholds_active: Dict[str, float]
+    vlg_color: str  # GREEN / YELLOW / RED at decision time
+    apl_priority_vector: dict[str, int]
+    lock_thresholds_active: dict[str, float]
 
     # Input signal snapshot — for future threshold calibration
     acwr: float
     tsb_value: float
     readiness_score: float
     glycogen_debt: float
-    afi_value: Optional[float]
-    athlete_profile_id: str = 'DEFAULT'
+    afi_value: float | None
+    athlete_profile_id: str = "DEFAULT"
 
     # Outcome — filled post-session via record_outcome()
-    outcome_rpe: Optional[int] = None
-    outcome_completed: Optional[bool] = None
-    outcome_session_type_actual: Optional[str] = None
-    outcome_notes: Optional[str] = None
+    outcome_rpe: int | None = None
+    outcome_completed: bool | None = None
+    outcome_session_type_actual: str | None = None
+    outcome_notes: str | None = None
 
 
 def _classify_lock_cause(
-    locks_applied: List[str],
+    locks_applied: list[str],
     acwr: float,
     readiness_score: float,
 ) -> str:
@@ -94,25 +95,25 @@ def _classify_lock_cause(
     emits cause='DATA_PROBLEM' on invalid numeric inputs).
     """
     if not locks_applied:
-        return 'CLEAN'
+        return "CLEAN"
 
     # Proxy heuristic: if ACWR or readiness are implausible values that
     # default-replaced would produce, suspect a data pipeline problem.
     data_signals = []
     if acwr <= 0.0 or acwr > 3.0:
-        data_signals.append('acwr_out_of_range')
+        data_signals.append("acwr_out_of_range")
     if readiness_score <= 0.0:
-        data_signals.append('readiness_zero')
+        data_signals.append("readiness_zero")
 
     # CS_CONFIDENCE_LOCK is by definition a data availability problem:
     # the model has insufficient calibration history, not a training excess.
-    if 'CS_CONFIDENCE_LOCK' in locks_applied:
-        data_signals.append('cs_calibration_missing')
+    if "CS_CONFIDENCE_LOCK" in locks_applied:
+        data_signals.append("cs_calibration_missing")
 
     if data_signals:
-        return 'DATA_PROBLEM'
+        return "DATA_PROBLEM"
 
-    return 'TRAINING_LOGIC'
+    return "TRAINING_LOGIC"
 
 
 class OutcomeTracker:
@@ -131,9 +132,9 @@ class OutcomeTracker:
     It emits structured JSON log lines at INFO level for every event.
     """
 
-    def __init__(self, db: Optional[DatabaseManager] = None) -> None:
+    def __init__(self, db: DatabaseManager | None = None) -> None:
         self._db = db
-        self._decisions: List[GovernanceDecision] = []
+        self._decisions: list[GovernanceDecision] = []
         if self._db is not None:
             self._hydrate_from_db()
 
@@ -142,7 +143,7 @@ class OutcomeTracker:
         try:
             persisted = self._db.get_governance_decisions()
         except Exception as exc:
-            _log.warning('OutcomeTracker DB hydration failed: %s', exc)
+            _log.warning("OutcomeTracker DB hydration failed: %s", exc)
             return
 
         self._decisions = [GovernanceDecision(**entry) for entry in persisted]
@@ -153,18 +154,18 @@ class OutcomeTracker:
         self,
         session_planned: str,
         session_post_governance: str,
-        locks_applied: List[str],
+        locks_applied: list[str],
         governance_clean: bool,
         phase: str,
         vlg_color: str,
-        apl_result: Dict,
+        apl_result: dict,
         acwr: float,
         tsb_value: float,
         readiness_score: float,
         glycogen_debt: float,
-        athlete_profile_id: Optional[str] = None,
-        afi_value: Optional[float] = None,
-        date: Optional[str] = None,
+        athlete_profile_id: str | None = None,
+        afi_value: float | None = None,
+        date: str | None = None,
     ) -> GovernanceDecision:
         """
         Record a governance decision immediately after apply_constraints().
@@ -179,16 +180,16 @@ class OutcomeTracker:
         )
 
         decision = GovernanceDecision(
-            date=date or datetime.now().strftime('%Y-%m-%d'),
+            date=date or datetime.now().strftime("%Y-%m-%d"),
             session_planned=str(session_planned),
             session_post_governance=str(session_post_governance),
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
-            athlete_profile_id=str(athlete_profile_id or 'DEFAULT'),
+            athlete_profile_id=str(athlete_profile_id or "DEFAULT"),
             vlg_color=str(vlg_color),
-            apl_priority_vector=dict(apl_result.get('priority_vector', {})),
-            lock_thresholds_active=dict(apl_result.get('lock_thresholds', {})),
+            apl_priority_vector=dict(apl_result.get("priority_vector", {})),
+            lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),
             acwr=float(acwr),
             tsb_value=float(tsb_value),
             readiness_score=float(readiness_score),
@@ -199,32 +200,37 @@ class OutcomeTracker:
         if self._db is not None:
             self._db.save_governance_decision(asdict(decision))
 
-        _log.info(json.dumps({
-            'outcome_tracker': 'decision_recorded',
-            'date': decision.date,
-            'session_planned': decision.session_planned,
-            'session_post_governance': decision.session_post_governance,
-            'locks_applied': decision.locks_applied,
-            'governance_clean': decision.governance_clean,
-            'phase': decision.phase,
-            'athlete_profile_id': decision.athlete_profile_id,
-            'vlg_color': decision.vlg_color,
-            'cause': cause,
-            'acwr': round(decision.acwr, 3),
-            'tsb_value': round(decision.tsb_value, 1),
-            'readiness_score': round(decision.readiness_score, 1),
-            'glycogen_debt': round(decision.glycogen_debt, 2),
-        }, default=str))
+        _log.info(
+            json.dumps(
+                {
+                    "outcome_tracker": "decision_recorded",
+                    "date": decision.date,
+                    "session_planned": decision.session_planned,
+                    "session_post_governance": decision.session_post_governance,
+                    "locks_applied": decision.locks_applied,
+                    "governance_clean": decision.governance_clean,
+                    "phase": decision.phase,
+                    "athlete_profile_id": decision.athlete_profile_id,
+                    "vlg_color": decision.vlg_color,
+                    "cause": cause,
+                    "acwr": round(decision.acwr, 3),
+                    "tsb_value": round(decision.tsb_value, 1),
+                    "readiness_score": round(decision.readiness_score, 1),
+                    "glycogen_debt": round(decision.glycogen_debt, 2),
+                },
+                default=str,
+            )
+        )
 
         return decision
 
     def record_outcome(
         self,
         date: str,
-        rpe: Optional[int] = None,
-        completed: Optional[bool] = None,
-        actual_session_type: Optional[str] = None,
-        notes: Optional[str] = None,
+        rpe: int | None = None,
+        completed: bool | None = None,
+        actual_session_type: str | None = None,
+        notes: str | None = None,
     ) -> bool:
         """
         Attach post-session outcome to the recorded decision for that date.
@@ -244,16 +250,21 @@ class OutcomeTracker:
                     and actual_session_type.upper() != decision.session_post_governance.upper()
                 )
 
-                _log.info(json.dumps({
-                    'outcome_tracker': 'outcome_recorded',
-                    'date': date,
-                    'session_post_governance': decision.session_post_governance,
-                    'actual_session': actual_session_type,
-                    'athlete_deviated': athlete_deviated,
-                    'rpe': rpe,
-                    'completed': completed,
-                    'locks_applied': decision.locks_applied,
-                }, default=str))
+                _log.info(
+                    json.dumps(
+                        {
+                            "outcome_tracker": "outcome_recorded",
+                            "date": date,
+                            "session_post_governance": decision.session_post_governance,
+                            "actual_session": actual_session_type,
+                            "athlete_deviated": athlete_deviated,
+                            "rpe": rpe,
+                            "completed": completed,
+                            "locks_applied": decision.locks_applied,
+                        },
+                        default=str,
+                    )
+                )
                 if self._db is not None:
                     self._db.update_governance_outcome(
                         date=date,
@@ -264,21 +275,25 @@ class OutcomeTracker:
                     )
                 return True
 
-        _log.warning(json.dumps({
-            'outcome_tracker': 'outcome_record_miss',
-            'date': date,
-            'note': 'No decision found for this date — record_decision() must precede record_outcome()',
-        }))
+        _log.warning(
+            json.dumps(
+                {
+                    "outcome_tracker": "outcome_record_miss",
+                    "date": date,
+                    "note": "No decision found for this date — record_decision() must precede record_outcome()",
+                }
+            )
+        )
         return False
 
     # ── Query ────────────────────────────────────────────────────────────────
 
     def get_decisions(
         self,
-        date: Optional[str] = None,
+        date: str | None = None,
         with_outcomes_only: bool = False,
-        phase: Optional[str] = None,
-    ) -> List[GovernanceDecision]:
+        phase: str | None = None,
+    ) -> list[GovernanceDecision]:
         """Return stored decisions, optionally filtered."""
         result = list(self._decisions)
         if date:
@@ -289,7 +304,7 @@ class OutcomeTracker:
             result = [d for d in result if d.outcome_completed is not None]
         return result
 
-    def get_lock_rate_by_phase(self) -> Dict[str, float]:
+    def get_lock_rate_by_phase(self) -> dict[str, float]:
         """
         Return governance lock rate grouped by training phase.
 
@@ -297,7 +312,7 @@ class OutcomeTracker:
         triggers more locks than expected, which may indicate miscalibrated
         thresholds for that phase context.
         """
-        by_phase: Dict[str, List[bool]] = {}
+        by_phase: dict[str, list[bool]] = {}
         for d in self._decisions:
             by_phase.setdefault(d.phase, []).append(not d.governance_clean)
         return {
@@ -306,7 +321,7 @@ class OutcomeTracker:
             if locked
         }
 
-    def get_lock_outcome_correlation(self, min_samples: int = 3) -> Dict[str, Dict]:
+    def get_lock_outcome_correlation(self, min_samples: int = 3) -> dict[str, dict]:
         """
         Correlate each lock trigger with downstream completion + RPE outcomes.
 
@@ -318,7 +333,7 @@ class OutcomeTracker:
             return {}
 
         lock_names = sorted({lock for d in decided for lock in d.locks_applied})
-        correlation: Dict[str, Dict] = {}
+        correlation: dict[str, dict] = {}
 
         for lock in lock_names:
             with_lock = [d for d in decided if lock in d.locks_applied]
@@ -328,35 +343,35 @@ class OutcomeTracker:
                 continue
 
             completion_with = sum(1 for d in with_lock if d.outcome_completed) / len(with_lock)
-            completion_without = (
-                sum(1 for d in without_lock if d.outcome_completed) / len(without_lock)
+            completion_without = sum(1 for d in without_lock if d.outcome_completed) / len(
+                without_lock
             )
             rpe_with_values = [d.outcome_rpe for d in with_lock if d.outcome_rpe is not None]
             rpe_without_values = [d.outcome_rpe for d in without_lock if d.outcome_rpe is not None]
             rpe_with = (
-                round(sum(rpe_with_values) / len(rpe_with_values), 1)
-                if rpe_with_values else None
+                round(sum(rpe_with_values) / len(rpe_with_values), 1) if rpe_with_values else None
             )
             rpe_without = (
                 round(sum(rpe_without_values) / len(rpe_without_values), 1)
-                if rpe_without_values else None
+                if rpe_without_values
+                else None
             )
 
             correlation[lock] = {
-                'n_with_lock': len(with_lock),
-                'n_without_lock': len(without_lock),
-                'completion_with_lock': round(completion_with, 3),
-                'completion_without_lock': round(completion_without, 3),
-                'completion_delta_pp': round((completion_with - completion_without) * 100, 1),
-                'avg_rpe_with_lock': rpe_with,
-                'avg_rpe_without_lock': rpe_without,
+                "n_with_lock": len(with_lock),
+                "n_without_lock": len(without_lock),
+                "completion_with_lock": round(completion_with, 3),
+                "completion_without_lock": round(completion_without, 3),
+                "completion_delta_pp": round((completion_with - completion_without) * 100, 1),
+                "avg_rpe_with_lock": rpe_with,
+                "avg_rpe_without_lock": rpe_without,
             }
 
         return correlation
 
     # ── Calibration summary ──────────────────────────────────────────────────
 
-    def get_calibration_summary(self) -> Dict:
+    def get_calibration_summary(self) -> dict:
         """
         Compute Phase-1 calibration metrics from recorded decisions + outcomes.
 
@@ -371,19 +386,19 @@ class OutcomeTracker:
 
         if n_with_outcome == 0:
             return {
-                'status': 'NO_OUTCOMES_YET',
-                'n_decisions': n_total,
-                'n_with_outcome': 0,
-                'note': (
-                    'Call record_outcome() after each session to enable '
-                    'calibration analytics.'
+                "status": "NO_OUTCOMES_YET",
+                "n_decisions": n_total,
+                "n_with_outcome": 0,
+                "note": (
+                    "Call record_outcome() after each session to enable calibration analytics."
                 ),
             }
 
         n_locked = sum(1 for d in decided if not d.governance_clean)
         n_completed = sum(1 for d in decided if d.outcome_completed)
         n_deviated = sum(
-            1 for d in decided
+            1
+            for d in decided
             if d.outcome_session_type_actual
             and d.outcome_session_type_actual.upper() != d.session_post_governance.upper()
         )
@@ -398,34 +413,34 @@ class OutcomeTracker:
         lock_outcome_correlation = self.get_lock_outcome_correlation()
 
         return {
-            'status': 'CALIBRATION_AVAILABLE' if calibration_ready else 'ACCUMULATING',
-            'n_decisions': n_total,
-            'n_with_outcome': n_with_outcome,
-            'governance_lock_rate': lock_rate,
-            'completion_rate': completion_rate,
-            'athlete_override_rate': athlete_override_rate,
-            'avg_rpe_when_completed': avg_rpe,
-            'lock_rate_by_phase': self.get_lock_rate_by_phase(),
-            'lock_outcome_correlation': lock_outcome_correlation,
-            'heuristic_promotion_candidates': self._get_heuristic_promotion_candidates(
+            "status": "CALIBRATION_AVAILABLE" if calibration_ready else "ACCUMULATING",
+            "n_decisions": n_total,
+            "n_with_outcome": n_with_outcome,
+            "governance_lock_rate": lock_rate,
+            "completion_rate": completion_rate,
+            "athlete_override_rate": athlete_override_rate,
+            "avg_rpe_when_completed": avg_rpe,
+            "lock_rate_by_phase": self.get_lock_rate_by_phase(),
+            "lock_outcome_correlation": lock_outcome_correlation,
+            "heuristic_promotion_candidates": self._get_heuristic_promotion_candidates(
                 lock_outcome_correlation
             ),
-            'moderate_promotion_candidates': self._get_moderate_promotion_candidates(
+            "moderate_promotion_candidates": self._get_moderate_promotion_candidates(
                 lock_outcome_correlation
             ),
-            'calibration_note': (
-                'Ready for threshold calibration review.'
-                if calibration_ready else
-                f'Accumulate {30 - n_with_outcome} more outcome-paired sessions '
-                f'before interpreting rates. Thresholds are policy heuristics until '
-                f'at least 30 correlated outcomes exist.'
+            "calibration_note": (
+                "Ready for threshold calibration review."
+                if calibration_ready
+                else f"Accumulate {30 - n_with_outcome} more outcome-paired sessions "
+                f"before interpreting rates. Thresholds are policy heuristics until "
+                f"at least 30 correlated outcomes exist."
             ),
         }
 
     def _get_heuristic_promotion_candidates(
         self,
-        lock_outcome_correlation: Dict[str, Dict],
-    ) -> List[Dict]:
+        lock_outcome_correlation: dict[str, dict],
+    ) -> list[dict]:
         """
         Build candidate list for HEURISTIC → MODERATE promotion review.
 
@@ -434,42 +449,44 @@ class OutcomeTracker:
           - there are at least 5 sessions in both with-lock / without-lock groups,
           - absolute completion delta is at least 8 percentage points.
         """
-        candidates: List[Dict] = []
+        candidates: list[dict] = []
 
         for lock_name, params in _LOCK_TO_HEURISTIC_PARAMETERS.items():
             metrics = lock_outcome_correlation.get(lock_name)
             if not metrics:
                 continue
 
-            n_with = int(metrics.get('n_with_lock', 0) or 0)
-            n_without = int(metrics.get('n_without_lock', 0) or 0)
-            completion_delta_pp = float(metrics.get('completion_delta_pp', 0.0) or 0.0)
+            n_with = int(metrics.get("n_with_lock", 0) or 0)
+            n_without = int(metrics.get("n_without_lock", 0) or 0)
+            completion_delta_pp = float(metrics.get("completion_delta_pp", 0.0) or 0.0)
 
             if n_with < 5 or n_without < 5 or abs(completion_delta_pp) < 8.0:
                 continue
 
             for parameter in params:
                 evidence = get_evidence(parameter)
-                if evidence is None or evidence.evidence_level != 'HEURISTIC':
+                if evidence is None or evidence.evidence_level != "HEURISTIC":
                     continue
 
-                candidates.append({
-                    'parameter': parameter,
-                    'trigger_lock': lock_name,
-                    'n_with_lock': n_with,
-                    'n_without_lock': n_without,
-                    'completion_delta_pp': round(completion_delta_pp, 1),
-                    'recommendation': (
-                        'Review for HEURISTIC→MODERATE promotion with ADR + EvidenceRegistry update.'
-                    ),
-                })
+                candidates.append(
+                    {
+                        "parameter": parameter,
+                        "trigger_lock": lock_name,
+                        "n_with_lock": n_with,
+                        "n_without_lock": n_without,
+                        "completion_delta_pp": round(completion_delta_pp, 1),
+                        "recommendation": (
+                            "Review for HEURISTIC→MODERATE promotion with ADR + EvidenceRegistry update."
+                        ),
+                    }
+                )
 
-        return sorted(candidates, key=lambda x: abs(x['completion_delta_pp']), reverse=True)
+        return sorted(candidates, key=lambda x: abs(x["completion_delta_pp"]), reverse=True)
 
     def _get_moderate_promotion_candidates(
         self,
-        lock_outcome_correlation: Dict[str, Dict],
-    ) -> List[Dict]:
+        lock_outcome_correlation: dict[str, dict],
+    ) -> list[dict]:
         """
         Build candidate list for MODERATE → STRONG promotion review.
 
@@ -480,24 +497,26 @@ class OutcomeTracker:
           - lock behavior appears in at least 2 distinct phases,
           - lock behavior appears in at least 2 distinct athlete profiles.
         """
-        candidates: List[Dict] = []
+        candidates: list[dict] = []
 
         for lock_name, params in _LOCK_TO_MODERATE_PARAMETERS.items():
             metrics = lock_outcome_correlation.get(lock_name)
             if not metrics:
                 continue
 
-            n_with = int(metrics.get('n_with_lock', 0) or 0)
-            n_without = int(metrics.get('n_without_lock', 0) or 0)
-            completion_delta_pp = float(metrics.get('completion_delta_pp', 0.0) or 0.0)
+            n_with = int(metrics.get("n_with_lock", 0) or 0)
+            n_without = int(metrics.get("n_without_lock", 0) or 0)
+            completion_delta_pp = float(metrics.get("completion_delta_pp", 0.0) or 0.0)
 
             with_lock_phases = {
-                d.phase for d in self._decisions
+                d.phase
+                for d in self._decisions
                 if d.outcome_completed is not None and lock_name in d.locks_applied
             }
             phase_replication_count = len(with_lock_phases)
             with_lock_profiles = {
-                d.athlete_profile_id for d in self._decisions
+                d.athlete_profile_id
+                for d in self._decisions
                 if d.outcome_completed is not None and lock_name in d.locks_applied
             }
             profile_replication_count = len(with_lock_profiles)
@@ -513,21 +532,23 @@ class OutcomeTracker:
 
             for parameter in params:
                 evidence = get_evidence(parameter)
-                if evidence is None or evidence.evidence_level != 'MODERATE':
+                if evidence is None or evidence.evidence_level != "MODERATE":
                     continue
 
-                candidates.append({
-                    'parameter': parameter,
-                    'trigger_lock': lock_name,
-                    'n_with_lock': n_with,
-                    'n_without_lock': n_without,
-                    'completion_delta_pp': round(completion_delta_pp, 1),
-                    'phase_replication_count': phase_replication_count,
-                    'profile_replication_count': profile_replication_count,
-                    'recommendation': (
-                        'Review for MODERATE→STRONG promotion after replicated cross-profile '
-                        'and EvidenceRegistry update.'
-                    ),
-                })
+                candidates.append(
+                    {
+                        "parameter": parameter,
+                        "trigger_lock": lock_name,
+                        "n_with_lock": n_with,
+                        "n_without_lock": n_without,
+                        "completion_delta_pp": round(completion_delta_pp, 1),
+                        "phase_replication_count": phase_replication_count,
+                        "profile_replication_count": profile_replication_count,
+                        "recommendation": (
+                            "Review for MODERATE→STRONG promotion after replicated cross-profile "
+                            "and EvidenceRegistry update."
+                        ),
+                    }
+                )
 
-        return sorted(candidates, key=lambda x: abs(x['completion_delta_pp']), reverse=True)
+        return sorted(candidates, key=lambda x: abs(x["completion_delta_pp"]), reverse=True)

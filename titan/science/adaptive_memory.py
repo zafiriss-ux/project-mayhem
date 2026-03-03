@@ -4,27 +4,27 @@ Adaptive Memory - Learning System for Training Patterns
 Tracks training history to detect patterns and adaptations.
 """
 
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 
 class AdaptiveMemory:
     """
     Adaptive learning system for training patterns.
-    
+
     Tracks session history, monotony, supercompensation windows,
     and mechanical load risk.
     """
 
     def __init__(self):
         """Initialize adaptive memory system."""
-        self.session_history: List[dict] = []
+        self.session_history: list[dict] = []
         self.readiness_avg_14d: float = 85
         self.monotony_index: float = 1.2
         self.supercomp_status: str = "BASELINE"
         self.adaptive_pace_factor: float = 1.00
-        self.last_quality_sessions: List[datetime] = []
-        self.last_3d_soreness: List[float] = []
+        self.last_quality_sessions: list[datetime] = []
+        self.last_3d_soreness: list[float] = []
 
     def log_session(
         self,
@@ -34,11 +34,11 @@ class AdaptiveMemory:
         rpe: float,
         drift: float,
         success_flag: bool,
-        soreness: Optional[float] = None
+        soreness: float | None = None,
     ) -> None:
         """
         Log a training session.
-        
+
         Args:
             date: Session date
             session_type: Type (e.g., "TEMPO", "INTERVALS", "EASY")
@@ -48,14 +48,16 @@ class AdaptiveMemory:
             success_flag: Whether session objectives were met
             soreness: Optional soreness level (0-10)
         """
-        self.session_history.append({
-            "date": date,
-            "type": session_type,
-            "load": load,
-            "rpe": rpe,
-            "drift": drift,
-            "success": success_flag
-        })
+        self.session_history.append(
+            {
+                "date": date,
+                "type": session_type,
+                "load": load,
+                "rpe": rpe,
+                "drift": drift,
+                "success": success_flag,
+            }
+        )
 
         if session_type in ["TEMPO", "INTERVALS", "LONG_RUN", "PROGRESSIVE"]:
             self.last_quality_sessions.append(date)
@@ -66,21 +68,17 @@ class AdaptiveMemory:
             self.last_3d_soreness = self.last_3d_soreness[-3:]
 
     def calculate_neural_adaptation(
-        self,
-        target_pace_sec: float,
-        actual_pace_sec: float,
-        avg_hr: float,
-        threshold_hr: float
+        self, target_pace_sec: float, actual_pace_sec: float, avg_hr: float, threshold_hr: float
     ) -> str:
         """
         Detect neural adaptation (running faster at same HR).
-        
+
         Args:
             target_pace_sec: Target pace in sec/km
             actual_pace_sec: Actual pace in sec/km
             avg_hr: Average heart rate
             threshold_hr: Threshold heart rate
-            
+
         Returns:
             Adaptation status message
         """
@@ -96,14 +94,14 @@ class AdaptiveMemory:
     def check_monotony(self, load_7d: float, std_dev_load: float) -> str:
         """
         Check for training monotony (injury risk factor).
-        
+
         Monotony = Mean Load / Standard Deviation
         High monotony = same workouts → injury risk
-        
+
         Args:
             load_7d: 7-day average load
             std_dev_load: Standard deviation of 7-day loads
-            
+
         Returns:
             Monotony status message
         """
@@ -124,10 +122,10 @@ class AdaptiveMemory:
     def supercompensation_window(self, last_hard_session_hours: float) -> str:
         """
         Identify supercompensation window after hard training.
-        
+
         Args:
             last_hard_session_hours: Hours since last hard session
-            
+
         Returns:
             Supercompensation status
         """
@@ -143,10 +141,10 @@ class AdaptiveMemory:
     def session_density_index(self, now_dt: datetime) -> str:
         """
         Check spacing of quality sessions.
-        
+
         Args:
             now_dt: Current datetime
-            
+
         Returns:
             Session density status
         """
@@ -165,19 +163,17 @@ class AdaptiveMemory:
         return "✓ SDI: Safe spacing."
 
     def mechanical_load_risk(
-        self,
-        easy_pace_today_sec: float,
-        easy_pace_baseline_sec: float
+        self, easy_pace_today_sec: float, easy_pace_baseline_sec: float
     ) -> str:
         """
         Proxy for mechanical load injury risk.
-        
+
         Uses soreness trend and easy pace degradation.
-        
+
         Args:
             easy_pace_today_sec: Today's easy pace (sec/km)
             easy_pace_baseline_sec: Baseline easy pace (sec/km)
-            
+
         Returns:
             Mechanical load risk status
         """

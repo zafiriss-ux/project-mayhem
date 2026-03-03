@@ -17,14 +17,14 @@ Run with:
 """
 
 import pytest
-from titan.science.governance_engine import GovernanceEngine
+
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
     SUBJECTIVE_FATIGUE_EXTREME,
 )
-
+from titan.science.governance_engine import GovernanceEngine
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -243,8 +243,8 @@ def test_H5_fatigue_exactly_at_threshold_fires():
 def test_config_hrv_delta_respected(monkeypatch):
     """AT-CONFIG: Raising HARD_STOP_HRV_DELTA to 30 means delta=-27 doesn't fire H2.
     RHR is kept normal so only the HRV threshold is tested in isolation."""
-    import titan.science.governance_engine as ge_mod
     import titan.config.thresholds as thr_mod
+    import titan.science.governance_engine as ge_mod
 
     monkeypatch.setattr(thr_mod, "HARD_STOP_HRV_DELTA", 30)
     monkeypatch.setattr(ge_mod, "HARD_STOP_HRV_DELTA", 30)
@@ -261,8 +261,8 @@ def test_config_hrv_delta_respected(monkeypatch):
 def test_config_rhr_delta_respected(monkeypatch):
     """AT-CONFIG: Raising HARD_STOP_RHR_DELTA to 25 means delta=+20 doesn't fire H3.
     HRV is kept nominal so only the RHR threshold is tested in isolation."""
-    import titan.science.governance_engine as ge_mod
     import titan.config.thresholds as thr_mod
+    import titan.science.governance_engine as ge_mod
 
     monkeypatch.setattr(thr_mod, "HARD_STOP_RHR_DELTA", 25)
     monkeypatch.setattr(ge_mod, "HARD_STOP_RHR_DELTA", 25)

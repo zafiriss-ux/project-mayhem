@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
-
 
 DEBT_DOC = Path("TECHNICAL_DEBT.md")
 T4_01_HEADER = "### T4-01 · Ruff debt burn-down (lint hygiene)"

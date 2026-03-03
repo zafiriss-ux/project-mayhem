@@ -9,8 +9,6 @@ import json
 import logging
 from typing import Dict, List
 
-
-
 _log = logging.getLogger(__name__)
 
 
@@ -22,7 +20,7 @@ def _nutrition_event(action: str, **fields) -> None:
 class NutritionOptimizer:
     """
     Scientific nutrition optimizer based on training load and weight trends.
-    
+
     Based on research from:
     - Burke, L.M. et al. (2011) - Carbohydrate periodization
     - Jeukendrup, A.E. (2014) - Fuel for athletes
@@ -32,7 +30,7 @@ class NutritionOptimizer:
     def __init__(self, glycogen_model):
         """
         Initialize nutrition optimizer.
-        
+
         Args:
             glycogen_model: GlycogenModel instance for depletion calculations
         """
@@ -46,23 +44,23 @@ class NutritionOptimizer:
         if len(self.weight_history) > 90:
             self.weight_history = self.weight_history[-90:]
 
-    def analyze_weight_trend(self, days: int = 7) -> Dict:
+    def analyze_weight_trend(self, days: int = 7) -> dict:
         """
         Analyze weight trend over specified period.
-        
+
         Args:
             days: Number of days to analyze
-        
+
         Returns:
             Dictionary with trend analysis
         """
         if len(self.weight_history) < days:
             return {
-                'status': 'INSUFFICIENT_DATA',
-                'change_kg': 0,
-                'change_pct': 0,
-                'velocity': 0,
-                'recommendation': 'Need more weight data'
+                "status": "INSUFFICIENT_DATA",
+                "change_kg": 0,
+                "change_pct": 0,
+                "velocity": 0,
+                "recommendation": "Need more weight data",
             }
 
         recent = self.weight_history[-days:]
@@ -94,46 +92,46 @@ class NutritionOptimizer:
             rec = "Continue current approach"
 
         result = {
-            'status': status,
-            'change_kg': round(change_kg, 2),
-            'change_pct': round(change_pct, 2),
-            'velocity_kg_per_week': round(velocity, 2),
-            'recommendation': rec,
-            'first_weight': first_weight,
-            'current_weight': last_weight
+            "status": status,
+            "change_kg": round(change_kg, 2),
+            "change_pct": round(change_pct, 2),
+            "velocity_kg_per_week": round(velocity, 2),
+            "recommendation": rec,
+            "first_weight": first_weight,
+            "current_weight": last_weight,
         }
         _nutrition_event(
-            'weight_trend_analyzed',
+            "weight_trend_analyzed",
             days=days,
-            status=result['status'],
-            velocity_kg_per_week=result['velocity_kg_per_week'],
-            change_pct=result['change_pct'],
+            status=result["status"],
+            velocity_kg_per_week=result["velocity_kg_per_week"],
+            change_pct=result["change_pct"],
         )
         return result
 
     def calculate_daily_nutrition(
         self,
         weight_kg: float,
-        today_session: Dict,
-        tomorrow_session: Dict = None,
-        training_phase: str = 'BUILD',
+        today_session: dict,
+        tomorrow_session: dict = None,
+        training_phase: str = "BUILD",
         height_cm: int = 180,
         age: int = 35,
-    ) -> Dict:
+    ) -> dict:
         """
         Calculate today's nutrition requirements.
-        
+
         Args:
             weight_kg: Current weight
             today_session: Today's training session dict
             tomorrow_session: Tomorrow's session (for pre-fueling)
             training_phase: Current phase (BASE/BUILD/PEAK/TAPER)
-        
+
         Returns:
             Comprehensive nutrition plan
         """
-        session_type = today_session.get('session_type', 'REST')
-        duration_min = today_session.get('duration_min', 0)
+        session_type = today_session.get("session_type", "REST")
+        duration_min = today_session.get("duration_min", 0)
 
         # Base metabolic calculations
         # Using simplified Mifflin-St Jeor for male athlete (can be adjusted)
@@ -141,13 +139,13 @@ class NutritionOptimizer:
 
         # Activity multiplier based on session
         activity_multipliers = {
-            'REST': 1.2,
-            'EASY': 1.5,
-            'TEMPO': 1.7,
-            'INTERVALS': 1.8,
-            'LONG_RUN': 1.9,
-            'HAMMER': 1.8,
-            'RACE': 2.0
+            "REST": 1.2,
+            "EASY": 1.5,
+            "TEMPO": 1.7,
+            "INTERVALS": 1.8,
+            "LONG_RUN": 1.9,
+            "HAMMER": 1.8,
+            "RACE": 2.0,
         }
 
         multiplier = activity_multipliers.get(session_type, 1.5)
@@ -155,13 +153,13 @@ class NutritionOptimizer:
 
         # Carbohydrate requirements (Burke et al. 2011)
         carb_ranges = {
-            'REST': (3, 5),
-            'EASY': (5, 7),
-            'TEMPO': (6, 8),
-            'INTERVALS': (7, 10),
-            'LONG_RUN': (8, 10),
-            'HAMMER': (7, 10),
-            'RACE': (10, 12)
+            "REST": (3, 5),
+            "EASY": (5, 7),
+            "TEMPO": (6, 8),
+            "INTERVALS": (7, 10),
+            "LONG_RUN": (8, 10),
+            "HAMMER": (7, 10),
+            "RACE": (10, 12),
         }
 
         carb_low, carb_high = carb_ranges.get(session_type, (5, 7))
@@ -182,62 +180,64 @@ class NutritionOptimizer:
         # Hydration — combine dew_point and session intensity
         hydration_ml = self._calculate_hydration(
             duration_min,
-            today_session.get('dew_point', 15),
+            today_session.get("dew_point", 15),
             session_type,
         )
 
         plan = {
-            'total_calories': round(tdee, 0),
-            'carbs_g': round(carb_g, 0),
-            'carbs_range': f"{int(weight_kg * carb_low)}-{int(weight_kg * carb_high)}g",
-            'protein_g': round(protein_g, 0),
-            'fat_g': round(fat_g, 0),
-            'hydration_ml': hydration_ml,
-            'pre_session': timing['pre_session'],
-            'during_session': timing['during_session'],
-            'post_session': timing['post_session'],
-            'special_notes': self._get_special_notes(session_type, tomorrow_session),
-            'weight_trend': self.analyze_weight_trend()
+            "total_calories": round(tdee, 0),
+            "carbs_g": round(carb_g, 0),
+            "carbs_range": f"{int(weight_kg * carb_low)}-{int(weight_kg * carb_high)}g",
+            "protein_g": round(protein_g, 0),
+            "fat_g": round(fat_g, 0),
+            "hydration_ml": hydration_ml,
+            "pre_session": timing["pre_session"],
+            "during_session": timing["during_session"],
+            "post_session": timing["post_session"],
+            "special_notes": self._get_special_notes(session_type, tomorrow_session),
+            "weight_trend": self.analyze_weight_trend(),
         }
 
         _nutrition_event(
-            'daily_plan_calculated',
+            "daily_plan_calculated",
             session_type=session_type,
             duration_min=duration_min,
             training_phase=training_phase,
-            calories=plan['total_calories'],
-            carbs_g=plan['carbs_g'],
+            calories=plan["total_calories"],
+            carbs_g=plan["carbs_g"],
             hydration_ml=hydration_ml,
-            weight_status=plan['weight_trend'].get('status'),
+            weight_status=plan["weight_trend"].get("status"),
         )
 
         return plan
 
-    def _get_meal_timing(self, session_type: str, duration_min: int) -> Dict:
+    def _get_meal_timing(self, session_type: str, duration_min: int) -> dict:
         """Get session-specific meal timing recommendations."""
-        if session_type in ['INTERVALS', 'TEMPO', 'HAMMER']:
+        if session_type in ["INTERVALS", "TEMPO", "HAMMER"]:
             return {
-                'pre_session': "60-90g carbs 2-3h before",
-                'during_session': "30-60g carbs/hour if >90min" if duration_min > 90 else "Water only",
-                'post_session': "1.2g carbs/kg + 20-30g protein within 30min"
+                "pre_session": "60-90g carbs 2-3h before",
+                "during_session": "30-60g carbs/hour if >90min"
+                if duration_min > 90
+                else "Water only",
+                "post_session": "1.2g carbs/kg + 20-30g protein within 30min",
             }
-        elif session_type == 'LONG_RUN':
+        elif session_type == "LONG_RUN":
             return {
-                'pre_session': "30-60g carbs (can train low if not hammering)",
-                'during_session': "60g carbs/hour (gels/sports drink)",
-                'post_session': "1.2-1.5g carbs/kg within 2h + 20-30g protein"
+                "pre_session": "30-60g carbs (can train low if not hammering)",
+                "during_session": "60g carbs/hour (gels/sports drink)",
+                "post_session": "1.2-1.5g carbs/kg within 2h + 20-30g protein",
             }
-        elif session_type == 'EASY':
+        elif session_type == "EASY":
             return {
-                'pre_session': "Optional - can train fasted",
-                'during_session': "Water only",
-                'post_session': "Normal breakfast - prioritize protein 20-30g"
+                "pre_session": "Optional - can train fasted",
+                "during_session": "Water only",
+                "post_session": "Normal breakfast - prioritize protein 20-30g",
             }
         else:  # REST
             return {
-                'pre_session': "N/A",
-                'during_session': "N/A",
-                'post_session': "Regular meals - focus on whole foods"
+                "pre_session": "N/A",
+                "during_session": "N/A",
+                "post_session": "Regular meals - focus on whole foods",
             }
 
     def _calculate_hydration(
@@ -282,31 +282,35 @@ class NutritionOptimizer:
         # Intensity multiplier
         intensity_map = {
             "INTERVALS": 1.4,
-            "HAMMER"   : 1.4,
-            "TEMPO"    : 1.2,
-            "RACE"     : 1.2,
-            "LONG_RUN" : 1.1,
+            "HAMMER": 1.4,
+            "TEMPO": 1.2,
+            "RACE": 1.2,
+            "LONG_RUN": 1.1,
         }
         intensity_factor = intensity_map.get(session_type, 1.0)
 
         total_ml = hours * hourly_rate * intensity_factor
         return int(round(total_ml))
 
-    def _get_special_notes(self, session_type: str, tomorrow_session: Dict = None) -> List[str]:
+    def _get_special_notes(self, session_type: str, tomorrow_session: dict = None) -> list[str]:
         """Get special nutrition notes."""
         notes = []
 
-        if session_type in ['INTERVALS', 'TEMPO', 'HAMMER']:
+        if session_type in ["INTERVALS", "TEMPO", "HAMMER"]:
             notes.append("⚡ High glycogen demand - ensure adequate carbs")
 
-        if tomorrow_session and tomorrow_session.get('session_type') in ['INTERVALS', 'TEMPO', 'HAMMER']:
+        if tomorrow_session and tomorrow_session.get("session_type") in [
+            "INTERVALS",
+            "TEMPO",
+            "HAMMER",
+        ]:
             notes.append("🔋 Tomorrow is quality - refuel well tonight")
 
-        if session_type == 'LONG_RUN':
+        if session_type == "LONG_RUN":
             notes.append("🏃 Test race nutrition during this run")
 
         weight_trend = self.analyze_weight_trend()
-        if weight_trend.get('velocity_kg_per_week', 0) < -0.5:
+        if weight_trend.get("velocity_kg_per_week", 0) < -0.5:
             notes.append("⚠️ Rapid weight loss detected - increase calories to avoid RED-S")
 
         return notes

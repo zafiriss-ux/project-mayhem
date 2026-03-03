@@ -1,14 +1,16 @@
 """Biomechanics Analysis - Cadence, Stride, Form"""
-from typing import Tuple, List
+
+from typing import List, Tuple
+
 
 class BiomechanicsAnalysis:
     """Running biomechanics optimization"""
 
     @staticmethod
-    def optimal_cadence(height_cm: int) -> Tuple[int, int]:
+    def optimal_cadence(height_cm: int) -> tuple[int, int]:
         """
         Optimal cadence range based on height.
-        
+
         General rule: Taller = slightly lower cadence
         Target: 170-180 spm for most runners
         """
@@ -23,7 +25,7 @@ class BiomechanicsAnalysis:
     def stride_length(speed_m_s: float, cadence_spm: int) -> float:
         """
         Calculate stride length from speed and cadence.
-        
+
         Formula: stride_length = (speed * 60) / cadence
         """
         if cadence_spm == 0:
@@ -31,15 +33,15 @@ class BiomechanicsAnalysis:
         return round((speed_m_s * 60) / cadence_spm, 2)
 
     @staticmethod
-    def analyze_form(cadence: int, vert_osc: float, gct: float) -> Tuple[int, str, List[str]]:
+    def analyze_form(cadence: int, vert_osc: float, gct: float) -> tuple[int, str, list[str]]:
         """
         Analyze running form quality.
-        
+
         Args:
             cadence: Steps per minute
             vert_osc: Vertical oscillation in cm
             gct: Ground contact time in ms
-        
+
         Returns:
             (score, status, issues)
         """
@@ -86,7 +88,7 @@ class BiomechanicsAnalysis:
     def form_efficiency_score(cadence: int, vert_osc: float, gct: float) -> float:
         """
         Calculate overall form efficiency (0-1 scale).
-        
+
         Higher = more efficient
         """
         score, _, _ = BiomechanicsAnalysis.analyze_form(cadence, vert_osc, gct)

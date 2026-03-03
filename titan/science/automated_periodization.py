@@ -18,9 +18,9 @@ class PeriodizationSuggestion:
     volume_adjustment_pct: float
     intensity_adjustment_pct: float
     confidence: float
-    mode: str = 'SUGGEST_ONLY'
-    model_name: str = 'GA_PERIODIZATION_BASELINE'
-    evidence_label: str = 'HEURISTIC'
+    mode: str = "SUGGEST_ONLY"
+    model_name: str = "GA_PERIODIZATION_BASELINE"
+    evidence_label: str = "HEURISTIC"
 
 
 class AutomatedPeriodizationEngine:
@@ -37,33 +37,31 @@ class AutomatedPeriodizationEngine:
         state: Mapping[str, float],
         athlete_facing: bool = False,
     ) -> PeriodizationSuggestion:
-        enforce_ml_kill_switch(
-            path_name='automated_periodization', athlete_facing=athlete_facing
-        )
+        enforce_ml_kill_switch(path_name="automated_periodization", athlete_facing=athlete_facing)
 
-        readiness = max(0.0, min(1.0, float(state.get('readiness', 0.5))))
-        fatigue = max(0.0, min(1.0, float(state.get('fatigue', 0.5))))
-        monotony = max(0.0, float(state.get('monotony', 1.3)))
-        compliance = max(0.0, min(1.0, float(state.get('compliance', 0.85))))
+        readiness = max(0.0, min(1.0, float(state.get("readiness", 0.5))))
+        fatigue = max(0.0, min(1.0, float(state.get("fatigue", 0.5))))
+        monotony = max(0.0, float(state.get("monotony", 1.3)))
+        compliance = max(0.0, min(1.0, float(state.get("compliance", 0.85))))
 
         if fatigue >= 0.72 or readiness <= 0.35:
-            focus = 'RECOVERY'
+            focus = "RECOVERY"
             volume = -0.18
             intensity = -0.12
         elif readiness >= 0.70 and fatigue <= 0.45 and compliance >= 0.80:
-            focus = 'BUILD'
+            focus = "BUILD"
             volume = 0.10
             intensity = 0.05
         else:
-            focus = 'STABILIZE'
+            focus = "STABILIZE"
             volume = 0.00
             intensity = 0.00
 
         if monotony >= 1.8:
             volume = min(volume, -0.08)
             intensity = min(intensity, -0.05)
-            if focus == 'BUILD':
-                focus = 'STABILIZE'
+            if focus == "BUILD":
+                focus = "STABILIZE"
 
         confidence = self._confidence(readiness, fatigue, compliance)
 
@@ -75,15 +73,15 @@ class AutomatedPeriodizationEngine:
         )
 
     @staticmethod
-    def as_dict(suggestion: PeriodizationSuggestion) -> Dict[str, object]:
+    def as_dict(suggestion: PeriodizationSuggestion) -> dict[str, object]:
         return {
-            'recommended_focus': suggestion.recommended_focus,
-            'volume_adjustment_pct': suggestion.volume_adjustment_pct,
-            'intensity_adjustment_pct': suggestion.intensity_adjustment_pct,
-            'confidence': suggestion.confidence,
-            'mode': suggestion.mode,
-            'model_name': suggestion.model_name,
-            'evidence_label': suggestion.evidence_label,
+            "recommended_focus": suggestion.recommended_focus,
+            "volume_adjustment_pct": suggestion.volume_adjustment_pct,
+            "intensity_adjustment_pct": suggestion.intensity_adjustment_pct,
+            "confidence": suggestion.confidence,
+            "mode": suggestion.mode,
+            "model_name": suggestion.model_name,
+            "evidence_label": suggestion.evidence_label,
         }
 
     @staticmethod

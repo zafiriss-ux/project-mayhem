@@ -15,7 +15,7 @@ Key Findings:
 """
 
 import math
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 
 class HRVGuidedEngine:
@@ -33,14 +33,14 @@ class HRVGuidedEngine:
 
     def __init__(self, baseline_days: int = 7):
         """Initialize HRV engine."""
-        self.hrv_log: List[Tuple[str, float]] = []  # (date, rmssd_value)
+        self.hrv_log: list[tuple[str, float]] = []  # (date, rmssd_value)
         self.baseline_days = baseline_days
 
     def add_hrv_measurement(self, measurement_date: str, rmssd: float) -> None:
         """Add morning HRV measurement (rMSSD in ms)."""
         self.hrv_log.append((measurement_date, rmssd))
 
-    def calculate_baseline(self, days: int = 7) -> Tuple[Optional[float], Optional[float]]:
+    def calculate_baseline(self, days: int = 7) -> tuple[float | None, float | None]:
         """Calculate rolling baseline (mean ± SD)."""
         if len(self.hrv_log) < days:
             return None, None
@@ -48,13 +48,13 @@ class HRVGuidedEngine:
         recent = [hrv for _, hrv in self.hrv_log[-days:]]
         baseline = sum(recent) / len(recent)
         variance = sum((x - baseline) ** 2 for x in recent) / len(recent)
-        std_dev = variance ** 0.5
+        std_dev = variance**0.5
 
         return baseline, std_dev
 
     def get_training_recommendation(
         self, today_hrv: float, planned_session: str
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         """Apply HRV-guided decision rules."""
         baseline_result = self.calculate_baseline(self.baseline_days)
 
@@ -78,12 +78,14 @@ class HRVGuidedEngine:
             return planned_session, f"HRV acceptable: {today_hrv:.1f}", "MEDIUM"
 
     @staticmethod
-    def calculate_rmssd_from_rr_intervals(rr_intervals_ms: List[float]) -> Optional[float]:
+    def calculate_rmssd_from_rr_intervals(rr_intervals_ms: list[float]) -> float | None:
         """Calculate rMSSD from RR intervals."""
         if len(rr_intervals_ms) < 2:
             return None
-        diffs_squared = [(rr_intervals_ms[i+1] - rr_intervals_ms[i]) ** 2
-                        for i in range(len(rr_intervals_ms) - 1)]
+        diffs_squared = [
+            (rr_intervals_ms[i + 1] - rr_intervals_ms[i]) ** 2
+            for i in range(len(rr_intervals_ms) - 1)
+        ]
         return round((sum(diffs_squared) / len(diffs_squared)) ** 0.5, 1)
 
     def get_hrv_summary(self) -> dict:
@@ -100,20 +102,18 @@ class HRVGuidedEngine:
         baseline, std_dev = self.calculate_baseline(self.baseline_days)
         latest_hrv = self.hrv_log[-1][1] if self.hrv_log else 0.0
         return {
-            'latest_hrv' : round(latest_hrv, 1),
-            'baseline'   : round(baseline, 1) if baseline is not None else 0.0,
-            'std_dev'    : round(std_dev, 1) if std_dev is not None else 0.0,
-            'trend'      : self.get_trend_analysis(),
-            'data_points': len(self.hrv_log),
+            "latest_hrv": round(latest_hrv, 1),
+            "baseline": round(baseline, 1) if baseline is not None else 0.0,
+            "std_dev": round(std_dev, 1) if std_dev is not None else 0.0,
+            "trend": self.get_trend_analysis(),
+            "data_points": len(self.hrv_log),
         }
 
     def get_latest_hrv(self) -> float:
         """Return most recent rMSSD value (0.0 if no data)."""
         return round(self.hrv_log[-1][1], 1) if self.hrv_log else 0.0
 
-    def calculate_ln_rmssd_deviation(
-        self, short_days: int = 7, long_days: int = 28
-    ) -> float:
+    def calculate_ln_rmssd_deviation(self, short_days: int = 7, long_days: int = 28) -> float:
         """
         Normalised ln(rMSSD) deviation: short-term baseline vs long-term.
 
@@ -134,11 +134,11 @@ class HRVGuidedEngine:
         if not safe_log:
             return 0.0
         recent_log = safe_log[-short_days:]
-        long_log   = safe_log[-long_days:]
+        long_log = safe_log[-long_days:]
         if not recent_log or not long_log:
             return 0.0
         mean_short = sum(recent_log) / len(recent_log)
-        mean_long  = sum(long_log)   / len(long_log)
+        mean_long = sum(long_log) / len(long_log)
         # Normalise: ±0.3 ln-units = ±1.0 (saturates beyond that)
         return round(max(-1.0, min(1.0, (mean_short - mean_long) / 0.3)), 3)
 

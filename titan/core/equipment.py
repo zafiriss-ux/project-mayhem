@@ -3,7 +3,7 @@ TITAN Equipment Manager
 Shoe tracking, surface analysis, and training intent awareness
 """
 
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 
 
 class EquipmentManager:
@@ -32,7 +32,7 @@ class EquipmentManager:
         In production, this would load from persistent storage.
         """
         # Demo database - In practice, these would be saved to JSON/DB
-        self.shoes: Dict[str, Dict[str, any]] = {
+        self.shoes: dict[str, dict[str, any]] = {
             "1": {
                 "name": "Daily Trainers (Pegasus)",
                 "km": 450,
@@ -58,7 +58,7 @@ class EquipmentManager:
         session_type: str,
         shoe_id: str,
         surface: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """
         Validate if equipment matches training intent and assess risks.
 
@@ -155,7 +155,7 @@ class EquipmentManager:
         self.shoes[shoe_id]["km"] += distance_km
         return True
 
-    def get_shoe_status(self, shoe_id: str) -> Optional[Dict[str, any]]:
+    def get_shoe_status(self, shoe_id: str) -> dict[str, any] | None:
         """
         Get current status of a shoe.
 
@@ -189,7 +189,7 @@ class EquipmentManager:
             "status": status
         }
 
-    def list_all_shoes(self) -> Dict[str, Dict[str, any]]:
+    def list_all_shoes(self) -> dict[str, dict[str, any]]:
         """
         Get all shoes with their current status.
 

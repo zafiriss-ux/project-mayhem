@@ -13,50 +13,49 @@ Flow:
 """
 
 import contextlib
-import sys
 import os
+import sys
 from typing import Any, Optional, TypedDict
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ── Credentials (must happen before anything reads env vars) ────────────────
-from titan.ui.setup_wizard import ensure_credentials
+# ── Core (database) ───────────────────────────────────────────────────────────
+from titan.core.database import DatabaseManager
+from titan.features.nutrition_optimizer import NutritionOptimizer
+from titan.features.optimal_time_calculator import OptimalTimeCalculator
+
+# ── Feature modules ──────────────────────────────────────────────────────────
+from titan.features.weekly_planner import WeeklyPlanGenerator
 
 # ── Core integrations ────────────────────────────────────────────────────────
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
 
-# ── Science engines ──────────────────────────────────────────────────────────
-from titan.science.hrv_engine import HRVGuidedEngine
-from titan.science.tsb_engine import TSBEngine
-from titan.science.acwr_engine import ACWREngine
-from titan.science.readiness_engine import ReadinessEngine
-from titan.science.glycogen_model import GlycogenModel
-from titan.science.drift_engine import DriftEngine
-from titan.science.lactate_logic import LactateLogic
-from titan.science.trimp_engine import TRIMPEngine
-from titan.science.fatigue_engine import FatigueEngine
-from titan.science.adaptive_memory import AdaptiveMemory
-from titan.science.biomechanics import BiomechanicsAnalysis
-from titan.science.efficiency_engine import EfficiencyEngine
-from titan.science.durability_engine import DurabilityEngine
-from titan.science.critical_speed import CriticalSpeedEngine
-from titan.science.rcp_engine import RCPEngine
-
-# ── Core (database) ───────────────────────────────────────────────────────────
-from titan.core.database import DatabaseManager
-
-# ── Feature modules ──────────────────────────────────────────────────────────
-from titan.features.weekly_planner import WeeklyPlanGenerator
-from titan.features.optimal_time_calculator import OptimalTimeCalculator
-from titan.features.nutrition_optimizer import NutritionOptimizer
-
 # ── Orchestration ────────────────────────────────────────────────────────────
 from titan.orchestration.daily_coach import DailyCoach
+from titan.science.acwr_engine import ACWREngine
+from titan.science.adaptive_memory import AdaptiveMemory
+from titan.science.biomechanics import BiomechanicsAnalysis
+from titan.science.critical_speed import CriticalSpeedEngine
+from titan.science.drift_engine import DriftEngine
+from titan.science.durability_engine import DurabilityEngine
+from titan.science.efficiency_engine import EfficiencyEngine
+from titan.science.fatigue_engine import FatigueEngine
+from titan.science.glycogen_model import GlycogenModel
+
+# ── Science engines ──────────────────────────────────────────────────────────
+from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.lactate_logic import LactateLogic
+from titan.science.rcp_engine import RCPEngine
+from titan.science.readiness_engine import ReadinessEngine
+from titan.science.trimp_engine import TRIMPEngine
+from titan.science.tsb_engine import TSBEngine
 
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
+from titan.ui.setup_wizard import ensure_credentials
 
 
 class AthleteProfile(TypedDict):
@@ -102,7 +101,7 @@ class TitanContext(TypedDict):
     # Profile & state
     athlete_profile: AthleteProfile
     last_garmin_data: dict[str, Any]
-    last_weekly_plan: Optional[dict[str, Any]]
+    last_weekly_plan: dict[str, Any] | None
     today_session_type: str
 
 

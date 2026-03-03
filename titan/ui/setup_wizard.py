@@ -5,12 +5,11 @@ Interactive credential input at startup.
 Saves to config_secrets.py (excluded from git).
 """
 
-import os
 import getpass
+import os
 import re
-from pathlib import Path
 import stat
-
+from pathlib import Path
 
 SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
 ENV_PATH     = Path(__file__).parent.parent.parent / ".env"

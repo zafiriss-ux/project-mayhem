@@ -16,13 +16,15 @@ Scientific Basis:
 - Cheuvront, S.N. et al. (2010). J Strength Cond Res, 24(10), 2653-2665.
   Plasma volume / sodium guard for heat + duration.
 """
+
 from typing import Dict, List, Optional, Tuple
+
 
 class GlycogenModel:
     """Estimate glycogen cost and refueling needs"""
 
     @staticmethod
-    def estimate_glycogen_depletion(duration_min: float, intensity_pct_vo2max: float) -> Dict:
+    def estimate_glycogen_depletion(duration_min: float, intensity_pct_vo2max: float) -> dict:
         """Estimate glycogen cost of session"""
         if intensity_pct_vo2max > 85:
             rate, desc = 2.5, "HIGH (intervals/race)"
@@ -37,25 +39,26 @@ class GlycogenModel:
             "glycogen_depleted_g": round(duration_min * rate, 0),
             "intensity_classification": desc,
             "depletion_rate": rate,
-            "refuel_recommendation": "1.2-1.5 g carbs/kg within 2h"
+            "refuel_recommendation": "1.2-1.5 g carbs/kg within 2h",
         }
 
     @staticmethod
-    def daily_carb_recommendation(weight_kg: float, training_load: str) -> Dict:
+    def daily_carb_recommendation(weight_kg: float, training_load: str) -> dict:
         """Daily carb needs (Burke et al. 2011)"""
         recs = {
             "LIGHT": (3, 5, "Recovery days"),
             "MODERATE": (5, 7, "Base training"),
             "HIGH": (6, 10, "Normal load"),
-            "VERY_HIGH": (8, 12, "Heavy blocks")
+            "VERY_HIGH": (8, 12, "Heavy blocks"),
         }
         low, high, ctx = recs.get(training_load, (5, 7, "Moderate"))
         return {
             "carbs_g_per_kg_low": low,
             "carbs_g_per_kg_high": high,
             "total_carbs_range": f"{int(low * weight_kg)}-{int(high * weight_kg)}g",
-            "context": ctx
+            "context": ctx,
         }
+
 
 class GlycogenEngine:
     """Simple glycogen status checker (from original TITAN)"""
@@ -64,12 +67,12 @@ class GlycogenEngine:
     def glycogen_flag(low_carb_day: bool, back_to_back_quality: bool, weight: float) -> tuple:
         """
         Glycogen availability check.
-        
+
         Args:
             low_carb_day: Is this a low-carb day?
             back_to_back_quality: Quality sessions on consecutive days?
             weight: Athlete weight in kg
-        
+
         Returns:
             (hammer_allowed, min_carbs, flags)
         """
@@ -119,7 +122,7 @@ class GlycogenDebtAccumulator:
 
     def __init__(self) -> None:
         self.daily_debt: float = 0.0
-        self.debt_history: List[Tuple[str, float]] = []  # (date, debt_score)
+        self.debt_history: list[tuple[str, float]] = []  # (date, debt_score)
 
     # ── Session Debt Update ──────────────────────────────────────────────────
 
@@ -152,9 +155,9 @@ class GlycogenDebtAccumulator:
         Returns:
             Updated debt score (0–10).
         """
-        trimp_cost   = trimp * 0.015
-        lt2_cost     = time_above_lt2_min * 0.08
-        dprime_cost  = max(0.0, min(1.0, dprime_fraction)) * 1.5
+        trimp_cost = trimp * 0.015
+        lt2_cost = time_above_lt2_min * 0.08
+        dprime_cost = max(0.0, min(1.0, dprime_fraction)) * 1.5
         refuel_credit = (intra_carb_g / max(weight_kg, 1.0)) * 0.12
 
         net_burn = trimp_cost + lt2_cost + dprime_cost - refuel_credit
@@ -167,7 +170,7 @@ class GlycogenDebtAccumulator:
     def overnight_resynthesis(
         self,
         sleep_hours: float = 7.5,
-        carb_availability: str = 'MODERATE',
+        carb_availability: str = "MODERATE",
     ) -> float:
         """
         Apply overnight glycogen resynthesis.
@@ -182,7 +185,7 @@ class GlycogenDebtAccumulator:
         Returns:
             Updated debt score after overnight recovery.
         """
-        av_mult = {'HIGH': 1.3, 'MODERATE': 1.0, 'LOW': 0.6}.get(carb_availability, 1.0)
+        av_mult = {"HIGH": 1.3, "MODERATE": 1.0, "LOW": 0.6}.get(carb_availability, 1.0)
         # Base: 0.8 debt-units recovered per 8h well-fueled sleep
         recovery = 0.8 * (sleep_hours / 8.0) * av_mult
         self.daily_debt = max(0.0, self.daily_debt - recovery)
@@ -199,7 +202,7 @@ class GlycogenDebtAccumulator:
 
     # ── Norwegian Recovery Window Protocol ──────────────────────────────────
 
-    def norwegian_protocol(self, weight_kg: float) -> Optional[Dict]:
+    def norwegian_protocol(self, weight_kg: float) -> dict | None:
         """
         Trigger Norwegian Recovery Window Protocol when debt >= 7.
 
@@ -213,22 +216,22 @@ class GlycogenDebtAccumulator:
         if self.daily_debt < 7.0:
             return None
         return {
-            'triggered':   True,
-            'debt_score':  round(self.daily_debt, 1),
-            'status':      'CRITICAL',
-            'phase_a': {
-                'window':             '0–2h post-exercise',
-                'carbs_g_per_kg_hr':  1.1,
-                'carbs_g_total':      round(1.1 * weight_kg, 0),
-                'protein_g_per_kg':   0.3,
-                'protein_g_total':    round(0.3 * weight_kg, 0),
-                'rationale':          'Ivy et al. — max resynthesis rate window',
+            "triggered": True,
+            "debt_score": round(self.daily_debt, 1),
+            "status": "CRITICAL",
+            "phase_a": {
+                "window": "0–2h post-exercise",
+                "carbs_g_per_kg_hr": 1.1,
+                "carbs_g_total": round(1.1 * weight_kg, 0),
+                "protein_g_per_kg": 0.3,
+                "protein_g_total": round(0.3 * weight_kg, 0),
+                "rationale": "Ivy et al. — max resynthesis rate window",
             },
-            'phase_b': {
-                'window':             '2–6h post-exercise',
-                'carbs_g_per_kg_hr':  0.8,
-                'carbs_g_total':      round(0.8 * weight_kg * 4, 0),
-                'rationale':          'Sustained fueling to restore full stores',
+            "phase_b": {
+                "window": "2–6h post-exercise",
+                "carbs_g_per_kg_hr": 0.8,
+                "carbs_g_total": round(0.8 * weight_kg * 4, 0),
+                "rationale": "Sustained fueling to restore full stores",
             },
         }
 
@@ -239,7 +242,7 @@ class GlycogenDebtAccumulator:
         dew_point_c: float,
         duration_min: float,
         session_type: str,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Named accessor for electrolyte guard status (no logic change)."""
         return GlycogenDebtAccumulator.electrolyte_guard(
             dew_point_c=dew_point_c,
@@ -252,7 +255,7 @@ class GlycogenDebtAccumulator:
         dew_point_c: float,
         duration_min: float,
         session_type: str,
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """
         Sodium / plasma-volume guard for hot-humid conditions.
 
@@ -267,19 +270,19 @@ class GlycogenDebtAccumulator:
         Returns:
             Alert dict if triggered, None otherwise.
         """
-        QUALITY = {'TEMPO', 'INTERVALS', 'LONG_RUN', 'RACE', 'HAMMER'}
+        QUALITY = {"TEMPO", "INTERVALS", "LONG_RUN", "RACE", "HAMMER"}
         if dew_point_c <= 18.0 or duration_min <= 60 or session_type not in QUALITY:
             return None
         sweat_ml_hr = 800 + (dew_point_c - 18) * 40
-        total_sweat  = sweat_ml_hr * (duration_min / 60)
-        sodium_mg    = round(total_sweat * 0.75, 0)  # ~750 mg/L average sweat sodium
+        total_sweat = sweat_ml_hr * (duration_min / 60)
+        sodium_mg = round(total_sweat * 0.75, 0)  # ~750 mg/L average sweat sodium
         return {
-            'triggered':        True,
-            'reason':           f'Dew point {dew_point_c:.0f}°C + {duration_min:.0f}min quality session',
-            'sodium_mg':        sodium_mg,
-            'fluid_ml_per_hr':  round(sweat_ml_hr, 0),
-            'recommendation':   (
-                f'Pre-load 500 mL fluid; target {round(sodium_mg/1000,1)} g sodium '
-                f'+ {round(sweat_ml_hr/4,0):.0f} mL/15 min during session'
+            "triggered": True,
+            "reason": f"Dew point {dew_point_c:.0f}°C + {duration_min:.0f}min quality session",
+            "sodium_mg": sodium_mg,
+            "fluid_ml_per_hr": round(sweat_ml_hr, 0),
+            "recommendation": (
+                f"Pre-load 500 mL fluid; target {round(sodium_mg / 1000, 1)} g sodium "
+                f"+ {round(sweat_ml_hr / 4, 0):.0f} mL/15 min during session"
             ),
         }
