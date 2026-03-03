@@ -7,33 +7,29 @@ Run with:
     pytest test_core_modules.py -q   # quiet / CI mode
 """
 
-import warnings
 import sys
+import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-# Environment stabilization: weather integration requires optional dependency.
-pytest.importorskip("requests", reason="WeatherAPI tests require optional requests dependency")
-
 # ── path setup ──────────────────────────────────────────────────────────────
 sys.path.insert(0, str(Path(__file__).parent))
 
 from titan.core import (
-    UniversalAthleteProfile,
-    DatabaseManager,
     AthleteDatabase,
+    DatabaseManager,
     EquipmentManager,
     PeriodizationManager,
-)
-from titan.utils import (
-    MathCore,
-    SESSION_TYPES,
-    DEFAULT_CONFIG,
+    UniversalAthleteProfile,
 )
 from titan.integrations.weather_api import WeatherAPI
-
+from titan.utils import (
+    DEFAULT_CONFIG,
+    SESSION_TYPES,
+    MathCore,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SHARED FIXTURES
@@ -680,10 +676,10 @@ class TestWeeklyPlannerNullSafety:
 
     @pytest.fixture
     def planner(self):
-        from titan.science.tsb_engine import TSBEngine
-        from titan.science.hrv_engine import HRVGuidedEngine
-        from titan.science.acwr_engine import ACWREngine
         from titan.features.weekly_planner import WeeklyPlanGenerator
+        from titan.science.acwr_engine import ACWREngine
+        from titan.science.hrv_engine import HRVGuidedEngine
+        from titan.science.tsb_engine import TSBEngine
         return WeeklyPlanGenerator(
             hrv_engine=HRVGuidedEngine(),
             tsb_engine=TSBEngine(),
@@ -982,8 +978,9 @@ class TestGovernanceEngine:
 
     def test_no_lock_clean_state(self, gov):
         """No overrides + confident CS (recent data) → no governance locks."""
-        from titan.science.critical_speed import CriticalSpeedTracker
         from datetime import datetime, timedelta
+
+        from titan.science.critical_speed import CriticalSpeedTracker
         tracker = CriticalSpeedTracker()
         # Use recent dates so recency_score is high → confidence > 0.70
         for i in range(5):
