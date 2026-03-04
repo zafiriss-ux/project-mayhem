@@ -471,7 +471,7 @@ Phase 8 gate (mandatory): no implementation before ADR acceptance.
 
 ### T5-03 · Multi-sport scope decision 🟢
 
-Decision locked (ADR-0016).
+Decision status: CLOSED. Decision locked (ADR-0016).
 
 ---
 
