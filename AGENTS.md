@@ -40,28 +40,38 @@
 Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding". Do NOT implement it as part of this task. 
 ---
 
-## 2. Runtime & Git Rules
-
-### 2.1 Environment
-- Repository root: `/workspace/project-mayhem`
-- Python: **3.11+** (mandatory — uses `tomllib`, UTF-8 mode PEP 686)
-- Do NOT add or remove git remotes
-- Do NOT fetch or push in runtime / non-push-enabled environments.
-- Do NOT use `gh` CLI or call GitHub APIs from inside Codex runtime
-
 ### 2.2 Deliverable format (push-enabled environments)
-- Run `python -m pytest -q` before delivering — do NOT proceed if any test fails
-- You MAY create commits and push, but ONLY to branches matching `claude/*`
-- You MUST NOT push to `main` or `master` — this is a hard rule, not a guideline
-- You MUST NOT force push or rewrite history on any remote branch
-- After pushing, open exactly one PR (base=`main`, compare=`claude/<branch>`) and paste the PR link in your response
-- Commit message format: `T<tier>-<id>: <short title>` — example: `T2-08: Add startup observability`
+
+Run python -m pytest -q before delivering — do NOT proceed if any test fails.
+
+You MAY create commits and push, but ONLY to branches matching claude/*.
+
+You MUST NOT push to main or master — this is a hard rule, not a guideline.
+
+You MUST NOT force push or rewrite history on any remote branch.
+
+If push is available in the runtime environment:
+- Push the branch.
+- Open exactly one PR (base=main, compare=claude/<branch>).
+- Paste the PR link in your response.
+
+If push is NOT available in the runtime environment:
+- Stop after the commit is created.
+- Report the branch name and commit hash.
+- The repository owner will perform the push and open the PR.
+
+Commit message format: T<tier>-<id>: <short title> — example: T2-08: Add startup observability
+
 
 ### 2.2b Deliverable format (non-push environments — fallback only)
-- Run `python -m pytest -q` before delivering
-- Provide a single unified patch: `git diff` or `git diff --staged`
-- Do NOT create commits. Do NOT push. Do NOT open PRs.
-- Label response clearly: `[DIFF ONLY — push not available]`
+
+Run python -m pytest -q before delivering.
+
+Provide a single unified patch: git diff or git diff --staged.
+
+Do NOT create commits. Do NOT push. Do NOT open PRs.
+
+Label response clearly: [DIFF ONLY — push not available]`[DIFF ONLY — push not available]`
 
 ### 2.3 Git workflow (push-enabled environments)
 - Never push directly to `main` or `master`
