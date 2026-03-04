@@ -53,6 +53,7 @@ Agents must not redesign, restructure, or re-architect any system component unle
 - Run `python -m pytest -q` before delivering
 - Provide a single unified patch: `git diff` or `git diff --staged`
 - Never open PRs from inside the runtime — the owner applies the diff and opens PRs from their machine
+-Do NOT create commits. Do NOT run git commit. Deliver only git diff or git diff --staged.
 
 ### 2.3 Git workflow (push-enabled environments)
 - Never push directly to `main` or `master`
