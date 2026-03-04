@@ -18,6 +18,7 @@ Run with:
     pytest test_new_modules.py -v
 """
 
+import os
 import stat
 import sys
 from datetime import datetime, timedelta
@@ -1205,4 +1206,6 @@ class TestSetupWizard:
         text = env_file.read_text()
         assert "TELEGRAM_BOT_TOKEN=abc123456" in text
         mode = stat.S_IMODE(env_file.stat().st_mode)
+        if os.name == "nt":
+            pytest.skip("Windows does not enforce POSIX chmod mode bits on .env files")
         assert mode == (stat.S_IRUSR | stat.S_IWUSR)
