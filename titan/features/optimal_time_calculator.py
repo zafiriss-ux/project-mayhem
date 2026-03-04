@@ -46,13 +46,29 @@ class OptimalTimeCalculator:
         Returns:
             Dictionary with optimal time window and reasoning
         """
+        weather_snapshot = self.weather_api.get_current_conditions()
+        data_quality = weather_snapshot.get("data_quality", "live")
+        if data_quality == "synthetic":
+            return {
+                "recommended_time": "N/A",
+                "quality": "DEGRADED",
+                "reasoning": [],
+                "weather_window_omitted": True,
+                "weather_data_quality": data_quality,
+            }
+
         # Get weather forecast
         windows = self.weather_api.find_optimal_training_windows(
             day_offset=day_offset, duration_hours=duration_hours
         )
 
         if not windows:
-            return {"recommended_time": "No data available", "quality": "UNKNOWN", "reasoning": []}
+            return {
+                "recommended_time": "No data available",
+                "quality": "UNKNOWN",
+                "reasoning": [],
+                "weather_data_quality": data_quality,
+            }
 
         # Apply session-type specific adjustments
         windows = self._apply_session_type_preferences(windows, session_type)
@@ -78,6 +94,7 @@ class OptimalTimeCalculator:
             "quality": best_window["quality"],
             "reasoning": self._generate_reasoning(best_window, session_type, tsb_value),
             "alternatives": windows[1:3] if len(windows) > 1 else [],
+            "weather_data_quality": data_quality,
         }
 
     def _apply_session_type_preferences(self, windows: list[dict], session_type: str) -> list[dict]:

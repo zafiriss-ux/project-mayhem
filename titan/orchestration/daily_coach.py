@@ -420,6 +420,7 @@ class DailyCoach:
             day_offset    = 0,
             tsb_value     = tsb_value,
         ))
+        weather_degraded_mode = optimal_time.get('weather_data_quality') == 'synthetic'
 
         # ── Step 11: Nutrition ───────────────────────────────────────────────
         print("🍽 Generating nutrition plan...")
@@ -464,9 +465,9 @@ class DailyCoach:
             'details'           : today_session.get('details', ''),
             'governance_locks'  : today_session.get('governance_locks_applied', []),
             # Timing
-            'optimal_time'      : optimal_time.get('recommended_time', 'N/A'),
-            'dew_point'         : optimal_time.get('dew_point', 'N/A'),
-            'conditions'        : optimal_time.get('quality', 'N/A'),
+            'optimal_time'      : 'N/A' if weather_degraded_mode else optimal_time.get('recommended_time', 'N/A'),
+            'dew_point'         : 'N/A' if weather_degraded_mode else optimal_time.get('dew_point', 'N/A'),
+            'conditions'        : 'N/A' if weather_degraded_mode else optimal_time.get('quality', 'N/A'),
             # Autonomic / HRV
             'hrv_status'        : hrv_summary.get('trend', 'N/A'),
             'hrv_value'         : round(latest_hrv, 1),
@@ -502,6 +503,8 @@ class DailyCoach:
             'fueling_gate': today_session.get('fueling_gate'),
             'vo2_eligibility': today_session.get('vo2_eligibility'),
         }
+        if weather_degraded_mode:
+            coaching_data['special_note'] = '⚠️ Weather data unavailable — optimal time window omitted'
 
         def _step12_send_telegram() -> bool:
             try:
