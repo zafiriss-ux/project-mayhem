@@ -12,7 +12,11 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from titan.orchestration.contracts import GarminSyncResult, HRVSyncMetrics
+from titan.orchestration.contracts import (
+    GarminSyncResult,
+    GarminSyncResultContract,
+    HRVSyncMetrics,
+)
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -344,13 +348,13 @@ class GarminSync:
             "synced_days": int(self.last_hrv_sync_metrics.get("synced_days", 0)),
             "skipped_days": int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
         }
-        payload: GarminSyncResult = {
-            "activities": activities,
-            "weight": weight,
-            "sleep": sleep,
-            "hrv": hrv,
-            "hrv_sync_metrics": hrv_metrics,
-        }
+        payload: GarminSyncResult = GarminSyncResultContract(
+            activities=activities,
+            weight=weight,
+            sleep=sleep,
+            hrv=hrv,
+            hrv_sync_metrics=hrv_metrics,
+        ).to_payload()
         elapsed_s = round(time.monotonic() - started, 3)
         timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
         if elapsed_s >= timeout_s:

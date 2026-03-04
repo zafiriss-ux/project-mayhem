@@ -30,6 +30,7 @@ from typing import Any
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
     DailyCoachContext,
+    DailyCoachContextContract,
     DailyCoachingPayload,
     GarminSyncResult,
     TodaySessionPlan,
@@ -582,31 +583,30 @@ class DailyCoach:
         lock_thresholds: dict[str, Any],
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
-        context: DailyCoachContext = {
-            'db': self.db,
-            'cs_tracker': self.cs_tracker,
-            'afi_constraints': afi_constraints,
-            'intensity_gate_result': intensity_gate,
-            'readiness_score': readiness_score,
-            'glycogen_debt': glycogen_debt,
-            'fatigue_level': fatigue_level,
-            'acwr': acwr,
-            'days_since_last_vo2': days_since_last_vo2,
-            'fueling_confirmed': fueling_confirmed,
-            'planned_duration_min': planned_duration_min,
-            'today_hrv': today_hrv,
-            'baseline_hrv': baseline_hrv,
-            'hrv_std_dev': hrv_std_dev,
-            'today_rhr': today_rhr,
-            'baseline_rhr': baseline_rhr,
-            'sleep_score': sleep_score,
-            'subjective_fatigue_score': subjective_fatigue_score,
-            'tsb_value': tsb_value,
-            'injury_flag': injury_flag,
-            'priority_vector': priority_vector,
-            'lock_thresholds': lock_thresholds,
-        }
-        return context
+        return DailyCoachContextContract(
+            db=self.db,
+            cs_tracker=self.cs_tracker,
+            afi_constraints=afi_constraints,
+            intensity_gate_result=intensity_gate,
+            readiness_score=readiness_score,
+            glycogen_debt=glycogen_debt,
+            fatigue_level=fatigue_level,
+            acwr=acwr,
+            days_since_last_vo2=days_since_last_vo2,
+            fueling_confirmed=fueling_confirmed,
+            planned_duration_min=planned_duration_min,
+            today_hrv=today_hrv,
+            baseline_hrv=baseline_hrv,
+            hrv_std_dev=hrv_std_dev,
+            today_rhr=today_rhr,
+            baseline_rhr=baseline_rhr,
+            sleep_score=sleep_score,
+            subjective_fatigue_score=subjective_fatigue_score,
+            tsb_value=tsb_value,
+            injury_flag=injury_flag,
+            priority_vector=priority_vector,
+            lock_thresholds=lock_thresholds,
+        ).to_payload()
 
     def _persist_garmin_data(
         self, garmin_data: dict, today_str: str
