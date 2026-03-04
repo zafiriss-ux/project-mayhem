@@ -60,3 +60,27 @@ def test_run_migrations_emits_structured_log_on_column_add(tmp_path, caplog):
         assert hasattr(record, "timestamp")
 
     db.close()
+
+
+def test_database_manager_init_logs_structured_warning_when_best_effort_logging_fails(
+    tmp_path,
+    monkeypatch,
+    caplog,
+):
+    logger = logging.getLogger("titan.database")
+
+    def _raise_os_error(_message):
+        raise OSError("log sink unavailable")
+
+    monkeypatch.setattr(logger, "info", _raise_os_error)
+
+    caplog.set_level(logging.WARNING, logger="titan.core.database")
+    db = DatabaseManager(db_name="init_logging_warn.db", db_dir=tmp_path)
+
+    payloads = [
+        record.message
+        for record in caplog.records
+        if "db_init_logging_skipped" in record.message
+    ]
+    assert payloads, "Expected db_init_logging_skipped structured warning"
+    db.close()

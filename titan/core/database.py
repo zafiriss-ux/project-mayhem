@@ -167,9 +167,14 @@ class DatabaseManager:
             logger.info(f"PRAGMA journal_mode: {journal_mode}")
             logger.info(f"PRAGMA synchronous: {synchronous}")
             logger.info("PRAGMA busy_timeout: 5000")
-        except Exception:
-            # Best-effort logging (don't fail if logger not configured)
-            pass
+        except (OSError, ValueError) as error:
+            _database_event(
+                "db_init_logging_skipped",
+                level=logging.WARNING,
+                db_path=str(self.db_path),
+                error_class=type(error).__name__,
+                error_message=str(error),
+            )
 
         self.create_tables()
 
@@ -1113,7 +1118,7 @@ class AthleteDatabase:
 
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
-            except Exception as e:
+            except (OSError, TypeError, ValueError, json.JSONDecodeError) as e:
                 _database_event(
                     "athlete_file_skipped",
                     level=logging.WARNING,
