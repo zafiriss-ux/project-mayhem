@@ -12,10 +12,10 @@ Flow:
   6. Launch interactive main menu
 """
 
-import contextlib
 import logging
 import os
 import sys
+from datetime import UTC, datetime
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -510,15 +510,24 @@ def main():
     print()
 
     # ── Step 10: Interactive menu ─────────────────────────────────────────────
-    with contextlib.suppress(KeyboardInterrupt):
+    try:
         main_menu(titan_ctx)
-
-    # ── Shutdown ──────────────────────────────────────────────────────────────
-    print("\n\n🛑 Stopping TITAN...")
-    garmin.stop_background_sync()
-    weather.stop_background_updates()
-    telegram.stop_bot()
-    print("✅ TITAN stopped gracefully.\n")
+    except KeyboardInterrupt:
+        log.info(
+            "shutdown_requested",
+            extra={
+                "reason": "keyboard_interrupt",
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+        )
+    finally:
+        # ── Shutdown ──────────────────────────────────────────────────────────
+        print("\n\n🛑 Stopping TITAN...")
+        garmin.stop_background_sync()
+        weather.stop_background_updates()
+        telegram.stop_bot()
+        db.close()
+        print("✅ TITAN stopped gracefully.\n")
 
 
 if __name__ == "__main__":

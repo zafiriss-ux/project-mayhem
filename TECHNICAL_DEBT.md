@@ -750,9 +750,9 @@ the slow sync continues to hold resources.
 
 ---
 
-### T4-09 · Main loop suppresses `KeyboardInterrupt` without structured shutdown logging 🟢
+### T4-09 · Main loop suppresses `KeyboardInterrupt` without structured shutdown logging ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** COMPLETED. `titan/main.py` now catches `KeyboardInterrupt` explicitly in the top-level menu loop, emits structured `shutdown_requested` with `reason="keyboard_interrupt"` and `timestamp`, and then runs the clean shutdown sequence (`stop_background_sync`, `stop_background_updates`, `stop_bot`, `db.close`). PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Low-priority #2)
 
 **Location:** `titan/main.py` or `main.py` — main menu loop
@@ -982,7 +982,7 @@ When an item is completed, mark it here with date and PR reference:
 | T3-07 | OPEN | — |
 | T4-07 | OPEN | — |
 | T4-08 | OPEN | — |
-| T4-09 | OPEN | — |
+| T4-09 | 2026-03-04 | PR: TBD |
 | T4-10 | OPEN | — |
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | OPEN | — |
