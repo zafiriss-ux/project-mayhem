@@ -1,6 +1,6 @@
 import math
 
-from titan.science.glycogen_model import GlycogenDebtAccumulator
+from titan.science.glycogen_model import GlycogenDebtAccumulator, GlycogenEngine, GlycogenModel
 
 
 def test_empty_state_and_missing_like_inputs_are_safe() -> None:
@@ -124,3 +124,50 @@ def test_electrolyte_guard_threshold_behavior_is_stable() -> None:
     assert triggered["triggered"] is True
     assert triggered["sodium_mg"] > 0
     assert triggered["fluid_ml_per_hr"] > 0
+
+
+def test_estimate_glycogen_depletion_covers_intensity_bands() -> None:
+    high = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=90.0)
+    moderate_high = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=80.0)
+    moderate = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=70.0)
+    easy = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=60.0)
+
+    assert high["intensity_classification"] == "HIGH (intervals/race)"
+    assert high["depletion_rate"] == 2.5
+    assert moderate_high["intensity_classification"] == "MODERATE-HIGH (tempo)"
+    assert moderate_high["depletion_rate"] == 1.8
+    assert moderate["intensity_classification"] == "MODERATE (steady)"
+    assert moderate["depletion_rate"] == 1.2
+    assert easy["intensity_classification"] == "EASY (fat burning)"
+    assert easy["depletion_rate"] == 0.8
+
+
+def test_daily_carb_recommendation_handles_named_and_default_loads() -> None:
+    very_high = GlycogenModel.daily_carb_recommendation(weight_kg=70.0, training_load="VERY_HIGH")
+    defaulted = GlycogenModel.daily_carb_recommendation(weight_kg=70.0, training_load="UNKNOWN")
+
+    assert very_high["carbs_g_per_kg_low"] == 8
+    assert very_high["carbs_g_per_kg_high"] == 12
+    assert very_high["total_carbs_range"] == "560-840g"
+    assert very_high["context"] == "Heavy blocks"
+    assert defaulted["carbs_g_per_kg_low"] == 5
+    assert defaulted["carbs_g_per_kg_high"] == 7
+    assert defaulted["total_carbs_range"] == "350-490g"
+    assert defaulted["context"] == "Moderate"
+
+
+def test_glycogen_flag_paths_for_low_carb_quality_and_ok() -> None:
+    low_carb = GlycogenEngine.glycogen_flag(low_carb_day=True, back_to_back_quality=False, weight=70.0)
+    quality = GlycogenEngine.glycogen_flag(low_carb_day=False, back_to_back_quality=True, weight=70.0)
+    ok = GlycogenEngine.glycogen_flag(low_carb_day=False, back_to_back_quality=False, weight=70.0)
+
+    assert low_carb == (False, None, ["LOW_GLYCOGEN: Hammer forbidden today"])
+    assert quality == (True, 490, ["BACK-TO-BACK QUALITY: Carbs ≥ 490g required"])
+    assert ok == (True, None, ["GLYCOGEN OK: Normal fueling rules"])
+
+
+def test_status_reports_moderate_band() -> None:
+    accumulator = GlycogenDebtAccumulator()
+    accumulator.daily_debt = 5.0
+
+    assert accumulator.status == "MODERATE"
