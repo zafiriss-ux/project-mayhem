@@ -1,22 +1,128 @@
 import json
+from typing import get_type_hints
 
 from titan.orchestration.contracts import (
     DailyCoachContextContract,
+    DailyCoachingPayload,
     GarminSyncResultContract,
     HRVSyncMetricsContract,
     TitanContextContract,
+    TodaySessionPlan,
 )
 
 
+def test_daily_coaching_payload_contract_happy_path_typed_fields():
+    payload: DailyCoachingPayload = {
+        "session_type": "EASY",
+        "duration": "10 km",
+        "details": "steady",
+        "governance_locks": [],
+        "optimal_time": "07:00",
+        "dew_point": 12.5,
+        "conditions": "GOOD",
+        "hrv_status": "STABLE",
+        "hrv_value": 42.1,
+        "hrv_baseline": 40.0,
+        "afi": 85.0,
+        "sleep_quality": 80,
+        "sleep_hours": 7.5,
+        "readiness_score": 72.0,
+        "subjective_fatigue_score": 3,
+        "fatigue_level": "LOW",
+        "fatigue_tags": ["fresh"],
+        "tsb": -5.0,
+        "tsb_status": "MANAGE",
+        "cs_smoothed": 4.2,
+        "cs_thermal": 4.0,
+        "archetype": "balanced",
+        "glycogen_debt": 20.0,
+        "glycogen_status": "MODERATE",
+        "glycogen_protocol": {"carbs_g": 60},
+        "electrolyte_alert": {"status": "ok"},
+        "nutrition_plan": "60g carbs, 25g protein",
+        "governance_report": {"summary": "clear"},
+        "intensity_gate_result": {"color": "GREEN"},
+        "fueling_gate": {"ok": True},
+        "vo2_eligibility": {"eligible": True},
+    }
+
+    assert payload["optimal_time"] == "07:00"
+    assert payload["readiness_score"] == 72.0
+    assert payload["intensity_gate_result"] == {"color": "GREEN"}
+
+
+def test_daily_coaching_payload_contract_boundary_nullable_and_na_fields():
+    payload: DailyCoachingPayload = {
+        "session_type": "REST",
+        "duration": "0 km",
+        "details": "",
+        "governance_locks": ["H2"],
+        "optimal_time": "N/A",
+        "dew_point": "N/A",
+        "conditions": "N/A",
+        "hrv_status": "N/A",
+        "hrv_value": 0.0,
+        "hrv_baseline": 0.0,
+        "afi": 0.0,
+        "sleep_quality": 0,
+        "sleep_hours": 0.0,
+        "readiness_score": "N/A",
+        "subjective_fatigue_score": 0,
+        "fatigue_level": "LOW",
+        "fatigue_tags": [],
+        "tsb": 0.0,
+        "tsb_status": "N/A",
+        "cs_smoothed": None,
+        "cs_thermal": None,
+        "archetype": "N/A",
+        "glycogen_debt": 0.0,
+        "glycogen_status": "LOW",
+        "glycogen_protocol": {},
+        "electrolyte_alert": {},
+        "nutrition_plan": "N/A",
+        "governance_report": {},
+        "intensity_gate_result": None,
+        "fueling_gate": None,
+        "vo2_eligibility": None,
+    }
+
+    assert payload["dew_point"] == "N/A"
+    assert payload["cs_smoothed"] is None
+    assert payload["vo2_eligibility"] is None
+
+
+def test_today_session_plan_contract_annotation_happy_path_mapping_fields():
+    hints = get_type_hints(TodaySessionPlan, include_extras=True)
+
+    assert "typing.NotRequired[collections.abc.Mapping[str, object]]" in str(hints["intensity_gate_result"])
+    assert "typing.NotRequired[collections.abc.Mapping[str, object]]" in str(hints["fueling_gate"])
+
+
+def test_today_session_plan_contract_annotation_boundary_allows_missing_optional_fields():
+    payload: TodaySessionPlan = {"session_type": "EASY", "duration_min": 45}
+
+    assert payload["session_type"] == "EASY"
+    assert payload["duration_min"] == 45
+
+
 def test_garmin_sync_result_contract_to_payload_happy_path():
+    activities = [{"date": "2026-03-04"}]
+    weight = [{"weight_kg": 70.2}]
+    sleep = [{"sleep_score": 85}]
+    hrv = [{"rmssd": 43.2}]
+
     payload = GarminSyncResultContract(
-        activities=[{"date": "2026-03-04"}],
-        weight=[{"weight_kg": 70.2}],
-        sleep=[{"sleep_score": 85}],
-        hrv=[{"rmssd": 43.2}],
+        activities=activities,
+        weight=weight,
+        sleep=sleep,
+        hrv=hrv,
         hrv_sync_metrics={"days_back": 7, "synced_days": 1, "skipped_days": 0},
     ).to_payload()
 
+    assert payload["activities"] is activities
+    assert payload["weight"] is weight
+    assert payload["sleep"] is sleep
+    assert payload["hrv"] is hrv
     assert payload["activities"][0]["date"] == "2026-03-04"
     assert json.loads(json.dumps(payload))["hrv_sync_metrics"]["synced_days"] == 1
 
@@ -35,9 +141,11 @@ def test_garmin_sync_result_contract_to_payload_boundary_empty_collections():
 
 
 def test_daily_coach_context_contract_to_payload_happy_path():
+    db_handle = object()
+    cs_tracker = object()
     payload = DailyCoachContextContract(
-        db=object(),
-        cs_tracker=object(),
+        db=db_handle,
+        cs_tracker=cs_tracker,
         afi_constraints={"afi_modifier": -5},
         intensity_gate_result={"color": "YELLOW"},
         readiness_score=66.0,
@@ -60,8 +168,12 @@ def test_daily_coach_context_contract_to_payload_happy_path():
         lock_thresholds={"acwr": 1.25},
     ).to_payload()
 
+    assert payload["db"] is db_handle
+    assert payload["cs_tracker"] is cs_tracker
     assert payload["intensity_gate_result"]["color"] == "YELLOW"
+    assert payload["days_since_last_vo2"] == 3
     assert payload["priority_vector"]["recovery"] == 1
+    assert payload["lock_thresholds"]["acwr"] == 1.25
 
 
 def test_daily_coach_context_contract_to_payload_boundary_nullable_vo2_field():
@@ -106,8 +218,13 @@ def test_hrv_sync_metrics_contract_to_payload_boundary_zero_values():
 
 
 def test_titan_context_contract_to_payload_happy_path():
+    garmin_client = object()
+    db_handle = object()
+    last_garmin_data = {"activities": []}
+    last_weekly_plan = {"monday": "easy"}
+
     payload = TitanContextContract(
-        garmin=object(),
+        garmin=garmin_client,
         weather=object(),
         telegram=object(),
         hrv_engine=object(),
@@ -129,7 +246,7 @@ def test_titan_context_contract_to_payload_happy_path():
         optimal_time_calc=object(),
         nutrition_optimizer=object(),
         daily_coach=object(),
-        db=object(),
+        db=db_handle,
         athlete_profile={
             "name": "Athlete",
             "age": 35,
@@ -140,11 +257,15 @@ def test_titan_context_contract_to_payload_happy_path():
             "phase": "BUILD",
             "goal": "5K",
         },
-        last_garmin_data={"activities": []},
-        last_weekly_plan={"monday": "easy"},
+        last_garmin_data=last_garmin_data,
+        last_weekly_plan=last_weekly_plan,
         today_session_type="EASY",
     ).to_payload()
 
+    assert payload["garmin"] is garmin_client
+    assert payload["db"] is db_handle
+    assert payload["last_garmin_data"] is last_garmin_data
+    assert payload["last_weekly_plan"] is last_weekly_plan
     assert payload["athlete_profile"]["name"] == "Athlete"
     assert payload["today_session_type"] == "EASY"
 

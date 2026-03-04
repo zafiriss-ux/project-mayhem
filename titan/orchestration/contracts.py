@@ -1,7 +1,8 @@
 """Typed payload contracts for critical orchestration boundaries."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, NotRequired, TypedDict
+from typing import NotRequired, TypedDict
 
 
 class HRVSyncMetrics(TypedDict):
@@ -25,19 +26,19 @@ class HRVSyncMetricsContract:
 
 
 class GarminSyncResult(TypedDict):
-    activities: list[dict[str, Any]]
-    weight: list[dict[str, Any]]
-    sleep: list[dict[str, Any]]
-    hrv: list[dict[str, Any]]
+    activities: list[Mapping[str, object]]
+    weight: list[Mapping[str, object]]
+    sleep: list[Mapping[str, object]]
+    hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
 
 
 @dataclass(frozen=True)
 class GarminSyncResultContract:
-    activities: list[dict[str, Any]]
-    weight: list[dict[str, Any]]
-    sleep: list[dict[str, Any]]
-    hrv: list[dict[str, Any]]
+    activities: list[Mapping[str, object]]
+    weight: list[Mapping[str, object]]
+    sleep: list[Mapping[str, object]]
+    hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
 
     def to_payload(self) -> GarminSyncResult:
@@ -59,21 +60,21 @@ class TodaySessionPlan(TypedDict):
     phase: NotRequired[str]
     governance_locks_applied: NotRequired[list[str]]
     governance_clean: NotRequired[bool]
-    intensity_gate_result: NotRequired[dict[str, Any]]
-    fueling_gate: NotRequired[dict[str, Any]]
-    vo2_eligibility: NotRequired[dict[str, Any]]
+    intensity_gate_result: NotRequired[Mapping[str, object]]
+    fueling_gate: NotRequired[Mapping[str, object]]
+    vo2_eligibility: NotRequired[Mapping[str, object]]
 
 
 class DailyCoachContext(TypedDict):
-    db: Any
-    cs_tracker: Any
-    afi_constraints: dict[str, Any]
-    intensity_gate_result: dict[str, Any]
+    db: object
+    cs_tracker: object
+    afi_constraints: Mapping[str, object]
+    intensity_gate_result: Mapping[str, object]
     readiness_score: float
     glycogen_debt: float
     fatigue_level: str
     acwr: float
-    days_since_last_vo2: Any
+    days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float
@@ -85,21 +86,21 @@ class DailyCoachContext(TypedDict):
     subjective_fatigue_score: int
     tsb_value: float
     injury_flag: bool
-    priority_vector: dict[str, Any]
-    lock_thresholds: dict[str, Any]
+    priority_vector: Mapping[str, float]
+    lock_thresholds: Mapping[str, float]
 
 
 @dataclass(frozen=True)
 class DailyCoachContextContract:
-    db: Any
-    cs_tracker: Any
-    afi_constraints: dict[str, Any]
-    intensity_gate_result: dict[str, Any]
+    db: object
+    cs_tracker: object
+    afi_constraints: Mapping[str, object]
+    intensity_gate_result: Mapping[str, object]
     readiness_score: float
     glycogen_debt: float
     fatigue_level: str
     acwr: float
-    days_since_last_vo2: Any
+    days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float
@@ -111,8 +112,8 @@ class DailyCoachContextContract:
     subjective_fatigue_score: int
     tsb_value: float
     injury_flag: bool
-    priority_vector: dict[str, Any]
-    lock_thresholds: dict[str, Any]
+    priority_vector: Mapping[str, float]
+    lock_thresholds: Mapping[str, float]
 
     def to_payload(self) -> DailyCoachContext:
         return {
@@ -146,8 +147,8 @@ class DailyCoachingPayload(TypedDict):
     duration: str
     details: str
     governance_locks: list[str]
-    optimal_time: Any
-    dew_point: Any
+    optimal_time: str
+    dew_point: float | str
     conditions: str
     hrv_status: str
     hrv_value: float
@@ -155,24 +156,24 @@ class DailyCoachingPayload(TypedDict):
     afi: float
     sleep_quality: int
     sleep_hours: float
-    readiness_score: Any
+    readiness_score: float | str
     subjective_fatigue_score: int
     fatigue_level: str
     fatigue_tags: list[str]
     tsb: float
     tsb_status: str
-    cs_smoothed: Any
-    cs_thermal: Any
+    cs_smoothed: float | None
+    cs_thermal: float | None
     archetype: str
     glycogen_debt: float
     glycogen_status: str
-    glycogen_protocol: dict[str, Any]
-    electrolyte_alert: dict[str, Any]
+    glycogen_protocol: Mapping[str, object]
+    electrolyte_alert: Mapping[str, object]
     nutrition_plan: str
-    governance_report: dict[str, Any]
-    intensity_gate_result: Any
-    fueling_gate: Any
-    vo2_eligibility: Any
+    governance_report: Mapping[str, object]
+    intensity_gate_result: Mapping[str, object] | None
+    fueling_gate: Mapping[str, object] | None
+    vo2_eligibility: Mapping[str, object] | None
 
 
 class AthleteProfile(TypedDict):
@@ -187,63 +188,63 @@ class AthleteProfile(TypedDict):
 
 
 class TitanContext(TypedDict):
-    garmin: Any
-    weather: Any
-    telegram: Any
-    hrv_engine: Any
-    tsb_engine: Any
-    acwr_engine: Any
-    readiness_engine: Any
-    glycogen_model: Any
-    drift_engine: Any
-    lactate_logic: Any
-    trimp_engine: Any
-    fatigue_engine: Any
-    adaptive_memory: Any
-    biomechanics: Any
-    efficiency_engine: Any
-    durability_engine: Any
-    critical_speed: Any
-    rcp_engine: Any
-    weekly_planner: Any
-    optimal_time_calc: Any
-    nutrition_optimizer: Any
-    daily_coach: Any
-    db: Any
+    garmin: object
+    weather: object
+    telegram: object
+    hrv_engine: object
+    tsb_engine: object
+    acwr_engine: object
+    readiness_engine: object
+    glycogen_model: object
+    drift_engine: object
+    lactate_logic: object
+    trimp_engine: object
+    fatigue_engine: object
+    adaptive_memory: object
+    biomechanics: object
+    efficiency_engine: object
+    durability_engine: object
+    critical_speed: object
+    rcp_engine: object
+    weekly_planner: object
+    optimal_time_calc: object
+    nutrition_optimizer: object
+    daily_coach: object
+    db: object
     athlete_profile: AthleteProfile
-    last_garmin_data: dict[str, Any]
-    last_weekly_plan: dict[str, Any] | None
+    last_garmin_data: Mapping[str, object]
+    last_weekly_plan: Mapping[str, object] | None
     today_session_type: str
 
 
 @dataclass(frozen=True)
 class TitanContextContract:
-    garmin: Any
-    weather: Any
-    telegram: Any
-    hrv_engine: Any
-    tsb_engine: Any
-    acwr_engine: Any
-    readiness_engine: Any
-    glycogen_model: Any
-    drift_engine: Any
-    lactate_logic: Any
-    trimp_engine: Any
-    fatigue_engine: Any
-    adaptive_memory: Any
-    biomechanics: Any
-    efficiency_engine: Any
-    durability_engine: Any
-    critical_speed: Any
-    rcp_engine: Any
-    weekly_planner: Any
-    optimal_time_calc: Any
-    nutrition_optimizer: Any
-    daily_coach: Any
-    db: Any
+    garmin: object
+    weather: object
+    telegram: object
+    hrv_engine: object
+    tsb_engine: object
+    acwr_engine: object
+    readiness_engine: object
+    glycogen_model: object
+    drift_engine: object
+    lactate_logic: object
+    trimp_engine: object
+    fatigue_engine: object
+    adaptive_memory: object
+    biomechanics: object
+    efficiency_engine: object
+    durability_engine: object
+    critical_speed: object
+    rcp_engine: object
+    weekly_planner: object
+    optimal_time_calc: object
+    nutrition_optimizer: object
+    daily_coach: object
+    db: object
     athlete_profile: AthleteProfile
-    last_garmin_data: dict[str, Any]
-    last_weekly_plan: dict[str, Any] | None
+    last_garmin_data: Mapping[str, object]
+    last_weekly_plan: Mapping[str, object] | None
     today_session_type: str
 
     def to_payload(self) -> TitanContext:

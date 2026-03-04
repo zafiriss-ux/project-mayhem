@@ -776,8 +776,14 @@ aggregated log output.
 
 ### T4-10 · Typed payload contracts use broad `Any` — weakens static guarantees 🟡
 
-**Status:** OPEN
+**Status:** COMPLETED
 **Source:** Engineering audit 2026-03-04 (Architecture observation #3)
+
+**Completion update (2026-03-04):**
+- contracts updated: `DailyCoachContext`, `GarminSyncResult`, `TodaySessionPlan`, `DailyCoachingPayload`, `TitanContext`
+- remaining contracts: none
+- date: 2026-03-04
+- PR: TBD
 
 **Location:** `titan/orchestration/contracts.py` + typed boundaries in
 `titan/integrations/garmin_sync.py`, `titan/orchestration/daily_coach.py`
@@ -983,7 +989,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-07 | OPEN | — |
 | T4-08 | OPEN | — |
 | T4-09 | 2026-03-04 | PR: TBD |
-| T4-10 | OPEN | — |
+| T4-10 | 2026-03-04 | PR: TBD |
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | OPEN | — |
 | T4-13 | OPEN | — |
