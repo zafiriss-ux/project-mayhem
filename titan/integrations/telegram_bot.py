@@ -77,6 +77,7 @@ class TitanTelegramBot:
         self._poll_thread: threading.Thread | None = None
         self._sched_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._tasks_lock = threading.Lock()
         self.scheduled_tasks: list[dict] = []
         self.message_history: list[dict] = []
 
@@ -332,15 +333,29 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     # SCHEDULER
     # ------------------------------------------------------------------ #
-    def schedule_task(self, name: str, time_str: str, callback: Callable, days: list[str] = None):
+    def schedule_task(
+        self,
+        name: str,
+        time_str: str,
+        callback: Callable,
+        days: list[str] = None,
+        source: str | None = None,
+    ):
         all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        self.scheduled_tasks.append(
-            {
-                "name": name,
-                "time": time_str,
-                "callback": callback,
-                "days": days or all_days,
-            }
+        with self._tasks_lock:
+            self.scheduled_tasks.append(
+                {
+                    "name": name,
+                    "time": time_str,
+                    "callback": callback,
+                    "days": days or all_days,
+                }
+            )
+        _telegram_event(
+            "scheduler_task_added",
+            task_name=name,
+            scheduled_time=time_str,
+            source=source,
         )
         print(f"📅 Scheduled: {name} at {time_str}")
 
@@ -433,20 +448,23 @@ class TitanTelegramBot:
             now = datetime.now()
             cur_time = now.strftime("%H:%M")
             cur_day = now.strftime("%A")
-            for task in self.scheduled_tasks:
-                if task["time"] == cur_time and cur_day in task["days"]:
-                    try:
-                        task["callback"]()
-                    except Exception as e:
-                        _telegram_event(
-                            "failure",
-                            failure_class=CALLBACK_ERROR,
-                            subsystem="scheduler_worker",
-                            task_name=task["name"],
-                            error_class=e.__class__.__name__,
-                            error_message=str(e),
-                        )
-                        print(f"❌ Task '{task['name']}' error: {e}")
+            with self._tasks_lock:
+                due_tasks = [
+                    task for task in self.scheduled_tasks if task["time"] == cur_time and cur_day in task["days"]
+                ]
+            for task in due_tasks:
+                try:
+                    task["callback"]()
+                except Exception as e:
+                    _telegram_event(
+                        "failure",
+                        failure_class=CALLBACK_ERROR,
+                        subsystem="scheduler_worker",
+                        task_name=task["name"],
+                        error_class=e.__class__.__name__,
+                        error_message=str(e),
+                    )
+                    print(f"❌ Task '{task['name']}' error: {e}")
             # Sleep until next full minute
             sleep_seconds = max(1, 60 - now.second)
             expected_wakeup = now_ts + sleep_seconds
