@@ -49,17 +49,27 @@ Agents must not redesign, restructure, or re-architect any system component unle
 - Do NOT fetch or push in runtime / non-push-enabled environments.
 - Do NOT use `gh` CLI or call GitHub APIs from inside Codex runtime
 
-### 2.2 Deliverable format (Codex runtime)
+### 2.2 Deliverable format (push-enabled environments)
+- Run `python -m pytest -q` before delivering — do NOT proceed if any test fails
+- You MAY create commits and push, but ONLY to branches matching `claude/*`
+- You MUST NOT push to `main` or `master` — this is a hard rule, not a guideline
+- You MUST NOT force push or rewrite history on any remote branch
+- After pushing, open exactly one PR (base=`main`, compare=`claude/<branch>`) and paste the PR link in your response
+- Commit message format: `T<tier>-<id>: <short title>` — example: `T2-08: Add startup observability`
+
+### 2.2b Deliverable format (non-push environments — fallback only)
 - Run `python -m pytest -q` before delivering
 - Provide a single unified patch: `git diff` or `git diff --staged`
-- Never open PRs from inside the runtime — the owner applies the diff and opens PRs from their machine
--Do NOT create commits. Do NOT run git commit. Deliver only git diff or git diff --staged.
+- Do NOT create commits. Do NOT push. Do NOT open PRs.
+- Label response clearly: `[DIFF ONLY — push not available]`
 
 ### 2.3 Git workflow (push-enabled environments)
 - Never push directly to `main` or `master`
 - All work branches must use prefix `claude/`
-- Push with: `git push -u origin <branch-name>`
+- Create branch if missing: `git checkout -b claude/<task-id-short>`
+- Push with: `git push -u origin claude/<branch-name>`
 - One issue = one PR. Do not bundle unrelated fixes.
+- Every PR description MUST include a Scope Declaration (see Section 3.3)
 
 ---
 
@@ -76,7 +86,22 @@ Agents must not redesign, restructure, or re-architect any system component unle
 - Adding comments, docstrings, or type annotations to code you did not explicitly change
 - Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
 
-### 3.3 Before writing a single line of code
+### 3.3 Scope Declaration (mandatory in every PR description)
+
+Every PR MUST include this block — no exceptions:
+
+```
+## Scope
+**Task:** T<tier>-<id> — <title>
+**Files changed:** <list>
+**Files NOT changed:** governance_engine.py, [any other locked files]
+**Tests added/modified:** <list or "none — existing coverage sufficient">
+**ADR reference:** ADR-XXXX (required if governance_engine.py was touched)
+```
+
+A PR without a Scope Declaration will not be reviewed.
+
+### 3.5 Before writing a single line of code
 1. List every file that must change.
 2. For each file, write one sentence explaining **why** it must change.
 3. If a file appears necessary but isn't named in the task, explain the dependency before touching it.
@@ -278,7 +303,7 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 
 ```
 [ ] I read the task description completely before writing any code.
-[ ] I listed every file I need to change and why.
+[ ] I listed every file I need to change and why (Section 3.5).
 [ ] I confirmed no Tier N-1 items are OPEN before starting Tier N work.
 [ ] I made only the changes required by the task (no scope creep).
 [ ] ruff check <changed_paths>  → zero findings
@@ -287,9 +312,11 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 [ ] I did NOT modify governance_engine.py without an ADR reference.
 [ ] I did NOT hardcode any threshold (used thresholds.py).
 [ ] Out-of-scope findings are in TECHNICAL_DEBT.md, not in code.
-[ ] My deliverable is a clean unified diff, not a narrative.
+[ ] I pushed to a claude/* branch only — NOT to main or master.
+[ ] I opened exactly one PR and pasted the PR link in my response.
+[ ] My PR description contains a Scope Declaration (Section 3.3).
 ```
 
 ---
 
-*Last updated: 2026-03-03. Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-04. Authoritative for all agents and engineers operating on TITAN OS.*
