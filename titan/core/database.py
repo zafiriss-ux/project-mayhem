@@ -326,7 +326,8 @@ class DatabaseManager:
                     },
                 )
             except sqlite3.OperationalError as exc:
-                if "duplicate column name" not in str(exc).lower():
+                error_message = str(exc).lower()
+                if "duplicate column name" not in error_message:
                     raise
         self.conn.commit()
 

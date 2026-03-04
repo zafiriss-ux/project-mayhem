@@ -16,6 +16,11 @@ class _ErrorCursor:
         raise sqlite3.OperationalError("disk I/O error")
 
 
+class _DuplicateColumnCursor:
+    def execute(self, _sql):
+        raise sqlite3.OperationalError("duplicate column name: hrr_60")
+
+
 def test_run_migrations_suppresses_only_duplicate_column_error(tmp_path):
     db = DatabaseManager(db_name="migration_test.db", db_dir=tmp_path)
     cursor = db.conn.cursor()
@@ -31,6 +36,12 @@ def test_run_migrations_reraises_non_duplicate_operational_error():
 
     with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
         DatabaseManager._run_migrations(dummy_db, _ErrorCursor())
+
+
+def test_run_migrations_suppresses_duplicate_column_operational_error():
+    dummy_db = type("DummyDB", (), {"conn": _DummyConn()})()
+
+    DatabaseManager._run_migrations(dummy_db, _DuplicateColumnCursor())
 
 
 def test_run_migrations_emits_structured_log_on_column_add(tmp_path, caplog):
