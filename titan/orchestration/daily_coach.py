@@ -25,6 +25,7 @@ import json
 import logging
 import threading
 from datetime import datetime, timedelta
+from time import monotonic
 from typing import Any
 
 from titan.core.database import DatabaseManager
@@ -132,6 +133,8 @@ class DailyCoach:
         self.apl            = apl             or AdaptivePriorityLock()
         self.vlg            = volume_load_gauge or VolumeLoadGauge()
         self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
+        self._routine_thread: threading.Thread | None = None
+        self._routine_started_monotonic: float | None = None
         # Restore in-memory state of science engines from DB on startup
         self._hydrate_engines_from_db()
 
@@ -755,16 +758,28 @@ class DailyCoach:
             pass
         return 50.0  # safe default
 
-    def run_morning_routine_async(self) -> None:
+    def run_morning_routine_async(self, trigger_source: str = "async_call") -> None:
         """
         Schedule `run_morning_routine` in a daemon thread so the Telegram
         polling thread is never blocked waiting for Garmin sync + calculations.
         """
+        running_thread = getattr(self, "_routine_thread", None)
+        if running_thread is not None and running_thread.is_alive():
+            _daily_coach_event(
+                "routine_skipped_overlap",
+                trigger_source=trigger_source,
+                running_since=getattr(self, "_routine_started_monotonic", None),
+                thread_name=running_thread.name,
+            )
+            return
+
         t = threading.Thread(
             target=self.run_morning_routine,
             name="DailyCoachRoutine",
             daemon=True,
         )
+        self._routine_thread = t
+        self._routine_started_monotonic = monotonic()
         t.start()
 
     def _get_recent_trimp(self, activities: list[dict]) -> float:
