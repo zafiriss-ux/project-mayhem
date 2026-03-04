@@ -16,6 +16,7 @@ from titan.orchestration.contracts import (
     GarminSyncResult,
     GarminSyncResultContract,
     HRVSyncMetrics,
+    HRVSyncMetricsContract,
 )
 from titan.utils.constants import _Secret
 
@@ -107,11 +108,11 @@ class GarminSync:
         self.is_connected = False
         self.last_sync: str | None = None
         self.sync_history: list = []
-        self.last_hrv_sync_metrics: dict[str, int] = {
-            "days_back": 0,
-            "synced_days": 0,
-            "skipped_days": 0,
-        }
+        self.last_hrv_sync_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
+            days_back=0,
+            synced_days=0,
+            skipped_days=0,
+        ).to_payload()
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
@@ -272,11 +273,11 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     def sync_hrv(self, days_back: int = 7) -> list[dict]:
         if not self._ensure_connected():
-            self.last_hrv_sync_metrics = {
-                "days_back": days_back,
-                "synced_days": 0,
-                "skipped_days": 0,
-            }
+            self.last_hrv_sync_metrics = HRVSyncMetricsContract(
+                days_back=days_back,
+                synced_days=0,
+                skipped_days=0,
+            ).to_payload()
             _garmin_event("hrv_sync_metrics", **self.last_hrv_sync_metrics)
             return []
         hrv_data = []
@@ -323,11 +324,11 @@ class GarminSync:
         print(f"💓 Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
             print(f"⚠️  Skipped {skipped_days} malformed HRV record(s)")
-        self.last_hrv_sync_metrics = {
-            "days_back": days_back,
-            "synced_days": len(hrv_data),
-            "skipped_days": skipped_days,
-        }
+        self.last_hrv_sync_metrics = HRVSyncMetricsContract(
+            days_back=days_back,
+            synced_days=len(hrv_data),
+            skipped_days=skipped_days,
+        ).to_payload()
         _garmin_event("hrv_sync_metrics", **self.last_hrv_sync_metrics)
         self._log_sync("hrv", len(hrv_data))
         return hrv_data
@@ -343,11 +344,11 @@ class GarminSync:
         weight = self.sync_weight(max(days_back, 14))
         sleep = self.sync_sleep(days_back)
         hrv = self.sync_hrv(days_back)
-        hrv_metrics: HRVSyncMetrics = {
-            "days_back": int(self.last_hrv_sync_metrics.get("days_back", 0)),
-            "synced_days": int(self.last_hrv_sync_metrics.get("synced_days", 0)),
-            "skipped_days": int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
-        }
+        hrv_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
+            days_back=int(self.last_hrv_sync_metrics.get("days_back", 0)),
+            synced_days=int(self.last_hrv_sync_metrics.get("synced_days", 0)),
+            skipped_days=int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
+        ).to_payload()
         payload: GarminSyncResult = GarminSyncResultContract(
             activities=activities,
             weight=weight,

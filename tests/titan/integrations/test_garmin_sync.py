@@ -69,3 +69,19 @@ def test_sync_all_payload_coerces_hrv_metrics_to_ints():
     payload = sync.sync_all(days_back=7)
 
     assert payload["hrv_sync_metrics"] == {"days_back": 7, "synced_days": 2, "skipped_days": 0}
+
+
+def test_last_hrv_sync_metrics_initializes_with_expected_contract_fields():
+    sync = GarminSync(email="e", password="p")
+
+    assert sync.last_hrv_sync_metrics == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
+
+
+def test_sync_hrv_disconnected_returns_empty_and_contract_metrics():
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: False
+
+    payload = sync.sync_hrv(days_back=5)
+
+    assert payload == []
+    assert sync.last_hrv_sync_metrics == {"days_back": 5, "synced_days": 0, "skipped_days": 0}

@@ -3,6 +3,7 @@ import json
 from titan.orchestration.contracts import (
     DailyCoachContextContract,
     GarminSyncResultContract,
+    HRVSyncMetricsContract,
 )
 
 
@@ -89,3 +90,15 @@ def test_daily_coach_context_contract_to_payload_boundary_nullable_vo2_field():
     ).to_payload()
 
     assert payload["days_since_last_vo2"] is None
+
+
+def test_hrv_sync_metrics_contract_to_payload_happy_path():
+    payload = HRVSyncMetricsContract(days_back=7, synced_days=6, skipped_days=1).to_payload()
+
+    assert payload == {"days_back": 7, "synced_days": 6, "skipped_days": 1}
+
+
+def test_hrv_sync_metrics_contract_to_payload_boundary_zero_values():
+    payload = HRVSyncMetricsContract(days_back=0, synced_days=0, skipped_days=0).to_payload()
+
+    assert json.loads(json.dumps(payload)) == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
