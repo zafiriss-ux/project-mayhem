@@ -31,6 +31,12 @@ WeatherDataQuality = Literal["live", "cached", "synthetic"]
 _log = logging.getLogger(__name__)
 
 
+def _weather_event(action: str, level: int = logging.INFO, **fields) -> None:
+    """Emit a structured weather event as a single JSON log line."""
+    payload = {"flow": "weather_api", "action": action, **fields}
+    _log.log(level, json.dumps(payload, default=str))
+
+
 REQUESTS_VERIFY_SSL = True
 _HAS_REQUESTS = importlib.util.find_spec("requests") is not None
 requests = importlib.import_module("requests") if _HAS_REQUESTS else None
@@ -311,17 +317,12 @@ class WeatherAPI:
             return copy.deepcopy(current)
         except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
-            print("⚠️  Weather API unavailable – using fallback conditions")
-            _log.warning(
-                json.dumps(
-                    {
-                        "flow": "weather_api",
-                        "action": "weather_degraded_mode_active",
-                        "source": "get_current_conditions",
-                        "error_class": type(exc).__name__,
-                        "detail": str(exc),
-                    }
-                )
+            _weather_event(
+                "weather_degraded_mode_active",
+                level=logging.WARNING,
+                source="get_current_conditions",
+                error_class=type(exc).__name__,
+                detail=str(exc),
             )
             dew_point = self.calculate_dew_point(18.5, 65)
             heat_status, heat_rec = self.classify_heat_stress(dew_point)
@@ -371,17 +372,12 @@ class WeatherAPI:
             return copy.deepcopy(forecast[:hours])
         except Exception as exc:
             # Fallback to deterministic simulated data when API is unavailable
-            print("⚠️  Weather API unavailable – using fallback forecast")
-            _log.warning(
-                json.dumps(
-                    {
-                        "flow": "weather_api",
-                        "action": "weather_degraded_mode_active",
-                        "source": "get_hourly_forecast",
-                        "error_class": type(exc).__name__,
-                        "detail": str(exc),
-                    }
-                )
+            _weather_event(
+                "weather_degraded_mode_active",
+                level=logging.WARNING,
+                source="get_hourly_forecast",
+                error_class=type(exc).__name__,
+                detail=str(exc),
             )
             forecast = []
             base_temp = 15.0
@@ -525,7 +521,7 @@ class WeatherAPI:
             target=self._background_update_worker, args=(interval_hours,), daemon=True
         )
         self._update_thread.start()
-        print(f"✅ Weather updates started (every {interval_hours}h)")
+        _weather_event("weather_background_updates_started", interval_hours=interval_hours)
 
     def stop_background_updates(self):
         """Stop background updates."""
@@ -541,5 +537,10 @@ class WeatherAPI:
                 self.get_current_conditions()
                 self.get_hourly_forecast()
             except Exception as e:
-                print(f"❌ Weather update error: {e}")
+                _weather_event(
+                    "weather_background_update_error",
+                    level=logging.ERROR,
+                    error_class=type(e).__name__,
+                    detail=str(e),
+                )
             self._stop_event.wait(timeout=interval_seconds)

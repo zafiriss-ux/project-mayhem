@@ -25,7 +25,7 @@ import json
 import logging
 import sqlite3
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime
 from time import monotonic
 from typing import Any
 
@@ -286,6 +286,23 @@ class DailyCoach:
                 today_rhr=today_rhr or 50,
                 fallback_baseline_rhr=baseline_rhr_for_comparison,
             )
+            try:
+                self.telegram.send_alert(
+                    title="⚠️ Data Integrity: RHR Baseline Unavailable",
+                    message=(
+                        "Baseline RHR could not be read from DB.\n"
+                        "H3 gate is operating in degraded mode — "
+                        "using today's RHR as its own baseline (delta = 0).\n"
+                        "Check database health."
+                    ),
+                    level="warning",
+                )
+            except Exception as _alert_exc:
+                _daily_coach_event(
+                    "baseline_rhr_degraded_alert_failed",
+                    error_class=type(_alert_exc).__name__,
+                    detail=str(_alert_exc),
+                )
         readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
             today_hrv    = latest_hrv,
             baseline_hrv = baseline_hrv,
@@ -754,18 +771,7 @@ class DailyCoach:
         Returns None if unavailable.
         """
         try:
-            cursor = self.db.conn.cursor()
-            cutoff = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-            cursor.execute(
-                """
-                SELECT AVG(resting_hr) FROM daily_metrics
-                WHERE date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0
-                """,
-                (cutoff,),
-            )
-            row = cursor.fetchone()
-            if row and row[0]:
-                return round(float(row[0]), 1)
+            return self.db.get_baseline_rhr(days=days)
         except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
             _daily_coach_event(
                 "baseline_rhr_unavailable",
@@ -773,7 +779,6 @@ class DailyCoach:
                 detail=str(exc),
             )
             return None
-        return None
 
     def run_morning_routine_async(self, trigger_source: str = "async_call") -> None:
         """
@@ -840,16 +845,10 @@ class DailyCoach:
         Called automatically at end of __init__.
         """
         print("🧠 Hydrating AI memory from database...")
-        cursor = self.db.conn.cursor()
 
         # 1. HRV history (last 14 days, oldest first so baseline builds correctly)
         try:
-            cursor.execute(
-                """SELECT date, hrv_rmssd FROM daily_metrics
-                   WHERE hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
-                   ORDER BY date DESC LIMIT 14"""
-            )
-            rows = cursor.fetchall()
+            rows = self.db.get_hrv_history(days=14)
             self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
@@ -859,12 +858,7 @@ class DailyCoach:
 
         # 2. Weight history (last 30 days, oldest first)
         try:
-            cursor.execute(
-                """SELECT date, weight_kg FROM daily_metrics
-                   WHERE weight_kg IS NOT NULL AND weight_kg > 0
-                   ORDER BY date DESC LIMIT 30"""
-            )
-            rows = cursor.fetchall()
+            rows = self.db.get_weight_history(days=30)
             for date_str, weight in reversed(rows):
                 self.nutrition.add_weight_entry(date_str, weight)
             print(f"  ↳ Weight: {len(rows)} records loaded")
