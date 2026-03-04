@@ -3,16 +3,18 @@ Tests for DB concurrency hardening (T1-06), RHR degraded-mode alert (T1-08),
 and weather structured events (T2-09).
 """
 
+import inspect
 import json
 import logging
 import sqlite3
+from contextlib import suppress
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+import titan.integrations.weather_api as weather_module
 from titan.core.database import DatabaseManager
 from titan.integrations.weather_api import WeatherAPI
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # T1-06: DatabaseManager.get_baseline_rhr / get_hrv_history / get_weight_history
@@ -178,7 +180,7 @@ def test_daily_coach_hydrate_uses_db_methods(tmp_path):
     # Ensure .conn is never accessed
     db_mock.conn = None  # type: ignore[assignment]
 
-    coach = _make_minimal_coach(db_mock)
+    _make_minimal_coach(db_mock)
     # _hydrate_engines_from_db is called in __init__; verify db.conn was never used
     assert db_mock.get_hrv_history.called
     assert db_mock.get_weight_history.called
@@ -202,9 +204,8 @@ def test_baseline_rhr_degraded_triggers_telegram_alert(tmp_path, caplog):
         coach._get_baseline_rhr(days=7)  # returns None → caller handles it
         # Now simulate the caller's degraded-mode block manually
         baseline_rhr = None
-        today_rhr = 60
         if baseline_rhr is None:
-            try:
+            with suppress(Exception):
                 coach.telegram.send_alert(
                     title="⚠️ Data Integrity: RHR Baseline Unavailable",
                     message=(
@@ -215,8 +216,6 @@ def test_baseline_rhr_degraded_triggers_telegram_alert(tmp_path, caplog):
                     ),
                     level="warning",
                 )
-            except Exception:
-                pass
 
     telegram_mock.send_alert.assert_called_once()
     call_kwargs = telegram_mock.send_alert.call_args
@@ -295,30 +294,30 @@ def test_weather_api_background_worker_logs_error_event_not_print(caplog):
 
     api = WeatherAPI(location="Athens,GR")
 
-    with patch.object(api, "get_current_conditions", side_effect=RuntimeError("timeout")):
-        with patch.object(api, "get_hourly_forecast", return_value=[]):
-            # Simulate one worker iteration directly
-            try:
-                api.get_current_conditions()
-                api.get_hourly_forecast()
-            except Exception as e:
-                from titan.integrations.weather_api import _weather_event
-                _weather_event(
-                    "weather_background_update_error",
-                    level=logging.ERROR,
-                    error_class=type(e).__name__,
-                    detail=str(e),
-                )
+    with (
+        patch.object(api, "get_current_conditions", side_effect=RuntimeError("timeout")),
+        patch.object(api, "get_hourly_forecast", return_value=[]),
+    ):
+        # Simulate one worker iteration directly
+        try:
+            api.get_current_conditions()
+            api.get_hourly_forecast()
+        except Exception as e:
+            from titan.integrations.weather_api import _weather_event
+
+            _weather_event(
+                "weather_background_update_error",
+                level=logging.ERROR,
+                error_class=type(e).__name__,
+                detail=str(e),
+            )
 
     assert any("weather_background_update_error" in r.getMessage() for r in caplog.records)
 
 
 def test_weather_api_has_no_print_calls():
     """Verify weather_api.py contains no operational print() calls."""
-    import inspect
-    import titan.integrations.weather_api as module
-
-    source = inspect.getsource(module)
+    source = inspect.getsource(weather_module)
     # Remove comment lines before checking
     non_comment_lines = [
         line for line in source.splitlines() if not line.strip().startswith("#")
