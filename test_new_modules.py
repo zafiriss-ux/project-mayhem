@@ -1173,12 +1173,13 @@ class TestDailyCoachHelpers:
     def test_baseline_rhr_fallback_no_data(self, stub_deps):
         coach, _ = stub_deps
         baseline = coach._get_baseline_rhr(days=7)
-        assert baseline == 50.0
+        assert baseline is None
 
     def test_baseline_rhr_uses_db_data(self, stub_deps):
         coach, db = stub_deps
-        db.save_daily_metric("2024-02-28", rhr=52)
-        db.save_daily_metric("2024-02-27", rhr=48)
+        today = datetime.now()
+        db.save_daily_metric((today - timedelta(days=1)).strftime("%Y-%m-%d"), rhr=52)
+        db.save_daily_metric((today - timedelta(days=2)).strftime("%Y-%m-%d"), rhr=48)
         baseline = coach._get_baseline_rhr(days=30)
         assert 48 <= baseline <= 52
 

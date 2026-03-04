@@ -9,7 +9,16 @@ from titan.orchestration.daily_coach import DailyCoach
 class DummyDB:
     def __init__(self) -> None:
         self._save_calls = 0
-        self.conn = SimpleNamespace(cursor=lambda: None)
+
+        class Cursor:
+            def execute(self, *_args, **_kwargs):
+                return None
+
+            @staticmethod
+            def fetchone():
+                return None
+
+        self.conn = SimpleNamespace(cursor=lambda: Cursor())
 
     def save_session(self, **kwargs):
         self._save_calls += 1
@@ -217,6 +226,94 @@ def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
     assert "ACTIVITY_PERSISTED" in outcomes
     assert "ACTIVITY_SKIPPED" in outcomes
     assert "DAILY_METRICS_SKIPPED" in outcomes
+
+
+def test_get_baseline_rhr_happy_path_returns_average():
+    coach = DailyCoach.__new__(DailyCoach)
+
+    class Cursor:
+        def execute(self, *_args, **_kwargs):
+            return None
+
+        @staticmethod
+        def fetchone():
+            return (51.26,)
+
+    coach.db = SimpleNamespace(conn=SimpleNamespace(cursor=lambda: Cursor()))
+
+    assert coach._get_baseline_rhr(days=7) == 51.3
+
+
+def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = DailyCoach.__new__(DailyCoach)
+
+    class BadCursor:
+        def execute(self, *_args, **_kwargs):
+            raise ValueError("broken_row")
+
+    coach.db = SimpleNamespace(conn=SimpleNamespace(cursor=lambda: BadCursor()))
+
+    assert coach._get_baseline_rhr(days=7) is None
+    assert events == [
+        {
+            "action": "baseline_rhr_unavailable",
+            "error_class": "ValueError",
+            "detail": "broken_row",
+        }
+    ]
+
+
+def test_run_morning_routine_uses_degraded_mode_when_baseline_missing(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    baseline_args: dict[str, float] = {}
+    governance_baseline = {}
+
+    def _readiness_spy(**kwargs):
+        baseline_args["baseline_rhr"] = kwargs["baseline_rhr"]
+        baseline_args["today_rhr"] = kwargs["today_rhr"]
+        return {"score": 60}
+
+    def _governance_spy(session_plan, context):
+        governance_baseline["baseline_rhr"] = context["baseline_rhr"]
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.readiness = SimpleNamespace(analyze_readiness=_readiness_spy)
+    coach.governance = SimpleNamespace(apply_constraints=_governance_spy, get_governance_report=lambda **_k: {})
+    coach._get_baseline_rhr = lambda days=7: None
+
+    assert coach.run_morning_routine() is True
+    assert baseline_args["baseline_rhr"] == baseline_args["today_rhr"]
+    assert governance_baseline["baseline_rhr"] == baseline_args["today_rhr"]
+    assert any(event["action"] == "baseline_rhr_degraded_mode" for event in events)
+
+
+def test_run_morning_routine_h3_comparison_uses_valid_baseline(monkeypatch):
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    baseline_args: dict[str, float] = {}
+    governance_baseline = {}
+
+    def _readiness_spy(**kwargs):
+        baseline_args["baseline_rhr"] = kwargs["baseline_rhr"]
+        baseline_args["today_rhr"] = kwargs["today_rhr"]
+        return {"score": 60}
+
+    def _governance_spy(session_plan, context):
+        governance_baseline["baseline_rhr"] = context["baseline_rhr"]
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.readiness = SimpleNamespace(analyze_readiness=_readiness_spy)
+    coach.governance = SimpleNamespace(apply_constraints=_governance_spy, get_governance_report=lambda **_k: {})
+    coach._get_baseline_rhr = lambda days=7: 47.2
+
+    assert coach.run_morning_routine() is True
+    assert baseline_args["baseline_rhr"] == 47.2
+    assert governance_baseline["baseline_rhr"] == 47.2
 
 
 def test_build_daily_coach_context_supports_dict_access_and_serialization():

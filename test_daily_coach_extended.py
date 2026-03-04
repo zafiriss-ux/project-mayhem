@@ -211,7 +211,7 @@ class TestGetBaselineRhr:
         return c
 
     def test_empty_db_returns_default(self, coach):
-        assert coach._get_baseline_rhr(days=7) == 50.0
+        assert coach._get_baseline_rhr(days=7) is None
 
     def test_returns_average_of_stored_rhr(self, coach):
         base = datetime.now() - timedelta(days=3)
@@ -225,9 +225,9 @@ class TestGetBaselineRhr:
     def test_excludes_entries_outside_window(self, coach):
         old_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
         coach.db.save_daily_metric(date=old_date, rhr=60)
-        # 60 bpm entry is 30d old → excluded from 7d window → falls back to 50
+        # 60 bpm entry is 30d old → excluded from 7d window → baseline unavailable
         result = coach._get_baseline_rhr(days=7)
-        assert result == 50.0
+        assert result is None
 
 
 # ════════════════════════════════════════════════════════════════════════════
