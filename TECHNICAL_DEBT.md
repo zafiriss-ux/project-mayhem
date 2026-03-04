@@ -985,13 +985,13 @@ When an item is completed, mark it here with date and PR reference:
 | T1-09 | 2026-03-04 | PR: TBD |
 | T2-09 | 2026-03-04 (weather_api.py) | PR: TBD |
 | T3-06 | 2026-03-04 | PR: TBD |
-| T3-07 | OPEN | — |
-| T4-07 | OPEN | — |
-| T4-08 | OPEN | — |
+| T3-07 | 2026-03-04 | PR: TBD |
+| T4-07 | 2026-03-04 | PR: TBD |
+| T4-08 | 2026-03-04 | PR: TBD |
 | T4-09 | 2026-03-04 | PR: TBD |
 | T4-10 | 2026-03-04 | PR: TBD |
 | T4-11 | 2026-03-04 | PR: TBD |
-| T4-12 | OPEN | — |
+| T4-12 | 2026-03-04 | PR: TBD |
 | T4-13 | 2026-03-04 | PR: TBD |
 
 *This document is the single source of truth for technical debt. Update it when items are
