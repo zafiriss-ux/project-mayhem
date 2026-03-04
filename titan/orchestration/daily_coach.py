@@ -23,6 +23,7 @@ Architectural Boundary:
 
 import json
 import logging
+import sqlite3
 import threading
 from datetime import datetime, timedelta
 from time import monotonic
@@ -277,11 +278,19 @@ class DailyCoach:
         # ── Step 7: Composite readiness ──────────────────────────────────────
         print("💊 Analyzing recovery status...")
         baseline_rhr = self._get_baseline_rhr(days=7)
+        baseline_rhr_for_comparison = baseline_rhr
+        if baseline_rhr is None:
+            baseline_rhr_for_comparison = float(today_rhr or 50)
+            _daily_coach_event(
+                "baseline_rhr_degraded_mode",
+                today_rhr=today_rhr or 50,
+                fallback_baseline_rhr=baseline_rhr_for_comparison,
+            )
         readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
             today_hrv    = latest_hrv,
             baseline_hrv = baseline_hrv,
             today_rhr    = today_rhr or 50,
-            baseline_rhr = baseline_rhr,
+            baseline_rhr = baseline_rhr_for_comparison,
             sleep_score  = today_sleep_score,
             soreness     = soreness,
         ))
@@ -366,7 +375,7 @@ class DailyCoach:
             baseline_hrv=baseline_hrv,
             hrv_std_dev=_safe_float(hrv_summary.get('std_dev'), 0.0),
             today_rhr=today_rhr or 50,
-            baseline_rhr=baseline_rhr,
+            baseline_rhr=baseline_rhr_for_comparison,
             sleep_score=today_sleep_score,
             subjective_fatigue_score=subjective_fatigue_score,
             tsb_value=_safe_float(tsb_value, 0.0),
@@ -736,10 +745,10 @@ class DailyCoach:
 
         return today_rhr, today_sleep_score, today_sleep_hours
 
-    def _get_baseline_rhr(self, days: int = 7) -> float:
+    def _get_baseline_rhr(self, days: int = 7) -> float | None:
         """
         Calculate rolling N-day average resting HR from database.
-        Falls back to 50 bpm if no history.
+        Returns None if unavailable.
         """
         try:
             cursor = self.db.conn.cursor()
@@ -754,9 +763,14 @@ class DailyCoach:
             row = cursor.fetchone()
             if row and row[0]:
                 return round(float(row[0]), 1)
-        except Exception:
-            pass
-        return 50.0  # safe default
+        except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
+            _daily_coach_event(
+                "baseline_rhr_unavailable",
+                error_class=type(exc).__name__,
+                detail=str(exc),
+            )
+            return None
+        return None
 
     def run_morning_routine_async(self, trigger_source: str = "async_call") -> None:
         """
