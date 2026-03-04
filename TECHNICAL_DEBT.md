@@ -417,19 +417,20 @@ Depends on T4-03 (start smaller, work up to main context object).
 
 ---
 
-### T4-05 · Architecture change lock for `governance_engine.py` 🟡
+### T4-05 · Architecture change lock for `governance_engine.py` ✅ RESOLVED
 
-**Current gap:** There is no process-level protection preventing changes to
-`governance_engine.py` without architectural review. This module is the sole
-non-bypassable safety gate; a well-intentioned "quick fix" here can silently degrade
-system safety.
+**Status (2026-03-04):** Completed. All three process-level protections are in place:
 
-**Fix direction:**
-- Add a CODEOWNERS entry for `titan/science/governance_engine.py` requiring explicit
-  review sign-off
-- Add a comment header to the file: `# ARCHITECTURE LOCK — see ADR-0009 before modifying`
-- Consider a CI lint check that fails if `governance_engine.py` is modified without
-  a corresponding ADR reference in the commit message
+1. **CODEOWNERS** — `.github/CODEOWNERS` assigns `@titan-architecture` as required
+   reviewer for any PR touching `titan/science/governance_engine.py`.
+2. **File header** — `governance_engine.py` carries `# ARCHITECTURE LOCK — see ADR-0009
+   before modifying` as its first line (line 1), visible to any engineer opening the file.
+3. **CI enforcement** — `env-policy` job in `.github/workflows/ci.yml` detects any commit
+   that modifies `governance_engine.py` and fails the pipeline unless the commit message
+   contains an `ADR-0009` reference.
+
+Completed: 2026-03-04
+PR: TBD
 
 ---
 
