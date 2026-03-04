@@ -55,6 +55,11 @@ def _garmin_event(action: str, **fields) -> None:
     _log.info(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
 
 
+def _garmin_error_event(action: str, **fields) -> None:
+    """Emit a structured Garmin sync event at ERROR level as a single JSON log line."""
+    _log.error(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
+
+
 def _classify_failure(error: Exception) -> str:
     """Map integration/runtime exceptions to a stable Garmin failure class."""
     error_name = error.__class__.__name__.lower()
@@ -386,7 +391,15 @@ class GarminSync:
     def stop_background_sync(self):
         self._stop_event.set()
         if self._sync_thread and self._sync_thread.is_alive():
-            self._sync_thread.join(timeout=5)
+            timeout_seconds = 5
+            self._sync_thread.join(timeout=timeout_seconds)
+            if self._sync_thread.is_alive():
+                _garmin_error_event(
+                    "worker_shutdown_timeout",
+                    worker_name=self._sync_thread.name,
+                    timeout_seconds=timeout_seconds,
+                    still_alive=True,
+                )
 
     def _bg_worker(self, interval_hours: int):
         while not self._stop_event.is_set():
