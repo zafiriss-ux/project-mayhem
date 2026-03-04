@@ -107,3 +107,54 @@ def test_init_missing_token_fails_safely(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
 
     assert bot.bot is None
+
+
+def test_scheduler_worker_continues_when_stop_event_not_set(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    calls = []
+
+    class _Now:
+        second = 0
+
+        def strftime(self, value):
+            if value == "%H:%M":
+                return "07:00"
+            if value == "%A":
+                return "Monday"
+            raise AssertionError("unexpected format")
+
+    bot.scheduled_tasks = [
+        {"name": "n", "time": "07:00", "days": ["Monday"], "callback": lambda: calls.append("run")}
+    ]
+
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: _Now())}))
+    monkeypatch.setattr(telegram_bot.time, "time", lambda: 100.0)
+
+    wait_calls = {"count": 0}
+
+    def _wait(timeout):
+        wait_calls["count"] += 1
+        if wait_calls["count"] == 2:
+            bot._stop_event.set()
+        return False
+
+    monkeypatch.setattr(bot._stop_event, "wait", _wait)
+
+    bot._scheduler_worker()
+
+    assert len(calls) >= 2
+
+
+def test_stop_bot_sets_event_and_joins_threads():
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    bot._sched_thread = MagicMock()
+    bot._sched_thread.is_alive.return_value = True
+    bot._poll_thread = MagicMock()
+    bot._poll_thread.is_alive.return_value = True
+
+    bot.stop_bot()
+
+    assert bot._stop_event.is_set()
+    bot._sched_thread.join.assert_called_once_with(timeout=5)
+    bot._poll_thread.join.assert_called_once_with(timeout=5)

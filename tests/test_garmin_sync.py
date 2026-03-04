@@ -1,4 +1,6 @@
 import logging
+import threading
+import time
 
 from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import (
@@ -316,3 +318,37 @@ def test_connect_missing_credentials_fails_safely():
 
     assert sync.connect() is False
     assert sync.is_connected is False
+
+
+def test_bg_worker_continues_until_stop_event_is_set(monkeypatch):
+    sync = GarminSync(email="u", password="p")
+    ticks = []
+
+    def _sync_all():
+        ticks.append(time.monotonic())
+        if len(ticks) == 2:
+            sync._stop_event.set()
+
+    monkeypatch.setattr(sync, "sync_all", _sync_all)
+
+    sync._bg_worker(interval_hours=0)
+
+    assert len(ticks) == 2
+
+
+def test_stop_background_sync_sets_event_and_joins_thread():
+    sync = GarminSync(email="u", password="p")
+    started = threading.Event()
+
+    def _waiter():
+        started.set()
+        sync._stop_event.wait(timeout=10)
+
+    sync._sync_thread = threading.Thread(target=_waiter)
+    sync._sync_thread.start()
+    assert started.wait(timeout=1)
+
+    sync.stop_background_sync()
+
+    assert sync._stop_event.is_set()
+    assert not sync._sync_thread.is_alive()
