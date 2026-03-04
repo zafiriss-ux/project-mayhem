@@ -1,3 +1,5 @@
+import threading
+import time
 from unittest.mock import MagicMock
 
 import titan.integrations.telegram_bot as telegram_bot
@@ -158,3 +160,88 @@ def test_stop_bot_sets_event_and_joins_threads():
     assert bot._stop_event.is_set()
     bot._sched_thread.join.assert_called_once_with(timeout=5)
     bot._poll_thread.join.assert_called_once_with(timeout=5)
+
+
+def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    errors: list[Exception] = []
+
+    class _CheckedTasks(list):
+        def append(self, item):
+            if not bot._tasks_lock.locked():
+                raise RuntimeError("append_without_lock")
+            super().append(item)
+
+        def __iter__(self):
+            if not bot._tasks_lock.locked():
+                raise RuntimeError("iterate_without_lock")
+            return super().__iter__()
+
+    bot.scheduled_tasks = _CheckedTasks()
+    bot.schedule_task("seed", "07:00", lambda: None, days=["Monday"])
+
+    class _Now:
+        second = 0
+
+        def strftime(self, value):
+            if value == "%H:%M":
+                return "07:00"
+            if value == "%A":
+                return "Monday"
+            raise AssertionError("unexpected format")
+
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: _Now())}))
+    monkeypatch.setattr(telegram_bot.time, "time", lambda: 100.0)
+
+    wait_calls = {"count": 0}
+
+    def _wait(timeout):
+        wait_calls["count"] += 1
+        if wait_calls["count"] >= 10:
+            bot._stop_event.set()
+        return False
+
+    monkeypatch.setattr(bot._stop_event, "wait", _wait)
+
+    def _run_worker():
+        try:
+            bot._scheduler_worker()
+        except Exception as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+            bot._stop_event.set()
+
+    def _append_tasks():
+        try:
+            for idx in range(25):
+                bot.schedule_task(f"n-{idx}", "07:00", lambda: None, days=["Monday"])
+                time.sleep(0.001)
+        except Exception as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+            bot._stop_event.set()
+
+    worker = threading.Thread(target=_run_worker, daemon=True)
+    appender = threading.Thread(target=_append_tasks, daemon=True)
+
+    worker.start()
+    appender.start()
+    appender.join(timeout=2)
+    bot._stop_event.set()
+    worker.join(timeout=2)
+
+    assert not errors
+
+
+def test_schedule_task_emits_scheduler_task_added_event(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.schedule_task("morning", "07:00", lambda: None, days=["Monday"], source="unit_test")
+
+    assert any(
+        action == "scheduler_task_added"
+        and fields.get("task_name") == "morning"
+        and fields.get("scheduled_time") == "07:00"
+        and fields.get("source") == "unit_test"
+        for action, fields in events
+    )
