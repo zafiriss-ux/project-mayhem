@@ -150,6 +150,7 @@ class DatabaseManager:
             check_same_thread=False,
         )
         self._lock = threading.Lock()  # Serialise all writes
+        self._closed = False
 
         # Enable WAL mode for concurrent read/write access
         # WAL = Write-Ahead Logging (better concurrency than default rollback journal)
@@ -388,6 +389,10 @@ class DatabaseManager:
 
     # --- TRAINING LOG ---
 
+    def _ensure_open_locked(self) -> None:
+        if self._closed:
+            raise RuntimeError("Database connection is closed")
+
     def save_session(
         self,
         date: str,
@@ -464,16 +469,16 @@ class DatabaseManager:
         Returns:
             List of tuples (date, training_load)
         """
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT date, training_load
-            FROM training_log
-            WHERE date >= date('now', '-' || ? || ' days')
-            ORDER BY date DESC
-        """, (days,))
-
-        return cursor.fetchall()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT date, training_load
+                FROM training_log
+                WHERE date >= date('now', '-' || ? || ' days')
+                ORDER BY date DESC
+            """, (days,))
+            return cursor.fetchall()
 
     def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
         """
@@ -575,16 +580,16 @@ class DatabaseManager:
         Returns:
             List of tuples: (id, name, total_km, max_km, last_used, type)
         """
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT id, shoe_name, total_km, max_km_limit, last_used, shoe_type
-            FROM gear_usage
-            WHERE status = 'ACTIVE'
-            ORDER BY shoe_name
-        """)
-
-        return cursor.fetchall()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT id, shoe_name, total_km, max_km_limit, last_used, shoe_type
+                FROM gear_usage
+                WHERE status = 'ACTIVE'
+                ORDER BY shoe_name
+            """)
+            return cursor.fetchall()
 
     def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
         """
@@ -609,15 +614,15 @@ class DatabaseManager:
             - Malisoux et al. (2013) - Shoe rotation and injury prevention
             - Kong et al. (2009) - Running shoe cushioning degradation
         """
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT last_used, compression_recovery_hours, total_km, max_km_limit
-            FROM gear_usage
-            WHERE id = ?
-        """, (shoe_id,))
-
-        result = cursor.fetchone()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT last_used, compression_recovery_hours, total_km, max_km_limit
+                FROM gear_usage
+                WHERE id = ?
+            """, (shoe_id,))
+            result = cursor.fetchone()
 
         if not result:
             return False, "Shoe not found"
@@ -679,17 +684,17 @@ class DatabaseManager:
         Returns:
             Tuple of (time_sec, date, race_name) or None if no PR exists
         """
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT time_sec, date, race_name
-            FROM personal_bests
-            WHERE distance_km = ?
-            ORDER BY time_sec ASC
-            LIMIT 1
-        """, (distance_km,))
-
-        return cursor.fetchone()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                SELECT time_sec, date, race_name
+                FROM personal_bests
+                WHERE distance_km = ?
+                ORDER BY time_sec ASC
+                LIMIT 1
+            """, (distance_km,))
+            return cursor.fetchone()
 
     # --- HRR (Heart Rate Recovery) ---
 
@@ -718,15 +723,17 @@ class DatabaseManager:
         Returns:
             List of (date, hrr_60, hrr_120) tuples, ordered DESC.
         """
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT date, hrr_60, hrr_120 FROM daily_metrics
-               WHERE hrr_60 IS NOT NULL AND hrr_60 > 0
-               AND date >= date('now', '-' || ? || ' days')
-               ORDER BY date DESC""",
-            (days,),
-        )
-        return cursor.fetchall()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, hrr_60, hrr_120 FROM daily_metrics
+                   WHERE hrr_60 IS NOT NULL AND hrr_60 > 0
+                   AND date >= date('now', '-' || ? || ' days')
+                   ORDER BY date DESC""",
+                (days,),
+            )
+            return cursor.fetchall()
 
     # --- GLYCOGEN DEBT ---
 
@@ -780,13 +787,15 @@ class DatabaseManager:
         Returns:
             List of (date, distance_m, time_sec) tuples, ordered DESC.
         """
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT date, distance_m, time_sec FROM cs_performances
-               ORDER BY date DESC LIMIT ?""",
-            (limit,),
-        )
-        return cursor.fetchall()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, distance_m, time_sec FROM cs_performances
+                   ORDER BY date DESC LIMIT ?""",
+                (limit,),
+            )
+            return cursor.fetchall()
 
     # --- OVERRIDE AUDIT LOG ---
 
@@ -823,27 +832,31 @@ class DatabaseManager:
         Returns:
             Float 0.0–1.0 (1.0 = overrode every day in the window).
         """
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT COUNT(*) FROM override_log
-               WHERE date >= date('now', '-' || ? || ' days')""",
-            (days,),
-        )
-        row = cursor.fetchone()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT COUNT(*) FROM override_log
+                   WHERE date >= date('now', '-' || ? || ' days')""",
+                (days,),
+            )
+            row = cursor.fetchone()
         overrides = row[0] if row else 0
         return round(overrides / days, 3)
 
     def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
         """Return recent override audit rows (oldest first) for operator review."""
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT date, prescribed_type, actual_type, reason
-               FROM override_log
-               ORDER BY id ASC
-               LIMIT ?""",
-            (limit,),
-        )
-        rows = cursor.fetchall()
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, prescribed_type, actual_type, reason
+                   FROM override_log
+                   ORDER BY id ASC
+                   LIMIT ?""",
+                (limit,),
+            )
+            rows = cursor.fetchall()
         return [
             {
                 'date': row[0],
@@ -927,20 +940,22 @@ class DatabaseManager:
 
     def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
         """Fetch governance decisions ordered by insertion order (oldest first)."""
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """SELECT date, session_planned, session_post_governance,
-                      locks_applied_json, governance_clean, phase, vlg_color,
-                      apl_priority_vector_json, lock_thresholds_active_json,
-                      acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
-                      outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
-               FROM governance_outcomes
-               ORDER BY id ASC
-               LIMIT ?""",
-            (limit,),
-        )
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, session_planned, session_post_governance,
+                          locks_applied_json, governance_clean, phase, vlg_color,
+                          apl_priority_vector_json, lock_thresholds_active_json,
+                          acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
+                          outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
+                   FROM governance_outcomes
+                   ORDER BY id ASC
+                   LIMIT ?""",
+                (limit,),
+            )
 
-        rows = cursor.fetchall()
+            rows = cursor.fetchall()
         decisions: list[dict[str, Any]] = []
         for row in rows:
             decisions.append({
@@ -985,8 +1000,13 @@ class DatabaseManager:
 
     def close(self) -> None:
         """Close database connection."""
-        if self.conn:
-            self.conn.close()
+        with self._lock:
+            if self._closed:
+                return
+
+            self._closed = True
+            if self.conn:
+                self.conn.close()
 
 
 class AthleteDatabase:
