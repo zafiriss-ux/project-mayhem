@@ -162,7 +162,11 @@ significantly harder to diagnose.
 **Rule:** Work one subsystem at a time. Do not attempt to fix all broad `except` handlers
 simultaneously — each subsystem needs its own error taxonomy review and test update.
 
-### T2-01 · Error taxonomy: `garmin_sync.py` 🟠
+### T2-01 · Error taxonomy: `garmin_sync.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `sync_activities`, `sync_weight`, `sync_sleep`, and
+`sync_hrv` route failures to Garmin failure-class constants and emit machine-readable
+`_garmin_event(<failure_class>, ...)` structured events. PR: TBD.
 
 **Current state:** Most failures result in `print()` + broad `except Exception`.
 Cannot distinguish `auth_failed` / `rate_limited` / `payload_malformed` / `timeout` /
@@ -497,6 +501,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-03 | 2026-03-04 | PR: TBD |
 | T1-04 | 2026-03-04 | PR: TBD |
 | T1-05 | 2026-03-04 | PR: TBD |
+| T2-01 | 2026-03-04 | PR: TBD |
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
