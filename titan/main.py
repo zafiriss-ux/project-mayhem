@@ -13,6 +13,7 @@ Flow:
 """
 
 import contextlib
+import logging
 import os
 import sys
 from typing import Any, TypedDict
@@ -56,6 +57,8 @@ from titan.science.tsb_engine import TSBEngine
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
 from titan.ui.setup_wizard import ensure_credentials
+
+log = logging.getLogger(__name__)
 
 
 class AthleteProfile(TypedDict):
@@ -388,7 +391,15 @@ def _parse_env_number(name: str, default: str, caster):
     raw = os.getenv(name, default)
     try:
         return caster(raw)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
+        log.error(
+            "startup_failure",
+            extra={
+                "component": "launcher",
+                "error_class": exc.__class__.__name__,
+                "detail": f"Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.",
+            },
+        )
         print(f"❌ Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.")
         sys.exit(1)
 
@@ -402,6 +413,14 @@ def main():
 
     # ── Step 1: Credentials ──────────────────────────────────────────────────
     if not ensure_credentials():
+        log.error(
+            "startup_failure",
+            extra={
+                "component": "launcher",
+                "error_class": "CredentialsUnavailable",
+                "detail": "ensure_credentials() returned False",
+            },
+        )
         print("\n❌ Δεν ήταν δυνατή η εισαγωγή credentials. Έξοδος.")
         sys.exit(1)
 

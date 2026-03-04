@@ -76,6 +76,14 @@ class TitanTelegramBot:
                     error_class=e.__class__.__name__,
                     error_message=str(e),
                 )
+                _log.error(
+                    "startup_failure",
+                    extra={
+                        "component": "telegram_bot_init",
+                        "error_class": e.__class__.__name__,
+                        "detail": str(e),
+                    },
+                )
                 print(f"⚠️  Telegram init warning: {e}")
 
     # ------------------------------------------------------------------ #

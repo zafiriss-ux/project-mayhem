@@ -251,3 +251,50 @@ def test_sync_hrv_top_level_exception_emits_api_unavailable(monkeypatch):
     action, fields = events[0]
     assert action == GARMIN_API_UNAVAILABLE
     assert fields["subsystem"] == "sync_hrv"
+
+
+def test_connect_happy_path_sets_connected(monkeypatch):
+    class _Garmin:
+        def __init__(self, _email, _password):
+            self.logged_in = False
+
+        def login(self):
+            self.logged_in = True
+
+    class _mod:
+        Garmin = _Garmin
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "garminconnect", _mod)
+
+    sync = GarminSync(email="u", password="p")
+
+    assert sync.connect() is True
+    assert sync.is_connected is True
+
+
+def test_connect_auth_failure_logs_startup_failure(caplog, monkeypatch):
+    class _Garmin:
+        def __init__(self, _email, _password):
+            pass
+
+        def login(self):
+            raise RuntimeError("auth denied")
+
+    class _mod:
+        Garmin = _Garmin
+
+    import sys
+
+    monkeypatch.setitem(sys.modules, "garminconnect", _mod)
+
+    sync = GarminSync(email="u", password="p")
+
+    with caplog.at_level(logging.ERROR):
+        assert sync.connect() is False
+
+    record = next(r for r in caplog.records if r.msg == "startup_failure")
+    assert record.component == "garmin_sync_connect"
+    assert record.error_class == "RuntimeError"
+    assert record.detail == "auth denied"

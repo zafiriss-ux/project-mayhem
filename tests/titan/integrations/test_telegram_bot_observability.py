@@ -53,3 +53,41 @@ def test_stop_bot_stop_polling_exception_emits_poll_fail_event(monkeypatch):
         and fields.get("error_class") == "RuntimeError"
         for action, fields in events
     )
+
+
+def test_init_happy_path_builds_bot(monkeypatch):
+    class _DummyTeleBot:
+        def __init__(self, token, parse_mode=None):
+            self.token = token
+            self.parse_mode = parse_mode
+
+        def message_handler(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+
+            return _decorator
+
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    monkeypatch.setattr(telegram_bot, "telebot", type("_TelebotMod", (), {"TeleBot": _DummyTeleBot}), raising=False)
+
+    bot = TitanTelegramBot(bot_token="token-1", chat_id=123)
+
+    assert bot.bot is not None
+
+
+def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
+    class _FailingTeleBot:
+        def __init__(self, token, parse_mode=None):
+            raise RuntimeError("invalid token")
+
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    monkeypatch.setattr(telegram_bot, "telebot", type("_TelebotMod", (), {"TeleBot": _FailingTeleBot}), raising=False)
+
+    with caplog.at_level("ERROR"):
+        bot = TitanTelegramBot(bot_token="token-1", chat_id=123)
+
+    assert bot.bot is None
+    record = next(r for r in caplog.records if r.msg == "startup_failure")
+    assert record.component == "telegram_bot_init"
+    assert record.error_class == "RuntimeError"
+    assert record.detail == "invalid token"
