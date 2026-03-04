@@ -774,9 +774,9 @@ aggregated log output.
 
 ---
 
-### T4-10 · Typed payload contracts use broad `Any` — weakens static guarantees 🟡
+### T4-10 · Typed payload contracts use broad `Any` — weakens static guarantees ✅ RESOLVED
 
-**Status:** COMPLETED
+**Status (2026-03-04):** COMPLETED.
 **Source:** Engineering audit 2026-03-04 (Architecture observation #3)
 
 **Completion update (2026-03-04):**
