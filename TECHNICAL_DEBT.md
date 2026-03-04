@@ -182,7 +182,15 @@ Cannot distinguish `auth_failed` / `rate_limited` / `payload_malformed` / `timeo
 
 ---
 
-### T2-02 · Error taxonomy: `daily_coach.py` 🟠
+### T2-02 · Error taxonomy: `daily_coach.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `DailyCoach.run_morning_routine()` now emits
+step-level structured `step_event` logs with `(step_number, step_name, outcome,
+failure_class)` and routes failures to `DATA_MISSING` / `ENGINE_ERROR` /
+`PERSIST_ERROR` / `DELIVERY_ERROR`. Persist path emits per-activity
+`ACTIVITY_PERSISTED` / `ACTIVITY_SKIPPED` plus daily metrics persist outcomes.
+Completed: 2026-03-04
+PR: TBD
 
 **Current state:** `DailyCoach._run_morning_routine()` has multiple broad catch + print
 patterns across the 12 steps. Step-level failures are not distinguishable in logs.
