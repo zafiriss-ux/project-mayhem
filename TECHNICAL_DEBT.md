@@ -569,9 +569,9 @@ hung-thread incidents and can leave the process zombie-running with active DB cu
 
 ---
 
-### T3-07 · `scheduled_tasks` list mutable and unsynchronized across execution contexts 🟡
+### T3-07 · `scheduled_tasks` list mutable and unsynchronized across execution contexts ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `TelegramBot` now protects scheduler task mutation and iteration with `self._tasks_lock`, and emits `scheduler_task_added` structured events on append.
 **Source:** Engineering audit 2026-03-04 (Medium risk #3)
 
 **Location:** `titan/orchestration/daily_coach.py` or scheduler module —
@@ -596,16 +596,17 @@ usage is likely benign at today's trigger volume, but if runtime task mutation g
 
 ## TIER 4 — Maintainability (Sprint 4+)
 
-### T4-01 · Ruff debt burn-down (lint hygiene) 🟢
+### T4-01 · Ruff debt burn-down (lint hygiene) ✅ RESOLVED
 
-Ruff lint debt burn-down remains open until `ruff check . --statistics` reaches zero findings.
-Keep this item open while any findings remain; close only when the burn-down is complete.
+**Status (2026-03-04):** Completed. `ruff check . --statistics` returns zero findings; burn-down closure criterion satisfied.
 
 ---
 
-### T4-02 · Remove confirmed unused imports 🟡
+### T4-02 · Remove confirmed unused imports ✅ RESOLVED
 
-5 confirmed unused imports in production code (not `__init__.py` re-exports):
+**Status (2026-03-04):** Completed. The listed production imports are no longer reported as unused (`F401`) and the cleanup objective is satisfied.
+
+Original audit snapshot (pre-fix):
 
 | File | Line | Import | Fix |
 |---|---|---|---|
@@ -641,8 +642,11 @@ but created key-mismatch / implicit-contract risk as the system grew.
 
 ---
 
-### T4-04 · `titan_ctx` dict → typed context object in `titan/main.py` 🟡
+### T4-04 · `titan_ctx` dict → typed context object in `titan/main.py` ✅ RESOLVED
 
+**Status (2026-03-04):** Completed. `titan/main.py` constructs `titan_ctx` using the typed `TitanContext` / `TitanContextContract` boundary instead of an untyped accumulator dict.
+
+Original audit snapshot (pre-fix):
 The large `titan_ctx` dict in the entrypoint accumulates keys across subsystems with no
 type contract. Future key additions are invisible to static analysis.
 
@@ -689,9 +693,9 @@ PR: TBD
 
 ---
 
-### T4-07 · Credential setup wizard quality debt — duplicate prompts + plaintext `.env` 🟡
+### T4-07 · Credential setup wizard quality debt — duplicate prompts + plaintext `.env` ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `setup_wizard.py` no longer duplicates credential prompts, validates interactive inputs, and supports opt-in keyring-backed storage via `TITAN_USE_KEYRING=1` while preserving `.env` as the local default.
 **Source:** Engineering audit 2026-03-04 (Medium risk #4 + Low-priority #3)
 
 **Location:** `titan/ui/setup_wizard.py`
@@ -721,9 +725,9 @@ branches, cancellation behavior) is under-covered in `test_new_modules.py` — o
 
 ---
 
-### T4-08 · Garmin sync timeout is advisory-only — no cancel/short-circuit 🟢
+### T4-08 · Garmin sync timeout is advisory-only — no cancel/short-circuit ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `GarminSync.sync_all()` now enforces timeout cancellation with `ThreadPoolExecutor`, emits `garmin_sync_cancelled`, and returns `status="timeout_cancelled"` on timeout.
 **Source:** Engineering audit 2026-03-04 (Low-priority #1)
 
 **Location:** `titan/integrations/garmin_sync.py` — sync timeout + SLO alert path
@@ -826,9 +830,9 @@ is no ratchet mechanism to prevent regression.
 
 ---
 
-### T4-12 · Setup wizard interactive flow under-covered by tests 🟡
+### T4-12 · Setup wizard interactive flow under-covered by tests ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `tests/titan/ui/test_setup_wizard.py` covers one-prompt-per-field behavior, invalid-input re-prompt paths, and keyring/env credential persistence flows.
 **Source:** Engineering audit 2026-03-04 (Test coverage gap #2)
 
 **Location:** `test_new_modules.py` — setup wizard coverage
