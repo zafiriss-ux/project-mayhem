@@ -71,11 +71,6 @@ def run_setup_wizard() -> dict:
     # ── Garmin ──────────────────────────────────────────────────────────
     print("━━━  GARMIN CONNECT  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-    email = input("  Email Garmin: ").strip()
-    if "@" not in email or "." not in email.split("@", 1)[-1]:
-        print("  ⚠️  Email μοιάζει άκυρο (αναμένεται μορφή user@example.com)")
-    creds["GARMIN_EMAIL"]    = email
-
     while True:
         garmin_email = input("  Email Garmin: ").strip()
         if EMAIL_REGEX.fullmatch(garmin_email):
@@ -106,12 +101,6 @@ def run_setup_wizard() -> dict:
     # ── Weather ──────────────────────────────────────────────────────────
     print("\n━━━  WEATHER API (openweathermap.org)  ━━━━━━━━━━━━━━━━━━━━━━━")
     print("  Δωρεάν εγγραφή → API keys → Πάρε το key")
-
-    api_key = input("  API Key: ").strip()
-    if len(api_key) < 20:
-        print("  ⚠️  API key μοιάζει άκυρο (OpenWeatherMap keys είναι 32 χαρακτήρες)")
-    creds["WEATHER_API_KEY"]  = api_key
-    creds["WEATHER_LOCATION"] = input("  Τοποθεσία (π.χ. Athens,GR): ").strip() or "Athens,GR"
 
     while True:
         weather_key = input("  API Key: ").strip()
