@@ -131,7 +131,7 @@ _DEFAULT_THRESHOLDS = {
 }
 ```
 
-**Effort:** ~30 minutes. Zero behaviour change — values are currently identical.
+**Effort:** ~30 minutes. Zero behaviour change — values were identical at time of fix.
 
 ---
 
@@ -168,8 +168,8 @@ simultaneously — each subsystem needs its own error taxonomy review and test u
 `sync_hrv` route failures to Garmin failure-class constants and emit machine-readable
 `_garmin_event(<failure_class>, ...)` structured events. PR: TBD.
 
-**Current state:** Most failures result in `print()` + broad `except Exception`.
-Cannot distinguish `auth_failed` / `rate_limited` / `payload_malformed` / `timeout` /
+**Original state (pre-fix):** Most failures resulted in `print()` + broad `except Exception`.
+Could not distinguish `auth_failed` / `rate_limited` / `payload_malformed` / `timeout` /
 `api_unavailable` from log output alone.
 
 **Fix direction:**
@@ -192,8 +192,8 @@ failure_class)` and routes failures to `DATA_MISSING` / `ENGINE_ERROR` /
 Completed: 2026-03-04
 PR: TBD
 
-**Current state:** `DailyCoach._run_morning_routine()` has multiple broad catch + print
-patterns across the 12 steps. Step-level failures are not distinguishable in logs.
+**Original state (pre-fix):** `DailyCoach._run_morning_routine()` had multiple broad catch + print
+patterns across the 12 steps. Step-level failures were not distinguishable in logs.
 
 **Fix direction:**
 - Step-level structured events: `(step_number, step_name, outcome, failure_class)`
@@ -234,9 +234,9 @@ PR: TBD
 
 **Location:** `titan/core/database.py` — `get_governance_decisions()`
 
-`json.loads()` is called directly on `locks_applied_json` and similar columns without a
+`json.loads()` was called directly on `locks_applied_json` and similar columns without a
 fallback. A single malformed row (manual DB edit, schema migration edge case, legacy data)
-will raise and abort the entire read, losing all governance history access.
+would raise and abort the entire read, losing all governance history access.
 
 **Fix direction:**
 ```python
@@ -261,8 +261,8 @@ PR: TBD
 
 **Location:** `titan/core/database.py` or `AthleteDatabase.load_all()`
 
-Broad `except` on file load silently skips corrupted athlete files with a warning.
-Field-level reason is not captured, making forensic diagnosis of partial corruption
+Broad `except` on file load silently skipped corrupted athlete files with a warning.
+Field-level reason was not captured, making forensic diagnosis of partial corruption
 impossible.
 
 **Fix direction:** Log `(filename, error_class, error_message, field_hint)` per skip.
@@ -277,7 +277,7 @@ PR: TBD
 
 **Location:** `main.py`, `titan/main.py`, integration init paths (`titan/integrations/garmin_sync.py` `connect()`, `titan/integrations/telegram_bot.py` `__init__()`)
 
-**Current state:** Launch-time errors in the startup guard and integration init paths emit `print()` rather than structured log events. Startup failures are indistinguishable from runtime failures in aggregated log output, degrading incident RCA accuracy.
+**Original state (pre-fix):** Launch-time errors in the startup guard and integration init paths emitted `print()` rather than structured log events. Startup failures were indistinguishable from runtime failures in aggregated log output, degrading incident RCA accuracy.
 
 **Fix direction:**
 - Replace `print(f"Error: ...")` in startup/init paths with `log.error("startup_failure", component=..., error_class=..., detail=...)`
@@ -301,7 +301,7 @@ results:
 - `AthleteDatabase.__init__()` path resolution → `except TypeError` — emits `athlete_db_base_directory_fallback`
 - `AthleteDatabase.load_all()` → `except (OSError, TypeError, ValueError, json.JSONDecodeError)` — emits `athlete_file_skipped`
 
-No broad catches remain. 1206 tests green.
+At closure (2026-03-04): no broad catches remained; 1206 tests green (historical snapshot — not a live reading).
 Completed: 2026-03-04
 PR: TBD
 
@@ -434,7 +434,14 @@ PR: TBD
 
 ---
 
-### T4-06 · Doc freshness maintenance process 🟡
+### T4-06 · Doc freshness maintenance process ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. Policy applied across all closed items:
+- All "Current state:" labels in resolved items renamed to "Original state (pre-fix):" with verbs converted to past tense.
+- All numeric measurements in closed items (test counts, error counts) annotated with "as of [date] at closure — historical snapshot, not a live reading."
+- Forbidden "currently X" language removed from all closed items.
+- Appendix B test-count annotated as a Phase 7 close snapshot.
+- Ongoing policy: at the close of each phase sprint, scan `TECHNICAL_DEBT.md` for stale present-tense measurements and annotate or remove them.
 
 **Risk (28%):** Historical metric snapshots embedded in closed debt entries (error counts, test counts, date-bound measurements) drift out of sync with the actual codebase state over time. Without explicit date-annotation, future contributors may treat recorded closure measurements as current readings, leading to incorrect triage decisions.
 
@@ -506,7 +513,7 @@ These patterns are correct and must be preserved in all future work:
 - **Kill-switch default-ON**: correct failure mode for ML scaffold ✅
 - **Evidence labels on all ML payloads**: provenance discipline from day one ✅
 - **`governance_contracts.py`**: output shape validation at governance→orchestration boundary ✅
-- **All tests passing** (1122 green, 100% coverage on governance + Phase 7 modules) ✅
+- **All tests passing** (1122 green as of Phase 7 close, 2026-03-04 — historical snapshot, not a live reading; 100% coverage on governance + Phase 7 modules at that date) ✅
 
 ---
 
@@ -530,6 +537,7 @@ When an item is completed, mark it here with date and PR reference:
 | T3-05 | 2026-03-04 | PR: TBD |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
 | T4-03 | 2026-03-04 | PR: TBD |
+| T4-06 | 2026-03-04 | PR: TBD |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
 | T5-03 | 2026-03-03 | [#170](https://github.com/zafiriss-ux/project-mayhem/pull/170) |
