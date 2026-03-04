@@ -24,7 +24,10 @@ on the next, except where explicitly marked as independent.
 These items directly affect the accuracy of coaching decisions. A silent failure here
 means the governance engine operates on corrupt data without knowing it.
 
-### T1-01 · Wrong Telegram library in `requirements.txt` 🔴
+### T1-01 · Wrong Telegram library in `requirements.txt` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `requirements.txt` uses `pyTelegramBotAPI==4.21.0`
+and dependency/import alignment tests are in place. PR: TBD.
 
 **File:** `requirements.txt:16` + `titan/integrations/telegram_bot.py:31`
 
@@ -49,7 +52,10 @@ delivery/control channel fails silently in environments that install from requir
 
 ---
 
-### T1-02 · HRV silent data loss in `garmin_sync.py` 🔴
+### T1-02 · HRV silent data loss in `garmin_sync.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `sync_hrv()` logs skipped-day errors, increments
+`skipped_days`, and emits `hrv_day_skipped` structured events. PR: TBD.
 
 **Location:** `titan/integrations/garmin_sync.py` — `sync_hrv()` inner loop
 
@@ -68,7 +74,11 @@ without any warning.
 
 ---
 
-### T1-03 · Migration observability gap in `database.py` 🔴
+### T1-03 · Migration observability gap in `database.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `_run_migrations()` now catches only
+`sqlite3.OperationalError`, re-raises non-duplicate-column failures, and emits structured
+`db_schema_migration` events. PR: TBD.
 
 **Location:** `titan/core/database.py` — `_run_migrations()`
 
@@ -125,7 +135,10 @@ _DEFAULT_THRESHOLDS = {
 
 ---
 
-### T1-05 · Dead duplicate ACWR constants in `constants.py` 🟠
+### T1-05 · Dead duplicate ACWR constants in `constants.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `ACWR_SAFE_MIN` and `ACWR_SAFE_MAX` are absent from
+`titan/utils/constants.py` and enforced by constants hygiene tests. PR: TBD.
 
 **File:** `titan/utils/constants.py`
 
@@ -479,6 +492,11 @@ When an item is completed, mark it here with date and PR reference:
 
 | Item | Completed | PR |
 |---|---|---|
+| T1-01 | 2026-03-04 | PR: TBD |
+| T1-02 | 2026-03-04 | PR: TBD |
+| T1-03 | 2026-03-04 | PR: TBD |
+| T1-04 | 2026-03-04 | PR: TBD |
+| T1-05 | 2026-03-04 | PR: TBD |
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
