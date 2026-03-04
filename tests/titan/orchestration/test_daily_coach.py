@@ -1,7 +1,12 @@
+import sqlite3
+import threading
+from datetime import datetime
+from time import sleep
 from types import SimpleNamespace
 
 import pytest
 
+from titan.core.database import DatabaseManager
 from titan.orchestration import daily_coach
 from titan.orchestration.daily_coach import DailyCoach
 
@@ -218,6 +223,62 @@ def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
             "thread_name": "ExistingRoutine",
         }
     ]
+
+
+def test_daily_coach_no_overlap_guard():
+    coach = DailyCoach.__new__(DailyCoach)
+    started = threading.Event()
+    release = threading.Event()
+    run_count = 0
+    run_count_lock = threading.Lock()
+
+    def _blocking_routine():
+        nonlocal run_count
+        with run_count_lock:
+            run_count += 1
+        started.set()
+        release.wait(timeout=2)
+
+    coach.run_morning_routine = _blocking_routine
+
+    coach.run_morning_routine_async(trigger_source="test_first_call")
+    assert started.wait(timeout=1)
+
+    coach.run_morning_routine_async(trigger_source="test_second_call")
+    sleep(0.05)
+
+    with run_count_lock:
+        assert run_count == 1
+
+    release.set()
+    coach._routine_thread.join(timeout=5)
+    assert not coach._routine_thread.is_alive()
+
+
+def test_daily_coach_routine_thread_shutdown(tmp_path):
+    coach = DailyCoach.__new__(DailyCoach)
+    db = DatabaseManager(db_name="daily_coach_thread_shutdown.db", db_dir=tmp_path)
+    programming_errors: list[sqlite3.ProgrammingError] = []
+
+    def _routine_with_db_touch():
+        try:
+            today = datetime.now().strftime("%Y-%m-%d")
+            db.save_daily_metric(date=today, hrv=45.0, rhr=52, sleep_hours=7.0)
+            db.get_training_load_history(days=7)
+        except sqlite3.ProgrammingError as exc:
+            programming_errors.append(exc)
+            raise
+
+    coach.run_morning_routine = _routine_with_db_touch
+
+    try:
+        coach.run_morning_routine_async(trigger_source="thread_shutdown_test")
+        assert coach._routine_thread is not None
+        coach._routine_thread.join(timeout=5)
+        assert not coach._routine_thread.is_alive()
+        assert not programming_errors
+    finally:
+        db.close()
 
 
 def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
