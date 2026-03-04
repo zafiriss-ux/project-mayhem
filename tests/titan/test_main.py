@@ -30,6 +30,8 @@ class _DummyWeather:
 class _DummyTelegram:
     def __init__(self):
         self.commands = {}
+        self.scheduled_tasks = []
+        self.sent_weekly_plans = []
         self.stop_calls = 0
 
     def register_command(self, name, callback):
@@ -42,25 +44,31 @@ class _DummyTelegram:
         self.stop_calls += 1
 
     def schedule_task(self, **kwargs):
+        self.scheduled_tasks.append(kwargs)
         return None
 
     def send_weekly_plan(self, plan):
+        self.sent_weekly_plans.append(plan)
         return None
 
 
 class _DummyWeeklyPlanner:
     def __init__(self, *args, **kwargs):
+        self.calls = []
         return None
 
     def generate_weekly_plan(self, athlete_profile, phase):
+        self.calls.append({"athlete_profile": athlete_profile, "phase": phase})
         return {"status": "ok"}
 
 
 class _DummyDailyCoach:
     def __init__(self, *args, **kwargs):
+        self.morning_calls = 0
         return None
 
     def run_morning_routine_async(self):
+        self.morning_calls += 1
         return None
 
 
@@ -88,12 +96,14 @@ def _patch_main_dependencies(monkeypatch):
     dummy_weather = _DummyWeather()
     dummy_telegram = _DummyTelegram()
     dummy_db = _DummyDatabase()
+    dummy_daily_coach = _DummyDailyCoach()
+    dummy_weekly_planner = _DummyWeeklyPlanner()
 
     monkeypatch.setattr(titan_main, "GarminSync", lambda: dummy_garmin)
     monkeypatch.setattr(titan_main, "TitanTelegramBot", lambda: dummy_telegram)
     monkeypatch.setattr(titan_main, "DatabaseManager", lambda: dummy_db)
-    monkeypatch.setattr(titan_main, "DailyCoach", _DummyDailyCoach)
-    monkeypatch.setattr(titan_main, "WeeklyPlanGenerator", _DummyWeeklyPlanner)
+    monkeypatch.setattr(titan_main, "DailyCoach", lambda **kwargs: dummy_daily_coach)
+    monkeypatch.setattr(titan_main, "WeeklyPlanGenerator", lambda *args, **kwargs: dummy_weekly_planner)
     monkeypatch.setattr(titan_main, "OptimalTimeCalculator", lambda weather: object())
     monkeypatch.setattr(titan_main, "NutritionOptimizer", lambda glycogen_model: object())
     monkeypatch.setattr(titan_main, "TitanContextContract", _DummyTitanContextContract)
@@ -119,7 +129,7 @@ def _patch_main_dependencies(monkeypatch):
 
     monkeypatch.setitem(sys.modules, "titan.integrations.weather_api", weather_module)
 
-    return dummy_garmin, dummy_weather, dummy_telegram, dummy_db
+    return dummy_garmin, dummy_weather, dummy_telegram, dummy_db, dummy_daily_coach, dummy_weekly_planner
 
 
 def test_parse_env_number_happy_path(monkeypatch):
@@ -144,7 +154,7 @@ def test_main_credentials_failure_logs_structured_startup_event(monkeypatch, cap
 
 
 def test_main_keyboard_interrupt_logs_shutdown_and_cleans_up(monkeypatch, caplog):
-    garmin, weather, telegram, db = _patch_main_dependencies(monkeypatch)
+    garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: (_ for _ in ()).throw(KeyboardInterrupt))
 
     with caplog.at_level(logging.INFO):
@@ -160,7 +170,7 @@ def test_main_keyboard_interrupt_logs_shutdown_and_cleans_up(monkeypatch, caplog
 
 
 def test_main_normal_exit_runs_clean_shutdown_without_shutdown_log(monkeypatch, caplog):
-    garmin, weather, telegram, db = _patch_main_dependencies(monkeypatch)
+    garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
 
     with caplog.at_level(logging.INFO):
@@ -174,7 +184,7 @@ def test_main_normal_exit_runs_clean_shutdown_without_shutdown_log(monkeypatch, 
 
 
 def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch):
-    _garmin, _weather, telegram, _db = _patch_main_dependencies(monkeypatch)
+    _garmin, _weather, telegram, _db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
 
     captured_ctx = {}
 
@@ -217,3 +227,39 @@ def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
         titan_main.main()
 
     assert called["menu"] == 0
+
+
+def test_main_schedules_expected_background_tasks(monkeypatch):
+    _garmin, _weather, telegram, _db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
+
+    titan_main.main()
+
+    assert len(telegram.scheduled_tasks) == 2
+    morning_task, weekly_task = telegram.scheduled_tasks
+    assert morning_task["name"] == "Morning Coaching"
+    assert morning_task["time_str"] == "07:00"
+    morning_task["callback"]()
+    assert daily_coach.morning_calls == 1
+
+    assert weekly_task["name"] == "Weekly Plan"
+    assert weekly_task["time_str"] == "20:00"
+    assert weekly_task["days"] == ["Sunday"]
+
+
+def test_main_weekly_task_callback_sends_generated_plan(monkeypatch):
+    _garmin, _weather, telegram, _db, _daily_coach, weekly_planner = _patch_main_dependencies(monkeypatch)
+    captured = {}
+
+    monkeypatch.setattr(titan_main, "main_menu", lambda ctx: captured.setdefault("ctx", ctx))
+    monkeypatch.setenv("TRAINING_PHASE", "TAPER")
+
+    titan_main.main()
+
+    weekly_task = next(task for task in telegram.scheduled_tasks if task["name"] == "Weekly Plan")
+    weekly_task["callback"]()
+
+    assert weekly_planner.calls
+    assert weekly_planner.calls[0]["phase"] == "TAPER"
+    assert captured["ctx"]["last_weekly_plan"] == {"status": "ok"}
+    assert telegram.sent_weekly_plans == [{"status": "ok"}]
