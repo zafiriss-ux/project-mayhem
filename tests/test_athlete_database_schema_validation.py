@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from titan.core.database import AthleteDatabase
 
 
@@ -129,3 +131,22 @@ def test_load_all_accepts_missing_name_uses_default(tmp_path):
     db = AthleteDatabase(db_path=str(db_dir))
 
     assert db.athletes["ATH_20200101010102"].name == "Default Athlete"
+
+
+def test_load_all_reraises_unexpected_errors(tmp_path, monkeypatch):
+    db_dir = tmp_path / "athletes"
+    db_dir.mkdir()
+    (db_dir / "valid.json").write_text(
+        json.dumps({"athlete_id": "ATH_20200101010177", "name": "Runner"})
+    )
+
+    def _raise_runtime_error(_data):
+        raise RuntimeError("unexpected parsing failure")
+
+    monkeypatch.setattr(
+        "titan.core.database.UniversalAthleteProfile.from_dict",
+        _raise_runtime_error,
+    )
+
+    with pytest.raises(RuntimeError, match="unexpected parsing failure"):
+        AthleteDatabase(db_path=str(db_dir))
