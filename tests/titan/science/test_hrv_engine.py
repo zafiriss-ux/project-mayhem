@@ -95,3 +95,39 @@ def test_minimal_data_points_behavior_is_stable() -> None:
     )
     assert engine.calculate_rmssd_from_rr_intervals([1000.0]) is None
     assert engine.calculate_rmssd_from_rr_intervals([1000.0, 1020.0]) == 20.0
+
+
+def test_slightly_low_hrv_keeps_easy_session_with_medium_confidence() -> None:
+    engine = _build_engine_with_history([50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0])
+
+    action, reason, confidence = engine.get_training_recommendation(today_hrv=45.0, planned_session="EASY")
+
+    assert action == "EASY"
+    assert reason == "HRV slightly low but easy session OK"
+    assert confidence == "MEDIUM"
+
+
+def test_get_latest_hrv_returns_rounded_value_or_zero_when_empty() -> None:
+    empty_engine = HRVGuidedEngine()
+    populated_engine = _build_engine_with_history([40.0, 40.06])
+
+    assert empty_engine.get_latest_hrv() == 0.0
+    assert populated_engine.get_latest_hrv() == 40.1
+
+
+def test_ln_rmssd_deviation_returns_zero_when_no_positive_values_or_empty_windows() -> None:
+    non_positive = _build_engine_with_history([0.0, -1.0, 0.0])
+    with_data = _build_engine_with_history([40.0, 41.0, 42.0])
+
+    assert non_positive.calculate_ln_rmssd_deviation() == 0.0
+    assert with_data.calculate_ln_rmssd_deviation(short_days=0, long_days=28) == 0.0
+
+
+def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
+    improving = _build_engine_with_history([50.0] * 7 + [60.0] * 7)
+    declining = _build_engine_with_history([60.0] * 7 + [50.0] * 7)
+    stable = _build_engine_with_history([50.0] * 7 + [52.0] * 7)
+
+    assert improving.get_trend_analysis() == "📈 IMPROVING: HRV up 20.0%"
+    assert declining.get_trend_analysis() == "📉 DECLINING: HRV down -16.7%"
+    assert stable.get_trend_analysis() == "➡️ STABLE: HRV change 4.0%"
