@@ -1,3 +1,6 @@
+import json
+import logging
+import threading
 from unittest.mock import MagicMock
 
 from titan.integrations.garmin_sync import GarminSync
@@ -36,6 +39,36 @@ def test_stop_background_sync_sets_event_and_joins_thread():
 
     assert sync._stop_event.is_set()
     sync._sync_thread.join.assert_called_once_with(timeout=5)
+
+
+def test_stop_background_sync_hung_thread_emits_error_timeout_event(caplog):
+    sync = GarminSync(email="e", password="p")
+    never_set = threading.Event()
+
+    hung_thread = threading.Thread(target=never_set.wait, name="HungGarminWorker", daemon=True)
+    hung_thread.start()
+    assert hung_thread.is_alive()
+
+    observed = {"timeout": None}
+    original_join = hung_thread.join
+
+    def _join(timeout=None):
+        observed["timeout"] = timeout
+        return original_join(timeout=0)
+
+    hung_thread.join = _join
+    sync._sync_thread = hung_thread
+
+    with caplog.at_level(logging.ERROR):
+        sync.stop_background_sync()
+
+    assert observed["timeout"] == 5
+    event = json.loads(caplog.records[-1].message)
+    assert event["action"] == "worker_shutdown_timeout"
+    assert event["worker_name"] == "HungGarminWorker"
+    assert event["timeout_seconds"] == 5
+    assert event["still_alive"] is True
+    assert caplog.records[-1].levelno == logging.ERROR
 
 
 def test_sync_all_payload_supports_dict_access_and_json_serialization():
