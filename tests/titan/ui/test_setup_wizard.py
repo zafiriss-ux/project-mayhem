@@ -186,3 +186,39 @@ def test_save_credentials_falls_back_to_env_when_keyring_import_fails(monkeypatc
 
     assert backend == "env_file"
     assert saved_env == creds
+
+
+def test_load_env_file_preserves_existing_environment_values(tmp_path, monkeypatch):
+    env_path = tmp_path / ".env"
+    env_path.write_text(
+        "# ignored\n"
+        "GARMIN_EMAIL=file@example.com\n"
+        "GARMIN_PASSWORD=file-secret\n"
+        "TELEGRAM_BOT_TOKEN=file-token\n"
+    )
+    monkeypatch.setattr(setup_wizard, "ENV_PATH", env_path)
+    monkeypatch.setenv("GARMIN_EMAIL", "existing@example.com")
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setattr(setup_wizard, "_load_keyring_credentials", lambda: None)
+
+    setup_wizard.load_env_file()
+
+    assert os.getenv("GARMIN_EMAIL") == "existing@example.com"
+    assert os.getenv("GARMIN_PASSWORD") == "file-secret"
+    assert os.getenv("TELEGRAM_BOT_TOKEN") == "file-token"
+
+
+def test_ensure_credentials_returns_false_when_setup_cancelled(monkeypatch):
+    monkeypatch.setattr(setup_wizard, "load_env_file", lambda: None)
+    monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setattr(setup_wizard, "credentials_exist", lambda: False)
+
+    def _interrupt():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(setup_wizard, "run_setup_wizard", _interrupt)
+
+    assert setup_wizard.ensure_credentials() is False
