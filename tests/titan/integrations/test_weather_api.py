@@ -67,6 +67,17 @@ def test_get_current_conditions_live_marks_data_quality(monkeypatch):
     assert payload["data_quality"] == "live"
 
 
+def test_get_current_conditions_cache_marks_data_quality(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
+
+    first_payload = api.get_current_conditions()
+    cached_payload = api.get_current_conditions()
+
+    assert first_payload["data_quality"] == "live"
+    assert cached_payload["data_quality"] == "cached"
+
+
 def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplog):
     api = WeatherAPI(location="Athens,GR")
 

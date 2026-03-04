@@ -264,7 +264,7 @@ silently suppresses a legitimate warning.
 
 ### T1-09 · Synthetic weather fallback flows into decision inputs without degraded-mode gate ✅ RESOLVED
 
-**Status (2026-03-04):** Completed. `WeatherAPI` sets `data_quality: "synthetic"` on all
+**Status (2026-03-04):** COMPLETED. `WeatherAPI` sets `data_quality: "synthetic"` on all
 fallback payloads. `OptimalTimeCalculator.calculate_optimal_time()` returns early with
 `weather_window_omitted: True` and `weather_data_quality: "synthetic"` when data is
 synthetic. `DailyCoach.run_morning_routine()` checks `weather_degraded_mode` flag and

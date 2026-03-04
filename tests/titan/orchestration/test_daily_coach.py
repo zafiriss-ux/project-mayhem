@@ -467,3 +467,24 @@ def test_run_morning_routine_omits_weather_recommendation_when_synthetic():
     assert captured_payload["optimal_time"] == "N/A"
     assert captured_payload["dew_point"] == "N/A"
     assert captured_payload["special_note"] == "⚠️ Weather data unavailable — optimal time window omitted"
+
+
+def test_run_morning_routine_keeps_weather_recommendation_when_live():
+    captured_payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.optimal_time = SimpleNamespace(
+        calculate_optimal_time=lambda **k: {
+            "recommended_time": "06:30",
+            "dew_point": 11,
+            "quality": "🟩 EXCELLENT",
+            "weather_data_quality": "live",
+        }
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: captured_payload.update(payload) or True
+    )
+
+    assert coach.run_morning_routine() is True
+    assert captured_payload["optimal_time"] == "06:30"
+    assert captured_payload["dew_point"] == 11
+    assert "special_note" not in captured_payload
