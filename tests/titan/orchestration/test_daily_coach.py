@@ -183,6 +183,67 @@ def test_build_daily_coach_context_supports_dict_access_and_serialization():
 
     assert context["intensity_gate_result"]["color"] == "YELLOW"
     assert context["priority_vector"] == {"recovery": 1}
+    assert set(context) == {
+        "db",
+        "cs_tracker",
+        "afi_constraints",
+        "intensity_gate_result",
+        "readiness_score",
+        "glycogen_debt",
+        "fatigue_level",
+        "acwr",
+        "days_since_last_vo2",
+        "fueling_confirmed",
+        "planned_duration_min",
+        "today_hrv",
+        "baseline_hrv",
+        "hrv_std_dev",
+        "today_rhr",
+        "baseline_rhr",
+        "sleep_score",
+        "subjective_fatigue_score",
+        "tsb_value",
+        "injury_flag",
+        "priority_vector",
+        "lock_thresholds",
+    }
+
+
+
+def test_build_daily_coach_context_serializes_like_dict_payload():
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        afi_constraints={"afi_modifier": 0},
+        intensity_gate={"color": "GREEN"},
+        readiness_score=80.0,
+        glycogen_debt=10.0,
+        fatigue_level="LOW",
+        acwr=1.0,
+        days_since_last_vo2=2,
+        fueling_confirmed=False,
+        planned_duration_min=45,
+        today_hrv=50.0,
+        baseline_hrv=48.0,
+        hrv_std_dev=3.0,
+        today_rhr=49,
+        baseline_rhr=50.0,
+        sleep_score=82,
+        subjective_fatigue_score=2,
+        tsb_value=1.0,
+        injury_flag=False,
+        priority_vector={},
+        lock_thresholds={},
+    )
+
+    import json
+
+    serializable_context = {k: v for k, v in context.items() if k not in {"db", "cs_tracker"}}
+    serialized = json.loads(json.dumps(serializable_context))
+    assert serialized["days_since_last_vo2"] == 2
+    assert serialized["planned_duration_min"] == 45
 
 
 def test_build_daily_coach_context_preserves_nullable_days_since_last_vo2():
