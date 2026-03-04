@@ -83,3 +83,64 @@ def test_browser_activities_handles_empty_and_populated_data(monkeypatch, capsys
     data_output = capsys.readouterr().out
     assert "2026-01-10" in data_output
     assert "5:05" in data_output
+
+
+def test_browser_drift_uses_first_second_half_hr_and_fallback(monkeypatch, capsys):
+    class _FakeDriftEngine:
+        @staticmethod
+        def compute_drift(hr1, hr2):
+            return round((hr2 - hr1) / hr1 * 100, 1)
+
+        @staticmethod
+        def classify_drift(value):
+            return "GOOD" if value <= 3.5 else "POOR"
+
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+    monkeypatch.setattr("titan.science.drift_engine.DriftEngine", _FakeDriftEngine)
+
+    menu_system._browser_drift(
+        {
+            "recent_activities": [
+                {"date": "2026-01-10", "activity_type": "run", "avg_hr_first_half": 140, "avg_hr_second_half": 145},
+                {"date": "2026-01-11", "activity_type": "run", "drift_pct": 6.2},
+            ]
+        }
+    )
+
+    output = capsys.readouterr().out
+    assert "2026-01-10" in output and "3.6%" in output
+    assert "2026-01-11" in output and "6.2%" in output
+
+
+def test_browser_tsb_without_engine_shows_warning(monkeypatch, capsys):
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    menu_system._browser_tsb({})
+
+    assert "TSB engine not available" in capsys.readouterr().out
+
+
+def test_menu_shoe_selector_handles_missing_manager_and_unknown_session(monkeypatch, capsys):
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    menu_system.menu_shoe_selector({})
+    missing_output = capsys.readouterr().out
+    assert "Equipment manager not initialized" in missing_output
+
+    class _Equip:
+        def list_shoes(self):
+            return [{"name": "Daily A", "km": 321, "available": True}]
+
+    menu_system.menu_shoe_selector({"equipment_manager": _Equip(), "today_session": {"session_type": "UNKNOWN"}})
+    fallback_output = capsys.readouterr().out
+    assert "Daily trainer" in fallback_output
+    assert "Daily A" in fallback_output

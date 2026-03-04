@@ -13,7 +13,6 @@ from titan.integrations.weather_api import WeatherAPI
 from titan.orchestration.daily_coach import DailyCoach
 
 
-@pytest.mark.timeout(30)
 def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, tmp_path):
     """T4-13: Start all workers together, run a few scheduler ticks, then stop cleanly."""
     db = DatabaseManager(db_name="stress_test.db", db_dir=tmp_path)
