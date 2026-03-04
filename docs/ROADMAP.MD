@@ -137,7 +137,56 @@ Goal: Machine learning on a stable, calibrated, observable foundation.
 
 ---
 
+## Phase 7.5 — Hardening Sprint (OPEN, 2026)
+
+**Gate:** Must be complete before Phase 8 feature work begins.
+All items map 1:1 to `TECHNICAL_DEBT.md` entries. Tier ordering is mandatory (CLAUDE.md Rule E1).
+
+### Tier 1 — Data Integrity (block all else until resolved)
+
+- **T1-06** — Extend `DatabaseManager` write lock to cover reads; add `_closed` flag to `close()` to eliminate `sqlite3.ProgrammingError` race at shutdown.
+- **T1-07** — Guard `run_morning_routine_async()` with `is_alive()` check to prevent concurrent DailyCoach routine execution.
+- **T1-08** — Replace bare `except Exception: return 50.0` in `_get_baseline_rhr()` with specific exception handling; surface data-integrity incidents as structured events + Telegram alert.
+- **T1-09** — Add `degraded: bool` / `data_quality` field to weather payload; gate `OptimalTimeCalculator` and `DailyCoach` output on it; emit `weather_degraded_mode_active` event.
+
+### Tier 2 — Observability
+
+- **T2-09** — Replace residual operational/error `print()` calls in `telegram_bot.py`, `garmin_sync.py`, `weather_api.py`, `daily_coach.py` with structured events (one module at a time, E2 sequence).
+
+### Tier 3 — Concurrency Hygiene
+
+- **T3-06** — Add `is_alive()` check after `join(timeout=5)` in all three background worker stop paths; emit `worker_shutdown_timeout` structured event on non-termination.
+- **T3-07** — Guard `scheduled_tasks` list with `threading.Lock` on all append/iterate paths.
+
+### Tier 4 — Maintainability & Test Coverage
+
+- **T4-07** — Eliminate duplicate prompts in `setup_wizard.py`; add input validation per field.
+- **T4-08** — Wrap long Garmin sync calls with `ThreadPoolExecutor` + `future.result(timeout=N)` to enable actual cancellation.
+- **T4-09** — Emit structured `shutdown_requested` event on `KeyboardInterrupt` in main loop.
+- **T4-10** — Replace broad `Any` fields in `titan/orchestration/contracts.py` with concrete types, one contract at a time.
+- **T4-11** — Add `--cov-fail-under` ratchet gate in `pyproject.toml` / CI; set threshold to measured baseline at Phase 7.5 close.
+- **T4-12** — Add interactive flow tests for `setup_wizard.py` (validation branches, cancellation path, happy path). Depends on T4-07.
+- **T4-13** — Create `tests/test_full_lifecycle_stress.py`: start → run → stop across all four workers; assert clean shutdown + no race errors. Depends on T1-06, T1-07.
+
+### Deliverable
+
+All 1122+ tests green. `ruff check .` zero findings (T4-01 already tracking).
+`mypy titan/orchestration/contracts.py` zero errors (after T4-10).
+Coverage gate active in CI (T4-11). ADR-0017 observations confirmed resolved or deferred to Phase 9.
+
+### Architecture context
+
+ADR-0017 (`docs/adr/0017-composition-root-and-dailycoach-architecture-audit.md`) documents the
+trade-offs of the current composition root and DailyCoach orchestrator patterns. Both patterns are
+**accepted as-is** for this phase. The lifecycle supervisor refactor (if warranted) is a Phase 9
+concern, contingent on whether T1-06, T1-07, T3-06, T3-07 in isolation are sufficient to eliminate
+the operational risks identified in the audit.
+
+---
+
 ## Phase 8 — Multi-Platform & Social (PLANNED, 2027)
+
+**Prerequisite:** Phase 7.5 Hardening Sprint complete.
 Goal: Expand reach beyond single-athlete CLI to team and mobile contexts.
 
 1. Additional device sync: Strava, Polar, Whoop, COROS — unified adapter interface
@@ -230,4 +279,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-03 (Tier 5/T5-01, T5-03, and T5-04 decisions documented via ADR-0015, ADR-0016, and ADR-0014 update)
+Last updated: 2026-03-04 (Phase 7.5 Hardening Sprint added: 14 audit findings from engineering audit 2026-03-04 registered as T1-06..T4-13; ADR-0017 architecture audit; ARCHITECTURE.md thread-safety description corrected)
