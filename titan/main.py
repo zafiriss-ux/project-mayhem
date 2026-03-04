@@ -16,7 +16,6 @@ import contextlib
 import logging
 import os
 import sys
-from typing import Any, TypedDict
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,6 +32,7 @@ from titan.features.weekly_planner import WeeklyPlanGenerator
 # ── Core integrations ────────────────────────────────────────────────────────
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
+from titan.orchestration.contracts import AthleteProfile, TitanContext, TitanContextContract
 
 # ── Orchestration ────────────────────────────────────────────────────────────
 from titan.orchestration.daily_coach import DailyCoach
@@ -59,53 +59,6 @@ from titan.ui.menu_system import main_menu
 from titan.ui.setup_wizard import ensure_credentials
 
 log = logging.getLogger(__name__)
-
-
-class AthleteProfile(TypedDict):
-    name: str
-    age: int
-    weight_kg: float
-    height_cm: float
-    max_hr: int
-    threshold_hr: int
-    phase: str
-    goal: str
-
-
-class TitanContext(TypedDict):
-    # Integrations
-    garmin: GarminSync
-    weather: Any
-    telegram: TitanTelegramBot
-    # Science engines
-    hrv_engine: HRVGuidedEngine
-    tsb_engine: TSBEngine
-    acwr_engine: ACWREngine
-    readiness_engine: ReadinessEngine
-    glycogen_model: GlycogenModel
-    drift_engine: DriftEngine
-    lactate_logic: LactateLogic
-    trimp_engine: TRIMPEngine
-    fatigue_engine: FatigueEngine
-    adaptive_memory: AdaptiveMemory
-    biomechanics: BiomechanicsAnalysis
-    efficiency_engine: EfficiencyEngine
-    durability_engine: DurabilityEngine
-    critical_speed: CriticalSpeedEngine
-    rcp_engine: RCPEngine
-    # Features
-    weekly_planner: WeeklyPlanGenerator
-    optimal_time_calc: OptimalTimeCalculator
-    nutrition_optimizer: NutritionOptimizer
-    # Orchestration
-    daily_coach: DailyCoach
-    # Persistent storage
-    db: DatabaseManager
-    # Profile & state
-    athlete_profile: AthleteProfile
-    last_garmin_data: dict[str, Any]
-    last_weekly_plan: dict[str, Any] | None
-    today_session_type: str
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -485,41 +438,35 @@ def main():
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
     }
 
-    titan_ctx: TitanContext = {
-        # Integrations
-        "garmin":               garmin,
-        "weather":              weather,
-        "telegram":             telegram,
-        # Science engines
-        "hrv_engine":           hrv_engine,
-        "tsb_engine":           tsb_engine,
-        "acwr_engine":          acwr_engine,
-        "readiness_engine":     readiness_engine,
-        "glycogen_model":       glycogen_model,
-        "drift_engine":         drift_engine,
-        "lactate_logic":        lactate_logic,
-        "trimp_engine":         trimp_engine,
-        "fatigue_engine":       fatigue_engine,
-        "adaptive_memory":      adaptive_memory,
-        "biomechanics":         biomechanics,
-        "efficiency_engine":    efficiency_eng,
-        "durability_engine":    durability_eng,
-        "critical_speed":       critical_speed,
-        "rcp_engine":           rcp_engine,
-        # Features
-        "weekly_planner":       weekly_planner,
-        "optimal_time_calc":    optimal_time_calc,
-        "nutrition_optimizer":  nutrition_optimizer,
-        # Orchestration
-        "daily_coach":          daily_coach,
-        # Persistent storage
-        "db":                   db,
-        # Profile & state
-        "athlete_profile":      athlete_profile,
-        "last_garmin_data":     {},
-        "last_weekly_plan":     None,
-        "today_session_type":   "EASY",
-    }
+    titan_ctx: TitanContext = TitanContextContract(
+        garmin=garmin,
+        weather=weather,
+        telegram=telegram,
+        hrv_engine=hrv_engine,
+        tsb_engine=tsb_engine,
+        acwr_engine=acwr_engine,
+        readiness_engine=readiness_engine,
+        glycogen_model=glycogen_model,
+        drift_engine=drift_engine,
+        lactate_logic=lactate_logic,
+        trimp_engine=trimp_engine,
+        fatigue_engine=fatigue_engine,
+        adaptive_memory=adaptive_memory,
+        biomechanics=biomechanics,
+        efficiency_engine=efficiency_eng,
+        durability_engine=durability_eng,
+        critical_speed=critical_speed,
+        rcp_engine=rcp_engine,
+        weekly_planner=weekly_planner,
+        optimal_time_calc=optimal_time_calc,
+        nutrition_optimizer=nutrition_optimizer,
+        daily_coach=daily_coach,
+        db=db,
+        athlete_profile=athlete_profile,
+        last_garmin_data={},
+        last_weekly_plan=None,
+        today_session_type="EASY",
+    ).to_payload()
 
     # ── Step 7: Register Telegram callbacks ──────────────────────────────────
     _register_telegram_callbacks(telegram, titan_ctx)
