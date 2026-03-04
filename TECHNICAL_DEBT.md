@@ -269,7 +269,11 @@ impossible.
 
 ---
 
-### T2-07 · Launcher and startup error path observability 🟠
+### T2-07 · Launcher and startup error path observability ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. Startup/init failure paths now emit structured `startup_failure` events with stable `component`, `error_class`, and `detail` fields while preserving friendly console messages where applicable.
+Completed: 2026-03-04
+PR: TBD
 
 **Location:** `main.py`, `titan/main.py`, integration init paths (`titan/integrations/garmin_sync.py` `connect()`, `titan/integrations/telegram_bot.py` `__init__()`)
 

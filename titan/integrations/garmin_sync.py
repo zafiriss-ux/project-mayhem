@@ -108,8 +108,16 @@ class GarminSync:
             self.is_connected = True
             print("✅ Connected to Garmin Connect")
             return True
-        except Exception:
+        except Exception as e:
             _log.debug("Garmin connection failed", exc_info=True)
+            _log.error(
+                "startup_failure",
+                extra={
+                    "component": "garmin_sync_connect",
+                    "error_class": e.__class__.__name__,
+                    "detail": str(e),
+                },
+            )
             print("❌ Garmin connection failed. Please retry or re-run Garmin setup.")
             self.is_connected = False
             return False
