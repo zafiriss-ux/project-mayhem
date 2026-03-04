@@ -223,7 +223,14 @@ PR: TBD
 
 ---
 
-### T2-05 · JSON guard for DB governance rows in `database.py` 🟠
+### T2-05 · JSON guard for DB governance rows in `database.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `get_governance_decisions()` now routes
+governance JSON decode through `_safe_json()` with fallback semantics, and malformed
+payloads emit structured `governance_row_json_malformed` warning events that include
+the source column and a capped raw preview. Tests cover valid parsing and malformed
+fallback behavior. Completed: 2026-03-04
+PR: TBD
 
 **Location:** `titan/core/database.py` — `get_governance_decisions()`
 
