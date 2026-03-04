@@ -20,7 +20,6 @@ import math
 import os
 import ssl
 import threading
-import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
@@ -94,6 +93,7 @@ class WeatherAPI:
         self.cache_duration_hours = 1
         self._update_thread = None
         self._stop_update = False
+        self._stop_event = threading.Event()
         self._coords: tuple[float, float] | None = None  # cached geocoding result
 
     @staticmethod
@@ -506,6 +506,7 @@ class WeatherAPI:
             return
 
         self._stop_update = False
+        self._stop_event.clear()
         self._update_thread = threading.Thread(
             target=self._background_update_worker, args=(interval_hours,), daemon=True
         )
@@ -515,19 +516,17 @@ class WeatherAPI:
     def stop_background_updates(self):
         """Stop background updates."""
         self._stop_update = True
+        self._stop_event.set()
         if self._update_thread:
             self._update_thread.join(timeout=5)
 
     def _background_update_worker(self, interval_hours: int):
         """Background worker for weather updates."""
-        while not self._stop_update:
+        interval_seconds = interval_hours * 3600
+        while not self._stop_event.is_set():
             try:
                 self.get_current_conditions()
                 self.get_hourly_forecast()
             except Exception as e:
                 print(f"❌ Weather update error: {e}")
-
-            for _ in range(interval_hours * 3600):
-                if self._stop_update:
-                    break
-                time.sleep(1)
+            self._stop_event.wait(timeout=interval_seconds)
