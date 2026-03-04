@@ -4,7 +4,6 @@ Telegram Bot - Real polling listener + scheduler
 Uses pyTelegramBotAPI for real polling (not mock).
 """
 
-import contextlib
 import json
 import logging
 import os
@@ -16,6 +15,11 @@ from datetime import datetime
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
+
+SEND_FAIL = "SEND_FAIL"
+POLL_FAIL = "POLL_FAIL"
+SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
+CALLBACK_ERROR = "CALLBACK_ERROR"
 
 
 def _telegram_event(action: str, **fields) -> None:
@@ -67,7 +71,7 @@ class TitanTelegramBot:
             except Exception as e:
                 _telegram_event(
                     "failure",
-                    failure_class="CALLBACK_ERROR",
+                    failure_class=CALLBACK_ERROR,
                     subsystem="init",
                     error_class=e.__class__.__name__,
                     error_message=str(e),
@@ -194,7 +198,7 @@ class TitanTelegramBot:
             )
             _telegram_event(
                 "failure",
-                failure_class="SEND_FAIL",
+                failure_class=SEND_FAIL,
                 subsystem="send_message",
                 reason="missing_chat_id",
             )
@@ -214,7 +218,7 @@ class TitanTelegramBot:
                 )
                 _telegram_event(
                     "failure",
-                    failure_class="SEND_FAIL",
+                    failure_class=SEND_FAIL,
                     subsystem="send_message",
                     error_class=e.__class__.__name__,
                     error_message=str(e),
@@ -223,6 +227,14 @@ class TitanTelegramBot:
                 return False
         else:
             # Fallback: log only
+            _telegram_event(
+                "failure",
+                failure_class=SEND_FAIL,
+                subsystem="send_message",
+                reason="fallback_console_only",
+                bot_available=bool(self.bot),
+                telebot_available=TELEBOT_AVAILABLE,
+            )
             print(f"📱 [Telegram] {text[:200]}")
             return True
 
@@ -328,6 +340,14 @@ class TitanTelegramBot:
             self._poll_thread.start()
             print("✅ Telegram bot started (polling + scheduler)")
         else:
+            _telegram_event(
+                "failure",
+                failure_class=POLL_FAIL,
+                subsystem="start_bot",
+                reason="polling_unavailable",
+                bot_available=bool(self.bot),
+                telebot_available=TELEBOT_AVAILABLE,
+            )
             print(
                 "✅ Telegram scheduler started (no polling – token missing or library unavailable)"
             )
@@ -337,8 +357,16 @@ class TitanTelegramBot:
         self._stop_event.set()
         self.is_running = False
         if self.bot and TELEBOT_AVAILABLE:
-            with contextlib.suppress(Exception):
+            try:
                 self.bot.stop_polling()
+            except Exception as e:
+                _telegram_event(
+                    "failure",
+                    failure_class=POLL_FAIL,
+                    subsystem="stop_bot",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                )
         if self._sched_thread and self._sched_thread.is_alive():
             self._sched_thread.join(timeout=5)
         if self._poll_thread and self._poll_thread.is_alive():
@@ -353,7 +381,7 @@ class TitanTelegramBot:
                 if not self._stop_event.is_set():
                     _telegram_event(
                         "failure",
-                        failure_class="POLL_FAIL",
+                        failure_class=POLL_FAIL,
                         subsystem="poll_worker",
                         error_class=e.__class__.__name__,
                         error_message=str(e),
@@ -371,7 +399,7 @@ class TitanTelegramBot:
                 if drift_seconds > 1:
                     _telegram_event(
                         "failure",
-                        failure_class="SCHEDULER_DRIFT",
+                        failure_class=SCHEDULER_DRIFT,
                         subsystem="scheduler_worker",
                         drift_seconds=round(drift_seconds, 3),
                     )
@@ -386,7 +414,7 @@ class TitanTelegramBot:
                     except Exception as e:
                         _telegram_event(
                             "failure",
-                            failure_class="CALLBACK_ERROR",
+                            failure_class=CALLBACK_ERROR,
                             subsystem="scheduler_worker",
                             task_name=task["name"],
                             error_class=e.__class__.__name__,
