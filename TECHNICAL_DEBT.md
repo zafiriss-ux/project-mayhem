@@ -323,68 +323,41 @@ idempotency guard.
 
 Independent of Tier 2. Can be done in parallel once Tier 1 is complete.
 
-### T3-02 · Add `ruff` and `mypy` to dev requirements 🟡
+### T3-02 · Add `ruff` and `mypy` to dev requirements ✅ RESOLVED
 
-**Current problem:** `pyproject.toml` has full `[tool.ruff]` and `[tool.mypy]`
-configurations but neither appears in `requirements.txt`. They must be installed
-separately, which breaks reproducible dev environments.
-
-**Fix:** Add to `requirements-dev.txt` (after T3-01) or to current `requirements.txt`
-dev section:
-```
-ruff>=0.3.0
-mypy>=1.9.0
-```
+**Status (2026-03-04):** Completed. `requirements-dev.txt` contains `ruff>=0.3.0`
+and `mypy>=1.9.0`, matching the `[tool.ruff]` and `[tool.mypy]` configs in
+`pyproject.toml`. Reproducible dev environments are now fully supported.
 
 ---
 
-### T3-03 · Secrets handling simplification in `garmin_sync.py` + `telegram_bot.py` 🟡
+### T3-03 · Secrets handling simplification in `garmin_sync.py` + `telegram_bot.py` ✅ RESOLVED
 
-**Current problem:** Both files maintain credentials in multiple representations
-simultaneously (`self.email` plain string, `_Secret` wrapper, `SecretStr` wrapper).
-This creates:
-- Maintenance confusion about which representation is "live"
-- Risk of accidentally logging the wrong one
-- Unnecessary memory duplication of sensitive values
-
-**Fix direction:** One canonical `_Secret` container per credential. Remove redundant
-aliases.
+**Status (2026-03-04):** Completed. Both files use a single `_CredentialSecret`
+wrapper (backed by `_Secret`) as the one canonical representation per credential.
+No plain-string aliases or duplicate wrappers remain. Logging of sensitive values
+through the wrong representation is no longer possible.
 
 ---
 
-### T3-04 · Threading lifecycle: use `threading.Event` for clean stop 🟡
+### T3-04 · Threading lifecycle: use `threading.Event` for clean stop ✅ RESOLVED
 
-**Affected:** `garmin_sync.py` background worker, `telegram_bot.py` scheduler
-
-**Current problem:** Background workers sleep in second-by-second loops checking a
-boolean flag. Stop latency equals sleep granularity (1s). In long-interval scenarios,
-this is fine, but it cannot guarantee deterministic shutdown order for clean teardown.
-
-**Fix direction:**
-```python
-self._stop_event = threading.Event()
-# Instead of: time.sleep(1); if self._stop_flag: break
-# Use:        self._stop_event.wait(timeout=1.0); if self._stop_event.is_set(): break
-```
-
-Optionally add `thread.join(timeout=5)` in the shutdown path.
+**Status (2026-03-04):** Completed. Both `garmin_sync.py` and `telegram_bot.py`
+background workers use `threading.Event` exclusively (`_stop_event.wait()` /
+`_stop_event.is_set()`). The redundant boolean stop flags (`_stop_sync`, `_stop`)
+have been removed. `stop_background_sync()` and `stop_bot()` call
+`self._stop_event.set()` and join the thread with `timeout=5`. Tests updated.
 
 ---
 
-### T3-05 · Threading lifecycle: weather updater `Event.wait()` pattern 🟡
+### T3-05 · Threading lifecycle: weather updater `Event.wait()` pattern ✅ RESOLVED
 
-**Affected:** `titan/integrations/weather_api.py` background update loop
-
-**Current state:** T3-04 applied `threading.Event` to the Garmin sync and Telegram scheduler workers. The weather background update loop was not included and continues to use a boolean flag + `time.sleep(1)` second-by-second polling pattern, making its shutdown less deterministic than the other two workers.
-
-**Fix direction:** Apply the identical pattern from T3-04:
-- Replace the boolean stop flag with `self._stop_event = threading.Event()`
-- Replace the inner `time.sleep(interval)` with `self._stop_event.wait(timeout=interval_seconds)`
-- In `stop()`: call `self._stop_event.set()` before joining the thread
-
-**Independent:** Can proceed immediately; no dependency on T3-01 through T3-04.
-
-**Effort:** ~30 minutes. Mirrors T3-04 exactly.
+**Status (2026-03-04):** Completed. `weather_api.py` `_background_update_worker`
+uses `self._stop_event.wait(timeout=interval_seconds)` and checks
+`self._stop_event.is_set()`. The redundant `_stop_update` boolean flag has been
+removed from `__init__`, `start_background_updates`, and `stop_background_updates`.
+Test fixtures updated. Shutdown behaviour is now consistent across all three
+background workers.
 
 ---
 
@@ -540,6 +513,10 @@ When an item is completed, mark it here with date and PR reference:
 | T2-01 | 2026-03-04 | PR: TBD |
 | T2-06 | 2026-03-04 | PR: TBD |
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
+| T3-02 | 2026-03-04 | PR: TBD |
+| T3-03 | 2026-03-04 | PR: TBD |
+| T3-04 | 2026-03-04 | PR: TBD |
+| T3-05 | 2026-03-04 | PR: TBD |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |

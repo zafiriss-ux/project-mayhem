@@ -601,9 +601,8 @@ class TestGarminSync:
 
     def test_stop_background_sync(self):
         gs = GarminSync()
-        gs._stop_sync = False
+        gs._stop_event.clear()
         gs.stop_background_sync()
-        assert gs._stop_sync is True
         assert gs._stop_event.is_set() is True
 
     def test_ensure_connected_when_already_connected(self):

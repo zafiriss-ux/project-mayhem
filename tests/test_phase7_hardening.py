@@ -93,7 +93,6 @@ class TestWeatherFallbackFlag(unittest.TestCase):
         api.cache_timestamp = None
         api.cache_duration_hours = 1
         api._update_thread = None
-        api._stop_update = False
         api._coords = None
         return api
 
@@ -171,7 +170,6 @@ class TestWeatherFallbackLogging(unittest.TestCase):
         api.cache_timestamp = None
         api.cache_duration_hours = 1
         api._update_thread = None
-        api._stop_update = False
         api._coords = None
         return api
 
@@ -507,7 +505,6 @@ class TestWeatherApiProviderContract(unittest.TestCase):
         api.cache_timestamp = None
         api.cache_duration_hours = 1
         api._update_thread = None
-        api._stop_update = False
         api._coords = (37.98, 23.73)
 
         calls = []

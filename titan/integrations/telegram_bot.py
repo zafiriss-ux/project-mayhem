@@ -76,7 +76,6 @@ class TitanTelegramBot:
         self.is_running = False
         self._poll_thread: threading.Thread | None = None
         self._sched_thread: threading.Thread | None = None
-        self._stop = False
         self._stop_event = threading.Event()
         self.scheduled_tasks: list[dict] = []
         self.message_history: list[dict] = []
@@ -352,7 +351,6 @@ class TitanTelegramBot:
         if self.is_running:
             return
         self.is_running = True
-        self._stop = False
         self._stop_event.clear()
 
         # Scheduler thread
@@ -382,7 +380,6 @@ class TitanTelegramBot:
             )
 
     def stop_bot(self):
-        self._stop = True
         self._stop_event.set()
         self.is_running = False
         if self.bot and TELEBOT_AVAILABLE:
