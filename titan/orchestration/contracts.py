@@ -10,6 +10,20 @@ class HRVSyncMetrics(TypedDict):
     skipped_days: int
 
 
+@dataclass(frozen=True)
+class HRVSyncMetricsContract:
+    days_back: int
+    synced_days: int
+    skipped_days: int
+
+    def to_payload(self) -> HRVSyncMetrics:
+        return {
+            "days_back": self.days_back,
+            "synced_days": self.synced_days,
+            "skipped_days": self.skipped_days,
+        }
+
+
 class GarminSyncResult(TypedDict):
     activities: list[dict[str, Any]]
     weight: list[dict[str, Any]]
