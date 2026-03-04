@@ -52,7 +52,7 @@ project-mayhem/
 │   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0014)
+│   ├── adr/                 # Architecture Decision Records (0001–0017)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
 │   │                        # operator_console_readiness_dashboard.md,
@@ -408,6 +408,8 @@ See `docs/adr/` for Architecture Decision Records:
 - `0012` — Operator Console: Manual Override Workflow (Accepted — v5.8.0)
 - `0013` — Operator Console: Technology path — Streamlit → React + FastAPI (Accepted — v5.8.0)
 - `0014` — Phase 7 ML scaffold: shadow/advisory mode, kill-switch, evidence labels (Implemented — v5.8.0)
+- `0015` — SQLite retention strategy and Phase 8 data lifecycle gate (Accepted — v5.8.0)
+- `0016` — Phase 8 multi-sport scope and unified adapter gate (Accepted — v5.8.0)
 - `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
 
 ---
@@ -429,7 +431,7 @@ See `docs/adr/` for Architecture Decision Records:
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7 CLOSED |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7 CLOSED; Phase 7.5 Hardening OPEN |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |

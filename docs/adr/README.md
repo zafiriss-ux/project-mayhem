@@ -19,9 +19,17 @@
 | [0004](0004-improve-tests-for-weather-window-edge-cases.md) | Δοκιμές edge cases για `find_optimal_training_windows` | Tests | ✅ Implemented | `421e7e1` |
 | [0005](0005-fix-runtime-startup-issues.md) | Διόρθωση runtime προβλημάτων εκκίνησης (5 bugs) | Bug fix | ✅ Implemented | `4076f2d` |
 | [0006](0006-architectural-hardening-cold-start-and-engine-sync.md) | Architectural hardening: cold-start, engine sync, null safety | Bug fix / Tests | ✅ Implemented | TBD |
-| [0010](0010-operator-console-readiness-dashboard-mvp.md) | Operator Console readiness/load dashboard MVP payload service | Architecture / UI | ✅ Implemented | TBD |
+| [0007](0007-intensity-governance-architecture-audit.md) | Intensity governance architecture audit (C1–C5 conflicts, gate gaps) | Architecture / Audit | ✅ Resolved (see 0009) | TBD |
+| [0008](0008-adaptive-priority-lock-and-vlg-specs.md) | Adaptive Priority Lock and Volume Load Gauge specs | Architecture / Science | ✅ Implemented (v5.7.1) | TBD |
+| [0009](0009-safety-gate-hardening-C1-C2-resolution.md) | Safety gate hardening: C1 & C2 resolution (OR semantics + gate reorder) | Architecture / Safety | ✅ Implemented (v5.7.4) | TBD |
+| [0010](0010-operator-console-readiness-dashboard-mvp.md) | Operator Console readiness/load dashboard MVP payload service | Architecture / UI | ✅ Implemented (v5.8.0) | TBD |
+| [0011](0011-operator-console-session-explorer.md) | Operator Console: Session Explorer payload + manual annotation | Architecture / UI | ✅ Implemented (v5.8.0) | TBD |
+| [0012](0012-operator-console-manual-override-workflow.md) | Operator Console: Manual Override Workflow | Architecture / UI | ✅ Accepted (v5.8.0) | TBD |
+| [0013](0013-operator-console-technology-path.md) | Operator Console: Technology path — Streamlit → React + FastAPI | Architecture / UI | ✅ Accepted (v5.8.0) | TBD |
+| [0014](0014-phase7-ml-scaffold-shadow-advisory-mode.md) | Phase 7 ML scaffold: shadow/advisory mode, kill-switch, evidence labels | Architecture / ML | ✅ Implemented (v5.8.0) | TBD |
 | [0015](0015-sqlite-retention-and-phase8-data-lifecycle-gate.md) | SQLite retention strategy and Phase 8 data lifecycle gate | Architecture / Data lifecycle | ✅ Accepted | TBD |
 | [0016](0016-phase8-multisport-scope-and-adapter-gate.md) | Phase 8 multi-sport scope and unified adapter gate | Architecture / Integrations | ✅ Accepted | TBD |
+| [0017](0017-composition-root-and-dailycoach-architecture-audit.md) | Composition root fan-in and DailyCoach god-orchestrator audit | Architecture / Audit | ✅ Accepted (assessment only, 2026-03-04) | TBD |
 
 ---
 
