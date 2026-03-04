@@ -24,6 +24,27 @@ GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 
 
+class _CredentialSecret:
+    """Redacted credential wrapper with explicit reveal semantics."""
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: str | None):
+        self._value = _Secret(value or "")
+
+    def reveal(self) -> str:
+        return str(self._value)
+
+    def __bool__(self) -> bool:
+        return bool(self._value)
+
+    def __repr__(self) -> str:
+        return "'***'"
+
+    def __str__(self) -> str:
+        return "***"
+
+
 def _garmin_event(action: str, **fields) -> None:
     """Emit a structured Garmin sync event as a single JSON log line."""
     _log.info(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
@@ -76,8 +97,8 @@ class GarminSync:
     """
 
     def __init__(self, email: str = None, password: str = None):
-        self.email = _Secret(email or os.getenv("GARMIN_EMAIL", ""))
-        self.password = _Secret(password or os.getenv("GARMIN_PASSWORD", ""))
+        self.email = _CredentialSecret(email or os.getenv("GARMIN_EMAIL", ""))
+        self.password = _CredentialSecret(password or os.getenv("GARMIN_PASSWORD", ""))
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
@@ -95,15 +116,13 @@ class GarminSync:
     # CONNECTION
     # ------------------------------------------------------------------ #
     def connect(self) -> bool:
-        email = self.email
-        password = self.password
-        if not email or not password:
+        if not self.email or not self.password:
             print("⚠️  Garmin credentials missing – run setup first.")
             return False
         try:
             from garminconnect import Garmin
 
-            self.client = Garmin(email, password)
+            self.client = Garmin(self.email.reveal(), self.password.reveal())
             self.client.login()
             self.is_connected = True
             print("✅ Connected to Garmin Connect")

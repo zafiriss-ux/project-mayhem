@@ -91,3 +91,19 @@ def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
     assert record.component == "telegram_bot_init"
     assert record.error_class == "RuntimeError"
     assert record.detail == "invalid token"
+
+
+def test_init_uses_redacted_secret_container_without_duplicate_aliases():
+    bot = TitanTelegramBot(bot_token="token-1", chat_id=123)
+
+    assert bot.bot_token.reveal() == "token-1"
+    assert str(bot.bot_token) == "***"
+    assert repr(bot.bot_token) == "'***'"
+    assert not hasattr(bot, "_bot_token_secret")
+
+
+def test_init_missing_token_fails_safely(monkeypatch):
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    assert bot.bot is None

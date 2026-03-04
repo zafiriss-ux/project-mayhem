@@ -22,6 +22,27 @@ SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
 CALLBACK_ERROR = "CALLBACK_ERROR"
 
 
+class _CredentialSecret:
+    """Redacted credential wrapper with explicit reveal semantics."""
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value: str | None):
+        self._value = _Secret(value or "")
+
+    def reveal(self) -> str:
+        return str(self._value)
+
+    def __bool__(self) -> bool:
+        return bool(self._value)
+
+    def __repr__(self) -> str:
+        return "'***'"
+
+    def __str__(self) -> str:
+        return "***"
+
+
 def _telegram_event(action: str, **fields) -> None:
     """Emit a structured Telegram delivery event as a single JSON log line."""
     _log.info(json.dumps({"flow": "telegram", "action": action, **fields}, default=str))
@@ -44,7 +65,7 @@ class TitanTelegramBot:
     """
 
     def __init__(self, bot_token: str = None, chat_id=None):
-        self.bot_token = _Secret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
+        self.bot_token = _CredentialSecret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         try:
             self.chat_id = int(raw_id)
@@ -63,7 +84,7 @@ class TitanTelegramBot:
         # Callbacks for commands – set by orchestration layer
         self.cmd_callbacks: dict[str, Callable] = {}
 
-        bot_token_value = self.bot_token
+        bot_token_value = self.bot_token.reveal()
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
