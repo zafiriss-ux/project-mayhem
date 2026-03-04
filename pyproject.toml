@@ -3,6 +3,7 @@ testpaths = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "--cov=titan --cov-fail-under=80 --cov-report=term-missing"
 [tool.coverage.run]
 source = ["titan"]
 omit = ["*/tests/*", "test_*.py"]

@@ -154,9 +154,14 @@ Key Files table (already done in this audit pass).
 
 ---
 
-### T1-06 · DB concurrency partially synchronized — read paths unguarded + close() race 🔴
+### T1-06 · DB concurrency partially synchronized — read paths unguarded + close() race ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. Three lock-guarded `DatabaseManager` methods added:
+`get_baseline_rhr(days)`, `get_hrv_history(days)`, `get_weight_history(days)`.
+`DailyCoach._get_baseline_rhr()` and `_hydrate_engines_from_db()` now call these methods
+instead of directly accessing `self.db.conn.cursor()`. All direct `self.db.conn` accesses
+in `daily_coach.py` removed. Tests: 10 green in `tests/test_harden_db_concurrency.py`.
+PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Critical issue #1)
 
 **Location:** `titan/core/database.py` — `DatabaseManager`
@@ -190,9 +195,14 @@ as a future architectural improvement. Do not conflate the two.
 
 ---
 
-### T1-07 · DailyCoach daemon overlap — `run_morning_routine_async()` unserialised 🔴
+### T1-07 · DailyCoach daemon overlap — `run_morning_routine_async()` unserialised ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `run_morning_routine_async()` checks
+`self._routine_thread.is_alive()` before spawning; emits `routine_skipped_overlap`
+structured event with `trigger_source`, `running_since`, `thread_name` when skipped.
+`_routine_thread` and `_routine_started_monotonic` are tracked on the instance.
+Tests: existing tests green in `tests/titan/orchestration/test_daily_coach.py`.
+PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Critical issue #2)
 
 **Location:** `titan/orchestration/daily_coach.py` — `run_morning_routine_async()`
@@ -218,9 +228,15 @@ executions of the 12-step morning routine proceed simultaneously. This causes:
 
 ---
 
-### T1-08 · Silent hardcoded fallback in `_get_baseline_rhr()` masks data errors 🔴
+### T1-08 · Silent hardcoded fallback in `_get_baseline_rhr()` masks data errors ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `_get_baseline_rhr()` catches only specific exceptions
+(`sqlite3.Error`, `TypeError`, `ValueError`, `KeyError`) and returns `None`.
+Caller uses `today_rhr` as fallback baseline (delta = 0; conservative) and emits
+`baseline_rhr_degraded_mode` structured event. Added Telegram `send_alert()` call in
+degraded mode path; alert failure itself is caught and emits
+`baseline_rhr_degraded_alert_failed` event. Tests: 2 green in
+`tests/test_harden_db_concurrency.py`. PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Critical issue #3)
 
 **Location:** `titan/orchestration/daily_coach.py` — `_get_baseline_rhr()`
@@ -246,9 +262,16 @@ silently suppresses a legitimate warning.
 
 ---
 
-### T1-09 · Synthetic weather fallback flows into decision inputs without degraded-mode gate 🔴
+### T1-09 · Synthetic weather fallback flows into decision inputs without degraded-mode gate ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `WeatherAPI` sets `data_quality: "synthetic"` on all
+fallback payloads. `OptimalTimeCalculator.calculate_optimal_time()` returns early with
+`weather_window_omitted: True` and `weather_data_quality: "synthetic"` when data is
+synthetic. `DailyCoach.run_morning_routine()` checks `weather_degraded_mode` flag and
+suppresses optimal time / dew point from coaching output, replacing them with the
+`⚠️ Weather data unavailable — optimal time window omitted` note. Structured
+`weather_degraded_mode_active` event emitted on fallback activation. Tests: existing
+tests green. PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Critical issue #4)
 
 **Location:** `titan/integrations/weather_api.py` — API failure fallback path
@@ -440,9 +463,16 @@ idempotency guard.
 
 ---
 
-### T2-09 · Residual `print()` operational/error paths across integration modules 🟡
+### T2-09 · Residual `print()` operational/error paths across integration modules ✅ RESOLVED (weather_api.py)
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed for `weather_api.py`. Added `_weather_event()` structured
+event helper. Replaced all 4 `print()` calls (fallback current, fallback forecast, background
+worker error, background updates started) with `_weather_event()` calls at appropriate log
+levels (WARNING / ERROR / INFO). `test_weather_api_has_no_print_calls` asserts zero
+`print()` in module. Tests: 4 green in `tests/test_harden_db_concurrency.py`. PR: TBD.
+
+Note: `telegram_bot.py`, `garmin_sync.py`, `daily_coach.py` (UI-boundary prints) are
+intentionally deferred — those require separate subsystem review per Rule E2.
 **Source:** Engineering audit 2026-03-04 (Medium risk #1)
 
 **Location:** `titan/integrations/telegram_bot.py`, `titan/integrations/garmin_sync.py`,
@@ -767,9 +797,13 @@ boundaries, and key-mismatch bugs remain invisible to static analysis.
 
 ---
 
-### T4-11 · No mandatory coverage gate in CI 🟡
+### T4-11 · No mandatory coverage gate in CI ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. `pyproject.toml` `[tool.pytest.ini_options]` now includes
+`addopts = "--cov=titan --cov-fail-under=80 --cov-report=term-missing"`. Baseline measured at
+86.42% (as of closure 2026-03-04 — historical snapshot, not a live reading). Gate fires at
+<80%. Ratchet: do not lower the threshold below 80%; raise it as coverage improves.
+PR: TBD.
 **Source:** Engineering audit 2026-03-04 (Test coverage gap #1)
 
 **Location:** `pyproject.toml` + `.github/workflows/ci.yml`
@@ -935,18 +969,18 @@ When an item is completed, mark it here with date and PR reference:
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
 | T5-03 | 2026-03-03 | [#170](https://github.com/zafiriss-ux/project-mayhem/pull/170) |
 | T5-04 | 2026-03-03 | [#171](https://github.com/zafiriss-ux/project-mayhem/pull/171) |
-| T1-06 | OPEN | — |
-| T1-07 | OPEN | — |
-| T1-08 | OPEN | — |
-| T1-09 | OPEN | — |
-| T2-09 | OPEN | — |
+| T1-06 | 2026-03-04 | PR: TBD |
+| T1-07 | 2026-03-04 | PR: TBD |
+| T1-08 | 2026-03-04 | PR: TBD |
+| T1-09 | 2026-03-04 | PR: TBD |
+| T2-09 | 2026-03-04 (weather_api.py) | PR: TBD |
 | T3-06 | OPEN | — |
 | T3-07 | OPEN | — |
 | T4-07 | OPEN | — |
 | T4-08 | OPEN | — |
 | T4-09 | OPEN | — |
 | T4-10 | OPEN | — |
-| T4-11 | OPEN | — |
+| T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | OPEN | — |
 | T4-13 | OPEN | — |
 

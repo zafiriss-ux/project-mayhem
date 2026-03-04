@@ -8,7 +8,7 @@ import logging
 import re
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -997,6 +997,48 @@ class DatabaseManager:
             )
             self.conn.commit()
             return cursor.rowcount > 0
+
+    def get_baseline_rhr(self, days: int = 7) -> float | None:
+        """Return rolling N-day average resting HR from daily_metrics, or None."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            cursor.execute(
+                """SELECT AVG(resting_hr) FROM daily_metrics
+                   WHERE date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0""",
+                (cutoff,),
+            )
+            row = cursor.fetchone()
+        if row and row[0]:
+            return round(float(row[0]), 1)
+        return None
+
+    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+        """Return (date, hrv_rmssd) rows from the last N days, newest-first."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, hrv_rmssd FROM daily_metrics
+                   WHERE hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
+                   ORDER BY date DESC LIMIT ?""",
+                (days,),
+            )
+            return cursor.fetchall()
+
+    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+        """Return (date, weight_kg) rows from the last N days, newest-first."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, weight_kg FROM daily_metrics
+                   WHERE weight_kg IS NOT NULL AND weight_kg > 0
+                   ORDER BY date DESC LIMIT ?""",
+                (days,),
+            )
+            return cursor.fetchall()
 
     def close(self) -> None:
         """Close database connection."""

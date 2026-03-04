@@ -34,6 +34,24 @@ class DummyDB:
     def update_glycogen_debt(self, *args, **kwargs):
         return None
 
+    def get_baseline_rhr(self, days: int = 7):
+        return None
+
+    def get_hrv_history(self, days: int = 14):
+        return []
+
+    def get_weight_history(self, days: int = 30):
+        return []
+
+    def get_training_load_history(self, days: int = 42):
+        return []
+
+    def get_hrr_history(self, days: int = 28):
+        return []
+
+    def get_cs_performances(self, limit: int = 10):
+        return []
+
 
 class MinimalCoachFactory:
     @staticmethod
@@ -230,16 +248,7 @@ def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
 
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
-
-    class Cursor:
-        def execute(self, *_args, **_kwargs):
-            return None
-
-        @staticmethod
-        def fetchone():
-            return (51.26,)
-
-    coach.db = SimpleNamespace(conn=SimpleNamespace(cursor=lambda: Cursor()))
+    coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)
 
     assert coach._get_baseline_rhr(days=7) == 51.3
 
@@ -250,11 +259,10 @@ def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
 
     coach = DailyCoach.__new__(DailyCoach)
 
-    class BadCursor:
-        def execute(self, *_args, **_kwargs):
-            raise ValueError("broken_row")
+    def _raise_value_error(days=7):
+        raise ValueError("broken_row")
 
-    coach.db = SimpleNamespace(conn=SimpleNamespace(cursor=lambda: BadCursor()))
+    coach.db = SimpleNamespace(get_baseline_rhr=_raise_value_error)
 
     assert coach._get_baseline_rhr(days=7) is None
     assert events == [
