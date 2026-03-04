@@ -26,7 +26,7 @@ def _database_event(action: str, level: int = logging.INFO, **fields: Any) -> No
     _log.log(level, json.dumps(payload, default=str))
 
 
-def _safe_json(raw: Any, fallback: Any, field_name: str) -> Any:
+def _safe_json(raw: Any, fallback: Any = None, column: str = "") -> Any:
     """Safely decode JSON payloads from governance rows with warning fallback."""
     if raw is None or raw == "":
         return fallback
@@ -35,9 +35,9 @@ def _safe_json(raw: Any, fallback: Any, field_name: str) -> Any:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         _database_event(
-            "governance_decision_json_fallback",
+            "governance_row_json_malformed",
             level=logging.WARNING,
-            field=field_name,
+            column=column,
             raw_preview=str(raw)[:120],
         )
         return fallback

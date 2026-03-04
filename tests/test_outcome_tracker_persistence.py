@@ -124,13 +124,46 @@ def test_get_governance_decisions_safe_json_fallback_and_warning(tmp_path, caplo
     events = [
         json.loads(record.message)
         for record in caplog.records
-        if 'governance_decision_json_fallback' in record.message
+        if 'governance_row_json_malformed' in record.message
     ]
     assert len(events) == 3
-    assert {event['field'] for event in events} == {
+    assert {event['column'] for event in events} == {
         'locks_applied_json',
         'apl_priority_vector_json',
         'lock_thresholds_active_json',
     }
+
+    assert all(len(event['raw_preview']) <= 120 for event in events)
+
+    db.close()
+
+
+def test_get_governance_decisions_parses_valid_json_columns(tmp_path):
+    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+
+    db.save_governance_decision(
+        {
+            'date': '2026-03-05',
+            'session_planned': 'EASY',
+            'session_post_governance': 'TEMPO',
+            'locks_applied': ['FATIGUE_LOCK'],
+            'governance_clean': True,
+            'phase': 'BASE',
+            'vlg_color': 'GREEN',
+            'apl_priority_vector': {'FATIGUE_LOCK': 2},
+            'lock_thresholds_active': {'acwr_ceiling': 1.2},
+            'acwr': 0.94,
+            'tsb_value': -5.0,
+            'readiness_score': 70.0,
+            'glycogen_debt': 3.0,
+        }
+    )
+
+    decisions = db.get_governance_decisions()
+
+    assert len(decisions) == 1
+    assert decisions[0]['locks_applied'] == ['FATIGUE_LOCK']
+    assert decisions[0]['apl_priority_vector'] == {'FATIGUE_LOCK': 2}
+    assert decisions[0]['lock_thresholds_active'] == {'acwr_ceiling': 1.2}
 
     db.close()
