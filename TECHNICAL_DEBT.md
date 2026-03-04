@@ -202,15 +202,14 @@ patterns across the 12 steps. Step-level failures are not distinguishable in log
 
 ---
 
-### T2-03 · Error taxonomy: `telegram_bot.py` 🟠
+### T2-03 · Error taxonomy: `telegram_bot.py` ✅ RESOLVED
 
-**Current state:** Init/send/poll/scheduler paths have print-only handling in several
-failure branches. Structured `_telegram_event()` exists for critical failures but is
-not consistently used.
-
-**Fix direction:**
-- Apply `_telegram_event()` to all failure paths (not just SLO-critical ones)
-- Failure classes: `SEND_FAIL`, `POLL_FAIL`, `SCHEDULER_DRIFT`, `CALLBACK_ERROR`
+**Status (2026-03-04):** Completed. Init/send/poll/scheduler failure paths now emit
+machine-readable `_telegram_event("failure", ...)` events with standardized failure
+classes (`SEND_FAIL`, `POLL_FAIL`, `SCHEDULER_DRIFT`, `CALLBACK_ERROR`) in all failure
+branches, including console fallback and poller-unavailable startup paths.
+Completed: 2026-03-04
+PR: TBD
 
 ---
 
