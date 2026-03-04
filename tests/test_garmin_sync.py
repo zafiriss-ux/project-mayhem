@@ -93,7 +93,7 @@ def test_sync_activities_error_emits_failure_class_event(monkeypatch):
     result = sync.sync_activities(days_back=1)
 
     assert result == []
-    action, fields = events[-1]
+    action, fields = events[0]
     assert action == GARMIN_RATE_LIMIT
     assert fields["subsystem"] == "sync_activities"
     assert fields["failure_class"] == GARMIN_RATE_LIMIT
@@ -119,7 +119,7 @@ def test_sync_weight_happy_path(monkeypatch):
     result = sync.sync_weight(days_back=7)
 
     assert result == [{"date": "2026-03-02", "weight_kg": 72.4, "bmi": 22.8, "source": "garmin"}]
-    assert events == []
+    assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
 
 
 def test_sync_weight_error_emits_failure_class_event(monkeypatch):
@@ -131,7 +131,7 @@ def test_sync_weight_error_emits_failure_class_event(monkeypatch):
     result = sync.sync_weight(days_back=7)
 
     assert result == []
-    action, fields = events[-1]
+    action, fields = events[0]
     assert action == GARMIN_AUTH_FAIL
     assert fields["subsystem"] == "sync_weight"
 
@@ -166,7 +166,7 @@ def test_sync_sleep_happy_path(monkeypatch):
             "sleep_score": 84,
         }
     ]
-    assert events == []
+    assert ("sleep_synced", {"subsystem": "sync_sleep", "count": 1, "days_back": 1, "detail": "Synced 1 sleep sessions"}) in events
 
 
 def test_sync_sleep_error_emits_failure_class_event(monkeypatch):
@@ -178,7 +178,9 @@ def test_sync_sleep_error_emits_failure_class_event(monkeypatch):
     result = sync.sync_sleep(days_back=1)
 
     assert result == []
-    action, fields = events[-1]
+    failure_events = [event for event in events if event[0] == GARMIN_TIMEOUT]
+    assert failure_events
+    action, fields = failure_events[0]
     assert action == GARMIN_TIMEOUT
     assert fields["subsystem"] == "sync_sleep"
 

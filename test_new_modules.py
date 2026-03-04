@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from titan.core.database import DatabaseManager
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
+from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import GarminSync
 from titan.science.adaptive_memory import AdaptiveMemory
 from titan.science.biomechanics import BiomechanicsAnalysis
@@ -543,7 +544,10 @@ class TestGarminSync:
         # bad record skipped, good record included
         assert len(acts) == 1
 
-    def test_sync_activities_logs_skipped_records(self, capsys):
+    def test_sync_activities_logs_skipped_records(self, monkeypatch):
+        events = []
+        monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
         gs = GarminSync(email="test@example.com", password="secret")
         gs.is_connected = True
         gs.client = MagicMock()
@@ -559,11 +563,20 @@ class TestGarminSync:
         ]
 
         acts = gs.sync_activities(days_back=1)
-        output = capsys.readouterr().out
 
         assert len(acts) == 1
-        assert "Skipping malformed activity (bad-1)" in output
-        assert "Skipped 1 malformed activity record(s)" in output
+        assert ("activity_skipped_malformed", {
+            "subsystem": "sync_activities",
+            "activity_id": "bad-1",
+            "error_class": "ValueError",
+            "detail": "Skipping malformed activity (bad-1)",
+            "error_message": "invalid literal for int() with base 10: 'oops'",
+        }) in events
+        assert ("activity_skip_summary", {
+            "subsystem": "sync_activities",
+            "skipped_records": 1,
+            "detail": "Skipped 1 malformed activity record(s)",
+        }) in events
 
     def test_sync_hrv_parses_rmssd(self):
         gs = GarminSync(email="test@example.com", password="secret")
