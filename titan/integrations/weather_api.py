@@ -12,6 +12,7 @@ No authentication needed.  WEATHER_API_KEY env var is accepted for
 backward-compatibility but is not used.
 """
 
+import copy
 import importlib
 import importlib.util
 import json
@@ -23,7 +24,9 @@ import threading
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, Literal
+
+WeatherDataQuality = Literal["live", "cached", "synthetic"]
 
 _log = logging.getLogger(__name__)
 
@@ -293,14 +296,19 @@ class WeatherAPI:
         if self.cache and self.cache_timestamp:
             age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
-                return self.cache.get("current", {})
+                current = copy.deepcopy(self.cache.get("current", {}))
+                current["data_quality"] = "cached"
+                return current
 
         try:
             current, forecast = self._fetch_open_meteo()
+            current["data_quality"] = "live"
+            for entry in forecast:
+                entry["data_quality"] = "live"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
-            return current
+            return copy.deepcopy(current)
         except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
             print("⚠️  Weather API unavailable – using fallback conditions")
@@ -308,10 +316,10 @@ class WeatherAPI:
                 json.dumps(
                     {
                         "flow": "weather_api",
-                        "action": "fallback_activated",
+                        "action": "weather_degraded_mode_active",
                         "source": "get_current_conditions",
-                        "reason": str(exc),
-                        "is_fallback": True,
+                        "error_class": type(exc).__name__,
+                        "detail": str(exc),
                     }
                 )
             )
@@ -327,6 +335,7 @@ class WeatherAPI:
                 "heat_stress": heat_status,
                 "recommendation": heat_rec,
                 "is_fallback": True,
+                "data_quality": "synthetic",
             }
             self.cache["current"] = current
             self.cache_timestamp = datetime.now()
@@ -346,14 +355,20 @@ class WeatherAPI:
         if self.cache and "hourly" in self.cache:
             age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
-                return self.cache["hourly"][:hours]
+                forecast = copy.deepcopy(self.cache["hourly"][:hours])
+                for entry in forecast:
+                    entry["data_quality"] = "cached"
+                return forecast
 
         try:
             current, forecast = self._fetch_open_meteo()
+            current["data_quality"] = "live"
+            for entry in forecast:
+                entry["data_quality"] = "live"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
-            return forecast[:hours]
+            return copy.deepcopy(forecast[:hours])
         except Exception as exc:
             # Fallback to deterministic simulated data when API is unavailable
             print("⚠️  Weather API unavailable – using fallback forecast")
@@ -361,10 +376,10 @@ class WeatherAPI:
                 json.dumps(
                     {
                         "flow": "weather_api",
-                        "action": "fallback_activated",
+                        "action": "weather_degraded_mode_active",
                         "source": "get_hourly_forecast",
-                        "reason": str(exc),
-                        "is_fallback": True,
+                        "error_class": type(exc).__name__,
+                        "detail": str(exc),
                     }
                 )
             )
@@ -398,6 +413,7 @@ class WeatherAPI:
                         "heat_stress": heat_status,
                         "recommendation": heat_rec,
                         "is_fallback": True,
+                        "data_quality": "synthetic",
                     }
                 )
 

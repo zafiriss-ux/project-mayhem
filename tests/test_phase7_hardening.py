@@ -207,9 +207,9 @@ class TestWeatherFallbackLogging(unittest.TestCase):
 
         self.assertTrue(len(records) >= 1, "At least one WARNING must be logged on fallback")
         payload = json.loads(records[0].getMessage())
-        self.assertEqual(payload.get("action"), "fallback_activated")
-        self.assertTrue(payload.get("is_fallback"))
-        self.assertIn("reason", payload)
+        self.assertEqual(payload.get("action"), "weather_degraded_mode_active")
+        self.assertEqual(payload.get("error_class"), "RuntimeError")
+        self.assertIn("detail", payload)
 
     def test_hourly_forecast_fallback_emits_warning_log(self):
         api = self._make_api()
@@ -231,7 +231,7 @@ class TestWeatherFallbackLogging(unittest.TestCase):
 
         self.assertTrue(len(records) >= 1, "At least one WARNING must be logged on fallback")
         payload = json.loads(records[0].getMessage())
-        self.assertEqual(payload.get("action"), "fallback_activated")
+        self.assertEqual(payload.get("action"), "weather_degraded_mode_active")
         self.assertEqual(payload.get("source"), "get_hourly_forecast")
 
     def test_fallback_log_includes_error_reason(self):
@@ -253,7 +253,7 @@ class TestWeatherFallbackLogging(unittest.TestCase):
             logger.removeHandler(handler)
 
         payload = json.loads(records[0].getMessage())
-        self.assertIn("timed out", payload.get("reason", ""))
+        self.assertIn("timed out", payload.get("detail", ""))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
