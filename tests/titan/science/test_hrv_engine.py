@@ -118,9 +118,11 @@ def test_get_latest_hrv_returns_rounded_value_or_zero_when_empty() -> None:
 def test_ln_rmssd_deviation_returns_zero_when_no_positive_values_or_empty_windows() -> None:
     non_positive = _build_engine_with_history([0.0, -1.0, 0.0])
     with_data = _build_engine_with_history([40.0, 41.0, 42.0])
+    single_value = _build_engine_with_history([40.0])
 
     assert non_positive.calculate_ln_rmssd_deviation() == 0.0
-    assert with_data.calculate_ln_rmssd_deviation(short_days=0, long_days=28) == 0.0
+    assert single_value.calculate_ln_rmssd_deviation(short_days=-999, long_days=28) == 0.0
+    assert with_data.calculate_ln_rmssd_deviation(short_days=7, long_days=0) == 0.0
 
 
 def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
@@ -131,3 +133,9 @@ def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
     assert improving.get_trend_analysis() == "📈 IMPROVING: HRV up 20.0%"
     assert declining.get_trend_analysis() == "📉 DECLINING: HRV down -16.7%"
     assert stable.get_trend_analysis() == "➡️ STABLE: HRV change 4.0%"
+
+
+def test_trend_analysis_reports_stable_when_previous_week_average_is_zero() -> None:
+    engine = _build_engine_with_history([0.0] * 7 + [10.0] * 7)
+
+    assert engine.get_trend_analysis() == "➡️ STABLE: HRV baseline zero"
