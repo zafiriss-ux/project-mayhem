@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from unittest.mock import MagicMock
 
 from titan.integrations.weather_api import WeatherAPI
@@ -98,3 +99,49 @@ def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplo
     assert degraded_events
     assert degraded_events[0]["error_class"] == "RuntimeError"
     assert degraded_events[0]["detail"] == "api_down"
+
+
+
+def test_calculate_dew_point_clamps_humidity_boundaries():
+    assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=0) == -37.8
+    assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=150) == 20.0
+
+
+def test_find_optimal_training_windows_respects_fractional_duration(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    base = datetime(2026, 1, 1, 5, 0, 0)
+    forecast = [
+        {"timestamp": base.replace(hour=hour).isoformat(), "hour": hour, "dew_point": 10, "temp_c": 15}
+        for hour in range(5, 9)
+    ]
+
+    class _FixedDateTime:
+        @staticmethod
+        def now():
+            return base
+
+        @staticmethod
+        def fromisoformat(value):
+            return datetime.fromisoformat(value)
+
+    monkeypatch.setattr("titan.integrations.weather_api.datetime", _FixedDateTime)
+    monkeypatch.setattr(api, "get_hourly_forecast", lambda hours=48: forecast)
+
+    windows = api.find_optimal_training_windows(duration_hours=1.5)
+
+    assert len(windows) == 3
+    assert all(window["quality"] == "🟩 EXCELLENT" for window in windows)
+
+
+def test_find_optimal_training_windows_non_positive_duration_returns_empty(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    called = {"value": False}
+
+    def _forecast(_hours=48):
+        called["value"] = True
+        return []
+
+    monkeypatch.setattr(api, "get_hourly_forecast", _forecast)
+
+    assert api.find_optimal_training_windows(duration_hours=0) == []
+    assert called["value"] is False
