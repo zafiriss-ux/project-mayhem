@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock
 
 from titan.integrations.weather_api import WeatherAPI
@@ -55,3 +56,34 @@ def test_stop_background_updates_sets_event_and_joins_thread():
 
     assert api._stop_event.is_set()
     api._update_thread.join.assert_called_once_with(timeout=5)
+
+
+def test_get_current_conditions_live_marks_data_quality(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
+
+    payload = api.get_current_conditions()
+
+    assert payload["data_quality"] == "live"
+
+
+def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplog):
+    api = WeatherAPI(location="Athens,GR")
+
+    def _raise():
+        raise RuntimeError("api_down")
+
+    monkeypatch.setattr(api, "_fetch_open_meteo", _raise)
+
+    with caplog.at_level("WARNING"):
+        payload = api.get_current_conditions()
+
+    assert payload["data_quality"] == "synthetic"
+    degraded_events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if "weather_degraded_mode_active" in record.message
+    ]
+    assert degraded_events
+    assert degraded_events[0]["error_class"] == "RuntimeError"
+    assert degraded_events[0]["detail"] == "api_down"

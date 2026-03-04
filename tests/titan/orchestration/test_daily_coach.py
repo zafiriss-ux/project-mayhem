@@ -438,3 +438,24 @@ def test_build_daily_coach_context_preserves_nullable_days_since_last_vo2():
     )
 
     assert context["days_since_last_vo2"] is None
+
+
+def test_run_morning_routine_omits_weather_recommendation_when_synthetic():
+    captured_payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.optimal_time = SimpleNamespace(
+        calculate_optimal_time=lambda **k: {
+            "recommended_time": "07:00",
+            "dew_point": 12,
+            "quality": "GOOD",
+            "weather_data_quality": "synthetic",
+        }
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: captured_payload.update(payload) or True
+    )
+
+    assert coach.run_morning_routine() is True
+    assert captured_payload["optimal_time"] == "N/A"
+    assert captured_payload["dew_point"] == "N/A"
+    assert captured_payload["special_note"] == "⚠️ Weather data unavailable — optimal time window omitted"
