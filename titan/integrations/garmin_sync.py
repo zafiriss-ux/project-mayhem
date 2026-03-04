@@ -121,7 +121,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     def connect(self) -> bool:
         if not self.email or not self.password:
-            print("⚠️  Garmin credentials missing – run setup first.")
+            _garmin_event("connect_missing_credentials", subsystem="connect", detail="Garmin credentials missing – run setup first.")
             return False
         try:
             from garminconnect import Garmin
@@ -129,7 +129,7 @@ class GarminSync:
             self.client = Garmin(self.email.reveal(), self.password.reveal())
             self.client.login()
             self.is_connected = True
-            print("✅ Connected to Garmin Connect")
+            _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
             return True
         except Exception as e:
             _log.debug("Garmin connection failed", exc_info=True)
@@ -141,7 +141,7 @@ class GarminSync:
                     "detail": str(e),
                 },
             )
-            print("❌ Garmin connection failed. Please retry or re-run Garmin setup.")
+            _garmin_event("connect_failed", subsystem="connect", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Garmin connection failed. Please retry or re-run Garmin setup.", error_message=str(e))
             self.is_connected = False
             return False
 
@@ -192,15 +192,15 @@ class GarminSync:
                         e,
                         activity_id=activity_id,
                     )
-                    print(f"⚠️  Skipping malformed activity ({activity_id}): {e}")
+                    _garmin_event("activity_skipped_malformed", subsystem="sync_activities", activity_id=activity_id, error_class=e.__class__.__name__, detail=f"Skipping malformed activity ({activity_id})", error_message=str(e))
                     continue
-            print(f"📥 Synced {len(activities)} activities")
+            _garmin_event("activities_synced", subsystem="sync_activities", count=len(activities), days_back=days_back, detail=f"Synced {len(activities)} activities")
             if skipped_records:
-                print(f"⚠️  Skipped {skipped_records} malformed activity record(s)")
+                _garmin_event("activity_skip_summary", subsystem="sync_activities", skipped_records=skipped_records, detail=f"Skipped {skipped_records} malformed activity record(s)")
             self._log_sync("activities", len(activities))
         except Exception as e:
             _emit_failure("sync_activities", _classify_failure(e), e, days_back=days_back)
-            print(f"❌ Activity sync failed: {e}")
+            _garmin_event("sync_activities_failed", subsystem="sync_activities", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Activity sync failed", error_message=str(e), days_back=days_back)
         return activities
 
     # ------------------------------------------------------------------ #
@@ -227,11 +227,11 @@ class GarminSync:
                             "source": "garmin",
                         }
                     )
-            print(f"⚖️  Synced {len(entries)} weight entries")
+            _garmin_event("weight_synced", subsystem="sync_weight", count=len(entries), days_back=days_back, detail=f"Synced {len(entries)} weight entries")
             self._log_sync("weight", len(entries))
         except Exception as e:
             _emit_failure("sync_weight", _classify_failure(e), e, days_back=days_back)
-            print(f"❌ Weight sync failed: {e}")
+            _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
         return entries
 
     # ------------------------------------------------------------------ #
@@ -263,8 +263,8 @@ class GarminSync:
                     )
         except Exception as e:
             _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
-            print(f"❌ Sleep sync failed: {e}")
-        print(f"😴 Synced {len(sessions)} sleep sessions")
+            _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
+        _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
         self._log_sync("sleep", len(sessions))
         return sessions
 
@@ -320,10 +320,10 @@ class GarminSync:
                     continue
         except Exception as e:
             _emit_failure("sync_hrv", _classify_failure(e), e, days_back=days_back)
-            print(f"❌ HRV sync failed: {e}")
-        print(f"💓 Synced {len(hrv_data)} HRV measurements")
+            _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
+        _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
-            print(f"⚠️  Skipped {skipped_days} malformed HRV record(s)")
+            _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")
         self.last_hrv_sync_metrics = HRVSyncMetricsContract(
             days_back=days_back,
             synced_days=len(hrv_data),
@@ -337,7 +337,7 @@ class GarminSync:
     # FULL SYNC
     # ------------------------------------------------------------------ #
     def sync_all(self, days_back: int = 7) -> GarminSyncResult:
-        print("🔄 Full Garmin sync starting...")
+        _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
         self.last_sync = datetime.now().isoformat()
         started = time.monotonic()
         activities = self.sync_activities(days_back)
@@ -381,7 +381,7 @@ class GarminSync:
             target=self._bg_worker, args=(interval_hours,), daemon=True, name="GarminSync"
         )
         self._sync_thread.start()
-        print(f"✅ Garmin background sync started (every {interval_hours}h)")
+        _garmin_event("background_sync_started", subsystem="background_sync", interval_hours=interval_hours, detail=f"Garmin background sync started (every {interval_hours}h)")
 
     def stop_background_sync(self):
         self._stop_event.set()
@@ -393,7 +393,7 @@ class GarminSync:
             try:
                 self.sync_all()
             except Exception as e:
-                print(f"❌ BG sync error: {e}")
+                _garmin_event("background_sync_error", subsystem="background_sync", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="BG sync error", error_message=str(e), interval_hours=interval_hours)
             for _ in range(interval_hours * 3600):
                 if self._stop_event.wait(timeout=1.0):
                     return
