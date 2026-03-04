@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from unittest.mock import patch
 
 import pytest
 
@@ -84,3 +85,42 @@ def test_database_manager_init_logs_structured_warning_when_best_effort_logging_
     ]
     assert payloads, "Expected db_init_logging_skipped structured warning"
     db.close()
+
+
+def test_database_manager_init_logs_data_dir_fallback_when_launcher_missing(
+    tmp_path,
+    caplog,
+):
+    real_import = __import__
+
+    def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "launcher.validator":
+            raise ModuleNotFoundError("No module named 'launcher'", name="launcher")
+        return real_import(name, globals, locals, fromlist, level)
+
+    with patch("builtins.__import__", side_effect=_fake_import):
+        caplog.set_level(logging.WARNING, logger="titan.core.database")
+        db = DatabaseManager(db_name="fallback_dir.db", db_dir=None)
+
+    payloads = [
+        record.message
+        for record in caplog.records
+        if "db_init_data_directory_fallback" in record.message
+    ]
+    assert payloads, "Expected db_init_data_directory_fallback structured warning"
+    db.close()
+
+
+def test_database_manager_init_reraises_non_launcher_module_not_found(tmp_path):
+    real_import = __import__
+
+    def _fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "launcher.validator":
+            raise ModuleNotFoundError("No module named 'sqlite3'", name="sqlite3")
+        return real_import(name, globals, locals, fromlist, level)
+
+    with patch("builtins.__import__", side_effect=_fake_import), pytest.raises(
+        ModuleNotFoundError,
+        match="sqlite3",
+    ):
+        DatabaseManager(db_name="should_fail.db", db_dir=None)
