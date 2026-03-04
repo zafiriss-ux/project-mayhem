@@ -864,9 +864,9 @@ high-value regression surface.
 
 ---
 
-### T4-13 · No full lifecycle stress test for all background workers together 🟡
+### T4-13 · No full lifecycle stress test for all background workers together ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** Completed. Full lifecycle stress test implemented covering concurrent startup and shutdown of all background workers.
 **Source:** Engineering audit 2026-03-04 (Test coverage gap #3)
 
 **Location:** `tests/` — concurrency / integration test coverage
@@ -992,7 +992,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-10 | 2026-03-04 | PR: TBD |
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | OPEN | — |
-| T4-13 | OPEN | — |
+| T4-13 | 2026-03-04 | PR: TBD |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*

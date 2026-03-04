@@ -10,6 +10,7 @@ RUNTIME_DEPENDENCIES = {
 DEV_DEPENDENCIES = {
     "pytest==8.1.1",
     "pytest-cov==4.1.0",
+    "pytest-timeout==2.3.1",
     "hypothesis==6.100.0",
     "ruff>=0.3.0",
     "mypy>=1.9.0",
