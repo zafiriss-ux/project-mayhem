@@ -50,38 +50,40 @@ class GovernanceEngine:
             threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
         )
 
-        def _classify_override_lockdown_failure(exc: Exception) -> str:
-            message = str(exc).lower()
-            if "no such table" in message or "schema" in message:
-                return "SCHEMA_MISMATCH"
-            if isinstance(exc, (AttributeError, TypeError, ValueError, ZeroDivisionError)):
-                return "COMPUTATION_ERROR"
-            return "DB_READ_ERROR"
-
-        try:
-            ratio = float(db.get_override_ratio(days=14))
-        except Exception as exc:
-            error_class = _classify_override_lockdown_failure(exc)
+        def _fail_safe(error_code: str, exc: BaseException) -> dict:
             _gate_event(
                 "OVERRIDE_LOCKDOWN",
                 "FAIL_SAFE_LOCK",
                 cause="SYSTEM_ERROR",
-                error_code=error_class,
+                failure_class=error_code,
+                error_class=exc.__class__.__name__,
+                error_message=str(exc),
+                component="check_override_lockdown",
                 reason="Override lockdown read failure — applying conservative lockdown",
-                details=str(exc),
             )
             return {
                 "locked": True,
                 "ratio": None,
                 "reason": (
                     "Override lockdown failure fallback (fail-safe): "
-                    f"{error_class}. Zone 2 only until data path is healthy."
+                    f"{error_code}. Zone 2 only until data path is healthy."
                 ),
                 "max_zone": 2,
                 "disabled_sessions": list(self._QUALITY_SESSIONS),
                 "action": "ZONE_2_ONLY",
-                "error_code": error_class,
+                "error_code": error_code,
             }
+
+        try:
+            raw_ratio = db.get_override_ratio(days=14)
+        except (AttributeError, LookupError, OSError, RuntimeError) as exc:
+            error_code = "SCHEMA_MISMATCH" if "no such table" in str(exc).lower() else "DB_READ_ERROR"
+            return _fail_safe(error_code, exc)
+
+        try:
+            ratio = float(raw_ratio)
+        except (AttributeError, TypeError, ValueError, ZeroDivisionError) as exc:
+            return _fail_safe("COMPUTATION_ERROR", exc)
 
         if ratio > effective_threshold:
             return {

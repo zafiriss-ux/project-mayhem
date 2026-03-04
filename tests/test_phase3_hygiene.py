@@ -190,7 +190,19 @@ class TestGovernanceEngineExceptionPaths:
             e for e in events
             if e.get("governance_gate") == "OVERRIDE_LOCKDOWN" and e.get("action") == "FAIL_SAFE_LOCK"
         )
-        assert event["error_code"] == "DB_READ_ERROR"
+        assert event["failure_class"] == "DB_READ_ERROR"
+        assert event["error_class"] == "RuntimeError"
+        assert event["error_message"] == "db unavailable"
+        assert event["component"] == "check_override_lockdown"
+
+    def test_override_lockdown_happy_path_reads_ratio(self):
+        class _HealthyDB:
+            def get_override_ratio(self, days=14):
+                return 0.25
+
+        result = gov.check_override_lockdown(_HealthyDB())
+        assert result["locked"] is False
+        assert result["ratio"] == 0.25
 
     def test_override_lockdown_schema_mismatch_classification(self):
         class _SchemaMismatchDB:

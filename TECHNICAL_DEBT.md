@@ -213,15 +213,13 @@ PR: TBD
 
 ---
 
-### T2-04 · Error taxonomy: `governance_engine.py` 🟠
+### T2-04 · Error taxonomy: `governance_engine.py` ✅ RESOLVED
 
-**Current state:** `check_override_lockdown()` has a bare `except Exception` that hides
-DB failure classes.
-
-**Fix direction:**
-- Distinguish `DB_READ_ERROR` from `COMPUTATION_ERROR` from `SCHEMA_MISMATCH`
-- Override lockdown failures should be conservative: fail safe (treat as lockdown active)
-  and emit a structured alert
+**Status (2026-03-04):** Completed. `check_override_lockdown()` now classifies
+failure paths as `DB_READ_ERROR` / `COMPUTATION_ERROR` / `SCHEMA_MISMATCH`, fails
+safe with lockdown active, and emits structured failure fields for observability.
+Completed: 2026-03-04
+PR: TBD
 
 ---
 
