@@ -171,3 +171,49 @@ def test_main_normal_exit_runs_clean_shutdown_without_shutdown_log(monkeypatch, 
     assert weather.stop_calls == 1
     assert telegram.stop_calls == 1
     assert db.closed is True
+
+
+def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch):
+    _garmin, _weather, telegram, _db = _patch_main_dependencies(monkeypatch)
+
+    captured_ctx = {}
+
+    def _capture_main_menu(ctx):
+        captured_ctx.update(ctx)
+
+    monkeypatch.setattr(titan_main, "main_menu", _capture_main_menu)
+    monkeypatch.setenv("ATHLETE_NAME", "Ada")
+    monkeypatch.setenv("ATHLETE_AGE", "41")
+    monkeypatch.setenv("ATHLETE_WEIGHT", "62.5")
+    monkeypatch.setenv("ATHLETE_HEIGHT", "168")
+    monkeypatch.setenv("ATHLETE_MAX_HR", "186")
+    monkeypatch.setenv("ATHLETE_THRESHOLD_HR", "164")
+    monkeypatch.setenv("TRAINING_PHASE", "PEAK")
+    monkeypatch.setenv("TRAINING_GOAL", "MARATHON")
+
+    titan_main.main()
+
+    profile = captured_ctx["athlete_profile"]
+    assert profile == {
+        "name": "Ada",
+        "age": 41,
+        "weight_kg": 62.5,
+        "height_cm": 168.0,
+        "max_hr": 186,
+        "threshold_hr": 164,
+        "phase": "PEAK",
+        "goal": "MARATHON",
+    }
+    assert {"today", "week", "stats", "recovery", "nutrition", "sync", "activities", "drift", "shoes", "calibration"}.issubset(telegram.commands)
+
+
+def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
+    _patch_main_dependencies(monkeypatch)
+    called = {"menu": 0}
+    monkeypatch.setattr(titan_main, "main_menu", lambda _ctx: called.__setitem__("menu", called["menu"] + 1))
+    monkeypatch.setenv("ATHLETE_AGE", "not-an-int")
+
+    with pytest.raises(SystemExit):
+        titan_main.main()
+
+    assert called["menu"] == 0
