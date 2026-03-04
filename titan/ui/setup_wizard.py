@@ -6,6 +6,9 @@ Saves to config_secrets.py (excluded from git).
 """
 
 import getpass
+import importlib
+import json
+import logging
 import os
 import re
 import stat
@@ -15,6 +18,33 @@ SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
 ENV_PATH     = Path(__file__).parent.parent.parent / ".env"
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 LOCATION_REGEX = re.compile(r"^[A-Za-zÀ-ÿ\s.'-]+,[A-Za-z]{2}$")
+KEYRING_ENV_FLAG = "TITAN_USE_KEYRING"
+KEYRING_USERNAME = "credential"
+KEYRING_SERVICES = {
+    "GARMIN_EMAIL": "TITAN_GARMIN_EMAIL",
+    "GARMIN_PASSWORD": "TITAN_GARMIN_PASSWORD",
+    "TELEGRAM_BOT_TOKEN": "TITAN_TELEGRAM_TOKEN",
+}
+
+_log = logging.getLogger(__name__)
+
+
+def _credential_storage_event(backend: str) -> None:
+    payload = {
+        "flow": "setup_wizard",
+        "action": "credential_storage_backend_selected",
+        "backend": backend,
+    }
+    _log.info(json.dumps(payload, default=str))
+
+
+def _load_keyring_module():
+    if os.getenv(KEYRING_ENV_FLAG) != "1":
+        return None
+    try:
+        return importlib.import_module("keyring")
+    except ImportError:
+        return None
 
 
 def _banner():
@@ -38,6 +68,7 @@ def credentials_exist() -> bool:
                 lines.get("GARMIN_PASSWORD","") and
                 lines.get("TELEGRAM_BOT_TOKEN","")):
                 return True
+    _load_keyring_credentials()
     # Check env vars
     return bool(
         os.getenv("GARMIN_EMAIL") and
@@ -54,6 +85,17 @@ def load_env_file():
             if line and not line.startswith("#") and "=" in line:
                 key, _, val = line.partition("=")
                 os.environ.setdefault(key.strip(), val.strip())
+    _load_keyring_credentials()
+
+
+def _load_keyring_credentials() -> None:
+    keyring = _load_keyring_module()
+    if not keyring:
+        return
+    for env_key, service_name in KEYRING_SERVICES.items():
+        value = keyring.get_password(service_name, KEYRING_USERNAME)
+        if value:
+            os.environ.setdefault(env_key, value)
 
 
 def run_setup_wizard() -> dict:
@@ -118,10 +160,30 @@ def run_setup_wizard() -> dict:
 
 
     # ── Save ─────────────────────────────────────────────────────────────
-    _save_env(creds)
+    backend = _save_credentials(creds)
     load_env_file()
-    print("\n✅ Credentials αποθηκεύτηκαν στο .env\n")
+    destination = "keyring" if backend == "keyring" else ".env"
+    print(f"\n✅ Credentials αποθηκεύτηκαν στο {destination}\n")
     return creds
+
+
+def _save_credentials(creds: dict) -> str:
+    keyring = _load_keyring_module()
+    if keyring:
+        _save_keyring_credentials(creds, keyring)
+        env_only = {k: v for k, v in creds.items() if k not in KEYRING_SERVICES}
+        _save_env(env_only)
+        _credential_storage_event("keyring")
+        return "keyring"
+
+    _save_env(creds)
+    _credential_storage_event("env_file")
+    return "env_file"
+
+
+def _save_keyring_credentials(creds: dict, keyring) -> None:
+    for env_key, service_name in KEYRING_SERVICES.items():
+        keyring.set_password(service_name, KEYRING_USERNAME, creds[env_key])
 
 
 def _save_env(creds: dict):
