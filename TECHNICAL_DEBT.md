@@ -384,17 +384,27 @@ Keep this item open while any findings remain; close only when the burn-down is 
 
 ---
 
-### T4-03 · Typed payload contracts at critical boundaries 🟡
+### T4-03 · Typed payload contracts at critical boundaries ✅ RESOLVED
 
-**Current state:** The orchestration pipeline relies on loose `dict` contracts between
-subsystems (`garmin_data`, `today_session`, `titan_ctx`). This works at current scale
-but creates key-mismatch / implicit-contract risk as the system grows.
+**Status (2026-03-04):** Completed. `titan/orchestration/contracts.py` defines
+`TypedDict` schemas and frozen `@dataclass` contracts for the four most critical
+inter-layer payloads: `HRVSyncMetrics` / `HRVSyncMetricsContract`,
+`GarminSyncResult` / `GarminSyncResultContract`, `TodaySessionPlan`,
+`DailyCoachContext` / `DailyCoachContextContract`, and `DailyCoachingPayload`.
+Both `titan/integrations/garmin_sync.py` and `titan/orchestration/daily_coach.py`
+import and use these contracts at their boundaries. Tests: 8 green in
+`tests/test_t4_03_typed_payload_contracts.py` and
+`tests/titan/orchestration/test_contracts.py`. PR: TBD.
 
-**Fix direction:**
-- Define lightweight `@dataclass` or `TypedDict` schemas for the 3–4 most critical
+**Original state:** The orchestration pipeline relied on loose `dict` contracts between
+subsystems (`garmin_data`, `today_session`, `titan_ctx`). This worked at current scale
+but created key-mismatch / implicit-contract risk as the system grew.
+
+**Fix applied:**
+- Defined lightweight `@dataclass` + `TypedDict` schemas for the 3–4 most critical
   inter-layer payloads
-- Start with `GarminSyncResult` (already partially structured) and `DailyCoachContext`
-- Do NOT attempt a full typed migration in one pass
+- Started with `GarminSyncResult` (already partially structured) and `DailyCoachContext`
+- Did NOT attempt a full typed migration in one pass
 
 ---
 
@@ -518,6 +528,7 @@ When an item is completed, mark it here with date and PR reference:
 | T3-04 | 2026-03-04 | PR: TBD |
 | T3-05 | 2026-03-04 | PR: TBD |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
+| T4-03 | 2026-03-04 | PR: TBD |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
 | T5-03 | 2026-03-03 | [#170](https://github.com/zafiriss-ux/project-mayhem/pull/170) |
