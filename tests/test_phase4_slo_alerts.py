@@ -211,7 +211,7 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
         e
         for e in events
         if e.get("flow") == "garmin_sync"
-        and e.get("action") == "hrv_day_skipped"
+        and e.get("action") == "GARMIN_PAYLOAD_MALFORMED"
     ]
     assert len(skipped) == 1
     assert "date" in skipped[0]
@@ -300,7 +300,7 @@ def test_sync_methods_emit_structured_failure_events(caplog, method_name, error,
         e
         for e in events
         if e.get("flow") == "garmin_sync"
-        and e.get("action") == "failure"
+        and e.get("action") == expected_failure
         and e.get("subsystem") == method_name
     ]
     assert failures

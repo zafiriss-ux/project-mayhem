@@ -60,7 +60,7 @@ def _classify_failure(error: Exception) -> str:
 
 def _emit_failure(subsystem: str, failure_class: str, error: Exception, **fields: Any) -> None:
     _garmin_event(
-        "failure",
+        failure_class,
         subsystem=subsystem,
         failure_class=failure_class,
         error_class=error.__class__.__name__,
@@ -269,6 +269,7 @@ class GarminSync:
                         )
                 except Exception as e:
                     skipped_days += 1
+                    failure_class = _classify_failure(e)
                     error_class = e.__class__.__name__
                     error_message = str(e)
                     _log.warning(
@@ -278,7 +279,9 @@ class GarminSync:
                         error_message,
                     )
                     _garmin_event(
-                        "hrv_day_skipped",
+                        failure_class,
+                        subsystem="sync_hrv",
+                        failure_class=failure_class,
                         date=d,
                         error_class=error_class,
                         error_message=error_message,
