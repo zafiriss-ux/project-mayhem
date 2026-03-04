@@ -582,7 +582,7 @@ class DailyCoach:
         lock_thresholds: dict[str, Any],
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
-        return {
+        context: DailyCoachContext = {
             'db': self.db,
             'cs_tracker': self.cs_tracker,
             'afi_constraints': afi_constraints,
@@ -606,6 +606,7 @@ class DailyCoach:
             'priority_vector': priority_vector,
             'lock_thresholds': lock_thresholds,
         }
+        return context
 
     def _persist_garmin_data(
         self, garmin_data: dict, today_str: str

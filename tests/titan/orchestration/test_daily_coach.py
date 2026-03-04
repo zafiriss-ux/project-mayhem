@@ -151,3 +151,66 @@ def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
     assert "ACTIVITY_PERSISTED" in outcomes
     assert "ACTIVITY_SKIPPED" in outcomes
     assert "DAILY_METRICS_SKIPPED" in outcomes
+
+
+def test_build_daily_coach_context_supports_dict_access_and_serialization():
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        afi_constraints={"afi_modifier": -5},
+        intensity_gate={"color": "YELLOW"},
+        readiness_score=67.0,
+        glycogen_debt=23.5,
+        fatigue_level="MODERATE",
+        acwr=1.12,
+        days_since_last_vo2=3,
+        fueling_confirmed=True,
+        planned_duration_min=70,
+        today_hrv=42.1,
+        baseline_hrv=48.7,
+        hrv_std_dev=4.2,
+        today_rhr=52,
+        baseline_rhr=50.0,
+        sleep_score=76,
+        subjective_fatigue_score=4,
+        tsb_value=-8.0,
+        injury_flag=False,
+        priority_vector={"recovery": 1},
+        lock_thresholds={"acwr": 1.25},
+    )
+
+    assert context["intensity_gate_result"]["color"] == "YELLOW"
+    assert context["priority_vector"] == {"recovery": 1}
+
+
+def test_build_daily_coach_context_preserves_nullable_days_since_last_vo2():
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        afi_constraints={"afi_modifier": 0},
+        intensity_gate={"color": "GREEN"},
+        readiness_score=80.0,
+        glycogen_debt=10.0,
+        fatigue_level="LOW",
+        acwr=1.0,
+        days_since_last_vo2=None,
+        fueling_confirmed=False,
+        planned_duration_min=45,
+        today_hrv=50.0,
+        baseline_hrv=48.0,
+        hrv_std_dev=3.0,
+        today_rhr=49,
+        baseline_rhr=50.0,
+        sleep_score=82,
+        subjective_fatigue_score=2,
+        tsb_value=1.0,
+        injury_flag=False,
+        priority_vector={},
+        lock_thresholds={},
+    )
+
+    assert context["days_since_last_vo2"] is None
