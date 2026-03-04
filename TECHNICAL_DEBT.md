@@ -288,21 +288,34 @@ PR: TBD
 
 ---
 
-### T2-08 · Residual broad catches in DB best-effort branches 🟠
+### T2-08 · Residual broad catches in DB best-effort branches ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. All `except Exception` and bare `except` clauses
+in `database.py` outside `_run_migrations()` have been narrowed to minimal specific
+types and each surviving catch emits a structured `_database_event` warning. Audit
+results:
+
+- `_safe_json()` → `except (json.JSONDecodeError, TypeError)` — emits `governance_row_json_malformed`
+- `DatabaseManager.__init__()` launcher import → `except ModuleNotFoundError` (further guarded by `error.name`) — emits `db_init_data_directory_fallback`
+- `DatabaseManager.__init__()` logging PRAGMAs → `except (OSError, ValueError)` — emits `db_init_logging_skipped`
+- `AthleteDatabase.__init__()` path resolution → `except TypeError` — emits `athlete_db_base_directory_fallback`
+- `AthleteDatabase.load_all()` → `except (OSError, TypeError, ValueError, json.JSONDecodeError)` — emits `athlete_file_skipped`
+
+No broad catches remain. 1206 tests green.
+Completed: 2026-03-04
+PR: TBD
 
 **Location:** `titan/core/database.py` — init and non-migration best-effort paths
 
-**Current state:** Beyond T2-05 (JSON guard on governance rows) and T2-06 (athlete file load detail), additional broad `except Exception` clauses exist in DB init and best-effort load paths. These silently absorb failure classes beyond their intended idempotency guard, hiding error categories from operators.
+**Original state:** Additional broad `except Exception` clauses existed in DB init
+and best-effort load paths, silently absorbing failure classes beyond their intended
+idempotency guard.
 
 **Fix direction:**
 - Audit all `except Exception` / bare `except` clauses in `database.py` outside of `_run_migrations()` (already scoped in T1-03)
 - Narrow each to the minimal expected exception type
 - Emit a structured log event for any catch that survives narrowing
 - Conservative default: when uncertain, emit a warning and re-raise
-
-**Works best after:** T1-03 and T2-05 complete (they establish the narrowing pattern for this file).
-
-**Effort:** ~2h.
 
 ---
 
