@@ -1114,12 +1114,13 @@ class AthleteDatabase:
                 profile = UniversalAthleteProfile.from_dict(data)
                 self.athletes[profile.athlete_id] = profile
             except Exception as e:
-                _log.warning(
-                    "Skipped corrupted athlete file: filename=%s error_class=%s error_message=%s field_hint=%s",
-                    filepath.name,
-                    type(e).__name__,
-                    str(e),
-                    _derive_field_hint(e),
+                _database_event(
+                    "athlete_file_skipped",
+                    level=logging.WARNING,
+                    filename=filepath.name,
+                    error_class=type(e).__name__,
+                    error_message=str(e),
+                    field_hint=_derive_field_hint(e),
                 )
 
     @staticmethod

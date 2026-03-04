@@ -250,7 +250,14 @@ def _safe_json(raw: str, fallback=None):
 
 ---
 
-### T2-06 · Athlete load error detail in `database.py` 🟠
+### T2-06 · Athlete load error detail in `database.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Completed. `AthleteDatabase.load_all()` now emits
+structured `athlete_file_skipped` warning events that include `filename`,
+`error_class`, `error_message`, and best-effort `field_hint` for each skipped
+corrupted athlete file while preserving best-effort load semantics.
+Completed: 2026-03-04
+PR: TBD
 
 **Location:** `titan/core/database.py` or `AthleteDatabase.load_all()`
 
@@ -514,6 +521,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-04 | 2026-03-04 | PR: TBD |
 | T1-05 | 2026-03-04 | PR: TBD |
 | T2-01 | 2026-03-04 | PR: TBD |
+| T2-06 | 2026-03-04 | PR: TBD |
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |

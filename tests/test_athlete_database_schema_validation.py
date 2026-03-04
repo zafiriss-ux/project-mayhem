@@ -43,11 +43,12 @@ def test_load_all_logs_detailed_corruption_reason_for_invalid_field(tmp_path, ca
     with caplog.at_level("WARNING"):
         AthleteDatabase(db_path=str(db_dir))
 
-    message = caplog.records[-1].getMessage()
-    assert "filename=bad_types.json" in message
-    assert "error_class=TypeError" in message
-    assert "error_message=Invalid type for field: age" in message
-    assert "field_hint=age" in message
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert payload["action"] == "athlete_file_skipped"
+    assert payload["filename"] == "bad_types.json"
+    assert payload["error_class"] == "TypeError"
+    assert payload["error_message"] == "Invalid type for field: age"
+    assert payload["field_hint"] == "age"
 
 
 def test_load_all_accepts_valid_profile_schema(tmp_path):
@@ -89,11 +90,29 @@ def test_load_all_logs_detailed_corruption_reason_for_missing_required_field(tmp
     with caplog.at_level("WARNING"):
         AthleteDatabase(db_path=str(db_dir))
 
-    message = caplog.records[-1].getMessage()
-    assert "filename=missing_id.json" in message
-    assert "error_class=ValueError" in message
-    assert "error_message=Missing required athlete fields:" in message
-    assert "field_hint=athlete_id" in message
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert payload["action"] == "athlete_file_skipped"
+    assert payload["filename"] == "missing_id.json"
+    assert payload["error_class"] == "ValueError"
+    assert payload["error_message"].startswith("Missing required athlete fields:")
+    assert payload["field_hint"] == "athlete_id"
+
+
+def test_load_all_skips_malformed_json_with_structured_warning(tmp_path, caplog):
+    db_dir = tmp_path / "athletes"
+    db_dir.mkdir()
+    (db_dir / "corrupted.json").write_text('{"athlete_id": "ATH_123",')
+
+    with caplog.at_level("WARNING"):
+        db = AthleteDatabase(db_path=str(db_dir))
+
+    assert db.athletes == {}
+    payload = json.loads(caplog.records[-1].getMessage())
+    assert payload["action"] == "athlete_file_skipped"
+    assert payload["filename"] == "corrupted.json"
+    assert payload["error_class"] == "JSONDecodeError"
+    assert "Expecting property name enclosed in double quotes" in payload["error_message"]
+    assert payload["field_hint"].startswith("json_pos_")
 
 
 def test_load_all_accepts_missing_name_uses_default(tmp_path):
