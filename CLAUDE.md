@@ -408,6 +408,7 @@ See `docs/adr/` for Architecture Decision Records:
 - `0012` — Operator Console: Manual Override Workflow (Accepted — v5.8.0)
 - `0013` — Operator Console: Technology path — Streamlit → React + FastAPI (Accepted — v5.8.0)
 - `0014` — Phase 7 ML scaffold: shadow/advisory mode, kill-switch, evidence labels (Implemented — v5.8.0)
+- `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
 
 ---
 

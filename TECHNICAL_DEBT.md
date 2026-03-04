@@ -154,6 +154,127 @@ Key Files table (already done in this audit pass).
 
 ---
 
+### T1-06 · DB concurrency partially synchronized — read paths unguarded + close() race 🔴
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Critical issue #1)
+
+**Location:** `titan/core/database.py` — `DatabaseManager`
+
+**Problem:** `DatabaseManager` uses a single shared SQLite connection with
+`check_same_thread=False` and a `threading.Lock` guarding writes only. Read paths
+(e.g., `get_training_load_history()`, `get_governance_decisions()`) are not
+lock-guarded. Additionally, `close()` closes the shared connection without
+coordinating against in-flight worker threads. Under high activity or at shutdown,
+this produces intermittent `sqlite3.ProgrammingError` / race conditions.
+
+**Concrete failure mode:**
+- Worker thread calls `get_training_load_history()` (no lock held)
+- Shutdown calls `DatabaseManager.close()` (closes the connection)
+- Worker thread's cursor operation raises `sqlite3.ProgrammingError: Cannot operate on a closed database`
+
+**Fix direction (option A — minimal, preferred):**
+- Extend the existing write lock to cover reads as well (acquire before `cursor.execute`
+  on all read methods, release in `finally`)
+- Add a `_closed` flag; read paths check flag before acquiring cursor
+- `close()` sets `_closed = True` under the lock before calling `connection.close()`
+
+**Fix direction (option B — architectural, see ADR-0017):**
+- Move to a writer-thread + queue pattern, or per-thread SQLite connections with
+  explicit transaction boundaries (breaks shared-connection model entirely)
+
+**Effort:** Option A: ~3h. Option B: architectural — requires ADR acceptance.
+
+**Note:** Option A is the acceptable short-term fix. Option B is tracked in ADR-0017
+as a future architectural improvement. Do not conflate the two.
+
+---
+
+### T1-07 · DailyCoach daemon overlap — `run_morning_routine_async()` unserialised 🔴
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Critical issue #2)
+
+**Location:** `titan/orchestration/daily_coach.py` — `run_morning_routine_async()`
+
+**Problem:** `run_morning_routine_async()` spawns a new daemon thread on every call
+with no deduplication, serialisation, or job-tracking. If the scheduler retries or a
+manual trigger arrives while a routine is already running, two (or more) concurrent
+executions of the 12-step morning routine proceed simultaneously. This causes:
+- Double Garmin sync (duplicated DB writes)
+- Double governance gate evaluation with stale intermediate state
+- Double Telegram delivery (athlete receives two morning briefings)
+- Inconsistent `DailyCoachContext` state across concurrent runs
+
+**Fix direction:**
+- Add a `threading.Event` or `threading.Lock` guard: if a routine is already running,
+  log a `routine_already_running` structured event and return early (skip, not queue)
+- Track the running thread in `self._routine_thread`; check `is_alive()` before
+  spawning a new one
+- Emit `routine_skipped_overlap` event with `(trigger_source, running_since)` for
+  observability
+
+**Effort:** ~2h. No architecture change; surgical addition of a guard.
+
+---
+
+### T1-08 · Silent hardcoded fallback in `_get_baseline_rhr()` masks data errors 🔴
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Critical issue #3)
+
+**Location:** `titan/orchestration/daily_coach.py` — `_get_baseline_rhr()`
+
+**Problem:** `_get_baseline_rhr()` wraps all logic in a bare `except Exception: return 50.0`.
+If the DB query fails, the schema is wrong, or data is corrupt, the system silently
+proceeds with a synthetic RHR baseline of 50.0 bpm. This synthetic value flows into
+H3 governance gate (RHR delta hard stop). A real RHR of 70 bpm against a synthetic
+baseline of 50 bpm produces a +20 delta — which incorrectly fires the H3 hard stop.
+Conversely, a real RHR of 58 bpm against a broken baseline that should have been 60
+silently suppresses a legitimate warning.
+
+**Fix direction:**
+- Remove the bare `except Exception: return 50.0`
+- Catch specific exceptions (`sqlite3.Error`, `TypeError`, `ValueError`, `KeyError`)
+- On DB/query failure: emit a structured `baseline_rhr_unavailable` event with
+  `(error_class, detail)` and return `None` (or raise)
+- Caller must handle `None`: treat as degraded mode → use conservative governance
+  outcome (e.g., skip H3 comparison rather than compare against synthetic value), and
+  surface the data-integrity incident via Telegram alert
+
+**Effort:** ~2h. Includes caller update and test coverage.
+
+---
+
+### T1-09 · Synthetic weather fallback flows into decision inputs without degraded-mode gate 🔴
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Critical issue #4)
+
+**Location:** `titan/integrations/weather_api.py` — API failure fallback path
+
+**Problem:** On weather API failure, the integration fabricates current and forecast
+data and caches the synthetic values. This fabricated data flows into
+`OptimalTimeCalculator` recommendations (dew point, temperature windows). The
+orchestration and UI delivery layers receive no signal that the underlying data is
+synthetic. An athlete could receive a "run at 07:00, dew point 12°C" recommendation
+built entirely on hardcoded fallback data.
+
+**Fix direction:**
+- Add a `data_quality: Literal["live", "cached", "synthetic"]` field to the weather
+  payload (or a `degraded: bool` flag)
+- Set `degraded=True` on synthetic fallback paths
+- `OptimalTimeCalculator` must check the flag: if `degraded`, omit weather-window
+  recommendation or annotate it explicitly as "weather data unavailable"
+- `DailyCoach` must surface degraded weather in Telegram output:
+  `⚠️ Weather data unavailable — optimal time window omitted`
+- Emit `weather_degraded_mode_active` structured event on fallback activation
+
+**Effort:** ~3h. Requires changes in `weather_api.py`, `optimal_time.py`,
+`daily_coach.py`, and test updates.
+
+---
+
 ## TIER 2 — Observability Infrastructure (Sprint 2)
 
 Complete Tier 1 first. These items do not corrupt data but make production incidents
@@ -319,6 +440,36 @@ idempotency guard.
 
 ---
 
+### T2-09 · Residual `print()` operational/error paths across integration modules 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Medium risk #1)
+
+**Location:** `titan/integrations/telegram_bot.py`, `titan/integrations/garmin_sync.py`,
+`titan/integrations/weather_api.py`, `titan/orchestration/daily_coach.py`
+
+**Problem:** Despite T2-01 through T2-08 fixing the most critical error taxonomy paths,
+the audit confirms that operational status and error messages are still emitted via
+`print()` in several paths across the above modules. In service environments, `print()`
+output is not machine-parsable, is not captured by structured log aggregators, and does
+not contribute to alertability. This weakens incident RCA consistency relative to the
+modules already migrated to structured events.
+
+**Scope:** Operational/error `print()` calls only. User-facing console prints at UI
+boundaries are intentional and must be preserved.
+
+**Fix direction:**
+- Audit each module for `print(` calls in non-UI paths
+- Replace each with the module's existing structured event emitter
+  (`_garmin_event`, `_telegram_event`, `_weather_event`, `_coach_event`)
+- User-facing messages (menu text, Telegram output) remain as-is
+- Run `python -m pytest -q` after each module to confirm 100% green
+
+**Effort:** ~2h per module; 4 modules = ~8h total. Execute one module at a time
+following Rule E2 subsystem sequence.
+
+---
+
 ## TIER 3 — Dependency Hygiene (Sprint 3)
 
 Independent of Tier 2. Can be done in parallel once Tier 1 is complete.
@@ -358,6 +509,58 @@ uses `self._stop_event.wait(timeout=interval_seconds)` and checks
 removed from `__init__`, `start_background_updates`, and `stop_background_updates`.
 Test fixtures updated. Shutdown behaviour is now consistent across all three
 background workers.
+
+---
+
+### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Medium risk #2)
+
+**Location:** `titan/integrations/garmin_sync.py`, `titan/integrations/telegram_bot.py`,
+`titan/integrations/weather_api.py` — stop/join paths
+
+**Problem:** All three background workers call `thread.join(timeout=5)` and continue
+execution regardless of whether the thread actually stopped. Non-terminated threads are
+not escalated, flagged, or reported as a shutdown failure. A hung thread (e.g., blocked
+on a network call or a lock) silently survives the shutdown sequence. This hides
+hung-thread incidents and can leave the process zombie-running with active DB cursors.
+
+**Fix direction:**
+- After `join(timeout=5)`, check `thread.is_alive()`
+- If still alive: emit a `worker_shutdown_timeout` structured event with
+  `(worker_name, timeout_seconds, still_alive=True)`
+- Escalation path: log at ERROR level; in future, integrate with lifecycle supervisor
+  (see ADR-0017 for supervisor architecture)
+- Do not forcibly kill threads (Python has no safe mechanism); document the
+  escalation-only approach
+
+**Effort:** ~1h per worker; 3 workers = ~3h total.
+
+---
+
+### T3-07 · `scheduled_tasks` list mutable and unsynchronized across execution contexts 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Medium risk #3)
+
+**Location:** `titan/orchestration/daily_coach.py` or scheduler module —
+`scheduled_tasks` list
+
+**Problem:** The `scheduled_tasks` list is appended and read across execution contexts
+(scheduler thread + potential manual trigger paths) without lock discipline. Current
+usage is likely benign at today's trigger volume, but if runtime task mutation grows
+(dynamic reschedule, manual override injection), list mutation during iteration produces
+`RuntimeError: list changed size during iteration` or silent task loss.
+
+**Fix direction:**
+- Replace bare `list` with a `threading.Lock`-guarded accessor, or
+- Use `collections.deque` (thread-safe for `append`/`popleft` but not iteration)
+- Preferred: add a `_tasks_lock = threading.Lock()` and wrap all `append` / iteration
+  under `with self._tasks_lock:`
+- Emit `scheduler_task_added` structured event on each append for observability
+
+**Effort:** ~1h. Surgical; no architecture change.
 
 ---
 
@@ -456,6 +659,196 @@ PR: TBD
 
 ---
 
+### T4-07 · Credential setup wizard quality debt — duplicate prompts + plaintext `.env` 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Medium risk #4 + Low-priority #3)
+
+**Location:** `titan/ui/setup_wizard.py`
+
+**Problem (two sub-issues):**
+1. The setup wizard requests some credential fields twice within the same interactive flow.
+   Duplicate prompts confuse first-time users and undermine trust in the tool.
+2. Credentials are stored in plaintext in `~/Documents/TITAN/.env`. Best-effort file
+   permissions are applied, but this is weak for any non-local deployment. No secret
+   backend or keyring integration exists.
+
+**Test gap (see also T4-12):** Interactive flow logic (duplicate prompts, validation
+branches, cancellation behavior) is under-covered in `test_new_modules.py` — only
+`_save_env` is meaningfully tested.
+
+**Fix direction:**
+- Audit `setup_wizard.py` for duplicate prompt calls; eliminate duplicates
+- Add validation for each field before accepting (non-empty, format checks where
+  applicable)
+- Add support for `keyring` as an opt-in alternative to plaintext `.env` (guarded
+  behind a feature flag or env var `TITAN_USE_KEYRING=1`). Do not remove `.env`
+  support — it remains the default for local use
+- **Independent:** Fix duplicate prompts first (no architecture change); keyring is
+  a separate, optional hardening step
+
+**Effort:** Duplicate prompt fix: ~1h. Keyring integration: ~4h.
+
+---
+
+### T4-08 · Garmin sync timeout is advisory-only — no cancel/short-circuit 🟢
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Low-priority #1)
+
+**Location:** `titan/integrations/garmin_sync.py` — sync timeout + SLO alert path
+
+**Problem:** When a Garmin sync operation exceeds its timeout budget, the system emits
+an SLO alert (Telegram delivery). However, the slow operation itself is not
+cancelled or short-circuited. The thread continues running until the underlying network
+call completes or errors. This is observability-only control — the SLO alert fires but
+the slow sync continues to hold resources.
+
+**Fix direction:**
+- Wrap long-running Garmin API calls with `concurrent.futures.ThreadPoolExecutor`
+  and `future.result(timeout=N)` to enable actual cancellation
+- On `TimeoutError`: cancel the future, emit `garmin_sync_cancelled` event, and
+  return a partial result with `status="timeout_cancelled"`
+- Note: Python thread cancellation is not clean for all call sites; assess per-method
+  before applying
+
+**Effort:** ~3h. Medium complexity due to Python thread cancellation semantics.
+
+---
+
+### T4-09 · Main loop suppresses `KeyboardInterrupt` without structured shutdown logging 🟢
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Low-priority #2)
+
+**Location:** `titan/main.py` or `main.py` — main menu loop
+
+**Problem:** `KeyboardInterrupt` is caught at the menu level and suppressed. The
+shutdown path does not log a structured `shutdown_requested` event with
+`(reason="keyboard_interrupt", timestamp)`. In production, this makes it impossible
+to distinguish intentional Ctrl+C shutdowns from unexpected process termination in
+aggregated log output.
+
+**Fix direction:**
+- Catch `KeyboardInterrupt` explicitly in the top-level loop
+- Emit `log.info("shutdown_requested", reason="keyboard_interrupt")` before exiting
+- Call the existing clean shutdown sequence (stop background threads, close DB)
+- This does not require signal handler changes — catching at the loop level is
+  sufficient for this tool's deployment model
+
+**Effort:** ~1h.
+
+---
+
+### T4-10 · Typed payload contracts use broad `Any` — weakens static guarantees 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Architecture observation #3)
+
+**Location:** `titan/orchestration/contracts.py` + typed boundaries in
+`titan/integrations/garmin_sync.py`, `titan/orchestration/daily_coach.py`
+
+**Problem:** T4-03 introduced typed payload contracts at critical boundaries, but many
+fields in the resulting `TypedDict` and `@dataclass` schemas are typed as `Any`. `Any`
+fields defeat the purpose of typed contracts — mypy cannot verify shape correctness at
+boundaries, and key-mismatch bugs remain invisible to static analysis.
+
+**Fix direction:**
+- Audit all `Any` fields in `titan/orchestration/contracts.py`
+- Replace with concrete types where the shape is known and stable:
+  - `dict[str, Any]` → `TypedDict` with concrete fields
+  - `list[Any]` → `list[ConcreteType]`
+  - Scalar `Any` → `str | int | float | None` union as appropriate
+- Do not attempt a full migration in one pass. Work one contract at a time.
+- Run `mypy titan/orchestration/contracts.py` after each change; zero errors required.
+- Depends on T4-03 (already closed) as the foundation.
+
+**Effort:** ~4h per contract; estimate 4 contracts = ~16h total across multiple passes.
+
+---
+
+### T4-11 · No mandatory coverage gate in CI 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Test coverage gap #1)
+
+**Location:** `pyproject.toml` + `.github/workflows/ci.yml`
+
+**Problem:** `pyproject.toml` contains coverage configuration and `pytest` settings,
+but no `--cov-fail-under` threshold is enforced in the default test workflow. Coverage
+can silently erode over time as new modules are added without corresponding tests. There
+is no ratchet mechanism to prevent regression.
+
+**Fix direction:**
+- Add `--cov-fail-under=80` (or the current measured baseline, whichever is higher)
+  to the `[tool.pytest.ini_options]` `addopts` in `pyproject.toml`, or as a CI step
+  in `.github/workflows/ci.yml`
+- Preferred strategy: **ratchet** — measure current coverage at closure of this item,
+  set the threshold to that value, and only ever increase it
+- Modules with existing ≥95% coverage (governance, Phase 7 ML) should be protected
+  by per-module thresholds in addition to the global gate
+
+**Effort:** ~1h to configure; ~2h to measure baseline and set threshold.
+
+---
+
+### T4-12 · Setup wizard interactive flow under-covered by tests 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Test coverage gap #2)
+
+**Location:** `test_new_modules.py` — setup wizard coverage
+
+**Problem:** Existing test coverage for `setup_wizard.py` focuses on `_save_env`.
+The interactive flow logic — duplicate prompt behaviour, per-field validation branches,
+cancellation paths, and wizard completion state — is not covered. Given the wizard is
+the first user-facing flow for new deployments, untested validation branches are a
+high-value regression surface.
+
+**Fix direction:**
+- Create or extend tests in `tests/titan/ui/test_setup_wizard.py` (or nearest
+  equivalent following project test layout)
+- Cover: duplicate prompt elimination (once T4-07 is fixed), all validation branches
+  (empty input, invalid format), cancellation path, full happy-path wizard completion
+- Use `unittest.mock.patch("builtins.input", side_effect=[...])` for interactive
+  prompt simulation
+- Minimum: one test per distinct validation branch + one cancellation test
+
+**Effort:** ~3h.
+
+**Dependency:** T4-07 (fix wizard first, then add tests for the fixed behaviour).
+
+---
+
+### T4-13 · No full lifecycle stress test for all background workers together 🟡
+
+**Status:** OPEN
+**Source:** Engineering audit 2026-03-04 (Test coverage gap #3)
+
+**Location:** `tests/` — concurrency / integration test coverage
+
+**Problem:** Existing concurrency tests are unit-level and test isolated components
+(individual thread lifecycle, individual stop event). There is no integration test
+that exercises a full start → run → stop sequence across all four workers together:
+Garmin sync + Weather updater + Telegram bot + DailyCoach scheduler. Without such a
+test, hung-thread shutdown bugs (T3-06) and daemon overlap bugs (T1-07) can only be
+detected in production.
+
+**Fix direction:**
+- Create `tests/test_full_lifecycle_stress.py`
+- Test scenario: instantiate all four workers with mocked external APIs, start all,
+  let them run for 2–3 scheduler ticks (use mocked `time.sleep`/`Event.wait`), then
+  call the full stop sequence and assert all threads are not alive within 10s
+- Assert: no `sqlite3.ProgrammingError` raised during concurrent DB access
+- Assert: no duplicate routine execution (T1-07 guard fires correctly)
+- Use `pytest-timeout` to bound the test to ≤30s wall time
+
+**Effort:** ~6h. Non-trivial mocking surface; do after T1-06 and T1-07 are fixed.
+
+**Dependency:** T1-06, T1-07 (fix races first, then stress-test the fixes).
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -542,6 +935,20 @@ When an item is completed, mark it here with date and PR reference:
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
 | T5-03 | 2026-03-03 | [#170](https://github.com/zafiriss-ux/project-mayhem/pull/170) |
 | T5-04 | 2026-03-03 | [#171](https://github.com/zafiriss-ux/project-mayhem/pull/171) |
+| T1-06 | OPEN | — |
+| T1-07 | OPEN | — |
+| T1-08 | OPEN | — |
+| T1-09 | OPEN | — |
+| T2-09 | OPEN | — |
+| T3-06 | OPEN | — |
+| T3-07 | OPEN | — |
+| T4-07 | OPEN | — |
+| T4-08 | OPEN | — |
+| T4-09 | OPEN | — |
+| T4-10 | OPEN | — |
+| T4-11 | OPEN | — |
+| T4-12 | OPEN | — |
+| T4-13 | OPEN | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
