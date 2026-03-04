@@ -173,3 +173,106 @@ class DailyCoachingPayload(TypedDict):
     intensity_gate_result: Any
     fueling_gate: Any
     vo2_eligibility: Any
+
+
+class AthleteProfile(TypedDict):
+    name: str
+    age: int
+    weight_kg: float
+    height_cm: float
+    max_hr: int
+    threshold_hr: int
+    phase: str
+    goal: str
+
+
+class TitanContext(TypedDict):
+    garmin: Any
+    weather: Any
+    telegram: Any
+    hrv_engine: Any
+    tsb_engine: Any
+    acwr_engine: Any
+    readiness_engine: Any
+    glycogen_model: Any
+    drift_engine: Any
+    lactate_logic: Any
+    trimp_engine: Any
+    fatigue_engine: Any
+    adaptive_memory: Any
+    biomechanics: Any
+    efficiency_engine: Any
+    durability_engine: Any
+    critical_speed: Any
+    rcp_engine: Any
+    weekly_planner: Any
+    optimal_time_calc: Any
+    nutrition_optimizer: Any
+    daily_coach: Any
+    db: Any
+    athlete_profile: AthleteProfile
+    last_garmin_data: dict[str, Any]
+    last_weekly_plan: dict[str, Any] | None
+    today_session_type: str
+
+
+@dataclass(frozen=True)
+class TitanContextContract:
+    garmin: Any
+    weather: Any
+    telegram: Any
+    hrv_engine: Any
+    tsb_engine: Any
+    acwr_engine: Any
+    readiness_engine: Any
+    glycogen_model: Any
+    drift_engine: Any
+    lactate_logic: Any
+    trimp_engine: Any
+    fatigue_engine: Any
+    adaptive_memory: Any
+    biomechanics: Any
+    efficiency_engine: Any
+    durability_engine: Any
+    critical_speed: Any
+    rcp_engine: Any
+    weekly_planner: Any
+    optimal_time_calc: Any
+    nutrition_optimizer: Any
+    daily_coach: Any
+    db: Any
+    athlete_profile: AthleteProfile
+    last_garmin_data: dict[str, Any]
+    last_weekly_plan: dict[str, Any] | None
+    today_session_type: str
+
+    def to_payload(self) -> TitanContext:
+        return {
+            "garmin": self.garmin,
+            "weather": self.weather,
+            "telegram": self.telegram,
+            "hrv_engine": self.hrv_engine,
+            "tsb_engine": self.tsb_engine,
+            "acwr_engine": self.acwr_engine,
+            "readiness_engine": self.readiness_engine,
+            "glycogen_model": self.glycogen_model,
+            "drift_engine": self.drift_engine,
+            "lactate_logic": self.lactate_logic,
+            "trimp_engine": self.trimp_engine,
+            "fatigue_engine": self.fatigue_engine,
+            "adaptive_memory": self.adaptive_memory,
+            "biomechanics": self.biomechanics,
+            "efficiency_engine": self.efficiency_engine,
+            "durability_engine": self.durability_engine,
+            "critical_speed": self.critical_speed,
+            "rcp_engine": self.rcp_engine,
+            "weekly_planner": self.weekly_planner,
+            "optimal_time_calc": self.optimal_time_calc,
+            "nutrition_optimizer": self.nutrition_optimizer,
+            "daily_coach": self.daily_coach,
+            "db": self.db,
+            "athlete_profile": self.athlete_profile,
+            "last_garmin_data": self.last_garmin_data,
+            "last_weekly_plan": self.last_weekly_plan,
+            "today_session_type": self.today_session_type,
+        }

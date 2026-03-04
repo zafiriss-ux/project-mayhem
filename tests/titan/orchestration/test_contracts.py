@@ -4,6 +4,7 @@ from titan.orchestration.contracts import (
     DailyCoachContextContract,
     GarminSyncResultContract,
     HRVSyncMetricsContract,
+    TitanContextContract,
 )
 
 
@@ -102,3 +103,90 @@ def test_hrv_sync_metrics_contract_to_payload_boundary_zero_values():
     payload = HRVSyncMetricsContract(days_back=0, synced_days=0, skipped_days=0).to_payload()
 
     assert json.loads(json.dumps(payload)) == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
+
+
+def test_titan_context_contract_to_payload_happy_path():
+    payload = TitanContextContract(
+        garmin=object(),
+        weather=object(),
+        telegram=object(),
+        hrv_engine=object(),
+        tsb_engine=object(),
+        acwr_engine=object(),
+        readiness_engine=object(),
+        glycogen_model=object(),
+        drift_engine=object(),
+        lactate_logic=object(),
+        trimp_engine=object(),
+        fatigue_engine=object(),
+        adaptive_memory=object(),
+        biomechanics=object(),
+        efficiency_engine=object(),
+        durability_engine=object(),
+        critical_speed=object(),
+        rcp_engine=object(),
+        weekly_planner=object(),
+        optimal_time_calc=object(),
+        nutrition_optimizer=object(),
+        daily_coach=object(),
+        db=object(),
+        athlete_profile={
+            "name": "Athlete",
+            "age": 35,
+            "weight_kg": 75.0,
+            "height_cm": 175.0,
+            "max_hr": 190,
+            "threshold_hr": 168,
+            "phase": "BUILD",
+            "goal": "5K",
+        },
+        last_garmin_data={"activities": []},
+        last_weekly_plan={"monday": "easy"},
+        today_session_type="EASY",
+    ).to_payload()
+
+    assert payload["athlete_profile"]["name"] == "Athlete"
+    assert payload["today_session_type"] == "EASY"
+
+
+def test_titan_context_contract_to_payload_boundary_nullable_weekly_plan():
+    payload = TitanContextContract(
+        garmin=object(),
+        weather=object(),
+        telegram=object(),
+        hrv_engine=object(),
+        tsb_engine=object(),
+        acwr_engine=object(),
+        readiness_engine=object(),
+        glycogen_model=object(),
+        drift_engine=object(),
+        lactate_logic=object(),
+        trimp_engine=object(),
+        fatigue_engine=object(),
+        adaptive_memory=object(),
+        biomechanics=object(),
+        efficiency_engine=object(),
+        durability_engine=object(),
+        critical_speed=object(),
+        rcp_engine=object(),
+        weekly_planner=object(),
+        optimal_time_calc=object(),
+        nutrition_optimizer=object(),
+        daily_coach=object(),
+        db=object(),
+        athlete_profile={
+            "name": "Athlete",
+            "age": 35,
+            "weight_kg": 75.0,
+            "height_cm": 175.0,
+            "max_hr": 190,
+            "threshold_hr": 168,
+            "phase": "BUILD",
+            "goal": "5K",
+        },
+        last_garmin_data={},
+        last_weekly_plan=None,
+        today_session_type="REST",
+    ).to_payload()
+
+    assert payload["last_weekly_plan"] is None

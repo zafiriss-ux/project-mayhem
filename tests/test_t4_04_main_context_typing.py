@@ -2,12 +2,12 @@ import ast
 from pathlib import Path
 
 
-def _load_main_module() -> ast.Module:
-    return ast.parse(Path("titan/main.py").read_text())
+def _load_module(path: str) -> ast.Module:
+    return ast.parse(Path(path).read_text())
 
 
-def test_t4_04_typed_context_contract_exists():
-    module = _load_main_module()
+def test_t4_04_typed_context_contract_exists_in_contracts_module():
+    module = _load_module("titan/orchestration/contracts.py")
 
     typed_dict_classes = {
         node.name: node
@@ -15,13 +15,28 @@ def test_t4_04_typed_context_contract_exists():
         if isinstance(node, ast.ClassDef)
         and any(isinstance(base, ast.Name) and base.id == "TypedDict" for base in node.bases)
     }
+    dataclass_classes = {
+        node.name
+        for node in module.body
+        if isinstance(node, ast.ClassDef)
+        and any(
+            (isinstance(dec, ast.Name) and dec.id == "dataclass")
+            or (
+                isinstance(dec, ast.Call)
+                and isinstance(dec.func, ast.Name)
+                and dec.func.id == "dataclass"
+            )
+            for dec in node.decorator_list
+        )
+    }
 
     assert "AthleteProfile" in typed_dict_classes
     assert "TitanContext" in typed_dict_classes
+    assert "TitanContextContract" in dataclass_classes
 
 
-def test_t4_04_main_uses_typed_context_annotations():
-    module = _load_main_module()
+def test_t4_04_main_uses_titan_context_contract_constructor():
+    module = _load_module("titan/main.py")
 
     register_fn = next(
         node
@@ -36,17 +51,19 @@ def test_t4_04_main_uses_typed_context_annotations():
     main_fn = next(
         node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == "main"
     )
-    annotated_assignments = [
+    titan_ctx_assign = next(
         node
         for node in ast.walk(main_fn)
-        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
-    ]
+        if isinstance(node, ast.AnnAssign)
+        and isinstance(node.target, ast.Name)
+        and node.target.id == "titan_ctx"
+    )
 
-    annotation_map = {
-        node.target.id: node.annotation.id
-        for node in annotated_assignments
-        if isinstance(node.annotation, ast.Name)
-    }
-
-    assert annotation_map.get("athlete_profile") == "AthleteProfile"
-    assert annotation_map.get("titan_ctx") == "TitanContext"
+    assert isinstance(titan_ctx_assign.annotation, ast.Name)
+    assert titan_ctx_assign.annotation.id == "TitanContext"
+    assert isinstance(titan_ctx_assign.value, ast.Call)
+    assert isinstance(titan_ctx_assign.value.func, ast.Attribute)
+    assert titan_ctx_assign.value.func.attr == "to_payload"
+    assert isinstance(titan_ctx_assign.value.func.value, ast.Call)
+    assert isinstance(titan_ctx_assign.value.func.value.func, ast.Name)
+    assert titan_ctx_assign.value.func.value.func.id == "TitanContextContract"
