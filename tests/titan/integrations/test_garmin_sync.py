@@ -1,8 +1,10 @@
 import json
 import logging
 import threading
+import time
 from unittest.mock import MagicMock
 
+from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import GarminSync
 
 
@@ -118,3 +120,65 @@ def test_sync_hrv_disconnected_returns_empty_and_contract_metrics():
 
     assert payload == []
     assert sync.last_hrv_sync_metrics == {"days_back": 5, "synced_days": 0, "skipped_days": 0}
+
+
+def test_sync_all_timeout_returns_timeout_cancelled_status(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+
+    def _slow_sync_operation(_days_back):
+        time.sleep(0.2)
+        return {
+            "activities": [{"date": "never"}],
+            "weight": [],
+            "sleep": [],
+            "hrv": [],
+            "hrv_sync_metrics": {"days_back": 0, "synced_days": 0, "skipped_days": 0},
+        }
+
+    monkeypatch.setattr(sync, "_sync_operation", _slow_sync_operation)
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "0")
+
+    payload = sync.sync_all(days_back=7)
+
+    assert payload["status"] == "timeout_cancelled"
+    assert payload["activities"] == []
+
+
+def test_sync_all_timeout_emits_cancel_event_and_attempts_future_cancel(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "1")
+
+    observed = {"cancel_called": False}
+
+    class _TimeoutFuture:
+        def result(self, timeout):
+            raise garmin_sync.FuturesTimeoutError()
+
+        def cancel(self):
+            observed["cancel_called"] = True
+            return True
+
+    class _FakeExecutor:
+        def __init__(self, max_workers):
+            self.max_workers = max_workers
+
+        def submit(self, fn, *args):
+            return _TimeoutFuture()
+
+        def shutdown(self, wait, cancel_futures):
+            return None
+
+    monkeypatch.setattr(garmin_sync, "ThreadPoolExecutor", _FakeExecutor)
+
+    payload = sync.sync_all(days_back=3)
+
+    assert observed["cancel_called"] is True
+    assert payload["status"] == "timeout_cancelled"
+    cancel_event = [event for event in events if event[0] == "garmin_sync_cancelled"]
+    assert cancel_event
+    _, fields = cancel_event[0]
+    assert fields["reason"] == "timeout"
+    assert fields["timeout_seconds"] == 1
+    assert fields["operation_name"] == "sync_all"

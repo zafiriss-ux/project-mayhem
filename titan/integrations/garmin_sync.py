@@ -9,6 +9,8 @@ import logging
 import os
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -341,10 +343,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # FULL SYNC
     # ------------------------------------------------------------------ #
-    def sync_all(self, days_back: int = 7) -> GarminSyncResult:
-        _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
-        self.last_sync = datetime.now().isoformat()
-        started = time.monotonic()
+    def _sync_operation(self, days_back: int) -> GarminSyncResult:
         activities = self.sync_activities(days_back)
         weight = self.sync_weight(max(days_back, 14))
         sleep = self.sync_sleep(days_back)
@@ -361,8 +360,50 @@ class GarminSync:
             hrv=hrv,
             hrv_sync_metrics=hrv_metrics,
         ).to_payload()
-        elapsed_s = round(time.monotonic() - started, 3)
+        return payload
+
+    def sync_all(self, days_back: int = 7) -> GarminSyncResult:
+        _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
+        self.last_sync = datetime.now().isoformat()
+        started = time.monotonic()
         timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(self._sync_operation, days_back)
+        try:
+            payload = future.result(timeout=timeout_s)
+        except FuturesTimeoutError:
+            future.cancel()
+            elapsed_s = round(time.monotonic() - started, 3)
+            _garmin_event(
+                "slo_alert",
+                slo_key="garmin_sync_timeout",
+                elapsed_s=elapsed_s,
+                timeout_s=timeout_s,
+                cause="INTEGRATION_LATENCY",
+            )
+            _garmin_event(
+                "garmin_sync_cancelled",
+                reason="timeout",
+                timeout_seconds=timeout_s,
+                operation_name="sync_all",
+            )
+            hrv_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
+                days_back=int(self.last_hrv_sync_metrics.get("days_back", 0)),
+                synced_days=int(self.last_hrv_sync_metrics.get("synced_days", 0)),
+                skipped_days=int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
+            ).to_payload()
+            return {
+                "activities": [],
+                "weight": [],
+                "sleep": [],
+                "hrv": [],
+                "hrv_sync_metrics": hrv_metrics,
+                "status": "timeout_cancelled",
+            }
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        elapsed_s = round(time.monotonic() - started, 3)
         if elapsed_s >= timeout_s:
             _garmin_event(
                 "slo_alert",
