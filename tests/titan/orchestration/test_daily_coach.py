@@ -549,3 +549,100 @@ def test_run_morning_routine_keeps_weather_recommendation_when_live():
     assert captured_payload["optimal_time"] == "06:30"
     assert captured_payload["dew_point"] == 11
     assert "special_note" not in captured_payload
+
+
+def test_run_morning_routine_boundary_empty_inputs_no_crash():
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [],
+            "sleep": [],
+            "hrv": [],
+            "hrr": [],
+            "weight": [],
+            "acwr": 0.0,
+        }
+    )
+
+    assert coach.run_morning_routine() is True
+
+
+def test_run_morning_routine_partial_sleep_payload_uses_safe_defaults():
+    payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [],
+            "sleep": [
+                {
+                    "restingHeartRate": None,
+                    "sleepScores": {"overall": "bad_value"},
+                    "sleepTimeSeconds": None,
+                }
+            ],
+            "hrv": [],
+            "hrr": [],
+            "weight": [],
+            "acwr": 1.0,
+        }
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
+
+    assert coach.run_morning_routine() is True
+    assert payload["sleep_quality"] == 75
+    assert payload["sleep_hours"] == 7.5
+
+
+def test_run_morning_routine_same_inputs_produce_deterministic_payloads():
+    payloads = []
+
+    def _capture(payload):
+        payloads.append(payload.copy())
+        return True
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.telegram = SimpleNamespace(send_daily_coaching=_capture)
+
+    assert coach.run_morning_routine() is True
+    assert coach.run_morning_routine() is True
+    assert payloads[0] == payloads[1]
+
+
+def test_run_morning_routine_weekly_planner_exception_bubbles_with_engine_failure_event(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: (_ for _ in ()).throw(RuntimeError("planner_offline"))
+    )
+
+    with pytest.raises(RuntimeError, match="planner_offline"):
+        coach.run_morning_routine()
+
+    assert any(
+        event["action"] == "step_event"
+        and event["step_number"] == 8
+        and event["outcome"] == "FAILED"
+        and event["failure_class"] == daily_coach.ENGINE_ERROR
+        for event in events
+    )
+
+
+def test_run_morning_routine_telegram_falsey_result_returns_false_and_emits_delivery_alert(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=False)
+
+    assert coach.run_morning_routine() is False
+    assert any(
+        event["action"] == "step_event"
+        and event["step_number"] == 12
+        and event["outcome"] == "FAILED"
+        and event["failure_class"] == daily_coach.DELIVERY_ERROR
+        for event in events
+    )
+    assert any(
+        event["action"] == "slo_alert" and event["slo_key"] == "telegram_delivery_failed" for event in events
+    )
