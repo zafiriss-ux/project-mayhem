@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
-from titan.orchestration.contracts import GarminSyncResult
+from titan.orchestration.contracts import GarminSyncResult, HRVSyncMetrics
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -335,12 +335,21 @@ class GarminSync:
         print("🔄 Full Garmin sync starting...")
         self.last_sync = datetime.now().isoformat()
         started = time.monotonic()
+        activities = self.sync_activities(days_back)
+        weight = self.sync_weight(max(days_back, 14))
+        sleep = self.sync_sleep(days_back)
+        hrv = self.sync_hrv(days_back)
+        hrv_metrics: HRVSyncMetrics = {
+            "days_back": int(self.last_hrv_sync_metrics.get("days_back", 0)),
+            "synced_days": int(self.last_hrv_sync_metrics.get("synced_days", 0)),
+            "skipped_days": int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
+        }
         payload: GarminSyncResult = {
-            "activities": self.sync_activities(days_back),
-            "weight": self.sync_weight(max(days_back, 14)),
-            "sleep": self.sync_sleep(days_back),
-            "hrv": self.sync_hrv(days_back),
-            "hrv_sync_metrics": dict(self.last_hrv_sync_metrics),
+            "activities": activities,
+            "weight": weight,
+            "sleep": sleep,
+            "hrv": hrv,
+            "hrv_sync_metrics": hrv_metrics,
         }
         elapsed_s = round(time.monotonic() - started, 3)
         timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
