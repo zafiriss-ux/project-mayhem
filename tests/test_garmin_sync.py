@@ -298,3 +298,21 @@ def test_connect_auth_failure_logs_startup_failure(caplog, monkeypatch):
     assert record.component == "garmin_sync_connect"
     assert record.error_class == "RuntimeError"
     assert record.detail == "auth denied"
+
+
+def test_connect_uses_redacted_secret_container_without_duplicate_aliases():
+    sync = GarminSync(email="runner@example.com", password="s3cr3t")
+
+    assert sync.email.reveal() == "runner@example.com"
+    assert sync.password.reveal() == "s3cr3t"
+    assert str(sync.email) == "***"
+    assert repr(sync.password) == "'***'"
+    assert not hasattr(sync, "_email_secret")
+    assert not hasattr(sync, "_password_secret")
+
+
+def test_connect_missing_credentials_fails_safely():
+    sync = GarminSync(email="", password="")
+
+    assert sync.connect() is False
+    assert sync.is_connected is False
