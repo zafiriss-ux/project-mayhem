@@ -127,6 +127,72 @@ def test_run_morning_routine_sync_failure_emits_data_missing(monkeypatch):
     )
 
 
+def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.run_morning_routine = lambda: True
+
+    created_threads = []
+
+    class FakeThread:
+        def __init__(self, target, name, daemon):
+            self.target = target
+            self.name = name
+            self.daemon = daemon
+            self.started = False
+            created_threads.append(self)
+
+        def start(self):
+            self.started = True
+
+        def is_alive(self):
+            return self.started
+
+    monkeypatch.setattr(daily_coach.threading, "Thread", FakeThread)
+    monkeypatch.setattr(daily_coach, "monotonic", lambda: 123.45)
+
+    coach.run_morning_routine_async(trigger_source="scheduler")
+
+    assert len(created_threads) == 1
+    assert created_threads[0].name == "DailyCoachRoutine"
+    assert created_threads[0].daemon is True
+    assert created_threads[0].started is True
+    assert coach._routine_thread is created_threads[0]
+    assert coach._routine_started_monotonic == 123.45
+
+
+def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
+    events = []
+    coach = DailyCoach.__new__(DailyCoach)
+
+    class AliveThread:
+        name = "ExistingRoutine"
+
+        @staticmethod
+        def is_alive():
+            return True
+
+    coach._routine_thread = AliveThread()
+    coach._routine_started_monotonic = 987.6
+
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    monkeypatch.setattr(
+        daily_coach.threading,
+        "Thread",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("Thread should not be created on overlap")),
+    )
+
+    coach.run_morning_routine_async(trigger_source="telegram_poll")
+
+    assert events == [
+        {
+            "action": "routine_skipped_overlap",
+            "trigger_source": "telegram_poll",
+            "running_since": 987.6,
+            "thread_name": "ExistingRoutine",
+        }
+    ]
+
+
 def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
