@@ -336,7 +336,15 @@ Thread C — Daily Coach / Scheduler (daemon, cron-style)
   └─ 20:00 Sunday → weekly plan generation → Telegram
 ```
 
-All integrations use `threading.Lock` for SQLite writes (`check_same_thread=False`).
+SQLite write paths use `threading.Lock` (`check_same_thread=False`). Read paths
+(e.g., `get_training_load_history()`, `get_governance_decisions()`) are **not**
+currently lock-guarded — this is a known gap tracked as **T1-06** in
+`TECHNICAL_DEBT.md`. The fix (extend the write lock to cover reads + add a
+`_closed` flag to `close()`) is scheduled for the Phase 8 hardening sprint.
+
+Worker shutdown calls `thread.join(timeout=5)` on each daemon without escalating
+non-termination — tracked as **T3-06**. `run_morning_routine_async()` does not
+deduplicate concurrent triggers — tracked as **T1-07**.
 
 ---
 
