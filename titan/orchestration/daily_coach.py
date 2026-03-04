@@ -490,7 +490,41 @@ class DailyCoach:
             'vo2_eligibility': today_session.get('vo2_eligibility'),
         }
 
-        success = _run_step(12, "send_telegram", lambda: self.telegram.send_daily_coaching(coaching_data))
+        def _step12_send_telegram() -> bool:
+            try:
+                success_local = self.telegram.send_daily_coaching(coaching_data)
+            except Exception as exc:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=12,
+                    step_name="send_telegram",
+                    outcome="FAILED",
+                    failure_class=DELIVERY_ERROR,
+                    error_class=type(exc).__name__,
+                    error_message=str(exc),
+                )
+                raise
+            if not success_local:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=12,
+                    step_name="send_telegram",
+                    outcome="FAILED",
+                    failure_class=DELIVERY_ERROR,
+                    error_class="DELIVERY_ERROR",
+                    error_message="Telegram delivery returned falsey result",
+                )
+                return False
+            _daily_coach_event(
+                "step_event",
+                step_number=12,
+                step_name="send_telegram",
+                outcome="SUCCESS",
+                failure_class=None,
+            )
+            return True
+
+        success = _step12_send_telegram()
         if not success:
             _daily_coach_event(
                 "slo_alert",
@@ -676,8 +710,24 @@ class DailyCoach:
                 sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
                 sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
             )
+            _daily_coach_event(
+                "activity_persist",
+                activity_index=None,
+                activity_date=today_str,
+                outcome="DAILY_METRICS_PERSISTED",
+                failure_class=None,
+            )
             print(f"  💾 Daily metrics saved for {today_str}")
         except Exception as e:
+            _daily_coach_event(
+                "activity_persist",
+                activity_index=None,
+                activity_date=today_str,
+                outcome="DAILY_METRICS_SKIPPED",
+                failure_class=PERSIST_ERROR,
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
             print(f"  ⚠️  Could not save daily metrics: {e}")
 
         return today_rhr, today_sleep_score, today_sleep_hours
