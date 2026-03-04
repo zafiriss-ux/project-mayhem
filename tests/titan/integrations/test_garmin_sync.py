@@ -35,7 +35,7 @@ def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
 def test_stop_background_sync_sets_event_and_joins_thread():
     sync = GarminSync(email="e", password="p")
     sync._sync_thread = MagicMock()
-    sync._sync_thread.is_alive.return_value = True
+    sync._sync_thread.is_alive.side_effect = [True, False]
 
     sync.stop_background_sync()
 

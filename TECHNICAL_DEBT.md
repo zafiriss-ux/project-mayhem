@@ -542,9 +542,9 @@ background workers.
 
 ---
 
-### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation 🟡
+### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation ✅ RESOLVED
 
-**Status:** OPEN
+**Status (2026-03-04):** COMPLETED. Escalation after `join(timeout=5)` is implemented and tested for `titan/integrations/garmin_sync.py`: if the worker is still alive, it emits a structured `worker_shutdown_timeout` event at ERROR level with `(worker_name, timeout_seconds, still_alive=true)`, with no forced termination.
 **Source:** Engineering audit 2026-03-04 (Medium risk #2)
 
 **Location:** `titan/integrations/garmin_sync.py`, `titan/integrations/telegram_bot.py`,
@@ -974,7 +974,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-08 | 2026-03-04 | PR: TBD |
 | T1-09 | 2026-03-04 | PR: TBD |
 | T2-09 | 2026-03-04 (weather_api.py) | PR: TBD |
-| T3-06 | OPEN | — |
+| T3-06 | 2026-03-04 | PR: TBD |
 | T3-07 | OPEN | — |
 | T4-07 | OPEN | — |
 | T4-08 | OPEN | — |
