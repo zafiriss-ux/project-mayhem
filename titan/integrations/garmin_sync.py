@@ -432,14 +432,16 @@ class GarminSync:
     def stop_background_sync(self):
         self._stop_event.set()
         if self._sync_thread and self._sync_thread.is_alive():
+            worker_thread = self._sync_thread
             timeout_seconds = 5
-            self._sync_thread.join(timeout=timeout_seconds)
-            if self._sync_thread.is_alive():
+            worker_thread.join(timeout=timeout_seconds)
+            still_alive = worker_thread.is_alive()
+            if still_alive:
                 _garmin_error_event(
                     "worker_shutdown_timeout",
-                    worker_name=self._sync_thread.name,
+                    worker_name=worker_thread.name,
                     timeout_seconds=timeout_seconds,
-                    still_alive=True,
+                    still_alive=still_alive,
                 )
 
     def _bg_worker(self, interval_hours: int):
