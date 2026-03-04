@@ -245,3 +245,57 @@ def test_schedule_task_emits_scheduler_task_added_event(monkeypatch):
         and fields.get("source") == "unit_test"
         for action, fields in events
     )
+
+
+def test_send_weekly_plan_formats_and_delegates_to_send_message(monkeypatch):
+    captured = {"text": None}
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    def _send_message(text, parse_mode="Markdown"):
+        captured["text"] = text
+        return True
+
+    monkeypatch.setattr(bot, "send_message", _send_message)
+
+    result = bot.send_weekly_plan(
+        {
+            "phase": "BUILD",
+            "total_km": 62,
+            "quality_count": 2,
+            "easy_count": 3,
+            "rest_count": 1,
+            "lactate_threshold": 167,
+            "hrv_baseline": 61,
+            "tsb_status": "BALANCED",
+            "daily_sessions": [
+                {
+                    "day": "Monday",
+                    "session_type": "EASY",
+                    "distance_km": 10,
+                    "details": "Easy aerobic",
+                    "optimal_time": "06:00",
+                }
+            ],
+            "motivation": "Keep moving",
+        }
+    )
+
+    assert result is True
+    assert "*WEEKLY TRAINING PLAN*" in captured["text"]
+    assert "Best time: 06:00" in captured["text"]
+
+
+def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
+    captured = {"text": None}
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    def _send_message(text, parse_mode="Markdown"):
+        captured["text"] = text
+        return True
+
+    monkeypatch.setattr(bot, "send_message", _send_message)
+
+    result = bot.send_alert("Title", "Body", level="unsupported")
+
+    assert result is True
+    assert captured["text"].startswith("ℹ️ *Title*")
