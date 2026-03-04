@@ -88,7 +88,12 @@ failed."
 
 ---
 
-### T1-04 · Hardcoded safety thresholds bypassing `thresholds.py` 🟠
+### T1-04 · Hardcoded safety thresholds bypassing `thresholds.py` ✅ RESOLVED
+
+**Status (2026-03-04):** Fixed. `titan/science/volume_load_gauge.py` and
+`titan/science/adaptive_priority_lock.py` now import the canonical constants from
+`titan/config/thresholds.py` (`HARD_STOP_TSB_FLOOR`, `VO2_ACWR_MAX`) instead of
+duplicating literal values.
 
 **Three locations where constants are duplicated instead of imported:**
 
