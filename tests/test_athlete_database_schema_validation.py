@@ -1,7 +1,9 @@
 import json
+import logging
 
 import pytest
 
+from titan.core import database
 from titan.core.database import AthleteDatabase
 
 
@@ -150,3 +152,33 @@ def test_load_all_reraises_unexpected_errors(tmp_path, monkeypatch):
 
     with pytest.raises(RuntimeError, match="unexpected parsing failure"):
         AthleteDatabase(db_path=str(db_dir))
+
+
+def test_athlete_database_init_logs_base_directory_fallback_when_file_missing(
+    tmp_path,
+    monkeypatch,
+    caplog,
+):
+    monkeypatch.delattr(database, "__file__", raising=False)
+
+    caplog.set_level(logging.WARNING, logger="titan.core.database")
+    AthleteDatabase(db_path=str(tmp_path / "athletes"))
+
+    payloads = [
+        record.message
+        for record in caplog.records
+        if "athlete_db_base_directory_fallback" in record.message
+    ]
+    assert payloads, "Expected athlete_db_base_directory_fallback structured warning"
+
+
+def test_athlete_database_init_uses_module_directory_when_file_present(tmp_path, caplog):
+    caplog.set_level(logging.WARNING, logger="titan.core.database")
+    AthleteDatabase(db_path=str(tmp_path / "athletes"))
+
+    payloads = [
+        record.message
+        for record in caplog.records
+        if "athlete_db_base_directory_fallback" in record.message
+    ]
+    assert payloads == []

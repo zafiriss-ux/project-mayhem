@@ -116,7 +116,17 @@ class DatabaseManager:
             try:
                 from launcher.validator import get_data_directory
                 base_dir = get_data_directory()
-            except ImportError:
+            except ModuleNotFoundError as error:
+                if error.name not in {"launcher", "launcher.validator"}:
+                    raise
+
+                _database_event(
+                    "db_init_data_directory_fallback",
+                    level=logging.WARNING,
+                    error_class=type(error).__name__,
+                    error_message=str(error),
+                )
+
                 # Fallback for standalone titan module usage (development)
                 import os
                 import platform
@@ -161,7 +171,6 @@ class DatabaseManager:
 
         # Log PRAGMA results for debugging (frozen mode validation)
         try:
-            import logging
             logger = logging.getLogger('titan.database')
             logger.info(f"Database initialized: {self.db_path}")
             logger.info(f"PRAGMA journal_mode: {journal_mode}")
@@ -1002,10 +1011,17 @@ class AthleteDatabase:
             db_path: Directory name for athlete storage
         """
         # Get the directory where the script is running
+        file_path = globals().get("__file__")
         try:
-            base_dir = Path(__file__).parent.parent.parent.absolute()
-        except NameError:
+            base_dir = Path(file_path).parent.parent.parent.absolute()
+        except TypeError as error:
             # Fallback for IDLE/Jupyter
+            _database_event(
+                "athlete_db_base_directory_fallback",
+                level=logging.WARNING,
+                error_class=type(error).__name__,
+                error_message=str(error),
+            )
             base_dir = Path.cwd()
 
         self.db_path = base_dir / db_path
