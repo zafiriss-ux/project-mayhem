@@ -4,6 +4,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=titan --cov-fail-under=80 --cov-report=term-missing"
+markers = [
+    "timeout: mark test with a timeout budget",
+]
 [tool.coverage.run]
 source = ["titan"]
 omit = ["*/tests/*", "test_*.py"]

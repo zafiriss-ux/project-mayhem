@@ -140,6 +140,18 @@ def test_parse_env_number_happy_path(monkeypatch):
     assert value == 36
 
 
+def test_parse_env_number_invalid_value_logs_and_exits(monkeypatch, caplog):
+    monkeypatch.setenv("ATHLETE_WEIGHT", "not-a-number")
+
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit):
+        titan_main._parse_env_number("ATHLETE_WEIGHT", "75", float)
+
+    record = next(r for r in caplog.records if r.msg == "startup_failure")
+    assert record.component == "launcher"
+    assert record.error_class == "ValueError"
+    assert "ATHLETE_WEIGHT='not-a-number'" in record.detail
+
+
 def test_main_credentials_failure_logs_structured_startup_event(monkeypatch, caplog):
     monkeypatch.setattr(titan_main, "_print_banner", lambda: None)
     monkeypatch.setattr(titan_main, "ensure_credentials", lambda: False)
@@ -217,6 +229,25 @@ def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch
     assert {"today", "week", "stats", "recovery", "nutrition", "sync", "activities", "drift", "shoes", "calibration"}.issubset(telegram.commands)
 
 
+def test_main_smoke_uses_profile_defaults_when_env_missing(monkeypatch):
+    _garmin, _weather, _telegram, _db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    captured_ctx = {}
+    monkeypatch.setattr(titan_main, "main_menu", lambda ctx: captured_ctx.update(ctx))
+
+    titan_main.main()
+
+    assert captured_ctx["athlete_profile"] == {
+        "name": "Athlete",
+        "age": 35,
+        "weight_kg": 75.0,
+        "height_cm": 175.0,
+        "max_hr": 190,
+        "threshold_hr": 168,
+        "phase": "BUILD",
+        "goal": "5K",
+    }
+
+
 def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
     _patch_main_dependencies(monkeypatch)
     called = {"menu": 0}
@@ -263,3 +294,16 @@ def test_main_weekly_task_callback_sends_generated_plan(monkeypatch):
     assert weekly_planner.calls[0]["phase"] == "TAPER"
     assert captured["ctx"]["last_weekly_plan"] == {"status": "ok"}
     assert telegram.sent_weekly_plans == [{"status": "ok"}]
+
+
+def test_main_runtime_error_still_executes_shutdown_cleanup(monkeypatch):
+    garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    monkeypatch.setattr(titan_main, "main_menu", lambda _ctx: (_ for _ in ()).throw(RuntimeError("boom")))
+
+    with pytest.raises(RuntimeError, match="boom"):
+        titan_main.main()
+
+    assert garmin.stop_calls == 1
+    assert weather.stop_calls == 1
+    assert telegram.stop_calls == 1
+    assert db.closed is True
