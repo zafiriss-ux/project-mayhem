@@ -92,7 +92,6 @@ class WeatherAPI:
         self.cache_timestamp = None
         self.cache_duration_hours = 1
         self._update_thread = None
-        self._stop_update = False
         self._stop_event = threading.Event()
         self._coords: tuple[float, float] | None = None  # cached geocoding result
 
@@ -505,7 +504,6 @@ class WeatherAPI:
         if self._update_thread and self._update_thread.is_alive():
             return
 
-        self._stop_update = False
         self._stop_event.clear()
         self._update_thread = threading.Thread(
             target=self._background_update_worker, args=(interval_hours,), daemon=True
@@ -515,7 +513,6 @@ class WeatherAPI:
 
     def stop_background_updates(self):
         """Stop background updates."""
-        self._stop_update = True
         self._stop_event.set()
         if self._update_thread:
             self._update_thread.join(timeout=5)

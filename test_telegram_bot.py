@@ -126,7 +126,6 @@ class TestTelegramBotInit:
         assert bot.scheduled_tasks == []
 
     def test_stop_flag_false_on_init(self, bot):
-        assert bot._stop is False
         assert bot._stop_event.is_set() is False
 
 

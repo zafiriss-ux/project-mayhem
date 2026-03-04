@@ -109,7 +109,6 @@ class GarminSync:
             "skipped_days": 0,
         }
         self._sync_thread: threading.Thread | None = None
-        self._stop_sync = False
         self._stop_event = threading.Event()
 
     # ------------------------------------------------------------------ #
@@ -363,7 +362,6 @@ class GarminSync:
     def start_background_sync(self, interval_hours: int = 6):
         if self._sync_thread and self._sync_thread.is_alive():
             return
-        self._stop_sync = False
         self._stop_event.clear()
         self._sync_thread = threading.Thread(
             target=self._bg_worker, args=(interval_hours,), daemon=True, name="GarminSync"
@@ -372,7 +370,6 @@ class GarminSync:
         print(f"✅ Garmin background sync started (every {interval_hours}h)")
 
     def stop_background_sync(self):
-        self._stop_sync = True
         self._stop_event.set()
         if self._sync_thread and self._sync_thread.is_alive():
             self._sync_thread.join(timeout=5)
