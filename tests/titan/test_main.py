@@ -362,3 +362,301 @@ def test_main_emits_operational_startup_and_shutdown_events(monkeypatch, caplog)
     assert "scheduled_tasks_configured" in log_messages
     assert "shutdown_started" in log_messages
     assert "shutdown_completed" in log_messages
+
+
+class _CallbackTelegram:
+    def __init__(self):
+        self.commands = {}
+        self.sent_weekly_plans = []
+
+    def register_command(self, name, callback):
+        self.commands[name] = callback
+
+    def send_weekly_plan(self, plan):
+        self.sent_weekly_plans.append(plan)
+
+
+class _RaisingNutrition:
+    def analyze_weight_trend(self):
+        raise RuntimeError("nutrition unavailable")
+
+
+class _CallbackDailyCoach:
+    def __init__(self, summary):
+        self.summary = summary
+        self.outcome_tracker = self
+
+    def run_morning_routine(self):
+        return None
+
+    def get_calibration_summary(self):
+        return self.summary
+
+
+class _CallbackHRV:
+    def get_hrv_summary(self):
+        return {"baseline": 52, "trend": "UP", "latest_hrv": 54}
+
+
+class _CallbackTSB:
+    ctl = 81.2
+    atl = 69.7
+
+    def calculate_tsb(self):
+        return (11.5, "FRESH")
+
+
+class _CallbackReadiness:
+    def analyze_readiness(self, **_kwargs):
+        return {"score": 88, "status": "READY", "recommendation": "Train as planned"}
+
+
+class _CallbackOptTime:
+    def calculate_optimal_time(self, **_kwargs):
+        return {"recommended_time": "06:30"}
+
+
+class _CallbackGarmin:
+    def sync_all(self):
+        return {
+            "activities": [{"distance_km": 8.0}],
+            "weight": [72.1],
+            "hrv": [52],
+            "sleep": ["ok"],
+        }
+
+    def sync_activities(self, days_back):
+        if days_back == 14:
+            return [{"avg_hr": 151, "duration_sec": 3600}]
+        return [{"date": "2026-03-01", "distance_km": 10.2, "avg_hr": 149}]
+
+
+class _CallbackDrift:
+    def analyze_cardiac_drift(self, **_kwargs):
+        return {"drift_percent": 3.1, "assessment": "STABLE", "lt_zone": "AEROBIC"}
+
+
+class _CallbackEquipment:
+    def recommend_shoe(self, session_type):
+        return f"Shoe for {session_type}"
+
+
+class _CallbackPlanner:
+    def generate_weekly_plan(self, athlete_profile, phase):
+        return {"phase": phase, "athlete": athlete_profile.get("name", "unknown")}
+
+
+def _make_callback_context(summary):
+    return {
+        "daily_coach": _CallbackDailyCoach(summary),
+        "weekly_planner": _CallbackPlanner(),
+        "athlete_profile": {"name": "Ada", "phase": "PEAK"},
+        "hrv_engine": _CallbackHRV(),
+        "tsb_engine": _CallbackTSB(),
+        "readiness_engine": _CallbackReadiness(),
+        "nutrition_optimizer": type(
+            "Nutrition",
+            (),
+            {
+                "analyze_weight_trend": lambda self: {"current_weight": 63.2},
+                "calculate_daily_nutrition": lambda self, **_kwargs: {
+                    "carbs_g": 320,
+                    "protein_g": 118,
+                    "fat_g": 72,
+                    "total_calories": 2650,
+                },
+            },
+        )(),
+        "optimal_time_calc": _CallbackOptTime(),
+        "garmin": _CallbackGarmin(),
+        "drift_engine": _CallbackDrift(),
+        "equipment": _CallbackEquipment(),
+        "last_garmin_data": {},
+        "today_session_type": "TEMPO",
+    }
+
+
+def test_register_telegram_callbacks_success_paths_cover_command_wiring():
+    summary = {
+        "status": "CALIBRATED",
+        "n_decisions": 24,
+        "n_with_outcome": 20,
+        "completion_rate": 0.8,
+        "governance_lock_rate": 0.2,
+        "athlete_override_rate": 0.05,
+        "avg_rpe_when_completed": 6.2,
+        "lock_rate_by_phase": {"BUILD": 0.3},
+        "lock_outcome_correlation": {
+            "high_fatigue": {"completion_delta_pp": 14, "n_with_lock": 10, "n_without_lock": 8}
+        },
+        "heuristic_promotion_candidates": [
+            {"parameter": "drift_threshold", "completion_delta_pp": 12, "n_with_lock": 9, "n_without_lock": 7, "trigger_lock": "fatigue_lock"}
+        ],
+        "moderate_promotion_candidates": [
+            {
+                "parameter": "hrv_floor",
+                "completion_delta_pp": 7,
+                "n_with_lock": 11,
+                "n_without_lock": 10,
+                "phase_replication_count": 2,
+                "profile_replication_count": 1,
+                "trigger_lock": "recovery_lock",
+            }
+        ],
+        "calibration_note": "Stable evidence",
+    }
+    telegram = _CallbackTelegram()
+    ctx = _make_callback_context(summary)
+
+    titan_main._register_telegram_callbacks(telegram, ctx)
+
+    assert set(telegram.commands) == {
+        "today",
+        "week",
+        "stats",
+        "recovery",
+        "nutrition",
+        "sync",
+        "activities",
+        "drift",
+        "shoes",
+        "calibration",
+    }
+    assert "✅" in telegram.commands["today"]()
+    assert "✅" in telegram.commands["week"]()
+    assert telegram.sent_weekly_plans[-1]["phase"] == "PEAK"
+    assert "📊 *STATS*" in telegram.commands["stats"]()
+    assert "💊 *RECOVERY*" in telegram.commands["recovery"]()
+    assert "🍽 *NUTRITION" in telegram.commands["nutrition"]()
+    assert "🔄 *SYNC COMPLETE*" in telegram.commands["sync"]()
+    assert "🏃 *RECENT ACTIVITIES*" in telegram.commands["activities"]()
+    assert "📉 *CARDIAC DRIFT*" in telegram.commands["drift"]()
+    assert "👟 *SHOE RECOMMENDATION*" in telegram.commands["shoes"]()
+    assert "• Status: CALIBRATED" in telegram.commands["calibration"]()
+    assert "HEURISTIC→MODERATE" in telegram.commands["calibration"]()
+
+
+def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messages():
+    class _RaisingCoach:
+        def __init__(self):
+            self.outcome_tracker = self
+
+        def run_morning_routine(self):
+            raise RuntimeError("coach down")
+
+        def get_calibration_summary(self):
+            raise RuntimeError("calibration down")
+
+    class _RaisingPlanner:
+        def generate_weekly_plan(self, **_kwargs):
+            raise RuntimeError("planner down")
+
+    class _RaisingTSB:
+        def calculate_tsb(self):
+            raise RuntimeError("tsb down")
+
+    class _RaisingReadiness:
+        def analyze_readiness(self, **_kwargs):
+            raise RuntimeError("readiness down")
+
+    class _RaisingGarmin:
+        def sync_all(self):
+            raise RuntimeError("sync failed")
+
+        def sync_activities(self, days_back):
+            return [] if days_back == 14 else (_ for _ in ()).throw(RuntimeError("activities failed"))
+
+    class _RaisingDrift:
+        def analyze_cardiac_drift(self, **_kwargs):
+            raise RuntimeError("drift down")
+
+    class _RaisingEquipment:
+        def recommend_shoe(self, _session_type):
+            raise RuntimeError("equipment down")
+
+    telegram = _CallbackTelegram()
+    ctx = {
+        "daily_coach": _RaisingCoach(),
+        "weekly_planner": _RaisingPlanner(),
+        "athlete_profile": {},
+        "hrv_engine": _CallbackHRV(),
+        "tsb_engine": _RaisingTSB(),
+        "readiness_engine": _RaisingReadiness(),
+        "nutrition_optimizer": _RaisingNutrition(),
+        "optimal_time_calc": _CallbackOptTime(),
+        "garmin": _RaisingGarmin(),
+        "drift_engine": _RaisingDrift(),
+        "equipment": _RaisingEquipment(),
+        "last_garmin_data": {},
+    }
+
+    titan_main._register_telegram_callbacks(telegram, ctx)
+
+    assert telegram.commands["today"]().startswith("❌")
+    assert telegram.commands["week"]().startswith("❌")
+    assert telegram.commands["stats"]().startswith("❌")
+    assert telegram.commands["recovery"]().startswith("❌")
+    assert telegram.commands["nutrition"]().startswith("❌")
+    assert telegram.commands["sync"]().startswith("❌ Garmin sync failed")
+    assert telegram.commands["activities"]().startswith("❌")
+    assert telegram.commands["drift"]() == "Δεν υπάρχουν activities για drift analysis."
+    assert telegram.commands["shoes"]().startswith("❌")
+    assert telegram.commands["calibration"]().startswith("❌")
+
+
+def test_register_telegram_callbacks_calibration_no_outcomes_and_shoe_missing_manager():
+    summary = {"status": "NO_OUTCOMES_YET", "n_decisions": 5, "note": "Need outcomes"}
+    telegram = _CallbackTelegram()
+    ctx = _make_callback_context(summary)
+    ctx["equipment"] = None
+
+    titan_main._register_telegram_callbacks(telegram, ctx)
+
+    calibration = telegram.commands["calibration"]()
+    assert "Status: NO_OUTCOMES_YET" in calibration
+    assert "Outcomes paired: 0" in calibration
+    assert telegram.commands["shoes"]() == "⏳ Equipment manager not configured."
+
+
+def test_main_shutdown_logs_worker_timeout_before_database_close(monkeypatch, caplog):
+    garmin, weather, telegram, db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    close_order = []
+
+    class _AliveThread:
+        def is_alive(self):
+            return True
+
+        def join(self, timeout):
+            close_order.append(f"join_{timeout}")
+
+    daily_coach._routine_thread = _AliveThread()
+    monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
+
+    original_close = db.close
+
+    def _tracking_close():
+        close_order.append("db_close")
+        original_close()
+
+    db.close = _tracking_close
+
+    with caplog.at_level(logging.INFO):
+        titan_main.main()
+
+    timeout_record = next(r for r in caplog.records if r.msg == "worker_shutdown_timeout")
+    assert timeout_record.worker_name == "DailyCoachRoutine"
+    assert close_order == ["join_30", "db_close"]
+    assert garmin.stop_calls == 1
+    assert weather.stop_calls == 1
+    assert telegram.stop_calls == 1
+
+
+def test_parse_env_number_type_error_uses_same_validation_exit_path(monkeypatch, caplog):
+    monkeypatch.setenv("ATHLETE_AGE", "bad")
+
+    with caplog.at_level(logging.ERROR), pytest.raises(SystemExit):
+        titan_main._parse_env_number("ATHLETE_AGE", "35", lambda _v: (_ for _ in ()).throw(TypeError("bad type")))
+
+    record = next(r for r in caplog.records if r.msg == "startup_failure")
+    assert record.error_class == "TypeError"
+    assert "ATHLETE_AGE='bad'" in record.detail
