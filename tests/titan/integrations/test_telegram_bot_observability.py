@@ -7,6 +7,23 @@ import titan.integrations.telegram_bot as telegram_bot
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 
+class _FakeTeleBot:
+    def __init__(self):
+        self.handlers = {}
+        self.replies = []
+
+    def message_handler(self, commands):
+        def _decorator(fn):
+            for command in commands:
+                self.handlers[command] = fn
+            return fn
+
+        return _decorator
+
+    def reply_to(self, message, text):
+        self.replies.append((message, text))
+
+
 def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -18,6 +35,52 @@ def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
         action == "failure"
         and fields.get("failure_class") == telegram_bot.SEND_FAIL
         and fields.get("reason") == "fallback_console_only"
+        for action, fields in events
+    )
+
+
+def test_send_message_without_chat_id_returns_false_and_emits_missing_chat_id_events(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "")
+
+    bot = TitanTelegramBot(bot_token="", chat_id=None)
+
+    assert bot.send_message("hello") is False
+    assert any(action == "slo_alert" and fields.get("slo_key") == "telegram_delivery_missing_chat_id" for action, fields in events)
+    assert any(
+        action == "failure"
+        and fields.get("failure_class") == telegram_bot.SEND_FAIL
+        and fields.get("reason") == "missing_chat_id"
+        for action, fields in events
+    )
+
+
+def test_send_message_telegram_api_success_records_history(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = MagicMock()
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+
+    assert bot.send_message("hello", parse_mode="HTML") is True
+    bot.bot.send_message.assert_called_once_with(123, "hello", parse_mode="HTML")
+    assert bot.message_history[-1]["delivery_mode"] == "telegram_api"
+
+
+def test_send_message_telegram_api_error_returns_false(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = MagicMock()
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot.bot.send_message.side_effect = RuntimeError("send failed")
+
+    assert bot.send_message("hello") is False
+    assert any(action == "slo_alert" and fields.get("slo_key") == "telegram_delivery_failed" for action, fields in events)
+    assert any(
+        action == "failure"
+        and fields.get("failure_class") == telegram_bot.SEND_FAIL
+        and fields.get("error_class") == "RuntimeError"
         for action, fields in events
     )
 
@@ -137,6 +200,78 @@ def test_init_missing_token_fails_safely(monkeypatch):
     assert bot.bot is None
 
 
+def test_register_handlers_no_bot_is_noop():
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = None
+    bot._register_handlers()
+
+
+def test_command_handlers_route_to_callbacks_and_fallbacks():
+    fake_bot = _FakeTeleBot()
+    bot = TitanTelegramBot(bot_token="", chat_id=999)
+    bot.bot = fake_bot
+    bot._register_handlers()
+
+    message = type("_Message", (), {"chat": type("_Chat", (), {"id": 321})()})()
+
+    callback_matrix = {
+        "today": ("⏳ Calculating...", "⏳ Daily coach not ready yet."),
+        "week": ("⏳ Generating plan...", "⏳ Weekly planner not ready yet."),
+        "stats": ("⏳ Loading stats...", "⏳ Stats not ready yet."),
+        "recovery": ("⏳ Checking recovery...", "⏳ Recovery engine not ready."),
+        "nutrition": ("⏳ Building nutrition plan...", "⏳ Nutrition optimizer not ready."),
+        "activities": ("No activities found.", "⏳ Activity data not ready."),
+        "drift": ("No drift data yet.", "⏳ Drift analysis not ready."),
+        "shoes": ("No shoe data configured.", "⏳ Equipment manager not ready."),
+        "calibration": ("⏳ No calibration data yet.", "⏳ Outcome tracker not ready."),
+    }
+
+    for command, (empty_fallback, no_callback_fallback) in callback_matrix.items():
+        fake_bot.replies.clear()
+        bot.cmd_callbacks.pop(command, None)
+        fake_bot.handlers[command](message)
+        assert fake_bot.replies[-1][1] == no_callback_fallback
+
+        fake_bot.replies.clear()
+        bot.cmd_callbacks[command] = lambda: ""
+        fake_bot.handlers[command](message)
+        assert fake_bot.replies[-1][1] == empty_fallback
+
+        fake_bot.replies.clear()
+        bot.cmd_callbacks[command] = lambda: "READY"
+        fake_bot.handlers[command](message)
+        assert fake_bot.replies[-1][1] == "READY"
+
+    fake_bot.replies.clear()
+    bot.cmd_callbacks.pop("sync", None)
+    fake_bot.handlers["sync"](message)
+    assert fake_bot.replies[0][1] == "🔄 Starting Garmin sync..."
+    assert fake_bot.replies[1][1] == "⏳ Sync not available yet."
+
+    fake_bot.replies.clear()
+    bot.cmd_callbacks["sync"] = lambda: ""
+    fake_bot.handlers["sync"](message)
+    assert fake_bot.replies[0][1] == "🔄 Starting Garmin sync..."
+    assert fake_bot.replies[1][1] == "✅ Sync complete."
+
+    fake_bot.replies.clear()
+    bot.cmd_callbacks["sync"] = lambda: "SYNCED"
+    fake_bot.handlers["sync"](message)
+    assert fake_bot.replies[1][1] == "SYNCED"
+
+    fake_bot.handlers["start"](message)
+    assert bot.chat_id == 321
+    assert "Available Commands" in fake_bot.replies[-1][1]
+
+
+def test_register_command_overwrites_existing_callback():
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.register_command("today", lambda: "A")
+    bot.register_command("today", lambda: "B")
+
+    assert bot.cmd_callbacks["today"]() == "B"
+
+
 def test_scheduler_worker_continues_when_stop_event_not_set(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     calls = []
@@ -188,6 +323,42 @@ def test_stop_bot_sets_event_and_joins_threads():
     bot._poll_thread.join.assert_called_once_with(timeout=5)
 
 
+def test_start_bot_when_already_running_returns_without_spawning_threads(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.is_running = True
+    thread_ctor = MagicMock()
+    monkeypatch.setattr(telegram_bot.threading, "Thread", thread_ctor)
+
+    bot.start_bot()
+
+    thread_ctor.assert_not_called()
+
+
+def test_start_bot_with_polling_backend_starts_both_threads(monkeypatch):
+    created_threads = []
+
+    class _FakeThread:
+        def __init__(self, target, daemon, name):
+            self.target = target
+            self.daemon = daemon
+            self.name = name
+            self.started = False
+            created_threads.append(self)
+
+        def start(self):
+            self.started = True
+
+    monkeypatch.setattr(telegram_bot.threading, "Thread", _FakeThread)
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = MagicMock()
+
+    bot.start_bot()
+
+    assert [t.name for t in created_threads] == ["TelegramScheduler", "TelegramPoller"]
+    assert all(t.started for t in created_threads)
+
+
 def test_stop_bot_emits_shutdown_timeout_for_scheduler_thread(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -226,6 +397,50 @@ def test_stop_bot_emits_shutdown_timeout_for_poll_thread(monkeypatch):
         and fields.get("still_alive") is True
         for action, fields in events
     )
+
+
+def test_poll_worker_reports_poll_fail_and_waits_before_retry(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = MagicMock()
+    bot.bot.infinity_polling.side_effect = RuntimeError("network")
+
+    calls = {"count": 0}
+
+    def _wait(timeout):
+        calls["count"] += 1
+        bot._stop_event.set()
+        return False
+
+    monkeypatch.setattr(bot._stop_event, "wait", _wait)
+
+    bot._poll_worker()
+
+    assert calls["count"] == 1
+    assert any(
+        action == "failure"
+        and fields.get("failure_class") == telegram_bot.POLL_FAIL
+        and fields.get("subsystem") == "poll_worker"
+        for action, fields in events
+    )
+
+
+def test_poll_worker_ignores_exception_once_stop_event_is_set(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.bot = MagicMock()
+
+    def _boom(*args, **kwargs):
+        bot._stop_event.set()
+        raise RuntimeError("stopped")
+
+    bot.bot.infinity_polling.side_effect = _boom
+
+    bot._poll_worker()
+
+    assert events == []
 
 def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
@@ -294,6 +509,64 @@ def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeyp
     worker.join(timeout=2)
 
     assert not errors
+
+
+def test_scheduler_worker_emits_drift_and_callback_error(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    class _Now:
+        def __init__(self, second):
+            self.second = second
+
+        def strftime(self, value):
+            if value == "%H:%M":
+                return "07:00"
+            if value == "%A":
+                return "Monday"
+            raise AssertionError("unexpected format")
+
+    now_values = iter([_Now(0), _Now(0)])
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: next(now_values))}))
+    time_values = iter([100.0, 170.0])
+
+    def _time_now():
+        return next(time_values, 170.0)
+
+    monkeypatch.setattr(telegram_bot.time, "time", _time_now)
+
+    bot.scheduled_tasks = [
+        {
+            "name": "crash",
+            "time": "07:00",
+            "days": ["Monday"],
+            "callback": lambda: (_ for _ in ()).throw(RuntimeError("boom")),
+        }
+    ]
+
+    waits = {"count": 0}
+
+    def _wait(timeout):
+        waits["count"] += 1
+        if waits["count"] >= 2:
+            bot._stop_event.set()
+        return False
+
+    monkeypatch.setattr(bot._stop_event, "wait", _wait)
+
+    bot._scheduler_worker()
+
+    assert any(
+        action == "failure" and fields.get("failure_class") == telegram_bot.SCHEDULER_DRIFT
+        for action, fields in events
+    )
+    assert any(
+        action == "failure"
+        and fields.get("failure_class") == telegram_bot.CALLBACK_ERROR
+        and fields.get("task_name") == "crash"
+        for action, fields in events
+    )
 
 
 def test_schedule_task_emits_scheduler_task_added_event(monkeypatch):
