@@ -233,6 +233,15 @@ If any acceptance criterion fails mid-task:
 4. Re-run the acceptance gate from scratch.
 5. Only then continue.
 
+**Anti-loop rule:**
+- Do NOT repeat the same command/run without returning new evidence.
+- Every stop-the-line report MUST include:
+  - the exact failing test nodeid + traceback (RED), OR
+  - the exact warning text + origin (YELLOW), OR
+  - the missing module/import error line (PURPLE), OR
+  - the last printed test nodeid + durations output (ORANGE).
+- A response that says "tests failing" / "stuck" without the above evidence is NOT ACCEPTABLE.
+
 ---
 
 ### Rule E4 — No scope creep, ever
@@ -262,6 +271,8 @@ There is no "mostly done", "should be fine", or "looks good". Binary only.
 
 This protocol applies to every engineer and AI assistant working on this codebase. When any test fails, do not improvise. Identify the category and follow the exact protocol below. These rules are non-negotiable.
 
+**Note on coverage:** The repo enforces a global coverage threshold. Running a single test or small subset may FAIL solely due to coverage (even if all tests passed). Treat "coverage threshold not reached" on a subset run as a diagnostic artifact, NOT a code regression. Acceptance gates always require the canonical full suite (Gate 3).
+
 ---
 
 ### 🔴 RED — A test is failing (assertion / runtime error)
@@ -269,7 +280,8 @@ This protocol applies to every engineer and AI assistant working on this codebas
 Send this **verbatim** before doing anything else:
 
 > A test is failing.
-> 1) Run the full suite and identify the FIRST failing test.
+> 1) Run the suite and identify the FIRST failing test (deterministically):
+>    python -m pytest -x
 > 2) Do NOT modify the test unless it is objectively incorrect.
 > 3) Determine whether the failure is:
 >    A) Code regression
@@ -308,6 +320,27 @@ Send this **verbatim** before doing anything else:
 > 3) Fix dependency resolution only.
 > 4) Do not modify application logic.
 > 5) Re-run full suite.
+
+---
+
+### 🟠 ORANGE — Hang / slow test (no failure, progress unclear)
+
+**Symptoms:** pytest shows no new output for an extended period, or user reports "it's stuck" but no failing test exists.
+
+Send this **verbatim** before doing anything else:
+
+> The suite appears slow or hung (no failing test yet).
+> 1) Do NOT assume failure. Do NOT start fixing code.
+> 2) Identify the exact running / last completed test:
+>    python -m pytest -vv
+> 3) Identify the slowest tests:
+>    python -m pytest --durations=20
+> 4) If a specific test is suspected, run only that test with output:
+>    python -m pytest -vv -s <file>::<test_name>
+> 5) Only if the same test deterministically hangs: fix the minimal root cause,
+>    then re-run the full suite.
+
+**Important:** A perceived hang is NOT RED/YELLOW/PURPLE until a failing nodeid or import error is proven. Do not loop — every re-run must add new information (nodeid or durations output).
 
 ---
 
