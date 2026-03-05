@@ -17,6 +17,21 @@ issue/PR that references the tier and item number below.
 Items are organised into 5 tiers. Work within a tier must be completed before starting
 on the next, except where explicitly marked as independent.
 
+**PARTIAL → child item policy (mandatory):** When an item is partially resolved, a child
+item must be created immediately to track the remaining scope. The parent item is marked
+`PARTIALLY RESOLVED` with explicit scope boundaries. The child item is numbered sequentially
+(e.g., T3-06 partial → T3-08 child). This prevents "mostly done" ambiguity and keeps the
+register binary per Rule E5. See T3-06/T3-08 and T2-09/T2-11 as canonical examples.
+
+**Phase 7.7 execution sequence (per ADR-0019):**
+```
+T1-13 (must pass gate first)
+  └─→ T1-14 (after T1-13 gate passes)
+  └─→ T2-09, T2-10, T2-11, T3-08 (can start in parallel after T1-13 — not blocked on T1-14)
+```
+This is a binding execution contract. Do not start T1-14 before T1-13 passes. Do not wait
+for T1-14 to start T2/T3 items.
+
 ---
 
 ## TIER 1 — Data Integrity (Non-negotiable; fix before any new feature)
@@ -457,6 +472,10 @@ of the 6 methods (mirror the T1-10 test matrix in ADR-0018 §A1).
 that does not crash the system — it silently inflates training load and corrupts the
 CTL/ATL/TSB baseline used by all governance gates.
 **Source:** ADR-0019 (architectural decision for idempotency contract).
+**Execution readiness:** READY TO EXECUTE. ADR-0019 is Accepted (2026-03-05) — the
+idempotency contract is fully decided (INSERT OR IGNORE, partial unique index, nullable
+`garmin_activity_id`). This item is NOT blocked. Prerequisite: T1-13 acceptance gate
+must pass first.
 
 **Location:** `titan/core/database.py` — `create_database()`, `save_session()`; and
 `titan/orchestration/daily_coach.py` — `_persist_garmin_data()`
@@ -742,6 +761,11 @@ following Rule E2 subsystem sequence.
 analysis (2026-03-05). See ADR-0019.
 **Priority:** P1. This is a semantic safety gap — governance makes decisions after restart
 without knowing whether its input engines have valid baselines.
+**Architect decision:** MADE. ADR-0019 Decision 5 is the authoritative contract for this
+item. The conservative-mode intensity ceiling (cap at EASY when `data_confidence_low=True`)
+is explicitly classified as an advisory downgrade — not a hard stop, not a lock code. The
+3/5 threshold, `GovernanceContext.data_confidence_low` field, and single-routine scope are
+all decided. No new ADR is required. This is an engineering execution task.
 
 **Location:** `titan/orchestration/daily_coach.py` — `_hydrate_engines_from_db()` and
 `run_morning_routine()` (governance context construction)
