@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock
 
+import titan.integrations.weather_api as weather_api
 from titan.integrations.weather_api import WeatherAPI
 
 
@@ -59,6 +60,25 @@ def test_stop_background_updates_sets_event_and_joins_thread():
     api._update_thread.join.assert_called_once_with(timeout=5)
 
 
+def test_stop_background_updates_emits_shutdown_timeout_when_thread_stays_alive(monkeypatch):
+    events = []
+    monkeypatch.setattr(weather_api, "_weather_event", lambda action, **fields: events.append((action, fields)))
+
+    api = WeatherAPI(location="Athens,GR")
+    api._update_thread = MagicMock()
+    api._update_thread.is_alive.return_value = True
+
+    api.stop_background_updates()
+
+    assert any(
+        action == "worker_shutdown_timeout"
+        and fields.get("level") == weather_api.logging.ERROR
+        and fields.get("worker_name") == "WeatherUpdater"
+        and fields.get("timeout_seconds") == 5
+        and fields.get("still_alive") is True
+        for action, fields in events
+    )
+
 def test_get_current_conditions_live_marks_data_quality(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
@@ -99,8 +119,6 @@ def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplo
     assert degraded_events
     assert degraded_events[0]["error_class"] == "RuntimeError"
     assert degraded_events[0]["detail"] == "api_down"
-
-
 
 def test_calculate_dew_point_clamps_humidity_boundaries():
     assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=0) == -37.8

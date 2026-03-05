@@ -528,6 +528,14 @@ class WeatherAPI:
         self._stop_event.set()
         if self._update_thread:
             self._update_thread.join(timeout=5)
+        if self._update_thread and self._update_thread.is_alive():
+            _weather_event(
+                "worker_shutdown_timeout",
+                level=logging.ERROR,
+                worker_name="WeatherUpdater",
+                timeout_seconds=5,
+                still_alive=True,
+            )
 
     def _background_update_worker(self, interval_hours: int):
         """Background worker for weather updates."""

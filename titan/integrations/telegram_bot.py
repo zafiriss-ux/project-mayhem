@@ -419,10 +419,26 @@ class TitanTelegramBot:
                     error_class=e.__class__.__name__,
                     error_message=str(e),
                 )
-        if self._sched_thread and self._sched_thread.is_alive():
+        if self._sched_thread:
             self._sched_thread.join(timeout=5)
-        if self._poll_thread and self._poll_thread.is_alive():
+        if self._sched_thread and self._sched_thread.is_alive():
+            _telegram_event(
+                "worker_shutdown_timeout",
+                level="error",
+                worker_name="Scheduler",
+                timeout_seconds=5,
+                still_alive=True,
+            )
+        if self._poll_thread:
             self._poll_thread.join(timeout=5)
+        if self._poll_thread and self._poll_thread.is_alive():
+            _telegram_event(
+                "worker_shutdown_timeout",
+                level="error",
+                worker_name="Polling",
+                timeout_seconds=5,
+                still_alive=True,
+            )
 
     def _poll_worker(self):
         """Real polling loop – listens for user commands."""
