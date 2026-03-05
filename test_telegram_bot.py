@@ -9,6 +9,7 @@ Run with:
     pytest test_telegram_bot.py -v
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -144,11 +145,10 @@ class TestSendMessage:
         b = TitanTelegramBot(bot_token="", chat_id="")
         assert b.send_message("Hello") is False
 
-    def test_logs_to_stdout_in_fallback(self, bot, capsys):
-        bot.send_message("Test payload")
-        out = capsys.readouterr().out
-        # Fallback prints something — either "[Telegram]" prefix or the text
-        assert len(out) > 0
+    def test_logs_fallback_delivery_preview(self, bot, caplog):
+        with caplog.at_level(logging.INFO):
+            bot.send_message("Test payload")
+        assert any("telegram_fallback_delivery_preview" in record.message for record in caplog.records)
 
 
 # ════════════════════════════════════════════════════════════════════════════

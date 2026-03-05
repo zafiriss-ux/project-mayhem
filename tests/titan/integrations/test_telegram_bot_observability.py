@@ -1,5 +1,6 @@
 import threading
 import time
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import titan.integrations.telegram_bot as telegram_bot
@@ -299,3 +300,9 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
 
     assert result is True
     assert captured["text"].startswith("ℹ️ *Title*")
+
+
+
+def test_telegram_bot_has_no_print_calls():
+    source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
+    assert "print(" not in source
