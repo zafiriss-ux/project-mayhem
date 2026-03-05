@@ -298,21 +298,24 @@ built entirely on hardcoded fallback data.
 
 ---
 
-### T1-10 · DB write methods: cursor created outside lock — race window ⚠️ OPEN (ADR-0018-A1)
+### T1-10 · DB write methods: cursor created outside lock — race window ✅ RESOLVED (2026-03-05, ADR-0018-A1)
 
-**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
-**Priority:** Must be resolved before Phase 8 feature work begins.
+**Status (2026-03-05):** RESOLVED. The 6 write methods originally in scope
+(`save_daily_metric`, `save_session`, `save_hrr`, `update_shoe_mileage`, `add_shoe`,
+`save_personal_best`) now correctly place cursor creation inside `with self._lock:` with
+`_ensure_open_locked()` as the first call. Enforced pattern: lock →
+`_ensure_open_locked()` → cursor → execute → commit.
+**Note:** 6 additional governance/science write methods carry the same pattern error but
+were outside T1-10's original scope. Tracked as **T1-13**.
 
 **Location:** `titan/core/database.py` — `save_daily_metric()`, `save_session()`,
 `save_hrr()`, `update_shoe_mileage()`, `add_shoe()`, `save_personal_best()`
 
-**Problem:** All six write methods create `cursor = self.conn.cursor()` **before**
-entering the `with self._lock:` block. This means cursor creation happens outside the
-`_closed` check: if `db.close()` is called by the main thread concurrently (e.g., during
-shutdown), a cursor can be created against a closed connection, producing an unguarded
-`sqlite3.ProgrammingError`. The existing `_ensure_open_locked()` guard is called
-correctly by all **read** paths (lock → ensure_open → cursor) but has never been wired
-into the write paths.
+**Original problem:** All six write methods created `cursor = self.conn.cursor()` **before**
+entering the `with self._lock:` block. This meant cursor creation happened outside the
+`_closed` check: if `db.close()` was called by the main thread concurrently, a cursor
+could be created against a closed connection. The existing `_ensure_open_locked()` guard
+was correctly used by all **read** paths but had never been wired into the write paths.
 
 **Fix direction:**
 - Move `cursor = self.conn.cursor()` inside `with self._lock:` for all six write methods.
@@ -333,19 +336,20 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 
 ---
 
-### T1-11 · main.py shutdown: routine thread not joined before db.close() ⚠️ OPEN (ADR-0018-A2)
+### T1-11 · main.py shutdown: routine thread not joined before db.close() ✅ RESOLVED (2026-03-05, ADR-0018-A2)
 
-**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
-**Priority:** Must be resolved before Phase 8 feature work begins.
+**Status (2026-03-05):** RESOLVED. `main.py` `finally` block now explicitly joins
+`DailyCoach._routine_thread` (timeout=30s) before `db.close()`. If the thread is still
+alive after join, a structured `worker_shutdown_timeout` event is emitted at ERROR level
+with `(worker_name="DailyCoachRoutine", timeout_seconds=30, still_alive=True)`. Follows
+the T3-06 escalation pattern.
 
 **Location:** `titan/main.py` — `finally` block of `main()`
 
-**Problem:** The shutdown sequence is `garmin.stop → weather.stop → telegram.stop →
-db.close()`. There is no explicit `join()` of the `DailyCoach._routine_thread` before
-`db.close()`. If the morning routine is mid-execution at shutdown time, it will attempt
-DB operations (via the write methods from T1-10) against a closed connection, producing
-a `sqlite3.ProgrammingError`. T3-06 resolved the same issue for the three integration
-background workers. `DailyCoach._routine_thread` is the remaining unjoined thread.
+**Original problem:** The shutdown sequence was `garmin.stop → weather.stop → telegram.stop →
+db.close()` with no explicit `join()` of `DailyCoach._routine_thread` before `db.close()`.
+If the morning routine was mid-execution at shutdown time, it would attempt DB operations
+against a closed connection, producing a `sqlite3.ProgrammingError`.
 
 **Fix direction:**
 - After `telegram.stop_bot()` and before `db.close()`, add:
@@ -374,20 +378,19 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 
 ---
 
-### T1-12 · `_persist_garmin_data()`: non-atomic persistence — partial commit risk ⚠️ OPEN (ADR-0018-A3)
+### T1-12 · `_persist_garmin_data()`: non-atomic persistence — partial commit risk ✅ RESOLVED (2026-03-05, ADR-0018-A3)
 
-**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
-**Priority:** Must be resolved before Phase 8 feature work begins.
+**Status (2026-03-05):** RESOLVED. `_persist_garmin_data()` now wraps the full activity
+loop and `save_daily_metric()` in a single `with self.db.transaction():` block. On any
+failure the entire day's writes roll back atomically. The invariant holds: after the
+method returns, the database contains either all of today's data or none of it.
 
 **Location:** `titan/orchestration/daily_coach.py` — `_persist_garmin_data()`
 
-**Problem:** The method writes activities to `training_log` one-by-one (individual
-`save_session()` + individual `commit()` per activity), then writes daily metrics
-in a separate `save_daily_metric()` call with its own `commit()`. A crash or uncaught
-exception at any point in the loop leaves the database in a **partial day state**: some
-activities may be committed while others and/or the daily metrics row are absent. The
-governance engine reconstructs CTL/ATL from `training_log` on startup — an incomplete
-log silently corrupts the load calculation baseline.
+**Original problem:** The method wrote activities to `training_log` one-by-one with
+individual commits, then wrote daily metrics in a separate commit. A crash mid-loop left
+the database in a partial day state, silently corrupting the CTL/ATL load baseline used
+by the governance engine on startup.
 
 **Fix direction:**
 - Wrap the full activity loop + `save_daily_metric()` in a single SQLite transaction.
@@ -410,6 +413,105 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 corrected lock pattern in the write methods.
 **Tests:** 5 new tests in `tests/titan/orchestration/test_daily_coach.py` (see ADR-0018 Test Matrix §A3).
 **Commit ref:** `ref ADR-0018-A3`
+
+---
+
+### T1-13 · DB write methods: cursor race in governance/science paths — 6 methods unpatched ⚠️ OPEN
+
+**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3 (2026-03-05).
+**Priority:** Must be resolved before Phase 8. Block on T1-10 pattern — same fix, different scope.
+
+**Location:** `titan/core/database.py` — `update_glycogen_debt()`, `log_cs_performance()`,
+`log_override()`, `save_governance_decision()`, `update_governance_outcome()`,
+`annotate_governance_outcome()`
+
+**Problem:** These 6 write methods were not in the original T1-10 scope but carry the
+identical cursor race: `cursor = self.conn.cursor()` is called **before** `with self._lock:`.
+If `db.close()` runs concurrently, a cursor is created on a closed connection. The 4
+governance-path methods (`save_governance_decision`, `update_governance_outcome`,
+`annotate_governance_outcome`, `log_override`) are particularly important because they
+are called during governance decision commits — exactly the path that must be race-free.
+
+**Fix direction:**
+- Apply the identical pattern established in T1-10 to all 6 methods:
+  `with self._lock: → self._ensure_open_locked() → cursor = self.conn.cursor() → execute → commit`
+- No architecture change required. Surgical, one method at a time.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py   # must be zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
+```
+
+**Effort:** ~1h. Identical pattern to T1-10.
+**Tests:** Extend `tests/titan/core/test_database.py` — add concurrent-close tests for each
+of the 6 methods (mirror the T1-10 test matrix in ADR-0018 §A1).
+**Commit ref:** `ref T1-13`
+
+---
+
+### T1-14 · Garmin activity duplicate persistence — no idempotency key ⚠️ OPEN
+
+**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, C1 (2026-03-05).
+**Priority:** P0. Must be resolved before Phase 8. This is a data-integrity failure mode
+that does not crash the system — it silently inflates training load and corrupts the
+CTL/ATL/TSB baseline used by all governance gates.
+**Source:** ADR-0019 (architectural decision for idempotency contract).
+
+**Location:** `titan/core/database.py` — `create_database()`, `save_session()`; and
+`titan/orchestration/daily_coach.py` — `_persist_garmin_data()`
+
+**Problem:** `training_log` has no stable external identity column for Garmin-sourced
+activities. `save_session()` uses a plain `INSERT`, with no deduplication guard.
+Trigger scenarios that produce duplicate rows:
+1. Re-run sync over an overlapping date window (e.g., retry after timeout)
+2. Manual sync + background sync overlap over the same activity set
+3. Crash mid-`_persist_garmin_data()` followed by a full re-sync of that day
+
+**Impact:** Each duplicate inflates `training_load` in `training_log`. Since `get_ctl_atl_tsb()`
+and `get_training_load_history()` aggregate all rows for a date, duplicate rows produce
+inflated CTL/ATL, deflated TSB (more fatigue counted), and incorrect ACWR. Downstream:
+governance gates over-restrict because the system "thinks" the athlete is more loaded than
+they are.
+
+**Architect decision (ADR-0019):**
+- **Identity key**: `garmin_activity_id TEXT` column on `training_log`. Nullable — manually
+  entered sessions have no Garmin ID and must not be blocked.
+- **Uniqueness**: `CREATE UNIQUE INDEX ... WHERE garmin_activity_id IS NOT NULL` (partial
+  index — enforces uniqueness for Garmin rows only).
+- **Upsert strategy**: `INSERT OR IGNORE` — if an activity with the same `garmin_activity_id`
+  already exists, silently skip. Do **not** upsert/overwrite existing rows; historical records
+  are immutable. A deliberate correction requires a manual operator override path.
+- **Migration**: add column + index via `_run_migrations()` using the existing
+  `ALTER TABLE IF NOT EXISTS` pattern.
+
+**Fix direction:**
+1. Add `_run_migrations()` step: `ALTER TABLE training_log ADD COLUMN garmin_activity_id TEXT`
+2. Add partial unique index: `CREATE UNIQUE INDEX IF NOT EXISTS idx_training_log_garmin_id
+   ON training_log(garmin_activity_id) WHERE garmin_activity_id IS NOT NULL`
+3. Update `save_session()` signature: add optional `garmin_activity_id: str | None = None`
+4. Change `INSERT INTO training_log` to `INSERT OR IGNORE INTO training_log` and include
+   `garmin_activity_id` in the column list + values
+5. Update `_persist_garmin_data()`: pass `garmin_activity_id=act.get('activity_id')` (or
+   equivalent Garmin SDK field) to `save_session()`
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py titan/orchestration/daily_coach.py  # zero findings
+python -m pytest -q -W error::pytest.PytestWarning  # 100% green
+
+# Manual idempotency invariant (must be scripted as a test):
+# Call _persist_garmin_data() twice with the same activity set.
+# training_log row count must be identical after both calls.
+# get_ctl_atl_tsb() output must be identical after both calls.
+```
+
+**Effort:** ~3h. Schema migration + save_session change + orchestration update + tests.
+**Tests:** Add to `tests/titan/core/test_database.py` and `tests/titan/orchestration/`:
+- Duplicate Garmin activity: second `save_session()` with same `garmin_activity_id` → row count unchanged
+- Null `garmin_activity_id`: two manual sessions insert without conflict
+- `get_ctl_atl_tsb()` stability under replay: same output before and after re-sync
+**Commit ref:** `ref T1-14, ADR-0019`
 
 ---
 
@@ -578,16 +680,35 @@ idempotency guard.
 
 ---
 
-### T2-09 · Residual `print()` operational/error paths across integration modules ✅ RESOLVED (weather_api.py)
+### T2-09 · Residual `print()` operational/error paths across integration modules ⚠️ PARTIALLY RESOLVED
 
-**Status (2026-03-04):** Completed for `weather_api.py`. Added `_weather_event()` structured
-event helper. Replaced all 4 `print()` calls (fallback current, fallback forecast, background
-worker error, background updates started) with `_weather_event()` calls at appropriate log
-levels (WARNING / ERROR / INFO). `test_weather_api_has_no_print_calls` asserts zero
-`print()` in module. Tests: 4 green in `tests/test_harden_db_concurrency.py`. PR: TBD.
+**Status (2026-03-04):** RESOLVED for `weather_api.py` only. Added `_weather_event()`
+structured event helper. Replaced all 4 `print()` calls with `_weather_event()` calls at
+appropriate log levels. `test_weather_api_has_no_print_calls` asserts zero `print()` in
+module. PR: TBD.
 
-Note: `telegram_bot.py`, `garmin_sync.py`, `daily_coach.py` (UI-boundary prints) are
-intentionally deferred — those require separate subsystem review per Rule E2.
+**Status (2026-03-05, Engineering Audit V3):** `telegram_bot.py`, `titan/main.py`
+(startup/shutdown prints), and `daily_coach.py` operational prints remain OPEN. These are
+**not** deferred cosmetics — runtime prints in integration/orchestration paths bypass the
+structured log pipeline and create incident RCA gaps. See T2-10 for the specific
+Telegram content-leak privacy risk (separate item).
+
+**Remaining scope (OPEN):** `titan/main.py`, `titan/integrations/telegram_bot.py`,
+`titan/orchestration/daily_coach.py` — operational/error prints only. UI-boundary prints
+in `titan/ui/` are intentional and must be preserved.
+
+**Fix direction:** Replace each remaining operational `print()` with the module's structured
+event emitter (`_telegram_event`, `_coach_event`, or `log.*`). Execute one module at a time
+per Rule E2. Add `test_<module>_has_no_print_calls` assertion for each completed module.
+
+**Acceptance gate per module (binary):**
+```bash
+ruff check <module_path>   # zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+# rg -n "print\(" titan/<path>/<module>.py   # zero matches
+```
+
+**Effort:** ~2h per module; 3 remaining modules = ~6h total.
 **Source:** Engineering audit 2026-03-04 (Medium risk #1)
 
 **Location:** `titan/integrations/telegram_bot.py`, `titan/integrations/garmin_sync.py`,
@@ -612,6 +733,119 @@ boundaries are intentional and must be preserved.
 
 **Effort:** ~2h per module; 4 modules = ~8h total. Execute one module at a time
 following Rule E2 subsystem sequence.
+
+---
+
+### T2-10 · Startup engine hydration has no data-confidence gate ⚠️ OPEN
+
+**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3 supplementary
+analysis (2026-03-05). See ADR-0019.
+**Priority:** P1. This is a semantic safety gap — governance makes decisions after restart
+without knowing whether its input engines have valid baselines.
+
+**Location:** `titan/orchestration/daily_coach.py` — `_hydrate_engines_from_db()` and
+`run_morning_routine()` (governance context construction)
+
+**Problem:** `_hydrate_engines_from_db()` runs synchronously at startup, loading HRV
+history, weight history, training load, HRR, and CS performance data from the DB into
+in-memory engine state. Each hydration call is wrapped in `except Exception: print(...)`,
+which means failures are swallowed silently. Critically, **there is no flag passed
+downstream** to indicate whether hydration succeeded.
+
+Consequence: after a cold start (empty DB), crash, or schema migration, the governance
+engine begins operating on zero-history baselines. It does not know this. The first N
+governance decisions are made with the same confidence as normal operation, but with
+empty or partial input data. For a safety-first longevity system, this is a semantic
+correctness gap — the system should know it is operating on thin ice.
+
+**Architect decision (ADR-0019):**
+- Add `_startup_hydration_confidence: dict[str, bool]` to `DailyCoach.__init__()`.
+  Keys: one per engine hydration attempt (`"hrv"`, `"weight"`, `"load"`, `"hrr"`, `"cs"`).
+  Values: `True` if hydration loaded ≥1 data point; `False` if empty or exception.
+- Emit a structured `startup_hydration_report` event listing which engines hydrated
+  successfully.
+- If fewer than 3 of 5 engines hydrated: emit `startup_low_confidence` event at WARNING
+  level. This is the **conservative-mode trigger**.
+- Pass `data_confidence_low: bool` into `GovernanceContext` for the first morning routine
+  after startup. The governance engine, if it receives `data_confidence_low=True`, applies
+  a conservative-mode ceiling: cap intensity recommendation at EASY (do not prescribe
+  VO2max or tempo without a data baseline). This is **not** a hard stop — it is a
+  precautionary downgrade consistent with the system's longevity-first philosophy.
+
+**Fix direction:**
+1. In `_hydrate_engines_from_db()`, return a `dict[str, bool]` confidence report instead
+   of `None`. Track success/failure per engine with explicit boolean.
+2. Store as `self._startup_hydration_confidence`.
+3. Emit `startup_hydration_report` structured event with confidence dict.
+4. In `run_morning_routine()`, pass `data_confidence_low` to the governance context if
+   `_startup_hydration_confidence` indicates fewer than 3/5 engines hydrated.
+5. In `GovernanceEngine`, handle `data_confidence_low=True` in the intensity ceiling
+   (advisory, not hard-stop).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/orchestration/daily_coach.py titan/science/governance_engine.py  # zero findings
+python -m pytest -q -W error::pytest.PytestWarning  # 100% green
+# Test: cold start (empty DB) → startup_low_confidence event emitted
+# Test: partial hydration (3/5 engines loaded) → data_confidence_low=True in context
+# Test: full hydration (5/5) → data_confidence_low=False, no conservative mode
+```
+
+**Effort:** ~4h. Moderate complexity — touches DailyCoach init, governance context, and
+GovernanceEngine.
+**Tests:** Add to `tests/titan/orchestration/test_daily_coach.py` and
+`tests/test_governance_integration.py`:
+- cold start → confidence report shows all False → low-confidence event
+- full hydration → confidence all True → no conservative mode
+- governance conservative-mode: intensity ceiling applied under low confidence
+**Commit ref:** `ref T2-10, ADR-0019`
+
+---
+
+### T2-11 · Telegram fallback logs message content — privacy/confidentiality risk ⚠️ OPEN
+
+**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, M3 (2026-03-05).
+**Priority:** P1. Coaching and health data (HRV, TSB, session recommendations) must not
+appear in console/stdout logs in shared or containerised environments.
+
+**Location:** `titan/integrations/telegram_bot.py` — `send_message()` fallback path
+
+**Problem:** When the Telegram bot is unavailable (missing token, library not installed,
+or temporary connectivity failure), the fallback currently prints:
+```python
+print(f"📱 [Telegram] {text[:200]}")
+```
+This truncates but still exposes up to 200 characters of coaching message content —
+which may include HRV values, fatigue scores, session prescriptions, or other personal
+health data — to stdout. In shared or containerised log environments, this constitutes a
+confidentiality/privacy violation.
+
+**Architect decision (ADR-0019):**
+- Replace the content-preview fallback with a metadata-only structured event.
+- Emit: `_telegram_event("fallback_send", subsystem="send_message",
+  message_length=len(text), bot_available=False)` — no content, no preview.
+- The event must carry zero coaching or health content.
+
+**Fix direction:**
+- Locate the `print(f"📱 [Telegram] {text[:200]}")` fallback in `send_message()`.
+- Replace with `_telegram_event("fallback_send", level="warning",
+  subsystem="send_message", message_length=len(text), bot_available=False)`.
+- Remove the `text[:200]` slice entirely.
+- Add test: `test_send_message_fallback_emits_no_content` — mock bot unavailable,
+  call `send_message("sensitive data")`, assert no content in emitted event payload.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/telegram_bot.py  # zero findings
+python -m pytest -q -W error::pytest.PytestWarning  # 100% green
+# Test: fallback path → zero content in structured event payload
+```
+
+**Effort:** ~1h. Surgical change; single location.
+**Tests:** Add to `tests/test_telegram_bot.py`:
+- fallback_send event payload contains `message_length` key but no `text`, `content`,
+  `preview`, or message body
+**Commit ref:** `ref T2-11, ADR-0019`
 
 ---
 
@@ -657,9 +891,19 @@ background workers.
 
 ---
 
-### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation ✅ RESOLVED
+### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation ⚠️ PARTIALLY RESOLVED
 
-**Status (2026-03-04):** COMPLETED. Escalation after `join(timeout=5)` is implemented and tested for `titan/integrations/garmin_sync.py`: if the worker is still alive, it emits a structured `worker_shutdown_timeout` event at ERROR level with `(worker_name, timeout_seconds, still_alive=true)`, with no forced termination.
+**Status (2026-03-04):** RESOLVED for `titan/integrations/garmin_sync.py`. Escalation
+after `join(timeout=5)` is implemented and tested: if the worker is still alive, it emits a
+structured `worker_shutdown_timeout` event at ERROR level with `(worker_name,
+timeout_seconds, still_alive=true)`, with no forced termination.
+
+**Status (2026-03-05, Engineering Audit V3):** `weather_api.py` and `telegram_bot.py`
+stop paths do not have post-join alive escalation. `stop_background_updates()` calls
+`thread.join(timeout=5)` with no is_alive() check after join and no structured event on
+non-termination. `stop_bot()` checks `is_alive()` before joining but not after — if a
+thread is still running after the timeout, no event is emitted and shutdown proceeds
+silently. Tracked as **T3-08**.
 **Source:** Engineering audit 2026-03-04 (Medium risk #2)
 
 **Location:** `titan/integrations/garmin_sync.py`, `titan/integrations/telegram_bot.py`,
@@ -706,6 +950,51 @@ usage is likely benign at today's trigger volume, but if runtime task mutation g
 - Emit `scheduler_task_added` structured event on each append for observability
 
 **Effort:** ~1h. Surgical; no architecture change.
+
+---
+
+### T3-08 · Weather + Telegram worker shutdown: no post-join alive escalation ⚠️ OPEN
+
+**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, C2 (2026-03-05).
+**Priority:** P1. Must be resolved before Phase 8. Extends T3-06 to the two remaining workers.
+
+**Location:** `titan/integrations/weather_api.py` — `stop_background_updates()`; and
+`titan/integrations/telegram_bot.py` — `stop_bot()` (for `_sched_thread` and `_poll_thread`)
+
+**Problem:**
+- `weather_api.stop_background_updates()` calls `self._update_thread.join(timeout=5)` with
+  no `is_alive()` check after join and no structured escalation event on non-termination.
+- `telegram_bot.stop_bot()` checks `is_alive()` **before** each join (correct) but not
+  **after** — if a thread survives the timeout, shutdown proceeds silently. No
+  `worker_shutdown_timeout` event is emitted for weather or telegram workers.
+
+The `DailyCoach._routine_thread` (T1-11) now has full escalation. The Garmin worker
+(T3-06) has full escalation. Weather and Telegram are the remaining gaps. If either worker
+hangs on a network call past the 5s timeout, `main.py` proceeds to `db.close()` with a
+live thread that may still hold a cursor reference.
+
+**Fix direction:**
+- `weather_api.stop_background_updates()`: after `join(timeout=5)`, add:
+  ```python
+  if self._update_thread and self._update_thread.is_alive():
+      _weather_event("worker_shutdown_timeout", level="error",
+                     worker_name="WeatherUpdater", timeout_seconds=5, still_alive=True)
+  ```
+- `telegram_bot.stop_bot()`: after each `join(timeout=5)`, add identical alive-check +
+  `_telegram_event("worker_shutdown_timeout", ...)` for `_sched_thread` and `_poll_thread`.
+- Do not forcibly kill threads. Escalation-only approach (same as T3-06 / T1-11).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/weather_api.py titan/integrations/telegram_bot.py  # zero findings
+python -m pytest -q -W error::pytest.PytestWarning  # 100% green
+# Tests must assert: simulated hung thread → worker_shutdown_timeout event emitted
+```
+
+**Effort:** ~2h total (1h per file). Surgical; no architecture change.
+**Tests:** Add to existing integration test files — simulate hang via `thread.join` mock,
+assert `worker_shutdown_timeout` event is emitted for both workers.
+**Commit ref:** `ref T3-08, ADR-0019`
 
 ---
 
@@ -1108,9 +1397,18 @@ When an item is completed, mark it here with date and PR reference:
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | 2026-03-04 | PR: TBD |
 | T4-13 | 2026-03-04 | PR: TBD |
-| T1-10 | OPEN | — |
-| T1-11 | OPEN | — |
-| T1-12 | OPEN | — |
+| T1-10 | 2026-03-05 (partial: 6 original methods) | PR: TBD |
+| T1-11 | 2026-03-05 | PR: TBD |
+| T1-12 | 2026-03-05 | PR: TBD |
+| T1-13 | OPEN | — |
+| T1-14 | OPEN | — |
+| T2-09 | PARTIAL (weather_api.py 2026-03-04; main/telegram/coach OPEN) | PR: TBD |
+| T2-10 | OPEN | — |
+| T2-11 | OPEN | — |
+| T3-06 | PARTIAL (garmin_sync.py 2026-03-04; weather/telegram OPEN → T3-08) | PR: TBD |
+| T3-08 | OPEN | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
+
+*Last updated: 2026-03-05 — Engineering Audit V3 findings registered (T1-13, T1-14, T2-10, T2-11, T3-08 OPEN; T1-10/11/12 RESOLVED as scoped; T2-09 and T3-06 status clarified as PARTIAL).*

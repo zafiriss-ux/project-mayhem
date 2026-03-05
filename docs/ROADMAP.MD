@@ -187,38 +187,100 @@ the operational risks identified in the audit.
 
 ---
 
-## Phase 7.6 — ADR-0018 Phase A: Kernel Boundary Surgical Fixes (OPEN, 2026-03-05)
+## Phase 7.6 — ADR-0018 Phase A: Kernel Boundary Surgical Fixes (CLOSED, 2026-03-05)
 
-**Gate:** Must be complete before Phase 8 feature work begins.
-**Source:** ADR-0018 post-Phase-7.5 audit. Items map 1:1 to `TECHNICAL_DEBT.md` T1-10, T1-11, T1-12.
-Tier ordering is mandatory (CLAUDE.md Rule E1): T1-10 → T1-11 → T1-12.
+**Source:** ADR-0018 post-Phase-7.5 audit. Items mapped 1:1 to `TECHNICAL_DEBT.md` T1-10, T1-11, T1-12.
 
-### Tier 1 — Data Integrity (block all else until resolved)
+### Tier 1 — Data Integrity
 
-- **T1-10** (ADR-0018-A1) — Move cursor creation inside `with self._lock` in all six
-  write methods of `DatabaseManager`; add `_ensure_open_locked()` as first call inside lock.
-  Fixes race window between cursor creation and `_closed` flag check at shutdown.
-- **T1-11** (ADR-0018-A2) — Add explicit `join(timeout=30)` for `DailyCoach._routine_thread`
-  in `main.py` shutdown sequence before `db.close()`. Emit `worker_shutdown_timeout` event on
-  non-termination (T3-06 pattern). Prevents `sqlite3.ProgrammingError` at shutdown.
-- **T1-12** (ADR-0018-A3) — Wrap `_persist_garmin_data()` activity loop + `save_daily_metric`
-  in a single atomic SQLite transaction. Rollback all writes on any failure. Eliminates partial
-  day state in `training_log` / `daily_metrics`.
+- **T1-10** (ADR-0018-A1) ✅ RESOLVED — The 6 originally scoped write methods of
+  `DatabaseManager` (`save_daily_metric`, `save_session`, `save_hrr`, `update_shoe_mileage`,
+  `add_shoe`, `save_personal_best`) now enforce lock → `_ensure_open_locked()` → cursor →
+  execute → commit. Note: 6 additional governance/science write methods with the same pattern
+  were outside the original T1-10 scope — tracked as T1-13 (Phase 7.7).
+- **T1-11** (ADR-0018-A2) ✅ RESOLVED — `DailyCoach._routine_thread` is now explicitly
+  joined (timeout=30s) in `main.py` `finally` block before `db.close()`, with structured
+  `worker_shutdown_timeout` escalation on non-termination.
+- **T1-12** (ADR-0018-A3) ✅ RESOLVED — `_persist_garmin_data()` wraps activity loop +
+  daily metric write in a single `with self.db.transaction():` block. Atomicity invariant holds.
 
-### Deliverable
+### Deliverable (closed 2026-03-05)
 
-- All three write-path race conditions resolved.
-- 1417+ tests green (0 failures, 0 PytestWarning). Coverage ≥ 91.96%.
-- `ruff check .` zero findings.
+- T1-10/T1-11/T1-12 resolved as scoped. 1435 tests green (0 failures, 0 PytestWarning).
+  Coverage ≥ 92.5%. `ruff check .` zero findings.
 - Phase B design (DecisionResult / pipeline split) documented in ADR-0018 — implementation
-  deferred to next sprint.
+  deferred.
 
 ### Architecture context
 
 ADR-0018 (`docs/adr/0018-kernel-boundary-decision-pipeline-effect-runner-split.md`) documents
-the Kernel Boundary pattern and the two-phase (Decision Pipeline / Effect Runner) architectural
-direction. Phase A is surgical only — no structural reorganisation. ADR-0017 composition root
-and DailyCoach orchestrator patterns remain unchanged.
+the Kernel Boundary pattern. Phase A is surgical only. ADR-0017 composition root and DailyCoach
+orchestrator patterns remain unchanged.
+
+---
+
+## Phase 7.7 — Engineering Audit V3 Hardening Sprint (OPEN, 2026-03-05)
+
+**Gate:** All Tier 1 items (T1-13, T1-14) must be complete before Phase 8 feature work begins.
+**Source:** Engineering Audit V3 (2026-03-05). ADR-0019 captures architectural decisions for
+all items below.
+
+### Tier 1 — Data Integrity (block all else until resolved)
+
+- **T1-13** — Extend T1-10 cursor-race fix to the 6 governance/science write methods not
+  in original T1-10 scope: `update_glycogen_debt`, `log_cs_performance`, `log_override`,
+  `save_governance_decision`, `update_governance_outcome`, `annotate_governance_outcome`.
+  Identical surgical fix: lock → `_ensure_open_locked()` → cursor.
+- **T1-14** — Add Garmin activity idempotency: `garmin_activity_id TEXT` column on
+  `training_log` with partial unique index (`WHERE garmin_activity_id IS NOT NULL`). Change
+  `save_session()` to `INSERT OR IGNORE`. Update `_persist_garmin_data()` to pass the
+  Garmin SDK activity ID. Eliminates duplicate-session data inflation in CTL/ATL/TSB.
+
+### Tier 2 — Observability (may proceed once T1-13 is resolved)
+
+- **T2-09 completion** — Replace remaining operational `print()` calls in `titan/main.py`,
+  `titan/integrations/telegram_bot.py`, and `titan/orchestration/daily_coach.py` with
+  structured event emitters. `print()` is permitted only in `titan/ui/` (interactive UI paths).
+  Execute one module at a time. Add `test_<module>_has_no_print_calls` per module.
+- **T2-10** — Add startup hydration confidence gate to `DailyCoach`. Track per-engine
+  hydration success in `_startup_hydration_confidence: dict[str, bool]`. Emit
+  `startup_hydration_report` event. Pass `data_confidence_low=True` to `GovernanceContext`
+  if fewer than 3/5 engines hydrated; governance applies conservative intensity ceiling.
+- **T2-11** — Remove coaching content from Telegram fallback log. Replace
+  `print(f"📱 [Telegram] {text[:200]}")` with metadata-only `_telegram_event("fallback_send",
+  message_length=len(text), bot_available=False)`. Zero content in structured event.
+
+### Tier 3 — Concurrency Hygiene (may proceed once T1-13 is resolved)
+
+- **T3-08** — Extend T3-06 post-join alive escalation to Weather and Telegram workers.
+  After each `join(timeout=5)`, add `is_alive()` check + `worker_shutdown_timeout` structured
+  event for `_update_thread` (weather) and `_sched_thread`/`_poll_thread` (telegram).
+
+### Acceptance gate (Phase 7.7 close — binary)
+
+```bash
+# All must pass simultaneously:
+python -m pytest -q -W error::pytest.PytestWarning   # ≥1435 tests, 100% green
+ruff check .                                          # zero findings
+python -m pytest --cov=titan --cov-fail-under=92     # coverage ≥ 92%
+
+# Idempotency invariant (T1-14):
+# Replay same Garmin activity set twice → training_log row count unchanged
+# get_ctl_atl_tsb() output identical before and after replay
+
+# Startup confidence (T2-10):
+# Cold start (empty DB) → startup_low_confidence event emitted
+
+# Privacy gate (T2-11):
+# Telegram fallback path → zero content fields in emitted event
+```
+
+### Architecture context
+
+ADR-0019 (`docs/adr/0019-audit-v3-architectural-decisions.md`) captures the architectural
+decisions for all Phase 7.7 items, including the Garmin idempotency contract, the startup
+confidence gate design, the observability policy boundary (`print()` permitted in `titan/ui/`
+only), and the worker shutdown escalation contract extension.
 
 ---
 
@@ -317,4 +379,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-05 (Phase 7.6 OPEN: ADR-0018 Phase A registered — T1-10, T1-11, T1-12 OPEN; Phase 7.5 CLOSED 2026-03-04: all T1-06..T4-13 RESOLVED; 1417 tests green; coverage 91.96%; ruff zero findings; coverage gate active)
+Last updated: 2026-03-05 (Phase 7.7 OPEN: Engineering Audit V3 findings registered — T1-13, T1-14, T2-10, T2-11, T3-08 OPEN; Phase 7.6 CLOSED: T1-10/11/12 RESOLVED as scoped; 1435 tests green; coverage ≥92.5%; ruff zero findings; ADR-0019 registered)
