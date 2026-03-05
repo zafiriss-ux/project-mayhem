@@ -236,7 +236,13 @@ class TitanTelegramBot:
         if self.bot and TELEBOT_AVAILABLE:
             try:
                 self.bot.send_message(int(self.chat_id), text, parse_mode=parse_mode)
-                self.message_history.append({"ts": datetime.now().isoformat(), "text": text[:80]})
+                self.message_history.append(
+                    {
+                        "ts": datetime.now().isoformat(),
+                        "message_length": len(text),
+                        "delivery_mode": "telegram_api",
+                    }
+                )
                 return True
             except Exception as e:
                 _telegram_event(
@@ -264,7 +270,14 @@ class TitanTelegramBot:
                 bot_available=bool(self.bot),
                 telebot_available=TELEBOT_AVAILABLE,
             )
-            _log.info("telegram_fallback_delivery_preview", extra={"message_preview": text[:200]})
+            _log.info(
+                "telegram_fallback_delivery_preview",
+                extra={
+                    "message_length": len(text),
+                    "delivery_mode": "fallback",
+                    "reason": "fallback_console_only",
+                },
+            )
             return True
 
     def send_weekly_plan(self, plan: dict) -> bool:
