@@ -213,3 +213,110 @@ def test_concurrent_writes_no_race(tmp_path):
     assert row[0] in {70.0, 71.0}
 
     db.close()
+
+
+class _CommitSpyConnection:
+    def __init__(self, conn):
+        self._conn = conn
+        self.commit_calls = 0
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+    def commit(self):
+        self.commit_calls += 1
+        return self._conn.commit()
+
+
+def test_standalone_write_methods_commit_and_persist(tmp_path):
+    db = DatabaseManager(db_name="standalone_commit_methods.db", db_dir=tmp_path)
+    db.conn = _CommitSpyConnection(db.conn)
+
+    db.save_daily_metric(date="2026-03-05", weight=70.2, rhr=50)
+    assert db.conn.commit_calls == 1
+
+    db.save_session(
+        date="2026-03-05",
+        session_type="EASY",
+        distance_km=8.0,
+        duration_sec=2400,
+        rpe=4,
+    )
+    assert db.conn.commit_calls == 2
+
+    db.save_hrr(date="2026-03-05", hrr_60=30, hrr_120=45)
+    assert db.conn.commit_calls == 3
+
+    shoe_id = db.add_shoe(name="Pegasus 40", shoe_type="DAILY", max_km=700)
+    assert db.conn.commit_calls == 4
+
+    db.update_shoe_mileage(shoe_id=shoe_id, distance_km=10.5, date="2026-03-05")
+    assert db.conn.commit_calls == 5
+
+    db.save_personal_best(distance_km=5.0, time_sec=1200, date="2026-03-05", race_name="City 5K")
+    assert db.conn.commit_calls == 6
+
+    cur = db.conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone()[0] == 1
+    cur.execute("SELECT COUNT(*) FROM training_log WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone()[0] == 1
+    cur.execute("SELECT hrr_60, hrr_120 FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone() == (30, 45)
+    cur.execute("SELECT total_km FROM gear_usage WHERE id = ?", (shoe_id,))
+    assert float(cur.fetchone()[0]) == 10.5
+    cur.execute("SELECT COUNT(*) FROM personal_bests WHERE distance_km = ?", (5.0,))
+    assert cur.fetchone()[0] == 1
+
+    db.close()
+
+
+def test_transaction_defers_commit_until_exit_and_nested_calls_single_commit(tmp_path):
+    db = DatabaseManager(db_name="transaction_defer_commit.db", db_dir=tmp_path)
+    db.conn = _CommitSpyConnection(db.conn)
+
+    with db.transaction():
+        db.save_daily_metric(date="2026-03-05", weight=71.0)
+        db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=5.0,
+            duration_sec=1800,
+            rpe=3,
+        )
+        with db.transaction():
+            db.save_daily_metric(date="2026-03-06", weight=71.1)
+        assert db.conn.commit_calls == 0
+
+    assert db.conn.commit_calls == 1
+
+    cur = db.conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date IN (?, ?)", ("2026-03-05", "2026-03-06"))
+    assert cur.fetchone()[0] == 2
+    cur.execute("SELECT COUNT(*) FROM training_log WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone()[0] == 1
+
+    db.close()
+
+
+def test_transaction_rollback_restores_state(tmp_path):
+    db = DatabaseManager(db_name="transaction_rollback.db", db_dir=tmp_path)
+
+    with pytest.raises(RuntimeError, match="force_rollback"), db.transaction():
+        db.save_daily_metric(date="2026-03-05", weight=69.0)
+        db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=6.0,
+            duration_sec=2100,
+            rpe=4,
+        )
+        raise RuntimeError("force_rollback")
+
+    cur = db.conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT COUNT(*) FROM training_log WHERE date = ?", ("2026-03-05",))
+    assert cur.fetchone()[0] == 0
+
+    db.close()

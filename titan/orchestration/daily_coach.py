@@ -655,41 +655,6 @@ class DailyCoach:
 
         # ── Activities → training_log ─────────────────────────────────────
         activities = garmin_data.get('activities', [])
-        saved_count = 0
-        for idx, act in enumerate(activities, start=1):
-            activity_date = act.get('date', today_str)
-            try:
-                self.db.save_session(
-                    date        = activity_date,
-                    session_type= act.get('session_type', 'EASY'),
-                    distance_km = _safe_float(act.get('distance_km', 0)),
-                    duration_sec= _safe_int(act.get('duration_sec', 0)),
-                    avg_hr      = _safe_int(act.get('avg_hr')) or None,
-                    max_hr      = _safe_int(act.get('max_hr')) or None,
-                    rpe         = act.get('rpe'),
-                    notes       = act.get('name', ''),
-                )
-                saved_count += 1
-                _daily_coach_event(
-                    "activity_persist",
-                    activity_index=idx,
-                    activity_date=activity_date,
-                    outcome="ACTIVITY_PERSISTED",
-                    failure_class=None,
-                )
-            except Exception as e:
-                _daily_coach_event(
-                    "activity_persist",
-                    activity_index=idx,
-                    activity_date=activity_date,
-                    outcome="ACTIVITY_SKIPPED",
-                    failure_class=PERSIST_ERROR,
-                    error_class=type(e).__name__,
-                    error_message=str(e),
-                )
-                print(f"  ⚠️  Could not save activity {activity_date}: {e}")
-        if saved_count:
-            print(f"  💾 Saved {saved_count} activities to database")
 
         # ── Sleep → extract RHR + sleep score ─────────────────────────────
         sleep_entries = garmin_data.get('sleep', [])
@@ -733,16 +698,51 @@ class DailyCoach:
                 latest_weight = _safe_float(entry.get('weight_kg', 0)) or None
                 break
 
-        # ── Persist today's metrics row ───────────────────────────────────
         try:
-            self.db.save_daily_metric(
-                date         = today_str,
-                weight       = latest_weight,
-                hrv          = latest_rmssd,
-                rhr          = today_rhr or None,
-                sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
-                sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
-            )
+            with self.db.transaction():
+                for idx, act in enumerate(activities, start=1):
+                    activity_date = act.get('date', today_str)
+                    try:
+                        self.db.save_session(
+                            date        = activity_date,
+                            session_type= act.get('session_type', 'EASY'),
+                            distance_km = _safe_float(act.get('distance_km', 0)),
+                            duration_sec= _safe_int(act.get('duration_sec', 0)),
+                            avg_hr      = _safe_int(act.get('avg_hr')) or None,
+                            max_hr      = _safe_int(act.get('max_hr')) or None,
+                            rpe         = act.get('rpe'),
+                            notes       = act.get('name', ''),
+                        )
+                        _daily_coach_event(
+                            "activity_persist",
+                            activity_index=idx,
+                            activity_date=activity_date,
+                            outcome="ACTIVITY_PERSISTED",
+                            failure_class=None,
+                        )
+                    except Exception as exc:
+                        _daily_coach_event(
+                            "activity_persist",
+                            activity_index=idx,
+                            activity_date=activity_date,
+                            outcome="ACTIVITY_SKIPPED",
+                            failure_class=PERSIST_ERROR,
+                            error_class=type(exc).__name__,
+                            error_message=str(exc),
+                        )
+                        raise
+
+                self.db.save_daily_metric(
+                    date         = today_str,
+                    weight       = latest_weight,
+                    hrv          = latest_rmssd,
+                    rhr          = today_rhr or None,
+                    sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
+                    sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
+                )
+
+            if activities:
+                print(f"  💾 Saved {len(activities)} activities to database")
             _daily_coach_event(
                 "activity_persist",
                 activity_index=None,
@@ -751,17 +751,17 @@ class DailyCoach:
                 failure_class=None,
             )
             print(f"  💾 Daily metrics saved for {today_str}")
-        except Exception as e:
+        except Exception as exc:
             _daily_coach_event(
                 "activity_persist",
                 activity_index=None,
                 activity_date=today_str,
                 outcome="DAILY_METRICS_SKIPPED",
                 failure_class=PERSIST_ERROR,
-                error_class=type(e).__name__,
-                error_message=str(e),
+                error_class=type(exc).__name__,
+                error_message=str(exc),
             )
-            print(f"  ⚠️  Could not save daily metrics: {e}")
+            print(f"  ⚠️  Could not persist Garmin data atomically for {today_str}: {exc}")
 
         return today_rhr, today_sleep_score, today_sleep_hours
 
