@@ -188,6 +188,45 @@ def test_stop_bot_sets_event_and_joins_threads():
     bot._poll_thread.join.assert_called_once_with(timeout=5)
 
 
+def test_stop_bot_emits_shutdown_timeout_for_scheduler_thread(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot._sched_thread = MagicMock()
+    bot._sched_thread.is_alive.return_value = True
+
+    bot.stop_bot()
+
+    assert any(
+        action == "worker_shutdown_timeout"
+        and fields.get("level") == "error"
+        and fields.get("worker_name") == "Scheduler"
+        and fields.get("timeout_seconds") == 5
+        and fields.get("still_alive") is True
+        for action, fields in events
+    )
+
+
+def test_stop_bot_emits_shutdown_timeout_for_poll_thread(monkeypatch):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot._poll_thread = MagicMock()
+    bot._poll_thread.is_alive.return_value = True
+
+    bot.stop_bot()
+
+    assert any(
+        action == "worker_shutdown_timeout"
+        and fields.get("level") == "error"
+        and fields.get("worker_name") == "Polling"
+        and fields.get("timeout_seconds") == 5
+        and fields.get("still_alive") is True
+        for action, fields in events
+    )
+
 def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     errors: list[Exception] = []
@@ -325,8 +364,6 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
 
     assert result is True
     assert captured["text"].startswith("ℹ️ *Title*")
-
-
 
 def test_telegram_bot_has_no_print_calls():
     source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
