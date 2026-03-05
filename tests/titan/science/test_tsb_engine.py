@@ -1,5 +1,7 @@
 import math
 
+import pytest
+
 from titan.science.tsb_engine import TSBEngine
 
 
@@ -67,3 +69,61 @@ def test_very_high_and_very_low_load_sequences_remain_finite_and_stable() -> Non
     assert low_tsb is not None and math.isfinite(low_tsb)
     assert high_tsb < 0.0
     assert low_tsb == 0.0
+
+
+@pytest.mark.parametrize(
+    ("ctl", "atl", "expected_status"),
+    [
+        (30.0, 4.0, "⚠️ SEVERE DETRAINING"),
+        (30.0, 14.0, "⚠️ DETRAINING"),
+        (30.0, 20.0, "✅ FRESH"),
+        (30.0, 27.0, "🎯 RACE FORM"),
+        (10.0, 25.0, "💪 PRODUCTIVE OVERLOAD"),
+        (10.0, 45.0, "⚠️ FUNCTIONAL OVERREACH"),
+        (10.0, 65.0, "🛑 OVERTRAINED"),
+    ],
+)
+def test_calculate_tsb_status_bands_match_current_threshold_mapping(
+    monkeypatch: pytest.MonkeyPatch, ctl: float, atl: float, expected_status: str
+) -> None:
+    engine = TSBEngine()
+    engine.add_daily_load("2026-01-01", 1.0)
+    monkeypatch.setattr(engine, "calculate_ctl", lambda decay=42: ctl)
+    monkeypatch.setattr(engine, "calculate_atl", lambda decay=7: atl)
+
+    tsb, status = engine.calculate_tsb()
+
+    assert tsb == round(ctl - atl, 1)
+    assert status == expected_status
+
+
+def test_predict_race_day_tsb_returns_none_for_invalid_inputs() -> None:
+    engine = TSBEngine()
+
+    assert engine.predict_race_day_tsb(days=1, loads=[]) is None
+    assert engine.predict_race_day_tsb(days=3, loads=[10.0, 20.0]) is None
+
+
+def test_predict_race_day_tsb_uses_current_internal_ctl_atl_state() -> None:
+    engine = TSBEngine()
+    engine.ctl = 50.0
+    engine.atl = 40.0
+
+    predicted = engine.predict_race_day_tsb(days=3, loads=[100.0, 50.0, 0.0, 999.0])
+
+    temp_ctl = 50.0
+    temp_atl = 40.0
+    for load in [100.0, 50.0, 0.0]:
+        temp_atl = (load * (2 / 8)) + (temp_atl * (6 / 8))
+        temp_ctl = (load * (2 / 43)) + (temp_ctl * (41 / 43))
+    expected = round(temp_ctl - temp_atl, 1)
+
+    assert predicted == expected
+
+
+def test_predict_race_day_tsb_with_zero_days_returns_current_form_delta() -> None:
+    engine = TSBEngine()
+    engine.ctl = 37.26
+    engine.atl = 42.81
+
+    assert engine.predict_race_day_tsb(days=0, loads=[300.0]) == -5.6
