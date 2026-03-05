@@ -334,7 +334,10 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
     telegram.register_command("shoes",      cb_shoes)
     telegram.register_command("calibration", cb_calibration)
 
-    print("✅ Telegram command callbacks registered (10 commands)")
+    log.info(
+        "telegram_callbacks_registered",
+        extra={"command_count": 10},
+    )
 
 
 
@@ -374,10 +377,9 @@ def main():
                 "detail": "ensure_credentials() returned False",
             },
         )
-        print("\n❌ Δεν ήταν δυνατή η εισαγωγή credentials. Έξοδος.")
         sys.exit(1)
 
-    print("\n🔧 Initializing TITAN engines...\n")
+    log.info("startup_initializing_engines")
 
     # ── Step 2: Integrations ─────────────────────────────────────────────────
     garmin   = GarminSync()
@@ -408,7 +410,10 @@ def main():
 
     # ── Step 4b: Persistent database ─────────────────────────────────────────
     db = DatabaseManager()
-    print("✅ Database initialised (titan_core.db)")
+    log.info(
+        "database_initialized",
+        extra={"database": "titan_core.db"},
+    )
 
     # ── Step 5: Orchestration ────────────────────────────────────────────────
     daily_coach = DailyCoach(
@@ -472,7 +477,7 @@ def main():
     _register_telegram_callbacks(telegram, titan_ctx)
 
     # ── Step 8: Start background threads ─────────────────────────────────────
-    print("🚀 Starting background threads...\n")
+    log.info("background_threads_starting")
 
     garmin.start_background_sync(interval_hours=6)
     weather.start_background_updates(interval_hours=1)
@@ -501,13 +506,18 @@ def main():
         days=["Sunday"],
     )
 
-    print("\n📅 Scheduled tasks:")
-    print("  • Morning coaching:  Daily   @ 07:00")
-    print("  • Weekly plan:       Sunday  @ 20:00")
-    print("  • Garmin sync:       Every 6 hours (background)")
-    print("  • Weather updates:   Every 1 hour  (background)")
-    print("  • Telegram polling:  Continuous     (background)")
-    print()
+    log.info(
+        "scheduled_tasks_configured",
+        extra={
+            "tasks": [
+                "Morning coaching: Daily @ 07:00",
+                "Weekly plan: Sunday @ 20:00",
+                "Garmin sync: Every 6 hours (background)",
+                "Weather updates: Every 1 hour (background)",
+                "Telegram polling: Continuous (background)",
+            ]
+        },
+    )
 
     # ── Step 10: Interactive menu ─────────────────────────────────────────────
     try:
@@ -522,7 +532,7 @@ def main():
         )
     finally:
         # ── Shutdown ──────────────────────────────────────────────────────────
-        print("\n\n🛑 Stopping TITAN...")
+        log.info("shutdown_started")
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
@@ -541,7 +551,7 @@ def main():
                     },
                 )
         db.close()
-        print("✅ TITAN stopped gracefully.\n")
+        log.info("shutdown_completed")
 
 
 if __name__ == "__main__":
