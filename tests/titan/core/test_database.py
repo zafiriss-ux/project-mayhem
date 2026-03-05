@@ -136,6 +136,62 @@ def test_save_session_cursor_inside_lock(tmp_path):
     )
 
 
+def test_save_session_ignores_duplicate_garmin_activity_id(tmp_path):
+    db = DatabaseManager(db_name="garmin_duplicate_ignore.db", db_dir=tmp_path)
+
+    try:
+        db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            rpe=5,
+            garmin_activity_id="garmin-123",
+        )
+        db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            rpe=5,
+            garmin_activity_id="garmin-123",
+        )
+
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM training_log")
+        assert cursor.fetchone()[0] == 1
+    finally:
+        db.close()
+
+
+def test_save_session_allows_multiple_manual_rows_with_null_garmin_activity_id(tmp_path):
+    db = DatabaseManager(db_name="manual_null_garmin_id.db", db_dir=tmp_path)
+
+    try:
+        db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=5.0,
+            duration_sec=1800,
+            rpe=3,
+            garmin_activity_id=None,
+        )
+        db.save_session(
+            date="2026-03-06",
+            session_type="RECOVERY",
+            distance_km=4.0,
+            duration_sec=1600,
+            rpe=2,
+            garmin_activity_id=None,
+        )
+
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM training_log")
+        assert cursor.fetchone()[0] == 2
+    finally:
+        db.close()
+
+
 def test_save_hrr_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="save_hrr_guard.db", db_dir=tmp_path)
 

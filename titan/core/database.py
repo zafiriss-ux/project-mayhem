@@ -330,6 +330,11 @@ class DatabaseManager:
             ("daily_metrics", "hrr_60", "ALTER TABLE daily_metrics ADD COLUMN hrr_60 INTEGER"),
             ("daily_metrics", "hrr_120", "ALTER TABLE daily_metrics ADD COLUMN hrr_120 INTEGER"),
             ("daily_metrics", "glycogen_debt", "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL"),
+            (
+                "training_log",
+                "garmin_activity_id",
+                "ALTER TABLE training_log ADD COLUMN garmin_activity_id TEXT",
+            ),
         ]
         for table_name, column_name, sql in migrations:
             try:
@@ -346,6 +351,16 @@ class DatabaseManager:
                 error_message = str(exc).lower()
                 if "duplicate column name" not in error_message:
                     raise
+
+        try:
+            cursor.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_training_log_garmin_id
+                ON training_log(garmin_activity_id)
+                WHERE garmin_activity_id IS NOT NULL
+            """)
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc).lower():
+                raise
         self.conn.commit()
 
     # --- DAILY METRICS ---
@@ -434,6 +449,7 @@ class DatabaseManager:
         surface: str | None = None,
         temperature_c: float | None = None,
         notes: str | None = None,
+        garmin_activity_id: str | None = None,
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
@@ -452,6 +468,7 @@ class DatabaseManager:
             surface:       Running surface (TRACK, ROAD, TRAIL, etc.)
             temperature_c: Air temperature in °C  ← canonical name
             notes:         Optional text notes
+            garmin_activity_id: Stable Garmin external activity identity
             temperature:   Deprecated alias for temperature_c
 
         Training Load Calculation:
@@ -475,13 +492,13 @@ class DatabaseManager:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute("""
-                INSERT INTO training_log
+                INSERT OR IGNORE INTO training_log
                 (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                 training_load, shoe_id, surface, temperature_c, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                  training_load, shoe_id, surface, temperature_c, notes))
-            if shoe_id and distance_km:
+                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id))
+            if cursor.rowcount == 1 and shoe_id and distance_km:
                 cursor.execute("""
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
                 """, (distance_km, date, shoe_id))
