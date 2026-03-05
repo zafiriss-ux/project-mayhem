@@ -526,6 +526,20 @@ def main():
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
+        routine_thread = getattr(daily_coach, "_routine_thread", None)
+        if routine_thread is not None and routine_thread.is_alive():
+            timeout_seconds = 30
+            routine_thread.join(timeout=timeout_seconds)
+            still_alive = routine_thread.is_alive()
+            if still_alive:
+                log.error(
+                    "worker_shutdown_timeout",
+                    extra={
+                        "worker_name": "DailyCoachRoutine",
+                        "timeout_seconds": timeout_seconds,
+                        "still_alive": still_alive,
+                    },
+                )
         db.close()
         print("✅ TITAN stopped gracefully.\n")
 
