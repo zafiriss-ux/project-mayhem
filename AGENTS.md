@@ -228,6 +228,13 @@ There is no "mostly done", "should be fine", or "looks good". **Binary only.**
 ### 6.1 Before delivering any change
 1. Run `python -m pytest -q -W error::pytest.PytestWarning` (strict — warnings are failures)
 2. Run `python -m pytest -q` (canonical — zero failures, zero new errors)
+
+**Note on coverage:**
+- The repo enforces a global coverage threshold.
+- Running a single test or small subset may FAIL solely due to coverage (even if all tests passed).
+- Treat "coverage threshold not reached" on a subset run as a diagnostic artifact, NOT a code regression.
+- Acceptance gates always require the canonical full suite (Gate 3).
+
 3. Confirm test count is same or higher than before your change
    - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
 4. If any test fails: follow the protocol below before doing anything else
@@ -238,7 +245,8 @@ Respond **verbatim** before doing anything:
 
 ```
 A test is failing.
-1) Run the full suite and identify the FIRST failing test.
+1) Run the suite and identify the FIRST failing test (deterministically):
+   python -m pytest -x
 2) Do NOT modify the test unless it is objectively incorrect.
 3) Determine whether the failure is:
    A) Code regression
@@ -281,6 +289,31 @@ A test fails during collection (import error).
 5) Re-run full suite.
 ```
 
+### 6.6 🟠 ORANGE — Hang / slow test (no failure, progress unclear)
+
+**Symptoms:**
+- pytest shows no new output for an extended period
+- user reports "it's stuck" but no failing test exists
+
+Respond **verbatim** before doing anything:
+
+```
+The suite appears slow or hung (no failing test yet).
+1) Do NOT assume failure. Do NOT start fixing code.
+2) Identify the exact running / last completed test:
+   python -m pytest -vv
+3) Identify the slowest tests:
+   python -m pytest --durations=20
+4) If a specific test is suspected, run only that test with output:
+   python -m pytest -vv -s <file>::<test_name>
+5) Only if the same test deterministically hangs: fix the minimal root cause,
+   then re-run the full suite.
+```
+
+**Important:**
+- A perceived hang is NOT RED/YELLOW/PURPLE until a failing nodeid or import error is proven.
+- Do not loop. Every re-run must add new information (nodeid or durations output).
+
 ### 6.5 Category → action (exhaustive)
 
 | Category | Action |
@@ -308,6 +341,15 @@ If any acceptance criterion fails mid-task:
 3. Fix only the specific failing criterion.
 4. Re-run the acceptance gate from scratch.
 5. Only then continue.
+
+**Anti-loop rule:**
+- Do NOT repeat the same command/run without returning new evidence.
+- Every stop-the-line report MUST include:
+  - the exact failing test nodeid + traceback (RED), OR
+  - the exact warning text + origin (YELLOW), OR
+  - the missing module/import error line (PURPLE), OR
+  - the last printed test nodeid + durations output (ORANGE).
+- A response that says "tests failing" / "stuck" without the above evidence is NOT ACCEPTABLE.
 
 ---
 
