@@ -115,35 +115,53 @@ WEATHER_CACHE_DURATION_HOURS=1
 
 ## Running Tests
 
+### Engineering Definition of Done (non-negotiable for any PR)
+
+All three gates must pass before any commit, push, or `make_pr`. This is a hard requirement — not a guideline.
+
 ```bash
-# Run all tests (1122 total, all green as of v5.8.0 Phase 7 close)
-pytest
+# Gate 1 — Lint (zero findings required)
+ruff check .
 
-# Run with coverage
-pytest --cov=titan --cov-report=term-missing
+# Gate 2 — Strict test run (warnings are failures)
+python -m pytest -q -W error::pytest.PytestWarning
 
-# Run governance integration tests specifically
-pytest tests/test_governance_integration.py -v
+# Gate 3 — Canonical test run (100% green, count same or higher)
+python -m pytest -q
+```
 
-# Run with governance coverage threshold (CI requirement)
-pytest --cov=titan.science.governance_engine \
+No PR may be opened, and no `make_pr` may be called, until all three commands above return clean. See AGENTS.md §HARD GATE.
+
+### Additional test commands (use only after Gates 1–3 pass)
+
+```bash
+# With coverage (only when coverage report is explicitly requested)
+python -m pytest -q --cov=titan --cov-report=term-missing
+
+# Governance integration tests
+python -m pytest tests/test_governance_integration.py -v
+
+# Governance coverage threshold (CI requirement)
+python -m pytest --cov=titan.science.governance_engine \
        --cov=titan.science.governance_contracts \
        --cov-fail-under=80 -q
 
-# Run APL integration tests
-pytest tests/test_apl_integration.py -v
+# APL integration tests
+python -m pytest tests/test_apl_integration.py -v
 
-# Run phase hygiene sweeps
-pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests/test_phase6_hygiene.py tests/test_phase7_hygiene.py -v
+# Phase hygiene sweeps
+python -m pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests/test_phase6_hygiene.py tests/test_phase7_hygiene.py -v
 
-# Run specific test files
-pytest test_core_modules.py
-pytest test_titan_logic.py
-pytest tests/test_p0_safety_gates.py
-pytest tests/test_science_engines.py
+# Specific test files
+python -m pytest test_core_modules.py
+python -m pytest test_titan_logic.py
+python -m pytest tests/test_p0_safety_gates.py
+python -m pytest tests/test_science_engines.py
 ```
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
+
+> **Historical snapshot:** 1122 tests all green as of v5.8.0 Phase 7 close. This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -195,9 +213,10 @@ ruff check <subsystem_path>
 
 **Acceptance gate:**
 - Run `ruff check <subsystem_path>` → must report **zero findings**.
+- Run `python -m pytest -q -W error::pytest.PytestWarning` → must be **100% green** (no warnings-as-errors).
 - Run `python -m pytest -q` → must be **100% green** (same count as before or higher).
   - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
-- If either check is not 100%: answer must be exactly:
+- If any check is not 100%: answer must be exactly:
 
   > `NOT 100% — Missing: [list the specific check that failed]`
 
@@ -330,7 +349,7 @@ Every task that touches a module — regardless of how small the change — must
 3. If a **test file exists** → check whether the changed logic is covered.
    - If not → add tests for the new/changed behaviour.
 4. Never delete tests. If a test is wrong, fix it (not the other way around).
-5. After adding/updating tests: run `python -m pytest -q` and confirm 100% green before delivering.
+5. After adding/updating tests: run `python -m pytest -q -W error::pytest.PytestWarning` then `python -m pytest -q` and confirm 100% green before delivering.
 
 There are no exceptions. A change that ships without a test for its new behaviour is incomplete.
 
@@ -421,6 +440,8 @@ See `docs/adr/` for Architecture Decision Records:
 - Work on feature branches (prefix: `claude/`)
 - Use `git status`, `git log`, `git diff` for inspection
 - Use `git push -u origin <branch-name>` for pushes
+- **Do not create a commit or call `make_pr` until all three Mandatory Gates pass** (see AGENTS.md §HARD GATE)
+- Canonical commit message format: `T<tier>-<id>: <short title>`
 
 ---
 
