@@ -21,12 +21,41 @@
 2. One boundary or error-path test (edge input, exception, or guard condition)
 
 **After adding or updating tests:**
-- Run `python -m pytest -q`
-- Confirm: 100% green, test count same or higher than before your change
-  - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
+- Run `python -m pytest -q -W error::pytest.PytestWarning` (strict gate — warnings are failures)
+- Run `python -m pytest -q` (canonical gate — must be 100% green, count same or higher)
 - If any test fails: stop, follow Section 6, fix root cause first
 
 **Never delete tests.** If a test is wrong, fix the test — never remove it.
+
+---
+
+## 🚫 HARD GATE — NO COMMIT / NO PR BEFORE GREEN
+
+**This gate is absolute. No exceptions. No partial credit.**
+
+A commit, push, or `make_pr` call is **forbidden** unless ALL of the following have passed in the current session:
+
+| Gate | Command | Required result |
+|------|---------|-----------------|
+| Lint | `ruff check .` | Exit code 0, zero findings |
+| Strict test | `python -m pytest -q -W error::pytest.PytestWarning` | 100% green, zero warnings treated as errors |
+| Full test | `python -m pytest -q` | 100% green, count same or higher than before |
+
+**If any gate fails:**
+1. **STOP immediately.** Do not create a commit. Do not push. Do not call `make_pr`.
+2. Invoke Section 7 (Stop-the-Line Protocol).
+3. Fix only the root cause of the first failing gate.
+4. Re-run **all three gates from scratch**.
+5. Only after all three pass: proceed to commit/push/PR.
+
+**Forbidden validation shortcuts (these are bugs, not solutions):**
+- Using `PYTEST_ADDOPTS=...` or any env override to suppress failures
+- Using `--import-mode=importlib` or other flags to bypass collection errors
+- Silencing warnings with `filterwarnings` in test code or config
+- Using `pytest.mark.skip` / `xfail` without documented justification in the PR description
+- Running a subset of tests and reporting "all pass"
+
+If an override is required for the suite to run at all, that is a **repo-level issue**. Either fix it within the current task's scope, or STOP and report it as an out-of-scope finding in `TECHNICAL_DEBT.md` before continuing.
 
 ---
 
@@ -37,16 +66,38 @@
 | **Architect (Claude / owner)** | System design, ADR authorship, tier ordering, scope approval |
 | **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions |
 
-Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding". Do NOT implement it as part of this task. 
+Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding". Do NOT implement it as part of this task.
+
 ---
+
+## 2. Deliverable Workflow — Canonical Sequence
+
+Every task follows this sequence exactly. No step may be skipped.
+
+```
+1. Read task description completely (Section 3.5 scope declaration before any code)
+2. Write code / tests
+3. Run Gate 1: ruff check .
+4. Run Gate 2: python -m pytest -q -W error::pytest.PytestWarning
+5. Run Gate 3: python -m pytest -q
+6. ✅ All three gates GREEN → proceed to step 7
+   ❌ Any gate fails → STOP (Section 7), fix root cause, restart from step 3
+7. Create commit (message format: T<tier>-<id>: <short title>)
+8. Push (if push-enabled environment)
+9. Open PR (if push-enabled environment)
+```
+
+**Steps 7–9 are only reachable after step 6 is confirmed GREEN.**
 
 ### 2.2 Deliverable format (push-enabled environments)
 
-Run python -m pytest -q before delivering — do NOT proceed if any test fails.
+Run all three Mandatory Gates (Section HARD GATE) before doing anything below.
+Do NOT create a commit unless all three gates pass.
+Do NOT call `make_pr` unless all three gates pass.
 
-You MAY create commits and push, but ONLY to branches matching claude/*.
+You MAY create commits and push, but ONLY to branches matching `claude/*`.
 
-You MUST NOT push to main or master — this is a hard rule, not a guideline.
+You MUST NOT push to `main` or `master` — this is a hard rule, not a guideline.
 
 You MUST NOT force push or rewrite history on any remote branch.
 
@@ -60,18 +111,17 @@ If push is NOT available in the runtime environment:
 - Report the branch name and commit hash.
 - The repository owner will perform the push and open the PR.
 
-Commit message format: T<tier>-<id>: <short title> — example: T2-08: Add startup observability
-
+Commit message format: `T<tier>-<id>: <short title>` — example: `T2-08: Add startup observability`
 
 ### 2.2b Deliverable format (non-push environments — fallback only)
 
-Run python -m pytest -q before delivering.
+Run all three Mandatory Gates before delivering.
 
-Provide a single unified patch: git diff or git diff --staged.
+Provide a single unified patch: `git diff` or `git diff --staged`.
 
 Do NOT create commits. Do NOT push. Do NOT open PRs.
 
-Label response clearly: [DIFF ONLY — push not available]`[DIFF ONLY — push not available]`
+Label response clearly: `[DIFF ONLY — push not available]`
 
 ### 2.3 Git workflow (push-enabled environments)
 - Never push directly to `main` or `master`
@@ -107,9 +157,10 @@ Every PR MUST include this block — no exceptions:
 **Files NOT changed:** governance_engine.py, [any other locked files]
 **Tests added/modified:** <list or "none — existing coverage sufficient">
 **ADR reference:** ADR-XXXX (required if governance_engine.py was touched)
+**Gates passed:** ruff ✅ | pytest strict ✅ | pytest full ✅
 ```
 
-A PR without a Scope Declaration will not be reviewed.
+A PR without a Scope Declaration and confirmed gate status will not be reviewed.
 
 ### 3.5 Before writing a single line of code
 1. List every file that must change.
@@ -175,8 +226,8 @@ There is no "mostly done", "should be fine", or "looks good". **Binary only.**
 ## 6. Test Failure Protocol
 
 ### 6.1 Before delivering any change
-1. Run `python -m pytest -q` (full suite — canonical, deterministic)
-2. Confirm zero failures, zero new errors
+1. Run `python -m pytest -q -W error::pytest.PytestWarning` (strict — warnings are failures)
+2. Run `python -m pytest -q` (canonical — zero failures, zero new errors)
 3. Confirm test count is same or higher than before your change
    - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
 4. If any test fails: follow the protocol below before doing anything else
@@ -214,6 +265,8 @@ The test suite has warnings or unstable behaviour.
 6) Re-run full suite and confirm clean output.
 ```
 
+Note: Under the strict gate (`-W error::pytest.PytestWarning`), warnings are failures. Fix the warning source — do not suppress it.
+
 ### 6.4 🟣 PURPLE — Dependency / import error (collection failure)
 
 Respond **verbatim** before doing anything:
@@ -223,7 +276,7 @@ A test fails during collection (import error).
 1) Confirm full dependency installation:
    pip install -r requirements.txt -c constraints.txt
 2) Verify the missing module: python -c "import <module>"
-3) Fix dependency resolution only.
+3) Fix dependency resolution only. Do not write code or edit test files.
 4) Do not modify application logic.
 5) Re-run full suite.
 ```
@@ -243,6 +296,7 @@ Nothing else. **Fix root cause. Not symptom. Not workaround. Not silence.**
 - Mass changes across files
 - `pytest.mark.skip` / `xfail` without documented justification
 - Silencing warnings globally
+- Using env overrides (`PYTEST_ADDOPTS`, `--import-mode`, etc.) to bypass failures
 
 ---
 
@@ -286,7 +340,7 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 | `titan/orchestration/daily_coach.py` | 12-step morning routine — orchestration entry point |
 | `titan/ui/operator_console.py` | OperatorConsoleService (dashboard, session explorer, override) |
 | `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env) |
-| `docs/adr/` | Architecture Decision Records (0001–0014) |
+| `docs/adr/` | Architecture Decision Records (0001–0018) |
 | `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED) |
 | `pyproject.toml` | pytest + ruff + mypy config |
 
@@ -297,8 +351,10 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 | Mistake | Consequence |
 |---|---|
 | Shipping a change without creating or updating tests | Silent regression guarantee |
+| Creating a commit or PR before gates are green | Broken baseline delivered; next engineer inherits the failure |
 | Fixing multiple subsystems in one pass | Partial work delivered as "done"; debt reaccumulates |
 | Skipping `ruff check` / `pytest` binary gate | Incomplete fix shipped |
+| Using env overrides to bypass test failures | Root cause hidden; regression guaranteed to recur |
 | Broad `except Exception: pass` left in place | Silent data loss in governance inputs (T1-02, T1-03) |
 | Hardcoding thresholds instead of importing from `thresholds.py` | Values diverge on recalibration (T1-04) |
 | Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009) |
@@ -316,17 +372,21 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 [ ] I listed every file I need to change and why (Section 3.5).
 [ ] I confirmed no Tier N-1 items are OPEN before starting Tier N work.
 [ ] I made only the changes required by the task (no scope creep).
-[ ] ruff check <changed_paths>  → zero findings
-[ ] python -m pytest -q         → 100% green, count same or higher
+[ ] ruff check .                                        → zero findings
+[ ] python -m pytest -q -W error::pytest.PytestWarning  → 100% green, zero warnings-as-errors  ← GATE 2
+[ ] python -m pytest -q                                 → 100% green, count same or higher      ← GATE 3
 [ ] I created or updated tests for every changed public function.    ← MANDATORY, NO EXCEPTIONS
+[ ] I did NOT use PYTEST_ADDOPTS or any override flag to force green.
 [ ] I did NOT modify governance_engine.py without an ADR reference.
 [ ] I did NOT hardcode any threshold (used thresholds.py).
 [ ] Out-of-scope findings are in TECHNICAL_DEBT.md, not in code.
 [ ] I pushed to a claude/* branch only — NOT to main or master.
 [ ] I opened exactly one PR and pasted the PR link in my response.
-[ ] My PR description contains a Scope Declaration (Section 3.3).
+[ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
 ```
+
+**All 15 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
-*Last updated: 2026-03-04. Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-05. Authoritative for all agents and engineers operating on TITAN OS.*
