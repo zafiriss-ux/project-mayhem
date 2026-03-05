@@ -105,7 +105,7 @@ class TitanTelegramBot:
                         "detail": str(e),
                     },
                 )
-                print(f"⚠️  Telegram init warning: {e}")
+                _log.warning("telegram_init_warning", extra={"detail": str(e)})
 
     # ------------------------------------------------------------------ #
     # COMMAND HANDLERS
@@ -231,7 +231,7 @@ class TitanTelegramBot:
                 subsystem="send_message",
                 reason="missing_chat_id",
             )
-            print("⚠️  No chat_id – message not sent")
+            _log.warning("telegram_send_skipped_missing_chat_id")
             return False
         if self.bot and TELEBOT_AVAILABLE:
             try:
@@ -252,7 +252,7 @@ class TitanTelegramBot:
                     error_class=e.__class__.__name__,
                     error_message=str(e),
                 )
-                print(f"❌ Telegram send error: {e}")
+                _log.error("telegram_send_error", extra={"detail": str(e)})
                 return False
         else:
             # Fallback: log only
@@ -264,7 +264,7 @@ class TitanTelegramBot:
                 bot_available=bool(self.bot),
                 telebot_available=TELEBOT_AVAILABLE,
             )
-            print(f"📱 [Telegram] {text[:200]}")
+            _log.info("telegram_fallback_delivery_preview", extra={"message_preview": text[:200]})
             return True
 
     def send_weekly_plan(self, plan: dict) -> bool:
@@ -357,7 +357,7 @@ class TitanTelegramBot:
             scheduled_time=time_str,
             source=source,
         )
-        print(f"📅 Scheduled: {name} at {time_str}")
+        _log.info("telegram_task_scheduled", extra={"task_name": name, "scheduled_time": time_str})
 
     # ------------------------------------------------------------------ #
     # START / STOP
@@ -380,7 +380,7 @@ class TitanTelegramBot:
                 target=self._poll_worker, daemon=True, name="TelegramPoller"
             )
             self._poll_thread.start()
-            print("✅ Telegram bot started (polling + scheduler)")
+            _log.info("telegram_bot_started", extra={"mode": "polling_and_scheduler"})
         else:
             _telegram_event(
                 "failure",
@@ -390,9 +390,7 @@ class TitanTelegramBot:
                 bot_available=bool(self.bot),
                 telebot_available=TELEBOT_AVAILABLE,
             )
-            print(
-                "✅ Telegram scheduler started (no polling – token missing or library unavailable)"
-            )
+            _log.info("telegram_bot_started", extra={"mode": "scheduler_only"})
 
     def stop_bot(self):
         self._stop_event.set()
@@ -427,7 +425,7 @@ class TitanTelegramBot:
                         error_class=e.__class__.__name__,
                         error_message=str(e),
                     )
-                    print(f"⚠️  Polling error (retrying): {e}")
+                    _log.warning("telegram_polling_retry", extra={"detail": str(e)})
                     self._stop_event.wait(timeout=5)
 
     def _scheduler_worker(self):
@@ -464,7 +462,10 @@ class TitanTelegramBot:
                         error_class=e.__class__.__name__,
                         error_message=str(e),
                     )
-                    print(f"❌ Task '{task['name']}' error: {e}")
+                    _log.error(
+                        "telegram_scheduled_task_error",
+                        extra={"task_name": task["name"], "detail": str(e)},
+                    )
             # Sleep until next full minute
             sleep_seconds = max(1, 60 - now.second)
             expected_wakeup = now_ts + sleep_seconds
