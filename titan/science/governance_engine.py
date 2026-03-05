@@ -742,6 +742,20 @@ class GovernanceEngine:
                         apl_threshold_override=cs_threshold,
                     )
 
+        if bool(context.get("data_confidence_low", False)):
+            current_session = str(session_plan.get("session_type", "EASY")).upper()
+            if current_session not in {"REST", "EASY"}:
+                session_plan["session_type"] = "EASY"
+            session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
+            applied_locks.append("STARTUP_DATA_CONFIDENCE_CEILING")
+            _gate_event(
+                "STARTUP_DATA_CONFIDENCE",
+                "EASY_CEILING",
+                cause="DATA_PROBLEM",
+                original_session=current_session,
+                downgraded_to=session_plan.get("session_type", "EASY"),
+            )
+
         session_plan["governance_locks_applied"] = applied_locks
         session_plan["governance_clean"] = len(applied_locks) == 0
 

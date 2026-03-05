@@ -136,8 +136,16 @@ class DailyCoach:
         self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
+        self._startup_hydration_confidence: dict[str, bool] = {
+            "hrv": False,
+            "weight": False,
+            "load": False,
+            "hrr": False,
+            "cs": False,
+        }
+        self._startup_confidence_applies_next_routine = True
         # Restore in-memory state of science engines from DB on startup
-        self._hydrate_engines_from_db()
+        self._startup_hydration_confidence = self._hydrate_engines_from_db()
 
     # ═══════════════════════════════════════════════════════════════════════
     # PUBLIC ENTRY POINT
@@ -385,6 +393,12 @@ class DailyCoach:
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
+        startup_hydration_confidence = getattr(
+            self,
+            "_startup_hydration_confidence",
+            {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False},
+        )
+        startup_confidence_applies = getattr(self, "_startup_confidence_applies_next_routine", False)
         context_payload = self._build_daily_coach_context(
             afi_constraints=afi_constraints,
             intensity_gate=intensity_gate,
@@ -406,7 +420,11 @@ class DailyCoach:
             injury_flag=bool(garmin_data.get('injury_flag', False)),
             priority_vector=apl_result.get('priority_vector', {}),
             lock_thresholds=apl_result.get('lock_thresholds', {}),
+            data_confidence_low=(
+                sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else None
+            ),
         )
+        self._startup_confidence_applies_next_routine = False
         today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
             session_plan=today_session,
             context=context_payload,
@@ -626,9 +644,10 @@ class DailyCoach:
         injury_flag: bool,
         priority_vector: dict[str, Any],
         lock_thresholds: dict[str, Any],
+        data_confidence_low: bool | None = None,
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
-        return DailyCoachContextContract(
+        payload = DailyCoachContextContract(
             db=self.db,
             cs_tracker=self.cs_tracker,
             afi_constraints=afi_constraints,
@@ -652,6 +671,9 @@ class DailyCoach:
             priority_vector=priority_vector,
             lock_thresholds=lock_thresholds,
         ).to_payload()
+        if data_confidence_low is not None:
+            payload["data_confidence_low"] = data_confidence_low
+        return payload
 
     def _persist_garmin_data(
         self, garmin_data: dict, today_str: str
@@ -860,7 +882,7 @@ class DailyCoach:
                 error_message=str(e),
             )
 
-    def _hydrate_engines_from_db(self) -> None:
+    def _hydrate_engines_from_db(self) -> dict[str, bool]:
         """
         Restore in-memory science engine state from the database on startup.
 
@@ -872,6 +894,13 @@ class DailyCoach:
         Called automatically at end of __init__.
         """
         _daily_coach_event("hydration_started")
+        confidence = {
+            "hrv": False,
+            "weight": False,
+            "load": False,
+            "hrr": False,
+            "cs": False,
+        }
 
         # 1. HRV history (last 14 days, oldest first so baseline builds correctly)
         try:
@@ -879,6 +908,7 @@ class DailyCoach:
             self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
+            confidence["hrv"] = bool(rows)
             _daily_coach_event("hrv_hydrated", records=len(rows))
         except Exception as e:
             _daily_coach_event(
@@ -892,6 +922,7 @@ class DailyCoach:
             rows = self.db.get_weight_history(days=30)
             for date_str, weight in reversed(rows):
                 self.nutrition.add_weight_entry(date_str, weight)
+            confidence["weight"] = bool(rows)
             _daily_coach_event("weight_hydrated", records=len(rows))
         except Exception as e:
             _daily_coach_event(
@@ -907,6 +938,7 @@ class DailyCoach:
             # DB returns DESC; add oldest-first so EMA builds chronologically
             for date_str, load in reversed(loads):
                 self.tsb.add_daily_load(date_str, float(load))
+            confidence["load"] = bool(loads)
             _daily_coach_event("training_load_hydrated", sessions=len(loads))
         except Exception as e:
             _daily_coach_event(
@@ -920,6 +952,7 @@ class DailyCoach:
             hrr_rows = self.db.get_hrr_history(days=28)
             for date_str, hrr_60, hrr_120 in reversed(hrr_rows):
                 self.autonomic.add_hrr(date_str, hrr_60, hrr_120 or 0)
+            confidence["hrr"] = bool(hrr_rows)
             _daily_coach_event("hrr_hydrated", records=len(hrr_rows))
         except Exception as e:
             _daily_coach_event(
@@ -932,6 +965,7 @@ class DailyCoach:
         try:
             from titan.science.critical_speed import CriticalSpeedEngine
             perfs = self.db.get_cs_performances(limit=10)
+            confidence["cs"] = bool(perfs)
             if len(perfs) >= 2:
                 dist_time = [(dist, t) for _, dist, t in perfs]
                 cs_raw, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(dist_time)
@@ -950,3 +984,18 @@ class DailyCoach:
                 error_class=type(e).__name__,
                 error_message=str(e),
             )
+
+        self._startup_hydration_confidence = confidence
+        _daily_coach_event("startup_hydration_report", confidence=confidence)
+        if sum(confidence.values()) < 3:
+            _log.warning(
+                json.dumps(
+                    {
+                        "flow": "daily_coach",
+                        "action": "startup_low_confidence",
+                        "confidence": confidence,
+                    },
+                    default=str,
+                )
+            )
+        return confidence
