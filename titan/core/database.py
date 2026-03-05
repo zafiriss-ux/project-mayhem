@@ -773,8 +773,9 @@ class DatabaseManager:
         Persist today's glycogen debt score (0–10) to daily_metrics.
         Updates existing row for the date.
         """
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 "UPDATE daily_metrics SET glycogen_debt = ? WHERE date = ?",
                 (round(debt_score, 2), date),
@@ -801,8 +802,9 @@ class DatabaseManager:
             surface:      ROAD / TRACK / TRAIL
             wind_adjusted: True if pace was corrected for wind
         """
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 """INSERT INTO cs_performances
                    (date, distance_m, time_sec, surface, wind_adjusted)
@@ -847,8 +849,9 @@ class DatabaseManager:
             actual:     Actual session performed (e.g. 'INTERVALS')
             reason:     Optional athlete-supplied reason
         """
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 """INSERT INTO override_log (date, prescribed_type, actual_type, reason)
                    VALUES (?, ?, ?, ?)""",
@@ -902,8 +905,9 @@ class DatabaseManager:
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
         """Persist a governance decision snapshot into governance_outcomes."""
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 """INSERT INTO governance_outcomes (
                        date, session_planned, session_post_governance,
@@ -944,8 +948,9 @@ class DatabaseManager:
         notes: str | None = None,
     ) -> bool:
         """Update latest governance decision for date with post-session outcome."""
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 """UPDATE governance_outcomes
                    SET outcome_rpe = ?,
@@ -1013,8 +1018,9 @@ class DatabaseManager:
 
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
         """Attach or replace manual operator note for latest governance decision on date."""
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 """UPDATE governance_outcomes
                    SET outcome_notes = ?

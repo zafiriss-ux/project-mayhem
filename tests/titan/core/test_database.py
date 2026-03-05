@@ -23,6 +23,7 @@ def _assert_write_method_uses_locked_guard(db, write_call):
             return False
 
     cursor = MagicMock()
+    cursor.rowcount = 1
     conn = MagicMock()
 
     def _cursor_side_effect():
@@ -176,12 +177,132 @@ def test_save_personal_best_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.parametrize(
+    ("name", "write_call"),
+    [
+        (
+            "update_glycogen_debt",
+            lambda db: db.update_glycogen_debt(date="2026-03-05", debt_score=4.2),
+        ),
+        (
+            "log_cs_performance",
+            lambda db: db.log_cs_performance(
+                date="2026-03-05",
+                distance_m=5000.0,
+                time_sec=1200.0,
+                surface="ROAD",
+                wind_adjusted=False,
+            ),
+        ),
+        (
+            "log_override",
+            lambda db: db.log_override(
+                date="2026-03-05",
+                prescribed="REST",
+                actual="EASY",
+                reason="Felt good",
+            ),
+        ),
+        (
+            "save_governance_decision",
+            lambda db: db.save_governance_decision({
+                "date": "2026-03-05",
+                "session_planned": "EASY",
+                "session_post_governance": "REST",
+            }),
+        ),
+        (
+            "update_governance_outcome",
+            lambda db: db.update_governance_outcome(
+                date="2026-03-05",
+                rpe=5,
+                completed=True,
+                actual_session_type="EASY",
+                notes="ok",
+            ),
+        ),
+        (
+            "annotate_governance_outcome",
+            lambda db: db.annotate_governance_outcome(date="2026-03-05", note="operator note"),
+        ),
+    ],
+    ids=lambda case: case,
+)
+def test_governance_and_science_write_methods_cursor_inside_lock(tmp_path, name, write_call):
+    db = DatabaseManager(db_name=f"{name}_guard.db", db_dir=tmp_path)
+    _assert_write_method_uses_locked_guard(db, lambda: write_call(db))
+
+
 def test_write_after_close_raises(tmp_path):
     db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
     db.close()
 
     with pytest.raises(RuntimeError, match="closed"):
         db.save_daily_metric(date="2026-03-05", weight=70.0)
+
+
+@pytest.mark.parametrize(
+    "write_call",
+    [
+        lambda db: db.update_glycogen_debt(date="2026-03-05", debt_score=3.5),
+        lambda db: db.log_cs_performance(date="2026-03-05", distance_m=3000.0, time_sec=700.0),
+        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
+        lambda db: db.save_governance_decision({"date": "2026-03-05"}),
+        lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
+        lambda db: db.annotate_governance_outcome(date="2026-03-05", note="late note"),
+    ],
+)
+def test_in_scope_write_methods_fail_fast_after_close(tmp_path, write_call):
+    db = DatabaseManager(db_name="closed_writes_scope.db", db_dir=tmp_path)
+    db.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        write_call(db)
+
+
+@pytest.mark.parametrize(
+    "write_call",
+    [
+        lambda db: db.update_glycogen_debt(date="2026-03-05", debt_score=3.5),
+        lambda db: db.log_cs_performance(date="2026-03-05", distance_m=3000.0, time_sec=700.0),
+        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
+        lambda db: db.save_governance_decision({"date": "2026-03-05"}),
+        lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
+        lambda db: db.annotate_governance_outcome(date="2026-03-05", note="late note"),
+    ],
+)
+def test_in_scope_write_methods_no_cursor_on_close_race(tmp_path, write_call):
+    db = DatabaseManager(db_name="closed_write_race_scope.db", db_dir=tmp_path)
+    db._lock = threading.RLock()
+
+    conn = MagicMock()
+    conn.cursor.side_effect = AssertionError("cursor() must not be called on closed DB")
+    db.conn = conn
+
+    entered_write = threading.Event()
+    write_result: queue.Queue[Exception | None] = queue.Queue()
+
+    def _writer() -> None:
+        entered_write.set()
+        try:
+            write_call(db)
+            write_result.put(None)
+        except Exception as exc:  # noqa: BLE001
+            write_result.put(exc)
+
+    with db._lock:
+        writer = threading.Thread(target=_writer)
+        writer.start()
+        entered_write.wait(timeout=1)
+        db.close()
+
+    writer.join(timeout=2)
+    assert not writer.is_alive()
+
+    result = write_result.get(timeout=1)
+    assert isinstance(result, RuntimeError)
+    assert "closed" in str(result).lower()
+    conn.cursor.assert_not_called()
 
 
 def test_concurrent_writes_no_race(tmp_path):
