@@ -299,6 +299,7 @@ class TestOrchestrationBoundaryBackwardCompat:
             'READINESS_2OF4_DOWNGRADE', 'HARD_STOP_SAFETY_GATES',
             'VO2_ELIGIBILITY_GATE', 'FUELING_GATE_LOCK', 'FUELING_GATE_FLAG',
             'PARASYMPATHETIC_GUARD', 'OVERRIDE_LOCKDOWN', 'CS_CONFIDENCE_LOCK',
+            'STARTUP_DATA_CONFIDENCE_CEILING',
         }
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
         contexts = [
@@ -364,3 +365,20 @@ class TestAdaptivePriorityOrder:
         result = gov.apply_constraints(plan, context)
         assert result['governance_locks_applied'].index('CS_CONFIDENCE_LOCK') < \
             result['governance_locks_applied'].index('OVERRIDE_LOCKDOWN')
+
+
+def test_startup_data_confidence_low_applies_easy_ceiling(gov):
+    plan = {'session_type': 'HAMMER', 'duration_min': 45, 'max_zone': 5}
+    result = gov.apply_constraints(plan, {'data_confidence_low': True})
+
+    assert result['session_type'] == 'EASY'
+    assert result['max_zone'] <= 2
+    assert 'STARTUP_DATA_CONFIDENCE_CEILING' in result['governance_locks_applied']
+
+
+def test_startup_data_confidence_false_does_not_apply_easy_ceiling(gov):
+    plan = {'session_type': 'HAMMER', 'duration_min': 45, 'max_zone': 5}
+    result = gov.apply_constraints(plan, {'data_confidence_low': False, 'fueling_confirmed': True, 'days_since_last_vo2': 3, 'acwr': 1.1, 'readiness_score': 72, 'glycogen_debt': 3.0, 'fatigue_level': 'LOW'})
+
+    assert result['session_type'] == 'HAMMER'
+    assert 'STARTUP_DATA_CONFIDENCE_CEILING' not in result['governance_locks_applied']

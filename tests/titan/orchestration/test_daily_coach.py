@@ -741,3 +741,120 @@ def test_run_morning_routine_telegram_falsey_result_returns_false_and_emits_deli
     assert any(
         event["action"] == "slo_alert" and event["slo_key"] == "telegram_delivery_failed" for event in events
     )
+
+
+def _make_hydration_coach(db):
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = db
+    coach.hrv = SimpleNamespace(hrv_log=[], add_hrv_measurement=lambda *_: None)
+    coach.nutrition = SimpleNamespace(add_weight_entry=lambda *_: None)
+    coach.tsb = SimpleNamespace(daily_loads=[], add_daily_load=lambda *_: None)
+    coach.autonomic = SimpleNamespace(add_hrr=lambda *_: None)
+    coach.cs_tracker = SimpleNamespace(confidence=1.0, archetype="stable", update=lambda *_: None)
+    return coach
+
+
+class _HydrationDB:
+    def __init__(self, *, hrv=None, weight=None, load=None, hrr=None, cs=None):
+        self._hrv = hrv if hrv is not None else []
+        self._weight = weight if weight is not None else []
+        self._load = load if load is not None else []
+        self._hrr = hrr if hrr is not None else []
+        self._cs = cs if cs is not None else []
+
+    def get_hrv_history(self, days=14):
+        return self._hrv
+
+    def get_weight_history(self, days=30):
+        return self._weight
+
+    def get_training_load_history(self, days=42):
+        return self._load
+
+    def get_hrr_history(self, days=28):
+        return self._hrr
+
+    def get_cs_performances(self, limit=10):
+        return self._cs
+
+
+def test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning(monkeypatch):
+    events = []
+    warning_messages = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    monkeypatch.setattr(daily_coach._log, "warning", lambda message: warning_messages.append(message))
+
+    coach = _make_hydration_coach(_HydrationDB())
+
+    confidence = coach._hydrate_engines_from_db()
+
+    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
+    assert coach._startup_hydration_confidence == confidence
+    assert any(event["action"] == "startup_hydration_report" and event["confidence"] == confidence for event in events)
+    assert any("startup_low_confidence" in message for message in warning_messages)
+
+
+def test_hydrate_engines_from_db_partial_hydration_no_low_confidence_warning(monkeypatch):
+    events = []
+    warning_messages = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    monkeypatch.setattr(daily_coach._log, "warning", lambda message: warning_messages.append(message))
+
+    coach = _make_hydration_coach(
+        _HydrationDB(
+            hrv=[("2026-03-01", 42.0)],
+            weight=[("2026-03-01", 70.0)],
+            load=[("2026-03-01", 55.0)],
+            hrr=[],
+            cs=[],
+        )
+    )
+
+    confidence = coach._hydrate_engines_from_db()
+
+    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": False, "cs": False}
+    assert any(event["action"] == "startup_hydration_report" and event["confidence"] == confidence for event in events)
+    assert warning_messages == []
+
+
+def test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning(monkeypatch):
+    warning_messages = []
+    monkeypatch.setattr(daily_coach._log, "warning", lambda message: warning_messages.append(message))
+
+    coach = _make_hydration_coach(
+        _HydrationDB(
+            hrv=[("2026-03-01", 42.0)],
+            weight=[("2026-03-01", 70.0)],
+            load=[("2026-03-01", 55.0)],
+            hrr=[("2026-03-01", 20, 35)],
+            cs=[("2026-03-01", 5000.0, 1200.0)],
+        )
+    )
+
+    confidence = coach._hydrate_engines_from_db()
+
+    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": True, "cs": True}
+    assert warning_messages == []
+
+
+def test_run_morning_routine_passes_data_confidence_low_only_on_first_routine(monkeypatch):
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach._startup_hydration_confidence = {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
+    coach._startup_confidence_applies_next_routine = True
+
+    captured_contexts = []
+
+    def _apply_constraints(session_plan, context):
+        captured_contexts.append(dict(context))
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(
+        apply_constraints=_apply_constraints,
+        get_governance_report=lambda **k: {},
+    )
+
+    assert coach.run_morning_routine() is True
+    assert coach.run_morning_routine() is True
+
+    assert captured_contexts[0]["data_confidence_low"] is True
+    assert "data_confidence_low" not in captured_contexts[1]
