@@ -22,6 +22,31 @@ def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
     )
 
 
+def test_send_message_fallback_logs_metadata_without_message_content(monkeypatch, caplog):
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
+
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    secret_message = "SECRET123"
+
+    with caplog.at_level("INFO"):
+        assert bot.send_message(secret_message) is True
+
+    fallback_record = next(r for r in caplog.records if r.msg == "telegram_fallback_delivery_preview")
+    assert fallback_record.message_length == len(secret_message)
+    assert fallback_record.delivery_mode == "fallback"
+    assert fallback_record.reason == "fallback_console_only"
+    assert "SECRET123" not in caplog.text
+    assert not hasattr(fallback_record, "message_preview")
+
+    fallback_event = next(
+        fields
+        for action, fields in events
+        if action == "failure" and fields.get("reason") == "fallback_console_only"
+    )
+    assert "SECRET123" not in str(fallback_event)
+
+
 def test_start_bot_without_polling_backend_emits_poll_fail_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
