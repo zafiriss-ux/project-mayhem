@@ -172,7 +172,10 @@ class DailyCoach:
             subjective_fatigue_score = soreness
         subjective_fatigue_score = max(0, min(10, int(subjective_fatigue_score)))
 
-        print(f"\n🌅 Running morning routine: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
+        _daily_coach_event(
+            "routine_started",
+            started_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        )
 
         def _run_step(step_number: int, step_name: str, fn):
             try:
@@ -198,7 +201,7 @@ class DailyCoach:
                 raise
 
         # ── Step 1: Sync Garmin ──────────────────────────────────────────────
-        print("📥 Syncing Garmin data...")
+        _daily_coach_event("step_started", step_number=1, step_name="sync_garmin")
         garmin_data: GarminSyncResult = _run_step(1, "sync_garmin", self.garmin.sync_all)
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
@@ -225,7 +228,7 @@ class DailyCoach:
         _run_step(3, "feed_hrv_hrr", _step3_feed_hrv_hrr)
 
         # ── Step 4: AFI — Autonomic Fusion Index ────────────────────────────
-        print("🧬 Computing Autonomic Fusion Index...")
+        _daily_coach_event("step_started", step_number=4, step_name="compute_afi")
         ln_dev   = self.hrv.calculate_ln_rmssd_deviation(short_days=7, long_days=28)
         hrv_summary   = self.hrv.get_hrv_summary()
         latest_hrv   = _safe_float(hrv_summary.get('latest_hrv'), 0.0)
@@ -251,7 +254,11 @@ class DailyCoach:
             return afi_final_local, afi_constraints_local
 
         afi_final, afi_constraints = _run_step(4, "compute_afi", _step4_compute_afi)
-        print(f"  ↳ AFI: {afi_final:+.3f} | archetype: {self.cs_tracker.archetype}")
+        _daily_coach_event(
+            "afi_computed",
+            afi=f"{afi_final:+.3f}",
+            archetype=self.cs_tracker.archetype,
+        )
 
         # ── Step 5: TSB + kinetic state ──────────────────────────────────────
         tsb_value, tsb_status = _run_step(5, "calculate_tsb", self.tsb.calculate_tsb)
@@ -276,7 +283,7 @@ class DailyCoach:
         _run_step(6, "update_glycogen", lambda: self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt))
 
         # ── Step 7: Composite readiness ──────────────────────────────────────
-        print("💊 Analyzing recovery status...")
+        _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
         baseline_rhr = self._get_baseline_rhr(days=7)
         baseline_rhr_for_comparison = baseline_rhr
         if baseline_rhr is None:
@@ -335,7 +342,7 @@ class DailyCoach:
         ig = IntensityGovernor()
 
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
-        print("📋 Fetching today's session from weekly plan...")
+        _daily_coach_event("step_started", step_number=8, step_name="load_today_session")
         today_session: TodaySessionPlan = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
 
         intensity_gate = ig.evaluate({
@@ -377,7 +384,7 @@ class DailyCoach:
         _session_planned = str(today_session.get('session_type', 'EASY')).upper()
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
-        print("🔒 Applying governance constraints...")
+        _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
         context_payload = self._build_daily_coach_context(
             afi_constraints=afi_constraints,
             intensity_gate=intensity_gate,
@@ -405,7 +412,10 @@ class DailyCoach:
             context=context_payload,
         ))
         if today_session.get('governance_locks_applied'):
-            print(f"  ↳ Locks: {', '.join(today_session['governance_locks_applied'])}")
+            _daily_coach_event(
+                "governance_locks_applied",
+                locks=today_session['governance_locks_applied'],
+            )
 
 
         self._ensure_vo2_eligibility_contract(today_session)
@@ -430,7 +440,7 @@ class DailyCoach:
 
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
-        print("⏰ Calculating optimal running time...")
+        _daily_coach_event("step_started", step_number=10, step_name="calculate_optimal_time")
         optimal_time = _run_step(10, "calculate_optimal_time", lambda: self.optimal_time.calculate_optimal_time(
             session_type  = today_session.get('session_type', 'EASY'),
             duration_hours= today_session.get('duration_min', 45) / 60.0,
@@ -440,7 +450,7 @@ class DailyCoach:
         weather_degraded_mode = optimal_time.get('weather_data_quality') == 'synthetic'
 
         # ── Step 11: Nutrition ───────────────────────────────────────────────
-        print("🍽 Generating nutrition plan...")
+        _daily_coach_event("step_started", step_number=11, step_name="calculate_nutrition")
         weight_trend   = self.nutrition.analyze_weight_trend()
         current_weight = weight_trend.get('current_weight', 75.0)
 
@@ -463,7 +473,7 @@ class DailyCoach:
             )
 
         # ── Step 12: Send Telegram message (LLM explains, kernel decided) ────
-        print("📱 Sending coaching message...")
+        _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
         # Glycogen / electrolyte advisory
         glycogen_protocol   = self.glycogen.norwegian_protocol(current_weight)
         electrolyte_alert   = GlycogenDebtAccumulator.electrolyte_guard(
@@ -565,7 +575,10 @@ class DailyCoach:
                 cause="INTEGRATION_DELIVERY",
                 session_type=today_session.get("session_type", "EASY"),
             )
-        print(f"\n{'✅' if success else '❌'} Morning routine completed\n")
+        _daily_coach_event(
+            "routine_completed",
+            outcome="SUCCESS" if success else "FAILED",
+        )
         return success
 
     # ═══════════════════════════════════════════════════════════════════════
@@ -743,7 +756,11 @@ class DailyCoach:
                 )
 
             if activities:
-                print(f"  💾 Saved {len(activities)} activities to database")
+                _daily_coach_event(
+                    "activities_persisted",
+                    count=len(activities),
+                    date=today_str,
+                )
             _daily_coach_event(
                 "activity_persist",
                 activity_index=None,
@@ -751,7 +768,7 @@ class DailyCoach:
                 outcome="DAILY_METRICS_PERSISTED",
                 failure_class=None,
             )
-            print(f"  💾 Daily metrics saved for {today_str}")
+            _daily_coach_event("daily_metrics_persisted", date=today_str)
         except Exception as exc:
             _daily_coach_event(
                 "activity_persist",
@@ -762,7 +779,12 @@ class DailyCoach:
                 error_class=type(exc).__name__,
                 error_message=str(exc),
             )
-            print(f"  ⚠️  Could not persist Garmin data atomically for {today_str}: {exc}")
+            _daily_coach_event(
+                "daily_metrics_persist_failed",
+                date=today_str,
+                error_class=type(exc).__name__,
+                error_message=str(exc),
+            )
 
         return today_rhr, today_sleep_score, today_sleep_hours
 
@@ -830,9 +852,13 @@ class DailyCoach:
             self.tsb.daily_loads.clear()
             for date_str, load in reversed(loads):  # oldest-first for correct EMA
                 self.tsb.add_daily_load(date_str, float(load))
-            print(f"  ↳ Load engines refreshed: {len(loads)} sessions")
+            _daily_coach_event("load_engines_refreshed", sessions=len(loads))
         except Exception as e:
-            print(f"  ⚠️  Could not refresh load engines: {e}")
+            _daily_coach_event(
+                "load_engines_refresh_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
 
     def _hydrate_engines_from_db(self) -> None:
         """
@@ -845,7 +871,7 @@ class DailyCoach:
 
         Called automatically at end of __init__.
         """
-        print("🧠 Hydrating AI memory from database...")
+        _daily_coach_event("hydration_started")
 
         # 1. HRV history (last 14 days, oldest first so baseline builds correctly)
         try:
@@ -853,18 +879,26 @@ class DailyCoach:
             self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
-            print(f"  ↳ HRV: {len(rows)} records loaded")
+            _daily_coach_event("hrv_hydrated", records=len(rows))
         except Exception as e:
-            print(f"  ⚠️  HRV hydration failed: {e}")
+            _daily_coach_event(
+                "hrv_hydration_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
 
         # 2. Weight history (last 30 days, oldest first)
         try:
             rows = self.db.get_weight_history(days=30)
             for date_str, weight in reversed(rows):
                 self.nutrition.add_weight_entry(date_str, weight)
-            print(f"  ↳ Weight: {len(rows)} records loaded")
+            _daily_coach_event("weight_hydrated", records=len(rows))
         except Exception as e:
-            print(f"  ⚠️  Weight hydration failed: {e}")
+            _daily_coach_event(
+                "weight_hydration_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
 
         # 3. Training load history → TSB engine (42-day window for CTL)
         try:
@@ -873,18 +907,26 @@ class DailyCoach:
             # DB returns DESC; add oldest-first so EMA builds chronologically
             for date_str, load in reversed(loads):
                 self.tsb.add_daily_load(date_str, float(load))
-            print(f"  ↳ Training load: {len(loads)} sessions loaded for CTL")
+            _daily_coach_event("training_load_hydrated", sessions=len(loads))
         except Exception as e:
-            print(f"  ⚠️  TSB hydration failed: {e}")
+            _daily_coach_event(
+                "tsb_hydration_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
 
         # 4. HRR history → Autonomic engine (28-day rolling baseline)
         try:
             hrr_rows = self.db.get_hrr_history(days=28)
             for date_str, hrr_60, hrr_120 in reversed(hrr_rows):
                 self.autonomic.add_hrr(date_str, hrr_60, hrr_120 or 0)
-            print(f"  ↳ HRR: {len(hrr_rows)} records loaded for AFI baseline")
+            _daily_coach_event("hrr_hydrated", records=len(hrr_rows))
         except Exception as e:
-            print(f"  ⚠️  HRR hydration failed: {e}")
+            _daily_coach_event(
+                "hrr_hydration_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
 
         # 5. CS performances → CriticalSpeedTracker
         try:
@@ -896,8 +938,15 @@ class DailyCoach:
                 if cs_raw and d_prime:
                     latest_date = perfs[0][0]
                     self.cs_tracker.update(latest_date, cs_raw, d_prime)
-            print(f"  ↳ CS model: {len(perfs)} performances | "
-                  f"confidence={self.cs_tracker.confidence:.0%} | "
-                  f"archetype={self.cs_tracker.archetype}")
+            _daily_coach_event(
+                "cs_hydrated",
+                performances=len(perfs),
+                confidence=f"{self.cs_tracker.confidence:.0%}",
+                archetype=self.cs_tracker.archetype,
+            )
         except Exception as e:
-            print(f"  ⚠️  CS hydration failed: {e}")
+            _daily_coach_event(
+                "cs_hydration_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
