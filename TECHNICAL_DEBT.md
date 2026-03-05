@@ -315,7 +315,7 @@ built entirely on hardcoded fallback data.
 
 ### T1-10 · DB write methods: cursor created outside lock — race window ✅ RESOLVED (2026-03-05, ADR-0018-A1)
 
-**Status (2026-03-05):** RESOLVED. The 6 write methods originally in scope
+**Status (2026-03):** COMPLETED. The 6 write methods originally in scope
 (`save_daily_metric`, `save_session`, `save_hrr`, `update_shoe_mileage`, `add_shoe`,
 `save_personal_best`) now correctly place cursor creation inside `with self._lock:` with
 `_ensure_open_locked()` as the first call. Enforced pattern: lock →
@@ -347,13 +347,22 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 
 **Effort:** ~1h. Surgical; no architecture change.
 **Tests:** 8 new tests in `tests/titan/core/test_database.py` (see ADR-0018 Test Matrix §A1).
-**Commit ref:** `ref ADR-0018-A1`
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/core/test_database.py::test_save_daily_metric_cursor_inside_lock`
+- `tests/titan/core/test_database.py::test_save_session_cursor_inside_lock`
+- `tests/titan/core/test_database.py::test_write_after_close_raises`
+- Invariant: in-scope write methods acquire lock and open-check before cursor creation, and closed-DB writes fail fast with deterministic errors.
+
+**Implementation reference:**
+- Commit: `b12517e`
+- Branch: `codex/fix-db-cursor-race-in-write-methods`
+- PR: [#259](https://github.com/zafiriss-ux/project-mayhem/pull/259)
 
 ---
 
 ### T1-11 · main.py shutdown: routine thread not joined before db.close() ✅ RESOLVED (2026-03-05, ADR-0018-A2)
 
-**Status (2026-03-05):** RESOLVED. `main.py` `finally` block now explicitly joins
+**Status (2026-03):** COMPLETED. `main.py` `finally` block now explicitly joins
 `DailyCoach._routine_thread` (timeout=30s) before `db.close()`. If the thread is still
 alive after join, a structured `worker_shutdown_timeout` event is emitted at ERROR level
 with `(worker_name="DailyCoachRoutine", timeout_seconds=30, still_alive=True)`. Follows
@@ -389,13 +398,21 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 
 **Effort:** ~1h. Surgical; no architecture change.
 **Tests:** 4 new tests in `tests/test_full_lifecycle_stress.py` (see ADR-0018 Test Matrix §A2).
-**Commit ref:** `ref ADR-0018-A2`
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/test_full_lifecycle_stress.py::test_shutdown_join_timeout_emits_worker_shutdown_timeout`
+- `tests/test_full_lifecycle_stress.py::test_shutdown_sequence_stops_integrations_before_db_close`
+- Invariant: shutdown joins the routine worker before DB close and emits escalation when join timeout leaves the routine thread alive.
+
+**Implementation reference:**
+- Commit: `48ac724`
+- Branch: `codex/update-shutdown-sequence-in-main.py`
+- PR: [#260](https://github.com/zafiriss-ux/project-mayhem/pull/260)
 
 ---
 
 ### T1-12 · `_persist_garmin_data()`: non-atomic persistence — partial commit risk ✅ RESOLVED (2026-03-05, ADR-0018-A3)
 
-**Status (2026-03-05):** RESOLVED. `_persist_garmin_data()` now wraps the full activity
+**Status (2026-03):** COMPLETED. `_persist_garmin_data()` now wraps the full activity
 loop and `save_daily_metric()` in a single `with self.db.transaction():` block. On any
 failure the entire day's writes roll back atomically. The invariant holds: after the
 method returns, the database contains either all of today's data or none of it.
@@ -427,14 +444,36 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 **Dependency:** T1-10 (A1) must be complete first — atomic persistence builds on the
 corrected lock pattern in the write methods.
 **Tests:** 5 new tests in `tests/titan/orchestration/test_daily_coach.py` (see ADR-0018 Test Matrix §A3).
-**Commit ref:** `ref ADR-0018-A3`
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/orchestration/test_daily_coach.py::test_persist_garmin_data_success_commits_activities_and_metrics_atomically`
+- `tests/titan/orchestration/test_daily_coach.py::test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day`
+- `tests/titan/core/test_database.py::test_transaction_rollback_restores_state`
+- Invariant: Garmin persistence is all-or-nothing; mid-transaction failures roll back both activity rows and daily metrics.
+
+**Implementation reference:**
+- Commit: `b3aff31`
+- Branch: `codex/make-garmin-persistence-atomic`
+- PR: [#261](https://github.com/zafiriss-ux/project-mayhem/pull/261)
 
 ---
 
-### T1-13 · DB write methods: cursor race in governance/science paths — 6 methods unpatched ⚠️ OPEN
+### T1-13 · DB write methods: cursor race in governance/science paths — 6 methods unpatched ✅ RESOLVED
 
-**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3 (2026-03-05).
-**Priority:** Must be resolved before Phase 8. Block on T1-10 pattern — same fix, different scope.
+**Status (2026-03):** COMPLETED. All 6 in-scope governance/science write methods now follow
+the lock-first write pattern (`with self._lock` → `_ensure_open_locked()` → cursor acquisition
+inside lock), closing the close-race window identified in Engineering Audit V3.
+
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/core/test_database.py::test_governance_and_science_write_methods_cursor_inside_lock[save_governance_decision-<lambda>]`
+- `tests/titan/core/test_database.py::test_in_scope_write_methods_no_cursor_on_close_race[<lambda>3]`
+- `tests/titan/core/test_database.py::test_in_scope_write_methods_fail_fast_after_close[<lambda>5]`
+- Invariant: governance/science write paths do not create cursors on closed connections and fail
+  fast with controlled `RuntimeError` instead of racing into undefined DB state.
+
+**Implementation reference:**
+- Commit: `d892ef7`
+- Branch: `codex/fix-db-cursor-race-in-write-methods`
+- PR: [#264](https://github.com/zafiriss-ux/project-mayhem/pull/264)
 
 **Location:** `titan/core/database.py` — `update_glycogen_debt()`, `log_cs_performance()`,
 `log_override()`, `save_governance_decision()`, `update_governance_outcome()`,
@@ -461,16 +500,27 @@ python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
 **Effort:** ~1h. Identical pattern to T1-10.
 **Tests:** Extend `tests/titan/core/test_database.py` — add concurrent-close tests for each
 of the 6 methods (mirror the T1-10 test matrix in ADR-0018 §A1).
-**Commit ref:** `ref T1-13`
+
 
 ---
 
-### T1-14 · Garmin activity duplicate persistence — no idempotency key ⚠️ OPEN
+### T1-14 · Garmin activity duplicate persistence — no idempotency key ✅ RESOLVED
 
-**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, C1 (2026-03-05).
-**Priority:** P0. Must be resolved before Phase 8. This is a data-integrity failure mode
-that does not crash the system — it silently inflates training load and corrupts the
-CTL/ATL/TSB baseline used by all governance gates.
+**Status (2026-03):** COMPLETED. Garmin activity persistence now uses an idempotency key path
+(`garmin_activity_id` + duplicate-safe insert flow), preventing replayed syncs from inflating
+`training_log` and downstream CTL/ATL/TSB baselines.
+
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/core/test_database.py::test_save_session_ignores_duplicate_garmin_activity_id`
+- `tests/titan/core/test_database.py::test_save_session_allows_multiple_manual_rows_with_null_garmin_activity_id`
+- `tests/titan/orchestration/test_daily_coach.py::test_persist_garmin_data_duplicate_sync_is_idempotent`
+- Invariant: duplicate Garmin activity IDs are ignored while manual (null-ID) sessions remain insertable,
+  and replaying the same Garmin payload does not increase persisted activity rows.
+
+**Implementation reference:**
+- Commit: `c1a11bb`
+- Branch: `codex/add-garmin_activity_id-to-training_log`
+- PR: [#266](https://github.com/zafiriss-ux/project-mayhem/pull/266)
 **Source:** ADR-0019 (architectural decision for idempotency contract).
 **Execution readiness:** READY TO EXECUTE. ADR-0019 is Accepted (2026-03-05) — the
 idempotency contract is fully decided (INSERT OR IGNORE, partial unique index, nullable
@@ -530,7 +580,7 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 - Duplicate Garmin activity: second `save_session()` with same `garmin_activity_id` → row count unchanged
 - Null `garmin_activity_id`: two manual sessions insert without conflict
 - `get_ctl_atl_tsb()` stability under replay: same output before and after re-sync
-**Commit ref:** `ref T1-14, ADR-0019`
+
 
 ---
 
@@ -699,22 +749,23 @@ idempotency guard.
 
 ---
 
-### T2-09 · Residual `print()` operational/error paths across integration modules ⚠️ PARTIALLY RESOLVED
+### T2-09 · Residual `print()` operational/error paths across integration modules ✅ RESOLVED
 
-**Status (2026-03-04):** RESOLVED for `weather_api.py` only. Added `_weather_event()`
-structured event helper. Replaced all 4 `print()` calls with `_weather_event()` calls at
-appropriate log levels. `test_weather_api_has_no_print_calls` asserts zero `print()` in
-module. PR: TBD.
+**Status (2026-03):** COMPLETED. Operational print paths in `daily_coach.py`,
+`telegram_bot.py`, and `main.py` were replaced by structured event/log calls; remaining
+`print()` usage is limited to UI/CLI boundary output and documentation examples.
 
-**Status (2026-03-05, Engineering Audit V3):** `telegram_bot.py`, `titan/main.py`
-(startup/shutdown prints), and `daily_coach.py` operational prints remain OPEN. These are
-**not** deferred cosmetics — runtime prints in integration/orchestration paths bypass the
-structured log pipeline and create incident RCA gaps. See T2-10 for the specific
-Telegram content-leak privacy risk (separate item).
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/orchestration/test_daily_coach.py::test_run_morning_routine_happy_path_emits_step_success`
+- `tests/titan/integrations/test_telegram_bot_observability.py::test_telegram_bot_has_no_print_calls`
+- `tests/test_main_smoke.py::test_main_emits_shutdown_logs_on_keyboard_interrupt`
+- Invariant: integration/orchestration operational paths now emit structured events instead of
+  unstructured `print()` side channels.
 
-**Remaining scope (OPEN):** `titan/main.py`, `titan/integrations/telegram_bot.py`,
-`titan/orchestration/daily_coach.py` — operational/error prints only. UI-boundary prints
-in `titan/ui/` are intentional and must be preserved.
+**Implementation reference:**
+- Commits: `56b6d60`, `e44a7bc`, `9a7f7dc`
+- Branches: `codex/remove-operational-print-calls-from-telegram_bot.py`, `codex/remove-operational-print-calls-from-daily_coach.py`, `codex/replace-operational-print-statements-in-main.py`
+- PRs: [#267](https://github.com/zafiriss-ux/project-mayhem/pull/267), [#268](https://github.com/zafiriss-ux/project-mayhem/pull/268), [#269](https://github.com/zafiriss-ux/project-mayhem/pull/269)
 
 **Fix direction:** Replace each remaining operational `print()` with the module's structured
 event emitter (`_telegram_event`, `_coach_event`, or `log.*`). Execute one module at a time
@@ -755,10 +806,22 @@ following Rule E2 subsystem sequence.
 
 ---
 
-### T2-10 · Startup engine hydration has no data-confidence gate ⚠️ OPEN
+### T2-10 · Startup engine hydration has no data-confidence gate ✅ RESOLVED
 
-**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3 supplementary
-analysis (2026-03-05). See ADR-0019.
+**Status (2026-03):** COMPLETED. Startup hydration now tracks per-engine confidence and
+propagates low-confidence state into the first governance context after startup.
+
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/orchestration/test_daily_coach.py::test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning`
+- `tests/titan/orchestration/test_daily_coach.py::test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning`
+- `tests/titan/orchestration/test_daily_coach.py::test_run_morning_routine_passes_data_confidence_low_only_on_first_routine`
+- Invariant: low-hydration startup state is surfaced explicitly and only the first post-startup
+  routine carries `data_confidence_low` into governance for conservative capping.
+
+**Implementation reference:**
+- Commit: `c632844`
+- Branch: `codex/implement-startup-hydration-confidence-gate`
+- PR: [#271](https://github.com/zafiriss-ux/project-mayhem/pull/271)
 **Priority:** P1. This is a semantic safety gap — governance makes decisions after restart
 without knowing whether its input engines have valid baselines.
 **Architect decision:** MADE. ADR-0019 Decision 5 is the authoritative contract for this
@@ -822,13 +885,25 @@ GovernanceEngine.
 - cold start → confidence report shows all False → low-confidence event
 - full hydration → confidence all True → no conservative mode
 - governance conservative-mode: intensity ceiling applied under low confidence
-**Commit ref:** `ref T2-10, ADR-0019`
+
 
 ---
 
-### T2-11 · Telegram fallback logs message content — privacy/confidentiality risk ⚠️ OPEN
+### T2-11 · Telegram fallback logs message content — privacy/confidentiality risk ✅ RESOLVED
 
-**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, M3 (2026-03-05).
+**Status (2026-03):** COMPLETED. Telegram fallback delivery logs are metadata-only and no
+longer include message content previews.
+
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/integrations/test_telegram_bot_observability.py::test_send_message_fallback_logs_metadata_without_message_content`
+- `tests/titan/integrations/test_telegram_bot_observability.py::test_send_message_without_bot_emits_send_fail_event`
+- Invariant: fallback delivery emits observability metadata (length/mode/reason) without
+  leaking coaching payload text or previews.
+
+**Implementation reference:**
+- Commit: `96084d6`
+- Branch: `codex/fix-telegram-fallback-log-leak`
+- PR: [#270](https://github.com/zafiriss-ux/project-mayhem/pull/270)
 **Priority:** P1. Coaching and health data (HRV, TSB, session recommendations) must not
 appear in console/stdout logs in shared or containerised environments.
 
@@ -869,7 +944,7 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 **Tests:** Add to `tests/test_telegram_bot.py`:
 - fallback_send event payload contains `message_length` key but no `text`, `content`,
   `preview`, or message body
-**Commit ref:** `ref T2-11, ADR-0019`
+
 
 ---
 
@@ -915,19 +990,14 @@ background workers.
 
 ---
 
-### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation ⚠️ PARTIALLY RESOLVED
+### T3-06 · Background worker shutdown uses fixed `join(timeout=5)` without escalation ✅ RESOLVED
 
 **Status (2026-03-04):** RESOLVED for `titan/integrations/garmin_sync.py`. Escalation
 after `join(timeout=5)` is implemented and tested: if the worker is still alive, it emits a
 structured `worker_shutdown_timeout` event at ERROR level with `(worker_name,
 timeout_seconds, still_alive=true)`, with no forced termination.
 
-**Status (2026-03-05, Engineering Audit V3):** `weather_api.py` and `telegram_bot.py`
-stop paths do not have post-join alive escalation. `stop_background_updates()` calls
-`thread.join(timeout=5)` with no is_alive() check after join and no structured event on
-non-termination. `stop_bot()` checks `is_alive()` before joining but not after — if a
-thread is still running after the timeout, no event is emitted and shutdown proceeds
-silently. Tracked as **T3-08**.
+**Status (2026-03):** Child item T3-08 has been completed; Weather and Telegram stop paths now include the same post-join alive escalation pattern, so this parent item is fully closed.
 **Source:** Engineering audit 2026-03-04 (Medium risk #2)
 
 **Location:** `titan/integrations/garmin_sync.py`, `titan/integrations/telegram_bot.py`,
@@ -977,9 +1047,22 @@ usage is likely benign at today's trigger volume, but if runtime task mutation g
 
 ---
 
-### T3-08 · Weather + Telegram worker shutdown: no post-join alive escalation ⚠️ OPEN
+### T3-08 · Weather + Telegram worker shutdown: no post-join alive escalation ✅ RESOLVED
 
-**Status:** OPEN. Registered 2026-03-05. Source: Engineering Audit V3, C2 (2026-03-05).
+**Status (2026-03):** COMPLETED. Weather and Telegram worker stop paths now perform post-join
+`is_alive()` checks and emit structured `worker_shutdown_timeout` escalation events.
+
+**Closure evidence (pytest nodeids + invariant):**
+- `tests/titan/integrations/test_weather_api.py::test_stop_background_updates_emits_shutdown_timeout_when_thread_stays_alive`
+- `tests/titan/integrations/test_telegram_bot_observability.py::test_stop_bot_emits_shutdown_timeout_for_scheduler_thread`
+- `tests/titan/integrations/test_telegram_bot_observability.py::test_stop_bot_emits_shutdown_timeout_for_poll_thread`
+- Invariant: worker threads that survive `join(timeout=5)` now trigger explicit shutdown-timeout
+  escalation events instead of silent continuation.
+
+**Implementation reference:**
+- Commit: `7164524`
+- Branch: `codex/add-post-join-alive-escalation-for-workers`
+- PR: [#272](https://github.com/zafiriss-ux/project-mayhem/pull/272)
 **Priority:** P1. Must be resolved before Phase 8. Extends T3-06 to the two remaining workers.
 
 **Location:** `titan/integrations/weather_api.py` — `stop_background_updates()`; and
@@ -1018,7 +1101,7 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 **Effort:** ~2h total (1h per file). Surgical; no architecture change.
 **Tests:** Add to existing integration test files — simulate hang via `thread.join` mock,
 assert `worker_shutdown_timeout` event is emitted for both workers.
-**Commit ref:** `ref T3-08, ADR-0019`
+
 
 ---
 
@@ -1411,8 +1494,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-07 | 2026-03-04 | PR: TBD |
 | T1-08 | 2026-03-04 | PR: TBD |
 | T1-09 | 2026-03-04 | PR: TBD |
-| T2-09 | 2026-03-04 (weather_api.py) | PR: TBD |
-| T3-06 | 2026-03-04 | PR: TBD |
+| T3-06 | 2026-03 | Garmin path + [#272](https://github.com/zafiriss-ux/project-mayhem/pull/272) (child T3-08 closure) |
 | T3-07 | 2026-03-04 | PR: TBD |
 | T4-07 | 2026-03-04 | PR: TBD |
 | T4-08 | 2026-03-04 | PR: TBD |
@@ -1421,18 +1503,23 @@ When an item is completed, mark it here with date and PR reference:
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | 2026-03-04 | PR: TBD |
 | T4-13 | 2026-03-04 | PR: TBD |
-| T1-10 | 2026-03-05 (partial: 6 original methods) | PR: TBD |
-| T1-11 | 2026-03-05 | PR: TBD |
-| T1-12 | 2026-03-05 | PR: TBD |
-| T1-13 | OPEN | — |
-| T1-14 | OPEN | — |
-| T2-09 | PARTIAL (weather_api.py 2026-03-04; main/telegram/coach OPEN) | PR: TBD |
-| T2-10 | OPEN | — |
-| T2-11 | OPEN | — |
-| T3-06 | PARTIAL (garmin_sync.py 2026-03-04; weather/telegram OPEN → T3-08) | PR: TBD |
-| T3-08 | OPEN | — |
+| T1-10 | 2026-03 | [#259](https://github.com/zafiriss-ux/project-mayhem/pull/259) |
+| T1-11 | 2026-03 | [#260](https://github.com/zafiriss-ux/project-mayhem/pull/260) |
+| T1-12 | 2026-03 | [#261](https://github.com/zafiriss-ux/project-mayhem/pull/261) |
+| T1-13 | 2026-03 | [#264](https://github.com/zafiriss-ux/project-mayhem/pull/264) |
+| T1-14 | 2026-03 | [#266](https://github.com/zafiriss-ux/project-mayhem/pull/266) |
+| T2-09 | 2026-03 (fully resolved) | [#267](https://github.com/zafiriss-ux/project-mayhem/pull/267), [#268](https://github.com/zafiriss-ux/project-mayhem/pull/268), [#269](https://github.com/zafiriss-ux/project-mayhem/pull/269) |
+| T2-10 | 2026-03 | [#271](https://github.com/zafiriss-ux/project-mayhem/pull/271) |
+| T2-11 | 2026-03 | [#270](https://github.com/zafiriss-ux/project-mayhem/pull/270) |
+
+| T3-08 | 2026-03 | [#272](https://github.com/zafiriss-ux/project-mayhem/pull/272) |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-05 — Engineering Audit V3 findings registered (T1-13, T1-14, T2-10, T2-11, T3-08 OPEN; T1-10/11/12 RESOLVED as scoped; T2-09 and T3-06 status clarified as PARTIAL).*
+*Last updated: 2026-03-06 — Governance debt closure verification completed; T1-10 through T3-08 reconciled to implemented state with test and commit evidence.*
+
+
+## NEW (Governance verification scan additions — 2026-03)
+
+No additional hidden debt found beyond existing register.
