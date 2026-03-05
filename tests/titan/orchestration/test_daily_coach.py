@@ -1,5 +1,6 @@
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime
 from time import sleep
 from types import SimpleNamespace
@@ -25,10 +26,12 @@ class DummyDB:
 
         self.conn = SimpleNamespace(cursor=lambda: Cursor())
 
+    @contextmanager
+    def transaction(self):
+        yield
+
     def save_session(self, **kwargs):
         self._save_calls += 1
-        if self._save_calls == 2:
-            raise RuntimeError("session_persist_failed")
 
     def save_daily_metric(self, **kwargs):
         return None
@@ -281,32 +284,86 @@ def test_daily_coach_routine_thread_shutdown(tmp_path):
         db.close()
 
 
-def test_persist_path_emits_activity_persisted_and_skipped(monkeypatch):
-    events = []
-    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
-
-    coach = MinimalCoachFactory.build()
-    coach.db.save_daily_metric = lambda **kwargs: (_ for _ in ()).throw(RuntimeError("metric_write_failed"))
-
-    coach._persist_garmin_data(
-        {
-            "activities": [
-                {"date": "2026-03-04", "session_type": "EASY", "distance_km": 5, "duration_sec": 1800},
-                {"date": "2026-03-04", "session_type": "EASY", "distance_km": 3, "duration_sec": 1200},
-            ],
-            "sleep": [],
-            "hrv": [],
-            "weight": [],
-        },
-        "2026-03-04",
-    )
-
-    outcomes = {event.get("outcome") for event in events if event.get("action") == "activity_persist"}
-    assert "ACTIVITY_PERSISTED" in outcomes
-    assert "ACTIVITY_SKIPPED" in outcomes
-    assert "DAILY_METRICS_SKIPPED" in outcomes
+def _garmin_payload_for_day(day: str = "2026-03-04") -> dict:
+    return {
+        "activities": [
+            {"date": day, "session_type": "EASY", "distance_km": 5, "duration_sec": 1800, "rpe": 4, "name": "AM"},
+            {"date": day, "session_type": "TEMPO", "distance_km": 8, "duration_sec": 2400, "rpe": 7, "name": "PM"},
+        ],
+        "sleep": [{"restingHeartRate": 50, "sleepScores": {"overall": {"value": 80}}, "sleepTimeSeconds": 25200}],
+        "hrv": [{"date": day, "rmssd": 45.0}],
+        "weight": [{"date": day, "weight_kg": 70.5}],
+    }
 
 
+def _build_atomic_persist_coach(db: DatabaseManager) -> DailyCoach:
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = db
+    return coach
+
+
+def _count_rows(db: DatabaseManager, table: str, day: str) -> int:
+    cursor = db.conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table} WHERE date = ?", (day,))
+    return int(cursor.fetchone()[0])
+
+
+def test_persist_garmin_data_success_commits_activities_and_metrics_atomically(tmp_path):
+    db = DatabaseManager(db_name="atomic_success.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(_garmin_payload_for_day(day), day)
+
+        assert (rhr, sleep_score, sleep_hours) == (50, 80, 7.0)
+        assert _count_rows(db, "training_log", day) == 2
+        assert _count_rows(db, "daily_metrics", day) == 1
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
+    class MidLoopFailDB(DatabaseManager):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self._session_calls = 0
+
+        def save_session(self, **kwargs):
+            self._session_calls += 1
+            if self._session_calls == 2:
+                raise RuntimeError("mid_loop_failure")
+            return super().save_session(**kwargs)
+
+    db = MidLoopFailDB(db_name="atomic_midloop_fail.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+
+    try:
+        coach._persist_garmin_data(_garmin_payload_for_day(day), day)
+
+        assert _count_rows(db, "training_log", day) == 0
+        assert _count_rows(db, "daily_metrics", day) == 0
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(tmp_path):
+    class MetricFailDB(DatabaseManager):
+        def save_daily_metric(self, **kwargs):
+            raise RuntimeError("metric_failure")
+
+    db = MetricFailDB(db_name="atomic_metric_fail.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+
+    try:
+        coach._persist_garmin_data(_garmin_payload_for_day(day), day)
+
+        assert _count_rows(db, "training_log", day) == 0
+        assert _count_rows(db, "daily_metrics", day) == 0
+    finally:
+        db.close()
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)

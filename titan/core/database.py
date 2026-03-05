@@ -8,6 +8,7 @@ import logging
 import re
 import sqlite3
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -149,8 +150,9 @@ class DatabaseManager:
             str(self.db_path),
             check_same_thread=False,
         )
-        self._lock = threading.Lock()  # Serialise all writes
+        self._lock = threading.RLock()  # Serialise all writes (supports nested transaction paths)
         self._closed = False
+        self._transaction_depth = 0
 
         # Enable WAL mode for concurrent read/write access
         # WAL = Write-Ahead Logging (better concurrency than default rollback journal)
@@ -348,6 +350,31 @@ class DatabaseManager:
 
     # --- DAILY METRICS ---
 
+    @contextmanager
+    def transaction(self):
+        """Execute a group of writes atomically.
+
+        Commits once when the outermost scope succeeds and rolls back on any
+        exception.
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            is_outermost = self._transaction_depth == 0
+            if is_outermost:
+                self.conn.execute("BEGIN")
+            self._transaction_depth += 1
+            try:
+                yield
+            except Exception:
+                self._transaction_depth -= 1
+                if is_outermost:
+                    self.conn.rollback()
+                raise
+            else:
+                self._transaction_depth -= 1
+                if is_outermost:
+                    self.conn.commit()
+
     def save_daily_metric(
         self,
         date: str,
@@ -385,7 +412,8 @@ class DatabaseManager:
                  soreness, fatigue_level, mood, notes)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes))
-            self.conn.commit()
+            if self._transaction_depth == 0:
+                self.conn.commit()
 
     # --- TRAINING LOG ---
 
@@ -457,7 +485,8 @@ class DatabaseManager:
                 cursor.execute("""
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
                 """, (distance_km, date, shoe_id))
-            self.conn.commit()
+            if self._transaction_depth == 0:
+                self.conn.commit()
 
     def get_training_load_history(self, days: int = 42) -> list[tuple[str, float]]:
         """
