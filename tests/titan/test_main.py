@@ -1,8 +1,36 @@
+import ast
 import logging
+from pathlib import Path
 
 import pytest
 
 from titan import main as titan_main
+
+
+def _main_print_calls():
+    source = Path("titan/main.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print"
+    ]
+
+
+def _print_call_function_names(print_calls):
+    names = []
+    for node in print_calls:
+        parent = node
+        while parent is not None and not isinstance(parent, ast.FunctionDef):
+            parent = getattr(parent, "parent", None)
+        names.append(parent.name if parent is not None else None)
+    return names
+
+
+def _attach_parents(tree):
+    for node in ast.walk(tree):
+        for child in ast.iter_child_nodes(node):
+            child.parent = node
 
 
 class _DummyGarmin:
@@ -307,3 +335,30 @@ def test_main_runtime_error_still_executes_shutdown_cleanup(monkeypatch):
     assert weather.stop_calls == 1
     assert telegram.stop_calls == 1
     assert db.closed is True
+
+
+def test_main_has_no_print_calls_for_operational_output_guard():
+    source = Path("titan/main.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    _attach_parents(tree)
+    print_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print"
+    ]
+    assert _print_call_function_names(print_calls) == ["_print_banner", "_parse_env_number"]
+
+
+def test_main_emits_operational_startup_and_shutdown_events(monkeypatch, caplog):
+    _patch_main_dependencies(monkeypatch)
+    monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
+
+    with caplog.at_level(logging.INFO):
+        titan_main.main()
+
+    log_messages = {record.msg for record in caplog.records}
+    assert "startup_initializing_engines" in log_messages
+    assert "background_threads_starting" in log_messages
+    assert "scheduled_tasks_configured" in log_messages
+    assert "shutdown_started" in log_messages
+    assert "shutdown_completed" in log_messages
