@@ -743,6 +743,148 @@ def test_run_morning_routine_telegram_falsey_result_returns_false_and_emits_deli
     )
 
 
+@pytest.mark.parametrize(
+    ("step_number", "error", "expected"),
+    [
+        (2, RuntimeError("persist"), daily_coach.PERSIST_ERROR),
+        (12, RuntimeError("delivery"), daily_coach.DELIVERY_ERROR),
+        (8, ValueError("bad_data"), daily_coach.DATA_MISSING),
+        (8, RuntimeError("engine"), daily_coach.ENGINE_ERROR),
+    ],
+)
+def test_failure_class_for_step_maps_error_taxonomy(step_number, error, expected):
+    assert daily_coach._failure_class_for_step(step_number, error) == expected
+
+
+def test_ensure_vo2_eligibility_contract_normalizes_non_list_fields():
+    session_plan = {
+        "vo2_eligibility": {
+            "failed_conditions": "readiness_low",
+            "detailed_failed_conditions": {"code": "x"},
+        }
+    }
+
+    DailyCoach._ensure_vo2_eligibility_contract(session_plan)
+
+    assert session_plan["vo2_eligibility"]["failed_conditions"] == ["readiness_low"]
+    assert session_plan["vo2_eligibility"]["detailed_failed_conditions"] == []
+
+
+def test_get_recent_trimp_prefers_trimp_and_falls_back_to_training_load():
+    coach = DailyCoach.__new__(DailyCoach)
+
+    total = coach._get_recent_trimp(
+        [
+            {"trimp": 75.5},
+            {"trimp": 0, "training_load": 100},
+        ]
+    )
+
+    assert total == 135.5
+
+
+def test_feed_load_engines_rehydrates_tsb_in_oldest_first_order(monkeypatch):
+    events = []
+    added = []
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = SimpleNamespace(
+        get_training_load_history=lambda days=42: [
+            ("2026-03-04", 80.0),
+            ("2026-03-03", 70.0),
+        ]
+    )
+    coach.tsb = SimpleNamespace(
+        daily_loads=[("old", 1.0)],
+        add_daily_load=lambda date_str, load: added.append((date_str, load)),
+    )
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append((action, fields)))
+
+    coach._feed_load_engines([])
+
+    assert coach.tsb.daily_loads == []
+    assert added == [("2026-03-03", 70.0), ("2026-03-04", 80.0)]
+    assert any(action == "load_engines_refreshed" and fields["sessions"] == 2 for action, fields in events)
+
+
+def test_run_morning_routine_handles_hrr_locks_weight_and_missing_nutrition(monkeypatch):
+    events = []
+    payload = {}
+    hrr_calls = []
+    save_hrr_calls = []
+    glycogen_updates = []
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [{"date": "2026-03-04", "session_type": "EASY", "distance_km": 5, "duration_sec": 1800, "trimp": 42}],
+            "sleep": [None, {"restingHeartRate": 52, "sleepScores": 81, "sleepTimeSeconds": 25200}],
+            "hrv": [{"date": "2026-03-04", "rmssd": 45.0}],
+            "hrr": [{"date": "2026-03-04", "hrr_60": 25, "hrr_120": 42}],
+            "weight": [{"date": "2026-03-04", "weight_kg": 73.4}],
+            "acwr": 1.0,
+        }
+    )
+    coach.autonomic = SimpleNamespace(
+        hrr_log=[],
+        add_hrr=lambda date, hrr_60, hrr_120: hrr_calls.append((date, hrr_60, hrr_120)),
+        calculate_afi=lambda **k: 0.2,
+        apply_48h_buffer=lambda v: v,
+        get_readiness_constraints=lambda *a, **k: {"afi_modifier": 0, "readiness_clamp": 100},
+    )
+    coach.db.save_hrr = lambda date, hrr_60, hrr_120: save_hrr_calls.append((date, hrr_60, hrr_120))
+    coach.governance = SimpleNamespace(
+        apply_constraints=lambda session_plan, context: {
+            **session_plan,
+            "governance_locks_applied": ["LOCK_HYDRATION"],
+            "governance_clean": False,
+        },
+        get_governance_report=lambda **k: {},
+    )
+    coach.glycogen = SimpleNamespace(
+        daily_debt=5.0,
+        status="OK",
+        update=lambda **kwargs: glycogen_updates.append(kwargs),
+        overnight_resynthesis=lambda **k: None,
+        norwegian_protocol=lambda *_: {},
+    )
+    coach.nutrition = SimpleNamespace(
+        analyze_weight_trend=lambda: {"current_weight": 70.0},
+        add_weight_entry=lambda *a, **k: None,
+        calculate_daily_nutrition=lambda **k: {},
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
+
+    assert coach.run_morning_routine() is True
+    assert hrr_calls == [("2026-03-04", 25, 42)]
+    assert save_hrr_calls == [("2026-03-04", 25, 42)]
+    assert len(glycogen_updates) == 1
+    assert payload["nutrition_plan"] == "?g carbs, ?g protein"
+    assert any(event["action"] == "governance_locks_applied" for event in events)
+    assert any(event["action"] == "slo_alert" and event["slo_key"] == "nutrition_plan_missing" for event in events)
+
+
+def test_run_morning_routine_telegram_exception_raises_delivery_error_event(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda _payload: (_ for _ in ()).throw(RuntimeError("telegram_offline"))
+    )
+
+    with pytest.raises(RuntimeError, match="telegram_offline"):
+        coach.run_morning_routine()
+
+    assert any(
+        event["action"] == "step_event"
+        and event["step_number"] == 12
+        and event["outcome"] == "FAILED"
+        and event["failure_class"] == daily_coach.DELIVERY_ERROR
+        for event in events
+    )
+
+
 def _make_hydration_coach(db):
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = db
@@ -776,6 +918,59 @@ class _HydrationDB:
 
     def get_cs_performances(self, limit=10):
         return self._cs
+
+
+class _HydrationFailureDB:
+    def __getattr__(self, _name):
+        raise RuntimeError("hydrate_failure")
+
+
+def test_hydrate_engines_from_db_emits_failure_events_for_each_branch(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = _make_hydration_coach(_HydrationFailureDB())
+
+    confidence = coach._hydrate_engines_from_db()
+
+    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
+    for action in {
+        "hrv_hydration_failed",
+        "weight_hydration_failed",
+        "tsb_hydration_failed",
+        "hrr_hydration_failed",
+        "cs_hydration_failed",
+    }:
+        assert any(event["action"] == action for event in events)
+
+
+def test_hydrate_engines_from_db_updates_cs_tracker_when_two_performances_exist(monkeypatch):
+    events = []
+    cs_updates = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    from titan.science.critical_speed import CriticalSpeedEngine
+
+    monkeypatch.setattr(
+        CriticalSpeedEngine,
+        "estimate_cs_and_dprime",
+        staticmethod(lambda _dist_time: (4.1, 250.0)),
+    )
+
+    coach = _make_hydration_coach(
+        _HydrationDB(
+            cs=[
+                ("2026-03-05", 5000.0, 1200.0),
+                ("2026-03-01", 3000.0, 700.0),
+            ]
+        )
+    )
+    coach.cs_tracker = SimpleNamespace(confidence=1.0, archetype="stable", update=lambda *args: cs_updates.append(args))
+
+    confidence = coach._hydrate_engines_from_db()
+
+    assert confidence["cs"] is True
+    assert cs_updates == [("2026-03-05", 4.1, 250.0)]
+    assert any(event["action"] == "cs_hydrated" and event["performances"] == 2 for event in events)
 
 
 def test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning(monkeypatch):
