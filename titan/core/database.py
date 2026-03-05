@@ -376,9 +376,9 @@ class DatabaseManager:
             mood: Mood score (0-5 scale)
             notes: Optional text notes
         """
-        cursor = self.conn.cursor()
-
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT OR REPLACE INTO daily_metrics
                 (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
@@ -440,12 +440,12 @@ class DatabaseManager:
             )
             temperature_c = temperature
 
-        cursor = self.conn.cursor()
-
         # Calculate training load (RPE * duration in minutes)
         training_load = (rpe * (duration_sec / 60)) if rpe else 0
 
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT INTO training_log
                 (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
@@ -542,8 +542,9 @@ class DatabaseManager:
             distance_km: Distance added in km
             date: Date of the run (ISO format)
         """
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute("""
                 UPDATE gear_usage
                 SET total_km = total_km + ?, last_used = ?
@@ -563,9 +564,9 @@ class DatabaseManager:
         Returns:
             ID of the newly added shoe
         """
-        cursor = self.conn.cursor()
-
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit)
                 VALUES (?, ?, ?)
@@ -662,11 +663,11 @@ class DatabaseManager:
             date: Date of the performance (ISO format)
             race_name: Optional race name
         """
-        cursor = self.conn.cursor()
-
         pace_per_km = time_sec / distance_km
 
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT INTO personal_bests
                 (distance_km, time_sec, pace_sec_per_km, date, race_name)
@@ -708,8 +709,9 @@ class DatabaseManager:
             hrr_60:  BPM recovered at 60 seconds post-effort
             hrr_120: BPM recovered at 120 seconds post-effort
         """
-        cursor = self.conn.cursor()
         with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
             cursor.execute(
                 "UPDATE daily_metrics SET hrr_60 = ?, hrr_120 = ? WHERE date = ?",
                 (hrr_60, hrr_120, date),

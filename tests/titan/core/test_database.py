@@ -1,9 +1,48 @@
 import queue
 import threading
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from titan.core.database import DatabaseManager
+
+
+def _assert_write_method_uses_locked_guard(db, write_call):
+    events = []
+    state = {"in_lock": False}
+
+    class TrackingLock:
+        def __enter__(self):
+            state["in_lock"] = True
+            events.append("lock_enter")
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            events.append("lock_exit")
+            state["in_lock"] = False
+            return False
+
+    cursor = MagicMock()
+    conn = MagicMock()
+
+    def _cursor_side_effect():
+        assert state["in_lock"]
+        events.append("cursor")
+        return cursor
+
+    conn.cursor.side_effect = _cursor_side_effect
+    db.conn = conn
+    db._lock = TrackingLock()
+
+    def _ensure_side_effect():
+        assert state["in_lock"]
+        events.append("ensure")
+
+    with patch.object(db, "_ensure_open_locked", side_effect=_ensure_side_effect):
+        write_call()
+
+    assert events.index("ensure") < events.index("cursor")
+    conn.commit.assert_called_once()
 
 
 def test_get_active_shoes_returns_rows_when_database_open(tmp_path):
@@ -70,3 +109,107 @@ def test_read_methods_fail_fast_after_close(tmp_path, read_method):
 
     with pytest.raises(RuntimeError, match="closed"):
         read_method(db)
+
+
+def test_save_daily_metric_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="save_daily_metric_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.save_daily_metric(date="2026-03-05", weight=70.5),
+    )
+
+
+def test_save_session_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="save_session_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.save_session(
+            date="2026-03-05",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            rpe=4,
+        ),
+    )
+
+
+def test_save_hrr_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="save_hrr_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.save_hrr(date="2026-03-05", hrr_60=30, hrr_120=45),
+    )
+
+
+def test_update_shoe_mileage_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="update_shoe_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.update_shoe_mileage(shoe_id=1, distance_km=12.5, date="2026-03-05"),
+    )
+
+
+def test_add_shoe_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="add_shoe_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.add_shoe(name="Pegasus", shoe_type="DAILY", max_km=800),
+    )
+
+
+def test_save_personal_best_cursor_inside_lock(tmp_path):
+    db = DatabaseManager(db_name="save_pb_guard.db", db_dir=tmp_path)
+
+    _assert_write_method_uses_locked_guard(
+        db,
+        lambda: db.save_personal_best(
+            distance_km=5.0,
+            time_sec=1200,
+            date="2026-03-05",
+            race_name="Local 5K",
+        ),
+    )
+
+
+def test_write_after_close_raises(tmp_path):
+    db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
+    db.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        db.save_daily_metric(date="2026-03-05", weight=70.0)
+
+
+def test_concurrent_writes_no_race(tmp_path):
+    db = DatabaseManager(db_name="concurrent_writes.db", db_dir=tmp_path)
+    errors: queue.Queue[Exception] = queue.Queue()
+
+    def _writer(weight: float) -> None:
+        try:
+            db.save_daily_metric(date="2026-03-05", weight=weight)
+        except Exception as exc:  # noqa: BLE001
+            errors.put(exc)
+
+    t1 = threading.Thread(target=_writer, args=(70.0,))
+    t2 = threading.Thread(target=_writer, args=(71.0,))
+    t1.start()
+    t2.start()
+    t1.join(timeout=2)
+    t2.join(timeout=2)
+
+    assert errors.empty()
+
+    with db._lock:
+        db._ensure_open_locked()
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT weight_kg FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+        row = cursor.fetchone()
+
+    assert row is not None
+    assert row[0] in {70.0, 71.0}
+
+    db.close()
