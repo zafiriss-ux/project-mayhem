@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import titan.main as titan_main
 from titan.core.database import DatabaseManager
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
@@ -165,3 +166,233 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
     assert len(routine_starts) == 1, "T1-07 guard should allow only one routine run while active"
     assert not duplicate_runs, f"Duplicate routine executions detected: {duplicate_runs}"
     assert not programming_errors, f"sqlite3.ProgrammingError observed: {programming_errors}"
+
+
+def _setup_main_for_shutdown_tests(monkeypatch, daily_coach, db, main_menu_callable):
+    class _Stub:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class _Telegram(_Stub):
+        def schedule_task(self, **kwargs):
+            return None
+
+        def start_bot(self):
+            return None
+
+        def stop_bot(self):
+            return None
+
+    class _Worker(_Stub):
+        def start_background_sync(self, interval_hours=6):
+            return None
+
+        def stop_background_sync(self):
+            return None
+
+        def start_background_updates(self, interval_hours=1):
+            return None
+
+        def stop_background_updates(self):
+            return None
+
+    monkeypatch.setattr(titan_main, "_print_banner", lambda: None)
+    monkeypatch.setattr(titan_main, "ensure_credentials", lambda: True)
+    monkeypatch.setattr(titan_main, "_register_telegram_callbacks", lambda telegram, ctx: None)
+    monkeypatch.setattr(titan_main, "GarminSync", _Worker)
+    monkeypatch.setattr(titan_main, "TitanTelegramBot", _Telegram)
+    monkeypatch.setattr(titan_main, "DatabaseManager", lambda: db)
+    monkeypatch.setattr(titan_main, "DailyCoach", lambda **kwargs: daily_coach)
+    monkeypatch.setattr(titan_main, "main_menu", main_menu_callable)
+    monkeypatch.setattr(titan_main, "WeatherAPI", _Worker, raising=False)
+
+    for cls_name in (
+        "HRVGuidedEngine",
+        "TSBEngine",
+        "ACWREngine",
+        "ReadinessEngine",
+        "GlycogenModel",
+        "DriftEngine",
+        "LactateLogic",
+        "TRIMPEngine",
+        "FatigueEngine",
+        "AdaptiveMemory",
+        "BiomechanicsAnalysis",
+        "EfficiencyEngine",
+        "DurabilityEngine",
+        "CriticalSpeedEngine",
+        "RCPEngine",
+    ):
+        monkeypatch.setattr(titan_main, cls_name, _Stub)
+
+    monkeypatch.setattr(titan_main, "WeeklyPlanGenerator", lambda *args, **kwargs: _Stub())
+    monkeypatch.setattr(titan_main, "OptimalTimeCalculator", lambda *args, **kwargs: _Stub())
+    monkeypatch.setattr(titan_main, "NutritionOptimizer", lambda *args, **kwargs: _Stub())
+
+    class _ContextContract:
+        def __init__(self, **kwargs):
+            self._payload = kwargs
+
+        def to_payload(self):
+            return self._payload
+
+    monkeypatch.setattr(titan_main, "TitanContextContract", _ContextContract)
+
+
+def test_shutdown_joins_routine_thread_before_db_close(monkeypatch):
+    call_order = []
+
+    class _Db:
+        def close(self):
+            call_order.append("db.close")
+
+    class _RoutineThread:
+        def is_alive(self):
+            return True
+
+        def join(self, timeout=None):
+            call_order.append(f"routine.join:{timeout}")
+
+    class _DailyCoach:
+        _routine_thread = _RoutineThread()
+
+        def run_morning_routine_async(self):
+            return None
+
+    _setup_main_for_shutdown_tests(
+        monkeypatch,
+        daily_coach=_DailyCoach(),
+        db=_Db(),
+        main_menu_callable=lambda ctx: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    titan_main.main()
+
+    assert call_order == ["routine.join:30", "db.close"]
+
+
+def test_shutdown_avoids_sqlite_programming_error_with_concurrent_routine(monkeypatch):
+    started = threading.Event()
+    finished = threading.Event()
+    errors = []
+
+    class _Db:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+        def routine_write(self):
+            if self.closed:
+                raise sqlite3.ProgrammingError("Cannot operate on a closed database")
+
+    db = _Db()
+
+    def _routine_target():
+        started.set()
+        try:
+            db.routine_write()
+        except sqlite3.ProgrammingError as exc:
+            errors.append(exc)
+        finally:
+            finished.set()
+
+    routine_thread = threading.Thread(target=_routine_target, name="DailyCoachRoutine")
+
+    class _DailyCoach:
+        _routine_thread = routine_thread
+
+        def run_morning_routine_async(self):
+            return None
+
+    def _main_menu(_ctx):
+        routine_thread.start()
+        assert started.wait(timeout=1)
+        raise KeyboardInterrupt()
+
+    _setup_main_for_shutdown_tests(monkeypatch, daily_coach=_DailyCoach(), db=db, main_menu_callable=_main_menu)
+
+    titan_main.main()
+
+    assert finished.is_set()
+    assert not errors
+
+
+def test_shutdown_join_timeout_emits_worker_shutdown_timeout(monkeypatch, caplog):
+    class _Db:
+        def close(self):
+            return None
+
+    class _RoutineThread:
+        def __init__(self):
+            self.join_timeout = None
+
+        def is_alive(self):
+            return True
+
+        def join(self, timeout=None):
+            self.join_timeout = timeout
+
+    routine_thread = _RoutineThread()
+
+    class _DailyCoach:
+        _routine_thread = routine_thread
+
+        def run_morning_routine_async(self):
+            return None
+
+    _setup_main_for_shutdown_tests(
+        monkeypatch,
+        daily_coach=_DailyCoach(),
+        db=_Db(),
+        main_menu_callable=lambda ctx: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with caplog.at_level("ERROR"):
+        titan_main.main()
+
+    records = [r for r in caplog.records if r.msg == "worker_shutdown_timeout"]
+    assert records
+    record = records[-1]
+    assert routine_thread.join_timeout == 30
+    assert record.worker_name == "DailyCoachRoutine"
+    assert record.timeout_seconds == 30
+    assert record.still_alive is True
+
+
+def test_shutdown_completes_with_bounded_wait_and_no_real_sleep(monkeypatch):
+    class _Db:
+        def close(self):
+            return None
+
+    class _RoutineThread:
+        def __init__(self):
+            self.join_timeout = None
+            self.alive_checks = 0
+
+        def is_alive(self):
+            self.alive_checks += 1
+            return self.alive_checks == 1
+
+        def join(self, timeout=None):
+            self.join_timeout = timeout
+
+    routine_thread = _RoutineThread()
+
+    class _DailyCoach:
+        _routine_thread = routine_thread
+
+        def run_morning_routine_async(self):
+            return None
+
+    _setup_main_for_shutdown_tests(
+        monkeypatch,
+        daily_coach=_DailyCoach(),
+        db=_Db(),
+        main_menu_callable=lambda ctx: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    titan_main.main()
+
+    assert routine_thread.join_timeout == 30
