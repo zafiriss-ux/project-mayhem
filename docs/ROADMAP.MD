@@ -137,7 +137,7 @@ Goal: Machine learning on a stable, calibrated, observable foundation.
 
 ---
 
-## Phase 7.5 — Hardening Sprint (OPEN, 2026)
+## Phase 7.5 — Hardening Sprint (CLOSED, 2026-03-04)
 
 **Gate:** Must be complete before Phase 8 feature work begins.
 All items map 1:1 to `TECHNICAL_DEBT.md` entries. Tier ordering is mandatory (CLAUDE.md Rule E1).
@@ -170,9 +170,12 @@ All items map 1:1 to `TECHNICAL_DEBT.md` entries. Tier ordering is mandatory (CL
 
 ### Deliverable
 
-All 1122+ tests green. `ruff check .` zero findings (T4-01 already tracking).
-`mypy titan/orchestration/contracts.py` zero errors (after T4-10).
-Coverage gate active in CI (T4-11). ADR-0017 observations confirmed resolved or deferred to Phase 9.
+All deliverables met (closed 2026-03-04):
+- 1417 tests green (0 failures, 0 PytestWarning). Coverage 91.96% (gate: 80%).
+- `ruff check .` zero findings (T4-01 resolved).
+- `mypy titan/orchestration/contracts.py` zero errors (T4-10 resolved).
+- Coverage gate active in CI (T4-11 resolved).
+- ADR-0017 observations confirmed resolved (T1-06, T1-07, T3-06, T3-07 all RESOLVED).
 
 ### Architecture context
 
@@ -279,4 +282,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-04 (Phase 7.5 Hardening Sprint added: 14 audit findings from engineering audit 2026-03-04 registered as T1-06..T4-13; ADR-0017 architecture audit; ARCHITECTURE.md thread-safety description corrected)
+Last updated: 2026-03-05 (Phase 7.5 Hardening Sprint CLOSED 2026-03-04: all T1-06..T4-13 RESOLVED; 1417 tests green; coverage 91.96%; ruff zero findings; coverage gate active)
