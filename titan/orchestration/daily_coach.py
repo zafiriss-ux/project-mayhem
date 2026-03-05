@@ -704,14 +704,15 @@ class DailyCoach:
                     activity_date = act.get('date', today_str)
                     try:
                         self.db.save_session(
-                            date        = activity_date,
-                            session_type= act.get('session_type', 'EASY'),
-                            distance_km = _safe_float(act.get('distance_km', 0)),
-                            duration_sec= _safe_int(act.get('duration_sec', 0)),
-                            avg_hr      = _safe_int(act.get('avg_hr')) or None,
-                            max_hr      = _safe_int(act.get('max_hr')) or None,
-                            rpe         = act.get('rpe'),
-                            notes       = act.get('name', ''),
+                            date              = activity_date,
+                            session_type      = act.get('session_type', 'EASY'),
+                            distance_km       = _safe_float(act.get('distance_km', 0)),
+                            duration_sec      = _safe_int(act.get('duration_sec', 0)),
+                            avg_hr            = _safe_int(act.get('avg_hr')) or None,
+                            max_hr            = _safe_int(act.get('max_hr')) or None,
+                            rpe               = act.get('rpe'),
+                            notes             = act.get('name', ''),
+                            garmin_activity_id= act.get('activity_id'),
                         )
                         _daily_coach_event(
                             "activity_persist",

@@ -287,8 +287,24 @@ def test_daily_coach_routine_thread_shutdown(tmp_path):
 def _garmin_payload_for_day(day: str = "2026-03-04") -> dict:
     return {
         "activities": [
-            {"date": day, "session_type": "EASY", "distance_km": 5, "duration_sec": 1800, "rpe": 4, "name": "AM"},
-            {"date": day, "session_type": "TEMPO", "distance_km": 8, "duration_sec": 2400, "rpe": 7, "name": "PM"},
+            {
+                "activity_id": "garmin-activity-1",
+                "date": day,
+                "session_type": "EASY",
+                "distance_km": 5,
+                "duration_sec": 1800,
+                "rpe": 4,
+                "name": "AM",
+            },
+            {
+                "activity_id": "garmin-activity-2",
+                "date": day,
+                "session_type": "TEMPO",
+                "distance_km": 8,
+                "duration_sec": 2400,
+                "rpe": 7,
+                "name": "PM",
+            },
         ],
         "sleep": [{"restingHeartRate": 50, "sleepScores": {"overall": {"value": 80}}, "sleepTimeSeconds": 25200}],
         "hrv": [{"date": day, "rmssd": 45.0}],
@@ -362,6 +378,28 @@ def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(t
 
         assert _count_rows(db, "training_log", day) == 0
         assert _count_rows(db, "daily_metrics", day) == 0
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
+    db = DatabaseManager(db_name="garmin_idempotent_sync.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+
+    try:
+        payload = _garmin_payload_for_day(day)
+
+        coach._persist_garmin_data(payload, day)
+        rows_after_first_sync = _count_rows(db, "training_log", day)
+        tsb_after_first_sync = db.get_ctl_atl_tsb()
+
+        coach._persist_garmin_data(payload, day)
+        rows_after_second_sync = _count_rows(db, "training_log", day)
+        tsb_after_second_sync = db.get_ctl_atl_tsb()
+
+        assert rows_after_first_sync == rows_after_second_sync
+        assert tsb_after_first_sync == tsb_after_second_sync
     finally:
         db.close()
 def test_get_baseline_rhr_happy_path_returns_average():
