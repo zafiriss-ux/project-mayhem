@@ -52,7 +52,7 @@ project-mayhem/
 │   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0017)
+│   ├── adr/                 # Architecture Decision Records (0001–0018)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
 │   │                        # operator_console_readiness_dashboard.md,
@@ -411,6 +411,7 @@ See `docs/adr/` for Architecture Decision Records:
 - `0015` — SQLite retention strategy and Phase 8 data lifecycle gate (Accepted — v5.8.0)
 - `0016` — Phase 8 multi-sport scope and unified adapter gate (Accepted — v5.8.0)
 - `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
+- `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Proposed — Phase A OPEN, 2026-03-05)
 
 ---
 

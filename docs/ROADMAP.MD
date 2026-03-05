@@ -187,6 +187,41 @@ the operational risks identified in the audit.
 
 ---
 
+## Phase 7.6 — ADR-0018 Phase A: Kernel Boundary Surgical Fixes (OPEN, 2026-03-05)
+
+**Gate:** Must be complete before Phase 8 feature work begins.
+**Source:** ADR-0018 post-Phase-7.5 audit. Items map 1:1 to `TECHNICAL_DEBT.md` T1-10, T1-11, T1-12.
+Tier ordering is mandatory (CLAUDE.md Rule E1): T1-10 → T1-11 → T1-12.
+
+### Tier 1 — Data Integrity (block all else until resolved)
+
+- **T1-10** (ADR-0018-A1) — Move cursor creation inside `with self._lock` in all six
+  write methods of `DatabaseManager`; add `_ensure_open_locked()` as first call inside lock.
+  Fixes race window between cursor creation and `_closed` flag check at shutdown.
+- **T1-11** (ADR-0018-A2) — Add explicit `join(timeout=30)` for `DailyCoach._routine_thread`
+  in `main.py` shutdown sequence before `db.close()`. Emit `worker_shutdown_timeout` event on
+  non-termination (T3-06 pattern). Prevents `sqlite3.ProgrammingError` at shutdown.
+- **T1-12** (ADR-0018-A3) — Wrap `_persist_garmin_data()` activity loop + `save_daily_metric`
+  in a single atomic SQLite transaction. Rollback all writes on any failure. Eliminates partial
+  day state in `training_log` / `daily_metrics`.
+
+### Deliverable
+
+- All three write-path race conditions resolved.
+- 1417+ tests green (0 failures, 0 PytestWarning). Coverage ≥ 91.96%.
+- `ruff check .` zero findings.
+- Phase B design (DecisionResult / pipeline split) documented in ADR-0018 — implementation
+  deferred to next sprint.
+
+### Architecture context
+
+ADR-0018 (`docs/adr/0018-kernel-boundary-decision-pipeline-effect-runner-split.md`) documents
+the Kernel Boundary pattern and the two-phase (Decision Pipeline / Effect Runner) architectural
+direction. Phase A is surgical only — no structural reorganisation. ADR-0017 composition root
+and DailyCoach orchestrator patterns remain unchanged.
+
+---
+
 ## Phase 8 — Multi-Platform & Social (PLANNED, 2027)
 
 **Prerequisite:** Phase 7.5 Hardening Sprint complete.
@@ -282,4 +317,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-05 (Phase 7.5 Hardening Sprint CLOSED 2026-03-04: all T1-06..T4-13 RESOLVED; 1417 tests green; coverage 91.96%; ruff zero findings; coverage gate active)
+Last updated: 2026-03-05 (Phase 7.6 OPEN: ADR-0018 Phase A registered — T1-10, T1-11, T1-12 OPEN; Phase 7.5 CLOSED 2026-03-04: all T1-06..T4-13 RESOLVED; 1417 tests green; coverage 91.96%; ruff zero findings; coverage gate active)
