@@ -298,6 +298,121 @@ built entirely on hardcoded fallback data.
 
 ---
 
+### T1-10 · DB write methods: cursor created outside lock — race window ⚠️ OPEN (ADR-0018-A1)
+
+**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
+**Priority:** Must be resolved before Phase 8 feature work begins.
+
+**Location:** `titan/core/database.py` — `save_daily_metric()`, `save_session()`,
+`save_hrr()`, `update_shoe_mileage()`, `add_shoe()`, `save_personal_best()`
+
+**Problem:** All six write methods create `cursor = self.conn.cursor()` **before**
+entering the `with self._lock:` block. This means cursor creation happens outside the
+`_closed` check: if `db.close()` is called by the main thread concurrently (e.g., during
+shutdown), a cursor can be created against a closed connection, producing an unguarded
+`sqlite3.ProgrammingError`. The existing `_ensure_open_locked()` guard is called
+correctly by all **read** paths (lock → ensure_open → cursor) but has never been wired
+into the write paths.
+
+**Fix direction:**
+- Move `cursor = self.conn.cursor()` inside `with self._lock:` for all six write methods.
+- Add `self._ensure_open_locked()` as the first call inside the lock block (same pattern
+  as read paths: `lock → _ensure_open_locked → cursor → execute → commit`).
+- The `training_load` arithmetic calculation in `save_session()` (pure math, no I/O) may
+  remain outside the lock.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py   # must be zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
+```
+
+**Effort:** ~1h. Surgical; no architecture change.
+**Tests:** 8 new tests in `tests/titan/core/test_database.py` (see ADR-0018 Test Matrix §A1).
+**Commit ref:** `ref ADR-0018-A1`
+
+---
+
+### T1-11 · main.py shutdown: routine thread not joined before db.close() ⚠️ OPEN (ADR-0018-A2)
+
+**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
+**Priority:** Must be resolved before Phase 8 feature work begins.
+
+**Location:** `titan/main.py` — `finally` block of `main()`
+
+**Problem:** The shutdown sequence is `garmin.stop → weather.stop → telegram.stop →
+db.close()`. There is no explicit `join()` of the `DailyCoach._routine_thread` before
+`db.close()`. If the morning routine is mid-execution at shutdown time, it will attempt
+DB operations (via the write methods from T1-10) against a closed connection, producing
+a `sqlite3.ProgrammingError`. T3-06 resolved the same issue for the three integration
+background workers. `DailyCoach._routine_thread` is the remaining unjoined thread.
+
+**Fix direction:**
+- After `telegram.stop_bot()` and before `db.close()`, add:
+  ```python
+  routine_thread = getattr(daily_coach, '_routine_thread', None)
+  if routine_thread is not None and routine_thread.is_alive():
+      routine_thread.join(timeout=30)
+      if routine_thread.is_alive():
+          log.error("worker_shutdown_timeout", extra={
+              "worker_name": "DailyCoachRoutine",
+              "timeout_seconds": 30,
+              "still_alive": True,
+          })
+  ```
+- This follows the T3-06 `worker_shutdown_timeout` event pattern already in use.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/main.py   # must be zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
+```
+
+**Effort:** ~1h. Surgical; no architecture change.
+**Tests:** 4 new tests in `tests/test_full_lifecycle_stress.py` (see ADR-0018 Test Matrix §A2).
+**Commit ref:** `ref ADR-0018-A2`
+
+---
+
+### T1-12 · `_persist_garmin_data()`: non-atomic persistence — partial commit risk ⚠️ OPEN (ADR-0018-A3)
+
+**Status:** OPEN. Registered 2026-03-05. Source: ADR-0018 post-Phase-7.5 audit.
+**Priority:** Must be resolved before Phase 8 feature work begins.
+
+**Location:** `titan/orchestration/daily_coach.py` — `_persist_garmin_data()`
+
+**Problem:** The method writes activities to `training_log` one-by-one (individual
+`save_session()` + individual `commit()` per activity), then writes daily metrics
+in a separate `save_daily_metric()` call with its own `commit()`. A crash or uncaught
+exception at any point in the loop leaves the database in a **partial day state**: some
+activities may be committed while others and/or the daily metrics row are absent. The
+governance engine reconstructs CTL/ATL from `training_log` on startup — an incomplete
+log silently corrupts the load calculation baseline.
+
+**Fix direction:**
+- Wrap the full activity loop + `save_daily_metric()` in a single SQLite transaction.
+- If any step fails, roll back all writes for that day.
+- Implementation: add a transaction context manager to `DatabaseManager` (e.g.,
+  `begin()` / `commit()` / `rollback()` or a `transaction()` context manager), or
+  batch all writes in a single `with self._lock:` block with a single `commit()` at
+  the end.
+- The invariant: after `_persist_garmin_data()` returns, the database contains either
+  **all** of today's data or **none** of it. No intermediate state is valid.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/orchestration/daily_coach.py   # must be zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # must be 100% green
+```
+
+**Effort:** ~3h. Requires DB transaction API extension and orchestration change.
+**Dependency:** T1-10 (A1) must be complete first — atomic persistence builds on the
+corrected lock pattern in the write methods.
+**Tests:** 5 new tests in `tests/titan/orchestration/test_daily_coach.py` (see ADR-0018 Test Matrix §A3).
+**Commit ref:** `ref ADR-0018-A3`
+
+---
+
 ## TIER 2 — Observability Infrastructure (Sprint 2)
 
 Complete Tier 1 first. These items do not corrupt data but make production incidents
@@ -993,6 +1108,9 @@ When an item is completed, mark it here with date and PR reference:
 | T4-11 | 2026-03-04 | PR: TBD |
 | T4-12 | 2026-03-04 | PR: TBD |
 | T4-13 | 2026-03-04 | PR: TBD |
+| T1-10 | OPEN | — |
+| T1-11 | OPEN | — |
+| T1-12 | OPEN | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
