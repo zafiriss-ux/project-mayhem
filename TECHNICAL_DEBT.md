@@ -54,6 +54,26 @@ T1-16, T1-17, T3-09, T4-18, T4-19, T4-20 are marked `independent`.
 T2-13 is independent of T2-12 but depends on T1-15.
 Do not start Tier N+1 while any Tier N item is OPEN (Rule E1).
 
+**Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06):**
+```
+TIER 1 (data integrity — must complete before any Tier 2 items in Phase 7.9+):
+  T1-18 (physiological input validation contract; ADR-0023)
+  T1-19 (structural + temporal data sanity layer; ADR-0026; after T1-18)
+
+TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 close):
+  T4-21 (documentation consistency CI checks; ADR-0024)
+  T4-22 (agent context continuity + CLAUDE.md integrity; ADR-0025)
+  T4-23 (property-based test expansion for science engine edge cases)
+  T4-24 (test fixture factory — eliminate fixture drift)
+  T4-25 (dependency drift: automated CI audit for unpinned/stale deps)
+  T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
+  T4-27 (complexity budget CI check: module count ceiling; ADR-0028)
+  T4-28 (context snapshot generator + multi-agent protocol; ADR-0029)
+```
+T4-21 through T4-28 are marked `independent`.
+Phase 8 is gated — see ADR-0022 (Phase 8 Entry Gate). ADR-0022 G9 requires the
+Phase 8 Simplicity Review (ADR-0028) before entry.
+
 ---
 
 ## TIER 1 — Data Integrity (Non-negotiable; fix before any new feature)
@@ -774,6 +794,85 @@ significantly harder to diagnose.
 
 **Rule:** Work one subsystem at a time. Do not attempt to fix all broad `except` handlers
 simultaneously — each subsystem needs its own error taxonomy review and test update.
+
+### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates 🔴 OPEN
+
+**Status:** OPEN (Phase 7.9).
+**Source:** Master Risk Matrix — Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06. ADR-0023.
+**Priority:** P1 (Tier 1 — safety critical). Data integrity.
+
+**Location:** `titan/science/` (new module) + `titan/core/database.py` (`get_daily_metrics`, `get_training_load_history`).
+
+**Problem:**
+
+Science engines receive values sourced from Garmin sync → SQLite → engine hydration with
+no systematic bounds check. Three known failure modes:
+
+1. `hrv_ms = 0` (sensor failure) → `baseline_hrv = 0` → HRV delta = 0 → H2 gate
+   silently disabled.
+2. `rhr_bpm = 200+` (optical sensor artefact) → corrupts readiness score.
+3. `ctl = 0` (new athlete) → `acwr = atl / 0` → NaN/Inf flows into `VolumeLoadGauge`.
+
+**Fix direction:**
+
+Create `titan/science/physiological_bounds.py` with `BOUNDS` dict and
+`validate_and_clamp(data, context)` function per ADR-0023.
+Integrate into `DatabaseManager.get_daily_metrics()` and
+`get_training_load_history()` at the return point.
+Add `tests/test_physiological_bounds.py`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/physiological_bounds.py titan/core/database.py \
+            tests/test_physiological_bounds.py
+python -m pytest tests/test_physiological_bounds.py -v   # all green
+python -m pytest -q -W error::pytest.PytestWarning        # 100% green
+python -m pytest -q                                        # count ≥ previous
+```
+
+**Effort:** ~3h. New module + DB integration + tests.
+
+---
+
+### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently 🔴 OPEN
+
+**Status:** OPEN (Phase 7.9 — after T1-18).
+**Source:** Master Risk Matrix — Risk #10 (Input Data Sanity). Architecture Review 2026-03-06. ADR-0026.
+**Priority:** P1 (Tier 1 — data integrity).
+
+**Location:** `titan/science/` (new module) + `titan/integrations/garmin_sync.py` + `titan/orchestration/daily_coach.py` + `titan/core/database.py` (migrations).
+
+**Problem:**
+
+Structurally corrupt Garmin data (e.g., `max_hr < avg_hr`, future timestamps, activities
+with `distance_km = 0` and `duration_seconds = 3600`) is written to the database without
+validation. Stale data (last sync >72h ago) is used as current without a freshness flag.
+SQLite columns `date`, `garmin_id`, `timestamp` are nullable — NULL values cause silent
+failures downstream.
+
+**Fix direction (three layers per ADR-0026):**
+
+1. Create `titan/science/data_sanity.py` (`DataSanityChecker` class with
+   `check_activity`, `check_daily_metrics`, `check_hrv`).
+2. Integrate into `garmin_sync.py` before each DB write call.
+3. Add temporal freshness check to `DailyCoach` Step 1 (emit `data_confidence_low`
+   when last sync > `STALE_DATA_HARD_CEILING_HOURS`).
+4. Add NOT NULL migration for mandatory columns via `_run_migrations()`.
+5. Add `tests/test_data_sanity.py`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/data_sanity.py titan/integrations/garmin_sync.py \
+            titan/orchestration/daily_coach.py titan/core/database.py \
+            tests/test_data_sanity.py
+python -m pytest tests/test_data_sanity.py -v   # all green
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. New module + 3-point integration + migration + tests.
+
+---
 
 ### T2-01 · Error taxonomy: `garmin_sync.py` ✅ RESOLVED
 
@@ -2052,6 +2151,318 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ---
 
+### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. ADR-0024.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** New `tests/test_documentation_consistency.py` + `titan/config/thresholds.py` + `.github/workflows/ci.yml`.
+
+**Problem:**
+
+Four documentation drift failure modes with no automated detection:
+1. Lock codes in `governance_engine.py` not verified against a canonical set (canonical
+   set lives in CLAUDE.md prose — not machine-readable).
+2. Thresholds in `thresholds.py` can be added without corresponding `evidence_registry.py`
+   entries.
+3. `docs/adr/README.md` index can fall behind actual ADR file count.
+4. `TECHNICAL_DEBT.md` tracking table can diverge from prose RESOLVED/OPEN status.
+
+**Fix direction (per ADR-0024):**
+
+1. Add `CANONICAL_LOCK_CODES: frozenset[str]` to `titan/config/thresholds.py`.
+2. Create `tests/test_documentation_consistency.py` with 4 checks:
+   - Lock code completeness (AST parse `governance_engine.py` vs `CANONICAL_LOCK_CODES`)
+   - Evidence registry completeness (all constants in `thresholds.py` → entries in `evidence_registry.py`)
+   - ADR index currency (file count vs README.md table rows)
+   - TECHNICAL_DEBT tracking consistency (prose RESOLVED vs tracking table rows)
+3. Add `docs-consistency` job to `.github/workflows/ci.yml`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/config/thresholds.py tests/test_documentation_consistency.py
+python -m pytest tests/test_documentation_consistency.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~3h. New test file + one constant + CI job.
+
+---
+
+### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. ADR-0025.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** New `tests/test_claude_md_integrity.py` + `AGENTS.md` + `.github/workflows/ci.yml`.
+
+**Problem:**
+
+AI agent sessions begin without a verified baseline. Known failure modes: stale module
+counts in CLAUDE.md, non-canonical lock codes generated by agents, Tier ordering
+violations (E1), re-proposing already-closed debt items. CLAUDE.md can decay when agents
+edit it incorrectly in a session.
+
+**Fix direction (per ADR-0025):**
+
+1. Create `tests/test_claude_md_integrity.py` with:
+   - `test_adr_count_in_claude_md_matches_files()` — ADR file count vs CLAUDE.md mentions
+   - `test_module_count_in_claude_md_matches_filesystem()` — module count vs actual
+   - `test_open_tier_items_not_misrepresented()` — phase closed claims vs open items
+2. Update `AGENTS.md` §SESSION_START with the 5-step S1–S5 protocol from ADR-0025.
+3. Add CI job `claude-md-integrity`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check tests/test_claude_md_integrity.py
+python -m pytest tests/test_claude_md_integrity.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~2h. New test file + AGENTS.md update + CI job.
+
+---
+
+### T4-23 · Property-based tests cover only happy-path invariants — physiology edge cases absent 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent; coordinate with T1-18 implementation).
+**Source:** Master Risk Matrix — Risk #2 (Test Suite Illusion of Safety) + Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** `test_property_based.py` (extend) + `tests/test_science_edge_cases.py` (new).
+
+**Problem:**
+
+`test_property_based.py` uses Hypothesis for high-level invariants but does not test
+physiology-specific boundary values. No test currently verifies that:
+- `hrv_ms = 0` does not disable governance gate H2.
+- `rhr_bpm = 200` does not produce a valid readiness score.
+- `acwr = None` (post-T1-18) does not cause a `VolumeLoadGauge` crash.
+- All 7 governance gates return `locked=False` when inputs are healthy (non-regression).
+
+**Fix direction:**
+
+1. Extend `test_property_based.py` with Hypothesis strategies for out-of-range
+   physiological values (bounded by `physiological_bounds.BOUNDS`).
+2. Create `tests/test_science_edge_cases.py` with parametrised table tests for
+   each known edge-case input pattern.
+
+**Dependency:** Best done after T1-18 (`PhysiologicalBounds` module exists — import its
+`BOUNDS` to generate test ranges).
+
+**Acceptance gate (binary):**
+```bash
+ruff check test_property_based.py tests/test_science_edge_cases.py
+python -m pytest test_property_based.py tests/test_science_edge_cases.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~3h. Test-only changes.
+
+---
+
+### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Master Risk Matrix — Risk #15 (Test Fixture Drift). Architecture Review 2026-03-06.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** `tests/conftest.py` (extend) + affected test files (audit required).
+
+**Problem:**
+
+Multiple test files independently construct `UniversalAthleteProfile`, `DatabaseManager`,
+and governance engine instances with hand-crafted values. When the schema of these
+objects changes (e.g., a new required field), each test file must be updated separately.
+The failure mode is silent: tests pass because the object is created without the new field
+(default is used), but the test is no longer testing the intended scenario.
+
+**Fix direction:**
+
+1. Audit `tests/` for hand-crafted fixture patterns: `grep -rn "UniversalAthleteProfile("
+   tests/` → list all construction sites.
+2. Create shared factory fixtures in `tests/conftest.py`:
+   - `athlete_profile_factory(overrides: dict) -> UniversalAthleteProfile`
+   - `db_manager_factory(tmp_path) -> DatabaseManager`
+   - `governance_engine_factory(athlete, db) -> GovernanceEngine`
+3. Migrate the 5 most-duplicated construction sites to use the factory.
+4. Document the factory pattern in `tests/conftest.py` header comment.
+
+**Acceptance gate (binary):**
+```bash
+ruff check tests/conftest.py
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q   # count ≥ previous (no tests removed)
+```
+
+**Effort:** ~2h. Test-only refactor; no production code change.
+
+---
+
+### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** `requirements.txt` + `.github/workflows/ci.yml`.
+
+**Problem:**
+
+`requirements.txt` pins direct dependencies but does not pin transitive dependencies
+via a lockfile or constraints file. Over time:
+1. Transitive package updates can break the build silently (a new transitive dep version
+   is incompatible with Python 3.11 or with another dep in the graph).
+2. Known CVEs in direct or transitive dependencies are not surfaced in CI.
+3. No periodic audit job checks whether pinned versions are current or have known
+   security advisories.
+
+**Fix direction:**
+
+1. Add `pip-audit` to dev dependencies in `requirements.txt`.
+2. Add a `dependency-audit` CI job:
+   ```yaml
+   - run: pip-audit --requirement requirements.txt --fix-version
+   ```
+   Job runs weekly (cron) and on PRs that modify `requirements.txt`.
+3. Add `constraints.txt` (generated via `pip freeze > constraints.txt` in CI) to lock
+   transitive dependencies for reproducible builds.
+
+**Note:** This item does not replace the existing `requirements.txt` pin discipline —
+it adds a CVE/drift detection layer on top.
+
+**Acceptance gate (binary):**
+```bash
+pip-audit --requirement requirements.txt   # zero HIGH/CRITICAL CVEs
+pip install -r requirements.txt -c constraints.txt  # resolves without conflict
+python -m pytest -q   # count ≥ previous
+```
+
+**Effort:** ~1.5h. CI job + dev dependency + constraints file generation.
+
+---
+
+### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** `titan/core/database.py` (return types) + `tests/test_architectural_invariants.py` (new coupling test).
+
+**Problem:**
+
+`DatabaseManager` return methods (`get_daily_metrics`, `get_training_load_history`)
+return raw `dict` objects. Science engines access fields by string key. If a field is
+renamed or removed, the failure is a silent `None` — not a `KeyError`, not a type error.
+Example: rename `hrv_ms` → `hrv_rmssd_ms` in the schema and every engine silently
+receives `None` for HRV without a test failure at the boundary.
+
+**Fix direction (per ADR-0027):**
+
+1. Define `TypedDict` classes in `titan/core/database.py`:
+   `DailyMetricsRow`, `TrainingLoadRow`, `GearUsageRow`.
+2. Update `get_daily_metrics()`, `get_training_load_history()`, `get_gear_usage()`
+   return type annotations.
+3. Add coupling invariant test to `tests/test_architectural_invariants.py`:
+   `test_no_science_imports_from_orchestration()` — assert no circular layer imports.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py tests/test_architectural_invariants.py
+python -m pytest tests/test_architectural_invariants.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~2h. TypedDict definitions + annotation updates + one new test.
+
+---
+
+### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). ADR-0028.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** `tests/test_documentation_consistency.py` (extend; T4-21).
+
+**Problem:**
+
+Module count grows unchecked with each phase. At 46 modules (Phase 7 close), the system
+is within cognitive range. Without a ceiling, Phase 8 + Phase 9 additions could reach
+65+ modules — the point at which the module graph exceeds single-engineer working memory.
+
+**Fix direction (per ADR-0028):**
+
+Add to `tests/test_documentation_consistency.py`:
+```python
+def test_module_count_within_budget():
+    """Module count must not exceed 60 (Phase 8 ceiling per ADR-0028)."""
+    import pkgutil, titan
+    mods = [m for m in pkgutil.walk_packages(titan.__path__, 'titan.')
+            if '__' not in m.name]
+    assert len(mods) <= 60, f"Complexity budget exceeded: {len(mods)} modules"
+```
+
+**Dependency:** T4-21 must exist first (the test is added to that file).
+
+**Acceptance gate (binary):**
+```bash
+ruff check tests/test_documentation_consistency.py
+python -m pytest tests/test_documentation_consistency.py::test_module_count_within_budget -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~30 minutes. One new test added to existing file.
+
+---
+
+### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). ADR-0029.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** New `scripts/generate_context_snapshot.py` + `docs/context-snapshot.md` + `AGENTS.md`.
+
+**Problem:**
+
+Multiple AI tools (ChatGPT, Gemini, Claude Chat, Codex, Claude Code) operate on this
+codebase. Each has a different and potentially contradictory mental model of the system's
+current state. Advisor tools can recommend patterns that contradict existing ADRs because
+they are not provided the ADR register. Implementer tools can implement contradictory
+parallel changes because they are not aware of concurrent work.
+
+**Fix direction (per ADR-0029):**
+
+1. Create `scripts/generate_context_snapshot.py`:
+   - Reads open items from `TECHNICAL_DEBT.md`
+   - Reads latest 5 ADRs from `docs/adr/README.md`
+   - Reads `CANONICAL_LOCK_CODES` from `titan/config/thresholds.py`
+   - Outputs `docs/context-snapshot.md` with timestamped system state
+2. Create initial `docs/context-snapshot.md` (first snapshot).
+3. Update `AGENTS.md` §SESSION_START with M1–M4 multi-agent protocol rules
+   (Rule M2 adds S0 to the existing S1–S5 checklist).
+
+**Acceptance gate (binary):**
+```bash
+python scripts/generate_context_snapshot.py   # exits 0, creates docs/context-snapshot.md
+ruff check scripts/generate_context_snapshot.py
+python -m pytest -q -W error::pytest.PytestWarning   # no regressions
+python -m pytest -q
+```
+
+**Effort:** ~2h. New script + docs file + AGENTS.md update.
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -2071,8 +2482,73 @@ Decision status: CLOSED. Decision locked (ADR-0016).
 
 ---
 
-All Tier 5 decisions have been locked. See Tracking table for completion dates and PRs.
-Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport).
+### T5-04 · No science evidence review ritual — governance thresholds may become stale relative to new literature 🟢
+
+**Decision status:** OPEN (deferred — Phase 9+).
+**Source:** Master Risk Matrix — Risk #12 (Model Stagnation vs New Science). Architecture Review 2026-03-06.
+
+**Problem:**
+
+All thresholds in `thresholds.py` carry an evidence label (STRONG / MODERATE / HEURISTIC)
+in `evidence_registry.py`. However, there is no scheduled review of whether the evidence
+has been superseded by newer research (e.g., updated ACWR safe zone boundaries, revised
+HRV interpretation protocols, new lactate threshold testing methods).
+
+**Decision:**
+
+Deferred to Phase 9. Gate criterion: `evidence_registry.py` must include a
+`_LAST_REVIEWED` date for each entry. A scheduled CI job (quarterly) flags entries
+whose `_LAST_REVIEWED` is older than 365 days. The flag is a warning, not a gate failure
+— the architect decides whether to update the threshold or extend the review date.
+
+**Phase 9 gate:** This item is a prerequisite for Phase 9 (lifecycle supervisor). No
+implementation before Phase 8 closes.
+
+---
+
+### T5-05 · No athlete model recalibration mechanism — physiological models drift as athlete evolves 🟢
+
+**Decision status:** OPEN (deferred — Phase 9+).
+**Source:** Architect Observations V6 — Risk #3 (Model Aging). Architecture Review 2026-03-06.
+
+**Problem:**
+
+Physiological models (HRV baseline, CTL/ATL EMA constants, lactate thresholds,
+critical speed) are calibrated on historical data and held constant once computed.
+An athlete's body changes: fitness improves, injury changes biomechanics, age alters
+recovery kinetics. The models remain accurate at first; over 6–12 months they may
+produce coaching decisions that are correct by the model but wrong for the current
+athlete.
+
+The `OutcomeTracker` already collects decision→outcome pairs for this purpose
+(ADR-0014, T2-10). The missing piece is a **recalibration trigger**: a mechanism
+that detects systematic divergence between predicted and observed outcomes and
+proposes model parameter updates.
+
+**Observable early signal:** If the governance engine's VO2 eligibility gate (G6)
+consistently predicts readiness but post-session RPE is ≥8 for 3+ consecutive sessions,
+the readiness model is over-predicting. `OutcomeTracker` has the data; there is no
+consumer that acts on it.
+
+**Decision:**
+
+Deferred to Phase 9. The `AutomatedPeriodizationEngine` (Phase 7 ML scaffold,
+ADR-0014) is the intended consumer of `OutcomeTracker` calibration data. Phase 9
+will implement the feedback loop: `OutcomeTracker` → divergence detector →
+`AutomatedPeriodizationEngine` → parameter update proposal → architect review →
+model update.
+
+The feedback loop is advisory-only (not automatic) to preserve human oversight of
+physiological model parameters. Consistent with ML scaffold philosophy (ADR-0014).
+
+**Phase 9 gate:** Requires `OutcomeTracker` to have ≥90 days of decision→outcome
+pairs before the divergence detector can produce statistically meaningful signals.
+No implementation before Phase 8 closes and data accumulation criterion is met.
+
+---
+
+All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget).
 
 ---
 
@@ -2174,11 +2650,22 @@ When an item is completed, mark it here with date and PR reference:
 | T4-18 | ✅ RESOLVED | 2026-03-06 |
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
+| T1-18 | OPEN | — |
+| T1-19 | OPEN (after T1-18) | — |
+| T4-21 | OPEN (independent) | — |
+| T4-22 | OPEN (independent) | — |
+| T4-23 | OPEN (independent) | — |
+| T4-24 | OPEN (independent) | — |
+| T4-25 | OPEN (independent) | — |
+| T4-26 | OPEN (independent) | — |
+| T4-27 | OPEN (independent) | — |
+| T4-28 | OPEN (independent) | — |
+| T5-04 | OPEN (deferred — Phase 9+) | — |
+| T5-05 | OPEN (deferred — Phase 9+) | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-06 — Architecture Review V5 processed. 7 new items registered
-(T1-16, T1-17, T2-13, T3-09, T4-18, T4-19, T4-20). ADR-0021 created (Governance
-Evolvability Protocol). Phase 7.8 execution sequence updated.
-persistence failure policy decision. Phase 7.8 sprint defined.*
+*Last updated: 2026-03-06 — Risk Matrix Architecture Review V6 processed. 11 new items
+registered (T1-18, T1-19, T4-21–T4-27, T5-04, T5-05). ADRs 0022–0029 created. Phase
+7.9 execution sequence defined. Phase 8 entry gate formalised (ADR-0022).*

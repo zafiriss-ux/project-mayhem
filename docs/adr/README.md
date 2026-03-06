@@ -34,6 +34,14 @@
 | [0019](0019-audit-v3-architectural-decisions.md) | Engineering Audit V3: Phase 7.7 decisions (T1-13, T1-14, T2-09–T2-11, T3-08) | Architecture / Hardening | ✅ Accepted; Phase 7.7 CLOSED 2026-03-05 | TBD |
 | [0020](0020-persistence-failure-policy-dailycoach.md) | Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode | Architecture / Safety | ✅ Accepted (2026-03-05) — T1-15 execution pending | — |
 | [0021](0021-governance-evolvability-protocol.md) | Governance Evolvability Protocol: replace comment lock with mutation tests | Architecture / Safety | ✅ Accepted (2026-03-06) — T4-18 execution pending | — |
+| [0022](0022-phase8-entry-gate-architectural-readiness.md) | Phase 8 Entry Gate: Architectural Readiness Criteria (binary 9-point gate) | Architecture / Process | ✅ Accepted (2026-03-06) — process gate only | — |
+| [0023](0023-physiological-input-validation-contract.md) | Physiological Input Validation Contract: bounds validation at DB→engine boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-18 execution pending | — |
+| [0024](0024-documentation-drift-prevention.md) | Documentation Drift Prevention: automated CI consistency checks for lock codes, ADR index, evidence registry | Architecture / Quality | ✅ Accepted (2026-03-06) — T4-21 execution pending | — |
+| [0025](0025-agent-context-continuity-protocol.md) | Agent Context Continuity Protocol: session start checklist + CLAUDE.md integrity CI check | Architecture / Operational | ✅ Accepted (2026-03-06) — T4-22 execution pending | — |
+| [0026](0026-input-data-sanity-layer.md) | Input Data Sanity Layer: structural/temporal validation at Garmin sync boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-19 execution pending | — |
+| [0027](0027-hidden-inter-module-coupling-prevention.md) | Hidden Inter-Module Coupling Prevention: TypedDict contracts + ordering assertions + coupling invariant test | Architecture / Quality | ✅ Accepted (2026-03-06) — T4-26 execution pending | — |
+| [0028](0028-complexity-budget-and-simplicity-gate.md) | Complexity Budget and Simplicity Gate: module count ceiling (60) + phase boundary review ritual | Architecture / Governance | ✅ Accepted (2026-03-06) — T4-27 execution pending | — |
+| [0029](0029-multi-agent-context-fragmentation-protocol.md) | Multi-Agent Context Fragmentation Protocol: Context Snapshot artifact + M1–M4 handoff rules | Architecture / Operational | ✅ Accepted (2026-03-06) — T4-28 execution pending | — |
 
 ---
 
