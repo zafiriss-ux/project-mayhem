@@ -865,41 +865,31 @@ python -m pytest -q                                        # count ≥ previous
 
 ---
 
-### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently 🔴 OPEN
+### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently ✅ RESOLVED 2026-03-06
 
-**Status:** OPEN (Phase 7.9 — after T1-18).
+**Status:** ✅ RESOLVED 2026-03-06. Commit: `b928987`.
 **Source:** Master Risk Matrix — Risk #10 (Input Data Sanity). Architecture Review 2026-03-06. ADR-0026.
 **Priority:** P1 (Tier 1 — data integrity).
 
-**Location:** `titan/science/` (new module) + `titan/integrations/garmin_sync.py` + `titan/orchestration/daily_coach.py` + `titan/core/database.py` (migrations).
+**Original state (pre-fix):** Structurally corrupt Garmin data (e.g., `max_hr < avg_hr`, future
+timestamps, `distance_km > 0` with `duration_seconds = 0`) was written to the database without
+validation. Stale data (last sync >72h) was used as current without a freshness flag.
 
-**Problem:**
+**Resolution:**
 
-Structurally corrupt Garmin data (e.g., `max_hr < avg_hr`, future timestamps, activities
-with `distance_km = 0` and `duration_seconds = 3600`) is written to the database without
-validation. Stale data (last sync >72h ago) is used as current without a freshness flag.
-SQLite columns `date`, `garmin_id`, `timestamp` are nullable — NULL values cause silent
-failures downstream.
+Three layers implemented per ADR-0026:
 
-**Fix direction (three layers per ADR-0026):**
+1. **Layer 1** — `titan/science/data_sanity.py`: `DataSanityChecker` with `check_activity()`,
+   `check_daily_metrics()`, `check_hrv()`. Integrated into `DailyCoach._persist_garmin_data()`.
+   Reject-severity violations skip the record; warn-severity writes with `quality_flag="degraded"`.
+2. **Layer 2** — Temporal freshness check in `DailyCoach._hydrate_engines_from_db()`.
+   `STALE_DATA_WARN_HOURS=24h` → `data_freshness_warn`; `STALE_DATA_HARD_CEILING_HOURS=72h` →
+   `data_confidence_low` advisory (`confidence["freshness"] = False`).
+3. **Layer 3** — Schema v3 migration: `quality_flag TEXT` column added to `daily_metrics` and
+   `training_log`. `get_last_garmin_sync_timestamp()` added to `DatabaseManager`.
 
-1. Create `titan/science/data_sanity.py` (`DataSanityChecker` class with
-   `check_activity`, `check_daily_metrics`, `check_hrv`).
-2. Integrate into `garmin_sync.py` before each DB write call.
-3. Add temporal freshness check to `DailyCoach` Step 1 (emit `data_confidence_low`
-   when last sync > `STALE_DATA_HARD_CEILING_HOURS`).
-4. Add NOT NULL migration for mandatory columns via `_run_migrations()`.
-5. Add `tests/test_data_sanity.py`.
-
-**Acceptance gate (binary):**
-```bash
-ruff check titan/science/data_sanity.py titan/integrations/garmin_sync.py \
-            titan/orchestration/daily_coach.py titan/core/database.py \
-            tests/test_data_sanity.py
-python -m pytest tests/test_data_sanity.py -v   # all green
-python -m pytest -q -W error::pytest.PytestWarning
-python -m pytest -q
-```
+36 new tests in `tests/test_data_sanity.py` (structural + DB integration).
+Test suite: 1618 green as of closure (was 1582). ruff: 0 findings.
 
 **Effort:** ~4h. New module + 3-point integration + migration + tests.
 
@@ -3625,7 +3615,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
 | T1-18 | ✅ RESOLVED | 2026-03-06 |
-| T1-19 | OPEN (after T1-18) | — |
+| T1-19 | ✅ RESOLVED | 2026-03-06 |
 | T1-20 | OPEN (independent) | — |
 | T2-14 | OPEN (independent, after Tier 1) | — |
 | T2-15 | OPEN (after T1-20) | — |
