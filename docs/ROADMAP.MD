@@ -219,7 +219,7 @@ orchestrator patterns remain unchanged.
 
 ---
 
-## Phase 7.7 — Engineering Audit V3 Hardening Sprint (OPEN, 2026-03-05)
+## Phase 7.7 — Engineering Audit V3 Hardening Sprint (CLOSED, 2026-03-06)
 
 **Gate:** All Tier 1 items (T1-13, T1-14) must be complete before Phase 8 feature work begins.
 **Source:** Engineering Audit V3 (2026-03-05). ADR-0019 captures architectural decisions for
@@ -284,16 +284,75 @@ only), and the worker shutdown escalation contract extension.
 
 ---
 
-## Phase 8 — Multi-Platform & Social (PLANNED, 2027)
+## Phase 7.8 — Architecture Risk Review + ADR Backfill (CLOSED, 2026-03-06)
 
-**Prerequisite:** Phase 7.5 Hardening Sprint complete.
-Goal: Expand reach beyond single-athlete CLI to team and mobile contexts.
+**Source:** Architecture reviews V6–V8 (Risk Matrix items #1–#21). ADRs 0020–0042.
 
-1. Additional device sync: Strava, Polar, Whoop, COROS — unified adapter interface
-2. All new sync sources must provide HRV, RHR, sleep — otherwise read-only
-3. Multi-athlete team dashboard (10–50 athletes, coach view, comparative load grid)
-4. High-risk alert system: VLG RED for any athlete triggers coach notification
-5. Mobile app: React Native (iOS + Android), offline SQLite sync, native notifications
+All 25 risk items from the master risk matrix assessed and locked as ADRs.
+Key outputs: ADR-0021 (governance evolvability), ADR-0022 (Phase 8 entry gate),
+ADR-0023–0042 (physiological bounds, data sanity, staleness, illness partition,
+OutcomeTracker guardrails, DataTrustLevel, human override invariant, athlete identity invariant,
+model aging, structured log sustainability, ML explainability, feedback loop integrity,
+semantic versioning, complexity budget, documentation drift prevention).
+
+T1-18 through T5-07 registered. Independent items opened and tracked.
+
+---
+
+## Phase 7.9 — Tier 1 Safety Hardening (OPEN, 2026-03-06)
+
+**Gate:** All T1-18 through T1-23 must be RESOLVED before Phase 8 entry gate check.
+**Source:** ADR-0022 G1 criterion; TECHNICAL_DEBT.md Tier 1 register.
+
+| Item | Description | Status |
+|---|---|---|
+| T1-18 | Physiological bounds validation (ADR-0023) | ✅ RESOLVED 2026-03-06 |
+| T1-19 | Input data sanity layer — Garmin cross-field validation (ADR-0026) | 🔴 OPEN |
+| T1-20 | Garmin staleness gate — silent stale data in DailyCoach (ADR-0030) | 🔴 OPEN (independent) |
+| T1-21 | H2/H3 illness vs life-stress partition (ADR-0037) | 🔴 OPEN (independent) |
+| T1-22 | OutcomeTracker feedback-loop guardrails (ADR-0035) | 🔴 OPEN (independent) |
+| T1-23 | DataTrustLevel unified contract (ADR-0041) | 🔴 OPEN (independent) |
+
+### Acceptance gate (Phase 7.9 close — binary)
+
+```bash
+ruff check .                                          # zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green, no warnings
+python -m pytest -q                                   # count ≥ 1582
+```
+
+---
+
+## Phase 8 — Multi-Athlete Coach Platform (PLANNED, 2027)
+
+**Product direction:** Coach-managed, multi-athlete deployment (ADR-0043).
+**Prerequisite:** ADR-0022 entry gate G1–G10 ALL PASS (binary gate check required).
+
+Phase 8 is sequenced into three sub-phases. No Phase 8B or 8C code may begin
+before Phase 8A deliverables pass the ADR-0044 binary gate.
+
+### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation)
+
+**Gate document:** ADR-0044. No Phase 8B work without 8A binary complete.
+
+- PostgreSQL migration via `PersistenceAdapter` (SQLAlchemy Core) + Alembic
+- `athlete_id` foreign key on every table; Row-Level Security policies
+- `TITAN_DB_BACKEND=sqlite|postgres` feature flag for dev continuity
+- GDPR consent log table
+- ADR-0018 Phase B: Effect Runner extracted as stateless function
+
+### Phase 8B — Coach Dashboard
+
+- Readiness grid, risk alerts, session explorer for coach view (10–50 athletes)
+- `get_athlete_context(athlete_id, days) → dict` — ADR-0043 Seam 2
+- `DecisionRationale` persisted to DB as JSON column (ADR-0043 Seam 1)
+- React + FastAPI backend (ADR-0013); auth layer required first (T5-11 / ADR-0046)
+
+### Phase 8C — Multi-Device Adapters
+
+- Strava, Polar, Whoop, COROS integrations
+- DataTrustLevel contract per ADR-0041 (all adapters must comply)
+- All new sources must provide HRV, RHR, sleep — otherwise read-only
 
 ---
 
@@ -379,4 +438,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-05 (Phase 7.7 OPEN: Engineering Audit V3 findings registered — T1-13, T1-14, T2-10, T2-11, T3-08 OPEN; Phase 7.6 CLOSED: T1-10/11/12 RESOLVED as scoped; 1435 tests green; coverage ≥92.5%; ruff zero findings; ADR-0019 registered)
+Last updated: 2026-03-06 (Phase 7.9 OPEN: T1-18 RESOLVED; T1-19–T1-23 OPEN; Phase 7.7 CLOSED: T1-13/T1-14/T2-09–T2-11/T3-08 RESOLVED; Phase 7.8 CLOSED: ADR-0020–0042 registered; 1582 tests green; ADR-0043/0044/0045 registered — multi-athlete coach platform + PostgreSQL migration + local LLM abstraction)
