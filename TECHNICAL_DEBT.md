@@ -29,16 +29,30 @@ T1-13 ✅ → T1-14 ✅ → T2-09 ✅, T2-10 ✅, T2-11 ✅, T3-08 ✅
 ```
 All Phase 7.7 items resolved. Phase 7.8 hardening sprint begins.
 
-**Phase 7.8 execution sequence (per ADR-0020):**
+**Phase 7.8 execution sequence (per ADR-0020 + Architecture Review 2026-03-06):**
 ```
-T1-15 (first — Tier 1, data integrity)
-  └─→ T2-12 (after T1-15 gate passes — Tier 2, observability)
-  └─→ T4-14 (after T2-12 — Tier 4, maintainability)
-  └─→ T4-15, T4-16, T4-17 (independent — low blast radius, can run in parallel with T1-15)
+TIER 1 (data integrity — all before Tier 2):
+  T1-15 (first — persistence failure policy; ADR-0020)
+  T1-16 (independent — schema version tracking via PRAGMA user_version)
+  T1-17 (independent — daily SQLite hot backup)
+
+TIER 2 (observability — after all Tier 1 pass):
+  T2-12 (after T1-15 gate passes — UI silent exceptions)
+  T2-13 (after T1-15 gate passes — degraded mode duration alerting; independent of T2-12)
+
+TIER 3 (dependency hygiene — after all Tier 2 pass):
+  T3-09 (NotificationGateway + file fallback; independent)
+
+TIER 4 (maintainability — after all Tier 3 pass):
+  T4-14 (after T2-12 — Garmin worker loop)
+  T4-15, T4-16, T4-17 (independent — low blast radius)
+  T4-18 (independent — governance mutation test suite; ADR-0021)
+  T4-19 (independent — architectural invariant test suite)
+  T4-20 (independent — PR template + architecture checklist)
 ```
-T4-15/T4-16/T4-17 are marked `independent` (isolated files, no cross-module deps, no test risk).
-Do not start T4-14 before T2-12 passes gate (standard tier ordering). Do not start T2-12 before
-T1-15 passes gate.
+T1-16, T1-17, T3-09, T4-18, T4-19, T4-20 are marked `independent`.
+T2-13 is independent of T2-12 but depends on T1-15.
+Do not start Tier N+1 while any Tier N item is OPEN (Rule E1).
 
 ---
 
@@ -592,9 +606,9 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 
 ---
 
-### T1-15 · `_persist_garmin_data()` fail-open: persistence failure not propagated to governance 🔴 OPEN
+### T1-15 · `_persist_garmin_data()` fail-open: persistence failure not propagated to governance ✅ RESOLVED
 
-**Status:** OPEN. Architect decision made: ADR-0020 (2026-03-05).
+**Status:** RESOLVED 2026-03-06.
 **Source:** Engineering Audit V4 (2026-03-05) — C2 finding + supplementary analyst review.
 **Priority:** P1 (data integrity / traceability gap; safety impact on future baselines).
 
@@ -658,6 +672,98 @@ python -m pytest -q                                    # 100% green, count ≥ p
 
 **Effort:** ~4h. Moderate complexity — touches DailyCoach orchestration, GovernanceEngine,
 and contract type.
+
+---
+
+### T1-16 · Schema version tracking absent — `_run_migrations()` uses ad-hoc suppression ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P1 (data integrity — any schema change without versioning silently breaks existing DBs).
+
+**Location:** `titan/core/database.py` — `_run_migrations()`
+
+**Problem:**
+
+`_run_migrations()` uses `sqlite3.OperationalError` suppression to detect "column already
+exists" (T1-03 fixed the bare `except Exception` form). However, there is no schema version
+tracking — the system cannot distinguish between "DB is current", "DB is from an older
+schema", or "DB schema is corrupted". Any future `ALTER TABLE` or new table addition runs
+blindly against an unknown baseline. SQLite's `PRAGMA user_version` is the native,
+zero-dependency solution.
+
+**Fix direction:**
+
+1. Define `SCHEMA_VERSION: int` constant at module level in `database.py`. Increment for
+   every future migration.
+2. In `_run_migrations()`:
+   - Read `PRAGMA user_version` on startup.
+   - Run only migrations with version > `user_version`.
+   - After all migrations apply, write `PRAGMA user_version = SCHEMA_VERSION`.
+3. Migrations become an ordered dict: `{version: sql_statement}`.
+4. Replace ad-hoc `OperationalError` suppression with version-gated execution — "already
+   applied" is determined by version number, not error swallowing.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+python -m pytest -q                                    # 100% green, count ≥ previous
+```
+
+**Tests required (2 minimum):**
+- `test_schema_migration_applies_once_on_fresh_db` — new DB: assert `user_version` equals
+  `SCHEMA_VERSION` after init.
+- `test_schema_migration_idempotent` — run `_run_migrations()` twice; assert no error and
+  `user_version` unchanged on second run.
+
+**Effort:** ~2h. Surgical — confined to `database.py::_run_migrations()`.
+
+---
+
+### T1-17 · No backup/recovery policy — single SQLite file = complete data loss on disk failure ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P1 (data integrity — single-athlete training history has no recovery path).
+
+**Location:** `titan/core/database.py` — `DatabaseManager`
+
+**Problem:**
+
+`titan.db` is a single SQLite file with no backup strategy. A disk event, accidental
+deletion, or filesystem corruption means complete loss of the athlete's training history —
+including CTL/ATL baselines, HRV trends, governance outcomes, and personal bests. There is
+no recovery path.
+
+**Fix direction:**
+
+1. Add `_backup_database()` method to `DatabaseManager` using `sqlite3.Connection.backup()`.
+   This API is a hot backup — safe while the DB is open, no lock required.
+2. Backup destination: `~/Documents/TITAN/backups/titan_YYYY-MM-DD.db` (one file per day).
+3. Trigger: call `_backup_database()` once per morning routine, after successful persistence.
+   Skip if today's backup already exists.
+4. Retention: keep last 30 daily backups; prune older files in the same call.
+5. Weekly JSON export: after daily backup, export `daily_metrics` + `training_log` rows
+   as `~/Documents/TITAN/backups/titan_export_YYYY-MM-DD.json`. Human-readable; schema-
+   independent; recoverable even if schema version changes.
+6. Document backup policy in `DEPLOYMENT_GUIDE.md`: "Last 30 daily backups + weekly JSON
+   export. SLA: recovery to yesterday's state on disk failure."
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/database.py
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+python -m pytest -q                                    # 100% green, count ≥ previous
+```
+
+**Tests required (3 minimum):**
+- `test_backup_creates_file_in_backup_dir` — mock filesystem; assert backup file created.
+- `test_backup_idempotent_same_day` — call twice same day; assert one file, no error.
+- `test_backup_prunes_old_files` — pre-populate 35 dated files; assert only 30 remain after
+  backup call.
+
+**Effort:** ~3h. Confined to `DatabaseManager` + one call site in `daily_coach.py`.
 
 ---
 
@@ -1025,9 +1131,9 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 
 ---
 
-### T2-12 · UI path silent `except Exception: pass` — zero observability on shoe display and time parse 🔴 OPEN
+### T2-12 · UI path silent `except Exception: pass` — zero observability on shoe display and time parse ✅ RESOLVED
 
-**Status:** OPEN.
+**Status:** RESOLVED 2026-03-06.
 **Source:** Engineering Audit V4 (2026-03-05) — M2 finding.
 **Priority:** P2. No safety impact (UI display only), but silent failures prevent diagnosis
 of corrupted equipment data or malformed optimal-time responses.
@@ -1067,6 +1173,56 @@ python -m pytest -q -W error::pytest.PytestWarning   # 100% green
   string; assert warning logged and default time used.
 
 **Effort:** ~2h. Surgical; two locations in one file.
+
+---
+
+### T2-13 · Degraded mode duration not tracked — no alerting for prolonged degraded state ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P2 (observability gap — system can run degraded for days without active alert).
+
+**Location:** `titan/orchestration/daily_coach.py` + `titan/ui/operator_console.py`
+
+**Problem:**
+
+When the system enters degraded mode (Garmin fail, persistence fail, weather fail, low
+startup confidence), it logs a structured event and may send a Telegram alert at the moment
+of failure. However, it does not track *how long* it has been degraded. If the failure
+persists across multiple morning routines (e.g., Garmin credentials expired, connectivity
+outage), subsequent routines run silently in degraded mode — no repeated alert, no duration
+signal, no SLO violation fired.
+
+The athlete may go days without knowing their coaching prescriptions are in conservative
+mode due to stale data.
+
+**Fix direction:**
+
+1. Add `_DegradedModeTracker` to `titan/orchestration/daily_coach.py` (internal dataclass
+   or simple dict keyed by failure type with `degraded_since: datetime | None`).
+2. On each morning routine: for each degraded flag (`persistence_degraded`,
+   `data_confidence_low`, `weather_degraded`), set `degraded_since` if not already set.
+   Clear `degraded_since` when the condition resolves.
+3. SLO threshold: if any `degraded_since` is older than 24 hours, send a Telegram critical
+   alert: `"⚠️ TITAN degraded for >{N}h — [failure_type] unresolved. Check credentials/connectivity."`
+4. `OperatorConsoleService` dashboard payload gains `degraded_since: dict[str, str | None]`
+   field — ISO 8601 timestamps per failure type, `null` when healthy.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/orchestration/daily_coach.py titan/ui/operator_console.py
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+python -m pytest -q                                    # 100% green, count ≥ previous
+```
+
+**Tests required (3 minimum):**
+- `test_degraded_tracker_sets_timestamp_on_first_failure` — assert `degraded_since` set.
+- `test_degraded_tracker_clears_on_recovery` — assert `degraded_since` cleared when flag
+  resolves.
+- `test_degraded_tracker_fires_alert_after_24h` — mock `degraded_since` to >24h ago;
+  assert Telegram alert emitted.
+
+**Effort:** ~3h. Touches orchestration + operator console payload.
 
 ---
 
@@ -1224,6 +1380,52 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 **Tests:** Add to existing integration test files — simulate hang via `thread.join` mock,
 assert `worker_shutdown_timeout` event is emitted for both workers.
 
+---
+
+### T3-09 · Telegram is single point of failure — no notification fallback path ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P2 (reliability — Telegram token expiry or API outage silences all coaching delivery).
+
+**Location:** `titan/integrations/telegram_bot.py` + new `titan/integrations/notification_gateway.py`
+
+**Problem:**
+
+All outbound notifications (daily briefing, SLO alerts, Telegram fallback events) route
+exclusively through `TitanTelegramBot`. If the bot token expires, the Telegram API applies
+rate limits, or network connectivity is lost, the athlete receives no coaching output and
+no alert about the silence. The failure is operationally invisible.
+
+**Fix direction:**
+
+1. Create `titan/integrations/notification_gateway.py` — `NotificationGateway` class with
+   an ordered list of `NotificationChannel` implementations.
+2. `NotificationGateway.send(message, level)` iterates channels in priority order; stops
+   on first success; logs delivery chain result.
+3. **Primary channel:** `TelegramChannel` — wraps existing `TitanTelegramBot.send_message()`.
+4. **Secondary channel:** `FileChannel` — writes daily briefing to
+   `~/Documents/TITAN/daily_briefing_YYYY-MM-DD.txt`. Always succeeds unless disk is
+   full. No new dependencies.
+5. `TitanTelegramBot` becomes a `TelegramChannel(NotificationChannel)` — backwards
+   compatible; external call sites unchanged.
+6. All `daily_coach.py` Telegram calls route through `NotificationGateway`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/notification_gateway.py titan/integrations/telegram_bot.py
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+python -m pytest -q                                    # 100% green, count ≥ previous
+```
+
+**Tests required (3 minimum):**
+- `test_gateway_uses_primary_channel_on_success` — assert Telegram called; file not written.
+- `test_gateway_falls_back_to_file_on_telegram_failure` — mock Telegram to raise; assert
+  file written with briefing content.
+- `test_gateway_logs_delivery_chain_result` — assert structured log event with channel name
+  and outcome regardless of which channel succeeded.
+
+**Effort:** ~4h. New module + integration wiring. Backwards compatible.
 
 ---
 
@@ -1722,6 +1924,134 @@ python -m pytest -q   # 100% green
 
 ---
 
+### T4-18 · Governance lock relies on comment, not machine-verifiable contract ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06 — ADR-0021 (Governance Evolvability Protocol).
+**Priority:** P2 (maintainability — "lock paralysis" risk as codebase grows).
+
+**Location:** `titan/science/governance_engine.py` + new `tests/test_governance_mutation.py`
+
+**Problem:**
+
+`governance_engine.py` carries `# ARCHITECTURE LOCK — see ADR-0009 before modifying` as
+its primary protection mechanism. This is a psychological deterrent — it is not enforced
+by any automated check. As the codebase grows and AI agents assist with implementation,
+there is no machine-readable signal that governance gate logic has been inadvertently
+altered. A syntactically correct but scientifically wrong change passes all current tests.
+
+**Fix direction:**
+
+1. Create `tests/test_governance_mutation.py` — governance mutation test suite.
+2. For each of the 7 gates (H2, H3, H4, H5, 2-of-4, VO2 eligibility, override lockdown):
+   - Define a boundary input that is exactly on the threshold (must fire).
+   - Define a boundary input that is one unit below the threshold (must not fire).
+   - Assert the correct lock code is returned in both cases.
+3. For each threshold constant in `thresholds.py` used by governance:
+   - Assert the gate fires when the threshold value is met (not hardcoded — uses imported
+     constant, so changing the constant changes the test automatically).
+4. Replace the comment on `governance_engine.py:1` with:
+   ```python
+   # Gate parameters: see thresholds.py + evidence_registry.py.
+   # Changes require: (1) ADR entry, (2) evidence_registry.py update, (3) mutation test update.
+   ```
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/governance_engine.py tests/test_governance_mutation.py
+python -m pytest tests/test_governance_mutation.py -v   # all new tests green
+python -m pytest -q -W error::pytest.PytestWarning      # 100% green (full suite)
+python -m pytest -q                                      # 100% green, count ≥ previous
+```
+
+**Effort:** ~3h. New test file only; no production code change except the comment on line 1.
+
+---
+
+### T4-19 · Architectural invariant tests absent — AI agent semantic drift undetectable ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P3 (process — AI-assisted development introduces semantic drift risk not caught by functional tests).
+
+**Location:** new `tests/test_architectural_invariants.py`
+
+**Problem:**
+
+As the codebase grows with AI agent assistance, a class of bugs emerges that is
+syntactically valid and passes all functional tests but violates architectural contracts:
+hardcoded threshold values in governance code, silent exception swallowing, direct DB
+access outside the lock, bypass of governance context fields. No automated check currently
+catches these patterns.
+
+**Fix direction:**
+
+Create `tests/test_architectural_invariants.py` with the following invariants:
+
+1. `test_no_silent_exception_swallow_in_production_code` — `rg "except Exception:\s*pass"`
+   across `titan/` (excluding `ui/` where silent UI fallback is permitted per ADR-0019
+   Decision 3). Assert zero matches.
+2. `test_governance_engine_imports_no_numeric_literals_for_thresholds` — parse
+   `governance_engine.py` AST; assert no float/int literals appear in gate function bodies
+   (all thresholds must come from imports).
+3. `test_all_governance_lock_codes_are_canonical` — assert that every string used as a
+   lock code in `governance_engine.py` appears in the canonical set defined in `CLAUDE.md`
+   / a constants module.
+4. `test_database_manager_no_direct_conn_access_outside_lock` — parse `database.py` AST;
+   assert `self.conn` is never accessed outside `with self._lock:` context.
+
+**Acceptance gate (binary):**
+```bash
+ruff check tests/test_architectural_invariants.py
+python -m pytest tests/test_architectural_invariants.py -v   # all new tests green
+python -m pytest -q -W error::pytest.PytestWarning           # 100% green (full suite)
+python -m pytest -q                                           # 100% green, count ≥ previous
+```
+
+**Effort:** ~2h. New test file only; no production code change.
+
+---
+
+### T4-20 · No PR template — architecture checklist absent from review process ✅ RESOLVED
+
+**Status:** RESOLVED 2026-03-06.
+**Source:** Architecture Review 2026-03-06.
+**Priority:** P3 (process — without a checklist, ADR compliance depends on reviewer memory).
+
+**Location:** new `.github/pull_request_template.md`
+
+**Problem:**
+
+Pull requests have no structured template. Reviewers must recall from memory whether a
+given change requires an ADR update, an `evidence_registry.py` update, a `SCHEMA_VERSION`
+bump, or a mutation test update. This is the primary vector for AI agent semantic drift
+to survive code review — the agent produces a correct-looking diff; the reviewer approves
+without checking architectural compliance.
+
+**Fix direction:**
+
+Create `.github/pull_request_template.md` with:
+1. **Summary** — one-line description of the change.
+2. **Architecture checklist (mandatory for every PR):**
+   - [ ] Which ADRs are affected by this change? (list them, or write "none")
+   - [ ] If a threshold constant was changed: `evidence_registry.py` updated?
+   - [ ] If schema was changed: `SCHEMA_VERSION` bumped and migration added?
+   - [ ] If governance gate logic was changed: mutation test updated?
+   - [ ] `TECHNICAL_DEBT.md` updated (item closed, new items added)?
+3. **Test plan** — what was tested and how.
+4. **Gates** — checkbox: `ruff check .` ✅ / `pytest -q -W error` ✅ / `pytest -q` ✅
+
+**Acceptance gate (binary):**
+```bash
+# File exists and is non-empty:
+test -f .github/pull_request_template.md && wc -l .github/pull_request_template.md
+# No code changes → no pytest gate required for this item.
+```
+
+**Effort:** ~30 minutes. Documentation-only change.
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -1831,16 +2161,24 @@ When an item is completed, mark it here with date and PR reference:
 | T2-11 | 2026-03 | [#270](https://github.com/zafiriss-ux/project-mayhem/pull/270) |
 
 | T3-08 | 2026-03 | [#272](https://github.com/zafiriss-ux/project-mayhem/pull/272) |
-| T1-15 | OPEN | — |
-| T2-12 | OPEN | — |
+| T1-15 | ✅ RESOLVED | 2026-03-06 |
+| T1-16 | ✅ RESOLVED | 2026-03-06 |
+| T1-17 | ✅ RESOLVED | 2026-03-06 |
+| T2-12 | ✅ RESOLVED | 2026-03-06 |
+| T2-13 | ✅ RESOLVED | 2026-03-06 |
+| T3-09 | ✅ RESOLVED | 2026-03-06 |
 | T4-14 | OPEN | — |
 | T4-15 | OPEN (independent) | — |
 | T4-16 | OPEN (independent) | — |
 | T4-17 | OPEN (independent) | — |
+| T4-18 | ✅ RESOLVED | 2026-03-06 |
+| T4-19 | ✅ RESOLVED | 2026-03-06 |
+| T4-20 | ✅ RESOLVED | 2026-03-06 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-05 — Engineering Audit V4 processed. Phase 7.7 confirmed CLOSED.
-6 new items added (T1-15, T2-12, T4-14, T4-15, T4-16, T4-17). ADR-0020 created for T1-15
+*Last updated: 2026-03-06 — Architecture Review V5 processed. 7 new items registered
+(T1-16, T1-17, T2-13, T3-09, T4-18, T4-19, T4-20). ADR-0021 created (Governance
+Evolvability Protocol). Phase 7.8 execution sequence updated.
 persistence failure policy decision. Phase 7.8 sprint defined.*

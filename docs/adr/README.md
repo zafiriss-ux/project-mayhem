@@ -33,6 +33,7 @@
 | [0018](0018-kernel-boundary-decision-pipeline-effect-runner-split.md) | Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A implemented) | Architecture / Safety | ✅ Phase A Implemented (v5.8.0); Phase B deferred | TBD |
 | [0019](0019-audit-v3-architectural-decisions.md) | Engineering Audit V3: Phase 7.7 decisions (T1-13, T1-14, T2-09–T2-11, T3-08) | Architecture / Hardening | ✅ Accepted; Phase 7.7 CLOSED 2026-03-05 | TBD |
 | [0020](0020-persistence-failure-policy-dailycoach.md) | Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode | Architecture / Safety | ✅ Accepted (2026-03-05) — T1-15 execution pending | — |
+| [0021](0021-governance-evolvability-protocol.md) | Governance Evolvability Protocol: replace comment lock with mutation tests | Architecture / Safety | ✅ Accepted (2026-03-06) — T4-18 execution pending | — |
 
 ---
 

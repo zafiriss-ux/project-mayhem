@@ -382,6 +382,8 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         vlg_state.color = "GREEN"
         coach.vlg.resolve.return_value = vlg_state
         coach.outcome_tracker = MagicMock()
+        from titan.orchestration.daily_coach import DegradedModeTracker
+        coach._degraded_tracker = DegradedModeTracker()
         return coach
 
     def test_soreness_defaults_to_5_when_none(self):

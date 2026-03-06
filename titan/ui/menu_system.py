@@ -10,8 +10,11 @@ Central navigation hub:
 - Settings
 """
 
+import logging
 import sys
 from datetime import datetime
+
+_log = logging.getLogger(__name__)
 
 ANSI_CLEAR_SCREEN = "\033[2J\033[H"
 
@@ -210,7 +213,9 @@ def menu_nutrition(ctx: dict):
     opt_time_str = ctx.get("optimal_time_str", "07:00")
     try:
         run_h, run_m = map(int, opt_time_str.split(":"))
-    except Exception:
+    except (ValueError, AttributeError) as exc:
+        _log.warning("optimal_time_parse_fallback", extra={"raw": opt_time_str, "error": str(exc)})
+        print("  (time format unavailable — defaulting to 07:00)")
         run_h, run_m = 7, 0
 
     from datetime import time as dtime
@@ -470,8 +475,9 @@ def menu_shoe_selector(ctx: dict):
             for s in shoes:
                 avail = "✅" if s.get("available") else "❌ Σε αποκατάσταση"
                 print(f"    {avail}  {s.get('name',''):<25} {s.get('km',0):>5} km")
-    except Exception:
-        pass
+    except (TypeError, KeyError, AttributeError) as exc:
+        _log.warning("shoe_display_error", extra={"error_class": type(exc).__name__, "error": str(exc)})
+        print("  (equipment data unavailable)")
 
     _divider()
     input("  [Enter] ")
