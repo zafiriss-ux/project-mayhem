@@ -52,6 +52,9 @@
 | [0037](0037-non-training-stress-safety-partition.md) | Non-Training Stress Safety Partition: classify HRV/RHR anomalies as training-explained vs. illness-pattern vs. unexplained | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-21 execution pending | — |
 | [0038](0038-governance-decision-rationale-protocol.md) | Governance Decision Rationale Protocol: DecisionRationale contract + gate templates + override-rate monitoring | Architecture / Observability | ✅ Accepted (2026-03-06) — T2-16 execution pending | — |
 | [0039](0039-metric-lifecycle-management.md) | Metric Lifecycle Management Protocol: Active/Under Review/Deprecated states + evidence registry coverage + new metric gate | Architecture / Quality | ✅ Accepted (2026-03-06) — T2-17 execution pending | — |
+| [0040](0040-athlete-identity-first-class-invariant.md) | Athlete Identity as First-Class Architectural Invariant: isolation invariant + exemption register + new-code rules A40-1–A40-4 | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T4-31 CI enforcement pending | — |
+| [0041](0041-unified-external-data-trust-contract.md) | Unified External Data Trust Contract: DataTrustLevel enum + DataTrustReport + mandatory onboarding gate for new data sources | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T1-23 implementation pending (Phase 8 prerequisite) | — |
+| [0042](0042-human-override-first-class-invariant.md) | Human Override as First-Class Architectural Invariant: OverrideSignal contract + Telegram override button + override handler registry per lock code | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T4-32 implementation pending | — |
 
 ---
 
