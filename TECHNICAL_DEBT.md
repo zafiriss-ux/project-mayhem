@@ -54,11 +54,16 @@ T1-16, T1-17, T3-09, T4-18, T4-19, T4-20 are marked `independent`.
 T2-13 is independent of T2-12 but depends on T1-15.
 Do not start Tier N+1 while any Tier N item is OPEN (Rule E1).
 
-**Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06):**
+**Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06 + Risk Review V7 2026-03-06):**
 ```
 TIER 1 (data integrity — must complete before any Tier 2 items in Phase 7.9+):
   T1-18 (physiological input validation contract; ADR-0023)
   T1-19 (structural + temporal data sanity layer; ADR-0026; after T1-18)
+  T1-20 (Garmin connectivity staleness gate; ADR-0030; independent)
+
+TIER 2 (observability — after all Tier 1 pass):
+  T2-14 (structured event severity + alert deduplication + runbook; ADR-0031)
+  T2-15 (weather synthetic fallback: location context + governance flag; ADR-0030; after T1-20)
 
 TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 close):
   T4-21 (documentation consistency CI checks; ADR-0024)
@@ -69,8 +74,13 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
   T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
   T4-27 (complexity budget CI check: module count ceiling; ADR-0028)
   T4-28 (context snapshot generator + multi-agent protocol; ADR-0029)
+
+TIER 5 (future / Phase 8+):
+  T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8 prerequisite)
 ```
+T1-20 is marked `independent` (no dependency on T1-18 or T1-19).
 T4-21 through T4-28 are marked `independent`.
+T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per ADR-0022 G1.
 Phase 8 is gated — see ADR-0022 (Phase 8 Entry Gate). ADR-0022 G9 requires the
 Phase 8 Simplicity Review (ADR-0028) before entry.
 
@@ -874,6 +884,57 @@ python -m pytest -q
 
 ---
 
+### T1-20 · Garmin connectivity failure has no staleness gate — DailyCoach silently operates on stale data 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Risk Review V7 — Risk: External Dependency Fragility (SPOF). Architecture Review 2026-03-06. ADR-0030.
+**Priority:** P1 (Tier 1 — data integrity).
+
+**Location:** `titan/orchestration/daily_coach.py` (Step 2 — data hydration), `titan/integrations/garmin_sync.py` (sync outcome recording), `titan/core/database.py` (sync metadata storage), `titan/config/thresholds.py` (new constants).
+
+**Problem:**
+
+If the Garmin Connect API becomes unavailable (auth failure, library breaking change,
+network error), the Garmin sync daemon logs the error but does not set any
+governance-visible flag. `DailyCoach` continues running morning routines using the
+last-synced SQLite data. After 26+ hours without a successful sync, the governance
+engine evaluates gates on data that may no longer reflect the athlete's current state.
+The T2-10 data-confidence gate runs at startup only and does not produce a persistent
+`garmin_data_stale` flag for continuous operation.
+
+This is structurally identical to the weather degraded-mode gap resolved in T1-09,
+but for the primary physiological data source.
+
+**Fix direction (per ADR-0030):**
+
+1. Add `GARMIN_DATA_MAX_AGE_HOURS = 26` to `titan/config/thresholds.py`.
+2. Record each sync attempt outcome (`success` / `failure + error_class + timestamp`)
+   to the database (new `sync_metadata` table or existing `daily_metrics` metadata
+   column — simplest approach: add `last_garmin_sync_ts` and `last_garmin_sync_ok`
+   columns via `_run_migrations()`).
+3. In `DailyCoach` Step 2, compute Garmin data age. If age > `GARMIN_DATA_MAX_AGE_HOURS`:
+   - Emit `garmin_data_stale` structured event (CRITICAL severity, per ADR-0031).
+   - Set `garmin_data_stale = True` on coaching context.
+   - Engage ADR-0020 degraded conservative mode: cap recommendation at "easy
+     maintenance only".
+   - Send Telegram alert via T3-09 fallback-aware gateway.
+4. Add `tests/test_garmin_staleness_gate.py` (mock stale sync timestamp → assert
+   degraded mode engaged + correct governance output).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/orchestration/daily_coach.py titan/integrations/garmin_sync.py \
+            titan/core/database.py titan/config/thresholds.py \
+            tests/test_garmin_staleness_gate.py
+python -m pytest tests/test_garmin_staleness_gate.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~3h. DB migration + DailyCoach integration + governance context update + tests.
+
+---
+
 ### T2-01 · Error taxonomy: `garmin_sync.py` ✅ RESOLVED
 
 **Status (2026-03-04):** Completed. `sync_activities`, `sync_weight`, `sync_sleep`, and
@@ -1322,6 +1383,100 @@ python -m pytest -q                                    # 100% green, count ≥ p
   assert Telegram alert emitted.
 
 **Effort:** ~3h. Touches orchestration + operator console payload.
+
+---
+
+### T2-14 · Structured events lack severity levels; Telegram alert deduplication absent; no operational runbook 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent; after all Tier 1 items).
+**Source:** Risk Review V7 — Risk: Observability Overload. Architecture Review 2026-03-06. ADR-0031.
+**Priority:** P2 (Tier 2 — observability sustainability).
+
+**Location:** All modules using `_emit_structured_event()` (~12 modules), `titan/integrations/telegram_bot.py`, `titan/main.py` (log rotation), `docs/operations/RUNBOOK.md` (new file).
+
+**Problem:**
+
+Phases 3–4 added structured event emission throughout the codebase. Without a severity
+classification, all events are treated identically — Telegram receives both routine
+`activity_synced` telemetry and critical `HARD_STOP_HRV_DELTA` governance events. A
+recurring governance condition (e.g., H2 firing every morning for a training block)
+sends the same identical Telegram message daily, causing alert fatigue. There is no
+log rotation policy and no operational runbook for responding to critical events.
+
+**Fix direction (three parts per ADR-0031):**
+
+1. **Severity classification:** Add `EventSeverity` enum to a shared module. Extend
+   `_emit_structured_event()` signature with `severity` parameter (default: `INFO` for
+   backward compatibility). Classify all existing event types (CRITICAL / WARNING /
+   INFO / DEBUG — see ADR-0031 table). Update ~12 call sites mechanically.
+2. **Alert deduplication:** In the Telegram gateway, maintain a deduplication dict
+   (in-memory, keyed by `(event_type, lock_code)`) with TTL = `ALERT_DEDUP_WINDOW_HOURS`
+   (default: 20h). After `ALERT_PERSIST_SUMMARY_HOURS` (default: 72h) of the same
+   condition, send a summary message instead of silence.
+3. **Operational runbook:** Create `docs/operations/RUNBOOK.md` with one section per
+   CRITICAL event type (all 7 governance gates + ADR-0030 staleness events).
+4. **Log rotation:** Configure `RotatingFileHandler` in `titan/main.py`
+   (`LOG_MAX_BYTES = 10MB`, `LOG_BACKUP_COUNT = 5`).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/telegram_bot.py titan/main.py
+# (all modified _emit_structured_event call sites)
+python -m pytest tests/test_structured_log_sustainability.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Tests required (minimum):**
+- `test_critical_event_forwarded_to_telegram` — CRITICAL event → Telegram call made.
+- `test_info_event_not_forwarded_to_telegram` — INFO event → no Telegram call.
+- `test_dedup_suppresses_repeated_alert` — same CRITICAL event within dedup window → second Telegram call suppressed.
+- `test_dedup_sends_summary_after_persist_window` — condition persists >72h → summary message sent.
+
+**Effort:** ~5h. Mechanical severity tagging + gateway dedup logic + runbook + rotation config + tests.
+
+---
+
+### T2-15 · Weather synthetic fallback uses hardcoded location defaults — staleness context absent from governance 🔴 OPEN
+
+**Status:** OPEN (Phase 7.9 — after T1-20).
+**Source:** Risk Review V7 — Risk: External Dependency Fragility. Architecture Review 2026-03-06. ADR-0030.
+**Priority:** P2 (Tier 2 — observability gap; silent wrong input to OptimalTimeCalculator).
+**Dependency:** T1-20 must close first (the `weather_data_stale` governance flag established there is consumed here).
+
+**Location:** `titan/integrations/weather.py` (`_create_synthetic_fallback()`) + `titan/features/optimal_time.py`.
+
+**Problem:**
+
+When the Open-Meteo API is unavailable, `_create_synthetic_fallback()` produces a
+synthetic weather forecast using hardcoded Athens, GR climatological defaults (T1-09
+resolution). If the athlete's `WEATHER_LOCATION` is different (e.g., Helsinki, FI in
+winter), the synthetic forecast produces incorrect dew-point and heat-stress inputs to
+`OptimalTimeCalculator`. Additionally, the coaching context does not carry a
+`weather_confidence = SYNTHETIC` flag, so downstream consumers cannot gate on it.
+
+**Fix direction (per ADR-0030):**
+
+1. Read `WEATHER_LOCATION` from env config in `_create_synthetic_fallback()`. Use
+   hemisphere and rough latitude to compute season-appropriate temperature range
+   (simple lookup table — not a full weather model).
+2. Add `weather_confidence: str` field to the weather payload dict (`"LIVE"` or
+   `"SYNTHETIC"`).
+3. `OptimalTimeCalculator` reads `weather_confidence`. If `"SYNTHETIC"`: fall back to
+   pre-computed safe window (06:00–09:00 local time) rather than dew-point-optimised.
+4. Emit `weather_synthetic_fallback_activated` structured event (WARNING severity,
+   per ADR-0031) with `location` field.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/weather.py titan/features/optimal_time.py \
+            tests/test_weather_staleness.py
+python -m pytest tests/test_weather_staleness.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~2h. Targeted changes in two modules + tests.
 
 ---
 
@@ -2547,8 +2702,64 @@ No implementation before Phase 8 closes and data accumulation criterion is met.
 
 ---
 
+### T5-06 · ML advisory models lack explainability contract — feature attribution and plain-text reason absent 🟢
+
+**Decision status:** OPEN — T5-06-A is a **Phase 8 prerequisite**; remainder deferred Phase 9.
+**Source:** Risk Review V7 — Risk: ML Physiological Safety & Ethical Opacity. Architecture Review 2026-03-06. ADR-0032.
+
+**Problem:**
+
+`InjuryRiskEnsembleModel` operates in advisory mode and returns a probability score
+(0.0–1.0) with no feature attribution. The governance engine cannot determine whether
+a score of 0.73 is driven by an ACWR spike (rest one day), chronic TSB depression
+(reduce load a week), a biomechanics anomaly (physio referral), or historical injury
+proximity (monitor). These four scenarios warrant entirely different coaching responses.
+The two shadow-mode models (`LoadPredictionShadowModel`, `AutomatedPeriodizationEngine`)
+will have the same gap when promoted to advisory.
+
+**T5-06-A — `InjuryRiskEnsembleModel` explainability (Phase 8 prerequisite):**
+
+Since `InjuryRiskEnsembleModel` is currently advisory, it must be brought into compliance
+with the `ExplainableOutput` contract (ADR-0032) before Phase 8 begins.
+
+Fix direction:
+1. Add `ExplainableOutput` dataclass to `titan/science/ml_safety.py` (or a new
+   `titan/science/ml_explainability.py` module).
+2. Extend `InjuryRiskEnsembleModel.assess_injury_risk()` to return `ExplainableOutput`
+   alongside the primary score: top-3 feature contributions, confidence range,
+   `plain_text_reason` (template-based, not LLM-based), `data_freshness_ok`
+   (using ADR-0030 staleness flag).
+3. Update governance engine integration to log `plain_text_reason` and include
+   feature contributions in the Operator Console session explorer payload (ADR-0011).
+4. Add `tests/test_ml_explainability.py`:
+   - `test_injury_risk_returns_explainable_output` — happy path contract.
+   - `test_injury_risk_stale_data_discarded` — stale data → `data_freshness_ok=False`
+     → advisory output discarded by governance.
+   - `test_plain_text_reason_nonempty` — reason string non-empty for all test cases.
+
+**T5-06-B — Shadow model promotion gate (deferred Phase 9):**
+`LoadPredictionShadowModel` and `AutomatedPeriodizationEngine` must satisfy the
+ADR-0032 promotion gate (criteria P1–P6) before being promoted to advisory mode.
+No implementation before Phase 8 closes.
+
+**Acceptance gate for T5-06-A (binary):**
+```bash
+ruff check titan/science/injury_risk_model.py titan/science/ml_safety.py \
+            tests/test_ml_explainability.py
+python -m pytest tests/test_ml_explainability.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort (T5-06-A):** ~4h. `ExplainableOutput` dataclass + ensemble attribution
+logic + governance integration update + tests.
+
+**Phase 8 prerequisite:** T5-06-A must be RESOLVED before Phase 8 begins, per ADR-0022 G1.
+
+---
+
 All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
-Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget).
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability).
 
 ---
 
@@ -2652,6 +2863,9 @@ When an item is completed, mark it here with date and PR reference:
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
 | T1-18 | OPEN | — |
 | T1-19 | OPEN (after T1-18) | — |
+| T1-20 | OPEN (independent) | — |
+| T2-14 | OPEN (independent, after Tier 1) | — |
+| T2-15 | OPEN (after T1-20) | — |
 | T4-21 | OPEN (independent) | — |
 | T4-22 | OPEN (independent) | — |
 | T4-23 | OPEN (independent) | — |
@@ -2662,10 +2876,11 @@ When an item is completed, mark it here with date and PR reference:
 | T4-28 | OPEN (independent) | — |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
+| T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-06 — Risk Matrix Architecture Review V6 processed. 11 new items
-registered (T1-18, T1-19, T4-21–T4-27, T5-04, T5-05). ADRs 0022–0029 created. Phase
-7.9 execution sequence defined. Phase 8 entry gate formalised (ADR-0022).*
+*Last updated: 2026-03-06 — Risk Review V7 processed. 5 new items registered
+(T1-20, T2-14, T2-15, T5-06, T5-06-A). ADRs 0030–0032 created. Phase 7.9 execution
+sequence updated. T5-06-A elevated to Phase 8 prerequisite (ADR-0032 + ADR-0022 G1).*
