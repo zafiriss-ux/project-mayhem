@@ -114,26 +114,56 @@ contracts, calibrated thresholds, and safety gates.
 
 ---
 
-## Phase 8 — Multi-Platform & Social (2027)
+## Phase 8 — Multi-Athlete Coach Platform (2027)
 
-### Additional Device Sync
+**Product direction:** TITAN OS is a coach-managed, multi-athlete platform (ADR-0043).
+The coach is the primary user. The athlete receives output; the coach owns configuration.
+**Interaction model:** phone = async planning and analysis; watch = during-workout (no change).
+
+Phase 8 is sequenced into three sub-phases. No Phase 8B or 8C code may begin until
+Phase 8A deliverables pass the ADR-0044 binary gate.
+
+### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation)
+
+**ADR-0044.** Prerequisite for all Phase 8 feature work.
+
+- Migrate from SQLite to PostgreSQL (`PersistenceAdapter` via SQLAlchemy Core)
+- Alembic for all schema migrations (retires ad-hoc `CREATE TABLE IF NOT EXISTS`)
+- `athlete_id` foreign key on every table; Row-Level Security policies per athlete
+- `TITAN_DB_BACKEND=sqlite|postgres` feature flag (SQLite legacy path retained for dev)
+- GDPR consent log table (`consent_log`: athlete_id, consent_type, granted_at, revoked_at)
+- ADR-0018 Phase B: Effect Runner extracted as stateless decision function (required for
+  multi-athlete parallel execution of DailyCoach morning briefings)
+- Hot backup updated for PostgreSQL (`pg_dump` replaces SQLite file copy)
+
+### Phase 8B — Coach Dashboard
+
+**Primary user-visible feature of Phase 8.**
+
+- Readiness grid: all athletes, current TSB / CTL / ATL / VLG color / governance status
+- Risk alert: VLG RED or governance hard-stop for any athlete → coach notification
+- Session explorer: per-athlete governance decision trail, override history
+- Manual override workflow usable without CLI (ADR-0012 surfaced in UI)
+- `get_athlete_context(athlete_id, days) → dict` unified query interface (ADR-0043 Seam 2;
+  T5-09) — required by dashboard and later by Phase 10 LLM
+- Technology: React + FastAPI backend (ADR-0013 technology path)
+- `DecisionRationale` persisted to DB as JSON column on `governance_outcomes` (ADR-0043
+  Seam 1; required for LLM explainability in Phase 10)
+
+### Phase 8C — Multi-Device Adapters
+
 - Strava, Polar, Whoop, COROS integrations
-- Unified adapter interface in `integrations/`
+- Unified adapter interface in `integrations/` (ADR-0041 DataTrustLevel contract)
 - All new sources must provide HRV, RHR, sleep — otherwise read-only
-
-### Multi-Athlete Team Dashboard
-- Coach view: 10–50 athletes
-- Comparative load/readiness grid
-- High-risk alert system (VLG RED for any athlete triggers notification)
-
-### Mobile App
-- React Native (iOS + Android)
-- Native notifications replacing Telegram for mobile users
-- Offline mode with SQLite sync
+- Trust weighting: lab > wearable > self-reported (ADR-0041)
 
 ---
 
 ## Phase 9 — Autonomous Coaching Intelligence (2028)
+
+**Now backed by multi-athlete corpus.** The auto-calibration gate ("≥3 corroborating
+athlete profiles") is achievable in months with Phase 8 data — not years.
+The system self-improves from accumulated evidence across the full athlete population.
 
 **Why after multi-athlete data**: Self-calibration requires a corpus of
 outcomes across athlete profiles and phases. Autonomous intelligence without
@@ -170,6 +200,30 @@ evidence without requiring manual threshold edits.
 
 ---
 
+## Phase 10 — LLM Coach Query Layer (2029, optional)
+
+**ADR-0043 Decision 3.** Activated only when: Phase 9 has closed with a multi-athlete
+outcome corpus, and resources (time + API budget) are available. Fully optional —
+the system is complete and functional without Phase 10.
+
+**Scope:**
+- Coach query interface in natural language:
+  "Which athletes are at risk this week?", "Why did Athlete A get 3 hard stops in 14 days?"
+- Input: `get_athlete_context()` structured JSON (Phase 8B Seam 2, already built)
+- Output: natural language summary and actionable recommendations for the coach
+- Technology: Claude API (Anthropic); env-gated (`TITAN_LLM_COACH=1`)
+- Deterministic fallback: template-based summaries when `TITAN_LLM_COACH=0` (default)
+- Kill-switch: identical pattern to ML safety (ADR-0014)
+- Override invariant: any LLM recommendation is overridable (ADR-0042)
+- Governance invariant: LLM never participates in safety gate evaluation — query-only
+
+**What Phase 10 is NOT:**
+- Real-time during-workout coaching (watch handles this)
+- LLM in the governance critical path (deterministic gates are non-negotiable)
+- An athlete-facing chatbot (coach-only access)
+
+---
+
 ## Technology Stack (Current)
 
 | Layer | Technology |
@@ -200,6 +254,8 @@ Level 6  /calibration command + structured flow logs  [Phase 4 ✓]
 Level 7  Science calibration (≥30 outcomes)           [Phase 5 ✓]
 Level 8  ML layer on calibrated foundation            [Phase 7]
 Level 9  Autonomous self-calibration from evidence    [Phase 9]
+Level 10 Multi-athlete corpus → population-level STRONG evidence  [Phase 9+]
+Level 11 LLM coach query layer over structured outcome data       [Phase 10, optional]
 ```
 
 ---
@@ -226,10 +282,30 @@ Level 9  Autonomous self-calibration from evidence    [Phase 9]
 - Injury recall > 80%
 - All ML paths have kill-switch and shadow mode entry
 
+**Phase 8A (Infrastructure)**
+- PostgreSQL migration complete; all 5 tables + consent log migrated via Alembic
+- `athlete_id` RLS policies: cross-athlete data leakage test suite 100% green
+- `TITAN_DB_BACKEND=sqlite` fallback: full test suite passes on both backends
+- ADR-0018 Phase B: `DailyCoach` morning routine runs as stateless per-athlete function
+
+**Phase 8B (Coach Dashboard)**
+- Dashboard load time < 2s for 50 athletes
+- `get_athlete_context()` covers all 5 data domains (governance, training, biometrics, nutrition, weather)
+- `DecisionRationale` persisted to `governance_outcomes.rationale_json` column
+
+**Phase 8C (Multi-Device)**
+- All new adapters pass DataTrustLevel contract (ADR-0041)
+- No new adapter merged without HRV/RHR/sleep coverage or explicit read-only annotation
+
 **Phase 9 (Autonomous Intelligence)**
 - Auto-calibration only activates after ≥3 corroborating athlete profiles
 - Zero undocumented autonomous threshold changes (audit trail 100% coverage)
 - Rollback triggered and verified at least once in staging before production
+
+**Phase 10 (LLM — optional)**
+- `TITAN_LLM_COACH=0` (default): all code paths fall back to deterministic template summaries
+- LLM integration tested against `get_athlete_context()` fixture data (no live API calls in CI)
+- No LLM call in any governance gate evaluation path (CI assertion)
 
 ---
 
