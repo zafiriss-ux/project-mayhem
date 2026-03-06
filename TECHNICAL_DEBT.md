@@ -54,16 +54,26 @@ T1-16, T1-17, T3-09, T4-18, T4-19, T4-20 are marked `independent`.
 T2-13 is independent of T2-12 but depends on T1-15.
 Do not start Tier N+1 while any Tier N item is OPEN (Rule E1).
 
-**Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06 + Risk Review V7 2026-03-06):**
+**Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06 + Risk Review V7 2026-03-06 + Risk Review V8 2026-03-06 + Architect Directive V8 2026-03-06):**
 ```
+⚠️  ARCHITECT INVARIANTS — effective immediately, all phases (ADRs 0040–0042):
+    ADR-0040: Athlete identity isolation — new code must comply from this commit
+    ADR-0041: DataTrustLevel contract — new data sources require trust emitter
+    ADR-0042: Human override required — every recommendation type needs override handler
+
 TIER 1 (data integrity — must complete before any Tier 2 items in Phase 7.9+):
   T1-18 (physiological input validation contract; ADR-0023)
   T1-19 (structural + temporal data sanity layer; ADR-0026; after T1-18)
   T1-20 (Garmin connectivity staleness gate; ADR-0030; independent)
+  T1-21 (non-training stress safety partition — H2/H3 illness vs. life-stress; ADR-0037; independent)
+  T1-22 (OutcomeTracker feedback-loop guardrails — schema + independence window; ADR-0035; independent)
+  T1-23 (unified DataTrustLevel contract + data_trust.py module; ADR-0041; independent)
 
 TIER 2 (observability — after all Tier 1 pass):
   T2-14 (structured event severity + alert deduplication + runbook; ADR-0031)
   T2-15 (weather synthetic fallback: location context + governance flag; ADR-0030; after T1-20)
+  T2-16 (governance decision rationale + override-rate monitoring; ADR-0038; after all Tier 1)
+  T2-17 (metric lifecycle audit + evidence registry coverage; ADR-0039; independent)
 
 TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 close):
   T4-21 (documentation consistency CI checks; ADR-0024)
@@ -74,13 +84,24 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
   T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
   T4-27 (complexity budget CI check: module count ceiling; ADR-0028)
   T4-28 (context snapshot generator + multi-agent protocol; ADR-0029)
+  T4-29 (ESI environmental compensation overlay for training zones; ADR-0034; deferred Phase 8)
+  T4-30 (science module semantic versioning — MODULE_VERSION constants + CI; ADR-0036; independent)
+  T4-31 (athlete isolation invariant CI check — exemption register + comment annotations; ADR-0040; IMMEDIATE)
+  T4-32 (override handler registry + Telegram inline override button; ADR-0042; IMMEDIATE)
 
 TIER 5 (future / Phase 8+):
   T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8 prerequisite)
+  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; Phase 8 prerequisite guard rails)
 ```
-T1-20 is marked `independent` (no dependency on T1-18 or T1-19).
-T4-21 through T4-28 are marked `independent`.
+T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
+T4-21 through T4-28 are marked `independent`. T4-30, T4-31, T4-32 are marked `independent`.
+T4-31 and T4-32 are marked `IMMEDIATE` — they enforce ADR-0040/0042 invariants that are effective
+from this commit forward. They require no new Phase boundary to begin.
+T1-23 is a Phase 8 entry gate criterion (ADR-0022 updated retroactively).
+T4-29 is deferred to Phase 8 (low-blast-radius ESI overlay; no schema changes required).
+T2-17 is marked `independent` (can run concurrently with other Tier 2 items after Tier 1 closes).
 T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per ADR-0022 G1.
+T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8 prerequisite guard rails**.
 Phase 8 is gated — see ADR-0022 (Phase 8 Entry Gate). ADR-0022 G9 requires the
 Phase 8 Simplicity Review (ADR-0028) before entry.
 
@@ -935,6 +956,190 @@ python -m pytest -q
 
 ---
 
+### T1-21 · Governance gates H2/H3 fire without distinguishing training-stress from non-training-stress — illness pattern indistinguishable from life stress 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Risk Review V8 — Risk: Non-Training Stress Protocol. ADR-0037.
+**Priority:** P0 (Tier 1 — safety-critical).
+
+**Location:** `titan/science/governance_engine.py` (H2/H3 gate evaluation), `titan/config/thresholds.py` (new constants), `titan/orchestration/daily_coach.py` (coaching context).
+
+**Problem:**
+
+HRV and RHR respond to all stressors — training, illness, life stress, travel, and
+more. When H2 (`HARD_STOP_HRV_DELTA`) or H3 (`HARD_STOP_RHR_DELTA`) fires, the
+current governance engine applies a single response regardless of cause. An athlete
+with a depressed HRV from a stressful workday receives the same "easy maintenance"
+recommendation as an athlete in genuine overreaching. More critically, an athlete
+showing an illness pattern (both HRV and RHR simultaneously outside threshold, without
+ACWR elevation) receives "easy maintenance" when full rest is clinically appropriate.
+This is a safety gap — not merely a communication gap.
+
+**Fix direction (per ADR-0037):**
+
+1. Add to `thresholds.py`:
+   ```python
+   ILLNESS_PATTERN_HRV_DELTA = 20.0   # ms — dual-signal illness threshold
+   ILLNESS_PATTERN_RHR_DELTA = 10.0   # bpm — must exceed alongside HRV for ILLNESS_PATTERN
+   ```
+2. In `governance_engine.py` after H2/H3 fire, run `classify_hrv_stress_context()`:
+   - Compare ACWR vs `VO2_ACWR_MAX` to determine if training explains the signal.
+   - If both HRV and RHR exceed illness thresholds without ACWR elevation: classify
+     as `ILLNESS_PATTERN` → recommend full rest.
+   - If HRV exceeds threshold without ACWR elevation (but RHR is within illness
+     threshold): classify as `UNEXPLAINED_MODERATE`.
+   - If ACWR elevation explains the signal: `TRAINING_EXPLAINED` (no change to
+     existing response).
+3. Update coaching context with `hrv_stress_context` field.
+4. Update Telegram briefing to include stress context in coaching message.
+5. Add `tests/test_non_training_stress_partition.py` covering:
+   - `ILLNESS_PATTERN`: both deltas high, ACWR normal → full rest recommended
+   - `UNEXPLAINED_MODERATE`: HRV delta high only, ACWR normal → easy maintenance
+   - `TRAINING_EXPLAINED`: ACWR elevated, HRV delta high → existing H2/H3 behaviour
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/governance_engine.py titan/config/thresholds.py \
+            tests/test_non_training_stress_partition.py
+python -m pytest tests/test_non_training_stress_partition.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~3h. Governance post-gate classifier + context field + message template + tests.
+
+---
+
+### T1-22 · OutcomeTracker schema lacks feedback-loop guardrails — calibration data at risk of circular validation bias 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent; **Phase 9 calibration blocker**).
+**Source:** Risk Review V8 — Risk: Feedback Loop Corruption. ADR-0035.
+**Priority:** P1 (Tier 1 — data integrity; must be resolved before T5-05 calibration logic is implemented).
+
+**Location:** `titan/science/outcome_tracker.py`, `titan/core/database.py` (schema migration), `titan/config/thresholds.py` (new constants).
+
+**Problem:**
+
+`OutcomeTracker` stores governance decision→outcome pairs for future Phase 9 calibration.
+However the current schema captures no information about:
+1. Whether the athlete followed the governance recommendation or overrode it.
+2. Whether the outcome was recorded within an independence window (ruling out
+   confounding from the pre-session physiological state that also produced the decision).
+3. What algorithm versions were active when the decision was made.
+
+Without these guardrails, Phase 9 calibration will train on a dataset where:
+- Override outcomes (survivorship-biased: successful overrides are over-represented)
+  are mixed with followed-governance outcomes.
+- The system may "learn" to validate its own conservative bias (see ADR-0035).
+- Algorithm version mixing will produce heterogeneous training data.
+
+**Fix direction (per ADR-0035):**
+
+1. Schema migration: add columns to `governance_outcomes`:
+   ```sql
+   decision_was_followed     INTEGER NOT NULL DEFAULT 1
+   override_outcome_exclusion INTEGER NOT NULL DEFAULT 0
+   outcome_independence_ok   INTEGER NOT NULL DEFAULT 1
+   algorithm_version_snapshot TEXT  -- JSON: {"governance_engine": "x.y.z", ...}
+   ```
+2. Add to `thresholds.py`:
+   ```python
+   OUTCOME_INDEPENDENCE_WINDOW_DAYS = 2
+   CALIBRATION_MAX_THRESHOLD_DELTA_PCT = 0.10
+   CALIBRATION_MIN_OUTCOME_COUNT = 10
+   ```
+3. Update `OutcomeTracker.record_outcome()` to:
+   - Accept `decision_was_followed` flag (passed from override workflow, ADR-0012).
+   - Validate independence window; reject and log if window not met.
+   - Populate `algorithm_version_snapshot` from active MODULE_VERSIONs (T4-30 prerequisite
+     for full population; stub acceptable until T4-30 closes).
+4. Add `tests/test_outcome_tracker_guardrails.py`:
+   - Override outcome correctly sets `decision_was_followed = 0` and
+     `override_outcome_exclusion = 1`.
+   - Outcome within independence window rejected with structured event.
+   - Calibration diversity check gate (≥20% high-intensity, ≥10% HARD_STOP outcomes).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/outcome_tracker.py titan/core/database.py \
+            titan/config/thresholds.py tests/test_outcome_tracker_guardrails.py
+python -m pytest tests/test_outcome_tracker_guardrails.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. Schema migration + OutcomeTracker update + calibration diversity gate + tests.
+
+---
+
+### T1-23 · No unified DataTrustLevel contract — external data sources emit ad-hoc trust signals not visible to governance 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent; **Phase 8 entry gate criterion**).
+**Source:** Architect Directive V8 — Decision 2 (Unified Data Health Check). ADR-0041.
+**Priority:** P0 (Tier 1 — data integrity; IMMEDIATE; Phase 8 integration blocked without this).
+
+**Location:** New `titan/science/data_trust.py`, `titan/orchestration/daily_coach.py`
+(coaching context update), `titan/integrations/garmin_sync.py` (trust emitter),
+`titan/integrations/weather.py` (trust emitter), `titan/config/thresholds.py`.
+
+**Problem:**
+
+Three ADRs (0023, 0026, 0030) address data validation at different boundaries but each
+produces a different ad-hoc signal. There is no unified `DataTrustLevel` type that all
+downstream consumers (governance engine, weekly planner, Telegram briefing) can check
+in a single place. Adding a new data source in Phase 8 requires re-inventing the
+validation pattern from scratch — the default answer is "add a log line and move on,"
+which is how silent errors accumulate. See ADR-0041 for the full failure mode.
+
+**Fix direction (per ADR-0041):**
+
+1. Create `titan/science/data_trust.py`:
+   ```python
+   class DataTrustLevel(Enum):
+       TRUSTED = "TRUSTED"
+       SUSPECT = "SUSPECT"
+       INVALID = "INVALID"
+
+   @dataclass
+   class DataTrustReport:
+       source: str
+       trust_level: DataTrustLevel
+       reasons: list[str]
+       checked_at: str
+       data_age_hours: float
+   ```
+2. Add to `thresholds.py`:
+   ```python
+   GARMIN_DATA_SUSPECT_AGE_HOURS = 12   # gap between T1-20 thresholds
+   WEATHER_DATA_SUSPECT_AGE_HOURS = 2
+   ```
+3. Update `garmin_sync.py` and `weather.py` to emit `DataTrustReport` alongside data.
+4. Map existing validation signals to `DataTrustLevel` (per ADR-0041 mapping table).
+5. Add `coaching_ctx["data_trust"]` with per-source reports and `overall` level.
+6. Governance engine reads `overall == INVALID` → engage ADR-0020 degraded mode.
+   `overall == SUSPECT` → add caveat to coaching message.
+7. Add `tests/test_data_trust_contract.py`:
+   - Garmin data fresh + valid → `TRUSTED`
+   - Garmin data > 12h → `SUSPECT`
+   - Garmin data > 26h → `INVALID`
+   - Bounds violation (ADR-0023) → `INVALID`
+   - Structural inconsistency (ADR-0026) → `INVALID`
+   - Weather synthetic fallback → `SUSPECT`
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/data_trust.py titan/integrations/garmin_sync.py \
+            titan/integrations/weather.py titan/orchestration/daily_coach.py \
+            titan/config/thresholds.py tests/test_data_trust_contract.py
+python -m pytest tests/test_data_trust_contract.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. New module (~30 lines) + 2 emitter updates + coaching context + tests.
+
+---
+
 ### T2-01 · Error taxonomy: `garmin_sync.py` ✅ RESOLVED
 
 **Status (2026-03-04):** Completed. `sync_activities`, `sync_weight`, `sync_sleep`, and
@@ -1477,6 +1682,108 @@ python -m pytest -q
 ```
 
 **Effort:** ~2h. Targeted changes in two modules + tests.
+
+---
+
+### T2-16 · Governance decisions lack human-readable rationale — athletes receive opaque hard-stops without "why"; override rate unmonitored 🔴 OPEN
+
+**Status:** OPEN (Phase 7.9 — after all Tier 1 items close).
+**Source:** Risk Review V8 — Risks: Explainability Gap (non-ML), Operator Trust Drift. ADR-0038.
+**Priority:** P2 (Tier 2 — observability).
+**Dependency:** All Tier 1 items (T1-18 through T1-22) must close first.
+
+**Location:** `titan/science/governance_engine.py`, `titan/orchestration/daily_coach.py` (Telegram message composition), `titan/ui/operator_console.py` (Session Explorer payload), `titan/config/thresholds.py`.
+
+**Problem:**
+
+When the governance engine fires a hard-stop or downgrade, the athlete receives a
+Telegram message stating the recommendation but not the cause. The gate that fired,
+the input value, the threshold, and the margin from the boundary are all absent from
+the coaching output. Over time, opaque decisions erode operator trust — athletes
+override governance not because they disagree with the specific decision, but because
+they cannot evaluate whether the decision is warranted. Override rate is not monitored;
+the system cannot detect trust erosion.
+
+**Fix direction (per ADR-0038):**
+
+1. Define `GateFinding` and `DecisionRationale` dataclasses in `governance_engine.py`.
+2. `GovernanceEngine.evaluate()` returns `DecisionRationale` alongside the existing
+   governance result.
+3. Register template strings for each gate (H1–H7 + soft locks) in
+   `GATE_RATIONALE_TEMPLATES`.
+4. `DailyCoach` Telegram message includes `primary_reason` and `actionable_guidance`
+   from `DecisionRationale`.
+5. `OperatorConsoleService` Session Explorer payload includes full `gate_findings` list.
+6. Add `override_metrics` (30-day rate, trend, trust signal) to readiness dashboard.
+7. Emit `operator_trust_drift_warning` if override rate > 25% over 30 days.
+8. Add `tests/test_governance_rationale.py`:
+   - HARD_STOP scenario: `DecisionRationale.primary_reason` non-empty + correct gate
+   - APPROVED scenario: all gates shown with margin values
+   - Override rate calculation correct for mock outcome dataset
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/governance_engine.py titan/orchestration/daily_coach.py \
+            titan/ui/operator_console.py tests/test_governance_rationale.py
+python -m pytest tests/test_governance_rationale.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~5h. Dataclass definitions + template registry + DailyCoach integration + Operator Console update + tests.
+
+---
+
+### T2-17 · Metric lifecycle states not tracked — orphaned metrics consume resources without governance contribution; new metrics lack mandatory evidence registry entries 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent; can begin once Tier 1 items close).
+**Source:** Risk Review V8 — Risk: Metric Proliferation Debt. ADR-0039.
+**Priority:** P2 (Tier 2 — observability).
+
+**Location:** All `titan/science/` engine modules, `titan/config/evidence_registry.py`, `titan/orchestration/daily_coach.py` (coaching context emission).
+
+**Problem:**
+
+TITAN OS computes ~15+ physiological metrics. Several (TRIMP, drift_index,
+efficiency_index, biomechanics_score, durability_score) have unclear governance roles —
+they are computed but their path to any governance gate, Telegram briefing, or Operator
+Console payload is not documented. Without a lifecycle protocol, Phase 8/9 additions
+will compound this proliferation. Metrics without evidence registry entries cannot be
+audited for evidence quality.
+
+**Fix direction (per ADR-0039):**
+
+1. Enumerate all metrics computed by science engines (exhaustive audit).
+2. For each metric, record:
+   - Governance gate(s) that consume it (or `None`)
+   - Telegram briefing inclusion (Yes/No)
+   - Operator Console payload inclusion (Yes/No)
+   - `evidence_registry.py` entry (Yes/No)
+3. Classify each as `Active`, `Under Review`, or `Deprecated` (initial pass: anything
+   without a governance gate and not in evidence registry → `Under Review`).
+4. Add `METRIC_LIFECYCLE` registry to `evidence_registry.py`:
+   ```python
+   METRIC_LIFECYCLE = {
+       "hrv_delta_ms": {"state": "Active", "governance_gates": ["H2"], ...},
+       "trimp": {"state": "Under Review", "governance_gates": [], ...},
+       ...
+   }
+   ```
+5. Add CI check (extend `tests/test_documentation_consistency.py` or new
+   `tests/test_metric_lifecycle.py`): all metrics in `METRIC_LIFECYCLE` must have
+   `state` in `{"Active", "Under Review", "Deprecated"}`.
+6. Emit `metrics_under_review` structured event at DailyCoach startup if any metric
+   is in `Under Review` state.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/config/evidence_registry.py tests/test_metric_lifecycle.py
+python -m pytest tests/test_metric_lifecycle.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. Audit (2h) + registry addition + CI check + tests.
 
 ---
 
@@ -2618,6 +2925,190 @@ python -m pytest -q
 
 ---
 
+### T4-29 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN (deferred Phase 8)
+
+**Status:** OPEN (deferred Phase 8 — after Phase 8 entry gate passes per ADR-0022).
+**Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
+**Priority:** P3 (Tier 4 — accuracy improvement; not safety-gate). Independent.
+
+**Location:** `titan/config/thresholds.py` (ESI constants), `titan/orchestration/daily_coach.py` (ESI context field), `titan/features/optimal_time.py` (ESI pace adjustment), `titan/features/weekly_plan.py` (zone target adjustment), `titan/science/governance_engine.py` (VO₂ block under ESI EXTREME).
+
+**Problem:**
+
+Training zone targets are applied identically regardless of environmental conditions.
+An athlete targeting Zone 2 at the same pace in 18°C and 32°C with 80% humidity
+is not doing the same physiological work. Dew-point-optimised timing is already
+implemented (`OptimalTimeCalculator`), but the training targets themselves are not
+adjusted when the athlete trains outside the optimal window or when conditions are
+unavoidably adverse.
+
+**Fix direction (per ADR-0034):**
+
+1. Add ESI constants to `thresholds.py` (dew point thresholds, temp thresholds, pace adjustment table).
+2. Compute `esi_level` and `esi_pace_adjustment_sec_per_km` in `DailyCoach` from
+   current weather data.
+3. Pass ESI context to `WeeklyPlanGenerator` and `OptimalTimeCalculator`.
+4. Block VO₂max workouts when ESI is EXTREME (via `VO2_ELIGIBILITY_GATE` modification).
+5. Include ESI level and adjusted targets in Telegram briefing.
+6. Add `tests/test_esi_compensation.py`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/config/thresholds.py titan/orchestration/daily_coach.py \
+            titan/features/optimal_time.py tests/test_esi_compensation.py
+python -m pytest tests/test_esi_compensation.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. ESI computation function + integration into 3 consumers + tests.
+
+---
+
+### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
+
+**Status:** OPEN (Phase 7.9 — independent).
+**Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. ADR-0036.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+
+**Location:** All 26 `titan/science/*.py` modules, `titan/core/database.py` (schema migration), `tests/test_science_model_versions.py` (new CI check).
+
+**Problem:**
+
+Science modules have no `MODULE_VERSION` constant. A breaking algorithm change
+(different output for same inputs) is indistinguishable from a patch fix in `CHANGES.md`.
+The `governance_outcomes` table does not record which algorithm versions were active
+when a decision was made. Phase 9 calibration will train on a mixed-version dataset
+producing unreliable threshold estimates.
+
+**Fix direction (per ADR-0036):**
+
+1. Add `MODULE_VERSION = "1.0.0"` to all 26 science modules (initial pass — all start
+   at 1.0.0; future breaking changes increment MAJOR).
+2. Add `algorithm_version_snapshot TEXT` column to `governance_outcomes` via migration.
+3. Update `OutcomeTracker.record_decision()` to populate `algorithm_version_snapshot`
+   as JSON of active MODULE_VERSIONs.
+4. Create `tests/test_science_model_versions.py`:
+   - Import all science modules; assert `MODULE_VERSION` exists and is valid semver.
+   - Assert all 26 modules have a version constant (count check).
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/ tests/test_science_model_versions.py
+python -m pytest tests/test_science_model_versions.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~3h. 26 version constants (30min) + schema migration + OutcomeTracker update + CI test.
+
+---
+
+### T4-31 · No athlete isolation invariant CI check — new code may silently introduce cross-athlete assumptions 🔴 OPEN (IMMEDIATE)
+
+**Status:** OPEN — **IMMEDIATE** (effective from ADR-0040, which is active from this commit).
+**Source:** Architect Directive V8 — Decision 1 (Athlete Profile as System Core). ADR-0040.
+**Priority:** P3 (Tier 4 — maintainability; IMMEDIATE because the invariant it enforces is
+already active and new violations must be caught from this commit forward).
+
+**Location:** New `tests/test_athlete_isolation_invariant.py`; all `titan/` module files
+in exemption register (module-level comment annotations).
+
+**Problem:**
+
+ADR-0040 is active from this commit. Without a CI check, new code can violate the
+isolation invariant (implicit athlete queries, no `athlete_id` parameter, cross-athlete
+assumptions) and the violation will not be detected until Phase 9 when the migration
+becomes blocked.
+
+**Fix direction (per ADR-0040):**
+
+1. Add module-level `# ADR-0040-SINGLE-ATHLETE-SHORTCUT: ...` comment to all files
+   in the ADR-0040 exemption register (see ADR-0040 §Exemption Register).
+2. Create `tests/test_athlete_isolation_invariant.py`:
+   - Parse all `titan/` Python files.
+   - For files NOT in the exemption register: assert no SQL string contains
+     `SELECT|UPDATE|DELETE` without `athlete_id` in the same string (heuristic).
+   - For files in the exemption register: assert the `ADR-0040-SINGLE-ATHLETE-SHORTCUT`
+     comment exists.
+   - Assert new table migration blocks include `athlete_id` column.
+3. Register the exemption list as a Python constant in the test file for easy maintenance.
+
+**Acceptance gate (binary):**
+```bash
+ruff check tests/test_athlete_isolation_invariant.py
+python -m pytest tests/test_athlete_isolation_invariant.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~2h. Comment annotations (30min per exemption file) + CI test.
+
+---
+
+### T4-32 · No override handler registry — new decision types lack guaranteed override path; Telegram override button absent 🔴 OPEN (IMMEDIATE)
+
+**Status:** OPEN — **IMMEDIATE** (effective from ADR-0042, which is active from this commit).
+**Source:** Architect Directive V8 — Decision 3 (Human Override as Invariant). ADR-0042.
+**Priority:** P2 (Tier 4 — but IMMEDIATE because every day without the Telegram override
+button is permanently lost override signal data; ADR-0042 §Gap 2).
+
+**Location:** `titan/integrations/telegram_bot.py` (inline override button + callback handler),
+`titan/science/override_signal.py` (new module), `titan/core/database.py` (schema migration
+or OutcomeTracker extension), new `tests/test_override_handler_registry.py`.
+
+**Problem:**
+
+ADR-0042 is active from this commit. Two gaps remain unaddressed:
+
+1. The Telegram bot has no override button — athletes silently ignore hard-stop messages
+   without their decision being recorded. This is permanently lost calibration data.
+2. No CI check exists to verify that every governance lock code and ML recommendation
+   type has a registered override handler.
+
+**Fix direction (per ADR-0042):**
+
+1. Create `titan/science/override_signal.py`:
+   ```python
+   @dataclass
+   class OverrideSignal:
+       decision_id: str
+       athlete_id: str      # ADR-0040
+       override_source: str  # "telegram_bot" | "operator_console"
+       override_reason: str  # Required — not empty
+       ...
+   ```
+2. Update `titan/integrations/telegram_bot.py`:
+   - Add inline keyboard to hard-stop and downgrade Telegram messages:
+     `[✅ Accept] [⚠️ Override (add reason)]`
+   - Handle `CallbackQuery` for "Override" → prompt for reason → record `OverrideSignal`.
+   - Handle "no-response" follow-up after 4h.
+3. Create override handler registry in `titan/science/governance_engine.py`:
+   ```python
+   OVERRIDE_HANDLERS: dict[str, Callable] = {
+       "HARD_STOP_SAFETY_GATES": record_override_signal,
+       "VO2_ELIGIBILITY_GATE": record_override_signal,
+       ...  # one entry per lock code (CLAUDE.md canonical set)
+   }
+   ```
+4. CI check in `tests/test_override_handler_registry.py`:
+   - Import `CANONICAL_LOCK_CODES` from `thresholds.py`.
+   - Import `OVERRIDE_HANDLERS` from `governance_engine.py`.
+   - Assert every canonical lock code has an entry in `OVERRIDE_HANDLERS`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/science/override_signal.py titan/integrations/telegram_bot.py \
+            titan/science/governance_engine.py tests/test_override_handler_registry.py
+python -m pytest tests/test_override_handler_registry.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~6h. New module + Telegram callback handler + registry + CI test.
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -2758,8 +3249,68 @@ logic + governance integration update + tests.
 
 ---
 
+### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime 🔴 OPEN
+
+**Status:** OPEN (Phase 7.9 guard rails — Layer 1 & 2 are **Phase 8 prerequisites**; Layer 3 deferred Phase 9).
+**Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
+**Priority:** P1 for Layers 1–2 (Phase 8 guard rails); P5 for Layer 3 (Phase 9).
+
+**Location:** `titan/core/database.py` (new `model_calibration_metadata` table), `titan/orchestration/daily_coach.py` (startup check), `titan/config/thresholds.py` (new constants).
+
+**Problem:**
+
+Physiological models (HRV baselines, lactate threshold, critical speed) are calibrated
+against historical data from a single athlete at a specific fitness level. As the athlete
+improves (or as physiology changes seasonally), the model's reference frame becomes stale.
+An athlete whose HRV baseline has risen 10ms over 6 months will trigger H2 gate on days
+that are physiologically normal — because the gate compares against a stale baseline. No
+mechanism exists to detect or flag this staleness. See ADR-0033 for full context.
+
+**Fix direction (per ADR-0033) — Layer 1 (Phase 7.9 / Phase 8 prerequisite):**
+
+1. Add to `thresholds.py`:
+   ```python
+   MODEL_CALIBRATION_MAX_AGE_DAYS = 180
+   HRV_DRIFT_THRESHOLD_MS = 8.0
+   ```
+2. Schema migration: add `model_calibration_metadata` table:
+   ```sql
+   CREATE TABLE model_calibration_metadata (
+       model_name TEXT PRIMARY KEY, calibrated_at TEXT NOT NULL,
+       calibrated_for TEXT NOT NULL DEFAULT 'default',
+       baseline_hrv_ms REAL, baseline_vo2 REAL, schema_version INTEGER NOT NULL
+   );
+   ```
+3. Populate initial row for the HRV engine with current 30-day HRV mean and
+   `calibrated_at = now`.
+4. In `DailyCoach` startup, check model age. If > `MODEL_CALIBRATION_MAX_AGE_DAYS`:
+   emit `model_calibration_stale` structured event (WARNING severity, per ADR-0031).
+
+**Fix direction (per ADR-0033) — Layer 2 (Phase 7.9 / Phase 8 prerequisite):**
+
+5. In `WeeklyPlanGenerator`, compare current 30-day HRV mean vs stored baseline.
+   If `|delta| > HRV_DRIFT_THRESHOLD_MS`: emit `hrv_baseline_drift_detected` structured
+   event and flag in Operator Console readiness dashboard.
+
+**Layer 3 (Phase 9 — multi-athlete isolation):** See ADR-0033 §Layer 3. Deferred.
+
+**Acceptance gate for Layers 1–2 (binary):**
+```bash
+ruff check titan/core/database.py titan/orchestration/daily_coach.py \
+            titan/features/weekly_plan.py titan/config/thresholds.py \
+            tests/test_model_calibration_metadata.py
+python -m pytest tests/test_model_calibration_metadata.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort (Layers 1–2):** ~4h. Schema + startup check + weekly drift check + tests.
+**Phase 8 prerequisite:** Layers 1–2 must be RESOLVED before Phase 8 begins.
+
+---
+
 All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
-Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability).
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning).
 
 ---
 
@@ -2877,10 +3428,22 @@ When an item is completed, mark it here with date and PR reference:
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
+| T1-21 | OPEN (independent) | — |
+| T1-22 | OPEN (independent; Phase 9 calibration blocker) | — |
+| T1-23 | OPEN (independent; Phase 8 entry gate) | — |
+| T2-16 | OPEN (after all Tier 1) | — |
+| T2-17 | OPEN (independent) | — |
+| T4-29 | OPEN (deferred Phase 8) | — |
+| T4-30 | OPEN (independent) | — |
+| T4-31 | OPEN (IMMEDIATE — ADR-0040 active) | — |
+| T4-32 | OPEN (IMMEDIATE — ADR-0042 active) | — |
+| T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-06 — Risk Review V7 processed. 5 new items registered
-(T1-20, T2-14, T2-15, T5-06, T5-06-A). ADRs 0030–0032 created. Phase 7.9 execution
-sequence updated. T5-06-A elevated to Phase 8 prerequisite (ADR-0032 + ADR-0022 G1).*
+*Last updated: 2026-03-06 — Architect Directive V8 processed. 3 new architectural invariants
+locked (ADR-0040 athlete isolation, ADR-0041 data trust contract, ADR-0042 human override).
+3 new items registered (T1-23, T4-31, T4-32). ADRs 0040–0042 created. T4-31 and T4-32
+marked IMMEDIATE (enforce invariants active from this commit). T1-23 added as Phase 8 entry
+gate criterion.*

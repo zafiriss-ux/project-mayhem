@@ -1,0 +1,184 @@
+# ADR-0033 — Physiological Model Aging & Multi-Athlete Architecture Protocol
+
+**Date:** 2026-03-06
+**Status:** Accepted
+**Deciders:** Architect
+**Source:** Risk Review V8 — Risks: Calibration Bias, Model Aging, Athlete Adaptation Lag, Single-Athlete Overfitting
+**Phase:** 7.9 Hardening (gate for Phase 9 multi-athlete)
+**Supplements:** ADR-0014 (ML scaffold), ADR-0023 (physiological bounds), ADR-0032 (explainability), T5-05 (recalibration — extended by this ADR)
+
+---
+
+## Context
+
+TITAN OS was designed, trained, and calibrated against a single athlete. Every constant,
+heuristic threshold, and algorithmic weight in the system carries an implicit assumption:
+that the athlete whose data shaped it is the athlete the system will always serve.
+
+This creates four compounding risks:
+
+### Risk 1 — Calibration Bias
+
+The physiological models (HRV engine, lactate threshold, critical speed, TRIMP weighting)
+have been tuned to one athlete's response curves. A different athlete — with a different
+VO₂max trajectory, different HRV range, different stress-recovery pattern — will receive
+recommendations derived from a foreign physiology.
+
+**Current state:** No mechanism exists to detect when the active athlete's physiological
+profile diverges from the profile the models were tuned against. The models run
+unconditionally.
+
+### Risk 2 — Model Aging
+
+Even for the same athlete, physiological models age. An athlete who improves VO₂max by
+5 ml/kg/min over 18 months of training operates at different metabolic thresholds than
+when the model's baselines were established. The system's critical speed estimate,
+glycogen depletion curve, and lactate threshold will lag behind the athlete's true
+physiology — sometimes by months.
+
+**Current state:** T5-05 documents this risk and defers recalibration to Phase 9. However
+no trigger mechanism or detection heuristic is specified. There is no way for the system
+to know that it is operating on a stale model.
+
+### Risk 3 — Athlete Adaptation Outpacing the Model
+
+Rapid physiological improvement (common in the first 6–12 months of structured training)
+can make governance thresholds systematically conservative. If the athlete's HRV baseline
+rises 10ms above the model's reference, the `HARD_STOP_HRV_DELTA` gate will fire on days
+that are physiologically normal for the current athlete but anomalous relative to the
+old baseline.
+
+**Current state:** HRV baselines are computed from rolling windows. However the rolling
+window anchor (initial calibration period) is never updated or flagged as potentially
+stale relative to the athlete's evolved fitness.
+
+### Risk 4 — Single-Athlete Overfitting (Architectural)
+
+Implicit per-athlete assumptions baked into the codebase as defaults:
+
+| Location | Assumption | Risk |
+|---|---|---|
+| `_create_synthetic_fallback()` | Athens, GR climate (T1-09 partially addressed) | Wrong environmental inputs for other athletes |
+| `thresholds.py` constants | Tuned for one athlete's HRV range (~45–65ms baseline) | Wrong gate sensitivity for different physiology |
+| `OutcomeTracker` calibration | Single athlete's decisions populate the calibration dataset | Calibration for athlete A corrupts governance for athlete B |
+| `evidence_registry.py` | Evidence quality labels reflect single-athlete validation | Misleadingly high evidence quality for untested athlete profiles |
+
+---
+
+## Decision
+
+**Establish a three-layer protocol for model aging detection, recalibration triggering,
+and multi-athlete isolation — to be implemented in Phase 9, with Phase 8 prerequisite
+guard rails installed in Phase 7.9.**
+
+### Layer 1 — Model Age Tracking (Phase 7.9 prerequisite)
+
+Add a `model_calibration_metadata` table to SQLite:
+
+```sql
+CREATE TABLE model_calibration_metadata (
+    model_name      TEXT PRIMARY KEY,
+    calibrated_at   TEXT NOT NULL,   -- ISO-8601 timestamp
+    calibrated_for  TEXT NOT NULL,   -- athlete_id (future) or 'default'
+    baseline_hrv_ms REAL,            -- HRV baseline at calibration time
+    baseline_vo2    REAL,            -- VO₂max estimate at calibration time
+    schema_version  INTEGER NOT NULL
+);
+```
+
+At DailyCoach startup, check model age:
+
+```python
+MODEL_CALIBRATION_MAX_AGE_DAYS = 180   # 6 months — stored in thresholds.py
+```
+
+If any model's `calibrated_at` is older than `MODEL_CALIBRATION_MAX_AGE_DAYS`,
+emit a structured event `model_calibration_stale` (WARNING severity, per ADR-0031)
+and include a coaching-context flag `models_may_be_stale = True`. Do NOT block the
+morning routine — this is a WARNING, not a HARD_STOP.
+
+### Layer 2 — Adaptation Drift Detection (Phase 7.9 prerequisite)
+
+At weekly plan generation time (`WeeklyPlanGenerator`), compare:
+
+```
+current_30d_hrv_mean  vs  calibrated_baseline_hrv_ms
+```
+
+If `|current_30d_hrv_mean - calibrated_baseline_hrv_ms| > HRV_DRIFT_THRESHOLD_MS`:
+- Emit `hrv_baseline_drift_detected` structured event.
+- Include drift magnitude and direction in the weekly plan coaching context.
+- Flag in the Operator Console readiness dashboard.
+
+```python
+HRV_DRIFT_THRESHOLD_MS = 8.0   # stored in thresholds.py; matches HARD_STOP_HRV_DELTA scale
+```
+
+**Rationale:** If the athlete's 30-day HRV mean has shifted more than one HARD_STOP
+delta from the calibration baseline, the model's reference frame is materially stale.
+
+### Layer 3 — Multi-Athlete Isolation Architecture (Phase 9)
+
+When Phase 9 introduces support for more than one athlete profile:
+
+1. **Athlete ID as a first-class key** — every governance decision, every DB row,
+   every model calibration record must carry an `athlete_id` foreign key.
+2. **Per-athlete threshold overrides** — `thresholds.py` constants become defaults;
+   per-athlete overrides stored in a `athlete_thresholds` table.
+3. **Calibration isolation** — `OutcomeTracker` decision→outcome pairs are keyed by
+   `athlete_id`. Calibration for athlete A cannot affect governance for athlete B.
+4. **Cold-start protocol for new athletes** — new athletes get a 30-day supervised
+   onboarding period with conservative defaults (all thresholds shifted 20% toward
+   the safe direction) until sufficient outcome data exists for calibration.
+
+### What This Does NOT Change
+
+- Current single-athlete operation is unaffected.
+- Phase 8 multi-sport scope (ADR-0016) proceeds without multi-athlete support — sport
+  type and athlete identity are orthogonal axes. Phase 8 remains single-athlete,
+  multi-sport.
+- T5-05 (recalibration mechanism) is not superseded — this ADR adds trigger detection;
+  T5-05 specifies the recalibration algorithm itself. Both remain open for Phase 9.
+
+---
+
+## Debt Items Created
+
+- **T5-07** — No model age tracking or adaptation drift detection — physiological model
+  staleness is invisible at runtime (Tier 5; Phase 7.9 guard rails as Phase 8 prerequisite;
+  full Layer 3 deferred Phase 9)
+
+---
+
+## Alternatives Considered
+
+**Alternative A — Continuous recalibration via OutcomeTracker feedback**
+Rejected for Phase 7.9. Continuous recalibration creates the exact feedback loop risk
+described in ADR-0035. Recalibration must be a deliberate, gated event — not automatic.
+
+**Alternative B — Treat model aging as a monitoring concern only**
+Rejected. A governance system that evaluates HRV gates against a baseline that is 18
+months stale will produce systematically wrong hard-stop decisions. This is a data
+integrity issue in the governance pipeline, not merely a monitoring gap.
+
+**Alternative C — Replace all heuristic constants with athlete-adaptive running
+averages**
+Rejected for current phase. Fully adaptive constants eliminate the safety margin that
+fixed thresholds provide. A miscalibrated rolling window could cause the system to
+"adapt" to an overtraining pattern and fail to fire safety gates. Fixed thresholds with
+drift detection is the safer architecture.
+
+---
+
+## Consequences
+
+- Positive: Model staleness becomes visible at runtime through structured events and
+  Operator Console flags. Athletes and operators are informed when recalibration is due.
+- Positive: Phase 9 multi-athlete isolation has a clear architectural contract to
+  implement against.
+- Positive: HRV baseline drift is detected weekly — early warning before governance
+  gates become systematically miscalibrated.
+- Negative (acceptable): Requires a new `model_calibration_metadata` table (schema
+  migration). Lightweight — single row per model, no high-frequency writes.
+- Constraint: T5-07 Layer 1 and 2 (Phase 7.9 guard rails) are Phase 8 prerequisites
+  per ADR-0022 spirit (no Phase 8 work without active model staleness monitoring).
