@@ -475,23 +475,26 @@ class TestDailyCoachErrorTaxonomy:
         assert step12[-1]["failure_class"] == "DELIVERY_ERROR"
 
     def test_activity_persist_emits_per_activity_outcomes(self, coach_mocks, caplog):
+        from titan.orchestration.daily_coach import PersistenceFailure
+
         coach, _ = coach_mocks
         caplog.set_level(logging.INFO)
 
         coach.db.save_session = MagicMock(side_effect=[None, RuntimeError("db busy")])
         today = datetime.now().strftime("%Y-%m-%d")
-        coach._persist_garmin_data(
-            {
-                "activities": [
-                    {"date": today, "session_type": "EASY"},
-                    {"date": today, "session_type": "EASY"},
-                ],
-                "sleep": [],
-                "hrv": [],
-                "weight": [],
-            },
-            today,
-        )
+        with pytest.raises(PersistenceFailure):
+            coach._persist_garmin_data(
+                {
+                    "activities": [
+                        {"date": today, "session_type": "EASY"},
+                        {"date": today, "session_type": "EASY"},
+                    ],
+                    "sleep": [],
+                    "hrv": [],
+                    "weight": [],
+                },
+                today,
+            )
 
         events = _json_events(caplog)
         activity_events = [

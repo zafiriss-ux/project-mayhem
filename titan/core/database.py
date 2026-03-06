@@ -8,7 +8,7 @@ import logging
 import re
 import sqlite3
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -76,6 +76,12 @@ def _derive_field_hint(error: Exception) -> str:
         return f"json_pos_{error.lineno}:{error.colno}"
 
     return "unknown"
+
+
+# Current schema version. Increment by 1 for every new migration added to
+# _run_migrations(). The value is stored in PRAGMA user_version so the DB
+# self-reports its schema state on every startup.
+SCHEMA_VERSION = 2
 
 
 class DatabaseManager:
@@ -322,36 +328,86 @@ class DatabaseManager:
         self._run_migrations(cursor)
 
     def _run_migrations(self, cursor) -> None:
+        """Apply additive schema migrations guarded by PRAGMA user_version.
+
+        Each migration is keyed by the target version it introduces. Only
+        migrations with version > current user_version are applied.
+        After all pending migrations run, user_version is updated to
+        SCHEMA_VERSION. This replaces the old OperationalError-suppression
+        approach with a deterministic version gate (T1-16).
         """
-        Apply additive schema migrations (idempotent — safe to run on every startup).
-        Suppresses only duplicate-column errors for already-applied migrations.
-        """
-        migrations = [
+        current_version: int = cursor.execute("PRAGMA user_version").fetchone()[0]
+
+        # Ordered dict: version → (table, column_label, sql).
+        # To add a future migration: increment SCHEMA_VERSION and add an entry.
+        _migrations: dict[int, tuple[str, str, str]] = {
+            1: (
+                "daily_metrics / training_log",
+                "hrr_60, hrr_120, glycogen_debt, garmin_activity_id",
+                None,  # batch — see _apply_v1_migrations() below
+            ),
+            2: (
+                "training_log",
+                "idx_training_log_garmin_id (unique index)",
+                None,  # DDL — see _apply_v2_migrations() below
+            ),
+        }
+
+        if current_version < 1:
+            self._apply_v1_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 1,
+                    "columns_added": "hrr_60, hrr_120, glycogen_debt, garmin_activity_id",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 2:
+            self._apply_v2_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 2,
+                    "index_created": "idx_training_log_garmin_id",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        # Suppress unused-variable warning for _migrations (kept as documentation).
+        _ = _migrations
+
+        cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        self.conn.commit()
+
+    def _apply_v1_migrations(self, cursor) -> None:
+        """Version 1: additive column migrations for daily_metrics and training_log."""
+        column_migrations = [
             ("daily_metrics", "hrr_60", "ALTER TABLE daily_metrics ADD COLUMN hrr_60 INTEGER"),
             ("daily_metrics", "hrr_120", "ALTER TABLE daily_metrics ADD COLUMN hrr_120 INTEGER"),
             ("daily_metrics", "glycogen_debt", "ALTER TABLE daily_metrics ADD COLUMN glycogen_debt REAL"),
-            (
-                "training_log",
-                "garmin_activity_id",
-                "ALTER TABLE training_log ADD COLUMN garmin_activity_id TEXT",
-            ),
+            ("training_log", "garmin_activity_id", "ALTER TABLE training_log ADD COLUMN garmin_activity_id TEXT"),
         ]
-        for table_name, column_name, sql in migrations:
+        for table_name, column_name, sql in column_migrations:
             try:
                 cursor.execute(sql)
-                _log.info(
-                    "db_schema_migration",
-                    extra={
-                        "column_added": column_name,
-                        "table": table_name,
-                        "timestamp": datetime.utcnow().isoformat() + "Z",
-                    },
-                )
             except sqlite3.OperationalError as exc:
-                error_message = str(exc).lower()
-                if "duplicate column name" not in error_message:
+                if "duplicate column name" not in str(exc).lower():
                     raise
+                _log.info(
+                    json.dumps({
+                        "flow": "database",
+                        "action": "db_migration_already_applied",
+                        "table": table_name,
+                        "column": column_name,
+                    })
+                )
 
+    def _apply_v2_migrations(self, cursor) -> None:
+        """Version 2: unique index on training_log.garmin_activity_id."""
         try:
             cursor.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_training_log_garmin_id
@@ -359,9 +415,72 @@ class DatabaseManager:
                 WHERE garmin_activity_id IS NOT NULL
             """)
         except sqlite3.OperationalError as exc:
-            if "duplicate column name" not in str(exc).lower():
+            if "already exists" not in str(exc).lower():
                 raise
-        self.conn.commit()
+
+    # --- BACKUP ---
+
+    def backup_database(self, backup_dir: Path | None = None, keep: int = 30) -> Path | None:
+        """Create a hot backup of the database using sqlite3.backup().
+
+        Safe to call while the DB is open and active — sqlite3.backup() uses
+        the SQLite online backup API which does not require exclusive access.
+
+        One backup per calendar day is created. If today's backup already exists
+        the call is a no-op and returns None. Old backups beyond ``keep`` days
+        are pruned.
+
+        Args:
+            backup_dir: Directory for backup files. Defaults to
+                ``<db_dir>/backups/``.
+            keep: Number of daily backups to retain (default 30).
+
+        Returns:
+            Path to the backup file created today, or None if already exists.
+        """
+        if backup_dir is None:
+            backup_dir = self.db_path.parent / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        dest = backup_dir / f"titan_{date_str}.db"
+
+        if dest.exists():
+            return None  # today's backup already done
+
+        try:
+            with self._lock:
+                self._ensure_open_locked()
+                with sqlite3.connect(str(dest)) as dst_conn:
+                    self.conn.backup(dst_conn)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_backup_created",
+                    "dest": str(dest),
+                    "date": date_str,
+                })
+            )
+        except Exception as exc:
+            _log.warning(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_backup_failed",
+                    "error_class": type(exc).__name__,
+                    "error_message": str(exc),
+                })
+            )
+            return None
+
+        self._prune_old_backups(backup_dir, keep=keep)
+        return dest
+
+    def _prune_old_backups(self, backup_dir: Path, keep: int) -> None:
+        """Remove oldest daily backup files beyond the ``keep`` limit."""
+        backups = sorted(backup_dir.glob("titan_????-??-??.db"))
+        for old in backups[:-keep] if len(backups) > keep else []:
+            with suppress(OSError):
+                old.unlink()
 
     # --- DAILY METRICS ---
 

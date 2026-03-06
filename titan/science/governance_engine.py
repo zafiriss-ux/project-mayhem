@@ -756,6 +756,20 @@ class GovernanceEngine:
                 downgraded_to=session_plan.get("session_type", "EASY"),
             )
 
+        if bool(context.get("persistence_degraded", False)):
+            current_session = str(session_plan.get("session_type", "EASY")).upper()
+            if current_session not in {"REST", "EASY"}:
+                session_plan["session_type"] = "EASY"
+            session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
+            applied_locks.append("PERSISTENCE_DEGRADED_CEILING")
+            _gate_event(
+                "PERSISTENCE_DEGRADED",
+                "EASY_CEILING",
+                cause="DATA_PROBLEM",
+                original_session=current_session,
+                downgraded_to=session_plan.get("session_type", "EASY"),
+            )
+
         session_plan["governance_locks_applied"] = applied_locks
         session_plan["governance_clean"] = len(applied_locks) == 0
 

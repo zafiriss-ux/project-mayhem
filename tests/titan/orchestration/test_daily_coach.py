@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import sleep
 from types import SimpleNamespace
 
@@ -9,7 +9,7 @@ import pytest
 
 from titan.core.database import DatabaseManager
 from titan.orchestration import daily_coach
-from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.daily_coach import DailyCoach, DegradedModeTracker
 
 
 class DummyDB:
@@ -118,13 +118,17 @@ class MinimalCoachFactory:
             get_governance_report=lambda **k: {},
         )
         coach.outcome_tracker = SimpleNamespace(record_decision=lambda **k: None)
+        coach._degraded_tracker = DegradedModeTracker()
         coach.optimal_time = SimpleNamespace(calculate_optimal_time=lambda **k: {"recommended_time": "07:00", "dew_point": 12, "quality": "GOOD"})
         coach.nutrition = SimpleNamespace(
             analyze_weight_trend=lambda: {"current_weight": 70.0},
             add_weight_entry=lambda *a, **k: None,
             calculate_daily_nutrition=lambda **k: {"carbs_g": 250, "protein_g": 120},
         )
-        coach.telegram = SimpleNamespace(send_daily_coaching=lambda payload: telegram_success)
+        coach.telegram = SimpleNamespace(
+            send_daily_coaching=lambda payload: telegram_success,
+            send_alert=lambda msg: None,
+        )
         return coach
 
 
@@ -340,6 +344,8 @@ def test_persist_garmin_data_success_commits_activities_and_metrics_atomically(t
 
 
 def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
+    from titan.orchestration.daily_coach import PersistenceFailure
+
     class MidLoopFailDB(DatabaseManager):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
@@ -356,7 +362,8 @@ def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
     day = "2026-03-04"
 
     try:
-        coach._persist_garmin_data(_garmin_payload_for_day(day), day)
+        with pytest.raises(PersistenceFailure):
+            coach._persist_garmin_data(_garmin_payload_for_day(day), day)
 
         assert _count_rows(db, "training_log", day) == 0
         assert _count_rows(db, "daily_metrics", day) == 0
@@ -365,6 +372,8 @@ def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
 
 
 def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(tmp_path):
+    from titan.orchestration.daily_coach import PersistenceFailure
+
     class MetricFailDB(DatabaseManager):
         def save_daily_metric(self, **kwargs):
             raise RuntimeError("metric_failure")
@@ -374,7 +383,8 @@ def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(t
     day = "2026-03-04"
 
     try:
-        coach._persist_garmin_data(_garmin_payload_for_day(day), day)
+        with pytest.raises(PersistenceFailure):
+            coach._persist_garmin_data(_garmin_payload_for_day(day), day)
 
         assert _count_rows(db, "training_log", day) == 0
         assert _count_rows(db, "daily_metrics", day) == 0
@@ -1053,3 +1063,165 @@ def test_run_morning_routine_passes_data_confidence_low_only_on_first_routine(mo
 
     assert captured_contexts[0]["data_confidence_low"] is True
     assert "data_confidence_low" not in captured_contexts[1]
+
+
+# ── T1-15: PersistenceFailure sentinel + degraded conservative mode ─────────
+
+class _FailingTransactionDB(DummyDB):
+    """DummyDB variant whose transaction() context manager always raises."""
+
+    @contextmanager
+    def transaction(self):
+        raise sqlite3.OperationalError("disk I/O error")
+        yield  # required for generator protocol
+
+
+def test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults(monkeypatch):
+    """When the DB transaction rolls back, PersistenceFailure is raised with default values
+    and a PERSIST_ERROR step event is emitted (not SUCCESS)."""
+    from titan.orchestration.daily_coach import PersistenceFailure
+
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build()
+    coach.db = _FailingTransactionDB()
+
+    garmin_data = {
+        "activities": [{"date": "2026-03-06", "session_type": "EASY", "distance_km": 5, "duration_sec": 1800}],
+        "sleep": [],
+        "hrv": [],
+        "weight": [],
+    }
+    with pytest.raises(PersistenceFailure) as exc_info:
+        coach._persist_garmin_data(garmin_data, "2026-03-06")
+
+    pf = exc_info.value
+    assert pf.today_rhr == 0
+    assert pf.today_sleep_score == 75
+    assert pf.today_sleep_hours == 7.5
+
+    persist_failed_events = [e for e in events if e.get("action") == "daily_metrics_persist_failed"]
+    assert persist_failed_events, "daily_metrics_persist_failed event must be emitted"
+
+
+def test_run_morning_routine_persistence_failure_sets_degraded_flag(monkeypatch):
+    """When step 2 raises PersistenceFailure, persistence_degraded=True must reach
+    the governance context and the routine must complete successfully."""
+    captured_contexts = []
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build()
+    coach.db = _FailingTransactionDB()
+
+    def _apply_constraints(session_plan, context):
+        captured_contexts.append(dict(context))
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(
+        apply_constraints=_apply_constraints,
+        get_governance_report=lambda **k: {},
+    )
+
+    result = coach.run_morning_routine()
+    assert result is True
+    assert captured_contexts, "governance context must be captured"
+    assert captured_contexts[0].get("persistence_degraded") is True
+
+    degraded_events = [e for e in events if e.get("action") == "persistence_degraded_mode"]
+    assert degraded_events, "persistence_degraded_mode event must be emitted"
+
+
+def test_governance_engine_persistence_degraded_caps_intensity_at_easy():
+    """GovernanceEngine must cap session intensity at EASY when persistence_degraded=True."""
+    from titan.science.governance_engine import GovernanceEngine
+
+    engine = GovernanceEngine()
+    session_plan = {
+        "session_type": "INTERVALS",
+        "duration_min": 60,
+        "max_zone": 5,
+        "volume_pct": 1.0,
+    }
+    context = {
+        "persistence_degraded": True,
+        "afi_constraints": {"afi_modifier": 0, "readiness_clamp": 100},
+        "intensity_gate_result": {"zone": "GREEN"},
+        "readiness_score": 70.0,
+        "glycogen_debt": 1.0,
+        "fatigue_level": "LOW",
+        "acwr": 1.0,
+        "days_since_last_vo2": 5,
+        "fueling_confirmed": True,
+        "planned_duration_min": 60,
+        "today_hrv": 45.0,
+        "baseline_hrv": 40.0,
+        "hrv_std_dev": 2.0,
+        "today_rhr": 50,
+        "baseline_rhr": 50.0,
+        "sleep_score": 75,
+        "subjective_fatigue_score": 4,
+        "tsb_value": 5.0,
+        "injury_flag": False,
+        "priority_vector": {},
+        "lock_thresholds": {},
+    }
+    result = engine.apply_constraints(session_plan=session_plan, context=context)
+    assert result["session_type"] == "EASY"
+    assert "PERSISTENCE_DEGRADED_CEILING" in result.get("governance_locks_applied", [])
+
+
+def test_run_morning_routine_persistence_failure_sends_telegram_alert(monkeypatch):
+    """When step 2 raises PersistenceFailure, a Telegram alert must be sent."""
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: None)
+
+    alert_messages = []
+    coach = MinimalCoachFactory.build()
+    coach.db = _FailingTransactionDB()
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: True,
+        send_alert=lambda msg: alert_messages.append(msg),
+    )
+
+    coach.run_morning_routine()
+
+    assert alert_messages, "Telegram alert must be sent on persistence failure"
+    assert "Persistence failure" in alert_messages[0] or "persistence" in alert_messages[0].lower()
+
+
+# ── T2-13: DegradedModeTracker ───────────────────────────────────────────────
+
+
+def test_degraded_tracker_sets_timestamp_on_first_failure():
+    """When a flag becomes True for the first time, degraded_since is set."""
+    tracker = DegradedModeTracker()
+    tracker.update({"persistence_degraded": True}, alert_fn=lambda _: None)
+    result = tracker.get_degraded_since()
+    assert "persistence_degraded" in result
+    assert result["persistence_degraded"] is not None
+
+
+def test_degraded_tracker_clears_on_recovery():
+    """When a flag returns to False, degraded_since for that key is cleared."""
+    tracker = DegradedModeTracker()
+    tracker.update({"persistence_degraded": True}, alert_fn=lambda _: None)
+    tracker.update({"persistence_degraded": False}, alert_fn=lambda _: None)
+    result = tracker.get_degraded_since()
+    assert "persistence_degraded" not in result
+
+
+def test_degraded_tracker_fires_alert_after_24h():
+    """When degraded_since is older than 24h, send_alert must be called."""
+    tracker = DegradedModeTracker()
+    tracker.update({"persistence_degraded": True}, alert_fn=lambda _: None)
+
+    # Backdate the degraded_since to 25 hours ago
+    tracker._degraded_since["persistence_degraded"] = datetime.utcnow() - timedelta(hours=25)
+
+    alerts = []
+    tracker.update({"persistence_degraded": True}, alert_fn=lambda msg: alerts.append(msg))
+
+    assert alerts, "Alert must be fired after >24h in degraded mode"
+    assert "persistence_degraded" in alerts[0]
+    assert "25h" in alerts[0] or "h" in alerts[0]

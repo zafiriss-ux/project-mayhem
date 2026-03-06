@@ -27,7 +27,10 @@ import sqlite3
 import threading
 from datetime import datetime
 from time import monotonic
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
@@ -53,6 +56,79 @@ DATA_MISSING = "DATA_MISSING"
 ENGINE_ERROR = "ENGINE_ERROR"
 PERSIST_ERROR = "PERSIST_ERROR"
 DELIVERY_ERROR = "DELIVERY_ERROR"
+
+
+_DEGRADED_ALERT_THRESHOLD_HOURS = 24
+
+
+class DegradedModeTracker:
+    """Track how long the system has been in degraded mode per failure type.
+
+    On each morning routine, callers report which degraded flags are active.
+    If any flag has been active for >= ``_DEGRADED_ALERT_THRESHOLD_HOURS``,
+    a critical alert is fired via the provided callable.
+
+    State is in-memory only and resets on process restart.
+    """
+
+    def __init__(self) -> None:
+        self._degraded_since: dict[str, datetime] = {}
+
+    def update(
+        self,
+        flags: dict[str, bool],
+        alert_fn: "Callable[[str], None]",
+    ) -> None:
+        """Update tracker state and fire alerts for prolonged degraded periods.
+
+        Args:
+            flags: Mapping of failure_type → bool (True = currently degraded).
+            alert_fn: Callable that sends an alert string to the operator.
+        """
+        now = datetime.utcnow()
+        for name, is_degraded in flags.items():
+            if is_degraded:
+                if name not in self._degraded_since:
+                    self._degraded_since[name] = now
+                else:
+                    elapsed_hours = (now - self._degraded_since[name]).total_seconds() / 3600
+                    if elapsed_hours >= _DEGRADED_ALERT_THRESHOLD_HOURS:
+                        try:
+                            alert_fn(
+                                f"⚠️ TITAN degraded for >{int(elapsed_hours)}h — "
+                                f"{name} unresolved. Check credentials/connectivity."
+                            )
+                        except Exception as exc:
+                            _daily_coach_event(
+                                "degraded_alert_failed",
+                                failure_type=name,
+                                error_class=type(exc).__name__,
+                            )
+                        # Reset timer after alerting to avoid alert storm
+                        self._degraded_since[name] = now
+            else:
+                self._degraded_since.pop(name, None)
+
+    def get_degraded_since(self) -> dict[str, str | None]:
+        """Return ISO 8601 timestamps per failure type, or None when healthy."""
+        result: dict[str, str | None] = {}
+        for name, ts in self._degraded_since.items():
+            result[name] = ts.isoformat() + "Z"
+        return result
+
+
+class PersistenceFailure(Exception):
+    """Raised by _persist_garmin_data() when the DB transaction rolls back.
+
+    Carries the default metric values so the caller can continue in degraded
+    conservative mode without re-deriving them.
+    """
+
+    def __init__(self, today_rhr: int, today_sleep_score: int, today_sleep_hours: float) -> None:
+        super().__init__("DB transaction rolled back — persistence failed")
+        self.today_rhr = today_rhr
+        self.today_sleep_score = today_sleep_score
+        self.today_sleep_hours = today_sleep_hours
 
 
 def _daily_coach_event(action: str, **fields) -> None:
@@ -136,6 +212,7 @@ class DailyCoach:
         self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
+        self._degraded_tracker = DegradedModeTracker()
         self._startup_hydration_confidence: dict[str, bool] = {
             "hrv": False,
             "weight": False,
@@ -214,11 +291,35 @@ class DailyCoach:
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
         today_str = datetime.now().strftime('%Y-%m-%d')
-        today_rhr, today_sleep_score, today_sleep_hours = _run_step(
-            2,
-            "persist_garmin_data",
-            lambda: self._persist_garmin_data(garmin_data, today_str),
-        )
+        persistence_degraded = False
+        try:
+            today_rhr, today_sleep_score, today_sleep_hours = _run_step(
+                2,
+                "persist_garmin_data",
+                lambda: self._persist_garmin_data(garmin_data, today_str),
+            )
+        except PersistenceFailure as pf:
+            today_rhr = pf.today_rhr
+            today_sleep_score = pf.today_sleep_score
+            today_sleep_hours = pf.today_sleep_hours
+            persistence_degraded = True
+            _daily_coach_event(
+                "persistence_degraded_mode",
+                reason="DB transaction rolled back",
+                intensity_ceiling="EASY",
+            )
+            try:
+                self.telegram.send_alert(
+                    "⚠️ Persistence failure — today's session data was not written to the "
+                    "database. Training prescription is conservative (EASY). "
+                    "Data will be re-synced on next cycle."
+                )
+            except Exception as alert_exc:
+                _daily_coach_event(
+                    "persistence_degraded_alert_failed",
+                    error_class=type(alert_exc).__name__,
+                    error_message=str(alert_exc),
+                )
 
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
         def _step3_feed_hrv_hrr() -> None:
@@ -423,8 +524,21 @@ class DailyCoach:
             data_confidence_low=(
                 sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else None
             ),
+            persistence_degraded=persistence_degraded,
         )
         self._startup_confidence_applies_next_routine = False
+
+        # ── Degraded mode duration tracking (T2-13) ──────────────────────────
+        self._degraded_tracker.update(
+            flags={
+                "persistence_degraded": persistence_degraded,
+                "data_confidence_low": bool(
+                    sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else False
+                ),
+            },
+            alert_fn=lambda msg: self.telegram.send_alert(msg),
+        )
+
         today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
             session_plan=today_session,
             context=context_payload,
@@ -645,6 +759,7 @@ class DailyCoach:
         priority_vector: dict[str, Any],
         lock_thresholds: dict[str, Any],
         data_confidence_low: bool | None = None,
+        persistence_degraded: bool = False,
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
         payload = DailyCoachContextContract(
@@ -673,6 +788,8 @@ class DailyCoach:
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low
+        if persistence_degraded:
+            payload["persistence_degraded"] = True
         return payload
 
     def _persist_garmin_data(
@@ -807,6 +924,7 @@ class DailyCoach:
                 error_class=type(exc).__name__,
                 error_message=str(exc),
             )
+            raise PersistenceFailure(today_rhr, today_sleep_score, today_sleep_hours) from exc
 
         return today_rhr, today_sleep_score, today_sleep_hours
 

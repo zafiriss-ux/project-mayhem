@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from titan.ui import menu_system
@@ -144,3 +146,70 @@ def test_menu_shoe_selector_handles_missing_manager_and_unknown_session(monkeypa
     fallback_output = capsys.readouterr().out
     assert "Daily trainer" in fallback_output
     assert "Daily A" in fallback_output
+
+
+# ── T2-12: UI silent exception handler fixes ─────────────────────────────────
+
+def test_menu_system_optimal_time_parse_fallback_emits_warning(monkeypatch, capsys, caplog):
+    """When the optimal_time_str is malformed, a warning must be logged and a
+    user-facing fallback hint printed (not silent)."""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    nutrition_mock = SimpleNamespace(
+        analyze_weight_trend=lambda: {"current_weight": 70.0, "velocity_kg_per_week": 0.0},
+        calculate_daily_nutrition=lambda **k: {
+            "pre_session": "oats",
+            "during_session": "gel",
+            "post_session": "protein",
+            "carbs_g": 250,
+            "carbs_range": "230-270g",
+            "protein_g": 120,
+            "fat_g": 60,
+            "total_calories": 2000,
+            "hydration_ml": 2500,
+        },
+    )
+
+    ctx = {
+        "nutrition_optimizer": nutrition_mock,
+        "optimal_time_str": "NOT_A_TIME",  # malformed — triggers the except branch
+        "today_session": {"session_type": "EASY", "duration_min": 45},
+        "athlete_profile": {"weight_kg": 70.0},
+    }
+
+    with caplog.at_level(logging.WARNING, logger="titan.ui.menu_system"):
+        menu_system.menu_nutrition(ctx)
+
+    out = capsys.readouterr().out
+    assert "time format unavailable" in out or "defaulting to 07:00" in out
+    assert any("optimal_time_parse_fallback" in r.message for r in caplog.records)
+
+
+def test_menu_system_shoe_display_handles_malformed_data_gracefully(monkeypatch, capsys, caplog):
+    """When shoe data is malformed, a warning must be logged and a fallback
+    message printed (not silent pass)."""
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    class _BrokenEquip:
+        def list_shoes(self):
+            raise TypeError("malformed shoe record")
+
+    ctx = {
+        "equipment_manager": _BrokenEquip(),
+        "today_session": {"session_type": "EASY"},
+    }
+
+    with caplog.at_level(logging.WARNING, logger="titan.ui.menu_system"):
+        menu_system.menu_shoe_selector(ctx)
+
+    out = capsys.readouterr().out
+    assert "equipment data unavailable" in out
+    assert any("shoe_display_error" in r.message for r in caplog.records)
