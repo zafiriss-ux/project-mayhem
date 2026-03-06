@@ -23,14 +23,22 @@ item must be created immediately to track the remaining scope. The parent item i
 (e.g., T3-06 partial → T3-08 child). This prevents "mostly done" ambiguity and keeps the
 register binary per Rule E5. See T3-06/T3-08 and T2-09/T2-11 as canonical examples.
 
-**Phase 7.7 execution sequence (per ADR-0019):**
+**Phase 7.7 execution sequence (per ADR-0019):** ✅ CLOSED 2026-03-05
 ```
-T1-13 (must pass gate first)
-  └─→ T1-14 (after T1-13 gate passes)
-  └─→ T2-09, T2-10, T2-11, T3-08 (can start in parallel after T1-13 — not blocked on T1-14)
+T1-13 ✅ → T1-14 ✅ → T2-09 ✅, T2-10 ✅, T2-11 ✅, T3-08 ✅
 ```
-This is a binding execution contract. Do not start T1-14 before T1-13 passes. Do not wait
-for T1-14 to start T2/T3 items.
+All Phase 7.7 items resolved. Phase 7.8 hardening sprint begins.
+
+**Phase 7.8 execution sequence (per ADR-0020):**
+```
+T1-15 (first — Tier 1, data integrity)
+  └─→ T2-12 (after T1-15 gate passes — Tier 2, observability)
+  └─→ T4-14 (after T2-12 — Tier 4, maintainability)
+  └─→ T4-15, T4-16, T4-17 (independent — low blast radius, can run in parallel with T1-15)
+```
+T4-15/T4-16/T4-17 are marked `independent` (isolated files, no cross-module deps, no test risk).
+Do not start T4-14 before T2-12 passes gate (standard tier ordering). Do not start T2-12 before
+T1-15 passes gate.
 
 ---
 
@@ -584,6 +592,75 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 
 ---
 
+### T1-15 · `_persist_garmin_data()` fail-open: persistence failure not propagated to governance 🔴 OPEN
+
+**Status:** OPEN. Architect decision made: ADR-0020 (2026-03-05).
+**Source:** Engineering Audit V4 (2026-03-05) — C2 finding + supplementary analyst review.
+**Priority:** P1 (data integrity / traceability gap; safety impact on future baselines).
+
+**Location:** `titan/orchestration/daily_coach.py` — `_persist_garmin_data()` and
+`run_morning_routine()` step 2 + `GovernanceEngine` intensity path.
+
+**Problem:**
+
+When `_persist_garmin_data()` catches a transaction failure (DB write fails, transaction
+rolls back correctly per T1-12), it:
+1. Logs structured events (`ACTIVITY_SKIPPED`, `daily_metrics_persist_failed`) — ✅ good.
+2. Returns normally with defaults `(today_rhr=0, today_sleep_score=75, today_sleep_hours=7.5)`.
+3. Does NOT signal the failure to its caller.
+
+Consequence: `_run_step(2, ...)` sees a normal return → emits `step_event step_2
+outcome="SUCCESS"` — **factually incorrect**. The governance context has no
+`persistence_degraded` field. No Telegram alert is sent. The routine runs as if persistence
+succeeded, delivering a full prescription with no conservative cap.
+
+**Secondary risk:** On next restart, startup hydration lacks today's activities and daily
+metrics. CTL/ATL/TSB baselines undercount today's load — a systematic fatigue undercount.
+For a longevity-first system, undercounting fatigue is the more dangerous direction.
+
+**Architect decision (ADR-0020):** Adopt degraded conservative mode (Option B).
+- `_persist_garmin_data()` must signal failure via sentinel exception `PersistenceFailure`
+  (preferred) or a boolean `persist_ok` return field.
+- `run_morning_routine()` catches the signal, sets `persistence_degraded=True` in the
+  governance context, sends a Telegram alert, and continues (no abort).
+- `GovernanceEngine` applies intensity ceiling (cap at EASY, same as `data_confidence_low`)
+  when `persistence_degraded=True`. This is an advisory constraint, not a lock code.
+- `DailyCoachContextContract` gains `persistence_degraded: bool` field.
+- Step 2 `step_event` must correctly emit `outcome="FAILED"` on persistence failure.
+
+**Fix direction:**
+1. Add sentinel `class PersistenceFailure(Exception): ...` in `daily_coach.py`.
+2. In `_persist_garmin_data()`: outer except now catches, logs, then re-raises
+   `PersistenceFailure(today_rhr, today_sleep_score, today_sleep_hours)` — structured
+   data is preserved for the caller even in the failure path.
+3. In `run_morning_routine()`: catch `PersistenceFailure` from step 2 call, extract
+   the values, set `persistence_degraded = True`, send Telegram alert.
+4. Add `persistence_degraded` to `GovernanceContext` construction (alongside
+   `data_confidence_low`).
+5. In `GovernanceEngine`: add `persistence_degraded` check in intensity ceiling path.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/orchestration/daily_coach.py titan/science/governance_engine.py
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+python -m pytest -q                                    # 100% green, count ≥ previous
+```
+
+**Tests required (4 minimum):**
+- `test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults` — mock
+  transaction to raise; assert `PersistenceFailure` raised with correct default values;
+  assert `PERSIST_ERROR` step event emitted (not SUCCESS).
+- `test_run_morning_routine_persistence_failure_sets_degraded_flag` — mock step 2 to
+  fail; assert `persistence_degraded=True` in governance context.
+- `test_governance_engine_persistence_degraded_caps_intensity_at_easy` — assert EASY
+  ceiling when `persistence_degraded=True`.
+- `test_run_morning_routine_persistence_failure_sends_telegram_alert` — assert alert.
+
+**Effort:** ~4h. Moderate complexity — touches DailyCoach orchestration, GovernanceEngine,
+and contract type.
+
+---
+
 ## TIER 2 — Observability Infrastructure (Sprint 2)
 
 Complete Tier 1 first. These items do not corrupt data but make production incidents
@@ -945,6 +1022,51 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 - fallback_send event payload contains `message_length` key but no `text`, `content`,
   `preview`, or message body
 
+
+---
+
+### T2-12 · UI path silent `except Exception: pass` — zero observability on shoe display and time parse 🔴 OPEN
+
+**Status:** OPEN.
+**Source:** Engineering Audit V4 (2026-03-05) — M2 finding.
+**Priority:** P2. No safety impact (UI display only), but silent failures prevent diagnosis
+of corrupted equipment data or malformed optimal-time responses.
+
+**Location:** `titan/ui/menu_system.py` — two locations:
+1. Line ~213: `except Exception:` with silent default fallback when parsing optimal time
+   string (`opt_time_str.split(":")`). Swallows any `ValueError`/`AttributeError` and
+   defaults to `(run_h=7, run_m=0)`.
+2. Line ~473: `except Exception: pass` — silently swallows all errors when iterating
+   and displaying shoe/equipment data. If `EquipmentManager` throws or shoe data is
+   malformed, the UI renders nothing with zero indication.
+
+**Problem:** Both are in `titan/ui/` — where `print()` is permitted per ADR-0019 Decision 3.
+But silent absorption (`pass` or implicit fallback) without any log or display hint violates
+the system's observability contract. The user sees missing shoe data with no explanation.
+In a bug scenario, these silent catches make RCA impossible.
+
+**Fix direction:**
+- Location 1 (time parse): narrow to `except (ValueError, AttributeError):`, emit a
+  `log.warning("optimal_time_parse_fallback", raw=opt_time_str)` and print a UI hint:
+  `print("  (time format unavailable — defaulting to 07:00)")`.
+- Location 2 (shoe display): narrow to `except (TypeError, KeyError, AttributeError):`,
+  print `"  (equipment data unavailable)"` to the UI and emit a structured
+  `log.warning("shoe_display_error", ...)`. Do NOT use bare `pass`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/ui/menu_system.py   # zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+# rg -n "except Exception:\s*$\|except Exception: pass" titan/ui/menu_system.py → zero matches
+```
+
+**Tests required:**
+- `test_menu_system_shoe_display_handles_malformed_data_gracefully` — inject malformed
+  shoe data; assert UI output does not raise and shows fallback message (not silent).
+- `test_menu_system_optimal_time_parse_fallback_emits_warning` — inject malformed time
+  string; assert warning logged and default time used.
+
+**Effort:** ~2h. Surgical; two locations in one file.
 
 ---
 
@@ -1404,6 +1526,202 @@ detected in production.
 
 ---
 
+### T4-14 · Garmin background worker uses per-second loop instead of single `Event.wait()` 🔴 OPEN
+
+**Status:** OPEN.
+**Source:** Engineering Audit V4 (2026-03-05) — M1 finding.
+**Priority:** P3. No correctness impact. Wasted CPU/wake cycles; diagnostic noise in profiler.
+
+**Location:** `titan/integrations/garmin_sync.py` — `_bg_worker()` lines ~452-455.
+
+**Problem:** The inter-sync sleep is implemented as a `for` loop with `interval_hours * 3600`
+iterations (21,600 for a 6h cycle), each calling `self._stop_event.wait(timeout=1.0)`:
+
+```python
+for _ in range(interval_hours * 3600):
+    if self._stop_event.wait(timeout=1.0):
+        return
+```
+
+This wakes the thread once per second regardless of whether the stop event is set. The
+correct pattern (used by `weather_api.py` since T3-05) is a single `Event.wait()` with
+the full interval as the timeout:
+
+```python
+if self._stop_event.wait(timeout=interval_hours * 3600):
+    return
+```
+
+`threading.Event.wait()` returns immediately when the event is set — so the stop latency
+is identical (sub-millisecond) and the CPU overhead of 21,600 loop iterations is eliminated.
+
+**Fix direction:**
+```python
+# Replace:
+for _ in range(interval_hours * 3600):
+    if self._stop_event.wait(timeout=1.0):
+        return
+
+# With:
+if self._stop_event.wait(timeout=float(interval_hours * 3600)):
+    return
+```
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/garmin_sync.py   # zero findings
+python -m pytest -q -W error::pytest.PytestWarning   # 100% green
+```
+
+**Tests required:** Existing `_bg_worker` stop tests must remain green. Verify stop latency
+test (set stop event; assert thread exits without waiting a full tick).
+
+**Effort:** ~30 minutes. One-line change + test verification.
+
+---
+
+### T4-15 · Weather updater thread has no explicit name — diagnostics parity gap 🔴 OPEN (independent)
+
+**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
+**Priority:** P4. Cosmetic/diagnostic only. No correctness or safety impact.
+
+**Location:** `titan/integrations/weather_api.py` — `start_background_updates()`.
+
+**Problem:** The `threading.Thread` for the weather updater is created without a `name=`
+parameter:
+```python
+self._update_thread = threading.Thread(
+    target=self._background_update_worker, args=(interval_hours,), daemon=True
+)
+```
+In `threading` diagnostics (e.g., `threading.enumerate()`, crash dumps, profiler output),
+this thread appears as `Thread-N` (auto-incremented integer). The Garmin (`"GarminSync"`)
+and DailyCoach (`"DailyCoachRoutine"`) threads are already named. Weather and Telegram
+threads are the remaining gap.
+
+**Fix direction:**
+```python
+self._update_thread = threading.Thread(
+    target=self._background_update_worker,
+    args=(interval_hours,),
+    daemon=True,
+    name="WeatherUpdater",   # add this
+)
+```
+The canonical name `"WeatherUpdater"` is already used in T3-08 `worker_shutdown_timeout`
+events — this aligns the thread name with the event name for correlation.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/integrations/weather_api.py   # zero findings
+python -m pytest -q   # 100% green
+```
+
+**Effort:** 5 minutes. Single parameter addition.
+
+---
+
+### T4-16 · Setup wizard prints duplicate Windows permission warning 🔴 OPEN (independent)
+
+**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
+**Priority:** P4. UX/cosmetic. No correctness impact.
+
+**Location:** `titan/ui/setup_wizard.py` — `_save_env()` function, lines ~195-205.
+
+**Problem:** `_save_env()` contains two consecutive `if os.name == "nt":` blocks that each
+print a different Windows-specific permission warning. The first block prints a Greek-language
+warning; the second prints an English warning for the same issue. A Windows user sees two
+warnings about the same problem, one in each language:
+
+```python
+if os.name == "nt":
+    print("  ⚠️  Windows: τα permissions ...")  # Greek
+if os.name == "nt":
+    print("  ⚠️  Windows limitation: .env file ...")  # English
+```
+
+Note also: `ENV_PATH.chmod(...)` is called twice — once before the first block and once
+inside the else of the second block. The first call is on all platforms; the second is
+duplicated on non-Windows.
+
+**Fix direction:**
+- Merge the two `if os.name == "nt":` blocks into a single block.
+- Decide on one language for the warning (recommend English for consistency with the
+  rest of the wizard's fallback messages, or Greek if the wizard is fully localised).
+- Ensure `ENV_PATH.chmod()` is called exactly once on non-Windows, once total.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/ui/setup_wizard.py   # zero findings
+python -m pytest -q   # 100% green
+# Manual: count `if os.name == "nt":` blocks in _save_env — must be exactly 1.
+```
+
+**Effort:** ~15 minutes. Merge two blocks, remove duplicate.
+
+---
+
+### T4-17 · Setup wizard modifies `.gitignore` at runtime — operational side effect 🔴 OPEN (independent)
+
+**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
+**Priority:** P3. Operational side effect with blast radius on repository state.
+
+**Location:** `titan/ui/setup_wizard.py` — `_save_env()` function, lines ~207-216.
+
+**Problem:** After saving `.env`, the wizard appends entries to `.gitignore` at the
+repository root if they are not already present:
+
+```python
+gitignore = Path(__file__).parent.parent.parent / ".gitignore"
+existing = gitignore.read_text() if gitignore.exists() else ""
+additions = []
+for entry in [".env", "config_secrets.py", "data/database/", "data/logs/"]:
+    if entry not in existing:
+        additions.append(entry)
+if additions:
+    with gitignore.open("a") as f:
+        f.write("\n# TITAN secrets\n" + "\n".join(additions) + "\n")
+```
+
+**Three issues with this pattern:**
+1. **Silent runtime mutation of VCS state**: `.gitignore` is a version-controlled file.
+   A tool running at runtime silently modifying it surprises contributors and CI pipelines.
+   The change appears as unstaged in `git status` after wizard execution.
+2. **Path fragility**: `Path(__file__).parent.parent.parent` assumes a fixed directory
+   depth. If the package is installed or the file is moved, this silently fails or targets
+   the wrong file.
+3. **Idempotency**: The string check `if entry not in existing` is a substring match and
+   may produce false negatives if the entry appears as part of a longer path.
+
+**Fix direction (preferred — remove runtime mutation):**
+- Remove the `.gitignore` write from `_save_env()` entirely.
+- These entries should be committed into `.gitignore` in the repository once (they
+  already should be, given T1-01 and the project's deployment model).
+- If wizard-time `.gitignore` management is genuinely needed, document it as an
+  explicit user-facing step ("Added `.env` to `.gitignore` — please commit this change")
+  rather than a silent file mutation.
+
+**Alternative (if runtime write must remain):**
+- Use `git rev-parse --show-toplevel` to find the actual repo root (not file-depth
+  heuristic).
+- Use line-by-line exact matching, not `in existing` substring.
+- Emit a `log.info("gitignore_updated", entries_added=additions)` instead of silent write.
+- Print an explicit note to the user: `"✅ Updated .gitignore — remember to commit it."`
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/ui/setup_wizard.py   # zero findings
+python -m pytest -q   # 100% green
+# Verify: running the wizard does not modify .gitignore during test (mock filesystem).
+```
+
+**Effort:** ~1h (remove approach) or ~2h (fix approach). Recommend remove.
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -1513,13 +1831,16 @@ When an item is completed, mark it here with date and PR reference:
 | T2-11 | 2026-03 | [#270](https://github.com/zafiriss-ux/project-mayhem/pull/270) |
 
 | T3-08 | 2026-03 | [#272](https://github.com/zafiriss-ux/project-mayhem/pull/272) |
+| T1-15 | OPEN | — |
+| T2-12 | OPEN | — |
+| T4-14 | OPEN | — |
+| T4-15 | OPEN (independent) | — |
+| T4-16 | OPEN (independent) | — |
+| T4-17 | OPEN (independent) | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-06 — Governance debt closure verification completed; T1-10 through T3-08 reconciled to implemented state with test and commit evidence.*
-
-
-## NEW (Governance verification scan additions — 2026-03)
-
-No additional hidden debt found beyond existing register.
+*Last updated: 2026-03-05 — Engineering Audit V4 processed. Phase 7.7 confirmed CLOSED.
+6 new items added (T1-15, T2-12, T4-14, T4-15, T4-16, T4-17). ADR-0020 created for T1-15
+persistence failure policy decision. Phase 7.8 sprint defined.*
