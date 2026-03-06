@@ -466,6 +466,9 @@ See `docs/adr/` for Architecture Decision Records:
 - `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A Implemented — v5.8.0; Phase B deferred)
 - `0019` — Engineering Audit V3: Phase 7.7 decisions (T1-13, T1-14, T2-09–T2-11, T3-08) (Accepted — Phase 7.7 CLOSED 2026-03-05)
 - `0020` — Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode (Accepted — 2026-03-05; T1-15 pending)
+- `0043` — Post-Phase 9 product direction: multi-athlete coach platform + LLM seams (Accepted — 2026-03-06)
+- `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
+- `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
 
 ---
 

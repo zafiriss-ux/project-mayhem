@@ -3309,8 +3309,220 @@ python -m pytest -q
 
 ---
 
+---
+
+### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt 🔴 OPEN
+
+**Status:** OPEN (Phase 8A — must resolve before Phase 8B coach dashboard begins).
+**Source:** ADR-0043 (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
+**Priority:** P1 for Phase 8 (Phase 8A prerequisite).
+
+**Location:** `titan/core/database.py` (replace with `titan/core/persistence.py`), `requirements.txt` (add `sqlalchemy`, `alembic`, `psycopg2-binary`), new `alembic/` directory.
+
+**Problem:**
+
+TITAN OS targets a multi-athlete coach platform (ADR-0043). SQLite's single-writer
+concurrency model cannot support 50 athletes × 3 daemon threads. Per-athlete SQLite
+files solve concurrency but multiply migration, backup, and GDPR erasure complexity by N.
+PostgreSQL is the correct topology. See ADR-0044 for full decision rationale.
+
+**Fix direction (ADR-0044 Phase 8A deliverables D1–D9):**
+
+1. Implement `titan/core/persistence.py` with `PersistenceAdapter` (SQLAlchemy Core).
+2. Set up Alembic (`alembic init alembic/`); write migration for all 5 current tables.
+3. Add `athlete_id TEXT NOT NULL DEFAULT 'default'` to all 5 tables.
+4. Add `consent_log` table (athlete_id, consent_type, granted_at, revoked_at).
+5. Add Row-Level Security policies; test with `tests/test_athlete_rls_isolation.py`.
+6. Add `TITAN_DB_BACKEND=sqlite|postgres` feature flag.
+7. Update `requirements.txt` with pinned versions.
+8. Update hot backup (T1-17 pattern) for `pg_dump`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/persistence.py alembic/ tests/test_athlete_rls_isolation.py
+python -m pytest tests/test_athlete_rls_isolation.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+TITAN_DB_BACKEND=sqlite python -m pytest -q
+```
+
+**Effort:** ~3–4 weeks. Full migration + Alembic + RLS + both backend test paths.
+
+---
+
+### T5-09 · No unified `get_athlete_context()` query interface — LLM Seam 2 unbuilt 🔴 OPEN
+
+**Status:** OPEN (Phase 8B prerequisite; also required for Phase 10 LLM layer).
+**Source:** ADR-0043 (LLM Seam 2).
+**Priority:** P2 for Phase 8B; P5 for Phase 10.
+
+**Location:** New `get_athlete_context()` in `titan/core/persistence.py` (or `titan/core/athlete_context.py`).
+
+**Problem:**
+
+The coach dashboard and Phase 10 LLM both need to assemble athlete context from multiple
+data domains. No single function exists — each caller would assemble from raw queries,
+creating duplicated logic and inconsistent output shapes.
+
+**Fix direction:**
+
+```python
+def get_athlete_context(
+    athlete_id: str,
+    days: int = 7,
+    include_governance: bool = True,
+    include_training: bool = True,
+    include_biometrics: bool = True,
+) -> dict:
+    """ADR-0043 Seam 2. Returns JSON-serialisable dict (float → 2dp, no datetime objects)."""
+```
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/athlete_context.py tests/test_athlete_context.py
+python -m pytest tests/test_athlete_context.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~1 week.
+
+---
+
+### T5-10 · Phase 10 LLM coach query layer not yet designed in detail 🟡 DEFERRED
+
+**Status:** OPEN (deferred — Phase 10; implement only after Phase 9 closes with sufficient multi-athlete corpus).
+**Source:** ADR-0043 (Decision 3, Seam 3), ADR-0045 (LLM backend abstraction).
+**Priority:** P5 (future optionality).
+
+**Location:** `titan/integrations/llm_coach.py` (new module, Phase 10 only).
+
+**Contract (do not deviate):**
+
+```python
+LLM_BACKEND = os.environ.get("TITAN_LLM_BACKEND", "none")  # none | claude | ollama
+
+def coach_query(prompt: str, athlete_context: dict) -> str:
+    if LLM_BACKEND == "none":
+        return _deterministic_fallback_summary(athlete_context)
+    # ADR-0045: route to Claude API or Ollama depending on LLM_BACKEND
+```
+
+**Hard invariants (CI must verify):**
+- No governance module imports `llm_coach` (LLM never in safety path).
+- `TITAN_LLM_BACKEND=none`: all paths return deterministic output.
+- Every LLM recommendation passes through override handler registry (ADR-0042).
+
+**Deferred until:** Phase 9 closes AND multi-athlete corpus ≥ 100 paired outcomes per athlete.
+
+---
+
+### T5-11 · No API authentication layer for Phase 8B web UI — health data accessible without auth 🔴 OPEN
+
+**Status:** OPEN (Phase 8B entry gate — must be designed before any coach dashboard endpoints are built).
+**Source:** Architecture review 2026-03-06. Not previously recorded.
+**Priority:** P0 for Phase 8B (do NOT build any coach API endpoint without this resolved).
+
+**Location:** New `titan/api/auth.py` (Phase 8B); FastAPI app (`titan/api/main.py`).
+
+**Problem:**
+
+ADR-0013 (technology path) specifies React + FastAPI for the coach dashboard. ADR-0043
+confirms multi-athlete deployment. However, no auth layer has been designed. FastAPI
+endpoints serving health data (HRV, RHR, governance decisions, training log) for 50
+athletes with zero authentication is a GDPR violation and a serious security risk.
+
+**Required before any Phase 8B endpoint is built:**
+
+- Auth mechanism selected and locked in an ADR (options: JWT + refresh tokens, OAuth2 via
+  Google/GitHub, or session-based). Recommendation: OAuth2 (eliminates credential management;
+  Google Workspace is common in coaching contexts).
+- Coach role vs athlete role permissions defined.
+- All API endpoints behind auth middleware — no public endpoints except health check.
+- Athlete data never returned to a request authenticated as a different athlete (RLS +
+  application-level check).
+- Token expiry and rotation policy defined.
+
+**Debt item:** A dedicated ADR (0046 or next available) must be written and accepted before
+Phase 8B begins. This item is not implementable without that ADR.
+
+---
+
+### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
+
+**Status:** OPEN (risk monitoring — no immediate action; mitigation design deferred Phase 8C).
+**Source:** Architecture review 2026-03-06. Not previously recorded.
+**Priority:** P3 (medium — risk is real but not blocking current phases).
+
+**Location:** `titan/integrations/garmin_sync.py`.
+
+**Problem:**
+
+`garminconnect` is an **unofficial, reverse-engineered** Python library. It scrapes
+Garmin Connect's web authentication flow, not an official API. Garmin has changed its
+authentication mechanism at least twice in the past three years, breaking the library on
+each occasion.
+
+**Risk scenario:** Garmin deploys a new login challenge (CAPTCHA, MFA enforcement, OAuth
+mandate) → `garmin_sync.py` fails silently or with an exception → `DailyCoach` cold-starts
+with zero biometric data → governance runs on stale data → wrong coaching decisions.
+
+**Current mitigation (partial):** T1-09 introduced synthetic fallback for weather. No
+equivalent synthetic fallback for Garmin data exists beyond what `DailyCoach` already
+handles for missing today-data.
+
+**Required mitigation design (Phase 8C):**
+
+- Explicit "Garmin API degraded" structured event with severity CRITICAL.
+- Coach dashboard indicator: "Garmin sync failed — last data: N hours ago."
+- `garminconnect` library pinned to a tested version with a change-alert in CI
+  (`pip-audit` or `pip-check` on the pinned version).
+- Phase 8C multi-device adapter: if Garmin fails, HRV/RHR may be sourced from a
+  secondary device (Polar, Whoop, COROS) via the unified adapter (ADR-0016/ADR-0041).
+
+---
+
+### T5-13 · No coach action audit trail — GDPR accountability gap for health data processors 🔴 OPEN
+
+**Status:** OPEN (Phase 8B entry gate — must be implemented alongside first coach dashboard feature).
+**Source:** Architecture review 2026-03-06. Not previously recorded.
+**Priority:** P1 for Phase 8B (GDPR Article 5(2) accountability requirement).
+
+**Location:** New `coach_audit_log` table (Phase 8A Alembic migration), new `titan/api/audit.py` middleware.
+
+**Problem:**
+
+Phase 8B grants coaches the ability to view all athletes' health data and submit manual
+overrides. Under GDPR, any entity that processes health data on behalf of another person
+is a **data processor** and must maintain records of processing activities (Article 30)
+and be able to demonstrate accountability (Article 5(2)).
+
+Specifically: when a coach views Athlete A's HRV data and submits an override, that action
+must be logged with: coach identity, athlete affected, action type, timestamp, and reason.
+Without this log, a data subject access request or a supervisory authority audit cannot be
+satisfied.
+
+**Required:**
+
+```sql
+CREATE TABLE coach_audit_log (
+    id              SERIAL PRIMARY KEY,
+    coach_id        TEXT NOT NULL,
+    athlete_id      TEXT NOT NULL,
+    action_type     TEXT NOT NULL,   -- 'VIEW_DATA' | 'SUBMIT_OVERRIDE' | 'EXPORT_DATA' | 'DELETE_DATA'
+    resource        TEXT NOT NULL,   -- e.g., 'governance_outcomes', 'training_log'
+    action_detail   JSONB,           -- optional: override payload, query parameters
+    performed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+Every FastAPI endpoint that accesses athlete health data must write to this table via
+a shared middleware (not per-endpoint — this must be non-bypassable).
+
+---
+
 All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
-Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning).
+Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning), 0043 (product direction + LLM seams), 0044 (PostgreSQL migration), 0045 (local LLM backend abstraction).
 
 ---
 
@@ -3438,6 +3650,12 @@ When an item is completed, mark it here with date and PR reference:
 | T4-31 | OPEN (IMMEDIATE — ADR-0040 active) | — |
 | T4-32 | OPEN (IMMEDIATE — ADR-0042 active) | — |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
+| T5-08 | OPEN (Phase 8A prerequisite) | — |
+| T5-09 | OPEN (Phase 8B prerequisite) | — |
+| T5-10 | OPEN (deferred — Phase 10) | — |
+| T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
+| T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
+| T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
