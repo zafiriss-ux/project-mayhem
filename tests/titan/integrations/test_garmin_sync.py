@@ -19,7 +19,10 @@ def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
 
     wait_calls = {"count": 0}
 
+    observed = {"timeout": None}
+
     def _wait(timeout):
+        observed["timeout"] = timeout
         wait_calls["count"] += 1
         sync._stop_event.set()
         return True
@@ -30,6 +33,23 @@ def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
 
     assert sync_calls["count"] == 1
     assert wait_calls["count"] == 1
+    assert observed["timeout"] == 3600.0
+
+
+def test_bg_worker_returns_immediately_when_stop_event_already_set(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+    sync._stop_event.set()
+
+    sync_all_calls = {"count": 0}
+
+    def _sync_all():
+        sync_all_calls["count"] += 1
+
+    monkeypatch.setattr(sync, "sync_all", _sync_all)
+
+    sync._bg_worker(interval_hours=2)
+
+    assert sync_all_calls["count"] == 0
 
 
 def test_stop_background_sync_sets_event_and_joins_thread():
