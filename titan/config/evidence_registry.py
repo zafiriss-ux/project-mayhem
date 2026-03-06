@@ -484,6 +484,39 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
         policy_note='HEURISTIC. Not a governance gate — input sanity only.',
     ),
+
+    # ── Data freshness thresholds — ADR-0026 / T1-19 ─────────────────────────
+
+    'STALE_DATA_WARN_HOURS': ThresholdEvidence(
+        parameter='STALE_DATA_WARN_HOURS',
+        value=24.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — ADR-0026 §3 (Layer 2 temporal freshness check).',
+        rationale=(
+            '24 hours is the natural Garmin sync cadence (6h background + manual). '
+            'If the last sync timestamp is >24 h old the system is operating on data '
+            'that is at least one training day stale. A warning is emitted but '
+            'coaching output is not degraded.'
+        ),
+        policy_note='HEURISTIC. Calibration path: review how often 24 h staleness coincides with degraded coaching accuracy via OutcomeTracker.',
+    ),
+
+    'STALE_DATA_HARD_CEILING_HOURS': ThresholdEvidence(
+        parameter='STALE_DATA_HARD_CEILING_HOURS',
+        value=72.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — ADR-0026 §3 (Layer 2 temporal freshness check).',
+        rationale=(
+            '72 hours (3 days) of sync gap means at least 2 training days are untracked. '
+            'CTL/ATL calculations will be materially incorrect, and HRV baseline will be '
+            'stale. The system sets data_confidence_low=True at this threshold, which '
+            'flows into the governance context and degrades intensity prescriptions '
+            'via the T2-10 advisory mechanism.'
+        ),
+        policy_note='HEURISTIC. 72 h is a policy decision; promote to MODERATE after validating governance accuracy on stale-data days via OutcomeTracker.',
+    ),
 }
 
 

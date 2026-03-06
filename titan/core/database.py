@@ -9,7 +9,7 @@ import re
 import sqlite3
 import threading
 from contextlib import contextmanager, suppress
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +81,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 class DatabaseManager:
@@ -351,6 +351,11 @@ class DatabaseManager:
                 "idx_training_log_garmin_id (unique index)",
                 None,  # DDL — see _apply_v2_migrations() below
             ),
+            3: (
+                "daily_metrics / training_log",
+                "quality_flag (data sanity layer — ADR-0026 / T1-19)",
+                None,  # batch — see _apply_v3_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -373,6 +378,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 2,
                     "index_created": "idx_training_log_garmin_id",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 3:
+            self._apply_v3_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 3,
+                    "columns_added": "quality_flag (daily_metrics, training_log)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -417,6 +434,27 @@ class DatabaseManager:
         except sqlite3.OperationalError as exc:
             if "already exists" not in str(exc).lower():
                 raise
+
+    def _apply_v3_migrations(self, cursor) -> None:
+        """Version 3: quality_flag column on daily_metrics and training_log (ADR-0026)."""
+        column_migrations = [
+            ("daily_metrics", "quality_flag", "ALTER TABLE daily_metrics ADD COLUMN quality_flag TEXT"),
+            ("training_log", "quality_flag", "ALTER TABLE training_log ADD COLUMN quality_flag TEXT"),
+        ]
+        for table_name, column_name, sql in column_migrations:
+            try:
+                cursor.execute(sql)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+                _log.info(
+                    json.dumps({
+                        "flow": "database",
+                        "action": "db_migration_already_applied",
+                        "table": table_name,
+                        "column": column_name,
+                    })
+                )
 
     # --- BACKUP ---
 
@@ -520,7 +558,8 @@ class DatabaseManager:
         soreness: int | None = None,
         fatigue: int | None = None,
         mood: int | None = None,
-        notes: str | None = None
+        notes: str | None = None,
+        quality_flag: str | None = None,
     ) -> None:
         """
         Save morning check-in data.
@@ -543,9 +582,9 @@ class DatabaseManager:
             cursor.execute("""
                 INSERT OR REPLACE INTO daily_metrics
                 (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
-                 soreness, fatigue_level, mood, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes))
+                 soreness, fatigue_level, mood, notes, quality_flag)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag))
             if self._transaction_depth == 0:
                 self.conn.commit()
 
@@ -569,6 +608,7 @@ class DatabaseManager:
         temperature_c: float | None = None,
         notes: str | None = None,
         garmin_activity_id: str | None = None,
+        quality_flag: str | None = None,
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
@@ -613,10 +653,12 @@ class DatabaseManager:
             cursor.execute("""
                 INSERT OR IGNORE INTO training_log
                 (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                 training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
+                 quality_flag)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id))
+                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
+                  quality_flag))
             if cursor.rowcount == 1 and shoe_id and distance_km:
                 cursor.execute("""
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
@@ -1227,6 +1269,39 @@ class DatabaseManager:
             if clean is not None:
                 validated.append((date_str, clean))
         return validated
+
+    def get_last_garmin_sync_timestamp(self) -> datetime | None:
+        """Return a datetime representing the most recent data written by Garmin sync.
+
+        Checks the latest date in both daily_metrics and training_log and returns
+        the more recent of the two, parsed as a midnight-UTC datetime.
+
+        Returns None if no data exists in either table.
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT MAX(date) FROM daily_metrics WHERE date IS NOT NULL"
+            )
+            dm_row = cursor.fetchone()
+            cursor.execute(
+                "SELECT MAX(date) FROM training_log WHERE date IS NOT NULL"
+            )
+            tl_row = cursor.fetchone()
+
+        latest: str | None = None
+        for row in (dm_row, tl_row):
+            if row and row[0] and (latest is None or row[0] > latest):
+                latest = row[0]
+
+        if not latest:
+            return None
+
+        try:
+            return datetime.fromisoformat(latest).replace(tzinfo=UTC)
+        except (ValueError, TypeError):
+            return None
 
     def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
         """Return (date, weight_kg) rows from the last N days, newest-first."""
