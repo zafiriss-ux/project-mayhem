@@ -360,13 +360,24 @@ If any acceptance criterion fails mid-task:
 | Governance gate ordering | `governance_engine.py` → Step 9 of `DailyCoach` | Non-bypassable safety; altering order corrupts coaching decisions |
 | CTL/ATL chronological rebuild | `garmin_sync.py` + `database.py` | Oldest-first EMA; reversing gives wrong fitness values |
 | SQLite WAL + busy_timeout + write lock | `database.py` | Thread-safety across 3 daemon threads |
-| Idempotent additive migrations | `database.py _run_migrations()` | Safe to run on every startup; breaking idempotency causes schema corruption |
-| Thresholds from `thresholds.py` only | All science modules | Single source of truth; hardcoding duplicates diverge silently on recalibration |
+| Idempotent versioned migrations | `database.py _run_migrations()` + `PRAGMA user_version` | Version-gated; each `_apply_vN_migrations()` runs exactly once; breaking idempotency causes schema corruption |
+| Thresholds from `thresholds.py` only | All science modules | Single source of truth; hardcoding duplicates diverge silently on recalibration — enforced by T4-19 |
 | ML kill-switch default-ON | All Phase 7 engines | Correct failure mode; never remove or invert |
 | Evidence labels on ML payloads | Phase 7 engines | Provenance discipline; do not remove |
+| `PersistenceFailure` propagation | `daily_coach.py _persist_garmin_data()` | DB rollback must surface as degraded mode; silent fail-open corrupts governance inputs (ADR-0020) |
+| Notifications via `NotificationGateway` | All notification paths | Telegram must have file fallback; direct bot calls bypass the fallback chain (T3-09) |
+| `DegradedModeTracker` registration | `daily_coach.py run_morning_routine()` | New degraded-mode conditions must be registered to fire the 24h SLO alert (T2-13) |
 
-**`titan/science/governance_engine.py` is architecture-locked.** See ADR-0009.
+**`titan/science/governance_engine.py` is architecture-locked.** See ADR-0009 and ADR-0021.
 Do not modify it without an ADR reference in your commit message and explicit architect approval.
+
+The lock is **machine-enforced**: `tests/test_governance_mutation.py` (T4-18) verifies boundary-ON
+and boundary-OFF for every gate; `tests/test_architectural_invariants.py` (T4-19) verifies that
+no inline threshold literals are added and that all lock codes remain canonical. Both test files
+will fail immediately if gate logic is silently altered. Adding a new gate requires:
+1. An ADR (reference in commit message)
+2. Boundary tests in `test_governance_mutation.py`
+3. Lock code added to `_CANONICAL_LOCK_CODES` in `test_architectural_invariants.py` and the table in CLAUDE.md
 
 ---
 
@@ -382,8 +393,13 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 | `titan/orchestration/daily_coach.py` | 12-step morning routine — orchestration entry point |
 | `titan/ui/operator_console.py` | OperatorConsoleService (dashboard, session explorer, override) |
 | `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env) |
-| `docs/adr/` | Architecture Decision Records (0001–0018) |
-| `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED) |
+| `titan/integrations/notification_gateway.py` | `NotificationGateway` — ordered fallback chain (Telegram → File) |
+| `titan/orchestration/daily_coach.py` | 12-step morning routine — `DegradedModeTracker`, `PersistenceFailure` sentinel |
+| `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / ADR-0021) |
+| `tests/test_architectural_invariants.py` | AST-enforced structural constraints (T4-19) |
+| `.github/pull_request_template.md` | PR checklist with 3-gate status + architecture guard items (T4-20) |
+| `docs/adr/` | Architecture Decision Records (0001–0021) |
+| `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED; Phase 7.8 Hardening CLOSED 2026-03-06) |
 | `pyproject.toml` | pytest + ruff + mypy config |
 
 ---
@@ -397,9 +413,13 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 | Fixing multiple subsystems in one pass | Partial work delivered as "done"; debt reaccumulates |
 | Skipping `ruff check` / `pytest` binary gate | Incomplete fix shipped |
 | Using env overrides to bypass test failures | Root cause hidden; regression guaranteed to recur |
-| Broad `except Exception: pass` left in place | Silent data loss in governance inputs (T1-02, T1-03) |
-| Hardcoding thresholds instead of importing from `thresholds.py` | Values diverge on recalibration (T1-04) |
-| Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009) |
+| Broad `except Exception: pass` left in place | Silent data loss in governance inputs — flagged by T4-19 invariant test |
+| Hardcoding thresholds instead of importing from `thresholds.py` | Values diverge on recalibration — flagged by T4-19 invariant test |
+| Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009 / ADR-0021) |
+| Adding a gate without boundary tests in `test_governance_mutation.py` | Boundary regressions undetectable (T4-18 / ADR-0021) |
+| Adding a lock code not in `_CANONICAL_LOCK_CODES` | Invariant test T4-19 will fail; add the code to both test and CLAUDE.md |
+| Sending Telegram notifications via direct bot call (bypassing `NotificationGateway`) | No fallback path; message lost on Telegram failure (T3-09) |
+| Failing to raise `PersistenceFailure` on DB rollback | Degraded mode never set; governance uses stale data (ADR-0020, T1-15) |
 | "Improving" adjacent code while fixing a bug | Scope creep, unexpected regressions (Rule E4) |
 | Delivering "mostly done" work | Debt reaccumulates; next engineer inherits broken baseline (Rule E5) |
 | Starting Tier 2+ work before Tier 1 is closed | Data integrity issues persist in production (Rule E1) |
@@ -421,14 +441,17 @@ Do not modify it without an ADR reference in your commit message and explicit ar
 [ ] I did NOT use PYTEST_ADDOPTS or any override flag to force green.
 [ ] I did NOT modify governance_engine.py without an ADR reference.
 [ ] I did NOT hardcode any threshold (used thresholds.py).
+[ ] If I changed a governance gate: boundary tests added to test_governance_mutation.py.
+[ ] If I added a governance lock code: added to _CANONICAL_LOCK_CODES + CLAUDE.md table.
+[ ] If I added a notification path: routed through NotificationGateway, not direct bot call.
 [ ] Out-of-scope findings are in TECHNICAL_DEBT.md, not in code.
 [ ] I pushed to a claude/* branch only — NOT to main or master.
-[ ] I opened exactly one PR and pasted the PR link in my response.
+[ ] I opened exactly one PR using .github/pull_request_template.md and pasted the PR link.
 [ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
 ```
 
-**All 15 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 18 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
-*Last updated: 2026-03-05. Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-06 (Phase 7.8 — T4-18/T4-19/T4-20 enforcement, NotificationGateway, DegradedModeTracker, PersistenceFailure, schema versioning). Authoritative for all agents and engineers operating on TITAN OS.*
