@@ -694,7 +694,17 @@ class DatabaseManager:
         # Calculate TSB
         tsb = ctl - atl
 
-        return round(ctl, 1), round(atl, 1), round(tsb, 1)
+        from titan.science.physiological_bounds import (
+            validate_single,  # deferred: avoids circular import
+        )
+        ctl_out = validate_single("ctl", round(ctl, 1), "ctl_atl_tsb")
+        atl_out = validate_single("atl", round(atl, 1), "ctl_atl_tsb")
+        # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
+        return (
+            ctl_out if ctl_out is not None else 0.0,
+            atl_out if atl_out is not None else 0.0,
+            round(tsb, 1),
+        )
 
     # --- GEAR MANAGEMENT ---
 
@@ -1184,11 +1194,19 @@ class DatabaseManager:
             )
             row = cursor.fetchone()
         if row and row[0]:
-            return round(float(row[0]), 1)
+            from titan.science.physiological_bounds import (
+                validate_single,  # deferred: avoids circular import
+            )
+            raw = round(float(row[0]), 1)
+            return validate_single("rhr_bpm", raw, "baseline_rhr")
         return None
 
     def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
-        """Return (date, hrv_rmssd) rows from the last N days, newest-first."""
+        """Return (date, hrv_rmssd) rows from the last N days, newest-first.
+
+        Values are validated against physiological bounds (ADR-0023 / T1-18).
+        Rows with sensor-artefact HRV (nulled by bounds check) are excluded.
+        """
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
@@ -1198,7 +1216,17 @@ class DatabaseManager:
                    ORDER BY date DESC LIMIT ?""",
                 (days,),
             )
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+
+        from titan.science.physiological_bounds import (
+            validate_single,  # deferred: avoids circular import
+        )
+        validated = []
+        for date_str, rmssd in rows:
+            clean = validate_single("hrv_ms", float(rmssd), "hrv_history")
+            if clean is not None:
+                validated.append((date_str, clean))
+        return validated
 
     def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
         """Return (date, weight_kg) rows from the last N days, newest-first."""

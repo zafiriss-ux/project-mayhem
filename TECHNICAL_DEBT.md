@@ -826,9 +826,9 @@ significantly harder to diagnose.
 **Rule:** Work one subsystem at a time. Do not attempt to fix all broad `except` handlers
 simultaneously — each subsystem needs its own error taxonomy review and test update.
 
-### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates 🔴 OPEN
+### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates 🟢 RESOLVED
 
-**Status:** OPEN (Phase 7.9).
+**Status:** RESOLVED (2026-03-06).
 **Source:** Master Risk Matrix — Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06. ADR-0023.
 **Priority:** P1 (Tier 1 — safety critical). Data integrity.
 
@@ -3624,7 +3624,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-18 | ✅ RESOLVED | 2026-03-06 |
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
-| T1-18 | OPEN | — |
+| T1-18 | ✅ RESOLVED | 2026-03-06 |
 | T1-19 | OPEN (after T1-18) | — |
 | T1-20 | OPEN (independent) | — |
 | T2-14 | OPEN (independent, after Tier 1) | — |
