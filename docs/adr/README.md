@@ -30,6 +30,9 @@
 | [0015](0015-sqlite-retention-and-phase8-data-lifecycle-gate.md) | SQLite retention strategy and Phase 8 data lifecycle gate | Architecture / Data lifecycle | ✅ Accepted | TBD |
 | [0016](0016-phase8-multisport-scope-and-adapter-gate.md) | Phase 8 multi-sport scope and unified adapter gate | Architecture / Integrations | ✅ Accepted | TBD |
 | [0017](0017-composition-root-and-dailycoach-architecture-audit.md) | Composition root fan-in and DailyCoach god-orchestrator audit | Architecture / Audit | ✅ Accepted (assessment only, 2026-03-04) | TBD |
+| [0018](0018-kernel-boundary-decision-pipeline-effect-runner-split.md) | Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A implemented) | Architecture / Safety | ✅ Phase A Implemented (v5.8.0); Phase B deferred | TBD |
+| [0019](0019-audit-v3-architectural-decisions.md) | Engineering Audit V3: Phase 7.7 decisions (T1-13, T1-14, T2-09–T2-11, T3-08) | Architecture / Hardening | ✅ Accepted; Phase 7.7 CLOSED 2026-03-05 | TBD |
+| [0020](0020-persistence-failure-policy-dailycoach.md) | Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode | Architecture / Safety | ✅ Accepted (2026-03-05) — T1-15 execution pending | — |
 
 ---
 
