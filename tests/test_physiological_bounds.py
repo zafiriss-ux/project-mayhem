@@ -1,0 +1,293 @@
+"""
+Tests for physiological bounds validation — ADR-0023 / T1-18.
+
+Covers:
+- Happy-path: in-bounds values pass through unchanged
+- Clamping: values slightly outside bounds are clamped
+- Nulling: values wildly outside bounds are set to None
+- hrv_ms = 0 special case: always nulled
+- CTL/ATL/TSB division safety via DatabaseManager
+- Integration: get_hrv_history() and get_baseline_rhr() apply bounds
+"""
+
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from titan.science.physiological_bounds import (
+    BOUNDS,
+    BoundsViolation,
+    validate_and_clamp,
+    validate_single,
+)
+
+# ─── validate_and_clamp: happy path ──────────────────────────────────────────
+
+
+def test_in_bounds_values_unchanged():
+    data = {
+        "hrv_ms": 55.0,
+        "rhr_bpm": 48.0,
+        "ctl": 75.0,
+        "atl": 90.0,
+        "glycogen_debt": 3.0,
+        "temperature_c": 22.0,
+    }
+    result, violations = validate_and_clamp(data, "test")
+    assert violations == []
+    for field, value in data.items():
+        assert result[field] == value
+
+
+def test_unknown_fields_pass_through():
+    data = {"unknown_field": 999.9, "hrv_ms": 60.0}
+    result, violations = validate_and_clamp(data, "test")
+    assert result["unknown_field"] == 999.9
+    assert violations == []
+
+
+def test_none_values_pass_through():
+    data = {"hrv_ms": None, "rhr_bpm": None}
+    result, violations = validate_and_clamp(data, "test")
+    assert result["hrv_ms"] is None
+    assert result["rhr_bpm"] is None
+    assert violations == []
+
+
+# ─── hrv_ms = 0: always nulled ───────────────────────────────────────────────
+
+
+def test_hrv_zero_always_nulled():
+    result, violations = validate_and_clamp({"hrv_ms": 0.0}, "test")
+    assert result["hrv_ms"] is None
+    assert len(violations) == 1
+    assert violations[0].action == "nulled"
+    assert violations[0].field == "hrv_ms"
+
+
+def test_hrv_near_zero_but_not_zero_is_clamped_or_valid():
+    # 0.05 is below lo=0.1 but within 1× span (299.9) so should clamp
+    result, violations = validate_and_clamp({"hrv_ms": 0.05}, "test")
+    assert result["hrv_ms"] == pytest.approx(0.1)
+    assert violations[0].action == "clamped"
+
+
+# ─── clamping: within 2× span ────────────────────────────────────────────────
+
+
+def test_value_slightly_above_hi_clamped():
+    hi = BOUNDS["rhr_bpm"][1]  # 120.0
+    result, violations = validate_and_clamp({"rhr_bpm": 125.0}, "test")
+    assert result["rhr_bpm"] == hi
+    assert violations[0].action == "clamped"
+
+
+def test_value_slightly_below_lo_clamped():
+    lo = BOUNDS["rhr_bpm"][0]  # 25.0
+    result, violations = validate_and_clamp({"rhr_bpm": 22.0}, "test")
+    assert result["rhr_bpm"] == lo
+    assert violations[0].action == "clamped"
+
+
+def test_glycogen_debt_negative_clamped_to_zero():
+    lo = BOUNDS["glycogen_debt"][0]  # 0.0
+    result, violations = validate_and_clamp({"glycogen_debt": -1.0}, "test")
+    assert result["glycogen_debt"] == lo
+    assert violations[0].action == "clamped"
+
+
+# ─── nulling: beyond 2× span ─────────────────────────────────────────────────
+
+
+def test_rhr_artefact_nulled():
+    # 200 bpm: (200-120)=80 excess; span=95 → 80 <= 95 → clamped, not nulled
+    # But 300 bpm: (300-120)=180 excess; span=95 → 180 > 95 → nulled
+    result, violations = validate_and_clamp({"rhr_bpm": 300.0}, "test")
+    assert result["rhr_bpm"] is None
+    assert violations[0].action == "nulled"
+
+
+def test_hrv_extreme_artefact_nulled():
+    # hrv_ms = 800: (800-300)=500 excess; span=299.9 → 500 > 299.9 → nulled
+    result, violations = validate_and_clamp({"hrv_ms": 800.0}, "test")
+    assert result["hrv_ms"] is None
+    assert violations[0].action == "nulled"
+
+
+def test_temperature_extreme_nulled():
+    # -100°C: (-40 - -100)=60 excess; span=95 → 60 <= 95 → clamped
+    result_clamp, v_clamp = validate_and_clamp({"temperature_c": -100.0}, "test")
+    assert v_clamp[0].action == "clamped"
+    # -200°C: (-40 - -200)=160 excess; span=95 → 160 > 95 → nulled
+    result_null, v_null = validate_and_clamp({"temperature_c": -200.0}, "test")
+    assert result_null["temperature_c"] is None
+    assert v_null[0].action == "nulled"
+
+
+# ─── validate_single convenience wrapper ─────────────────────────────────────
+
+
+def test_validate_single_valid():
+    assert validate_single("hrv_ms", 55.0, "test") == 55.0
+
+
+def test_validate_single_none_passthrough():
+    assert validate_single("hrv_ms", None, "test") is None
+
+
+def test_validate_single_clamped():
+    result = validate_single("rhr_bpm", 125.0, "test")
+    assert result == BOUNDS["rhr_bpm"][1]
+
+
+def test_validate_single_nulled():
+    result = validate_single("rhr_bpm", 300.0, "test")
+    assert result is None
+
+
+# ─── BoundsViolation dataclass ────────────────────────────────────────────────
+
+
+def test_bounds_violation_fields():
+    _, violations = validate_and_clamp({"hrv_ms": 0.0}, "ctx")
+    v = violations[0]
+    assert isinstance(v, BoundsViolation)
+    assert v.field == "hrv_ms"
+    assert v.value == 0.0
+    assert v.lo == BOUNDS["hrv_ms"][0]
+    assert v.hi == BOUNDS["hrv_ms"][1]
+    assert v.action == "nulled"
+
+
+# ─── multiple fields in one call ─────────────────────────────────────────────
+
+
+def test_mixed_valid_and_invalid_fields():
+    data = {
+        "hrv_ms": 55.0,        # valid
+        "rhr_bpm": 300.0,      # nulled (extreme artefact)
+        "glycogen_debt": -1.0, # clamped (negative impossible)
+        "ctl": 80.0,           # valid
+    }
+    result, violations = validate_and_clamp(data, "test")
+    assert result["hrv_ms"] == 55.0
+    assert result["rhr_bpm"] is None
+    assert result["glycogen_debt"] == 0.0
+    assert result["ctl"] == 80.0
+    assert len(violations) == 2
+
+
+# ─── BOUNDS dict completeness ─────────────────────────────────────────────────
+
+
+def test_bounds_covers_required_fields():
+    required = {"hrv_ms", "rhr_bpm", "ctl", "atl", "acwr", "glycogen_debt",
+                "temperature_c", "dew_point_c"}
+    assert required.issubset(set(BOUNDS.keys()))
+
+
+def test_bounds_lo_lt_hi_for_all_fields():
+    for field, (lo, hi) in BOUNDS.items():
+        assert lo < hi, f"BOUNDS[{field!r}]: lo ({lo}) must be < hi ({hi})"
+
+
+# ─── Database integration: get_hrv_history filters artefacts ─────────────────
+
+
+def test_get_hrv_history_filters_artefact_values(tmp_path):
+    """Sensor-artefact HRV values are excluded from get_hrv_history() output."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_bounds.db", db_dir=tmp_path)
+
+    # Save one valid HRV and one artefact HRV
+    db.save_daily_metric(date="2026-01-01", hrv=55.0)
+    db.save_daily_metric(date="2026-01-02", hrv=850.0)  # extreme artefact → nulled
+
+    rows = db.get_hrv_history(days=30)
+    dates = [r[0] for r in rows]
+
+    assert "2026-01-01" in dates
+    assert "2026-01-02" not in dates  # artefact row excluded
+
+    db.close()
+
+
+def test_get_hrv_history_clamps_mild_outlier(tmp_path):
+    """Mildly out-of-bounds HRV is clamped and returned (not excluded)."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_bounds_clamp.db", db_dir=tmp_path)
+
+    # 310 ms: (310-300)=10 excess; span=299.9 → 10 <= 299.9 → clamped to 300.0
+    db.save_daily_metric(date="2026-01-01", hrv=310.0)
+
+    rows = db.get_hrv_history(days=30)
+    assert len(rows) == 1
+    assert rows[0][1] == pytest.approx(300.0)  # clamped to hi bound
+
+    db.close()
+
+
+# ─── Database integration: get_baseline_rhr validates output ─────────────────
+
+
+def test_get_baseline_rhr_clamps_high_value(tmp_path):
+    """Mildly elevated RHR is clamped to the bound ceiling."""
+    import datetime
+
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_rhr_clamp.db", db_dir=tmp_path)
+
+    # Use today's date so it falls within the 7-day window
+    today = datetime.date.today().isoformat()
+    # rhr=125: (125-120)=5 excess; span=95 → 5 <= 95 → clamped to 120
+    db.save_daily_metric(date=today, rhr=125)
+    result = db.get_baseline_rhr(days=7)
+    assert result == pytest.approx(BOUNDS["rhr_bpm"][1])  # 120.0
+
+    db.close()
+
+
+# ─── Database integration: get_ctl_atl_tsb returns safe values ───────────────
+
+
+def test_get_ctl_atl_tsb_zero_load_returns_zeros(tmp_path):
+    """New athlete with no training history: CTL=0, ATL=0, TSB=0 (no NaN/Inf)."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_ctl_zero.db", db_dir=tmp_path)
+
+    ctl, atl, tsb = db.get_ctl_atl_tsb()
+    assert ctl == 0.0
+    assert atl == 0.0
+    assert tsb == 0.0
+    assert not math.isnan(ctl)
+    assert not math.isnan(atl)
+
+    db.close()
+
+
+def test_get_ctl_atl_tsb_with_normal_load(tmp_path):
+    """Normal training history: CTL and ATL within BOUNDS."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_ctl_normal.db", db_dir=tmp_path)
+
+    for i in range(14):
+        db.save_session(
+            date=f"2026-01-{i + 1:02d}",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            rpe=5,
+        )
+
+    ctl, atl, tsb = db.get_ctl_atl_tsb()
+    assert BOUNDS["ctl"][0] <= ctl <= BOUNDS["ctl"][1]
+    assert BOUNDS["atl"][0] <= atl <= BOUNDS["atl"][1]
+
+    db.close()

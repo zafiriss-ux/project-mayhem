@@ -361,6 +361,129 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'blocks a 4th within 48h but would not fire on day 3 of a heavy week.'
         ),
     ),
+
+    # ── Physiological Bounds (ADR-0023, T1-18) ────────────────────────────────
+    # These bounds are INPUT SANITY GUARDS, not governance thresholds.
+    # They live in titan/science/physiological_bounds.BOUNDS at runtime.
+    # Evidence level: HEURISTIC for all — plausibility ranges without specific
+    # RCT validation. Promote to MODERATE when OutcomeTracker confirms ≥100
+    # sessions with no false-positive clamp/null events.
+
+    'PHYS_BOUNDS_HRV_MS': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_HRV_MS',
+        value=0.1,  # lo bound; hi = 300.0 (see physiological_bounds.BOUNDS)
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — derived from published RMSSD normative ranges (Shaffer & Ginsberg 2017; Makivic 2013).',
+        rationale=(
+            'RMSSD range [0.1, 300.0] ms. Floor 0.1 excludes sensor-zero (zero HRV = '
+            'Garmin optical failure, not physiology). Ceiling 300.0 ms exceeds the highest '
+            'published healthy-athlete RMSSD (~250 ms); values above this indicate artefact. '
+            'These are plausibility guards — not threshold triggers.'
+        ),
+        policy_note='HEURISTIC. Promote to MODERATE when ≥100 sessions confirm no false-positive nulling.',
+    ),
+
+    'PHYS_BOUNDS_RHR_BPM': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_RHR_BPM',
+        value=25.0,  # lo bound; hi = 120.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — floor from elite endurance athlete records; ceiling from clinical artefact observation.',
+        rationale=(
+            'RHR range [25, 120] bpm. Floor 25 bpm is the lowest reliably recorded resting HR '
+            'in elite endurance athletes (Miguel Indurain ~28 bpm). Values below 25 are optical '
+            'artefact. Ceiling 120 bpm is a clinical threshold above which an optically-read '
+            '"resting HR" is almost certainly a measurement error (motion artefact).'
+        ),
+        policy_note='HEURISTIC. Promote to MODERATE when ≥100 sessions confirm no false-positive clamps.',
+    ),
+
+    'PHYS_BOUNDS_CTL': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_CTL',
+        value=0.0,  # lo bound; hi = 300.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — Coggan (2003) TSS model; 300 TSS/day exceeds documented elite peak loads.',
+        rationale=(
+            'CTL range [0.0, 300.0] TSS/day. Floor 0.0 is correct for new athletes. '
+            'Ceiling 300.0 exceeds any documented sustained CTL in competitive endurance '
+            'athletes (~180 TSS/day elite peak); values above this signal data corruption '
+            'rather than physiology.'
+        ),
+        policy_note='HEURISTIC. Not a governance gate — input sanity only.',
+    ),
+
+    'PHYS_BOUNDS_ATL': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_ATL',
+        value=0.0,  # lo bound; hi = 500.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — ATL ceiling set higher than CTL ceiling to allow for acute race/training peaks.',
+        rationale=(
+            'ATL range [0.0, 500.0] TSS/day. Higher ceiling than CTL because ATL is a 7-day '
+            'EMA and can spike significantly during race week or training blocks. 500 is a '
+            'conservative artefact ceiling — no documented athlete has sustained 500 TSS/day '
+            'even in a 7-day race week.'
+        ),
+        policy_note='HEURISTIC. Not a governance gate — input sanity only.',
+    ),
+
+    'PHYS_BOUNDS_ACWR': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_ACWR',
+        value=0.0,  # lo bound; hi = 3.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — consistent with Gabbett (2016) ACWR framework; ceiling caps division artefacts.',
+        rationale=(
+            'ACWR range [0.0, 3.0]. Floor 0.0 is correct when CTL = 0 (new athlete). '
+            'Ceiling 3.0 is 2.3× the VO2_ACWR_MAX governance threshold (1.30); values '
+            'above 3.0 indicate data corruption rather than a real load spike.'
+        ),
+        policy_note='HEURISTIC. See VO2_ACWR_MIN/MAX in thresholds.py for governance gate values.',
+    ),
+
+    'PHYS_BOUNDS_GLYCOGEN_DEBT': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_GLYCOGEN_DEBT',
+        value=0.0,  # lo bound; hi = 20.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — negative glycogen debt is logically impossible; ceiling is 2.86× the VO2_GLYCOGEN_DEBT_MAX governance threshold.',
+        rationale=(
+            'Glycogen debt range [0.0, 20.0]. Negative values are a calorie-accounting '
+            'error (logically impossible). Ceiling 20.0 is 2.86× the VO2_GLYCOGEN_DEBT_MAX '
+            'gate (7.0); values above 20 indicate data corruption.'
+        ),
+        policy_note='HEURISTIC. Not a governance gate — input sanity only.',
+    ),
+
+    'PHYS_BOUNDS_TEMPERATURE_C': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_TEMPERATURE_C',
+        value=-40.0,  # lo bound; hi = 55.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — operational climate range covering training locations from subarctic to desert.',
+        rationale=(
+            'Temperature range [-40.0, 55.0] °C. Covers all realistic outdoor training '
+            'environments. Values outside this range indicate weather API failures or '
+            'unit conversion errors (e.g., Fahrenheit returned where Celsius expected).'
+        ),
+        policy_note='HEURISTIC. Not a governance gate — input sanity only.',
+    ),
+
+    'PHYS_BOUNDS_DEW_POINT_C': ThresholdEvidence(
+        parameter='PHYS_BOUNDS_DEW_POINT_C',
+        value=-40.0,  # lo bound; hi = 40.0
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal — dew point cannot exceed ambient temperature and is bounded by physical thermodynamics.',
+        rationale=(
+            'Dew point range [-40.0, 40.0] °C. A dew point above 40°C is physically '
+            'impossible at sea level (would require near-100% humidity at 40°C ambient). '
+            'Values outside range indicate API error.'
+        ),
+        policy_note='HEURISTIC. Not a governance gate — input sanity only.',
+    ),
 }
 
 
