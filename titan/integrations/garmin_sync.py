@@ -450,9 +450,8 @@ class GarminSync:
                 self.sync_all()
             except Exception as e:
                 _garmin_event("background_sync_error", subsystem="background_sync", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="BG sync error", error_message=str(e), interval_hours=interval_hours)
-            for _ in range(interval_hours * 3600):
-                if self._stop_event.wait(timeout=1.0):
-                    return
+            if self._stop_event.wait(timeout=float(interval_hours * 3600)):
+                return
 
     def _log_sync(self, data_type: str, count: int):
         self.sync_history.append((data_type, datetime.now().isoformat(), count))

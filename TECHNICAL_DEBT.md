@@ -1728,9 +1728,9 @@ detected in production.
 
 ---
 
-### T4-14 · Garmin background worker uses per-second loop instead of single `Event.wait()` 🔴 OPEN
+### T4-14 · Garmin background worker uses per-second loop instead of single `Event.wait()` ✅ RESOLVED
 
-**Status:** OPEN.
+**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD.
 **Source:** Engineering Audit V4 (2026-03-05) — M1 finding.
 **Priority:** P3. No correctness impact. Wasted CPU/wake cycles; diagnostic noise in profiler.
 
@@ -1784,7 +1784,7 @@ test (set stop event; assert thread exits without waiting a full tick).
 
 ### T4-15 · Weather updater thread has no explicit name — diagnostics parity gap 🔴 OPEN (independent)
 
-**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P4. Cosmetic/diagnostic only. No correctness or safety impact.
 
@@ -1826,7 +1826,7 @@ python -m pytest -q   # 100% green
 
 ### T4-16 · Setup wizard prints duplicate Windows permission warning 🔴 OPEN (independent)
 
-**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P4. UX/cosmetic. No correctness impact.
 
@@ -1867,7 +1867,7 @@ python -m pytest -q   # 100% green
 
 ### T4-17 · Setup wizard modifies `.gitignore` at runtime — operational side effect 🔴 OPEN (independent)
 
-**Status:** OPEN. `independent` — can be done in parallel with T1-15.
+**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P3. Operational side effect with blast radius on repository state.
 
@@ -2167,7 +2167,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-12 | ✅ RESOLVED | 2026-03-06 |
 | T2-13 | ✅ RESOLVED | 2026-03-06 |
 | T3-09 | ✅ RESOLVED | 2026-03-06 |
-| T4-14 | OPEN | — |
+| T4-14 | ✅ RESOLVED | 2026-03-06 (PR: TBD) |
 | T4-15 | OPEN (independent) | — |
 | T4-16 | OPEN (independent) | — |
 | T4-17 | OPEN (independent) | — |
