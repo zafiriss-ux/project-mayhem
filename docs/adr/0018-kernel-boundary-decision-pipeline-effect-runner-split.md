@@ -199,9 +199,28 @@ Whichever approach is chosen, the invariant is:
 
 **Status:** Accepted 2026-03-07. Scoped implementation plan below. No implementation in current sprint.
 
-**Scope note:** B3 (deterministic replay) from the original design is not a separate
-implementation task — it is an architectural consequence of `_decision_pipeline()` being
-pure. It requires no code beyond B1 and B2 and is noted here as an invariant, not a task.
+**Scope note — pipeline boundary correction (2026-03-07):**
+The original design described a "steps 1–11 pure, step 12 effects" split. Pre-implementation
+code review of `run_morning_routine()` revealed that steps 2, 3, 6, and 7 contain
+**operational safety side-effects** that cannot be deferred:
+- Step 2: `db.record_sync_outcome()`, `telegram.send_alert()` (persistence failure + staleness)
+- Step 3: `db.save_hrr()` inside HRV/HRR feed
+- Step 6: `db.update_glycogen_debt()`
+- Step 7: `telegram.send_alert()` (degraded RHR baseline — fires even if governance hard-stops)
+
+Deferring these to an effect runner would break the safety design: a persistence failure
+alert must reach the athlete before the coaching recommendation, regardless of governance
+outcome. These alerts are not coaching effects — they are operational signals.
+
+**Corrected boundary:**
+- **Data hydration phase (steps 1–6):** remains in `run_morning_routine()` unchanged.
+  Sequential, side-effectful by necessity; A3 atomic-persistence invariant already covers this.
+- **Decision pipeline (steps 7–11):** `_decision_pipeline()` — pure computation.
+  Input: all signals produced by steps 1–6. Output: `DecisionResult`.
+- **Effect runner (step 9c + step 12):** `_effect_runner()` — outcome recording + Telegram delivery.
+
+B3 (deterministic replay) from the original design is not a separate implementation task —
+it is an architectural consequence of `_decision_pipeline()` being pure.
 
 ---
 
@@ -217,9 +236,8 @@ class PlannedEffect:
     """A single side-effect to be executed by the Effect Runner.
 
     effect_type discriminant values (exhaustive):
-      'persist_garmin'  — write Garmin sync data to DB
+      'record_outcome'  — write governance decision to outcome_tracker (DB)
       'send_telegram'   — deliver coaching briefing via Telegram
-      'update_schedule' — update next-session schedule entry
     """
     effect_type: str                        # discriminant (see docstring)
     payload: Mapping[str, object]           # effect-specific data, frozen at decision time
@@ -227,7 +245,7 @@ class PlannedEffect:
 
 @dataclass(frozen=True)
 class DecisionResult:
-    """Immutable output of the Decision Pipeline.
+    """Immutable output of the Decision Pipeline (steps 7–11).
 
     Invariant: constructed without executing any side-effects.
     The same DecisionResult can be replayed against any EffectRunner.
@@ -243,9 +261,14 @@ Implementation notes:
 - Use `tuple[PlannedEffect, ...]` not `list` — `DecisionResult` is `frozen=True`;
   mutable fields are prohibited.
 - `decision_trace` captures the governance gate outputs and key input values at
-  decision time. Minimum fields: `hrv`, `tsb`, `acwr`, `lock_codes_active`.
-- `snapshot_at` is a plain ISO-8601 string (not `datetime`) to keep the dataclass
-  trivially serialisable without a custom JSON encoder.
+  decision time. Minimum fields: `hrv`, `tsb`, `acwr`, `lock_codes_active`,
+  `session_planned_pre_governance`, `locks_applied`, `governance_clean`, `phase`,
+  `vlg_color`, `afi_value`, `readiness_score`, `glycogen_debt`.
+  These fields are needed by `_effect_runner()` to call `outcome_tracker.record_decision()`
+  without re-reading the database.
+- `snapshot_at` is a plain ISO-8601 string (not `datetime`) — trivially JSON-serialisable.
+- `PlannedEffect` has two `effect_type` values only: `'record_outcome'` and
+  `'send_telegram'`. Data hydration effects (steps 1–6) are outside the pipeline boundary.
 
 ---
 
@@ -254,29 +277,61 @@ Implementation notes:
 **File:** `titan/orchestration/daily_coach.py`
 
 ```python
-def run_morning_routine(self, ...):
-    # Phase 1: Decision Pipeline (pure — no DB writes, no Telegram sends)
-    result: DecisionResult = self._decision_pipeline(...)
+def run_morning_routine(self, soreness=None, subjective_fatigue_score=None):
+    # ── Data hydration (steps 1–6) — unchanged ──────────────────────────
+    # Side-effectful by design: DB writes, conditional safety alerts.
+    # A3 atomic-persistence invariant applies to _persist_garmin_data().
+    garmin_data   = step_1_sync_garmin()
+    rhr, sleep_s, sleep_h = step_2_persist(garmin_data)
+    step_3_feed_hrv_hrr(garmin_data)
+    afi_final, afi_constraints = step_4_compute_afi(garmin_data, sleep_s)
+    tsb_value, tsb_status, cs_thermal = step_5_kinetics(garmin_data)
+    step_6_update_glycogen(garmin_data, sleep_h)
 
-    # Phase 2: Effect Runner (serialized — all side-effects here, in order)
-    self._effect_runner(result)
+    # ── Decision Pipeline (steps 7–11) — pure ───────────────────────────
+    result: DecisionResult = self._decision_pipeline(
+        garmin_data=garmin_data,
+        soreness=soreness,
+        subjective_fatigue_score=subjective_fatigue_score,
+        afi_final=afi_final,
+        afi_constraints=afi_constraints,
+        tsb_value=tsb_value,
+        tsb_status=tsb_status,
+        cs_thermal=cs_thermal,
+        rhr=rhr,
+        sleep_score=sleep_s,
+        sleep_hours=sleep_h,
+        persistence_degraded=persistence_degraded,
+        garmin_data_stale=garmin_data_stale,
+        data_trust=data_trust,
+    )
+
+    # ── Effect Runner (step 9c + step 12) ───────────────────────────────
+    return self._effect_runner(result)
 ```
 
 **`_decision_pipeline()` contract (strict):**
-- Reads DB state, weather, and Garmin data (reads are permitted).
-- Runs all 12 coaching steps up to and including governance evaluation.
-- Returns a `DecisionResult` with `planned_effects` populated in execution order.
+- Accepts all signals produced by steps 1–6 as keyword arguments (including baseline RHR,
+  which is pre-computed in `run_morning_routine()` because its unavailability triggers a
+  safety alert that must fire before the pipeline runs).
+- Executes: step 7 (readiness + fatigue), step 7.5 (intensity governor), step 8 (today's
+  session), step 9a (VLG + APL), step 9b (governance), step 10 (optimal time), step 11
+  (nutrition), and coaching payload assembly.
+- Populates `DecisionResult.decision_trace` with all fields needed for outcome recording.
+- DB reads inside the pipeline (e.g. `weekly_planner.get_today_session()`,
+  `governance.get_governance_report()`) are permitted — reads have no side effects.
 - **Prohibited:** any `db.save_*`, any `telegram.*`, any `self.db.transaction()`.
-- Violation of the no-side-effect invariant is a P0 defect — not a warning.
+- Violation of the no-write / no-send invariant is a **P0 defect — not a warning**.
 
 **`_effect_runner()` contract (strict):**
 - Accepts a `DecisionResult` and iterates `planned_effects` in order.
 - Dispatches on `PlannedEffect.effect_type`:
-  - `'persist_garmin'` → calls `self._persist_garmin_data(...)`
-  - `'send_telegram'`  → calls `self.telegram.send_message(...)`
-  - `'update_schedule'` → updates next-session scheduler state
-- All DB writes remain inside `self.db.transaction()` (A3 invariant preserved).
-- Shutdown-safe: `_routine_thread.join()` already guards this path (A2 invariant).
+  - `'record_outcome'` → calls `self.outcome_tracker.record_decision(...)` using
+    fields from `result.decision_trace`
+  - `'send_telegram'`  → calls `self.telegram.send_daily_coaching(result.coaching_payload)`
+- Also calls `self._degraded_tracker.update(...)` with the alert lambda before dispatching
+  effects (degraded-mode persistent alert must fire before coaching delivery).
+- Returns `bool` (Telegram delivery success).
 
 **Replay invariant (consequence of purity):**
 A saved `DecisionResult` (JSON-serialisable by construction) can be re-fed to any
@@ -324,14 +379,17 @@ concern. No action required now.
 |---|-----------|-------------|
 | B1.1 | `PlannedEffect` and `DecisionResult` present in `titan/orchestration/contracts.py` with exact field signatures | Code review |
 | B1.2 | `DecisionResult.planned_effects` is `tuple[PlannedEffect, ...]` (immutable) | Code review; `frozen=True` dataclass |
-| B1.3 | `ruff check .` zero findings after B1 | `ruff check .` |
-| B1.4 | Full test suite green after B1 | `python -m pytest -q` |
-| B2.1 | `run_morning_routine()` delegates to `_decision_pipeline()` then `_effect_runner()` | Code review |
-| B2.2 | `_decision_pipeline()` contains zero calls to `db.save_*`, `telegram.*`, or `self.db.transaction()` | `grep -n "save_\|telegram\.\|transaction" titan/orchestration/daily_coach.py` → zero hits inside `_decision_pipeline` |
-| B2.3 | `_effect_runner()` dispatches all three `effect_type` values | Code review + unit test |
+| B1.3 | `PlannedEffect.effect_type` exhaustive values are `'record_outcome'` and `'send_telegram'` only | Code review + docstring |
+| B1.4 | `ruff check .` zero findings after B1 | `ruff check .` |
+| B1.5 | Full test suite green after B1 | `python -m pytest -q` |
+| B2.1 | `run_morning_routine()` calls `_decision_pipeline()` then `_effect_runner()` after steps 1–6 | Code review |
+| B2.2 | `_decision_pipeline()` contains zero calls to `db.save_*`, `telegram.*`, or `self.db.transaction()` | `grep -n "save_\|telegram\.\|\.transaction" titan/orchestration/daily_coach.py` → zero hits inside `_decision_pipeline` body |
+| B2.3 | `_effect_runner()` dispatches `'record_outcome'` and `'send_telegram'` | Code review + unit test |
 | B2.4 | `_persist_garmin_data()` remains inside `self.db.transaction()` (A3 invariant preserved) | Code review |
-| B2.5 | `ruff check .` zero findings after B2 | `ruff check .` |
-| B2.6 | Full test suite green after B2 | `python -m pytest -q` |
+| B2.5 | `_decision_pipeline()` receives all step 1–6 computed signals as arguments; baseline RHR (DB read with side-effectful alert) is pre-computed in `run_morning_routine()` before the pipeline call | Code review |
+| B2.6 | `decision_trace` contains minimum fields: `hrv`, `tsb`, `acwr`, `lock_codes_active`, `session_planned_pre_governance`, `locks_applied`, `governance_clean`, `phase`, `vlg_color`, `afi_value`, `readiness_score`, `glycogen_debt` | Code review + test |
+| B2.7 | `ruff check .` zero findings after B2 | `ruff check .` |
+| B2.8 | Full test suite green after B2 | `python -m pytest -q` |
 | ALL | `python -m pytest -q -W error::pytest.PytestWarning` zero warnings | Gate 2 |
 | ALL | Full suite green, count ≥ 1791 | Gate 3 |
 
@@ -348,7 +406,7 @@ Create this file if it does not exist.
 | `test_planned_effect_is_frozen` | Attempt to mutate a `PlannedEffect` field | `FrozenInstanceError` raised |
 | `test_decision_result_is_frozen` | Attempt to mutate a `DecisionResult` field | `FrozenInstanceError` raised |
 | `test_decision_result_planned_effects_is_tuple` | Construct `DecisionResult` with a tuple of effects | `isinstance(result.planned_effects, tuple)` |
-| `test_planned_effect_discriminants_are_strings` | Construct one of each `effect_type` | `effect_type in {'persist_garmin', 'send_telegram', 'update_schedule'}` |
+| `test_planned_effect_discriminants` | Construct both valid `effect_type` values | `effect_type in {'record_outcome', 'send_telegram'}` |
 
 ### B2 Tests — `tests/titan/orchestration/test_daily_coach.py`
 
@@ -356,16 +414,22 @@ Add to the existing file.
 
 | Test name | Scenario | Assert |
 |-----------|----------|--------|
-| `test_decision_pipeline_returns_decision_result` | Call `_decision_pipeline()` with a mocked DailyCoach context | Return type is `DecisionResult` |
-| `test_decision_pipeline_no_side_effects` | Patch `db.save_daily_metric` and `telegram.send_message` to record calls; call `_decision_pipeline()` | Neither mock is called |
-| `test_effect_runner_dispatches_persist_garmin` | Pass `DecisionResult` with `persist_garmin` effect | `_persist_garmin_data` called once |
-| `test_effect_runner_dispatches_send_telegram` | Pass `DecisionResult` with `send_telegram` effect | `telegram.send_message` called once |
-| `test_effect_runner_effects_execute_in_order` | Pass `DecisionResult` with effects `[persist_garmin, send_telegram]` | Calls recorded in that order |
-| `test_run_morning_routine_delegates_pipeline_then_runner` | Patch `_decision_pipeline` and `_effect_runner`; call `run_morning_routine()` | Pipeline called first, runner called with its return value |
+| `test_decision_pipeline_returns_decision_result` | Call `_decision_pipeline()` with pre-computed signal kwargs (all mocked) | Return type is `DecisionResult` |
+| `test_decision_pipeline_no_db_writes` | Patch `db.save_daily_metric`, `db.save_hrr`, `db.update_glycogen_debt`, `outcome_tracker.record_decision`; call `_decision_pipeline()` | None of the mocks are called |
+| `test_decision_pipeline_no_telegram_calls` | Patch `telegram.send_daily_coaching`, `telegram.send_alert`; call `_decision_pipeline()` | Neither mock is called |
+| `test_decision_pipeline_decision_trace_has_required_fields` | Call `_decision_pipeline()` with mocked signals | `decision_trace` contains all 12 required keys |
+| `test_effect_runner_dispatches_record_outcome` | Pass `DecisionResult` with `record_outcome` effect | `outcome_tracker.record_decision` called with trace fields |
+| `test_effect_runner_dispatches_send_telegram` | Pass `DecisionResult` with `send_telegram` effect | `telegram.send_daily_coaching` called with `coaching_payload` |
+| `test_effect_runner_effects_execute_in_order` | Pass `DecisionResult` with `[record_outcome, send_telegram]` effects | Calls recorded in that order |
+| `test_run_morning_routine_delegates_pipeline_then_runner` | Patch `_decision_pipeline` and `_effect_runner`; call `run_morning_routine()` | Pipeline called after step 6; runner called with pipeline's return value |
 
-**Implementation note:** Use `unittest.mock.patch.object` throughout. The no-side-effect
-test (`test_decision_pipeline_no_side_effects`) is the critical invariant test — it must
-fail (not skip) if any save or send call is detected inside `_decision_pipeline()`.
+**Implementation notes:**
+- The no-DB-writes test and no-Telegram-calls test are the critical invariant tests.
+  They must **fail** (not skip) if any save/send call is detected inside `_decision_pipeline()`.
+- `test_decision_pipeline_returns_decision_result` should pass all step 1–6 signal args
+  as minimal valid values (e.g. `afi_final=0.0`, `tsb_value=0.0`) with all engine methods
+  mocked to return plausible outputs.
+- Use `unittest.mock.patch.object` throughout.
 
 ---
 
@@ -374,9 +438,15 @@ fail (not skip) if any save or send call is detected inside `_decision_pipeline(
 | File | Task | Change |
 |------|------|--------|
 | `titan/orchestration/contracts.py` | B1 | Add `PlannedEffect` + `DecisionResult` dataclasses |
-| `titan/orchestration/daily_coach.py` | B2 | Add `_decision_pipeline()` + `_effect_runner()`; refactor `run_morning_routine()` |
+| `titan/orchestration/daily_coach.py` | B2 | Add `_decision_pipeline()` (steps 7–11, pure) + `_effect_runner()` (outcome record + Telegram); refactor `run_morning_routine()` to call them after steps 1–6 |
 | `tests/titan/orchestration/test_contracts.py` | B1 | New file — 4 tests for type invariants |
-| `tests/titan/orchestration/test_daily_coach.py` | B2 | 6 new tests (pipeline purity + runner dispatch + ordering) |
+| `tests/titan/orchestration/test_daily_coach.py` | B2 | 8 new tests (pipeline purity × 3 + decision_trace fields + runner dispatch × 2 + ordering + delegation) |
+
+**Files NOT affected by Phase B (boundary is strict):**
+- `titan/orchestration/daily_coach.py` steps 1–6 logic — unchanged
+- All science engine modules — unchanged
+- Governance layer — unchanged
+- `titan/main.py` — unchanged
 
 ---
 

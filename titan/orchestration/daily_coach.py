@@ -40,7 +40,9 @@ from titan.orchestration.contracts import (
     DailyCoachContext,
     DailyCoachContextContract,
     DailyCoachingPayload,
+    DecisionResult,
     GarminSyncResult,
+    PlannedEffect,
     TodaySessionPlan,
 )
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
@@ -390,10 +392,6 @@ class DailyCoach:
             quality_flags=list(garmin_data.get("quality_flags", [])),
         )
         garmin_report_payload = {k: v for k, v in garmin_trust.to_payload().items() if k != 'checked_at'}
-        data_trust = {
-            "overall": garmin_trust.trust_level.value,
-            "reports": [garmin_report_payload],
-        }
 
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
         def _step3_feed_hrv_hrr() -> None:
@@ -465,7 +463,7 @@ class DailyCoach:
         )
         _run_step(6, "update_glycogen", lambda: self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt))
 
-        # ── Step 7: Composite readiness ──────────────────────────────────────
+        # ── Pre-pipeline: baseline RHR (DB read; alert fires here if unavailable) ──
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
         baseline_rhr = self._get_baseline_rhr(days=7)
         baseline_rhr_for_comparison = baseline_rhr
@@ -493,6 +491,103 @@ class DailyCoach:
                     error_class=type(_alert_exc).__name__,
                     detail=str(_alert_exc),
                 )
+
+        # ── Pre-pipeline: read + reset startup confidence flags ───────────────
+        startup_hydration_confidence = getattr(
+            self,
+            "_startup_hydration_confidence",
+            {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False},
+        )
+        startup_confidence_applies = getattr(self, "_startup_confidence_applies_next_routine", False)
+        self._startup_confidence_applies_next_routine = False
+
+        # ── Decision Pipeline (steps 7–11, pure: no DB writes, no Telegram) ──
+        result = self._decision_pipeline(
+            garmin_data=garmin_data,
+            soreness=soreness,
+            subjective_fatigue_score=subjective_fatigue_score,
+            today_rhr=today_rhr,
+            today_sleep_score=today_sleep_score,
+            today_sleep_hours=today_sleep_hours,
+            baseline_rhr_for_comparison=baseline_rhr_for_comparison,
+            persistence_degraded=persistence_degraded,
+            garmin_data_stale=garmin_data_stale,
+            latest_hrv=latest_hrv,
+            baseline_hrv=baseline_hrv,
+            hrv_summary=hrv_summary,
+            afi_final=afi_final,
+            afi_constraints=afi_constraints,
+            tsb_value=tsb_value,
+            tsb_status=tsb_status,
+            cs_thermal=cs_thermal,
+            garmin_trust=garmin_trust,
+            garmin_report_payload=garmin_report_payload,
+            startup_hydration_confidence=startup_hydration_confidence,
+            startup_confidence_applies=startup_confidence_applies,
+        )
+
+        # ── Effect Runner (step 9c + step 12) ────────────────────────────────
+        return self._effect_runner(result)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # DECISION PIPELINE (steps 7–11, pure: no DB writes, no Telegram sends)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _decision_pipeline(  # noqa: PLR0912, PLR0914, PLR0915
+        self,
+        *,
+        garmin_data: GarminSyncResult,
+        soreness: int,
+        subjective_fatigue_score: int,
+        today_rhr: int,
+        today_sleep_score: int,
+        today_sleep_hours: float,
+        baseline_rhr_for_comparison: float,
+        persistence_degraded: bool,
+        garmin_data_stale: bool,
+        latest_hrv: float,
+        baseline_hrv: float,
+        hrv_summary: dict,
+        afi_final: float,
+        afi_constraints: dict,
+        tsb_value: float,
+        tsb_status: str,
+        cs_thermal: float | None,
+        garmin_trust: Any,
+        garmin_report_payload: dict,
+        startup_hydration_confidence: dict,
+        startup_confidence_applies: bool,
+    ) -> DecisionResult:
+        """Pure decision pipeline: steps 7–11 + coaching payload assembly.
+
+        Invariant: no db.save_*, no telegram.*, no self.db.transaction().
+        All inputs are pre-computed signals from run_morning_routine() steps 1–6.
+        """
+
+        def _run_step(step_number: int, step_name: str, fn):
+            try:
+                result = fn()
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="SUCCESS",
+                    failure_class=None,
+                )
+                return result
+            except Exception as exc:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="FAILED",
+                    failure_class=_failure_class_for_step(step_number, exc),
+                    error_class=type(exc).__name__,
+                    error_message=str(exc),
+                )
+                raise
+
+        # ── Step 7: Readiness ─────────────────────────────────────────────────
         readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
             today_hrv    = latest_hrv,
             baseline_hrv = baseline_hrv,
@@ -501,15 +596,10 @@ class DailyCoach:
             sleep_score  = today_sleep_score,
             soreness     = soreness,
         ))
-        # Apply AFI modifier to readiness score
         readiness['score'] = max(0, min(100,
             readiness.get('score', 50) + afi_constraints.get('afi_modifier', 0)
         ))
-        # Apply clamp if parasympathetic guard triggered
         readiness['score'] = min(readiness['score'], afi_constraints.get('readiness_clamp', 100))
-
-
-
 
         fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
             hr_suppression=bool(garmin_data.get('hr_suppression', False)),
@@ -517,9 +607,6 @@ class DailyCoach:
             pace_hr_divergence=bool(garmin_data.get('pace_hr_divergence', False)),
             soreness=subjective_fatigue_score,
         )
-
-
-
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
         ig = IntensityGovernor()
@@ -571,12 +658,11 @@ class DailyCoach:
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
-        startup_hydration_confidence = getattr(
-            self,
-            "_startup_hydration_confidence",
-            {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False},
-        )
-        startup_confidence_applies = getattr(self, "_startup_confidence_applies_next_routine", False)
+        # Initial garmin-only data_trust for governance context (weather added after step 10)
+        data_trust: dict[str, Any] = {
+            "overall": garmin_trust.trust_level.value,
+            "reports": [garmin_report_payload],
+        }
         context_payload = self._build_daily_coach_context(
             afi_constraints=afi_constraints,
             intensity_gate=intensity_gate,
@@ -605,18 +691,10 @@ class DailyCoach:
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
         )
-        self._startup_confidence_applies_next_routine = False
 
-        # ── Degraded mode duration tracking (T2-13) ──────────────────────────
-        self._degraded_tracker.update(
-            flags={
-                "persistence_degraded": persistence_degraded,
-                "data_confidence_low": bool(
-                    sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else False
-                ),
-                "garmin_data_stale": garmin_data_stale,
-            },
-            alert_fn=lambda msg: self.telegram.send_alert(msg),
+        # Compute degraded flags (passed to _effect_runner via decision_trace)
+        _data_confidence_low = bool(
+            sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else False
         )
 
         today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
@@ -629,24 +707,7 @@ class DailyCoach:
                 locks=today_session['governance_locks_applied'],
             )
 
-
         self._ensure_vo2_eligibility_contract(today_session)
-
-        # ── Step 9c: Record governance decision for outcome tracking ─────────
-        self.outcome_tracker.record_decision(
-            session_planned       = _session_planned,
-            session_post_governance = today_session.get('session_type', 'EASY'),
-            locks_applied         = today_session.get('governance_locks_applied', []),
-            governance_clean      = today_session.get('governance_clean', True),
-            phase                 = _phase,
-            vlg_color             = getattr(vlg_state, 'color', 'GREEN'),
-            apl_result            = apl_result,
-            acwr                  = _acwr_for_vlg,
-            tsb_value             = _tsb_for_vlg,
-            readiness_score       = _safe_float(readiness.get('score', 50), 50),
-            glycogen_debt         = self.glycogen.daily_debt,
-            afi_value             = afi_final,
-        )
 
 
 
@@ -761,47 +822,123 @@ class DailyCoach:
         elif overall_trust == DataTrustLevel.SUSPECT:
             coaching_data['special_note'] = '⚠️ Some source data is suspect — recommendations remain conservative.'
 
-        def _step12_send_telegram() -> bool:
-            try:
-                success_local = self.telegram.send_daily_coaching(coaching_data)
-            except Exception as exc:
-                _daily_coach_event(
-                    "step_event",
-                    step_number=12,
-                    step_name="send_telegram",
-                    outcome="FAILED",
-                    failure_class=DELIVERY_ERROR,
-                    error_class=type(exc).__name__,
-                    error_message=str(exc),
-                )
-                raise
-            if not success_local:
-                _daily_coach_event(
-                    "step_event",
-                    step_number=12,
-                    step_name="send_telegram",
-                    outcome="FAILED",
-                    failure_class=DELIVERY_ERROR,
-                    error_class="DELIVERY_ERROR",
-                    error_message="Telegram delivery returned falsey result",
-                )
-                return False
-            _daily_coach_event(
-                "step_event",
-                step_number=12,
-                step_name="send_telegram",
-                outcome="SUCCESS",
-                failure_class=None,
-            )
-            return True
+        # ── Build DecisionResult ─────────────────────────────────────────────
+        _readiness_score = _safe_float(readiness.get('score', 50), 50)
+        decision_trace: dict[str, Any] = {
+            # Minimum required fields (ADR-0018 B2.6)
+            "hrv": latest_hrv,
+            "tsb": _tsb_for_vlg,
+            "acwr": _acwr_for_vlg,
+            "lock_codes_active": today_session.get('governance_locks_applied', []),
+            "session_planned_pre_governance": _session_planned,
+            "locks_applied": today_session.get('governance_locks_applied', []),
+            "governance_clean": today_session.get('governance_clean', True),
+            "phase": _phase,
+            "vlg_color": getattr(vlg_state, 'color', 'GREEN'),
+            "afi_value": afi_final,
+            "readiness_score": _readiness_score,
+            "glycogen_debt": self.glycogen.daily_debt,
+            # Extra fields needed by _effect_runner
+            "session_post_governance": today_session.get('session_type', 'EASY'),
+            "apl_result": apl_result,
+            "persistence_degraded": persistence_degraded,
+            "garmin_data_stale": garmin_data_stale,
+            "data_confidence_low": _data_confidence_low,
+        }
+        planned_effects: tuple[PlannedEffect, ...] = (
+            PlannedEffect(effect_type="record_outcome", payload={}),
+            PlannedEffect(effect_type="send_telegram", payload={}),
+        )
+        return DecisionResult(
+            session_plan=today_session,
+            coaching_payload=coaching_data,
+            planned_effects=planned_effects,
+            decision_trace=decision_trace,
+            snapshot_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        )
 
-        success = _step12_send_telegram()
+    # ═══════════════════════════════════════════════════════════════════════
+    # EFFECT RUNNER (step 9c + step 12: outcome recording + Telegram delivery)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def _effect_runner(self, result: DecisionResult) -> bool:
+        """Execute planned side-effects from the decision pipeline.
+
+        Order: degraded-mode alert check → outcome recording → Telegram delivery.
+        Returns True if Telegram delivery succeeded.
+        """
+        trace = result.decision_trace
+
+        # ── Degraded mode duration tracking (T2-13) ──────────────────────────
+        self._degraded_tracker.update(
+            flags={
+                "persistence_degraded": bool(trace.get("persistence_degraded", False)),
+                "data_confidence_low": bool(trace.get("data_confidence_low", False)),
+                "garmin_data_stale": bool(trace.get("garmin_data_stale", False)),
+            },
+            alert_fn=lambda msg: self.telegram.send_alert(msg),
+        )
+
+        # ── Dispatch planned effects in order ─────────────────────────────────
+        success = True
+        for effect in result.planned_effects:
+            if effect.effect_type == "record_outcome":
+                self.outcome_tracker.record_decision(
+                    session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
+                    session_post_governance=str(trace.get("session_post_governance", "EASY")),
+                    locks_applied=list(trace.get("locks_applied", [])),
+                    governance_clean=bool(trace.get("governance_clean", True)),
+                    phase=str(trace.get("phase", "BASE")),
+                    vlg_color=str(trace.get("vlg_color", "GREEN")),
+                    apl_result=dict(trace.get("apl_result", {})),
+                    acwr=float(trace.get("acwr", 1.0)),
+                    tsb_value=float(trace.get("tsb", 0.0)),
+                    readiness_score=float(trace.get("readiness_score", 50.0)),
+                    glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
+                    afi_value=float(trace.get("afi_value", 0.0)),
+                )
+
+            elif effect.effect_type == "send_telegram":
+                _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
+                try:
+                    delivery_ok = self.telegram.send_daily_coaching(result.coaching_payload)
+                except Exception as exc:
+                    _daily_coach_event(
+                        "step_event",
+                        step_number=12,
+                        step_name="send_telegram",
+                        outcome="FAILED",
+                        failure_class=DELIVERY_ERROR,
+                        error_class=type(exc).__name__,
+                        error_message=str(exc),
+                    )
+                    raise
+                if not delivery_ok:
+                    _daily_coach_event(
+                        "step_event",
+                        step_number=12,
+                        step_name="send_telegram",
+                        outcome="FAILED",
+                        failure_class=DELIVERY_ERROR,
+                        error_class="DELIVERY_ERROR",
+                        error_message="Telegram delivery returned falsey result",
+                    )
+                    success = False
+                else:
+                    _daily_coach_event(
+                        "step_event",
+                        step_number=12,
+                        step_name="send_telegram",
+                        outcome="SUCCESS",
+                        failure_class=None,
+                    )
+
         if not success:
             _daily_coach_event(
                 "slo_alert",
                 slo_key="telegram_delivery_failed",
                 cause="INTEGRATION_DELIVERY",
-                session_type=today_session.get("session_type", "EASY"),
+                session_type=result.session_plan.get("session_type", "EASY"),
             )
         _daily_coach_event(
             "routine_completed",

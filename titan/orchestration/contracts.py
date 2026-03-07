@@ -203,6 +203,38 @@ class DailyCoachingPayload(TypedDict):
     data_trust: NotRequired[Mapping[str, object]]
 
 
+@dataclass(frozen=True)
+class PlannedEffect:
+    """A single side-effect to be executed by the Effect Runner.
+
+    effect_type discriminant values (exhaustive):
+      'record_outcome'  — write governance decision to outcome_tracker (DB)
+      'send_telegram'   — deliver coaching briefing via Telegram
+    """
+
+    effect_type: str  # discriminant (see docstring)
+    payload: Mapping[str, object]  # effect-specific data, frozen at decision time
+
+
+@dataclass(frozen=True)
+class DecisionResult:
+    """Immutable output of the Decision Pipeline (steps 7–11).
+
+    Invariant: constructed without executing any side-effects.
+    The same DecisionResult can be replayed against any EffectRunner.
+
+    decision_trace required keys: hrv, tsb, acwr, lock_codes_active,
+    session_planned_pre_governance, locks_applied, governance_clean, phase,
+    vlg_color, afi_value, readiness_score, glycogen_debt.
+    """
+
+    session_plan: TodaySessionPlan  # post-governance recommendation
+    coaching_payload: DailyCoachingPayload  # Telegram delivery content
+    planned_effects: tuple["PlannedEffect", ...]  # ordered effects (tuple — immutable)
+    decision_trace: Mapping[str, object]  # forensic replay data
+    snapshot_at: str  # ISO-8601 timestamp of state snapshot
+
+
 class AthleteProfile(TypedDict):
     name: str
     age: int
