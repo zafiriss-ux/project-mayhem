@@ -828,7 +828,7 @@ simultaneously — each subsystem needs its own error taxonomy review and test u
 
 ### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates ✅ RESOLVED 2026-03-07
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: pending.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `393af84`.
 **Source:** Master Risk Matrix — Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06. ADR-0023.
 **Priority:** P1 (Tier 1 — safety critical). Data integrity.
 
@@ -872,7 +872,7 @@ before readiness/governance/planning consumption; added focused regression cover
 
 ### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently ✅ RESOLVED 2026-03-07
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `bf4a43a`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `23d0084`.
 **Source:** Master Risk Matrix — Risk #10 (Input Data Sanity). Architecture Review 2026-03-06. ADR-0026.
 **Priority:** P1 (Tier 1 — data integrity).
 
@@ -954,7 +954,7 @@ python -m pytest -q
 
 ### T1-21 · Governance gates H2/H3 fire without distinguishing training-stress from non-training-stress — illness pattern indistinguishable from life stress ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Risk Review V8 — Risk: Non-Training Stress Protocol. ADR-0037.
 **Priority:** P0 (Tier 1 — safety-critical).
 
@@ -1022,7 +1022,7 @@ Final gate snapshot at closure: 1652 tests passing.
 
 ### T1-22 · OutcomeTracker schema lacks feedback-loop guardrails — calibration data at risk of circular validation bias ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: <pending-short-hash>.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `d5b9f40`.
 **Source:** Risk Review V8 — Risk: Feedback Loop Corruption. ADR-0035.
 **Priority:** P1 (Tier 1 — data integrity; must be resolved before T5-05 calibration logic is implemented).
 
@@ -1097,7 +1097,7 @@ independence timestamp is provided. Added guardrail-focused tests in
 
 ### T1-23 · No unified DataTrustLevel contract — external data sources emit ad-hoc trust signals not visible to governance ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: pending (set at merge).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `97dc41f`.
 **Source:** Architect Directive V8 — Decision 2 (Unified Data Health Check). ADR-0041.
 **Priority:** P0 (Tier 1 — data integrity; IMMEDIATE; Phase 8 integration blocked without this).
 
@@ -2643,7 +2643,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. ADR-0024.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2683,7 +2683,7 @@ python -m pytest -q
 
 ### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. ADR-0025.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2758,7 +2758,7 @@ python -m pytest -q
 
 ### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Master Risk Matrix — Risk #15 (Test Fixture Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2796,7 +2796,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 ### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2839,7 +2839,7 @@ python -m pytest -q   # count ≥ previous
 
 ### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2876,7 +2876,7 @@ python -m pytest -q
 
 ### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). ADR-0028.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2916,7 +2916,7 @@ python -m pytest -q
 
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). ADR-0029.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2995,7 +2995,7 @@ python -m pytest -q
 
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. ADR-0036.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
