@@ -538,9 +538,9 @@ test (set stop event; assert thread exits without waiting a full tick).
 
 ---
 
-### T4-15 · Weather updater thread has no explicit name — diagnostics parity gap 🔴 OPEN (independent)
+### T4-15 · Weather updater thread has no explicit name — diagnostics parity gap ✅ RESOLVED 2026-03-07 (independent)
 
-**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `4ddc184`.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P4. Cosmetic/diagnostic only. No correctness or safety impact.
 
@@ -558,17 +558,11 @@ this thread appears as `Thread-N` (auto-incremented integer). The Garmin (`"Garm
 and DailyCoach (`"DailyCoachRoutine"`) threads are already named. Weather and Telegram
 threads are the remaining gap.
 
-**Fix direction:**
-```python
-self._update_thread = threading.Thread(
-    target=self._background_update_worker,
-    args=(interval_hours,),
-    daemon=True,
-    name="WeatherUpdater",   # add this
-)
-```
-The canonical name `"WeatherUpdater"` is already used in T3-08 `worker_shutdown_timeout`
-events — this aligns the thread name with the event name for correlation.
+**Resolution:**
+- Added `name="WeatherUpdater"` to the background thread in
+  `start_background_updates()`.
+- Existing weather integration tests now assert the emitted shutdown-timeout event uses
+  `worker_name="WeatherUpdater"`, preserving diagnostics correlation.
 
 **Acceptance gate (binary):**
 ```bash
@@ -580,9 +574,9 @@ python -m pytest -q   # 100% green
 
 ---
 
-### T4-16 · Setup wizard prints duplicate Windows permission warning 🔴 OPEN (independent)
+### T4-16 · Setup wizard prints duplicate Windows permission warning ✅ RESOLVED 2026-03-07 (independent)
 
-**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `4ddc184`.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P4. UX/cosmetic. No correctness impact.
 
@@ -604,11 +598,11 @@ Note also: `ENV_PATH.chmod(...)` is called twice — once before the first block
 inside the else of the second block. The first call is on all platforms; the second is
 duplicated on non-Windows.
 
-**Fix direction:**
-- Merge the two `if os.name == "nt":` blocks into a single block.
-- Decide on one language for the warning (recommend English for consistency with the
-  rest of the wizard's fallback messages, or Greek if the wizard is fully localised).
-- Ensure `ENV_PATH.chmod()` is called exactly once on non-Windows, once total.
+**Resolution:**
+- Consolidated Windows permission messaging into a single `if os.name == "nt":` block
+  with one clear warning path.
+- Removed duplicate chmod/warning flow so `_save_env()` now has one permission update
+  and one Windows-specific warning branch.
 
 **Acceptance gate (binary):**
 ```bash
@@ -621,9 +615,9 @@ python -m pytest -q   # 100% green
 
 ---
 
-### T4-17 · Setup wizard modifies `.gitignore` at runtime — operational side effect 🔴 OPEN (independent)
+### T4-17 · Setup wizard modifies `.gitignore` at runtime — operational side effect ✅ RESOLVED 2026-03-07 (independent)
 
-**Status (2026-03-06):** ✅ RESOLVED. `_bg_worker()` now uses a single `Event.wait(timeout=float(interval_hours * 3600))` wait cycle while preserving immediate stop-event exit semantics. PR: TBD. `independent` — can be done in parallel with T1-15.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `4ddc184`.
 **Source:** Engineering Audit V4 (2026-03-05) — hidden debt item.
 **Priority:** P3. Operational side effect with blast radius on repository state.
 
@@ -654,20 +648,10 @@ if additions:
 3. **Idempotency**: The string check `if entry not in existing` is a substring match and
    may produce false negatives if the entry appears as part of a longer path.
 
-**Fix direction (preferred — remove runtime mutation):**
-- Remove the `.gitignore` write from `_save_env()` entirely.
-- These entries should be committed into `.gitignore` in the repository once (they
-  already should be, given T1-01 and the project's deployment model).
-- If wizard-time `.gitignore` management is genuinely needed, document it as an
-  explicit user-facing step ("Added `.env` to `.gitignore` — please commit this change")
-  rather than a silent file mutation.
-
-**Alternative (if runtime write must remain):**
-- Use `git rev-parse --show-toplevel` to find the actual repo root (not file-depth
-  heuristic).
-- Use line-by-line exact matching, not `in existing` substring.
-- Emit a `log.info("gitignore_updated", entries_added=additions)` instead of silent write.
-- Print an explicit note to the user: `"✅ Updated .gitignore — remember to commit it."`
+**Resolution:**
+- Removed runtime `.gitignore` mutation from setup wizard `_save_env()`.
+- Added regression coverage in `tests/titan/ui/test_setup_wizard.py` asserting wizard
+  execution does not create or modify `.gitignore`.
 
 **Acceptance gate (binary):**
 ```bash
@@ -1180,9 +1164,9 @@ python -m pytest -q
 
 ---
 
-### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
+### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `4ddc184`.
 **Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. AGENTS.md §16.8.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1196,16 +1180,16 @@ The `governance_outcomes` table does not record which algorithm versions were ac
 when a decision was made. Phase 9 calibration will train on a mixed-version dataset
 producing unreliable threshold estimates.
 
-**Fix direction (per AGENTS.md §16.8):**
+**Resolution:**
 
-1. Add `MODULE_VERSION = "1.0.0"` to all 26 science modules (initial pass — all start
-   at 1.0.0; future breaking changes increment MAJOR).
-2. Add `algorithm_version_snapshot TEXT` column to `governance_outcomes` via migration.
-3. Update `OutcomeTracker.record_decision()` to populate `algorithm_version_snapshot`
-   as JSON of active MODULE_VERSIONs.
-4. Create `tests/test_science_model_versions.py`:
-   - Import all science modules; assert `MODULE_VERSION` exists and is valid semver.
-   - Assert all 26 modules have a version constant (count check).
+1. Added `MODULE_VERSION = "1.0.0"` across all `titan/science/*.py` modules tracked by
+   the version-invariant test.
+2. Added `algorithm_version_snapshot` persistence support in
+   `governance_outcomes` (schema + writes/reads/updates) through `DatabaseManager`.
+3. Updated `OutcomeTracker` to capture and persist an algorithm-version snapshot with
+   each decision.
+4. Added `tests/test_science_model_versions.py` CI coverage to enforce
+   `MODULE_VERSION` presence and semver validity for every science module.
 
 **Acceptance gate (binary):**
 ```bash
@@ -1833,9 +1817,9 @@ When an item is completed, mark it here with date and PR reference:
 | T2-13 | ✅ RESOLVED | 2026-03-06 |
 | T3-09 | ✅ RESOLVED | 2026-03-06 |
 | T4-14 | ✅ RESOLVED | 2026-03-06 (PR: TBD) |
-| T4-15 | OPEN (independent) | — |
-| T4-16 | OPEN (independent) | — |
-| T4-17 | OPEN (independent) | — |
+| T4-15 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
+| T4-16 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
+| T4-17 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-18 | ✅ RESOLVED | 2026-03-06 |
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
@@ -1861,7 +1845,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-29 | OPEN (deferred Phase 8) | — |
-| T4-30 | OPEN (independent) | — (no closure commit; item remains open) |
+| T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
