@@ -60,6 +60,12 @@ class DummyDB:
     def get_cs_performances(self, limit: int = 10):
         return []
 
+    def record_sync_outcome(self, **kwargs):
+        self._last_sync_outcome = kwargs
+
+    def get_last_sync_outcome(self, source: str):
+        return None
+
 
 class MinimalCoachFactory:
     @staticmethod
@@ -731,6 +737,56 @@ def test_run_morning_routine_keeps_weather_recommendation_when_live():
     assert captured_payload["dew_point"] == 11
     assert "special_note" not in captured_payload
 
+
+
+
+def test_run_morning_routine_fresh_garmin_data_keeps_planned_session_type():
+    captured = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.db.get_last_sync_outcome = lambda source: {
+        "last_success_ts": datetime.now(),
+        "last_error_class": None,
+    }
+
+    def _governance_spy(session_plan, context):
+        captured["session_type_before_governance"] = session_plan["session_type"]
+        captured["garmin_data_stale"] = context.get("garmin_data_stale")
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(apply_constraints=_governance_spy, get_governance_report=lambda **_k: {})
+
+    assert coach.run_morning_routine() is True
+    assert captured["session_type_before_governance"] == "EASY"
+    assert captured["garmin_data_stale"] is False
+
+
+def test_run_morning_routine_stale_garmin_data_forces_easy_and_sets_context_flag(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    captured = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: {"session_type": "INTERVAL", "volume_pct": 1.0, "duration_min": 75, "distance_km": 12}
+    )
+    coach.db.get_last_sync_outcome = lambda source: {
+        "last_success_ts": datetime.now() - timedelta(hours=27),
+        "last_error_class": "GARMIN_TIMEOUT",
+    }
+
+    def _governance_spy(session_plan, context):
+        captured["session_type_before_governance"] = session_plan["session_type"]
+        captured["duration_before_governance"] = session_plan["duration_min"]
+        captured["garmin_data_stale"] = context.get("garmin_data_stale")
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(apply_constraints=_governance_spy, get_governance_report=lambda **_k: {})
+
+    assert coach.run_morning_routine() is True
+    assert captured["session_type_before_governance"] == "EASY"
+    assert captured["duration_before_governance"] == 45
+    assert captured["garmin_data_stale"] is True
+    assert any(event["action"] == "garmin_data_stale" for event in events)
 
 def test_run_morning_routine_boundary_empty_inputs_no_crash():
     coach = MinimalCoachFactory.build(telegram_success=True)

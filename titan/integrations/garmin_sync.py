@@ -358,7 +358,7 @@ class GarminSync:
             weight=weight,
             sleep=sleep,
             hrv=hrv,
-            hrv_sync_metrics=hrv_metrics,
+            hrv_sync_metrics=hrv_metrics
         ).to_payload()
         return payload
 
@@ -392,14 +392,14 @@ class GarminSync:
                 synced_days=int(self.last_hrv_sync_metrics.get("synced_days", 0)),
                 skipped_days=int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
             ).to_payload()
-            return {
-                "activities": [],
-                "weight": [],
-                "sleep": [],
-                "hrv": [],
-                "hrv_sync_metrics": hrv_metrics,
-                "status": "timeout_cancelled",
-            }
+            return GarminSyncResultContract(
+                activities=[],
+                weight=[],
+                sleep=[],
+                hrv=[],
+                hrv_sync_metrics=hrv_metrics,
+                status="timeout_cancelled",
+            ).to_payload()
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
 

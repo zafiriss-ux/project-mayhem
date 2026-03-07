@@ -31,6 +31,7 @@ class GarminSyncResult(TypedDict):
     sleep: list[Mapping[str, object]]
     hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
+    status: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -40,15 +41,19 @@ class GarminSyncResultContract:
     sleep: list[Mapping[str, object]]
     hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
+    status: str | None = None
 
     def to_payload(self) -> GarminSyncResult:
-        return {
+        payload: GarminSyncResult = {
             "activities": self.activities,
             "weight": self.weight,
             "sleep": self.sleep,
             "hrv": self.hrv,
             "hrv_sync_metrics": self.hrv_sync_metrics,
         }
+        if self.status is not None:
+            payload["status"] = self.status
+        return payload
 
 
 class TodaySessionPlan(TypedDict):
@@ -88,6 +93,7 @@ class DailyCoachContext(TypedDict):
     injury_flag: bool
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
+    garmin_data_stale: NotRequired[bool]
 
 
 @dataclass(frozen=True)
@@ -114,9 +120,10 @@ class DailyCoachContextContract:
     injury_flag: bool
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
+    garmin_data_stale: bool | None = None
 
     def to_payload(self) -> DailyCoachContext:
-        return {
+        payload: DailyCoachContext = {
             "db": self.db,
             "cs_tracker": self.cs_tracker,
             "afi_constraints": self.afi_constraints,
@@ -140,6 +147,10 @@ class DailyCoachContextContract:
             "priority_vector": self.priority_vector,
             "lock_thresholds": self.lock_thresholds,
         }
+        if self.garmin_data_stale is not None:
+            payload["garmin_data_stale"] = self.garmin_data_stale
+        return payload
+
 
 
 class DailyCoachingPayload(TypedDict):

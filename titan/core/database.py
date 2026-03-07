@@ -81,7 +81,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 class DatabaseManager:
@@ -356,6 +356,11 @@ class DatabaseManager:
                 "quality_flag (data sanity layer — ADR-0026 / T1-19)",
                 None,  # batch — see _apply_v3_migrations() below
             ),
+            4: (
+                "sync_metadata",
+                "Garmin sync outcome ledger (T1-20)",
+                None,  # DDL — see _apply_v4_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -390,6 +395,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 3,
                     "columns_added": "quality_flag (daily_metrics, training_log)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 4:
+            self._apply_v4_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 4,
+                    "table_created": "sync_metadata",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -455,6 +472,18 @@ class DatabaseManager:
                         "column": column_name,
                     })
                 )
+
+    def _apply_v4_migrations(self, cursor) -> None:
+        """Version 4: Garmin sync outcome metadata table (T1-20)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sync_metadata (
+                source TEXT PRIMARY KEY,
+                last_attempt_ts TEXT,
+                last_success_ts TEXT,
+                last_sync_ok INTEGER NOT NULL DEFAULT 0,
+                last_error_class TEXT
+            )
+        """)
 
     # --- BACKUP ---
 
@@ -1279,6 +1308,72 @@ class DatabaseManager:
             if clean is not None:
                 validated.append((date_str, clean))
         return validated
+
+    def record_sync_outcome(
+        self,
+        *,
+        source: str,
+        attempted_at: datetime,
+        success: bool,
+        error_class: str | None = None,
+    ) -> None:
+        """Persist latest sync attempt outcome for a source system."""
+        attempted_iso = attempted_at.astimezone(UTC).isoformat()
+        success_iso = attempted_iso if success else None
+
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """INSERT INTO sync_metadata (
+                        source,
+                        last_attempt_ts,
+                        last_success_ts,
+                        last_sync_ok,
+                        last_error_class
+                    ) VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(source) DO UPDATE SET
+                        last_attempt_ts = excluded.last_attempt_ts,
+                        last_success_ts = CASE
+                            WHEN excluded.last_sync_ok = 1 THEN excluded.last_success_ts
+                            ELSE sync_metadata.last_success_ts
+                        END,
+                        last_sync_ok = excluded.last_sync_ok,
+                        last_error_class = excluded.last_error_class""",
+                (source, attempted_iso, success_iso, 1 if success else 0, error_class),
+            )
+            self.conn.commit()
+
+    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
+        """Return latest sync outcome metadata for a source."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT last_attempt_ts, last_success_ts, last_sync_ok, last_error_class
+                   FROM sync_metadata WHERE source = ?""",
+                (source,),
+            )
+            row = cursor.fetchone()
+
+        if not row:
+            return None
+
+        attempted_at = None
+        success_at = None
+        if row[0]:
+            with suppress(ValueError, TypeError):
+                attempted_at = datetime.fromisoformat(row[0])
+        if row[1]:
+            with suppress(ValueError, TypeError):
+                success_at = datetime.fromisoformat(row[1])
+
+        return {
+            "last_attempt_ts": attempted_at,
+            "last_success_ts": success_at,
+            "last_sync_ok": bool(row[2]),
+            "last_error_class": row[3],
+        }
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         """Return a datetime representing the most recent data written by Garmin sync.

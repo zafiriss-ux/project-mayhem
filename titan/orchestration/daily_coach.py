@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+from titan.config.thresholds import GARMIN_DATA_MAX_AGE_HOURS
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -322,6 +323,42 @@ class DailyCoach:
                     error_message=str(alert_exc),
                 )
 
+        sync_status = str(garmin_data.get("status", "ok"))
+        sync_ok = sync_status != "timeout_cancelled"
+        sync_error_class = "GARMIN_TIMEOUT" if not sync_ok else None
+        self.db.record_sync_outcome(
+            source="garmin",
+            attempted_at=datetime.now(tz=UTC),
+            success=sync_ok,
+            error_class=sync_error_class,
+        )
+
+        garmin_data_stale = False
+        garmin_sync_state = self.db.get_last_sync_outcome("garmin") or {}
+        last_success_ts = garmin_sync_state.get("last_success_ts")
+        if isinstance(last_success_ts, datetime):
+            hours_since_success = (datetime.now(tz=UTC) - last_success_ts.astimezone(UTC)).total_seconds() / 3600
+            if hours_since_success > GARMIN_DATA_MAX_AGE_HOURS:
+                garmin_data_stale = True
+                _daily_coach_event(
+                    "garmin_data_stale",
+                    severity="CRITICAL",
+                    hours_since_last_success=round(hours_since_success, 2),
+                    max_age_hours=GARMIN_DATA_MAX_AGE_HOURS,
+                    last_error_class=garmin_sync_state.get("last_error_class"),
+                )
+                try:
+                    self.telegram.send_alert(
+                        "⚠️ Garmin data is stale (>26h since last successful sync). "
+                        "Training prescription is conservative (EASY maintenance)."
+                    )
+                except Exception as alert_exc:
+                    _daily_coach_event(
+                        "garmin_staleness_alert_failed",
+                        error_class=type(alert_exc).__name__,
+                        error_message=str(alert_exc),
+                    )
+
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
         def _step3_feed_hrv_hrr() -> None:
             if garmin_data.get('hrv'):
@@ -493,6 +530,9 @@ class DailyCoach:
         # Capture session type before governance modifies it (for outcome tracking)
         _session_planned = str(today_session.get('session_type', 'EASY')).upper()
 
+        if garmin_data_stale:
+            today_session = {**today_session, "session_type": "EASY", "duration_min": min(int(today_session.get("duration_min", 45)), 45)}
+
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
         startup_hydration_confidence = getattr(
@@ -526,6 +566,7 @@ class DailyCoach:
                 sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else None
             ),
             persistence_degraded=persistence_degraded,
+            garmin_data_stale=garmin_data_stale,
         )
         self._startup_confidence_applies_next_routine = False
 
@@ -536,6 +577,7 @@ class DailyCoach:
                 "data_confidence_low": bool(
                     sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else False
                 ),
+                "garmin_data_stale": garmin_data_stale,
             },
             alert_fn=lambda msg: self.telegram.send_alert(msg),
         )
@@ -761,6 +803,7 @@ class DailyCoach:
         lock_thresholds: dict[str, Any],
         data_confidence_low: bool | None = None,
         persistence_degraded: bool = False,
+        garmin_data_stale: bool | None = None,
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
         payload = DailyCoachContextContract(
@@ -786,6 +829,7 @@ class DailyCoach:
             injury_flag=injury_flag,
             priority_vector=priority_vector,
             lock_thresholds=lock_thresholds,
+            garmin_data_stale=garmin_data_stale,
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low
