@@ -30,6 +30,9 @@ BOUNDS: dict[str, tuple[float, float]] = {
     "glycogen_debt":  (0.0, 20.0),    # negative impossible; >7 = fueling lock threshold
     "temperature_c":  (-40.0, 55.0),  # operational climate range
     "dew_point_c":    (-40.0, 40.0),  # operational dew-point range
+    "weight_kg":      (25.0, 300.0),  # physiological plausibility for adult athlete mass
+    "sleep_hours":    (0.0, 16.0),    # daily sleep duration guardrail
+    "training_load":  (0.0, 2500.0),  # sRPE-based daily load plausibility ceiling
 }
 
 

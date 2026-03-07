@@ -826,9 +826,9 @@ significantly harder to diagnose.
 **Rule:** Work one subsystem at a time. Do not attempt to fix all broad `except` handlers
 simultaneously — each subsystem needs its own error taxonomy review and test update.
 
-### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates 🟢 RESOLVED
+### T1-18 · No physiological bounds validation — impossible sensor values flow into governance gates ✅ RESOLVED 2026-03-07
 
-**Status:** RESOLVED (2026-03-06).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: pending.
 **Source:** Master Risk Matrix — Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06. ADR-0023.
 **Priority:** P1 (Tier 1 — safety critical). Data integrity.
 
@@ -862,6 +862,11 @@ python -m pytest -q                                        # count ≥ previous
 ```
 
 **Effort:** ~3h. New module + DB integration + tests.
+
+**Resolution update (2026-03-07):** Extended the physiological input contract to the
+remaining consumed DB→engine fields (`weight_kg`, `training_load`, `sleep_hours`) and
+validated same-day Garmin physiological payload values in `DailyCoach._persist_garmin_data()`
+before readiness/governance/planning consumption; added focused regression coverage.
 
 ---
 
@@ -3614,7 +3619,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-18 | ✅ RESOLVED | 2026-03-06 |
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
-| T1-18 | ✅ RESOLVED | 2026-03-06 |
+| T1-18 | ✅ RESOLVED | 2026-03-07 |
 | T1-19 | ✅ RESOLVED | 2026-03-06 |
 | T1-20 | OPEN (independent) | — |
 | T2-14 | OPEN (independent, after Tier 1) | — |

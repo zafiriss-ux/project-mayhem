@@ -183,8 +183,19 @@ def test_mixed_valid_and_invalid_fields():
 
 
 def test_bounds_covers_required_fields():
-    required = {"hrv_ms", "rhr_bpm", "ctl", "atl", "acwr", "glycogen_debt",
-                "temperature_c", "dew_point_c"}
+    required = {
+        "hrv_ms",
+        "rhr_bpm",
+        "ctl",
+        "atl",
+        "acwr",
+        "glycogen_debt",
+        "temperature_c",
+        "dew_point_c",
+        "weight_kg",
+        "sleep_hours",
+        "training_load",
+    }
     assert required.issubset(set(BOUNDS.keys()))
 
 
@@ -289,5 +300,47 @@ def test_get_ctl_atl_tsb_with_normal_load(tmp_path):
     ctl, atl, tsb = db.get_ctl_atl_tsb()
     assert BOUNDS["ctl"][0] <= ctl <= BOUNDS["ctl"][1]
     assert BOUNDS["atl"][0] <= atl <= BOUNDS["atl"][1]
+
+    db.close()
+
+
+def test_get_weight_history_filters_extreme_artefact_values(tmp_path):
+    """Extreme weight artefacts are nulled and removed from DB read path output."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_weight_bounds.db", db_dir=tmp_path)
+
+    db.save_daily_metric(date="2026-01-01", weight=72.0)
+    db.save_daily_metric(date="2026-01-02", weight=900.0)  # extreme artefact
+
+    rows = db.get_weight_history(days=30)
+    dates = [r[0] for r in rows]
+
+    assert "2026-01-01" in dates
+    assert "2026-01-02" not in dates
+
+    db.close()
+
+
+def test_get_training_load_history_clamps_mild_outlier(tmp_path):
+    """Slightly out-of-bounds training load is clamped and retained."""
+    import datetime
+
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_training_load_bounds.db", db_dir=tmp_path)
+
+    today = datetime.date.today().isoformat()
+    db.save_session(
+        date=today,
+        session_type="RACE",
+        distance_km=42.2,
+        duration_sec=18000,
+        rpe=9,
+    )
+
+    rows = db.get_training_load_history(days=30)
+    assert len(rows) == 1
+    assert rows[0][1] == pytest.approx(BOUNDS["training_load"][1])
 
     db.close()
