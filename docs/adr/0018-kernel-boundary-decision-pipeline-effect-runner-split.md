@@ -3,8 +3,8 @@
 **Date:** 2026-03-05
 **Branch:** `claude/kernel-boundary-pipeline-split-gH04T`
 **Type:** Architectural Decision + Implementation Plan
-**Status:** PROPOSED
-**Scope:** Phase A (Surgical — current sprint) + Phase B (Structural — next sprint)
+**Status:** Accepted — Phase A implemented (v5.8.0); Phase B accepted 2026-03-07
+**Scope:** Phase A (Surgical — implemented) + Phase B (Structural — scoped, next sprint)
 **Supersedes:** N/A
 **Related:** ADR-0017 (Composition Root & DailyCoach Architecture Audit)
 
@@ -91,7 +91,7 @@ reorganisation). Phase B is structural (explicit pipeline split).
 
 ## Implementation Plan
 
-### Phase A — Surgical Fixes (current sprint, mandatory before Phase 8)
+### Phase A — Surgical Fixes ✅ Implemented (v5.8.0)
 
 **Execution order is strict (CLAUDE.md Rule E1):**
 
@@ -197,44 +197,91 @@ Whichever approach is chosen, the invariant is:
 
 ### Phase B — Decision/Effect Separation (next sprint)
 
-**Status:** Accepted (design only). No implementation in current sprint.
+**Status:** Accepted 2026-03-07. Scoped implementation plan below. No implementation in current sprint.
 
-#### Task B1 — `DecisionResult` dataclass
+**Scope note:** B3 (deterministic replay) from the original design is not a separate
+implementation task — it is an architectural consequence of `_decision_pipeline()` being
+pure. It requires no code beyond B1 and B2 and is noted here as an invariant, not a task.
 
-New typed object returned by the decision pipeline:
+---
+
+#### Task B1 — `PlannedEffect` + `DecisionResult` in `contracts.py`
+
+**File:** `titan/orchestration/contracts.py`
+
+Add two new types. `PlannedEffect` must be defined before `DecisionResult`.
 
 ```python
-@dataclass
+@dataclass(frozen=True)
+class PlannedEffect:
+    """A single side-effect to be executed by the Effect Runner.
+
+    effect_type discriminant values (exhaustive):
+      'persist_garmin'  — write Garmin sync data to DB
+      'send_telegram'   — deliver coaching briefing via Telegram
+      'update_schedule' — update next-session schedule entry
+    """
+    effect_type: str                        # discriminant (see docstring)
+    payload: Mapping[str, object]           # effect-specific data, frozen at decision time
+
+
+@dataclass(frozen=True)
 class DecisionResult:
-    session_plan: TodaySessionPlan           # post-governance recommendation
-    coaching_payload: DailyCoachingPayload   # Telegram delivery content
-    planned_effects: list[PlannedEffect]     # ordered list of effects to execute
-    decision_trace: dict                     # forensic replay data
-    snapshot_at: datetime                    # timestamp of state snapshot
+    """Immutable output of the Decision Pipeline.
+
+    Invariant: constructed without executing any side-effects.
+    The same DecisionResult can be replayed against any EffectRunner.
+    """
+    session_plan: TodaySessionPlan          # post-governance recommendation
+    coaching_payload: DailyCoachingPayload  # Telegram delivery content
+    planned_effects: tuple[PlannedEffect, ...]  # ordered effects (tuple — immutable)
+    decision_trace: Mapping[str, object]    # forensic replay data (frozen dict)
+    snapshot_at: str                        # ISO-8601 timestamp of state snapshot
 ```
 
-Location: `titan/orchestration/contracts.py` (existing typed contract file).
+Implementation notes:
+- Use `tuple[PlannedEffect, ...]` not `list` — `DecisionResult` is `frozen=True`;
+  mutable fields are prohibited.
+- `decision_trace` captures the governance gate outputs and key input values at
+  decision time. Minimum fields: `hrv`, `tsb`, `acwr`, `lock_codes_active`.
+- `snapshot_at` is a plain ISO-8601 string (not `datetime`) to keep the dataclass
+  trivially serialisable without a custom JSON encoder.
 
-#### Task B2 — Refactor `run_morning_routine()` into two phases
+---
+
+#### Task B2 — Refactor `run_morning_routine()` into `_decision_pipeline()` + `_effect_runner()`
+
+**File:** `titan/orchestration/daily_coach.py`
 
 ```python
 def run_morning_routine(self, ...):
-    # Phase 1: Decision Pipeline (pure — no DB writes, no Telegram)
-    result = self._decision_pipeline(...)    # returns DecisionResult
+    # Phase 1: Decision Pipeline (pure — no DB writes, no Telegram sends)
+    result: DecisionResult = self._decision_pipeline(...)
 
-    # Phase 2: Effect Runner (serialized — all side-effects here)
-    self._effect_runner(result)              # executes planned_effects in order
+    # Phase 2: Effect Runner (serialized — all side-effects here, in order)
+    self._effect_runner(result)
 ```
 
-`_decision_pipeline()` is pure: reads DB state, runs governance, returns `DecisionResult`.
-`_effect_runner()` consumes `DecisionResult.planned_effects` in order: DB writes →
-Telegram send → schedule updates.
+**`_decision_pipeline()` contract (strict):**
+- Reads DB state, weather, and Garmin data (reads are permitted).
+- Runs all 12 coaching steps up to and including governance evaluation.
+- Returns a `DecisionResult` with `planned_effects` populated in execution order.
+- **Prohibited:** any `db.save_*`, any `telegram.*`, any `self.db.transaction()`.
+- Violation of the no-side-effect invariant is a P0 defect — not a warning.
 
-#### Task B3 — Deterministic replay
+**`_effect_runner()` contract (strict):**
+- Accepts a `DecisionResult` and iterates `planned_effects` in order.
+- Dispatches on `PlannedEffect.effect_type`:
+  - `'persist_garmin'` → calls `self._persist_garmin_data(...)`
+  - `'send_telegram'`  → calls `self.telegram.send_message(...)`
+  - `'update_schedule'` → updates next-session scheduler state
+- All DB writes remain inside `self.db.transaction()` (A3 invariant preserved).
+- Shutdown-safe: `_routine_thread.join()` already guards this path (A2 invariant).
 
-Because `_decision_pipeline()` is pure, the same state snapshot produces the same
-`DecisionResult`. This enables forensic debugging: re-run the pipeline with a saved
-snapshot to reproduce past decisions.
+**Replay invariant (consequence of purity):**
+A saved `DecisionResult` (JSON-serialisable by construction) can be re-fed to any
+`_effect_runner()` instance to reproduce or audit past decisions. No additional code
+is required for this capability — it is automatic when `_decision_pipeline()` is pure.
 
 ---
 
@@ -268,6 +315,81 @@ concern. No action required now.
 - `titan/main.py` composition root is unchanged — ADR-0017 assessment stands.
 - `DailyCoach` remains the central orchestrator — no microservice decomposition.
 - The lifecycle supervisor pattern (ADR-0017 Finding 2) remains a Phase 9 concern.
+
+---
+
+## Acceptance Criteria — Phase B
+
+| # | Criterion | Verification |
+|---|-----------|-------------|
+| B1.1 | `PlannedEffect` and `DecisionResult` present in `titan/orchestration/contracts.py` with exact field signatures | Code review |
+| B1.2 | `DecisionResult.planned_effects` is `tuple[PlannedEffect, ...]` (immutable) | Code review; `frozen=True` dataclass |
+| B1.3 | `ruff check .` zero findings after B1 | `ruff check .` |
+| B1.4 | Full test suite green after B1 | `python -m pytest -q` |
+| B2.1 | `run_morning_routine()` delegates to `_decision_pipeline()` then `_effect_runner()` | Code review |
+| B2.2 | `_decision_pipeline()` contains zero calls to `db.save_*`, `telegram.*`, or `self.db.transaction()` | `grep -n "save_\|telegram\.\|transaction" titan/orchestration/daily_coach.py` → zero hits inside `_decision_pipeline` |
+| B2.3 | `_effect_runner()` dispatches all three `effect_type` values | Code review + unit test |
+| B2.4 | `_persist_garmin_data()` remains inside `self.db.transaction()` (A3 invariant preserved) | Code review |
+| B2.5 | `ruff check .` zero findings after B2 | `ruff check .` |
+| B2.6 | Full test suite green after B2 | `python -m pytest -q` |
+| ALL | `python -m pytest -q -W error::pytest.PytestWarning` zero warnings | Gate 2 |
+| ALL | Full suite green, count ≥ 1791 | Gate 3 |
+
+---
+
+## Test Matrix — Phase B
+
+### B1 Tests — `tests/titan/orchestration/test_contracts.py`
+
+Create this file if it does not exist.
+
+| Test name | Scenario | Assert |
+|-----------|----------|--------|
+| `test_planned_effect_is_frozen` | Attempt to mutate a `PlannedEffect` field | `FrozenInstanceError` raised |
+| `test_decision_result_is_frozen` | Attempt to mutate a `DecisionResult` field | `FrozenInstanceError` raised |
+| `test_decision_result_planned_effects_is_tuple` | Construct `DecisionResult` with a tuple of effects | `isinstance(result.planned_effects, tuple)` |
+| `test_planned_effect_discriminants_are_strings` | Construct one of each `effect_type` | `effect_type in {'persist_garmin', 'send_telegram', 'update_schedule'}` |
+
+### B2 Tests — `tests/titan/orchestration/test_daily_coach.py`
+
+Add to the existing file.
+
+| Test name | Scenario | Assert |
+|-----------|----------|--------|
+| `test_decision_pipeline_returns_decision_result` | Call `_decision_pipeline()` with a mocked DailyCoach context | Return type is `DecisionResult` |
+| `test_decision_pipeline_no_side_effects` | Patch `db.save_daily_metric` and `telegram.send_message` to record calls; call `_decision_pipeline()` | Neither mock is called |
+| `test_effect_runner_dispatches_persist_garmin` | Pass `DecisionResult` with `persist_garmin` effect | `_persist_garmin_data` called once |
+| `test_effect_runner_dispatches_send_telegram` | Pass `DecisionResult` with `send_telegram` effect | `telegram.send_message` called once |
+| `test_effect_runner_effects_execute_in_order` | Pass `DecisionResult` with effects `[persist_garmin, send_telegram]` | Calls recorded in that order |
+| `test_run_morning_routine_delegates_pipeline_then_runner` | Patch `_decision_pipeline` and `_effect_runner`; call `run_morning_routine()` | Pipeline called first, runner called with its return value |
+
+**Implementation note:** Use `unittest.mock.patch.object` throughout. The no-side-effect
+test (`test_decision_pipeline_no_side_effects`) is the critical invariant test — it must
+fail (not skip) if any save or send call is detected inside `_decision_pipeline()`.
+
+---
+
+## Files Affected by Phase B Implementation
+
+| File | Task | Change |
+|------|------|--------|
+| `titan/orchestration/contracts.py` | B1 | Add `PlannedEffect` + `DecisionResult` dataclasses |
+| `titan/orchestration/daily_coach.py` | B2 | Add `_decision_pipeline()` + `_effect_runner()`; refactor `run_morning_routine()` |
+| `tests/titan/orchestration/test_contracts.py` | B1 | New file — 4 tests for type invariants |
+| `tests/titan/orchestration/test_daily_coach.py` | B2 | 6 new tests (pipeline purity + runner dispatch + ordering) |
+
+---
+
+## Commit Convention — Phase B
+
+One commit per task:
+
+| Task | Commit message suffix |
+|------|-----------------------|
+| B1 | `ref ADR-0018-B1` |
+| B2 | `ref ADR-0018-B2` |
+
+Each commit must include both the production code change and its tests.
 
 ---
 
