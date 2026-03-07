@@ -901,9 +901,9 @@ persist time. Test suite: 1626 passed, 1 skipped as of closure. ruff: 0 findings
 
 ---
 
-### T1-20 · Garmin connectivity failure has no staleness gate — DailyCoach silently operates on stale data 🔴 OPEN (independent)
+### T1-20 · Garmin connectivity failure has no staleness gate — DailyCoach silently operates on stale data ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 92f7961 (merged via PR #302 in e79ecb7).
 **Source:** Risk Review V7 — Risk: External Dependency Fragility (SPOF). Architecture Review 2026-03-06. ADR-0030.
 **Priority:** P1 (Tier 1 — data integrity).
 
@@ -3654,7 +3654,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
 | T1-18 | ✅ RESOLVED | 2026-03-07 |
 | T1-19 | ✅ RESOLVED | 2026-03-07 |
-| T1-20 | OPEN (independent) | — |
+| T1-20 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T2-14 | OPEN (independent, after Tier 1) | — |
 | T2-15 | OPEN (after T1-20) | — |
 | T4-21 | OPEN (independent) | — |
