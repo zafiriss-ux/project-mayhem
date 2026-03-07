@@ -25,6 +25,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
+from titan.config import thresholds
 from titan.config.evidence_registry import get_evidence
 from titan.core.database import DatabaseManager
 
@@ -75,6 +76,10 @@ class GovernanceDecision:
     outcome_completed: bool | None = None
     outcome_session_type_actual: str | None = None
     outcome_notes: str | None = None
+    decision_was_followed: bool = True
+    override_outcome_exclusion: bool = False
+    outcome_independence_ok: bool = True
+    algorithm_version_snapshot: dict[str, str] | None = None
 
 
 def _classify_lock_cause(
@@ -113,6 +118,32 @@ def _classify_lock_cause(
         return "DATA_PROBLEM"
 
     return "TRAINING_LOGIC"
+
+def _parse_iso_date(value: str) -> datetime | None:
+    """Return parsed YYYY-MM-DD date or None when invalid."""
+    try:
+        return datetime.strptime(value, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def _outcome_is_independent(decision_date: str, outcome_date: str) -> bool:
+    """Independence guardrail: reuse only outcomes outside confounding window."""
+    decision_dt = _parse_iso_date(decision_date)
+    outcome_dt = _parse_iso_date(outcome_date)
+    if decision_dt is None or outcome_dt is None:
+        return False
+    delta_days = (outcome_dt.date() - decision_dt.date()).days
+    return delta_days >= thresholds.OUTCOME_INDEPENDENCE_WINDOW_DAYS
+
+
+def _algorithm_version_snapshot() -> dict[str, str]:
+    """Version snapshot stub for calibration provenance (T1-22)."""
+    return {
+        "governance_engine": "UNKNOWN",
+        "adaptive_priority_lock": "UNKNOWN",
+        "outcome_tracker": "builtin",
+    }
 
 
 class OutcomeTracker:
@@ -230,6 +261,8 @@ class OutcomeTracker:
         completed: bool | None = None,
         actual_session_type: str | None = None,
         notes: str | None = None,
+        decision_was_followed: bool | None = None,
+        outcome_date: str | None = None,
     ) -> bool:
         """
         Attach post-session outcome to the recorded decision for that date.
@@ -248,22 +281,40 @@ class OutcomeTracker:
                     actual_session_type is not None
                     and actual_session_type.upper() != decision.session_post_governance.upper()
                 )
-
-                _log.info(
-                    json.dumps(
-                        {
-                            "outcome_tracker": "outcome_recorded",
-                            "date": date,
-                            "session_post_governance": decision.session_post_governance,
-                            "actual_session": actual_session_type,
-                            "athlete_deviated": athlete_deviated,
-                            "rpe": rpe,
-                            "completed": completed,
-                            "locks_applied": decision.locks_applied,
-                        },
-                        default=str,
+                followed = not athlete_deviated if decision_was_followed is None else decision_was_followed
+                effective_outcome_date = outcome_date or date
+                independence_ok = (
+                    True
+                    if outcome_date is None
+                    else _outcome_is_independent(
+                        decision_date=decision.date,
+                        outcome_date=effective_outcome_date,
                     )
                 )
+                override_exclusion = not followed
+
+                decision.decision_was_followed = bool(followed)
+                decision.override_outcome_exclusion = override_exclusion
+                decision.outcome_independence_ok = independence_ok
+                decision.algorithm_version_snapshot = _algorithm_version_snapshot()
+
+                event = {
+                    "outcome_tracker": "outcome_recorded",
+                    "date": date,
+                    "session_post_governance": decision.session_post_governance,
+                    "actual_session": actual_session_type,
+                    "athlete_deviated": athlete_deviated,
+                    "decision_was_followed": decision.decision_was_followed,
+                    "override_outcome_exclusion": decision.override_outcome_exclusion,
+                    "outcome_independence_ok": decision.outcome_independence_ok,
+                    "outcome_date": effective_outcome_date,
+                    "rpe": rpe,
+                    "completed": completed,
+                    "locks_applied": decision.locks_applied,
+                }
+                if not independence_ok or override_exclusion:
+                    _log.warning(json.dumps({**event, "outcome_tracker": "outcome_guardrail_activated"}, default=str))
+                _log.info(json.dumps(event, default=str))
                 if self._db is not None:
                     self._db.update_governance_outcome(
                         date=date,
@@ -271,6 +322,10 @@ class OutcomeTracker:
                         completed=completed,
                         actual_session_type=actual_session_type,
                         notes=notes,
+                        decision_was_followed=decision.decision_was_followed,
+                        override_outcome_exclusion=decision.override_outcome_exclusion,
+                        outcome_independence_ok=decision.outcome_independence_ok,
+                        algorithm_version_snapshot=decision.algorithm_version_snapshot,
                     )
                 return True
 
@@ -327,7 +382,13 @@ class OutcomeTracker:
         This is a Phase-5 calibration primitive used to identify which gates
         are most strongly associated with session success/failure.
         """
-        decided = [d for d in self._decisions if d.outcome_completed is not None]
+        decided = [
+            d
+            for d in self._decisions
+            if d.outcome_completed is not None
+            and d.outcome_independence_ok
+            and not d.override_outcome_exclusion
+        ]
         if not decided:
             return {}
 
@@ -381,6 +442,11 @@ class OutcomeTracker:
         """
         n_total = len(self._decisions)
         decided = [d for d in self._decisions if d.outcome_completed is not None]
+        reusable = [
+            d
+            for d in decided
+            if d.outcome_independence_ok and not d.override_outcome_exclusion
+        ]
         n_with_outcome = len(decided)
 
         if n_with_outcome == 0:
@@ -393,28 +459,31 @@ class OutcomeTracker:
                 ),
             }
 
-        n_locked = sum(1 for d in decided if not d.governance_clean)
-        n_completed = sum(1 for d in decided if d.outcome_completed)
+        n_locked = sum(1 for d in reusable if not d.governance_clean)
+        n_completed = sum(1 for d in reusable if d.outcome_completed)
         n_deviated = sum(
             1
-            for d in decided
+            for d in reusable
             if d.outcome_session_type_actual
             and d.outcome_session_type_actual.upper() != d.session_post_governance.upper()
         )
-        rpe_values = [d.outcome_rpe for d in decided if d.outcome_rpe is not None]
+        rpe_values = [d.outcome_rpe for d in reusable if d.outcome_rpe is not None]
         avg_rpe = round(sum(rpe_values) / len(rpe_values), 1) if rpe_values else None
 
-        lock_rate = round(n_locked / n_with_outcome, 3)
-        completion_rate = round(n_completed / n_with_outcome, 3)
-        athlete_override_rate = round(n_deviated / n_with_outcome, 3)
+        n_reusable = len(reusable)
+        lock_rate = round(n_locked / n_reusable, 3) if n_reusable else None
+        completion_rate = round(n_completed / n_reusable, 3) if n_reusable else None
+        athlete_override_rate = round(n_deviated / n_reusable, 3) if n_reusable else None
 
-        calibration_ready = n_with_outcome >= 30
+        calibration_ready = n_reusable >= max(30, thresholds.CALIBRATION_MIN_OUTCOME_COUNT)
         lock_outcome_correlation = self.get_lock_outcome_correlation()
 
         return {
             "status": "CALIBRATION_AVAILABLE" if calibration_ready else "ACCUMULATING",
             "n_decisions": n_total,
             "n_with_outcome": n_with_outcome,
+            "n_reusable_outcomes": n_reusable,
+            "n_excluded_outcomes": n_with_outcome - n_reusable,
             "governance_lock_rate": lock_rate,
             "completion_rate": completion_rate,
             "athlete_override_rate": athlete_override_rate,
@@ -430,9 +499,9 @@ class OutcomeTracker:
             "calibration_note": (
                 "Ready for threshold calibration review."
                 if calibration_ready
-                else f"Accumulate {30 - n_with_outcome} more outcome-paired sessions "
-                f"before interpreting rates. Thresholds are policy heuristics until "
-                f"at least 30 correlated outcomes exist."
+                else f"Accumulate {max(30, thresholds.CALIBRATION_MIN_OUTCOME_COUNT) - n_reusable} more reusable "
+                f"outcome-paired sessions before interpreting rates. Outcomes with "
+                f"override or failed independence checks are excluded from calibration reuse."
             ),
         }
 

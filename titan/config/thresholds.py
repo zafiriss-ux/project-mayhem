@@ -29,3 +29,8 @@ STALE_DATA_HARD_CEILING_HOURS = 72  # Emit data_confidence_low advisory (T2-10 m
 
 # Garmin source freshness gate — T1-20 / ADR-0030.
 GARMIN_DATA_MAX_AGE_HOURS = 26
+
+# OutcomeTracker feedback-loop guardrails — ADR-0035 / T1-22.
+OUTCOME_INDEPENDENCE_WINDOW_DAYS = 2
+CALIBRATION_MAX_THRESHOLD_DELTA_PCT = 0.10
+CALIBRATION_MIN_OUTCOME_COUNT = 10

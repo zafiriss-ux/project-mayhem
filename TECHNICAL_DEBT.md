@@ -170,7 +170,7 @@ without any warning.
 
 **Location:** `titan/core/database.py` — `_run_migrations()`
 
-**Problem:** `contextlib.suppress(Exception)` on `ALTER TABLE` statements is correct for
+**Original state (pre-fix):** `contextlib.suppress(Exception)` on `ALTER TABLE` statements is correct for
 "column already exists" (SQLite raises `OperationalError` in that case), but it also
 swallows any *other* failure silently — including schema corruption, disk errors, or
 permission issues. You cannot distinguish "already migrated" from "migration silently
@@ -254,7 +254,7 @@ PR: TBD.
 
 **Location:** `titan/core/database.py` — `DatabaseManager`
 
-**Problem:** `DatabaseManager` uses a single shared SQLite connection with
+**Original state (pre-fix):** `DatabaseManager` uses a single shared SQLite connection with
 `check_same_thread=False` and a `threading.Lock` guarding writes only. Read paths
 (e.g., `get_training_load_history()`, `get_governance_decisions()`) are not
 lock-guarded. Additionally, `close()` closes the shared connection without
@@ -295,7 +295,7 @@ PR: TBD.
 
 **Location:** `titan/orchestration/daily_coach.py` — `run_morning_routine_async()`
 
-**Problem:** `run_morning_routine_async()` spawns a new daemon thread on every call
+**Original state (pre-fix):** `run_morning_routine_async()` spawns a new daemon thread on every call
 with no deduplication, serialisation, or job-tracking. If the scheduler retries or a
 manual trigger arrives while a routine is already running, two (or more) concurrent
 executions of the 12-step morning routine proceed simultaneously. This causes:
@@ -329,7 +329,7 @@ degraded mode path; alert failure itself is caught and emits
 
 **Location:** `titan/orchestration/daily_coach.py` — `_get_baseline_rhr()`
 
-**Problem:** `_get_baseline_rhr()` wraps all logic in a bare `except Exception: return 50.0`.
+**Original state (pre-fix):** `_get_baseline_rhr()` wraps all logic in a bare `except Exception: return 50.0`.
 If the DB query fails, the schema is wrong, or data is corrupt, the system silently
 proceeds with a synthetic RHR baseline of 50.0 bpm. This synthetic value flows into
 H3 governance gate (RHR delta hard stop). A real RHR of 70 bpm against a synthetic
@@ -364,7 +364,7 @@ tests green. PR: TBD.
 
 **Location:** `titan/integrations/weather_api.py` — API failure fallback path
 
-**Problem:** On weather API failure, the integration fabricates current and forecast
+**Original state (pre-fix):** On weather API failure, the integration fabricates current and forecast
 data and caches the synthetic values. This fabricated data flows into
 `OptimalTimeCalculator` recommendations (dew point, temperature windows). The
 orchestration and UI delivery layers receive no signal that the underlying data is
@@ -552,7 +552,7 @@ inside lock), closing the close-race window identified in Engineering Audit V3.
 `log_override()`, `save_governance_decision()`, `update_governance_outcome()`,
 `annotate_governance_outcome()`
 
-**Problem:** These 6 write methods were not in the original T1-10 scope but carry the
+**Original state (pre-fix):** These 6 write methods were not in the original T1-10 scope but carry the
 identical cursor race: `cursor = self.conn.cursor()` is called **before** `with self._lock:`.
 If `db.close()` runs concurrently, a cursor is created on a closed connection. The 4
 governance-path methods (`save_governance_decision`, `update_governance_outcome`,
@@ -603,7 +603,7 @@ must pass first.
 **Location:** `titan/core/database.py` — `create_database()`, `save_session()`; and
 `titan/orchestration/daily_coach.py` — `_persist_garmin_data()`
 
-**Problem:** `training_log` has no stable external identity column for Garmin-sourced
+**Original state (pre-fix):** `training_log` has no stable external identity column for Garmin-sourced
 activities. `save_session()` uses a plain `INSERT`, with no deduplication guard.
 Trigger scenarios that produce duplicate rows:
 1. Re-run sync over an overlapping date window (e.g., retry after timeout)
@@ -666,7 +666,7 @@ python -m pytest -q -W error::pytest.PytestWarning  # 100% green
 **Location:** `titan/orchestration/daily_coach.py` — `_persist_garmin_data()` and
 `run_morning_routine()` step 2 + `GovernanceEngine` intensity path.
 
-**Problem:**
+**Original state (pre-fix):**
 
 When `_persist_garmin_data()` catches a transaction failure (DB write fails, transaction
 rolls back correctly per T1-12), it:
@@ -734,7 +734,7 @@ and contract type.
 
 **Location:** `titan/core/database.py` — `_run_migrations()`
 
-**Problem:**
+**Original state (pre-fix):**
 
 `_run_migrations()` uses `sqlite3.OperationalError` suppression to detect "column already
 exists" (T1-03 fixed the bare `except Exception` form). However, there is no schema version
@@ -780,7 +780,7 @@ python -m pytest -q                                    # 100% green, count ≥ p
 
 **Location:** `titan/core/database.py` — `DatabaseManager`
 
-**Problem:**
+**Original state (pre-fix):**
 
 `titan.db` is a single SQLite file with no backup strategy. A disk event, accidental
 deletion, or filesystem corruption means complete loss of the athlete's training history —
@@ -834,7 +834,7 @@ simultaneously — each subsystem needs its own error taxonomy review and test u
 
 **Location:** `titan/science/` (new module) + `titan/core/database.py` (`get_daily_metrics`, `get_training_load_history`).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Science engines receive values sourced from Garmin sync → SQLite → engine hydration with
 no systematic bounds check. Three known failure modes:
@@ -909,7 +909,7 @@ persist time. Test suite: 1626 passed, 1 skipped as of closure. ruff: 0 findings
 
 **Location:** `titan/orchestration/daily_coach.py` (Step 2 — data hydration), `titan/integrations/garmin_sync.py` (sync outcome recording), `titan/core/database.py` (sync metadata storage), `titan/config/thresholds.py` (new constants).
 
-**Problem:**
+**Original state (pre-fix):**
 
 If the Garmin Connect API becomes unavailable (auth failure, library breaking change,
 network error), the Garmin sync daemon logs the error but does not set any
@@ -1020,15 +1020,15 @@ Final gate snapshot at closure: 1652 tests passing.
 
 ---
 
-### T1-22 · OutcomeTracker schema lacks feedback-loop guardrails — calibration data at risk of circular validation bias 🔴 OPEN (independent)
+### T1-22 · OutcomeTracker schema lacks feedback-loop guardrails — calibration data at risk of circular validation bias ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (Phase 7.9 — independent; **Phase 9 calibration blocker**).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: <pending-short-hash>.
 **Source:** Risk Review V8 — Risk: Feedback Loop Corruption. ADR-0035.
 **Priority:** P1 (Tier 1 — data integrity; must be resolved before T5-05 calibration logic is implemented).
 
 **Location:** `titan/science/outcome_tracker.py`, `titan/core/database.py` (schema migration), `titan/config/thresholds.py` (new constants).
 
-**Problem:**
+**Original state (pre-fix):**
 
 `OutcomeTracker` stores governance decision→outcome pairs for future Phase 9 calibration.
 However the current schema captures no information about:
@@ -1080,6 +1080,19 @@ python -m pytest -q
 
 **Effort:** ~4h. Schema migration + OutcomeTracker update + calibration diversity gate + tests.
 
+**Resolution:**
+
+Implemented OutcomeTracker feedback-loop guardrails within existing module boundaries.
+Added threshold constants, DB schema migration v5 for guardrail metadata, and
+outcome recording flags (`decision_was_followed`, `override_outcome_exclusion`,
+`outcome_independence_ok`, `algorithm_version_snapshot`). Calibration summary
+and lock/outcome correlations now exclude non-independent and override-derived
+outcomes from reuse while preserving existing valid-path behavior when no
+independence timestamp is provided. Added guardrail-focused tests in
+`tests/test_outcome_tracker_guardrails.py` and persistence coverage updates in
+`tests/test_outcome_tracker_persistence.py`. Final gate snapshot at closure:
+1655 tests passing.
+
 ---
 
 ### T1-23 · No unified DataTrustLevel contract — external data sources emit ad-hoc trust signals not visible to governance 🔴 OPEN (independent)
@@ -1092,7 +1105,7 @@ python -m pytest -q
 (coaching context update), `titan/integrations/garmin_sync.py` (trust emitter),
 `titan/integrations/weather.py` (trust emitter), `titan/config/thresholds.py`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 Three ADRs (0023, 0026, 0030) address data validation at different boundaries but each
 produces a different ad-hoc signal. There is no unified `DataTrustLevel` type that all
@@ -1342,7 +1355,7 @@ python -m pytest -q -W error::pytest.PytestWarning   # 100% green
 **Location:** `titan/integrations/telegram_bot.py`, `titan/integrations/garmin_sync.py`,
 `titan/integrations/weather_api.py`, `titan/orchestration/daily_coach.py`
 
-**Problem:** Despite T2-01 through T2-08 fixing the most critical error taxonomy paths,
+**Original state (pre-fix):** Despite T2-01 through T2-08 fixing the most critical error taxonomy paths,
 the audit confirms that operational status and error messages are still emitted via
 `print()` in several paths across the above modules. In service environments, `print()`
 output is not machine-parsable, is not captured by structured log aggregators, and does
@@ -1391,7 +1404,7 @@ all decided. No new ADR is required. This is an engineering execution task.
 **Location:** `titan/orchestration/daily_coach.py` — `_hydrate_engines_from_db()` and
 `run_morning_routine()` (governance context construction)
 
-**Problem:** `_hydrate_engines_from_db()` runs synchronously at startup, loading HRV
+**Original state (pre-fix):** `_hydrate_engines_from_db()` runs synchronously at startup, loading HRV
 history, weight history, training load, HRR, and CS performance data from the DB into
 in-memory engine state. Each hydration call is wrapped in `except Exception: print(...)`,
 which means failures are swallowed silently. Critically, **there is no flag passed
@@ -1467,7 +1480,7 @@ appear in console/stdout logs in shared or containerised environments.
 
 **Location:** `titan/integrations/telegram_bot.py` — `send_message()` fallback path
 
-**Problem:** When the Telegram bot is unavailable (missing token, library not installed,
+**Original state (pre-fix):** When the Telegram bot is unavailable (missing token, library not installed,
 or temporary connectivity failure), the fallback currently prints:
 ```python
 print(f"📱 [Telegram] {text[:200]}")
@@ -1521,7 +1534,7 @@ of corrupted equipment data or malformed optimal-time responses.
    and displaying shoe/equipment data. If `EquipmentManager` throws or shoe data is
    malformed, the UI renders nothing with zero indication.
 
-**Problem:** Both are in `titan/ui/` — where `print()` is permitted per ADR-0019 Decision 3.
+**Original state (pre-fix):** Both are in `titan/ui/` — where `print()` is permitted per ADR-0019 Decision 3.
 But silent absorption (`pass` or implicit fallback) without any log or display hint violates
 the system's observability contract. The user sees missing shoe data with no explanation.
 In a bug scenario, these silent catches make RCA impossible.
@@ -1559,7 +1572,7 @@ python -m pytest -q -W error::pytest.PytestWarning   # 100% green
 
 **Location:** `titan/orchestration/daily_coach.py` + `titan/ui/operator_console.py`
 
-**Problem:**
+**Original state (pre-fix):**
 
 When the system enters degraded mode (Garmin fail, persistence fail, weather fail, low
 startup confidence), it logs a structured event and may send a Telegram alert at the moment
@@ -1609,7 +1622,7 @@ python -m pytest -q                                    # 100% green, count ≥ p
 
 **Location:** All modules using `_emit_structured_event()` (~12 modules), `titan/integrations/telegram_bot.py`, `titan/main.py` (log rotation), `docs/operations/RUNBOOK.md` (new file).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Phases 3–4 added structured event emission throughout the codebase. Without a severity
 classification, all events are treated identically — Telegram receives both routine
@@ -1661,7 +1674,7 @@ python -m pytest -q
 
 **Location:** `titan/integrations/weather.py` (`_create_synthetic_fallback()`) + `titan/features/optimal_time.py`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 When the Open-Meteo API is unavailable, `_create_synthetic_fallback()` produces a
 synthetic weather forecast using hardcoded Athens, GR climatological defaults (T1-09
@@ -1704,7 +1717,7 @@ python -m pytest -q
 
 **Location:** `titan/science/governance_engine.py`, `titan/orchestration/daily_coach.py` (Telegram message composition), `titan/ui/operator_console.py` (Session Explorer payload), `titan/config/thresholds.py`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 When the governance engine fires a hard-stop or downgrade, the athlete receives a
 Telegram message stating the recommendation but not the cause. The gate that fired,
@@ -1752,7 +1765,7 @@ python -m pytest -q
 
 **Location:** All `titan/science/` engine modules, `titan/config/evidence_registry.py`, `titan/orchestration/daily_coach.py` (coaching context emission).
 
-**Problem:**
+**Original state (pre-fix):**
 
 TITAN OS computes ~15+ physiological metrics. Several (TRIMP, drift_index,
 efficiency_index, biomechanics_score, durability_score) have unclear governance roles —
@@ -1852,7 +1865,7 @@ timeout_seconds, still_alive=true)`, with no forced termination.
 **Location:** `titan/integrations/garmin_sync.py`, `titan/integrations/telegram_bot.py`,
 `titan/integrations/weather_api.py` — stop/join paths
 
-**Problem:** All three background workers call `thread.join(timeout=5)` and continue
+**Original state (pre-fix):** All three background workers call `thread.join(timeout=5)` and continue
 execution regardless of whether the thread actually stopped. Non-terminated threads are
 not escalated, flagged, or reported as a shutdown failure. A hung thread (e.g., blocked
 on a network call or a lock) silently survives the shutdown sequence. This hides
@@ -1879,7 +1892,7 @@ hung-thread incidents and can leave the process zombie-running with active DB cu
 **Location:** `titan/orchestration/daily_coach.py` or scheduler module —
 `scheduled_tasks` list
 
-**Problem:** The `scheduled_tasks` list is appended and read across execution contexts
+**Original state (pre-fix):** The `scheduled_tasks` list is appended and read across execution contexts
 (scheduler thread + potential manual trigger paths) without lock discipline. Current
 usage is likely benign at today's trigger volume, but if runtime task mutation grows
 (dynamic reschedule, manual override injection), list mutation during iteration produces
@@ -1917,7 +1930,7 @@ usage is likely benign at today's trigger volume, but if runtime task mutation g
 **Location:** `titan/integrations/weather_api.py` — `stop_background_updates()`; and
 `titan/integrations/telegram_bot.py` — `stop_bot()` (for `_sched_thread` and `_poll_thread`)
 
-**Problem:**
+**Original state (pre-fix):**
 - `weather_api.stop_background_updates()` calls `self._update_thread.join(timeout=5)` with
   no `is_alive()` check after join and no structured escalation event on non-termination.
 - `telegram_bot.stop_bot()` checks `is_alive()` **before** each join (correct) but not
@@ -1961,7 +1974,7 @@ assert `worker_shutdown_timeout` event is emitted for both workers.
 
 **Location:** `titan/integrations/telegram_bot.py` + new `titan/integrations/notification_gateway.py`
 
-**Problem:**
+**Original state (pre-fix):**
 
 All outbound notifications (daily briefing, SLO alerts, Telegram fallback events) route
 exclusively through `TitanTelegramBot`. If the bot token expires, the Telegram API applies
@@ -2138,7 +2151,7 @@ branches, cancellation behavior) is under-covered in `test_new_modules.py` — o
 
 **Location:** `titan/integrations/garmin_sync.py` — sync timeout + SLO alert path
 
-**Problem:** When a Garmin sync operation exceeds its timeout budget, the system emits
+**Original state (pre-fix):** When a Garmin sync operation exceeds its timeout budget, the system emits
 an SLO alert (Telegram delivery). However, the slow operation itself is not
 cancelled or short-circuited. The thread continues running until the underlying network
 call completes or errors. This is observability-only control — the SLO alert fires but
@@ -2163,7 +2176,7 @@ the slow sync continues to hold resources.
 
 **Location:** `titan/main.py` or `main.py` — main menu loop
 
-**Problem:** `KeyboardInterrupt` is caught at the menu level and suppressed. The
+**Original state (pre-fix):** `KeyboardInterrupt` is caught at the menu level and suppressed. The
 shutdown path does not log a structured `shutdown_requested` event with
 `(reason="keyboard_interrupt", timestamp)`. In production, this makes it impossible
 to distinguish intentional Ctrl+C shutdowns from unexpected process termination in
@@ -2194,7 +2207,7 @@ aggregated log output.
 **Location:** `titan/orchestration/contracts.py` + typed boundaries in
 `titan/integrations/garmin_sync.py`, `titan/orchestration/daily_coach.py`
 
-**Problem:** T4-03 introduced typed payload contracts at critical boundaries, but many
+**Original state (pre-fix):** T4-03 introduced typed payload contracts at critical boundaries, but many
 fields in the resulting `TypedDict` and `@dataclass` schemas are typed as `Any`. `Any`
 fields defeat the purpose of typed contracts — mypy cannot verify shape correctness at
 boundaries, and key-mismatch bugs remain invisible to static analysis.
@@ -2224,7 +2237,7 @@ PR: TBD.
 
 **Location:** `pyproject.toml` + `.github/workflows/ci.yml`
 
-**Problem:** `pyproject.toml` contains coverage configuration and `pytest` settings,
+**Original state (pre-fix):** `pyproject.toml` contains coverage configuration and `pytest` settings,
 but no `--cov-fail-under` threshold is enforced in the default test workflow. Coverage
 can silently erode over time as new modules are added without corresponding tests. There
 is no ratchet mechanism to prevent regression.
@@ -2249,7 +2262,7 @@ is no ratchet mechanism to prevent regression.
 
 **Location:** `test_new_modules.py` — setup wizard coverage
 
-**Problem:** Existing test coverage for `setup_wizard.py` focuses on `_save_env`.
+**Original state (pre-fix):** Existing test coverage for `setup_wizard.py` focuses on `_save_env`.
 The interactive flow logic — duplicate prompt behaviour, per-field validation branches,
 cancellation paths, and wizard completion state — is not covered. Given the wizard is
 the first user-facing flow for new deployments, untested validation branches are a
@@ -2277,7 +2290,7 @@ high-value regression surface.
 
 **Location:** `tests/` — concurrency / integration test coverage
 
-**Problem:** Existing concurrency tests are unit-level and test isolated components
+**Original state (pre-fix):** Existing concurrency tests are unit-level and test isolated components
 (individual thread lifecycle, individual stop event). There is no integration test
 that exercises a full start → run → stop sequence across all four workers together:
 Garmin sync + Weather updater + Telegram bot + DailyCoach scheduler. Without such a
@@ -2307,7 +2320,7 @@ detected in production.
 
 **Location:** `titan/integrations/garmin_sync.py` — `_bg_worker()` lines ~452-455.
 
-**Problem:** The inter-sync sleep is implemented as a `for` loop with `interval_hours * 3600`
+**Original state (pre-fix):** The inter-sync sleep is implemented as a `for` loop with `interval_hours * 3600`
 iterations (21,600 for a 6h cycle), each calling `self._stop_event.wait(timeout=1.0)`:
 
 ```python
@@ -2361,7 +2374,7 @@ test (set stop event; assert thread exits without waiting a full tick).
 
 **Location:** `titan/integrations/weather_api.py` — `start_background_updates()`.
 
-**Problem:** The `threading.Thread` for the weather updater is created without a `name=`
+**Original state (pre-fix):** The `threading.Thread` for the weather updater is created without a `name=`
 parameter:
 ```python
 self._update_thread = threading.Thread(
@@ -2403,7 +2416,7 @@ python -m pytest -q   # 100% green
 
 **Location:** `titan/ui/setup_wizard.py` — `_save_env()` function, lines ~195-205.
 
-**Problem:** `_save_env()` contains two consecutive `if os.name == "nt":` blocks that each
+**Original state (pre-fix):** `_save_env()` contains two consecutive `if os.name == "nt":` blocks that each
 print a different Windows-specific permission warning. The first block prints a Greek-language
 warning; the second prints an English warning for the same issue. A Windows user sees two
 warnings about the same problem, one in each language:
@@ -2444,7 +2457,7 @@ python -m pytest -q   # 100% green
 
 **Location:** `titan/ui/setup_wizard.py` — `_save_env()` function, lines ~207-216.
 
-**Problem:** After saving `.env`, the wizard appends entries to `.gitignore` at the
+**Original state (pre-fix):** After saving `.env`, the wizard appends entries to `.gitignore` at the
 repository root if they are not already present:
 
 ```python
@@ -2503,7 +2516,7 @@ python -m pytest -q   # 100% green
 
 **Location:** `titan/science/governance_engine.py` + new `tests/test_governance_mutation.py`
 
-**Problem:**
+**Original state (pre-fix):**
 
 `governance_engine.py` carries `# ARCHITECTURE LOCK — see ADR-0009 before modifying` as
 its primary protection mechanism. This is a psychological deterrent — it is not enforced
@@ -2547,7 +2560,7 @@ python -m pytest -q                                      # 100% green, count ≥
 
 **Location:** new `tests/test_architectural_invariants.py`
 
-**Problem:**
+**Original state (pre-fix):**
 
 As the codebase grows with AI agent assistance, a class of bugs emerges that is
 syntactically valid and passes all functional tests but violates architectural contracts:
@@ -2591,7 +2604,7 @@ python -m pytest -q                                           # 100% green, coun
 
 **Location:** new `.github/pull_request_template.md`
 
-**Problem:**
+**Original state (pre-fix):**
 
 Pull requests have no structured template. Reviewers must recall from memory whether a
 given change requires an ADR update, an `evidence_registry.py` update, a `SCHEMA_VERSION`
@@ -2631,7 +2644,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 **Location:** New `tests/test_documentation_consistency.py` + `titan/config/thresholds.py` + `.github/workflows/ci.yml`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 Four documentation drift failure modes with no automated detection:
 1. Lock codes in `governance_engine.py` not verified against a canonical set (canonical
@@ -2671,7 +2684,7 @@ python -m pytest -q
 
 **Location:** New `tests/test_claude_md_integrity.py` + `AGENTS.md` + `.github/workflows/ci.yml`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 AI agent sessions begin without a verified baseline. Known failure modes: stale module
 counts in CLAUDE.md, non-canonical lock codes generated by agents, Tier ordering
@@ -2707,7 +2720,7 @@ python -m pytest -q
 
 **Location:** `test_property_based.py` (extend) + `tests/test_science_edge_cases.py` (new).
 
-**Problem:**
+**Original state (pre-fix):**
 
 `test_property_based.py` uses Hypothesis for high-level invariants but does not test
 physiology-specific boundary values. No test currently verifies that:
@@ -2746,7 +2759,7 @@ python -m pytest -q
 
 **Location:** `tests/conftest.py` (extend) + affected test files (audit required).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Multiple test files independently construct `UniversalAthleteProfile`, `DatabaseManager`,
 and governance engine instances with hand-crafted values. When the schema of these
@@ -2784,7 +2797,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 **Location:** `requirements.txt` + `.github/workflows/ci.yml`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 `requirements.txt` pins direct dependencies but does not pin transitive dependencies
 via a lockfile or constraints file. Over time:
@@ -2827,7 +2840,7 @@ python -m pytest -q   # count ≥ previous
 
 **Location:** `titan/core/database.py` (return types) + `tests/test_architectural_invariants.py` (new coupling test).
 
-**Problem:**
+**Original state (pre-fix):**
 
 `DatabaseManager` return methods (`get_daily_metrics`, `get_training_load_history`)
 return raw `dict` objects. Science engines access fields by string key. If a field is
@@ -2864,7 +2877,7 @@ python -m pytest -q
 
 **Location:** `tests/test_documentation_consistency.py` (extend; T4-21).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Module count grows unchecked with each phase. At 46 modules (Phase 7 close), the system
 is within cognitive range. Without a ceiling, Phase 8 + Phase 9 additions could reach
@@ -2904,7 +2917,7 @@ python -m pytest -q
 
 **Location:** New `scripts/generate_context_snapshot.py` + `docs/context-snapshot.md` + `AGENTS.md`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 Multiple AI tools (ChatGPT, Gemini, Claude Chat, Codex, Claude Code) operate on this
 codebase. Each has a different and potentially contradictory mental model of the system's
@@ -2943,7 +2956,7 @@ python -m pytest -q
 
 **Location:** `titan/config/thresholds.py` (ESI constants), `titan/orchestration/daily_coach.py` (ESI context field), `titan/features/optimal_time.py` (ESI pace adjustment), `titan/features/weekly_plan.py` (zone target adjustment), `titan/science/governance_engine.py` (VO₂ block under ESI EXTREME).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Training zone targets are applied identically regardless of environmental conditions.
 An athlete targeting Zone 2 at the same pace in 18°C and 32°C with 80% humidity
@@ -2983,7 +2996,7 @@ python -m pytest -q
 
 **Location:** All 26 `titan/science/*.py` modules, `titan/core/database.py` (schema migration), `tests/test_science_model_versions.py` (new CI check).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Science modules have no `MODULE_VERSION` constant. A breaking algorithm change
 (different output for same inputs) is indistinguishable from a patch fix in `CHANGES.md`.
@@ -3024,7 +3037,7 @@ already active and new violations must be caught from this commit forward).
 **Location:** New `tests/test_athlete_isolation_invariant.py`; all `titan/` module files
 in exemption register (module-level comment annotations).
 
-**Problem:**
+**Original state (pre-fix):**
 
 ADR-0040 is active from this commit. Without a CI check, new code can violate the
 isolation invariant (implicit athlete queries, no `athlete_id` parameter, cross-athlete
@@ -3067,7 +3080,7 @@ button is permanently lost override signal data; ADR-0042 §Gap 2).
 `titan/science/override_signal.py` (new module), `titan/core/database.py` (schema migration
 or OutcomeTracker extension), new `tests/test_override_handler_registry.py`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 ADR-0042 is active from this commit. Two gaps remain unaddressed:
 
@@ -3143,7 +3156,7 @@ Decision status: CLOSED. Decision locked (ADR-0016).
 **Decision status:** OPEN (deferred — Phase 9+).
 **Source:** Master Risk Matrix — Risk #12 (Model Stagnation vs New Science). Architecture Review 2026-03-06.
 
-**Problem:**
+**Original state (pre-fix):**
 
 All thresholds in `thresholds.py` carry an evidence label (STRONG / MODERATE / HEURISTIC)
 in `evidence_registry.py`. However, there is no scheduled review of whether the evidence
@@ -3167,7 +3180,7 @@ implementation before Phase 8 closes.
 **Decision status:** OPEN (deferred — Phase 9+).
 **Source:** Architect Observations V6 — Risk #3 (Model Aging). Architecture Review 2026-03-06.
 
-**Problem:**
+**Original state (pre-fix):**
 
 Physiological models (HRV baseline, CTL/ATL EMA constants, lactate thresholds,
 critical speed) are calibrated on historical data and held constant once computed.
@@ -3208,7 +3221,7 @@ No implementation before Phase 8 closes and data accumulation criterion is met.
 **Decision status:** OPEN — T5-06-A is a **Phase 8 prerequisite**; remainder deferred Phase 9.
 **Source:** Risk Review V7 — Risk: ML Physiological Safety & Ethical Opacity. Architecture Review 2026-03-06. ADR-0032.
 
-**Problem:**
+**Original state (pre-fix):**
 
 `InjuryRiskEnsembleModel` operates in advisory mode and returns a probability score
 (0.0–1.0) with no feature attribution. The governance engine cannot determine whether
@@ -3267,7 +3280,7 @@ logic + governance integration update + tests.
 
 **Location:** `titan/core/database.py` (new `model_calibration_metadata` table), `titan/orchestration/daily_coach.py` (startup check), `titan/config/thresholds.py` (new constants).
 
-**Problem:**
+**Original state (pre-fix):**
 
 Physiological models (HRV baselines, lactate threshold, critical speed) are calibrated
 against historical data from a single athlete at a specific fitness level. As the athlete
@@ -3329,7 +3342,7 @@ python -m pytest -q
 
 **Location:** `titan/core/database.py` (replace with `titan/core/persistence.py`), `requirements.txt` (add `sqlalchemy`, `alembic`, `psycopg2-binary`), new `alembic/` directory.
 
-**Problem:**
+**Original state (pre-fix):**
 
 TITAN OS targets a multi-athlete coach platform (ADR-0043). SQLite's single-writer
 concurrency model cannot support 50 athletes × 3 daemon threads. Per-athlete SQLite
@@ -3368,7 +3381,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 **Location:** New `get_athlete_context()` in `titan/core/persistence.py` (or `titan/core/athlete_context.py`).
 
-**Problem:**
+**Original state (pre-fix):**
 
 The coach dashboard and Phase 10 LLM both need to assemble athlete context from multiple
 data domains. No single function exists — each caller would assemble from raw queries,
@@ -3435,7 +3448,7 @@ def coach_query(prompt: str, athlete_context: dict) -> str:
 
 **Location:** New `titan/api/auth.py` (Phase 8B); FastAPI app (`titan/api/main.py`).
 
-**Problem:**
+**Original state (pre-fix):**
 
 ADR-0013 (technology path) specifies React + FastAPI for the coach dashboard. ADR-0043
 confirms multi-athlete deployment. However, no auth layer has been designed. FastAPI
@@ -3466,7 +3479,7 @@ Phase 8B begins. This item is not implementable without that ADR.
 
 **Location:** `titan/integrations/garmin_sync.py`.
 
-**Problem:**
+**Original state (pre-fix):**
 
 `garminconnect` is an **unofficial, reverse-engineered** Python library. It scrapes
 Garmin Connect's web authentication flow, not an official API. Garmin has changed its
@@ -3500,7 +3513,7 @@ handles for missing today-data.
 
 **Location:** New `coach_audit_log` table (Phase 8A Alembic migration), new `titan/api/audit.py` middleware.
 
-**Problem:**
+**Original state (pre-fix):**
 
 Phase 8B grants coaches the ability to view all athletes' health data and submit manual
 overrides. Under GDPR, any entity that processes health data on behalf of another person
@@ -3651,7 +3664,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-05 | OPEN (deferred — Phase 9+) | — |
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
 | T1-21 | ✅ RESOLVED | 2026-03-07 |
-| T1-22 | OPEN (independent; Phase 9 calibration blocker) | — |
+| T1-22 | ✅ RESOLVED | 2026-03-07 |
 | T1-23 | OPEN (independent; Phase 8 entry gate) | — |
 | T2-16 | OPEN (after all Tier 1) | — |
 | T2-17 | OPEN (independent) | — |

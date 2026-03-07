@@ -81,7 +81,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 
 class DatabaseManager:
@@ -320,7 +320,11 @@ class DatabaseManager:
                 outcome_rpe INTEGER,
                 outcome_completed INTEGER,
                 outcome_session_type_actual TEXT,
-                outcome_notes TEXT
+                outcome_notes TEXT,
+                decision_was_followed INTEGER NOT NULL DEFAULT 1,
+                override_outcome_exclusion INTEGER NOT NULL DEFAULT 0,
+                outcome_independence_ok INTEGER NOT NULL DEFAULT 1,
+                algorithm_version_snapshot TEXT
             )
         """)
 
@@ -360,6 +364,11 @@ class DatabaseManager:
                 "sync_metadata",
                 "Garmin sync outcome ledger (T1-20)",
                 None,  # DDL — see _apply_v4_migrations() below
+            ),
+            5: (
+                "governance_outcomes",
+                "feedback-loop guardrail metadata columns (T1-22)",
+                None,  # batch — see _apply_v5_migrations() below
             ),
         }
 
@@ -407,6 +416,20 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 4,
                     "table_created": "sync_metadata",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 5:
+            self._apply_v5_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 5,
+                    "columns_added": (
+                        "decision_was_followed, override_outcome_exclusion, "
+                        "outcome_independence_ok, algorithm_version_snapshot"
+                    ),
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -484,6 +507,45 @@ class DatabaseManager:
                 last_error_class TEXT
             )
         """)
+
+    def _apply_v5_migrations(self, cursor) -> None:
+        """Version 5: OutcomeTracker guardrail metadata columns (T1-22)."""
+        column_migrations = [
+            (
+                "governance_outcomes",
+                "decision_was_followed",
+                "ALTER TABLE governance_outcomes ADD COLUMN decision_was_followed INTEGER NOT NULL DEFAULT 1",
+            ),
+            (
+                "governance_outcomes",
+                "override_outcome_exclusion",
+                "ALTER TABLE governance_outcomes ADD COLUMN override_outcome_exclusion INTEGER NOT NULL DEFAULT 0",
+            ),
+            (
+                "governance_outcomes",
+                "outcome_independence_ok",
+                "ALTER TABLE governance_outcomes ADD COLUMN outcome_independence_ok INTEGER NOT NULL DEFAULT 1",
+            ),
+            (
+                "governance_outcomes",
+                "algorithm_version_snapshot",
+                "ALTER TABLE governance_outcomes ADD COLUMN algorithm_version_snapshot TEXT",
+            ),
+        ]
+        for table_name, column_name, sql in column_migrations:
+            try:
+                cursor.execute(sql)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
+                _log.info(
+                    json.dumps({
+                        "flow": "database",
+                        "action": "db_migration_already_applied",
+                        "table": table_name,
+                        "column": column_name,
+                    })
+                )
 
     # --- BACKUP ---
 
@@ -1141,8 +1203,10 @@ class DatabaseManager:
                        locks_applied_json, governance_clean, phase, vlg_color,
                        apl_priority_vector_json, lock_thresholds_active_json,
                        acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
-                       outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes,
+                       decision_was_followed, override_outcome_exclusion,
+                       outcome_independence_ok, algorithm_version_snapshot
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     decision['date'],
                     decision['session_planned'],
@@ -1162,6 +1226,10 @@ class DatabaseManager:
                     int(decision['outcome_completed']) if decision.get('outcome_completed') is not None else None,
                     decision.get('outcome_session_type_actual'),
                     decision.get('outcome_notes'),
+                    int(bool(decision.get('decision_was_followed', True))),
+                    int(bool(decision.get('override_outcome_exclusion', False))),
+                    int(bool(decision.get('outcome_independence_ok', True))),
+                    json.dumps(decision.get('algorithm_version_snapshot', {}), default=str),
                 ),
             )
             self.conn.commit()
@@ -1173,6 +1241,10 @@ class DatabaseManager:
         completed: bool | None = None,
         actual_session_type: str | None = None,
         notes: str | None = None,
+        decision_was_followed: bool | None = None,
+        override_outcome_exclusion: bool | None = None,
+        outcome_independence_ok: bool | None = None,
+        algorithm_version_snapshot: dict[str, str] | None = None,
     ) -> bool:
         """Update latest governance decision for date with post-session outcome."""
         with self._lock:
@@ -1183,7 +1255,11 @@ class DatabaseManager:
                    SET outcome_rpe = ?,
                        outcome_completed = ?,
                        outcome_session_type_actual = ?,
-                       outcome_notes = ?
+                       outcome_notes = ?,
+                       decision_was_followed = COALESCE(?, decision_was_followed),
+                       override_outcome_exclusion = COALESCE(?, override_outcome_exclusion),
+                       outcome_independence_ok = COALESCE(?, outcome_independence_ok),
+                       algorithm_version_snapshot = COALESCE(?, algorithm_version_snapshot)
                    WHERE id = (
                        SELECT id FROM governance_outcomes
                        WHERE date = ?
@@ -1195,6 +1271,12 @@ class DatabaseManager:
                     int(completed) if completed is not None else None,
                     actual_session_type,
                     notes,
+                    int(decision_was_followed) if decision_was_followed is not None else None,
+                    int(override_outcome_exclusion) if override_outcome_exclusion is not None else None,
+                    int(outcome_independence_ok) if outcome_independence_ok is not None else None,
+                    json.dumps(algorithm_version_snapshot, default=str)
+                    if algorithm_version_snapshot is not None
+                    else None,
                     date,
                 ),
             )
@@ -1211,7 +1293,9 @@ class DatabaseManager:
                           locks_applied_json, governance_clean, phase, vlg_color,
                           apl_priority_vector_json, lock_thresholds_active_json,
                           acwr, tsb_value, readiness_score, glycogen_debt, afi_value,
-                          outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes
+                          outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes,
+                          decision_was_followed, override_outcome_exclusion,
+                          outcome_independence_ok, algorithm_version_snapshot
                    FROM governance_outcomes
                    ORDER BY id ASC
                    LIMIT ?""",
@@ -1240,6 +1324,12 @@ class DatabaseManager:
                 'outcome_completed': bool(row[15]) if row[15] is not None else None,
                 'outcome_session_type_actual': row[16],
                 'outcome_notes': row[17],
+                'decision_was_followed': bool(row[18]),
+                'override_outcome_exclusion': bool(row[19]),
+                'outcome_independence_ok': bool(row[20]),
+                'algorithm_version_snapshot': _safe_json(
+                    row[21], {}, 'algorithm_version_snapshot'
+                ),
             })
         return decisions
 
