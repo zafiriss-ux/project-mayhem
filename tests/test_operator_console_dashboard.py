@@ -111,6 +111,7 @@ def test_session_explorer_includes_governance_trail_and_annotations(tmp_path):
         "post_governance",
         "completed",
     ]
+    assert session["gate_findings"] == [{"gate": "HARD_STOP_TSB_FLOOR", "status": "TRIGGERED"}]
 
 
 def test_add_manual_annotation_updates_latest_decision_note(tmp_path):
@@ -221,14 +222,20 @@ def test_manual_override_workflow_empty_payload(tmp_path):
 
     payload = service.manual_override_workflow(limit=20, days=7)
 
-    assert payload == {
-        "summary": {
-            "samples": 0,
-            "override_ratio_window_days": 7,
-            "override_ratio": 0.0,
-            "latest_override_date": None,
-        },
-        "overrides": [],
+    assert payload["summary"] == {
+        "samples": 0,
+        "override_ratio_window_days": 7,
+        "override_ratio": 0.0,
+        "latest_override_date": None,
+    }
+    assert payload["overrides"] == []
+    assert payload["override_metrics"] == {
+        "window_days": 30,
+        "samples": 0,
+        "override_rate_30d": 0.0,
+        "trend": "stable",
+        "trust_signal": "STABLE",
+        "operator_trust_drift_warning": False,
     }
 
 
@@ -257,6 +264,8 @@ def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
         "override_ratio": 0.143,
         "latest_override_date": "2026-05-03",
     }
+    assert payload["override_metrics"]["window_days"] == 30
+    assert payload["override_metrics"]["samples"] >= 0
     assert payload["overrides"] == [
         {
             "date": "2026-05-01",

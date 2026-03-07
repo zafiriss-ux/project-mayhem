@@ -698,12 +698,15 @@ class DailyCoach:
             db=self.db, cs_tracker=self.cs_tracker, afi_constraints=afi_constraints
         )
 
+        decision_rationale = today_session.get('decision_rationale', {})
         coaching_data: DailyCoachingPayload = {
             # Session (post-governance)
             'session_type'      : today_session.get('session_type', 'EASY'),
             'duration'          : f"{today_session.get('distance_km', '?')} km",
             'details'           : today_session.get('details', ''),
             'governance_locks'  : today_session.get('governance_locks_applied', []),
+            'primary_reason'    : decision_rationale.get('primary_reason', ''),
+            'actionable_guidance': decision_rationale.get('actionable_guidance', ''),
             # Timing
             'optimal_time'      : 'N/A' if weather_degraded_mode else optimal_time.get('recommended_time', 'N/A'),
             'dew_point'         : 'N/A' if weather_degraded_mode else optimal_time.get('dew_point', 'N/A'),

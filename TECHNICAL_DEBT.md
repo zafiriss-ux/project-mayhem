@@ -1719,52 +1719,38 @@ python -m pytest -q
 
 ---
 
-### T2-16 · Governance decisions lack human-readable rationale — athletes receive opaque hard-stops without "why"; override rate unmonitored 🔴 OPEN
+### T2-16 · Governance decisions lack human-readable rationale — athletes receive opaque hard-stops without "why"; override rate unmonitored ✅ RESOLVED 2026-03-07
 
-**Status:** OPEN (Phase 7.9 — after all Tier 1 items close).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: TBD.
 **Source:** Risk Review V8 — Risks: Explainability Gap (non-ML), Operator Trust Drift. ADR-0038.
 **Priority:** P2 (Tier 2 — observability).
-**Dependency:** All Tier 1 items (T1-18 through T1-22) must close first.
+**Dependency:** All Tier 1 items (T1-18 through T1-22) were closed before implementation.
 
 **Location:** `titan/science/governance_engine.py`, `titan/orchestration/daily_coach.py` (Telegram message composition), `titan/ui/operator_console.py` (Session Explorer payload), `titan/config/thresholds.py`.
 
 **Original state (pre-fix):**
 
-When the governance engine fires a hard-stop or downgrade, the athlete receives a
+When the governance engine fired a hard-stop or downgrade, the athlete received a
 Telegram message stating the recommendation but not the cause. The gate that fired,
-the input value, the threshold, and the margin from the boundary are all absent from
-the coaching output. Over time, opaque decisions erode operator trust — athletes
-override governance not because they disagree with the specific decision, but because
-they cannot evaluate whether the decision is warranted. Override rate is not monitored;
-the system cannot detect trust erosion.
+the input value, the threshold, and the margin from the boundary were absent from
+the coaching output. Over time, opaque decisions eroded operator trust — athletes
+overrode governance not because they disagreed with the specific decision, but because
+they could not evaluate whether the decision was warranted. Override rate was not monitored;
+the system could not detect trust erosion.
 
-**Fix direction (per ADR-0038):**
+**Resolution:**
 
-1. Define `GateFinding` and `DecisionRationale` dataclasses in `governance_engine.py`.
-2. `GovernanceEngine.evaluate()` returns `DecisionRationale` alongside the existing
-   governance result.
-3. Register template strings for each gate (H1–H7 + soft locks) in
-   `GATE_RATIONALE_TEMPLATES`.
-4. `DailyCoach` Telegram message includes `primary_reason` and `actionable_guidance`
-   from `DecisionRationale`.
-5. `OperatorConsoleService` Session Explorer payload includes full `gate_findings` list.
-6. Add `override_metrics` (30-day rate, trend, trust signal) to readiness dashboard.
-7. Emit `operator_trust_drift_warning` if override rate > 25% over 30 days.
-8. Add `tests/test_governance_rationale.py`:
-   - HARD_STOP scenario: `DecisionRationale.primary_reason` non-empty + correct gate
-   - APPROVED scenario: all gates shown with margin values
-   - Override rate calculation correct for mock outcome dataset
-
-**Acceptance gate (binary):**
-```bash
-ruff check titan/science/governance_engine.py titan/orchestration/daily_coach.py \
-            titan/ui/operator_console.py tests/test_governance_rationale.py
-python -m pytest tests/test_governance_rationale.py -v
-python -m pytest -q -W error::pytest.PytestWarning
-python -m pytest -q
-```
-
-**Effort:** ~5h. Dataclass definitions + template registry + DailyCoach integration + Operator Console update + tests.
+- Added `GateFinding` and `DecisionRationale` dataclasses with `GATE_RATIONALE_TEMPLATES`
+  so every governance evaluation emits human-readable rationale and gate findings.
+- Included `primary_reason` and `actionable_guidance` in DailyCoach payload and Telegram message output.
+- Added Session Explorer `gate_findings` payload and `override_metrics` (30-day rate, trend,
+  trust signal, and `operator_trust_drift_warning`).
+- Added threshold constant `OPERATOR_TRUST_DRIFT_WARNING_RATE_30D` to centralized thresholds.
+- Added/updated tests: `tests/test_governance_rationale.py`,
+  `tests/test_operator_console_dashboard.py`,
+  `tests/titan/orchestration/test_daily_coach.py`, and
+  `tests/titan/integrations/test_telegram_bot_rationale.py`.
+- Closure test count: 1687 passed (`python -m pytest -q`).
 
 ---
 
@@ -3677,7 +3663,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-21 | ✅ RESOLVED | 2026-03-07 |
 | T1-22 | ✅ RESOLVED | 2026-03-07 |
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
-| T2-16 | OPEN (after all Tier 1) | — |
+| T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | OPEN (independent) | — |
 | T4-29 | OPEN (deferred Phase 8) | — |
 | T4-30 | OPEN (independent) | — |

@@ -3,7 +3,7 @@
 
 import json
 import logging
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
 from titan.config.thresholds import (
@@ -23,6 +23,41 @@ from titan.config.thresholds import (
 from titan.science.governance_contracts import validate_vo2_eligibility
 
 _log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class GateFinding:
+    gate: str
+    status: str
+    actual_value: float | str | None
+    threshold_value: float | str | None
+    margin: float | None
+    reason: str
+
+
+@dataclass(frozen=True)
+class DecisionRationale:
+    primary_reason: str
+    actionable_guidance: str
+    gate_findings: list[GateFinding]
+
+
+GATE_RATIONALE_TEMPLATES: dict[str, str] = {
+    "H1": "Injury flag active: full rest is required.",
+    "H2": "HRV collapse crossed safety threshold ({actual} vs {threshold}, margin {margin}).",
+    "H3": "RHR spike crossed safety threshold ({actual} vs {threshold}, margin {margin}).",
+    "H4": "TSB dropped below critical floor ({actual} vs {threshold}, margin {margin}).",
+    "H5": "Subjective fatigue reached extreme level ({actual} vs {threshold}, margin {margin}).",
+    "READINESS_2OF4_DOWNGRADE": "At least 2 of 4 readiness indicators triggered; conservative downgrade applied.",
+    "OVERRIDE_LOCKDOWN": "Manual override ratio exceeded safe ceiling; quality sessions are locked.",
+    "CS_CONFIDENCE_LOCK": "Critical speed confidence below threshold; recalibration required.",
+    "PARASYMPATHETIC_GUARD": "Parasympathetic guard triggered; high-intensity work blocked.",
+    "VO2_ELIGIBILITY_GATE": "VO2 eligibility checks failed; intensity downgraded.",
+    "FUELING_GATE_LOCK": "Fueling gate lock applied; session intensity reduced.",
+    "FUELING_GATE_FLAG": "Fueling warning raised; proceed conservatively.",
+    "STARTUP_DATA_CONFIDENCE_CEILING": "Startup confidence low; easy-ceiling safety mode applied.",
+    "PERSISTENCE_DEGRADED_CEILING": "Persistence degraded; easy-ceiling safety mode applied.",
+}
 
 
 def _gate_event(gate: str, action: str, **fields: Any) -> None:
@@ -666,6 +701,166 @@ class GovernanceEngine:
 
         return None
 
+    @staticmethod
+    def _format_template(template_key: str, *, actual: Any = None, threshold: Any = None, margin: Any = None) -> str:
+        template = GATE_RATIONALE_TEMPLATES.get(template_key, template_key)
+        return template.format(actual=actual, threshold=threshold, margin=margin)
+
+    @staticmethod
+    def _guidance_for_gate(gate: str) -> str:
+        guidance_map = {
+            "H1": "Prioritize recovery and seek medical clearance before training.",
+            "H2": "Replace intensity with rest and reassess HRV tomorrow morning.",
+            "H3": "Keep effort low, hydrate, and reassess resting HR tomorrow.",
+            "H4": "Shift to easy aerobic work until freshness rebounds above threshold.",
+            "H5": "Use easy recovery training and monitor subjective fatigue daily.",
+            "READINESS_2OF4_DOWNGRADE": "Keep intensity reduced until at least 3 indicators normalize.",
+            "OVERRIDE_LOCKDOWN": "Pause manual overrides and rebuild plan adherence for 14 days.",
+            "CS_CONFIDENCE_LOCK": "Run the required CS calibration session before race simulation.",
+            "VO2_ELIGIBILITY_GATE": "Complete prerequisites (recovery, fueling, readiness) before VO2 work.",
+            "FUELING_GATE_LOCK": "Confirm fueling plan before scheduling quality or long sessions.",
+            "STARTUP_DATA_CONFIDENCE_CEILING": "Resolve missing startup inputs and rerun hydration checks.",
+            "PERSISTENCE_DEGRADED_CEILING": "Restore persistence path health before lifting safety ceilings.",
+        }
+        return guidance_map.get(gate, "Continue with conservative training and monitor recovery signals.")
+
+    @staticmethod
+    def _margin_ge(actual: float | None, threshold: float) -> float | None:
+        if actual is None:
+            return None
+        return round(actual - threshold, 2)
+
+    @staticmethod
+    def _margin_le(actual: float | None, threshold: float) -> float | None:
+        if actual is None:
+            return None
+        return round(threshold - actual, 2)
+
+    def _build_decision_rationale(self, context: dict, session_plan: dict, applied_locks: list[str]) -> DecisionRationale:
+        findings: list[GateFinding] = []
+
+        injury_flag = bool(context.get("injury_flag", False))
+        findings.append(
+            GateFinding(
+                gate="H1",
+                status="TRIGGERED" if injury_flag else "CLEAR",
+                actual_value=injury_flag,
+                threshold_value=True,
+                margin=None,
+                reason=self._format_template("H1"),
+            )
+        )
+
+        try:
+            hrv_delta = float(context.get("baseline_hrv")) - float(context.get("today_hrv"))
+        except (TypeError, ValueError):
+            hrv_delta = None
+        h2_trigger = bool(hrv_delta is not None and hrv_delta >= HARD_STOP_HRV_DELTA)
+        findings.append(
+            GateFinding(
+                gate="H2",
+                status="TRIGGERED" if h2_trigger else "CLEAR",
+                actual_value=hrv_delta,
+                threshold_value=HARD_STOP_HRV_DELTA,
+                margin=self._margin_ge(hrv_delta, HARD_STOP_HRV_DELTA),
+                reason=self._format_template(
+                    "H2",
+                    actual=hrv_delta,
+                    threshold=HARD_STOP_HRV_DELTA,
+                    margin=self._margin_ge(hrv_delta, HARD_STOP_HRV_DELTA),
+                ),
+            )
+        )
+
+        try:
+            rhr_delta = float(context.get("today_rhr")) - float(context.get("baseline_rhr"))
+        except (TypeError, ValueError):
+            rhr_delta = None
+        h3_trigger = bool(rhr_delta is not None and rhr_delta >= HARD_STOP_RHR_DELTA)
+        findings.append(
+            GateFinding(
+                gate="H3",
+                status="TRIGGERED" if h3_trigger else "CLEAR",
+                actual_value=rhr_delta,
+                threshold_value=HARD_STOP_RHR_DELTA,
+                margin=self._margin_ge(rhr_delta, HARD_STOP_RHR_DELTA),
+                reason=self._format_template(
+                    "H3",
+                    actual=rhr_delta,
+                    threshold=HARD_STOP_RHR_DELTA,
+                    margin=self._margin_ge(rhr_delta, HARD_STOP_RHR_DELTA),
+                ),
+            )
+        )
+
+        try:
+            tsb_value = float(context.get("tsb_value"))
+        except (TypeError, ValueError):
+            tsb_value = None
+        h4_trigger = bool(tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR)
+        findings.append(
+            GateFinding(
+                gate="H4",
+                status="TRIGGERED" if h4_trigger else "CLEAR",
+                actual_value=tsb_value,
+                threshold_value=HARD_STOP_TSB_FLOOR,
+                margin=self._margin_le(tsb_value, HARD_STOP_TSB_FLOOR),
+                reason=self._format_template(
+                    "H4",
+                    actual=tsb_value,
+                    threshold=HARD_STOP_TSB_FLOOR,
+                    margin=self._margin_le(tsb_value, HARD_STOP_TSB_FLOOR),
+                ),
+            )
+        )
+
+        try:
+            subjective_fatigue = int(context.get("subjective_fatigue_score", 0))
+        except (TypeError, ValueError):
+            subjective_fatigue = 0
+        h5_trigger = subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME
+        findings.append(
+            GateFinding(
+                gate="H5",
+                status="TRIGGERED" if h5_trigger else "CLEAR",
+                actual_value=subjective_fatigue,
+                threshold_value=SUBJECTIVE_FATIGUE_EXTREME,
+                margin=self._margin_ge(float(subjective_fatigue), float(SUBJECTIVE_FATIGUE_EXTREME)),
+                reason=self._format_template(
+                    "H5",
+                    actual=subjective_fatigue,
+                    threshold=SUBJECTIVE_FATIGUE_EXTREME,
+                    margin=self._margin_ge(float(subjective_fatigue), float(SUBJECTIVE_FATIGUE_EXTREME)),
+                ),
+            )
+        )
+
+        for lock_code in applied_locks:
+            findings.append(
+                GateFinding(
+                    gate=lock_code,
+                    status="TRIGGERED",
+                    actual_value=None,
+                    threshold_value=None,
+                    margin=None,
+                    reason=self._format_template(lock_code),
+                )
+            )
+
+        primary = next((f for f in findings if f.status == "TRIGGERED"), None)
+        if primary is None:
+            primary_reason = "No governance lock triggered: training proceeds as planned."
+            actionable_guidance = "Execute planned session and continue normal monitoring."
+        else:
+            primary_reason = primary.reason
+            actionable_guidance = self._guidance_for_gate(primary.gate)
+
+        return DecisionRationale(
+            primary_reason=primary_reason,
+            actionable_guidance=actionable_guidance,
+            gate_findings=findings,
+        )
+
     def apply_constraints(self, session_plan: dict, context: dict) -> dict:
         db = context.get("db")
         cs_tracker = context.get("cs_tracker")
@@ -832,6 +1027,8 @@ class GovernanceEngine:
 
         session_plan["governance_locks_applied"] = applied_locks
         session_plan["governance_clean"] = len(applied_locks) == 0
+        decision_rationale = self._build_decision_rationale(context, session_plan, applied_locks)
+        session_plan["decision_rationale"] = asdict(decision_rationale)
 
         _gate_event(
             "APPLY_CONSTRAINTS",
