@@ -300,3 +300,50 @@ class TestReadinessEngineProperties:
             sleep_score=sleep_score, soreness=soreness,
         )
         assert isinstance(r["status"], str) and len(r["status"]) > 0
+
+# ════════════════════════════════════════════════════════════════════════════
+# 7. PhysiologicalBounds — out-of-range values obey clamp/null policy
+# ════════════════════════════════════════════════════════════════════════════
+
+
+@st.composite
+def _out_of_range_physiology(draw):
+    from titan.science.physiological_bounds import BOUNDS
+
+    samples = {}
+    for field in ("hrv_ms", "rhr_bpm", "acwr"):
+        lo, hi = BOUNDS[field]
+        span = hi - lo
+        samples[field] = draw(
+            st.one_of(
+                st.floats(min_value=lo - (2 * span), max_value=lo - 0.001),
+                st.floats(min_value=hi + 0.001, max_value=hi + (2 * span)),
+            )
+        )
+    return samples
+
+
+class TestPhysiologicalBoundsProperties:
+
+    @given(raw=_out_of_range_physiology())
+    def test_out_of_range_values_stay_within_bounds_or_none(self, raw):
+        from titan.science.physiological_bounds import BOUNDS, validate_and_clamp
+
+        cleaned, violations = validate_and_clamp(raw, context="property_test")
+
+        for field in ("hrv_ms", "rhr_bpm", "acwr"):
+            lo, hi = BOUNDS[field]
+            value = cleaned[field]
+            assert value is None or lo <= value <= hi
+
+        assert len(violations) >= 1
+
+    @given(other_field=st.sampled_from(["rhr_bpm", "acwr"]))
+    def test_hrv_zero_is_always_nulled(self, other_field):
+        from titan.science.physiological_bounds import validate_and_clamp
+
+        cleaned, _ = validate_and_clamp(
+            {"hrv_ms": 0.0, other_field: 1.0},
+            context="property_test_hrv_zero",
+        )
+        assert cleaned["hrv_ms"] is None

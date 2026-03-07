@@ -3,6 +3,7 @@ import json
 import logging
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.science.physiological_bounds import BOUNDS
 
 _log = logging.getLogger(__name__)
 
@@ -58,6 +59,11 @@ class ReadinessEngine:
         elif rhr_diff > 3:
             score -= 8
             deductions["rhr"] = 8
+
+        rhr_lo, rhr_hi = BOUNDS["rhr_bpm"]
+        rhr_out_of_bounds = not (rhr_lo <= today_rhr <= rhr_hi and rhr_lo <= baseline_rhr <= rhr_hi)
+        if rhr_out_of_bounds:
+            score = min(score, 69)
 
         # Sleep component — Garmin scale 0-100
         # (<60 = poor, 60-69 = fair, 70-84 = good, >=85 = excellent)
