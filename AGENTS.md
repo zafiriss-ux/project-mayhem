@@ -177,6 +177,30 @@ A PR without a Scope Declaration and confirmed gate status will not be reviewed.
 2. For each file, write one sentence explaining **why** it must change.
 3. If a file appears necessary but isn't named in the task, explain the dependency before touching it.
 
+### 3.6 Documentation Edit Policy — Hard Restriction
+
+Documentation files are **architect-owned**. Agents may not edit them freely.
+
+**Covered files:** `CLAUDE.md`, `AGENTS.md`, `README.md`, any file under `docs/`
+
+**The only permitted documentation edits are:**
+
+| Permitted update | Trigger | Section |
+|---|---|---|
+| Test count snapshot in `CLAUDE.md` | Tests added/removed in current task | §12.3 |
+| ADR index table row in `CLAUDE.md` | Integrating a new architect-authored ADR | §12.4 |
+| Debt entry body in `TECHNICAL_DEBT.md` | Task closure (mark RESOLVED) | §12.1 |
+| New debt entry in `TECHNICAL_DEBT.md` | Out-of-scope finding discovered | §12.2 |
+| Tracking table row in `TECHNICAL_DEBT.md` | Either of the two rows above | §12.1 / §12.2 |
+
+**Everything else is prohibited:**
+- Do not reword, restructure, or "improve" existing documentation.
+- Do not add sections, paragraphs, or notes beyond what the task explicitly requires.
+- Do not update `CLAUDE.md` for minor wording corrections or to reflect your interpretation of the system.
+- Do not edit `AGENTS.md` at all — it is maintained exclusively by the architect.
+
+If you believe a documentation update is needed beyond the table above, add it as an out-of-scope finding in `TECHNICAL_DEBT.md` and stop.
+
 ### 3.4 Out of Scope Findings
 If you discover another issue while working: **do not fix it.** Add it to `TECHNICAL_DEBT.md` under the appropriate tier. Do NOT fix it as part of this task. Continue only with the original scoped task.
 
@@ -432,6 +456,7 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 | Failing to raise `PersistenceFailure` on DB rollback | Degraded mode never set; governance uses stale data (ADR-0020, T1-15) |
 | "Improving" adjacent code while fixing a bug | Scope creep, unexpected regressions (Rule E4) |
 | Delivering "mostly done" work | Debt reaccumulates; next engineer inherits broken baseline (Rule E5) |
+| Editing `CLAUDE.md`, `AGENTS.md`, `README.md`, or `docs/` outside §3.6 permitted list | Unauthorized scope creep; documents diverge from architect's intent |
 | Starting Tier 2+ work before Tier 1 is closed | Data integrity issues persist in production (Rule E1) |
 | Using `print()` instead of structured log events | Incidents cannot be diagnosed (T2-01 through T2-07) |
 
@@ -463,9 +488,10 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] If test count changed: I updated the historical snapshot in CLAUDE.md (§12).
 [ ] If a new ADR was written: I updated the ADR index table in CLAUDE.md (§12).
 [ ] I did NOT make any architectural decision without explicit architect approval (§13).
+[ ] I did NOT edit CLAUDE.md, AGENTS.md, README.md, or docs/ beyond what §3.6 and §12 explicitly permit.
 ```
 
-**All 23 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 24 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
@@ -566,4 +592,4 @@ When in doubt: stop and ask.
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening, §11 checklist expanded to 23 items). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-07 (Phase 7.9 — §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
