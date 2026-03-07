@@ -785,4 +785,125 @@ This rule enforces ADR-0028 (Complexity Budget and Simplicity Gate) at the agent
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
+## 15. Engineering Scratchpad Protocol — Codex Obligations
+
+> **The scratchpad (`SCRATCHPAD.md`) is the structured communication channel from Codex to the
+> architect (Claude). It is NOT a to-do list, NOT a design document, and NOT a place for
+> solutions. It is a place for raw engineering findings that require an architectural decision.**
+
+Codex writes **Observation (OBS)** entries to `SCRATCHPAD.md` when the trigger conditions
+below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED` and stops
+until the architect clears it to `IDLE`.
+
+### 15.1 Trigger Conditions (MANDATORY — not optional)
+
+#### T-SCRATCHPAD-1: Subsystem Engineering Review (T4-01 burn-down)
+
+**When:** After completing each subsystem in the T4-01 Ruff burn-down sequence.
+**Subsystems:** `titan/config/` → `titan/science/governance_*.py` → `titan/core/` →
+`titan/integrations/` → `titan/orchestration/ + titan/features/` → `titan/ui/`
+
+Codex MUST write an OBS entry covering:
+- How many violations were found and their categories (unused imports, bare-except, etc.)
+- Any pattern that appeared in 3+ files (e.g., repeated `except Exception: pass`)
+- Whether any violation suggests a deeper systemic issue (not just a lint problem)
+- Files where the fix required more than a mechanical change
+
+**Status change:** Set `STATUS: REVIEW_REQUESTED` after writing.
+**Codex must stop:** Do not begin the next subsystem until architect clears to `IDLE`.
+
+#### T-SCRATCHPAD-2: Tier Boundary Review
+
+**When:** Before crossing from Tier N into Tier N+1 work.
+
+Codex MUST write an OBS entry covering:
+- Count of items closed in Tier N and their commit hashes
+- Any Tier N items that revealed coupling to Tier N+1 concerns
+- Whether any OPEN items in TECHNICAL_DEBT.md should be re-prioritised based on what Tier N revealed
+- Any safety or data-integrity risk that emerged during Tier N execution that is not yet tracked
+
+**Status change:** Set `STATUS: REVIEW_REQUESTED` after writing.
+**Codex must stop:** Do not start any Tier N+1 task until architect reviews and clears.
+This is in addition to Rule E1 (tier ordering). It does not replace it.
+
+#### T-SCRATCHPAD-3: Pattern Concentration
+
+**When:** Codex adds 3 or more out-of-scope findings (§3.4 / §12.2) to `TECHNICAL_DEBT.md`
+within a single session, AND those findings share a common module, subsystem, or failure mode.
+
+Codex MUST write an OBS entry synthesising the pattern:
+- List the related findings (T<N>-<id> references)
+- Describe the common failure mode or architectural weakness they share
+- Estimate blast radius: how many modules are likely affected
+- Ask the concrete architectural question the pattern raises
+
+**Status change:** Set `STATUS: REVIEW_REQUESTED`.
+**Codex may continue** with the current task (this is non-blocking for the current subtask).
+Codex must NOT start a new top-level task until the architect clears it.
+
+#### T-SCRATCHPAD-4: Phase Retrospective
+
+**When:** When a Phase is declared CLOSED (e.g., "Phase 7.8 CLOSED") — either by the architect
+or by Codex confirming the last item in a phase sequence is resolved.
+
+Codex MUST write a retrospective OBS entry covering:
+- Every Tier 1 item closed in the phase: what the root cause was (one sentence each)
+- Every out-of-scope finding added during the phase (T-ref + one-line summary)
+- Whether any finding was added but not yet triaged by the architect
+- Any pattern in the Phase that suggests the next Phase's Tier 1 list is incomplete
+
+**Status change:** Set `STATUS: REVIEW_REQUESTED`.
+**Codex must stop:** Do not begin any item from the next Phase until architect clears.
+
+#### T-SCRATCHPAD-5: Architectural Decision Point (parallel to §13.2)
+
+**When:** Every time Codex invokes the §13.2 stop-and-report protocol (architectural decision
+required during implementation).
+
+Codex MUST simultaneously write an OBS entry with:
+- The exact code location where the decision is needed (file:line)
+- The two or more options Codex identified (factual, no preference expressed)
+- The architectural implication of each option (contract change / schema change / gate change / none)
+- Which existing ADR, if any, is closest to this decision point
+- Whether proceeding without a decision would cause a data-integrity risk
+
+**Status change:** Set `STATUS: REVIEW_REQUESTED`.
+The §13.2 stop protocol and the OBS entry are both required. Neither replaces the other.
+
+---
+
+### 15.2 OBS Entry Rules
+
+1. **One OBS per trigger event.** Do not bundle multiple unrelated findings into one OBS.
+2. **Facts only.** No proposed solutions in OBS entries. No design sketches. No preferences.
+3. **Specific code references.** Every OBS must include at least one `file:line` reference.
+4. **Sequential IDs.** New OBS IDs always increment from the highest existing ID (including
+   REVIEWED entries in the archive). Never reuse an ID.
+5. **Follow the exact format** defined in `SCRATCHPAD.md`. Missing fields = incomplete OBS.
+6. **Urgency classification is mandatory:**
+   - `BLOCKING` — Codex cannot proceed without an architect decision
+   - `NON-BLOCKING` — finding is recorded for architect awareness; current task can continue
+
+### 15.3 What Codex MUST NOT Do
+
+- Do NOT write proposed solutions or design alternatives in OBS entries.
+- Do NOT write OBS entries for things already covered by an open TECHNICAL_DEBT.md entry.
+- Do NOT set status back to `IDLE` — only the architect (Claude) changes status to `IDLE` or `CLEARED`.
+- Do NOT interpret `CLEARED` as permission to skip future trigger conditions.
+- Do NOT treat the scratchpad as a substitute for `TECHNICAL_DEBT.md`. The scratchpad feeds
+  decisions; `TECHNICAL_DEBT.md` is the canonical task register.
+
+### 15.4 Pre-Delivery Checklist Addition
+
+Add the following items to the §11 pre-delivery checklist for every task delivery:
+
+```
+[ ] I checked SCRATCHPAD.md status before starting this task (was IDLE or I had architect clearance).
+[ ] If any trigger condition (T-SCRATCHPAD-1 through T-SCRATCHPAD-5) was met during this task,
+    I wrote an OBS entry and set STATUS: REVIEW_REQUESTED.
+[ ] I did NOT write proposed solutions in OBS entries — only engineering observations.
+```
+
+---
+
+*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07). Authoritative for all agents and engineers operating on TITAN OS.*
