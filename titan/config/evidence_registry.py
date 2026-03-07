@@ -520,6 +520,137 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
 }
 
 
+METRIC_LIFECYCLE_STATES: frozenset[str] = frozenset({'Active', 'Under Review', 'Deprecated'})
+
+# Metric lifecycle audit registry (ADR-0039 / T2-17).
+#
+# Governance gates use lock-code taxonomy: H1-H4 (hard stops), C1 (composite),
+# V1-V5 (VO2 eligibility), IG-YELLOW/IG-RED (intensity governor overlays).
+METRIC_LIFECYCLE: dict[str, dict[str, object]] = {
+    'hrv_delta_ms': {
+        'state': 'Active',
+        'governance_gates': ['H1', 'C1'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'rhr_delta_bpm': {
+        'state': 'Active',
+        'governance_gates': ['H1', 'C1'],
+        'telegram_briefing': False,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'readiness_score': {
+        'state': 'Active',
+        'governance_gates': ['V2', 'C1'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'sleep_score': {
+        'state': 'Active',
+        'governance_gates': ['C1'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'subjective_fatigue_score': {
+        'state': 'Active',
+        'governance_gates': ['H4', 'C1'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'fatigue_level': {
+        'state': 'Active',
+        'governance_gates': ['V5', 'IG-YELLOW', 'IG-RED'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'glycogen_debt': {
+        'state': 'Active',
+        'governance_gates': ['C1', 'V3', 'IG-YELLOW', 'IG-RED'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'acwr': {
+        'state': 'Active',
+        'governance_gates': ['V1'],
+        'telegram_briefing': False,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'days_since_last_vo2': {
+        'state': 'Active',
+        'governance_gates': ['V4'],
+        'telegram_briefing': False,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'fueling_confirmed': {
+        'state': 'Active',
+        'governance_gates': ['V5'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'tsb': {
+        'state': 'Active',
+        'governance_gates': ['IG-YELLOW', 'IG-RED'],
+        'telegram_briefing': True,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'drift_pct': {
+        'state': 'Active',
+        'governance_gates': ['IG-YELLOW', 'IG-RED'],
+        'telegram_briefing': False,
+        'operator_console_payload': True,
+        'evidence_registry_entry': True,
+    },
+    'trimp': {
+        'state': 'Under Review',
+        'governance_gates': [],
+        'telegram_briefing': False,
+        'operator_console_payload': False,
+        'evidence_registry_entry': False,
+    },
+    'efficiency_index': {
+        'state': 'Under Review',
+        'governance_gates': [],
+        'telegram_briefing': False,
+        'operator_console_payload': False,
+        'evidence_registry_entry': False,
+    },
+    'biomechanics_score': {
+        'state': 'Under Review',
+        'governance_gates': [],
+        'telegram_briefing': False,
+        'operator_console_payload': False,
+        'evidence_registry_entry': False,
+    },
+    'durability_score': {
+        'state': 'Under Review',
+        'governance_gates': [],
+        'telegram_briefing': False,
+        'operator_console_payload': False,
+        'evidence_registry_entry': False,
+    },
+}
+
+
+def get_metrics_under_review() -> list[str]:
+    """Return audited metrics whose lifecycle state is `Under Review`."""
+    return [
+        name
+        for name, metadata in METRIC_LIFECYCLE.items()
+        if metadata.get('state') == 'Under Review'
+    ]
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Query helpers
 # ──────────────────────────────────────────────────────────────────────────────

@@ -1154,6 +1154,41 @@ def test_hydrate_engines_from_db_partial_hydration_no_low_confidence_warning(mon
     assert warning_messages == []
 
 
+def test_daily_coach_init_emits_metrics_under_review_event(monkeypatch):
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    monkeypatch.setattr(daily_coach, "get_metrics_under_review", lambda: ["trimp", "efficiency_index"])
+    monkeypatch.setattr(DailyCoach, "_hydrate_engines_from_db", lambda self: {"hrv": True})
+
+    DailyCoach(
+        garmin_sync=SimpleNamespace(),
+        weather_api=SimpleNamespace(),
+        telegram_bot=SimpleNamespace(),
+        hrv_engine=SimpleNamespace(),
+        tsb_engine=SimpleNamespace(),
+        readiness_engine=SimpleNamespace(),
+        optimal_time_calc=SimpleNamespace(),
+        nutrition_optimizer=SimpleNamespace(),
+        weekly_planner=SimpleNamespace(),
+        db=DummyDB(),
+        autonomic_engine=SimpleNamespace(),
+        cs_tracker=SimpleNamespace(),
+        glycogen_accum=SimpleNamespace(),
+        governance=SimpleNamespace(),
+        fatigue_engine=SimpleNamespace(),
+        apl=SimpleNamespace(),
+        volume_load_gauge=SimpleNamespace(),
+        outcome_tracker=SimpleNamespace(),
+    )
+
+    assert any(
+        event["action"] == "metrics_under_review"
+        and event["metrics"] == ["trimp", "efficiency_index"]
+        and event["count"] == 2
+        for event in events
+    )
+
+
 def test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning(monkeypatch):
     warning_messages = []
     monkeypatch.setattr(daily_coach._log, "warning", lambda message: warning_messages.append(message))

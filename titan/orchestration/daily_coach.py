@@ -33,6 +33,7 @@ from titan.core.structured_events import EventSeverity, structured_event_payload
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+from titan.config.evidence_registry import get_metrics_under_review
 from titan.config.thresholds import GARMIN_DATA_MAX_AGE_HOURS
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
@@ -237,6 +238,13 @@ class DailyCoach:
         self._startup_confidence_applies_next_routine = True
         # Restore in-memory state of science engines from DB on startup
         self._startup_hydration_confidence = self._hydrate_engines_from_db()
+        metrics_under_review = get_metrics_under_review()
+        if metrics_under_review:
+            _daily_coach_event(
+                "metrics_under_review",
+                metrics=metrics_under_review,
+                count=len(metrics_under_review),
+            )
 
     # ═══════════════════════════════════════════════════════════════════════
     # PUBLIC ENTRY POINT

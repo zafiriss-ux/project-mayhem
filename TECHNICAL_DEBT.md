@@ -1754,9 +1754,9 @@ the system could not detect trust erosion.
 
 ---
 
-### T2-17 · Metric lifecycle states not tracked — orphaned metrics consume resources without governance contribution; new metrics lack mandatory evidence registry entries 🔴 OPEN (independent)
+### T2-17 · Metric lifecycle states not tracked — orphaned metrics consume resources without governance contribution; new metrics lack mandatory evidence registry entries ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (Phase 7.9 — independent; can begin once Tier 1 items close).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 91e0466.
 **Source:** Risk Review V8 — Risk: Metric Proliferation Debt. ADR-0039.
 **Priority:** P2 (Tier 2 — observability).
 
@@ -1764,36 +1764,18 @@ the system could not detect trust erosion.
 
 **Original state (pre-fix):**
 
-TITAN OS computes ~15+ physiological metrics. Several (TRIMP, drift_index,
-efficiency_index, biomechanics_score, durability_score) have unclear governance roles —
-they are computed but their path to any governance gate, Telegram briefing, or Operator
-Console payload is not documented. Without a lifecycle protocol, Phase 8/9 additions
-will compound this proliferation. Metrics without evidence registry entries cannot be
+TITAN OS computed ~15+ physiological metrics. Several (TRIMP, drift_index,
+efficiency_index, biomechanics_score, durability_score) had unclear governance roles —
+they were computed but their path to any governance gate, Telegram briefing, or Operator
+Console payload was not documented. Without a lifecycle protocol, Phase 8/9 additions
+would compound this proliferation. Metrics without evidence registry entries could not be
 audited for evidence quality.
 
-**Fix direction (per ADR-0039):**
-
-1. Enumerate all metrics computed by science engines (exhaustive audit).
-2. For each metric, record:
-   - Governance gate(s) that consume it (or `None`)
-   - Telegram briefing inclusion (Yes/No)
-   - Operator Console payload inclusion (Yes/No)
-   - `evidence_registry.py` entry (Yes/No)
-3. Classify each as `Active`, `Under Review`, or `Deprecated` (initial pass: anything
-   without a governance gate and not in evidence registry → `Under Review`).
-4. Add `METRIC_LIFECYCLE` registry to `evidence_registry.py`:
-   ```python
-   METRIC_LIFECYCLE = {
-       "hrv_delta_ms": {"state": "Active", "governance_gates": ["H2"], ...},
-       "trimp": {"state": "Under Review", "governance_gates": [], ...},
-       ...
-   }
-   ```
-5. Add CI check (extend `tests/test_documentation_consistency.py` or new
-   `tests/test_metric_lifecycle.py`): all metrics in `METRIC_LIFECYCLE` must have
-   `state` in `{"Active", "Under Review", "Deprecated"}`.
-6. Emit `metrics_under_review` structured event at DailyCoach startup if any metric
-   is in `Under Review` state.
+**Resolution:**
+- Added `METRIC_LIFECYCLE` and `METRIC_LIFECYCLE_STATES` to `titan/config/evidence_registry.py`, including governance, Telegram, Operator Console, and evidence coverage metadata per audited metric.
+- Added `get_metrics_under_review()` helper and wired DailyCoach startup to emit a `metrics_under_review` structured event when any audited metric remains `Under Review`.
+- Added lifecycle guard tests in `tests/test_metric_lifecycle.py`, module-mirrored coverage in `tests/titan/config/test_evidence_registry.py`, and startup event coverage in `tests/titan/orchestration/test_daily_coach.py`.
+- Closure test count: 1692 passed (`python -m pytest -q`).
 
 **Acceptance gate (binary):**
 ```bash
@@ -3664,7 +3646,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-22 | ✅ RESOLVED | 2026-03-07 |
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
-| T2-17 | OPEN (independent) | — |
+| T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-29 | OPEN (deferred Phase 8) | — |
 | T4-30 | OPEN (independent) | — |
 | T4-31 | OPEN (IMMEDIATE — ADR-0040 active) | — |
