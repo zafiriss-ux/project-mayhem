@@ -437,6 +437,35 @@ def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(t
         db.close()
 
 
+def test_persist_garmin_data_duplicate_activity_ids_in_same_payload_are_rejected(tmp_path, monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        daily_coach,
+        "_daily_coach_event",
+        lambda action, **fields: events.append({"action": action, **fields}),
+    )
+
+    db = DatabaseManager(db_name="garmin_duplicate_payload.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+
+    try:
+        payload = _garmin_payload_for_day(day)
+        payload["activities"][1]["activity_id"] = payload["activities"][0]["activity_id"]
+
+        coach._persist_garmin_data(payload, day)
+
+        assert _count_rows(db, "training_log", day) == 1
+        assert _count_rows(db, "daily_metrics", day) == 1
+        assert any(
+            event["action"] == "activity_persist"
+            and event.get("outcome") == "ACTIVITY_SANITY_REJECTED"
+            for event in events
+        )
+    finally:
+        db.close()
+
+
 def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
     db = DatabaseManager(db_name="garmin_idempotent_sync.db", db_dir=tmp_path)
     coach = _build_atomic_persist_coach(db)

@@ -165,6 +165,44 @@ def test_activity_unparseable_timestamp_warns():
 # ─── check_daily_metrics ─────────────────────────────────────────────────────
 
 
+def test_duplicate_activity_id_in_payload_rejected():
+    checker = DataSanityChecker()
+    seen_ids: set[str] = set()
+
+    first = checker.check_activity(
+        {"activity_id": "a1", "date": _past_date_str(), "distance_km": 5.0, "duration_sec": 1200},
+        seen_activity_ids=seen_ids,
+    )
+    duplicate = checker.check_activity(
+        {"activity_id": "a1", "date": _past_date_str(), "distance_km": 6.0, "duration_sec": 1400},
+        seen_activity_ids=seen_ids,
+    )
+
+    assert first == []
+    assert len(duplicate) == 1
+    assert duplicate[0].rule == "duplicate_activity_id_in_payload"
+    assert duplicate[0].severity == "reject"
+
+
+def test_hrv_future_timestamp_rejected():
+    checker = DataSanityChecker()
+    future = (datetime.now(tz=UTC) + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
+    violations = checker.check_hrv({"rmssd": 42.0, "date": future})
+
+    assert len(violations) == 1
+    assert violations[0].rule == "timestamp_in_future"
+    assert violations[0].severity == "reject"
+
+
+def test_hrv_unparseable_timestamp_warns():
+    checker = DataSanityChecker()
+    violations = checker.check_hrv({"rmssd": 42.0, "date": "bad-timestamp"})
+
+    assert len(violations) == 1
+    assert violations[0].rule == "timestamp_unparseable"
+    assert violations[0].severity == "warn"
+
+
 def test_daily_metrics_null_date_rejected():
     checker = DataSanityChecker()
     violations = checker.check_daily_metrics({"date": None, "hrv_rmssd": 55.0})

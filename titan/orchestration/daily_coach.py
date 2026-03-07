@@ -880,13 +880,18 @@ class DailyCoach:
         latest_weight = validated_inputs["weight_kg"]
 
         _sanity = DataSanityChecker()
+        seen_activity_ids: set[str] = set()
         try:
             with self.db.transaction():
                 for idx, act in enumerate(activities, start=1):
                     activity_date = act.get('date', today_str)
 
                     # ── Structural sanity check (ADR-0026 Layer 1) ───────────
-                    sanity_violations = _sanity.check_activity(act, context="persist_garmin_data")
+                    sanity_violations = _sanity.check_activity(
+                        act,
+                        context="persist_garmin_data",
+                        seen_activity_ids=seen_activity_ids,
+                    )
                     if has_rejects(sanity_violations):
                         _daily_coach_event(
                             "activity_persist",
@@ -930,6 +935,30 @@ class DailyCoach:
                         )
                         raise
 
+                daily_metric_violations = _sanity.check_daily_metrics(
+                    {"date": today_str},
+                    context="persist_garmin_data",
+                )
+                if has_rejects(daily_metric_violations):
+                    _daily_coach_event(
+                        "daily_metrics_persist_failed",
+                        date=today_str,
+                        error_class="DataSanityViolation",
+                        error_message="daily_metrics_rejected",
+                    )
+                    raise ValueError("daily_metrics_rejected")
+
+                hrv_sanity_violations = []
+                if latest_rmssd is not None:
+                    hrv_sanity_violations = _sanity.check_hrv(
+                        {"date": today_str, "rmssd": latest_rmssd},
+                        context="persist_garmin_data",
+                    )
+                    if has_rejects(hrv_sanity_violations):
+                        latest_rmssd = None
+
+                daily_quality_flag = "degraded" if has_warns(daily_metric_violations + hrv_sanity_violations) else None
+
                 self.db.save_daily_metric(
                     date         = today_str,
                     weight       = latest_weight,
@@ -937,6 +966,7 @@ class DailyCoach:
                     rhr          = today_rhr or None,
                     sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
                     sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
+                    quality_flag = daily_quality_flag,
                 )
 
             if activities:
