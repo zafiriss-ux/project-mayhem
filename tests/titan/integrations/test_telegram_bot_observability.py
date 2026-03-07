@@ -641,3 +641,37 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
 def test_telegram_bot_has_no_print_calls():
     source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
     assert "print(" not in source
+
+
+def test_send_structured_alert_happy_path_first_critical_delivery(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    calls = []
+    monkeypatch.setattr(bot, "send_alert", lambda title, message, level="warning": calls.append((title, message, level)) or True)
+
+    assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is True
+    assert calls == [("CRITICAL", "stale data", "critical")]
+
+
+def test_send_structured_alert_boundary_deduplicates_within_window(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    calls = []
+    monkeypatch.setattr(bot, "send_alert", lambda title, message, level="warning": calls.append((title, message, level)) or True)
+
+    assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is True
+    assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is False
+    assert calls == [("CRITICAL", "stale data", "critical")]
+
+
+def test_send_structured_alert_sends_summary_after_persist_window(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    calls = []
+    monkeypatch.setattr(bot, "send_alert", lambda title, message, level="warning": calls.append((title, message, level)) or True)
+
+    assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is True
+    snapshot = bot._alert_history[("garmin_data_stale", "GARMIN_DATA_STALE")]
+    snapshot["first_seen"] = snapshot["first_seen"] - telegram_bot.timedelta(hours=73)
+    snapshot["last_sent"] = snapshot["last_sent"] - telegram_bot.timedelta(hours=21)
+
+    assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is True
+    assert calls[-1][0] == "CRITICAL SUMMARY"
+    assert calls[-1][2] == "warning"

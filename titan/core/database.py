@@ -2,7 +2,6 @@
 TITAN Database Management
 Persistent storage for training data, athlete profiles, and performance metrics
 """
-
 import json
 import logging
 import re
@@ -14,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from titan.core.athlete import UniversalAthleteProfile
+from titan.core.structured_events import EventSeverity, structured_event_payload
 
 _log = logging.getLogger(__name__)
 
@@ -23,7 +23,12 @@ _REQUIRED_ATHLETE_KEYS: frozenset = frozenset({"athlete_id"})
 
 def _database_event(action: str, level: int = logging.INFO, **fields: Any) -> None:
     """Emit a structured database event as a single JSON log line."""
-    payload = {"flow": "database", "action": action, **fields}
+    severity = EventSeverity.INFO
+    if level >= logging.ERROR:
+        severity = EventSeverity.CRITICAL
+    elif level >= logging.WARNING:
+        severity = EventSeverity.WARNING
+    payload = structured_event_payload("database", action, severity=severity, **fields)
     _log.log(level, json.dumps(payload, default=str))
 
 

@@ -1619,9 +1619,9 @@ python -m pytest -q                                    # 100% green, count ≥ p
 
 ---
 
-### T2-14 · Structured events lack severity levels; Telegram alert deduplication absent; no operational runbook 🔴 OPEN (independent)
+### T2-14 · Structured events lack severity levels; Telegram alert deduplication absent; no operational runbook ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (Phase 7.9 — independent; after all Tier 1 items).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: TBD.
 **Source:** Risk Review V7 — Risk: Observability Overload. Architecture Review 2026-03-06. ADR-0031.
 **Priority:** P2 (Tier 2 — observability sustainability).
 
@@ -1635,6 +1635,10 @@ classification, all events are treated identically — Telegram receives both ro
 recurring governance condition (e.g., H2 firing every morning for a training block)
 sends the same identical Telegram message daily, causing alert fatigue. There is no
 log rotation policy and no operational runbook for responding to critical events.
+
+**Resolution:**
+
+Implemented shared structured-event severity payload support via `EventSeverity` and propagated severity-enabled structured event helpers across orchestration/integration/science/core modules that emit observability events. Added Telegram CRITICAL alert deduplication keyed by `(event_type, lock_code)` with a 20h suppression window and 72h persistence summary behaviour, then wired stale Garmin-data alerting through the deduplicated path. Added rotating log file handler configuration in `titan/main.py` (`LOG_MAX_BYTES=10MB`, `LOG_BACKUP_COUNT=5`). Added/updated tests for severity payload contract, dedup suppression, persistence summaries, and rotating logging configuration. Final closure suite count: 1678 tests green.
 
 **Fix direction (three parts per ADR-0031):**
 
@@ -3655,7 +3659,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-18 | ✅ RESOLVED | 2026-03-07 |
 | T1-19 | ✅ RESOLVED | 2026-03-07 |
 | T1-20 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T2-14 | OPEN (independent, after Tier 1) | — |
+| T2-14 | ✅ RESOLVED | 2026-03-07 |
 | T2-15 | OPEN (after T1-20) | — |
 | T4-21 | OPEN (independent) | — |
 | T4-22 | OPEN (independent) | — |

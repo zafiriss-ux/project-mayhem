@@ -1,6 +1,5 @@
 """
 Weather Integration — Open-Meteo (free, no API key required)
-
 Provides 48-hour hourly forecasts, current conditions, dew-point calculation,
 heat-stress classification, and optimal training window scoring.
 
@@ -26,6 +25,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.data_trust import evaluate_weather_trust
 
 WeatherDataQuality = Literal["live", "cached", "synthetic"]
@@ -35,7 +35,12 @@ _log = logging.getLogger(__name__)
 
 def _weather_event(action: str, level: int = logging.INFO, **fields) -> None:
     """Emit a structured weather event as a single JSON log line."""
-    payload = {"flow": "weather_api", "action": action, **fields}
+    severity = EventSeverity.INFO
+    if level >= logging.ERROR:
+        severity = EventSeverity.CRITICAL
+    elif level >= logging.WARNING:
+        severity = EventSeverity.WARNING
+    payload = structured_event_payload("weather_api", action, severity=severity, **fields)
     _log.log(level, json.dumps(payload, default=str))
 
 

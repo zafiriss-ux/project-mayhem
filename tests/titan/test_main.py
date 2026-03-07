@@ -660,3 +660,40 @@ def test_parse_env_number_type_error_uses_same_validation_exit_path(monkeypatch,
     record = next(r for r in caplog.records if r.msg == "startup_failure")
     assert record.error_class == "TypeError"
     assert "ATHLETE_AGE='bad'" in record.detail
+
+
+def test_configure_rotating_logging_adds_handler(tmp_path, monkeypatch):
+    log_path = tmp_path / "titan.log"
+    monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
+    root = logging.getLogger()
+    original_handlers = list(root.handlers)
+    root.handlers = []
+
+    try:
+        titan_main._configure_rotating_logging()
+        handlers = [h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        assert len(handlers) == 1
+        assert handlers[0].maxBytes == titan_main.LOG_MAX_BYTES
+        assert handlers[0].backupCount == titan_main.LOG_BACKUP_COUNT
+    finally:
+        for handler in root.handlers:
+            handler.close()
+        root.handlers = original_handlers
+
+
+def test_configure_rotating_logging_does_not_duplicate_handler(tmp_path, monkeypatch):
+    log_path = tmp_path / "titan.log"
+    monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
+    root = logging.getLogger()
+    original_handlers = list(root.handlers)
+    root.handlers = []
+
+    try:
+        titan_main._configure_rotating_logging()
+        titan_main._configure_rotating_logging()
+        handlers = [h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
+        assert len(handlers) == 1
+    finally:
+        for handler in root.handlers:
+            handler.close()
+        root.handlers = original_handlers

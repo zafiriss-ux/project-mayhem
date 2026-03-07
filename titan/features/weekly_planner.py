@@ -1,6 +1,5 @@
 """
 Weekly Training Plan Generator
-
 Generates intelligent weekly plans based on:
 - Recent lactate threshold
 - Training drift patterns
@@ -14,6 +13,7 @@ import json
 import logging
 from datetime import datetime, timedelta
 
+from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.tsb_engine import TSBEngine
@@ -21,9 +21,14 @@ from titan.science.tsb_engine import TSBEngine
 _log = logging.getLogger(__name__)
 
 
-def _planner_event(action: str, **fields) -> None:
+def _planner_event(
+    action: str,
+    *,
+    severity: EventSeverity | str = EventSeverity.INFO,
+    **fields,
+) -> None:
     """Emit a structured weekly planner event as a single JSON log line."""
-    _log.info(json.dumps({"flow": "weekly_planner", "action": action, **fields}, default=str))
+    _log.info(json.dumps(structured_event_payload("weekly_planner", action, severity=severity, **fields), default=str))
 
 
 class WeeklyPlanGenerator:

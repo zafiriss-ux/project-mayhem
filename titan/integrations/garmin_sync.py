@@ -14,6 +14,7 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 from typing import Any
 
+from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.orchestration.contracts import (
     GarminSyncResult,
     GarminSyncResultContract,
@@ -53,14 +54,24 @@ class _CredentialSecret:
         return "***"
 
 
-def _garmin_event(action: str, **fields) -> None:
+def _garmin_event(
+    action: str,
+    *,
+    severity: EventSeverity | str = EventSeverity.INFO,
+    **fields,
+) -> None:
     """Emit a structured Garmin sync event as a single JSON log line."""
-    _log.info(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
+    _log.info(json.dumps(structured_event_payload("garmin_sync", action, severity=severity, **fields), default=str))
 
 
 def _garmin_error_event(action: str, **fields) -> None:
     """Emit a structured Garmin sync event at ERROR level as a single JSON log line."""
-    _log.error(json.dumps({"flow": "garmin_sync", "action": action, **fields}, default=str))
+    _log.error(
+        json.dumps(
+            structured_event_payload("garmin_sync", action, severity=EventSeverity.WARNING, **fields),
+            default=str,
+        )
+    )
 
 
 def _classify_failure(error: Exception) -> str:

@@ -10,8 +10,9 @@ import os
 import threading
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
+from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -43,9 +44,19 @@ class _CredentialSecret:
         return "***"
 
 
-def _telegram_event(action: str, **fields) -> None:
+def _telegram_event(
+    action: str,
+    *,
+    severity: EventSeverity | str = EventSeverity.INFO,
+    **fields,
+) -> None:
     """Emit a structured Telegram delivery event as a single JSON log line."""
-    _log.info(json.dumps({"flow": "telegram", "action": action, **fields}, default=str))
+    _log.info(
+        json.dumps(
+            structured_event_payload("telegram", action, severity=severity, **fields),
+            default=str,
+        )
+    )
 
 
 try:
@@ -80,6 +91,7 @@ class TitanTelegramBot:
         self._tasks_lock = threading.Lock()
         self.scheduled_tasks: list[dict] = []
         self.message_history: list[dict] = []
+        self._alert_history: dict[tuple[str, str], dict[str, datetime | int]] = {}
 
         # Callbacks for commands – set by orchestration layer
         self.cmd_callbacks: dict[str, Callable] = {}
@@ -344,6 +356,50 @@ class TitanTelegramBot:
     def send_alert(self, title: str, message: str, level: str = "warning") -> bool:
         emoji = {"critical": "🛑", "warning": "⚠️", "info": "ℹ️", "ok": "✅"}.get(level, "ℹ️")
         return self.send_message(f"{emoji} *{title}*\n\n{message}")
+
+    def send_structured_alert(self, event_type: str, lock_code: str, message: str) -> bool:
+        """Send deduplicated CRITICAL alerts and persistence summaries."""
+        dedup_window = timedelta(hours=20)
+        persist_window = timedelta(hours=72)
+        now = datetime.now(tz=UTC)
+        key = (event_type, lock_code)
+        snapshot = self._alert_history.get(key)
+
+        if snapshot is None:
+            self._alert_history[key] = {
+                "first_seen": now,
+                "last_sent": now,
+                "suppressed_count": 0,
+            }
+            return self.send_alert("CRITICAL", message, level="critical")
+
+        last_sent = snapshot["last_sent"]
+        first_seen = snapshot["first_seen"]
+        if not isinstance(last_sent, datetime) or not isinstance(first_seen, datetime):
+            return False
+
+        if now - last_sent < dedup_window:
+            snapshot["suppressed_count"] = int(snapshot["suppressed_count"]) + 1
+            _telegram_event(
+                "critical_alert_deduplicated",
+                severity=EventSeverity.WARNING,
+                event_type=event_type,
+                lock_code=lock_code,
+                suppressed_count=snapshot["suppressed_count"],
+            )
+            return False
+
+        if now - first_seen >= persist_window:
+            summary = (
+                f"Persistent condition: {event_type} ({lock_code}) still active after 72h. "
+                f"Suppressed duplicates: {snapshot['suppressed_count']}."
+            )
+            snapshot["last_sent"] = now
+            snapshot["suppressed_count"] = 0
+            return self.send_alert("CRITICAL SUMMARY", summary, level="warning")
+
+        snapshot["last_sent"] = now
+        return self.send_alert("CRITICAL", message, level="critical")
 
     # ------------------------------------------------------------------ #
     # SCHEDULER
