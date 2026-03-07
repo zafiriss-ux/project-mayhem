@@ -39,6 +39,9 @@ def test_outcome_tracker_persists_decision_and_restores(tmp_path):
     assert decisions[0].session_planned == 'TEMPO'
     assert decisions[0].session_post_governance == 'EASY'
     assert decisions[0].locks_applied == ['HARD_STOP_ACWR']
+    assert decisions[0].decision_was_followed is True
+    assert decisions[0].override_outcome_exclusion is False
+    assert decisions[0].outcome_independence_ok is True
 
     db.close()
 
@@ -68,6 +71,7 @@ def test_outcome_tracker_persists_post_session_outcome(tmp_path):
         completed=True,
         actual_session_type='TEMPO',
         notes='completed at reduced pace',
+        outcome_date='2026-03-06',
     )
 
     reloaded = OutcomeTracker(db=db)
@@ -78,6 +82,10 @@ def test_outcome_tracker_persists_post_session_outcome(tmp_path):
     assert decisions[0].outcome_completed is True
     assert decisions[0].outcome_session_type_actual == 'TEMPO'
     assert decisions[0].outcome_notes == 'completed at reduced pace'
+    assert decisions[0].decision_was_followed is True
+    assert decisions[0].override_outcome_exclusion is False
+    assert decisions[0].outcome_independence_ok is True
+    assert decisions[0].algorithm_version_snapshot is not None
 
     db.close()
 
