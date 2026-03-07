@@ -106,6 +106,26 @@ If repair is permitted:
 - Do not modify application code or tests.
 - Re-run all three Mandatory Gates after repair before continuing.
 
+### SESSION_START (mandatory — before any code change)
+
+Run all five checks below and record outputs in your first response:
+
+```bash
+S1. Read CLAUDE.md completely (not summary).
+S2. grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md
+S3. python -m pytest -q --no-header 2>&1 | tail -1
+S4. ruff check . --statistics 2>&1 | tail -5
+S5. State explicitly: "Current open Tier N items: [list]"
+```
+
+Do not begin implementation until you have confirmed:
+- Open debt items (S2)
+- Baseline test count (S3)
+- Lint status (S4)
+- Active tier and open items (S5)
+
+Failure to run these checks before implementation is a PROCESS VIOLATION.
+
 ---
 
 Every task follows this sequence exactly. No step may be skipped.

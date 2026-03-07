@@ -2655,9 +2655,9 @@ python -m pytest -q
 
 ---
 
-### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable 🔴 OPEN (independent)
+### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `37a25fe`.
 **Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. ADR-0025.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -3641,7 +3641,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-14 | ✅ RESOLVED | 2026-03-07 |
 | T2-15 | ✅ RESOLVED | 2026-03-07 |
 | T4-21 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-22 | OPEN (independent) | — |
+| T4-22 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-23 | OPEN (independent) | — |
 | T4-24 | OPEN (independent) | — |
 | T4-25 | OPEN (independent) | — |
