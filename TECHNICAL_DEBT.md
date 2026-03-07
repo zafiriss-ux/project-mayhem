@@ -870,9 +870,9 @@ before readiness/governance/planning consumption; added focused regression cover
 
 ---
 
-### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently ✅ RESOLVED 2026-03-06
+### T1-19 · No structural/temporal data sanity validation — cross-field anomalies enter DB silently ✅ RESOLVED 2026-03-07
 
-**Status:** ✅ RESOLVED 2026-03-06. Commit: `b928987`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `bf4a43a`.
 **Source:** Master Risk Matrix — Risk #10 (Input Data Sanity). Architecture Review 2026-03-06. ADR-0026.
 **Priority:** P1 (Tier 1 — data integrity).
 
@@ -893,8 +893,9 @@ Three layers implemented per ADR-0026:
 3. **Layer 3** — Schema v3 migration: `quality_flag TEXT` column added to `daily_metrics` and
    `training_log`. `get_last_garmin_sync_timestamp()` added to `DatabaseManager`.
 
-36 new tests in `tests/test_data_sanity.py` (structural + DB integration).
-Test suite: 1618 green as of closure (was 1582). ruff: 0 findings.
+36 new tests in `tests/test_data_sanity.py` (structural + DB integration), plus focused
+orchestration/data-sanity coverage for duplicate activity IDs and HRV temporal sanity at
+persist time. Test suite: 1626 passed, 1 skipped as of closure. ruff: 0 findings.
 
 **Effort:** ~4h. New module + 3-point integration + migration + tests.
 
@@ -3620,7 +3621,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-19 | ✅ RESOLVED | 2026-03-06 |
 | T4-20 | ✅ RESOLVED | 2026-03-06 |
 | T1-18 | ✅ RESOLVED | 2026-03-07 |
-| T1-19 | ✅ RESOLVED | 2026-03-06 |
+| T1-19 | ✅ RESOLVED | 2026-03-07 |
 | T1-20 | OPEN (independent) | — |
 | T2-14 | OPEN (independent, after Tier 1) | — |
 | T2-15 | OPEN (after T1-20) | — |

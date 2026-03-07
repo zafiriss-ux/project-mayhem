@@ -58,7 +58,12 @@ class DataSanityChecker:
 
     # ── Activity validation ───────────────────────────────────────────────────
 
-    def check_activity(self, row: dict, context: str = "activity") -> list[SanityViolation]:
+    def check_activity(
+        self,
+        row: dict,
+        context: str = "activity",
+        seen_activity_ids: set[str] | None = None,
+    ) -> list[SanityViolation]:
         """Cross-field structural validation for a Garmin activity row.
 
         Rules (ADR-0026 Table 1):
@@ -109,6 +114,22 @@ class DataSanityChecker:
             )
             violations.append(v)
             _emit(context, v)
+
+        # Rule: duplicate Garmin activity id in the same payload must be rejected
+        activity_id = row.get("activity_id")
+        if seen_activity_ids is not None and activity_id:
+            if str(activity_id) in seen_activity_ids:
+                v = SanityViolation(
+                    record_type="activity",
+                    field="activity_id",
+                    rule="duplicate_activity_id_in_payload",
+                    value=activity_id,
+                    severity="reject",
+                )
+                violations.append(v)
+                _emit(context, v)
+            else:
+                seen_activity_ids.add(str(activity_id))
 
         # Rule: timestamp must not be in the future (> now + 1 h clock-drift margin)
         if timestamp_str:
@@ -200,6 +221,36 @@ class DataSanityChecker:
                     _emit(context, v)
             except (TypeError, ValueError):
                 pass
+        timestamp_str = row.get("date") or row.get("timestamp")
+        if timestamp_str:
+            try:
+                if len(str(timestamp_str)) == 10:
+                    hrv_dt = datetime.fromisoformat(str(timestamp_str)).replace(tzinfo=UTC)
+                else:
+                    hrv_dt = datetime.fromisoformat(str(timestamp_str))
+                    if hrv_dt.tzinfo is None:
+                        hrv_dt = hrv_dt.replace(tzinfo=UTC)
+                now_utc = datetime.now(tz=UTC)
+                if (hrv_dt - now_utc).total_seconds() > 3600:
+                    v = SanityViolation(
+                        record_type="hrv",
+                        field="date",
+                        rule="timestamp_in_future",
+                        value=str(timestamp_str),
+                        severity="reject",
+                    )
+                    violations.append(v)
+                    _emit(context, v)
+            except (ValueError, TypeError):
+                v = SanityViolation(
+                    record_type="hrv",
+                    field="date",
+                    rule="timestamp_unparseable",
+                    value=str(timestamp_str),
+                    severity="warn",
+                )
+                violations.append(v)
+                _emit(context, v)
 
         return violations
 
