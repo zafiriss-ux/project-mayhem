@@ -626,6 +626,126 @@ See `docs/adr/` for Architecture Decision Records:
 
 ---
 
+## Architect Scratchpad Review Protocol
+
+> **The scratchpad (`SCRATCHPAD.md`) is the structured channel through which Codex surfaces
+> raw engineering observations for architectural review. Claude is the sole decision-maker
+> on all OBS entries. No OBS becomes a task until Claude has verified it and written a DEC.**
+
+This section defines when and how Claude reads the scratchpad, verifies findings, and converts
+them into clean tasks in `TECHNICAL_DEBT.md`.
+
+### Trigger Conditions — When Claude MUST Review the Scratchpad
+
+#### A-SCRATCHPAD-1: Every Session Start (mandatory, no exceptions)
+
+Before assigning any task to Codex, Claude MUST:
+1. Run `scripts/check_scratchpad.sh` — exit code 1 means BLOCKING queue is non-empty; stop immediately.
+2. Read `SCRATCHPAD.md` and check the `STATUS` field.
+3. If `STATUS: IDLE` → proceed to task assignment normally.
+4. If `STATUS: CLARIFICATION_NEEDED` → the previous DEC is awaiting Codex input; prompt Codex to provide it before continuing.
+5. If `STATUS: REVIEW_REQUESTED` or `UNDER_REVIEW`:
+   - Do NOT assign a new task to Codex yet.
+   - Process BLOCKING Queue first, then NON-BLOCKING Queue (see §Review Process below).
+   - Only after all pending OBS entries are cleared may new tasks be assigned.
+
+**Rationale:** Codex has accumulated observations that may change what task should be assigned
+next, or may reveal that the planned task has a higher-tier dependency. Assigning tasks over
+unreviewed observations leads to the same error pattern as T4-01 (broad changes, skipped gates).
+
+#### A-SCRATCHPAD-2: Before Any New TECHNICAL_DEBT.md Planning Block
+
+When Claude is about to add a new cluster of tasks to `TECHNICAL_DEBT.md` (e.g., a new Phase
+execution sequence):
+1. Check `SCRATCHPAD.md` for PENDING OBS entries.
+2. If any exist, process them first — they may inform the planned tasks or contradict them.
+3. If IDLE, proceed with the planning block.
+
+**Rationale:** Codex's observations from recent implementation often contain ground-truth data
+that was not visible during high-level Phase planning.
+
+#### A-SCRATCHPAD-3: Before Declaring Any Phase CLOSED
+
+Before writing "Phase X.Y CLOSED" anywhere (TECHNICAL_DEBT.md, CHANGES.md, CLAUDE.md):
+1. Confirm `SCRATCHPAD.md STATUS: IDLE`.
+2. If not IDLE, complete all pending OBS reviews first.
+3. A Phase with unreviewed OBS entries is NOT closed — it is PENDING REVIEW.
+
+---
+
+### Review Process — Canonical Sequence
+
+When status is `REVIEW_REQUESTED`, Claude follows this exact sequence:
+
+```
+1. Set STATUS: UNDER_REVIEW
+2. Process BLOCKING Queue first (in ID order), then NON-BLOCKING Queue (in ID order):
+   a. Read the observation fully.
+   b. Verify the claim independently:
+      - Read the referenced file:line locations.
+      - Cross-reference with existing ADRs.
+      - Cross-reference with open TECHNICAL_DEBT.md entries (is this already tracked?).
+      - Run a targeted search if the pattern might be broader than Codex observed.
+   c. Make a decision (exactly one of five outcomes):
+      - NEW_DEBT_ENTRY: create a clean entry in TECHNICAL_DEBT.md (correct tier, correct format)
+      - ADR_NEEDED: do not create a debt entry until the ADR is authored first
+      - NO_ACTION: document why no action is needed (existing coverage, acceptable risk, etc.)
+      - DEFERRED: assign to a future Phase with a written justification
+      - CLARIFICATION_NEEDED: write partial DEC with one specific question; set STATUS: CLARIFICATION_NEEDED;
+        wait for Codex to append answer; then resume from step 2 for this OBS (at most once per OBS)
+   d. Write a DEC entry in SCRATCHPAD.md (format defined in SCRATCHPAD.md).
+   e. Mark the OBS as REVIEWED (or PENDING_CLARIFICATION if CLARIFICATION_NEEDED).
+3. After all OBS entries are processed:
+   a. Move all REVIEWED OBS + PROCESSED DEC pairs to the Archive section of SCRATCHPAD.md.
+   b. Set STATUS: IDLE.
+4. Return to task assignment.
+```
+
+**Per-phase archive:** When a Phase is declared CLOSED (A-SCRATCHPAD-3), move all Archive
+section entries from `SCRATCHPAD.md` to `archive/scratchpad_phase_X.Y.md`. The main
+`SCRATCHPAD.md` Archive section remains lean. The archive files are never deleted.
+
+### Architect Verification Standards
+
+Claude must independently verify every OBS claim before writing a DEC. Accepted verification methods:
+
+| Claim type | Verification method |
+|---|---|
+| "File X has pattern Y at line Z" | Read the file at that line; confirm with Grep if widespread |
+| "This affects multiple modules" | Grep the pattern across the codebase; count actual occurrences |
+| "This was already fixed in task T-X" | Check TECHNICAL_DEBT.md resolution entry + commit hash |
+| "This violates ADR-XXXX" | Read the ADR; confirm the specific clause that is violated |
+| "This is a data integrity risk" | Trace the data path through the governance pipeline |
+
+**Claude must not take Codex's assessment at face value.** The OBS is a starting point for
+investigation, not a confirmed finding. The DEC records Claude's independent conclusion.
+
+### TECHNICAL_DEBT.md Entry Quality Gate
+
+When a DEC creates a NEW_DEBT_ENTRY, that entry must meet the following standards before
+it is written:
+
+1. **Tier assignment is justified** — entry belongs in Tier N because of a specific data
+   integrity / observability / dependency / maintainability reason, not by default.
+2. **Acceptance criteria are binary** — the entry describes a single, verifiable DONE condition.
+3. **Scope is minimal** — the entry does not bundle multiple independent fixes.
+4. **No scope creep** — the entry does not include "while we're there" improvements.
+5. **No architectural ambiguity** — if the fix requires an architectural decision, the entry
+   is blocked behind an ADR (record as ADR_NEEDED, not NEW_DEBT_ENTRY).
+
+A debt entry that fails any of these five criteria is sent back to design (ADR_NEEDED or DEFERRED).
+
+### What Claude MUST NOT Do
+
+- Do NOT convert an OBS directly to a task without independent verification.
+- Do NOT write vague DEC entries ("seems fine" / "looks addressed"). Every DEC must be specific.
+- Do NOT leave OBS entries in PENDING state across sessions. Every session start clears the queue.
+- Do NOT write NEW_DEBT_ENTRies for findings already covered by an open TECHNICAL_DEBT.md item.
+  Instead, note the duplicate in the DEC and add a cross-reference comment to the existing entry.
+- Do NOT set STATUS: IDLE before all OBS entries in the queue are REVIEWED.
+
+---
+
 ## Git Workflow
 
 - **Never push directly to `main`**
@@ -662,4 +782,5 @@ See `docs/adr/` for Architecture Decision Records:
 | `titan/science/injury_risk_model.py` | Ensemble injury risk model (advisory; recall > 80% target; kill-switch enforced) |
 | `titan/science/automated_periodization.py` | Genetic-algorithm periodization suggester (suggest-only; kill-switch enforced) |
 | `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
+| `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude) |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
