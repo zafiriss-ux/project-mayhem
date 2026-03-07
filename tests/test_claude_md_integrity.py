@@ -5,6 +5,8 @@ from __future__ import annotations
 import pathlib
 import re
 
+import pytest
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 ADR_DIR = REPO_ROOT / "docs" / "adr"
@@ -76,3 +78,41 @@ def test_open_tier_items_not_misrepresented() -> None:
         + ", ".join(misrepresented)
     )
 
+
+def _extract_historical_snapshot_count(claude_text: str) -> int:
+    match = re.search(r"\*\*Historical snapshot:\*\*\s*(\d+) tests all green", claude_text)
+    assert match, "CLAUDE.md historical snapshot line is missing"
+    return int(match.group(1))
+
+
+def _extract_key_file_paths(claude_text: str) -> list[str]:
+    section_start = claude_text.find("## Key Files for Reference")
+    assert section_start != -1, "CLAUDE.md key files section is missing"
+    section = claude_text[section_start:]
+    return re.findall(r"\| `([^`]+)` \|", section)
+
+
+def test_historical_snapshot_matches_full_suite_collection(request) -> None:
+    """Fail when CLAUDE.md test snapshot drifts from actual repository test count."""
+    collected = request.session.testscollected
+    if collected < 1500:
+        pytest.skip(
+            "Historical snapshot guard requires full-suite collection; run python -m pytest -q"
+        )
+
+    declared = _extract_historical_snapshot_count(_claude_text())
+    assert declared == collected, (
+        "CLAUDE.md historical snapshot drift detected. "
+        f"Declared: {declared}, collected this run: {collected}."
+    )
+
+
+def test_key_files_section_points_to_existing_paths() -> None:
+    """Fail when CLAUDE.md references files that no longer exist in-repo."""
+    paths = _extract_key_file_paths(_claude_text())
+    missing = sorted(path for path in paths if not (REPO_ROOT / path).exists())
+
+    assert not missing, (
+        "CLAUDE.md key file references drift detected. Missing paths: "
+        + ", ".join(missing)
+    )
