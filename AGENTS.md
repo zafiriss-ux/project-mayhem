@@ -82,9 +82,36 @@ When you believe a redesign or architectural decision is needed: write it up as 
 
 ## 2. Deliverable Workflow — Canonical Sequence
 
+### 2.0 Environment Setup — Mandatory (Run First, Every Session)
+
+Before any other action — before reading code, running tests, running lint, or making any change — run:
+
+```bash
+scripts/setup_env.sh
+```
+
+This step is **unconditionally mandatory**. It must execute successfully before proceeding.
+
+**If the setup script fails:**
+1. **Stop immediately.** Do not attempt any task steps.
+2. Report the failure verbatim (exit code + last output lines).
+3. Do not attempt ad-hoc dependency installation unless explicitly instructed by the architect.
+
+**Environment repair** is permitted only when both conditions hold:
+1. `scripts/setup_env.sh` completed successfully, AND
+2. a required dependency is still missing in the runtime environment.
+
+If repair is permitted:
+- Fix the environment only (dependency resolution, version pinning).
+- Do not modify application code or tests.
+- Re-run all three Mandatory Gates after repair before continuing.
+
+---
+
 Every task follows this sequence exactly. No step may be skipped.
 
 ```
+0. Run scripts/setup_env.sh (Section 2.0) — mandatory before anything else
 1. Read task description completely (Section 3.5 scope declaration before any code)
 2. Write code / tests
 3. Run Gate 1: ruff check .
@@ -132,6 +159,25 @@ Provide a single unified patch: `git diff` or `git diff --staged`.
 Do NOT create commits. Do NOT push. Do NOT open PRs.
 
 Label response clearly: `[DIFF ONLY — push not available]`
+
+### 2.4 Optional fast iteration rule (targeted tests during implementation)
+
+During implementation, the agent **may** run targeted tests for the changed module(s) to speed up local iteration:
+
+```bash
+python -m pytest tests/path/to/test_changed_module.py -q
+```
+
+**This does NOT replace the mandatory final validation gates.**
+
+Before any commit, push, or PR, the agent **must** still run all three gates in order:
+```bash
+ruff check .
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+Targeted runs during implementation are diagnostic only. Reporting "targeted tests pass" as the deliverable is a violation of §HARD GATE.
 
 ### 2.3 Git workflow (push-enabled environments)
 - Never push directly to `main` or `master`
@@ -592,4 +638,4 @@ When in doubt: stop and ask.
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-07 (Phase 7.9 — §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
