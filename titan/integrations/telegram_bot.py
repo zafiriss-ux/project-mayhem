@@ -11,8 +11,10 @@ import threading
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.science.override_signal import OverrideSignal, record_override_signal
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -21,6 +23,7 @@ SEND_FAIL = "SEND_FAIL"
 POLL_FAIL = "POLL_FAIL"
 SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
 CALLBACK_ERROR = "CALLBACK_ERROR"
+OVERRIDE_SILENCE = "OVERRIDE_SILENCE"
 
 
 class _CredentialSecret:
@@ -95,6 +98,8 @@ class TitanTelegramBot:
 
         # Callbacks for commands – set by orchestration layer
         self.cmd_callbacks: dict[str, Callable] = {}
+        self.override_callbacks: dict[str, Callable] = {}
+        self._pending_override_prompts: dict[int, dict[str, str]] = {}
 
         bot_token_value = self.bot_token.reveal()
         if TELEBOT_AVAILABLE and bot_token_value:
@@ -224,6 +229,125 @@ class TitanTelegramBot:
                 self.bot.reply_to(message, result or "⏳ No calibration data yet.")
             else:
                 self.bot.reply_to(message, "⏳ Outcome tracker not ready.")
+
+        @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
+        def cb_override(call):
+            response = self.process_override_callback(call.message.chat.id, call.data)
+            self.bot.answer_callback_query(call.id, response)
+            if call.data == "override:request":
+                self.bot.send_message(call.message.chat.id, response)
+
+        @self.bot.message_handler(func=lambda message: message.chat.id in self._pending_override_prompts)
+        def msg_override_reason(message):
+            response = self.process_override_reason(message.chat.id, message.text or "")
+            self.bot.reply_to(message, response)
+
+    def register_override_callback(self, name: str, callback: Callable) -> None:
+        """Register override callback dependencies (e.g., db_provider, athlete_id_provider)."""
+        self.override_callbacks[name] = callback
+
+    def send_governance_decision(
+        self,
+        *,
+        text: str,
+        decision_id: str,
+        decision_type: str,
+        athlete_id: str,
+    ) -> bool:
+        """Send governance decision with inline Accept/Override affordances."""
+        if not self.chat_id:
+            return self.send_message(text)
+
+        payload = {
+            "decision_id": decision_id,
+            "decision_type": decision_type,
+            "athlete_id": athlete_id,
+            "created_at": datetime.now(tz=UTC).isoformat(),
+        }
+        self._pending_override_prompts[int(self.chat_id)] = payload
+
+        if not (self.bot and TELEBOT_AVAILABLE):
+            return self.send_message(text)
+
+        keyboard = telebot.types.InlineKeyboardMarkup()  # type: ignore[attr-defined]
+        keyboard.row(
+            telebot.types.InlineKeyboardButton("✅ Accept", callback_data="override:accept"),
+            telebot.types.InlineKeyboardButton("⚠️ Override (add reason)", callback_data="override:request"),
+        )
+        try:
+            self.bot.send_message(int(self.chat_id), text, parse_mode="Markdown", reply_markup=keyboard)
+        except Exception as e:
+            _telegram_event(
+                "failure",
+                failure_class=SEND_FAIL,
+                subsystem="send_governance_decision",
+                error_class=e.__class__.__name__,
+                error_message=str(e),
+            )
+            return False
+        return True
+
+    def process_override_callback(self, chat_id: int, callback_data: str) -> str:
+        """Handle override callback payload from Telegram CallbackQuery."""
+        if callback_data == "override:accept":
+            self._pending_override_prompts.pop(chat_id, None)
+            return "✅ Decision accepted."
+
+        if callback_data != "override:request":
+            return "⚠️ Unknown override action."
+
+        pending = self._pending_override_prompts.get(chat_id)
+        if pending is None:
+            return "⚠️ No active decision to override."
+        pending["awaiting_reason"] = "1"
+        return "⚠️ Reply with your override reason (required)."
+
+    def process_override_reason(self, chat_id: int, reason_text: str) -> str:
+        """Validate override reason and persist OverrideSignal."""
+        pending = self._pending_override_prompts.get(chat_id)
+        if not pending or pending.get("awaiting_reason") != "1":
+            return "⚠️ No override reason requested."
+
+        reason = reason_text.strip()
+        if not reason:
+            return "⚠️ Override reason is required."
+
+        db_provider = self.override_callbacks.get("db_provider")
+        athlete_provider = self.override_callbacks.get("athlete_id_provider")
+        db = db_provider() if db_provider else None
+        athlete_id = pending.get("athlete_id")
+        if athlete_provider is not None and not athlete_id:
+            athlete_id = athlete_provider()
+        if db is None:
+            return "⚠️ Override recording unavailable (db missing)."
+
+        signal = OverrideSignal.create(
+            decision_id=pending.get("decision_id") or str(uuid4()),
+            athlete_id=athlete_id or "unknown_athlete",
+            override_source="telegram_bot",
+            override_reason=reason,
+        )
+        record_override_signal(db, signal)
+        self._pending_override_prompts.pop(chat_id, None)
+        return "✅ Override recorded."
+
+    def check_override_silence(self, *, now: datetime | None = None, timeout_hours: int = 4) -> list[int]:
+        """Emit no-response follow-up alerts for pending override decisions."""
+        current_time = now or datetime.now(tz=UTC)
+        due_chat_ids: list[int] = []
+        for chat_id, payload in list(self._pending_override_prompts.items()):
+            created_raw = payload.get("created_at")
+            created_at = datetime.fromisoformat(created_raw) if created_raw else current_time
+            if current_time - created_at >= timedelta(hours=timeout_hours):
+                due_chat_ids.append(chat_id)
+                _telegram_event(
+                    "failure",
+                    failure_class=OVERRIDE_SILENCE,
+                    subsystem="override_followup",
+                    chat_id=chat_id,
+                    timeout_hours=timeout_hours,
+                )
+        return due_chat_ids
 
     def register_command(self, command: str, callback: Callable):
         """Register a callback for a slash command."""
