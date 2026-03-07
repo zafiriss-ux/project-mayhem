@@ -810,7 +810,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `T4-28 docs drift guard commit`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `07a9361`.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. AGENTS.md §16.3.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -850,7 +850,7 @@ python -m pytest -q
 
 ### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `37a25fe`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `a2a9961`.
 **Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. AGENTS.md §16.4.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -886,7 +886,7 @@ python -m pytest -q
 
 ### T4-23 · Property-based tests cover only happy-path invariants — physiology edge cases absent ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 514399a.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: bd2da17.
 **Source:** Master Risk Matrix — Risk #2 (Test Suite Illusion of Safety) + Risk #9 (Physiological Edge-Case Fragility). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -927,7 +927,7 @@ python -m pytest -q
 
 ### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `0590862`.
 **Source:** Master Risk Matrix — Risk #15 (Test Fixture Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -965,7 +965,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 ### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `9dd54af`.
 **Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1015,7 +1015,7 @@ python -m pytest -q   # count ≥ previous
 
 ### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `e40181a`.
 **Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1054,7 +1054,7 @@ python -m pytest -q
 
 ### T4-27 · No module count ceiling — complexity accumulation untracked ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `33e8255`.
 **Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). AGENTS.md §16.11.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1096,7 +1096,7 @@ python -m pytest -q
 
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `T4-28 docs drift guard commit`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `92555d3`.
 **Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). AGENTS.md §16.5.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1182,7 +1182,7 @@ python -m pytest -q
 
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** OPEN (independent).
 **Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. AGENTS.md §16.8.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1221,7 +1221,7 @@ python -m pytest -q
 
 ### T4-31 · No athlete isolation invariant CI check — new code may silently introduce cross-athlete assumptions ✅ RESOLVED 2026-03-07 (IMMEDIATE)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: 4941a8a.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: eb20bb2.
 **Source:** Architect Directive V8 — Decision 1 (Athlete Profile as System Core). AGENTS.md §16.10.
 **Priority:** P3 (Tier 4 — maintainability; IMMEDIATE because the invariant it enforces is
 already active and new violations must be caught from this commit forward).
@@ -1275,7 +1275,7 @@ python -m pytest -q
 
 ### T4-32 · No override handler registry — new decision types lack guaranteed override path; Telegram override button absent ✅ RESOLVED 2026-03-07 (IMMEDIATE)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: PENDING. **IMMEDIATE** (effective from ADR-0042, which is active from this commit).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: dfe8907. **IMMEDIATE** (effective from ADR-0042, which is active from this commit).
 **Source:** Architect Directive V8 — Decision 3 (Human Override as Invariant). ADR-0042.
 **Priority:** P2 (Tier 4 — but IMMEDIATE because every day without the Telegram override
 button is permanently lost override signal data; ADR-0042 §Gap 2).
@@ -1844,14 +1844,14 @@ When an item is completed, mark it here with date and PR reference:
 | T1-20 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T2-14 | ✅ RESOLVED | 2026-03-07 |
 | T2-15 | ✅ RESOLVED | 2026-03-07 |
-| T4-21 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-22 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-23 | ✅ RESOLVED | 2026-03-07 |
-| T4-24 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-25 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-26 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-27 | ✅ RESOLVED | 2026-03-07 |
-| T4-28 | ✅ RESOLVED (independent) | 2026-03-07 |
+| T4-21 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 07a9361) |
+| T4-22 | ✅ RESOLVED (independent) | 2026-03-07 (commit: a2a9961) |
+| T4-23 | ✅ RESOLVED | 2026-03-07 (commit: bd2da17) |
+| T4-24 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 0590862) |
+| T4-25 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 9dd54af) |
+| T4-26 | ✅ RESOLVED (independent) | 2026-03-07 (commit: e40181a) |
+| T4-27 | ✅ RESOLVED | 2026-03-07 (commit: 33e8255) |
+| T4-28 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 92555d3) |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
@@ -1861,9 +1861,9 @@ When an item is completed, mark it here with date and PR reference:
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-29 | OPEN (deferred Phase 8) | — |
-| T4-30 | OPEN (independent) | — |
-| T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 |
-| T4-32 | ✅ RESOLVED | 2026-03-07 |
+| T4-30 | OPEN (independent) | — (no closure commit; item remains open) |
+| T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
+| T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
 | T5-08 | OPEN (Phase 8A prerequisite) | — |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
