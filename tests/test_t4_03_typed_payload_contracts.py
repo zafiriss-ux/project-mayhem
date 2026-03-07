@@ -11,7 +11,7 @@ def test_garmin_sync_all_contract_shape():
 
     payload = sync.sync_all(days_back=1)
 
-    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics"}
+    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust"}
     assert set(payload["hrv_sync_metrics"].keys()) == {"days_back", "synced_days", "skipped_days"}
 
 

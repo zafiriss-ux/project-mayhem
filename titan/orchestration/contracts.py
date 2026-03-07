@@ -32,6 +32,7 @@ class GarminSyncResult(TypedDict):
     hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
     status: NotRequired[str]
+    data_trust: NotRequired[Mapping[str, object]]
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class GarminSyncResultContract:
     hrv: list[Mapping[str, object]]
     hrv_sync_metrics: HRVSyncMetrics
     status: str | None = None
+    data_trust: Mapping[str, object] | None = None
 
     def to_payload(self) -> GarminSyncResult:
         payload: GarminSyncResult = {
@@ -53,6 +55,8 @@ class GarminSyncResultContract:
         }
         if self.status is not None:
             payload["status"] = self.status
+        if self.data_trust is not None:
+            payload["data_trust"] = self.data_trust
         return payload
 
 
@@ -96,6 +100,7 @@ class DailyCoachContext(TypedDict):
     lock_thresholds: Mapping[str, float]
     garmin_data_stale: NotRequired[bool]
     hrv_stress_context: NotRequired[str]
+    data_trust: NotRequired[Mapping[str, object]]
 
 
 @dataclass(frozen=True)
@@ -124,6 +129,7 @@ class DailyCoachContextContract:
     lock_thresholds: Mapping[str, float]
     garmin_data_stale: bool | None = None
     hrv_stress_context: str | None = None
+    data_trust: Mapping[str, object] | None = None
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -154,6 +160,8 @@ class DailyCoachContextContract:
             payload["garmin_data_stale"] = self.garmin_data_stale
         if self.hrv_stress_context:
             payload["hrv_stress_context"] = self.hrv_stress_context
+        if self.data_trust is not None:
+            payload["data_trust"] = self.data_trust
         return payload
 
 
@@ -190,6 +198,7 @@ class DailyCoachingPayload(TypedDict):
     intensity_gate_result: Mapping[str, object] | None
     fueling_gate: Mapping[str, object] | None
     vo2_eligibility: Mapping[str, object] | None
+    data_trust: NotRequired[Mapping[str, object]]
 
 
 class AthleteProfile(TypedDict):

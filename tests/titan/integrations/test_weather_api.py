@@ -302,3 +302,23 @@ def test_find_optimal_training_windows_non_positive_duration_returns_empty(monke
 
     assert api.find_optimal_training_windows(duration_hours=0) == []
     assert called["value"] is False
+
+
+def test_get_current_conditions_live_includes_trusted_data_trust(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
+
+    payload = api.get_current_conditions()
+
+    assert payload["data_trust"]["source"] == "weather"
+    assert payload["data_trust"]["trust_level"] == "TRUSTED"
+
+
+def test_get_current_conditions_fallback_includes_suspect_data_trust(monkeypatch):
+    api = WeatherAPI(location="Athens,GR")
+    monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+
+    payload = api.get_current_conditions()
+
+    assert payload["data_trust"]["trust_level"] == "SUSPECT"
+    assert "weather_synthetic_fallback" in payload["data_trust"]["reasons"]

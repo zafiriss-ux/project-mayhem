@@ -26,6 +26,8 @@ import urllib.request
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from titan.science.data_trust import evaluate_weather_trust
+
 WeatherDataQuality = Literal["live", "cached", "synthetic"]
 
 _log = logging.getLogger(__name__)
@@ -304,6 +306,7 @@ class WeatherAPI:
             if age < self.cache_duration_hours:
                 current = copy.deepcopy(self.cache.get("current", {}))
                 current["data_quality"] = "cached"
+                current["data_trust"] = evaluate_weather_trust(data_quality="cached", data_age_hours=age).to_payload()
                 return current
 
         try:
@@ -314,7 +317,9 @@ class WeatherAPI:
             self.cache["current"] = current
             self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
-            return copy.deepcopy(current)
+            payload = copy.deepcopy(current)
+            payload["data_trust"] = evaluate_weather_trust(data_quality="live", data_age_hours=0.0).to_payload()
+            return payload
         except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
             _weather_event(
@@ -340,6 +345,7 @@ class WeatherAPI:
             }
             self.cache["current"] = current
             self.cache_timestamp = datetime.now()
+            current["data_trust"] = evaluate_weather_trust(data_quality="synthetic", data_age_hours=0.0).to_payload()
             return current
 
     def get_hourly_forecast(self, hours: int = 48) -> list[dict]:

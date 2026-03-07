@@ -178,7 +178,7 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     sync.sync_hrv = lambda days_back=7: []
 
     payload = sync.sync_all(days_back=1)
-    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics"}
+    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust"}
     assert payload["hrv_sync_metrics"] == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
 
     events = _json_messages(caplog)

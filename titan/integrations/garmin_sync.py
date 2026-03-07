@@ -20,6 +20,7 @@ from titan.orchestration.contracts import (
     HRVSyncMetrics,
     HRVSyncMetricsContract,
 )
+from titan.science.data_trust import evaluate_garmin_trust
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -358,7 +359,8 @@ class GarminSync:
             weight=weight,
             sleep=sleep,
             hrv=hrv,
-            hrv_sync_metrics=hrv_metrics
+            hrv_sync_metrics=hrv_metrics,
+            data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
         ).to_payload()
         return payload
 
@@ -399,6 +401,10 @@ class GarminSync:
                 hrv=[],
                 hrv_sync_metrics=hrv_metrics,
                 status="timeout_cancelled",
+                data_trust=evaluate_garmin_trust(
+                    data_age_hours=0.0,
+                    sync_status="timeout_cancelled",
+                ).to_payload(),
             ).to_payload()
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
