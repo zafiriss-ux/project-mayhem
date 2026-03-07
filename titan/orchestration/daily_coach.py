@@ -704,6 +704,7 @@ class DailyCoach:
             'intensity_gate_result': today_session.get('intensity_gate_result'),
             'fueling_gate': today_session.get('fueling_gate'),
             'vo2_eligibility': today_session.get('vo2_eligibility'),
+            'hrv_stress_context': today_session.get('hrv_stress_context'),
         }
         if weather_degraded_mode:
             coaching_data['special_note'] = '⚠️ Weather data unavailable — optimal time window omitted'

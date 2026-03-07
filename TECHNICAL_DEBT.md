@@ -147,7 +147,7 @@ delivery/control channel fails silently in environments that install from requir
 
 **Location:** `titan/integrations/garmin_sync.py` — `sync_hrv()` inner loop
 
-**Problem:** `except Exception: pass` per HRV day swallows every failure silently.
+**Original state (pre-fix):** `except Exception: pass` per HRV day swallows every failure silently.
 HRV is the primary input signal for governance gates H2 (hard stop) and readiness scoring.
 If days are silently skipped, the governance engine makes decisions on incomplete baselines
 without any warning.
@@ -903,7 +903,7 @@ persist time. Test suite: 1626 passed, 1 skipped as of closure. ruff: 0 findings
 
 ### T1-20 · Garmin connectivity failure has no staleness gate — DailyCoach silently operates on stale data 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Risk Review V7 — Risk: External Dependency Fragility (SPOF). Architecture Review 2026-03-06. ADR-0030.
 **Priority:** P1 (Tier 1 — data integrity).
 
@@ -952,15 +952,15 @@ python -m pytest -q
 
 ---
 
-### T1-21 · Governance gates H2/H3 fire without distinguishing training-stress from non-training-stress — illness pattern indistinguishable from life stress 🔴 OPEN (independent)
+### T1-21 · Governance gates H2/H3 fire without distinguishing training-stress from non-training-stress — illness pattern indistinguishable from life stress ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Risk Review V8 — Risk: Non-Training Stress Protocol. ADR-0037.
 **Priority:** P0 (Tier 1 — safety-critical).
 
 **Location:** `titan/science/governance_engine.py` (H2/H3 gate evaluation), `titan/config/thresholds.py` (new constants), `titan/orchestration/daily_coach.py` (coaching context).
 
-**Problem:**
+**Original state (pre-fix):**
 
 HRV and RHR respond to all stressors — training, illness, life stress, travel, and
 more. When H2 (`HARD_STOP_HRV_DELTA`) or H3 (`HARD_STOP_RHR_DELTA`) fires, the
@@ -1003,6 +1003,20 @@ python -m pytest -q
 ```
 
 **Effort:** ~3h. Governance post-gate classifier + context field + message template + tests.
+
+
+**Resolution:**
+
+Implemented ADR-0037 non-training stress protocol with explicit stress-context
+classification and traceability. Added illness-pattern thresholds to
+`titan/config/thresholds.py`, added `classify_hrv_stress_context()` and structured
+classification events in `titan/science/governance_engine.py`, surfaced
+`hrv_stress_context` through orchestration payload contracts and DailyCoach Telegram
+payload, and displayed stress context in `titan/integrations/telegram_bot.py`. Added
+new partition coverage in `tests/test_non_training_stress_partition.py`, plus orchestration
+payload coverage in `tests/titan/orchestration/test_daily_coach.py` and updated
+`test_core_modules.py` assertions to reflect the explicit illness-pattern override path.
+Final gate snapshot at closure: 1652 tests passing.
 
 ---
 
@@ -2611,7 +2625,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. ADR-0024.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2651,7 +2665,7 @@ python -m pytest -q
 
 ### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. ADR-0025.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2726,7 +2740,7 @@ python -m pytest -q
 
 ### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Master Risk Matrix — Risk #15 (Test Fixture Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2764,7 +2778,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 ### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2807,7 +2821,7 @@ python -m pytest -q   # count ≥ previous
 
 ### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2844,7 +2858,7 @@ python -m pytest -q
 
 ### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). ADR-0028.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2884,7 +2898,7 @@ python -m pytest -q
 
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). ADR-0029.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -2963,7 +2977,7 @@ python -m pytest -q
 
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
 
-**Status:** OPEN (Phase 7.9 — independent).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 9b64cfd.
 **Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. ADR-0036.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -3636,7 +3650,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
-| T1-21 | OPEN (independent) | — |
+| T1-21 | ✅ RESOLVED | 2026-03-07 |
 | T1-22 | OPEN (independent; Phase 9 calibration blocker) | — |
 | T1-23 | OPEN (independent; Phase 8 entry gate) | — |
 | T2-16 | OPEN (after all Tier 1) | — |

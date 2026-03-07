@@ -1373,7 +1373,8 @@ class TestGovernanceHardStopsAnd2of4:
         })
         assert out['session_type'] == 'REST'
         assert out['max_zone'] == 1
-        assert 'HRV/RHR dual collapse' in out['governance_override']
+        assert out['hrv_stress_context'] == 'ILLNESS_PATTERN'
+        assert 'Non-training stress protocol' in out['governance_override']
 
     def test_h2_tsb_floor_boundary(self, gov):
         plan = {'session_type': 'HAMMER', 'max_zone': 5}
