@@ -640,11 +640,13 @@ them into clean tasks in `TECHNICAL_DEBT.md`.
 #### A-SCRATCHPAD-1: Every Session Start (mandatory, no exceptions)
 
 Before assigning any task to Codex, Claude MUST:
-1. Read `SCRATCHPAD.md` and check the `STATUS` field.
-2. If `STATUS: IDLE` → proceed to task assignment normally.
-3. If `STATUS: REVIEW_REQUESTED` or `UNDER_REVIEW`:
+1. Run `scripts/check_scratchpad.sh` — exit code 1 means BLOCKING queue is non-empty; stop immediately.
+2. Read `SCRATCHPAD.md` and check the `STATUS` field.
+3. If `STATUS: IDLE` → proceed to task assignment normally.
+4. If `STATUS: CLARIFICATION_NEEDED` → the previous DEC is awaiting Codex input; prompt Codex to provide it before continuing.
+5. If `STATUS: REVIEW_REQUESTED` or `UNDER_REVIEW`:
    - Do NOT assign a new task to Codex yet.
-   - Complete the full review cycle (see §Review Process below) first.
+   - Process BLOCKING Queue first, then NON-BLOCKING Queue (see §Review Process below).
    - Only after all pending OBS entries are cleared may new tasks be assigned.
 
 **Rationale:** Codex has accumulated observations that may change what task should be assigned
@@ -677,25 +679,31 @@ When status is `REVIEW_REQUESTED`, Claude follows this exact sequence:
 
 ```
 1. Set STATUS: UNDER_REVIEW
-2. For each PENDING OBS entry (in ID order):
+2. Process BLOCKING Queue first (in ID order), then NON-BLOCKING Queue (in ID order):
    a. Read the observation fully.
    b. Verify the claim independently:
       - Read the referenced file:line locations.
       - Cross-reference with existing ADRs.
       - Cross-reference with open TECHNICAL_DEBT.md entries (is this already tracked?).
       - Run a targeted search if the pattern might be broader than Codex observed.
-   c. Make a decision (exactly one of four outcomes):
+   c. Make a decision (exactly one of five outcomes):
       - NEW_DEBT_ENTRY: create a clean entry in TECHNICAL_DEBT.md (correct tier, correct format)
       - ADR_NEEDED: do not create a debt entry until the ADR is authored first
       - NO_ACTION: document why no action is needed (existing coverage, acceptable risk, etc.)
       - DEFERRED: assign to a future Phase with a written justification
+      - CLARIFICATION_NEEDED: write partial DEC with one specific question; set STATUS: CLARIFICATION_NEEDED;
+        wait for Codex to append answer; then resume from step 2 for this OBS (at most once per OBS)
    d. Write a DEC entry in SCRATCHPAD.md (format defined in SCRATCHPAD.md).
-   e. Mark the OBS as REVIEWED.
+   e. Mark the OBS as REVIEWED (or PENDING_CLARIFICATION if CLARIFICATION_NEEDED).
 3. After all OBS entries are processed:
-   a. Move all REVIEWED OBS + PROCESSED DEC pairs to the Archive section.
+   a. Move all REVIEWED OBS + PROCESSED DEC pairs to the Archive section of SCRATCHPAD.md.
    b. Set STATUS: IDLE.
 4. Return to task assignment.
 ```
+
+**Per-phase archive:** When a Phase is declared CLOSED (A-SCRATCHPAD-3), move all Archive
+section entries from `SCRATCHPAD.md` to `archive/scratchpad_phase_X.Y.md`. The main
+`SCRATCHPAD.md` Archive section remains lean. The archive files are never deleted.
 
 ### Architect Verification Standards
 

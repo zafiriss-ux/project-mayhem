@@ -111,17 +111,18 @@ If repair is permitted:
 Every task follows this sequence exactly. No step may be skipped.
 
 ```
-0. Run scripts/setup_env.sh (Section 2.0) — mandatory before anything else
-1. Read task description completely (Section 3.5 scope declaration before any code)
-2. Write code / tests
-3. Run Gate 1: ruff check .
-4. Run Gate 2: python -m pytest -q -W error::pytest.PytestWarning
-5. Run Gate 3: python -m pytest -q
-6. ✅ All three gates GREEN → proceed to step 7
-   ❌ Any gate fails → STOP (Section 7), fix root cause, restart from step 3
-7. Create commit (message format: T<tier>-<id>: <short title>)
-8. Push (if push-enabled environment)
-9. Open PR (if push-enabled environment)
+0.  Run scripts/setup_env.sh (Section 2.0) — mandatory before anything else
+0.5 Run scripts/check_scratchpad.sh — exit 1 = BLOCKING queue non-empty; stop and await architect
+1.  Read task description completely (Section 3.5 scope declaration before any code)
+2.  Write code / tests
+3.  Run Gate 1: ruff check .
+4.  Run Gate 2: python -m pytest -q -W error::pytest.PytestWarning
+5.  Run Gate 3: python -m pytest -q
+6.  ✅ All three gates GREEN → proceed to step 7
+    ❌ Any gate fails → STOP (Section 7), fix root cause, restart from step 3
+7.  Create commit (message format: T<tier>-<id>: <short title>)
+8.  Push (if push-enabled environment)
+9.  Open PR (if push-enabled environment)
 ```
 
 **Steps 7–9 are only reachable after step 6 is confirmed GREEN.**
@@ -535,9 +536,12 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] If a new ADR was written: I updated the ADR index table in CLAUDE.md (§12).
 [ ] I did NOT make any architectural decision without explicit architect approval (§13).
 [ ] I did NOT edit CLAUDE.md, AGENTS.md, README.md, or docs/ beyond what §3.6 and §12 explicitly permit.
+[ ] I ran scripts/check_scratchpad.sh at Step 0.5 and it returned exit 0.
+[ ] If any trigger condition (T-SCRATCHPAD-1 through T-SCRATCHPAD-5) was met during this task, I wrote an OBS entry in the correct queue (BLOCKING or NON-BLOCKING) and set STATUS: REVIEW_REQUESTED.
+[ ] I did NOT write proposed solutions in OBS entries — only engineering observations (facts, file:line refs, architectural question).
 ```
 
-**All 24 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 27 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
@@ -893,16 +897,10 @@ The §13.2 stop protocol and the OBS entry are both required. Neither replaces t
 - Do NOT treat the scratchpad as a substitute for `TECHNICAL_DEBT.md`. The scratchpad feeds
   decisions; `TECHNICAL_DEBT.md` is the canonical task register.
 
-### 15.4 Pre-Delivery Checklist Addition
+### 15.4 Pre-Delivery Checklist
 
-Add the following items to the §11 pre-delivery checklist for every task delivery:
-
-```
-[ ] I checked SCRATCHPAD.md status before starting this task (was IDLE or I had architect clearance).
-[ ] If any trigger condition (T-SCRATCHPAD-1 through T-SCRATCHPAD-5) was met during this task,
-    I wrote an OBS entry and set STATUS: REVIEW_REQUESTED.
-[ ] I did NOT write proposed solutions in OBS entries — only engineering observations.
-```
+The three scratchpad items are incorporated directly into the §11 pre-delivery checklist
+(items 25–27). They appear there and are enforced there. No separate action needed here.
 
 ---
 
