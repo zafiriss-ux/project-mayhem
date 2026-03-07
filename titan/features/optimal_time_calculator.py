@@ -48,13 +48,19 @@ class OptimalTimeCalculator:
         """
         weather_snapshot = self.weather_api.get_current_conditions()
         data_quality = weather_snapshot.get("data_quality", "live")
-        if data_quality == "synthetic":
+        weather_confidence = weather_snapshot.get(
+            "weather_confidence", "SYNTHETIC" if data_quality == "synthetic" else "LIVE"
+        )
+        if weather_confidence == "SYNTHETIC":
             return {
-                "recommended_time": "N/A",
-                "quality": "DEGRADED",
-                "reasoning": [],
-                "weather_window_omitted": True,
+                "recommended_time": "06:00-09:00",
+                "quality": "SAFE_FALLBACK",
+                "reasoning": [
+                    "⚠️ Using synthetic weather fallback; selecting conservative safe window (06:00–09:00)."
+                ],
+                "weather_window_omitted": False,
                 "weather_data_quality": data_quality,
+                "weather_confidence": weather_confidence,
             }
 
         # Get weather forecast
@@ -68,6 +74,7 @@ class OptimalTimeCalculator:
                 "quality": "UNKNOWN",
                 "reasoning": [],
                 "weather_data_quality": data_quality,
+                "weather_confidence": weather_confidence,
             }
 
         # Apply session-type specific adjustments
@@ -95,6 +102,7 @@ class OptimalTimeCalculator:
             "reasoning": self._generate_reasoning(best_window, session_type, tsb_value),
             "alternatives": windows[1:3] if len(windows) > 1 else [],
             "weather_data_quality": data_quality,
+            "weather_confidence": weather_confidence,
         }
 
     def _apply_session_type_preferences(self, windows: list[dict], session_type: str) -> list[dict]:
