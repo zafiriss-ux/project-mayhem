@@ -1273,9 +1273,9 @@ python -m pytest -q
 
 ---
 
-### T4-32 · No override handler registry — new decision types lack guaranteed override path; Telegram override button absent 🔴 OPEN (IMMEDIATE)
+### T4-32 · No override handler registry — new decision types lack guaranteed override path; Telegram override button absent ✅ RESOLVED 2026-03-07 (IMMEDIATE)
 
-**Status:** OPEN — **IMMEDIATE** (effective from ADR-0042, which is active from this commit).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: PENDING. **IMMEDIATE** (effective from ADR-0042, which is active from this commit).
 **Source:** Architect Directive V8 — Decision 3 (Human Override as Invariant). ADR-0042.
 **Priority:** P2 (Tier 4 — but IMMEDIATE because every day without the Telegram override
 button is permanently lost override signal data; ADR-0042 §Gap 2).
@@ -1286,42 +1286,21 @@ or OutcomeTracker extension), new `tests/test_override_handler_registry.py`.
 
 **Original state (pre-fix):**
 
-ADR-0042 is active from this commit. Two gaps remain unaddressed:
+ADR-0042 was active from this commit point, but two gaps remained unaddressed:
 
-1. The Telegram bot has no override button — athletes silently ignore hard-stop messages
-   without their decision being recorded. This is permanently lost calibration data.
-2. No CI check exists to verify that every governance lock code and ML recommendation
-   type has a registered override handler.
+1. The Telegram bot had no override button — athletes could silently ignore hard-stop messages
+   without their decision being recorded, permanently losing calibration data.
+2. No CI check existed to verify that every governance lock code and ML recommendation
+   type had a registered override handler.
 
-**Fix direction (per ADR-0042):**
+**Resolution:**
 
-1. Create `titan/science/override_signal.py`:
-   ```python
-   @dataclass
-   class OverrideSignal:
-       decision_id: str
-       athlete_id: str      # AGENTS.md §16.10
-       override_source: str  # "telegram_bot" | "operator_console"
-       override_reason: str  # Required — not empty
-       ...
-   ```
-2. Update `titan/integrations/telegram_bot.py`:
-   - Add inline keyboard to hard-stop and downgrade Telegram messages:
-     `[✅ Accept] [⚠️ Override (add reason)]`
-   - Handle `CallbackQuery` for "Override" → prompt for reason → record `OverrideSignal`.
-   - Handle "no-response" follow-up after 4h.
-3. Create override handler registry in `titan/science/governance_engine.py`:
-   ```python
-   OVERRIDE_HANDLERS: dict[str, Callable] = {
-       "HARD_STOP_SAFETY_GATES": record_override_signal,
-       "VO2_ELIGIBILITY_GATE": record_override_signal,
-       ...  # one entry per lock code (CLAUDE.md canonical set)
-   }
-   ```
-4. CI check in `tests/test_override_handler_registry.py`:
-   - Import `CANONICAL_LOCK_CODES` from `thresholds.py`.
-   - Import `OVERRIDE_HANDLERS` from `governance_engine.py`.
-   - Assert every canonical lock code has an entry in `OVERRIDE_HANDLERS`.
+- Added `titan/science/override_signal.py` with `OverrideSignal` + mandatory-reason recording path.
+- Added override-signal persistence support in `titan/core/database.py` (schema v6 `override_signals` + writer).
+- Added override handler registry in `titan/science/governance_engine.py` mapped from canonical lock codes.
+- Added Telegram override affordance + callback/reason flow in `titan/integrations/telegram_bot.py`.
+- Added CI guard `tests/test_override_handler_registry.py` and module-level tests for new behavior.
+- Closure suite count: 1730 tests all green at task close.
 
 **Acceptance gate (binary):**
 ```bash
@@ -1884,7 +1863,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-29 | OPEN (deferred Phase 8) | — |
 | T4-30 | OPEN (independent) | — |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 |
-| T4-32 | OPEN (IMMEDIATE — ADR-0042 active) | — |
+| T4-32 | ✅ RESOLVED | 2026-03-07 |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
 | T5-08 | OPEN (Phase 8A prerequisite) | — |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |

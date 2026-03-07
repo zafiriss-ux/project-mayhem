@@ -86,7 +86,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 class DatabaseManager:
@@ -304,7 +304,19 @@ class DatabaseManager:
             )
         """)
 
-        # Table 7: Governance outcomes (decision snapshot + post-session outcome)
+        # Table 7: Override signals (ADR-0042 first-class override invariant)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS override_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                decision_id TEXT NOT NULL,
+                athlete_id TEXT NOT NULL,
+                override_source TEXT NOT NULL,
+                override_reason TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        # Table 8: Governance outcomes (decision snapshot + post-session outcome)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS governance_outcomes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -438,6 +450,17 @@ class DatabaseManager:
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
+        if current_version < 6:
+            self._apply_v6_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 6,
+                    "table_created": "override_signals",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
 
         # Suppress unused-variable warning for _migrations (kept as documentation).
         _ = _migrations
@@ -551,6 +574,20 @@ class DatabaseManager:
                         "column": column_name,
                     })
                 )
+
+    def _apply_v6_migrations(self, cursor) -> None:
+        """Version 6: override_signals table for ADR-0042 override capture."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS override_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                decision_id TEXT NOT NULL,
+                athlete_id TEXT NOT NULL,
+                override_source TEXT NOT NULL,
+                override_reason TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+
 
     # --- BACKUP ---
 
@@ -1150,6 +1187,27 @@ class DatabaseManager:
                 """INSERT INTO override_log (date, prescribed_type, actual_type, reason)
                    VALUES (?, ?, ?, ?)""",
                 (date, prescribed, actual, reason),
+            )
+            self.conn.commit()
+
+    def record_override_signal(
+        self,
+        *,
+        decision_id: str,
+        athlete_id: str,
+        override_source: str,
+        override_reason: str,
+        created_at: str,
+    ) -> None:
+        """Persist structured override signal entries (ADR-0042)."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """INSERT INTO override_signals (
+                       decision_id, athlete_id, override_source, override_reason, created_at
+                   ) VALUES (?, ?, ?, ?, ?)""",
+                (decision_id, athlete_id, override_source, override_reason, created_at),
             )
             self.conn.commit()
 

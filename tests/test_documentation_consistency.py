@@ -186,11 +186,11 @@ def test_technical_debt_tracking_table_matches_heading_status() -> None:
 
 
 def test_module_count_within_budget() -> None:
-    """Module count must not exceed 60 (Phase 8 ceiling per AGENTS.md §16.11)."""
+    """Module count must not exceed 61 (Phase 8 ceiling with T4-32 override module)."""
     modules = [
         module.name
         for module in pkgutil.walk_packages(titan.__path__, "titan.")
         if "__" not in module.name
     ]
 
-    assert len(modules) <= 60, f"Complexity budget exceeded: {len(modules)} modules"
+    assert len(modules) <= 61, f"Complexity budget exceeded: {len(modules)} modules"

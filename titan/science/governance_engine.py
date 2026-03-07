@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
 from titan.config.thresholds import (
+    CANONICAL_LOCK_CODES,
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
@@ -21,6 +22,7 @@ from titan.config.thresholds import (
     VO2_READINESS_MIN,
 )
 from titan.science.governance_contracts import validate_vo2_eligibility
+from titan.science.override_signal import record_override_signal
 
 _log = logging.getLogger(__name__)
 
@@ -58,6 +60,8 @@ GATE_RATIONALE_TEMPLATES: dict[str, str] = {
     "STARTUP_DATA_CONFIDENCE_CEILING": "Startup confidence low; easy-ceiling safety mode applied.",
     "PERSISTENCE_DEGRADED_CEILING": "Persistence degraded; easy-ceiling safety mode applied.",
 }
+
+OVERRIDE_HANDLERS: dict[str, Any] = dict.fromkeys(CANONICAL_LOCK_CODES, record_override_signal)
 
 
 def _gate_event(gate: str, action: str, **fields: Any) -> None:

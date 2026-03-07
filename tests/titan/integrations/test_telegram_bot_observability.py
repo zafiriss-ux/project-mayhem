@@ -10,18 +10,37 @@ from titan.integrations.telegram_bot import TitanTelegramBot
 class _FakeTeleBot:
     def __init__(self):
         self.handlers = {}
+        self.callback_handlers = []
         self.replies = []
+        self.sent_messages = []
+        self.callback_answers = []
 
-    def message_handler(self, commands):
+    def message_handler(self, commands=None, **kwargs):
         def _decorator(fn):
-            for command in commands:
-                self.handlers[command] = fn
+            if commands:
+                for command in commands:
+                    self.handlers[command] = fn
+            else:
+                self.handlers[f"func_{len(self.handlers)}"] = fn
             return fn
 
         return _decorator
 
     def reply_to(self, message, text):
         self.replies.append((message, text))
+
+    def callback_query_handler(self, func):
+        def _decorator(handler):
+            self.callback_handlers.append((func, handler))
+            return handler
+
+        return _decorator
+
+    def answer_callback_query(self, callback_id, text):
+        self.callback_answers.append((callback_id, text))
+
+    def send_message(self, chat_id, text, parse_mode=None, reply_markup=None):
+        self.sent_messages.append((chat_id, text, parse_mode, reply_markup))
 
 
 def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
@@ -675,3 +694,52 @@ def test_send_structured_alert_sends_summary_after_persist_window(monkeypatch):
     assert bot.send_structured_alert("garmin_data_stale", "GARMIN_DATA_STALE", "stale data") is True
     assert calls[-1][0] == "CRITICAL SUMMARY"
     assert calls[-1][2] == "warning"
+
+
+
+def test_send_governance_decision_falls_back_when_polling_backend_missing():
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+
+    assert bot.send_governance_decision(
+        text="Hard stop",
+        decision_id="d-1",
+        decision_type="HARD_STOP_SAFETY_GATES",
+        athlete_id="ATH_1",
+    ) is True
+    assert bot._pending_override_prompts[123]["decision_id"] == "d-1"
+
+
+def test_process_override_callback_and_reason_records_signal(monkeypatch):
+    class _DB:
+        def __init__(self):
+            self.rows = []
+
+        def record_override_signal(self, **kwargs):
+            self.rows.append(kwargs)
+
+    db = _DB()
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.register_override_callback("db_provider", lambda: db)
+    bot._pending_override_prompts[123] = {
+        "decision_id": "d-2",
+        "athlete_id": "ATH_2",
+        "decision_type": "VO2_ELIGIBILITY_GATE",
+        "created_at": "2026-03-07T09:00:00+00:00",
+    }
+
+    assert "required" in bot.process_override_callback(123, "override:request")
+    assert bot.process_override_reason(123, "Need to adjust due to artifact") == "✅ Override recorded."
+    assert db.rows[0]["decision_id"] == "d-2"
+
+
+def test_process_override_reason_rejects_empty_reason():
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot._pending_override_prompts[123] = {
+        "decision_id": "d-3",
+        "athlete_id": "ATH_3",
+        "decision_type": "VO2_ELIGIBILITY_GATE",
+        "created_at": "2026-03-07T09:00:00+00:00",
+        "awaiting_reason": "1",
+    }
+
+    assert bot.process_override_reason(123, "   ") == "⚠️ Override reason is required."

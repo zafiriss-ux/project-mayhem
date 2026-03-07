@@ -497,3 +497,38 @@ def test_transaction_rollback_restores_state(tmp_path):
     assert cur.fetchone()[0] == 0
 
     db.close()
+
+
+def test_record_override_signal_persists_row(tmp_path):
+    db = DatabaseManager(db_name="override_signal.db", db_dir=tmp_path)
+
+    db.record_override_signal(
+        decision_id="decision-1",
+        athlete_id="ATH_1",
+        override_source="telegram_bot",
+        override_reason="Athlete felt stable",
+        created_at="2026-03-07T09:00:00+00:00",
+    )
+
+    with db._lock:
+        db._ensure_open_locked()
+        row = db.conn.execute(
+            """SELECT decision_id, athlete_id, override_source, override_reason
+                   FROM override_signals"""
+        ).fetchone()
+
+    assert row == ("decision-1", "ATH_1", "telegram_bot", "Athlete felt stable")
+
+
+def test_record_override_signal_fails_fast_after_close(tmp_path):
+    db = DatabaseManager(db_name="override_signal_closed.db", db_dir=tmp_path)
+    db.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        db.record_override_signal(
+            decision_id="decision-1",
+            athlete_id="ATH_1",
+            override_source="telegram_bot",
+            override_reason="x",
+            created_at="2026-03-07T09:00:00+00:00",
+        )
