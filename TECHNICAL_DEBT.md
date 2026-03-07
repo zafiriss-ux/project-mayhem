@@ -46,7 +46,7 @@ TIER 3 (dependency hygiene — after all Tier 2 pass):
 TIER 4 (maintainability — after all Tier 3 pass):
   T4-14 (after T2-12 — Garmin worker loop)
   T4-15, T4-16, T4-17 (independent — low blast radius)
-  T4-18 (independent — governance mutation test suite; ADR-0021)
+  T4-18 (independent — governance mutation test suite; AGENTS.md §16.1)
   T4-19 (independent — architectural invariant test suite)
   T4-20 (independent — PR template + architecture checklist)
 ```
@@ -57,7 +57,7 @@ Do not start Tier N+1 while any Tier N item is OPEN (Rule E1).
 **Phase 7.9 execution sequence (per Risk Matrix Architecture Review 2026-03-06 + Risk Review V7 2026-03-06 + Risk Review V8 2026-03-06 + Architect Directive V8 2026-03-06):**
 ```
 ⚠️  ARCHITECT INVARIANTS — effective immediately, all phases (ADRs 0040–0042):
-    ADR-0040: Athlete identity isolation — new code must comply from this commit
+    AGENTS.md §16.10: Athlete identity isolation — new code must comply from this commit
     ADR-0041: DataTrustLevel contract — new data sources require trust emitter
     ADR-0042: Human override required — every recommendation type needs override handler
 
@@ -66,27 +66,27 @@ TIER 1 (data integrity — must complete before any Tier 2 items in Phase 7.9+):
   T1-19 (structural + temporal data sanity layer; ADR-0026; after T1-18)
   T1-20 (Garmin connectivity staleness gate; ADR-0030; independent)
   T1-21 (non-training stress safety partition — H2/H3 illness vs. life-stress; ADR-0037; independent)
-  T1-22 (OutcomeTracker feedback-loop guardrails — schema + independence window; ADR-0035; independent)
+  T1-22 (OutcomeTracker feedback-loop guardrails — schema + independence window; AGENTS.md §16.7; independent)
   T1-23 (unified DataTrustLevel contract + data_trust.py module; ADR-0041; independent)
 
 TIER 2 (observability — after all Tier 1 pass):
-  T2-14 (structured event severity + alert deduplication + runbook; ADR-0031)
+  T2-14 (structured event severity + alert deduplication + runbook; AGENTS.md §16.6)
   T2-15 (weather synthetic fallback: location context + governance flag; ADR-0030; after T1-20)
   T2-16 (governance decision rationale + override-rate monitoring; ADR-0038; after all Tier 1)
-  T2-17 (metric lifecycle audit + evidence registry coverage; ADR-0039; independent)
+  T2-17 (metric lifecycle audit + evidence registry coverage; AGENTS.md §16.9; independent)
 
 TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 close):
-  T4-21 (documentation consistency CI checks; ADR-0024)
-  T4-22 (agent context continuity + CLAUDE.md integrity; ADR-0025)
+  T4-21 (documentation consistency CI checks; AGENTS.md §16.3)
+  T4-22 (agent context continuity + CLAUDE.md integrity; AGENTS.md §16.4)
   T4-23 (property-based test expansion for science engine edge cases)
   T4-24 (test fixture factory — eliminate fixture drift)
   T4-25 (dependency drift: automated CI audit for unpinned/stale deps)
   T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
-  T4-27 (complexity budget CI check: module count ceiling; ADR-0028)
-  T4-28 (context snapshot generator + multi-agent protocol; ADR-0029)
+  T4-27 (complexity budget CI check: module count ceiling; AGENTS.md §16.11)
+  T4-28 (context snapshot generator + multi-agent protocol; AGENTS.md §16.5)
   T4-29 (ESI environmental compensation overlay for training zones; ADR-0034; deferred Phase 8)
-  T4-30 (science module semantic versioning — MODULE_VERSION constants + CI; ADR-0036; independent)
-  T4-31 (athlete isolation invariant CI check — exemption register + comment annotations; ADR-0040; IMMEDIATE)
+  T4-30 (science module semantic versioning — MODULE_VERSION constants + CI; AGENTS.md §16.8; independent)
+  T4-31 (athlete isolation invariant CI check — exemption register + comment annotations; AGENTS.md §16.10; IMMEDIATE)
   T4-32 (override handler registry + Telegram inline override button; ADR-0042; IMMEDIATE)
 
 TIER 5 (future / Phase 8+):
@@ -95,15 +95,15 @@ TIER 5 (future / Phase 8+):
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
 T4-21 through T4-28 are marked `independent`. T4-30, T4-31, T4-32 are marked `independent`.
-T4-31 and T4-32 are marked `IMMEDIATE` — they enforce ADR-0040/0042 invariants that are effective
+T4-31 and T4-32 are marked `IMMEDIATE` — they enforce AGENTS.md §16.10/0042 invariants that are effective
 from this commit forward. They require no new Phase boundary to begin.
-T1-23 is a Phase 8 entry gate criterion (ADR-0022 updated retroactively).
+T1-23 is a Phase 8 entry gate criterion (AGENTS.md §16.2 updated retroactively).
 T4-29 is deferred to Phase 8 (low-blast-radius ESI overlay; no schema changes required).
 T2-17 is marked `independent` (can run concurrently with other Tier 2 items after Tier 1 closes).
-T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per ADR-0022 G1.
+T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per AGENTS.md §16.2 G1.
 T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8 prerequisite guard rails**.
-Phase 8 is gated — see ADR-0022 (Phase 8 Entry Gate). ADR-0022 G9 requires the
-Phase 8 Simplicity Review (ADR-0028) before entry.
+Phase 8 is gated — see AGENTS.md §16.2 (Phase 8 Entry Gate). AGENTS.md §16.2 G9 requires the
+Phase 8 Simplicity Review (AGENTS.md §16.11) before entry.
 
 ---
 
@@ -930,7 +930,7 @@ but for the primary physiological data source.
    column — simplest approach: add `last_garmin_sync_ts` and `last_garmin_sync_ok`
    columns via `_run_migrations()`).
 3. In `DailyCoach` Step 2, compute Garmin data age. If age > `GARMIN_DATA_MAX_AGE_HOURS`:
-   - Emit `garmin_data_stale` structured event (CRITICAL severity, per ADR-0031).
+   - Emit `garmin_data_stale` structured event (CRITICAL severity, per AGENTS.md §16.6).
    - Set `garmin_data_stale = True` on coaching context.
    - Engage ADR-0020 degraded conservative mode: cap recommendation at "easy
      maintenance only".
@@ -1023,7 +1023,7 @@ Final gate snapshot at closure: 1652 tests passing.
 ### T1-22 · OutcomeTracker schema lacks feedback-loop guardrails — calibration data at risk of circular validation bias ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `d5b9f40`.
-**Source:** Risk Review V8 — Risk: Feedback Loop Corruption. ADR-0035.
+**Source:** Risk Review V8 — Risk: Feedback Loop Corruption. AGENTS.md §16.7.
 **Priority:** P1 (Tier 1 — data integrity; must be resolved before T5-05 calibration logic is implemented).
 
 **Location:** `titan/science/outcome_tracker.py`, `titan/core/database.py` (schema migration), `titan/config/thresholds.py` (new constants).
@@ -1040,10 +1040,10 @@ However the current schema captures no information about:
 Without these guardrails, Phase 9 calibration will train on a dataset where:
 - Override outcomes (survivorship-biased: successful overrides are over-represented)
   are mixed with followed-governance outcomes.
-- The system may "learn" to validate its own conservative bias (see ADR-0035).
+- The system may "learn" to validate its own conservative bias (see AGENTS.md §16.7).
 - Algorithm version mixing will produce heterogeneous training data.
 
-**Fix direction (per ADR-0035):**
+**Fix direction (per AGENTS.md §16.7):**
 
 1. Schema migration: add columns to `governance_outcomes`:
    ```sql
@@ -1622,7 +1622,7 @@ python -m pytest -q                                    # 100% green, count ≥ p
 ### T2-14 · Structured events lack severity levels; Telegram alert deduplication absent; no operational runbook ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: TBD.
-**Source:** Risk Review V7 — Risk: Observability Overload. Architecture Review 2026-03-06. ADR-0031.
+**Source:** Risk Review V7 — Risk: Observability Overload. Architecture Review 2026-03-06. AGENTS.md §16.6.
 **Priority:** P2 (Tier 2 — observability sustainability).
 
 **Location:** All modules using `_emit_structured_event()` (~12 modules), `titan/integrations/telegram_bot.py`, `titan/main.py` (log rotation), `docs/operations/RUNBOOK.md` (new file).
@@ -1640,12 +1640,12 @@ log rotation policy and no operational runbook for responding to critical events
 
 Implemented shared structured-event severity payload support via `EventSeverity` and propagated severity-enabled structured event helpers across orchestration/integration/science/core modules that emit observability events. Added Telegram CRITICAL alert deduplication keyed by `(event_type, lock_code)` with a 20h suppression window and 72h persistence summary behaviour, then wired stale Garmin-data alerting through the deduplicated path. Added rotating log file handler configuration in `titan/main.py` (`LOG_MAX_BYTES=10MB`, `LOG_BACKUP_COUNT=5`). Added/updated tests for severity payload contract, dedup suppression, persistence summaries, and rotating logging configuration. Final closure suite count: 1678 tests green.
 
-**Fix direction (three parts per ADR-0031):**
+**Fix direction (three parts per AGENTS.md §16.6):**
 
 1. **Severity classification:** Add `EventSeverity` enum to a shared module. Extend
    `_emit_structured_event()` signature with `severity` parameter (default: `INFO` for
    backward compatibility). Classify all existing event types (CRITICAL / WARNING /
-   INFO / DEBUG — see ADR-0031 table). Update ~12 call sites mechanically.
+   INFO / DEBUG — see AGENTS.md §16.6 table). Update ~12 call sites mechanically.
 2. **Alert deduplication:** In the Telegram gateway, maintain a deduplication dict
    (in-memory, keyed by `(event_type, lock_code)`) with TTL = `ALERT_DEDUP_WINDOW_HOURS`
    (default: 20h). After `ALERT_PERSIST_SUMMARY_HOURS` (default: 72h) of the same
@@ -1757,7 +1757,7 @@ the system could not detect trust erosion.
 ### T2-17 · Metric lifecycle states not tracked — orphaned metrics consume resources without governance contribution; new metrics lack mandatory evidence registry entries ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: 91e0466.
-**Source:** Risk Review V8 — Risk: Metric Proliferation Debt. ADR-0039.
+**Source:** Risk Review V8 — Risk: Metric Proliferation Debt. AGENTS.md §16.9.
 **Priority:** P2 (Tier 2 — observability).
 
 **Location:** All `titan/science/` engine modules, `titan/config/evidence_registry.py`, `titan/orchestration/daily_coach.py` (coaching context emission).
@@ -2490,7 +2490,7 @@ python -m pytest -q   # 100% green
 ### T4-18 · Governance lock relies on comment, not machine-verifiable contract ✅ RESOLVED
 
 **Status:** RESOLVED 2026-03-06.
-**Source:** Architecture Review 2026-03-06 — ADR-0021 (Governance Evolvability Protocol).
+**Source:** Architecture Review 2026-03-06 — AGENTS.md §16.1 (Governance Evolvability Protocol).
 **Priority:** P2 (maintainability — "lock paralysis" risk as codebase grows).
 
 **Location:** `titan/science/governance_engine.py` + new `tests/test_governance_mutation.py`
@@ -2618,7 +2618,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
-**Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. ADR-0024.
+**Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. AGENTS.md §16.3.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
 **Location:** New `tests/test_documentation_consistency.py` + `titan/config/thresholds.py` + `.github/workflows/ci.yml`.
@@ -2633,7 +2633,7 @@ Four documentation drift failure modes with no automated detection:
 3. `docs/adr/README.md` index can fall behind actual ADR file count.
 4. `TECHNICAL_DEBT.md` tracking table can diverge from prose RESOLVED/OPEN status.
 
-**Fix direction (per ADR-0024):**
+**Fix direction (per AGENTS.md §16.3):**
 
 1. Add `CANONICAL_LOCK_CODES: frozenset[str]` to `titan/config/thresholds.py`.
 2. Create `tests/test_documentation_consistency.py` with 4 checks:
@@ -2658,7 +2658,7 @@ python -m pytest -q
 ### T4-22 · No machine-verifiable agent session start protocol — context drift undetectable ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `37a25fe`.
-**Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. ADR-0025.
+**Source:** Master Risk Matrix — Risk #1 (Agent Context Drift) + Risk #17 (Self-Referential Prompt Decay). Architecture Review 2026-03-06. AGENTS.md §16.4.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
 **Location:** New `tests/test_claude_md_integrity.py` + `AGENTS.md` + `.github/workflows/ci.yml`.
@@ -2670,13 +2670,13 @@ counts in CLAUDE.md, non-canonical lock codes generated by agents, Tier ordering
 violations (E1), re-proposing already-closed debt items. CLAUDE.md can decay when agents
 edit it incorrectly in a session.
 
-**Fix direction (per ADR-0025):**
+**Fix direction (per AGENTS.md §16.4):**
 
 1. Create `tests/test_claude_md_integrity.py` with:
    - `test_adr_count_in_claude_md_matches_files()` — ADR file count vs CLAUDE.md mentions
    - `test_module_count_in_claude_md_matches_filesystem()` — module count vs actual
    - `test_open_tier_items_not_misrepresented()` — phase closed claims vs open items
-2. Update `AGENTS.md` §SESSION_START with the 5-step S1–S5 protocol from ADR-0025.
+2. Update `AGENTS.md` §SESSION_START with the 5-step S1–S5 protocol from AGENTS.md §16.4.
 3. Add CI job `claude-md-integrity`.
 
 **Acceptance gate (binary):**
@@ -2853,7 +2853,7 @@ python -m pytest -q
 ### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
-**Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). ADR-0028.
+**Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). AGENTS.md §16.11.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
 **Location:** `tests/test_documentation_consistency.py` (extend; T4-21).
@@ -2864,12 +2864,12 @@ Module count grows unchecked with each phase. At 46 modules (Phase 7 close), the
 is within cognitive range. Without a ceiling, Phase 8 + Phase 9 additions could reach
 65+ modules — the point at which the module graph exceeds single-engineer working memory.
 
-**Fix direction (per ADR-0028):**
+**Fix direction (per AGENTS.md §16.11):**
 
 Add to `tests/test_documentation_consistency.py`:
 ```python
 def test_module_count_within_budget():
-    """Module count must not exceed 60 (Phase 8 ceiling per ADR-0028)."""
+    """Module count must not exceed 60 (Phase 8 ceiling per AGENTS.md §16.11)."""
     import pkgutil, titan
     mods = [m for m in pkgutil.walk_packages(titan.__path__, 'titan.')
             if '__' not in m.name]
@@ -2893,7 +2893,7 @@ python -m pytest -q
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
-**Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). ADR-0029.
+**Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). AGENTS.md §16.5.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
 **Location:** New `scripts/generate_context_snapshot.py` + `docs/context-snapshot.md` + `AGENTS.md`.
@@ -2906,7 +2906,7 @@ current state. Advisor tools can recommend patterns that contradict existing ADR
 they are not provided the ADR register. Implementer tools can implement contradictory
 parallel changes because they are not aware of concurrent work.
 
-**Fix direction (per ADR-0029):**
+**Fix direction (per AGENTS.md §16.5):**
 
 1. Create `scripts/generate_context_snapshot.py`:
    - Reads open items from `TECHNICAL_DEBT.md`
@@ -2931,7 +2931,7 @@ python -m pytest -q
 
 ### T4-29 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN (deferred Phase 8)
 
-**Status:** OPEN (deferred Phase 8 — after Phase 8 entry gate passes per ADR-0022).
+**Status:** OPEN (deferred Phase 8 — after Phase 8 entry gate passes per AGENTS.md §16.2).
 **Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
 **Priority:** P3 (Tier 4 — accuracy improvement; not safety-gate). Independent.
 
@@ -2972,7 +2972,7 @@ python -m pytest -q
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
-**Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. ADR-0036.
+**Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. AGENTS.md §16.8.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
 **Location:** All 26 `titan/science/*.py` modules, `titan/core/database.py` (schema migration), `tests/test_science_model_versions.py` (new CI check).
@@ -2985,7 +2985,7 @@ The `governance_outcomes` table does not record which algorithm versions were ac
 when a decision was made. Phase 9 calibration will train on a mixed-version dataset
 producing unreliable threshold estimates.
 
-**Fix direction (per ADR-0036):**
+**Fix direction (per AGENTS.md §16.8):**
 
 1. Add `MODULE_VERSION = "1.0.0"` to all 26 science modules (initial pass — all start
    at 1.0.0; future breaking changes increment MAJOR).
@@ -3010,8 +3010,8 @@ python -m pytest -q
 
 ### T4-31 · No athlete isolation invariant CI check — new code may silently introduce cross-athlete assumptions 🔴 OPEN (IMMEDIATE)
 
-**Status:** OPEN — **IMMEDIATE** (effective from ADR-0040, which is active from this commit).
-**Source:** Architect Directive V8 — Decision 1 (Athlete Profile as System Core). ADR-0040.
+**Status:** OPEN — **IMMEDIATE** (effective from AGENTS.md §16.10, which is active from this commit).
+**Source:** Architect Directive V8 — Decision 1 (Athlete Profile as System Core). AGENTS.md §16.10.
 **Priority:** P3 (Tier 4 — maintainability; IMMEDIATE because the invariant it enforces is
 already active and new violations must be caught from this commit forward).
 
@@ -3020,20 +3020,20 @@ in exemption register (module-level comment annotations).
 
 **Original state (pre-fix):**
 
-ADR-0040 is active from this commit. Without a CI check, new code can violate the
+AGENTS.md §16.10 is active from this commit. Without a CI check, new code can violate the
 isolation invariant (implicit athlete queries, no `athlete_id` parameter, cross-athlete
 assumptions) and the violation will not be detected until Phase 9 when the migration
 becomes blocked.
 
-**Fix direction (per ADR-0040):**
+**Fix direction (per AGENTS.md §16.10):**
 
-1. Add module-level `# ADR-0040-SINGLE-ATHLETE-SHORTCUT: ...` comment to all files
-   in the ADR-0040 exemption register (see ADR-0040 §Exemption Register).
+1. Add module-level `# AGENTS.md §16.10-SINGLE-ATHLETE-SHORTCUT: ...` comment to all files
+   in the AGENTS.md §16.10 exemption register (see AGENTS.md §16.10 §Exemption Register).
 2. Create `tests/test_athlete_isolation_invariant.py`:
    - Parse all `titan/` Python files.
    - For files NOT in the exemption register: assert no SQL string contains
      `SELECT|UPDATE|DELETE` without `athlete_id` in the same string (heuristic).
-   - For files in the exemption register: assert the `ADR-0040-SINGLE-ATHLETE-SHORTCUT`
+   - For files in the exemption register: assert the `AGENTS.md §16.10-SINGLE-ATHLETE-SHORTCUT`
      comment exists.
    - Assert new table migration blocks include `athlete_id` column.
 3. Register the exemption list as a Python constant in the test file for easy maintenance.
@@ -3077,7 +3077,7 @@ ADR-0042 is active from this commit. Two gaps remain unaddressed:
    @dataclass
    class OverrideSignal:
        decision_id: str
-       athlete_id: str      # ADR-0040
+       athlete_id: str      # AGENTS.md §16.10
        override_source: str  # "telegram_bot" | "operator_console"
        override_reason: str  # Required — not empty
        ...
@@ -3249,7 +3249,7 @@ python -m pytest -q
 **Effort (T5-06-A):** ~4h. `ExplainableOutput` dataclass + ensemble attribution
 logic + governance integration update + tests.
 
-**Phase 8 prerequisite:** T5-06-A must be RESOLVED before Phase 8 begins, per ADR-0022 G1.
+**Phase 8 prerequisite:** T5-06-A must be RESOLVED before Phase 8 begins, per AGENTS.md §16.2 G1.
 
 ---
 
@@ -3288,7 +3288,7 @@ mechanism exists to detect or flag this staleness. See ADR-0033 for full context
 3. Populate initial row for the HRV engine with current 30-day HRV mean and
    `calibrated_at = now`.
 4. In `DailyCoach` startup, check model age. If > `MODEL_CALIBRATION_MAX_AGE_DAYS`:
-   emit `model_calibration_stale` structured event (WARNING severity, per ADR-0031).
+   emit `model_calibration_stale` structured event (WARNING severity, per AGENTS.md §16.6).
 
 **Fix direction (per ADR-0033) — Layer 2 (Phase 7.9 / Phase 8 prerequisite):**
 
@@ -3318,14 +3318,14 @@ python -m pytest -q
 ### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt 🔴 OPEN
 
 **Status:** OPEN (Phase 8A — must resolve before Phase 8B coach dashboard begins).
-**Source:** ADR-0043 (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
+**Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
 
 **Location:** `titan/core/database.py` (replace with `titan/core/persistence.py`), `requirements.txt` (add `sqlalchemy`, `alembic`, `psycopg2-binary`), new `alembic/` directory.
 
 **Original state (pre-fix):**
 
-TITAN OS targets a multi-athlete coach platform (ADR-0043). SQLite's single-writer
+TITAN OS targets a multi-athlete coach platform (FUTURE_UPGRADES.md Phase 8/10 scope). SQLite's single-writer
 concurrency model cannot support 50 athletes × 3 daemon threads. Per-athlete SQLite
 files solve concurrency but multiply migration, backup, and GDPR erasure complexity by N.
 PostgreSQL is the correct topology. See ADR-0044 for full decision rationale.
@@ -3357,7 +3357,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 ### T5-09 · No unified `get_athlete_context()` query interface — LLM Seam 2 unbuilt 🔴 OPEN
 
 **Status:** OPEN (Phase 8B prerequisite; also required for Phase 10 LLM layer).
-**Source:** ADR-0043 (LLM Seam 2).
+**Source:** FUTURE_UPGRADES.md Phase 8/10 scope (LLM Seam 2).
 **Priority:** P2 for Phase 8B; P5 for Phase 10.
 
 **Location:** New `get_athlete_context()` in `titan/core/persistence.py` (or `titan/core/athlete_context.py`).
@@ -3378,7 +3378,7 @@ def get_athlete_context(
     include_training: bool = True,
     include_biometrics: bool = True,
 ) -> dict:
-    """ADR-0043 Seam 2. Returns JSON-serialisable dict (float → 2dp, no datetime objects)."""
+    """FUTURE_UPGRADES.md Phase 8/10 scope Seam 2. Returns JSON-serialisable dict (float → 2dp, no datetime objects)."""
 ```
 
 **Acceptance gate (binary):**
@@ -3396,7 +3396,7 @@ python -m pytest -q
 ### T5-10 · Phase 10 LLM coach query layer not yet designed in detail 🟡 DEFERRED
 
 **Status:** OPEN (deferred — Phase 10; implement only after Phase 9 closes with sufficient multi-athlete corpus).
-**Source:** ADR-0043 (Decision 3, Seam 3), ADR-0045 (LLM backend abstraction).
+**Source:** FUTURE_UPGRADES.md Phase 8/10 scope (Decision 3, Seam 3), ADR-0045 (LLM backend abstraction).
 **Priority:** P5 (future optionality).
 
 **Location:** `titan/integrations/llm_coach.py` (new module, Phase 10 only).
@@ -3431,7 +3431,7 @@ def coach_query(prompt: str, athlete_context: dict) -> str:
 
 **Original state (pre-fix):**
 
-ADR-0013 (technology path) specifies React + FastAPI for the coach dashboard. ADR-0043
+ADR-0013 (technology path) specifies React + FastAPI for the coach dashboard. FUTURE_UPGRADES.md Phase 8/10 scope
 confirms multi-athlete deployment. However, no auth layer has been designed. FastAPI
 endpoints serving health data (HRV, RHR, governance decisions, training log) for 50
 athletes with zero authentication is a GDPR violation and a serious security risk.
@@ -3660,7 +3660,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-29 | OPEN (deferred Phase 8) | — |
 | T4-30 | OPEN (independent) | — |
-| T4-31 | OPEN (IMMEDIATE — ADR-0040 active) | — |
+| T4-31 | OPEN (IMMEDIATE — AGENTS.md §16.10 active) | — |
 | T4-32 | OPEN (IMMEDIATE — ADR-0042 active) | — |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
 | T5-08 | OPEN (Phase 8A prerequisite) | — |
@@ -3674,7 +3674,7 @@ When an item is completed, mark it here with date and PR reference:
 resolved, not in commit messages alone.*
 
 *Last updated: 2026-03-06 — Architect Directive V8 processed. 3 new architectural invariants
-locked (ADR-0040 athlete isolation, ADR-0041 data trust contract, ADR-0042 human override).
+locked (AGENTS.md §16.10 athlete isolation, ADR-0041 data trust contract, ADR-0042 human override).
 3 new items registered (T1-23, T4-31, T4-32). ADRs 0040–0042 created. T4-31 and T4-32
 marked IMMEDIATE (enforce invariants active from this commit). T1-23 added as Phase 8 entry
 gate criterion.*

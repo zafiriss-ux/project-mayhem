@@ -15,7 +15,7 @@ Debt item(s) addressed: <!-- e.g. T4-18, T4-19 -->
 
 ---
 
-## Architecture checklist (ADR-0021 — mandatory for all PRs)
+## Architecture checklist (AGENTS.md §16.1 — mandatory for all PRs)
 
 ### Governance layer
 

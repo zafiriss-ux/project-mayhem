@@ -469,7 +469,7 @@ If any acceptance criterion fails mid-task:
 | Notifications via `NotificationGateway` | All notification paths | Telegram must have file fallback; direct bot calls bypass the fallback chain (T3-09) |
 | `DegradedModeTracker` registration | `daily_coach.py run_morning_routine()` | New degraded-mode conditions must be registered to fire the 24h SLO alert (T2-13) |
 
-**`titan/science/governance_engine.py` is architecture-locked.** See ADR-0009 and ADR-0021.
+**`titan/science/governance_engine.py` is architecture-locked.** See ADR-0009 and §16.1.
 Do not modify it without an ADR reference in your commit message and explicit architect approval.
 
 The lock is **machine-enforced**: `tests/test_governance_mutation.py` (T4-18) verifies boundary-ON
@@ -496,10 +496,10 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 | `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env) |
 | `titan/integrations/notification_gateway.py` | `NotificationGateway` — ordered fallback chain (Telegram → File) |
 | `titan/orchestration/daily_coach.py` | 12-step morning routine — `DegradedModeTracker`, `PersistenceFailure` sentinel |
-| `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / ADR-0021) |
+| `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / §16.1) |
 | `tests/test_architectural_invariants.py` | AST-enforced structural constraints (T4-19) |
 | `.github/pull_request_template.md` | PR checklist with 3-gate status + architecture guard items (T4-20) |
-| `docs/adr/` | Architecture Decision Records (0001–0021) |
+| `docs/adr/` | Architecture Decision Records (0006–0045, 27 architectural ADRs) |
 | `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED; Phase 7.8 Hardening CLOSED 2026-03-06) |
 | `pyproject.toml` | pytest + ruff + mypy config |
 
@@ -516,8 +516,8 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 | Using env overrides to bypass test failures | Root cause hidden; regression guaranteed to recur |
 | Broad `except Exception: pass` left in place | Silent data loss in governance inputs — flagged by T4-19 invariant test |
 | Hardcoding thresholds instead of importing from `thresholds.py` | Values diverge on recalibration — flagged by T4-19 invariant test |
-| Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009 / ADR-0021) |
-| Adding a gate without boundary tests in `test_governance_mutation.py` | Boundary regressions undetectable (T4-18 / ADR-0021) |
+| Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009 / §16.1) |
+| Adding a gate without boundary tests in `test_governance_mutation.py` | Boundary regressions undetectable (T4-18 / §16.1) |
 | Adding a lock code not in `_CANONICAL_LOCK_CODES` | Invariant test T4-19 will fail; add the code to both test and CLAUDE.md |
 | Sending Telegram notifications via direct bot call (bypassing `NotificationGateway`) | No fallback path; message lost on Telegram failure (T3-09) |
 | Failing to raise `PersistenceFailure` on DB rollback | Degraded mode never set; governance uses stale data (ADR-0020, T1-15) |
@@ -628,7 +628,7 @@ explicit instruction ("implement ADR-XXXX", "design a new module for X", "draft 
 | Adding new module boundaries or packages | Module topology is an architectural invariant |
 | Introducing a new abstraction layer | Abstractions have long-term cost; the architect must evaluate before adding |
 | Changing tier ordering or phase sequencing | Tier ordering enforces data-integrity-first discipline; agents cannot override it |
-| Modifying governance gate logic without an ADR | Safety regression (ADR-0009, ADR-0021) |
+| Modifying governance gate logic without an ADR | Safety regression (ADR-0009, §16.1) |
 | Changing DB schema topology (e.g. new tables, normalization) | Migrations are permanent; schema decisions require architectural sign-off |
 | Deciding between design alternatives on the agent's own judgement | Guessing on trade-offs leads to silent technical debt |
 
@@ -805,7 +805,7 @@ The agent must answer:
 If all three questions pass: record the abstraction proposal as an out-of-scope finding in
 `TECHNICAL_DEBT.md` and wait for architect approval. Do not implement inline.
 
-This rule enforces ADR-0028 (Complexity Budget and Simplicity Gate) at the agent level.
+This rule enforces §16.11 (Complexity Budget and Simplicity Gate) at the agent level.
 
 ---
 
