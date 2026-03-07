@@ -250,6 +250,7 @@ def test_sync_hrv_emits_metrics_when_disconnected(caplog):
     assert metrics[0] == {
         "flow": "garmin_sync",
         "action": "hrv_sync_metrics",
+        "severity": "info",
         "days_back": 3,
         "synced_days": 0,
         "skipped_days": 0,

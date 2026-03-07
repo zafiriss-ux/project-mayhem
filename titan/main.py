@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 from datetime import UTC, datetime
+from logging.handlers import RotatingFileHandler
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -59,6 +60,21 @@ from titan.ui.menu_system import main_menu
 from titan.ui.setup_wizard import ensure_credentials
 
 log = logging.getLogger(__name__)
+
+LOG_MAX_BYTES = 10 * 1024 * 1024
+LOG_BACKUP_COUNT = 5
+
+
+def _configure_rotating_logging() -> None:
+    """Attach a rotating file handler to the TITAN logger tree."""
+    root = logging.getLogger()
+    log_path = os.getenv("TITAN_LOG_PATH", "titan.log")
+    if any(isinstance(h, RotatingFileHandler) and h.baseFilename.endswith(log_path) for h in root.handlers):
+        return
+    handler = RotatingFileHandler(log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    root.addHandler(handler)
+
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -365,6 +381,7 @@ def _parse_env_number(name: str, default: str, caster):
 def main():
     from titan.integrations.weather_api import WeatherAPI
 
+    _configure_rotating_logging()
     _print_banner()
 
     # ── Step 1: Credentials ──────────────────────────────────────────────────

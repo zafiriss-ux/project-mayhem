@@ -1,6 +1,5 @@
 """
 Daily Coach - Main Orchestrator (v5.7 Closed-Loop Sovereign)
-
 Orchestration order:
 1.  Sync Garmin data
 2.  Persist data to database (activities + daily metrics)
@@ -28,6 +27,8 @@ import threading
 from datetime import UTC, datetime
 from time import monotonic
 from typing import TYPE_CHECKING, Any
+
+from titan.core.structured_events import EventSeverity, structured_event_payload
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -139,9 +140,14 @@ class PersistenceFailure(Exception):
         self.today_sleep_hours = today_sleep_hours
 
 
-def _daily_coach_event(action: str, **fields) -> None:
+def _daily_coach_event(
+    action: str,
+    *,
+    severity: EventSeverity | str = EventSeverity.INFO,
+    **fields,
+) -> None:
     """Emit a structured orchestration event as a single JSON log line."""
-    _log.info(json.dumps({"flow": "daily_coach", "action": action, **fields}, default=str))
+    _log.info(json.dumps(structured_event_payload("daily_coach", action, severity=severity, **fields), default=str))
 
 
 def _failure_class_for_step(step_number: int, error: Exception) -> str:
@@ -355,9 +361,13 @@ class DailyCoach:
                     last_error_class=garmin_sync_state.get("last_error_class"),
                 )
                 try:
-                    self.telegram.send_alert(
-                        "⚠️ Garmin data is stale (>26h since last successful sync). "
-                        "Training prescription is conservative (EASY maintenance)."
+                    self.telegram.send_structured_alert(
+                        event_type="garmin_data_stale",
+                        lock_code="GARMIN_DATA_STALE",
+                        message=(
+                            "Garmin data is stale (>26h since last successful sync). "
+                            "Training prescription is conservative (EASY maintenance)."
+                        ),
                     )
                 except Exception as alert_exc:
                     _daily_coach_event(
