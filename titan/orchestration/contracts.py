@@ -171,6 +171,8 @@ class DailyCoachingPayload(TypedDict):
     duration: str
     details: str
     governance_locks: list[str]
+    primary_reason: NotRequired[str]
+    actionable_guidance: NotRequired[str]
     optimal_time: str
     dew_point: float | str
     conditions: str

@@ -3,6 +3,7 @@
 from collections import Counter
 from typing import Any
 
+from titan.config.thresholds import OPERATOR_TRUST_DRIFT_WARNING_RATE_30D
 from titan.core.database import DatabaseManager
 
 
@@ -11,6 +12,66 @@ class OperatorConsoleService:
 
     def __init__(self, db: DatabaseManager):
         self.db = db
+
+    @staticmethod
+    def _compute_override_metrics(decisions: list[dict[str, Any]], window_days: int = 30) -> dict[str, Any]:
+        window = decisions[-window_days:] if decisions else []
+        if not window:
+            return {
+                "window_days": window_days,
+                "samples": 0,
+                "override_rate_30d": 0.0,
+                "trend": "stable",
+                "trust_signal": "STABLE",
+                "operator_trust_drift_warning": False,
+            }
+
+        overrides = [
+            d
+            for d in window
+            if d.get("outcome_session_type_actual")
+            and str(d.get("outcome_session_type_actual", "")).upper()
+            != str(d.get("session_post_governance", "")).upper()
+        ]
+        override_rate = len(overrides) / len(window)
+
+        split = max(1, len(window) // 2)
+        early = window[:split]
+        late = window[split:]
+
+        def _rate(rows: list[dict[str, Any]]) -> float:
+            if not rows:
+                return 0.0
+            mismatches = sum(
+                1
+                for d in rows
+                if d.get("outcome_session_type_actual")
+                and str(d.get("outcome_session_type_actual", "")).upper()
+                != str(d.get("session_post_governance", "")).upper()
+            )
+            return mismatches / len(rows)
+
+        early_rate = _rate(early)
+        late_rate = _rate(late)
+        trend_delta = round((late_rate - early_rate) * 100, 1)
+        if trend_delta > 5.0:
+            trend = "up"
+        elif trend_delta < -5.0:
+            trend = "down"
+        else:
+            trend = "stable"
+
+        warning = override_rate > OPERATOR_TRUST_DRIFT_WARNING_RATE_30D
+        trust_signal = "DRIFT_WARNING" if warning else "STABLE"
+
+        return {
+            "window_days": window_days,
+            "samples": len(window),
+            "override_rate_30d": round(override_rate, 3),
+            "trend": trend,
+            "trust_signal": trust_signal,
+            "operator_trust_drift_warning": warning,
+        }
 
     def readiness_load_dashboard(self, limit: int = 90) -> dict[str, Any]:
         """Build timeline + summary payload for readiness/load dashboard widgets."""
@@ -90,6 +151,9 @@ class OperatorConsoleService:
                     "vlg_color": decision["vlg_color"],
                     "manual_annotation": decision["outcome_notes"],
                     "decision_trail": trail,
+                    "gate_findings": [
+                        {"gate": lock, "status": "TRIGGERED"} for lock in decision["locks_applied"]
+                    ],
                 }
             )
 
@@ -127,9 +191,13 @@ class OperatorConsoleService:
         else:
             summary["latest_override_date"] = None
 
+        decisions = self.db.get_governance_decisions(limit=max(days * 4, 120))
+        override_metrics = self._compute_override_metrics(decisions, window_days=30)
+
         return {
             "summary": summary,
             "overrides": overrides,
+            "override_metrics": override_metrics,
         }
 
     def record_manual_override(

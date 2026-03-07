@@ -1434,3 +1434,27 @@ def test_run_morning_routine_adds_suspect_data_trust_caveat():
     assert coach.run_morning_routine() is True
     assert captured_payload["data_trust"]["overall"] == "SUSPECT"
     assert "suspect" in captured_payload["special_note"].lower()
+
+
+def test_run_morning_routine_forwards_decision_rationale_into_telegram_payload():
+    payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+
+    coach.governance = SimpleNamespace(
+        apply_constraints=lambda session_plan, context: {
+            **session_plan,
+            "governance_locks_applied": ["H1"],
+            "governance_clean": False,
+            "decision_rationale": {
+                "primary_reason": "Injury flag active.",
+                "actionable_guidance": "Take full rest.",
+                "gate_findings": [{"gate": "H1", "status": "TRIGGERED"}],
+            },
+        },
+        get_governance_report=lambda **_k: {},
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
+
+    assert coach.run_morning_routine() is True
+    assert payload["primary_reason"] == "Injury flag active."
+    assert payload["actionable_guidance"] == "Take full rest."

@@ -331,6 +331,10 @@ class TitanTelegramBot:
             f"🍽 *Nutrition:* {data.get('nutrition_plan', 'See /nutrition')}\n\n"
             f"👟 *Shoe:* {data.get('shoe', 'See /shoes')}\n"
         )
+        if data.get("primary_reason"):
+            text += f"\n🧭 *Why this decision:* {data['primary_reason']}"
+        if data.get("actionable_guidance"):
+            text += f"\n✅ *Actionable guidance:* {data['actionable_guidance']}"
         if data.get("hrv_stress_context"):
             text += f"\n🩺 *Stress context:* {data['hrv_stress_context']}"
         if data.get("special_note"):
