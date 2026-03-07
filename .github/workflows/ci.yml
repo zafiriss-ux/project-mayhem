@@ -238,6 +238,48 @@ jobs:
           print("No outdated dependencies detected")
           PY
 
+  complexity-budget:
+    name: Complexity Budget (module count ceiling)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Enforce titan module count ceiling
+        run: |
+          python - <<'PY'
+          import pkgutil
+
+          import titan
+
+          module_count = len(
+              [
+                  module.name
+                  for module in pkgutil.walk_packages(titan.__path__, prefix="titan.")
+                  if "__" not in module.name
+              ]
+          )
+          module_ceiling = 60
+
+          if module_count > module_ceiling:
+              raise SystemExit(
+                  f"Complexity budget exceeded: titan module count {module_count} > ceiling {module_ceiling}"
+              )
+
+          print(
+              f"Complexity budget check passed: titan module count {module_count} <= ceiling {module_ceiling}"
+          )
+          PY
+
   phase4-observability:
     name: Phase 4 Observability & E2E
     runs-on: ubuntu-latest

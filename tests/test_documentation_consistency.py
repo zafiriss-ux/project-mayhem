@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import pkgutil
 import re
 
+import titan
 from titan.config.evidence_registry import EVIDENCE_REGISTRY
 from titan.config.thresholds import CANONICAL_LOCK_CODES
 
@@ -181,3 +183,14 @@ def test_technical_debt_tracking_table_matches_heading_status() -> None:
         "Tracking table statuses differ from item headings for: "
         + ", ".join(mismatched)
     )
+
+
+def test_module_count_within_budget() -> None:
+    """Module count must not exceed 60 (Phase 8 ceiling per AGENTS.md §16.11)."""
+    modules = [
+        module.name
+        for module in pkgutil.walk_packages(titan.__path__, "titan.")
+        if "__" not in module.name
+    ]
+
+    assert len(modules) <= 60, f"Complexity budget exceeded: {len(modules)} modules"
