@@ -1219,9 +1219,9 @@ python -m pytest -q
 
 ---
 
-### T4-31 · No athlete isolation invariant CI check — new code may silently introduce cross-athlete assumptions 🔴 OPEN (IMMEDIATE)
+### T4-31 · No athlete isolation invariant CI check — new code may silently introduce cross-athlete assumptions ✅ RESOLVED 2026-03-07 (IMMEDIATE)
 
-**Status:** OPEN — **IMMEDIATE** (effective from AGENTS.md §16.10, which is active from this commit).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: 4941a8a.
 **Source:** Architect Directive V8 — Decision 1 (Athlete Profile as System Core). AGENTS.md §16.10.
 **Priority:** P3 (Tier 4 — maintainability; IMMEDIATE because the invariant it enforces is
 already active and new violations must be caught from this commit forward).
@@ -1235,6 +1235,18 @@ AGENTS.md §16.10 is active from this commit. Without a CI check, new code can v
 isolation invariant (implicit athlete queries, no `athlete_id` parameter, cross-athlete
 assumptions) and the violation will not be detected until Phase 9 when the migration
 becomes blocked.
+
+**Resolution:**
+
+1. Added `tests/test_athlete_isolation_invariant.py` as a deterministic CI invariant check with a
+   maintained exemption register constant and explicit assertion messages.
+2. Enforced that non-database `titan/` modules cannot introduce SQL-like literals that omit
+   `athlete_id`; violations report exact `file:line` evidence.
+3. Enforced that migration `CREATE TABLE` statements in `DatabaseManager` include `athlete_id`
+   unless the table is explicitly global (`sync_metadata` allowlist).
+4. Enforced that each exemption-register module still contains the required
+   `ADR-0040-SINGLE-ATHLETE-SHORTCUT` annotation.
+5. Final full-suite closure: 1721 tests passing.
 
 **Fix direction (per AGENTS.md §16.10):**
 
@@ -1871,7 +1883,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-29 | OPEN (deferred Phase 8) | — |
 | T4-30 | OPEN (independent) | — |
-| T4-31 | OPEN (IMMEDIATE — AGENTS.md §16.10 active) | — |
+| T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 |
 | T4-32 | OPEN (IMMEDIATE — ADR-0042 active) | — |
 | T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
 | T5-08 | OPEN (Phase 8A prerequisite) | — |
