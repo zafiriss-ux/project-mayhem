@@ -103,7 +103,7 @@ def test_sync_all_payload_supports_dict_access_and_json_serialization():
 
     payload = sync.sync_all(days_back=7)
 
-    assert set(payload) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics"}
+    assert set(payload) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust"}
     assert payload["activities"][0]["date"] == "2026-03-04"
     assert payload["hrv_sync_metrics"]["synced_days"] == 1
 
@@ -202,3 +202,46 @@ def test_sync_all_timeout_emits_cancel_event_and_attempts_future_cancel(monkeypa
     assert fields["reason"] == "timeout"
     assert fields["timeout_seconds"] == 1
     assert fields["operation_name"] == "sync_all"
+
+
+def test_sync_all_payload_includes_data_trust_contract():
+    sync = GarminSync(email="e", password="p")
+    sync.sync_activities = lambda days_back=7: []
+    sync.sync_weight = lambda days_back=14: []
+    sync.sync_sleep = lambda days_back=7: []
+    sync.sync_hrv = lambda days_back=7: []
+    sync.last_hrv_sync_metrics = {"days_back": 7, "synced_days": 0, "skipped_days": 0}
+
+    payload = sync.sync_all(days_back=7)
+
+    assert payload["data_trust"]["source"] == "garmin"
+    assert payload["data_trust"]["trust_level"] == "TRUSTED"
+
+
+def test_sync_all_timeout_payload_marks_data_trust_invalid(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+
+    class _TimeoutFuture:
+        def result(self, timeout):
+            raise garmin_sync.FuturesTimeoutError()
+
+        def cancel(self):
+            return True
+
+    class _FakeExecutor:
+        def __init__(self, max_workers):
+            self.max_workers = max_workers
+
+        def submit(self, fn, *args):
+            return _TimeoutFuture()
+
+        def shutdown(self, wait, cancel_futures):
+            return None
+
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "1")
+    monkeypatch.setattr(garmin_sync, "ThreadPoolExecutor", _FakeExecutor)
+
+    payload = sync.sync_all(days_back=3)
+
+    assert payload["data_trust"]["trust_level"] == "INVALID"
+    assert "sync_timeout_cancelled" in payload["data_trust"]["reasons"]

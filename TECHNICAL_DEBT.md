@@ -1095,9 +1095,9 @@ independence timestamp is provided. Added guardrail-focused tests in
 
 ---
 
-### T1-23 · No unified DataTrustLevel contract — external data sources emit ad-hoc trust signals not visible to governance 🔴 OPEN (independent)
+### T1-23 · No unified DataTrustLevel contract — external data sources emit ad-hoc trust signals not visible to governance ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** OPEN (Phase 7.9 — independent; **Phase 8 entry gate criterion**).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: pending (set at merge).
 **Source:** Architect Directive V8 — Decision 2 (Unified Data Health Check). ADR-0041.
 **Priority:** P0 (Tier 1 — data integrity; IMMEDIATE; Phase 8 integration blocked without this).
 
@@ -1160,6 +1160,11 @@ python -m pytest -q
 ```
 
 **Effort:** ~4h. New module (~30 lines) + 2 emitter updates + coaching context + tests.
+
+**Resolution:**
+- Added unified trust contract in `titan/science/data_trust.py` with `DataTrustLevel`, `DataTrustReport`, and narrow evaluators for Garmin and weather trust.
+- Wired Garmin and weather emitters to include trust reports and propagated aggregate trust through DailyCoach context/payload without changing recommendation logic outside trust caveat exposure.
+- Added/updated tests for contract, emitters, and orchestration propagation. Final gate snapshot at closure: 1671 tests passing.
 
 ---
 
@@ -3665,7 +3670,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
 | T1-21 | ✅ RESOLVED | 2026-03-07 |
 | T1-22 | ✅ RESOLVED | 2026-03-07 |
-| T1-23 | OPEN (independent; Phase 8 entry gate) | — |
+| T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
 | T2-16 | OPEN (after all Tier 1) | — |
 | T2-17 | OPEN (independent) | — |
 | T4-29 | OPEN (deferred Phase 8) | — |

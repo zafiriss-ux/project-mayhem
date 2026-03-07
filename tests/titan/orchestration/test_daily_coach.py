@@ -1380,3 +1380,57 @@ def test_run_morning_routine_surfaces_hrv_stress_context_in_telegram_payload():
 
     assert coach.run_morning_routine() is True
     assert payload["hrv_stress_context"] == "ILLNESS_PATTERN"
+
+
+def test_run_morning_routine_propagates_data_trust_to_payload_and_context():
+    captured_payload = {}
+    captured_context = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.db.get_last_sync_outcome = lambda source: {
+        "last_success_ts": datetime.now(),
+        "last_error_class": None,
+    }
+
+    def _governance_spy(session_plan, context):
+        captured_context.update(context)
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(
+        apply_constraints=_governance_spy,
+        get_governance_report=lambda **_k: {},
+    )
+    coach.optimal_time = SimpleNamespace(
+        calculate_optimal_time=lambda **k: {
+            "recommended_time": "06:30",
+            "dew_point": 11,
+            "quality": "🟩 EXCELLENT",
+            "weather_data_quality": "live",
+        }
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda payload: captured_payload.update(payload) or True)
+
+    assert coach.run_morning_routine() is True
+    assert captured_context["data_trust"]["overall"] == "TRUSTED"
+    assert captured_payload["data_trust"]["overall"] == "TRUSTED"
+
+
+def test_run_morning_routine_adds_suspect_data_trust_caveat():
+    captured_payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.db.get_last_sync_outcome = lambda source: {
+        "last_success_ts": datetime.now() - timedelta(hours=13),
+        "last_error_class": None,
+    }
+    coach.optimal_time = SimpleNamespace(
+        calculate_optimal_time=lambda **k: {
+            "recommended_time": "06:30",
+            "dew_point": 11,
+            "quality": "🟩 EXCELLENT",
+            "weather_data_quality": "live",
+        }
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda payload: captured_payload.update(payload) or True)
+
+    assert coach.run_morning_routine() is True
+    assert captured_payload["data_trust"]["overall"] == "SUSPECT"
+    assert "suspect" in captured_payload["special_note"].lower()

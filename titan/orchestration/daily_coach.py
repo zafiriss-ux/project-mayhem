@@ -45,6 +45,12 @@ from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
 from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
+from titan.science.data_trust import (
+    DataTrustLevel,
+    combine_trust_reports,
+    evaluate_garmin_trust,
+    evaluate_weather_trust,
+)
 from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
@@ -334,6 +340,7 @@ class DailyCoach:
         )
 
         garmin_data_stale = False
+        hours_since_success = GARMIN_DATA_MAX_AGE_HOURS + 1
         garmin_sync_state = self.db.get_last_sync_outcome("garmin") or {}
         last_success_ts = garmin_sync_state.get("last_success_ts")
         if isinstance(last_success_ts, datetime):
@@ -358,6 +365,17 @@ class DailyCoach:
                         error_class=type(alert_exc).__name__,
                         error_message=str(alert_exc),
                     )
+
+        garmin_trust = evaluate_garmin_trust(
+            data_age_hours=hours_since_success,
+            sync_status=sync_status,
+            quality_flags=list(garmin_data.get("quality_flags", [])),
+        )
+        garmin_report_payload = {k: v for k, v in garmin_trust.to_payload().items() if k != 'checked_at'}
+        data_trust = {
+            "overall": garmin_trust.trust_level.value,
+            "reports": [garmin_report_payload],
+        }
 
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
         def _step3_feed_hrv_hrr() -> None:
@@ -567,6 +585,7 @@ class DailyCoach:
             ),
             persistence_degraded=persistence_degraded,
             garmin_data_stale=garmin_data_stale,
+            data_trust=data_trust,
         )
         self._startup_confidence_applies_next_routine = False
 
@@ -622,7 +641,16 @@ class DailyCoach:
             day_offset    = 0,
             tsb_value     = tsb_value,
         ))
-        weather_degraded_mode = optimal_time.get('weather_data_quality') == 'synthetic'
+        weather_data_quality = str(optimal_time.get('weather_data_quality', 'live'))
+        weather_degraded_mode = weather_data_quality == 'synthetic'
+        weather_trust = evaluate_weather_trust(data_quality=weather_data_quality, data_age_hours=0.0)
+
+        overall_trust = combine_trust_reports([garmin_trust, weather_trust])
+        weather_report_payload = {k: v for k, v in weather_trust.to_payload().items() if k != 'checked_at'}
+        data_trust = {
+            'overall': overall_trust.value,
+            'reports': [garmin_report_payload, weather_report_payload],
+        }
 
         # ── Step 11: Nutrition ───────────────────────────────────────────────
         _daily_coach_event("step_started", step_number=11, step_name="calculate_nutrition")
@@ -705,9 +733,12 @@ class DailyCoach:
             'fueling_gate': today_session.get('fueling_gate'),
             'vo2_eligibility': today_session.get('vo2_eligibility'),
             'hrv_stress_context': today_session.get('hrv_stress_context'),
+            'data_trust': data_trust,
         }
         if weather_degraded_mode:
             coaching_data['special_note'] = '⚠️ Weather data unavailable — optimal time window omitted'
+        elif overall_trust == DataTrustLevel.SUSPECT:
+            coaching_data['special_note'] = '⚠️ Some source data is suspect — recommendations remain conservative.'
 
         def _step12_send_telegram() -> bool:
             try:
@@ -805,6 +836,7 @@ class DailyCoach:
         data_confidence_low: bool | None = None,
         persistence_degraded: bool = False,
         garmin_data_stale: bool | None = None,
+        data_trust: dict[str, Any] | None = None,
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
         payload = DailyCoachContextContract(
@@ -831,6 +863,7 @@ class DailyCoach:
             priority_vector=priority_vector,
             lock_thresholds=lock_thresholds,
             garmin_data_stale=garmin_data_stale,
+            data_trust=data_trust,
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low
