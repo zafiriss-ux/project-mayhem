@@ -851,6 +851,34 @@ class DailyCoach:
                 latest_weight = _safe_float(entry.get('weight_kg', 0)) or None
                 break
 
+        from titan.science.physiological_bounds import validate_and_clamp
+
+        phys_inputs = {
+            "rhr_bpm": float(today_rhr) if today_rhr > 0 else None,
+            "sleep_hours": today_sleep_hours if today_sleep_hours > 0 else None,
+            "hrv_ms": latest_rmssd,
+            "weight_kg": latest_weight,
+        }
+        validated_inputs, input_violations = validate_and_clamp(
+            phys_inputs,
+            "persist_garmin_data",
+        )
+        for v in input_violations:
+            _daily_coach_event(
+                "physiological_input_validation_failed",
+                field=v.field,
+                value=v.value,
+                lo=v.lo,
+                hi=v.hi,
+                violation_action=v.action,
+            )
+
+        validated_rhr = validated_inputs["rhr_bpm"]
+        today_rhr = int(round(validated_rhr)) if validated_rhr is not None else 0
+        today_sleep_hours = validated_inputs["sleep_hours"] or 0.0
+        latest_rmssd = validated_inputs["hrv_ms"]
+        latest_weight = validated_inputs["weight_kg"]
+
         _sanity = DataSanityChecker()
         try:
             with self.db.transaction():

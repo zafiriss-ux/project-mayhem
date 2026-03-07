@@ -685,7 +685,17 @@ class DatabaseManager:
                 WHERE date >= date('now', '-' || ? || ' days')
                 ORDER BY date DESC
             """, (days,))
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+
+        from titan.science.physiological_bounds import (
+            validate_single,  # deferred: avoids circular import
+        )
+        validated: list[tuple[str, float]] = []
+        for date_str, training_load in rows:
+            clean = validate_single("training_load", float(training_load), "training_load_history")
+            if clean is not None:
+                validated.append((date_str, clean))
+        return validated
 
     def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
         """
@@ -1314,7 +1324,17 @@ class DatabaseManager:
                    ORDER BY date DESC LIMIT ?""",
                 (days,),
             )
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+
+        from titan.science.physiological_bounds import (
+            validate_single,  # deferred: avoids circular import
+        )
+        validated = []
+        for date_str, weight_kg in rows:
+            clean = validate_single("weight_kg", float(weight_kg), "weight_history")
+            if clean is not None:
+                validated.append((date_str, clean))
+        return validated
 
     def close(self) -> None:
         """Close database connection."""

@@ -343,6 +343,51 @@ def test_persist_garmin_data_success_commits_activities_and_metrics_atomically(t
         db.close()
 
 
+def test_persist_garmin_data_invalid_physiological_values_are_surfaced_and_sanitized(
+    tmp_path,
+    monkeypatch,
+):
+    events = []
+    monkeypatch.setattr(
+        daily_coach,
+        "_daily_coach_event",
+        lambda action, **fields: events.append({"action": action, **fields}),
+    )
+
+    db = DatabaseManager(db_name="atomic_invalid_physio.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-04"
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = [{
+        "restingHeartRate": 300,
+        "sleepScores": {"overall": {"value": 80}},
+        "sleepTimeSeconds": 200000,
+    }]
+    payload["hrv"] = [{"date": day, "rmssd": 0.0}]
+    payload["weight"] = [{"date": day, "weight_kg": 900.0}]
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        assert rhr == 0
+        assert sleep_score == 80
+        assert sleep_hours == 0.0
+
+        row = db.conn.execute(
+            """SELECT resting_hr, hrv_rmssd, weight_kg, sleep_hours
+               FROM daily_metrics WHERE date = ?""",
+            (day,),
+        ).fetchone()
+        assert row == (None, None, None, None)
+
+        validation_events = [
+            e for e in events if e["action"] == "physiological_input_validation_failed"
+        ]
+        assert validation_events
+    finally:
+        db.close()
+
+
 def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
     from titan.orchestration.daily_coach import PersistenceFailure
 
@@ -412,6 +457,8 @@ def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
         assert tsb_after_first_sync == tsb_after_second_sync
     finally:
         db.close()
+
+
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)
