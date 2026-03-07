@@ -41,3 +41,22 @@ WEATHER_DATA_SUSPECT_AGE_HOURS = 2
 
 # Operator trust-drift monitor — ADR-0038 / T2-16.
 OPERATOR_TRUST_DRIFT_WARNING_RATE_30D = 0.25
+
+# Governance lock codes (ADR-0024 / T4-21): machine-readable canonical set.
+CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
+    {
+        "HARD_STOP_SAFETY_GATES",
+        "VO2_ELIGIBILITY_GATE",
+        "FUELING_GATE_LOCK",
+        "FUELING_GATE_FLAG",
+        "READINESS_2OF4_DOWNGRADE",
+        "INTENSITY_GATE_RED",
+        "INTENSITY_GATE_YELLOW",
+        "PARASYMPATHETIC_GUARD",
+        "OVERRIDE_LOCKDOWN",
+        "CS_CONFIDENCE_LOCK",
+        "PERSISTENCE_DEGRADED_CEILING",
+        "STARTUP_DATA_CONFIDENCE_CEILING",
+        "FAIL_SAFE_LOCK",
+    }
+)

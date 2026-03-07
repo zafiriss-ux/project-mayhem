@@ -55,6 +55,9 @@
 | [0040](0040-athlete-identity-first-class-invariant.md) | Athlete Identity as First-Class Architectural Invariant: isolation invariant + exemption register + new-code rules A40-1–A40-4 | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T4-31 CI enforcement pending | — |
 | [0041](0041-unified-external-data-trust-contract.md) | Unified External Data Trust Contract: DataTrustLevel enum + DataTrustReport + mandatory onboarding gate for new data sources | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T1-23 implementation pending (Phase 8 prerequisite) | — |
 | [0042](0042-human-override-first-class-invariant.md) | Human Override as First-Class Architectural Invariant: OverrideSignal contract + Telegram override button + override handler registry per lock code | Architecture / Invariant | ✅ Accepted (2026-03-06) — **ACTIVE IMMEDIATELY** — T4-32 implementation pending | — |
+| [0043](0043-post-phase9-multi-athlete-coach-platform-and-llm-seams.md) | Post-Phase 9 Product Direction: Multi-Athlete Coach Platform and LLM Seams | Architecture / Strategy | ✅ Accepted (2026-03-06) | — |
+| [0044](0044-postgresql-migration-phase8a-entry-gate.md) | PostgreSQL Migration as Phase 8A Entry Gate | Architecture / Data | ✅ Accepted (2026-03-06) | — |
+| [0045](0045-local-llm-backend-abstraction.md) | Local LLM Backend Abstraction: Ollama and On-Device Model Support | Architecture / AI Platform | ✅ Accepted (2026-03-06) | — |
 
 ---
 

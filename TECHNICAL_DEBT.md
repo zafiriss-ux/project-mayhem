@@ -2615,7 +2615,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ---
 
-### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently 🔴 OPEN (independent)
+### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. ADR-0024.
@@ -3577,14 +3577,23 @@ When an item is completed, mark it here with date and PR reference:
 | T1-04 | 2026-03-04 | PR: TBD |
 | T1-05 | 2026-03-04 | PR: TBD |
 | T2-01 | 2026-03-04 | PR: TBD |
+| T2-02 | ✅ RESOLVED | PR: TBD |
+| T2-03 | ✅ RESOLVED | PR: TBD |
+| T2-04 | ✅ RESOLVED | PR: TBD |
+| T2-05 | ✅ RESOLVED | PR: TBD |
 | T2-06 | 2026-03-04 | PR: TBD |
+| T2-07 | ✅ RESOLVED | PR: TBD |
+| T2-08 | ✅ RESOLVED | PR: TBD |
 | T3-01 | 2026-03-03 | [#172](https://github.com/zafiriss-ux/project-mayhem/pull/172) |
 | T3-02 | 2026-03-04 | PR: TBD |
 | T3-03 | 2026-03-04 | PR: TBD |
 | T3-04 | 2026-03-04 | PR: TBD |
 | T3-05 | 2026-03-04 | PR: TBD |
 | T4-01 | 2026-03-03 | [#167](https://github.com/zafiriss-ux/project-mayhem/pull/167) |
+| T4-02 | ✅ RESOLVED | PR: TBD |
 | T4-03 | 2026-03-04 | PR: TBD |
+| T4-04 | ✅ RESOLVED | PR: TBD |
+| T4-05 | ✅ RESOLVED | PR: TBD |
 | T4-06 | 2026-03-04 | PR: TBD |
 | T5-01 | 2026-03-03 | [#173](https://github.com/zafiriss-ux/project-mayhem/pull/173), [#174](https://github.com/zafiriss-ux/project-mayhem/pull/174), [#175](https://github.com/zafiriss-ux/project-mayhem/pull/175) |
 | T5-02 | 2026-03-03 | [#169](https://github.com/zafiriss-ux/project-mayhem/pull/169) |
@@ -3631,7 +3640,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-20 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T2-14 | ✅ RESOLVED | 2026-03-07 |
 | T2-15 | ✅ RESOLVED | 2026-03-07 |
-| T4-21 | OPEN (independent) | — |
+| T4-21 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-22 | OPEN (independent) | — |
 | T4-23 | OPEN (independent) | — |
 | T4-24 | OPEN (independent) | — |
