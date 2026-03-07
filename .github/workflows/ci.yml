@@ -168,6 +168,76 @@ jobs:
       - name: Run system check (module health)
         run: python system_check.py || true
 
+  dependency-drift-audit:
+    name: Dependency Drift Audit (unpinned + stale)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install runtime + dev dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
+
+      - name: Audit unpinned dependencies in requirements files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          requirement_files = (Path("requirements.txt"), Path("requirements-dev.txt"))
+          allowed_prefixes = ("-r", "--", "git+", "http://", "https://")
+          version_pattern = re.compile(r"==")
+          unpinned: list[str] = []
+
+          for path in requirement_files:
+              for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                  line = raw_line.split("#", maxsplit=1)[0].strip()
+                  if not line or line.startswith(allowed_prefixes):
+                      continue
+                  if not version_pattern.search(line):
+                      unpinned.append(f"{path}:{line_number}:{line}")
+
+          if unpinned:
+              print("Unpinned dependencies detected:")
+              for entry in unpinned:
+                  print(f"- {entry}")
+              raise SystemExit(1)
+
+          print("All audited dependencies are pinned with ==")
+          PY
+
+      - name: Audit stale dependencies
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+
+          result = subprocess.run(
+              ["python", "-m", "pip", "list", "--outdated", "--format=json"],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          outdated = json.loads(result.stdout)
+
+          if outdated:
+              print("Outdated dependencies detected:")
+              for package in outdated:
+                  print(
+                      f"- {package['name']}: {package['version']} -> {package['latest_version']}"
+                  )
+              raise SystemExit(1)
+
+          print("No outdated dependencies detected")
+          PY
+
   phase4-observability:
     name: Phase 4 Observability & E2E
     runs-on: ubuntu-latest

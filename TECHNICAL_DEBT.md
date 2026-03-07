@@ -963,7 +963,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 ---
 
-### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected 🔴 OPEN (independent)
+### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
@@ -975,11 +975,18 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 `requirements.txt` pins direct dependencies but does not pin transitive dependencies
 via a lockfile or constraints file. Over time:
-1. Transitive package updates can break the build silently (a new transitive dep version
+1. Transitive package updates could break the build silently (a new transitive dep version
    is incompatible with Python 3.11 or with another dep in the graph).
-2. Known CVEs in direct or transitive dependencies are not surfaced in CI.
-3. No periodic audit job checks whether pinned versions are current or have known
-   security advisories.
+2. Known CVEs in direct or transitive dependencies were not surfaced in CI.
+3. No periodic audit job checked whether pinned versions were current or stale.
+
+**Resolution:**
+
+Added a dedicated CI workflow job (`dependency-drift-audit`) in `.github/workflows/ci.yml`
+that performs two checks: (1) fails when unpinned dependencies are present in
+`requirements.txt`/`requirements-dev.txt`, and (2) fails when `pip list --outdated`
+returns stale packages. Added tests in `tests/test_t4_25_dependency_drift_audit.py`
+to lock the new CI contract. Closure test count at gate time: 1713.
 
 **Fix direction:**
 
@@ -1839,7 +1846,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-22 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-23 | ✅ RESOLVED | 2026-03-07 |
 | T4-24 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-25 | OPEN (independent) | — |
+| T4-25 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-26 | OPEN (independent) | — |
 | T4-27 | OPEN (independent) | — |
 | T4-28 | OPEN (independent) | — |
