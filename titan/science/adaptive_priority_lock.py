@@ -21,6 +21,8 @@ import logging
 from titan.config.thresholds import HARD_STOP_TSB_FLOOR, VO2_ACWR_MAX
 from titan.science.volume_load_gauge import VLGState
 
+MODULE_VERSION = "1.0.0"
+
 _log = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────

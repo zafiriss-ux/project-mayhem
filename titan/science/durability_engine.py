@@ -13,6 +13,8 @@ But races are won by those who maintain performance when FATIGUED.
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class DurabilityEngine:
     """
     Durability = How well you maintain performance when fatigued.

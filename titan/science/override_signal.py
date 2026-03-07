@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+MODULE_VERSION = "1.0.0"
+
 _VALID_OVERRIDE_SOURCES: frozenset[str] = frozenset({"telegram_bot", "operator_console"})
 
 

@@ -6,6 +6,8 @@ activation path must explicitly disable it in controlled environments.
 
 import os
 
+MODULE_VERSION = "1.0.0"
+
 
 def is_ml_kill_switch_enabled() -> bool:
     """Return True when ML athlete-facing paths must be blocked."""

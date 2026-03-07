@@ -2,6 +2,8 @@
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class RCPEngine:
     """
     Respiratory Compensation Point - More precise than LTHR.

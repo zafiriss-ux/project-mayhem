@@ -2,6 +2,8 @@
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class FatigueEngine:
     @staticmethod
     def classify_fatigue(

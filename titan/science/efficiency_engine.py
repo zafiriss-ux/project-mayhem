@@ -18,6 +18,8 @@ First half EF vs Second half EF
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class EfficiencyEngine:
     """
     Efficiency Factor = Aerobic fitness proxy.

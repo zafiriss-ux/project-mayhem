@@ -24,6 +24,8 @@ from titan.config.thresholds import (
 from titan.science.governance_contracts import validate_vo2_eligibility
 from titan.science.override_signal import record_override_signal
 
+MODULE_VERSION = "1.0.0"
+
 _log = logging.getLogger(__name__)
 
 

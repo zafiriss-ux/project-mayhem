@@ -20,6 +20,8 @@ Key Design Decisions:
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class AutonomicFusionEngine:
     """
     Autonomic Fusion Index (AFI) — composite autonomic health estimator.

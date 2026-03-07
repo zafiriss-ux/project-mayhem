@@ -2,6 +2,8 @@
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class ACWREngine:
     """Acute:Chronic Workload Ratio (Gabbett 2016)"""
 

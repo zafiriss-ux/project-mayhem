@@ -6,6 +6,8 @@ Tracks training history to detect patterns and adaptations.
 
 from datetime import datetime
 
+MODULE_VERSION = "1.0.0"
+
 
 class AdaptiveMemory:
     """

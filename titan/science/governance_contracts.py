@@ -7,6 +7,8 @@ before being consumed by orchestration (DailyCoach) and downstream (Telegram pay
 
 from typing import Any
 
+MODULE_VERSION = "1.0.0"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Contract: vo2_eligibility
 # ─────────────────────────────────────────────────────────────────────────────

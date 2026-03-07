@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+MODULE_VERSION = "1.0.0"
+
 _log = logging.getLogger(__name__)
 
 # ADR-0040-SINGLE-ATHLETE-SHORTCUT: This module assumes a single active athlete.

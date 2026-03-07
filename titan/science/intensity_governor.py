@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+MODULE_VERSION = "1.0.0"
+
 
 @dataclass
 class GateResult:

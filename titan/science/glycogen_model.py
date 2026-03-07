@@ -19,6 +19,8 @@ Scientific Basis:
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class GlycogenModel:
     """Estimate glycogen cost and refueling needs"""
 

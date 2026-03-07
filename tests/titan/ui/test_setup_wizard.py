@@ -91,9 +91,11 @@ def test_save_env_writes_expected_entries(tmp_path, monkeypatch):
     assert "GARMIN_EMAIL=athlete@example.com" in content
     assert "GARMIN_PASSWORD=secret" in content
 
-    gitignore_content = (tmp_path / ".gitignore").read_text()
-    assert ".env" in gitignore_content
-    assert "config_secrets.py" in gitignore_content
+    # T4-17: _save_env() must NOT silently mutate .gitignore at runtime.
+    # .gitignore entries belong in the repository, not in wizard runtime code.
+    assert not (tmp_path / ".gitignore").exists(), (
+        "_save_env() must not create or modify .gitignore (T4-17)"
+    )
 
     if os.name != "nt":
         mode = stat.S_IMODE(env_path.stat().st_mode)
