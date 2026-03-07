@@ -84,7 +84,6 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
   T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
   T4-27 (complexity budget CI check: module count ceiling; AGENTS.md §16.11)
   T4-28 (context snapshot generator + multi-agent protocol; AGENTS.md §16.5)
-  T4-29 (ESI environmental compensation overlay for training zones; ADR-0034; deferred Phase 8)
   T4-30 (science module semantic versioning — MODULE_VERSION constants + CI; AGENTS.md §16.8; independent)
   T4-31 (athlete isolation invariant CI check — exemption register + comment annotations; AGENTS.md §16.10; IMMEDIATE)
   T4-32 (override handler registry + Telegram inline override button; ADR-0042; IMMEDIATE)
@@ -92,13 +91,14 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
 TIER 5 (future / Phase 8+):
   T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8 prerequisite)
   T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; Phase 8 prerequisite guard rails)
+  T5-14 (ESI environmental compensation overlay for training zones; ADR-0034; Phase 8 scheduled)
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
 T4-21 through T4-28 are marked `independent`. T4-30, T4-31, T4-32 are marked `independent`.
 T4-31 and T4-32 are marked `IMMEDIATE` — they enforce AGENTS.md §16.10/0042 invariants that are effective
 from this commit forward. They require no new Phase boundary to begin.
 T1-23 is a Phase 8 entry gate criterion (AGENTS.md §16.2 updated retroactively).
-T4-29 is deferred to Phase 8 (low-blast-radius ESI overlay; no schema changes required).
+T5-14 (formerly T4-29) is Phase 8 scheduled work (low-blast-radius ESI overlay; no schema changes required). Reclassified from Tier 4 to Tier 5 on 2026-03-07 to clear G1 of the Phase 8 entry gate — it is Phase 8 internal work, not a Phase 8 prerequisite.
 T2-17 is marked `independent` (can run concurrently with other Tier 2 items after Tier 1 closes).
 T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per AGENTS.md §16.2 G1.
 T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8 prerequisite guard rails**.
@@ -1124,46 +1124,6 @@ must exist on disk). Updated `CLAUDE.md` historical snapshot to 1718 tests at T4
 
 ---
 
-### T4-29 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN (deferred Phase 8)
-
-**Status:** OPEN (deferred Phase 8 — after Phase 8 entry gate passes per AGENTS.md §16.2).
-**Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
-**Priority:** P3 (Tier 4 — accuracy improvement; not safety-gate). Independent.
-
-**Location:** `titan/config/thresholds.py` (ESI constants), `titan/orchestration/daily_coach.py` (ESI context field), `titan/features/optimal_time.py` (ESI pace adjustment), `titan/features/weekly_plan.py` (zone target adjustment), `titan/science/governance_engine.py` (VO₂ block under ESI EXTREME).
-
-**Original state (pre-fix):**
-
-Training zone targets are applied identically regardless of environmental conditions.
-An athlete targeting Zone 2 at the same pace in 18°C and 32°C with 80% humidity
-is not doing the same physiological work. Dew-point-optimised timing is already
-implemented (`OptimalTimeCalculator`), but the training targets themselves are not
-adjusted when the athlete trains outside the optimal window or when conditions are
-unavoidably adverse.
-
-**Fix direction (per ADR-0034):**
-
-1. Add ESI constants to `thresholds.py` (dew point thresholds, temp thresholds, pace adjustment table).
-2. Compute `esi_level` and `esi_pace_adjustment_sec_per_km` in `DailyCoach` from
-   current weather data.
-3. Pass ESI context to `WeeklyPlanGenerator` and `OptimalTimeCalculator`.
-4. Block VO₂max workouts when ESI is EXTREME (via `VO2_ELIGIBILITY_GATE` modification).
-5. Include ESI level and adjusted targets in Telegram briefing.
-6. Add `tests/test_esi_compensation.py`.
-
-**Acceptance gate (binary):**
-```bash
-ruff check titan/config/thresholds.py titan/orchestration/daily_coach.py \
-            titan/features/optimal_time.py tests/test_esi_compensation.py
-python -m pytest tests/test_esi_compensation.py -v
-python -m pytest -q -W error::pytest.PytestWarning
-python -m pytest -q
-```
-
-**Effort:** ~4h. ESI computation function + integration into 3 consumers + tests.
-
----
-
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `4ddc184`.
@@ -1711,6 +1671,47 @@ a shared middleware (not per-endpoint — this must be non-bypassable).
 
 ---
 
+### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN
+
+**Status:** OPEN (Phase 8 scheduled — implement after Phase 8 entry gate passes per AGENTS.md §16.2).
+**Reclassified:** 2026-03-07 from T4-29 (Tier 4) to T5-14 (Tier 5). Rationale: this is Phase 8 internal work, not a Phase 8 prerequisite; keeping it as an OPEN Tier 4 item blocked G1 of the Phase 8 entry gate despite the work being correctly deferred into Phase 8.
+**Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
+**Priority:** P3 (accuracy improvement; not safety-gate). Independent.
+
+**Location:** `titan/config/thresholds.py` (ESI constants), `titan/orchestration/daily_coach.py` (ESI context field), `titan/features/optimal_time.py` (ESI pace adjustment), `titan/features/weekly_plan.py` (zone target adjustment), `titan/science/governance_engine.py` (VO₂ block under ESI EXTREME).
+
+**Original state (pre-fix):**
+
+Training zone targets are applied identically regardless of environmental conditions.
+An athlete targeting Zone 2 at the same pace in 18°C and 32°C with 80% humidity
+is not doing the same physiological work. Dew-point-optimised timing is already
+implemented (`OptimalTimeCalculator`), but the training targets themselves are not
+adjusted when the athlete trains outside the optimal window or when conditions are
+unavoidably adverse.
+
+**Fix direction (per ADR-0034):**
+
+1. Add ESI constants to `thresholds.py` (dew point thresholds, temp thresholds, pace adjustment table).
+2. Compute `esi_level` and `esi_pace_adjustment_sec_per_km` in `DailyCoach` from
+   current weather data.
+3. Pass ESI context to `WeeklyPlanGenerator` and `OptimalTimeCalculator`.
+4. Block VO₂max workouts when ESI is EXTREME (via `VO2_ELIGIBILITY_GATE` modification).
+5. Include ESI level and adjusted targets in Telegram briefing.
+6. Add `tests/test_esi_compensation.py`.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/config/thresholds.py titan/orchestration/daily_coach.py \
+            titan/features/optimal_time.py tests/test_esi_compensation.py
+python -m pytest tests/test_esi_compensation.py -v
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~4h. ESI computation function + integration into 3 consumers + tests.
+
+---
+
 All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
 Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning), 0043 (product direction + LLM seams), 0044 (PostgreSQL migration), 0045 (local LLM backend abstraction).
 
@@ -1844,7 +1845,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-29 | OPEN (deferred Phase 8) | — |
+| T5-14 | OPEN (Phase 8 scheduled — formerly T4-29; reclassified 2026-03-07) | — |
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
@@ -1859,8 +1860,6 @@ When an item is completed, mark it here with date and PR reference:
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-06 — Architect Directive V8 processed. 3 new architectural invariants
-locked (AGENTS.md §16.10 athlete isolation, ADR-0041 data trust contract, ADR-0042 human override).
-3 new items registered (T1-23, T4-31, T4-32). ADRs 0040–0042 created. T4-31 and T4-32
-marked IMMEDIATE (enforce invariants active from this commit). T1-23 added as Phase 8 entry
-gate criterion.*
+*Last updated: 2026-03-07 — Tier-4 closed (T4-15, T4-16, T4-17, T4-30 RESOLVED). T4-29 reclassified
+to T5-14 (Phase 8 scheduled work; Tier 4 → Tier 5) to clear Phase 8 entry gate G1. ADR-0017 status
+label updated to satisfy Phase 8 entry gate G4.*
