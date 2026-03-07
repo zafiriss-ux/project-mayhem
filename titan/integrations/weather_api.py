@@ -202,6 +202,50 @@ class WeatherAPI:
         self._coords = float(results[0]["latitude"]), float(results[0]["longitude"])
         return self._coords
 
+    def _infer_climate_profile(self) -> tuple[float, float]:
+        """Infer baseline synthetic temperature/humidity from configured location."""
+        _, country = self._parse_location()
+        country_code = country.upper()
+        month = datetime.now().month
+
+        tropical_countries = {"SG", "ID", "MY", "TH", "PH", "VN", "BR", "CO", "EC", "KE"}
+        southern_hemisphere_countries = {"AU", "NZ", "ZA", "AR", "CL", "UY"}
+
+        if country_code in tropical_countries:
+            return 27.0, 75.0
+
+        is_southern = country_code in southern_hemisphere_countries
+        if is_southern:
+            # Shift seasons by six months for southern hemisphere.
+            month = ((month + 5) % 12) + 1
+
+        if month in (12, 1, 2):
+            return 5.0, 74.0
+        if month in (3, 4, 5):
+            return 14.0, 66.0
+        if month in (6, 7, 8):
+            return 26.0, 58.0
+        return 16.0, 68.0
+
+    def _create_synthetic_fallback(self) -> dict[str, Any]:
+        """Create synthetic current conditions when upstream weather is unavailable."""
+        base_temp, base_humidity = self._infer_climate_profile()
+        dew_point = self.calculate_dew_point(base_temp, base_humidity)
+        heat_status, heat_rec = self.classify_heat_stress(dew_point)
+        return {
+            "timestamp": datetime.now().isoformat(),
+            "temp_c": round(base_temp, 1),
+            "humidity": int(base_humidity),
+            "wind_speed": 10,
+            "conditions": "Unavailable (synthetic fallback)",
+            "dew_point": dew_point,
+            "heat_stress": heat_status,
+            "recommendation": heat_rec,
+            "is_fallback": True,
+            "data_quality": "synthetic",
+            "weather_confidence": "SYNTHETIC",
+        }
+
     def _fetch_open_meteo(self) -> tuple[dict, list[dict]]:
         """Fetch current conditions and hourly forecast from Open-Meteo."""
         lat, lon = self._resolve_coordinates()
@@ -311,14 +355,17 @@ class WeatherAPI:
             if age < self.cache_duration_hours:
                 current = copy.deepcopy(self.cache.get("current", {}))
                 current["data_quality"] = "cached"
+                current["weather_confidence"] = "LIVE"
                 current["data_trust"] = evaluate_weather_trust(data_quality="cached", data_age_hours=age).to_payload()
                 return current
 
         try:
             current, forecast = self._fetch_open_meteo()
             current["data_quality"] = "live"
+            current["weather_confidence"] = "LIVE"
             for entry in forecast:
                 entry["data_quality"] = "live"
+                entry["weather_confidence"] = "LIVE"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
@@ -334,20 +381,13 @@ class WeatherAPI:
                 error_class=type(exc).__name__,
                 detail=str(exc),
             )
-            dew_point = self.calculate_dew_point(18.5, 65)
-            heat_status, heat_rec = self.classify_heat_stress(dew_point)
-            current = {
-                "timestamp": datetime.now().isoformat(),
-                "temp_c": 18.5,
-                "humidity": 65,
-                "wind_speed": 10,
-                "conditions": "Clear",
-                "dew_point": dew_point,
-                "heat_stress": heat_status,
-                "recommendation": heat_rec,
-                "is_fallback": True,
-                "data_quality": "synthetic",
-            }
+            _weather_event(
+                "weather_synthetic_fallback_activated",
+                level=logging.WARNING,
+                source="get_current_conditions",
+                location=self.location,
+            )
+            current = self._create_synthetic_fallback()
             self.cache["current"] = current
             self.cache_timestamp = datetime.now()
             current["data_trust"] = evaluate_weather_trust(data_quality="synthetic", data_age_hours=0.0).to_payload()
@@ -370,13 +410,16 @@ class WeatherAPI:
                 forecast = copy.deepcopy(self.cache["hourly"][:hours])
                 for entry in forecast:
                     entry["data_quality"] = "cached"
+                    entry["weather_confidence"] = "LIVE"
                 return forecast
 
         try:
             current, forecast = self._fetch_open_meteo()
             current["data_quality"] = "live"
+            current["weather_confidence"] = "LIVE"
             for entry in forecast:
                 entry["data_quality"] = "live"
+                entry["weather_confidence"] = "LIVE"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
             self.cache_timestamp = datetime.now()
@@ -390,9 +433,14 @@ class WeatherAPI:
                 error_class=type(exc).__name__,
                 detail=str(exc),
             )
+            _weather_event(
+                "weather_synthetic_fallback_activated",
+                level=logging.WARNING,
+                source="get_hourly_forecast",
+                location=self.location,
+            )
             forecast = []
-            base_temp = 15.0
-            base_humidity = 60
+            base_temp, base_humidity = self._infer_climate_profile()
 
             for i in range(hours):
                 hour_time = datetime.now() + timedelta(hours=i)
@@ -421,6 +469,7 @@ class WeatherAPI:
                         "recommendation": heat_rec,
                         "is_fallback": True,
                         "data_quality": "synthetic",
+                        "weather_confidence": "SYNTHETIC",
                     }
                 )
 

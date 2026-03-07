@@ -1674,9 +1674,9 @@ python -m pytest -q
 
 ---
 
-### T2-15 · Weather synthetic fallback uses hardcoded location defaults — staleness context absent from governance 🔴 OPEN
+### T2-15 · Weather synthetic fallback uses hardcoded location defaults — staleness context absent from governance ✅ RESOLVED 2026-03-07
 
-**Status:** OPEN (Phase 7.9 — after T1-20).
+**Status:** ✅ RESOLVED 2026-03-07. Commit: TBD.
 **Source:** Risk Review V7 — Risk: External Dependency Fragility. Architecture Review 2026-03-06. ADR-0030.
 **Priority:** P2 (Tier 2 — observability gap; silent wrong input to OptimalTimeCalculator).
 **Dependency:** T1-20 must close first (the `weather_data_stale` governance flag established there is consumed here).
@@ -1692,17 +1692,19 @@ winter), the synthetic forecast produces incorrect dew-point and heat-stress inp
 `OptimalTimeCalculator`. Additionally, the coaching context does not carry a
 `weather_confidence = SYNTHETIC` flag, so downstream consumers cannot gate on it.
 
-**Fix direction (per ADR-0030):**
+**Resolution:**
 
-1. Read `WEATHER_LOCATION` from env config in `_create_synthetic_fallback()`. Use
-   hemisphere and rough latitude to compute season-appropriate temperature range
-   (simple lookup table — not a full weather model).
-2. Add `weather_confidence: str` field to the weather payload dict (`"LIVE"` or
-   `"SYNTHETIC"`).
-3. `OptimalTimeCalculator` reads `weather_confidence`. If `"SYNTHETIC"`: fall back to
-   pre-computed safe window (06:00–09:00 local time) rather than dew-point-optimised.
-4. Emit `weather_synthetic_fallback_activated` structured event (WARNING severity,
-   per ADR-0031) with `location` field.
+Implemented synthetic weather fallback profiling in `weather_api.py` by deriving baseline
+temperature/humidity from configured `WEATHER_LOCATION` with hemisphere-aware season mapping,
+then using `_create_synthetic_fallback()` for degraded current conditions and synthetic forecast.
+Added `weather_confidence` payload metadata (`LIVE`/`SYNTHETIC`) for current and forecast responses,
+plus `weather_synthetic_fallback_activated` warning events (with location context) on fallback activation.
+Updated `OptimalTimeCalculator` to honor `weather_confidence`, returning a conservative 06:00–09:00
+safe window when confidence is synthetic while preserving existing live-weather optimization flow.
+Expanded tests in `tests/titan/integrations/test_weather_api.py` and
+`tests/titan/features/test_optimal_time_calculator.py` to cover confidence propagation,
+location-sensitive fallback generation, synthetic forecast confidence tagging, and safe-window fallback.
+Final closure suite count: 1681 tests green.
 
 **Acceptance gate (binary):**
 ```bash
@@ -3660,7 +3662,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-19 | ✅ RESOLVED | 2026-03-07 |
 | T1-20 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T2-14 | ✅ RESOLVED | 2026-03-07 |
-| T2-15 | OPEN (after T1-20) | — |
+| T2-15 | ✅ RESOLVED | 2026-03-07 |
 | T4-21 | OPEN (independent) | — |
 | T4-22 | OPEN (independent) | — |
 | T4-23 | OPEN (independent) | — |

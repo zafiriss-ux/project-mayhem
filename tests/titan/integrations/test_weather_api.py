@@ -225,6 +225,7 @@ def test_get_current_conditions_live_marks_data_quality(monkeypatch):
     payload = api.get_current_conditions()
 
     assert payload["data_quality"] == "live"
+    assert payload["weather_confidence"] == "LIVE"
 
 
 def test_get_current_conditions_cache_marks_data_quality(monkeypatch):
@@ -250,14 +251,22 @@ def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplo
         payload = api.get_current_conditions()
 
     assert payload["data_quality"] == "synthetic"
+    assert payload["weather_confidence"] == "SYNTHETIC"
     degraded_events = [
         json.loads(record.message)
         for record in caplog.records
         if "weather_degraded_mode_active" in record.message
     ]
+    fallback_events = [
+        json.loads(record.message)
+        for record in caplog.records
+        if "weather_synthetic_fallback_activated" in record.message
+    ]
     assert degraded_events
+    assert fallback_events
     assert degraded_events[0]["error_class"] == "RuntimeError"
     assert degraded_events[0]["detail"] == "api_down"
+    assert fallback_events[0]["location"] == "Athens,GR"
 
 def test_calculate_dew_point_clamps_humidity_boundaries():
     assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=0) == -37.8
@@ -322,3 +331,31 @@ def test_get_current_conditions_fallback_includes_suspect_data_trust(monkeypatch
 
     assert payload["data_trust"]["trust_level"] == "SUSPECT"
     assert "weather_synthetic_fallback" in payload["data_trust"]["reasons"]
+
+
+def test_create_synthetic_fallback_uses_location_profile(monkeypatch):
+    api = WeatherAPI(location="Helsinki,FI")
+
+    class _FixedDateTime:
+        @staticmethod
+        def now():
+            return datetime(2026, 1, 10, 6, 0, 0)
+
+    monkeypatch.setattr(weather_api, "datetime", _FixedDateTime)
+
+    payload = api._create_synthetic_fallback()
+
+    assert payload["temp_c"] == 5.0
+    assert payload["humidity"] == 74
+    assert payload["weather_confidence"] == "SYNTHETIC"
+
+
+def test_get_hourly_forecast_synthetic_sets_weather_confidence(monkeypatch):
+    api = WeatherAPI(location="Sydney,AU")
+    monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+
+    forecast = api.get_hourly_forecast(hours=2)
+
+    assert len(forecast) == 2
+    assert all(item["data_quality"] == "synthetic" for item in forecast)
+    assert all(item["weather_confidence"] == "SYNTHETIC" for item in forecast)
