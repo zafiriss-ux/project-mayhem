@@ -810,7 +810,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `T4-28 docs drift guard commit`.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. AGENTS.md §16.3.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1094,9 +1094,9 @@ python -m pytest -q
 
 ---
 
-### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
+### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `T4-28 docs drift guard commit`.
 **Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). AGENTS.md §16.5.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1130,6 +1130,13 @@ python -m pytest -q
 ```
 
 **Effort:** ~2h. New script + docs file + AGENTS.md update.
+
+**Resolution:**
+
+Implemented documentation drift guardrails in `tests/test_claude_md_integrity.py` by adding
+(1) a historical snapshot consistency check (`CLAUDE.md` declared test count vs pytest
+collected count) and (2) a key-files existence check (`CLAUDE.md` key files table entries
+must exist on disk). Updated `CLAUDE.md` historical snapshot to 1718 tests at T4-28 close.
 
 ---
 
@@ -1853,7 +1860,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-25 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-26 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-27 | ✅ RESOLVED | 2026-03-07 |
-| T4-28 | OPEN (independent) | — |
+| T4-28 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
 | T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
