@@ -24,3 +24,6 @@ VO2_MIN_DAYS_SINCE_LAST = 2
 # Hours since last Garmin sync before the system emits warnings or degrades confidence.
 STALE_DATA_WARN_HOURS = 24        # Emit data_freshness_warn structured log event
 STALE_DATA_HARD_CEILING_HOURS = 72  # Emit data_confidence_low advisory (T2-10 mechanism)
+
+# Garmin source freshness gate — T1-20 / ADR-0030.
+GARMIN_DATA_MAX_AGE_HOURS = 26
