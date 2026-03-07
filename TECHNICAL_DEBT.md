@@ -1052,7 +1052,7 @@ python -m pytest -q
 
 ---
 
-### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
+### T4-27 · No module count ceiling — complexity accumulation untracked ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). AGENTS.md §16.11.
@@ -1088,7 +1088,9 @@ python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
 ```
 
-**Effort:** ~30 minutes. One new test added to existing file.
+**Resolution:** Added a dedicated `complexity-budget` CI job in `.github/workflows/ci.yml` that computes the live `titan/` module count via `pkgutil.walk_packages(...)` and fails if count exceeds the Phase 8 ceiling of 60 modules. Added `tests/test_t4_27_complexity_budget_ci.py` to assert job presence and enforce real module-count + fail-threshold behavior in workflow config.
+
+**Effort:** ~30 minutes. One CI guard + one dedicated workflow contract test module.
 
 ---
 
@@ -1850,7 +1852,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-24 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-25 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-26 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-27 | OPEN (independent) | — |
+| T4-27 | ✅ RESOLVED | 2026-03-07 |
 | T4-28 | OPEN (independent) | — |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
