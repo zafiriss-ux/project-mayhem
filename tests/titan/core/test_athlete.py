@@ -1,8 +1,8 @@
 from titan.core.athlete import UniversalAthleteProfile
 
 
-def test_default_profile_construction_is_safe():
-    profile = UniversalAthleteProfile()
+def test_default_profile_construction_is_safe(athlete_profile_factory):
+    profile = athlete_profile_factory()
 
     assert profile.athlete_id.startswith("ATH_")
     assert profile.name == "Default Athlete"
@@ -12,8 +12,8 @@ def test_default_profile_construction_is_safe():
     assert profile.weight_kg == 75.0
 
 
-def test_set_demographics_zero_weight_keeps_existing_weight_thresholds():
-    profile = UniversalAthleteProfile()
+def test_set_demographics_zero_weight_keeps_existing_weight_thresholds(athlete_profile_factory):
+    profile = athlete_profile_factory()
 
     profile.set_demographics(gender="f", age=0, height_cm=0, weight_kg=0)
 
@@ -26,8 +26,8 @@ def test_set_demographics_zero_weight_keeps_existing_weight_thresholds():
     assert profile.weight_panic == 74.5
 
 
-def test_set_demographics_negative_weight_updates_thresholds_as_implemented():
-    profile = UniversalAthleteProfile()
+def test_set_demographics_negative_weight_updates_thresholds_as_implemented(athlete_profile_factory):
+    profile = athlete_profile_factory()
 
     profile.set_demographics(gender="m", age=30, height_cm=175.0, weight_kg=-70.0)
 
@@ -36,8 +36,8 @@ def test_set_demographics_negative_weight_updates_thresholds_as_implemented():
     assert profile.weight_panic == -71.5
 
 
-def test_set_hr_data_derives_max_and_threshold_from_age_when_missing():
-    profile = UniversalAthleteProfile()
+def test_set_hr_data_derives_max_and_threshold_from_age_when_missing(athlete_profile_factory):
+    profile = athlete_profile_factory()
     profile.age = 40
 
     profile.set_hr_data(resting_hr=50, max_hr=None)
@@ -47,8 +47,8 @@ def test_set_hr_data_derives_max_and_threshold_from_age_when_missing():
     assert profile.threshold_hr == 158
 
 
-def test_set_hr_data_zero_max_hr_falls_back_to_age_formula():
-    profile = UniversalAthleteProfile()
+def test_set_hr_data_zero_max_hr_falls_back_to_age_formula(athlete_profile_factory):
+    profile = athlete_profile_factory()
     profile.age = 41
 
     profile.set_hr_data(resting_hr=48, max_hr=0)

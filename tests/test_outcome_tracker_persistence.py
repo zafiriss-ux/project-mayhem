@@ -1,7 +1,6 @@
 import json
 import logging
 
-from titan.core.database import DatabaseManager
 from titan.science.outcome_tracker import OutcomeTracker
 
 
@@ -12,8 +11,8 @@ def _apl_result():
     }
 
 
-def test_outcome_tracker_persists_decision_and_restores(tmp_path):
-    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+def test_outcome_tracker_persists_decision_and_restores(db_manager_factory):
+    db = db_manager_factory(db_name='test.db')
 
     tracker = OutcomeTracker(db=db)
     tracker.record_decision(
@@ -46,8 +45,8 @@ def test_outcome_tracker_persists_decision_and_restores(tmp_path):
     db.close()
 
 
-def test_outcome_tracker_persists_post_session_outcome(tmp_path):
-    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+def test_outcome_tracker_persists_post_session_outcome(db_manager_factory):
+    db = db_manager_factory(db_name='test.db')
 
     tracker = OutcomeTracker(db=db)
     tracker.record_decision(
@@ -90,8 +89,8 @@ def test_outcome_tracker_persists_post_session_outcome(tmp_path):
     db.close()
 
 
-def test_get_governance_decisions_safe_json_fallback_and_warning(tmp_path, caplog):
-    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+def test_get_governance_decisions_safe_json_fallback_and_warning(db_manager_factory, caplog):
+    db = db_manager_factory(db_name='test.db')
 
     db.save_governance_decision(
         {
@@ -146,8 +145,8 @@ def test_get_governance_decisions_safe_json_fallback_and_warning(tmp_path, caplo
     db.close()
 
 
-def test_get_governance_decisions_parses_valid_json_columns(tmp_path):
-    db = DatabaseManager(db_name='test.db', db_dir=tmp_path)
+def test_get_governance_decisions_parses_valid_json_columns(db_manager_factory):
+    db = db_manager_factory(db_name='test.db')
 
     db.save_governance_decision(
         {

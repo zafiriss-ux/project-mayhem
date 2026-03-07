@@ -16,15 +16,14 @@ from titan.science.governance_contracts import (
     assert_vo2_eligibility_contract,
     validate_vo2_eligibility,
 )
-from titan.science.governance_engine import GovernanceEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-def gov():
-    return GovernanceEngine()
+def gov(governance_engine_factory):
+    return governance_engine_factory()
 
 
 def _vo2_context(**overrides):

@@ -1,6 +1,5 @@
 """E2E-style gold-path regression tests for planning workflows."""
 
-from titan.core.athlete import UniversalAthleteProfile
 from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
@@ -17,10 +16,12 @@ def _planner(*, hrv_baseline: float, hrv_latest: float, tsb_value: float, tsb_st
     return WeeklyPlanGenerator(hrv_engine=hrv, tsb_engine=tsb, acwr_engine=acwr)
 
 
-def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation():
-    athlete = UniversalAthleteProfile(name='New Athlete')
-    athlete.set_demographics(gender='F', age=31, height_cm=168, weight_kg=61.5)
-    athlete.set_hr_data(resting_hr=48, max_hr=186)
+def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation(athlete_profile_factory):
+    athlete = athlete_profile_factory(
+        name='New Athlete',
+        demographics={'gender': 'F', 'age': 31, 'height_cm': 168, 'weight_kg': 61.5},
+        hr_data={'resting_hr': 48, 'max_hr': 186},
+    )
 
     planner = _planner(hrv_baseline=52.0, hrv_latest=53.0, tsb_value=-8.0, tsb_status='NEUTRAL')
     plan = planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD')
@@ -31,10 +32,12 @@ def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation():
     assert plan['total_km'] > 0
 
 
-def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs():
-    athlete = UniversalAthleteProfile(name='New Athlete Snapshot')
-    athlete.set_demographics(gender='F', age=31, height_cm=168, weight_kg=61.5)
-    athlete.set_hr_data(resting_hr=48, max_hr=186)
+def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs(athlete_profile_factory):
+    athlete = athlete_profile_factory(
+        name='New Athlete Snapshot',
+        demographics={'gender': 'F', 'age': 31, 'height_cm': 168, 'weight_kg': 61.5},
+        hr_data={'resting_hr': 48, 'max_hr': 186},
+    )
 
     planner = _planner(hrv_baseline=52.0, hrv_latest=53.0, tsb_value=-8.0, tsb_status='NEUTRAL')
 
@@ -55,8 +58,8 @@ def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs():
     assert snap1 == snap2
 
 
-def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs():
-    athlete = UniversalAthleteProfile(name='Determinism Check')
+def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs(athlete_profile_factory):
+    athlete = athlete_profile_factory(name='Determinism Check')
     planner = _planner(hrv_baseline=50.0, hrv_latest=50.0, tsb_value=-5.0, tsb_status='NEUTRAL')
 
     def snapshot(plan):
@@ -76,8 +79,8 @@ def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs():
     assert snap1 == snap2
 
 
-def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppressed():
-    athlete = UniversalAthleteProfile(name='Recovery Adaptation')
+def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppressed(athlete_profile_factory):
+    athlete = athlete_profile_factory(name='Recovery Adaptation')
     planner = _planner(hrv_baseline=52.0, hrv_latest=38.0, tsb_value=-18.0, tsb_status='FATIGUED')
 
     plan = planner.generate_weekly_plan(athlete_profile=athlete.to_dict(), phase='BUILD')
@@ -88,8 +91,8 @@ def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppress
     assert details.count('downgraded') >= 1
 
 
-def test_gold_path_recovery_adaptation_snapshot_is_stable_for_same_inputs():
-    athlete = UniversalAthleteProfile(name='Recovery Snapshot')
+def test_gold_path_recovery_adaptation_snapshot_is_stable_for_same_inputs(athlete_profile_factory):
+    athlete = athlete_profile_factory(name='Recovery Snapshot')
     planner = _planner(hrv_baseline=52.0, hrv_latest=38.0, tsb_value=-18.0, tsb_status='FATIGUED')
 
     def snapshot(plan):
