@@ -1,4 +1,3 @@
-from titan.science.governance_engine import GovernanceEngine
 
 
 def _session(session_type: str = "INTERVALS") -> dict:
@@ -22,8 +21,8 @@ def _base_context() -> dict:
     }
 
 
-def test_governance_rationale_hard_stop_contains_primary_reason_and_gate():
-    engine = GovernanceEngine()
+def test_governance_rationale_hard_stop_contains_primary_reason_and_gate(governance_engine_factory):
+    engine = governance_engine_factory()
     context = _base_context() | {"injury_flag": True}
 
     result = engine.apply_constraints(_session(), context)
@@ -36,8 +35,8 @@ def test_governance_rationale_hard_stop_contains_primary_reason_and_gate():
     )
 
 
-def test_governance_rationale_approved_contains_h1_h5_with_margin_values():
-    engine = GovernanceEngine()
+def test_governance_rationale_approved_contains_h1_h5_with_margin_values(governance_engine_factory):
+    engine = governance_engine_factory()
 
     result = engine.apply_constraints(_session("EASY"), _base_context())
 

@@ -810,7 +810,7 @@ test -f .github/pull_request_template.md && wc -l .github/pull_request_template.
 
 ### T4-21 · Documentation consistency not automated — lock codes, evidence registry, ADR index can drift silently ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Master Risk Matrix — Risk #13 (Governance Documentation Rot). Architecture Review 2026-03-06. AGENTS.md §16.3.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -925,9 +925,9 @@ python -m pytest -q
 
 ---
 
-### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently 🔴 OPEN (independent)
+### T4-24 · Test fixtures are hand-crafted per file — fixture drift accumulates silently ✅ RESOLVED 2026-03-07 (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Master Risk Matrix — Risk #15 (Test Fixture Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -965,7 +965,7 @@ python -m pytest -q   # count ≥ previous (no tests removed)
 
 ### T4-25 · Dependency pinning not audited — transitive drift and stale packages undetected 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Master Risk Matrix — Risk #6 (Dependency Drift). Architecture Review 2026-03-06.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1008,7 +1008,7 @@ python -m pytest -q   # count ≥ previous
 
 ### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1045,7 +1045,7 @@ python -m pytest -q
 
 ### T4-27 · No module count ceiling — complexity accumulation untracked 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Architect Observations V6 — Risk #4 (Complexity Accumulation). AGENTS.md §16.11.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1085,7 +1085,7 @@ python -m pytest -q
 
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Architect Observations V6 — Risk #5 (Multi-Agent Fragmentation). AGENTS.md §16.5.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1164,7 +1164,7 @@ python -m pytest -q
 
 ### T4-30 · Science modules carry no independent version numbers — algorithm breaking changes indistinguishable from patches 🔴 OPEN (independent)
 
-**Status:** ✅ RESOLVED 2026-03-07. Commit: `72abbc8`.
+**Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Risk Review V8 — Risk: Semantic Versioning of Science Models. AGENTS.md §16.8.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 
@@ -1838,7 +1838,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-21 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-22 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-23 | ✅ RESOLVED | 2026-03-07 |
-| T4-24 | OPEN (independent) | — |
+| T4-24 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-25 | OPEN (independent) | — |
 | T4-26 | OPEN (independent) | — |
 | T4-27 | OPEN (independent) | — |
