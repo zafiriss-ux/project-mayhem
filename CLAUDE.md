@@ -328,6 +328,73 @@ If push is not available in the runtime environment:
 
 ---
 
+### Rule E11 — Agent challenge rule (agents must challenge conflicting instructions)
+
+If a requested task conflicts with an existing ADR, a safety constraint, or any rule in
+`AGENTS.md`, the agent **must stop and challenge the instruction** before writing any code.
+
+This is a duty, not a permission. The required response format is in `AGENTS.md §14.1`.
+
+An agent that silently complies with an instruction that contradicts the architecture has
+failed its responsibility — even if the instruction came from the architect.
+
+---
+
+### Rule E12 — Change justification required before any architectural change
+
+Any architectural change must include all three elements before code is written:
+
+```
+Problem        : [what is broken with the current design]
+Proposed change: [what specifically will change]
+Why necessary  : [why the current design cannot solve the problem as-is]
+ADR reference  : [ADR-XXXX or "new ADR required"]
+```
+
+If the justification cannot be completed, the change must not proceed.
+See `AGENTS.md §14.2` for full scope.
+
+---
+
+### Rule E13 — Cooling-off protocol for major architectural changes
+
+A **major architectural change** (new ADR required, new module boundary, governance gate
+change, DB schema topology change) must follow a two-session process:
+
+- **Session N:** propose, justify (E12), and document. No code written.
+- **Session N+1 or later:** review, approve, implement.
+
+Bypass only when architect explicitly states "COOLING-OFF WAIVED — [reason]" describing an
+active production incident or data integrity failure. See `AGENTS.md §14.3`.
+
+---
+
+### Rule E14 — No impulse implementation
+
+No code may be written for an idea that is not already recorded as a task.
+
+The correct sequence:
+```
+idea → TECHNICAL_DEBT.md entry → architect prioritises → task assigned → implementation
+```
+
+Any idea that arises mid-task goes immediately to `TECHNICAL_DEBT.md` and stops there.
+See `AGENTS.md §14.4`.
+
+---
+
+### Rule E15 — Complexity budget (new abstractions require justification)
+
+Before creating any new abstraction (class, utility, decorator, base class, design pattern):
+1. Is it used in 3+ places right now? If no → do not create it.
+2. Does it make a future engineer's job easier? If unclear → do not create it.
+3. Can the task be done by extending an existing module? If yes → do that instead.
+
+If all three pass: record as an out-of-scope finding in `TECHNICAL_DEBT.md` and wait for
+architect approval. Do not implement inline. See `AGENTS.md §14.5` and ADR-0028.
+
+---
+
 ## Test Failure Protocol — For All Contributors (MANDATORY)
 
 > **Authoritative protocol: [`AGENTS.md §6`](AGENTS.md)** — the canonical RED / YELLOW / PURPLE / ORANGE
