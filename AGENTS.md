@@ -64,9 +64,19 @@ If an override is required for the suite to run at all, that is a **repo-level i
 | Role | Responsibility |
 |------|---------------|
 | **Architect (Claude / owner)** | System design, ADR authorship, tier ordering, scope approval |
-| **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions |
+| **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions, no ADR authorship |
 
-Agents must not redesign, restructure, or re-architect any system component unless explicitly instructed by the architect. When you believe a redesign is needed, write it up as an "Out of Scope Finding". Do NOT implement it as part of this task.
+Agents execute. They do not design.
+
+An agent **must not**:
+- Author or amend an ADR (Architecture Decision Record)
+- Redesign, restructure, or re-architect any system component
+- Add new abstraction layers or introduce new module boundaries
+- Change tier ordering or phase sequencing
+- Make database schema topology decisions beyond what the task explicitly specifies
+- Alter governance gate logic without an ADR reference and architect approval
+
+When you believe a redesign or architectural decision is needed: write it up as an **Out of Scope Finding** in `TECHNICAL_DEBT.md`. Do NOT implement it. Do NOT draft an ADR. See §13 for the full protocol.
 
 ---
 
@@ -448,10 +458,112 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] I pushed to a claude/* branch only — NOT to main or master.
 [ ] I opened exactly one PR using .github/pull_request_template.md and pasted the PR link.
 [ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
+[ ] I marked the completed debt item ✅ RESOLVED with date + commit hash in its entry body (§12).
+[ ] I updated the tracking table at the bottom of TECHNICAL_DEBT.md (§12).
+[ ] If test count changed: I updated the historical snapshot in CLAUDE.md (§12).
+[ ] If a new ADR was written: I updated the ADR index table in CLAUDE.md (§12).
+[ ] I did NOT make any architectural decision without explicit architect approval (§13).
 ```
 
-**All 18 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 23 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
-*Last updated: 2026-03-06 (Phase 7.8 — T4-18/T4-19/T4-20 enforcement, NotificationGateway, DegradedModeTracker, PersistenceFailure, schema versioning). Authoritative for all agents and engineers operating on TITAN OS.*
+## 12. Debt Register Discipline — Mandatory on Every Task Close
+
+The debt register (`TECHNICAL_DEBT.md`) and the project overview (`CLAUDE.md`) are
+**living documents**. Every agent is responsible for keeping them current as a condition
+of task completion. Stale register entries are as harmful as stale code.
+
+### 12.1 On task closure (always)
+
+When a task reaches ✅ DONE (all three gates green, commit created):
+
+1. **Mark the debt entry** in `TECHNICAL_DEBT.md`:
+   - Change the heading status from `🔴 OPEN` to `✅ RESOLVED <YYYY-MM-DD>`
+   - Change the `**Status:**` line to: `✅ RESOLVED <YYYY-MM-DD>. Commit: <short-hash>.`
+   - Rename `**Problem:**` to `**Original state (pre-fix):**` and convert present-tense verbs to past tense.
+   - Add a `**Resolution:**` block summarising what was changed (modules, approach, test count at closure).
+
+2. **Update the tracking table** at the bottom of `TECHNICAL_DEBT.md`:
+   - Change the row for this item from `OPEN` to `✅ RESOLVED` and fill in the date column.
+
+Both updates are **required**. Updating one without the other is incomplete.
+
+### 12.2 On out-of-scope finding (always)
+
+When you discover an issue outside the current task scope:
+
+1. Add a new entry to `TECHNICAL_DEBT.md` under the correct tier (follow existing entry format).
+2. Add a row to the tracking table at the bottom.
+3. Do NOT fix it in the current task (§3.4 / Rule E4).
+
+### 12.3 When test count changes
+
+After any task that adds or removes tests:
+
+- Update the **historical snapshot line** in `CLAUDE.md`:
+  > `**Historical snapshot:** N tests all green as of Phase X.Y / T<tier>-<id> close (<date>).`
+- Use the count from the final `python -m pytest -q` run of the current task.
+
+### 12.4 When a new ADR is written
+
+ADR authorship is an architect privilege (see §13). When the architect writes a new ADR and
+the agent integrates it:
+
+- Add the new ADR to the **Key Architectural Decisions table** in `CLAUDE.md` with a one-line
+  description and status (e.g. `Accepted — <date>`).
+- The table entry must match the format of existing rows exactly.
+
+---
+
+## 13. Architecture Decision Boundary — Hard Prohibition
+
+Agents **execute tasks**. Architecture decisions belong to the architect.
+
+### 13.1 Prohibited without explicit architect approval
+
+The following actions are **unconditionally prohibited** unless the architect has written an
+explicit instruction ("implement ADR-XXXX", "design a new module for X", "draft an ADR for Y"):
+
+| Prohibited action | Why |
+|---|---|
+| Authoring or amending an ADR | ADRs are immutable design contracts; incorrect ADRs corrupt the architecture history |
+| Adding new module boundaries or packages | Module topology is an architectural invariant |
+| Introducing a new abstraction layer | Abstractions have long-term cost; the architect must evaluate before adding |
+| Changing tier ordering or phase sequencing | Tier ordering enforces data-integrity-first discipline; agents cannot override it |
+| Modifying governance gate logic without an ADR | Safety regression (ADR-0009, ADR-0021) |
+| Changing DB schema topology (e.g. new tables, normalization) | Migrations are permanent; schema decisions require architectural sign-off |
+| Deciding between design alternatives on the agent's own judgement | Guessing on trade-offs leads to silent technical debt |
+
+### 13.2 What to do when an architectural decision is required
+
+If you hit a point where completing the task **requires** an architectural decision not
+covered by the task description or an existing ADR:
+
+1. **STOP immediately.** Do not write code past this point.
+2. **Report the decision point** precisely:
+   - What exact choice needs to be made
+   - What options you see (list them — do not pick one)
+   - Why each option has different architectural implications
+3. **Wait for explicit architect approval** before continuing.
+4. Do NOT infer, approximate, or "make a reasonable call" on architectural questions.
+
+> The correct response to an architectural ambiguity is always **stop and ask**, never **proceed and explain later**.
+
+### 13.3 What is NOT an architectural decision (agents may proceed)
+
+| Permitted without approval |
+|---|
+| Adding a column to an existing table via the versioned migration pattern |
+| Adding a new method to an existing class (within the class's existing responsibility) |
+| Adding tests for existing or new behaviour |
+| Adding constants to `thresholds.py` or `evidence_registry.py` |
+| Adding structured log events following the existing pattern |
+| Fixing a bug in existing logic without changing its contract |
+
+When in doubt: stop and ask.
+
+---
+
+*Last updated: 2026-03-07 (Phase 7.9 — §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening, §11 checklist expanded to 23 items). Authoritative for all agents and engineers operating on TITAN OS.*

@@ -19,3 +19,8 @@ VO2_ACWR_MAX = 1.30
 VO2_READINESS_MIN = 65.0
 VO2_GLYCOGEN_DEBT_MAX = 7.0
 VO2_MIN_DAYS_SINCE_LAST = 2
+
+# Data freshness thresholds — ADR-0026 / T1-19.
+# Hours since last Garmin sync before the system emits warnings or degrades confidence.
+STALE_DATA_WARN_HOURS = 24        # Emit data_freshness_warn structured log event
+STALE_DATA_HARD_CEILING_HOURS = 72  # Emit data_confidence_low advisory (T2-10 mechanism)

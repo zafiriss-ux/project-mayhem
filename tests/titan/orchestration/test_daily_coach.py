@@ -943,7 +943,7 @@ def test_hydrate_engines_from_db_emits_failure_events_for_each_branch(monkeypatc
 
     confidence = coach._hydrate_engines_from_db()
 
-    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
+    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False, "freshness": True}
     for action in {
         "hrv_hydration_failed",
         "weight_hydration_failed",
@@ -993,7 +993,7 @@ def test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning(monkeyp
 
     confidence = coach._hydrate_engines_from_db()
 
-    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
+    assert confidence == {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False, "freshness": True}
     assert coach._startup_hydration_confidence == confidence
     assert any(event["action"] == "startup_hydration_report" and event["confidence"] == confidence for event in events)
     assert any("startup_low_confidence" in message for message in warning_messages)
@@ -1017,7 +1017,7 @@ def test_hydrate_engines_from_db_partial_hydration_no_low_confidence_warning(mon
 
     confidence = coach._hydrate_engines_from_db()
 
-    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": False, "cs": False}
+    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": False, "cs": False, "freshness": True}
     assert any(event["action"] == "startup_hydration_report" and event["confidence"] == confidence for event in events)
     assert warning_messages == []
 
@@ -1038,7 +1038,7 @@ def test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning(monkey
 
     confidence = coach._hydrate_engines_from_db()
 
-    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": True, "cs": True}
+    assert confidence == {"hrv": True, "weight": True, "load": True, "hrr": True, "cs": True, "freshness": True}
     assert warning_messages == []
 
 

@@ -25,7 +25,7 @@ import json
 import logging
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 
@@ -43,6 +43,7 @@ from titan.orchestration.contracts import (
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
 from titan.science.critical_speed import CriticalSpeedTracker
+from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
 from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
@@ -850,10 +851,25 @@ class DailyCoach:
                 latest_weight = _safe_float(entry.get('weight_kg', 0)) or None
                 break
 
+        _sanity = DataSanityChecker()
         try:
             with self.db.transaction():
                 for idx, act in enumerate(activities, start=1):
                     activity_date = act.get('date', today_str)
+
+                    # ── Structural sanity check (ADR-0026 Layer 1) ───────────
+                    sanity_violations = _sanity.check_activity(act, context="persist_garmin_data")
+                    if has_rejects(sanity_violations):
+                        _daily_coach_event(
+                            "activity_persist",
+                            activity_index=idx,
+                            activity_date=activity_date,
+                            outcome="ACTIVITY_SANITY_REJECTED",
+                            failure_class=None,
+                        )
+                        continue
+                    activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
+
                     try:
                         self.db.save_session(
                             date              = activity_date,
@@ -865,6 +881,7 @@ class DailyCoach:
                             rpe               = act.get('rpe'),
                             notes             = act.get('name', ''),
                             garmin_activity_id= act.get('activity_id'),
+                            quality_flag      = activity_quality_flag,
                         )
                         _daily_coach_event(
                             "activity_persist",
@@ -1102,6 +1119,46 @@ class DailyCoach:
                 error_class=type(e).__name__,
                 error_message=str(e),
             )
+
+        # ── Temporal freshness check (ADR-0026 Layer 2) ─────────────────────
+        try:
+
+            from titan.config.thresholds import (
+                STALE_DATA_HARD_CEILING_HOURS,
+                STALE_DATA_WARN_HOURS,
+            )
+
+            last_ts = self.db.get_last_garmin_sync_timestamp()
+            if last_ts is not None:
+                now_utc = datetime.now(tz=UTC)
+                hours_since = (now_utc - last_ts).total_seconds() / 3600
+                if hours_since > STALE_DATA_HARD_CEILING_HOURS:
+                    _daily_coach_event(
+                        "data_confidence_low",
+                        reason="stale_garmin_data",
+                        hours_since_sync=round(hours_since, 1),
+                        ceiling_hours=STALE_DATA_HARD_CEILING_HOURS,
+                    )
+                    confidence["freshness"] = False
+                elif hours_since > STALE_DATA_WARN_HOURS:
+                    _daily_coach_event(
+                        "data_freshness_warn",
+                        hours_since_sync=round(hours_since, 1),
+                        warn_hours=STALE_DATA_WARN_HOURS,
+                    )
+                    confidence["freshness"] = True
+                else:
+                    confidence["freshness"] = True
+            else:
+                # No data at all — new athlete, not a staleness problem
+                confidence["freshness"] = True
+        except Exception as e:
+            _daily_coach_event(
+                "freshness_check_failed",
+                error_class=type(e).__name__,
+                error_message=str(e),
+            )
+            confidence["freshness"] = True  # non-fatal; do not degrade on check failure
 
         self._startup_hydration_confidence = confidence
         _daily_coach_event("startup_hydration_report", confidence=confidence)
