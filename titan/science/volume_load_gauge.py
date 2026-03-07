@@ -45,7 +45,10 @@ class VolumeLoadGauge:
     def resolve(self, tsb_value: float, acwr: float, glycogen_debt: float) -> VLGState:
         """Aggregate three inputs into a unified VLG state (GREEN/YELLOW/RED)."""
         tsb = float(tsb_value)
-        acwr_value = float(acwr)
+        try:
+            acwr_value = float(1.0 if acwr is None else acwr)
+        except (TypeError, ValueError):
+            acwr_value = 1.0
         glycogen = float(glycogen_debt)
 
         components = {
