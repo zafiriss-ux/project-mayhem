@@ -167,6 +167,10 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 
 ## Engineering Discipline: Strategy Gates (MANDATORY — never deviate)
 
+> **Authoritative contract: [`AGENTS.md`](AGENTS.md)** — this section is a project-context
+> summary only. When any rule here conflicts with `AGENTS.md`, `AGENTS.md` takes precedence.
+> Agents and engineers must read `AGENTS.md` in full before starting any task.
+
 These rules exist because T4-01 (Ruff lint debt, ~750 errors) remains open after multiple
 sessions. The root cause was not unclear intent — it was execution discipline: the engineer
 started broad changes, skipped binary acceptance checks, and delivered "partially done" work.
@@ -267,7 +271,68 @@ There is no "mostly done", "should be fine", or "looks good". Binary only.
 
 ---
 
+### Rule E6 — Environment bootstrap is mandatory (run first, every session)
+
+Before any other action — before reading code, running tests, or making any change — run:
+
+```bash
+scripts/setup_env.sh
+```
+
+If it fails: stop immediately, report exit code + last output, do not attempt ad-hoc fixes.
+See `AGENTS.md §2.0` for the full protocol.
+
+---
+
+### Rule E7 — Targeted tests allowed during implementation (not instead of gates)
+
+During implementation, agents **may** run targeted tests for speed:
+
+```bash
+python -m pytest tests/path/to/test_changed_module.py -q
+```
+
+This does **not** replace the three mandatory final gates. Before any commit or push, all three
+gates (ruff + strict pytest + full pytest) must still pass. See `AGENTS.md §2.4`.
+
+---
+
+### Rule E8 — Out-of-scope findings: report, don't fix
+
+If another issue is discovered while executing a task:
+- Add it to `TECHNICAL_DEBT.md` under the correct tier.
+- Do not fix it. Do not expand scope.
+- Continue with the original task only.
+
+Authorization from the architect is required to act on it.
+
+---
+
+### Rule E9 — Documentation modification policy
+
+`CLAUDE.md`, `AGENTS.md`, `README.md`, and all files under `docs/` are **architect-owned**.
+Agents must not edit them unless:
+1. The task explicitly requires it, or
+2. The file is a direct artifact of task closure (e.g. `TECHNICAL_DEBT.md` status updates).
+
+See `AGENTS.md §3.6` for the complete permitted-edit table.
+
+---
+
+### Rule E10 — Push unavailable: commit and stop
+
+If push is not available in the runtime environment:
+1. Commit the changes locally.
+2. Return the branch name and commit hash.
+3. Stop. Do not attempt alternative PR workflows.
+
+---
+
 ## Test Failure Protocol — For All Contributors (MANDATORY)
+
+> **Authoritative protocol: [`AGENTS.md §6`](AGENTS.md)** — the canonical RED / YELLOW / PURPLE / ORANGE
+> response scripts and the full Stop-the-Line protocol live there. This section is a project-context
+> summary. `AGENTS.md` takes precedence on any conflict.
 
 This protocol applies to every engineer and AI assistant working on this codebase. When any test fails, do not improvise. Identify the category and follow the exact protocol below. These rules are non-negotiable.
 
