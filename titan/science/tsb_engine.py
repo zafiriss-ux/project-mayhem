@@ -2,6 +2,8 @@
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class TSBEngine:
     """Training Stress Balance: CTL - ATL = Form"""
 

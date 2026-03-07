@@ -2,6 +2,8 @@
 
 
 
+MODULE_VERSION = "1.0.0"
+
 class LactateLogic:
     @staticmethod
     def estimate_lt1(hr_percent_max: float, drift_percent: float) -> dict:

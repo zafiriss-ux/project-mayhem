@@ -1,10 +1,10 @@
 """Shared structured-event helpers for observability payloads."""
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class EventSeverity(str, Enum):
+class EventSeverity(StrEnum):
     """Canonical event severity levels for structured logs."""
 
     CRITICAL = "critical"

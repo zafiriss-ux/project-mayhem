@@ -10,6 +10,8 @@ from titan.config.thresholds import (
     WEATHER_DATA_SUSPECT_AGE_HOURS,
 )
 
+MODULE_VERSION = "1.0.0"
+
 
 class DataTrustLevel(Enum):
     TRUSTED = "TRUSTED"

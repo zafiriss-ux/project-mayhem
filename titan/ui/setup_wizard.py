@@ -194,26 +194,8 @@ def _save_env(creds: dict):
     ENV_PATH.write_text("\n".join(lines) + "\n")
     ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
     if os.name == "nt":
-        print(
-            "  ⚠️  Windows: τα permissions του .env δεν εφαρμόζονται αυτόματα.\n"
-            "  Προστάτεψε το χειροκίνητα: Ιδιότητες → Ασφάλεια → αφαίρεσε άλλους χρήστες."
-        )
-    if os.name == "nt":
         print("  ⚠️  Windows limitation: .env file permissions could not be restricted automatically.")
         print("     Verify .env access manually if this machine is shared.")
-    else:
-        ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
-
-    # Also add to .gitignore if not already there
-    gitignore = Path(__file__).parent.parent.parent / ".gitignore"
-    existing = gitignore.read_text() if gitignore.exists() else ""
-    additions = []
-    for entry in [".env", "config_secrets.py", "data/database/", "data/logs/"]:
-        if entry not in existing:
-            additions.append(entry)
-    if additions:
-        with gitignore.open("a") as f:
-            f.write("\n# TITAN secrets\n" + "\n".join(additions) + "\n")
 
 
 def ensure_credentials() -> bool:

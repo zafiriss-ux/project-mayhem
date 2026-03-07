@@ -5,6 +5,8 @@ import logging
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.physiological_bounds import BOUNDS
 
+MODULE_VERSION = "1.0.0"
+
 _log = logging.getLogger(__name__)
 
 

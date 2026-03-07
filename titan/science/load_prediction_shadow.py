@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 from titan.science.ml_safety import enforce_ml_kill_switch
 
+MODULE_VERSION = "1.0.0"
+
 
 @dataclass(frozen=True)
 class ShadowLoadPrediction:

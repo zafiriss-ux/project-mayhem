@@ -578,7 +578,10 @@ class WeatherAPI:
 
         self._stop_event.clear()
         self._update_thread = threading.Thread(
-            target=self._background_update_worker, args=(interval_hours,), daemon=True
+            target=self._background_update_worker,
+            args=(interval_hours,),
+            daemon=True,
+            name="WeatherUpdater",
         )
         self._update_thread.start()
         _weather_event("weather_background_updates_started", interval_hours=interval_hours)

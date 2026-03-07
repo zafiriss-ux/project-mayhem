@@ -29,6 +29,8 @@ from titan.config import thresholds
 from titan.config.evidence_registry import get_evidence
 from titan.core.database import DatabaseManager
 
+MODULE_VERSION = "1.0.0"
+
 _log = logging.getLogger(__name__)
 
 
@@ -137,13 +139,32 @@ def _outcome_is_independent(decision_date: str, outcome_date: str) -> bool:
     return delta_days >= thresholds.OUTCOME_INDEPENDENCE_WINDOW_DAYS
 
 
+_SCIENCE_MODULE_NAMES = [
+    "acwr_engine", "adaptive_memory", "adaptive_priority_lock",
+    "automated_periodization", "autonomic_engine", "biomechanics",
+    "critical_speed", "data_sanity", "data_trust", "drift_engine",
+    "durability_engine", "efficiency_engine", "fatigue_engine",
+    "glycogen_model", "governance_contracts", "governance_engine",
+    "hrv_engine", "injury_risk_model", "intensity_governor",
+    "lactate_logic", "load_prediction_shadow", "ml_safety",
+    "outcome_tracker", "override_signal", "physiological_bounds",
+    "rcp_engine", "readiness_engine", "trimp_engine",
+    "tsb_engine", "volume_load_gauge",
+]
+
+
 def _algorithm_version_snapshot() -> dict[str, str]:
-    """Version snapshot stub for calibration provenance (T1-22)."""
-    return {
-        "governance_engine": "UNKNOWN",
-        "adaptive_priority_lock": "UNKNOWN",
-        "outcome_tracker": "builtin",
-    }
+    """Collect MODULE_VERSION from all titan/science modules for calibration provenance."""
+    import importlib
+
+    snapshot: dict[str, str] = {}
+    for mod_name in _SCIENCE_MODULE_NAMES:
+        try:
+            mod = importlib.import_module(f"titan.science.{mod_name}")
+            snapshot[mod_name] = getattr(mod, "MODULE_VERSION", "MISSING")
+        except Exception:
+            snapshot[mod_name] = "IMPORT_ERROR"
+    return snapshot
 
 
 class OutcomeTracker:
@@ -225,6 +246,7 @@ class OutcomeTracker:
             readiness_score=float(readiness_score),
             glycogen_debt=float(glycogen_debt),
             afi_value=float(afi_value) if afi_value is not None else None,
+            algorithm_version_snapshot=_algorithm_version_snapshot(),
         )
         self._decisions.append(decision)
         if self._db is not None:

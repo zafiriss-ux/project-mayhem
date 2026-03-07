@@ -2,6 +2,8 @@
 
 import math
 
+MODULE_VERSION = "1.0.0"
+
 
 class TRIMPEngine:
     """

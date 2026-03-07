@@ -1,6 +1,8 @@
 """HR Drift Engine - Cardiac Decoupling Analysis"""
 
 
+MODULE_VERSION = "1.0.0"
+
 class DriftEngine:
     @staticmethod
     def compute_drift(hr_first_half: float, hr_second_half: float) -> float:

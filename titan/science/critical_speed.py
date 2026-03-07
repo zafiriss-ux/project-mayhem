@@ -18,6 +18,8 @@ Scientific Basis:
 
 from datetime import datetime
 
+MODULE_VERSION = "1.0.0"
+
 
 class CriticalSpeedEngine:
     """
