@@ -1357,3 +1357,26 @@ def test_degraded_tracker_fires_alert_after_24h():
     assert alerts, "Alert must be fired after >24h in degraded mode"
     assert "persistence_degraded" in alerts[0]
     assert "25h" in alerts[0] or "h" in alerts[0]
+
+
+def test_run_morning_routine_surfaces_hrv_stress_context_in_telegram_payload():
+    payload = {}
+    coach = MinimalCoachFactory.build(telegram_success=True)
+
+    def _governance_apply(*, session_plan, context):
+        return {
+            **session_plan,
+            "session_type": "REST",
+            "hrv_stress_context": "ILLNESS_PATTERN",
+            "governance_locks_applied": ["HARD_STOP_SAFETY_GATES"],
+            "governance_clean": False,
+        }
+
+    coach.governance = SimpleNamespace(
+        apply_constraints=_governance_apply,
+        get_governance_report=lambda **_kwargs: {},
+    )
+    coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
+
+    assert coach.run_morning_routine() is True
+    assert payload["hrv_stress_context"] == "ILLNESS_PATTERN"

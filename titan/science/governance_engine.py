@@ -10,6 +10,8 @@ from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
+    ILLNESS_PATTERN_HRV_DELTA,
+    ILLNESS_PATTERN_RHR_DELTA,
     SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
     VO2_ACWR_MAX,
@@ -172,6 +174,37 @@ class GovernanceEngine:
 
         return len(indicators), indicators
 
+
+
+    @staticmethod
+    def classify_hrv_stress_context(context: dict) -> str:
+        """Classify H2/H3 stress source for explicit non-training safety handling."""
+        try:
+            hrv_delta = float(context.get("baseline_hrv")) - float(context.get("today_hrv"))
+        except (TypeError, ValueError):
+            hrv_delta = 0.0
+
+        try:
+            rhr_delta = float(context.get("today_rhr")) - float(context.get("baseline_rhr"))
+        except (TypeError, ValueError):
+            rhr_delta = 0.0
+
+        try:
+            acwr = float(context.get("acwr", 1.0))
+        except (TypeError, ValueError):
+            acwr = 1.0
+
+        if acwr > VO2_ACWR_MAX:
+            return "TRAINING_EXPLAINED"
+
+        if hrv_delta >= ILLNESS_PATTERN_HRV_DELTA and rhr_delta >= ILLNESS_PATTERN_RHR_DELTA:
+            return "ILLNESS_PATTERN"
+
+        if hrv_delta >= HARD_STOP_HRV_DELTA:
+            return "UNEXPLAINED_MODERATE"
+
+        return "TRAINING_EXPLAINED"
+
     def _check_hard_stops(self, session_plan: dict, context: dict) -> list[dict]:
         """Evaluate hard-stop safety gates in DECISION_MODEL canonical order.
 
@@ -245,8 +278,35 @@ class GovernanceEngine:
                 baseline_rhr=context.get("baseline_rhr"),
             )
 
+        if h2_trigger or h3_trigger:
+            hrv_stress_context = self.classify_hrv_stress_context(context)
+            session_plan["hrv_stress_context"] = hrv_stress_context
+            _gate_event(
+                "HRV_STRESS_CONTEXT",
+                "CLASSIFIED",
+                cause="TRAINING_LOGIC",
+                stress_context=hrv_stress_context,
+                h2_trigger=h2_trigger,
+                h3_trigger=h3_trigger,
+                acwr=context.get("acwr"),
+            )
+
+            if hrv_stress_context == "ILLNESS_PATTERN":
+                reason = "Non-training stress protocol: illness-pattern autonomic strain — full rest"
+                session_plan["session_type"] = "REST"
+                session_plan["max_zone"] = 1
+                session_plan["governance_override"] = reason
+                reasons.append({"gate": "H2_H3_NON_TRAINING_STRESS", "reason": reason})
+                _gate_event(
+                    "H2_H3_NON_TRAINING_STRESS",
+                    "REST",
+                    reason=reason,
+                    cause="TRAINING_LOGIC",
+                    stress_context=hrv_stress_context,
+                )
+
         # Dual collapse: both H2 and H3 fired — set combined override message.
-        if h2_trigger and h3_trigger:
+        if h2_trigger and h3_trigger and session_plan.get("hrv_stress_context") != "ILLNESS_PATTERN":
             reason = "HRV/RHR dual collapse: autonomic stress — hard stop"
             session_plan["governance_override"] = reason
             _gate_event("H2+H3", "REST", reason=reason, cause="TRAINING_LOGIC")

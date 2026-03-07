@@ -68,6 +68,7 @@ class TodaySessionPlan(TypedDict):
     intensity_gate_result: NotRequired[Mapping[str, object]]
     fueling_gate: NotRequired[Mapping[str, object]]
     vo2_eligibility: NotRequired[Mapping[str, object]]
+    hrv_stress_context: NotRequired[str]
 
 
 class DailyCoachContext(TypedDict):
@@ -94,6 +95,7 @@ class DailyCoachContext(TypedDict):
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
     garmin_data_stale: NotRequired[bool]
+    hrv_stress_context: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -121,6 +123,7 @@ class DailyCoachContextContract:
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
     garmin_data_stale: bool | None = None
+    hrv_stress_context: str | None = None
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -149,6 +152,8 @@ class DailyCoachContextContract:
         }
         if self.garmin_data_stale is not None:
             payload["garmin_data_stale"] = self.garmin_data_stale
+        if self.hrv_stress_context:
+            payload["hrv_stress_context"] = self.hrv_stress_context
         return payload
 
 
