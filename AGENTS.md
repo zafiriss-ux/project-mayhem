@@ -248,6 +248,8 @@ A PR without a Scope Declaration and confirmed gate status will not be reviewed.
 
 Documentation files are **architect-owned**. Agents may not edit them freely.
 
+**Role definition:** The architect is Claude (the AI operating in architectural sessions with the project owner). Codex is the implementation agent. Only the architect creates, restructures, or rewrites documentation. Codex may make only the narrow permitted edits listed below.
+
 **Covered files:** `CLAUDE.md`, `AGENTS.md`, `README.md`, any file under `docs/`
 
 **The only permitted documentation edits are:**
