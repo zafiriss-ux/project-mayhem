@@ -1,12 +1,12 @@
-# TITAN OS v5.7 — Modular Architecture
+# TITAN OS v5.8 — Modular Architecture
 
 ## Vision
 
 TITAN OS is a closed-loop, longevity-first athletic operating system for runners. It integrates with Garmin Connect, applies science-based algorithms, generates training plans, and delivers coaching via Telegram — with a non-bypassable governance layer that enforces safety before every session recommendation.
 
 - **Live Garmin Integration** — real-time sync of activities, weight, sleep, HRV
-- **Science Engines** — 21 independent modules: HRV, TSB/CTL/ATL, ACWR, lactate, drift, AFI, VLG, and more
-- **Governance Layer** — 4 modules enforcing safety gates, hard stops, and output contracts
+- **Science Engines** — 26 modules: HRV, TSB/CTL/ATL, ACWR, lactate, drift, AFI, VLG, governance, ML scaffold, and more
+- **Governance Layer** — 10 modules (6 governance + 4 ML scaffold) enforcing safety gates, hard stops, output contracts, and kill-switch enforcement
 - **Intelligent Weekly Planning** — lactate threshold + drift analysis + HRV-guided scheduling
 - **Optimal Time Calculator** — dew point, temperature, circadian rhythm analysis
 - **Smart Nutrition** — weight-velocity, periodization phase, and load-adjusted macros
@@ -26,12 +26,12 @@ TITAN OS is a closed-loop, longevity-first athletic operating system for runners
 ┌───────────────────────────▼──────────────────────────────────┐
 │                    ORCHESTRATION LAYER                        │
 │  ┌─────────────────────────────────────────────────────────┐ │
-│  │  DailyCoach v5.7  (12-step morning routine + scheduler) │ │
+│  │  DailyCoach v5.8  (12-step morning routine + scheduler) │ │
 │  └─────────────────────────────────────────────────────────┘ │
 └───────────────────────────┬──────────────────────────────────┘
                             │
 ┌───────────────────────────▼──────────────────────────────────┐
-│                    GOVERNANCE LAYER          ← NEW v5.7       │
+│                    GOVERNANCE LAYER          ← v5.7–v5.8      │
 │  ┌──────────────────┐  ┌──────────────────────────────────┐  │
 │  │ GovernanceEngine │  │     IntensityGovernor            │  │
 │  │  (7 safety gates)│  │  (GREEN / YELLOW / RED)          │  │
@@ -51,7 +51,7 @@ TITAN OS is a closed-loop, longevity-first athletic operating system for runners
 └───────────────┬─────────────────────────────┬────────────────┘
                 │                             │
 ┌───────────────▼─────────────────────────────▼────────────────┐
-│                      SCIENCE ENGINES (21)                     │
+│                      SCIENCE ENGINES (26)                     │
 │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐  │
 │  │    HRV    │ │    TSB    │ │   ACWR    │ │   Lactate   │  │
 │  │  Engine   │ │  Engine   │ │  Engine   │ │   Logic     │  │
@@ -98,7 +98,8 @@ TITAN OS is a closed-loop, longevity-first athletic operating system for runners
 
 ## Directory Structure
 
-All entries exist on disk as of v5.7.0.
+Directory layout as of v5.7.0 — for current layout see `CLAUDE.md §Repository Layout`.
+The science/ and tests/ sections below are partial; significant additions were made in v5.7.1–v5.8.0.
 
 ```
 project-mayhem/
@@ -176,7 +177,7 @@ project-mayhem/
     │   ├── periodization.py            # PeriodizationManager
     │   └── equipment.py                # EquipmentManager (shoes, gear)
     │
-    ├── science/                        # 21 modules
+    ├── science/                        # 26 modules
     │   ├── hrv_engine.py               # HRV analysis + guided training
     │   ├── tsb_engine.py               # CTL/ATL/TSB calculations
     │   ├── acwr_engine.py              # Acute:Chronic workload ratio
@@ -225,7 +226,7 @@ project-mayhem/
     │   └── telegram_bot.py             # Telegram bot + notifications
     │
     ├── orchestration/                  # 1 module
-    │   └── daily_coach.py              # DailyCoach v5.7 — 12-step morning routine + scheduler
+    │   └── daily_coach.py              # DailyCoach v5.8 — 12-step morning routine + scheduler
     │
     ├── ui/                             # 2 modules
     │   ├── menu_system.py              # Interactive menu
@@ -360,7 +361,7 @@ main.py
   → main_menu()                  interactive loop
 ```
 
-### Morning Routine (07:00) — DailyCoach v5.7 — 12 Steps
+### Morning Routine (07:00) — DailyCoach v5.8 — 12 Steps
 
 ```
 Step  1  GarminSync.sync()              pull overnight HRV, sleep, weight

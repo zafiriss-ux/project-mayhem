@@ -116,7 +116,7 @@ contracts, calibrated thresholds, and safety gates.
 
 ## Phase 8 — Multi-Athlete Coach Platform (2027)
 
-**Product direction:** TITAN OS is a coach-managed, multi-athlete platform (ADR-0043).
+**Product direction:** TITAN OS is a coach-managed, multi-athlete platform.
 The coach is the primary user. The athlete receives output; the coach owns configuration.
 **Interaction model:** phone = async planning and analysis; watch = during-workout (no change).
 
@@ -144,11 +144,11 @@ Phase 8A deliverables pass the ADR-0044 binary gate.
 - Risk alert: VLG RED or governance hard-stop for any athlete → coach notification
 - Session explorer: per-athlete governance decision trail, override history
 - Manual override workflow usable without CLI (ADR-0012 surfaced in UI)
-- `get_athlete_context(athlete_id, days) → dict` unified query interface (ADR-0043 Seam 2;
+- `get_athlete_context(athlete_id, days) → dict` unified query interface (Phase 8B Seam 2;
   T5-09) — required by dashboard and later by Phase 10 LLM
 - Technology: React + FastAPI backend (ADR-0013 technology path)
-- `DecisionRationale` persisted to DB as JSON column on `governance_outcomes` (ADR-0043
-  Seam 1; required for LLM explainability in Phase 10)
+- `DecisionRationale` persisted to DB as JSON column on `governance_outcomes`
+  (Phase 8B Seam 1; required for LLM explainability in Phase 10)
 
 ### Phase 8C — Multi-Device Adapters
 
@@ -202,7 +202,7 @@ evidence without requiring manual threshold edits.
 
 ## Phase 10 — LLM Coach Query Layer (2029, optional)
 
-**ADR-0043 Decision 3.** Activated only when: Phase 9 has closed with a multi-athlete
+Activated only when: Phase 9 has closed with a multi-athlete
 outcome corpus, and resources (time + API budget) are available. Fully optional —
 the system is complete and functional without Phase 10.
 

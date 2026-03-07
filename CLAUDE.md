@@ -52,7 +52,7 @@ project-mayhem/
 │   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0001–0020)
+│   ├── adr/                 # Architecture Decision Records (0006–0045, 27 ADRs)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
 │   │                        # operator_console_readiness_dashboard.md,
@@ -165,358 +165,52 @@ Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files 
 
 ---
 
-## Engineering Discipline: Strategy Gates (MANDATORY — never deviate)
+## Engineering Rules — Reference Map (canonical: AGENTS.md)
 
-> **Authoritative contract: [`AGENTS.md`](AGENTS.md)** — this section is a project-context
-> summary only. When any rule here conflicts with `AGENTS.md`, `AGENTS.md` takes precedence.
-> Agents and engineers must read `AGENTS.md` in full before starting any task.
+`AGENTS.md` is the authoritative engineering contract for all agents and engineers.
+When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 
-These rules exist because T4-01 (Ruff lint debt, ~750 errors) remains open after multiple
-sessions. The root cause was not unclear intent — it was execution discipline: the engineer
-started broad changes, skipped binary acceptance checks, and delivered "partially done" work.
-The rules below are a hard contract. They apply to every task, not just lint work.
-
----
-
-### Rule E1 — Tier ordering is strict
-
-Work items from `TECHNICAL_DEBT.md` must be completed **in tier order**:
-
-```
-TIER 1 (Data Integrity) → TIER 2 (Observability) → TIER 3 (Deps) → TIER 4 (Maintainability) → TIER 5 (Future)
-```
-
-- **Do NOT start Tier N+1 work while any Tier N item is OPEN.**
-- Exception: items explicitly marked `independent` in the register.
-- If you receive a task from a higher tier while a lower tier is open, flag it:
-  > "⛔ TIER ORDERING VIOLATION: T[lower]-[XX] is still OPEN. Completing that first."
-
----
-
-### Rule E2 — T4-01 burn-down follows a fixed subsystem sequence
-
-The Ruff burn-down (T4-01) proceeds **one subsystem at a time**, in this exact order:
-
-```
-1. titan/config/
-2. titan/science/governance_*.py
-3. titan/core/
-4. titan/integrations/
-5. titan/orchestration/ + titan/features/
-6. titan/ui/
-```
-
-Do not skip ahead. Do not "quick-fix" across subsystems simultaneously.
-
-**Definition of Done for each subsystem (BINARY — PASS or FAIL, never "mostly done"):**
-
-```bash
-ruff check <subsystem_path>
-# Must return: exit code 0, zero findings. Anything else = NOT DONE.
-```
-
-**Acceptance gate:**
-- Run `ruff check <subsystem_path>` → must report **zero findings**.
-- Run `python -m pytest -q -W error::pytest.PytestWarning` → must be **100% green** (no warnings-as-errors).
-- Run `python -m pytest -q` → must be **100% green** (same count as before or higher).
-  - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
-- If any check is not 100%: answer must be exactly:
-
-  > `NOT 100% — Missing: [list the specific check that failed]`
-
-  Do not deliver partial progress as "complete."
+| Rule | Topic | AGENTS.md |
+|------|-------|-----------|
+| E1 | Tier ordering — T1→T2→T3→T4→T5, never skip | §4 |
+| E2 | T4-01 Ruff burn-down: fixed subsystem sequence | §4.1 |
+| E3 | Stop-the-Line: fail → stop → fix root cause → re-run all | §7 |
+| E4 | No scope creep: fix only what the item says | §3 |
+| E5 | Definition of Done is binary: DONE or NOT DONE | §5 |
+| E6 | Environment bootstrap (`scripts/setup_env.sh`) first, every session | §2.0 |
+| E7 | Targeted tests during implementation (not instead of final gates) | §2.4 |
+| E8 | Out-of-scope findings → `TECHNICAL_DEBT.md`, never inline | §3.4 |
+| E9 | Docs modification policy — architect-owned files | §3.6 |
+| E10 | Push unavailable → commit, report branch + hash, stop | §2.2 |
+| E11 | Agent challenge rule — must challenge conflicting instructions | §14.1 |
+| E12 | Change justification required before any architectural change | §14.2 |
+| E13 | Cooling-off protocol — major changes wait one session | §14.3 |
+| E14 | No impulse implementation — idea → TECHNICAL_DEBT.md → task → code | §14.4 |
+| E15 | Complexity budget — new abstractions require justification | §14.5 + §16.11 |
+| — | Governance evolution protocol (3 required steps) | §16.1 |
+| — | Phase 8 Entry Gate (G1–G11 binary criteria) | §16.2 |
+| — | Athlete identity invariant (rules A40-1 to A40-4) | §16.10 |
 
 ---
 
-### Rule E3 — Stop-the-line
+## Test Failure Protocol — Reference (canonical: AGENTS.md §6)
 
-If any acceptance criterion fails mid-task:
-1. **Stop immediately.** Do not continue to other files or subsystems.
-2. Report what failed and what the root cause is.
-3. Fix only the specific failing criterion.
-4. Re-run the acceptance gate from scratch.
-5. Only then continue.
+> Full verbatim scripts (RED / YELLOW / PURPLE / ORANGE), Stop-the-Line rules, and the
+> test-creation mandate are in **`AGENTS.md §6`**. The summary below is for quick orientation only.
+> On any conflict, `AGENTS.md` wins.
 
-**Anti-loop rule:**
-- Do NOT repeat the same command/run without returning new evidence.
-- Every stop-the-line report MUST include:
-  - the exact failing test nodeid + traceback (RED), OR
-  - the exact warning text + origin (YELLOW), OR
-  - the missing module/import error line (PURPLE), OR
-  - the last printed test nodeid + durations output (ORANGE).
-- A response that says "tests failing" / "stuck" without the above evidence is NOT ACCEPTABLE.
+| Signal | Condition | First action |
+|--------|-----------|-------------|
+| 🔴 RED | Test assertion / runtime error | `pytest -x` → identify first failure → fix root cause |
+| 🟡 YELLOW | Warnings / flaky / lint | Identify exact warning source → fix call site → no global silencing |
+| 🟣 PURPLE | Import / collection error | `pip install -r requirements.txt -c constraints.txt` → fix deps only |
+| 🟠 ORANGE | Hung / no output | `pytest -vv` → `pytest --durations=20` → add evidence before re-running |
 
----
+**Invariant:** Fix root cause. Not symptom. Not workaround. Not silence.
 
-### Rule E4 — No scope creep, ever
+**Coverage note:** "coverage threshold not reached" on a subset run is a diagnostic artifact, not a regression. Gate 3 always requires the full suite.
 
-When executing a debt item:
-- Fix **only** what the item says.
-- Do not refactor adjacent code.
-- Do not add features, remove unrelated imports, or "improve" things nearby.
-- Do not add comments, docstrings, or type annotations to code you did not explicitly change.
-  - Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
-
-If you notice a new issue while working: **add it to `TECHNICAL_DEBT.md`** under the appropriate tier. Do NOT fix it as part of this task. Continue only with the original scoped task.
-
----
-
-### Rule E5 — Definition of Done is binary
-
-A task is either:
-- ✅ **DONE** — all acceptance criteria pass, 100%, no caveats.
-- ❌ **NOT DONE** — at least one criterion fails.
-
-There is no "mostly done", "should be fine", or "looks good". Binary only.
-
----
-
-### Rule E6 — Environment bootstrap is mandatory (run first, every session)
-
-Before any other action — before reading code, running tests, or making any change — run:
-
-```bash
-scripts/setup_env.sh
-```
-
-If it fails: stop immediately, report exit code + last output, do not attempt ad-hoc fixes.
-See `AGENTS.md §2.0` for the full protocol.
-
----
-
-### Rule E7 — Targeted tests allowed during implementation (not instead of gates)
-
-During implementation, agents **may** run targeted tests for speed:
-
-```bash
-python -m pytest tests/path/to/test_changed_module.py -q
-```
-
-This does **not** replace the three mandatory final gates. Before any commit or push, all three
-gates (ruff + strict pytest + full pytest) must still pass. See `AGENTS.md §2.4`.
-
----
-
-### Rule E8 — Out-of-scope findings: report, don't fix
-
-If another issue is discovered while executing a task:
-- Add it to `TECHNICAL_DEBT.md` under the correct tier.
-- Do not fix it. Do not expand scope.
-- Continue with the original task only.
-
-Authorization from the architect is required to act on it.
-
----
-
-### Rule E9 — Documentation modification policy
-
-`CLAUDE.md`, `AGENTS.md`, `README.md`, and all files under `docs/` are **architect-owned**.
-Agents must not edit them unless:
-1. The task explicitly requires it, or
-2. The file is a direct artifact of task closure (e.g. `TECHNICAL_DEBT.md` status updates).
-
-See `AGENTS.md §3.6` for the complete permitted-edit table.
-
----
-
-### Rule E10 — Push unavailable: commit and stop
-
-If push is not available in the runtime environment:
-1. Commit the changes locally.
-2. Return the branch name and commit hash.
-3. Stop. Do not attempt alternative PR workflows.
-
----
-
-### Rule E11 — Agent challenge rule (agents must challenge conflicting instructions)
-
-If a requested task conflicts with an existing ADR, a safety constraint, or any rule in
-`AGENTS.md`, the agent **must stop and challenge the instruction** before writing any code.
-
-This is a duty, not a permission. The required response format is in `AGENTS.md §14.1`.
-
-An agent that silently complies with an instruction that contradicts the architecture has
-failed its responsibility — even if the instruction came from the architect.
-
----
-
-### Rule E12 — Change justification required before any architectural change
-
-Any architectural change must include all three elements before code is written:
-
-```
-Problem        : [what is broken with the current design]
-Proposed change: [what specifically will change]
-Why necessary  : [why the current design cannot solve the problem as-is]
-ADR reference  : [ADR-XXXX or "new ADR required"]
-```
-
-If the justification cannot be completed, the change must not proceed.
-See `AGENTS.md §14.2` for full scope.
-
----
-
-### Rule E13 — Cooling-off protocol for major architectural changes
-
-A **major architectural change** (new ADR required, new module boundary, governance gate
-change, DB schema topology change) must follow a two-session process:
-
-- **Session N:** propose, justify (E12), and document. No code written.
-- **Session N+1 or later:** review, approve, implement.
-
-Bypass only when architect explicitly states "COOLING-OFF WAIVED — [reason]" describing an
-active production incident or data integrity failure. See `AGENTS.md §14.3`.
-
----
-
-### Rule E14 — No impulse implementation
-
-No code may be written for an idea that is not already recorded as a task.
-
-The correct sequence:
-```
-idea → TECHNICAL_DEBT.md entry → architect prioritises → task assigned → implementation
-```
-
-Any idea that arises mid-task goes immediately to `TECHNICAL_DEBT.md` and stops there.
-See `AGENTS.md §14.4`.
-
----
-
-### Rule E15 — Complexity budget (new abstractions require justification)
-
-Before creating any new abstraction (class, utility, decorator, base class, design pattern):
-1. Is it used in 3+ places right now? If no → do not create it.
-2. Does it make a future engineer's job easier? If unclear → do not create it.
-3. Can the task be done by extending an existing module? If yes → do that instead.
-
-If all three pass: record as an out-of-scope finding in `TECHNICAL_DEBT.md` and wait for
-architect approval. Do not implement inline. See `AGENTS.md §14.5` and ADR-0028.
-
----
-
-## Test Failure Protocol — For All Contributors (MANDATORY)
-
-> **Authoritative protocol: [`AGENTS.md §6`](AGENTS.md)** — the canonical RED / YELLOW / PURPLE / ORANGE
-> response scripts and the full Stop-the-Line protocol live there. This section is a project-context
-> summary. `AGENTS.md` takes precedence on any conflict.
-
-This protocol applies to every engineer and AI assistant working on this codebase. When any test fails, do not improvise. Identify the category and follow the exact protocol below. These rules are non-negotiable.
-
-**Note on coverage:** The repo enforces a global coverage threshold. Running a single test or small subset may FAIL solely due to coverage (even if all tests passed). Treat "coverage threshold not reached" on a subset run as a diagnostic artifact, NOT a code regression. Acceptance gates always require the canonical full suite (Gate 3).
-
----
-
-### 🔴 RED — A test is failing (assertion / runtime error)
-
-Send this **verbatim** before doing anything else:
-
-> A test is failing.
-> 1) Run the suite and identify the FIRST failing test (deterministically):
->    python -m pytest -x
-> 2) Do NOT modify the test unless it is objectively incorrect.
-> 3) Determine whether the failure is:
->    A) Code regression
->    B) Test bug
->    C) Environment/dependency issue
-> 4) Fix ONLY the minimal root cause.
-> 5) Re-run the full suite.
-> 6) If any other tests fail, stop and report.
-> 7) Do not refactor unrelated code.
-> 8) Do not introduce new behavior.
-
----
-
-### 🟡 YELLOW — Warnings / flaky / lint-related
-
-Send this **verbatim** before doing anything else:
-
-> The test suite has warnings or unstable behavior.
-> 1) Identify the exact warning source.
-> 2) If it is deprecation-related, fix the call site.
-> 3) If it is environment-specific, stabilize it.
-> 4) Do NOT silence warnings globally.
-> 5) Keep changes minimal and scoped.
-> 6) Re-run full suite and confirm clean output.
-
----
-
-### 🟣 PURPLE — Dependency / import error (collection failure)
-
-Send this **verbatim** before doing anything else:
-
-> A test fails during collection (import error).
-> 1) Confirm full dependency installation using:
->    pip install -r requirements.txt -c constraints.txt
-> 2) Verify the missing module explicitly via python -c import.
-> 3) Fix dependency resolution only.
-> 4) Do not modify application logic.
-> 5) Re-run full suite.
-
----
-
-### 🟠 ORANGE — Hang / slow test (no failure, progress unclear)
-
-**Symptoms:** pytest shows no new output for an extended period, or user reports "it's stuck" but no failing test exists.
-
-Send this **verbatim** before doing anything else:
-
-> The suite appears slow or hung (no failing test yet).
-> 1) Do NOT assume failure. Do NOT start fixing code.
-> 2) Identify the exact running / last completed test:
->    python -m pytest -vv
-> 3) Identify the slowest tests:
->    python -m pytest --durations=20
-> 4) If a specific test is suspected, run only that test with output:
->    python -m pytest -vv -s <file>::<test_name>
-> 5) Only if the same test deterministically hangs: fix the minimal root cause,
->    then re-run the full suite.
-
-**Important:** A perceived hang is NOT RED/YELLOW/PURPLE until a failing nodeid or import error is proven. Do not loop — every re-run must add new information (nodeid or durations output).
-
----
-
-### ⚖️ Key Rule — never break this
-
-> **Fix root cause. Not symptom. Not workaround. Not silence.**
-
----
-
-### 🧠 Mental model — category → action (exhaustive)
-
-| Category | Action |
-|---|---|
-| Code regression | Fix the code |
-| Test bug | Fix the test |
-| Env / deps | Fix the environment |
-
-Nothing else. No other action is valid.
-
-Banned responses when tests fail:
-- Random refactor of surrounding code
-- Mass changes across files
-- `pytest.mark.skip` / `xfail` without documented justification
-- Scope creep ("while I'm here...")
-
-Following this protocol prevents: random refactors, mass file changes, silenced tests, and scope creep. Every engineer who skips it will eventually re-introduce the exact failure mode they were trying to avoid.
-
----
-
-### 📋 Test Creation / Update Rule — For All Contributors (MANDATORY)
-
-Every task that touches a module — regardless of how small the change — must follow this rule:
-
-1. Check whether a test file for that module exists.
-2. If **no test file exists** → create a mirrored test file:
-   - Source: `titan/<path>/<module>.py` → Test: `tests/titan/<path>/test_<module>.py`
-   - If the project's test layout differs, follow the nearest existing test convention in `tests/`.
-   - At minimum: one happy-path test and one boundary/error test per public function.
-3. If a **test file exists** → check whether the changed logic is covered.
-   - If not → add tests for the new/changed behaviour.
-4. Never delete tests. If a test is wrong, fix it (not the other way around).
-5. After adding/updating tests: run `python -m pytest -q -W error::pytest.PytestWarning` then `python -m pytest -q` and confirm 100% green before delivering.
-
-There are no exceptions. A change that ships without a test for its new behaviour is incomplete.
+**Test creation rule (AGENTS.md §6 ⚠️ ABSOLUTE RULE):** Every change to a module must be accompanied by tests for the new/changed behaviour. `titan/<path>/<module>.py` → `tests/titan/<path>/test_<module>.py`. No exceptions.
 
 ---
 
@@ -577,12 +271,9 @@ Canonical column name for temperature: `temperature_c`.
 
 ### Key Architectural Decisions
 
-See `docs/adr/` for Architecture Decision Records:
-- `0001` — Fix typo in optimal time module reference
-- `0002` — Fix weather window duration bug
-- `0003` — Align docs with current module layout
-- `0004` — Improve tests for weather window edge cases
-- `0005` — Fix runtime startup issues
+See `docs/adr/` for Architecture Decision Records (27 total — architectural decisions only).
+Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGES.md`.
+
 - `0006` — Architectural hardening: cold start and engine sync
 - `0007` — Intensity governance architecture audit (read-only assessment)
 - `0008` — Adaptive Priority Lock and VLG specs (VLG: implemented; APL: implemented — v5.7.1)
@@ -596,31 +287,18 @@ See `docs/adr/` for Architecture Decision Records:
 - `0016` — Phase 8 multi-sport scope and unified adapter gate (Accepted — v5.8.0)
 - `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
 - `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A Implemented — v5.8.0; Phase B deferred)
-- `0019` — Engineering Audit V3: Phase 7.7 decisions (T1-13, T1-14, T2-09–T2-11, T3-08) (Accepted — Phase 7.7 CLOSED 2026-03-05)
 - `0020` — Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode (Accepted — 2026-03-05; T1-15 Implemented 2026-03-06)
-- `0021` — Governance Evolvability Protocol: gate mutation control, evidence promotion gates (Accepted — 2026-03-06)
-- `0022` — Phase 8 Entry Gate: architectural readiness criteria G1–G10 (Accepted — 2026-03-06)
 - `0023` — Physiological Input Validation Contract: bounds layer at DB→science boundary (Accepted — T1-18 Implemented 2026-03-06)
-- `0024` — Documentation Drift Prevention: canonical source discipline (Accepted — 2026-03-06)
-- `0025` — Agent Context Continuity Protocol: multi-session state recovery (Accepted — 2026-03-06)
 - `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Accepted — T1-19 pending)
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)
-- `0028` — Complexity Budget and Simplicity Gate: no new abstraction without complexity review (Accepted — 2026-03-06)
-- `0029` — Multi-Agent Context Fragmentation Protocol (Accepted — 2026-03-06)
 - `0030` — External Data Source Resilience: staleness gates and fallback policy (Accepted — T1-20 pending)
-- `0031` — Structured Log Sustainability: event taxonomy + log lifecycle (Accepted — 2026-03-06)
 - `0032` — ML Advisory Explainability Protocol: evidence labels on all ML payloads (Implemented — 2026-03-06)
 - `0033` — Physiological Model Aging and Multi-Athlete Architecture Protocol (Accepted — T5-07 Layers 1–2 pending)
 - `0034` — Environmental Stress Compensation for Training Zones (Accepted — 2026-03-06)
-- `0035` — Feedback Loop Integrity Protocol: OutcomeTracker guardrails (Accepted — T1-22 pending)
-- `0036` — Science Model Semantic Versioning (Accepted — 2026-03-06)
 - `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Accepted — T1-21 pending)
 - `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Accepted — T2-16 pending)
-- `0039` — Metric Lifecycle Management: deprecated metric retirement gates (Accepted — 2026-03-06)
-- `0040` — Athlete Identity as First-Class Architectural Invariant: ADR-0040-SINGLE-ATHLETE-SHORTCUT annotation required (Accepted — IMMEDIATE — 2026-03-06)
 - `0041` — Unified External Data Trust Contract: DataTrustLevel for all sensor sources (Accepted — T1-23 pending)
 - `0042` — Human Override as First-Class Invariant: no recommendation without override path (Accepted — IMMEDIATE — 2026-03-06)
-- `0043` — Post-Phase 9 product direction: multi-athlete coach platform + LLM seams (Accepted — 2026-03-06)
 - `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
 
