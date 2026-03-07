@@ -347,3 +347,35 @@ class TestPhysiologicalBoundsProperties:
             context="property_test_hrv_zero",
         )
         assert cleaned["hrv_ms"] is None
+
+
+class TestScienceEdgeCaseProperties:
+
+    @given(today_rhr=st.integers(min_value=121, max_value=250))
+    def test_out_of_bounds_rhr_never_reports_excellent(self, today_rhr):
+        from titan.science.readiness_engine import ReadinessEngine
+
+        result = ReadinessEngine.analyze_readiness(
+            today_hrv=40.0,
+            baseline_hrv=40.0,
+            today_rhr=today_rhr,
+            baseline_rhr=50.0,
+            sleep_score=90,
+            soreness=1,
+        )
+
+        assert 0 <= result["score"] <= 100
+        assert result["status"] != "✅ EXCELLENT"
+
+    @given(
+        acwr=st.one_of(
+            st.none(),
+            st.from_regex(r".*[^\d\.\+\-eE].*", fullmatch=True),
+            st.just(float("nan")),
+        )
+    )
+    def test_volume_load_gauge_resilient_to_non_numeric_acwr(self, acwr):
+        from titan.science.volume_load_gauge import VolumeLoadGauge
+
+        state = VolumeLoadGauge().resolve(tsb_value=-10.0, acwr=acwr, glycogen_debt=1.0)
+        assert state.components["acwr"] == "GREEN"
