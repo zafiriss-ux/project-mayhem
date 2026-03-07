@@ -924,4 +924,288 @@ The three scratchpad items are incorporated directly into the §11 pre-delivery 
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07). Authoritative for all agents and engineers operating on TITAN OS.*
+## 16. Domain-Specific Engineering Contracts
+
+These contracts were distilled from process-rule ADRs (0021, 0022, 0024, 0025, 0028, 0029,
+0031, 0035, 0036, 0039, 0040) during the ADR triage of 2026-03-07. The original ADR files
+have been removed from `docs/adr/`; this section is now the canonical location for these rules.
+
+---
+
+### 16.1 Governance Evolution Protocol (ex-ADR-0021)
+
+Any PR that modifies `governance_engine.py` must include **all three** of the following:
+
+1. An ADR reference justifying the change (existing or new ADR).
+2. An `evidence_registry.py` diff — update the threshold's `_LAST_REVIEWED` date and `_RATIONALE`.
+3. A `tests/test_governance_mutation.py` diff — boundary-ON and boundary-OFF tests for the changed gate.
+
+All three are required. Providing only two is NOT DONE.
+
+The comment at `governance_engine.py:1` must read:
+
+```python
+# Gate parameters: see thresholds.py + evidence_registry.py.
+# To change gate logic: (1) write ADR entry, (2) update evidence_registry.py,
+# (3) update tests/test_governance_mutation.py. All three are required.
+```
+
+This is the machine-enforced replacement for the original comment-lock.
+
+---
+
+### 16.2 Phase 8 Entry Gate (ex-ADR-0022)
+
+**No Phase 8 code may be written until all criteria below are TRUE (binary — all required).**
+
+| # | Gate Criterion | Verification |
+|---|---|---|
+| G1 | All `TECHNICAL_DEBT.md` Tier 1–4 items CLOSED | `grep -E "OPEN\|PARTIALLY" TECHNICAL_DEBT.md` → zero |
+| G2 | `tests/test_architectural_invariants.py` 100% green (T4-19 complete) | `python -m pytest tests/test_architectural_invariants.py -v` |
+| G3 | ADR-0018 Phase B accepted and scoped implementation plan documented | ADR-0018 status = "Phase B Accepted" |
+| G4 | ADR-0017 composition root audit: all fan-in paths documented | ADR-0017 status = "Phase B Documented" |
+| G5 | Schema version tracking active (`PRAGMA user_version`) bumped on every migration (T1-16) | `user_version > 0` |
+| G6 | Hot backup strategy operational (T1-17) | `python -m pytest tests/ -k backup -v` → green |
+| G7 | Full test suite green with count ≥ 1708 (Phase 7.9 baseline) | `python -m pytest -q` → 0 failures |
+| G8 | `docs/adr/0022-review-phase8-go.md` exists (architect sign-off document) | File exists |
+| G9 | ADR-0018 Phase B implemented: Effect Runner extracted as stateless decision function | Required for multi-athlete parallel DailyCoach execution |
+| G10 | ADR-0044 accepted and Phase 8A implementation plan documented | ADR-0044 already accepted |
+| G11 | Phase 8 Simplicity Review conducted and output documented in `0022-review-phase8-go.md` | Even if output is "nothing to consolidate", review must have occurred |
+
+**Enforcement:** Before any Phase 8 branch is created:
+1. The responsible engineer runs all verification commands above.
+2. Results are pasted into `docs/adr/0022-review-phase8-go.md`.
+3. The architect reviews and approves the go/no-go decision.
+
+A PR with Phase 8 code without `docs/adr/0022-review-phase8-go.md` is a **PROCESS VIOLATION**
+and must be closed without merge.
+
+---
+
+### 16.3 Documentation Consistency (ex-ADR-0024)
+
+**Canonical lock code location:** `CANONICAL_LOCK_CODES` is a Python `frozenset` in
+`titan/config/thresholds.py` — not in CLAUDE.md prose. When adding a new governance lock code:
+
+1. Add it to `CANONICAL_LOCK_CODES` in `thresholds.py`.
+2. Add it to `_CANONICAL_LOCK_CODES` in `tests/test_architectural_invariants.py`.
+3. The T4-21 CI check (`tests/test_documentation_consistency.py`) verifies the two sets match.
+
+**ADR index:** `docs/adr/README.md` must have exactly as many index rows as there are `.md`
+files in `docs/adr/` (excluding `README.md` itself). A mismatch fails the T4-21 CI check.
+
+**Evidence registry:** Every constant in `thresholds.py` must have a corresponding entry in
+`evidence_registry.py`. Adding a new threshold without an evidence entry fails the CI check.
+
+**CLAUDE.md anti-decay:** Any PR that modifies `CLAUDE.md` must:
+1. Be reviewed by the architect (not auto-merged).
+2. Pass `tests/test_claude_md_integrity.py` (T4-22 CI check).
+3. Include a diff showing exactly what changed and why.
+
+---
+
+### 16.4 Agent Context Continuity (ex-ADR-0025)
+
+The SESSION_START protocol (§2.0) is the primary mechanism. These rules supplement it:
+
+**S0 — Advisor-originated tasks:** If a task was sourced from an advisory AI session
+(ChatGPT, Gemini, Claude Chat), identify the recommendation explicitly and verify it does not
+contradict any open or closed ADR **before** running S1–S5.
+
+**CLAUDE.md integrity CI check (T4-22):** `tests/test_claude_md_integrity.py` asserts:
+- ADR count in CLAUDE.md matches actual files in `docs/adr/`.
+- Module count in CLAUDE.md matches actual `titan/` module count.
+- CLAUDE.md does not claim "CLOSED" for phases with open debt items.
+
+---
+
+### 16.5 Multi-Agent Context Protocol (ex-ADR-0029)
+
+When working in a multi-agent environment (Codex + Claude Code + advisory tools):
+
+**Rule M1 — Advisor Context Gate:** Before giving any AI advisor a task touching architecture,
+provide the relevant `docs/context-snapshot.md` section and the applicable ADRs. Any recommendation
+that contradicts an existing ADR requires an explicit ADR amendment — not direct implementation.
+
+**Rule M2 — Implementation Pre-Task:** If a task originated from an advisor recommendation,
+verify it does not contradict any ADR before writing code (this is S0 in §16.4).
+
+**Rule M3 — Single Source of Truth:** Architectural decisions live exclusively in `docs/adr/`.
+ChatGPT/Gemini conversation history, Slack/Telegram messages, and GitHub issue comments are
+ephemeral. If an advisory session produces an architectural decision, capture it as an ADR
+before implementation begins.
+
+**Rule M4 — Conflict Resolution:** If two agents produce contradictory implementations:
+1. Stop both. Do not merge either PR until the conflict is resolved.
+2. The architect identifies which is consistent with the ADR register.
+3. The consistent one merges. The other is closed with an ADR reference.
+4. If neither is fully consistent, a new ADR resolves the conflict.
+
+The `docs/context-snapshot.md` file (generated by `scripts/generate_context_snapshot.py`, T4-28)
+provides a machine-generated snapshot of open debt items, latest ADRs, test baseline, and
+`CANONICAL_LOCK_CODES` for use in advisory sessions.
+
+---
+
+### 16.6 Structured Log Sustainability (ex-ADR-0031)
+
+Every structured event emitted via `_emit_structured_event()` must carry a `severity` field:
+
+| Severity | Usage | Telegram delivery |
+|---|---|---|
+| `CRITICAL` | Governance hard stop; requires immediate operator action | Always |
+| `WARNING` | Soft downgrade, degraded mode, auth failure | Always |
+| `INFO` | Routine operational telemetry; no action required | Never (log file only) |
+| `DEBUG` | High-cardinality events; only at `LOG_LEVEL=DEBUG` | Never |
+
+**Alert deduplication:** The same `(event_type, lock_code)` pair is suppressed within
+`ALERT_DEDUP_WINDOW_HOURS = 20` (in `thresholds.py`). After `ALERT_PERSIST_SUMMARY_HOURS = 72`
+of continuous same condition, a summary message is re-sent.
+
+**Log rotation:** `RotatingFileHandler` with `LOG_MAX_BYTES = 10_485_760` (10 MB) and
+`LOG_BACKUP_COUNT = 5` (50 MB max). Both are overridable via `.env`.
+
+**New events:** Any new `_emit_structured_event()` call must include the `severity` parameter.
+Omitting it is a contract violation (T2-14).
+
+---
+
+### 16.7 OutcomeTracker Integrity (ex-ADR-0035)
+
+The `governance_outcomes` table has four integrity guardrails. **Do not remove or bypass them.**
+Corrupted calibration data is a Tier 1 data integrity issue.
+
+1. **Independence flag:** `decision_was_followed INTEGER` (1=followed, 0=athlete overrode).
+   Override outcomes (`= 0`) are excluded from Phase 9 calibration training by default.
+   `override_outcome_exclusion INTEGER DEFAULT 0` marks rows excluded for survivorship bias.
+
+2. **Independence window:** `OutcomeTracker.record_outcome()` rejects outcomes where
+   `outcome_timestamp − decision_timestamp < OUTCOME_INDEPENDENCE_WINDOW_DAYS * 86400`.
+   `OUTCOME_INDEPENDENCE_WINDOW_DAYS = 2` is in `thresholds.py`.
+
+3. **Calibration diversity gate:** Before any Phase 9 calibration run, the dataset must contain:
+   ≥20% high-intensity decisions, ≥20% easy/recovery decisions, ≥10% HARD_STOP events.
+   If the gate fails: emit `calibration_diversity_insufficient` at WARNING and defer calibration.
+
+4. **Calibration circuit breaker:** No single calibration event may change any threshold by more
+   than `CALIBRATION_MAX_THRESHOLD_DELTA_PCT = 0.10` (10%). Minimum evidence set:
+   `CALIBRATION_MIN_OUTCOME_COUNT = 10`. Both constants are in `thresholds.py`.
+
+---
+
+### 16.8 Science Model Versioning (ex-ADR-0036)
+
+Every module in `titan/science/` must declare at module level:
+
+```python
+MODULE_VERSION = "MAJOR.MINOR.PATCH"   # e.g., "1.0.0"
+```
+
+**Version increment rules:**
+
+| Change | Increment | ADR required? |
+|---|---|---|
+| Bug fix, no output change for same inputs | PATCH | No |
+| New optional parameter, backward-compatible | MINOR | No — CHANGES.md entry sufficient |
+| Same inputs produce different output | **MAJOR** | **Yes** |
+| Threshold constant change affecting gate semantics | MAJOR | Yes |
+
+**MAJOR version increment additionally requires:**
+1. New ADR: what changed, functions affected, whether existing `OutcomeTracker` data is still
+   valid for Phase 9 calibration, and if not — a migration or reset plan.
+2. `model_calibration_metadata.schema_version` updated for the affected model.
+3. Structured event `science_model_breaking_change` emitted at next DailyCoach startup.
+4. `algorithm_version_snapshot TEXT` column in `governance_outcomes` populated at decision time
+   (JSON: `{"hrv_engine": "1.0.0", "governance_engine": "2.1.0", ...}`).
+
+The CI check `tests/test_science_model_versions.py` (T4-30) asserts `MODULE_VERSION` exists
+on every science module and is a valid semver string. A module missing `MODULE_VERSION` fails CI.
+
+---
+
+### 16.9 Metric Lifecycle (ex-ADR-0039)
+
+Every metric computed by a science engine has a lifecycle state:
+
+| State | Meaning | Required action |
+|---|---|---|
+| **Active** | Consumed by ≥1 governance gate, coaching output, or Operator Console payload | Continue; maintain in `evidence_registry.py` |
+| **Under Review** | Computed but governance role unclear or predictive value unvalidated | Flag in `metrics_lifecycle_report` event; architect review within one phase |
+| **Deprecated** | Confirmed redundant, superseded, or without validated governance role | Remove from computation; archive historical DB values; update evidence registry |
+
+**New metric gate (hard — no exceptions):** No new metric may be added to the computation path without:
+1. An `evidence_registry.py` entry specifying evidence quality and literature reference.
+2. An explicit governance role: which gate, coaching output, or Operator Console payload consumes it.
+3. A test asserting the metric is consumed (not just computed).
+
+A metric added without meeting all three criteria fails code review.
+
+**Phase boundary review:** At each phase boundary, the architect reviews all "Under Review" metrics
+and classifies each as Active or Deprecated. Proposes at least one Deprecation per phase if metric
+count exceeds 20.
+
+**Deprecation protocol:** A metric may only be deprecated after ≥1 full phase in "Under Review"
+state, with architect review confirming no downstream dependency, historical DB values preserved,
+and the deprecation documented in `CHANGES.md` and the evidence registry.
+
+---
+
+### 16.10 Athlete Identity Invariant (ex-ADR-0040)
+
+**Effective from 2026-03-06 forward. Applies to new code only.** Existing violations are documented
+in the exemption register (module-level comment in `titan/core/database.py` and other exempt files).
+
+**Rule A40-1 — No new implicit athlete queries:** New database access methods must accept
+`athlete_id: str = "default"` as a parameter. The parameter must exist in the signature.
+
+**Rule A40-2 — No new cross-athlete calibration defaults:** New science module constants
+introduced as calibration defaults must be annotated:
+```python
+HRV_REFERENCE_BASELINE_MS = 55.0   # ADR-0040: single-athlete default; Phase 9 per-athlete
+```
+
+**Rule A40-3 — No new test fixtures without athlete_id:** New test fixtures that create athlete
+data must include `athlete_id = "test_athlete_01"` (or similar).
+
+**Rule A40-4 — New schema columns require athlete_id:** Any new table or column added after
+2026-03-06 that stores per-athlete data must include `athlete_id TEXT NOT NULL DEFAULT 'default'`.
+
+**Exempt modules** must carry this comment at module level:
+```python
+# ADR-0040-SINGLE-ATHLETE-SHORTCUT: This module assumes a single active athlete.
+# Multi-athlete isolation is deferred to Phase 9 (ADR-0033 Layer 3, T5-07).
+# Do NOT introduce new structural coupling that would be harder to isolate later.
+```
+
+The CI check `tests/test_athlete_isolation_invariant.py` (T4-31) enforces Rules A40-1 to A40-4
+for non-exempt modules.
+
+---
+
+### 16.11 Complexity Budget (ex-ADR-0028)
+
+The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **60**. If a phase
+would push the count above 60, the architect must either retire/merge existing modules before adding
+new ones, or explicitly revise the ceiling in a new ADR update.
+
+The CI check in `tests/test_documentation_consistency.py` (T4-21/T4-27) asserts this ceiling:
+```bash
+python -c "
+import pkgutil, titan
+mods = list(pkgutil.walk_packages(titan.__path__, 'titan.'))
+real = [m for m in mods if '__' not in m.name]
+assert len(real) <= 60, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
+"
+```
+
+**ADR retirement:** At each phase close, update any ADR marked `Implemented` that is fully
+superseded by a later ADR to `Superseded by [NNNN]`. Do not delete ADRs — the history is valuable.
+
+**Phase boundary Simplicity Review:** Before any phase begins, the architect performs a Simplicity
+Review: "Which existing modules could be merged, simplified, or removed without reducing capability?"
+Output is documented (even if the answer is "nothing to consolidate"). This review is part of the
+Phase 8 Entry Gate (G11 in §16.2).
+
+---
+
+*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
