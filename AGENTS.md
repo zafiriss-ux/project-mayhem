@@ -638,4 +638,151 @@ When in doubt: stop and ask.
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
+## 14. Project Safeguard Protocols — Protecting the Project from Well-Intentioned Mistakes
+
+> These rules exist to protect the project from the most common source of architectural damage:
+> good intentions executed at the wrong moment. They apply to agents and to the architect alike.
+
+---
+
+### 14.1 Agent Challenge Rule — Agents MUST challenge conflicting instructions
+
+If a requested task appears to **contradict the current architecture, an existing ADR, or any
+rule in this document**, the agent MUST stop and challenge the instruction before proceeding.
+
+This is an **obligation**, not a permission. An agent that silently complies with an instruction
+that violates architecture is failing its responsibility.
+
+**Required response when a conflict is detected:**
+
+```
+⚠️ ARCHITECTURE CONFLICT DETECTED
+
+Requested: [describe the instruction]
+Conflicts with: [ADR-XXXX / AGENTS.md §X / Rule EX / thresholds.py / ...]
+Specific conflict: [one sentence describing why they are incompatible]
+
+Options:
+  A) Proceed anyway — requires explicit architect override + ADR reference
+  B) Modify the request to [describe a compliant alternative]
+  C) Record as future work in TECHNICAL_DEBT.md and stop
+
+How would you like to proceed?
+```
+
+The agent must **not** proceed without receiving an explicit answer. Silence is not consent.
+
+**What counts as a conflict (agent must challenge):**
+- A task that modifies `governance_engine.py` without an ADR reference
+- A task that adds a new module boundary, abstraction layer, or package
+- A task that starts Tier N+1 work while a Tier N item is OPEN
+- A task that hardcodes a threshold instead of using `thresholds.py`
+- A task that changes DB schema topology outside the versioned migration pattern
+- A task that changes tier ordering or phase sequencing
+- Any instruction that begins with "just quickly" or "let's just change" combined with an architectural element
+
+**What is NOT a conflict (agent proceeds normally):**
+- A task that fixes a bug within existing contracts
+- A task that adds tests
+- A task that adds constants to `thresholds.py` or `evidence_registry.py`
+- A task explicitly referencing an ADR that authorises the change
+
+---
+
+### 14.2 Change Justification Requirement — Structured rationale before any architecture change
+
+Any proposal to change the architecture — whether from the agent or the architect — must include
+all three of the following before any code is written:
+
+```
+CHANGE JUSTIFICATION
+Problem        : [What is broken or insufficient with the current design?]
+Proposed change: [What specifically will change?]
+Why necessary  : [Why is the current design insufficient to solve the problem?
+                  What would happen if we did nothing?]
+ADR reference  : [ADR-XXXX — or "new ADR required" if none exists]
+```
+
+**If the justification cannot be completed in full, the change must not proceed.**
+
+This requirement applies to:
+- Any new module, package, or abstraction layer
+- Any change to governance gate logic
+- Any DB schema topology change
+- Any change to tier ordering or phase sequencing
+- Any change that affects more than 3 files beyond direct task scope
+
+It does NOT apply to:
+- Bug fixes within existing contracts
+- Adding tests
+- Adding constants
+- Executing a task that is already covered by an existing ADR
+
+---
+
+### 14.3 Cooling-Off Protocol — Major changes must wait one session
+
+**Definition of "major architectural change":** any change that would require a new ADR,
+introduces a new module boundary, changes DB schema topology, or affects governance gate logic.
+
+**Protocol:**
+1. In Session N: the change is **proposed, justified (§14.2), and documented** (ADR draft or
+   `TECHNICAL_DEBT.md` entry with full justification). No code is written.
+2. In Session N+1 or later: the change is reviewed and, if still sound, **approved and implemented**.
+
+**Rationale:** 80% of architectural regressions originate from changes that seemed obviously
+correct in the moment but were not re-evaluated after reflection. A one-session pause costs
+nothing when the change is truly necessary, and catches nearly everything that is not.
+
+**Bypass condition:** The cooling-off period may be waived only when:
+- The architect explicitly states: "COOLING-OFF WAIVED — [reason]" in the session prompt, AND
+- The reason describes an active production incident or data integrity failure.
+
+Minor changes (bug fixes, test additions, constant additions) are always exempt.
+
+---
+
+### 14.4 No Impulse Implementation Rule — Record before coding
+
+**No code may be written for an idea that is not already recorded as a task.**
+
+Specifically:
+- Every implementation must trace to a `TECHNICAL_DEBT.md` entry OR an explicit architect
+  instruction in the current session prompt.
+- If an idea arises mid-task ("while I'm here, I could also..."), it must be recorded in
+  `TECHNICAL_DEBT.md` immediately and left there. The current task continues unchanged.
+- An agent must never begin implementing something "obvious" that was not scoped in the task.
+
+**The correct sequence:**
+```
+idea → TECHNICAL_DEBT.md entry → architect prioritises → task assigned → implementation
+```
+
+**Never:**
+```
+idea → immediate implementation
+```
+
+This rule catches what Rule E4 (no scope creep) does not: the impulse to implement a *new*
+idea rather than expanding the scope of a current one.
+
+---
+
+### 14.5 Complexity Budget Rule — New abstractions require justification
+
+Before introducing any new abstraction (helper class, utility function, mixin, protocol,
+base class, decorator, or design pattern not currently present in the codebase):
+
+The agent must answer:
+1. **Is this abstraction used in three or more places right now?** If no → do not create it.
+2. **Does the abstraction make a future engineer's job easier or harder?** If unclear → do not create it.
+3. **Can the task be completed by adding to an existing module instead?** If yes → do that instead.
+
+If all three questions pass: record the abstraction proposal as an out-of-scope finding in
+`TECHNICAL_DEBT.md` and wait for architect approval. Do not implement inline.
+
+This rule enforces ADR-0028 (Complexity Budget and Simplicity Gate) at the agent level.
+
+---
+
+*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening). Authoritative for all agents and engineers operating on TITAN OS.*
