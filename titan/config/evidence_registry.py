@@ -517,6 +517,96 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
         policy_note='HEURISTIC. 72 h is a policy decision; promote to MODERATE after validating governance accuracy on stale-data days via OutcomeTracker.',
     ),
+
+    'ILLNESS_PATTERN_HRV_DELTA': ThresholdEvidence(
+        parameter='ILLNESS_PATTERN_HRV_DELTA',
+        value=20.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal policy threshold for illness-pattern partition (ADR-0037).',
+        rationale='20% HRV drop is used as a conservative illness-signal boundary to separate likely non-training stress responses from normal post-load noise.',
+        policy_note='HEURISTIC. Promote when classified illness-pattern days are validated against symptom logs and training outcomes.',
+    ),
+
+    'ILLNESS_PATTERN_RHR_DELTA': ThresholdEvidence(
+        parameter='ILLNESS_PATTERN_RHR_DELTA',
+        value=10.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal policy threshold for illness-pattern partition (ADR-0037).',
+        rationale='10 bpm RHR elevation complements the HRV illness threshold and requires dual convergence before illness-pattern gating is applied.',
+        policy_note='HEURISTIC. Promote when retrospective labeling confirms precision/recall of illness-pattern classification.',
+    ),
+
+    'GARMIN_DATA_MAX_AGE_HOURS': ThresholdEvidence(
+        parameter='GARMIN_DATA_MAX_AGE_HOURS',
+        value=26.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal resilience policy — ADR-0030 external data source freshness gate.',
+        rationale='26 hours allows expected daily sync cadence plus operational slack before data is treated as too old for high-confidence governance.',
+        policy_note='HEURISTIC. Calibrate using observed sync-latency distribution and downstream coaching accuracy impact.',
+    ),
+
+    'OUTCOME_INDEPENDENCE_WINDOW_DAYS': ThresholdEvidence(
+        parameter='OUTCOME_INDEPENDENCE_WINDOW_DAYS',
+        value=2.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal feedback-loop integrity policy — ADR-0035.',
+        rationale='A 2-day independence window reduces circular validation between recommendation generation and near-immediate outcome scoring.',
+        policy_note='HEURISTIC. Promote after evaluating leakage rate in OutcomeTracker calibration audits.',
+    ),
+
+    'CALIBRATION_MAX_THRESHOLD_DELTA_PCT': ThresholdEvidence(
+        parameter='CALIBRATION_MAX_THRESHOLD_DELTA_PCT',
+        value=0.10,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal calibration safety guardrail — ADR-0035.',
+        rationale='Per-update threshold adjustments are capped at ±10% to prevent unstable oscillations from sparse outcome data.',
+        policy_note='HEURISTIC. Revisit once long-horizon calibration traces show stable convergence under controlled A/B replay.',
+    ),
+
+    'CALIBRATION_MIN_OUTCOME_COUNT': ThresholdEvidence(
+        parameter='CALIBRATION_MIN_OUTCOME_COUNT',
+        value=10.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal calibration sample-size guardrail — ADR-0035.',
+        rationale='At least 10 outcome samples are required before any threshold calibration to avoid fitting to anecdotal noise.',
+        policy_note='HEURISTIC. Promote when empirical variance analysis supports an evidence-based minimum sample threshold.',
+    ),
+
+    'GARMIN_DATA_SUSPECT_AGE_HOURS': ThresholdEvidence(
+        parameter='GARMIN_DATA_SUSPECT_AGE_HOURS',
+        value=12.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Unified data trust contract policy — ADR-0041.',
+        rationale='Data older than 12 hours is marked suspect for trust scoring, enabling advisory degradation without immediate hard lock.',
+        policy_note='HEURISTIC. Tune with observed trust-level false-positive rates across normal sync delays.',
+    ),
+
+    'WEATHER_DATA_SUSPECT_AGE_HOURS': ThresholdEvidence(
+        parameter='WEATHER_DATA_SUSPECT_AGE_HOURS',
+        value=2.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Unified data trust contract policy — ADR-0041.',
+        rationale='Weather volatility makes forecasts older than 2 hours materially less reliable for environmental stress decisions.',
+        policy_note='HEURISTIC. Recalibrate with forecast error deltas versus age in production weather snapshots.',
+    ),
+
+    'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
+        parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
+        value=0.25,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Override rationale protocol policy — ADR-0038.',
+        rationale='A 30-day warning threshold at 25% identifies sustained human-vs-system trust drift requiring operational review.',
+        policy_note='HEURISTIC. Promote after correlating drift alerts with true governance quality regressions and override quality audits.',
+    ),
 }
 
 
