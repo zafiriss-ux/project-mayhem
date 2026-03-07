@@ -1013,7 +1013,7 @@ python -m pytest -q   # count ≥ previous
 
 ---
 
-### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis 🔴 OPEN (independent)
+### T4-26 · Module boundaries use raw dicts — implicit coupling undetectable by static analysis ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `PENDING`.
 **Source:** Architect Observations V6 — Risk #2 (Hidden Inter-Module Dependencies). ADR-0027.
@@ -1045,6 +1045,8 @@ python -m pytest tests/test_architectural_invariants.py -v
 python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
 ```
+
+**Resolution:** Added `TypedDict` boundary contracts (`DailyMetricsRow`, `TrainingLoadRow`, `GearUsageRow`) in `titan/core/database.py`, updated boundary-return method annotations, and added the coupling invariant test `test_no_science_imports_from_orchestration()` in `tests/test_architectural_invariants.py`.
 
 **Effort:** ~2h. TypedDict definitions + annotation updates + one new test.
 
@@ -1847,7 +1849,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-23 | ✅ RESOLVED | 2026-03-07 |
 | T4-24 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-25 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T4-26 | OPEN (independent) | — |
+| T4-26 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T4-27 | OPEN (independent) | — |
 | T4-28 | OPEN (independent) | — |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
