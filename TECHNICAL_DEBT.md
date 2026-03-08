@@ -1735,6 +1735,9 @@ Codex activates it) when the item involves any of:
 - Multi-tier change — touches governance infrastructure (Tier 1–4) across ≥ 2 tiers.
 - Effort > 1 day or item is explicitly labelled P0.
 
+**Fallback (non-negotiable):** If the applicability conditions are not met, PILOT-01 must not
+run. Codex proceeds directly to the mandatory gates workflow. No QA step is inserted.
+
 Rationale: the Opus QA reviewer operates on test quality within a bounded implementation
 context. For migration and refactor items the reviewer lacks the schema diff, migration
 sequence, and cross-module coupling context required to make a valid coverage judgement.
