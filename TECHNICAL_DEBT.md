@@ -1703,7 +1703,8 @@ unavoidably adverse.
 **Acceptance gate (binary):**
 ```bash
 ruff check titan/config/thresholds.py titan/orchestration/daily_coach.py \
-            titan/features/optimal_time.py tests/test_esi_compensation.py
+            titan/features/optimal_time.py titan/features/weekly_plan.py \
+            titan/science/governance_engine.py tests/test_esi_compensation.py
 python -m pytest tests/test_esi_compensation.py -v
 python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
