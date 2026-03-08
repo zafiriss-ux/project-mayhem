@@ -174,6 +174,121 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 ---
 
 <!-- REVIEWED entries moved to Archive — 2026-03-08 -->
+<!-- OBS-004/005/006 written by architect (Claude) 2026-03-08 — future tripwires for Phase 8 entry events -->
+
+### [OBS-004] Governance engine instantiation semantics under CoachingScheduler
+
+**Date:** 2026-03-08
+**Trigger:** Architect-originated future tripwire (Phase 8 risk pre-registration)
+**Session context:** Phase 8 / ADR-0046 multi-athlete execution model (T5-16 closed)
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — current single-athlete instantiation model
+- `tests/test_athlete_isolation_invariant.py` — profile-level isolation guard (existing)
+- ADR-0046 — CoachingScheduler + stateless coaching_pipeline design
+
+**Observation:**
+`test_athlete_isolation_invariant.py` verifies that athlete profile data (DB reads,
+metrics) does not bleed between athletes. It does not verify that engine instances
+(e.g. `GovernanceEngine`, `HRVEngine`) are instantiated per-athlete-run rather than
+shared across runs. If `CoachingScheduler` reuses engine instances between athlete
+coaching cycles, cached intermediate state within an engine could produce cross-athlete
+contamination that bypasses the existing profile isolation test.
+
+**Pattern / scope:**
+Isolated risk point — becomes concrete only when CoachingScheduler implementation begins.
+Current single-athlete model has no analogous risk. Pattern does not yet exist in code.
+
+**Architectural question raised:**
+When CoachingScheduler is implemented, will engine instances be created fresh per
+athlete-run (safe), or shared/pooled across runs (requires explicit stateless proof)?
+
+**Codex assessment (data only, no decision):**
+Not applicable — this OBS is architect-originated. No code has been written yet for
+the multi-athlete scheduler. The question is a design-time invariant to enforce at
+implementation time.
+
+**Status:** REVIEWED
+
+---
+
+### [OBS-005] Concurrency semantics delta at PostgreSQL migration boundary
+
+**Date:** 2026-03-08
+**Trigger:** Architect-originated future tripwire (Phase 8 risk pre-registration)
+**Session context:** Phase 8 / ADR-0044 PostgreSQL migration gate
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/database.py` — `threading.Lock` + `check_same_thread=False` concurrency model
+- `tests/test_database_manager_thread_safety.py` — SQLite-specific threading tests
+- `tests/test_harden_db_concurrency.py` — SQLite-specific concurrency stress tests
+- ADR-0044 — PostgreSQL migration as Phase 8A entry gate
+
+**Observation:**
+The current concurrency model (`threading.Lock` + `check_same_thread=False`) is
+SQLite-specific. Existing threading tests verify correctness of this model against
+SQLite semantics. When the PostgreSQL migration task opens, a new database layer will
+be introduced with fundamentally different concurrency semantics (connection pooling,
+different transaction isolation, no `check_same_thread` concept). The existing tests
+will continue to pass against the SQLite code path but will not exercise the new
+PostgreSQL layer. No current test covers PostgreSQL connection pool behaviour under
+concurrent writes.
+
+**Pattern / scope:**
+Isolated to the database adapter boundary. Will not manifest until the PostgreSQL
+migration task opens. The gap is structural: two code paths will exist simultaneously
+during migration, with only one covered by concurrency tests.
+
+**Architectural question raised:**
+When the PostgreSQL migration task opens, should concurrency validation tests for the
+new adapter be an explicit acceptance criterion in the task definition, to prevent
+the threading tests from providing false coverage confidence?
+
+**Codex assessment (data only, no decision):**
+Not applicable — architect-originated. The observation is a pre-registration of a
+known structural gap that becomes active at migration task start.
+
+**Status:** REVIEWED
+
+---
+
+### [OBS-006] OperatorConsole payload round-trip serialization gap at FastAPI boundary
+
+**Date:** 2026-03-08
+**Trigger:** Architect-originated future tripwire (Phase 8 risk pre-registration)
+**Session context:** Phase 8 / ADR-0013 Operator Console technology path (React + FastAPI)
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/ui/operator_console.py` — `OperatorConsoleService` payload construction
+- `tests/test_operator_console_dashboard.py` — payload shape tests (Python dict assertions)
+- ADR-0013 — Streamlit → React + FastAPI technology path (Accepted)
+
+**Observation:**
+`test_operator_console_dashboard.py` verifies payload contracts as Python dict shapes.
+These tests run entirely within Python and do not exercise JSON serialization. When the
+FastAPI layer is introduced, payloads will pass through `json.dumps` / Pydantic
+serialization. Python types without a direct JSON equivalent (`datetime`, `Decimal`,
+`Enum`, `None` in typed fields) may be silently coerced or dropped. The existing
+tests will continue to pass (Python-side only) while the API-side contract is broken.
+No round-trip serialization test (Python dict → JSON → dict → assert) currently exists.
+
+**Pattern / scope:**
+Isolated to the OperatorConsole payload boundary. Becomes concrete when FastAPI
+implementation begins. The guard needed is a round-trip test per payload type
+(dashboard, session explorer, override workflow, calibration review).
+
+**Architectural question raised:**
+When the FastAPI implementation task opens, should round-trip serialization tests
+for all four payload types be an explicit acceptance criterion, to prevent the
+existing dict-shape tests from providing false coverage confidence?
+
+**Codex assessment (data only, no decision):**
+Not applicable — architect-originated. The observation is a pre-registration of a
+known gap that becomes active at FastAPI task start.
+
+**Status:** REVIEWED
+
+---
 
 ### [OBS-001] Test suite has no pytest layer markers
 
@@ -278,6 +393,114 @@ observation rather than identification of a concrete uncovered risk.
 ---
 
 ## Architect Review Log
+
+### [DEC-004] Response to OBS-004 — Engine instantiation semantics: deferred to multi-athlete task
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_athlete_isolation_invariant.py`; confirmed that
+  guards cover profile data isolation (DB reads, metric dicts) but do not assert engine
+  instance lifecycle (fresh-per-run vs. shared). ADR-0046 accepted but implementation not
+  yet started (T5-16 closed = ADR accepted, not code delivered).
+
+**Architect finding:**
+The gap is real and correctly identified. The existing isolation invariant tests profile
+data, not engine state. If CoachingScheduler pools engine instances, any mutable
+intermediate state (e.g. cached physiological metrics, lock states in APL) would be a
+source of cross-athlete contamination that the current test cannot detect. The risk is
+currently zero because the multi-athlete scheduler does not yet exist. It becomes active
+the moment CoachingScheduler implementation begins.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| DEFERRED | Trigger: CoachingScheduler implementation task opens — engine-instantiation lifecycle (fresh-per-run vs. shared) must be an explicit acceptance criterion in that task |
+
+**Rationale:**
+No guard is warranted now — there is no code to guard against. The correct action is to
+ensure the design question is answered at the start of the implementation task and that
+a corresponding test is added as part of that task's Definition of Done. This OBS serves
+as the institutional memory that makes that requirement explicit when the task is assigned.
+The task author must reference OBS-004 when writing acceptance criteria for CoachingScheduler.
+
+**OBS-004 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-005] Response to OBS-005 — PostgreSQL concurrency gap: deferred to migration task
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `titan/core/database.py`; confirmed `threading.Lock` +
+  `check_same_thread=False` pattern is SQLite-specific. Read
+  `tests/test_database_manager_thread_safety.py` and `tests/test_harden_db_concurrency.py`;
+  confirmed both test exclusively against SQLite connection semantics. ADR-0044 accepted,
+  migration task not yet open.
+
+**Architect finding:**
+The gap is correctly identified and structurally significant. The threading tests are
+SQLite-correct and will remain green during migration even if the PostgreSQL adapter has
+broken concurrency semantics, because they test a different code path. This is the classic
+"test passes, feature broken" pattern at an abstraction boundary. The gap is not a current
+defect — it is a future defect that becomes possible the moment a second DB adapter exists.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| DEFERRED | Trigger: PostgreSQL migration task opens — concurrency validation for the new adapter must be an explicit acceptance criterion in that task's Definition of Done |
+
+**Rationale:**
+Writing PostgreSQL concurrency tests now would require a live PostgreSQL instance in CI,
+which is premature and outside scope before the migration task is open. The correct action
+is to ensure the migration task's acceptance criteria explicitly include: (a) concurrency
+stress tests for the PostgreSQL adapter equivalent to the existing SQLite suite, and (b)
+a note that the SQLite tests do not provide coverage for the new adapter. This OBS is the
+institutional memory that surfaces that requirement when the task is assigned.
+
+**OBS-005 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-006] Response to OBS-006 — Payload round-trip gap: deferred to FastAPI task
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_operator_console_dashboard.py`; confirmed all
+  assertions are Python dict / value comparisons with no JSON serialization step.
+  Read `titan/ui/operator_console.py`; confirmed payloads contain `datetime` fields
+  (e.g. `last_updated`, session timestamps) that have no direct JSON representation
+  and would require explicit serializer configuration in FastAPI. ADR-0013 accepted,
+  FastAPI implementation not yet started.
+
+**Architect finding:**
+The gap is real and correctly scoped. The four payload types in `OperatorConsoleService`
+(dashboard, session explorer, override workflow, calibration review) all contain Python
+types that require explicit serialization handling in FastAPI (`datetime` → ISO 8601 string,
+`Enum` → value string, `None` in typed fields → `null`). The existing dict-shape tests
+will pass regardless, providing false confidence. A round-trip test (Python payload →
+`json.dumps` → `json.loads` → assert shape + value) is a lightweight, deterministic guard
+that will catch exactly this class of failure.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| DEFERRED | Trigger: FastAPI implementation task opens — round-trip serialization tests for all four OperatorConsole payload types must be an explicit acceptance criterion in that task |
+
+**Rationale:**
+The guard is well-defined (≤ 30 lines per payload type, deterministic, actionable failure
+messages) and meets all four criteria for an automated guard. It is not written now because
+the FastAPI layer does not exist yet — there is no serialization boundary to test against.
+When the task opens, this OBS provides the precise requirement: one round-trip test per
+payload type, covering `datetime`, `Enum`, and `None`-typed field serialization. No ADR
+is required — this is an implementation-time test coverage requirement, not an architectural
+decision.
+
+**OBS-006 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
 
 ### [DEC-001] Response to OBS-001 — Test layer markers: deferred to Phase 9 housekeeping
 
