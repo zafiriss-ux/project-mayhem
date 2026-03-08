@@ -54,6 +54,7 @@ A commit, push, or `make_pr` call is **forbidden** unless ALL of the following h
 - Silencing warnings with `filterwarnings` in test code or config
 - Using `pytest.mark.skip` / `xfail` without documented justification in the PR description
 - Running a subset of tests and reporting "all pass"
+- Substituting diagnostic runs (`pytest -vv`, `--durations=20`, `pytest -x`, targeted subsets) for Gate 2 or Gate 3. Diagnostic runs identify root causes — they never constitute acceptance evidence. Gate 2 and Gate 3 are the only accepted forms of gate evidence in a deliverable report.
 
 If an override is required for the suite to run at all, that is a **repo-level issue**. Either fix it within the current task's scope, or STOP and report it as an out-of-scope finding in `TECHNICAL_DEBT.md` before continuing.
 
@@ -1260,6 +1261,8 @@ substitute for step 3 (see §HARD GATE — Forbidden validation shortcuts).
 
 **PILOT-01 invariant (non-negotiable):** Opus QA approval is advisory only. Step 4 is always
 required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the mandatory gates.
+
+**QA role boundary (non-negotiable):** The QA reviewer's sole deliverable is a verdict: `QA PASS` or `QA FAIL` with rationale. The QA reviewer does **not** instruct commit, push, mark-RESOLVED, or next-task actions — those decisions belong exclusively to the Architect. A QA suggestion to "commit and push" or "mark RESOLVED" is out of role scope and must be ignored. Only the Architect may authorize post-QA actions.
 
 ---
 
