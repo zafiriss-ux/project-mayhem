@@ -89,8 +89,8 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
   T4-32 (override handler registry + Telegram inline override button; ADR-0042; IMMEDIATE)
 
 TIER 5 (future / Phase 8+):
-  T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8 prerequisite)
-  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; Phase 8 prerequisite guard rails)
+  T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8A early work — complete before Phase 8B begins)
+  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; Phase 8A early work — complete before Phase 8B begins)
   T5-14 (ESI environmental compensation overlay for training zones; ADR-0034; Phase 8 scheduled)
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
@@ -100,11 +100,12 @@ from this commit forward. They require no new Phase boundary to begin.
 T1-23 is a Phase 8 entry gate criterion (AGENTS.md §16.2 updated retroactively).
 T5-14 (formerly T4-29) is Phase 8 scheduled work (low-blast-radius ESI overlay; no schema changes required). Reclassified from Tier 4 to Tier 5 on 2026-03-07 to clear G1 of the Phase 8 entry gate — it is Phase 8 internal work, not a Phase 8 prerequisite.
 T2-17 is marked `independent` (can run concurrently with other Tier 2 items after Tier 1 closes).
-T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per AGENTS.md §16.2 G1.
-T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8 prerequisite guard rails**.
-Phase 8 is gated — see AGENTS.md §16.2 (Phase 8 Entry Gate). G9 requires ADR-0018 Phase B
-implemented (Effect Runner extracted). G11 requires the Phase 8 Simplicity Review
-(AGENTS.md §16.11) documented in `docs/adr/0022-review-phase8-go.md`.
+T5-06-A (`InjuryRiskEnsembleModel` explainability) is **Phase 8A early work** — must be RESOLVED
+before Phase 8B coach-dashboard work begins. (Note: G1 of the Phase 8 entry gate covers only
+Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is now OPEN.)
+T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8A early work** — must be
+RESOLVED before Phase 8B begins. Schema migration aligns naturally with T5-08 (Phase 8A).
+Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0022 for gate record.
 
 ---
 
@@ -1346,7 +1347,7 @@ No implementation before Phase 8 closes and data accumulation criterion is met.
 
 ### T5-06 · ML advisory models lack explainability contract — feature attribution and plain-text reason absent 🟢
 
-**Decision status:** OPEN — T5-06-A is a **Phase 8 prerequisite**; remainder deferred Phase 9.
+**Decision status:** OPEN — T5-06-A is **Phase 8A early work** (complete before Phase 8B); remainder deferred Phase 9.
 **Source:** Risk Review V7 — Risk: ML Physiological Safety & Ethical Opacity. Architecture Review 2026-03-06. ADR-0032.
 
 **Original state (pre-fix):**
@@ -1359,10 +1360,10 @@ proximity (monitor). These four scenarios warrant entirely different coaching re
 The two shadow-mode models (`LoadPredictionShadowModel`, `AutomatedPeriodizationEngine`)
 will have the same gap when promoted to advisory.
 
-**T5-06-A — `InjuryRiskEnsembleModel` explainability (Phase 8 prerequisite):**
+**T5-06-A — `InjuryRiskEnsembleModel` explainability (Phase 8A early work):**
 
 Since `InjuryRiskEnsembleModel` is currently advisory, it must be brought into compliance
-with the `ExplainableOutput` contract (ADR-0032) before Phase 8 begins.
+with the `ExplainableOutput` contract (ADR-0032) early in Phase 8, before Phase 8B begins.
 
 Fix direction:
 1. Add `ExplainableOutput` dataclass to `titan/science/ml_safety.py` (or a new
@@ -1396,15 +1397,15 @@ python -m pytest -q
 **Effort (T5-06-A):** ~4h. `ExplainableOutput` dataclass + ensemble attribution
 logic + governance integration update + tests.
 
-**Phase 8 prerequisite:** T5-06-A must be RESOLVED before Phase 8 begins, per AGENTS.md §16.2 G1.
+**Phase 8A early work:** T5-06-A must be RESOLVED before Phase 8B begins. (Phase 8 is already OPEN — G1–G11 all cleared 2026-03-08. T5-06-A is Tier 5 and was not a G1 blocking criterion.)
 
 ---
 
 ### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime 🔴 OPEN
 
-**Status:** OPEN (Phase 7.9 guard rails — Layer 1 & 2 are **Phase 8 prerequisites**; Layer 3 deferred Phase 9).
+**Status:** OPEN (Phase 8A early work — Layer 1 & 2 must be done before Phase 8B begins; Layer 3 deferred Phase 9).
 **Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
-**Priority:** P1 for Layers 1–2 (Phase 8 guard rails); P5 for Layer 3 (Phase 9).
+**Priority:** P1 for Layers 1–2 (Phase 8A, high priority); P5 for Layer 3 (Phase 9).
 
 **Location:** `titan/core/database.py` (new `model_calibration_metadata` table), `titan/orchestration/daily_coach.py` (startup check), `titan/config/thresholds.py` (new constants).
 
@@ -1417,7 +1418,7 @@ An athlete whose HRV baseline has risen 10ms over 6 months will trigger H2 gate 
 that are physiologically normal — because the gate compares against a stale baseline. No
 mechanism exists to detect or flag this staleness. See ADR-0033 for full context.
 
-**Fix direction (per ADR-0033) — Layer 1 (Phase 7.9 / Phase 8 prerequisite):**
+**Fix direction (per ADR-0033) — Layer 1 (Phase 8A early work):**
 
 1. Add to `thresholds.py`:
    ```python
@@ -1437,7 +1438,7 @@ mechanism exists to detect or flag this staleness. See ADR-0033 for full context
 4. In `DailyCoach` startup, check model age. If > `MODEL_CALIBRATION_MAX_AGE_DAYS`:
    emit `model_calibration_stale` structured event (WARNING severity, per AGENTS.md §16.6).
 
-**Fix direction (per ADR-0033) — Layer 2 (Phase 7.9 / Phase 8 prerequisite):**
+**Fix direction (per ADR-0033) — Layer 2 (Phase 8A early work):**
 
 5. In `WeeklyPlanGenerator`, compare current 30-day HRV mean vs stored baseline.
    If `|delta| > HRV_DRIFT_THRESHOLD_MS`: emit `hrv_baseline_drift_detected` structured
@@ -1456,7 +1457,7 @@ python -m pytest -q
 ```
 
 **Effort (Layers 1–2):** ~4h. Schema + startup check + weekly drift check + tests.
-**Phase 8 prerequisite:** Layers 1–2 must be RESOLVED before Phase 8 begins.
+**Phase 8A early work:** Layers 1–2 must be RESOLVED before Phase 8B begins. Schema migration aligns naturally with T5-08 (Phase 8A PostgreSQL migration). (Phase 8 is already OPEN — T5-07 is Tier 5 and did not block the G1–G11 entry gate.)
 
 ---
 
@@ -1703,7 +1704,8 @@ unavoidably adverse.
 **Acceptance gate (binary):**
 ```bash
 ruff check titan/config/thresholds.py titan/orchestration/daily_coach.py \
-            titan/features/optimal_time.py tests/test_esi_compensation.py
+            titan/features/optimal_time.py titan/features/weekly_plan.py \
+            titan/science/governance_engine.py tests/test_esi_compensation.py
 python -m pytest tests/test_esi_compensation.py -v
 python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
@@ -1717,6 +1719,29 @@ python -m pytest -q
 
 **Status:** PILOT — not permanent. Activate on next Phase 8 sprint item; evaluate after one sprint.
 **Recorded:** 2026-03-08 (E14 — idea captured before implementation).
+
+**Applicability gate — classify the item before activating PILOT-01:**
+
+PILOT-01 runs **by default** only when ALL of the following hold:
+- Effort estimate ≤ 1 day (≤ ~6h).
+- No schema changes (no `CREATE TABLE`, `ALTER TABLE`, column additions, or Alembic migration).
+- No cross-subsystem dependency changes (does not alter import graph between packages).
+- Scope limited to ≤ 2 modules (production code side).
+
+PILOT-01 is **opt-in only** (requires explicit architect APPROVED note in this entry before
+Codex activates it) when the item involves any of:
+- Schema migration or database backend replacement (e.g. T5-07 Layer 1, T5-08 PostgreSQL).
+- Architectural refactor — kernel boundary changes, subsystem extraction, god-object splits.
+- Multi-tier change — touches governance infrastructure (Tier 1–4) across ≥ 2 tiers.
+- Effort > 1 day or item is explicitly labelled P0.
+
+**Fallback (non-negotiable):** If the applicability conditions are not met, PILOT-01 must not
+run. Codex proceeds directly to the mandatory gates workflow. No QA step is inserted.
+
+Rationale: the Opus QA reviewer operates on test quality within a bounded implementation
+context. For migration and refactor items the reviewer lacks the schema diff, migration
+sequence, and cross-module coupling context required to make a valid coverage judgement.
+A REJECT in that context adds friction without diagnostic value and risks incorrect advice.
 
 **Motivation:** Codex's test output passes gates mechanically (ruff + pytest) but may miss semantic
 gaps: undertested edge cases, missing invariant coverage, acceptance criteria not fully exercised.
@@ -1892,7 +1917,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-28 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 92555d3) |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
-| T5-06 | OPEN (T5-06-A: Phase 8 prerequisite; T5-06-B: deferred Phase 9) | — |
+| T5-06 | OPEN (T5-06-A: Phase 8A early work, before Phase 8B; T5-06-B: deferred Phase 9) | — |
 | T1-21 | ✅ RESOLVED | 2026-03-07 |
 | T1-22 | ✅ RESOLVED | 2026-03-07 |
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
@@ -1902,7 +1927,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | OPEN (Layers 1–2: Phase 8 prerequisite; Layer 3: deferred Phase 9) | — |
+| T5-07 | OPEN (Layers 1–2: Phase 8A early work, before Phase 8B; Layer 3: deferred Phase 9) | — |
 | T5-08 | OPEN (Phase 8A prerequisite) | — |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
