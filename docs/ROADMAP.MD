@@ -21,12 +21,13 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 7.6 | ADR-0018 Phase A | 2026-03-05 | T1-10/T1-11/T1-12; cursor race + atomicity; 1435 tests |
 | Phase 7.7 | Engineering Audit V3 | 2026-03-06 | T1-13/T1-14, T2-09–T2-11, T3-08; 1535 tests |
 | Phase 7.8 | Architecture Risk Review | 2026-03-06 | ADR-0020–0042; 25 risk items locked; T1-18→T5-07 registered |
+| Phase 7.9 | Tier 1 Safety Hardening | 2026-03-08 | T1-18→T1-23 all RESOLVED; ADR-0022 G1–G11 all cleared; Phase 8 OPEN |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
 ---
 
-## Phase 7.9 — Tier 1 Safety Hardening (OPEN, 2026-03-06)
+## Phase 7.9 — Tier 1 Safety Hardening (CLOSED, 2026-03-08)
 
 **Gate:** All T1-18 through T1-23 must be RESOLVED before Phase 8 entry gate check.
 **Source:** ADR-0022 G1 criterion; TECHNICAL_DEBT.md Tier 1 register.
@@ -34,26 +35,23 @@ Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 | Item | Description | Status |
 |---|---|---|
 | T1-18 | Physiological bounds validation (ADR-0023) | ✅ RESOLVED 2026-03-06 |
-| T1-19 | Input data sanity layer — Garmin cross-field validation (ADR-0026) | 🔴 OPEN |
-| T1-20 | Garmin staleness gate — silent stale data in DailyCoach (ADR-0030) | 🔴 OPEN (independent) |
-| T1-21 | H2/H3 illness vs life-stress partition (ADR-0037) | 🔴 OPEN (independent) |
-| T1-22 | OutcomeTracker feedback-loop guardrails (ADR-0035) | 🔴 OPEN (independent) |
-| T1-23 | DataTrustLevel unified contract (ADR-0041) | 🔴 OPEN (independent) |
+| T1-19 | Input data sanity layer — Garmin cross-field validation (ADR-0026) | ✅ RESOLVED 2026-03-07 |
+| T1-20 | Garmin staleness gate — silent stale data in DailyCoach (ADR-0030) | ✅ RESOLVED 2026-03-07 |
+| T1-21 | H2/H3 illness vs life-stress partition (ADR-0037) | ✅ RESOLVED 2026-03-07 |
+| T1-22 | OutcomeTracker feedback-loop guardrails (ADR-0035) | ✅ RESOLVED 2026-03-07 |
+| T1-23 | DataTrustLevel unified contract (ADR-0041) | ✅ RESOLVED 2026-03-07 |
 
-### Acceptance gate (Phase 7.9 close — binary)
-
-```bash
-ruff check .                                          # zero findings
-python -m pytest -q -W error::pytest.PytestWarning   # 100% green, no warnings
-python -m pytest -q                                   # count ≥ 1582
-```
+**Closed:** 2026-03-08 — all items RESOLVED; ADR-0022 G1–G11 gate cleared; Phase 8 OPEN.
 
 ---
 
-## Phase 8 — Multi-Athlete Coach Platform (PLANNED, 2027)
+## Phase 8 — Multi-Athlete Coach Platform (OPEN, 2026-03-08)
+
+**Opened:** 2026-03-08 — ADR-0022 entry gate G1–G11 all cleared. See TECHNICAL_DEBT.md
+line "Phase 8 OPEN — all G1–G11 cleared 2026-03-08" and ADR-0022 for the gate record.
 
 **Product direction:** Coach-managed, multi-athlete deployment (Phase 8 product direction).
-**Prerequisite:** ADR-0022 entry gate G1–G10 ALL PASS (binary gate check required).
+**Prerequisite:** ADR-0022 entry gate G1–G11 ALL PASS (binary gate check required). ✅ CLEARED
 
 Phase 8 is sequenced into three sub-phases. No Phase 8B or 8C code may begin
 before Phase 8A deliverables pass the ADR-0044 binary gate.
@@ -165,4 +163,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-06 (Phase 7.9 OPEN: T1-18 RESOLVED; T1-19–T1-23 OPEN; Phase 7.7 CLOSED: T1-13/T1-14/T2-09–T2-11/T3-08 RESOLVED; Phase 7.8 CLOSED: ADR-0020–0042 registered; 1582 tests green; ADR-0043/0044/0045 registered — multi-athlete coach platform + PostgreSQL migration + local LLM abstraction)
+Last updated: 2026-03-08 (Phase 7.9 CLOSED: T1-18–T1-23 all RESOLVED; ADR-0022 G1–G11 all cleared; Phase 8 OPEN 2026-03-08; T5-16 RESOLVED — ADR-0046 accepted, T5-16-A implementation entry created)
