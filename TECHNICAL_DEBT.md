@@ -1362,6 +1362,20 @@ as hard requirements — not optional:
    safe band [0.80,1.30], injury risk range [0.0,1.0]) as invariants. This ensures
    calibration cannot shift the meaning of these concepts without a test failure.
 
+5. **Proxy metric alignment guard (DEC-FR-03 — 2026-03-08):** The calibration loop
+   must not be evaluated solely on surrogate signals (e.g., lower lock rate, higher
+   readiness scores, tighter ACWR band). Optimizing a proxy without anchoring to the
+   real coaching goal risks Goodhart's Law: the system achieves better metric scores
+   while drifting away from actual athlete benefit. Required safeguard:
+   - At least one acceptance criterion in the Phase 9 calibration ADR must be stated
+     in terms of **domain outcomes** (e.g., RPE alignment, injury incidence rate,
+     athlete-reported feel), not governance metric movements alone.
+   - The divergence detector must be validated against a held-out outcome set that
+     was not used to tune the detector itself.
+   - Any new proxy metric added to the calibration signal must include a written
+     justification of its correlation with domain outcomes, filed in
+     `titan/config/evidence_registry.py` before the metric is wired.
+
 These constraints are architectural requirements for Phase 9 entry, not implementation details.
 An ADR will be required before implementing the calibration adjustment mechanism.
 
