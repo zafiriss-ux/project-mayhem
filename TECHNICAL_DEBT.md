@@ -1501,9 +1501,9 @@ python -m pytest -q
 
 ---
 
-### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ✅ RESOLVED 2026-03-08
+### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ⚠️ PARTIAL 2026-03-08
 
-**Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
+**Status:** ⚠️ PARTIAL 2026-03-08. Commit: 54e95d9. QA verdict: FAIL — ADR-0044 deliverables D1–D9 not satisfied. See T5-08-B for remaining work.
 **Workflow Path: A** *(PostgreSQL migration + architectural refactor — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
@@ -1528,12 +1528,26 @@ PostgreSQL is the correct topology. See ADR-0044 for full decision rationale.
 7. Update `requirements.txt` with pinned versions.
 8. Update hot backup (T1-17 pattern) for `pg_dump`.
 
-**Resolution:**
+**Partial implementation (commit 54e95d9 — scaffold only):**
 - Added `PostgreSQLDatabaseManager` and `get_database_manager()` to `titan/core/database.py` while keeping SQLite `DatabaseManager` as default backend.
 - Preserved table semantics for `training_log` and `governance_outcomes` in the PostgreSQL backend with matching CTL/ATL reconstruction and governance persistence behavior.
 - Extended `tests/titan/core/test_database.py` with backend parity tests (SQLite vs PostgreSQL adapter path) for CTL/ATL reconstruction, governance persistence, and training load history queries.
 
-**Acceptance gate (binary):**
+**ADR-0044 deliverable coverage (scaffold only):**
+
+| Deliverable | Status | Notes |
+|---|---|---|
+| D1 — `PersistenceAdapter` (SQLAlchemy Core) | ✗ NOT DONE | `PostgreSQLDatabaseManager` added to existing `database.py`; no `persistence.py`; no SQLAlchemy Core |
+| D2 — Alembic migration (5 tables) | ✗ NOT DONE | No `alembic/` directory |
+| D3 — `athlete_id` on all 5 tables | ✗ NOT DONE | Not added to any table |
+| D4 — RLS policies + test | ✗ NOT DONE | No `tests/test_athlete_rls_isolation.py` |
+| D5 — `model_calibration_metadata` table | ✗ NOT DONE | No migration |
+| D6 — `TITAN_DB_BACKEND` feature flag | ✓ DONE | `get_database_manager()` switches on env var |
+| D7 — `pg_dump` backup strategy | ✗ NOT DONE | T1-17 pattern not updated for PostgreSQL |
+| D8 — `TECHNICAL_DEBT.md` marked RESOLVED | ✗ NOT DONE | Incorrectly marked; corrected by this edit |
+| D9 — `consent_log` table | ✗ NOT DONE | Not included in migration |
+
+**Acceptance gate (binary — remains open until T5-08-B RESOLVED):**
 ```bash
 ruff check titan/core/persistence.py alembic/ tests/test_athlete_rls_isolation.py
 python -m pytest tests/test_athlete_rls_isolation.py -v
@@ -1542,7 +1556,45 @@ python -m pytest -q
 TITAN_DB_BACKEND=sqlite python -m pytest -q
 ```
 
-**Effort:** ~3–4 weeks. Full migration + Alembic + RLS + both backend test paths.
+**Effort:** ~3–4 weeks. Full migration + Alembic + RLS + both backend test paths. See T5-08-B.
+
+---
+
+### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
+
+**Status:** OPEN (Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves).
+**Workflow Path: A** *(full ADR-0044 D1–D9 implementation; PILOT-01 excluded)*
+**Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
+**Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
+**Predecessor:** T5-08 PARTIAL (scaffold: `PostgreSQLDatabaseManager` in `titan/core/database.py`, backend parity tests, `TITAN_DB_BACKEND` env var).
+
+**Remaining deliverables (ADR-0044 D1–D5, D7–D9):**
+
+| # | Deliverable | Acceptance test |
+|---|---|---|
+| D1 | `titan/core/persistence.py`: `PersistenceAdapter` using SQLAlchemy Core; backward-compatible interface with `DatabaseManager`; all existing queries ported | `python -m pytest -q` → 0 failures, same count as Phase 7 baseline |
+| D2 | Alembic migration for all 5 current tables (`daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`) | `alembic upgrade head` → no errors on fresh DB |
+| D3 | `athlete_id TEXT NOT NULL DEFAULT 'default'` column on all 5 tables | Schema inspection test green |
+| D4 | Row-Level Security policies active and tested | `tests/test_athlete_rls_isolation.py` → green |
+| D5 | `model_calibration_metadata` table in Alembic migration (ADR-0033 T5-07 Layer 1) | Schema inspection test green |
+| D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | `python -m pytest tests/ -k backup -v` → green |
+| D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | Schema inspection test green |
+
+**Note — D6 already done (T5-08):** `TITAN_DB_BACKEND=sqlite|postgres` feature flag via `get_database_manager()` is active. SQLite path remains fully operational throughout this migration. No test refactoring required against SQLite until the fallback is formally retired (no earlier than Phase 8B close).
+
+**Concurrency acceptance criterion (OBS-005 trigger):** PostgreSQL adapter must include concurrency stress tests equivalent to `tests/test_database_manager_thread_safety.py` and `tests/test_harden_db_concurrency.py`. The existing SQLite threading tests do not provide coverage for the new adapter.
+
+**Acceptance gate (binary):**
+```bash
+ruff check titan/core/persistence.py alembic/ tests/test_athlete_rls_isolation.py
+python -m pytest tests/test_athlete_rls_isolation.py -v
+alembic upgrade head
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+TITAN_DB_BACKEND=sqlite python -m pytest -q
+```
+
+**Effort:** ~3 weeks (D1–D5, D7, D9; D6 already done).
 
 ---
 
@@ -2167,7 +2219,8 @@ When an item is completed, mark it here with date and PR reference:
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | OPEN (Layers 1–2: Phase 8A early work, before Phase 8B; Layer 3: deferred Phase 9) | — |
-| T5-08 | ✅ RESOLVED | 2026-03-08 |
+| T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
+| T5-08-B | 🔴 OPEN (Phase 8A prerequisite — blocks G10 + Phase 8B) | — |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
@@ -2188,3 +2241,8 @@ T2-19 (nominal coherence oracle — RESOLVED, implemented in test_science_edge_c
 T5-05 augmented with Phase 9 calibration design constraints (damping, domain baseline snapshot);
 T5-16-A acceptance criteria augmented with state isolation oracle requirement.
 CLAUDE.md snapshot updated 1791→1820 at T2-18 close.*
+
+*Updated: 2026-03-08 — QA FAIL on T5-08 (PostgreSQL scaffold). T5-08 status corrected: RESOLVED → PARTIAL.
+T5-08-B created (ADR-0044 D1–D5, D7–D9 — full PersistenceAdapter + Alembic + RLS + consent schema migration).
+OBS-007 written + DEC-007 processed (SCRATCHPAD.md): ADR Deliverable Checklist added as mandatory process
+rule at task closure for any task referencing an ADR with a numbered deliverable table.*
