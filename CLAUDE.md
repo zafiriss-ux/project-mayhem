@@ -52,7 +52,7 @@ project-mayhem/
 │   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0006–0045, 28 ADRs)
+│   ├── adr/                 # Architecture Decision Records (0006–0046, 29 ADRs)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
 │   │                        # operator_console_readiness_dashboard.md,
@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1780 tests all green as of doc-consistency-checks (2026-03-08). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1804 tests all green as of T5-16-ADR-close (2026-03-08). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -306,6 +306,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0042` — Human Override as First-Class Invariant: no recommendation without override path (Accepted — IMMEDIATE — 2026-03-06)
 - `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
+- `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
 
 ---
 

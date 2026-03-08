@@ -1759,55 +1759,88 @@ safety or functional benefit.
 
 ---
 
-### T5-16 · DailyCoach multi-athlete execution model undefined — Phase 8B orchestration semantics unresolved 🔴 OPEN
+### T5-16 · DailyCoach multi-athlete execution model undefined — Phase 8B orchestration semantics unresolved ✅ RESOLVED
 
-**Status:** OPEN (Phase 8B entry gate — ADR must be accepted before any multi-athlete coaching session is invoked).
+**Status:** RESOLVED — ADR-0046 accepted 2026-03-08. Execution model decided: Model 2
+(stateless coaching function). T5-16-A implementation entry created below.
+**Resolved:** 2026-03-08 (ADR-0046 — `docs/adr/0046-dailycoach-multi-athlete-execution-model.md`)
 **Workflow Path: A** *(architectural decision required — PILOT-01 excluded)*
 **Source:** Architect review 2026-03-08 (risk package evaluation). Not previously recorded.
-**Priority:** P0 for Phase 8B (do NOT build any multi-athlete coaching execution path without this resolved).
 
-**Location:** `titan/orchestration/daily_coach.py`; ADR index (next available after ADR-0045).
+**Decision summary (full rationale in ADR-0046):**
 
-**Original state (pre-fix):**
+- **Model chosen:** Model 2 — stateless `coaching_pipeline(athlete_context)` function,
+  building on ADR-0018 kernel boundary.
+- **Concurrency:** Engines, governance context, `OutcomeTracker`, Telegram target, and
+  Garmin credentials are per-athlete. `WeatherAPI` cache (per-location) and PostgreSQL
+  connection pool are safely shared.
+- **Daemon thread:** Retained for single-athlete CLI mode unchanged. For multi-athlete
+  mode: replaced by a `CoachingScheduler` (supervised `ThreadPoolExecutor`) that fires
+  `coaching_pipeline()` per athlete at schedule time — O(1) thread count regardless of
+  athlete count.
+- **Engine hydration:** On-demand from DB per coaching pipeline call (not once at
+  startup). Acceptable at Phase 8B scale (≤50 athletes × 1 call/day).
+- **Single-athlete mode:** `DailyCoach.run_morning_routine()` retained as thin wrapper
+  around `coaching_pipeline()` — no behaviour change.
 
-DailyCoach is designed as a single-athlete, daemon-thread orchestrator. ADR-0018 (kernel
-boundary: Decision Pipeline / Effect Runner split, Phase A+B implemented 2026-03-08) improved
-internal state management for single-athlete execution. ADR-0017 (god-orchestrator audit)
-assessed the problem but was accepted as assessment-only with no action items.
+---
 
-For Phase 8B (coach dashboard, multi-athlete), no architectural decision exists for how
-DailyCoach orchestrates ≥2 athletes simultaneously. The three candidate models have not
-been evaluated:
+### T5-16-A · Extract `coaching_pipeline()` stateless function + `CoachingScheduler` stub 🔴 OPEN
 
-1. **Separate instances** — one DailyCoach instance per athlete (simplest; memory footprint
-   scales with N athletes; daemon thread lifecycle unchanged).
-2. **Stateless function** — DailyCoach becomes a pure function receiving an athlete context
-   object; daemon thread is retired and replaced by a FastAPI request lifecycle or a
-   scheduled task runner per athlete.
-3. **FastAPI lifecycle-scoped** — DailyCoach instantiated per-request by FastAPI dependency
-   injection (ADR-0013 FastAPI path); no persistent daemon thread in multi-athlete mode.
+**Status:** OPEN (Phase 8B — required before any multi-athlete coaching execution endpoint
+is built; NOT required for dashboard read paths via T5-09).
+**Workflow Path: A** *(multi-module refactor — PILOT-01 excluded)*
+**Source:** ADR-0046 (accepted 2026-03-08). Created by T5-16 resolution.
+**Priority:** P0 for Phase 8B multi-athlete coaching execution (not for T5-09/T5-11 which
+are unblocked independently by ADR-0046).
 
-Without this decision, T5-09 (`get_athlete_context()`), the coach dashboard API (T5-11),
-and any multi-athlete coaching execution path will be built on undefined execution semantics,
-creating implicit coupling that will require re-architecture when the execution model is
-finally chosen.
+**Location:**
+- New: `titan/orchestration/coaching_pipeline.py` — `coaching_pipeline()` function +
+  `AthleteCoachingContext` dataclass
+- New: `titan/orchestration/coaching_scheduler.py` — `CoachingScheduler` stub
+- Modified: `titan/orchestration/daily_coach.py` — `run_morning_routine()` becomes
+  a thin wrapper calling `coaching_pipeline()`
 
-**Required before any Phase 8B multi-athlete coaching endpoint is built:**
+**Fix direction:**
 
-- ADR authored (next available number after ADR-0045) specifying the chosen execution model.
-- Concurrency analysis: which shared state (engine references, weather cache, governance
-  context) requires per-athlete isolation vs. is safely shared across athletes.
-- Decision on daemon thread lifecycle in multi-athlete mode: retain, retire, or replace.
-- If model 2 or 3 is chosen: stateless contract defined for the coaching pipeline, including
-  how engine hydration (currently done once at DailyCoach startup) is handled per-athlete.
+1. Define `AthleteCoachingContext` dataclass in `titan/orchestration/coaching_pipeline.py`:
+   - Fields: `athlete_id`, `athlete_profile`, `garmin_data`, `weather_snapshot`, engine
+     instances (all per-athlete), `db`, governance context.
+2. Extract the 12-step logic from `DailyCoach.run_morning_routine()` into
+   `coaching_pipeline(ctx: AthleteCoachingContext, *, effect_runner) -> DailyCoachingPayload`.
+   The function must be side-effect-free except through `effect_runner` callbacks
+   (matching ADR-0018 Effect Runner contract).
+3. Update `DailyCoach.run_morning_routine()` to construct `AthleteCoachingContext` from
+   `self` and call `coaching_pipeline()`. All existing tests must continue to pass.
+4. Add `CoachingScheduler` stub in `titan/orchestration/coaching_scheduler.py` with:
+   - `register_athlete(athlete_id, schedule_config)` method
+   - `start()` / `stop()` lifecycle
+   - Internal `ThreadPoolExecutor` with configurable thread cap
+   - Per-athlete overlap lock (same pattern as `DailyCoach._routine_lock`)
+   - The scheduler fires `coaching_pipeline()` per athlete at scheduled time.
+   - Stub-level implementation is sufficient for Phase 8B gate; full wiring is Phase 9.
 
-**Debt item:** This item is **ADR_NEEDED** — no implementation entry exists until the ADR
-is accepted. When the ADR is accepted, a T5-16-A implementation entry will be created
-scoped to the DailyCoach refactor required by the chosen model.
+**Acceptance criteria:**
+- `coaching_pipeline()` and `AthleteCoachingContext` exist in
+  `titan/orchestration/coaching_pipeline.py`.
+- `DailyCoach.run_morning_routine()` delegates to `coaching_pipeline()` with no
+  behaviour change observed by existing tests.
+- `CoachingScheduler` stub exists in `titan/orchestration/coaching_scheduler.py` with
+  the four methods above.
+- All three mandatory gates pass (ruff + pytest -W error + pytest -q).
+- New tests cover: `coaching_pipeline()` with a mock `effect_runner`; `CoachingScheduler`
+  register/start/stop lifecycle; per-athlete overlap lock enforcement.
 
-**Phase 8B gate:** This ADR must be accepted before Phase 8B multi-athlete coaching
-execution begins. T5-09 and T5-11 may proceed in parallel — they are not blocked by this
-decision.
+```bash
+ruff check .
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** ~6h. Refactor extraction + dataclass + scheduler stub + tests.
+
+**Phase 8B gate:** T5-16-A must be RESOLVED before any multi-athlete coaching execution
+endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked by T5-16-A.
 
 ---
 
@@ -2031,7 +2064,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
-| T5-16 | OPEN (Phase 8B entry gate — DailyCoach multi-athlete execution model ADR required) | — |
+| T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
+| T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 
 *This document is the single source of truth for technical debt. Update it when items are
@@ -2042,5 +2076,6 @@ QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 �
 T5-15 (pytest marker taxonomy) added as Phase 9 DEFERRED item (DEC-001 / OBS-001).
 `**Workflow Path:**` field added to all open Phase 8 items (T5-06-A, T5-07–T5-09, T5-11–T5-14)
 per E16 tightening — TECHNICAL_DEBT.md is now the sole canonical path record.
-T5-16 (DailyCoach multi-athlete execution model) added as Phase 8B entry gate (architect
-review 2026-03-08 — ADR_NEEDED before any multi-athlete coaching execution path is built).*
+T5-16 (DailyCoach multi-athlete execution model) RESOLVED — ADR-0046 accepted 2026-03-08;
+chosen model: Model 2 (stateless coaching_pipeline function + CoachingScheduler);
+T5-16-A implementation entry created for Phase 8B.*
