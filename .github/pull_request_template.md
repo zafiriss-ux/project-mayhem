@@ -15,6 +15,21 @@ Debt item(s) addressed: <!-- e.g. T4-18, T4-19 -->
 
 ---
 
+## ADR Deliverable Checklist *(fill in only when this PR is linked to an ADR that has a deliverable table — delete this section otherwise)*
+
+<!--
+✓ = implemented and tested in this PR
+✗ = explicitly out of scope for this PR (explain why in Reviewer notes below)
+-->
+
+**ADR:** <!-- e.g. ADR-0044 -->
+
+| # | Deliverable | Status |
+|---|---|---|
+| D? | <!-- copy the deliverable description verbatim from the ADR → | ✓ / ✗ |
+
+---
+
 ## Architecture checklist (AGENTS.md §16.1 — mandatory for all PRs)
 
 ### Governance layer
