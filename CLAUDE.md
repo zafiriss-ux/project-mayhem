@@ -187,8 +187,12 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 | E13 | Cooling-off protocol — major changes wait one session | §14.3 |
 | E14 | No impulse implementation — idea → TECHNICAL_DEBT.md → task → code | §14.4 |
 | E15 | Complexity budget — new abstractions require justification | §14.5 + §16.11 |
+| E16 | Path declared before start — Path A or B set before Codex begins | §17.4 |
+| E17 | No mid-item path switching — restart from step 1 if path changes | §17.4 |
+| E18 | Workflow drift is a process violation — same severity as HARD GATE | §17.4 |
 | — | Governance evolution protocol (3 required steps) | §16.1 |
 | — | Phase 8 Entry Gate (G1–G11 binary criteria) | §16.2 |
+| — | Phase 8 per-item workflow (Path A standard / Path B QA-assisted) | §17 |
 | — | Athlete identity invariant (rules A40-1 to A40-4) | §16.10 |
 
 ---

@@ -1210,4 +1210,73 @@ Phase 8 Entry Gate (G11 in §16.2).
 
 ---
 
-*Last updated: 2026-03-07 (Phase 7.9 — §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+## §17 Phase 8 Per-Item Workflow Standard
+
+> **This section is a hard process rule, not a guideline.**
+> Every Phase 8 sprint item — without exception — must follow one of the two canonical sequences
+> below. No ad-hoc variations, no step omissions, no implicit assumptions.
+
+### 17.1 Path Selection (architect decides before Codex starts)
+
+Before assigning any Phase 8 item to Codex, the architect classifies it against the PILOT-01
+applicability gate (defined in `TECHNICAL_DEBT.md` under PILOT-01):
+
+| Condition | Path |
+|-----------|------|
+| ALL applicability criteria met **AND** architect has written "APPROVED" in the PILOT-01 entry | **Path B — QA-assisted** |
+| Any criterion fails **OR** no APPROVED note present | **Path A — Standard** |
+
+Path A is the default. Path B requires an explicit opt-in action from the architect each time.
+
+---
+
+### 17.2 Path A — Standard (default)
+
+```
+1. Architect brief       — task written in TECHNICAL_DEBT.md with binary acceptance criteria
+2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
+3. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
+4. Commit / PR           — canonical commit format; PR opened only after gate 3 passes
+```
+
+No step may be skipped. Steps 3–4 may not be reordered. "Targeted tests pass" is not a
+substitute for step 3 (see §HARD GATE — Forbidden validation shortcuts).
+
+---
+
+### 17.3 Path B — QA-assisted (PILOT-01 opt-in only)
+
+```
+1. Architect brief       — task written in TECHNICAL_DEBT.md; PILOT-01 APPROVED note added
+2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
+3. Opus QA review        — test quality review (scope bounded in TECHNICAL_DEBT.md PILOT-01)
+     ├─ APPROVE  →  proceed to step 4
+     └─ REJECT   →  Codex fixes, one re-review; if still REJECT, proceed to step 4 anyway
+4. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
+5. Commit / PR           — canonical commit format; PR opened only after gate 4 passes
+```
+
+**PILOT-01 invariant (non-negotiable):** Opus QA approval is advisory only. Step 4 is always
+required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the mandatory gates.
+
+---
+
+### 17.4 Enforcement Rules
+
+- **E16 — Path declared before start:** The architect must select Path A or Path B and record
+  it in the TECHNICAL_DEBT.md item (or the task assignment message) before Codex begins work.
+  A task without a declared path defaults to Path A.
+
+- **E17 — No mid-item path switching:** Once an item has started on Path A, it cannot switch
+  to Path B (or vice versa) mid-implementation. If the architect determines a path change is
+  needed, the item must be stopped, re-scoped, and restarted from step 1 on the new path.
+
+- **E18 — Workflow drift is a process violation:** Delivering an item via any sequence other
+  than Path A or Path B (e.g., skipping the architect brief, running gates only for targeted
+  tests, omitting the QA step on an APPROVED Path B item) is a process violation with the same
+  severity as a HARD GATE failure. Stop, document the deviation in `TECHNICAL_DEBT.md`, and
+  restart from the violated step.
+
+---
+
+*Last updated: 2026-03-08 (Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
