@@ -1713,6 +1713,58 @@ python -m pytest -q
 
 ---
 
+### PILOT-01 · Opus QA layer — automated test-quality review between Codex and mandatory gates 🟡 PILOT
+
+**Status:** PILOT — not permanent. Activate on next Phase 8 sprint item; evaluate after one sprint.
+**Recorded:** 2026-03-08 (E14 — idea captured before implementation).
+
+**Motivation:** Codex's test output passes gates mechanically (ruff + pytest) but may miss semantic
+gaps: undertested edge cases, missing invariant coverage, acceptance criteria not fully exercised.
+An automated QA pass before the gates can catch these earlier and reduce back-and-forth.
+
+**Protocol design (pilot version):**
+
+```
+Codex implements item
+  └─► Opus QA review (test quality only — see scope below)
+        ├─ APPROVE  →  Codex runs mandatory gates → DONE
+        └─ REJECT   →  Codex fixes, re-submits to Opus once
+                          └─ Opus re-review (one re-review max)
+                                └─ Codex runs mandatory gates → DONE
+```
+
+**Scope of Opus QA (bounded — do not expand without updating this entry):**
+- Do the tests actually cover the acceptance criteria in the debt item?
+- Are the critical edge cases exercised (boundary values, error paths, invariant violations)?
+- Are regression tests present for any behaviour that was broken or changed?
+- Are parametrize / property-based tests used where the input space warrants it?
+
+**Out of scope for Opus QA (explicit exclusions):**
+- Architectural decisions — those belong to Claude (architect role).
+- Code style, naming, formatting — ruff handles this.
+- Implementation correctness — mandatory gates (pytest) handle this.
+- Overriding or substituting the mandatory gates — see invariant below.
+
+**Mandatory gates invariant (non-negotiable):**
+> Opus QA approval is an advisory signal only.
+> The three mandatory gates (ruff, pytest strict, pytest full) are the **sole binding DONE criterion**.
+> A PR is NOT done until all three gates are clean — regardless of Opus QA status.
+> Opus QA approval does NOT mean gates have passed.
+
+**Pilot success criteria (binary — evaluate after first Phase 8 sprint item):**
+1. Opus QA identified at least one gap that would not have been caught by the gates alone.
+2. The QA loop completed within one fix cycle (no more than one re-review required).
+3. Total wall-clock overhead added to the sprint item ≤ 20% of implementation time.
+4. No gate failures caused by Opus QA advice (i.e. Opus did not recommend changes that broke gates).
+
+**If pilot passes all four criteria:** promote to permanent protocol in `AGENTS.md §17` +
+update `CLAUDE.md` agent roster. Author ADR-0046 documenting the decision.
+
+**If pilot fails:** close this entry as REJECTED, document root cause here, do not retry
+without architectural discussion.
+
+---
+
 All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
 Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning), 0043 (product direction + LLM seams), 0044 (PostgreSQL migration), 0045 (local LLM backend abstraction).
 
@@ -1862,5 +1914,5 @@ When an item is completed, mark it here with date and PR reference:
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-08 — ADR-0018 Phase B (B1+B2) implemented; G9 cleared. G8+G11 pending
-`docs/adr/0022-review-phase8-go.md` authoring. CLAUDE.md historical snapshot updated to 1779.*
+*Last updated: 2026-03-08 — ADR-0022 authored; all G1–G11 cleared; Phase 8 OPEN. PILOT-01 (Opus
+QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 §16.11).*
