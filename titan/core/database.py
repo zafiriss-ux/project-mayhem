@@ -4,6 +4,7 @@ Persistent storage for training data, athlete profiles, and performance metrics
 """
 import json
 import logging
+import os
 import re
 import sqlite3
 import threading
@@ -13,6 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
+
+try:
+    import psycopg2
+except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
+    psycopg2 = None
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.structured_events import EventSeverity, structured_event_payload
 
@@ -1596,6 +1602,270 @@ class DatabaseManager:
             self._closed = True
             if self.conn:
                 self.conn.close()
+
+
+class PostgreSQLDatabaseManager:
+    """PostgreSQL-backed persistence for Phase 8A storage topology."""
+
+    def __init__(self, dsn: str):
+        if psycopg2 is None:
+            raise ModuleNotFoundError("psycopg2 is required for PostgreSQL backend")
+
+        self._conn = psycopg2.connect(dsn)
+        self._conn.autocommit = False
+        self.create_tables()
+
+    def create_tables(self) -> None:
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS training_log (
+                    id BIGSERIAL PRIMARY KEY,
+                    date TEXT NOT NULL,
+                    session_type TEXT,
+                    distance_km DOUBLE PRECISION,
+                    duration_sec INTEGER,
+                    avg_hr INTEGER,
+                    max_hr INTEGER,
+                    rpe INTEGER,
+                    training_load INTEGER,
+                    shoe_id INTEGER,
+                    surface TEXT,
+                    temperature_c DOUBLE PRECISION,
+                    zone_distribution TEXT,
+                    notes TEXT,
+                    garmin_activity_id TEXT,
+                    quality_flag TEXT
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_training_log_garmin_id
+                ON training_log(garmin_activity_id)
+                WHERE garmin_activity_id IS NOT NULL
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS governance_outcomes (
+                    id BIGSERIAL PRIMARY KEY,
+                    date TEXT NOT NULL,
+                    session_planned TEXT NOT NULL,
+                    session_post_governance TEXT NOT NULL,
+                    locks_applied_json TEXT NOT NULL,
+                    governance_clean INTEGER NOT NULL,
+                    phase TEXT NOT NULL,
+                    vlg_color TEXT NOT NULL,
+                    apl_priority_vector_json TEXT NOT NULL,
+                    lock_thresholds_active_json TEXT NOT NULL,
+                    acwr DOUBLE PRECISION NOT NULL,
+                    tsb_value DOUBLE PRECISION NOT NULL,
+                    readiness_score DOUBLE PRECISION NOT NULL,
+                    glycogen_debt DOUBLE PRECISION NOT NULL,
+                    afi_value DOUBLE PRECISION,
+                    outcome_rpe INTEGER,
+                    outcome_completed INTEGER,
+                    outcome_session_type_actual TEXT,
+                    outcome_notes TEXT,
+                    decision_was_followed INTEGER NOT NULL DEFAULT 1,
+                    override_outcome_exclusion INTEGER NOT NULL DEFAULT 0,
+                    outcome_independence_ok INTEGER NOT NULL DEFAULT 1,
+                    algorithm_version_snapshot TEXT
+                )
+                """
+            )
+        self._conn.commit()
+
+    def save_session(
+        self,
+        date: str,
+        session_type: str,
+        distance_km: float,
+        duration_sec: int,
+        avg_hr: int | None = None,
+        max_hr: int | None = None,
+        rpe: int | None = None,
+        shoe_id: int | None = None,
+        surface: str | None = None,
+        temperature_c: float | None = None,
+        notes: str | None = None,
+        garmin_activity_id: str | None = None,
+        quality_flag: str | None = None,
+        temperature: float | None = None,
+    ) -> None:
+        if temperature_c is None and temperature is not None:
+            temperature_c = temperature
+
+        training_load = (rpe * (duration_sec / 60)) if rpe else 0
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO training_log (
+                    date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
+                    training_load, shoe_id, surface, temperature_c, notes,
+                    garmin_activity_id, quality_flag
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    date,
+                    session_type,
+                    distance_km,
+                    duration_sec,
+                    avg_hr,
+                    max_hr,
+                    rpe,
+                    training_load,
+                    shoe_id,
+                    surface,
+                    temperature_c,
+                    notes,
+                    garmin_activity_id,
+                    quality_flag,
+                ),
+            )
+        self._conn.commit()
+
+    def get_training_load_history(self, days: int | None = None) -> list[tuple[str, float]]:
+        lookback_days = CTL_DECAY_DAYS if days is None else days
+        start_date = (datetime.now(UTC) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT date, training_load
+                FROM training_log
+                WHERE date >= %s
+                ORDER BY date DESC
+                """,
+                (start_date,),
+            )
+            rows = cursor.fetchall()
+        return [(str(row[0]), float(row[1])) for row in rows]
+
+    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+        loads = self.get_training_load_history(CTL_DECAY_DAYS)
+        if not loads:
+            return 0.0, 0.0, 0.0
+
+        chronological_loads = list(reversed(loads))
+        ctl = 0.0
+        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
+        for _date, load in chronological_loads:
+            ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
+
+        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
+        atl = 0.0
+        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
+        for load in recent_loads:
+            atl = (load * atl_decay) + (atl * (1 - atl_decay))
+
+        return round(ctl, 1), round(atl, 1), round(ctl - atl, 1)
+
+    def save_governance_decision(self, decision: dict[str, Any]) -> None:
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO governance_outcomes (
+                    date, session_planned, session_post_governance, locks_applied_json,
+                    governance_clean, phase, vlg_color, apl_priority_vector_json,
+                    lock_thresholds_active_json, acwr, tsb_value, readiness_score,
+                    glycogen_debt, afi_value, outcome_rpe, outcome_completed,
+                    outcome_session_type_actual, outcome_notes, decision_was_followed,
+                    override_outcome_exclusion, outcome_independence_ok, algorithm_version_snapshot
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    decision["date"],
+                    decision["session_planned"],
+                    decision["session_post_governance"],
+                    json.dumps(decision.get("locks_applied", []), default=str),
+                    int(bool(decision.get("governance_clean", False))),
+                    decision.get("phase", ""),
+                    decision.get("vlg_color", ""),
+                    json.dumps(decision.get("apl_priority_vector", {}), default=str),
+                    json.dumps(decision.get("lock_thresholds_active", {}), default=str),
+                    float(decision.get("acwr", 0.0)),
+                    float(decision.get("tsb_value", 0.0)),
+                    float(decision.get("readiness_score", 0.0)),
+                    float(decision.get("glycogen_debt", 0.0)),
+                    decision.get("afi_value"),
+                    decision.get("outcome_rpe"),
+                    int(decision["outcome_completed"]) if decision.get("outcome_completed") is not None else None,
+                    decision.get("outcome_session_type_actual"),
+                    decision.get("outcome_notes"),
+                    int(bool(decision.get("decision_was_followed", True))),
+                    int(bool(decision.get("override_outcome_exclusion", False))),
+                    int(bool(decision.get("outcome_independence_ok", True))),
+                    json.dumps(decision.get("algorithm_version_snapshot", {}), default=str),
+                ),
+            )
+        self._conn.commit()
+
+    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
+        with self._conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT date, session_planned, session_post_governance, locks_applied_json,
+                    governance_clean, phase, vlg_color, apl_priority_vector_json,
+                    lock_thresholds_active_json, acwr, tsb_value, readiness_score,
+                    glycogen_debt, afi_value, outcome_rpe, outcome_completed,
+                    outcome_session_type_actual, outcome_notes, decision_was_followed,
+                    override_outcome_exclusion, outcome_independence_ok, algorithm_version_snapshot
+                FROM governance_outcomes
+                ORDER BY id ASC
+                LIMIT %s
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+
+        return [
+            {
+                "date": row[0],
+                "session_planned": row[1],
+                "session_post_governance": row[2],
+                "locks_applied": json.loads(row[3]) if row[3] else [],
+                "governance_clean": bool(row[4]),
+                "phase": row[5],
+                "vlg_color": row[6],
+                "apl_priority_vector": json.loads(row[7]) if row[7] else {},
+                "lock_thresholds_active": json.loads(row[8]) if row[8] else {},
+                "acwr": row[9],
+                "tsb_value": row[10],
+                "readiness_score": row[11],
+                "glycogen_debt": row[12],
+                "afi_value": row[13],
+                "outcome_rpe": row[14],
+                "outcome_completed": bool(row[15]) if row[15] is not None else None,
+                "outcome_session_type_actual": row[16],
+                "outcome_notes": row[17],
+                "decision_was_followed": bool(row[18]),
+                "override_outcome_exclusion": bool(row[19]),
+                "outcome_independence_ok": bool(row[20]),
+                "algorithm_version_snapshot": json.loads(row[21]) if row[21] else {},
+            }
+            for row in rows
+        ]
+
+    def close(self) -> None:
+        self._conn.close()
+
+
+def get_database_manager(
+    backend: str | None = None,
+    db_name: str = "titan_core.db",
+    db_dir: Path | None = None,
+    postgres_dsn: str | None = None,
+) -> DatabaseManager | PostgreSQLDatabaseManager:
+    selected_backend = (backend or os.environ.get("TITAN_DB_BACKEND", "sqlite")).lower()
+    if selected_backend == "sqlite":
+        return DatabaseManager(db_name=db_name, db_dir=db_dir)
+    if selected_backend == "postgres":
+        dsn = postgres_dsn or os.environ.get("TITAN_POSTGRES_DSN")
+        if not dsn:
+            raise ValueError("TITAN_POSTGRES_DSN must be set for PostgreSQL backend")
+        return PostgreSQLDatabaseManager(dsn=dsn)
+    raise ValueError(f"Unsupported TITAN_DB_BACKEND: {selected_backend}")
 
 
 class AthleteDatabase:

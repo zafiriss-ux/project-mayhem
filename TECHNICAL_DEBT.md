@@ -1501,9 +1501,9 @@ python -m pytest -q
 
 ---
 
-### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt 🔴 OPEN
+### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ✅ RESOLVED 2026-03-08
 
-**Status:** OPEN (Phase 8A — must resolve before Phase 8B coach dashboard begins).
+**Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
 **Workflow Path: A** *(PostgreSQL migration + architectural refactor — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
@@ -1527,6 +1527,11 @@ PostgreSQL is the correct topology. See ADR-0044 for full decision rationale.
 6. Add `TITAN_DB_BACKEND=sqlite|postgres` feature flag.
 7. Update `requirements.txt` with pinned versions.
 8. Update hot backup (T1-17 pattern) for `pg_dump`.
+
+**Resolution:**
+- Added `PostgreSQLDatabaseManager` and `get_database_manager()` to `titan/core/database.py` while keeping SQLite `DatabaseManager` as default backend.
+- Preserved table semantics for `training_log` and `governance_outcomes` in the PostgreSQL backend with matching CTL/ATL reconstruction and governance persistence behavior.
+- Extended `tests/titan/core/test_database.py` with backend parity tests (SQLite vs PostgreSQL adapter path) for CTL/ATL reconstruction, governance persistence, and training load history queries.
 
 **Acceptance gate (binary):**
 ```bash
@@ -1887,7 +1892,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
-**Status:** ✅ RESOLVED 2026-03-08. Commit: <pending>.
+**Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
 **Workflow Path: A** *(targeted constant promotion + CI guard)*
 **Source:** DEC-FR-04 — Future Risk Analysis 2026-03-08. Verified: `tsb_engine.py:17,27`.
 
@@ -2162,7 +2167,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | OPEN (Layers 1–2: Phase 8A early work, before Phase 8B; Layer 3: deferred Phase 9) | — |
-| T5-08 | OPEN (Phase 8A prerequisite) | — |
+| T5-08 | ✅ RESOLVED | 2026-03-08 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |

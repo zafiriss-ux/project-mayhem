@@ -532,3 +532,154 @@ def test_record_override_signal_fails_fast_after_close(tmp_path):
             override_reason="x",
             created_at="2026-03-07T09:00:00+00:00",
         )
+
+
+class _FakePostgresCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, query, params=None):
+        sql = (
+            query.replace("%s", "?")
+            .replace("BIGSERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
+            .replace("DOUBLE PRECISION", "REAL")
+        )
+        if params is None:
+            self._cursor.execute(sql)
+        else:
+            self._cursor.execute(sql, params)
+        return self
+
+    def fetchall(self):
+        return self._cursor.fetchall()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self._cursor.close()
+
+
+class _FakePostgresConnection:
+    def __init__(self):
+        import sqlite3
+
+        self._conn = sqlite3.connect(":memory:")
+        self.autocommit = False
+
+    def cursor(self):
+        return _FakePostgresCursor(self._conn.cursor())
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+
+class _FakePsycopg2:
+    @staticmethod
+    def connect(_dsn):
+        return _FakePostgresConnection()
+
+
+def _seed_training_rows(db):
+    from datetime import UTC, datetime, timedelta
+
+    start = datetime.now(UTC).date() - timedelta(days=2)
+    loads = [40, 80, 60]
+    for idx, load in enumerate(loads):
+        db.save_session(
+            date=(start + timedelta(days=idx)).isoformat(),
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=600,
+            avg_hr=140,
+            max_hr=160,
+            rpe=int(load / 10),
+            shoe_id=None,
+            surface="ROAD",
+            temperature_c=20.0,
+            notes="seed",
+        )
+
+
+def _seed_governance_row(db):
+    from datetime import UTC, datetime
+
+    db.save_governance_decision(
+        {
+            "date": datetime.now(UTC).date().isoformat(),
+            "session_planned": "THRESHOLD",
+            "session_post_governance": "EASY",
+            "locks_applied": ["RECOVERY_LOCK"],
+            "governance_clean": False,
+            "phase": "BASE",
+            "vlg_color": "YELLOW",
+            "apl_priority_vector": {"intensity": 0.2},
+            "lock_thresholds_active": {"tsb": -10.0},
+            "acwr": 1.1,
+            "tsb_value": -8.2,
+            "readiness_score": 68.5,
+            "glycogen_debt": 14.0,
+            "afi_value": 0.4,
+            "algorithm_version_snapshot": {"governance": "5.8.0"},
+        }
+    )
+
+
+def test_get_database_manager_defaults_to_sqlite(tmp_path):
+    from titan.core.database import get_database_manager
+
+    db = get_database_manager(db_name="persist_sqlite.db", db_dir=tmp_path)
+
+    assert isinstance(db, DatabaseManager)
+    db.close()
+
+
+def test_get_database_manager_postgres_requires_dsn():
+    from titan.core.database import get_database_manager
+
+    with pytest.raises(ValueError, match="TITAN_POSTGRES_DSN"):
+        get_database_manager(backend="postgres", postgres_dsn=None)
+
+
+def test_postgres_backend_matches_sqlite_ctl_atl_and_history(tmp_path, monkeypatch):
+    from titan.core import database as db_module
+
+    monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
+
+    sqlite_db = DatabaseManager(db_name="sqlite_ref.db", db_dir=tmp_path)
+    postgres_db = db_module.PostgreSQLDatabaseManager(dsn="postgres://fake")
+
+    _seed_training_rows(sqlite_db)
+    _seed_training_rows(postgres_db)
+
+    assert postgres_db.get_training_load_history() == sqlite_db.get_training_load_history()
+    assert postgres_db.get_ctl_atl_tsb() == sqlite_db.get_ctl_atl_tsb()
+
+    sqlite_db.close()
+    postgres_db.close()
+
+
+def test_postgres_backend_matches_sqlite_governance_persistence(tmp_path, monkeypatch):
+    from titan.core import database as db_module
+
+    monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
+
+    sqlite_db = DatabaseManager(db_name="sqlite_gov.db", db_dir=tmp_path)
+    postgres_db = db_module.PostgreSQLDatabaseManager(dsn="postgres://fake")
+
+    _seed_governance_row(sqlite_db)
+    _seed_governance_row(postgres_db)
+
+    sqlite_row = sqlite_db.get_governance_decisions(limit=1)[0]
+    postgres_row = postgres_db.get_governance_decisions(limit=1)[0]
+
+    assert postgres_row["session_post_governance"] == sqlite_row["session_post_governance"]
+    assert postgres_row["locks_applied"] == sqlite_row["locks_applied"]
+    assert postgres_row["lock_thresholds_active"] == sqlite_row["lock_thresholds_active"]
+    assert postgres_row["algorithm_version_snapshot"] == sqlite_row["algorithm_version_snapshot"]
+
+    sqlite_db.close()
+    postgres_db.close()
