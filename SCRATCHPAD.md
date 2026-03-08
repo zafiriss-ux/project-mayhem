@@ -169,13 +169,228 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 
 ## NON-BLOCKING Queue
 
-*No non-blocking observations.*
+*No non-blocking observations pending.*
+
+---
+
+<!-- REVIEWED entries moved to Archive — 2026-03-08 -->
+
+### [OBS-001] Test suite has no pytest layer markers
+
+**Date:** 2026-03-08
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Phase 8 / CI safeguards post-review
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `pyproject.toml` — markers config: only `timeout` defined, no `unit`/`integration`/`governance`
+- `tests/` — 105 test files; `test_*.py` root — 13 files; no `@pytest.mark.unit` etc. in use
+
+**Observation:**
+The test suite (118 files, ~1780+ tests) has grown substantially across Phase 0–8.
+Test categorisation is done only by filename convention (e.g. `test_governance_integration.py`,
+`test_p0_safety_gates.py`). No pytest marks for layer (unit / integration / governance / invariant)
+are registered or applied. `pyproject.toml` defines only `markers = ["timeout: ..."]`.
+
+**Pattern / scope:**
+Isolated to the test infrastructure configuration — no individual test file is responsible.
+The pattern is uniform across all ~118 test files.
+
+**Architectural question raised:**
+Should a formal marker taxonomy (e.g. `unit`, `integration`, `governance`) be registered and
+applied to all existing tests to enable selective execution and faster failure diagnostics?
+
+**Codex assessment (data only, no decision):**
+Without markers, `pytest -m governance` is impossible. When a governance gate test fails, the
+developer must scan filename-by-filename to identify test layer. As the suite grows beyond 2000
+tests this will slow diagnostics. Impact is currently low but increases proportionally with suite size.
+
+**Status:** REVIEWED
+
+---
+
+### [OBS-002] Doc-integrity regex patterns tightly coupled to exact markdown wording
+
+**Date:** 2026-03-08
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Phase 8 / CI safeguards post-review
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `tests/test_claude_md_integrity.py` — 6+ regex patterns against exact markdown formatting
+
+**Observation:**
+`test_claude_md_integrity.py` uses patterns that require exact markdown surface form:
+- `r"Main package \((\d+) modules, excl\. __init__/__main__\)"` — exact phrase in CLAUDE.md
+- `r"^- `([0-9]{4})`"` — requires backtick-wrapped ADR IDs in a specific list format
+- `r"\*\*Historical snapshot:\*\*\s*(\d+) tests all green"` — exact bold wording
+- `r"\|\s*`docs/ROADMAP\.MD`\s*\|([^\|]+)\|"` — table cell format for ROADMAP row
+- `r"^Phase (\S+) OPEN\b"` in TECHNICAL_DEBT.md — requires "Phase N OPEN" at line start
+
+A legitimate doc reformatting (e.g. renaming "Main package" → "Core package" for clarity,
+or switching ADR list from backtick to plain text) would produce a CI failure even if the
+information is factually unchanged.
+
+**Pattern / scope:**
+6 patterns in a single file. Isolated, not replicated elsewhere.
+
+**Architectural question raised:**
+Is this brittleness an acceptable trade-off of the integrity test design, or should a schema
+layer (e.g. YAML frontmatter, or a structured CLAUDE.md section) replace the fragile regex?
+
+**Codex assessment (data only, no decision):**
+The tests are effective exactly because they are tight — loosening them reduces their ability
+to catch real drift. The brittleness risk is real but the formatting of these doc sections
+has been stable since they were introduced. No false positive has been observed to date.
+
+**Status:** REVIEWED
+
+---
+
+### [OBS-003] Documentation snapshot drift already substantially automated
+
+**Date:** 2026-03-08
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Phase 8 / CI safeguards post-review
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `tests/test_claude_md_integrity.py` — 5 automated drift guards already implemented
+
+**Observation:**
+`test_claude_md_integrity.py` contains the following automated snapshot-drift guards:
+1. `test_adr_count_in_claude_md_matches_files` — ADR list vs actual ADR files in `docs/adr/`
+2. `test_module_count_in_claude_md_matches_filesystem` — declared titan module count vs `rglob`
+3. `test_historical_snapshot_matches_full_suite_collection` — CLAUDE.md test count vs collected
+4. `test_key_files_section_points_to_existing_paths` — all `Key Files` paths exist on disk
+5. `test_phase_state_label_consistent_between_tech_debt_and_claude_md` — phase OPEN/CLOSED parity
+
+**Pattern / scope:**
+Isolated finding. The concern raised (snapshot drift) is already the primary purpose of this file.
+
+**Architectural question raised:**
+Is there a residual snapshot-drift gap not covered by the existing 5 guards that warrants a
+new automated check, or is the current coverage sufficient for Phase 8?
+
+**Codex assessment (data only, no decision):**
+No specific gap has been identified. The concern appears to be a general "keep this pattern going"
+observation rather than identification of a concrete uncovered risk.
+
+**Status:** REVIEWED
 
 ---
 
 ## Architect Review Log
 
-*No architect reviews yet.*
+### [DEC-001] Response to OBS-001 — Test layer markers: deferred to Phase 9 housekeeping
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `pyproject.toml` markers config (only `timeout` registered);
+  confirmed via grep that no `@pytest.mark.unit/integration/governance` calls exist in the
+  118 test files across root and `tests/`.
+
+**Architect finding:**
+The observation is factually correct. The suite has no layer taxonomy beyond filename
+conventions. However, the cost/benefit ratio at this point in the project is unfavourable:
+adding markers retroactively to ~118 files and ~1780 tests is a mechanical but large-scope
+refactor with no change to test logic. The diagnostic benefit (faster `pytest -m governance`)
+is real but not pressing at 1780 tests — the current `tests/test_phase*.py` / `tests/test_p0_*.py`
+naming convention provides adequate targeted-run granularity via `pytest tests/test_p0*.py`.
+Phase 8 priorities (PostgreSQL migration gate, multi-sport adapter, operator console) outweigh
+a marker taxonomy refactor. This is a valid Phase 9 / housekeeping item.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| DEFERRED | Assigned to Phase 9 housekeeping — T5 marker taxonomy for unit/integration/governance layers |
+
+**Rationale:**
+Phase 8 is OPEN with G1–G11 entry gate criteria. A test infrastructure refactor of this scope
+belongs in a dedicated housekeeping slot, not as a Phase 8 item. The existing filename convention
+is sufficient for now. When the suite exceeds ~3000 tests (likely Phase 9), the cost of unmarked
+tests becomes more acute and the refactor investment pays off more clearly. No ADR is required —
+this is an engineering convenience, not an architectural decision.
+
+**OBS-001 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-002] Response to OBS-002 — CI pattern brittleness: accepted trade-off, no action
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_claude_md_integrity.py` lines 31, 42–44, 83,
+  92, 133, 141–149; confirmed 6 regex patterns tightly coupled to exact markdown surface form.
+
+**Architect finding:**
+The observation is factually correct. The brittleness is real and intentional. Doc integrity
+tests are effective precisely because they are tight: a loose pattern (e.g. matching any number
+near the word "modules") would miss the exact drift cases these tests were designed to catch.
+The trade-off was made explicitly when these tests were introduced (T4-22 / ADR-0025): the
+accepted cost is that legitimate reformatting of doc sections requires updating the test.
+This is the correct engineering choice — it forces any doc reformatting to be a conscious act
+that also updates the guard, rather than silently breaking the invariant.
+
+No false positive has been observed. The markdown sections guarded by these patterns
+(CLAUDE.md Key Files, ADR list, TECHNICAL_DEBT.md Phase header) have a de-facto stable
+format because they are also machine-read by the test suite — there is no incentive to
+reformat them casually.
+
+A schema layer (YAML frontmatter, structured sections) would be a heavier investment with
+no meaningful safety gain over the current approach for a project of this size and team.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Pattern brittleness is an accepted, deliberate trade-off of doc integrity test design (ADR-0025); no change warranted |
+
+**Rationale:**
+Loosening the patterns would reduce detection sensitivity. Introducing a schema layer is
+disproportionate to the risk. The current approach is the right balance for Phase 8.
+The observation is noted for Phase 9 reconsideration only if false-positive rate increases.
+
+**OBS-002 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-003] Response to OBS-003 — Snapshot drift already covered, no gap identified
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_claude_md_integrity.py` lines 25–158; confirmed
+  5 independent automated drift guards covering: ADR count, module count, test count,
+  key file path existence, and phase state label parity between CLAUDE.md and TECHNICAL_DEBT.md.
+
+**Architect finding:**
+The observation is correct that snapshot drift is a risk — and also correct that it is already
+substantially addressed. The 5 existing guards in `test_claude_md_integrity.py` cover every
+quantifiable snapshot element in CLAUDE.md:
+- Counts (ADR, module, test) → machine-checked
+- File existence (Key Files table) → machine-checked
+- Phase state (OPEN/CLOSED parity) → machine-checked
+
+The remaining un-automated content (narrative descriptions, algorithm references, module
+descriptions) is inherently prose and cannot be automatically validated against code without
+building a documentation generator — which is disproportionate. The CLAUDE.md is explicitly
+designated a "context snapshot" not a live specification; its narrative content is expected
+to require periodic manual review, which is appropriate.
+
+No specific gap has been identified by the OBS that is not already covered. The observation
+is a confirmation that the current approach is sound, not a finding that requires new work.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | All quantifiable snapshot elements are already machine-checked; no residual gap identified |
+
+**Rationale:**
+Extending automated coverage to prose content would require a documentation generator or
+LLM-based diff, which is out of scope for Phase 8 and disproportionate to the risk.
+The existing 5 guards are the correct stopping point. The observation validates the existing
+design — it does not reveal a deficit.
+
+**OBS-003 marked:** REVIEWED
+**Status:** PROCESSED
 
 ---
 
@@ -188,7 +403,10 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 > deleted — it is the engineering memory of cross-session findings that shaped
 > `TECHNICAL_DEBT.md` decisions.
 
-*No archived entries yet.*
+> **Archive note (2026-03-08):** OBS-001 / OBS-002 / OBS-003 and their DECs were processed
+> during Phase 8 (session: future-maintenance-notes). OBS-001 resulted in a DEFERRED Phase 9
+> debt entry (test layer marker taxonomy). OBS-002 and OBS-003 resulted in NO_ACTION.
+> Full entries remain in NON-BLOCKING Queue section above (marked REVIEWED) until Phase 8 CLOSED.
 
 ---
 

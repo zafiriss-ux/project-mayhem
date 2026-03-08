@@ -1715,6 +1715,42 @@ python -m pytest -q
 
 ---
 
+### T5-15 · Test suite has no pytest layer marker taxonomy — unit/integration/governance indistinguishable 🟡 DEFERRED
+
+**Status:** DEFERRED (Phase 9 housekeeping).
+**Recorded:** 2026-03-08 (DEC-001 / OBS-001 — future maintenance observation, architect review).
+**Source:** Engineer observation post-Phase 7 CI safeguards review.
+**Priority:** P4 (engineering quality-of-life; no functional or safety impact).
+
+**Context:**
+118 test files (~1780+ tests) have no pytest mark taxonomy beyond filename conventions.
+`pyproject.toml` registers only `markers = ["timeout: ..."]`. No `unit`, `integration`,
+or `governance` marks exist. Targeted subset runs rely on filename patterns
+(`pytest tests/test_p0*.py`, `pytest tests/test_governance_integration.py`), which is
+adequate at current scale but degrades as the suite grows toward ~3000 tests.
+
+**Acceptance gate (binary):**
+1. Register markers in `pyproject.toml`: `unit`, `integration`, `governance`, `invariant`.
+2. Apply exactly one marker to every test function across all 118 test files.
+3. `pytest -m governance -q` collects only governance tests (no `PytestUnknownMarkWarning`).
+4. `pytest -m unit -q` completes in under 30 seconds on CI hardware.
+5. All three mandatory gates pass: `ruff check .` → `pytest -q -W error::pytest.PytestWarning` → `pytest -q`.
+
+**Scope note:** Mechanical refactor only — no test logic changes. Marker assignment follows
+this taxonomy:
+- `unit` — tests a single class/function in isolation (mocks all external deps)
+- `integration` — tests interaction between 2+ modules or with SQLite
+- `governance` — tests a governance gate contract or invariant (may overlap with integration)
+- `invariant` — tests a doc/schema/CI invariant (e.g. `test_claude_md_integrity.py`)
+
+**Effort:** ~2h mechanical pass. No architectural decision required.
+
+**Phase 9 gate:** This item is a prerequisite for Phase 9 targeted-execution CI optimisation.
+Do not implement during Phase 8 — it is a large-scope mechanical refactor with no Phase 8
+safety or functional benefit.
+
+---
+
 ### PILOT-01 · Opus QA layer — automated test-quality review between Codex and mandatory gates 🟡 PILOT
 
 **Status:** PILOT — not permanent. Activate on next Phase 8 sprint item; evaluate after one sprint.
@@ -1924,6 +1960,7 @@ When an item is completed, mark it here with date and PR reference:
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
 | T5-14 | OPEN (Phase 8 scheduled — formerly T4-29; reclassified 2026-03-07) | — |
+| T5-15 | DEFERRED (Phase 9 housekeeping — test marker taxonomy) | — |
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
@@ -1940,4 +1977,5 @@ When an item is completed, mark it here with date and PR reference:
 resolved, not in commit messages alone.*
 
 *Last updated: 2026-03-08 — ADR-0022 authored; all G1–G11 cleared; Phase 8 OPEN. PILOT-01 (Opus
-QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 §16.11).*
+QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 §16.11).
+T5-15 (pytest marker taxonomy) added as Phase 9 DEFERRED item (DEC-001 / OBS-001).*
