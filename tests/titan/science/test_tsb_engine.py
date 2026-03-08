@@ -2,6 +2,8 @@ import math
 
 import pytest
 
+from titan.config import thresholds
+from titan.science import tsb_engine
 from titan.science.tsb_engine import TSBEngine
 
 
@@ -11,6 +13,32 @@ def _build_engine_with_history(loads: list[float]) -> TSBEngine:
         engine.add_daily_load(f"2026-01-{index + 1:02d}", load)
     return engine
 
+
+
+
+def test_default_ctl_atl_decay_uses_canonical_threshold_constants() -> None:
+    engine = _build_engine_with_history([80.0, 100.0, 120.0, 60.0, 90.0])
+
+    assert engine.calculate_ctl() == engine.calculate_ctl(decay=thresholds.CTL_DECAY_DAYS)
+    assert engine.calculate_atl() == engine.calculate_atl(decay=thresholds.ATL_DECAY_DAYS)
+
+
+def test_changing_canonical_decay_constants_changes_default_ema_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    engine = _build_engine_with_history([120.0, 80.0, 160.0, 40.0, 200.0, 20.0])
+
+    baseline_ctl = engine.calculate_ctl()
+    baseline_atl = engine.calculate_atl()
+
+    monkeypatch.setattr(tsb_engine, "CTL_DECAY_DAYS", 10)
+    monkeypatch.setattr(tsb_engine, "ATL_DECAY_DAYS", 3)
+
+    shifted_ctl = engine.calculate_ctl()
+    shifted_atl = engine.calculate_atl()
+
+    assert shifted_ctl is not None and baseline_ctl is not None
+    assert shifted_atl is not None and baseline_atl is not None
+    assert shifted_ctl != baseline_ctl
+    assert shifted_atl != baseline_atl
 
 def test_empty_history_returns_safe_defaults_without_crashing() -> None:
     engine = TSBEngine()
@@ -88,8 +116,8 @@ def test_calculate_tsb_status_bands_match_current_threshold_mapping(
 ) -> None:
     engine = TSBEngine()
     engine.add_daily_load("2026-01-01", 1.0)
-    monkeypatch.setattr(engine, "calculate_ctl", lambda decay=42: ctl)
-    monkeypatch.setattr(engine, "calculate_atl", lambda decay=7: atl)
+    monkeypatch.setattr(engine, "calculate_ctl", lambda decay=None: ctl)
+    monkeypatch.setattr(engine, "calculate_atl", lambda decay=None: atl)
 
     tsb, status = engine.calculate_tsb()
 

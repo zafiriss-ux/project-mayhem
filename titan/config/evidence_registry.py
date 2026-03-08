@@ -211,6 +211,50 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
     ),
 
+    # ── Banister model windows: CTL/ATL EMA decay constants ──────────────────
+    'CTL_DECAY_DAYS': ThresholdEvidence(
+        parameter='CTL_DECAY_DAYS',
+        value=42,
+        evidence_level='STRONG',
+        population='MIXED',
+        source=(
+            'Banister et al. (1975) Aust J Sports Med 7(3):57–61; '
+            'Coggan (2003) Training and Racing with a Power Meter '
+            '(PMC implementation guidance)'
+        ),
+        rationale=(
+            'A 42-day EMA is the canonical CTL horizon in the Banister/PMC model, '
+            'representing chronic fitness adaptation. Centralizing this value '
+            'prevents semantic drift between CTL/ATL producers and consumers.'
+        ),
+        policy_note=(
+            'STRONG for the model convention. Individual athlete optimization '
+            'may later tune this value, but all runtime components must share '
+            'a single canonical source.'
+        ),
+    ),
+
+    'ATL_DECAY_DAYS': ThresholdEvidence(
+        parameter='ATL_DECAY_DAYS',
+        value=7,
+        evidence_level='STRONG',
+        population='MIXED',
+        source=(
+            'Banister et al. (1975) Aust J Sports Med 7(3):57–61; '
+            'Coggan (2003) Training and Racing with a Power Meter '
+            '(PMC implementation guidance)'
+        ),
+        rationale=(
+            'A 7-day EMA is the canonical ATL horizon in the Banister/PMC model, '
+            'capturing acute fatigue. Keeping the value centralized ensures '
+            'consistent CTL/ATL/TSB behaviour across modules.'
+        ),
+        policy_note=(
+            'STRONG for the model convention. Value changes, if ever approved, '
+            'must be propagated via thresholds.py only.'
+        ),
+    ),
+
     # ── VO2 eligibility gate V1: ACWR lower bound ────────────────────────────
     'VO2_ACWR_MIN': ThresholdEvidence(
         parameter='VO2_ACWR_MIN',

@@ -3,6 +3,8 @@ TITAN Core Constants and Configuration
 Session types, HR zones, and system-wide constants
 """
 
+from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
+
 
 class _Secret(str):
     """String subclass για sensitive δεδομένα (credentials).
@@ -79,8 +81,8 @@ TSB_RACE_READY_MAX = 5
 TSB_OVERTRAINED = -30
 
 # CTL/ATL Time Constants
-CTL_DAYS = 42  # Chronic Training Load (fitness)
-ATL_DAYS = 7   # Acute Training Load (fatigue)
+CTL_DAYS = CTL_DECAY_DAYS  # Chronic Training Load (fitness)
+ATL_DAYS = ATL_DECAY_DAYS   # Acute Training Load (fatigue)
 
 # HRV Status Thresholds
 HRV_STATUS_LOW = "LOW"

@@ -12,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.structured_events import EventSeverity, structured_event_payload
 
@@ -799,7 +800,7 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
-    def get_training_load_history(self, days: int = 42) -> list[tuple[str, float]]:
+    def get_training_load_history(self, days: int | None = None) -> list[tuple[str, float]]:
         """
         Get training load for last N days (for TSB calculation).
 
@@ -809,6 +810,8 @@ class DatabaseManager:
         Returns:
             List of tuples (date, training_load)
         """
+        lookback_days = CTL_DECAY_DAYS if days is None else days
+
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
@@ -817,7 +820,7 @@ class DatabaseManager:
                 FROM training_log
                 WHERE date >= date('now', '-' || ? || ' days')
                 ORDER BY date DESC
-            """, (days,))
+            """, (lookback_days,))
             rows = cursor.fetchall()
 
         from titan.science.physiological_bounds import (
@@ -852,7 +855,7 @@ class DatabaseManager:
             - Coggan (2003) - Training Stress Score/Balance
             - Busso (2003) - Variable dose-response model
         """
-        loads = self.get_training_load_history(42)
+        loads = self.get_training_load_history(CTL_DECAY_DAYS)
 
         if not loads:
             return 0.0, 0.0, 0.0
@@ -863,15 +866,15 @@ class DatabaseManager:
 
         # Calculate CTL (42-day EMA)
         ctl = 0.0
-        ctl_decay = 2 / (42 + 1)
+        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
 
         for _date, load in chronological_loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
         # Calculate ATL (7-day EMA, recent 7 entries)
-        recent_loads = [load for _d, load in chronological_loads][-7:]
+        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
         atl = 0.0
-        atl_decay = 2 / (7 + 1)
+        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
 
         for load in recent_loads:
             atl = (load * atl_decay) + (atl * (1 - atl_decay))

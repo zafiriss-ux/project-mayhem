@@ -16,6 +16,7 @@ import math
 
 import pytest
 
+import titan.core.database as database_module
 from titan.science.physiological_bounds import (
     BOUNDS,
     BoundsViolation,
@@ -281,6 +282,72 @@ def test_get_ctl_atl_tsb_zero_load_returns_zeros(tmp_path):
 
     db.close()
 
+
+
+
+def test_get_ctl_atl_tsb_matches_explicit_decay_constants(tmp_path):
+    """Happy path: DB CTL/ATL uses centralized decay constants by default."""
+    from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_ctl_canonical_defaults.db", db_dir=tmp_path)
+
+    for i in range(21):
+        db.save_session(
+            date=f"2026-02-{i + 1:02d}",
+            session_type="EASY",
+            distance_km=8.0 + (i % 5),
+            duration_sec=2800 + (i * 30),
+            rpe=4 + (i % 3),
+        )
+
+    default_ctl, default_atl, _ = db.get_ctl_atl_tsb()
+
+    loads = db.get_training_load_history(CTL_DECAY_DAYS)
+    chronological_loads = list(reversed(loads))
+
+    ctl = 0.0
+    ctl_alpha = 2 / (CTL_DECAY_DAYS + 1)
+    for _date, load in chronological_loads:
+        ctl = (load * ctl_alpha) + (ctl * (1 - ctl_alpha))
+
+    atl = 0.0
+    atl_alpha = 2 / (ATL_DECAY_DAYS + 1)
+    for load in [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]:
+        atl = (load * atl_alpha) + (atl * (1 - atl_alpha))
+
+    assert default_ctl == round(ctl, 1)
+    assert default_atl == round(atl, 1)
+
+    db.close()
+
+
+def test_get_ctl_atl_tsb_changes_when_canonical_decay_constants_change(tmp_path, monkeypatch):
+    """Boundary path: changing canonical constants shifts DB CTL/ATL output."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="test_ctl_canonical_boundary.db", db_dir=tmp_path)
+
+    for i in range(28):
+        db.save_session(
+            date=f"2026-03-{i + 1:02d}",
+            session_type="TEMPO",
+            distance_km=6.0 + (i % 7),
+            duration_sec=2400 + (i * 45),
+            rpe=5 + (i % 4),
+        )
+
+    baseline_ctl, baseline_atl, _ = db.get_ctl_atl_tsb()
+
+    monkeypatch.setattr(database_module, "CTL_DECAY_DAYS", 14)
+    monkeypatch.setattr(database_module, "ATL_DECAY_DAYS", 4)
+
+    shifted_ctl, shifted_atl, _ = db.get_ctl_atl_tsb()
+
+    assert shifted_ctl != baseline_ctl
+    assert shifted_atl != baseline_atl
+
+    db.close()
 
 def test_get_ctl_atl_tsb_with_normal_load(tmp_path):
     """Normal training history: CTL and ATL within BOUNDS."""

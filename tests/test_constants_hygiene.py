@@ -14,3 +14,9 @@ def test_vo2_acwr_thresholds_remain_canonical_source():
     """Canonical VO2 ACWR thresholds are still defined in thresholds.py."""
     assert thresholds.VO2_ACWR_MIN == 0.80
     assert thresholds.VO2_ACWR_MAX == 1.30
+
+
+def test_ctl_atl_decay_thresholds_remain_canonical_source():
+    """Canonical CTL/ATL decay windows are defined in thresholds.py."""
+    assert thresholds.CTL_DECAY_DAYS == 42
+    assert thresholds.ATL_DECAY_DAYS == 7

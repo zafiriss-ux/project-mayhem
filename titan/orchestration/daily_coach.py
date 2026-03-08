@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from titan.config.evidence_registry import get_metrics_under_review
-from titan.config.thresholds import GARMIN_DATA_MAX_AGE_HOURS
+from titan.config.thresholds import CTL_DECAY_DAYS, GARMIN_DATA_MAX_AGE_HOURS
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -1299,7 +1299,7 @@ class DailyCoach:
         Uses training_load from DB so CTL/ATL are always current.
         """
         try:
-            loads = self.db.get_training_load_history(days=42)
+            loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
             self.tsb.daily_loads.clear()
             for date_str, load in reversed(loads):  # oldest-first for correct EMA
                 self.tsb.add_daily_load(date_str, float(load))
@@ -1362,7 +1362,7 @@ class DailyCoach:
 
         # 3. Training load history → TSB engine (42-day window for CTL)
         try:
-            loads = self.db.get_training_load_history(days=42)
+            loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
             self.tsb.daily_loads.clear()
             # DB returns DESC; add oldest-first so EMA builds chronologically
             for date_str, load in reversed(loads):
