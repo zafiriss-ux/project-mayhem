@@ -107,3 +107,26 @@ def test_governance_remains_clean_for_healthy_input_profile():
     assert result["governance_clean"] is True
     assert result.get("hard_stop_reasons", []) == []
     assert result.get("governance_locks_applied", []) == []
+
+
+def test_governance_approves_quality_session_under_nominal_conditions():
+    """Nominal-state coherence oracle (T2-19).
+
+    A fully nominal input profile must not block a high-intensity session
+    (INTERVALS + zone=5, which routes through the VO2 eligibility gate).
+    Complements the EASY-session test above — a regression in the VO2
+    eligibility gate logic would pass the EASY test but fail this one,
+    making a silent over-conservative failure visible in CI.
+    """
+    result = GovernanceEngine().apply_constraints(
+        _quality_session(),  # INTERVALS, max_zone=5
+        _healthy_context(),  # all metrics nominal; days_since_last_vo2=5 >= threshold
+    )
+
+    assert result["governance_clean"] is True, (
+        f"Governance blocked a quality session under fully nominal conditions — "
+        f"locks: {result.get('governance_locks_applied', [])} | "
+        f"hard_stops: {result.get('hard_stop_reasons', [])}"
+    )
+    assert result.get("hard_stop_reasons", []) == []
+    assert result.get("governance_locks_applied", []) == []
