@@ -116,3 +116,44 @@ def test_key_files_section_points_to_existing_paths() -> None:
         "CLAUDE.md key file references drift detected. Missing paths: "
         + ", ".join(missing)
     )
+
+
+def test_phase_state_label_consistent_between_tech_debt_and_claude_md() -> None:
+    """Phase state in CLAUDE.md ROADMAP row must match TECHNICAL_DEBT.md canonical declaration.
+
+    TECHNICAL_DEBT.md is the canonical source for phase state (e.g. ``Phase 8 OPEN``).
+    CLAUDE.md carries a snapshot of that state in the Key Files ROADMAP row.  When one
+    is updated without the other the two drift silently — this test makes that drift a
+    CI failure instead.
+    """
+    tech_debt = _tech_debt_text()
+    claude = _claude_text()
+
+    # Canonical source: "Phase N OPEN —" at the start of a line in TECHNICAL_DEBT.md.
+    td_matches = re.findall(r"^Phase (\S+) OPEN\b", tech_debt, re.MULTILINE)
+    assert td_matches, (
+        "TECHNICAL_DEBT.md has no top-level 'Phase N OPEN' declaration. "
+        "Add a line of the form 'Phase N OPEN — <reason>' when a new phase opens."
+    )
+    canonical_phase = td_matches[-1]  # last declaration is the current open phase
+
+    # Snapshot: ROADMAP.MD key-file row in CLAUDE.md must mention the same phase as OPEN.
+    roadmap_row_match = re.search(
+        r"\|\s*`docs/ROADMAP\.MD`\s*\|([^\|]+)\|", claude
+    )
+    assert roadmap_row_match, (
+        "CLAUDE.md Key Files section is missing the docs/ROADMAP.MD row."
+    )
+    roadmap_cell = roadmap_row_match.group(1)
+
+    phase_in_claude = re.search(r"Phase (\S+) OPEN", roadmap_cell)
+    assert phase_in_claude, (
+        f"CLAUDE.md ROADMAP row does not declare any phase as OPEN. "
+        f"Expected 'Phase {canonical_phase} OPEN'. Row content: {roadmap_cell.strip()}"
+    )
+    assert phase_in_claude.group(1) == canonical_phase, (
+        f"Phase state drift detected.\n"
+        f"  TECHNICAL_DEBT.md (canonical): Phase {canonical_phase} OPEN\n"
+        f"  CLAUDE.md ROADMAP row:         Phase {phase_in_claude.group(1)} OPEN\n"
+        "Update CLAUDE.md Key Files ROADMAP row to match TECHNICAL_DEBT.md."
+    )
