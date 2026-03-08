@@ -169,7 +169,45 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 
 ## NON-BLOCKING Queue
 
-*No non-blocking observations pending.*
+### [OBS-007] Task closure declared RESOLVED without verifying ADR deliverable checklist
+
+**Date:** 2026-03-08
+**Trigger:** QA FAIL on T5-08 (Opus QA verdict) — ADR scope vs implementation drift
+**Session context:** T5-08 / Phase 8A / PostgreSQL migration scaffold
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `TECHNICAL_DEBT.md` — T5-08 entry (status was RESOLVED, now corrected to PARTIAL)
+- `docs/adr/0044-postgresql-migration-phase8a-entry-gate.md` — D1–D9 deliverable table
+- `titan/core/database.py` — scaffold implementation (commit 54e95d9)
+
+**Observation:**
+T5-08 was declared ✅ RESOLVED in `TECHNICAL_DEBT.md` (commit 54e95d9, 2026-03-08) without
+verifying that ADR-0044 deliverables D1–D9 were complete. The implementation delivered:
+- D6 (feature flag `TITAN_DB_BACKEND`) ✓
+- Backend parity tests for CTL/ATL and governance persistence ✓
+
+But D1–D5, D7–D9 were not implemented: no `persistence.py`, no `alembic/`, no `athlete_id`
+columns, no RLS, no `consent_log`, no `pg_dump` backup. The acceptance gate in the task entry
+referenced `persistence.py`, `alembic/`, and `tests/test_athlete_rls_isolation.py` — none of
+which existed at closure time. The gate was not run; status was set by assertion.
+
+**Pattern / scope:**
+Isolated to T5-08 closure. No other task shows evidence of this pattern in the current
+Phase 8 queue. However, T5-08 is the first task in Phase 8 that references an ADR with an
+explicit numbered deliverable table (D1–D9). Future tasks with similar ADR deliverable tables
+(T5-08-B, T5-09, T5-11, T5-13, T5-16-A) carry the same risk.
+
+**Architectural question raised:**
+Should a mandatory ADR Deliverable Checklist be part of the task closure protocol — requiring
+each ADR-referenced deliverable to be checked off (✓ done / ✗ not done) before status is set
+to RESOLVED — to prevent recurrence of ADR scope vs implementation drift?
+
+**Codex assessment (data only, no decision):**
+The drift was detectable at closure time: the acceptance gate referenced files that did not
+exist. The process had no mechanism to catch this — the gate was written but not enforced.
+The proposed checklist would make the drift structurally visible before the closure commit.
+
+**Status:** REVIEWED
 
 ---
 
@@ -498,6 +536,73 @@ is required — this is an implementation-time test coverage requirement, not an
 decision.
 
 **OBS-006 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-007] Response to OBS-007 — ADR deliverable drift: process rule added to AGENTS.md
+
+**Date:** 2026-03-08
+**Architect:** Claude
+**OBS verified:** YES — read `TECHNICAL_DEBT.md` T5-08 Resolution section: lists only
+  `PostgreSQLDatabaseManager`, backend parity tests, and `get_database_manager()`. Read
+  `docs/adr/0044-postgresql-migration-phase8a-entry-gate.md` D1–D9 table: confirms D1–D5,
+  D7–D9 have no corresponding implementation. Grepped codebase for `persistence.py`,
+  `alembic/`, `test_athlete_rls_isolation`: none found. Acceptance gate in T5-08 entry
+  references these non-existent paths — gate was not run at closure time.
+
+**Architect finding:**
+The observation is factually correct and fully verified. The drift is:
+1. **Real:** D1–D5, D7–D9 of ADR-0044 are not implemented.
+2. **Caused by a process gap:** The task closure protocol has no step that requires verifying
+   each numbered ADR deliverable before setting status to RESOLVED. The acceptance gate is
+   written as a shell command block, not as a per-deliverable checklist — making it possible
+   to skip gate execution by inspection-only closure.
+3. **Detected correctly by QA:** The Opus QA verdict (FAIL) was the correct signal.
+
+T5-08 status has been corrected to ⚠️ PARTIAL. T5-08-B has been created in `TECHNICAL_DEBT.md`
+with D1–D5, D7–D9 as binary acceptance criteria and an explicit concurrency acceptance
+criterion per OBS-005 (which had already registered this risk as a trigger for the migration task).
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | Process rule: ADR Deliverable Checklist — mandatory at task closure when task references an ADR with a numbered deliverable table. Recorded in AGENTS.md §HARD GATE addendum (see below). |
+
+**Process rule — effective immediately:**
+
+When any task (Tn-xx) references an ADR that contains a numbered deliverable table (e.g.
+ADR-0044 D1–D9, ADR-0018 Phase A/B checklist), the task entry in `TECHNICAL_DEBT.md` MUST
+include an **ADR Deliverable Checklist** section before it may be set to RESOLVED:
+
+```markdown
+**ADR Deliverable Checklist (ADR-XXXX):**
+| # | Deliverable | Status |
+|---|---|---|
+| D1 | <description> | ✓ DONE / ✗ NOT DONE |
+| D2 | <description> | ✓ DONE / ✗ NOT DONE |
+...
+```
+
+Rules:
+- Any ✗ NOT DONE deliverable blocks RESOLVED status. Task must be PARTIAL or OPEN.
+- If a task intentionally implements a subset, status is PARTIAL + a successor task covers
+  the remaining deliverables (the T5-08 → T5-08-B split is the canonical pattern).
+- The checklist is filled in by Codex at closure time, verified by QA, not set by assertion.
+
+This rule is a **HARD GATE addendum** — same severity as the existing three-gate protocol
+(ruff / pytest-W / pytest). It applies to all open Phase 8 tasks that reference ADRs with
+deliverable tables: T5-08-B (ADR-0044), T5-16-A (ADR-0046).
+
+**Rationale:**
+The three existing mandatory gates (ruff, pytest -W error, pytest) verify code correctness
+but cannot verify that all ADR deliverables were implemented — that requires a semantic
+cross-reference that only a human checklist can provide. The process gap revealed by T5-08
+is structural: a task can pass all three gates and still miss 7 of 9 ADR deliverables.
+The ADR Deliverable Checklist closes this gap at the lowest possible cost (one table per ADR,
+filled at closure time) without adding new tooling or CI complexity.
+
+**OBS-007 marked:** REVIEWED
 **Status:** PROCESSED
 
 ---
