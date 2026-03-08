@@ -102,8 +102,9 @@ T5-14 (formerly T4-29) is Phase 8 scheduled work (low-blast-radius ESI overlay; 
 T2-17 is marked `independent` (can run concurrently with other Tier 2 items after Tier 1 closes).
 T5-06-A (`InjuryRiskEnsembleModel` explainability) is a **Phase 8 prerequisite** per AGENTS.md §16.2 G1.
 T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8 prerequisite guard rails**.
-Phase 8 is gated — see AGENTS.md §16.2 (Phase 8 Entry Gate). AGENTS.md §16.2 G9 requires the
-Phase 8 Simplicity Review (AGENTS.md §16.11) before entry.
+Phase 8 is gated — see AGENTS.md §16.2 (Phase 8 Entry Gate). G9 requires ADR-0018 Phase B
+implemented (Effect Runner extracted). G11 requires the Phase 8 Simplicity Review
+(AGENTS.md §16.11) documented in `docs/adr/0022-review-phase8-go.md`.
 
 ---
 
@@ -1856,10 +1857,10 @@ When an item is completed, mark it here with date and PR reference:
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
+| ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
-*Last updated: 2026-03-07 — Tier-4 closed (T4-15, T4-16, T4-17, T4-30 RESOLVED). T4-29 reclassified
-to T5-14 (Phase 8 scheduled work; Tier 4 → Tier 5) to clear Phase 8 entry gate G1. ADR-0017 status
-label updated to satisfy Phase 8 entry gate G4.*
+*Last updated: 2026-03-08 — ADR-0018 Phase B (B1+B2) implemented; G9 cleared. G8+G11 pending
+`docs/adr/0022-review-phase8-go.md` authoring. CLAUDE.md historical snapshot updated to 1779.*

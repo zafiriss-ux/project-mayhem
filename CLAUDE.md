@@ -52,7 +52,7 @@ project-mayhem/
 │   └── test_phase7_hygiene.py             # Phase 7 branch-coverage sweep (31 tests)
 ├── .github/workflows/       # CI pipelines (ci.yml, codeql.yml, secret-scan.yml)
 ├── docs/
-│   ├── adr/                 # Architecture Decision Records (0006–0045, 27 ADRs)
+│   ├── adr/                 # Architecture Decision Records (0006–0045, 28 ADRs)
 │   ├── architecture/        # GOVERNANCE_PHILOSOPHY.md, EVALUATION_ORDER.md
 │   ├── specs/               # adaptive_priority_lock.md, volume_load_gauge.md,
 │   │                        # operator_console_readiness_dashboard.md,
@@ -271,7 +271,7 @@ Canonical column name for temperature: `temperature_c`.
 
 ### Key Architectural Decisions
 
-See `docs/adr/` for Architecture Decision Records (27 total — architectural decisions only).
+See `docs/adr/` for Architecture Decision Records (28 total — architectural decisions only).
 Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGES.md`.
 
 - `0006` — Architectural hardening: cold start and engine sync
@@ -286,8 +286,9 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0015` — SQLite retention strategy and Phase 8 data lifecycle gate (Accepted — v5.8.0)
 - `0016` — Phase 8 multi-sport scope and unified adapter gate (Accepted — v5.8.0)
 - `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
-- `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A Implemented — v5.8.0; Phase B deferred)
+- `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A Implemented — v5.8.0; Phase B Implemented — v5.8.0 2026-03-08)
 - `0020` — Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode (Accepted — 2026-03-05; T1-15 Implemented 2026-03-06)
+- `0022` — Phase 8 Entry Gate Review and Architect Sign-off (Accepted — Phase 8 OPEN 2026-03-08)
 - `0023` — Physiological Input Validation Contract: bounds layer at DB→science boundary (Accepted — T1-18 Implemented 2026-03-06)
 - `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Accepted — T1-19 pending)
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)

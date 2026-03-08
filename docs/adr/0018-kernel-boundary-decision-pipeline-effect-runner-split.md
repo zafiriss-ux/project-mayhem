@@ -3,8 +3,8 @@
 **Date:** 2026-03-05
 **Branch:** `claude/kernel-boundary-pipeline-split-gH04T`
 **Type:** Architectural Decision + Implementation Plan
-**Status:** Accepted — Phase A implemented (v5.8.0); Phase B accepted 2026-03-07
-**Scope:** Phase A (Surgical — implemented) + Phase B (Structural — scoped, next sprint)
+**Status:** Accepted — Phase A implemented (v5.8.0); Phase B implemented (v5.8.0; commit c51e217) 2026-03-08
+**Scope:** Phase A (Surgical — implemented) + Phase B (Structural — implemented 2026-03-08)
 **Supersedes:** N/A
 **Related:** ADR-0017 (Composition Root & DailyCoach Architecture Audit)
 
@@ -195,7 +195,7 @@ Whichever approach is chosen, the invariant is:
 
 ---
 
-### Phase B — Decision/Effect Separation (next sprint)
+### Phase B — Decision/Effect Separation ✅ Implemented (commit c51e217, 2026-03-08)
 
 **Status:** Accepted 2026-03-07. Scoped implementation plan below. No implementation in current sprint.
 
@@ -588,4 +588,4 @@ A code commit without tests is not accepted (CLAUDE.md Test Creation/Update Rule
 
 ---
 
-*Phase A: surgical fixes. Phase B: pipeline split (next sprint). No `.py` files modified by this ADR document itself.*
+*Phase A: surgical fixes (v5.8.0). Phase B: pipeline split implemented 2026-03-08 (commit c51e217). No `.py` files modified by this ADR document itself.*
