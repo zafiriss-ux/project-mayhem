@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1803 tests all green as of TECHNICAL_DEBT.md alignment fix (2026-03-08). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1780 tests all green as of doc-consistency-checks (2026-03-08). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -437,6 +437,13 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 ---
 
 ## Key Files for Reference
+
+> **Documentation hierarchy**
+> `TECHNICAL_DEBT.md` is the **canonical operational state** — authoritative for phase
+> status, task status, and ADR list. `CLAUDE.md` is a **context snapshot** — authoritative
+> for architecture notes, module inventory, and engineering rules. On any conflict between
+> the two, `TECHNICAL_DEBT.md` wins for operational state; `AGENTS.md` wins for process
+> rules. `tests/test_claude_md_integrity.py` enforces this invariant in CI.
 
 | File | Purpose |
 |------|---------|
