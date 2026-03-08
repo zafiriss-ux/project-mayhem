@@ -9,6 +9,10 @@ ILLNESS_PATTERN_RHR_DELTA = 10.0
 SUBJECTIVE_FATIGUE_EXTREME = 8
 SUBJECTIVE_FATIGUE_2OF4 = 6
 
+# Banister CTL/ATL EMA windows.
+CTL_DECAY_DAYS = 42
+ATL_DECAY_DAYS = 7
+
 # VO2 gate thresholds.
 # Notes:
 # - ACWR upper bound is kept conservative at 1.30 for quality/high-intensity work,

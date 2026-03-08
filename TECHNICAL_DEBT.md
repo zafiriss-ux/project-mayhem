@@ -1885,44 +1885,32 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py 🔴 OPEN
+### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
-**Status:** OPEN (Phase 8A — before ML models consume CTL/ATL in Phase 9).
+**Status:** ✅ RESOLVED 2026-03-08. Commit: <pending>.
 **Workflow Path: A** *(targeted constant promotion + CI guard)*
 **Source:** DEC-FR-04 — Future Risk Analysis 2026-03-08. Verified: `tsb_engine.py:17,27`.
 
-**Original state:**
+**Original state (pre-fix):**
 
-`TSBEngine.calculate_ctl(decay: int = 42)` and `calculate_atl(decay: int = 7)` define the
-canonical CTL/ATL EMA windows as inline default parameters. These windows are architectural
+`TSBEngine.calculate_ctl(decay: int = 42)` and `calculate_atl(decay: int = 7)` defined the
+canonical CTL/ATL EMA windows as inline default parameters. These windows were architectural
 constants (Banister model — exercise science consensus), not tuneable per-run options. No
-entry exists in `thresholds.py` or `evidence_registry.py`. `load_prediction_shadow.py`
-already computes an independent "next-7-day aggregate load" without referencing the canonical
-decay values. As Phase 9 ML models (AutomatedPeriodizationEngine, LoadPredictionShadowModel)
-begin consuming and producing CTL/ATL-like signals, silent semantic divergence (one component
-using 42-day EMA, another using a different window) will have no CI guard.
+entry existed in `thresholds.py` or `evidence_registry.py`.
 
-**Fix direction:**
+**Resolution:**
 
-1. Add to `titan/config/thresholds.py`:
-   ```python
-   CTL_DECAY_DAYS: int = 42   # Chronic Training Load EMA window (Banister model)
-   ATL_DECAY_DAYS: int = 7    # Acute Training Load EMA window (Banister model)
-   ```
-2. Add provenance entries to `titan/config/evidence_registry.py` (STRONG — Banister 1975).
-3. Update `TSBEngine.calculate_ctl` and `calculate_atl` to use `thresholds.CTL_DECAY_DAYS`
-   and `thresholds.ATL_DECAY_DAYS` as defaults.
-4. Add a CI test (in `tests/test_constants_hygiene.py` or a new
-   `tests/test_training_load_window_invariant.py`) verifying that:
-   - `thresholds.CTL_DECAY_DAYS == 42` and `thresholds.ATL_DECAY_DAYS == 7`
-   - No Python file outside `thresholds.py` contains a raw integer literal `42` adjacent
-     to terms `ctl`, `chronic`, `decay`, or `ema` (case-insensitive grep pattern).
-
-**Acceptance criteria:**
-- `CTL_DECAY_DAYS` and `ATL_DECAY_DAYS` exist in `thresholds.py` with evidence registry entries.
-- `TSBEngine.calculate_ctl` and `calculate_atl` use these constants as defaults.
-- CI test verifies the invariant: canonical window values are defined exactly once.
-- All three mandatory gates pass.
+- Added canonical constants `CTL_DECAY_DAYS` and `ATL_DECAY_DAYS` in
+  `titan/config/thresholds.py` and added STRONG provenance entries in
+  `titan/config/evidence_registry.py`.
+- Updated CTL/ATL runtime calculations to consume the centralized constants in:
+  `titan/science/tsb_engine.py`, `titan/core/database.py`,
+  `titan/orchestration/daily_coach.py`, and legacy exports in
+  `titan/utils/constants.py`.
+- Updated tests to enforce canonical usage and boundary behavior when decay
+  constants change: `tests/titan/science/test_tsb_engine.py`,
+  `tests/test_physiological_bounds.py`, and `tests/test_constants_hygiene.py`.
+- Mandatory gates passed at closure:
 
 ```bash
 ruff check .
@@ -1930,7 +1918,7 @@ python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
 ```
 
-**Effort:** ~1h. Pure constant promotion — no logic change.
+**Test count at closure:** 1820 passed.
 
 ---
 
@@ -2183,15 +2171,15 @@ When an item is completed, mark it here with date and PR reference:
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
-| T2-18 | OPEN (Phase 8A — CTL/ATL decay window centralization) | — |
+| T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
 
 *Last updated: 2026-03-08 — Future Risk Analysis session. 11-category forward risk review
-(DEC-FR-01 through DEC-FR-11). Actions: T2-18 (CTL/ATL constant centralization — OPEN);
+(DEC-FR-01 through DEC-FR-11). Actions: T2-18 (CTL/ATL constant centralization — RESOLVED);
 T2-19 (nominal coherence oracle — RESOLVED, implemented in test_science_edge_cases.py);
 T5-05 augmented with Phase 9 calibration design constraints (damping, domain baseline snapshot);
 T5-16-A acceptance criteria augmented with state isolation oracle requirement.
-CLAUDE.md snapshot updated 1814→1791 (pre-existing drift corrected).*
+CLAUDE.md snapshot updated 1791→1820 at T2-18 close.*
