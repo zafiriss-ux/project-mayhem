@@ -355,3 +355,22 @@ jobs:
 
       - name: Run CLAUDE.md integrity tests
         run: pytest tests/test_claude_md_integrity.py -v
+
+  phase8-ci-checks:
+    name: Phase 8 CI Consistency Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Phase 8 CI consistency checks
+        run: pytest tests/test_phase8_ci_checks.py -v
