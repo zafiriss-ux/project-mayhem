@@ -1720,6 +1720,26 @@ python -m pytest -q
 **Status:** PILOT — not permanent. Activate on next Phase 8 sprint item; evaluate after one sprint.
 **Recorded:** 2026-03-08 (E14 — idea captured before implementation).
 
+**Applicability gate — classify the item before activating PILOT-01:**
+
+PILOT-01 runs **by default** only when ALL of the following hold:
+- Effort estimate ≤ 1 day (≤ ~6h).
+- No schema changes (no `CREATE TABLE`, `ALTER TABLE`, column additions, or Alembic migration).
+- No cross-subsystem dependency changes (does not alter import graph between packages).
+- Scope limited to ≤ 2 modules (production code side).
+
+PILOT-01 is **opt-in only** (requires explicit architect APPROVED note in this entry before
+Codex activates it) when the item involves any of:
+- Schema migration or database backend replacement (e.g. T5-07 Layer 1, T5-08 PostgreSQL).
+- Architectural refactor — kernel boundary changes, subsystem extraction, god-object splits.
+- Multi-tier change — touches governance infrastructure (Tier 1–4) across ≥ 2 tiers.
+- Effort > 1 day or item is explicitly labelled P0.
+
+Rationale: the Opus QA reviewer operates on test quality within a bounded implementation
+context. For migration and refactor items the reviewer lacks the schema diff, migration
+sequence, and cross-module coupling context required to make a valid coverage judgement.
+A REJECT in that context adds friction without diagnostic value and risks incorrect advice.
+
 **Motivation:** Codex's test output passes gates mechanically (ruff + pytest) but may miss semantic
 gaps: undertested edge cases, missing invariant coverage, acceptance criteria not fully exercised.
 An automated QA pass before the gates can catch these earlier and reduce back-and-forth.
