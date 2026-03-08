@@ -1493,3 +1493,288 @@ def test_run_morning_routine_forwards_decision_rationale_into_telegram_payload()
     assert coach.run_morning_routine() is True
     assert payload["primary_reason"] == "Injury flag active."
     assert payload["actionable_guidance"] == "Take full rest."
+
+
+# ── B2 tests: _decision_pipeline() + _effect_runner() ───────────────────────
+
+
+def _make_garmin_trust():
+    from titan.science.data_trust import DataTrustLevel, DataTrustReport
+    return DataTrustReport(
+        source="garmin",
+        trust_level=DataTrustLevel.TRUSTED,
+        reasons=[],
+        checked_at="2026-03-07T07:00:00+00:00",
+        data_age_hours=0.5,
+    )
+
+
+def _pipeline_kwargs(coach):
+    """Minimal valid keyword arguments for _decision_pipeline()."""
+    return {
+        "garmin_data": {
+            "activities": [],
+            "sleep": [{"restingHeartRate": 50, "sleepScores": {"overall": {"value": 80}}, "sleepTimeSeconds": 25200}],
+            "hrv": [{"date": "2026-03-07", "rmssd": 45.0}],
+            "hrr": [],
+            "weight": [],
+            "temperature_c": 20,
+            "acwr": 1.0,
+        },
+        "soreness": 2,
+        "subjective_fatigue_score": 2,
+        "today_rhr": 50,
+        "today_sleep_score": 80,
+        "today_sleep_hours": 7.5,
+        "baseline_rhr_for_comparison": 49.0,
+        "persistence_degraded": False,
+        "garmin_data_stale": False,
+        "latest_hrv": 45.0,
+        "baseline_hrv": 40.0,
+        "hrv_summary": {"latest_hrv": 45.0, "baseline": 40.0, "trend": "steady", "std_dev": 1.0},
+        "afi_final": 0.2,
+        "afi_constraints": {"afi_modifier": 0, "readiness_clamp": 100},
+        "tsb_value": 0.0,
+        "tsb_status": "BALANCED",
+        "cs_thermal": None,
+        "garmin_trust": _make_garmin_trust(),
+        "garmin_report_payload": {},
+        "startup_hydration_confidence": {},
+        "startup_confidence_applies": False,
+    }
+
+
+def test_decision_pipeline_returns_decision_result():
+    from titan.orchestration.contracts import DecisionResult
+
+    coach = MinimalCoachFactory.build()
+    result = coach._decision_pipeline(**_pipeline_kwargs(coach))
+
+    assert isinstance(result, DecisionResult)
+    assert isinstance(result.session_plan, dict)
+    assert isinstance(result.coaching_payload, dict)
+    assert isinstance(result.planned_effects, tuple)
+    assert isinstance(result.decision_trace, dict)
+    assert isinstance(result.snapshot_at, str)
+
+
+def test_decision_pipeline_no_db_writes():
+    write_calls = []
+
+    coach = MinimalCoachFactory.build()
+    original_save_session = coach.db.save_session
+    coach.db.save_session = lambda **kw: write_calls.append(("save_session", kw)) or original_save_session(**kw)
+    coach.db.save_daily_metric = lambda **kw: write_calls.append(("save_daily_metric", kw))
+    coach.db.update_glycogen_debt = lambda **kw: write_calls.append(("update_glycogen_debt", kw))
+
+    coach._decision_pipeline(**_pipeline_kwargs(coach))
+
+    assert write_calls == [], f"Pipeline made unexpected DB write(s): {write_calls}"
+
+
+def test_decision_pipeline_no_telegram_calls():
+    telegram_calls = []
+
+    coach = MinimalCoachFactory.build()
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: telegram_calls.append("send_daily_coaching") or True,
+        send_alert=lambda msg: telegram_calls.append("send_alert"),
+    )
+
+    coach._decision_pipeline(**_pipeline_kwargs(coach))
+
+    assert telegram_calls == [], f"Pipeline made unexpected Telegram call(s): {telegram_calls}"
+
+
+def test_decision_pipeline_decision_trace_has_required_fields():
+    required_keys = {
+        "hrv", "tsb", "acwr", "lock_codes_active",
+        "session_planned_pre_governance", "locks_applied", "governance_clean",
+        "phase", "vlg_color", "afi_value", "readiness_score", "glycogen_debt",
+    }
+
+    coach = MinimalCoachFactory.build()
+    result = coach._decision_pipeline(**_pipeline_kwargs(coach))
+
+    missing = required_keys - result.decision_trace.keys()
+    assert not missing, f"decision_trace missing required keys: {missing}"
+
+
+def test_effect_runner_dispatches_record_outcome():
+    from titan.orchestration.contracts import DecisionResult, PlannedEffect
+
+    recorded = []
+    coach = MinimalCoachFactory.build()
+    coach.outcome_tracker = SimpleNamespace(record_decision=lambda **kw: recorded.append(kw))
+
+    result = DecisionResult(
+        session_plan={"session_type": "EASY", "duration_min": 45},
+        coaching_payload={
+            "session_type": "EASY", "duration": "45 min", "details": "", "governance_locks": [],
+            "optimal_time": "07:00", "dew_point": 12.0, "conditions": "GOOD",
+            "hrv_status": "STABLE", "hrv_value": 45.0, "hrv_baseline": 40.0,
+            "afi": 0.2, "sleep_quality": 80, "sleep_hours": 7.5,
+            "readiness_score": 60.0, "subjective_fatigue_score": 2,
+            "fatigue_level": "LOW", "fatigue_tags": [], "tsb": 0.0,
+            "tsb_status": "BALANCED", "cs_smoothed": None, "cs_thermal": None,
+            "archetype": "stable", "glycogen_debt": 0.0, "glycogen_status": "LOW",
+            "glycogen_protocol": {}, "electrolyte_alert": {}, "nutrition_plan": "N/A",
+            "governance_report": {}, "intensity_gate_result": None,
+            "fueling_gate": None, "vo2_eligibility": None,
+        },
+        planned_effects=(PlannedEffect(effect_type="record_outcome", payload={}),),
+        decision_trace={
+            "hrv": 45.0, "tsb": 0.0, "acwr": 1.0, "lock_codes_active": [],
+            "session_planned_pre_governance": "EASY", "session_post_governance": "EASY",
+            "locks_applied": [], "governance_clean": True, "phase": "BASE",
+            "vlg_color": "GREEN", "afi_value": 0.2, "readiness_score": 60.0,
+            "glycogen_debt": 0.0, "apl_result": {}, "persistence_degraded": False,
+            "garmin_data_stale": False, "data_confidence_low": False,
+        },
+        snapshot_at="2026-03-07T07:00:00",
+    )
+
+    coach._effect_runner(result)
+
+    assert len(recorded) == 1
+    assert recorded[0]["session_planned"] == "EASY"
+    assert recorded[0]["governance_clean"] is True
+
+
+def test_effect_runner_dispatches_send_telegram():
+    from titan.orchestration.contracts import DecisionResult, PlannedEffect
+
+    delivered = []
+    coach = MinimalCoachFactory.build()
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: delivered.append(payload) or True,
+        send_alert=lambda msg: None,
+    )
+
+    session_plan = {"session_type": "EASY", "duration_min": 45}
+    coaching_payload = {
+        "session_type": "EASY", "duration": "45 min", "details": "", "governance_locks": [],
+        "optimal_time": "07:00", "dew_point": 12.0, "conditions": "GOOD",
+        "hrv_status": "STABLE", "hrv_value": 45.0, "hrv_baseline": 40.0,
+        "afi": 0.2, "sleep_quality": 80, "sleep_hours": 7.5,
+        "readiness_score": 60.0, "subjective_fatigue_score": 2,
+        "fatigue_level": "LOW", "fatigue_tags": [], "tsb": 0.0,
+        "tsb_status": "BALANCED", "cs_smoothed": None, "cs_thermal": None,
+        "archetype": "stable", "glycogen_debt": 0.0, "glycogen_status": "LOW",
+        "glycogen_protocol": {}, "electrolyte_alert": {}, "nutrition_plan": "N/A",
+        "governance_report": {}, "intensity_gate_result": None,
+        "fueling_gate": None, "vo2_eligibility": None,
+    }
+    result = DecisionResult(
+        session_plan=session_plan,
+        coaching_payload=coaching_payload,
+        planned_effects=(PlannedEffect(effect_type="send_telegram", payload={}),),
+        decision_trace={
+            "hrv": 45.0, "tsb": 0.0, "acwr": 1.0, "lock_codes_active": [],
+            "session_planned_pre_governance": "EASY", "session_post_governance": "EASY",
+            "locks_applied": [], "governance_clean": True, "phase": "BASE",
+            "vlg_color": "GREEN", "afi_value": 0.2, "readiness_score": 60.0,
+            "glycogen_debt": 0.0, "apl_result": {}, "persistence_degraded": False,
+            "garmin_data_stale": False, "data_confidence_low": False,
+        },
+        snapshot_at="2026-03-07T07:00:00",
+    )
+
+    success = coach._effect_runner(result)
+
+    assert success is True
+    assert len(delivered) == 1
+    assert delivered[0]["session_type"] == "EASY"
+
+
+def test_effect_runner_effects_execute_in_order():
+    from titan.orchestration.contracts import DecisionResult, PlannedEffect
+
+    execution_order = []
+    coach = MinimalCoachFactory.build()
+    coach.outcome_tracker = SimpleNamespace(
+        record_decision=lambda **kw: execution_order.append("record_outcome")
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: execution_order.append("send_telegram") or True,
+        send_alert=lambda msg: None,
+    )
+
+    coaching_payload = {
+        "session_type": "EASY", "duration": "45 min", "details": "", "governance_locks": [],
+        "optimal_time": "07:00", "dew_point": 12.0, "conditions": "GOOD",
+        "hrv_status": "STABLE", "hrv_value": 45.0, "hrv_baseline": 40.0,
+        "afi": 0.2, "sleep_quality": 80, "sleep_hours": 7.5,
+        "readiness_score": 60.0, "subjective_fatigue_score": 2,
+        "fatigue_level": "LOW", "fatigue_tags": [], "tsb": 0.0,
+        "tsb_status": "BALANCED", "cs_smoothed": None, "cs_thermal": None,
+        "archetype": "stable", "glycogen_debt": 0.0, "glycogen_status": "LOW",
+        "glycogen_protocol": {}, "electrolyte_alert": {}, "nutrition_plan": "N/A",
+        "governance_report": {}, "intensity_gate_result": None,
+        "fueling_gate": None, "vo2_eligibility": None,
+    }
+    result = DecisionResult(
+        session_plan={"session_type": "EASY", "duration_min": 45},
+        coaching_payload=coaching_payload,
+        planned_effects=(
+            PlannedEffect(effect_type="record_outcome", payload={}),
+            PlannedEffect(effect_type="send_telegram", payload={}),
+        ),
+        decision_trace={
+            "hrv": 45.0, "tsb": 0.0, "acwr": 1.0, "lock_codes_active": [],
+            "session_planned_pre_governance": "EASY", "session_post_governance": "EASY",
+            "locks_applied": [], "governance_clean": True, "phase": "BASE",
+            "vlg_color": "GREEN", "afi_value": 0.2, "readiness_score": 60.0,
+            "glycogen_debt": 0.0, "apl_result": {}, "persistence_degraded": False,
+            "garmin_data_stale": False, "data_confidence_low": False,
+        },
+        snapshot_at="2026-03-07T07:00:00",
+    )
+
+    coach._effect_runner(result)
+
+    assert execution_order == ["record_outcome", "send_telegram"]
+
+
+def test_run_morning_routine_delegates_pipeline_then_runner(monkeypatch):
+    """run_morning_routine() must call _decision_pipeline() then _effect_runner()."""
+    from titan.orchestration.contracts import DecisionResult, PlannedEffect
+
+    call_log = []
+
+    coach = MinimalCoachFactory.build()
+
+    dummy_coaching_payload = {
+        "session_type": "EASY", "duration": "45 min", "details": "", "governance_locks": [],
+        "optimal_time": "07:00", "dew_point": 12.0, "conditions": "GOOD",
+        "hrv_status": "STABLE", "hrv_value": 45.0, "hrv_baseline": 40.0,
+        "afi": 0.2, "sleep_quality": 80, "sleep_hours": 7.5,
+        "readiness_score": 60.0, "subjective_fatigue_score": 2,
+        "fatigue_level": "LOW", "fatigue_tags": [], "tsb": 0.0,
+        "tsb_status": "BALANCED", "cs_smoothed": None, "cs_thermal": None,
+        "archetype": "stable", "glycogen_debt": 0.0, "glycogen_status": "LOW",
+        "glycogen_protocol": {}, "electrolyte_alert": {}, "nutrition_plan": "N/A",
+        "governance_report": {}, "intensity_gate_result": None,
+        "fueling_gate": None, "vo2_eligibility": None,
+    }
+    dummy_result = DecisionResult(
+        session_plan={"session_type": "EASY", "duration_min": 45},
+        coaching_payload=dummy_coaching_payload,
+        planned_effects=(PlannedEffect(effect_type="send_telegram", payload={}),),
+        decision_trace={
+            "hrv": 45.0, "tsb": 0.0, "acwr": 1.0, "lock_codes_active": [],
+            "session_planned_pre_governance": "EASY", "session_post_governance": "EASY",
+            "locks_applied": [], "governance_clean": True, "phase": "BASE",
+            "vlg_color": "GREEN", "afi_value": 0.2, "readiness_score": 60.0,
+            "glycogen_debt": 0.0, "apl_result": {}, "persistence_degraded": False,
+            "garmin_data_stale": False, "data_confidence_low": False,
+        },
+        snapshot_at="2026-03-07T07:00:00",
+    )
+
+    monkeypatch.setattr(coach, "_decision_pipeline", lambda **kw: call_log.append("pipeline") or dummy_result)
+    monkeypatch.setattr(coach, "_effect_runner", lambda result: call_log.append("runner") or True)
+
+    coach.run_morning_routine()
+
+    assert call_log == ["pipeline", "runner"]

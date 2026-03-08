@@ -140,7 +140,7 @@ without benefit.
 
 ## Decision
 
-**Status: Accepted (assessment only)**
+**Status: Accepted — fan-in paths documented (Phase B assessment complete)**
 
 Both patterns — monolithic composition root and god-orchestrator DailyCoach — are
 **accepted as-is** at the current system scale. No code changes are mandated by this ADR.

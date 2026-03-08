@@ -268,7 +268,7 @@ jobs:
                   if "__" not in module.name
               ]
           )
-          module_ceiling = 60
+          module_ceiling = 65  # raised 60→65 at Phase 8 entry (ADR-0022, 2026-03-08)
 
           if module_count > module_ceiling:
               raise SystemExit(

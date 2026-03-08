@@ -8,8 +8,9 @@
 τη δομή, τα modules, τα contracts, ή τα safety gates του συστήματος.
 
 > **Σημείωση:** Μετά από triage (2026-03-07), ο φάκελος περιέχει μόνο αληθινές
-> αρχιτεκτονικές αποφάσεις (27 ADRs). Οι process-rule ADRs (0021, 0022, 0024, 0025,
+> αρχιτεκτονικές αποφάσεις (28 ADRs). Οι process-rule ADRs (0021, 0024, 0025,
 > 0028, 0029, 0031, 0035, 0036, 0039, 0040) έχουν μεταφερθεί στο `AGENTS.md §16`.
+> ADR-0022 επαναχρησιμοποιείται ως Phase 8 Entry Gate Review (architect sign-off).
 > Τα historical bug-fix ADRs (0001–0005, 0019, 0043) έχουν αποσυρθεί — το περιεχόμενό
 > τους υπάρχει στο `CHANGES.md` και στο `FUTURE_UPGRADES.md`.
 
@@ -31,8 +32,9 @@
 | [0015](0015-sqlite-retention-and-phase8-data-lifecycle-gate.md) | SQLite retention strategy and Phase 8 data lifecycle gate | Architecture / Data lifecycle | ✅ Accepted | TBD |
 | [0016](0016-phase8-multisport-scope-and-adapter-gate.md) | Phase 8 multi-sport scope and unified adapter gate | Architecture / Integrations | ✅ Accepted | TBD |
 | [0017](0017-composition-root-and-dailycoach-architecture-audit.md) | Composition root fan-in and DailyCoach god-orchestrator audit | Architecture / Audit | ✅ Accepted (assessment only, 2026-03-04) | TBD |
-| [0018](0018-kernel-boundary-decision-pipeline-effect-runner-split.md) | Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A implemented) | Architecture / Safety | ✅ Phase A Implemented (v5.8.0); Phase B deferred | TBD |
+| [0018](0018-kernel-boundary-decision-pipeline-effect-runner-split.md) | Kernel Boundary: Decision Pipeline / Effect Runner Split | Architecture / Safety | ✅ Phase A + Phase B Implemented (v5.8.0; commit c51e217) | TBD |
 | [0020](0020-persistence-failure-policy-dailycoach.md) | Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode | Architecture / Safety | ✅ Accepted (2026-03-05) — T1-15 execution pending | — |
+| [0022](0022-review-phase8-go.md) | Phase 8 Entry Gate Review and Architect Sign-off | Architecture / Governance | ✅ Accepted — Phase 8 OPEN (2026-03-08) | — |
 | [0023](0023-physiological-input-validation-contract.md) | Physiological Input Validation Contract: bounds validation at DB→engine boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-18 execution pending | — |
 | [0026](0026-input-data-sanity-layer.md) | Input Data Sanity Layer: structural/temporal validation at Garmin sync boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-19 execution pending | — |
 | [0027](0027-hidden-inter-module-coupling-prevention.md) | Hidden Inter-Module Coupling Prevention: TypedDict contracts + coupling invariant test | Architecture / Quality | ✅ Accepted (2026-03-06) — T4-26 execution pending | — |

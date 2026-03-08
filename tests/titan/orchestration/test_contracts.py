@@ -1,11 +1,14 @@
 import json
+from dataclasses import FrozenInstanceError
 from typing import get_type_hints
 
 from titan.orchestration.contracts import (
     DailyCoachContextContract,
     DailyCoachingPayload,
+    DecisionResult,
     GarminSyncResultContract,
     HRVSyncMetricsContract,
+    PlannedEffect,
     TitanContextContract,
     TodaySessionPlan,
 )
@@ -268,6 +271,95 @@ def test_titan_context_contract_to_payload_happy_path():
     assert payload["last_weekly_plan"] is last_weekly_plan
     assert payload["athlete_profile"]["name"] == "Athlete"
     assert payload["today_session_type"] == "EASY"
+
+
+# ── B1 tests: PlannedEffect + DecisionResult type invariants ─────────────────
+
+
+def _minimal_session_plan() -> TodaySessionPlan:
+    return {"session_type": "EASY", "duration_min": 45}
+
+
+def _minimal_coaching_payload() -> DailyCoachingPayload:
+    return {
+        "session_type": "EASY",
+        "duration": "10 km",
+        "details": "",
+        "governance_locks": [],
+        "optimal_time": "07:00",
+        "dew_point": 12.0,
+        "conditions": "GOOD",
+        "hrv_status": "STABLE",
+        "hrv_value": 42.0,
+        "hrv_baseline": 40.0,
+        "afi": 0.0,
+        "sleep_quality": 75,
+        "sleep_hours": 7.5,
+        "readiness_score": 70.0,
+        "subjective_fatigue_score": 3,
+        "fatigue_level": "LOW",
+        "fatigue_tags": [],
+        "tsb": 0.0,
+        "tsb_status": "OPTIMAL",
+        "cs_smoothed": None,
+        "cs_thermal": None,
+        "archetype": "balanced",
+        "glycogen_debt": 10.0,
+        "glycogen_status": "LOW",
+        "glycogen_protocol": {},
+        "electrolyte_alert": {},
+        "nutrition_plan": "60g carbs, 25g protein",
+        "governance_report": {},
+        "intensity_gate_result": None,
+        "fueling_gate": None,
+        "vo2_eligibility": None,
+    }
+
+
+def _minimal_decision_result(**overrides) -> DecisionResult:
+    kwargs: dict = {
+        "session_plan": _minimal_session_plan(),
+        "coaching_payload": _minimal_coaching_payload(),
+        "planned_effects": (),
+        "decision_trace": {"hrv": 42.0, "tsb": 0.0},
+        "snapshot_at": "2026-03-07T07:00:00",
+    }
+    kwargs.update(overrides)
+    return DecisionResult(**kwargs)
+
+
+def test_planned_effect_is_frozen():
+    effect = PlannedEffect(effect_type="send_telegram", payload={"msg": "hi"})
+    try:
+        effect.effect_type = "record_outcome"  # type: ignore[misc]
+        raise AssertionError("Expected FrozenInstanceError")
+    except FrozenInstanceError:
+        pass
+
+
+def test_decision_result_is_frozen():
+    result = _minimal_decision_result()
+    try:
+        result.snapshot_at = "mutated"  # type: ignore[misc]
+        raise AssertionError("Expected FrozenInstanceError")
+    except FrozenInstanceError:
+        pass
+
+
+def test_decision_result_planned_effects_is_tuple():
+    effect = PlannedEffect(effect_type="send_telegram", payload={})
+    result = _minimal_decision_result(planned_effects=(effect,))
+    assert isinstance(result.planned_effects, tuple)
+    assert result.planned_effects[0].effect_type == "send_telegram"
+
+
+def test_planned_effect_discriminants():
+    for discriminant in ("record_outcome", "send_telegram"):
+        effect = PlannedEffect(effect_type=discriminant, payload={})
+        assert effect.effect_type == discriminant
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_titan_context_contract_to_payload_boundary_nullable_weekly_plan():
