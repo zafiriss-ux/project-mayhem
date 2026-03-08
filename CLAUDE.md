@@ -290,15 +290,15 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0020` — Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode (Accepted — 2026-03-05; T1-15 Implemented 2026-03-06)
 - `0022` — Phase 8 Entry Gate Review and Architect Sign-off (Accepted — Phase 8 OPEN 2026-03-08)
 - `0023` — Physiological Input Validation Contract: bounds layer at DB→science boundary (Accepted — T1-18 Implemented 2026-03-06)
-- `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Accepted — T1-19 pending)
+- `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Implemented — T1-19 Implemented 2026-03-07)
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)
-- `0030` — External Data Source Resilience: staleness gates and fallback policy (Accepted — T1-20 pending)
+- `0030` — External Data Source Resilience: staleness gates and fallback policy (Implemented — T1-20, T2-15 Implemented 2026-03-07)
 - `0032` — ML Advisory Explainability Protocol: evidence labels on all ML payloads (Implemented — 2026-03-06)
 - `0033` — Physiological Model Aging and Multi-Athlete Architecture Protocol (Accepted — T5-07 Layers 1–2 pending)
 - `0034` — Environmental Stress Compensation for Training Zones (Accepted — 2026-03-06)
-- `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Accepted — T1-21 pending)
-- `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Accepted — T2-16 pending)
-- `0041` — Unified External Data Trust Contract: DataTrustLevel for all sensor sources (Accepted — T1-23 pending)
+- `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Implemented — T1-21 Implemented 2026-03-07)
+- `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Implemented — T2-16 Implemented 2026-03-07)
+- `0041` — Unified External Data Trust Contract: DataTrustLevel for all sensor sources (Implemented — T1-23 Implemented 2026-03-07)
 - `0042` — Human Override as First-Class Invariant: no recommendation without override path (Accepted — IMMEDIATE — 2026-03-06)
 - `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
@@ -444,7 +444,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7 CLOSED; Phase 7.5 Hardening OPEN |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7.9 CLOSED; Phase 8 OPEN (2026-03-08) |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
