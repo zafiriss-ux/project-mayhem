@@ -1759,6 +1759,58 @@ safety or functional benefit.
 
 ---
 
+### T5-16 · DailyCoach multi-athlete execution model undefined — Phase 8B orchestration semantics unresolved 🔴 OPEN
+
+**Status:** OPEN (Phase 8B entry gate — ADR must be accepted before any multi-athlete coaching session is invoked).
+**Workflow Path: A** *(architectural decision required — PILOT-01 excluded)*
+**Source:** Architect review 2026-03-08 (risk package evaluation). Not previously recorded.
+**Priority:** P0 for Phase 8B (do NOT build any multi-athlete coaching execution path without this resolved).
+
+**Location:** `titan/orchestration/daily_coach.py`; ADR index (next available after ADR-0045).
+
+**Original state (pre-fix):**
+
+DailyCoach is designed as a single-athlete, daemon-thread orchestrator. ADR-0018 (kernel
+boundary: Decision Pipeline / Effect Runner split, Phase A+B implemented 2026-03-08) improved
+internal state management for single-athlete execution. ADR-0017 (god-orchestrator audit)
+assessed the problem but was accepted as assessment-only with no action items.
+
+For Phase 8B (coach dashboard, multi-athlete), no architectural decision exists for how
+DailyCoach orchestrates ≥2 athletes simultaneously. The three candidate models have not
+been evaluated:
+
+1. **Separate instances** — one DailyCoach instance per athlete (simplest; memory footprint
+   scales with N athletes; daemon thread lifecycle unchanged).
+2. **Stateless function** — DailyCoach becomes a pure function receiving an athlete context
+   object; daemon thread is retired and replaced by a FastAPI request lifecycle or a
+   scheduled task runner per athlete.
+3. **FastAPI lifecycle-scoped** — DailyCoach instantiated per-request by FastAPI dependency
+   injection (ADR-0013 FastAPI path); no persistent daemon thread in multi-athlete mode.
+
+Without this decision, T5-09 (`get_athlete_context()`), the coach dashboard API (T5-11),
+and any multi-athlete coaching execution path will be built on undefined execution semantics,
+creating implicit coupling that will require re-architecture when the execution model is
+finally chosen.
+
+**Required before any Phase 8B multi-athlete coaching endpoint is built:**
+
+- ADR authored (next available number after ADR-0045) specifying the chosen execution model.
+- Concurrency analysis: which shared state (engine references, weather cache, governance
+  context) requires per-athlete isolation vs. is safely shared across athletes.
+- Decision on daemon thread lifecycle in multi-athlete mode: retain, retire, or replace.
+- If model 2 or 3 is chosen: stateless contract defined for the coaching pipeline, including
+  how engine hydration (currently done once at DailyCoach startup) is handled per-athlete.
+
+**Debt item:** This item is **ADR_NEEDED** — no implementation entry exists until the ADR
+is accepted. When the ADR is accepted, a T5-16-A implementation entry will be created
+scoped to the DailyCoach refactor required by the chosen model.
+
+**Phase 8B gate:** This ADR must be accepted before Phase 8B multi-athlete coaching
+execution begins. T5-09 and T5-11 may proceed in parallel — they are not blocked by this
+decision.
+
+---
+
 ### PILOT-01 · Opus QA layer — automated test-quality review between Codex and mandatory gates 🟡 PILOT
 
 **Status:** PILOT — not permanent. Activate on next Phase 8 sprint item; evaluate after one sprint.
@@ -1979,6 +2031,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
+| T5-16 | OPEN (Phase 8B entry gate — DailyCoach multi-athlete execution model ADR required) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 
 *This document is the single source of truth for technical debt. Update it when items are
@@ -1988,4 +2041,6 @@ resolved, not in commit messages alone.*
 QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 §16.11).
 T5-15 (pytest marker taxonomy) added as Phase 9 DEFERRED item (DEC-001 / OBS-001).
 `**Workflow Path:**` field added to all open Phase 8 items (T5-06-A, T5-07–T5-09, T5-11–T5-14)
-per E16 tightening — TECHNICAL_DEBT.md is now the sole canonical path record.*
+per E16 tightening — TECHNICAL_DEBT.md is now the sole canonical path record.
+T5-16 (DailyCoach multi-athlete execution model) added as Phase 8B entry gate (architect
+review 2026-03-08 — ADR_NEEDED before any multi-athlete coaching execution path is built).*
