@@ -1,23 +1,13 @@
 """Readiness Score Engine - Composite Recovery Analysis"""
-import json
 import logging
 
-from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.core.structured_events import make_event_emitter
 from titan.science.physiological_bounds import BOUNDS
 
 MODULE_VERSION = "1.0.0"
 
 _log = logging.getLogger(__name__)
-
-
-def _readiness_event(
-    action: str,
-    *,
-    severity: EventSeverity | str = EventSeverity.INFO,
-    **fields,
-) -> None:
-    """Emit a structured readiness event as a single JSON log line."""
-    _log.info(json.dumps(structured_event_payload("readiness", action, severity=severity, **fields), default=str))
+_readiness_event = make_event_emitter("readiness", _log)
 
 
 class ReadinessEngine:

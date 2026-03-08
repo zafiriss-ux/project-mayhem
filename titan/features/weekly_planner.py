@@ -9,26 +9,16 @@ Generates intelligent weekly plans based on:
 - Periodization phase
 """
 
-import json
 import logging
 from datetime import datetime, timedelta
 
-from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.core.structured_events import make_event_emitter
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.tsb_engine import TSBEngine
 
 _log = logging.getLogger(__name__)
-
-
-def _planner_event(
-    action: str,
-    *,
-    severity: EventSeverity | str = EventSeverity.INFO,
-    **fields,
-) -> None:
-    """Emit a structured weekly planner event as a single JSON log line."""
-    _log.info(json.dumps(structured_event_payload("weekly_planner", action, severity=severity, **fields), default=str))
+_planner_event = make_event_emitter("weekly_planner", _log)
 
 
 class WeeklyPlanGenerator:

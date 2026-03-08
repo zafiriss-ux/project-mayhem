@@ -4,22 +4,12 @@ Weight-based nutrition adjustment with scientific backing.
 Integrates with Garmin weight data to provide real-time dietary recommendations.
 """
 
-import json
 import logging
 
-from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.core.structured_events import make_event_emitter
 
 _log = logging.getLogger(__name__)
-
-
-def _nutrition_event(
-    action: str,
-    *,
-    severity: EventSeverity | str = EventSeverity.INFO,
-    **fields,
-) -> None:
-    """Emit a structured nutrition event as a single JSON log line."""
-    _log.info(json.dumps(structured_event_payload("nutrition", action, severity=severity, **fields), default=str))
+_nutrition_event = make_event_emitter("nutrition", _log)
 
 
 class NutritionOptimizer:
