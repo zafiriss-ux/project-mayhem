@@ -1234,6 +1234,7 @@ Path A is the default. Path B requires an explicit opt-in action from the archit
 
 ```
 1. Architect brief       — task written in TECHNICAL_DEBT.md with binary acceptance criteria
+                           and **Workflow Path: A** declared in the item header
 2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
 3. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
 4. Commit / PR           — canonical commit format; PR opened only after gate 3 passes
@@ -1247,7 +1248,8 @@ substitute for step 3 (see §HARD GATE — Forbidden validation shortcuts).
 ### 17.3 Path B — QA-assisted (PILOT-01 opt-in only)
 
 ```
-1. Architect brief       — task written in TECHNICAL_DEBT.md; PILOT-01 APPROVED note added
+1. Architect brief       — task written in TECHNICAL_DEBT.md; PILOT-01 APPROVED note added;
+                           **Workflow Path: B (APPROVED)** declared in the item header
 2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
 3. Opus QA review        — test quality review (scope bounded in TECHNICAL_DEBT.md PILOT-01)
      ├─ APPROVE  →  proceed to step 4
@@ -1264,7 +1266,9 @@ required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the m
 ### 17.4 Enforcement Rules
 
 - **E16 — Path declared before start:** The architect must select Path A or Path B and record
-  it in the TECHNICAL_DEBT.md item (or the task assignment message) before Codex begins work.
+  it in the `**Workflow Path:**` field of the TECHNICAL_DEBT.md item before Codex begins work.
+  `TECHNICAL_DEBT.md` is the sole canonical record — a path stated only in the task assignment
+  message is not valid (messages are ephemeral; debt entries are version-controlled).
   A task without a declared path defaults to Path A.
 
 - **E17 — No mid-item path switching:** Once an item has started on Path A, it cannot switch
@@ -1279,4 +1283,4 @@ required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the m
 
 ---
 
-*Last updated: 2026-03-08 (Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-08 (E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*

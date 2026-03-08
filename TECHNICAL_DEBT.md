@@ -1348,6 +1348,7 @@ No implementation before Phase 8 closes and data accumulation criterion is met.
 ### T5-06 · ML advisory models lack explainability contract — feature attribution and plain-text reason absent 🟢
 
 **Decision status:** OPEN — T5-06-A is **Phase 8A early work** (complete before Phase 8B); remainder deferred Phase 9.
+**Workflow Path (T5-06-A): A** *(touches ≥ 3 production modules — PILOT-01 excluded)*
 **Source:** Risk Review V7 — Risk: ML Physiological Safety & Ethical Opacity. Architecture Review 2026-03-06. ADR-0032.
 
 **Original state (pre-fix):**
@@ -1404,6 +1405,7 @@ logic + governance integration update + tests.
 ### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime 🔴 OPEN
 
 **Status:** OPEN (Phase 8A early work — Layer 1 & 2 must be done before Phase 8B begins; Layer 3 deferred Phase 9).
+**Workflow Path: A** *(schema migration — PILOT-01 excluded)*
 **Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
 **Priority:** P1 for Layers 1–2 (Phase 8A, high priority); P5 for Layer 3 (Phase 9).
 
@@ -1466,6 +1468,7 @@ python -m pytest -q
 ### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt 🔴 OPEN
 
 **Status:** OPEN (Phase 8A — must resolve before Phase 8B coach dashboard begins).
+**Workflow Path: A** *(PostgreSQL migration + architectural refactor — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
 
@@ -1505,6 +1508,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 ### T5-09 · No unified `get_athlete_context()` query interface — LLM Seam 2 unbuilt 🔴 OPEN
 
 **Status:** OPEN (Phase 8B prerequisite; also required for Phase 10 LLM layer).
+**Workflow Path: A** *(effort > 1 day — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (LLM Seam 2).
 **Priority:** P2 for Phase 8B; P5 for Phase 10.
 
@@ -1572,6 +1576,7 @@ def coach_query(prompt: str, athlete_context: dict) -> str:
 ### T5-11 · No API authentication layer for Phase 8B web UI — health data accessible without auth 🔴 OPEN
 
 **Status:** OPEN (Phase 8B entry gate — must be designed before any coach dashboard endpoints are built).
+**Workflow Path: A** *(cross-subsystem auth layer; ADR required before implementation — PILOT-01 excluded)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P0 for Phase 8B (do NOT build any coach API endpoint without this resolved).
 
@@ -1603,6 +1608,7 @@ Phase 8B begins. This item is not implementable without that ADR.
 ### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
 
 **Status:** OPEN (risk monitoring — no immediate action; mitigation design deferred Phase 8C).
+**Workflow Path: A** *(no implementation until Phase 8C; path applies when mitigation design begins)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
 
@@ -1637,6 +1643,7 @@ handles for missing today-data.
 ### T5-13 · No coach action audit trail — GDPR accountability gap for health data processors 🔴 OPEN
 
 **Status:** OPEN (Phase 8B entry gate — must be implemented alongside first coach dashboard feature).
+**Workflow Path: A** *(schema migration + cross-subsystem middleware — PILOT-01 excluded)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P1 for Phase 8B (GDPR Article 5(2) accountability requirement).
 
@@ -1676,6 +1683,7 @@ a shared middleware (not per-endpoint — this must be non-bypassable).
 ### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN
 
 **Status:** OPEN (Phase 8 scheduled — implement after Phase 8 entry gate passes per AGENTS.md §16.2).
+**Workflow Path: A** *(touches 5 production modules — PILOT-01 excluded)*
 **Reclassified:** 2026-03-07 from T4-29 (Tier 4) to T5-14 (Tier 5). Rationale: this is Phase 8 internal work, not a Phase 8 prerequisite; keeping it as an OPEN Tier 4 item blocked G1 of the Phase 8 entry gate despite the work being correctly deferred into Phase 8.
 **Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
 **Priority:** P3 (accuracy improvement; not safety-gate). Independent.
@@ -1978,4 +1986,6 @@ resolved, not in commit messages alone.*
 
 *Last updated: 2026-03-08 — ADR-0022 authored; all G1–G11 cleared; Phase 8 OPEN. PILOT-01 (Opus
 QA layer) captured per E14. Complexity budget ceiling raised 60→65 (ADR-0022 §16.11).
-T5-15 (pytest marker taxonomy) added as Phase 9 DEFERRED item (DEC-001 / OBS-001).*
+T5-15 (pytest marker taxonomy) added as Phase 9 DEFERRED item (DEC-001 / OBS-001).
+`**Workflow Path:**` field added to all open Phase 8 items (T5-06-A, T5-07–T5-09, T5-11–T5-14)
+per E16 tightening — TECHNICAL_DEBT.md is now the sole canonical path record.*
