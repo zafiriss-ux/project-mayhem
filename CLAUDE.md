@@ -60,9 +60,9 @@ project-mayhem/
 │   │                        # operator_console_manual_override_workflow.md,
 │   │                        # operator_console_technology_path.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (53 modules, excl. __init__/__main__)
+└── titan/                   # Main package (54 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
-    ├── core/                # Athlete, Database, Periodization, Equipment
+    ├── core/                # Athlete, Database, Periodization, Equipment, PersistenceAdapter
     ├── science/             # 26 modules (engines + governance + ML scaffold)
     ├── features/            # Weekly planner, optimal time, nutrition optimizer
     ├── integrations/        # Garmin, Weather API, Telegram bot
@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1824 tests all green as of T5-08 close (2026-03-08). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1807 tests all green as of add-adr-checklist (2026-03-08). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -223,7 +223,7 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 ### Layered Architecture (bottom-up)
 
 1. **Config** (`titan/config/`) — `thresholds.py`: single source of truth for all safety threshold constants
-2. **Core** (`titan/core/`) — `UniversalAthleteProfile`, `DatabaseManager` (SQLite, thread-safe), `PeriodizationManager`, `EquipmentManager`
+2. **Core** (`titan/core/`) — `UniversalAthleteProfile`, `DatabaseManager` (SQLite, thread-safe), `PeriodizationManager`, `EquipmentManager`, `PersistenceAdapter` (T5-08-B D1 ABC)
 3. **Science** (`titan/science/`) — 26 modules:
    - Foundational engines (11): HRV, TSB/CTL/ATL, ACWR, lactate, drift, efficiency, durability, TRIMP, glycogen, fatigue, readiness
    - Autonomic & critical (4): `AutonomicFusionEngine` (AFI), `CriticalSpeedEngine`, `RCPEngine`, `BiomechanicsEngine`
@@ -472,6 +472,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `titan/science/load_prediction_shadow.py` | LSTM shadow load predictor (shadow mode only; kill-switch enforced) |
 | `titan/science/injury_risk_model.py` | Ensemble injury risk model (advisory; recall > 80% target; kill-switch enforced) |
 | `titan/science/automated_periodization.py` | Genetic-algorithm periodization suggester (suggest-only; kill-switch enforced) |
+| `titan/core/persistence.py` | `PersistenceAdapter` ABC — storage-backend contract for Phase 8A (T5-08-B D1 scaffold) |
 | `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
 | `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude) |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
