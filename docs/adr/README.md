@@ -48,6 +48,7 @@
 | [0042](0042-human-override-first-class-invariant.md) | Human Override as First-Class Architectural Invariant: OverrideSignal contract + Telegram override button + override handler registry per lock code | Architecture / Invariant | ✅ Accepted (2026-03-06) — ACTIVE IMMEDIATELY — T4-32 implementation pending | — |
 | [0044](0044-postgresql-migration-phase8a-entry-gate.md) | PostgreSQL Migration as Phase 8A Entry Gate | Architecture / Data | ✅ Accepted (2026-03-06) | — |
 | [0045](0045-local-llm-backend-abstraction.md) | Local LLM Backend Abstraction: Ollama and On-Device Model Support | Architecture / AI Platform | ✅ Accepted (2026-03-06) | — |
+| [0046](0046-dailycoach-multi-athlete-execution-model.md) | DailyCoach Multi-Athlete Execution Model: stateless coaching_pipeline + CoachingScheduler | Architecture / Orchestration | ✅ Accepted (2026-03-08) — T5-16 closed; T5-16-A Phase 8B implementation entry created | — |
 
 ---
 
