@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -427,6 +427,109 @@ No specific gap has been identified. The concern appears to be a general "keep t
 observation rather than identification of a concrete uncovered risk.
 
 **Status:** REVIEWED
+
+---
+
+
+### [OBS-008] Scratchpad gate behavior differs between policy and script
+
+**Date:** 2026-03-09
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Engineering process review / workflow reliability
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — defines Step 0.5 gate semantics and stop behavior after REVIEW_REQUESTED
+- `SCRATCHPAD.md` — defines global stop behavior after REVIEW_REQUESTED for new top-level tasks
+
+**Observation:**
+`AGENTS.md` Step 0.5 defines the runtime gate as: `scripts/check_scratchpad.sh` blocks only when the BLOCKING queue is non-empty. In the same process contract, §15 states that after writing OBS entries Codex must set `STATUS: REVIEW_REQUESTED` and stop until architect clears to `IDLE`. `SCRATCHPAD.md` repeats the stop requirement for REVIEW_REQUESTED regardless of queue type. This yields two different operational gate surfaces: script-level gate (BLOCKING queue only) versus policy-level gate (status-based stop).
+
+**Pattern / scope:**
+Cross-document process-control mismatch across the two governing files for the same workflow checkpoint (Step 0.5 + scratchpad lifecycle).
+
+**Architectural question raised:**
+Which source is canonical for execution gating when REVIEW_REQUESTED is set with only NON-BLOCKING observations: script result at Step 0.5, or status-driven stop semantics?
+
+**Codex assessment (data only, no decision):**
+The runtime script can report clear while policy text still defines a stop state. This increases interpretation variance across sessions and agents.
+
+**Status:** PENDING
+
+---
+
+### [OBS-009] Session-start protocol relies on manual reporting only
+
+**Date:** 2026-03-09
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Engineering process review / workflow reliability
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — SESSION_START requires S1–S5 outputs and explicit first-response reporting
+
+**Observation:**
+`AGENTS.md` requires five SESSION_START checks and requires that outputs are recorded in the first response before implementation. Unlike Step 0.5 scratchpad gating, this requirement has no referenced machine gate or validator in the workflow sequence and is evaluated procedurally from response text.
+
+**Pattern / scope:**
+Applies to every session and every task because SESSION_START is mandatory globally.
+
+**Architectural question raised:**
+Should SESSION_START compliance remain purely procedural, or is a canonical machine-verifiable acceptance artifact required for this step?
+
+**Codex assessment (data only, no decision):**
+The process requirement exists and is explicit, but enforcement depends on manual adherence/review rather than a declared executable gate.
+
+**Status:** PENDING
+
+---
+
+### [OBS-010] Architect-only clearance is a throughput bottleneck
+
+**Date:** 2026-03-09
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Engineering process review / workflow reliability
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — §15 requires stop until architect clears scratchpad status
+- `SCRATCHPAD.md` — status lifecycle permits only Claude to reset to IDLE/CLEARED
+
+**Observation:**
+Both governance files require Codex to stop after setting REVIEW_REQUESTED and state that only Claude can clear status to IDLE/CLEARED. Multiple mandatory triggers (tier boundary, phase close, architectural decision points) route through this architect-clearance step.
+
+**Pattern / scope:**
+Single-owner approval path for workflow continuation; affects all contributors whenever trigger conditions occur.
+
+**Architectural question raised:**
+For concurrent or high-frequency task streams, what is the accepted upper bound of architect-clearance latency before it becomes a delivery reliability risk?
+
+**Codex assessment (data only, no decision):**
+The process defines a single approval actor for continuation after REVIEW_REQUESTED, which creates a serialized dependency in otherwise parallel engineering flow.
+
+**Status:** PENDING
+
+---
+
+### [OBS-011] Full-suite double-run gate has scaling pressure
+
+**Date:** 2026-03-09
+**Trigger:** T-SCRATCHPAD-3 — future maintenance observations submitted by engineer
+**Session context:** Engineering process review / workflow reliability
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — hard gate requires strict pytest run plus canonical full pytest run for every task
+
+**Observation:**
+The hard gate requires two full-suite pytest runs (`-W error::pytest.PytestWarning` and canonical `-q`) for every deliverable, in addition to repository-wide lint. The contract also forbids substituting targeted or diagnostic runs as acceptance evidence.
+
+**Pattern / scope:**
+Global requirement on every task close; execution cost grows linearly with suite size and is duplicated by design.
+
+**Architectural question raised:**
+At what suite/runtime threshold is this two-full-run acceptance model considered operationally unsustainable for frequent small-scope tasks?
+
+**Codex assessment (data only, no decision):**
+The policy provides high confidence and warning hygiene, but it creates fixed per-task validation overhead that scales with total suite runtime rather than with change scope.
+
+**Status:** PENDING
 
 ---
 

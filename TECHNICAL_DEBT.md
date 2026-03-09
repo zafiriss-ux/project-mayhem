@@ -1261,6 +1261,41 @@ python -m pytest -q
 
 ---
 
+### T4-33 · Workflow reliability guardrails rely on mixed manual/script enforcement 🔴 OPEN
+
+**Status:** OPEN.
+**Source:** Engineering process review (AGENTS.md + SCRATCHPAD.md), 2026-03-09.
+**Priority:** P2 (Tier 4 — process maintainability / delivery reliability).
+
+**Location:** `AGENTS.md` (SESSION_START, HARD GATE, §15 scratchpad protocol),
+`SCRATCHPAD.md` (status lifecycle + gate semantics).
+
+**Problem:**
+Core workflow controls are split across policy text and scripts with different enforcement surfaces.
+Examples observed in current governance contract:
+- Scratchpad Step 0.5 script gate blocks on BLOCKING queue state, while policy text also
+  defines status-based stop semantics for `REVIEW_REQUESTED`.
+- SESSION_START requires first-response evidence but is procedural (manual) rather than bound to
+  a declared executable acceptance artifact.
+- Every deliverable requires two full-suite pytest runs; this creates fixed validation overhead
+  that scales with total suite runtime.
+
+**Impact:**
+As repository size, test count, and concurrent task volume increase, manual/procedural checkpoints
+and architect-only clearance transitions can become throughput bottlenecks and increase process
+interpretation variance.
+
+**Acceptance gate (binary):**
+```bash
+ruff check .
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Effort:** TBD (architect triage required; scope intentionally not pre-decided in debt register).
+
+---
+
 ## TIER 5 — Future Optionality
 
 ### T5-01 · SQLite retention / archival strategy 🟢
@@ -2218,6 +2253,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
+| T4-33 | OPEN (workflow reliability enforcement split across manual/script gates) | — |
 | T5-07 | OPEN (Layers 1–2: Phase 8A early work, before Phase 8B; Layer 3: deferred Phase 9) | — |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
 | T5-08-B | 🔴 OPEN — D1 interface contract DONE (2026-03-08); D2–D5, D7, D9 remaining (Phase 8A prerequisite — blocks G10 + Phase 8B) | D1: 2026-03-08 |
