@@ -49,6 +49,7 @@
 | [0044](0044-postgresql-migration-phase8a-entry-gate.md) | PostgreSQL Migration as Phase 8A Entry Gate | Architecture / Data | ✅ Accepted (2026-03-06) | — |
 | [0045](0045-local-llm-backend-abstraction.md) | Local LLM Backend Abstraction: Ollama and On-Device Model Support | Architecture / AI Platform | ✅ Accepted (2026-03-06) | — |
 | [0046](0046-dailycoach-multi-athlete-execution-model.md) | DailyCoach Multi-Athlete Execution Model: stateless coaching_pipeline + CoachingScheduler | Architecture / Orchestration | ✅ Accepted (2026-03-08) — T5-16 closed; T5-16-A Phase 8B implementation entry created | — |
+| [0047](0047-architecture-fitness-functions.md) | Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3) | Architecture / Quality | ✅ Accepted (2026-03-09) — T8-01 execution pending | — |
 
 ---
 

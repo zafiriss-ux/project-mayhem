@@ -638,6 +638,44 @@ the agent integrates it:
   description and status (e.g. `Accepted — <date>`).
 - The table entry must match the format of existing rows exactly.
 
+### 12.5 Debt-Clear Window — Mandatory Periodic Debt Reduction
+
+**Purpose:** Prevent `TECHNICAL_DEBT.md` from operating as a pure backlog parking lot.
+Periodic mandatory clearance ensures the register remains an active governance instrument,
+not a graveyard of deferred items.
+
+**Rule:** Every 5 tasks completed (counted at the tracking table), the architect MUST
+schedule at least 1 item from `TECHNICAL_DEBT.md` as the next assigned task, before any
+new feature or Phase work is assigned. The item selected must be:
+
+1. OPEN or PARTIALLY RESOLVED in the tracking table.
+2. From the lowest open Tier (T1 before T2, T2 before T3, etc.) — tier ordering (Rule E1) applies.
+3. Not blocked by an unresolved ADR or a higher-Tier prerequisite.
+
+**Counting:** The debt-clear counter resets to 0 after a debt item is resolved. The counter
+increments on every task close (§12.1), regardless of task type (feature, bug, test, process).
+
+**Enforcement signal:** At session start (§2.0 environment check), Codex MUST report the
+current debt-clear counter alongside the OPEN item count:
+
+```
+S2b. python -c "
+import subprocess, re
+result = subprocess.run(['grep', '-c', r'OPEN\|PARTIALLY RESOLVED', 'TECHNICAL_DEBT.md'],
+                       capture_output=True, text=True)
+print('Open debt items:', result.stdout.strip())
+"
+# Architect tracks the counter manually via the tracking table task-close dates.
+```
+
+**Exception:** If the only OPEN items are blocked (awaiting ADR or higher-Tier prerequisite),
+the window is suspended until at least one item becomes unblocked. The architect must note
+the suspension explicitly in the task assignment message.
+
+**Rationale:** Debt compounds silently. A register with 40 OPEN items and no closed items
+in the last 20 tasks is a governance failure — not a feature backlog. This rule enforces
+the discipline that technical debt is not optional work; it is load-bearing maintenance.
+
 ---
 
 ## 13. Architecture Decision Boundary — Hard Prohibition
@@ -1391,4 +1429,4 @@ no longer blocked. A stale Bottleneck block is misleading and must be corrected 
 
 ---
 
-*Last updated: 2026-03-09 (Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-09 (§12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
