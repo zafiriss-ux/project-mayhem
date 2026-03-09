@@ -190,10 +190,14 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 | E16 | Path declared before start — Path A or B set before Codex begins | §17.4 |
 | E17 | No mid-item path switching — restart from step 1 if path changes | §17.4 |
 | E18 | Workflow drift is a process violation — same severity as HARD GATE | §17.4 |
+| E19 | DoR gate mandatory — Definition of Ready before implementation begins | §17.5 |
 | — | Governance evolution protocol (3 required steps) | §16.1 |
 | — | Phase 8 Entry Gate (G1–G11 binary criteria) | §16.2 |
 | — | Phase 8 per-item workflow (Path A standard / Path B QA-assisted) | §17 |
 | — | Athlete identity invariant (rules A40-1 to A40-4) | §16.10 |
+| — | Subsystem ownership (Owner-of-Record per subsystem) | §1.1 |
+| — | Task Learning — required field in every TECHNICAL_DEBT.md resolution | §12.1 |
+| — | Bottleneck/Owner/Unblock — optional metadata for blocked items | §17.6 |
 
 ---
 

@@ -79,6 +79,24 @@ An agent **must not**:
 
 When you believe a redesign or architectural decision is needed: write it up as an **Out of Scope Finding** in `TECHNICAL_DEBT.md`. Do NOT implement it. Do NOT draft an ADR. See §13 for the full protocol.
 
+### 1.1 Subsystem Ownership — Owner-of-Record
+
+Each major subsystem has an Owner-of-Record responsible for its technical integrity:
+
+| Subsystem | Path | Owner-of-Record | Scope |
+|-----------|------|-----------------|-------|
+| Config / thresholds | `titan/config/` | **Architect** | All safety constants, evidence registry, lock code set |
+| Science engines | `titan/science/` | **Architect** | Engine contracts, governance gate logic, ML scaffold |
+| Core infrastructure | `titan/core/` | **Architect** | DB schema, persistence adapter, athlete profile contract |
+| Integrations | `titan/integrations/` | **Codex** (under Architect brief) | Garmin sync, weather API, Telegram bot |
+| Features | `titan/features/` | **Codex** (under Architect brief) | Weekly planner, optimal time, nutrition optimizer |
+| Orchestration / UI | `titan/orchestration/`, `titan/ui/` | **Architect** | DailyCoach pipeline, OperatorConsole, menu system |
+
+**Owner-of-Record duties:** The Owner-of-Record must be consulted (or is) before any change that
+crosses a subsystem boundary, adds a new dependency between subsystems, or modifies a public contract.
+For Architect-owned subsystems, every change requires a task entry with binary acceptance criteria.
+For Codex-owned subsystems, changes require an architect brief but Codex may propose scope.
+
 ---
 
 ## 2. Deliverable Workflow — Canonical Sequence
@@ -536,6 +554,7 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 
 ```
 [ ] I read the task description completely before writing any code.
+[ ] I verified the Definition of Ready (§17.5): scope clear, files identified, criteria binary, tests known.
 [ ] I listed every file I need to change and why (Section 3.5).
 [ ] I confirmed no Tier N-1 items are OPEN before starting Tier N work.
 [ ] I made only the changes required by the task (no scope creep).
@@ -554,6 +573,7 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] I opened exactly one PR using .github/pull_request_template.md and pasted the PR link.
 [ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
 [ ] I marked the completed debt item ✅ RESOLVED with date + commit hash in its entry body (§12).
+[ ] I added a **Task learning:** block to the TECHNICAL_DEBT.md resolution entry (§12.1).
 [ ] I updated the tracking table at the bottom of TECHNICAL_DEBT.md (§12).
 [ ] If test count changed: I updated the historical snapshot in CLAUDE.md (§12).
 [ ] If a new ADR was written: I updated the ADR index table in CLAUDE.md (§12).
@@ -564,7 +584,7 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] I did NOT write proposed solutions in OBS entries — only engineering observations (facts, file:line refs, architectural question).
 ```
 
-**All 27 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 29 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
@@ -583,6 +603,10 @@ When a task reaches ✅ DONE (all three gates green, commit created):
    - Change the `**Status:**` line to: `✅ RESOLVED <YYYY-MM-DD>. Commit: <short-hash>.`
    - Rename `**Problem:**` to `**Original state (pre-fix):**` and convert present-tense verbs to past tense.
    - Add a `**Resolution:**` block summarising what was changed (modules, approach, test count at closure).
+   - Add a `**Task learning:**` block (required — one to three sentences) capturing what this task
+     revealed that is not obvious from the resolution itself. Focus on process, coupling, or failure-mode
+     insights that would help the next engineer avoid the same trap. If the task was completely routine
+     with no new insight, write: `Task learning: No new engineering insight — routine implementation.`
 
 2. **Update the tracking table** at the bottom of `TECHNICAL_DEBT.md`:
    - Change the row for this item from `OPEN` to `✅ RESOLVED` and fill in the date column.
@@ -1236,6 +1260,7 @@ Path A is the default. Path B requires an explicit opt-in action from the archit
 ```
 1. Architect brief       — task written in TECHNICAL_DEBT.md with binary acceptance criteria
                            and **Workflow Path: A** declared in the item header
+1a. Definition of Ready  — Codex verifies DoR checklist before writing any code (see §17.5)
 2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
 3. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
 4. Commit / PR           — canonical commit format; PR opened only after gate 3 passes
@@ -1251,6 +1276,7 @@ substitute for step 3 (see §HARD GATE — Forbidden validation shortcuts).
 ```
 1. Architect brief       — task written in TECHNICAL_DEBT.md; PILOT-01 APPROVED note added;
                            **Workflow Path: B (APPROVED)** declared in the item header
+1a. Definition of Ready  — Codex verifies DoR checklist before writing any code (see §17.5)
 2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
 3. Opus QA review        — test quality review (scope bounded in TECHNICAL_DEBT.md PILOT-01)
      ├─ APPROVE  →  proceed to step 4
@@ -1284,6 +1310,85 @@ required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the m
   severity as a HARD GATE failure. Stop, document the deviation in `TECHNICAL_DEBT.md`, and
   restart from the violated step.
 
+- **E19 — DoR gate is mandatory before implementation:** Codex must complete the Definition of
+  Ready checklist (§17.5) before writing any implementation code for a Phase 8+ item. A task
+  that fails the DoR check must be returned to the architect with a written gap report rather
+  than proceeding with incomplete information.
+
 ---
 
-*Last updated: 2026-03-08 (E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+### 17.5 Definition of Ready (DoR) — Pre-Implementation Gate
+
+**Who:** Codex (Implementation Engineer) — runs this gate after reading the architect brief,
+before writing any implementation code.
+
+**When:** Step 1a of Path A and Path B (both paths).
+
+**What:** Codex answers ALL four questions below. If any answer is NO, Codex stops and reports
+the gap to the architect before proceeding.
+
+```
+DoR CHECKLIST — required before any implementation begins
+─────────────────────────────────────────────────────────
+[ ] SCOPE CLEAR       — The task description unambiguously defines what must change.
+                        I can state in one sentence exactly what new behaviour I must produce.
+
+[ ] FILES IDENTIFIED  — I can name every file that will be created or modified.
+                        No file will be modified as a surprise mid-implementation.
+
+[ ] CRITERIA BINARY   — The acceptance criteria are testable and binary (PASS / FAIL).
+                        There is no criterion that requires subjective judgement to evaluate.
+
+[ ] TESTS KNOWN       — I know which test file(s) will cover the new behaviour,
+                        and whether they exist already or need to be created.
+```
+
+**If any box cannot be checked:** Codex writes one sentence per unchecked item describing the
+gap and appends it to the SCRATCHPAD.md as a BLOCKING OBS with status `REVIEW_REQUESTED`.
+Codex does **not** begin implementation until the architect clears the gap.
+
+**If all four boxes can be checked:** Codex states `DoR: PASS` in the implementation brief
+(first line of the implementation session log) and proceeds to step 2.
+
+A DoR gap reported via SCRATCHPAD.md is non-punitive — it is the correct behaviour. Proceeding
+past an unresolved DoR gap (and discovering the issue mid-implementation) is a process violation.
+
+---
+
+### 17.6 Bottleneck / Owner / Unblock — Optional Metadata for Complex Items
+
+For items that involve multi-role handoffs or are blocked mid-execution, the architect may add
+an optional `**Bottleneck:**` block to the TECHNICAL_DEBT.md entry to make the flow state
+immediately visible. This is **not** required for routine items; it is a diagnostic tool for
+items that are blocked or at a handoff point.
+
+**Format (add to the TECHNICAL_DEBT.md entry when a bottleneck exists):**
+
+```
+**Bottleneck:** <one-sentence description of where the flow is stuck>
+**Owner:**      <role responsible for unblocking: Architect | Codex | QA>
+**Unblock condition:** <the single verifiable action that clears this bottleneck>
+```
+
+**Examples:**
+
+```
+**Bottleneck:** QA verdict pending — D1 implementation awaiting Opus QA review (Path B step 3)
+**Owner:**      QA
+**Unblock condition:** QA PASS or QA FAIL verdict written in the task entry
+
+**Bottleneck:** Gate 3 (python -m pytest -q) failing — 3 tests RED in test_persistence.py
+**Owner:**      Codex
+**Unblock condition:** Full canonical test suite 100% green with count ≥ previous baseline
+
+**Bottleneck:** ADR decision required — D2 schema topology has two options (see OBS-008)
+**Owner:**      Architect
+**Unblock condition:** Architect writes DEC-008 and designates the chosen schema topology
+```
+
+The Bottleneck block must be removed (or updated to `**Bottleneck:** None`) when the item is
+no longer blocked. A stale Bottleneck block is misleading and must be corrected immediately.
+
+---
+
+*Last updated: 2026-03-09 (Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
