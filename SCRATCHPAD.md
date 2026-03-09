@@ -331,6 +331,35 @@ Because the counter is not produced by a deterministic command in the mandatory 
 
 **Status:** PENDING
 
+
+### [OBS-014] Process MUST-rules exceed machine-enforced governance checks
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering framework enforcement audit
+**Session context:** Governance QA / Documentation-to-enforcement consistency
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — defines mandatory startup/session checks, hard-gate sequencing, and 29-item pre-delivery checklist
+- `scripts/check_scratchpad.sh` — enforces BLOCKING queue only, while REVIEW_REQUESTED/UNDER_REVIEW remain advisory exit 0
+- `tests/test_claude_md_integrity.py` — enforces selected CLAUDE.md integrity invariants only
+- `tests/test_documentation_consistency.py` — enforces selected documentation drift invariants only
+
+**Observation:**
+The governance contract contains many MUST-level process obligations that do not have a corresponding executable guard. Examples include the mandatory SESSION_START S1–S5 protocol, first-response reporting requirement, complete pre-delivery checklist assertions, and PR scope-declaration completeness. The current executable controls verify a narrower subset: lint/test gates, selected documentation integrity invariants, and BLOCKING scratchpad queue detection. `scripts/check_scratchpad.sh` returns non-blocking exit code 0 for `REVIEW_REQUESTED`/`UNDER_REVIEW`, and there is no test that validates session-start command execution, checklist completion, or PR-body conformance.
+
+References: AGENTS.md:130-146, AGENTS.md:560-587, AGENTS.md:247-259, scripts/check_scratchpad.sh:29-58, tests/test_claude_md_integrity.py:25-159, tests/test_documentation_consistency.py:129-196.
+
+**Pattern / scope:**
+System-wide process-enforcement gap between policy text and executable verification surface. This affects all sessions and all task closures, not a single subsystem.
+
+**Architectural question raised:**
+Which MUST-level workflow obligations are intentionally manual governance duties versus intended hard gates with deterministic enforcement evidence?
+
+**Codex assessment (data only, no decision):**
+Process rigor appears stronger in policy wording than in currently automated checks; compliance for several high-importance obligations depends on operator self-attestation.
+
+**Status:** PENDING
+
 ### [OBS-007] Task closure declared RESOLVED without verifying ADR deliverable checklist
 
 **Date:** 2026-03-08
