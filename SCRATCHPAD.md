@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -168,6 +168,112 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 ---
 
 ## NON-BLOCKING Queue
+
+### [OBS-008] Scratchpad continuation rule conflicts with stop rule
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Workflow framework reliability review / Process governance
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — §15 intro states global stop after writing OBS
+- `AGENTS.md` — T-SCRATCHPAD-3 explicitly permits continuation of current subtask
+- `SCRATCHPAD.md` — Document status guidance describes stop/wait behaviour
+
+**Observation:**
+The protocol contains conflicting execution guidance after writing an OBS. `AGENTS.md` §15 states that after writing an OBS, Codex sets `STATUS: REVIEW_REQUESTED` and stops until cleared. In the same section, trigger T-SCRATCHPAD-3 states Codex may continue the current task and only blocks new top-level tasks. `SCRATCHPAD.md` status guidance also frames `REVIEW_REQUESTED` as a stop/wait gate for new task assignment, which creates ambiguity about whether in-flight execution must halt immediately.
+
+References: AGENTS.md:884-885, AGENTS.md:929-931, SCRATCHPAD.md:26-31.
+
+**Pattern / scope:**
+Process-state semantics for `REVIEW_REQUESTED` are defined across multiple sections and are not fully consistent. This affects all future OBS usage, not a single task.
+
+**Architectural question raised:**
+For `STATUS: REVIEW_REQUESTED`, is Codex required to stop all in-flight work immediately, or only prohibited from starting a new top-level task?
+
+**Codex assessment (data only, no decision):**
+Current wording permits two valid but different operator interpretations, which can produce inconsistent behaviour between sessions.
+
+**Status:** PENDING
+
+### [OBS-009] Enforcement burden concentrated in manual checklist discipline
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Workflow framework reliability review / Process governance
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — §11 pre-delivery checklist with 29 manual confirmations
+- `AGENTS.md` — §2 and HARD GATE define mandatory sequencing and prohibitions
+- `SCRATCHPAD.md` — protocol requires status transitions and queue discipline
+
+**Observation:**
+Large parts of workflow acceptance depend on manual self-attestation rather than explicit automated gates. The process requires 29 checklist assertions and multiple sequencing rules, but only a subset are mechanically enforced by executable commands. Several obligations (scope declaration completeness, task-learning block presence, some status semantics, and protocol narrative conformance) rely on procedural adherence.
+
+References: AGENTS.md:566-585, AGENTS.md:45-63, SCRATCHPAD.md:14-31.
+
+**Pattern / scope:**
+This is systemic and spans task start, implementation, validation, and closure stages.
+
+**Architectural question raised:**
+Which workflow obligations are intended to be hard-enforced by automation versus treated as manual governance requirements?
+
+**Codex assessment (data only, no decision):**
+Reliability of process compliance currently depends on operator consistency for multiple high-frequency steps.
+
+**Status:** PENDING
+
+### [OBS-010] Architect approval is a single-point workflow bottleneck
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Workflow framework reliability review / Process governance
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — scratchpad protocol requires stop for review/clear events
+- `SCRATCHPAD.md` — Claude-only ownership of DEC and status transitions to IDLE/CLEARED
+
+**Observation:**
+The framework serializes progression through architect-controlled review checkpoints. Codex records OBS entries but cannot clear them, while Claude is the only actor who can process DEC decisions and move status back to `IDLE`/`CLEARED`. This creates a single-point dependency for workflow continuation whenever review status is raised.
+
+References: AGENTS.md:884-885, AGENTS.md:901-903, SCRATCHPAD.md:4, SCRATCHPAD.md:20-31.
+
+**Pattern / scope:**
+Applies to all trigger paths that set `REVIEW_REQUESTED`, with stronger effect if observation frequency increases.
+
+**Architectural question raised:**
+Is the current architect-only clearance model intended to remain strictly serialized under concurrent task load?
+
+**Codex assessment (data only, no decision):**
+Throughput for multi-task execution is coupled to architect review latency at each review-requested checkpoint.
+
+**Status:** PENDING
+
+### [OBS-011] Mandatory full-suite repetition introduces scaling pressure
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Workflow framework reliability review / Process governance
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — HARD GATE requires strict + full pytest runs for every deliverable
+- `AGENTS.md` — §2 canonical sequence requires rerun of all gates after any failure
+
+**Observation:**
+The acceptance model mandates two full-suite pytest executions per task (`-W error::pytest.PytestWarning` and canonical full run), plus complete re-execution after any single gate failure. As suite size grows, this imposes compounding validation cost per change and increases queue time before commit/PR eligibility.
+
+References: AGENTS.md:45-63, AGENTS.md:153-170.
+
+**Pattern / scope:**
+System-wide effect on all tasks; cost grows with total test count and with concurrent branch activity.
+
+**Architectural question raised:**
+Is full-suite dual-run on every task intended to remain unchanged at larger suite sizes and higher parallel development volume?
+
+**Codex assessment (data only, no decision):**
+Current gate design prioritizes consistency, but it also creates predictable scaling pressure in large-suite/high-concurrency conditions.
+
+**Status:** PENDING
 
 ### [OBS-007] Task closure declared RESOLVED without verifying ADR deliverable checklist
 
