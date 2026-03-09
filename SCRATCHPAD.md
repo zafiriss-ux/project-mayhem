@@ -275,6 +275,62 @@ Current gate design prioritizes consistency, but it also creates predictable sca
 
 **Status:** PENDING
 
+
+### [OBS-012] Out-of-scope routing split between debt register and scratchpad
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Governance consistency / Cross-document correlation
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — §3.4 and §12.2 require Codex to add out-of-scope findings directly to `TECHNICAL_DEBT.md`
+- `AGENTS.md` — §15 defines scratchpad as Codex→Claude observation channel with architect decision handoff
+- `SCRATCHPAD.md` — purpose/lifecycle state Claude converts OBS into debt tasks
+- `CLAUDE.md` — Engineering Rules map E8 points to direct debt-register route
+
+**Observation:**
+The framework defines two different routing paths for out-of-scope findings. One path requires Codex to directly create `TECHNICAL_DEBT.md` entries (`AGENTS.md` §3.4 and §12.2). The other path frames Codex as observation-only and assigns debt conversion decisions to Claude through DEC processing in `SCRATCHPAD.md` and AGENTS §15. `CLAUDE.md` rule map also points to direct debt-entry behaviour (E8), reinforcing one branch of the split.
+
+References: AGENTS.md:292-294, AGENTS.md:616-622, AGENTS.md:877-885, SCRATCHPAD.md:4-7, SCRATCHPAD.md:69-77, CLAUDE.md:182.
+
+**Pattern / scope:**
+This appears as a repeated governance seam across all out-of-scope handling touchpoints (policy section, closure section, scratchpad protocol, and rule index). It is not isolated to one subsection.
+
+**Architectural question raised:**
+For out-of-scope findings, which route is canonical in active operation: direct `TECHNICAL_DEBT.md` creation by Codex, or observation-first escalation through `SCRATCHPAD.md` with architect conversion?
+
+**Codex assessment (data only, no decision):**
+Parallel routing instructions can produce inconsistent execution records across sessions (some findings captured as debt items immediately, others only as OBS), reducing governance trace consistency.
+
+**Status:** PENDING
+
+### [OBS-013] Debt-clear enforcement signal is non-executable in session-start gate
+
+**Date:** 2026-03-09
+**Trigger:** User-requested engineering workflow reliability review
+**Session context:** Workflow reliability / Early drift detection
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `AGENTS.md` — SESSION_START mandates S1–S5 checklist
+- `AGENTS.md` — §12.5 states Codex MUST report debt-clear counter via S2b signal
+- `AGENTS.md` — S2b snippet outputs open debt count while counter is tracked manually by architect
+
+**Observation:**
+The debt-clear window introduces a mandatory counter-reporting requirement, but the executable session-start checklist does not include S2b, and the provided S2b command does not compute the counter itself. The snippet prints only open debt count and explicitly delegates counter tracking to manual architect reading of the tracking table.
+
+References: AGENTS.md:128-138, AGENTS.md:658-669.
+
+**Pattern / scope:**
+This is a false-confidence pattern: a requirement is phrased as mandatory and signaled by a command, but enforcement remains manual. The same pattern can recur in other policy areas where command snippets expose only proxies.
+
+**Architectural question raised:**
+Is debt-clear counter compliance intended to be a strict executable gate at session start, or an informational/manual governance check outside codified gate enforcement?
+
+**Codex assessment (data only, no decision):**
+Because the counter is not produced by a deterministic command in the mandatory startup sequence, sessions can claim compliance while applying different manual interpretations.
+
+**Status:** PENDING
+
 ### [OBS-007] Task closure declared RESOLVED without verifying ADR deliverable checklist
 
 **Date:** 2026-03-08
