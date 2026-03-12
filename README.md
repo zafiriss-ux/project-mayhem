@@ -386,7 +386,7 @@ curl "https://api.open-meteo.com/v1/forecast?latitude=37.98&longitude=23.73&curr
 
 ## 📄 License
 
-MIT License - Ελεύθερο για προσωπική χρήση
+MIT License - ΖΑΦΕΙΡΗΣ
 
 ## 👨‍💻 Author
 
