@@ -1,3 +1,16 @@
 # TITAN architecture-critical ownership
 # NOTE: replace with your org/team handle if needed.
 /titan/science/governance_engine.py @titan-architecture
+# Default owner for everything
+* @zafiriss-ux
+
+# Core engines
+/titan/science/ @zafiriss-ux
+/titan/orchestration/ @zafiriss-ux
+
+# Governance / thresholds
+/titan/config/thresholds.py @zafiriss-ux
+/docs/architecture/ @zafiriss-ux
+
+# Tests
+/tests/ @zafiriss-ux
