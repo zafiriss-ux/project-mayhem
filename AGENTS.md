@@ -56,7 +56,7 @@ A commit, push, or `make_pr` call is **forbidden** unless ALL of the following h
 - Running a subset of tests and reporting "all pass"
 - Substituting diagnostic runs (`pytest -vv`, `--durations=20`, `pytest -x`, targeted subsets) for Gate 2 or Gate 3. Diagnostic runs identify root causes — they never constitute acceptance evidence. Gate 2 and Gate 3 are the only accepted forms of gate evidence in a deliverable report.
 
-If an override is required for the suite to run at all, that is a **repo-level issue**. Either fix it within the current task's scope, or STOP and report it as an out-of-scope finding in `TECHNICAL_DEBT.md` before continuing.
+If an override is required for the suite to run at all, that is a **repo-level issue**. Either fix it within the current task's scope, or STOP and write a SCRATCHPAD OBS entry (§15) before continuing. Do NOT add it directly to `TECHNICAL_DEBT.md`.
 
 ---
 
@@ -69,6 +69,11 @@ If an override is required for the suite to run at all, that is a **repo-level i
 
 Agents execute. They do not design.
 
+The foundational principles governing all roles (Owner Proposal Guardrail, Engineering Ctrl-Z,
+Architect Constrained by Invariants, Rules Decide) are stated in standalone form in
+`GOVERNANCE_PRINCIPLES.md`. That document is extracted from this contract — on any conflict,
+this document (`AGENTS.md`) wins.
+
 An agent **must not**:
 - Author or amend an ADR (Architecture Decision Record)
 - Redesign, restructure, or re-architect any system component
@@ -77,7 +82,9 @@ An agent **must not**:
 - Make database schema topology decisions beyond what the task explicitly specifies
 - Alter governance gate logic without an ADR reference and architect approval
 
-When you believe a redesign or architectural decision is needed: write it up as an **Out of Scope Finding** in `TECHNICAL_DEBT.md`. Do NOT implement it. Do NOT draft an ADR. See §13 for the full protocol.
+When you believe a redesign or architectural decision is needed: write a SCRATCHPAD OBS entry
+(§15). Do NOT implement it. Do NOT draft an ADR. Do NOT add it directly to `TECHNICAL_DEBT.md`
+without an architect DEC. See §13 for the full protocol.
 
 ### 1.1 Subsystem Ownership — Owner-of-Record
 
@@ -278,7 +285,7 @@ Documentation files are **architect-owned**. Agents may not edit them freely.
 | Test count snapshot in `CLAUDE.md` | Tests added/removed in current task | §12.3 |
 | ADR index table row in `CLAUDE.md` | Integrating a new architect-authored ADR | §12.4 |
 | Debt entry body in `TECHNICAL_DEBT.md` | Task closure (mark RESOLVED) | §12.1 |
-| New debt entry in `TECHNICAL_DEBT.md` | Out-of-scope finding discovered | §12.2 |
+| New OBS entry in `SCRATCHPAD.md` | Out-of-scope finding discovered | §12.2 / §15 |
 | Tracking table row in `TECHNICAL_DEBT.md` | Either of the two rows above | §12.1 / §12.2 |
 
 **Everything else is prohibited:**
@@ -287,10 +294,16 @@ Documentation files are **architect-owned**. Agents may not edit them freely.
 - Do not update `CLAUDE.md` for minor wording corrections or to reflect your interpretation of the system.
 - Do not edit `AGENTS.md` at all — it is maintained exclusively by the architect.
 
-If you believe a documentation update is needed beyond the table above, add it as an out-of-scope finding in `TECHNICAL_DEBT.md` and stop.
+If you believe a documentation update is needed beyond the table above, write a SCRATCHPAD OBS
+entry (§12.2 / §15) and stop. Do NOT add it directly to `TECHNICAL_DEBT.md`.
 
 ### 3.4 Out of Scope Findings
-If you discover another issue while working: **do not fix it.** Add it to `TECHNICAL_DEBT.md` under the appropriate tier. Do NOT fix it as part of this task. Continue only with the original scoped task.
+If you discover another issue while working: **do not fix it.** Write a SCRATCHPAD OBS entry
+(§15). Do NOT add it directly to `TECHNICAL_DEBT.md` without an architect DEC. Continue only
+with the original scoped task.
+
+The canonical routing path is: SCRATCHPAD OBS → architect DEC → `TECHNICAL_DEBT.md` entry.
+See `SCRATCHPAD.md §Canonical Routing Rule` for the single authoritative statement.
 
 **Principle: Minimal change, maximum stability.**
 
@@ -568,7 +581,7 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] If I changed a governance gate: boundary tests added to test_governance_mutation.py.
 [ ] If I added a governance lock code: added to _CANONICAL_LOCK_CODES + CLAUDE.md table.
 [ ] If I added a notification path: routed through NotificationGateway, not direct bot call.
-[ ] Out-of-scope findings are in TECHNICAL_DEBT.md, not in code.
+[ ] Out-of-scope findings are in SCRATCHPAD.md OBS entries (§15), not in code or directly in TECHNICAL_DEBT.md.
 [ ] I pushed to a claude/* branch only — NOT to main or master.
 [ ] I opened exactly one PR using .github/pull_request_template.md and pasted the PR link.
 [ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
@@ -617,9 +630,13 @@ Both updates are **required**. Updating one without the other is incomplete.
 
 When you discover an issue outside the current task scope:
 
-1. Add a new entry to `TECHNICAL_DEBT.md` under the correct tier (follow existing entry format).
-2. Add a row to the tracking table at the bottom.
+1. Write a SCRATCHPAD OBS entry (§15) describing the finding. Set STATUS: REVIEW_REQUESTED.
+2. Do NOT add a `TECHNICAL_DEBT.md` entry directly — the architect creates or authorises debt
+   entries via a DEC (Decision entry in `SCRATCHPAD.md`).
 3. Do NOT fix it in the current task (§3.4 / Rule E4).
+
+**Routing invariant:** `TECHNICAL_DEBT.md` entries for out-of-scope findings are created only
+after an architect DEC. See `SCRATCHPAD.md §Canonical Routing Rule`.
 
 ### 12.3 When test count changes
 
@@ -881,8 +898,10 @@ This rule enforces §16.11 (Complexity Budget and Simplicity Gate) at the agent 
 > solutions. It is a place for raw engineering findings that require an architectural decision.**
 
 Codex writes **Observation (OBS)** entries to `SCRATCHPAD.md` when the trigger conditions
-below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED` and stops
-until the architect clears it to `IDLE`.
+below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED`, completes
+any current subtask already in progress, then stops. Codex does not start any new top-level
+task until the architect clears the status to `IDLE`. See `SCRATCHPAD.md §Document Status`
+for the single authoritative in-flight work policy.
 
 ### 15.1 Trigger Conditions (MANDATORY — not optional)
 
@@ -917,11 +936,11 @@ This is in addition to Rule E1 (tier ordering). It does not replace it.
 
 #### T-SCRATCHPAD-3: Pattern Concentration
 
-**When:** Codex adds 3 or more out-of-scope findings (§3.4 / §12.2) to `TECHNICAL_DEBT.md`
+**When:** Codex writes 3 or more out-of-scope OBS entries (§3.4 / §12.2 / §15) to `SCRATCHPAD.md`
 within a single session, AND those findings share a common module, subsystem, or failure mode.
 
 Codex MUST write an OBS entry synthesising the pattern:
-- List the related findings (T<N>-<id> references)
+- List the related OBS entry IDs (OBS-XXX references) from this session
 - Describe the common failure mode or architectural weakness they share
 - Estimate blast radius: how many modules are likely affected
 - Ask the concrete architectural question the pattern raises
