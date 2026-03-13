@@ -1975,6 +1975,308 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
+### T5-17 · ACWR Engine — threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Source:** Binder1 audit finding A5 / DEC-1 §3.2 (Architect DEC 2026-03-13). Category A policy thresholds confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR from test-gap fixes (T5-17 must not be bundled with S1–S3 execution items).
+**Cross-reference:** T1-05 (RESOLVED — dead ACWR duplicates in `constants.py`) is distinct. T1-05 removed dead code from `utils/constants.py`. T5-17 covers inline policy threshold literals remaining inside the science module itself.
+
+**Scope:** The following numeric literals in `titan/science/acwr_engine.py` are Category A policy thresholds (governance-facing, recalibration targets) and must be extracted to `titan/config/thresholds.py`:
+`0.5`, `0.8`, `1.0`, `1.3`, `1.5`, `1.7`
+
+**Acceptance gate (binary):**
+- `thresholds.py` defines constants for all six values with STRONG/HEURISTIC provenance entries in `evidence_registry.py`
+- `acwr_engine.py` references the constants; zero inline literals remain for these values
+- `ruff check .` → zero findings
+- `python -m pytest -q -W error::pytest.PytestWarning` → 100% green
+- `python -m pytest -q` → test count ≥ baseline
+
+**Effort:** ~2h. Extraction + evidence registry + cross-reference tests.
+
+---
+
+### T5-18 · Adaptive Memory — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Source:** Binder1 audit finding B4 / DEC-1 §4.2 (Architect DEC 2026-03-13). `1.08` and time windows confirmed Category A.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR required. Blocked behind architect confirmation for `2.5/2.0/1.5` multipliers — see T5-19.
+
+**Scope (approved for execution):**
+- `1.08` — pace threshold for mechanical load risk in `titan/science/adaptive_memory.py`: **Category A** (governance-facing risk output). Extract to `thresholds.py`.
+- `24`, `36`, `48`, `72` — time window constants (hours) for SDI/supercompensation in `titan/science/adaptive_memory.py`: **Category A** (recalibration targets). Extract to `thresholds.py`.
+
+**Scope (blocked — see T5-19):** `2.5`, `2.0`, `1.5` multipliers — pending architect classification.
+
+**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals for approved values; `thresholds.py` + `evidence_registry.py` updated; all gates green.
+
+**Effort:** ~2h. Extraction + evidence registry entries.
+
+---
+
+### T5-19 · Adaptive Memory — multiplier constants classification required (BLOCKED) 🔴 BLOCKED
+
+**Status:** BLOCKED — awaiting architect input (DEC-1 §4.2 open item; 2026-03-13)
+**Source:** Binder1 audit finding B4 / DEC-1 §4.2.
+**Type:** Open Question
+**Priority:** Blocked until answered.
+
+**Open question (for Architect):** In `titan/science/adaptive_memory.py`, are the values `2.5`, `2.0`, `1.5` (used as multiplier/score constants):
+- **Category A** (governance-facing: appear in output or governance pipeline) → must extract to `thresholds.py`
+- **Category B** (algorithm-local: internal multipliers with no recalibration meaning) → may remain inline
+
+**Codex may NOT move these values** until an explicit DEC resolves this question. If Category A is confirmed, implementation joins T5-18 scope or becomes T5-18 child. If Category B confirmed, this entry is closed as NO_ACTION.
+
+---
+
+### T5-20 · APL — DailyCoach → apl.resolve arg contract integration test missing 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Source:** Binder1 audit finding C2 / DEC-1 §5.2. Test gap confirmed.
+**Type:** Test Gap
+**Priority:** P3. Independent.
+
+**Scope:** Add integration test verifying the exact argument contract at the DailyCoach → `apl.resolve()` call boundary:
+- Exact kwargs passed (phase normalization, `cs_tracker.confidence` value)
+- Not merely payload shape — the precise argument names and types at the call site
+
+**Acceptance gate (binary):** Test in `tests/titan/science/test_apl_integration.py` (or mirrored file) passes; gates green.
+
+**Effort:** ~1h.
+
+---
+
+### T5-21 · Athlete Profile — athlete_id timestamp collision risk 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
+**Type:** Code Hardening
+**Priority:** P2. Test-first required.
+
+**Scope:** `athlete_id` generation uses timestamp with second-level precision → collision risk when two profiles are created in the same second → silent overwrite.
+
+**Fix (approved):** Add `uuid4` suffix or sub-second component to `athlete_id` generation. Test first: create two profiles within the same second → assert distinct IDs.
+
+**Acceptance gate (binary):** Failing test written first → fix applied → test green → all gates green.
+
+**Effort:** ~1h.
+
+---
+
+### T5-22 · Athlete Profile — to_dict/from_dict omits weight_ceiling and weight_panic fields 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
+**Type:** Serialization Contract
+**Priority:** P2. Test-first required.
+
+**Scope:** `weight_ceiling` and `weight_panic` fields are not included in `to_dict()` / `from_dict()` round-trip. Architect decision: these fields **persist** (not transient). Fix: add to both methods.
+
+**Fix (approved):** Test first: round-trip serialization asserts field preservation → add fields to `to_dict` / `from_dict` → test green.
+
+**Acceptance gate (binary):** Round-trip test passes; gates green.
+
+**Effort:** ~1h.
+
+---
+
+### T5-23 · Autonomic Fusion Engine — docstring claims ±20/+10 range, formula is ±15 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §AFI finding. Architect decision: formula is authoritative; docstring is wrong.
+**Type:** Documentation Correction
+**Priority:** P4. Independent.
+
+**Scope:** `titan/science/autonomic_fusion.py` docstring states AFI modifier range `-20..+10`; the formula `round(afi_final * 15)` correctly produces `±15` (symmetric). Fix: update docstring to `±15`; add range assertion test.
+
+**Acceptance gate (binary):** Docstring updated; test asserts output range `[-15, +15]`; gates green.
+
+**Effort:** ~30 minutes.
+
+---
+
+### T5-24 · Biomechanics Engine — orchestration contract typed as `object` 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only, no execution without brief)
+**Source:** Binder1 audit / DEC-2 §Biomechanics Engine Pattern P7 finding.
+**Type:** Architecture Debt
+**Priority:** P4. Blocked — requires typed protocol/interface design brief.
+**Cross-reference:** T4-26 (RESOLVED 2026-03-07) addressed the orchestration contract layer broadly. T5-24 captures the specific `biomechanics: object` annotation gap not covered by T4-26's resolution scope.
+
+**Scope:** The orchestration layer consumes biomechanics engine output via a weakly typed `object` contract. A typed `TypedDict` or `Protocol` for the biomechanics payload is needed. No implementation before dedicated architect brief.
+
+**Acceptance gate (binary):** Defined when brief is written.
+
+---
+
+### T5-25 · Database Manager — SQLite/PostgreSQL interface parity matrix absent 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Source:** Binder1 audit / DEC-2 §Database Manager Pattern P7 variant finding.
+**Type:** Architecture Debt
+**Priority:** P4. Related to T5-08-B but distinct scope.
+**Cross-reference:** T5-08-B (OPEN — full ADR-0044 PostgreSQL migration) addresses implementation. T5-25 addresses the **interface parity matrix** as a documented architectural contract (what methods/behaviours must be identical across both backends). These are related but distinct debt items.
+
+**Scope:** No documented parity matrix exists between `SQLiteDatabaseManager` and `PostgreSQLDatabaseManager`. The union of concrete managers lacks a verified common contract. Implement after T5-08-B is RESOLVED or in parallel as a design artefact.
+
+**Acceptance gate (binary):** Defined when brief is written.
+
+---
+
+### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
+**Type:** API Contract
+**Priority:** P1. Test-first required. Highest priority within Binder1 batch.
+
+**Scope:** `main.py` `cb_drift` callback calls `drift_eng.analyze_cardiac_drift(...)` but `DriftEngine` does not have this method. Results in `AttributeError` at runtime.
+
+**Fix (approved — option a):** Add `analyze_cardiac_drift()` wrapper to `DriftEngine` that calls `compute_drift()` + `classify_drift()`. Caller (`main.py`) must not know internals. Test first: real `DriftEngine` instance + `cb_drift` path → no `AttributeError`.
+
+**Acceptance gate (binary):** Failing test written first → wrapper added → test green → all gates green.
+
+**Effort:** ~2h.
+
+---
+
+### T5-27 · Durability Engine — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Durability Engine Pattern P5 finding. Category A confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR after S1–S3 execution items.
+
+**Scope:** The following inline literals in `titan/science/durability_engine.py` are Category A policy thresholds: `2`, `5`, `8` (pace durability bands), `85`, `90`, `95`, `98` (durability index bands), `88`, `93`, `96` (training protocol bands). Extract to `thresholds.py`.
+
+**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals remain for listed values; `thresholds.py` + `evidence_registry.py` updated; all gates green.
+
+**Effort:** ~2h.
+
+---
+
+### T5-28 · Fatigue Engine — soreness threshold literal not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Fatigue Engine Pattern P5 finding. Category A confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR.
+
+**Scope:** Inline threshold `>= 5` (soreness score trigger in `titan/science/fatigue_engine.py`) is Category A — governance-facing policy threshold. Note: `SUBJECTIVE_FATIGUE_2OF4 = 6` is already in `thresholds.py`. The `>= 5` literal may represent a distinct policy threshold requiring its own named constant. Extract to `thresholds.py` with STRONG/HEURISTIC provenance.
+
+**Acceptance gate (binary):** Same pattern as T5-17.
+
+**Effort:** ~1h.
+
+---
+
+### T5-29 · Garmin Live Sync — sleep/HRV partial-failure policy inconsistency 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Garmin Live Sync finding. Architect decision: align `sync_sleep()` to per-day best-effort model.
+**Type:** Behavior Contract
+**Priority:** P2. Intentional behavior change — test-first required.
+
+**Scope:** `sync_sleep()` aborts the entire date range on a single failure; `sync_hrv()` uses per-day best-effort (continues on individual day failures). Architect decision: align `sync_sleep()` to the per-day best-effort model for consistency.
+
+**Fix (approved):** Test first: assert new per-day contract for `sync_sleep()` → apply minimal fix → test green.
+
+**Acceptance gate (binary):** Failing test written first → fix applied → test green → all gates green.
+
+**Effort:** ~2h.
+
+---
+
+### T5-30 · Governance Engine — class-local threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Governance Engine Pattern P5 finding. Category A confirmed by architect in DEC-2.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR.
+**Cross-reference:** T1-04 (RESOLVED 2026-03-02 — "Hardcoded safety thresholds bypassing thresholds.py") did not cover these specific class-local values. T5-30 is a missed case from T1-04's resolution scope.
+
+**Scope:** Class-local thresholds `0.80` and `0.70` in `titan/science/governance_engine.py` are Category A policy thresholds. Extract to `thresholds.py`.
+
+**Acceptance gate (binary):** Same pattern as T5-17. `governance_engine.py` references constants from `thresholds.py`; no inline literals remain for these values; all gates green.
+
+**Effort:** ~1h. Extraction only.
+
+---
+
+### T5-31 · Intensity Governor — threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Intensity Governor Pattern P5 finding. Category A confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR.
+
+**Scope:** Inline threshold literals in `titan/science/intensity_governor.py`: `3.5`, `5.0`, `4.0`, `6.0`, `1.3`, `1.5`, `55`, `40` — all Category A policy thresholds. Extract to `thresholds.py`.
+
+**Acceptance gate (binary):** Same pattern as T5-17.
+
+**Effort:** ~2h.
+
+---
+
+### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR.
+
+**Scope:** Inline threshold literals in `titan/science/lactate_logic.py`: `3.0`, `78.0`, `6.0`, `7.0` — Category A policy thresholds (LT1/LT2 boundary zone). Extract to `thresholds.py`.
+
+**Acceptance gate (binary):** Same pattern as T5-17.
+
+**Effort:** ~1h.
+
+---
+
+### T5-33 · Periodization/Automated — implicit coupling contract absent 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Source:** Binder1 audit / DEC-2 §Periodization + Equipment Pattern P7 variant finding.
+**Type:** Architecture Debt
+**Priority:** P4. Blocked — requires dedicated brief before implementation.
+
+**Scope:** `titan/core/periodization.py` and `titan/science/automated_periodization.py` have an implicit coupling contract with no formal boundary test or typed interface. Architectural coupling risk. No implementation before dedicated architect brief.
+
+**Acceptance gate (binary):** Defined when brief is written.
+
+---
+
+### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
+**Type:** Architecture Debt
+**Priority:** P4. Blocked — requires dedicated brief before implementation.
+**Cross-reference:** T4-07 (RESOLVED — wizard credential duplicates), T4-12 (RESOLVED — wizard interactive flow tests) are distinct. T5-34 addresses the architectural divergence between the `titan/ui/setup_wizard.py` and `launcher/wizard.py` bootstrap contracts — a different concern not covered by T4-07/T4-12.
+
+**Scope:** Two wizard implementations (`titan/ui/setup_wizard.py` and `launcher/wizard.py`) have diverging contracts (env persistence, validation logic, error handling). Architectural consistency risk for first-run setup flows. No implementation before dedicated architect brief.
+
+**Acceptance gate (binary):** Defined when brief is written.
+
+---
+
+### T5-35 · Volume Load Gauge — threshold literals not centralized in thresholds.py 🔴 OPEN
+
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Source:** Binder1 audit / DEC-2 §Volume Load Gauge Pattern P5 finding. Category A confirmed.
+**Type:** Threshold Governance
+**Priority:** P3. Independent. Separate PR.
+
+**Scope:** Inline threshold literals in `titan/science/volume_load_gauge.py`: `-30` (TSB floor band), `0.7`, `0.8`, `1.3`, `1.5` (ACWR bands), `4`, `7` (glycogen debt bands) — Category A policy thresholds. Extract to `thresholds.py`. Note: some of these (e.g. `0.8`, `1.3`, `1.5`) may overlap with T5-17 (ACWR engine constants) — when implementing, verify whether a shared constant or a per-module constant is architecturally correct.
+
+**Acceptance gate (binary):** Same pattern as T5-17.
+
+**Effort:** ~2h.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -2113,7 +2415,7 @@ without architectural discussion.
 
 ---
 
-All Tier 5 decisions have been locked or deferred. See Tracking table for completion dates and PRs.
+All Tier 5 decisions up to T5-16-A have been locked or deferred. T5-17 through T5-35 are new entries from the Binder1 audit triage (DEC-1 + DEC-2, 2026-03-13). T5-19, T5-24, T5-25, T5-33, T5-34 are blocked pending architect input or brief. See Tracking table for completion dates and PRs.
 Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning), 0043 (product direction + LLM seams), 0044 (PostgreSQL migration), 0045 (local LLM backend abstraction).
 
 ---
@@ -2261,6 +2563,25 @@ When an item is completed, mark it here with date and PR reference:
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
+| T5-17 | OPEN (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | — |
+| T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; partial — T5-19 blocked) | — |
+| T5-19 | BLOCKED (architect confirmation required — 2.5/2.0/1.5 multipliers Category A or B?) | — |
+| T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
+| T5-21 | OPEN (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | — |
+| T5-22 | OPEN (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | — |
+| T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
+| T5-24 | OPEN (Phase 8 — Biomechanics typed orchestration contract; blocked pending brief) | — |
+| T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; related to T5-08-B) | — |
+| T5-26 | OPEN (Phase 8 — Drift Engine analyze_cardiac_drift wrapper; P1; test-first) | — |
+| T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |
+| T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
+| T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |
+| T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
+| T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
+| T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
+| T5-33 | OPEN (Phase 8 — Periodization/Automated coupling contract; blocked pending brief) | — |
+| T5-34 | OPEN (Phase 8 — Dual wizard bootstrap contract alignment; blocked pending brief) | — |
+| T5-35 | OPEN (Phase 8 — VLG threshold extraction; separate PR; cross-check overlap with T5-17) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -2293,3 +2614,5 @@ D2a (Alembic migration for 5 tables) → D2b (SQLAlchemy Core implementation for
 with the old monolithic D2. D3 dependency is unchanged — D3 begins only after D2c is DONE. No new ADR
 created; no implementation performed; no architectural decisions invented. Deliverable table and status line
 updated accordingly. Next deliverable: D2a.*
+
+*Updated: 2026-03-13 — Binder1 audit triage complete. DEC-1 (ACWR / Adaptive Memory / APL) and DEC-2 (remaining 29 modules) issued by Architect. T5-17 through T5-35 registered (19 new entries). T5-19 BLOCKED (architect clarification required on Adaptive Memory 2.5/2.0/1.5 multipliers). T5-24, T5-25, T5-33, T5-34 debt-only (require dedicated brief before implementation). Records steward pass — no implementation performed, no new architectural decisions. Codex MAY START execution only after deterministic baseline confirmed (≥1845 passed) and per DEC-2 §9 Execution Authorization conditions.*

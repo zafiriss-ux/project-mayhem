@@ -1364,6 +1364,97 @@ No finding ID has been dropped. No classification has been changed from the owne
 
 ---
 
+---
+
+## Binder1 Audit Triage — Architect Records Sync (2026-03-13)
+
+**Records steward pass.** No implementation performed. No new architectural decisions.
+
+### Status
+
+```
+Binder1 architectural triage: COMPLETE
+Records layer: SYNCED
+Codex execution: AUTHORIZED (subject to preconditions below)
+SCRATCHPAD STATUS: IDLE
+```
+
+### Coverage
+
+| DEC | Modules covered | Date |
+|---|---|---|
+| DEC-1 | ACWR Engine, Adaptive Memory, Adaptive Priority Lock | 2026-03-13 |
+| DEC-2 | Remaining 29 modules from Binder1 audit corpus | 2026-03-13 |
+
+Binder1 architectural triage is complete. All findings have been classified (S1–S5) and either approved for execution, recorded as debt entries, or explicitly blocked.
+
+### Debt Entries Registered
+
+T5-NEW-01 through T5-NEW-19 have been registered in `TECHNICAL_DEBT.md` as **T5-17 through T5-35** (sequential assignment, 2026-03-13). See the TECHNICAL_DEBT.md Tier 5 section and Tracking table for full details.
+
+| DEC ID | TECHNICAL_DEBT.md ID | Module | Type | Status |
+|---|---|---|---|---|
+| T5-NEW-01 | T5-17 | ACWR Engine | Threshold Governance | OPEN |
+| T5-NEW-02 | T5-18 | Adaptive Memory | Threshold Governance | OPEN (partial — T5-19 blocked) |
+| T5-NEW-03 | T5-19 | Adaptive Memory | Open Question | BLOCKED |
+| T5-NEW-04 | T5-20 | APL | Test Gap | OPEN |
+| T5-NEW-05 | T5-21 | Athlete Profile | Code Hardening | OPEN |
+| T5-NEW-06 | T5-22 | Athlete Profile | Serialization Contract | OPEN |
+| T5-NEW-07 | T5-23 | Autonomic Fusion | Documentation | OPEN |
+| T5-NEW-08 | T5-24 | Biomechanics | Architecture Debt | OPEN (blocked — brief required) |
+| T5-NEW-09 | T5-25 | Database Manager | Architecture Debt | OPEN (blocked — brief required) |
+| T5-NEW-10 | T5-26 | Drift Engine | API Contract | OPEN (P1) |
+| T5-NEW-11 | T5-27 | Durability Engine | Threshold Governance | OPEN |
+| T5-NEW-12 | T5-28 | Fatigue Engine | Threshold Governance | OPEN |
+| T5-NEW-13 | T5-29 | Garmin Live Sync | Behavior Contract | OPEN |
+| T5-NEW-14 | T5-30 | Governance Engine | Threshold Governance | OPEN (ADR-0009 ref required) |
+| T5-NEW-15 | T5-31 | Intensity Governor | Threshold Governance | OPEN |
+| T5-NEW-16 | T5-32 | Lactate Logic | Threshold Governance | OPEN |
+| T5-NEW-17 | T5-33 | Periodization | Architecture Debt | OPEN (blocked — brief required) |
+| T5-NEW-18 | T5-34 | Setup Wizard | Architecture Debt | OPEN (blocked — brief required) |
+| T5-NEW-19 | T5-35 | Volume Load Gauge | Threshold Governance | OPEN |
+
+### Duplicate / Cross-Reference Findings
+
+The following cross-references were identified during registration. No renumbering or reinterpretation was performed. All entries confirmed DISTINCT and NEW except where noted.
+
+| New Entry | Potential Overlap | Assessment |
+|---|---|---|
+| T5-17 | T1-04 (RESOLVED), T1-05 (RESOLVED) | DISTINCT. T1-05 covers dead duplicates in `constants.py` utility file; T5-17 covers inline Category A policy literals inside the ACWR science module. |
+| T5-24 | T4-26 (RESOLVED) | DISTINCT. T4-26 addressed the orchestration contract layer broadly. T5-24 specifically captures the `biomechanics: object` annotation gap not covered by T4-26 resolution scope. |
+| T5-25 | T5-08-B (OPEN) | RELATED but DISTINCT. T5-08-B covers full PostgreSQL migration implementation. T5-25 covers interface parity matrix as an architectural contract document. |
+| T5-30 | T1-04 (RESOLVED) | DISTINCT. T1-04 resolved general hardcoded safety thresholds. T5-30 covers governance_engine.py class-local thresholds (0.80, 0.70) that were missed in T1-04's resolution scope. |
+| T5-34 | T4-07 (RESOLVED), T4-12 (RESOLVED) | DISTINCT. T4-07/T4-12 addressed wizard UX and test coverage. T5-34 addresses architectural divergence between titan wizard and launcher wizard bootstrap contracts. |
+
+### Blocked Items
+
+| Item | Module | Blocked On |
+|---|---|---|
+| T5-19 | Adaptive Memory | Architect classification of `2.5/2.0/1.5` multipliers (Category A or B?) — DEC-1 §4.2 |
+| T5-24 | Biomechanics | Typed orchestration contract brief required |
+| T5-25 | Database Manager | Interface parity matrix design brief required |
+| T5-33 | Periodization | Core/automated coupling contract brief required |
+| T5-34 | Setup Wizard | Dual wizard bootstrap contract brief required |
+| All S4 threshold extraction tasks (T5-17, T5-18, T5-27, T5-28, T5-30, T5-31, T5-32, T5-35) | Multiple | Blocked behind S1–S3 execution completion; each requires **separate PR** |
+| Telegram gateway wiring (DEC-2 §Telegram) | Telegram | Requires green test net before wiring change |
+
+### Codex Execution Preconditions (from DEC-2 §9)
+
+Codex **MAY START** execution ONLY after ALL of the following are confirmed:
+
+1. **Deterministic baseline confirmed:** `pytest -q` returns ≥1845 passed (deterministic). If nondeterministic — stop and report before anything else.
+2. **All T5-17 through T5-35 entries registered:** ✅ Done (this pass, 2026-03-13).
+3. **Out-of-scope failing tests resolved first (before module fixes):**
+   - `tests/test_phase4_slo_alerts.py` — mentioned in DEC-2 §HRV Engine note (out of HRV scope; fix first per RED protocol)
+   - `test_property_based.py::test_volume_load_gauge_resilient_to_non_numeric_acwr` — mentioned in DEC-2 §Optimal Time Calculator note (fix first per RED protocol)
+4. **Execution order per module:** failing test → minimal code fix → gate run. Never code fix without failing test first.
+5. **S4 threshold extraction tasks:** separate PRs only. Never bundled with S1–S3 execution items.
+6. **S5 blocked items:** remain blocked until explicit architect unblock.
+
+*Binder1 records sync completed: 2026-03-13. Records steward: Claude.*
+
+---
+
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*
