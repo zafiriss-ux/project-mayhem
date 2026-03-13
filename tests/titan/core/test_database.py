@@ -100,7 +100,7 @@ def test_get_active_shoes_raises_controlled_error_when_close_wins_lock_race(tmp_
         lambda db: db.get_hrr_history(),
         lambda db: db.get_cs_performances(),
         lambda db: db.get_override_ratio(),
-        lambda db: db.get_override_log(),
+        lambda db: db.get_model_calibration_metadata("hrv_engine"),
         lambda db: db.get_governance_decisions(),
     ],
 )
@@ -278,8 +278,12 @@ def test_save_personal_best_cursor_inside_lock(tmp_path):
             ),
         ),
         (
-            "annotate_governance_outcome",
-            lambda db: db.annotate_governance_outcome(date="2026-03-05", note="operator note"),
+            "upsert_model_calibration_metadata",
+            lambda db: db.upsert_model_calibration_metadata(
+                model_name="hrv_engine",
+                calibrated_at="2026-03-09T10:00:00+00:00",
+                baseline_hrv_ms=51.2,
+            ),
         ),
     ],
     ids=lambda case: case,
@@ -295,6 +299,12 @@ def test_write_after_close_raises(tmp_path):
 
     with pytest.raises(RuntimeError, match="closed"):
         db.save_daily_metric(date="2026-03-05", weight=70.0)
+    with pytest.raises(RuntimeError, match="closed"):
+        db.upsert_model_calibration_metadata(
+            model_name="hrv_engine",
+            calibrated_at="2026-03-09T10:00:00+00:00",
+            baseline_hrv_ms=52.0,
+        )
 
 
 @pytest.mark.parametrize(
@@ -305,7 +315,11 @@ def test_write_after_close_raises(tmp_path):
         lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
         lambda db: db.save_governance_decision({"date": "2026-03-05"}),
         lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
-        lambda db: db.annotate_governance_outcome(date="2026-03-05", note="late note"),
+        lambda db: db.upsert_model_calibration_metadata(
+            model_name="hrv_engine",
+            calibrated_at="2026-03-09T10:00:00+00:00",
+            baseline_hrv_ms=51.2,
+        ),
     ],
 )
 def test_in_scope_write_methods_fail_fast_after_close(tmp_path, write_call):
@@ -324,7 +338,11 @@ def test_in_scope_write_methods_fail_fast_after_close(tmp_path, write_call):
         lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
         lambda db: db.save_governance_decision({"date": "2026-03-05"}),
         lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
-        lambda db: db.annotate_governance_outcome(date="2026-03-05", note="late note"),
+        lambda db: db.upsert_model_calibration_metadata(
+            model_name="hrv_engine",
+            calibrated_at="2026-03-09T10:00:00+00:00",
+            baseline_hrv_ms=51.2,
+        ),
     ],
 )
 def test_in_scope_write_methods_no_cursor_on_close_race(tmp_path, write_call):
@@ -409,7 +427,7 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     db = DatabaseManager(db_name="standalone_commit_methods.db", db_dir=tmp_path)
     db.conn = _CommitSpyConnection(db.conn)
 
-    db.save_daily_metric(date="2026-03-05", weight=70.2, rhr=50)
+    db.save_daily_metric(date="2026-03-05", weight=70.2, hrv=30.0, rhr=50)
     assert db.conn.commit_calls == 1
 
     db.save_session(
@@ -433,6 +451,14 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     db.save_personal_best(distance_km=5.0, time_sec=1200, date="2026-03-05", race_name="City 5K")
     assert db.conn.commit_calls == 6
 
+    db.upsert_model_calibration_metadata(
+        model_name="hrv_engine",
+        calibrated_at="2026-03-09T10:00:00+00:00",
+        baseline_hrv_ms=55.0,
+        baseline_vo2=56.0,
+    )
+    assert db.conn.commit_calls == 7
+
     cur = db.conn.cursor()
     cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date = ?", ("2026-03-05",))
     assert cur.fetchone()[0] == 1
@@ -444,6 +470,12 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     assert float(cur.fetchone()[0]) == 10.5
     cur.execute("SELECT COUNT(*) FROM personal_bests WHERE distance_km = ?", (5.0,))
     assert cur.fetchone()[0] == 1
+
+    metadata = db.get_model_calibration_metadata("hrv_engine")
+    assert metadata is not None
+    assert metadata["baseline_hrv_ms"] == 55.0
+    assert metadata["baseline_vo2"] == 56.0
+    assert db.get_recent_hrv_mean(days=30) == 30.0
 
     db.close()
 

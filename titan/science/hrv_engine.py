@@ -15,8 +15,21 @@ Key Findings:
 """
 
 import math
+from dataclasses import dataclass
 
 MODULE_VERSION = "1.0.0"
+
+
+@dataclass(frozen=True)
+class HrvCalibrationDriftState:
+    """Observation-only descriptor for baseline calibration drift."""
+
+    baseline_hrv_ms: float
+    current_hrv_ms: float
+    drift_threshold_ms: float
+    delta_ms: float
+    abs_delta_ms: float
+    drift_detected: bool
 
 
 class HRVGuidedEngine:
@@ -159,3 +172,26 @@ class HRVGuidedEngine:
             return f"📉 DECLINING: HRV down {change_pct:.1f}%"
         else:
             return f"➡️ STABLE: HRV change {change_pct:.1f}%"
+
+    @staticmethod
+    def describe_calibration_drift(
+        *,
+        baseline_hrv_ms: float,
+        current_hrv_ms: float,
+        drift_threshold_ms: float,
+    ) -> HrvCalibrationDriftState:
+        """Describe baseline drift state without prescribing training decisions."""
+        if drift_threshold_ms <= 0:
+            raise ValueError("drift_threshold_ms must be > 0")
+
+        delta_ms = round(current_hrv_ms - baseline_hrv_ms, 2)
+        abs_delta_ms = abs(delta_ms)
+
+        return HrvCalibrationDriftState(
+            baseline_hrv_ms=baseline_hrv_ms,
+            current_hrv_ms=current_hrv_ms,
+            drift_threshold_ms=drift_threshold_ms,
+            delta_ms=delta_ms,
+            abs_delta_ms=abs_delta_ms,
+            drift_detected=abs_delta_ms > drift_threshold_ms,
+        )

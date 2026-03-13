@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 
 class DatabaseManager:
@@ -394,6 +394,11 @@ class DatabaseManager:
                 "feedback-loop guardrail metadata columns (T1-22)",
                 None,  # batch — see _apply_v5_migrations() below
             ),
+            7: (
+                "model_calibration_metadata",
+                "calibration metadata ledger for model age and drift checks (T5-07 layer 1)",
+                None,  # DDL — see _apply_v7_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -465,6 +470,17 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 6,
                     "table_created": "override_signals",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 7:
+            self._apply_v7_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 7,
+                    "table_created": "model_calibration_metadata",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -592,6 +608,21 @@ class DatabaseManager:
                 override_source TEXT NOT NULL,
                 override_reason TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+        """)
+
+    def _apply_v7_migrations(self, cursor) -> None:
+        """Version 7: calibration metadata table (T5-07 Layer 1 scaffold)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS model_calibration_metadata (
+                model_name TEXT NOT NULL,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
+                calibrated_at TEXT NOT NULL,
+                calibrated_for TEXT NOT NULL DEFAULT 'default',
+                baseline_hrv_ms REAL,
+                baseline_vo2 REAL,
+                schema_version INTEGER NOT NULL,
+                PRIMARY KEY (model_name, athlete_id)
             )
         """)
 
@@ -1470,6 +1501,90 @@ class DatabaseManager:
             if clean is not None:
                 validated.append((date_str, clean))
         return validated
+
+    def get_recent_hrv_mean(self, days: int = 30) -> float | None:
+        """Return rolling mean HRV over recent days, or None when unavailable."""
+        hrv_history = self.get_hrv_history(days=days)
+        if not hrv_history:
+            return None
+
+        values = [entry[1] for entry in hrv_history]
+        return round(sum(values) / len(values), 2)
+
+    def upsert_model_calibration_metadata(
+        self,
+        *,
+        model_name: str,
+        calibrated_at: str,
+        athlete_id: str = "default",
+        calibrated_for: str = "default",
+        baseline_hrv_ms: float | None = None,
+        baseline_vo2: float | None = None,
+        schema_version: int = SCHEMA_VERSION,
+    ) -> None:
+        """Insert or update model calibration metadata for a named model."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """INSERT INTO model_calibration_metadata (
+                        model_name,
+                        athlete_id,
+                        calibrated_at,
+                        calibrated_for,
+                        baseline_hrv_ms,
+                        baseline_vo2,
+                        schema_version
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(model_name, athlete_id) DO UPDATE SET
+                        calibrated_at = excluded.calibrated_at,
+                        calibrated_for = excluded.calibrated_for,
+                        baseline_hrv_ms = excluded.baseline_hrv_ms,
+                        baseline_vo2 = excluded.baseline_vo2,
+                        schema_version = excluded.schema_version""",
+                (
+                    model_name,
+                    athlete_id,
+                    calibrated_at,
+                    calibrated_for,
+                    baseline_hrv_ms,
+                    baseline_vo2,
+                    schema_version,
+                ),
+            )
+            if self._transaction_depth == 0:
+                self.conn.commit()
+
+    def get_model_calibration_metadata(
+        self,
+        model_name: str,
+        athlete_id: str = "default",
+    ) -> dict[str, Any] | None:
+        """Return calibration metadata for a model, or None when no row exists."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT model_name, athlete_id, calibrated_at, calibrated_for,
+                          baseline_hrv_ms, baseline_vo2, schema_version
+                     FROM model_calibration_metadata
+                     WHERE model_name = ? AND athlete_id = ?""",
+                (model_name, athlete_id),
+            )
+            row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "model_name": str(row[0]),
+            "athlete_id": str(row[1]),
+            "calibrated_at": str(row[2]),
+            "calibrated_for": str(row[3]),
+            "baseline_hrv_ms": float(row[4]) if row[4] is not None else None,
+            "baseline_vo2": float(row[5]) if row[5] is not None else None,
+            "schema_version": int(row[6]),
+        }
 
     def record_sync_outcome(
         self,

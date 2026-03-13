@@ -8,6 +8,7 @@
 /titan/orchestration/ @zafiriss-ux
 
 # Governance / thresholds
+/titan/science/governance_engine.py @zafiriss-ux
 /titan/config/thresholds.py @zafiriss-ux
 /docs/architecture/ @zafiriss-ux
 
