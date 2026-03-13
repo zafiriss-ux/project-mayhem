@@ -313,6 +313,43 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
 - `0047` — Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3); engineering execution T8-01 (Accepted — 2026-03-09)
 
+### Future Design Notes
+
+> These are architect-recorded design directions that have been evaluated and approved at the
+> skeleton level but are **not yet ADRs and not implementation instructions**. They must not be
+> converted to ADRs, implementation tasks, or policy changes without a further explicit
+> architectural decision. Detailed open concerns and source material are in `SCRATCHPAD.md §Future Design Notes`.
+
+#### FDN-001 — Orchestration Modeling: 3-Layer Architecture Skeleton (2026-03-13)
+
+**Status:** Architecture Note — not an ADR, not an implementation instruction.
+**Source:** Approved synthesis (Architect evaluation + Red-team review), 2026-03-13.
+
+The approved skeleton for future orchestration modeling is a 3-layer separation:
+
+1. **Layer 1 — Pillar Scoring**: Pure observation layer. Accepts raw metrics; returns a pillar vector. No knowledge of decisions or risk.
+2. **Layer 2 — Profile Abstraction**: Compresses the pillar vector into an abstracted athlete state (primary limiter, secondary limiter, bottleneck count, dominant strengths, risk_weight). Emits no prescriptions and has no knowledge of sessions.
+3. **Layer 3 — Decision Policy**: The only layer with knowledge of sessions, intensity, and volume. Accepts the abstracted state; returns session prescription.
+
+The **5 pillars × 3 ordinal states** (243 raw states) model is the accepted athlete-representation direction for Layers 1–2. Not all 243 states are physiologically reachable; phantom / unreachable states must not drive handcrafted orchestration logic.
+
+**Locked at this stage:** 3-layer architectural skeleton; ordinal (not continuous) representation principle; Layer 2 prescription-free boundary rule.
+
+**Not locked — open design concerns (see SCRATCHPAD.md FDN-001):**
+- Exact pillar set (5 pillars are indicative; final set requires data support)
+- Thresholds for weak / moderate / strong states per pillar
+- Exact pillar-to-metric mappings (Layer 1 input mapping)
+- `risk_weight` definition (scalar vs categorical; independent vs derived)
+- Decision family definitions and vector → family mapping rules
+- Final prioritization logic
+- Data confidence / quality signal propagation through layers
+- Temporal dimension and pillar state transition rules
+- Staleness / recency of pillar inputs
+- Layer 2 / Layer 3 boundary enforcement (prescription bias must not leak into Layer 2 output)
+- Override / human input path through the layer model
+
+**Prerequisite for ADR promotion:** Input mapping, state threshold definitions, `risk_weight` formalization, and decision family mapping rules must be resolved first.
+
 ---
 
 ## Architect Scratchpad Review Protocol

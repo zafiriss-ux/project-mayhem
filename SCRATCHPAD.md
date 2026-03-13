@@ -1214,6 +1214,91 @@ design — it does not reveal a deficit.
 
 ---
 
+## Future Design Notes (Architect)
+
+> This section is architect-authored. It records approved design directions that are not yet
+> ADRs, not implementation instructions, and not OBS/DEC lifecycle entries. Content here must
+> not be converted to ADRs, implementation tasks, or policy changes without a further explicit
+> architectural decision. The STATUS field of this document is not affected by entries in this
+> section.
+
+---
+
+### [FDN-001] Orchestration Modeling: 3-Layer Architecture Skeleton
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**Category:** Future Design Note — Architecture Note
+**Source:** Approved synthesis — Architect evaluation (Sonnet) + Red-team review (Opus), 2026-03-13
+**Status:** Architecture Note. Not an ADR. Not an implementation instruction.
+
+**Approved skeleton:**
+
+The approved direction for future orchestration modeling is a 3-layer architecture:
+
+1. **Layer 1 — Pillar Scoring**
+   Pure observation layer. Accepts raw metrics; returns a pillar vector.
+   Boundary rule: if something concerns "what we do with this", it does not belong here.
+   No knowledge of decisions, risk, or sessions.
+
+2. **Layer 2 — Profile Abstraction**
+   Compresses the pillar vector into an abstracted athlete state containing:
+   primary limiter, secondary limiter, bottleneck count, dominant strengths, risk_weight.
+   Boundary rule: Layer 2 output is pure state description — no prescriptions, no session bias.
+   Prescription bias must not leak into Layer 2 output (noted risk from architect evaluation).
+
+3. **Layer 3 — Decision Policy**
+   The only layer with knowledge of sessions, intensity, and volume.
+   Accepts the abstracted state; returns session prescription.
+   Decision families (e.g. VO₂-limited, durability-limited) live here exclusively.
+
+**5 pillars × 3 ordinal states model:**
+
+The 5 pillars × 3 ordinal states model (243 raw states) is accepted as the
+athlete-representation direction for Layers 1–2. Ordinal states (weak / moderate / strong)
+are preferred over continuous scores given the precision characteristics of available
+athletic metrics.
+
+Not all 243 states are physiologically reachable. Pillars with strong positive correlations
+(e.g. aerobic base and threshold capacity) make certain combinations near-impossible in
+practice. Phantom / unreachable states must not drive handcrafted orchestration logic.
+
+**Locked at skeleton level:**
+- 3-layer architectural separation
+- Ordinal (not continuous) representation principle
+- Layer 2 prescription-free boundary rule
+
+**Not locked — open design concerns:**
+
+The following items are explicitly unresolved and must remain open until further
+architectural decisions are made. No implementation should proceed against any of these:
+
+| Concern | Description |
+|---|---|
+| Exact pillar set | 5 pillars are indicative; final set requires sufficient data support. Not fixed. |
+| State thresholds | Thresholds for weak / moderate / strong are undefined per pillar. |
+| Layer 1 input mapping | Exact pillar-to-metric mappings are vague. Must be specified before any ADR. |
+| `risk_weight` definition | Not clear if scalar or categorical; not clear if independent or derived from other pillars / signals. Risk of becoming a dumping ground for ambiguous signals if not defined tightly. |
+| Decision family definitions | No mapping rule from pillar vector to decision family exists yet. |
+| Final prioritization logic | Unspecified. |
+| Data confidence propagation | No mechanism defined for propagating data quality / confidence signals through the layers. |
+| Temporal dimension | No model for how the pillar vector changes over time or how transitions between states are detected. |
+| Staleness / recency | No staleness or recency policy for pillar inputs. |
+| Layer 2 / Layer 3 boundary enforcement | Requires structural enforcement to prevent prescription semantics from leaking into Layer 2. |
+| Override / human input path | Not modeled in the layer architecture. |
+
+**Prerequisite for ADR promotion:**
+The following must be resolved before this note can be promoted to a formal ADR:
+- Layer 1 input mapping (which metrics feed which pillar)
+- State threshold definitions (what constitutes weak / moderate / strong per pillar)
+- `risk_weight` formalization (type, derivation rule, bounded range)
+- Decision family definitions and the vector → family mapping rule
+
+Until these are resolved, this note captures the skeleton only. No ADR, no implementation
+task, and no policy change should be derived from this note alone.
+
+---
+
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*
