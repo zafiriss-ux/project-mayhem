@@ -1981,6 +1981,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit finding A5 / DEC-1 §3.2 (Architect DEC 2026-03-13). Category A policy thresholds confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR from test-gap fixes (T5-17 must not be bundled with S1–S3 execution items).
+**Workflow Path:** A
 **Cross-reference:** T1-05 (RESOLVED — dead ACWR duplicates in `constants.py`) is distinct. T1-05 removed dead code from `utils/constants.py`. T5-17 covers inline policy threshold literals remaining inside the science module itself.
 
 **Scope:** The following numeric literals in `titan/science/acwr_engine.py` are Category A policy thresholds (governance-facing, recalibration targets) and must be extracted to `titan/config/thresholds.py`:
@@ -2003,6 +2004,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit finding B4 / DEC-1 §4.2 (Architect DEC 2026-03-13). `1.08` and time windows confirmed Category A.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR required. Blocked behind architect confirmation for `2.5/2.0/1.5` multipliers — see T5-19.
+**Workflow Path:** A
 
 **Scope (approved for execution):**
 - `1.08` — pace threshold for mechanical load risk in `titan/science/adaptive_memory.py`: **Category A** (governance-facing risk output). Extract to `thresholds.py`.
@@ -2022,6 +2024,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit finding B4 / DEC-1 §4.2.
 **Type:** Open Question
 **Priority:** Blocked until answered.
+**Workflow Path:** A
 
 **Open question (for Architect):** In `titan/science/adaptive_memory.py`, are the values `2.5`, `2.0`, `1.5` (used as multiplier/score constants):
 - **Category A** (governance-facing: appear in output or governance pipeline) → must extract to `thresholds.py`
@@ -2037,6 +2040,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit finding C2 / DEC-1 §5.2. Test gap confirmed.
 **Type:** Test Gap
 **Priority:** P3. Independent.
+**Workflow Path:** A
 
 **Scope:** Add integration test verifying the exact argument contract at the DailyCoach → `apl.resolve()` call boundary:
 - Exact kwargs passed (phase normalization, `cs_tracker.confidence` value)
@@ -2054,6 +2058,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Code Hardening
 **Priority:** P2. Test-first required.
+**Workflow Path:** A
 
 **Scope:** `athlete_id` generation uses timestamp with second-level precision → collision risk when two profiles are created in the same second → silent overwrite.
 
@@ -2071,6 +2076,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Serialization Contract
 **Priority:** P2. Test-first required.
+**Workflow Path:** A
 
 **Scope:** `weight_ceiling` and `weight_panic` fields are not included in `to_dict()` / `from_dict()` round-trip. Architect decision: these fields **persist** (not transient). Fix: add to both methods.
 
@@ -2088,6 +2094,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §AFI finding. Architect decision: formula is authoritative; docstring is wrong.
 **Type:** Documentation Correction
 **Priority:** P4. Independent.
+**Workflow Path:** A
 
 **Scope:** `titan/science/autonomic_fusion.py` docstring states AFI modifier range `-20..+10`; the formula `round(afi_final * 15)` correctly produces `±15` (symmetric). Fix: update docstring to `±15`; add range assertion test.
 
@@ -2103,6 +2110,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Biomechanics Engine Pattern P7 finding.
 **Type:** Architecture Debt
 **Priority:** P4. Blocked — requires typed protocol/interface design brief.
+**Workflow Path:** A
 **Cross-reference:** T4-26 (RESOLVED 2026-03-07) addressed the orchestration contract layer broadly. T5-24 captures the specific `biomechanics: object` annotation gap not covered by T4-26's resolution scope.
 
 **Scope:** The orchestration layer consumes biomechanics engine output via a weakly typed `object` contract. A typed `TypedDict` or `Protocol` for the biomechanics payload is needed. No implementation before dedicated architect brief.
@@ -2117,6 +2125,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Database Manager Pattern P7 variant finding.
 **Type:** Architecture Debt
 **Priority:** P4. Related to T5-08-B but distinct scope.
+**Workflow Path:** A
 **Cross-reference:** T5-08-B (OPEN — full ADR-0044 PostgreSQL migration) addresses implementation. T5-25 addresses the **interface parity matrix** as a documented architectural contract (what methods/behaviours must be identical across both backends). These are related but distinct debt items.
 
 **Scope:** No documented parity matrix exists between `SQLiteDatabaseManager` and `PostgreSQLDatabaseManager`. The union of concrete managers lacks a verified common contract. Implement after T5-08-B is RESOLVED or in parallel as a design artefact.
@@ -2131,6 +2140,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
 **Type:** API Contract
 **Priority:** P1. Test-first required. Highest priority within Binder1 batch.
+**Workflow Path:** A
 
 **Scope:** `main.py` `cb_drift` callback calls `drift_eng.analyze_cardiac_drift(...)` but `DriftEngine` does not have this method. Results in `AttributeError` at runtime.
 
@@ -2148,6 +2158,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Durability Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR after S1–S3 execution items.
+**Workflow Path:** A
 
 **Scope:** The following inline literals in `titan/science/durability_engine.py` are Category A policy thresholds: `2`, `5`, `8` (pace durability bands), `85`, `90`, `95`, `98` (durability index bands), `88`, `93`, `96` (training protocol bands). Extract to `thresholds.py`.
 
@@ -2163,6 +2174,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Fatigue Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
+**Workflow Path:** A
 
 **Scope:** Inline threshold `>= 5` (soreness score trigger in `titan/science/fatigue_engine.py`) is Category A — governance-facing policy threshold. Note: `SUBJECTIVE_FATIGUE_2OF4 = 6` is already in `thresholds.py`. The `>= 5` literal may represent a distinct policy threshold requiring its own named constant. Extract to `thresholds.py` with STRONG/HEURISTIC provenance.
 
@@ -2178,6 +2190,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Garmin Live Sync finding. Architect decision: align `sync_sleep()` to per-day best-effort model.
 **Type:** Behavior Contract
 **Priority:** P2. Intentional behavior change — test-first required.
+**Workflow Path:** A
 
 **Scope:** `sync_sleep()` aborts the entire date range on a single failure; `sync_hrv()` uses per-day best-effort (continues on individual day failures). Architect decision: align `sync_sleep()` to the per-day best-effort model for consistency.
 
@@ -2195,6 +2208,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Governance Engine Pattern P5 finding. Category A confirmed by architect in DEC-2.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
+**Workflow Path:** A
 **Cross-reference:** T1-04 (RESOLVED 2026-03-02 — "Hardcoded safety thresholds bypassing thresholds.py") did not cover these specific class-local values. T5-30 is a missed case from T1-04's resolution scope.
 
 **Scope:** Class-local thresholds `0.80` and `0.70` in `titan/science/governance_engine.py` are Category A policy thresholds. Extract to `thresholds.py`.
@@ -2211,6 +2225,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Intensity Governor Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
+**Workflow Path:** A
 
 **Scope:** Inline threshold literals in `titan/science/intensity_governor.py`: `3.5`, `5.0`, `4.0`, `6.0`, `1.3`, `1.5`, `55`, `40` — all Category A policy thresholds. Extract to `thresholds.py`.
 
@@ -2226,6 +2241,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
+**Workflow Path:** A
 
 **Scope:** Inline threshold literals in `titan/science/lactate_logic.py`: `3.0`, `78.0`, `6.0`, `7.0` — Category A policy thresholds (LT1/LT2 boundary zone). Extract to `thresholds.py`.
 
@@ -2241,6 +2257,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Periodization + Equipment Pattern P7 variant finding.
 **Type:** Architecture Debt
 **Priority:** P4. Blocked — requires dedicated brief before implementation.
+**Workflow Path:** A
 
 **Scope:** `titan/core/periodization.py` and `titan/science/automated_periodization.py` have an implicit coupling contract with no formal boundary test or typed interface. Architectural coupling risk. No implementation before dedicated architect brief.
 
@@ -2254,6 +2271,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
 **Type:** Architecture Debt
 **Priority:** P4. Blocked — requires dedicated brief before implementation.
+**Workflow Path:** A
 **Cross-reference:** T4-07 (RESOLVED — wizard credential duplicates), T4-12 (RESOLVED — wizard interactive flow tests) are distinct. T5-34 addresses the architectural divergence between the `titan/ui/setup_wizard.py` and `launcher/wizard.py` bootstrap contracts — a different concern not covered by T4-07/T4-12.
 
 **Scope:** Two wizard implementations (`titan/ui/setup_wizard.py` and `launcher/wizard.py`) have diverging contracts (env persistence, validation logic, error handling). Architectural consistency risk for first-run setup flows. No implementation before dedicated architect brief.
@@ -2268,6 +2286,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Source:** Binder1 audit / DEC-2 §Volume Load Gauge Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
+**Workflow Path:** A
 
 **Scope:** Inline threshold literals in `titan/science/volume_load_gauge.py`: `-30` (TSB floor band), `0.7`, `0.8`, `1.3`, `1.5` (ACWR bands), `4`, `7` (glycogen debt bands) — Category A policy thresholds. Extract to `thresholds.py`. Note: some of these (e.g. `0.8`, `1.3`, `1.5`) may overlap with T5-17 (ACWR engine constants) — when implementing, verify whether a shared constant or a per-module constant is architecturally correct.
 
