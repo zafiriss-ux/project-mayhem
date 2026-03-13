@@ -1299,6 +1299,71 @@ task, and no policy change should be derived from this note alone.
 
 ---
 
+## Governance Audit Triage Record (Owner-Approved)
+
+> **What this section is:**
+> This is a preservation / audit record for a governance audit triage pass completed
+> 2026-03-13. It is NOT an OBS entry. It is NOT a DEC entry. It does NOT change the
+> SCRATCHPAD STATUS. It does NOT create new tasks or new policy. It exists solely to
+> preserve the full audit triage classification so no finding ID or category is lost.
+>
+> **Authoritative input:** Owner-approved synthesis, 2026-03-13.
+> **Classification authority:** Owner/Architect (Claude), architectural session 2026-03-13.
+> **Documents updated in this pass:** `AGENTS.md`, `CLAUDE.md`.
+
+---
+
+### A — Implemented Now (document clarifications applied)
+
+| Finding | Scope | Change applied |
+|---|---|---|
+| **F-001** (+ F-NEW-001, F-NEW-002) | `AGENTS.md §14.1` Option C, `§14.4`, `§14.5` | Removed direct-to-TECHNICAL_DEBT.md routing. All three sections now route through SCRATCHPAD OBS → architect DEC → TECHNICAL_DEBT.md. Option C in §14.1 challenge template now says "Write a SCRATCHPAD OBS entry and stop". §14.4 correct-sequence now shows full canonical chain. §14.5 abstraction-proposal routing now says SCRATCHPAD OBS → architect DEC. **Blast-radius note (Opus extension):** F-001 expanded blast radius to §14.5 (F-NEW-001) and §14.1 Option C (F-NEW-002); both are addressed in this same pass. |
+| **F-003** | `AGENTS.md §15` intro | Wording aligned with SCRATCHPAD.md authoritative statement. "Completes any current subtask already in progress, then stops" replaced with explicit MAY/MAY NOT language matching the canonical in-flight work policy. |
+| **F-005** | `AGENTS.md §13.3` | Added definitional clarification distinguishing "additive column on existing table" (permitted) from "schema topology change" (requires §14.2). Prevents §13.3 from being used to bypass §14.2. Classification / definitional only — no new policy layer created. |
+| **F-010** | `AGENTS.md §1` Role Boundaries table | Separated Owner row from Architect row. Added explicit paragraph: Owner instructions do not automatically carry Architect authority. Architect role is exercised by Claude operating in an architectural session (§3.6). Legitimate owner authority preserved. |
+| **F-011** | `AGENTS.md §16.2` G10 | G10 Verification note updated to make explicit that it functions as an ongoing Phase 8B prerequisite, not only a historical Phase 8 entry gate. No new gate created — existing boundary made explicit. |
+
+### B — Low-Risk Cleanup Applied
+
+| Finding | Scope | Change applied |
+|---|---|---|
+| **F-002** | `AGENTS.md §9` Key Files table | Duplicate `titan/orchestration/daily_coach.py` row removed. Combined description retained in the single remaining row. No full dual-table migration performed. |
+| **F-008** | `CLAUDE.md` Governance Lock Codes section | Section header updated to "reference snapshot only". Added note that canonical source is `CANONICAL_LOCK_CODES` in `titan/config/thresholds.py`. |
+| **F-009** | `AGENTS.md §3.6` permitted edits table | Added "Clarification append to existing OBS entry in SCRATCHPAD.md" as an explicit permitted action, triggered by Claude's CLARIFICATION_NEEDED state. Clarification-of-existing-flow only; no new workflow logic. |
+
+### C — Preserved / Not Changed
+
+#### C1 — Leave As-Is (not changed now; reason recorded)
+
+| Finding | Reason (owner-approved) |
+|---|---|
+| **F-004** | Consistent duplication across multiple locations; not worth touching now due to risk of policy drift if edited. |
+| **F-006** | Debt-clear counter concern is valid but wrong time to address; revisit in a later session. |
+| **F-007** | PILOT-01 Phase 9 ambiguity is valid but not urgent now. |
+| **F-012** | Historical PR: TBD pattern; no governance value in retroactive archaeology. |
+| **F-014** | Historical appendix snapshot; opportunistic note only; no dedicated change warranted now. |
+| **F-015** | Self-correcting failure mode; no dedicated change warranted now. |
+
+#### C2 — Rejected / No Action
+
+| Finding | Reason (owner-approved) |
+|---|---|
+| **F-013** | False positive; reference is valid; no change required. |
+
+---
+
+### Classification completeness statement
+
+All findings F-001 through F-015 are accounted for in this triage record:
+- Implemented (A): F-001 (expanded to F-NEW-001 + F-NEW-002), F-003, F-005, F-010, F-011
+- Cleanup applied (B): F-002, F-008, F-009
+- Leave as-is (C1): F-004, F-006, F-007, F-012, F-014, F-015
+- Rejected (C2): F-013
+
+No finding ID has been dropped. No classification has been changed from the owner-approved synthesis.
+
+---
+
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*

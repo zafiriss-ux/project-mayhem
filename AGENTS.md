@@ -64,10 +64,19 @@ If an override is required for the suite to run at all, that is a **repo-level i
 
 | Role | Responsibility |
 |------|---------------|
-| **Architect (Claude / owner)** | System design, ADR authorship, tier ordering, scope approval |
+| **Architect** (Claude operating in an architectural session — see §3.6) | System design, ADR authorship, tier ordering, scope approval |
+| **Owner** (project owner directing work) | Work priorities, strategic direction, task assignment — not automatic Architect authority |
 | **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions, no ADR authorship |
 
 Agents execute. They do not design.
+
+**Owner authority vs Architect authority:** The project owner directs work and sets priorities.
+However, owner instructions do not automatically carry Architect-level authority. The Architect
+role is exercised by Claude operating in an architectural session with the project owner (§3.6).
+ADR authorship, governance gate logic changes, schema topology decisions, and tier ordering
+changes require the Architect role — not merely an owner instruction. An owner instruction
+requesting any of these without an explicit architectural session means the agent must stop,
+write a SCRATCHPAD OBS entry (§15), and await the Architect role being exercised.
 
 The foundational principles governing all roles (Owner Proposal Guardrail, Engineering Ctrl-Z,
 Architect Constrained by Invariants, Rules Decide) are stated in standalone form in
@@ -286,7 +295,8 @@ Documentation files are **architect-owned**. Agents may not edit them freely.
 | ADR index table row in `CLAUDE.md` | Integrating a new architect-authored ADR | §12.4 |
 | Debt entry body in `TECHNICAL_DEBT.md` | Task closure (mark RESOLVED) | §12.1 |
 | New OBS entry in `SCRATCHPAD.md` | Out-of-scope finding discovered | §12.2 / §15 |
-| Tracking table row in `TECHNICAL_DEBT.md` | Either of the two rows above | §12.1 / §12.2 |
+| Clarification append to existing OBS entry in `SCRATCHPAD.md` | Claude has set `CLARIFICATION_NEEDED`; Codex appends requested context to the existing OBS (no new OBS created) | `SCRATCHPAD.md §CLARIFICATION flow` |
+| Tracking table row in `TECHNICAL_DEBT.md` | Either of the two debt rows above | §12.1 / §12.2 |
 
 **Everything else is prohibited:**
 - Do not reword, restructure, or "improve" existing documentation.
@@ -525,11 +535,10 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 | `titan/config/thresholds.py` | Single source of truth for all safety constants |
 | `titan/config/evidence_registry.py` | Parameter provenance (STRONG / MODERATE / HEURISTIC) |
 | `titan/science/governance_engine.py` | 7-gate safety system — **architecture-locked** |
-| `titan/orchestration/daily_coach.py` | 12-step morning routine — orchestration entry point |
+| `titan/orchestration/daily_coach.py` | 12-step morning routine — orchestration entry point; `DegradedModeTracker`, `PersistenceFailure` sentinel |
 | `titan/ui/operator_console.py` | OperatorConsoleService (dashboard, session explorer, override) |
 | `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env) |
 | `titan/integrations/notification_gateway.py` | `NotificationGateway` — ordered fallback chain (Telegram → File) |
-| `titan/orchestration/daily_coach.py` | 12-step morning routine — `DegradedModeTracker`, `PersistenceFailure` sentinel |
 | `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / §16.1) |
 | `tests/test_architectural_invariants.py` | AST-enforced structural constraints (T4-19) |
 | `.github/pull_request_template.md` | PR checklist with 3-gate status + architecture guard items (T4-20) |
@@ -733,13 +742,23 @@ covered by the task description or an existing ADR:
 
 | Permitted without approval |
 |---|
-| Adding a column to an existing table via the versioned migration pattern |
+| Adding a column to an existing table via the versioned migration pattern *(see definition below)* |
 | Adding a new method to an existing class (within the class's existing responsibility) |
 | Adding tests for existing or new behaviour |
 | Adding constants to `thresholds.py` or `evidence_registry.py` |
 | Adding structured log events following the existing pattern |
 | Fixing a bug in existing logic without changing its contract |
 
+**Definition — additive column vs schema topology change:**
+- **Additive column** (permitted in §13.3): adding a nullable or default-valued column to an
+  existing table via the versioned migration pattern. The table structure, relationships, and
+  query patterns are unchanged.
+- **Schema topology change** (requires §14.2 justification): new tables, table removal,
+  normalization, denormalization, foreign-key graph changes, or index restructuring that alters
+  query patterns. These are permanent and require architectural sign-off.
+
+§13.3 does not permit schema topology changes. An agent may not use the "additive column"
+permission to justify creating a new table, renaming a table, or any other topology change.
 When in doubt: stop and ask.
 
 ---
@@ -771,7 +790,7 @@ Specific conflict: [one sentence describing why they are incompatible]
 Options:
   A) Proceed anyway — requires explicit architect override + ADR reference
   B) Modify the request to [describe a compliant alternative]
-  C) Record as future work in TECHNICAL_DEBT.md and stop
+  C) Write a SCRATCHPAD OBS entry (§15) and stop — the architect routes it to TECHNICAL_DEBT.md via DEC
 
 How would you like to proceed?
 ```
@@ -855,13 +874,14 @@ Minor changes (bug fixes, test additions, constant additions) are always exempt.
 Specifically:
 - Every implementation must trace to a `TECHNICAL_DEBT.md` entry OR an explicit architect
   instruction in the current session prompt.
-- If an idea arises mid-task ("while I'm here, I could also..."), it must be recorded in
-  `TECHNICAL_DEBT.md` immediately and left there. The current task continues unchanged.
+- If an idea arises mid-task ("while I'm here, I could also..."), it must be written as a
+  SCRATCHPAD OBS entry (§15) and left there. The current task continues unchanged. The
+  architect converts it to a `TECHNICAL_DEBT.md` entry via DEC if appropriate.
 - An agent must never begin implementing something "obvious" that was not scoped in the task.
 
 **The correct sequence:**
 ```
-idea → TECHNICAL_DEBT.md entry → architect prioritises → task assigned → implementation
+idea → SCRATCHPAD OBS entry → architect DEC → TECHNICAL_DEBT.md entry → task assigned → implementation
 ```
 
 **Never:**
@@ -884,8 +904,9 @@ The agent must answer:
 2. **Does the abstraction make a future engineer's job easier or harder?** If unclear → do not create it.
 3. **Can the task be completed by adding to an existing module instead?** If yes → do that instead.
 
-If all three questions pass: record the abstraction proposal as an out-of-scope finding in
-`TECHNICAL_DEBT.md` and wait for architect approval. Do not implement inline.
+If all three questions pass: record the abstraction proposal as a SCRATCHPAD OBS entry (§15)
+and wait for architect DEC. Do not add it directly to `TECHNICAL_DEBT.md` and do not implement
+inline. The canonical routing applies: SCRATCHPAD OBS → architect DEC → `TECHNICAL_DEBT.md` entry.
 
 This rule enforces §16.11 (Complexity Budget and Simplicity Gate) at the agent level.
 
@@ -898,10 +919,11 @@ This rule enforces §16.11 (Complexity Budget and Simplicity Gate) at the agent 
 > solutions. It is a place for raw engineering findings that require an architectural decision.**
 
 Codex writes **Observation (OBS)** entries to `SCRATCHPAD.md` when the trigger conditions
-below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED`, completes
-any current subtask already in progress, then stops. Codex does not start any new top-level
-task until the architect clears the status to `IDLE`. See `SCRATCHPAD.md §Document Status`
-for the single authoritative in-flight work policy.
+below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED`. Codex
+**MAY** complete any current subtask already in progress at the moment of writing the OBS.
+Codex **MAY NOT** start any new top-level task until the architect clears the status to
+`IDLE`. See `SCRATCHPAD.md §Document Status` for the single authoritative in-flight work
+policy.
 
 ### 15.1 Trigger Conditions (MANDATORY — not optional)
 
@@ -1053,7 +1075,7 @@ This is the machine-enforced replacement for the original comment-lock.
 | G7 | Full test suite green with count ≥ 1708 (Phase 7.9 baseline) | `python -m pytest -q` → 0 failures |
 | G8 | `docs/adr/0022-review-phase8-go.md` exists (architect sign-off document) | File exists |
 | G9 | ADR-0018 Phase B implemented: Effect Runner extracted as stateless decision function | Required for multi-athlete parallel DailyCoach execution |
-| G10 | ADR-0044 accepted and Phase 8A implementation plan documented | ADR-0044 already accepted |
+| G10 | ADR-0044 accepted and Phase 8A implementation plan documented | ADR-0044 already accepted. Also an ongoing Phase 8B prerequisite: the Phase 8A implementation plan must be current and active before any Phase 8B work begins. |
 | G11 | Phase 8 Simplicity Review conducted and output documented in `0022-review-phase8-go.md` | Even if output is "nothing to consolidate", review must have occurred |
 
 **Enforcement:** Before any Phase 8 branch is created:

@@ -254,7 +254,12 @@ VO2_GLYCOGEN_DEBT_MAX     = 7.0
 VO2_MIN_DAYS_SINCE_LAST   = 2
 ```
 
-### Governance Lock Codes (canonical set)
+### Governance Lock Codes (reference snapshot only)
+
+> **Reference snapshot only.** Canonical source: `CANONICAL_LOCK_CODES` frozenset in
+> `titan/config/thresholds.py`. The list below is for quick orientation and may lag the
+> canonical set. Always use `thresholds.py` as the authoritative source when adding,
+> renaming, or checking lock codes.
 
 `HARD_STOP_SAFETY_GATES`, `VO2_ELIGIBILITY_GATE`, `FUELING_GATE_LOCK`,
 `FUELING_GATE_FLAG`, `READINESS_2OF4_DOWNGRADE`, `INTENSITY_GATE_RED`,
