@@ -5,6 +5,9 @@ RUNTIME_DEPENDENCIES = {
     "garminconnect==0.2.13",
     "requests==2.32.4",
     "pyTelegramBotAPI==4.21.0",
+    "sqlalchemy==2.0.39",
+    "alembic==1.15.2",
+    "psycopg2-binary==2.9.10",
 }
 
 DEV_DEPENDENCIES = {
