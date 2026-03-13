@@ -90,7 +90,7 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
 
 TIER 5 (future / Phase 8+):
   T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8A early work — complete before Phase 8B begins)
-  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; Phase 8A early work — complete before Phase 8B begins)
+  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; ✅ Layers 1–2 RESOLVED 2026-03-13; Layer 3 deferred Phase 9)
   T5-14 (ESI environmental compensation overlay for training zones; ADR-0034; Phase 8 scheduled)
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
@@ -103,8 +103,7 @@ T2-17 is marked `independent` (can run concurrently with other Tier 2 items afte
 T5-06-A (`InjuryRiskEnsembleModel` explainability) is **Phase 8A early work** — must be RESOLVED
 before Phase 8B coach-dashboard work begins. (Note: G1 of the Phase 8 entry gate covers only
 Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is now OPEN.)
-T5-07 Layer 1 & 2 (model age tracking + drift detection) are **Phase 8A early work** — must be
-RESOLVED before Phase 8B begins. Schema migration aligns naturally with T5-08 (Phase 8A).
+T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0022 for gate record.
 
 ---
@@ -1438,9 +1437,9 @@ logic + governance integration update + tests.
 
 ---
 
-### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime 🔴 OPEN
+### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime ✅ RESOLVED (Layers 1–2) — Layer 3 deferred Phase 9
 
-**Status:** OPEN (Phase 8A early work — Layer 1 & 2 must be done before Phase 8B begins; Layer 3 deferred Phase 9).
+**Status:** ✅ RESOLVED (Layers 1–2) — 2026-03-13. Commit: b6bea2a. Foundation scaffold implemented: `model_calibration_metadata` schema migration (SQLite v7), `upsert_model_calibration_metadata()` + `get_recent_hrv_mean()` in `database.py` (Layer 1); `HrvCalibrationDriftState` dataclass + `describe_calibration_drift()` in `hrv_engine.py` (Layer 2). Layer 3 (multi-athlete isolation): deferred Phase 9 (see ADR-0033 §Layer 3). Alembic migration of this table remains tracked as T5-08-B D5.
 **Workflow Path: A** *(schema migration — PILOT-01 excluded)*
 **Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
 **Priority:** P1 for Layers 1–2 (Phase 8A, high priority); P5 for Layer 3 (Phase 9).
@@ -2218,7 +2217,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | OPEN (Layers 1–2: Phase 8A early work, before Phase 8B; Layer 3: deferred Phase 9) | — |
+| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
 | T5-08-B | 🔴 OPEN — D1 interface contract DONE (2026-03-08); D2–D5, D7, D9 remaining (Phase 8A prerequisite — blocks G10 + Phase 8B) | D1: 2026-03-08 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
