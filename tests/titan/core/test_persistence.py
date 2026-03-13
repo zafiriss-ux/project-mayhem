@@ -6,6 +6,7 @@ import types
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import create_engine, text
 
 from titan.core.persistence import PersistenceAdapter, PostgreSQLAdapter, SQLiteAdapter
 
@@ -135,75 +136,148 @@ def test_sqlite_adapter_boundary_unknown_sync_source_returns_none(tmp_path) -> N
         adapter.close()
 
 
-class _RecordingPostgresManager:
-    def __init__(self) -> None:
-        self.calls: list[tuple[str, tuple, dict]] = []
+def _build_test_engine() -> tuple:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE daily_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL UNIQUE,
+                weight_kg REAL,
+                hrv_rmssd REAL,
+                resting_hr INTEGER,
+                sleep_hours REAL,
+                sleep_quality INTEGER,
+                soreness INTEGER,
+                fatigue_level INTEGER,
+                mood INTEGER,
+                notes TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE gear_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shoe_name TEXT NOT NULL,
+                total_km REAL DEFAULT 0,
+                last_used TEXT,
+                compression_recovery_hours INTEGER DEFAULT 24,
+                status TEXT DEFAULT 'ACTIVE',
+                shoe_type TEXT,
+                max_km_limit REAL DEFAULT 800
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE training_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_type TEXT,
+                distance_km REAL,
+                duration_sec INTEGER,
+                avg_hr INTEGER,
+                max_hr INTEGER,
+                rpe INTEGER,
+                training_load INTEGER,
+                shoe_id INTEGER,
+                surface TEXT,
+                temperature_c REAL,
+                zone_distribution TEXT,
+                notes TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE personal_bests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                distance_km REAL NOT NULL,
+                time_sec INTEGER NOT NULL,
+                pace_sec_per_km REAL,
+                date TEXT NOT NULL,
+                race_name TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE governance_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_planned TEXT NOT NULL,
+                session_post_governance TEXT NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                vlg_color TEXT NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr REAL NOT NULL,
+                tsb_value REAL NOT NULL,
+                readiness_score REAL NOT NULL,
+                glycogen_debt REAL NOT NULL,
+                afi_value REAL,
+                outcome_rpe INTEGER,
+                outcome_completed INTEGER,
+                outcome_session_type_actual TEXT,
+                outcome_notes TEXT,
+                decision_was_followed INTEGER NOT NULL DEFAULT 1,
+                override_outcome_exclusion INTEGER NOT NULL DEFAULT 0,
+                outcome_independence_ok INTEGER NOT NULL DEFAULT 1,
+                algorithm_version_snapshot TEXT
+            )
+        """))
+    adapter = PostgreSQLAdapter(dsn="postgres://unused", engine=engine)
+    return engine, adapter
 
-    def save_session(self, *args, **kwargs) -> None:
-        self.calls.append(("save_session", args, kwargs))
 
-    def get_training_load_history(self, *args, **kwargs):
-        self.calls.append(("get_training_load_history", args, kwargs))
-        return [("2026-01-01", 42.0)]
+def test_postgres_adapter_happy_path_core_queries() -> None:
+    _engine, adapter = _build_test_engine()
+    today = datetime.now(UTC).date().isoformat()
+    decision = {
+        "date": today,
+        "session_planned": "EASY",
+        "session_post_governance": "EASY",
+        "locks_applied": ["LOCK_A"],
+        "governance_clean": True,
+        "phase": "P8",
+        "vlg_color": "GREEN",
+        "apl_priority_vector": ["A", "B"],
+        "lock_thresholds_active": {"k": 1},
+        "acwr": 0.9,
+        "tsb_value": 5.0,
+        "readiness_score": 80.0,
+        "glycogen_debt": 0.1,
+    }
+    try:
+        adapter.save_daily_metric(today, rhr=45, hrv=50.0, weight=70.0)
+        adapter.save_session(today, "EASY", 10.0, 3600, rpe=4)
+        shoe_id = adapter.add_shoe("Pegasus")
+        adapter.save_personal_best(5.0, 1200, today, race_name="Test")
+        adapter.save_governance_decision(decision)
 
-    def get_ctl_atl_tsb(self):
-        self.calls.append(("get_ctl_atl_tsb", (), {}))
-        return (1.0, 2.0, -1.0)
-
-    def save_governance_decision(self, *args, **kwargs) -> None:
-        self.calls.append(("save_governance_decision", args, kwargs))
-
-    def get_governance_decisions(self, *args, **kwargs):
-        self.calls.append(("get_governance_decisions", args, kwargs))
-        return [{"date": "2026-01-01"}]
-
-    def close(self) -> None:
-        self.calls.append(("close", (), {}))
-
-
-class _IncompletePostgresManager:
-    def close(self) -> None:
-        return None
-
-
-@pytest.mark.parametrize("method_name, args, kwargs", [
-    ("save_session", ("2026-01-01", "EASY", 10.0, 1800), {"rpe": 4}),
-    ("get_training_load_history", (), {"days": 7}),
-    ("get_ctl_atl_tsb", (), {}),
-    ("save_governance_decision", ({"date": "2026-01-01"},), {}),
-    ("get_governance_decisions", (), {"limit": 10}),
-])
-def test_postgres_adapter_delegates_supported_methods(
-    method_name: str,
-    args: tuple,
-    kwargs: dict,
-) -> None:
-    manager = _RecordingPostgresManager()
-    adapter = PostgreSQLAdapter(dsn="postgres://unused", manager=manager)
-
-    result = getattr(adapter, method_name)(*args, **kwargs)
-
-    assert manager.calls[-1][0] == method_name
-    if method_name in {"get_training_load_history", "get_ctl_atl_tsb", "get_governance_decisions"}:
-        assert result is not None
-    else:
-        assert result is None
+        assert adapter.get_baseline_rhr(days=7) == 45.0
+        assert adapter.get_hrv_history(days=7) == [(today, 50.0)]
+        assert adapter.get_weight_history(days=7) == [(today, 70.0)]
+        assert adapter.get_training_load_history(days=7) == [(today, 240.0)]
+        assert adapter.get_active_shoes()[0][0] == shoe_id
+        assert adapter.get_pr(5.0) == (1200, today, "Test")
+        assert adapter.get_governance_decisions(limit=10)[0]["date"] == today
+    finally:
+        adapter.close()
 
 
-def test_postgres_adapter_boundary_unsupported_method_raises_not_implemented() -> None:
-    adapter = PostgreSQLAdapter(
-        dsn="postgres://unused",
-        manager=_IncompletePostgresManager(),
-    )
+def test_postgres_adapter_boundary_returns_safe_defaults() -> None:
+    _engine, adapter = _build_test_engine()
+    try:
+        assert adapter.get_baseline_rhr(days=7) is None
+        assert adapter.get_hrr_history(days=10) == []
+        assert adapter.get_cs_performances(limit=5) == []
+        assert adapter.get_last_sync_outcome("garmin") is None
+        assert adapter.get_last_garmin_sync_timestamp() is None
+        assert adapter.get_override_ratio(days=7) == 0.0
+    finally:
+        adapter.close()
 
-    with pytest.raises(NotImplementedError, match="save_daily_metric"):
-        adapter.save_daily_metric("2026-01-01", rhr=47)
 
-
-def test_postgres_adapter_close_delegates() -> None:
-    manager = _RecordingPostgresManager()
-    adapter = PostgreSQLAdapter(dsn="postgres://unused", manager=manager)
-
-    adapter.close()
-
-    assert manager.calls[-1][0] == "close"
+def test_postgres_adapter_boundary_backup_not_in_d2b() -> None:
+    _engine, adapter = _build_test_engine()
+    try:
+        with pytest.raises(NotImplementedError, match="D7"):
+            adapter.backup_database()
+    finally:
+        adapter.close()

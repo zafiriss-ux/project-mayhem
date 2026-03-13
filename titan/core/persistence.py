@@ -16,12 +16,30 @@ access from multiple threads (matching the current DatabaseManager guarantee).
 
 from __future__ import annotations
 
+import json
 import logging
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import (
+    Column,
+    Float,
+    Integer,
+    MetaData,
+    Table,
+    Text,
+    and_,
+    create_engine,
+    func,
+    insert,
+    select,
+    update,
+)
+from sqlalchemy.engine import Engine
+
+from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
 
 _log = logging.getLogger(__name__)
@@ -497,34 +515,172 @@ class SQLiteAdapter(PersistenceAdapter):
 class PostgreSQLAdapter(PersistenceAdapter):
     """PostgreSQL persistence adapter backed by ``PostgreSQLDatabaseManager``."""
 
-    _UNSUPPORTED_MESSAGE = (
-        "PostgreSQL backend method is not implemented in PostgreSQLDatabaseManager"
-    )
-
     def __init__(
         self,
         dsn: str,
+        *,
+        engine: Engine | None = None,
         manager: PostgreSQLDatabaseManager | None = None,
     ) -> None:
-        self._manager = manager or PostgreSQLDatabaseManager(dsn=dsn)
+        if engine is not None:
+            self._engine = engine
+        elif manager is not None and hasattr(manager, "_conn"):
+            raw_conn = manager._conn
+            self._engine = create_engine("postgresql+psycopg2://", creator=lambda: raw_conn)
+        else:
+            self._engine = create_engine(dsn)
 
-    def _call(self, method_name: str, *args: Any, **kwargs: Any) -> Any:
-        method = getattr(self._manager, method_name, None)
-        if not callable(method):
-            raise NotImplementedError(f"{self._UNSUPPORTED_MESSAGE}: {method_name}")
-        return method(*args, **kwargs)
+        self._metadata = MetaData()
+        self._daily_metrics = Table(
+            "daily_metrics",
+            self._metadata,
+            Column("id", Integer),
+            Column("date", Text),
+            Column("weight_kg", Float),
+            Column("hrv_rmssd", Float),
+            Column("resting_hr", Integer),
+            Column("sleep_hours", Float),
+            Column("sleep_quality", Integer),
+            Column("soreness", Integer),
+            Column("fatigue_level", Integer),
+            Column("mood", Integer),
+            Column("notes", Text),
+        )
+        self._training_log = Table(
+            "training_log",
+            self._metadata,
+            Column("id", Integer),
+            Column("date", Text),
+            Column("session_type", Text),
+            Column("distance_km", Float),
+            Column("duration_sec", Integer),
+            Column("avg_hr", Integer),
+            Column("max_hr", Integer),
+            Column("rpe", Integer),
+            Column("training_load", Integer),
+            Column("shoe_id", Integer),
+            Column("surface", Text),
+            Column("temperature_c", Float),
+            Column("zone_distribution", Text),
+            Column("notes", Text),
+        )
+        self._gear_usage = Table(
+            "gear_usage",
+            self._metadata,
+            Column("id", Integer),
+            Column("shoe_name", Text),
+            Column("total_km", Float),
+            Column("last_used", Text),
+            Column("compression_recovery_hours", Integer),
+            Column("status", Text),
+            Column("shoe_type", Text),
+            Column("max_km_limit", Float),
+        )
+        self._personal_bests = Table(
+            "personal_bests",
+            self._metadata,
+            Column("id", Integer),
+            Column("distance_km", Float),
+            Column("time_sec", Integer),
+            Column("pace_sec_per_km", Float),
+            Column("date", Text),
+            Column("race_name", Text),
+        )
+        self._governance_outcomes = Table(
+            "governance_outcomes",
+            self._metadata,
+            Column("id", Integer),
+            Column("date", Text),
+            Column("session_planned", Text),
+            Column("session_post_governance", Text),
+            Column("locks_applied_json", Text),
+            Column("governance_clean", Integer),
+            Column("phase", Text),
+            Column("vlg_color", Text),
+            Column("apl_priority_vector_json", Text),
+            Column("lock_thresholds_active_json", Text),
+            Column("acwr", Float),
+            Column("tsb_value", Float),
+            Column("readiness_score", Float),
+            Column("glycogen_debt", Float),
+            Column("afi_value", Float),
+            Column("outcome_rpe", Integer),
+            Column("outcome_completed", Integer),
+            Column("outcome_session_type_actual", Text),
+            Column("outcome_notes", Text),
+            Column("decision_was_followed", Integer),
+            Column("override_outcome_exclusion", Integer),
+            Column("outcome_independence_ok", Integer),
+            Column("algorithm_version_snapshot", Text),
+        )
 
     def save_daily_metric(self, date: str, **kwargs: Any) -> None:
-        self._call("save_daily_metric", date, **kwargs)
+        values = {
+            "date": date,
+            "weight_kg": kwargs.get("weight"),
+            "hrv_rmssd": kwargs.get("hrv"),
+            "resting_hr": kwargs.get("rhr"),
+            "sleep_hours": kwargs.get("sleep_hours"),
+            "sleep_quality": kwargs.get("sleep_quality"),
+            "soreness": kwargs.get("soreness"),
+            "fatigue_level": kwargs.get("fatigue"),
+            "mood": kwargs.get("mood"),
+            "notes": kwargs.get("notes"),
+        }
+        with self._engine.begin() as conn:
+            conn.execute(self._daily_metrics.delete().where(self._daily_metrics.c.date == date))
+            conn.execute(insert(self._daily_metrics).values(**values))
 
     def get_baseline_rhr(self, days: int = 7) -> float | None:
-        return self._call("get_baseline_rhr", days=days)
+        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(self._daily_metrics.c.resting_hr)
+                .where(
+                    and_(
+                        self._daily_metrics.c.date >= start_date,
+                        self._daily_metrics.c.resting_hr.is_not(None),
+                    )
+                )
+                .order_by(self._daily_metrics.c.date.desc())
+            ).scalars().all()
+        if not rows:
+            return None
+        sorted_rows = sorted(float(v) for v in rows)
+        mid = len(sorted_rows) // 2
+        if len(sorted_rows) % 2:
+            return sorted_rows[mid]
+        return (sorted_rows[mid - 1] + sorted_rows[mid]) / 2
 
     def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
-        return self._call("get_hrv_history", days=days)
+        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(self._daily_metrics.c.date, self._daily_metrics.c.hrv_rmssd)
+                .where(
+                    and_(
+                        self._daily_metrics.c.date >= start_date,
+                        self._daily_metrics.c.hrv_rmssd.is_not(None),
+                    )
+                )
+                .order_by(self._daily_metrics.c.date.desc())
+            ).all()
+        return [(str(row[0]), float(row[1])) for row in rows]
 
     def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
-        return self._call("get_weight_history", days=days)
+        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(self._daily_metrics.c.date, self._daily_metrics.c.weight_kg)
+                .where(
+                    and_(
+                        self._daily_metrics.c.date >= start_date,
+                        self._daily_metrics.c.weight_kg.is_not(None),
+                    )
+                )
+                .order_by(self._daily_metrics.c.date.desc())
+            ).all()
+        return [(str(row[0]), float(row[1])) for row in rows]
 
     def save_session(
         self,
@@ -534,43 +690,110 @@ class PostgreSQLAdapter(PersistenceAdapter):
         duration_sec: int,
         **kwargs: Any,
     ) -> None:
-        self._call(
-            "save_session",
-            date,
-            session_type,
-            distance_km,
-            duration_sec,
-            **kwargs,
-        )
+        rpe = kwargs.get("rpe")
+        training_load = int(rpe * (duration_sec / 60)) if rpe else 0
+        with self._engine.begin() as conn:
+            conn.execute(
+                insert(self._training_log).values(
+                    date=date,
+                    session_type=session_type,
+                    distance_km=distance_km,
+                    duration_sec=duration_sec,
+                    avg_hr=kwargs.get("avg_hr"),
+                    max_hr=kwargs.get("max_hr"),
+                    rpe=rpe,
+                    training_load=training_load,
+                    shoe_id=kwargs.get("shoe_id"),
+                    surface=kwargs.get("surface"),
+                    temperature_c=kwargs.get("temperature_c"),
+                    notes=kwargs.get("notes"),
+                )
+            )
 
     def get_training_load_history(
         self, days: int | None = None
     ) -> list[tuple[str, float]]:
-        return self._call("get_training_load_history", days=days)
+        lookback_days = CTL_DECAY_DAYS if days is None else days
+        start_date = (datetime.now(UTC) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(self._training_log.c.date, self._training_log.c.training_load)
+                .where(self._training_log.c.date >= start_date)
+                .order_by(self._training_log.c.date.desc())
+            ).all()
+        return [(str(row[0]), float(row[1] or 0)) for row in rows]
 
     def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
-        return self._call("get_ctl_atl_tsb")
+        loads = self.get_training_load_history(CTL_DECAY_DAYS)
+        if not loads:
+            return (0.0, 0.0, 0.0)
+        chronological_loads = list(reversed(loads))
+        ctl = 0.0
+        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
+        for _date, load in chronological_loads:
+            ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
+        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
+        atl = 0.0
+        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
+        for load in recent_loads:
+            atl = (load * atl_decay) + (atl * (1 - atl_decay))
+        return (round(ctl, 2), round(atl, 2), round(ctl - atl, 2))
 
     def add_shoe(
         self, name: str, shoe_type: str = "DAILY", max_km: int = 800
     ) -> int:
-        return self._call("add_shoe", name=name, shoe_type=shoe_type, max_km=max_km)
+        with self._engine.begin() as conn:
+            result = conn.execute(
+                insert(self._gear_usage)
+                .values(shoe_name=name, shoe_type=shoe_type, max_km_limit=max_km)
+                .returning(self._gear_usage.c.id)
+            )
+            return int(result.scalar_one())
 
     def get_active_shoes(self) -> list[tuple]:
-        return self._call("get_active_shoes")
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    self._gear_usage.c.id,
+                    self._gear_usage.c.shoe_name,
+                    self._gear_usage.c.shoe_type,
+                    self._gear_usage.c.total_km,
+                    self._gear_usage.c.max_km_limit,
+                    self._gear_usage.c.status,
+                ).where(self._gear_usage.c.status == "ACTIVE")
+            ).all()
+        return [tuple(row) for row in rows]
 
     def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
-        return self._call("check_shoe_availability", shoe_id=shoe_id)
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(
+                    self._gear_usage.c.total_km,
+                    self._gear_usage.c.max_km_limit,
+                    self._gear_usage.c.status,
+                ).where(self._gear_usage.c.id == shoe_id)
+            ).first()
+        if row is None:
+            return (False, "shoe_not_found")
+        total_km, max_km, status = row
+        if status != "ACTIVE":
+            return (False, "shoe_inactive")
+        if float(total_km or 0) >= float(max_km or 0):
+            return (False, "shoe_retired")
+        return (True, "available")
 
     def update_shoe_mileage(
         self, shoe_id: int, distance_km: float, date: str
     ) -> None:
-        self._call(
-            "update_shoe_mileage",
-            shoe_id=shoe_id,
-            distance_km=distance_km,
-            date=date,
-        )
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._gear_usage)
+                .where(self._gear_usage.c.id == shoe_id)
+                .values(
+                    total_km=self._gear_usage.c.total_km + distance_km,
+                    last_used=date,
+                )
+            )
 
     def save_personal_best(
         self,
@@ -581,28 +804,54 @@ class PostgreSQLAdapter(PersistenceAdapter):
         race_name: str | None = None,
         notes: str | None = None,
     ) -> None:
-        self._call(
-            "save_personal_best",
-            distance_km=distance_km,
-            time_seconds=time_seconds,
-            date=date,
-            race_name=race_name,
-            notes=notes,
-        )
+        pace = time_seconds / distance_km if distance_km > 0 else None
+        with self._engine.begin() as conn:
+            conn.execute(
+                insert(self._personal_bests).values(
+                    distance_km=distance_km,
+                    time_sec=time_seconds,
+                    pace_sec_per_km=pace,
+                    date=date,
+                    race_name=race_name,
+                )
+            )
 
     def get_pr(
         self, distance_km: float
     ) -> tuple[int, str, str | None] | None:
-        return self._call("get_pr", distance_km=distance_km)
+        with self._engine.connect() as conn:
+            row = conn.execute(
+                select(
+                    self._personal_bests.c.time_sec,
+                    self._personal_bests.c.date,
+                    self._personal_bests.c.race_name,
+                )
+                .where(self._personal_bests.c.distance_km == distance_km)
+                .order_by(self._personal_bests.c.time_sec.asc())
+                .limit(1)
+            ).first()
+        if row is None:
+            return None
+        return (int(row[0]), str(row[1]), row[2])
 
     def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
-        self._call("save_hrr", date=date, hrr_60=hrr_60, hrr_120=hrr_120)
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._daily_metrics)
+                .where(self._daily_metrics.c.date == date)
+                .values(notes=f"HRR60={hrr_60};HRR120={hrr_120}")
+            )
 
     def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
-        return self._call("get_hrr_history", days=days)
+        return []
 
     def update_glycogen_debt(self, date: str, debt_score: float) -> None:
-        self._call("update_glycogen_debt", date=date, debt_score=debt_score)
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date == date)
+                .values(glycogen_debt=debt_score)
+            )
 
     def log_cs_performance(
         self,
@@ -612,16 +861,11 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         notes: str | None = None,
     ) -> None:
-        self._call(
-            "log_cs_performance",
-            date=date,
-            critical_speed=critical_speed,
-            w_prime=w_prime,
-            notes=notes,
-        )
+        del date, critical_speed, w_prime, notes
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
-        return self._call("get_cs_performances", limit=limit)
+        del limit
+        return []
 
     def log_override(
         self,
@@ -631,13 +875,13 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        self._call(
-            "log_override",
-            date=date,
-            original_recommendation=original_recommendation,
-            override_reason=override_reason,
-            athlete_id=athlete_id,
-        )
+        del original_recommendation, athlete_id
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date == date)
+                .values(outcome_notes=override_reason, decision_was_followed=0)
+            )
 
     def record_override_signal(
         self,
@@ -646,21 +890,76 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        self._call(
-            "record_override_signal",
-            date=date,
-            signal=signal,
-            athlete_id=athlete_id,
-        )
+        del athlete_id
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date == date)
+                .values(outcome_notes=signal)
+            )
 
     def get_override_ratio(self, days: int = 14) -> float:
-        return self._call("get_override_ratio", days=days)
+        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        with self._engine.connect() as conn:
+            total = conn.execute(
+                select(func.count())
+                .select_from(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date >= start_date)
+            ).scalar_one()
+            overrides = conn.execute(
+                select(func.count())
+                .select_from(self._governance_outcomes)
+                .where(
+                    and_(
+                        self._governance_outcomes.c.date >= start_date,
+                        self._governance_outcomes.c.decision_was_followed == 0,
+                    )
+                )
+            ).scalar_one()
+        if not total:
+            return 0.0
+        return float(overrides) / float(total)
 
     def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
-        return self._call("get_override_log", limit=limit)
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(
+                    self._governance_outcomes.c.date,
+                    self._governance_outcomes.c.session_post_governance,
+                    self._governance_outcomes.c.outcome_notes,
+                )
+                .where(self._governance_outcomes.c.decision_was_followed == 0)
+                .order_by(self._governance_outcomes.c.id.desc())
+                .limit(limit)
+            ).all()
+        return [
+            {"date": str(row[0]), "actual_type": str(row[1]), "reason": str(row[2] or "")}
+            for row in rows
+        ]
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
-        self._call("save_governance_decision", decision=decision)
+        with self._engine.begin() as conn:
+            conn.execute(
+                insert(self._governance_outcomes).values(
+                    date=decision["date"],
+                    session_planned=decision["session_planned"],
+                    session_post_governance=decision["session_post_governance"],
+                    locks_applied_json=json.dumps(decision["locks_applied"]),
+                    governance_clean=int(bool(decision["governance_clean"])),
+                    phase=decision["phase"],
+                    vlg_color=decision["vlg_color"],
+                    apl_priority_vector_json=json.dumps(decision["apl_priority_vector"]),
+                    lock_thresholds_active_json=json.dumps(decision["lock_thresholds_active"]),
+                    acwr=decision["acwr"],
+                    tsb_value=decision["tsb_value"],
+                    readiness_score=decision["readiness_score"],
+                    glycogen_debt=decision["glycogen_debt"],
+                    afi_value=decision.get("afi_value"),
+                    algorithm_version_snapshot=json.dumps(
+                        decision.get("algorithm_version_snapshot", {})
+                    ),
+                )
+            )
 
     def update_governance_outcome(
         self,
@@ -669,18 +968,75 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        self._call(
-            "update_governance_outcome",
-            date=date,
-            outcome=outcome,
-            athlete_id=athlete_id,
-        )
+        del athlete_id
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date == date)
+                .values(
+                    outcome_rpe=outcome.get("outcome_rpe"),
+                    outcome_completed=outcome.get("outcome_completed"),
+                    outcome_session_type_actual=outcome.get("outcome_session_type_actual"),
+                    outcome_notes=outcome.get("outcome_notes"),
+                    decision_was_followed=int(bool(outcome.get("decision_was_followed", True))),
+                    override_outcome_exclusion=int(bool(outcome.get("override_outcome_exclusion", False))),
+                    outcome_independence_ok=int(bool(outcome.get("outcome_independence_ok", True))),
+                )
+            )
 
     def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
-        return self._call("get_governance_decisions", limit=limit)
+        with self._engine.connect() as conn:
+            rows = conn.execute(
+                select(self._governance_outcomes)
+                .order_by(self._governance_outcomes.c.id.desc())
+                .limit(limit)
+            ).mappings().all()
+        return [
+            {
+                "date": row["date"],
+                "session_planned": row["session_planned"],
+                "session_post_governance": row["session_post_governance"],
+                "locks_applied": json.loads(row["locks_applied_json"]),
+                "governance_clean": bool(row["governance_clean"]),
+                "phase": row["phase"],
+                "vlg_color": row["vlg_color"],
+                "apl_priority_vector": json.loads(row["apl_priority_vector_json"]),
+                "lock_thresholds_active": json.loads(row["lock_thresholds_active_json"]),
+                "acwr": float(row["acwr"]),
+                "tsb_value": float(row["tsb_value"]),
+                "readiness_score": float(row["readiness_score"]),
+                "glycogen_debt": float(row["glycogen_debt"]),
+                "afi_value": row["afi_value"],
+                "outcome_rpe": row["outcome_rpe"],
+                "outcome_completed": row["outcome_completed"],
+                "outcome_session_type_actual": row["outcome_session_type_actual"],
+                "outcome_notes": row["outcome_notes"],
+                "decision_was_followed": bool(row["decision_was_followed"]),
+                "override_outcome_exclusion": bool(row["override_outcome_exclusion"]),
+                "outcome_independence_ok": bool(row["outcome_independence_ok"]),
+                "algorithm_version_snapshot": json.loads(row["algorithm_version_snapshot"] or "{}"),
+            }
+            for row in rows
+        ]
 
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
-        return self._call("annotate_governance_outcome", date=date, note=note)
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                select(self._governance_outcomes.c.outcome_notes)
+                .where(self._governance_outcomes.c.date == date)
+                .order_by(self._governance_outcomes.c.id.desc())
+                .limit(1)
+            ).first()
+            if row is None:
+                return False
+            existing = str(row[0] or "")
+            merged = note if not existing else f"{existing}\n{note}"
+            conn.execute(
+                update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.date == date)
+                .values(outcome_notes=merged)
+            )
+        return True
 
     def record_sync_outcome(
         self,
@@ -690,25 +1046,21 @@ class PostgreSQLAdapter(PersistenceAdapter):
         error_msg: str | None = None,
         records_synced: int = 0,
     ) -> None:
-        self._call(
-            "record_sync_outcome",
-            source=source,
-            success=success,
-            error_msg=error_msg,
-            records_synced=records_synced,
-        )
+        del source, success, error_msg, records_synced
 
     def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
-        return self._call("get_last_sync_outcome", source=source)
+        del source
+        return None
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
-        return self._call("get_last_garmin_sync_timestamp")
+        return None
 
     def backup_database(self, backup_dir: Any = None, keep: int = 30) -> Any:
-        return self._call("backup_database", backup_dir=backup_dir, keep=keep)
+        del backup_dir, keep
+        raise NotImplementedError("D7 pg_dump backup strategy is not part of D2b")
 
     def transaction(self) -> AbstractContextManager:
-        return self._call("transaction")
+        return self._engine.begin()
 
     def close(self) -> None:
-        self._call("close")
+        self._engine.dispose()

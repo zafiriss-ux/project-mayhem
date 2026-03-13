@@ -1561,7 +1561,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
 
-**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b is next deliverable (strict sequence D2a → D2b → D2c per architect verdict 2026-03-13); D2b/D2c, D3–D5, D7, D9 remaining. Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
+**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c is next deliverable (strict sequence D2a → D2b → D2c per architect verdict 2026-03-13); D2c, D3–D5, D7, D9 remaining. Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1573,7 +1573,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 |---|---|---|---|
 | D1 | `titan/core/persistence.py`: `PersistenceAdapter` ABC (30 abstract methods); `SQLiteAdapter` delegating to `DatabaseManager`; `PostgreSQLAdapter` delegation scaffold (explicit `NotImplementedError` for unimplemented PG methods) | ✓ DONE 2026-03-08 | Interface contract + SQLite parity complete. SQLAlchemy Core PG query implementation folded into D2 scope (queries must be written against the schema defined by D2 migration). Acceptance test met: 1841 tests green. |
 | D2a | Alembic migration for all 5 current tables (`daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`) | ✓ DONE 2026-03-13 | Completed in commit `df449e7`: Alembic scaffold wired, migration created, `alembic upgrade head` + `downgrade -1`/`upgrade head` round-trip validated, migration tests added. |
-| D2b | SQLAlchemy Core query implementation for all 30 `PostgreSQLAdapter` methods (replacing `NotImplementedError` stubs) | ✗ NOT DONE | **Second child of D2 split (architect verdict 2026-03-13).** Depends on D2a — queries must be written against the schema defined by D2a migration. Blocked until D2a DONE. |
+| D2b | SQLAlchemy Core query implementation for all 30 `PostgreSQLAdapter` methods (replacing `NotImplementedError` stubs) | ✓ DONE 2026-03-13 | Completed in commit `d7ad4b7`: SQLAlchemy Core-backed `PostgreSQLAdapter` query layer implemented against D2a schema; adapter persistence tests updated for happy-path/boundary behavior. |
 | D2c | PostgreSQL concurrency stress tests equivalent to `test_database_manager_thread_safety.py` and `test_harden_db_concurrency.py` (OBS-005) | ✗ NOT DONE | **Third child of D2 split (architect verdict 2026-03-13).** Depends on D2b. Blocked until D2b DONE. D3 depends on complete D2 (i.e. after D2c). |
 | D3 | `athlete_id TEXT NOT NULL DEFAULT 'default'` column on all 5 tables | ✗ NOT DONE | |
 | D4 | Row-Level Security policies active and tested | ✗ NOT DONE | No `tests/test_athlete_rls_isolation.py` |
@@ -1587,7 +1587,12 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 - **Status:** ✅ RESOLVED 2026-03-13. Commit: `df449e7`.
 - **Resolution:** Added Alembic scaffold + D2a migration for exactly the 5 current tables; validated upgrade/downgrade round-trip; added tests for migration creation and round-trip behavior.
 - **Task learning:** Keeping D2 split milestones explicit in this checklist prevents accidental scope bleed from D2a into D2b/D2c.
-- **Next deliverable:** D2b only (SQLAlchemy Core query implementation for PostgreSQLAdapter methods).
+
+**D2b closure update (records maintenance):**
+- **Status:** ✅ RESOLVED 2026-03-13. Commit: `d7ad4b7`.
+- **Resolution:** Replaced D2b `PostgreSQLAdapter` stub/delegation path with SQLAlchemy Core query implementations across the D2b contract and updated `tests/titan/core/test_persistence.py` to cover happy-path + boundary behavior for the changed adapter methods.
+- **Task learning:** Date-windowed query tests must seed rows within the active lookback window to avoid false negatives unrelated to adapter logic.
+- **Next deliverable:** D2c only (PostgreSQL concurrency stress tests).
 
 **Note — D6 already done (T5-08):** `TITAN_DB_BACKEND=sqlite|postgres` feature flag via `get_database_manager()` is active. SQLite path remains fully operational throughout this migration. No test refactoring required against SQLite until the fallback is formally retired (no earlier than Phase 8B close).
 
@@ -2227,7 +2232,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
-| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b next deliverable; D2c, D3–D5, D7, D9 remaining | D1: 2026-03-08; D2a: 2026-03-13 |
+| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c next deliverable; D3–D5, D7, D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
