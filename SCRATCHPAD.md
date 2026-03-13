@@ -16,15 +16,16 @@ STATUS: REVIEW_REQUESTED
 
 Valid states:
 - `IDLE` — no pending observations; Codex may proceed with assigned tasks
-- `REVIEW_REQUESTED` — Codex has written one or more OBS entries; Claude must review before new tasks are assigned
+- `REVIEW_REQUESTED` — Codex has written one or more OBS entries; Claude must review before new tasks are assigned. **In-flight work policy (single authoritative statement):** Codex MAY complete any subtask already in progress at the moment of writing the OBS. Codex MAY NOT start any new top-level task. Trigger-specific notes in `AGENTS.md §15` are consistent with this rule and do not override it.
 - `UNDER_REVIEW` — Claude is currently processing the pending OBS entries
 - `CLARIFICATION_NEEDED` — Claude has written a partial DEC and requires additional context from Codex before deciding
 - `CLEARED` — all OBS entries processed; Codex may continue (Claude will reset to IDLE after clearing)
 
 **IMPORTANT — Codex:** Run `scripts/check_scratchpad.sh` at Step 0.5 (after `setup_env.sh`). The
 script will fail with exit code 1 if the BLOCKING Queue is non-empty. Do not bypass it.
-When you set STATUS to `REVIEW_REQUESTED`, **stop and wait**. Do not begin a new top-level
-task until Claude sets status to `IDLE` or `CLEARED`. This is not optional.
+When you set STATUS to `REVIEW_REQUESTED`, **complete any current subtask already in progress,
+then stop**. Do not begin any new top-level task until Claude sets status to `IDLE` or `CLEARED`.
+This is not optional.
 
 **IMPORTANT — Claude:** When status is `REVIEW_REQUESTED` at session start, process all PENDING
 OBS entries before assigning any new task to Codex. Run `scripts/check_scratchpad.sh` to
@@ -34,6 +35,27 @@ confirm the gate is clear before proceeding. See §A-SCRATCHPAD-1 in `CLAUDE.md`
 sets STATUS to `CLARIFICATION_NEEDED`. Codex appends the requested context to the original OBS
 entry (labelled `**Clarification (YYYY-MM-DD):**`) and then resets STATUS to `REVIEW_REQUESTED`.
 Claude then resumes the DEC. This flow may repeat at most once per OBS entry.
+
+---
+
+## Canonical Routing Rule — Out-of-Scope Findings
+
+**Single authoritative path. No alternative routes permitted.**
+
+```
+Engineer discovers out-of-scope finding
+  → writes SCRATCHPAD OBS entry (this document)
+  → sets STATUS: REVIEW_REQUESTED
+  → completes current subtask, then stops
+  → architect reads, verifies, writes DEC
+  → DEC decision NEW_DEBT_ENTRY → TECHNICAL_DEBT.md entry created
+```
+
+**Direct `TECHNICAL_DEBT.md` entry by Codex without a preceding architect DEC is forbidden.**
+
+This section is the single source of truth for out-of-scope routing. All references to
+out-of-scope handling in `AGENTS.md` (§3.4, §12.2, §15) and `CLAUDE.md` (Rule E8) point
+here. On any conflict, this statement prevails.
 
 ---
 

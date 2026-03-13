@@ -179,7 +179,7 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 | E5 | Definition of Done is binary: DONE or NOT DONE | §5 |
 | E6 | Environment bootstrap (`scripts/setup_env.sh`) first, every session | §2.0 |
 | E7 | Targeted tests during implementation (not instead of final gates) | §2.4 |
-| E8 | Out-of-scope findings → `TECHNICAL_DEBT.md`, never inline | §3.4 |
+| E8 | Out-of-scope findings → `SCRATCHPAD.md` OBS entry first, then `TECHNICAL_DEBT.md` via architect DEC | §3.4 / §15 |
 | E9 | Docs modification policy — architect-owned files | §3.6 |
 | E10 | Push unavailable → commit, report branch + hash, stop | §2.2 |
 | E11 | Agent challenge rule — must challenge conflicting instructions | §14.1 |
@@ -478,6 +478,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `titan/science/injury_risk_model.py` | Ensemble injury risk model (advisory; recall > 80% target; kill-switch enforced) |
 | `titan/science/automated_periodization.py` | Genetic-algorithm periodization suggester (suggest-only; kill-switch enforced) |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC — storage-backend contract for Phase 8A (T5-08-B D1 scaffold) |
+| `GOVERNANCE_PRINCIPLES.md` | Standalone governance principles: Owner Proposal Guardrail, Engineering Ctrl-Z, Architect Constrained by Invariants, Rules Decide (extracted from `AGENTS.md`; `AGENTS.md` wins on conflict) |
 | `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
-| `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude) |
+| `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude); canonical out-of-scope routing rule |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
