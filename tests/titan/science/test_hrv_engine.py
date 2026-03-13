@@ -1,5 +1,7 @@
 import math
 
+import pytest
+
 from titan.science.hrv_engine import HRVGuidedEngine
 
 
@@ -69,6 +71,15 @@ def test_summary_and_recommendation_stay_within_current_expected_ranges() -> Non
     assert confidence in {"LOW", "MEDIUM", "HIGH"}
     assert isinstance(reason, str) and reason
 
+    drift = engine.describe_calibration_drift(
+        baseline_hrv_ms=48.0,
+        current_hrv_ms=57.2,
+        drift_threshold_ms=8.0,
+    )
+    assert drift.delta_ms == 9.2
+    assert drift.abs_delta_ms == 9.2
+    assert drift.drift_detected is True
+
 
 def test_low_and_high_hrv_follow_existing_downgrade_and_proceed_behavior() -> None:
     values = [50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0]
@@ -123,6 +134,13 @@ def test_ln_rmssd_deviation_returns_zero_when_no_positive_values_or_empty_window
     assert non_positive.calculate_ln_rmssd_deviation() == 0.0
     assert single_value.calculate_ln_rmssd_deviation(short_days=-999, long_days=28) == 0.0
     assert with_data.calculate_ln_rmssd_deviation(short_days=7, long_days=0) == 0.0
+
+    with pytest.raises(ValueError, match="must be > 0"):
+        with_data.describe_calibration_drift(
+            baseline_hrv_ms=50.0,
+            current_hrv_ms=55.0,
+            drift_threshold_ms=0.0,
+        )
 
 
 def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
