@@ -1299,12 +1299,6 @@ task, and no policy change should be derived from this note alone.
 
 ---
 
-*Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
-(mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
-archive policy. Replaces STATUS-field-only v1.0.*
-
----
-
 ## Governance Audit Triage Record (Owner-Approved)
 
 > **What this section is:**
@@ -1367,3 +1361,9 @@ All findings F-001 through F-015 are accounted for in this triage record:
 - Rejected (C2): F-013
 
 No finding ID has been dropped. No classification has been changed from the owner-approved synthesis.
+
+---
+
+*Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
+(mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
+archive policy. Replaces STATUS-field-only v1.0.*
