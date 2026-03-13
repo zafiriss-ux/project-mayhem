@@ -2197,9 +2197,9 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Priority:** P3. Independent. Separate PR.
 **Cross-reference:** T1-04 (RESOLVED 2026-03-02 — "Hardcoded safety thresholds bypassing thresholds.py") did not cover these specific class-local values. T5-30 is a missed case from T1-04's resolution scope.
 
-**Scope:** Class-local thresholds `0.80` and `0.70` in `titan/science/governance_engine.py` are Category A policy thresholds. Extract to `thresholds.py`. Note: `governance_engine.py` is architecture-locked (see T4-05 / ADR-0009). Any modification requires ADR-0009 reference in the commit message.
+**Scope:** Class-local thresholds `0.80` and `0.70` in `titan/science/governance_engine.py` are Category A policy thresholds. Extract to `thresholds.py`.
 
-**Acceptance gate (binary):** Same pattern as T5-17. `governance_engine.py` references constants from `thresholds.py`; no inline literals remain for these values; commit message contains `ADR-0009` reference; all gates green.
+**Acceptance gate (binary):** Same pattern as T5-17. `governance_engine.py` references constants from `thresholds.py`; no inline literals remain for these values; all gates green.
 
 **Effort:** ~1h. Extraction only.
 
@@ -2576,7 +2576,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |
 | T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
 | T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |
-| T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; ADR-0009 ref required; separate PR) | — |
+| T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
 | T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
 | T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
 | T5-33 | OPEN (Phase 8 — Periodization/Automated coupling contract; blocked pending brief) | — |
