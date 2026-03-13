@@ -1561,7 +1561,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
 
-**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2–D5, D7, D9 remaining. Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
+**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2 split into D2a/D2b/D2c (architect verdict 2026-03-13, strictly sequential: D2a → D2b → D2c); D2a–D2c, D3–D5, D7, D9 remaining. Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1572,7 +1572,9 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 | # | Deliverable | Status | Notes |
 |---|---|---|---|
 | D1 | `titan/core/persistence.py`: `PersistenceAdapter` ABC (30 abstract methods); `SQLiteAdapter` delegating to `DatabaseManager`; `PostgreSQLAdapter` delegation scaffold (explicit `NotImplementedError` for unimplemented PG methods) | ✓ DONE 2026-03-08 | Interface contract + SQLite parity complete. SQLAlchemy Core PG query implementation folded into D2 scope (queries must be written against the schema defined by D2 migration). Acceptance test met: 1841 tests green. |
-| D2 | Alembic migration for all 5 current tables (`daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`) **+** SQLAlchemy Core query implementation for all 30 `PostgreSQLAdapter` methods (replacing `NotImplementedError` stubs) **+** PostgreSQL concurrency stress tests equivalent to `test_database_manager_thread_safety.py` and `test_harden_db_concurrency.py` (OBS-005) | ✗ NOT DONE | D2 scope was expanded at Architect review (2026-03-08) to include PG query implementation + concurrency tests — these cannot precede the schema migration |
+| D2a | Alembic migration for all 5 current tables (`daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`) | ✗ NOT DONE | **First child of D2 split (architect verdict 2026-03-13).** Must complete before D2b. Codex must NOT continue with the old monolithic D2. |
+| D2b | SQLAlchemy Core query implementation for all 30 `PostgreSQLAdapter` methods (replacing `NotImplementedError` stubs) | ✗ NOT DONE | **Second child of D2 split (architect verdict 2026-03-13).** Depends on D2a — queries must be written against the schema defined by D2a migration. Blocked until D2a DONE. |
+| D2c | PostgreSQL concurrency stress tests equivalent to `test_database_manager_thread_safety.py` and `test_harden_db_concurrency.py` (OBS-005) | ✗ NOT DONE | **Third child of D2 split (architect verdict 2026-03-13).** Depends on D2b. Blocked until D2b DONE. D3 depends on complete D2 (i.e. after D2c). |
 | D3 | `athlete_id TEXT NOT NULL DEFAULT 'default'` column on all 5 tables | ✗ NOT DONE | |
 | D4 | Row-Level Security policies active and tested | ✗ NOT DONE | No `tests/test_athlete_rls_isolation.py` |
 | D5 | `model_calibration_metadata` table in Alembic migration (ADR-0033 T5-07 Layer 1) | ✗ NOT DONE | |
@@ -1593,7 +1595,7 @@ python -m pytest -q
 TITAN_DB_BACKEND=sqlite python -m pytest -q
 ```
 
-**Effort:** ~3 weeks (D2–D5, D7, D9; D1 done, D6 done).
+**Effort:** ~3 weeks (D2a–D2c, D3–D5, D7, D9; D1 done, D6 done). Sequence: D2a → D2b → D2c → D3 → D4/D5 (parallel) → D7/D9 (parallel).
 
 ---
 
@@ -2219,7 +2221,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
-| T5-08-B | 🔴 OPEN — D1 interface contract DONE (2026-03-08); D2–D5, D7, D9 remaining (Phase 8A prerequisite — blocks G10 + Phase 8B) | D1: 2026-03-08 |
+| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2 split into D2a/D2b/D2c (2026-03-13, strictly sequential); D2a–D2c, D3–D5, D7, D9 remaining (Phase 8A prerequisite — blocks G10 + Phase 8B) | D1: 2026-03-08 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
@@ -2252,3 +2254,10 @@ PostgreSQL query implementation (30 methods) folded into D2 scope — queries mu
 schema defined by D2 Alembic migration. T5-08-B deliverable table updated to ADR Deliverable Checklist
 format with per-row status. AGENTS.md updated: (1) diagnostic runs clarification added to HARD GATE
 forbidden shortcuts; (2) QA role boundary note added to §17.3 Path B. Next deliverable: D2.*
+
+*Updated: 2026-03-13 — Architect verdict: T5-08-B D2 split into three strictly sequential child deliverables:
+D2a (Alembic migration for 5 tables) → D2b (SQLAlchemy Core implementation for 30 PostgreSQLAdapter methods)
+→ D2c (PostgreSQL concurrency stress tests, satisfying OBS-005 deferred criterion). Codex must not continue
+with the old monolithic D2. D3 dependency is unchanged — D3 begins only after D2c is DONE. No new ADR
+created; no implementation performed; no architectural decisions invented. Deliverable table and status line
+updated accordingly. Next deliverable: D2a.*
