@@ -302,7 +302,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)
 - `0030` — External Data Source Resilience: staleness gates and fallback policy (Implemented — T1-20, T2-15 Implemented 2026-03-07)
 - `0032` — ML Advisory Explainability Protocol: evidence labels on all ML payloads (Implemented — 2026-03-06)
-- `0033` — Physiological Model Aging and Multi-Athlete Architecture Protocol (Accepted — T5-07 Layers 1–2 pending)
+- `0033` — Physiological Model Aging and Multi-Athlete Architecture Protocol (Accepted — Layers 1–2 implemented 2026-03-13 commit b6bea2a; Layer 3 deferred Phase 9)
 - `0034` — Environmental Stress Compensation for Training Zones (Accepted — 2026-03-06)
 - `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Implemented — T1-21 Implemented 2026-03-07)
 - `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Implemented — T2-16 Implemented 2026-03-07)
