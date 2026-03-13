@@ -142,6 +142,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE daily_metrics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 date TEXT NOT NULL UNIQUE,
                 weight_kg REAL,
                 hrv_rmssd REAL,
@@ -157,6 +158,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE gear_usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 shoe_name TEXT NOT NULL,
                 total_km REAL DEFAULT 0,
                 last_used TEXT,
@@ -169,6 +171,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE training_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 date TEXT NOT NULL,
                 session_type TEXT,
                 distance_km REAL,
@@ -187,6 +190,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE personal_bests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 distance_km REAL NOT NULL,
                 time_sec INTEGER NOT NULL,
                 pace_sec_per_km REAL,
@@ -197,6 +201,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE governance_outcomes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 date TEXT NOT NULL,
                 session_planned TEXT NOT NULL,
                 session_post_governance TEXT NOT NULL,
@@ -257,6 +262,16 @@ def test_postgres_adapter_happy_path_core_queries() -> None:
         assert adapter.get_active_shoes()[0][0] == shoe_id
         assert adapter.get_pr(5.0) == (1200, today, "Test")
         assert adapter.get_governance_decisions(limit=10)[0]["date"] == today
+
+        with _engine.connect() as conn:
+            assert conn.execute(text("SELECT athlete_id FROM daily_metrics LIMIT 1")).scalar_one() == "default"
+            assert conn.execute(text("SELECT athlete_id FROM training_log LIMIT 1")).scalar_one() == "default"
+            assert conn.execute(text("SELECT athlete_id FROM gear_usage LIMIT 1")).scalar_one() == "default"
+            assert conn.execute(text("SELECT athlete_id FROM personal_bests LIMIT 1")).scalar_one() == "default"
+            assert (
+                conn.execute(text("SELECT athlete_id FROM governance_outcomes LIMIT 1")).scalar_one()
+                == "default"
+            )
     finally:
         adapter.close()
 

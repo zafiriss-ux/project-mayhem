@@ -25,6 +25,7 @@ def _build_postgres_adapter_test_engine(tmp_path) -> tuple[Engine, PostgreSQLAda
                 """
                 CREATE TABLE IF NOT EXISTS daily_metrics (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id TEXT NOT NULL DEFAULT 'default',
                     date TEXT UNIQUE NOT NULL,
                     weight_kg REAL,
                     hrv_rmssd REAL,
@@ -46,6 +47,7 @@ def _build_postgres_adapter_test_engine(tmp_path) -> tuple[Engine, PostgreSQLAda
                 """
                 CREATE TABLE IF NOT EXISTS training_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id TEXT NOT NULL DEFAULT 'default',
                     date TEXT NOT NULL,
                     session_type TEXT NOT NULL,
                     distance_km REAL NOT NULL,

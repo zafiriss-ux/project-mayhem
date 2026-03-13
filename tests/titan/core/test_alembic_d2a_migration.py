@@ -46,7 +46,7 @@ def test_d2a_round_trip_downgrade_then_upgrade_is_clean(tmp_path: Path) -> None:
     db_path = tmp_path / "d2a_roundtrip.db"
     config = _make_config(db_path)
 
-    command.upgrade(config, "head")
+    command.upgrade(config, revision="20260313_01")
     command.downgrade(config, "-1")
 
     downgraded_tables = _table_names(db_path)
