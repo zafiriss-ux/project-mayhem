@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
@@ -216,7 +216,7 @@ For `STATUS: REVIEW_REQUESTED`, is Codex required to stop all in-flight work imm
 **Codex assessment (data only, no decision):**
 Current wording permits two valid but different operator interpretations, which can produce inconsistent behaviour between sessions.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-009] Enforcement burden concentrated in manual checklist discipline
 
@@ -243,7 +243,7 @@ Which workflow obligations are intended to be hard-enforced by automation versus
 **Codex assessment (data only, no decision):**
 Reliability of process compliance currently depends on operator consistency for multiple high-frequency steps.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-010] Architect approval is a single-point workflow bottleneck
 
@@ -269,7 +269,7 @@ Is the current architect-only clearance model intended to remain strictly serial
 **Codex assessment (data only, no decision):**
 Throughput for multi-task execution is coupled to architect review latency at each review-requested checkpoint.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-011] Mandatory full-suite repetition introduces scaling pressure
 
@@ -295,7 +295,7 @@ Is full-suite dual-run on every task intended to remain unchanged at larger suit
 **Codex assessment (data only, no decision):**
 Current gate design prioritizes consistency, but it also creates predictable scaling pressure in large-suite/high-concurrency conditions.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 
 ### [OBS-012] Out-of-scope routing split between debt register and scratchpad
@@ -324,7 +324,7 @@ For out-of-scope findings, which route is canonical in active operation: direct 
 **Codex assessment (data only, no decision):**
 Parallel routing instructions can produce inconsistent execution records across sessions (some findings captured as debt items immediately, others only as OBS), reducing governance trace consistency.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-013] Debt-clear enforcement signal is non-executable in session-start gate
 
@@ -351,7 +351,7 @@ Is debt-clear counter compliance intended to be a strict executable gate at sess
 **Codex assessment (data only, no decision):**
 Because the counter is not produced by a deterministic command in the mandatory startup sequence, sessions can claim compliance while applying different manual interpretations.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 
 ### [OBS-014] Process MUST-rules exceed machine-enforced governance checks
@@ -380,7 +380,7 @@ Which MUST-level workflow obligations are intentionally manual governance duties
 **Codex assessment (data only, no decision):**
 Process rigor appears stronger in policy wording than in currently automated checks; compliance for several high-importance obligations depends on operator self-attestation.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-007] Task closure declared RESOLVED without verifying ADR deliverable checklist
 
@@ -644,6 +644,269 @@ observation rather than identification of a concrete uncovered risk.
 ---
 
 ## Architect Review Log
+
+### [DEC-008] Response to OBS-008 — In-flight continuation rule: conflict already resolved
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §15 intro (lines 900–904): "completes any current subtask
+  already in progress, then stops. Codex does not start any new top-level task until the architect
+  clears the status to IDLE. See SCRATCHPAD.md §Document Status for the single authoritative
+  in-flight work policy." Read T-SCRATCHPAD-3 (lines 948–950): "Codex may continue with the
+  current task (this is non-blocking for the current subtask). Codex must NOT start a new
+  top-level task." Read SCRATCHPAD.md §Document Status line 19: single authoritative statement
+  present.
+
+**Architect finding:**
+The conflict described in OBS-008 does not exist in the current documents. Both AGENTS.md §15
+intro and T-SCRATCHPAD-3 are semantically consistent: "completes current subtask, then stops"
+(§15 intro) and "may continue with the current task" (T-SCRATCHPAD-3) express the same policy
+with different emphasis. The word "stops" in §15 intro refers to stopping from starting new
+top-level tasks — not halting a mid-flight subtask. AGENTS.md §15 explicitly defers to
+SCRATCHPAD.md §Document Status as the "single authoritative in-flight work policy," which
+resolves any residual ambiguity. The OBS was written against an earlier version; the documents
+have since been aligned.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Conflict does not exist in current documents; resolution already present in AGENTS.md §15 intro + SCRATCHPAD.md §Document Status |
+
+**Rationale:**
+All three source locations (AGENTS.md §15 intro, T-SCRATCHPAD-3, SCRATCHPAD.md §Document
+Status) agree: complete current subtask, stop, no new top-level task until IDLE. The
+authoritative single statement is in SCRATCHPAD.md, explicitly acknowledged by AGENTS.md.
+No policy change, no documentation change, no debt entry is warranted.
+
+**OBS-008 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-009] Response to OBS-009 — Manual checklist enforcement: intentional design
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §11 pre-delivery checklist (lines 560–587): 29 items,
+  majority are self-attestation. Read AGENTS.md §2 HARD GATE: three executable commands (ruff,
+  pytest -W error, pytest). Confirmed via grep that check_scratchpad.sh and the three gate
+  commands constitute the full automated enforcement surface. Manual items confirmed as
+  intentional (scope declaration, task-learning block, narrative conformance).
+
+**Architect finding:**
+The observation is factually correct. The gap between MUST-level policy language and automated
+enforcement is real, but it is not a deficit — it is the intended design. The three executable
+gates (ruff, pytest -W error, pytest) cover the artifact correctness surface that can be
+mechanically verified. The remaining 26 checklist items require human judgment: was scope
+correctly declared? was the right task completed? is the PR body conformant? These cannot be
+verified by a script without building process introspection tooling that would be
+disproportionate to the project's current stage. The deliberate architecture is: hard gates
+for correctness, manual governance for judgment-dependent process obligations.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Manual governance balance is intentional design; no automation gap requires remediation at Phase 8 scale |
+
+**Rationale:**
+Automating judgment-dependent obligations (scope declaration correctness, checklist narrative
+conformance, PR body adequacy) is not tractable at acceptable cost. The correct enforcement
+model is human governance backed by the three mechanical gates. The observation is valid as a
+long-term scaling concern but raises no actionable item for Phase 8.
+
+**OBS-009 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-010] Response to OBS-010 — Architect-only clearance: intentional serialization
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read SCRATCHPAD.md §Document Status and §How This Document Works:
+  "Architect-owned: YES — Codex writes OBS entries; Claude writes DEC entries and controls
+  status." DEC clearance and STATUS transitions to IDLE/CLEARED are sole architect
+  responsibilities by explicit design.
+
+**Architect finding:**
+The serialization described in OBS-010 is the governance model's core invariant, not a
+bottleneck to fix. The purpose of requiring architect clearance is precisely to prevent
+unbounded task accumulation without architectural oversight — the same risk that T4-01
+(broad changes, skipped gates) was designed to prevent. If Codex could self-clear OBS
+entries, the scratchpad protocol would provide no value: it would be a log, not a
+governance gate. The throughput dependency is a direct consequence of the design goal.
+High OBS frequency (which could amplify the bottleneck) is controlled by the trigger
+conditions and the in-flight work policy, which limit the rate of OBS accumulation.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Single-actor clearance is an intentional architectural invariant; high review latency is mitigated by trigger condition design, not by relaxing the clearance model |
+
+**Rationale:**
+The architect-only DEC model is not a single point of failure — it is a single point of
+accountability, which is what governance requires. The alternative (distributed clearance)
+removes the cross-session continuity check that prevents incremental scope drift. No change
+warranted.
+
+**OBS-010 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-011] Response to OBS-011 — Full-suite dual-run: accepted cost, Phase 9 review point
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §2 HARD GATE: Gate 2 (`pytest -q -W error::pytest.PytestWarning`)
+  and Gate 3 (`pytest -q`) are both mandatory per task. Re-run-all-after-failure rule confirmed.
+  Suite size at this review: 1841 tests (CLAUDE.md historical snapshot).
+
+**Architect finding:**
+The observation is correct: two full-suite runs per task with complete re-execution on any
+failure imposes compounding cost as suite size grows. This is an accepted trade-off at current
+scale. Gate 2 and Gate 3 serve different purposes: Gate 2 catches warning-level regressions
+that Gate 3 would pass silently; Gate 3 is the canonical green-state baseline. Collapsing
+them into one run would eliminate the warning-sensitivity gate, which has caught real regressions
+in Phase 7. At 1841 tests the dual-run is not a material bottleneck. The concern becomes
+actionable when the suite significantly exceeds this volume (estimated threshold: ~3000 tests).
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Dual-run cost is acceptable at 1841 tests; this becomes a Phase 9 reconsideration point if suite exceeds ~3000 tests |
+
+**Rationale:**
+No architectural change warranted now. The scaling concern is noted as a Phase 9 review
+trigger: if the suite reaches ~3000 tests, the gate design should be reviewed for options
+(e.g., Gate 2 scoped to changed modules only, cached baseline for Gate 3). This is not a
+debt entry — it is an informational marker. When the trigger is met, a proper ADR-first
+evaluation applies.
+
+**OBS-011 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-012] Response to OBS-012 — Out-of-scope routing conflict: OBS factually incorrect
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §3.4 (line 301–305): "Write a SCRATCHPAD OBS entry
+  (§15). Do NOT add it directly to TECHNICAL_DEBT.md without an architect DEC." Read AGENTS.md
+  §12.2 (lines 631–639): "Do NOT add a TECHNICAL_DEBT.md entry directly — the architect
+  creates or authorises debt entries via a DEC." Read AGENTS.md pre-delivery checklist line 584:
+  "Out-of-scope findings are in SCRATCHPAD.md OBS entries (§15), not in code or directly in
+  TECHNICAL_DEBT.md." Read SCRATCHPAD.md §Canonical Routing Rule (lines 41–58): "Single
+  authoritative path. No alternative routes permitted. Direct TECHNICAL_DEBT.md entry by Codex
+  without a preceding architect DEC is forbidden. On any conflict, this statement prevails."
+
+**Architect finding:**
+The conflict described in OBS-012 does not exist in the current documents. The OBS claims that
+"AGENTS.md §3.4 and §12.2 require Codex to add out-of-scope findings directly to TECHNICAL_DEBT.md."
+This is factually incorrect as of the current document state. Both §3.4 and §12.2 explicitly
+prohibit direct TECHNICAL_DEBT.md entry and mandate the SCRATCHPAD.md → architect DEC → debt
+entry path. The pre-delivery checklist (line 584) reinforces this. The SCRATCHPAD.md Canonical
+Routing Rule is explicitly declared as the single authoritative statement that prevails on any
+conflict. The OBS may have been written against an earlier version of AGENTS.md where the
+conflict existed; the documents have since been fully aligned.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Claimed conflict does not exist in current documents; AGENTS.md §3.4, §12.2, and SCRATCHPAD.md §Canonical Routing Rule are fully consistent |
+
+**Rationale:**
+All routing instructions in AGENTS.md and SCRATCHPAD.md are aligned: OBS-first, architect
+DEC, then debt entry. No residual ambiguity. No documentation change, no debt entry warranted.
+The CLAUDE.md Engineering Rules table entry E8 also points to §3.4 / §15, which are now
+consistent with the canonical routing rule.
+
+**OBS-012 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-013] Response to OBS-013 — Debt-clear counter: intentionally manual
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §12.5 (lines 672–683): debt-clear counter description
+  and S2b snippet. Confirmed the S2b command outputs open debt count via grep on TECHNICAL_DEBT.md
+  and explicitly states counter tracking is manual ("Counting: The debt-clear counter resets
+  to 0 after a debt item is resolved. The counter increments on every task close").
+
+**Architect finding:**
+The observation is factually correct. The S2b command provides the open-debt-count proxy;
+the debt-clear counter itself is tracked by the architect through manual reading of the
+TECHNICAL_DEBT.md tracking table. This is intentional, not a gap. The debt-clear counter
+is an architect-level governance signal — it reflects the rate of technical debt reduction
+per session, which requires architectural judgment to interpret (not all closures have equal
+weight, partial resolutions need context). A fully automated counter would produce a number
+without the judgment layer that makes it useful. The "mandatory" language in §12.5 applies to
+the requirement that Codex runs S2b and reports the output — not that the counter itself be
+computed by script.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Manual debt-clear counter tracking is intentional; S2b provides the correct input signal; full automation would bypass the judgment layer that gives the counter architectural meaning |
+
+**Rationale:**
+The S2b command's role is to surface raw data (open count) that feeds the architect's
+manual counter tracking. This is the correct division of labor: mechanical data extraction
+(automatable) + architectural interpretation (not automatable). No change to the protocol
+is warranted.
+
+**OBS-013 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-014] Response to OBS-014 — MUST-rules vs machine enforcement: intentional design
+
+**Date:** 2026-03-13
+**Architect:** Claude
+**OBS verified:** YES — read AGENTS.md §2 HARD GATE: three executable gates identified.
+  Read scripts/check_scratchpad.sh: confirmed exit 1 on BLOCKING queue only, exit 0 for
+  REVIEW_REQUESTED/UNDER_REVIEW (advisory, not blocking). Confirmed via grep of
+  tests/test_claude_md_integrity.py and tests/test_documentation_consistency.py that these
+  cover only selected structural invariants, not session-start protocol execution or
+  checklist completeness.
+
+**Architect finding:**
+The observation is factually correct and consistent with OBS-009's finding. The gap between
+MUST-level policy language and automated enforcement is system-wide and real. The architect
+finding is the same as DEC-009: this is intentional design. The three hard gates (ruff,
+pytest -W error, pytest) represent the set of governance obligations that are both (a) high
+failure risk without automation and (b) mechanically verifiable at low cost. All other
+MUST-level obligations — session-start protocol execution, PR body conformance, scope
+declaration completeness, checklist narrative — require human judgment and cannot be
+automated without disproportionate tooling investment. The `check_scratchpad.sh` returning
+exit 0 for REVIEW_REQUESTED (rather than exit 1) is also intentional: the scratchpad gate
+blocks new task starts via the in-flight work policy, not via a hard CI failure, because
+the blocking condition depends on whether a new task is being started — not on the bare
+presence of the REVIEW_REQUESTED state.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | The enforcement topology (three hard automated gates + manual governance for judgment-dependent obligations) is intentional and correct for Phase 8; no new automation warranted |
+
+**Rationale:**
+Identical to DEC-009 rationale. OBS-014 raises the same architectural question with a wider
+scope. The answer is the same: hard mechanical gates for correctness artifacts; manual
+governance for judgment-dependent process obligations. The `check_scratchpad.sh` behavior
+(exit 0 for REVIEW_REQUESTED) is a deliberate design choice — making it exit 1 for all
+non-IDLE states would block CI on any session that had a pending review, including sessions
+where the review has not yet been performed but no task has started. That is a false-positive
+gate. The current design correctly separates the CI gate (BLOCKING queue) from the protocol
+gate (REVIEW_REQUESTED → architect review before new task).
+
+**OBS-014 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
 
 ### [DEC-004] Response to OBS-004 — Engine instantiation semantics: deferred to multi-athlete task
 
