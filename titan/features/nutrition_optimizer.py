@@ -60,6 +60,15 @@ class NutritionOptimizer:
 
         recent = self.weight_history[-days:]
         first_weight = recent[0][1]
+        if first_weight <= 0:
+            return {
+                "status": "INSUFFICIENT_DATA",
+                "change_kg": 0,
+                "change_pct": 0,
+                "velocity": 0,
+                "recommendation": "Need valid baseline weight data",
+            }
+
         last_weight = recent[-1][1]
 
         change_kg = last_weight - first_weight
