@@ -11,7 +11,18 @@ Traditional metrics (VO2max, FTP, LT) are measured FRESH.
 But races are won by those who maintain performance when FATIGUED.
 """
 
-
+from titan.config.thresholds import (
+    DURABILITY_INDEX_COMPETITIVE_MIN,
+    DURABILITY_INDEX_DEVELOPING_MIN,
+    DURABILITY_INDEX_ELITE_MIN,
+    DURABILITY_INDEX_WORLD_CLASS_MIN,
+    DURABILITY_PACE_DECAY_EXCELLENT_MAX,
+    DURABILITY_PACE_DECAY_GOOD_MAX,
+    DURABILITY_PACE_DECAY_MODERATE_MAX,
+    DURABILITY_PROTOCOL_BASE_BUILD_MAX,
+    DURABILITY_PROTOCOL_MAINTENANCE_MAX,
+    DURABILITY_PROTOCOL_STRONG_MAX,
+)
 
 MODULE_VERSION = "1.0.0"
 
@@ -57,13 +68,13 @@ class DurabilityEngine:
         if pace_decay_pct < 0:
             status = "✓ NEGATIVE SPLIT (exceptional durability)"
             recommendation = "Elite-level durability - maintain training"
-        elif pace_decay_pct < 2:
+        elif pace_decay_pct < DURABILITY_PACE_DECAY_EXCELLENT_MAX:
             status = "✓ EXCELLENT durability (<2% fade)"
             recommendation = "Strong durability - ready for long races"
-        elif pace_decay_pct < 5:
+        elif pace_decay_pct < DURABILITY_PACE_DECAY_GOOD_MAX:
             status = "✓ GOOD durability (<5% fade)"
             recommendation = "Solid - acceptable for most races"
-        elif pace_decay_pct < 8:
+        elif pace_decay_pct < DURABILITY_PACE_DECAY_MODERATE_MAX:
             status = "→ MODERATE fade (<8%)"
             recommendation = "Work on aerobic base & long runs"
         else:
@@ -98,16 +109,16 @@ class DurabilityEngine:
 
         di = (fresh_performance / fatigued_performance) * 100
 
-        if di >= 98:
+        if di >= DURABILITY_INDEX_WORLD_CLASS_MIN:
             status = "✓ ELITE durability (98%+)"
             tier = "WORLD CLASS"
-        elif di >= 95:
+        elif di >= DURABILITY_INDEX_ELITE_MIN:
             status = "✓ EXCELLENT durability (95-98%)"
             tier = "ELITE"
-        elif di >= 90:
+        elif di >= DURABILITY_INDEX_COMPETITIVE_MIN:
             status = "✓ GOOD durability (90-95%)"
             tier = "COMPETITIVE"
-        elif di >= 85:
+        elif di >= DURABILITY_INDEX_DEVELOPING_MIN:
             status = "→ MODERATE durability (85-90%)"
             tier = "DEVELOPING"
         else:
@@ -129,7 +140,7 @@ class DurabilityEngine:
         """
         protocols = []
 
-        if current_di < 88:
+        if current_di < DURABILITY_PROTOCOL_BASE_BUILD_MAX:
             protocols = [
                 "⚠️ PRIORITY 1: Build aerobic base (80% of runs easy)",
                 "Add weekly long run (90-120 min minimum)",
@@ -138,14 +149,14 @@ class DurabilityEngine:
                 "Back-to-back quality: Saturday tempo + Sunday long",
                 "Reduce intervals temporarily - focus on volume",
             ]
-        elif current_di < 93:
+        elif current_di < DURABILITY_PROTOCOL_MAINTENANCE_MAX:
             protocols = [
                 "Maintain weekly long run (2h+)",
                 "Add 'fatigued intervals': Easy run → then intervals",
                 "Monthly: Tempo after easy mileage (durability stimulus)",
                 "One long run per month: Progressive with Hammer finish",
             ]
-        elif current_di < 96:
+        elif current_di < DURABILITY_PROTOCOL_STRONG_MAX:
             protocols = [
                 "✓ Durability strong - maintain current approach",
                 "Occasional durability check: Long run with fast finish",
