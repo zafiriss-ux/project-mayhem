@@ -5,6 +5,7 @@ Complete athlete demographics, physiology, and training data
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 
 class UniversalAthleteProfile:
@@ -44,7 +45,7 @@ class UniversalAthleteProfile:
             athlete_id: Unique identifier (auto-generated if None)
             name: Athlete's name
         """
-        self.athlete_id = athlete_id or f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        self.athlete_id = athlete_id or f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}"
         self.name = name
 
         # Demographics
