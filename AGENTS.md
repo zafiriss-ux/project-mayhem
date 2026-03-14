@@ -1470,4 +1470,48 @@ no longer blocked. A stale Bottleneck block is misleading and must be corrected 
 
 ---
 
+## Opus QA Trigger Policy
+
+Opus QA is **not triggered by default**. Path A items proceed without Opus involvement unless the architect explicitly opts a task into Path B.
+
+### Trigger criteria (architect must state one of the following)
+
+- The task modifies or adds governance safety logic.
+- The task changes a science engine that feeds the 7-gate decision pipeline.
+- The task adds or alters a threshold constant with governance-facing output.
+- The architect explicitly writes `APPROVED` in the PILOT-01 entry for the task.
+
+### Non-trigger cases (Opus is NOT invoked)
+
+- Threshold centralisation tasks (e.g., T5-17 pattern): no new logic, only import wiring.
+- Documentation-only or records-steward passes.
+- Audit-only handoffs (read-only tasks with no code changes).
+- Debt-only items with no Codex implementation handoff.
+- Any Path A item where the architect has not written `APPROVED`.
+
+### Scope of Opus QA review
+
+Opus reviews **test quality** for the newly written or changed behaviour:
+- Are the tests correctly targeted at the acceptance criteria?
+- Do the tests cover boundary conditions specified in the task brief?
+- Are there gaps that would allow a regression to pass undetected?
+
+### Out of scope for Opus QA
+
+- Re-running mandatory gates (Gates 1–3 are always run by Codex, not Opus).
+- Architectural decisions or new ADR authorship.
+- Code style or formatting (covered by ruff Gate 1).
+- Performance benchmarking.
+
+### Verdict semantics
+
+- **QA PASS** — test coverage is adequate for the acceptance criteria; implementation may advance to Gate 3.
+- **QA FAIL** — one or more specific gaps identified; Codex must address the listed gaps and resubmit.
+
+### Cooldown rule
+
+If Opus issued **QA FAIL** for a task and Codex returns after fixing the identified gaps, **Opus is automatically re-invoked** for that task without requiring a new architect trigger. The re-invocation covers only the gaps listed in the original QA FAIL verdict.
+
+---
+
 *Last updated: 2026-03-09 (§12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*

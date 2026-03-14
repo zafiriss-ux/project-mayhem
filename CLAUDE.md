@@ -524,3 +524,8 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
 | `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude); canonical out-of-scope routing rule |
 | `titan/utils/math_core.py` | `MathCore`: pace conversion, `weight_function_Wf`, `system_status_SSV` |
+
+### Governance and QA Policy Cross-references (added 2026-03-14)
+
+- **Weekly Friday Governance Review** is now a canonical process. Each review is logged in `TECHNICAL_DEBT.md` under the `## Weekly Governance Log` section using the approved template. The log is the authoritative record of governance health state per week.
+- **Opus QA Trigger Policy** now exists as a standalone section in `AGENTS.md`. It defines when Opus QA is triggered (not by default), explicit trigger criteria, non-trigger cases, verdict semantics (QA PASS / QA FAIL), and the cooldown re-invocation rule. Do not merge this section into Path A / Path B.
