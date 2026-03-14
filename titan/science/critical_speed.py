@@ -106,6 +106,8 @@ class CriticalSpeedEngine:
             return None
         if pace_sec_per_km <= 0:
             return None
+        if d_prime_m <= 0:
+            return None
 
         v = 1000.0 / pace_sec_per_km  # Convert to m/s
 

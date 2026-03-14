@@ -32,6 +32,11 @@ def test_time_to_exhaustion_handles_invalid_or_sustainable_inputs() -> None:
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 120.0, 250.0) is None
 
 
+def test_time_to_exhaustion_returns_none_when_d_prime_is_zero_or_negative() -> None:
+    assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 0.0, 200.0) is None
+    assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, -50.0, 200.0) is None
+
+
 def test_time_to_exhaustion_returns_formula_result_for_unsustainable_pace() -> None:
     tte = CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 120.0, 200.0)
 

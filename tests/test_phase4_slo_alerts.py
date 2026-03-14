@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from datetime import datetime
 
 import pytest
@@ -172,13 +173,17 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "0")
 
     sync = GarminSync(email="x", password="y")
-    sync.sync_activities = lambda days_back=7: []
-    sync.sync_weight = lambda days_back=14: []
-    sync.sync_sleep = lambda days_back=7: []
-    sync.sync_hrv = lambda days_back=7: []
+    sync._sync_operation = lambda days_back=7: time.sleep(0.02) or {
+        "activities": [],
+        "weight": [],
+        "sleep": [],
+        "hrv": [],
+        "hrv_sync_metrics": {"days_back": 0, "synced_days": 0, "skipped_days": 0},
+        "data_trust": {},
+    }
 
     payload = sync.sync_all(days_back=1)
-    assert set(payload.keys()) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust"}
+    assert payload["status"] == "timeout_cancelled"
     assert payload["hrv_sync_metrics"] == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
 
     events = _json_messages(caplog)
