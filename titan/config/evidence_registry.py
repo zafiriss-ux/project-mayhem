@@ -963,6 +963,47 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC band split for scoring granularity; validate with OutcomeTracker incidents.',
     ),
 
+
+    'LACTATE_LT1_MAX_DRIFT_PCT': ThresholdEvidence(
+        parameter='LACTATE_LT1_MAX_DRIFT_PCT',
+        value=3.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal LactateLogic LT1 policy boundary (T5-32 Category A extraction).',
+        rationale='Upper exclusive drift boundary for LT1 zone detection in estimate_lt1().',
+        policy_note='HEURISTIC policy threshold pending cohort calibration with paired lactate and drift data.',
+    ),
+
+    'LACTATE_LT1_MAX_HR_PCT': ThresholdEvidence(
+        parameter='LACTATE_LT1_MAX_HR_PCT',
+        value=78.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal LactateLogic LT1 policy boundary (T5-32 Category A extraction).',
+        rationale='Upper inclusive heart-rate percent boundary for LT1 zone detection in estimate_lt1().',
+        policy_note='HEURISTIC policy threshold for aerobic-zone messaging; validate against field lactate testing.',
+    ),
+
+    'LACTATE_LT2_MIN_RPE': ThresholdEvidence(
+        parameter='LACTATE_LT2_MIN_RPE',
+        value=6.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal LactateLogic LT2 policy boundary (T5-32 Category A extraction).',
+        rationale='Lower inclusive RPE boundary for LT2 approximation in estimate_lt2().',
+        policy_note='HEURISTIC policy threshold based on CR10 tempo-zone interpretation; calibrate with outcomes.',
+    ),
+
+    'LACTATE_LT2_MAX_RPE': ThresholdEvidence(
+        parameter='LACTATE_LT2_MAX_RPE',
+        value=7.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal LactateLogic LT2 policy boundary (T5-32 Category A extraction).',
+        rationale='Upper inclusive RPE boundary for LT2 approximation in estimate_lt2().',
+        policy_note='HEURISTIC policy threshold for threshold-zone classification pending cohort-specific validation.',
+    ),
+
     'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
         parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
         value=0.25,

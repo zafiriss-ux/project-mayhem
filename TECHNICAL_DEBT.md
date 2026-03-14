@@ -2268,19 +2268,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: cfe263e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
 **Workflow Path:** A
 
-**Scope:** Inline threshold literals in `titan/science/lactate_logic.py`: `3.0`, `78.0`, `6.0`, `7.0` — Category A policy thresholds (LT1/LT2 boundary zone). Extract to `thresholds.py`.
+**Original state (pre-fix):** Category A policy literals `3.0`, `78.0`, `6.0`, and `7.0` were embedded directly in `titan/science/lactate_logic.py` for LT1/LT2 boundary checks instead of being centralized in `titan/config/thresholds.py` with explicit provenance.
 
-**Acceptance gate (binary):** Same pattern as T5-17.
+**Resolution:** Added LactateLogic Category A constants to `titan/config/thresholds.py`, added matching evidence records in `titan/config/evidence_registry.py`, and rewired `titan/science/lactate_logic.py` to read those constants for LT1/LT2 classification boundaries. Added mirrored module tests in `tests/titan/science/test_lactate_logic.py` to verify happy-path behavior and threshold-source-of-truth boundaries via constant patching. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q`.
 
-**Effort:** ~1h.
+**Task learning:** Source-of-truth tests are most robust when they assert behavioral changes after monkeypatching module-level threshold constants, because that validates configuration ownership without coupling tests to implementation internals.
 
 ---
 
@@ -2649,7 +2649,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-29 | ✅ RESOLVED (Phase 8 — Garmin sync sleep/HRV partial-failure policy aligned; test-first) | 2026-03-14 |
 | T5-30 | ✅ RESOLVED (Phase 8 — Governance Engine Category A threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-31 | ✅ RESOLVED | 2026-03-14 |
-| T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
+| T5-32 | ✅ RESOLVED (Phase 8 — Lactate Logic threshold extraction; separate PR) | 2026-03-14 |
 | T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |
 | T5-34 | BLOCKED PENDING MORE INPUT (read-only audit required: divergence map of titan/ui/setup_wizard.py vs launcher/wizard.py; contract-first; no implementation) | — |
 | T5-35 | OPEN (Phase 8 — VLG threshold extraction; separate PR; cross-check overlap with T5-17) | — |
