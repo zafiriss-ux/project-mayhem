@@ -2207,17 +2207,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-29 · Garmin Live Sync — sleep/HRV partial-failure policy inconsistency 🔴 OPEN
+### T5-29 · Garmin Live Sync — sleep/HRV partial-failure policy inconsistency ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 814f0b7.
 **Source:** Binder1 audit / DEC-2 §Garmin Live Sync finding. Architect decision: align `sync_sleep()` to per-day best-effort model.
 **Type:** Behavior Contract
 **Priority:** P2. Intentional behavior change — test-first required.
 **Workflow Path:** A
 
-**Scope:** `sync_sleep()` aborts the entire date range on a single failure; `sync_hrv()` uses per-day best-effort (continues on individual day failures). Architect decision: align `sync_sleep()` to the per-day best-effort model for consistency.
+**Original state (pre-fix):** `sync_sleep()` aborted the entire date range on a single failure, while `sync_hrv()` already used per-day best-effort continuation on individual day failures.
 
-**Fix (approved):** Test first: assert new per-day contract for `sync_sleep()` → apply minimal fix → test green.
+**Resolution:** Added test-first coverage for the partial-failure contract in `tests/test_garmin_sync.py`, then aligned `sync_sleep()` in `titan/integrations/garmin_sync.py` to skip failed days, emit day-level structured failure events, and continue syncing remaining days (matching `sync_hrv()` handling). Added a sleep skip-summary event for visibility. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green (1921 tests).
+
+**Task learning:** Aligning sister sync paths is safest when tests assert both output continuity and observability semantics (warning log + structured event payload), not just returned record count.
 
 **Acceptance gate (binary):** Failing test written first → fix applied → test green → all gates green.
 
@@ -2636,7 +2638,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | ✅ RESOLVED (Phase 8 — Durability Engine Category A threshold extraction to thresholds.py; separate PR scope) | 2026-03-14 |
 | T5-28 | ✅ RESOLVED (Phase 8 — Fatigue Engine soreness threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
-| T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |
+| T5-29 | ✅ RESOLVED (Phase 8 — Garmin sync sleep/HRV partial-failure policy aligned; test-first) | 2026-03-14 |
 | T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
 | T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
 | T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |

@@ -289,30 +289,54 @@ class GarminSync:
         if not self._ensure_connected():
             return []
         sessions = []
+        skipped_days = 0
         try:
             for i in range(days_back):
                 d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
-                raw = self.client.get_sleep_data(d)
-                summary = raw.get("dailySleepDTO", {})
-                if summary.get("sleepTimeSeconds"):
-                    total_h = summary["sleepTimeSeconds"] / 3600
-                    deep_h = summary.get("deepSleepSeconds", 0) / 3600
-                    rem_h = summary.get("remSleepSeconds", 0) / 3600
-                    sessions.append(
-                        {
-                            "date": d,
-                            "total_sleep_hours": round(total_h, 2),
-                            "deep_sleep_hours": round(deep_h, 2),
-                            "rem_sleep_hours": round(rem_h, 2),
-                            "sleep_score": summary.get("sleepScores", {})
-                            .get("overall", {})
-                            .get("value"),
-                        }
+                try:
+                    raw = self.client.get_sleep_data(d)
+                    summary = raw.get("dailySleepDTO", {})
+                    if summary.get("sleepTimeSeconds"):
+                        total_h = summary["sleepTimeSeconds"] / 3600
+                        deep_h = summary.get("deepSleepSeconds", 0) / 3600
+                        rem_h = summary.get("remSleepSeconds", 0) / 3600
+                        sessions.append(
+                            {
+                                "date": d,
+                                "total_sleep_hours": round(total_h, 2),
+                                "deep_sleep_hours": round(deep_h, 2),
+                                "rem_sleep_hours": round(rem_h, 2),
+                                "sleep_score": summary.get("sleepScores", {})
+                                .get("overall", {})
+                                .get("value"),
+                            }
+                        )
+                except Exception as e:
+                    skipped_days += 1
+                    failure_class = _classify_failure(e)
+                    error_class = e.__class__.__name__
+                    error_message = str(e)
+                    _log.warning(
+                        "Skipping sleep day %s (%s): %s",
+                        d,
+                        error_class,
+                        error_message,
                     )
+                    _garmin_event(
+                        failure_class,
+                        subsystem="sync_sleep",
+                        failure_class=failure_class,
+                        date=d,
+                        error_class=error_class,
+                        error_message=error_message,
+                    )
+                    continue
         except Exception as e:
             _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
             _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
         _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
+        if skipped_days:
+            _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
         self._log_sync("sleep", len(sessions))
         return sessions
 

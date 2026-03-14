@@ -208,6 +208,41 @@ def test_sync_sleep_error_emits_failure_class_event(monkeypatch):
     assert fields["subsystem"] == "sync_sleep"
 
 
+def test_sync_sleep_skipped_day_logs_and_emits_structured_event(monkeypatch, caplog):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(
+        _FakeClient(
+            sleep=[
+                ValueError("bad sleep payload"),
+                {
+                    "dailySleepDTO": {
+                        "sleepTimeSeconds": 25200,
+                        "deepSleepSeconds": 3600,
+                        "remSleepSeconds": 5400,
+                        "sleepScores": {"overall": {"value": 77}},
+                    }
+                },
+            ]
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = sync.sync_sleep(days_back=2)
+
+    assert len(result) == 1
+    skipped_action, skipped_event = events[0]
+    assert skipped_action == GARMIN_PAYLOAD_MALFORMED
+    assert skipped_event["failure_class"] == GARMIN_PAYLOAD_MALFORMED
+    assert skipped_event["error_class"] == "ValueError"
+    assert skipped_event["error_message"] == "bad sleep payload"
+    assert skipped_event["date"] in sync.client.requested_sleep_dates
+    assert "Skipping sleep day" in caplog.text
+    assert "ValueError" in caplog.text
+    assert "bad sleep payload" in caplog.text
+
+
 def test_sync_hrv_happy_path_updates_metrics_and_returns_data(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
