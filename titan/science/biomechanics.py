@@ -29,7 +29,7 @@ class BiomechanicsAnalysis:
 
         Formula: stride_length = (speed * 60) / cadence
         """
-        if cadence_spm == 0:
+        if cadence_spm <= 0 or speed_m_s <= 0:
             return 0.0
         return round((speed_m_s * 60) / cadence_spm, 2)
 
