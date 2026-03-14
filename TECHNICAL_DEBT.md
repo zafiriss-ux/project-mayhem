@@ -2030,19 +2030,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-20 · APL — DailyCoach → apl.resolve arg contract integration test missing 🔴 OPEN
+### T5-20 · APL — DailyCoach → apl.resolve arg contract integration test missing ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit finding C2 / DEC-1 §5.2. Test gap confirmed.
 **Type:** Test Gap
 **Priority:** P3. Independent.
 **Workflow Path:** A
 
-**Scope:** Add integration test verifying the exact argument contract at the DailyCoach → `apl.resolve()` call boundary:
-- Exact kwargs passed (phase normalization, `cs_tracker.confidence` value)
-- Not merely payload shape — the precise argument names and types at the call site
+**Original state (pre-fix):** DailyCoach had no integration-level assertion for the exact `apl.resolve()` call boundary, so phase normalization and `cs_tracker.confidence` argument propagation/type guarantees were not contract-protected.
 
-**Acceptance gate (binary):** Test in `tests/titan/science/test_apl_integration.py` (or mirrored file) passes; gates green.
+**Resolution:** Added integration coverage in `tests/titan/orchestration/test_daily_coach.py` to assert exact kwargs passed from `DailyCoach.run_morning_routine()` into `apl.resolve()` including normalized phase (`BUILD`/default `BASE`) and confidence propagation. Applied a minimal call-site fix in `titan/orchestration/daily_coach.py` to pass `cs_confidence` through `_safe_float(..., 1.0)` so the integration contract is float-typed and stable. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1909 collected/passed tests.
+
+**Task learning:** Integration contracts at orchestrator→engine boundaries should assert argument names and normalized types, not only downstream payload shape, because silent type drift can bypass pure unit tests while still altering runtime policy behavior.
 
 **Effort:** ~1h.
 
@@ -2621,7 +2621,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-17 | OPEN (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | — |
 | T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; **UNBLOCKED 2026-03-14** — T5-19 NO_ACTION; scope: 1.08 + 24/36/48/72 only) | — |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
-| T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
+| T5-20 | ✅ RESOLVED | 2026-03-14 |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
 | T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile serialization completeness incl guardrails + CS/D'; test-first) | 2026-03-14 |
 | T5-23 | ✅ RESOLVED (Phase 8 — AFI no-HRR range docstring correction; formula unchanged) | 2026-03-14 |

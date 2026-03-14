@@ -172,6 +172,88 @@ def test_run_morning_routine_sync_failure_emits_data_missing(monkeypatch):
     )
 
 
+def test_run_morning_routine_calls_apl_resolve_with_normalized_phase_and_cs_confidence():
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    vlg_state = SimpleNamespace(color="GREEN")
+    captured_kwargs = {}
+
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: {
+            "session_type": "EASY",
+            "volume_pct": 1.0,
+            "duration_min": 45,
+            "distance_km": 8,
+            "phase": "build",
+        }
+    )
+    coach.autonomic = SimpleNamespace(
+        hrr_log=[],
+        add_hrr=lambda *a, **k: None,
+        calculate_afi=lambda **k: 0.2,
+        apply_48h_buffer=lambda v: v,
+        get_readiness_constraints=lambda *a, **k: {
+            "afi_modifier": -2,
+            "readiness_clamp": 93,
+            "parasympathetic_guard": {"triggered": False},
+        },
+    )
+    coach.cs_tracker = SimpleNamespace(
+        apply_thermal=lambda *_: 1.0,
+        archetype="stable",
+        cs_smoothed=3.5,
+        confidence=0.37,
+    )
+    coach.vlg = SimpleNamespace(resolve=lambda **_kwargs: vlg_state)
+
+    def _capture_apl_call(**kwargs):
+        captured_kwargs.update(kwargs)
+        return {"priority_vector": {}, "lock_thresholds": {}}
+
+    coach.apl = SimpleNamespace(resolve=_capture_apl_call)
+
+    assert coach.run_morning_routine() is True
+    assert captured_kwargs["vlg_state"] is vlg_state
+    assert captured_kwargs["afi_constraints"] == {
+        "afi_modifier": -2,
+        "readiness_clamp": 93,
+        "parasympathetic_guard": {"triggered": False},
+    }
+    assert captured_kwargs["phase"] == "BUILD"
+    assert captured_kwargs["cs_confidence"] == pytest.approx(0.37)
+
+
+def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing():
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    captured_kwargs = {}
+
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: {
+            "session_type": "EASY",
+            "volume_pct": 1.0,
+            "duration_min": 45,
+            "distance_km": 8,
+            "phase": None,
+        }
+    )
+    coach.cs_tracker = SimpleNamespace(
+        apply_thermal=lambda *_: 1.0,
+        archetype="stable",
+        cs_smoothed=3.5,
+        confidence="0.42",
+    )
+
+    def _capture_apl_call(**kwargs):
+        captured_kwargs.update(kwargs)
+        return {"priority_vector": {}, "lock_thresholds": {}}
+
+    coach.apl = SimpleNamespace(resolve=_capture_apl_call)
+
+    assert coach.run_morning_routine() is True
+    assert captured_kwargs["phase"] == "BASE"
+    assert captured_kwargs["cs_confidence"] == pytest.approx(0.42)
+    assert isinstance(captured_kwargs["cs_confidence"], float)
+
+
 def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
     coach = DailyCoach.__new__(DailyCoach)
     coach.run_morning_routine = lambda: True
