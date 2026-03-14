@@ -31,7 +31,11 @@ class _StructuredTelegramBot:
 
     def send_daily_coaching(self, payload: dict) -> None:
         self.calls.append(payload)
-        payload.get("session_type")
+        payload["session_type"]
+        payload["special_note"]
+        payload["primary_reason"]
+        payload["actionable_guidance"]
+        payload["hrv_stress_context"]
 
 
 def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
@@ -43,6 +47,7 @@ def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
 
     assert ok is True
     assert len(bot.calls) == 1
+    assert isinstance(bot.calls[0], dict)
     assert bot.calls[0]["special_note"] == "Morning briefing"
 
 
@@ -82,6 +87,9 @@ def test_gateway_uses_primary_channel_on_success(tmp_path):
             "readiness_score": "N/A",
             "nutrition_plan": "See /nutrition",
             "shoe": "See /shoes",
+            "primary_reason": "",
+            "actionable_guidance": "",
+            "hrv_stress_context": "",
             "special_note": "Morning briefing",
         }
     ]

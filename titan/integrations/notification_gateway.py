@@ -85,6 +85,9 @@ class TelegramChannel(NotificationChannel):
                 "readiness_score": "N/A",
                 "nutrition_plan": "See /nutrition",
                 "shoe": "See /shoes",
+                "primary_reason": "",
+                "actionable_guidance": "",
+                "hrv_stress_context": "",
                 "special_note": message,
             }
             self._bot.send_daily_coaching(payload)
