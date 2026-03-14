@@ -2048,19 +2048,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-21 · Athlete Profile — athlete_id timestamp collision risk 🔴 OPEN
+### T5-21 · Athlete Profile — athlete_id timestamp collision risk ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: d985d67.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Code Hardening
 **Priority:** P2. Test-first required.
 **Workflow Path:** A
 
-**Scope:** `athlete_id` generation uses timestamp with second-level precision → collision risk when two profiles are created in the same second → silent overwrite.
+**Original state (pre-fix):** `athlete_id` generation used timestamp with second-level precision, creating collision risk when two profiles were created in the same second and allowing silent overwrite.
 
-**Fix (approved):** Add `uuid4` suffix or sub-second component to `athlete_id` generation. Test first: create two profiles within the same second → assert distinct IDs.
+**Resolution:** Added test-first collision coverage in `tests/titan/core/test_athlete.py` for same-second profile creation and timestamp-prefix collision paths, then hardened `UniversalAthleteProfile` ID generation in `titan/core/athlete.py` by appending a `uuid4` suffix to the timestamp-based prefix. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1893 collected/passed tests.
 
-**Acceptance gate (binary):** Failing test written first → fix applied → test green → all gates green.
+**Task learning:** Timestamp-only identifiers in constructors are vulnerable under deterministic clock-freeze tests; adding entropy while retaining a readable timestamp prefix preserves traceability without sacrificing uniqueness.
 
 **Effort:** ~1h.
 
@@ -2151,7 +2151,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: d985d67.
 **Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
 **Type:** API Contract
 **Priority:** P1. Test-first required. Highest priority within Binder1 batch.
@@ -2620,7 +2620,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; **UNBLOCKED 2026-03-14** — T5-19 NO_ACTION; scope: 1.08 + 24/36/48/72 only) | — |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
-| T5-21 | OPEN (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | — |
+| T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
 | T5-22 | OPEN (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | — |
 | T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
 | T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from titan.core.athlete import UniversalAthleteProfile
 
 
@@ -88,3 +90,38 @@ def test_from_dict_is_deterministic_for_identical_inputs():
     profile_b = UniversalAthleteProfile.from_dict(data)
 
     assert profile_a.to_dict() == profile_b.to_dict()
+
+
+def test_generated_athlete_ids_are_unique_when_created_in_same_second(monkeypatch):
+    fixed_now = datetime(2026, 3, 14, 9, 30, 0)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr("titan.core.athlete.datetime", FixedDateTime)
+
+    profile_a = UniversalAthleteProfile()
+    profile_b = UniversalAthleteProfile()
+
+    assert profile_a.athlete_id != profile_b.athlete_id
+
+
+def test_generated_athlete_ids_include_timestamp_prefix_and_unique_suffix(monkeypatch):
+    fixed_now = datetime(2026, 3, 14, 9, 30, 0)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr("titan.core.athlete.datetime", FixedDateTime)
+
+    profile_a = UniversalAthleteProfile()
+    profile_b = UniversalAthleteProfile()
+    expected_prefix = "ATH_20260314093000_"
+
+    assert profile_a.athlete_id.startswith(expected_prefix)
+    assert profile_b.athlete_id.startswith(expected_prefix)
+    assert profile_a.athlete_id.split("_", maxsplit=2)[2] != profile_b.athlete_id.split("_", maxsplit=2)[2]
