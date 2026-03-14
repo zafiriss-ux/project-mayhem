@@ -26,6 +26,13 @@ VO2_READINESS_MIN = 65.0
 VO2_GLYCOGEN_DEBT_MAX = 7.0
 VO2_MIN_DAYS_SINCE_LAST = 2
 
+# AdaptiveMemory thresholds — T5-18 (Category A only).
+ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER = 1.08
+ADAPTIVE_MEMORY_HOURS_24 = 24
+ADAPTIVE_MEMORY_HOURS_36 = 36
+ADAPTIVE_MEMORY_HOURS_48 = 48
+ADAPTIVE_MEMORY_HOURS_72 = 72
+
 # Data freshness thresholds — ADR-0026 / T1-19.
 # Hours since last Garmin sync before the system emits warnings or degrades confidence.
 STALE_DATA_WARN_HOURS = 24        # Emit data_freshness_warn structured log event

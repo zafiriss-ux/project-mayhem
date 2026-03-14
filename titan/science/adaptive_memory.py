@@ -6,6 +6,20 @@ Tracks training history to detect patterns and adaptations.
 
 from datetime import datetime
 
+from titan.config.thresholds import (
+    ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER,
+    ADAPTIVE_MEMORY_HOURS_24,
+    ADAPTIVE_MEMORY_HOURS_36,
+    ADAPTIVE_MEMORY_HOURS_48,
+    ADAPTIVE_MEMORY_HOURS_72,
+)
+
+HOURS_24 = ADAPTIVE_MEMORY_HOURS_24
+HOURS_36 = ADAPTIVE_MEMORY_HOURS_36
+HOURS_48 = ADAPTIVE_MEMORY_HOURS_48
+HOURS_72 = ADAPTIVE_MEMORY_HOURS_72
+EASY_PACE_DROP_MULTIPLIER = ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER
+
 MODULE_VERSION = "1.0.0"
 
 
@@ -130,10 +144,10 @@ class AdaptiveMemory:
         Returns:
             Supercompensation status
         """
-        if 24 <= last_hard_session_hours <= 48:
+        if HOURS_24 <= last_hard_session_hours <= HOURS_48:
             self.supercomp_status = "RECOVERY"
             return "→ RECOVERY WINDOW (Protein Synthesis active)"
-        if 48 < last_hard_session_hours <= 72:
+        if HOURS_48 < last_hard_session_hours <= HOURS_72:
             self.supercomp_status = "PEAK"
             return "✓ SUPER-COMPENSATION PEAK (Go Hard Now)"
         self.supercomp_status = "BASELINE"
@@ -155,11 +169,11 @@ class AdaptiveMemory:
         last = self.last_quality_sessions[-1]
         delta_h = (now_dt - last).total_seconds() / 3600.0
 
-        if delta_h < 24:
+        if delta_h < HOURS_24:
             return "⚠️ SDI: <24h since last quality. Force EASY."
-        if delta_h < 36:
+        if delta_h < HOURS_36:
             return "⚠️ SDI: <36h. Downgrade intensity."
-        if delta_h < 48:
+        if delta_h < HOURS_48:
             return "→ SDI: <48h. Caution."
         return "✓ SDI: Safe spacing."
 
@@ -183,7 +197,7 @@ class AdaptiveMemory:
         if len(self.last_3d_soreness) == 3 and sum(self.last_3d_soreness) / 3.0 >= 5:
             risk_flags.append("HIGH_SORENESS_TREND")
 
-        if easy_pace_today_sec > easy_pace_baseline_sec * 1.08:
+        if easy_pace_today_sec > easy_pace_baseline_sec * EASY_PACE_DROP_MULTIPLIER:
             risk_flags.append("EASY_PACE_DROP")
 
         if not risk_flags:
