@@ -2248,17 +2248,21 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-31 · Intensity Governor — threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-31 · Intensity Governor — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: cfe263e.
 **Source:** Binder1 audit / DEC-2 §Intensity Governor Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
 **Workflow Path:** A
 
-**Scope:** Inline threshold literals in `titan/science/intensity_governor.py`: `3.5`, `5.0`, `4.0`, `6.0`, `1.3`, `1.5`, `55`, `40` — all Category A policy thresholds. Extract to `thresholds.py`.
+**Original state (pre-fix):** `titan/science/intensity_governor.py` used inline Category A policy literals (`3.5`, `5.0`, `4.0`, `6.0`, `1.3`, `1.5`, `55`, `40`) for drift, glycogen, ACWR, and readiness color-gate boundaries.
 
-**Acceptance gate (binary):** Same pattern as T5-17.
+**Resolution:** Added eight `INTENSITY_GOVERNOR_*` constants to `titan/config/thresholds.py`, wired `IntensityGovernor` to import and use those constants for both gate logic and audit payload threshold fields, and added matching evidence records in `titan/config/evidence_registry.py`. Added mirrored module tests in `tests/titan/science/test_intensity_governor_thresholds.py` and extended evidence-registry contract coverage in `tests/test_apl_integration.py` to assert canonical registration/value mirroring for all extracted constants. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green (1927 tests).
+
+**Task learning:** The audit payload threshold fields are part of the external governance contract, so extraction must update both decision boundaries and emitted metadata to keep policy observability consistent.
+
+**Acceptance gate (binary):** Same pattern as T5-17. `intensity_governor.py` references constants from `thresholds.py`; no inline literals remain for these values; all gates green.
 
 **Effort:** ~2h.
 
@@ -2266,7 +2270,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: cfe263e.
 **Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2330,7 +2334,7 @@ Audit scope:
 
 ### T5-35 · Volume Load Gauge — threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: cfe263e.
 **Source:** Binder1 audit / DEC-2 §Volume Load Gauge Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2644,7 +2648,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-28 | ✅ RESOLVED (Phase 8 — Fatigue Engine soreness threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-29 | ✅ RESOLVED (Phase 8 — Garmin sync sleep/HRV partial-failure policy aligned; test-first) | 2026-03-14 |
 | T5-30 | ✅ RESOLVED (Phase 8 — Governance Engine Category A threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
-| T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
+| T5-31 | ✅ RESOLVED | 2026-03-14 |
 | T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
 | T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |
 | T5-34 | BLOCKED PENDING MORE INPUT (read-only audit required: divergence map of titan/ui/setup_wizard.py vs launcher/wizard.py; contract-first; no implementation) | — |
