@@ -2050,7 +2050,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-21 · Athlete Profile — athlete_id timestamp collision risk ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: d985d67.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Code Hardening
 **Priority:** P2. Test-first required.
@@ -2058,9 +2058,9 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 **Original state (pre-fix):** `athlete_id` generation used timestamp with second-level precision, creating collision risk when two profiles were created in the same second and allowing silent overwrite.
 
-**Resolution:** Added test-first collision coverage in `tests/titan/core/test_athlete.py` for same-second profile creation and timestamp-prefix collision paths, then hardened `UniversalAthleteProfile` ID generation in `titan/core/athlete.py` by appending a `uuid4` suffix to the timestamp-based prefix. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1893 collected/passed tests.
+**Resolution:** Added and expanded test-first collision coverage in `tests/titan/core/test_athlete.py` for same-second profile creation and exact timestamp+UUID seed collision paths. Hardened `UniversalAthleteProfile` ID generation in `titan/core/athlete.py` by appending a monotonic per-process sequence to the timestamp+UUID format so IDs remain unique even when both timestamp and UUID seed collide. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1900 collected/passed tests.
 
-**Task learning:** Timestamp-only identifiers in constructors are vulnerable under deterministic clock-freeze tests; adding entropy while retaining a readable timestamp prefix preserves traceability without sacrificing uniqueness.
+**Task learning:** UUID entropy alone is not a proof of uniqueness under deterministic stubs; explicit collision-path tests enforce the contract and justify a deterministic tie-breaker in ID generation.
 
 **Effort:** ~1h.
 
@@ -2153,7 +2153,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: d985d67.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
 **Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
 **Type:** API Contract
 **Priority:** P1. Test-first required. Highest priority within Binder1 batch.
