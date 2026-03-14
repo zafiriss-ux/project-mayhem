@@ -2284,51 +2284,71 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-33 · Periodization/Automated — implicit coupling contract absent 🔴 BLOCKED PENDING MORE INPUT
+### T5-33 · Periodization/Automated — implicit coupling contract absent ✅ CLOSED — NO_ACTION
 
-**Status:** BLOCKED PENDING MORE INPUT (Architect Follow-up Pack 2026-03-14 — read-only audit required before any brief can be written)
+**Status:** ✅ CLOSED — NO_ACTION | 2026-03-14
 **Source:** Binder1 audit / DEC-2 §Periodization + Equipment Pattern P7 variant finding.
 **Type:** Architecture Debt
-**Priority:** P4. No implementation. Audit-only next step.
+**Priority:** P4.
 **Workflow Path:** A
 
-**Scope:** `titan/core/periodization.py` and `titan/science/automated_periodization.py` have an implicit coupling contract with no formal boundary test or typed interface. Architectural coupling risk. No implementation before dedicated architect brief.
-
-**Required Codex read-only audit (before brief can be written):**
-The architect requires answers to the following three questions from a read-only audit of `titan/core/periodization.py` and `titan/science/automated_periodization.py`. No code changes. No implementation.
-
-a) **Direction:** Who calls whom? Does `automated_periodization.py` call into `core/periodization.py`, or the reverse, or is there bidirectional coupling?
-b) **Layer violation:** Is there a layer violation across the `core/` ↔ `science/` boundary? (i.e., does a science module import from core, or does core import from science — in either direction?)
-c) **Shared mutable state:** Is there any shared mutable state between the two modules (e.g., shared object references, shared DB handles, shared in-memory structures)?
-
-**Next step:** Codex performs read-only audit, answers (a)–(c). Architect then writes brief. No implementation until brief is accepted.
-
-**Acceptance gate (binary):** Defined when brief is written (after audit answers are received).
+**Architect verdict (2026-03-14):** Read-only audit complete. No direct coupling found between `titan/core/periodization.py` and `titan/science/automated_periodization.py`. No layer violation across the `core/` ↔ `science/` boundary. No shared mutable state. The two modules exhibit decoupled coexistence. No brief required. Closing as NO_ACTION.
 
 ---
 
-### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) 🔴 BLOCKED PENDING MORE INPUT
+### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) — OPEN
 
-**Status:** BLOCKED PENDING MORE INPUT (Architect Follow-up Pack 2026-03-14 — contract-first, read-only audit required before implementation)
+**Status:** OPEN — T5-34-A brief issued | 2026-03-14
 **Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
 **Type:** Architecture Debt
-**Priority:** P4. No implementation yet. Contract-first.
+**Priority:** P4.
 **Workflow Path:** A
 **Cross-reference:** T4-07 (RESOLVED — wizard credential duplicates), T4-12 (RESOLVED — wizard interactive flow tests) are distinct. T5-34 addresses the architectural divergence between the `titan/ui/setup_wizard.py` and `launcher/wizard.py` bootstrap contracts — a different concern not covered by T4-07/T4-12.
 
-**Scope:** Two wizard implementations (`titan/ui/setup_wizard.py` and `launcher/wizard.py`) have diverging contracts (env persistence, validation logic, error handling). Architectural consistency risk for first-run setup flows.
+**Architect classification (2026-03-14):**
 
-**Required Codex read-only audit (before brief can be written):**
-The architect requires a read-only audit mapping the divergence between the two wizard implementations. No code changes. No implementation. Contract-first.
+- **Class 1 — must fix:**
+  - GARMIN key name alignment (`GARMIN_USERNAME` vs `GARMIN_EMAIL`)
+  - Launcher readiness semantics fix (ensure_config() must verify required loaded credentials, not only file existence)
 
-Audit scope:
-- **`titan/ui/setup_wizard.py`:** What does it write to env / config? What fields does it validate? What are the validation rules?
-- **`launcher/wizard.py`:** What does it write to env / config? What fields does it validate? What are the validation rules?
-- **Divergence map:** Where do the two implementations produce different outputs, apply different validation, or handle errors differently? Produce a side-by-side delta.
+- **Class 2 — should align:**
+  - Telegram token threshold alignment to `>= 20` characters
+  - Numeric `TELEGRAM_CHAT_ID` validation in launcher
 
-**Next step:** Codex performs read-only audit and produces divergence map. Architect then writes implementation brief. No implementation until brief is accepted.
+- **Class 3 — intentional divergence / out of scope:**
+  - env file path difference (do not unify)
+  - OpenAI key present in launcher (do not remove)
+  - keyring support difference (do not port to launcher)
+  - weather required/optional semantics (do not change)
 
-**Acceptance gate (binary):** Defined when brief is written (after divergence map is received).
+---
+
+#### T5-34-A · Implementation Brief
+
+**Scope:**
+- Align `GARMIN_USERNAME` → `GARMIN_EMAIL` in launcher (or add alias read so both keys are accepted)
+- Strengthen launcher `ensure_config()` readiness check so it verifies that required credentials are actually loaded, not only that the env file exists
+- Align Telegram token minimum-length threshold to `>= 20` characters in launcher
+- Add numeric validation for `TELEGRAM_CHAT_ID` in launcher
+
+**Workflow Path:** A
+
+**Explicit exclusions:**
+- Do not unify env file paths
+- Do not remove OpenAI key from launcher
+- Do not port keyring support to launcher
+- Do not change weather required/optional semantics
+
+**Acceptance gates (binary):**
+```bash
+ruff check titan/ui/setup_wizard.py launcher/wizard.py
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Tests required:**
+- Launcher readiness rejects a config where the file exists but credentials are empty/missing
+- GARMIN key cross-read smoke test (alias read accepts both `GARMIN_USERNAME` and `GARMIN_EMAIL`)
 
 ---
 
@@ -2676,8 +2696,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-30 | ✅ RESOLVED (Phase 8 — Governance Engine Category A threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-31 | ✅ RESOLVED | 2026-03-14 |
 | T5-32 | ✅ RESOLVED (Phase 8 — Lactate Logic threshold extraction; separate PR) | 2026-03-14 |
-| T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |
-| T5-34 | BLOCKED PENDING MORE INPUT (read-only audit required: divergence map of titan/ui/setup_wizard.py vs launcher/wizard.py; contract-first; no implementation) | — |
+| T5-33 | ✅ CLOSED — NO_ACTION | 2026-03-14 |
+| T5-34 | OPEN — T5-34-A brief issued | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
@@ -2721,6 +2741,11 @@ updated accordingly. Next deliverable: D2a.*
 *(4) T5-25 confirmed DEBT ONLY / NO IMPLEMENTATION: design artefact (parity matrix document); sequencing constraint: must exist before T5-08-B D7/D9 close.*
 *(5) T5-33 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (call direction, layer violation, shared mutable state) before brief can be written.*
 *(6) T5-34 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (divergence map: titan/ui/setup_wizard.py vs launcher/wizard.py) before brief can be written.*
+*No implementation performed. No new architectural decisions. No renumbering.*
+
+*Updated: 2026-03-14 — Records Steward Update Pass (T5-33 & T5-34 Audit Results). Two records updates applied:*
+*(1) T5-33 CLOSED NO_ACTION: audit confirms no direct coupling, no layer violation, no shared mutable state — decoupled coexistence, no brief required.*
+*(2) T5-34 OPEN — T5-34-A brief issued: Class 1 (GARMIN key alignment, launcher readiness semantics); Class 2 (Telegram token threshold ≥20, numeric CHAT_ID validation); Class 3 intentional divergence (env paths, OpenAI key, keyring, weather semantics). Next Codex-executable item: T5-34-A.*
 *No implementation performed. No new architectural decisions. No renumbering.*
 
 ---
@@ -2780,31 +2805,19 @@ Do NOT begin T5-24 implementation until it is assigned in execution order.
 
 ---
 
-### Block C — Audit-Only Handoff (T5-33)
+### Block C — CLOSED (T5-33)
 
-**T5-33 · Periodization/Automated — read-only audit**
+**T5-33 · Periodization/Automated — ✅ CLOSED NO_ACTION | 2026-03-14**
 
-Task: Read `titan/core/periodization.py` and `titan/science/automated_periodization.py`. No code changes. Answer three questions:
-
-a) Who calls whom? (direction of coupling)
-b) Is there a layer violation across core/ ↔ science/?
-c) Is there any shared mutable state between the two modules?
-
-Return answers to Architect. No implementation. No brief writing. No TECHNICAL_DEBT.md changes.
+Audit complete. No direct coupling, no layer violation, no shared mutable state. Decoupled coexistence confirmed. No brief required.
 
 ---
 
-### Block D — Audit-Only Handoff (T5-34)
+### Block D — T5-34-A Implementation Handoff
 
-**T5-34 · Setup Wizard — read-only audit**
+**T5-34 · Setup Wizard — T5-34-A brief issued | 2026-03-14**
 
-Task: Read `titan/ui/setup_wizard.py` and `launcher/wizard.py`. No code changes. Produce a divergence map covering:
-
-- What `titan/ui/setup_wizard.py` writes/validates (env fields, validation rules, error handling)
-- What `launcher/wizard.py` writes/validates (env fields, validation rules, error handling)
-- Where they diverge (side-by-side delta)
-
-Return divergence map to Architect. No implementation. No brief writing. No TECHNICAL_DEBT.md changes.
+Next Codex-executable item. See T5-34 entry above for full brief (Class 1 must-fix items, Class 2 should-align items, explicit exclusions, acceptance gates, required tests).
 
 > **T5-25 has no Codex implementation handoff.** It is a design artefact to be authored by the architect or under direct architect direction. Codex does not implement T5-25.
 
