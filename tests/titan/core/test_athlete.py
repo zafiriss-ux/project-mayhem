@@ -106,6 +106,17 @@ def test_to_dict_and_from_dict_round_trip_preserves_weight_guardrails(athlete_pr
     assert round_tripped.weight_panic == 62.4
 
 
+def test_to_dict_and_from_dict_round_trip_preserves_critical_speed_fields(athlete_profile_factory):
+    profile = athlete_profile_factory()
+    profile.critical_speed_m_per_s = 4.35
+    profile.d_prime_m = 312.5
+
+    round_tripped = UniversalAthleteProfile.from_dict(profile.to_dict())
+
+    assert round_tripped.critical_speed_m_per_s == 4.35
+    assert round_tripped.d_prime_m == 312.5
+
+
 def test_to_dict_includes_weight_guardrail_fields(athlete_profile_factory):
     profile = athlete_profile_factory()
 
@@ -121,6 +132,13 @@ def test_from_dict_missing_weight_guardrail_fields_keeps_constructor_defaults():
     assert profile.weight_floor == 75.0
     assert profile.weight_ceiling == 76.2
     assert profile.weight_panic == 74.5
+
+
+def test_from_dict_missing_critical_speed_fields_keeps_constructor_defaults():
+    profile = UniversalAthleteProfile.from_dict({"name": "Runner"})
+
+    assert profile.critical_speed_m_per_s == 4.1
+    assert profile.d_prime_m == 250.0
 
 
 def test_generated_athlete_ids_are_unique_when_created_in_same_second(monkeypatch):

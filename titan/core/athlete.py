@@ -336,5 +336,7 @@ class UniversalAthleteProfile:
         profile.weight_ceiling = data.get("weight_ceiling", 76.2)
         profile.weight_panic = data.get("weight_panic", 74.5)
         profile.paces = data.get("paces", profile.paces)
+        profile.critical_speed_m_per_s = data.get("critical_speed_m_per_s", 4.1)
+        profile.d_prime_m = data.get("d_prime_m", 250.0)
 
         return profile

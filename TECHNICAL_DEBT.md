@@ -2068,17 +2068,17 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-22 · Athlete Profile — to_dict/from_dict omits weight_ceiling and weight_panic fields ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Serialization Contract
 **Priority:** P2. Test-first required.
 **Workflow Path:** A
 
-**Original state (pre-fix):** `weight_ceiling` and `weight_panic` were omitted from `to_dict()` / `from_dict()`, so serialization round-trips reset those thresholds to constructor defaults instead of preserving profile-specific values.
+**Original state (pre-fix):** Serialization round-trips were incomplete: while `weight_ceiling` / `weight_panic` required explicit guardrail coverage, `critical_speed_m_per_s` and `d_prime_m` were not hydrated by `from_dict()`, so those fields reset to constructor defaults instead of preserving profile-specific values.
 
-**Resolution:** Added test-first coverage in `tests/titan/core/test_athlete.py` for weight guardrail field presence, round-trip preservation, and missing-field default boundary behavior. Updated `UniversalAthleteProfile.to_dict()` and `UniversalAthleteProfile.from_dict()` in `titan/core/athlete.py` to serialize and hydrate `weight_ceiling` and `weight_panic` alongside `weight_floor`. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1896 collected/passed tests.
+**Resolution:** Added/extended test-first coverage in `tests/titan/core/test_athlete.py` for guardrail round-trip preservation (`weight_ceiling`, `weight_panic`), exact round-trip completeness for `critical_speed_m_per_s` / `d_prime_m`, and missing-field default boundary behavior. Updated `UniversalAthleteProfile.from_dict()` in `titan/core/athlete.py` to hydrate `critical_speed_m_per_s` and `d_prime_m` with contract defaults when absent. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1902 collected/passed tests.
 
-**Task learning:** Serialization contract drift can silently reintroduce constructor defaults during hydration; explicit key-presence tests plus round-trip assertions catch this class of persistence bug before state corruption reaches orchestration paths.
+**Task learning:** Serialization contracts can drift asymmetrically (`to_dict` updated while `from_dict` lags), so an exact round-trip test for every persisted field is the fastest way to detect silent default reintroduction before state flows into orchestration.
 
 **Effort:** ~1h.
 
@@ -2623,7 +2623,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
-| T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | 2026-03-14 |
+| T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile serialization completeness incl guardrails + CS/D'; test-first) | 2026-03-14 |
 | T5-23 | ✅ RESOLVED (Phase 8 — AFI docstring range correction ±15; formula unchanged) | 2026-03-14 |
 | T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
