@@ -56,6 +56,12 @@ DURABILITY_PROTOCOL_STRONG_MAX = 96
 # FatigueEngine thresholds — T5-28 (Category A only).
 FATIGUE_SORENESS_PERIPHERAL_MIN = 5
 
+# LactateLogic thresholds — T5-32 (Category A only).
+LACTATE_LT1_MAX_DRIFT_PCT = 3.0
+LACTATE_LT1_MAX_HR_PCT = 78.0
+LACTATE_LT2_MIN_RPE = 6.0
+LACTATE_LT2_MAX_RPE = 7.0
+
 # IntensityGovernor thresholds — T5-31 (Category A only).
 INTENSITY_GOVERNOR_DRIFT_YELLOW = 3.5
 INTENSITY_GOVERNOR_DRIFT_RED = 5.0
