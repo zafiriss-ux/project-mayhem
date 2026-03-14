@@ -2167,15 +2167,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-27 · Durability Engine — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-27 · Durability Engine — Category A threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit / DEC-2 §Durability Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR after S1–S3 execution items.
 **Workflow Path:** A
 
-**Scope:** The following inline literals in `titan/science/durability_engine.py` are Category A policy thresholds: `2`, `5`, `8` (pace durability bands), `85`, `90`, `95`, `98` (durability index bands), `88`, `93`, `96` (training protocol bands). Extract to `thresholds.py`.
+**Original state (pre-fix):** The Category A durability thresholds `2`, `5`, `8` (pace durability bands), `85`, `90`, `95`, `98` (durability index bands), and `88`, `93`, `96` (training protocol routing bands) were embedded inline in `titan/science/durability_engine.py` and were not centralized in `titan/config/thresholds.py` with provenance entries.
+
+**Resolution:** Added the approved Durability Category A constants to `titan/config/thresholds.py`, added matching provenance records in `titan/config/evidence_registry.py`, and rewired `titan/science/durability_engine.py` to consume only the centralized constants for pace durability bands, durability index tiering, and protocol routing. Extended `tests/titan/science/test_durability_engine_thresholds.py` with threshold-source boundary assertions covering happy-path and boundary/error-path behaviors. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1918 collected/passed tests.
+
+**Task learning:** For threshold extraction tasks, source-of-truth tests should assert exact boundary values as constants so that future numeric edits require intentional updates in one canonical place instead of silent inline drift.
 
 **Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals remain for listed values; `thresholds.py` + `evidence_registry.py` updated; all gates green.
 
@@ -2626,7 +2630,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-24 | ✅ RESOLVED (BiomechanicsEngineProtocol in contracts.py; call-site audit complete; brief issued 2026-03-14) | 2026-03-14 (commit: ed1e20a) |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
-| T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |
+| T5-27 | ✅ RESOLVED (Phase 8 — Durability Engine Category A threshold extraction to thresholds.py; separate PR scope) | 2026-03-14 |
 | T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
 | T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |
 | T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |

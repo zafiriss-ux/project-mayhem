@@ -692,6 +692,106 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
     ),
 
+    'DURABILITY_PACE_DECAY_EXCELLENT_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PACE_DECAY_EXCELLENT_MAX',
+        value=2.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal DurabilityEngine policy banding (T5-27 Category A extraction).',
+        rationale='Upper bound for excellent pace-fade classification in durability assessment output.',
+        policy_note='HEURISTIC governance-facing threshold; calibrate with race-outcome decay cohorts.',
+    ),
+
+    'DURABILITY_PACE_DECAY_GOOD_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PACE_DECAY_GOOD_MAX',
+        value=5.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Durability literature summary (Maunder et al. 2021; Spragg et al. 2023) translated into policy bands.',
+        rationale='Upper bound for good pace-fade classification before moderate fade warning.',
+        policy_note='MODERATE: policy boundary aligned with common endurance fade interpretation.',
+    ),
+
+    'DURABILITY_PACE_DECAY_MODERATE_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PACE_DECAY_MODERATE_MAX',
+        value=8.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal DurabilityEngine policy banding (T5-27 Category A extraction).',
+        rationale='Upper bound for moderate fade classification before poor-durability warning.',
+        policy_note='HEURISTIC policy split; review against cohort durability outcomes.',
+    ),
+
+    'DURABILITY_INDEX_DEVELOPING_MIN': ThresholdEvidence(
+        parameter='DURABILITY_INDEX_DEVELOPING_MIN',
+        value=85.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal Durability Index policy ladder (T5-27 Category A extraction).',
+        rationale='Lower boundary for developing durability tier in DI classification.',
+        policy_note='HEURISTIC threshold used for governance-facing durability tier messaging.',
+    ),
+
+    'DURABILITY_INDEX_COMPETITIVE_MIN': ThresholdEvidence(
+        parameter='DURABILITY_INDEX_COMPETITIVE_MIN',
+        value=90.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Durability performance-maintenance framing from endurance science translated into tier thresholds.',
+        rationale='Lower boundary for competitive durability tier in DI classification.',
+        policy_note='MODERATE policy threshold; tune with observed race-decay distributions.',
+    ),
+
+    'DURABILITY_INDEX_ELITE_MIN': ThresholdEvidence(
+        parameter='DURABILITY_INDEX_ELITE_MIN',
+        value=95.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal Durability Index policy ladder (T5-27 Category A extraction).',
+        rationale='Lower boundary for elite durability tier in DI classification.',
+        policy_note='HEURISTIC policy threshold for high durability messaging.',
+    ),
+
+    'DURABILITY_INDEX_WORLD_CLASS_MIN': ThresholdEvidence(
+        parameter='DURABILITY_INDEX_WORLD_CLASS_MIN',
+        value=98.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal Durability Index policy ladder (T5-27 Category A extraction).',
+        rationale='Lower boundary for world-class durability tier in DI classification.',
+        policy_note='HEURISTIC upper-tier threshold; validate with elite-level longitudinal data.',
+    ),
+
+    'DURABILITY_PROTOCOL_BASE_BUILD_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PROTOCOL_BASE_BUILD_MAX',
+        value=88.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal DurabilityEngine training-protocol ladder (T5-27 Category A extraction).',
+        rationale='Upper boundary for base-build protocol assignment.',
+        policy_note='HEURISTIC protocol-routing threshold for durability intervention intensity.',
+    ),
+
+    'DURABILITY_PROTOCOL_MAINTENANCE_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PROTOCOL_MAINTENANCE_MAX',
+        value=93.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal DurabilityEngine training-protocol ladder (T5-27 Category A extraction).',
+        rationale='Upper boundary for maintenance protocol assignment before strong-durability path.',
+        policy_note='HEURISTIC protocol-routing threshold; calibrate with adaptation rates.',
+    ),
+
+    'DURABILITY_PROTOCOL_STRONG_MAX': ThresholdEvidence(
+        parameter='DURABILITY_PROTOCOL_STRONG_MAX',
+        value=96.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal DurabilityEngine training-protocol ladder (T5-27 Category A extraction).',
+        rationale='Upper boundary for strong-durability protocol before elite-maintain path.',
+        policy_note='HEURISTIC protocol-routing threshold for top-end durability maintenance.',
+    ),
+
     'ACWR_SEVERE_DETRAINING_MAX': ThresholdEvidence(
         parameter='ACWR_SEVERE_DETRAINING_MAX',
         value=0.5,
