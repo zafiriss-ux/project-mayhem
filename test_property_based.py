@@ -370,7 +370,10 @@ class TestScienceEdgeCaseProperties:
     @given(
         acwr=st.one_of(
             st.none(),
-            st.from_regex(r".*[^\d\.\+\-eE].*", fullmatch=True),
+            st.text().filter(
+                lambda value: not value.strip()
+                or _is_non_numeric_string(value)
+            ),
             st.just(float("nan")),
         )
     )
@@ -379,3 +382,11 @@ class TestScienceEdgeCaseProperties:
 
         state = VolumeLoadGauge().resolve(tsb_value=-10.0, acwr=acwr, glycogen_debt=1.0)
         assert state.components["acwr"] == "GREEN"
+
+
+def _is_non_numeric_string(value: str) -> bool:
+    try:
+        float(value)
+    except ValueError:
+        return True
+    return False
