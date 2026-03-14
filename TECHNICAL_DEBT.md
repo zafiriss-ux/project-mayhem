@@ -2000,37 +2000,33 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-18 · Adaptive Memory — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13; **UNBLOCKED 2026-03-14** — T5-19 closed NO_ACTION)
 **Source:** Binder1 audit finding B4 / DEC-1 §4.2 (Architect DEC 2026-03-13). `1.08` and time windows confirmed Category A.
 **Type:** Threshold Governance
-**Priority:** P3. Independent. Separate PR required. Blocked behind architect confirmation for `2.5/2.0/1.5` multipliers — see T5-19.
+**Priority:** P3. Independent. Separate PR required.
 **Workflow Path:** A
 
-**Scope (approved for execution):**
+**Scope (approved for execution — final):**
 - `1.08` — pace threshold for mechanical load risk in `titan/science/adaptive_memory.py`: **Category A** (governance-facing risk output). Extract to `thresholds.py`.
 - `24`, `36`, `48`, `72` — time window constants (hours) for SDI/supercompensation in `titan/science/adaptive_memory.py`: **Category A** (recalibration targets). Extract to `thresholds.py`.
 
-**Scope (blocked — see T5-19):** `2.5`, `2.0`, `1.5` multipliers — pending architect classification.
+**Scope explicitly excluded:** `2.5`, `2.0`, `1.5` multipliers — confirmed Category B (algorithm-local) by Architect Follow-up Pack 2026-03-14 (T5-19 NO_ACTION). These values remain inline. Do NOT extract.
 
-**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals for approved values; `thresholds.py` + `evidence_registry.py` updated; all gates green.
+**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals for approved values (`1.08`, `24`, `36`, `48`, `72`); `thresholds.py` + `evidence_registry.py` updated; all gates green.
 
 **Effort:** ~2h. Extraction + evidence registry entries.
 
 ---
 
-### T5-19 · Adaptive Memory — multiplier constants classification required (BLOCKED) 🔴 BLOCKED
+### T5-19 · Adaptive Memory — multiplier constants classification required ✅ CLOSED (NO_ACTION) 2026-03-14
 
-**Status:** BLOCKED — awaiting architect input (DEC-1 §4.2 open item; 2026-03-13)
+**Status:** ✅ CLOSED — NO_ACTION (Architect Follow-up Pack 2026-03-14)
 **Source:** Binder1 audit finding B4 / DEC-1 §4.2.
-**Type:** Open Question
-**Priority:** Blocked until answered.
+**Type:** Open Question → RESOLVED
+**Priority:** N/A — closed.
 **Workflow Path:** A
 
-**Open question (for Architect):** In `titan/science/adaptive_memory.py`, are the values `2.5`, `2.0`, `1.5` (used as multiplier/score constants):
-- **Category A** (governance-facing: appear in output or governance pipeline) → must extract to `thresholds.py`
-- **Category B** (algorithm-local: internal multipliers with no recalibration meaning) → may remain inline
-
-**Codex may NOT move these values** until an explicit DEC resolves this question. If Category A is confirmed, implementation joins T5-18 scope or becomes T5-18 child. If Category B confirmed, this entry is closed as NO_ACTION.
+**Architect Decision (2026-03-14):** The values `2.5`, `2.0`, `1.5` in `titan/science/adaptive_memory.py` are **Category B** (algorithm-local multipliers). They are internal scoring multipliers with no governance-facing output and no recalibration meaning. They remain inline. No extraction to `thresholds.py` required. T5-18 is unblocked. T5-18 scope does NOT expand to include these values.
 
 ---
 
@@ -2106,31 +2102,50 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-24 · Biomechanics Engine — orchestration contract typed as `object` 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only, no execution without brief)
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; **architect brief issued 2026-03-14** — implementation approved, not yet in execution queue)
 **Source:** Binder1 audit / DEC-2 §Biomechanics Engine Pattern P7 finding.
 **Type:** Architecture Debt
-**Priority:** P4. Blocked — requires typed protocol/interface design brief.
+**Priority:** P4. Independent. Not before its turn in execution order.
 **Workflow Path:** A
 **Cross-reference:** T4-26 (RESOLVED 2026-03-07) addressed the orchestration contract layer broadly. T5-24 captures the specific `biomechanics: object` annotation gap not covered by T4-26's resolution scope.
 
-**Scope:** The orchestration layer consumes biomechanics engine output via a weakly typed `object` contract. A typed `TypedDict` or `Protocol` for the biomechanics payload is needed. No implementation before dedicated architect brief.
+**Architect Brief (issued 2026-03-14):**
+- **Typed artifact:** `BiomechanicsEngineProtocol` (a `Protocol` class, not `TypedDict`)
+- **Location:** `titan/orchestration/contracts.py`
+- **Method:** Perform call-site audit first — identify every method of `BiomechanicsEngine` that is actually consumed by the orchestration layer. Define the `Protocol` only for methods that are genuinely consumed. No speculative interface surface.
+- **Constraint:** Do not add methods to the Protocol that are not already called at real call sites. Surface area must match actual consumption, not the full engine API.
 
-**Acceptance gate (binary):** Defined when brief is written.
+**Scope (approved for execution):**
+1. Read-only call-site audit: map every reference to `BiomechanicsEngine` in `titan/orchestration/` and any other layer that consumes it.
+2. Define `BiomechanicsEngineProtocol` in `titan/orchestration/contracts.py` covering only the consumed methods.
+3. Update the orchestration contract annotation from `object` to `BiomechanicsEngineProtocol`.
+4. Add/update tests in `tests/titan/orchestration/test_contracts.py` to assert Protocol compliance.
+
+**Acceptance gates (binary):**
+- `BiomechanicsEngineProtocol` exists in `titan/orchestration/contracts.py`
+- Protocol surface covers only methods verified as consumed at real call sites (no speculative methods)
+- Orchestration layer annotation updated from `object`
+- Test asserting Protocol compliance passes
+- All three mandatory gates green
 
 ---
 
 ### T5-25 · Database Manager — SQLite/PostgreSQL interface parity matrix absent 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; **DEBT ONLY / NO IMPLEMENTATION — Architect Follow-up Pack 2026-03-14**)
 **Source:** Binder1 audit / DEC-2 §Database Manager Pattern P7 variant finding.
-**Type:** Architecture Debt
+**Type:** Architecture Debt — design artefact
 **Priority:** P4. Related to T5-08-B but distinct scope.
 **Workflow Path:** A
 **Cross-reference:** T5-08-B (OPEN — full ADR-0044 PostgreSQL migration) addresses implementation. T5-25 addresses the **interface parity matrix** as a documented architectural contract (what methods/behaviours must be identical across both backends). These are related but distinct debt items.
 
-**Scope:** No documented parity matrix exists between `SQLiteDatabaseManager` and `PostgreSQLDatabaseManager`. The union of concrete managers lacks a verified common contract. Implement after T5-08-B is RESOLVED or in parallel as a design artefact.
+**Architect Decision (2026-03-14):** This is a **design artefact / parity matrix document**, not a code task. No Codex implementation handoff is permitted for T5-25 at this stage.
 
-**Acceptance gate (binary):** Defined when brief is written.
+**Sequencing constraint:** The parity matrix document must exist before T5-08-B D7 and D9 can be closed. It is a prerequisite for those deliverables. T5-25 is NOT blocked by T5-08-B — it may be authored independently — but it must be complete before T5-08-B D7/D9 are declared DONE.
+
+**Scope:** Produce a documented parity matrix specifying which methods and behaviours must be identical across `SQLiteDatabaseManager` and `PostgreSQLDatabaseManager`, and what backend-specific divergence (if any) is explicitly permitted. Output is a document (architecture artefact), not code.
+
+**Acceptance gate (binary):** Parity matrix document exists and is accepted by Architect; T5-08-B D7 and D9 may not close without it.
 
 ---
 
@@ -2251,32 +2266,51 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-33 · Periodization/Automated — implicit coupling contract absent 🔴 OPEN
+### T5-33 · Periodization/Automated — implicit coupling contract absent 🔴 BLOCKED PENDING MORE INPUT
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Status:** BLOCKED PENDING MORE INPUT (Architect Follow-up Pack 2026-03-14 — read-only audit required before any brief can be written)
 **Source:** Binder1 audit / DEC-2 §Periodization + Equipment Pattern P7 variant finding.
 **Type:** Architecture Debt
-**Priority:** P4. Blocked — requires dedicated brief before implementation.
+**Priority:** P4. No implementation. Audit-only next step.
 **Workflow Path:** A
 
 **Scope:** `titan/core/periodization.py` and `titan/science/automated_periodization.py` have an implicit coupling contract with no formal boundary test or typed interface. Architectural coupling risk. No implementation before dedicated architect brief.
 
-**Acceptance gate (binary):** Defined when brief is written.
+**Required Codex read-only audit (before brief can be written):**
+The architect requires answers to the following three questions from a read-only audit of `titan/core/periodization.py` and `titan/science/automated_periodization.py`. No code changes. No implementation.
+
+a) **Direction:** Who calls whom? Does `automated_periodization.py` call into `core/periodization.py`, or the reverse, or is there bidirectional coupling?
+b) **Layer violation:** Is there a layer violation across the `core/` ↔ `science/` boundary? (i.e., does a science module import from core, or does core import from science — in either direction?)
+c) **Shared mutable state:** Is there any shared mutable state between the two modules (e.g., shared object references, shared DB handles, shared in-memory structures)?
+
+**Next step:** Codex performs read-only audit, answers (a)–(c). Architect then writes brief. No implementation until brief is accepted.
+
+**Acceptance gate (binary):** Defined when brief is written (after audit answers are received).
 
 ---
 
-### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) 🔴 OPEN
+### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) 🔴 BLOCKED PENDING MORE INPUT
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; debt-only)
+**Status:** BLOCKED PENDING MORE INPUT (Architect Follow-up Pack 2026-03-14 — contract-first, read-only audit required before implementation)
 **Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
 **Type:** Architecture Debt
-**Priority:** P4. Blocked — requires dedicated brief before implementation.
+**Priority:** P4. No implementation yet. Contract-first.
 **Workflow Path:** A
 **Cross-reference:** T4-07 (RESOLVED — wizard credential duplicates), T4-12 (RESOLVED — wizard interactive flow tests) are distinct. T5-34 addresses the architectural divergence between the `titan/ui/setup_wizard.py` and `launcher/wizard.py` bootstrap contracts — a different concern not covered by T4-07/T4-12.
 
-**Scope:** Two wizard implementations (`titan/ui/setup_wizard.py` and `launcher/wizard.py`) have diverging contracts (env persistence, validation logic, error handling). Architectural consistency risk for first-run setup flows. No implementation before dedicated architect brief.
+**Scope:** Two wizard implementations (`titan/ui/setup_wizard.py` and `launcher/wizard.py`) have diverging contracts (env persistence, validation logic, error handling). Architectural consistency risk for first-run setup flows.
 
-**Acceptance gate (binary):** Defined when brief is written.
+**Required Codex read-only audit (before brief can be written):**
+The architect requires a read-only audit mapping the divergence between the two wizard implementations. No code changes. No implementation. Contract-first.
+
+Audit scope:
+- **`titan/ui/setup_wizard.py`:** What does it write to env / config? What fields does it validate? What are the validation rules?
+- **`launcher/wizard.py`:** What does it write to env / config? What fields does it validate? What are the validation rules?
+- **Divergence map:** Where do the two implementations produce different outputs, apply different validation, or handle errors differently? Produce a side-by-side delta.
+
+**Next step:** Codex performs read-only audit and produces divergence map. Architect then writes implementation brief. No implementation until brief is accepted.
+
+**Acceptance gate (binary):** Defined when brief is written (after divergence map is received).
 
 ---
 
@@ -2583,14 +2617,14 @@ When an item is completed, mark it here with date and PR reference:
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
 | T5-17 | OPEN (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | — |
-| T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; partial — T5-19 blocked) | — |
-| T5-19 | BLOCKED (architect confirmation required — 2.5/2.0/1.5 multipliers Category A or B?) | — |
+| T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; **UNBLOCKED 2026-03-14** — T5-19 NO_ACTION; scope: 1.08 + 24/36/48/72 only) | — |
+| T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
 | T5-21 | OPEN (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | — |
 | T5-22 | OPEN (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | — |
 | T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
-| T5-24 | OPEN (Phase 8 — Biomechanics typed orchestration contract; blocked pending brief) | — |
-| T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; related to T5-08-B) | — |
+| T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
+| T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |
 | T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
@@ -2598,8 +2632,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
 | T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
 | T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
-| T5-33 | OPEN (Phase 8 — Periodization/Automated coupling contract; blocked pending brief) | — |
-| T5-34 | OPEN (Phase 8 — Dual wizard bootstrap contract alignment; blocked pending brief) | — |
+| T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |
+| T5-34 | BLOCKED PENDING MORE INPUT (read-only audit required: divergence map of titan/ui/setup_wizard.py vs launcher/wizard.py; contract-first; no implementation) | — |
 | T5-35 | OPEN (Phase 8 — VLG threshold extraction; separate PR; cross-check overlap with T5-17) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
@@ -2635,3 +2669,76 @@ created; no implementation performed; no architectural decisions invented. Deliv
 updated accordingly. Next deliverable: D2a.*
 
 *Updated: 2026-03-13 — Binder1 audit triage complete. DEC-1 (ACWR / Adaptive Memory / APL) and DEC-2 (remaining 29 modules) issued by Architect. T5-17 through T5-35 registered (19 new entries). T5-19 BLOCKED (architect clarification required on Adaptive Memory 2.5/2.0/1.5 multipliers). T5-24, T5-25, T5-33, T5-34 debt-only (require dedicated brief before implementation). Records steward pass — no implementation performed, no new architectural decisions. Codex MAY START execution only after deterministic baseline confirmed (≥1845 passed) and per DEC-2 §9 Execution Authorization conditions.*
+
+*Updated: 2026-03-14 — Records Steward Follow-up Pass (Architect Follow-up Pack 2026-03-14). Six records updates applied:*
+*(1) T5-19 CLOSED NO_ACTION: 2.5/2.0/1.5 multipliers confirmed Category B (algorithm-local); remain inline; no extraction required.*
+*(2) T5-18 UNBLOCKED: scope confirmed as 1.08 + 24/36/48/72 only; 2.5/2.0/1.5 explicitly excluded from scope.*
+*(3) T5-24 brief issued: BiomechanicsEngineProtocol in titan/orchestration/contracts.py; call-site audit first; Protocol covers only consumed methods; no speculative surface.*
+*(4) T5-25 confirmed DEBT ONLY / NO IMPLEMENTATION: design artefact (parity matrix document); sequencing constraint: must exist before T5-08-B D7/D9 close.*
+*(5) T5-33 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (call direction, layer violation, shared mutable state) before brief can be written.*
+*(6) T5-34 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (divergence map: titan/ui/setup_wizard.py vs launcher/wizard.py) before brief can be written.*
+*No implementation performed. No new architectural decisions. No renumbering.*
+
+---
+
+## Codex Handoff Blocks (Records Steward — 2026-03-14)
+
+> These blocks are prepared by the records steward for the next Codex session. They are informational only.
+> Codex must run all mandatory gates (ruff, pytest -W error, pytest) before beginning any implementation.
+
+### Block A — Immediate Next Implementation Task
+
+**Governance Contracts S1 Hardening**
+
+This is the current execution lane, unchanged after T5-26 closure. Codex resumes Governance Contracts S1 hardening per the existing task queue. No new task branching. No blocked items from T5-24 / T5-25 / T5-33 / T5-34 are in this lane.
+
+Execution order for S1 hardening is defined by the existing TECHNICAL_DEBT.md task sequence. T5-18 is now unblocked (T5-19 closed) and may be scheduled in its normal position in the T5-1x execution queue.
+
+---
+
+### Block B — Architect-Approved Future Implementation Item
+
+**T5-24 · BiomechanicsEngineProtocol**
+
+Status: Brief issued 2026-03-14. NOT yet in execution queue — not before its turn in execution order.
+
+When T5-24 reaches its turn:
+1. Perform call-site audit (read-only): map all references to `BiomechanicsEngine` in `titan/orchestration/` and consuming layers.
+2. Define `BiomechanicsEngineProtocol` in `titan/orchestration/contracts.py` — consumed methods only, no speculative surface.
+3. Update orchestration contract annotation from `object` to `BiomechanicsEngineProtocol`.
+4. Add Protocol compliance test in `tests/titan/orchestration/test_contracts.py`.
+5. All three mandatory gates green.
+
+Do NOT begin T5-24 implementation until it is assigned in execution order.
+
+---
+
+### Block C — Audit-Only Handoff (T5-33)
+
+**T5-33 · Periodization/Automated — read-only audit**
+
+Task: Read `titan/core/periodization.py` and `titan/science/automated_periodization.py`. No code changes. Answer three questions:
+
+a) Who calls whom? (direction of coupling)
+b) Is there a layer violation across core/ ↔ science/?
+c) Is there any shared mutable state between the two modules?
+
+Return answers to Architect. No implementation. No brief writing. No TECHNICAL_DEBT.md changes.
+
+---
+
+### Block D — Audit-Only Handoff (T5-34)
+
+**T5-34 · Setup Wizard — read-only audit**
+
+Task: Read `titan/ui/setup_wizard.py` and `launcher/wizard.py`. No code changes. Produce a divergence map covering:
+
+- What `titan/ui/setup_wizard.py` writes/validates (env fields, validation rules, error handling)
+- What `launcher/wizard.py` writes/validates (env fields, validation rules, error handling)
+- Where they diverge (side-by-side delta)
+
+Return divergence map to Architect. No implementation. No brief writing. No TECHNICAL_DEBT.md changes.
+
+> **T5-25 has no Codex implementation handoff.** It is a design artefact to be authored by the architect or under direct architect direction. Codex does not implement T5-25.
+
+---
