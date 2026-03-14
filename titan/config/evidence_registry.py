@@ -773,6 +773,76 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC readiness hard floor for intensity governance.',
     ),
 
+    'VLG_TSB_YELLOW_MIN': ThresholdEvidence(
+        parameter='VLG_TSB_YELLOW_MIN',
+        value=-30.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Coggan performance management chart interpretation adopted for VLG warning-band policy (T5-35 Category A extraction).',
+        rationale='TSB at or below -30 marks the VLG yellow load-band boundary before hard-stop red threshold at HARD_STOP_TSB_FLOOR.',
+        policy_note='MODERATE policy threshold; warning-band boundary should be recalibrated with cohort fatigue outcomes.',
+    ),
+
+    'VLG_ACWR_RED_MIN': ThresholdEvidence(
+        parameter='VLG_ACWR_RED_MIN',
+        value=0.7,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal VLG low-load red-band policy boundary (T5-35 Category A extraction).',
+        rationale='ACWR below 0.7 is treated as red due to severe under-load / detraining risk band in VLG.',
+        policy_note='HEURISTIC lower red boundary for VLG ACWR banding.',
+    ),
+
+    'VLG_ACWR_YELLOW_MIN': ThresholdEvidence(
+        parameter='VLG_ACWR_YELLOW_MIN',
+        value=0.8,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) load-band conventions translated to VLG caution range (T5-35 Category A extraction).',
+        rationale='ACWR below 0.8 enters VLG yellow caution band before red under-load boundary.',
+        policy_note='MODERATE policy boundary aligned with common ACWR detraining-risk interpretation.',
+    ),
+
+    'VLG_ACWR_YELLOW_MAX': ThresholdEvidence(
+        parameter='VLG_ACWR_YELLOW_MAX',
+        value=1.3,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) conservative safe-band upper boundary adapted for VLG caution model (T5-35 Category A extraction).',
+        rationale='ACWR above 1.3 enters VLG yellow caution band, indicating elevated spike risk versus green range.',
+        policy_note='MODERATE policy boundary harmonized with conservative load-spike governance.',
+    ),
+
+    'VLG_ACWR_RED_MAX': ThresholdEvidence(
+        parameter='VLG_ACWR_RED_MAX',
+        value=1.5,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) elevated-risk load band translated to VLG red policy boundary (T5-35 Category A extraction).',
+        rationale='ACWR above 1.5 is classified red in VLG due to high load-spike risk.',
+        policy_note='MODERATE policy boundary for high-risk ACWR escalation in VLG.',
+    ),
+
+    'VLG_GLYCOGEN_YELLOW_MIN': ThresholdEvidence(
+        parameter='VLG_GLYCOGEN_YELLOW_MIN',
+        value=4.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal glycogen debt accumulator policy threshold for VLG caution band (T5-35 Category A extraction).',
+        rationale='Glycogen debt at or above 4.0 enters VLG yellow caution state.',
+        policy_note='HEURISTIC warning threshold pending outcome-linked calibration.',
+    ),
+
+    'VLG_GLYCOGEN_RED_MIN': ThresholdEvidence(
+        parameter='VLG_GLYCOGEN_RED_MIN',
+        value=7.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal glycogen debt accumulator policy threshold for VLG red band (T5-35 Category A extraction).',
+        rationale='Glycogen debt at or above 7.0 triggers VLG red state for severe depletion risk.',
+        policy_note='HEURISTIC hard boundary aligned with VO2_GLYCOGEN_DEBT_MAX governance ceiling.',
+    ),
+
     'FATIGUE_SORENESS_PERIPHERAL_MIN': ThresholdEvidence(
         parameter='FATIGUE_SORENESS_PERIPHERAL_MIN',
         value=5.0,
