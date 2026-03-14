@@ -42,3 +42,19 @@ def test_durability_training_protocol_covers_below_93_branch() -> None:
         "Monthly: Tempo after easy mileage (durability stimulus)",
         "One long run per month: Progressive with Hammer finish",
     ]
+
+
+def test_assess_pace_durability_returns_invalid_for_zero_first_third_average() -> None:
+    km_splits = [0.0] * 4 + [300.0] * 8
+
+    result = DurabilityEngine.assess_pace_durability(km_splits, target_pace_sec=300.0)
+
+    assert result == (None, "Invalid pace data for durability assessment", None)
+
+
+def test_assess_pace_durability_returns_invalid_for_negative_first_third_average() -> None:
+    km_splits = [-10.0] * 4 + [300.0] * 8
+
+    result = DurabilityEngine.assess_pace_durability(km_splits, target_pace_sec=300.0)
+
+    assert result == (None, "Invalid pace data for durability assessment", None)

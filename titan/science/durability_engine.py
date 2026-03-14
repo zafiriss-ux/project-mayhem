@@ -48,6 +48,9 @@ class DurabilityEngine:
         avg_first = sum(first_third) / len(first_third)
         avg_last = sum(last_third) / len(last_third)
 
+        if avg_first <= 0:
+            return None, "Invalid pace data for durability assessment", None
+
         pace_decay_pct = ((avg_last - avg_first) / avg_first) * 100
 
         # Status interpretation
