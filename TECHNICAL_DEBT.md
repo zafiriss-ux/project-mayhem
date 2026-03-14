@@ -2500,6 +2500,16 @@ update `CLAUDE.md` agent roster. Author ADR-0046 documenting the decision.
 **If pilot fails:** close this entry as REJECTED, document root cause here, do not retry
 without architectural discussion.
 
+**Opus verdict logging rule (forward policy — applies from 2026-03-14 onward):**
+
+Each Opus QA verdict must be logged next to the relevant task entry using this format:
+
+```
+[Opus QA] Task: <task-id> — QA PASS | QA FAIL — <one-line rationale>
+```
+
+This rule applies to all future verdicts. Historical tasks (T5-35 and earlier) are not retrofitted.
+
 ---
 
 All Tier 5 decisions up to T5-16-A have been locked or deferred. T5-17 through T5-35 are new entries from the Binder1 audit triage (DEC-1 + DEC-2, 2026-03-13). T5-19, T5-24, T5-25, T5-33, T5-34 are blocked pending architect input or brief. See Tracking table for completion dates and PRs.
@@ -2712,6 +2722,29 @@ updated accordingly. Next deliverable: D2a.*
 *(5) T5-33 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (call direction, layer violation, shared mutable state) before brief can be written.*
 *(6) T5-34 re-classed BLOCKED PENDING MORE INPUT: read-only audit required (divergence map: titan/ui/setup_wizard.py vs launcher/wizard.py) before brief can be written.*
 *No implementation performed. No new architectural decisions. No renumbering.*
+
+---
+
+## Weekly Governance Log
+
+### Template
+
+```
+### Friday Review — YYYY-MM-DD
+State: healthy | caution | blocked
+Learnings: [1–5 bullet points]
+Required updates: [specific docs/registries]
+Next-week tactic: [1–3 sentences max]
+```
+
+### Friday Review — 2026-03-14
+State: healthy
+Learnings:
+- T5-17 through T5-35 Binder1 audit complete; 17 of 19 items resolved; T5-25 confirmed debt-only; T5-33 and T5-34 remain blocked pending read-only audit
+- T5-19 NO_ACTION classification established the Category A / Category B threshold-extraction distinction; this lens is now reusable for future audit passes
+- Opus QA Trigger Policy formalised as standalone section in AGENTS.md; forward verdict logging rule established
+Required updates: AGENTS.md (Opus QA Trigger Policy added this session); TECHNICAL_DEBT.md (Weekly Governance Log template added)
+Next-week tactic: T5-33 and T5-34 read-only audits are the only remaining Codex-facing items before the next architect loop. No implementation work is unblocked in those two items until audit results are returned and architect issues a brief.
 
 ---
 
