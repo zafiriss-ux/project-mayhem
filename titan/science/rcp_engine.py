@@ -42,6 +42,9 @@ class RCPEngine:
         if len(pace_segments_sec) < 4 or len(hr_segments) < 4:
             return None, None, None, "Need 4+ segments for RCP detection"
 
+        if any(pace <= 0 for pace in pace_segments_sec):
+            return None, None, None, "Invalid pace segments for RCP detection"
+
         # Calculate HR:Pace efficiency for each segment
         hr_pace_ratios = []
         for hr, pace in zip(hr_segments, pace_segments_sec, strict=False):
