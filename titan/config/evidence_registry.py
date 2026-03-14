@@ -692,6 +692,66 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
     ),
 
+    'ACWR_SEVERE_DETRAINING_MAX': ThresholdEvidence(
+        parameter='ACWR_SEVERE_DETRAINING_MAX',
+        value=0.5,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Policy decision based on ACWR workload banding conventions used in endurance coaching.',
+        rationale='Lower boundary for severe detraining classification in ACWR status output.',
+        policy_note='HEURISTIC: governance-facing policy threshold pending OutcomeTracker calibration.',
+    ),
+
+    'ACWR_DETRAINING_RISK_MAX': ThresholdEvidence(
+        parameter='ACWR_DETRAINING_RISK_MAX',
+        value=0.8,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) Br J Sports Med 50(5):273–280; policy boundary for low-load ACWR band.',
+        rationale='Upper boundary for detraining risk and lower boundary for maintenance classification.',
+        policy_note='MODERATE: ACWR principle is supported; exact cut-point is policy-tuned.',
+    ),
+
+    'ACWR_MAINTENANCE_MAX': ThresholdEvidence(
+        parameter='ACWR_MAINTENANCE_MAX',
+        value=1.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Policy decision for neutral ACWR maintenance banding.',
+        rationale='Upper boundary of maintenance classification used by ACWR status and risk score.',
+        policy_note='HEURISTIC policy threshold; calibrate against adaptation outcomes by block type.',
+    ),
+
+    'ACWR_SWEET_SPOT_MAX': ThresholdEvidence(
+        parameter='ACWR_SWEET_SPOT_MAX',
+        value=1.3,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) Br J Sports Med 50(5):273–280; commonly used ACWR upper safe band.',
+        rationale='Upper boundary for sweet-spot adaptation zone and moderate-risk onset.',
+        policy_note='MODERATE: widely used in load management; monitor cohort-specific false positives.',
+    ),
+
+    'ACWR_MODERATE_RISK_MAX': ThresholdEvidence(
+        parameter='ACWR_MODERATE_RISK_MAX',
+        value=1.5,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Gabbett (2016) Br J Sports Med 50(5):273–280; elevated injury risk above ACWR 1.5.',
+        rationale='Upper boundary for moderate-risk status before high-risk classification.',
+        policy_note='MODERATE: policy threshold with broad literature support for elevated risk band.',
+    ),
+
+    'ACWR_HIGH_RISK_MAX': ThresholdEvidence(
+        parameter='ACWR_HIGH_RISK_MAX',
+        value=1.7,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Policy extension of ACWR risk ladder for injury-risk score gradation.',
+        rationale='Upper boundary for high-risk score bucket before extreme-risk classification.',
+        policy_note='HEURISTIC band split for scoring granularity; validate with OutcomeTracker incidents.',
+    ),
+
     'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
         parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
         value=0.25,
