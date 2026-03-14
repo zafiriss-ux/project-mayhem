@@ -2332,17 +2332,33 @@ Audit scope:
 
 ---
 
-### T5-35 · Volume Load Gauge — threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-35 · Volume Load Gauge — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: cfe263e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit / DEC-2 §Volume Load Gauge Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
 **Workflow Path:** A
 
-**Scope:** Inline threshold literals in `titan/science/volume_load_gauge.py`: `-30` (TSB floor band), `0.7`, `0.8`, `1.3`, `1.5` (ACWR bands), `4`, `7` (glycogen debt bands) — Category A policy thresholds. Extract to `thresholds.py`. Note: some of these (e.g. `0.8`, `1.3`, `1.5`) may overlap with T5-17 (ACWR engine constants) — when implementing, verify whether a shared constant or a per-module constant is architecturally correct.
+**Original state (pre-fix):** `titan/science/volume_load_gauge.py` embedded Category A policy thresholds inline: `-30` (TSB caution boundary), `0.7`/`0.8`/`1.3`/`1.5` (ACWR red/yellow bands), and `4`/`7` (glycogen caution/red bands). These lived outside `thresholds.py`, so source-of-truth discipline and evidence linkage were incomplete.
 
-**Acceptance gate (binary):** Same pattern as T5-17.
+**Resolution:**
+
+- Added VLG Category A constants to `titan/config/thresholds.py` (`VLG_TSB_YELLOW_MIN`, ACWR band boundaries, glycogen band boundaries).
+- Replaced inline literals in `titan/science/volume_load_gauge.py` with imports from `thresholds.py` only (no behavior changes).
+- Added required evidence entries in `titan/config/evidence_registry.py` for each extracted VLG threshold.
+- Extended `tests/titan/science/test_volume_load_gauge.py` with threshold-boundary source-of-truth assertions and registry-entry presence checks.
+- Mandatory gates passed at closure:
+
+```bash
+ruff check .
+python -m pytest -q -W error::pytest.PytestWarning
+python -m pytest -q
+```
+
+**Test count at closure:** 1933 passed.
+
+**Task learning:** Threshold extraction work is lower-risk when tests assert both boundary behavior and evidence-registry presence, because threshold centralization can drift either in runtime logic or in provenance metadata.
 
 **Effort:** ~2h.
 
@@ -2652,7 +2668,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-32 | ✅ RESOLVED (Phase 8 — Lactate Logic threshold extraction; separate PR) | 2026-03-14 |
 | T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |
 | T5-34 | BLOCKED PENDING MORE INPUT (read-only audit required: divergence map of titan/ui/setup_wizard.py vs launcher/wizard.py; contract-first; no implementation) | — |
-| T5-35 | OPEN (Phase 8 — VLG threshold extraction; separate PR; cross-check overlap with T5-17) | — |
+| T5-35 | ✅ RESOLVED | 2026-03-14 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |

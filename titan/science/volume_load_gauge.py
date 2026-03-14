@@ -3,7 +3,16 @@
 import math
 from dataclasses import dataclass
 
-from titan.config.thresholds import HARD_STOP_TSB_FLOOR
+from titan.config.thresholds import (
+    HARD_STOP_TSB_FLOOR,
+    VLG_ACWR_RED_MAX,
+    VLG_ACWR_RED_MIN,
+    VLG_ACWR_YELLOW_MAX,
+    VLG_ACWR_YELLOW_MIN,
+    VLG_GLYCOGEN_RED_MIN,
+    VLG_GLYCOGEN_YELLOW_MIN,
+    VLG_TSB_YELLOW_MIN,
+)
 
 MODULE_VERSION = "1.0.0"
 
@@ -27,15 +36,15 @@ class VolumeLoadGauge:
             return "RED"
         if tsb_value <= HARD_STOP_TSB_FLOOR:
             return "RED"
-        if tsb_value <= -30:
+        if tsb_value <= VLG_TSB_YELLOW_MIN:
             return "YELLOW"
         return "GREEN"
 
     @staticmethod
     def _acwr_color(acwr: float) -> str:
-        if acwr > 1.5 or acwr < 0.7:
+        if acwr > VLG_ACWR_RED_MAX or acwr < VLG_ACWR_RED_MIN:
             return "RED"
-        if acwr > 1.3 or acwr < 0.8:
+        if acwr > VLG_ACWR_YELLOW_MAX or acwr < VLG_ACWR_YELLOW_MIN:
             return "YELLOW"
         return "GREEN"
 
@@ -43,9 +52,9 @@ class VolumeLoadGauge:
     def _glycogen_color(glycogen_debt: float) -> str:
         if not math.isfinite(glycogen_debt):
             return "RED"
-        if glycogen_debt >= 7:
+        if glycogen_debt >= VLG_GLYCOGEN_RED_MIN:
             return "RED"
-        if glycogen_debt >= 4:
+        if glycogen_debt >= VLG_GLYCOGEN_YELLOW_MIN:
             return "YELLOW"
         return "GREEN"
 
