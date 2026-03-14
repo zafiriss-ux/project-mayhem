@@ -647,7 +647,7 @@ class DailyCoach:
             vlg_state      = vlg_state,
             afi_constraints = afi_constraints,
             phase          = _phase,
-            cs_confidence  = getattr(self.cs_tracker, 'confidence', 1.0),
+            cs_confidence  = _safe_float(getattr(self.cs_tracker, 'confidence', 1.0), 1.0),
         )
 
         # Capture session type before governance modifies it (for outcome tracking)
