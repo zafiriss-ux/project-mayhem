@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1867 tests all green as of HRV Engine — S1 hardening close (2026-03-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1868 tests all green as of HRV Engine — S1 hardening close (2026-03-14). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
