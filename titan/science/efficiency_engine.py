@@ -136,6 +136,8 @@ class EfficiencyEngine:
 
         recent_avg = sum(recent) / len(recent)
         previous_avg = sum(previous) / len(previous)
+        if previous_avg <= 0:
+            return "Need historical data"
 
         improvement_pct = ((recent_avg - previous_avg) / previous_avg) * 100
 
