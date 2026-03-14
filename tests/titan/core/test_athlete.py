@@ -92,6 +92,36 @@ def test_from_dict_is_deterministic_for_identical_inputs():
     assert profile_a.to_dict() == profile_b.to_dict()
 
 
+def test_to_dict_and_from_dict_round_trip_preserves_weight_guardrails(athlete_profile_factory):
+    profile = athlete_profile_factory()
+    profile.weight_floor = 63.1
+    profile.weight_ceiling = 64.3
+    profile.weight_panic = 62.4
+
+    round_tripped = UniversalAthleteProfile.from_dict(profile.to_dict())
+
+    assert round_tripped.weight_floor == 63.1
+    assert round_tripped.weight_ceiling == 64.3
+    assert round_tripped.weight_panic == 62.4
+
+
+def test_to_dict_includes_weight_guardrail_fields(athlete_profile_factory):
+    profile = athlete_profile_factory()
+
+    data = profile.to_dict()
+
+    assert "weight_ceiling" in data
+    assert "weight_panic" in data
+
+
+def test_from_dict_missing_weight_guardrail_fields_keeps_constructor_defaults():
+    profile = UniversalAthleteProfile.from_dict({"name": "Runner"})
+
+    assert profile.weight_floor == 75.0
+    assert profile.weight_ceiling == 76.2
+    assert profile.weight_panic == 74.5
+
+
 def test_generated_athlete_ids_are_unique_when_created_in_same_second(monkeypatch):
     fixed_now = datetime(2026, 3, 14, 9, 30, 0)
 

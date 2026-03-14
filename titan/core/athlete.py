@@ -286,6 +286,8 @@ class UniversalAthleteProfile:
             "target_time": self.target_time,
             "personal_bests": self.personal_bests,
             "weight_floor": self.weight_floor,
+            "weight_ceiling": self.weight_ceiling,
+            "weight_panic": self.weight_panic,
             "paces": self.paces,
             "critical_speed_m_per_s": self.critical_speed_m_per_s,
             "d_prime_m": self.d_prime_m
@@ -326,6 +328,8 @@ class UniversalAthleteProfile:
         profile.target_time = data.get("target_time")
         profile.personal_bests = data.get("personal_bests", {})
         profile.weight_floor = data.get("weight_floor", 75.0)
+        profile.weight_ceiling = data.get("weight_ceiling", 76.2)
+        profile.weight_panic = data.get("weight_panic", 74.5)
         profile.paces = data.get("paces", profile.paces)
 
         return profile
