@@ -93,6 +93,20 @@ class TestAutonomicFusionEngine:
         )
         assert abs(afi - 0.40) < 0.001
 
+    def test_afi_exact_boundaries_without_hrr_are_plus_minus_0_65(self, afe):
+        max_afi = afe.calculate_afi(1.0, hrr_60_today=None, sleep_depth_delta=1.0, resp_delta=1.0)
+        min_afi = afe.calculate_afi(-1.0, hrr_60_today=None, sleep_depth_delta=-1.0, resp_delta=-1.0)
+
+        assert max_afi == 0.65
+        assert min_afi == -0.65
+
+    def test_calculate_afi_docstring_declares_no_hrr_boundary_range(self):
+        from titan.science.autonomic_engine import AutonomicFusionEngine
+
+        doc = AutonomicFusionEngine.calculate_afi.__doc__
+        assert doc is not None
+        assert "[-0.65, +0.65] when HRR is unavailable" in doc
+
     # ── HRR z-score ────────────────────────────────────────────────────────
 
     def test_hrr_zscore_insufficient_history_returns_zero(self, afe):

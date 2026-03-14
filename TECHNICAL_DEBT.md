@@ -2050,7 +2050,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-21 · Athlete Profile — athlete_id timestamp collision risk ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: b108421.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Code Hardening
 **Priority:** P2. Test-first required.
@@ -2086,7 +2086,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-23 · Autonomic Fusion Engine — docstring claims ±20/+10 range, formula is ±15 ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 6c4edfb.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 0f5fede.
 **Source:** Binder1 audit / DEC-2 §AFI finding. Architect decision: formula is authoritative; docstring is wrong.
 **Type:** Documentation Correction
 **Priority:** P4. Independent.
@@ -2094,9 +2094,9 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 **Original state (pre-fix):** `titan/science/autonomic_engine.py` documented `afi_modifier` as `-20..+10` in `get_readiness_constraints()`, while the authoritative formula `round(afi_final * 15)` already produced a symmetric `[-15, +15]` range.
 
-**Resolution:** Added test-first AFI boundary coverage in `tests/test_science_engines.py` to assert exact readiness modifier boundaries (`-15` and `+15`) and to assert the documentation-facing range string in the `get_readiness_constraints()` docstring. Updated the `get_readiness_constraints()` docstring and adjacent explanatory comment in `titan/science/autonomic_engine.py` from `-20/+10` to `-15/+15` without changing the AFI formula. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1898 collected/passed tests.
+**Resolution:** Added test-first AFI range coverage in `tests/test_science_engines.py` to assert the exact no-HRR formula boundaries (`-0.65` and `+0.65`) and to assert the documentation-facing range string for `calculate_afi()`. Updated the `calculate_afi()` docstring in `titan/science/autonomic_engine.py` so the documented range behavior matches the authoritative formula without changing the AFI formula itself. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1904 collected/passed tests.
 
-**Task learning:** Formula/docstring drift can survive for long periods when behavior tests exist but documentation-facing contract checks do not; one explicit docstring assertion prevents this class of trust erosion with minimal maintenance cost.
+**Task learning:** Optional-signal formulas need explicit documentation of both "signal present" and "signal absent" ranges; otherwise, mathematically correct code can still expose contract ambiguity at integration boundaries.
 
 **Effort:** ~30 minutes.
 
@@ -2624,7 +2624,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
 | T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile serialization completeness incl guardrails + CS/D'; test-first) | 2026-03-14 |
-| T5-23 | ✅ RESOLVED (Phase 8 — AFI docstring range correction ±15; formula unchanged) | 2026-03-14 |
+| T5-23 | ✅ RESOLVED (Phase 8 — AFI no-HRR range docstring correction; formula unchanged) | 2026-03-14 |
 | T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |

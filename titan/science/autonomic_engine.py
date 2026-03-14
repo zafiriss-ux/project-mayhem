@@ -107,7 +107,9 @@ class AutonomicFusionEngine:
                                  Positive = lower rate (better parasympathetic tone).
 
         Returns:
-            AFI in [-1.0, +1.0].
+            AFI in [-1.0, +1.0] when HRR is available and at non-extreme input mixes.
+            AFI in [-0.65, +0.65] when HRR is unavailable (hrr_60_today=None),
+            based on active weights 0.40 + 0.15 + 0.10.
         """
         W = self._WEIGHTS
 
