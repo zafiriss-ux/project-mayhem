@@ -2084,17 +2084,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-23 · Autonomic Fusion Engine — docstring claims ±20/+10 range, formula is ±15 🔴 OPEN
+### T5-23 · Autonomic Fusion Engine — docstring claims ±20/+10 range, formula is ±15 ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 6c4edfb.
 **Source:** Binder1 audit / DEC-2 §AFI finding. Architect decision: formula is authoritative; docstring is wrong.
 **Type:** Documentation Correction
 **Priority:** P4. Independent.
 **Workflow Path:** A
 
-**Scope:** `titan/science/autonomic_fusion.py` docstring states AFI modifier range `-20..+10`; the formula `round(afi_final * 15)` correctly produces `±15` (symmetric). Fix: update docstring to `±15`; add range assertion test.
+**Original state (pre-fix):** `titan/science/autonomic_engine.py` documented `afi_modifier` as `-20..+10` in `get_readiness_constraints()`, while the authoritative formula `round(afi_final * 15)` already produced a symmetric `[-15, +15]` range.
 
-**Acceptance gate (binary):** Docstring updated; test asserts output range `[-15, +15]`; gates green.
+**Resolution:** Added test-first AFI boundary coverage in `tests/test_science_engines.py` to assert exact readiness modifier boundaries (`-15` and `+15`) and to assert the documentation-facing range string in the `get_readiness_constraints()` docstring. Updated the `get_readiness_constraints()` docstring and adjacent explanatory comment in `titan/science/autonomic_engine.py` from `-20/+10` to `-15/+15` without changing the AFI formula. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1898 collected/passed tests.
+
+**Task learning:** Formula/docstring drift can survive for long periods when behavior tests exist but documentation-facing contract checks do not; one explicit docstring assertion prevents this class of trust erosion with minimal maintenance cost.
 
 **Effort:** ~30 minutes.
 
@@ -2622,7 +2624,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
 | T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | 2026-03-14 |
-| T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
+| T5-23 | ✅ RESOLVED (Phase 8 — AFI docstring range correction ±15; formula unchanged) | 2026-03-14 |
 | T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |

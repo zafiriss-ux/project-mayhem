@@ -203,13 +203,13 @@ class AutonomicFusionEngine:
         Returns:
             Dict with:
               afi          — final AFI score (-1 to +1)
-              afi_modifier — integer readiness adjustment (-20 to +10)
+              afi_modifier — integer readiness adjustment (-15 to +15)
               parasympathetic_guard — guard result dict
               readiness_clamp — ceiling for readiness score
               disabled_zones  — list of heart-rate zones to block
         """
         guard = self.check_parasympathetic_guard(hrv_pct_above_baseline, hrr_60_today)
-        # Map AFI linearly to readiness modifier: -1 → -20, +1 → +10
+        # Map AFI linearly to readiness modifier: -1 → -15, +1 → +15
         afi_modifier = round(afi_final * 15)
         return {
             "afi": afi_final,

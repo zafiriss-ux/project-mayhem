@@ -230,6 +230,19 @@ class TestAutonomicFusionEngine:
         result = afe.get_readiness_constraints(-1.0, 5.0)
         assert result['afi_modifier'] < 0
 
+    def test_get_readiness_constraints_modifier_exact_boundaries(self, afe):
+        low = afe.get_readiness_constraints(-1.0, 5.0)
+        high = afe.get_readiness_constraints(1.0, 5.0)
+        assert low['afi_modifier'] == -15
+        assert high['afi_modifier'] == 15
+
+    def test_get_readiness_constraints_docstring_matches_formula_range(self):
+        from titan.science.autonomic_engine import AutonomicFusionEngine
+
+        doc = AutonomicFusionEngine.get_readiness_constraints.__doc__
+        assert doc is not None
+        assert "(-15 to +15)" in doc
+
     def test_get_readiness_constraints_guard_propagates_clamp(self, afe):
         """Guard clamp must flow through to the constraints dict."""
         self._add_hrr_history(afe, [40, 41, 42, 43, 44])
