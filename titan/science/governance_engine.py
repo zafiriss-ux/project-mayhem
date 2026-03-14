@@ -390,7 +390,13 @@ class GovernanceEngine:
 
     def _check_vo2_eligibility(self, session_plan: dict, context: dict) -> dict | None:
         session_type = str(session_plan.get("session_type", "")).upper()
-        zone = int(session_plan.get("zone", session_plan.get("max_zone", 0)) or 0)
+        zone_raw = session_plan.get("zone", session_plan.get("max_zone", 0))
+        zone_invalid = False
+        try:
+            zone = int(zone_raw or 0)
+        except (TypeError, ValueError):
+            zone = 5
+            zone_invalid = True
         is_vo2_session = session_type in self._VO2_SESSIONS or (
             session_type == "INTERVALS" and zone == 5
         )
@@ -431,6 +437,18 @@ class GovernanceEngine:
         failed: list[str] = []
         reasons: list[str] = []
         details: list[dict[str, Any]] = []
+
+        if zone_invalid:
+            failed.append("V1")
+            reasons.append(f"zone must be numeric (actual: {zone_raw!r})")
+            details.append(
+                {
+                    "code": "V1",
+                    "metric": "zone",
+                    "operator": "numeric",
+                    "actual": zone_raw,
+                }
+            )
 
         # V1: ACWR in [VO2_ACWR_MIN, VO2_ACWR_MAX]
         if acwr_invalid:
@@ -585,7 +603,11 @@ class GovernanceEngine:
                 "reason": "VO2max session requires: " + ", ".join(reasons),
             }
             _has_invalid_input = (
-                acwr_invalid or readiness_invalid or glycogen_debt_invalid or fatigue_level_invalid
+                zone_invalid
+                or acwr_invalid
+                or readiness_invalid
+                or glycogen_debt_invalid
+                or fatigue_level_invalid
             )
             _gate_event(
                 "VO2_ELIGIBILITY",
@@ -599,6 +621,7 @@ class GovernanceEngine:
                     "readiness_invalid": readiness_invalid,
                     "glycogen_debt_invalid": glycogen_debt_invalid,
                     "fatigue_level_invalid": fatigue_level_invalid,
+                    "zone_invalid": zone_invalid,
                 },
             )
             return result
@@ -616,9 +639,11 @@ class GovernanceEngine:
 
     def _check_fueling_gate(self, session_plan: dict, context: dict) -> dict | None:
         session_type = str(session_plan.get("session_type", "")).upper()
-        duration = int(
-            session_plan.get("duration_min", context.get("planned_duration_min", 0)) or 0
-        )
+        duration_raw = session_plan.get("duration_min", context.get("planned_duration_min", 0))
+        try:
+            duration = int(duration_raw or 0)
+        except (TypeError, ValueError):
+            duration = 90
         fueling_confirmed = bool(context.get("fueling_confirmed", False))
 
         if fueling_confirmed:

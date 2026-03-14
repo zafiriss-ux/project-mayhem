@@ -254,6 +254,24 @@ class TestGovernanceOutputContract:
         # None inputs: acwr/readiness_score both treated as None → safe defaults
         self._assert_contract(result)
 
+    def test_contract_on_non_numeric_zone_denies_and_downgrades(self, gov):
+        plan = {'session_type': 'INTERVALS', 'zone': 'bad-zone', 'duration_min': 45}
+        result = gov.apply_constraints(plan, _vo2_context())
+
+        self._assert_contract(result)
+        assert result['session_type'] == 'TEMPO'
+        assert result['vo2_eligibility']['eligible'] is False
+        assert result['vo2_eligibility']['original_session'] == 'INTERVALS_Z5'
+        assert result['vo2_eligibility']['downgraded_to'] == 'TEMPO'
+
+    def test_non_numeric_duration_min_applies_fueling_lock_fallback(self, gov):
+        plan = {'session_type': 'RACE', 'duration_min': 'ninety'}
+        result = gov.apply_constraints(plan, {'fueling_confirmed': False})
+
+        assert result['session_type'] == 'TEMPO'
+        assert result['fueling_gate']['action'] == 'LOCK'
+        assert result['fueling_gate']['phase'] == 3
+
     def test_no_contract_check_for_non_vo2_session(self, gov):
         plan = {'session_type': 'TEMPO', 'duration_min': 60}
         result = gov.apply_constraints(plan, _vo2_context())
