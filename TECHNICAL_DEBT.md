@@ -2740,7 +2740,7 @@ Next-week tactic: [1–3 sentences max]
 ### Friday Review — 2026-03-14
 State: healthy
 Learnings:
-- T5-17 through T5-35 Binder1 audit complete; 17 of 19 items resolved; T5-25 confirmed debt-only; T5-33 and T5-34 remain blocked pending read-only audit
+- T5-17 through T5-35 Binder1 audit complete; 16 of 19 items resolved/closed; T5-25 confirmed debt-only / no implementation; T5-33 and T5-34 remain blocked pending read-only audit
 - T5-19 NO_ACTION classification established the Category A / Category B threshold-extraction distinction; this lens is now reusable for future audit passes
 - Opus QA Trigger Policy formalised as standalone section in AGENTS.md; forward verdict logging rule established
 Required updates: AGENTS.md (Opus QA Trigger Policy added this session); TECHNICAL_DEBT.md (Weekly Governance Log template added)
