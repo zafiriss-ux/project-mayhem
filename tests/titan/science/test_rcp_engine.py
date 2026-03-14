@@ -34,3 +34,18 @@ def test_estimate_rcp_from_progressive_test_rejects_zero_or_negative_pace() -> N
     )
 
     assert result == (None, None, None, "Invalid pace segments for RCP detection")
+
+
+def test_estimate_rcp_from_progressive_test_rejects_exact_zero_pace() -> None:
+    """A zero pace segment must trigger the safe invalid-path return."""
+    pace_segments = [360.0, 330.0, 0.0, 285.0]
+    hr_segments = [130, 142, 154, 170]
+    rpe_segments = [3.0, 4.0, 5.0, 7.0]
+
+    result = RCPEngine.estimate_rcp_from_progressive_test(
+        pace_segments,
+        hr_segments,
+        rpe_segments,
+    )
+
+    assert result == (None, None, None, "Invalid pace segments for RCP detection")
