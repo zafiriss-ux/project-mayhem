@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1860 tests all green as of Governance Contracts — S1 hardening close (2026-03-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1863 tests all green as of Garmin Live Sync — S1 hardening close (2026-03-14). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

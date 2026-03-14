@@ -136,6 +136,29 @@ def test_sync_weight_error_emits_failure_class_event(monkeypatch):
     assert fields["subsystem"] == "sync_weight"
 
 
+def test_sync_weight_empty_all_day_summaries_does_not_raise(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(
+        _FakeClient(
+            weigh_ins={
+                "dailyWeightSummaries": [
+                    {
+                        "calendarDate": "2026-03-03",
+                        "allDayWeightSummaries": [],
+                    }
+                ]
+            }
+        )
+    )
+
+    result = sync.sync_weight(days_back=7)
+
+    assert result == []
+    assert ("weight_synced", {"subsystem": "sync_weight", "count": 0, "days_back": 7, "detail": "Synced 0 weight entries"}) in events
+
+
 def test_sync_sleep_happy_path(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -255,6 +278,48 @@ def test_sync_hrv_top_level_exception_emits_api_unavailable(monkeypatch):
     action, fields = events[0]
     assert action == GARMIN_API_UNAVAILABLE
     assert fields["subsystem"] == "sync_hrv"
+
+
+def test_resolve_sync_timeout_seconds_invalid_env_falls_back_to_default(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "not-an-int")
+
+    timeout_s = garmin_sync._resolve_sync_timeout_seconds()
+
+    assert timeout_s == garmin_sync._DEFAULT_SYNC_TIMEOUT_S
+    assert events == [
+        (
+            "invalid_sync_timeout",
+            {
+                "subsystem": "sync_all",
+                "configured_timeout": "not-an-int",
+                "fallback_timeout_s": garmin_sync._DEFAULT_SYNC_TIMEOUT_S,
+                "detail": "GARMIN_SYNC_TIMEOUT_S is not an integer; using default timeout.",
+            },
+        )
+    ]
+
+
+def test_resolve_sync_timeout_seconds_negative_env_falls_back_to_default(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "-5")
+
+    timeout_s = garmin_sync._resolve_sync_timeout_seconds()
+
+    assert timeout_s == garmin_sync._DEFAULT_SYNC_TIMEOUT_S
+    assert events == [
+        (
+            "negative_sync_timeout",
+            {
+                "subsystem": "sync_all",
+                "configured_timeout": -5,
+                "fallback_timeout_s": garmin_sync._DEFAULT_SYNC_TIMEOUT_S,
+                "detail": "GARMIN_SYNC_TIMEOUT_S is negative; using default timeout.",
+            },
+        )
+    ]
 
 
 def test_connect_happy_path_sets_connected(monkeypatch):
