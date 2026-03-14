@@ -2066,19 +2066,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-22 · Athlete Profile — to_dict/from_dict omits weight_ceiling and weight_panic fields 🔴 OPEN
+### T5-22 · Athlete Profile — to_dict/from_dict omits weight_ceiling and weight_panic fields ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Serialization Contract
 **Priority:** P2. Test-first required.
 **Workflow Path:** A
 
-**Scope:** `weight_ceiling` and `weight_panic` fields are not included in `to_dict()` / `from_dict()` round-trip. Architect decision: these fields **persist** (not transient). Fix: add to both methods.
+**Original state (pre-fix):** `weight_ceiling` and `weight_panic` were omitted from `to_dict()` / `from_dict()`, so serialization round-trips reset those thresholds to constructor defaults instead of preserving profile-specific values.
 
-**Fix (approved):** Test first: round-trip serialization asserts field preservation → add fields to `to_dict` / `from_dict` → test green.
+**Resolution:** Added test-first coverage in `tests/titan/core/test_athlete.py` for weight guardrail field presence, round-trip preservation, and missing-field default boundary behavior. Updated `UniversalAthleteProfile.to_dict()` and `UniversalAthleteProfile.from_dict()` in `titan/core/athlete.py` to serialize and hydrate `weight_ceiling` and `weight_panic` alongside `weight_floor`. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1896 collected/passed tests.
 
-**Acceptance gate (binary):** Round-trip test passes; gates green.
+**Task learning:** Serialization contract drift can silently reintroduce constructor defaults during hydration; explicit key-presence tests plus round-trip assertions catch this class of persistence bug before state corruption reaches orchestration paths.
 
 **Effort:** ~1h.
 
@@ -2169,7 +2169,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-27 · Durability Engine — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Durability Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR after S1–S3 execution items.
@@ -2185,7 +2185,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-28 · Fatigue Engine — soreness threshold literal not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Fatigue Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2201,7 +2201,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-29 · Garmin Live Sync — sleep/HRV partial-failure policy inconsistency 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Garmin Live Sync finding. Architect decision: align `sync_sleep()` to per-day best-effort model.
 **Type:** Behavior Contract
 **Priority:** P2. Intentional behavior change — test-first required.
@@ -2219,7 +2219,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-30 · Governance Engine — class-local threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Governance Engine Pattern P5 finding. Category A confirmed by architect in DEC-2.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2236,7 +2236,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-31 · Intensity Governor — threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Intensity Governor Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2252,7 +2252,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2316,7 +2316,7 @@ Audit scope:
 
 ### T5-35 · Volume Load Gauge — threshold literals not centralized in thresholds.py 🔴 OPEN
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
 **Source:** Binder1 audit / DEC-2 §Volume Load Gauge Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2621,7 +2621,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | OPEN (Phase 8 — APL DailyCoach→apl.resolve arg contract integration test) | — |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
-| T5-22 | OPEN (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | — |
+| T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile to_dict/from_dict field completeness; test-first) | 2026-03-14 |
 | T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
 | T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
