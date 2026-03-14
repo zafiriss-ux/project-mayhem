@@ -1975,24 +1975,20 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-17 · ACWR Engine — threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-17 · ACWR Engine — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit finding A5 / DEC-1 §3.2 (Architect DEC 2026-03-13). Category A policy thresholds confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR from test-gap fixes (T5-17 must not be bundled with S1–S3 execution items).
 **Workflow Path:** A
 **Cross-reference:** T1-05 (RESOLVED — dead ACWR duplicates in `constants.py`) is distinct. T1-05 removed dead code from `utils/constants.py`. T5-17 covers inline policy threshold literals remaining inside the science module itself.
 
-**Scope:** The following numeric literals in `titan/science/acwr_engine.py` are Category A policy thresholds (governance-facing, recalibration targets) and must be extracted to `titan/config/thresholds.py`:
-`0.5`, `0.8`, `1.0`, `1.3`, `1.5`, `1.7`
+**Original state (pre-fix):** The Category A ACWR literals `0.5`, `0.8`, `1.0`, `1.3`, `1.5`, and `1.7` were embedded directly in `titan/science/acwr_engine.py` and were not centralized under `titan/config/thresholds.py` with provenance records.
 
-**Acceptance gate (binary):**
-- `thresholds.py` defines constants for all six values with STRONG/HEURISTIC provenance entries in `evidence_registry.py`
-- `acwr_engine.py` references the constants; zero inline literals remain for these values
-- `ruff check .` → zero findings
-- `python -m pytest -q -W error::pytest.PytestWarning` → 100% green
-- `python -m pytest -q` → test count ≥ baseline
+**Resolution:** Added six ACWR Category A constants to `titan/config/thresholds.py`, added matching provenance entries to `titan/config/evidence_registry.py`, and rewired `titan/science/acwr_engine.py` to reference only centralized thresholds for both `calculate_acwr()` and `injury_risk_score()`. Extended `tests/titan/science/test_acwr_engine_thresholds.py` with threshold-source boundary assertions and risk-score boundary coverage. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1914 collected/passed tests.
+
+**Task learning:** Boundary-oriented tests should consume threshold constants directly when extracting policy literals; this locks source-of-truth behavior and prevents silent reintroduction of inline policy values.
 
 **Effort:** ~2h. Extraction + evidence registry + cross-reference tests.
 
@@ -2620,7 +2616,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
-| T5-17 | OPEN (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | — |
+| T5-17 | ✅ RESOLVED (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-18 | ✅ RESOLVED (Phase 8 — Adaptive Memory 1.08 + time windows extraction; scope respected: 1.08 + 24/36/48/72 only; Category B 2.5/2.0/1.5 left inline per T5-19) | 2026-03-14 |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | ✅ RESOLVED | 2026-03-14 |
