@@ -692,6 +692,87 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
     ),
 
+
+    'INTENSITY_GOVERNOR_DRIFT_YELLOW': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_DRIFT_YELLOW',
+        value=3.5,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Cardiac drift above 3.5% is treated as early intensity-governor caution signaling.',
+        policy_note='HEURISTIC governance-facing yellow boundary for drift risk escalation.',
+    ),
+
+    'INTENSITY_GOVERNOR_DRIFT_RED': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_DRIFT_RED',
+        value=5.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Cardiac drift above 5.0% triggers red intensity-governor restriction.',
+        policy_note='HEURISTIC governance-facing red boundary for drift risk escalation.',
+    ),
+
+    'INTENSITY_GOVERNOR_GLYCOGEN_YELLOW': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_GLYCOGEN_YELLOW',
+        value=4.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Glycogen debt at or above 4.0 is treated as a yellow caution boundary.',
+        policy_note='HEURISTIC policy boundary for glycogen-related caution signals.',
+    ),
+
+    'INTENSITY_GOVERNOR_GLYCOGEN_RED': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_GLYCOGEN_RED',
+        value=6.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Glycogen debt above 6.0 triggers red intensity-governor restriction.',
+        policy_note='HEURISTIC policy boundary for severe glycogen debt signal escalation.',
+    ),
+
+    'INTENSITY_GOVERNOR_ACWR_YELLOW': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_ACWR_YELLOW',
+        value=1.3,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='ACWR above 1.3 is treated as a yellow caution boundary for load-spike risk.',
+        policy_note='HEURISTIC policy boundary aligned with conservative load-governance practice.',
+    ),
+
+    'INTENSITY_GOVERNOR_ACWR_RED': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_ACWR_RED',
+        value=1.5,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='ACWR above 1.5 triggers red intensity-governor restriction for elevated risk.',
+        policy_note='HEURISTIC policy boundary for high load-spike risk condition.',
+    ),
+
+    'INTENSITY_GOVERNOR_READINESS_YELLOW': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_READINESS_YELLOW',
+        value=55.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Readiness below 55 shifts governance to yellow caution to reduce intensity.',
+        policy_note='HEURISTIC readiness caution floor for intensity governance.',
+    ),
+
+    'INTENSITY_GOVERNOR_READINESS_RED': ThresholdEvidence(
+        parameter='INTENSITY_GOVERNOR_READINESS_RED',
+        value=40.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal IntensityGovernor policy threshold (T5-31 Category A extraction).',
+        rationale='Readiness below 40 triggers red restriction and easy-session override.',
+        policy_note='HEURISTIC readiness hard floor for intensity governance.',
+    ),
+
     'FATIGUE_SORENESS_PERIPHERAL_MIN': ThresholdEvidence(
         parameter='FATIGUE_SORENESS_PERIPHERAL_MIN',
         value=5.0,

@@ -2,6 +2,17 @@
 
 from dataclasses import dataclass
 
+from titan.config.thresholds import (
+    INTENSITY_GOVERNOR_ACWR_RED,
+    INTENSITY_GOVERNOR_ACWR_YELLOW,
+    INTENSITY_GOVERNOR_DRIFT_RED,
+    INTENSITY_GOVERNOR_DRIFT_YELLOW,
+    INTENSITY_GOVERNOR_GLYCOGEN_RED,
+    INTENSITY_GOVERNOR_GLYCOGEN_YELLOW,
+    INTENSITY_GOVERNOR_READINESS_RED,
+    INTENSITY_GOVERNOR_READINESS_YELLOW,
+)
+
 MODULE_VERSION = "1.0.0"
 
 
@@ -19,16 +30,16 @@ class IntensityGovernor:
     """Aggregate advisory signals into a governance-ready gate decision."""
 
     def _color_drift(self, value: float) -> str:
-        if value > 5.0:
+        if value > INTENSITY_GOVERNOR_DRIFT_RED:
             return "RED"
-        if value > 3.5:
+        if value > INTENSITY_GOVERNOR_DRIFT_YELLOW:
             return "YELLOW"
         return "GREEN"
 
     def _color_glycogen(self, value: float) -> str:
-        if value > 6.0:
+        if value > INTENSITY_GOVERNOR_GLYCOGEN_RED:
             return "RED"
-        if value >= 4.0:
+        if value >= INTENSITY_GOVERNOR_GLYCOGEN_YELLOW:
             return "YELLOW"
         return "GREEN"
 
@@ -41,16 +52,16 @@ class IntensityGovernor:
         return "GREEN"
 
     def _color_acwr(self, value: float) -> str:
-        if value > 1.5:
+        if value > INTENSITY_GOVERNOR_ACWR_RED:
             return "RED"
-        if value > 1.3:
+        if value > INTENSITY_GOVERNOR_ACWR_YELLOW:
             return "YELLOW"
         return "GREEN"
 
     def _color_readiness(self, value: float) -> str:
-        if value < 40:
+        if value < INTENSITY_GOVERNOR_READINESS_RED:
             return "RED"
-        if value < 55:
+        if value < INTENSITY_GOVERNOR_READINESS_YELLOW:
             return "YELLOW"
         return "GREEN"
 
@@ -77,10 +88,34 @@ class IntensityGovernor:
             if color in {"YELLOW", "RED"}:
                 triggered_signals.append(key)
 
-        evaluate_numeric("drift", "drift_pct", 3.5, 5.0, self._color_drift)
-        evaluate_numeric("glycogen_debt", "glycogen_debt", 4.0, 6.0, self._color_glycogen)
-        evaluate_numeric("acwr", "acwr", 1.3, 1.5, self._color_acwr)
-        evaluate_numeric("readiness", "readiness_score", 55.0, 40.0, self._color_readiness)
+        evaluate_numeric(
+            "drift",
+            "drift_pct",
+            INTENSITY_GOVERNOR_DRIFT_YELLOW,
+            INTENSITY_GOVERNOR_DRIFT_RED,
+            self._color_drift,
+        )
+        evaluate_numeric(
+            "glycogen_debt",
+            "glycogen_debt",
+            INTENSITY_GOVERNOR_GLYCOGEN_YELLOW,
+            INTENSITY_GOVERNOR_GLYCOGEN_RED,
+            self._color_glycogen,
+        )
+        evaluate_numeric(
+            "acwr",
+            "acwr",
+            INTENSITY_GOVERNOR_ACWR_YELLOW,
+            INTENSITY_GOVERNOR_ACWR_RED,
+            self._color_acwr,
+        )
+        evaluate_numeric(
+            "readiness",
+            "readiness_score",
+            INTENSITY_GOVERNOR_READINESS_YELLOW,
+            INTENSITY_GOVERNOR_READINESS_RED,
+            self._color_readiness,
+        )
 
         if "fatigue_level" in signals:
             fatigue_value = str(signals.get("fatigue_level", "")).upper()
