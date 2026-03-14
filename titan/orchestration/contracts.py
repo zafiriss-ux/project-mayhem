@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict
+from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 
 
 class HRVSyncMetrics(TypedDict):
@@ -246,6 +246,13 @@ class AthleteProfile(TypedDict):
     goal: str
 
 
+
+
+@runtime_checkable
+class BiomechanicsEngineProtocol(Protocol):
+    ...
+
+
 class TitanContext(TypedDict):
     garmin: object
     weather: object
@@ -260,7 +267,7 @@ class TitanContext(TypedDict):
     trimp_engine: object
     fatigue_engine: object
     adaptive_memory: object
-    biomechanics: object
+    biomechanics: BiomechanicsEngineProtocol
     efficiency_engine: object
     durability_engine: object
     critical_speed: object
@@ -291,7 +298,7 @@ class TitanContextContract:
     trimp_engine: object
     fatigue_engine: object
     adaptive_memory: object
-    biomechanics: object
+    biomechanics: BiomechanicsEngineProtocol
     efficiency_engine: object
     durability_engine: object
     critical_speed: object

@@ -2068,7 +2068,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-22 · Athlete Profile — to_dict/from_dict omits weight_ceiling and weight_panic fields ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: ed1e20a.
 **Source:** Binder1 audit / DEC-2 §Athlete Profile finding. S2 hardening approved.
 **Type:** Serialization Contract
 **Priority:** P2. Test-first required.
@@ -2102,9 +2102,9 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-24 · Biomechanics Engine — orchestration contract typed as `object` 🔴 OPEN
+### T5-24 · Biomechanics Engine — orchestration contract typed as `object` ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; **architect brief issued 2026-03-14** — implementation approved, not yet in execution queue)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: ed1e20a.
 **Source:** Binder1 audit / DEC-2 §Biomechanics Engine Pattern P7 finding.
 **Type:** Architecture Debt
 **Priority:** P4. Independent. Not before its turn in execution order.
@@ -2625,7 +2625,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |
 | T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile serialization completeness incl guardrails + CS/D'; test-first) | 2026-03-14 |
 | T5-23 | ✅ RESOLVED (Phase 8 — AFI no-HRR range docstring correction; formula unchanged) | 2026-03-14 |
-| T5-24 | OPEN (Phase 8 — Biomechanics BiomechanicsEngineProtocol in contracts.py; call-site audit first; **brief issued 2026-03-14**; not yet in execution queue) | — |
+| T5-24 | ✅ RESOLVED (BiomechanicsEngineProtocol in contracts.py; call-site audit complete; brief issued 2026-03-14) | 2026-03-14 (commit: ed1e20a) |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |

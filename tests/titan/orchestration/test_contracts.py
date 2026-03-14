@@ -3,15 +3,18 @@ from dataclasses import FrozenInstanceError
 from typing import get_type_hints
 
 from titan.orchestration.contracts import (
+    BiomechanicsEngineProtocol,
     DailyCoachContextContract,
     DailyCoachingPayload,
     DecisionResult,
     GarminSyncResultContract,
     HRVSyncMetricsContract,
     PlannedEffect,
+    TitanContext,
     TitanContextContract,
     TodaySessionPlan,
 )
+from titan.science.biomechanics import BiomechanicsAnalysis
 
 
 def test_daily_coaching_payload_contract_happy_path_typed_fields():
@@ -403,3 +406,19 @@ def test_titan_context_contract_to_payload_boundary_nullable_weekly_plan():
     ).to_payload()
 
     assert payload["last_weekly_plan"] is None
+
+
+def test_titan_context_contract_annotation_uses_biomechanics_engine_protocol():
+    typed_dict_hints = get_type_hints(TitanContext, include_extras=True)
+    dataclass_hints = get_type_hints(TitanContextContract, include_extras=True)
+
+    assert typed_dict_hints["biomechanics"] is BiomechanicsEngineProtocol
+    assert dataclass_hints["biomechanics"] is BiomechanicsEngineProtocol
+
+
+def test_biomechanics_engine_protocol_structural_subtype_expectation():
+    assert isinstance(BiomechanicsAnalysis(), BiomechanicsEngineProtocol)
+
+
+def test_biomechanics_engine_protocol_boundary_has_no_speculative_members():
+    assert sorted(BiomechanicsEngineProtocol.__dict__.get("__annotations__", {})) == []
