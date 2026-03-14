@@ -1,5 +1,6 @@
 """Volume Load Gauge (VLG) — pure aggregation over TSB, ACWR and glycogen."""
 
+import math
 from dataclasses import dataclass
 
 from titan.config.thresholds import HARD_STOP_TSB_FLOOR
@@ -22,6 +23,8 @@ class VolumeLoadGauge:
 
     @staticmethod
     def _tsb_color(tsb_value: float) -> str:
+        if not math.isfinite(tsb_value):
+            return "RED"
         if tsb_value <= HARD_STOP_TSB_FLOOR:
             return "RED"
         if tsb_value <= -30:
@@ -38,6 +41,8 @@ class VolumeLoadGauge:
 
     @staticmethod
     def _glycogen_color(glycogen_debt: float) -> str:
+        if not math.isfinite(glycogen_debt):
+            return "RED"
         if glycogen_debt >= 7:
             return "RED"
         if glycogen_debt >= 4:
