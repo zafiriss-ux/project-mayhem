@@ -4,8 +4,11 @@ Complete athlete demographics, physiology, and training data
 """
 
 from datetime import datetime
+from itertools import count
 from typing import Any
 from uuid import uuid4
+
+_ATHLETE_ID_SEQUENCE = count()
 
 
 class UniversalAthleteProfile:
@@ -45,7 +48,9 @@ class UniversalAthleteProfile:
             athlete_id: Unique identifier (auto-generated if None)
             name: Athlete's name
         """
-        self.athlete_id = athlete_id or f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}"
+        self.athlete_id = athlete_id or (
+            f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}{next(_ATHLETE_ID_SEQUENCE):04d}"
+        )
         self.name = name
 
         # Demographics

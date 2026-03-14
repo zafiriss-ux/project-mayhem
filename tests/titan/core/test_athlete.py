@@ -1,4 +1,5 @@
 from datetime import datetime
+from types import SimpleNamespace
 
 from titan.core.athlete import UniversalAthleteProfile
 
@@ -155,3 +156,20 @@ def test_generated_athlete_ids_include_timestamp_prefix_and_unique_suffix(monkey
     assert profile_a.athlete_id.startswith(expected_prefix)
     assert profile_b.athlete_id.startswith(expected_prefix)
     assert profile_a.athlete_id.split("_", maxsplit=2)[2] != profile_b.athlete_id.split("_", maxsplit=2)[2]
+
+
+def test_generated_athlete_ids_remain_unique_when_timestamp_and_uuid_seed_collide(monkeypatch):
+    fixed_now = datetime(2026, 3, 14, 9, 30, 0)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr("titan.core.athlete.datetime", FixedDateTime)
+    monkeypatch.setattr("titan.core.athlete.uuid4", lambda: SimpleNamespace(hex="deadbeefcafebabe"))
+
+    profile_a = UniversalAthleteProfile()
+    profile_b = UniversalAthleteProfile()
+
+    assert profile_a.athlete_id != profile_b.athlete_id
