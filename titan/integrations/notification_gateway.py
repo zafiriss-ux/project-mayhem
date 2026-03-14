@@ -74,7 +74,20 @@ class TelegramChannel(NotificationChannel):
 
     def send(self, message: str) -> bool:
         try:
-            self._bot.send_daily_coaching(message)
+            payload = {
+                "session_type": "N/A",
+                "duration": "N/A",
+                "optimal_time": "N/A",
+                "dew_point": "N/A",
+                "conditions": "",
+                "hrv_status": "N/A",
+                "sleep_quality": "N/A",
+                "readiness_score": "N/A",
+                "nutrition_plan": "See /nutrition",
+                "shoe": "See /shoes",
+                "special_note": message,
+            }
+            self._bot.send_daily_coaching(payload)
             return True
         except Exception as exc:
             _gw_event("channel_failed", channel=self.name, error_class=type(exc).__name__)

@@ -25,6 +25,39 @@ class _FailTelegramBot:
         raise RuntimeError("Telegram API unavailable")
 
 
+class _StructuredTelegramBot:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    def send_daily_coaching(self, payload: dict) -> None:
+        self.calls.append(payload)
+        payload.get("session_type")
+
+
+def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
+    """TelegramChannel must adapt string messages to coaching payload dicts."""
+    bot = _StructuredTelegramBot()
+    telegram = TelegramChannel(bot)
+
+    ok = telegram.send("Morning briefing")
+
+    assert ok is True
+    assert len(bot.calls) == 1
+    assert bot.calls[0]["special_note"] == "Morning briefing"
+
+
+def test_telegram_channel_handles_empty_string_without_contract_shape_failure():
+    """Empty string payloads should still preserve dict contract for downstream."""
+    bot = _StructuredTelegramBot()
+    telegram = TelegramChannel(bot)
+
+    ok = telegram.send("")
+
+    assert ok is True
+    assert len(bot.calls) == 1
+    assert bot.calls[0]["special_note"] == ""
+
+
 def test_gateway_uses_primary_channel_on_success(tmp_path):
     """When Telegram succeeds, the file channel must not be written."""
     bot = _OkTelegramBot()
@@ -37,7 +70,21 @@ def test_gateway_uses_primary_channel_on_success(tmp_path):
     assert result.success is True
     assert result.channel == "telegram"
     assert result.tried == 1
-    assert bot.calls == ["Morning briefing"]
+    assert bot.calls == [
+        {
+            "session_type": "N/A",
+            "duration": "N/A",
+            "optimal_time": "N/A",
+            "dew_point": "N/A",
+            "conditions": "",
+            "hrv_status": "N/A",
+            "sleep_quality": "N/A",
+            "readiness_score": "N/A",
+            "nutrition_plan": "See /nutrition",
+            "shoe": "See /shoes",
+            "special_note": "Morning briefing",
+        }
+    ]
     # File channel must not have been triggered
     assert list(tmp_path.glob("daily_briefing_*.txt")) == []
 
