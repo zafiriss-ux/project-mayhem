@@ -53,6 +53,9 @@ DURABILITY_PROTOCOL_BASE_BUILD_MAX = 88
 DURABILITY_PROTOCOL_MAINTENANCE_MAX = 93
 DURABILITY_PROTOCOL_STRONG_MAX = 96
 
+# FatigueEngine thresholds — T5-28 (Category A only).
+FATIGUE_SORENESS_PERIPHERAL_MIN = 5
+
 # Data freshness thresholds — ADR-0026 / T1-19.
 # Hours since last Garmin sync before the system emits warnings or degrades confidence.
 STALE_DATA_WARN_HOURS = 24        # Emit data_freshness_warn structured log event

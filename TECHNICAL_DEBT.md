@@ -2187,17 +2187,21 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-28 · Fatigue Engine — soreness threshold literal not centralized in thresholds.py 🔴 OPEN
+### T5-28 · Fatigue Engine — soreness threshold literal not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: (recorded in git history for T5-28 close).
 **Source:** Binder1 audit / DEC-2 §Fatigue Engine Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
 **Workflow Path:** A
 
-**Scope:** Inline threshold `>= 5` (soreness score trigger in `titan/science/fatigue_engine.py`) is Category A — governance-facing policy threshold. Note: `SUBJECTIVE_FATIGUE_2OF4 = 6` is already in `thresholds.py`. The `>= 5` literal may represent a distinct policy threshold requiring its own named constant. Extract to `thresholds.py` with STRONG/HEURISTIC provenance.
+**Original state (pre-fix):** The soreness trigger threshold `>= 5` in `titan/science/fatigue_engine.py` was embedded inline and not centralized in `titan/config/thresholds.py`, with no matching provenance record in `titan/config/evidence_registry.py`.
 
-**Acceptance gate (binary):** Same pattern as T5-17.
+**Resolution:** Added `FATIGUE_SORENESS_PERIPHERAL_MIN` to `titan/config/thresholds.py`, added the corresponding `FATIGUE_SORENESS_PERIPHERAL_MIN` provenance entry to `titan/config/evidence_registry.py`, and rewired `titan/science/fatigue_engine.py` to consume the centralized constant. Added mirrored module tests in `tests/titan/science/test_fatigue_engine.py` to verify threshold-source-of-truth behavior (monkeypatched constant drives classification boundary ON/OFF). Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green.
+
+**Task learning:** For tiny threshold-extraction tasks, monkeypatching the imported constant in tests is the lowest-friction way to prove the engine reads from the canonical source rather than a silent inline literal.
+
+**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals remain for listed value; `thresholds.py` + `evidence_registry.py` updated; all gates green.
 
 **Effort:** ~1h.
 
@@ -2631,7 +2635,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | ✅ RESOLVED (Phase 8 — Durability Engine Category A threshold extraction to thresholds.py; separate PR scope) | 2026-03-14 |
-| T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
+| T5-28 | ✅ RESOLVED (Phase 8 — Fatigue Engine soreness threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |
 | T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
 | T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
