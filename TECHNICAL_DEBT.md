@@ -2134,19 +2134,19 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API 🔴 OPEN
+### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
 **Type:** API Contract
 **Priority:** P1. Test-first required. Highest priority within Binder1 batch.
 **Workflow Path:** A
 
-**Scope:** `main.py` `cb_drift` callback calls `drift_eng.analyze_cardiac_drift(...)` but `DriftEngine` does not have this method. Results in `AttributeError` at runtime.
+**Original state (pre-fix):** `main.py` `cb_drift` callback called `drift_eng.analyze_cardiac_drift(...)` but `DriftEngine` did not expose that method, producing an `AttributeError` risk at runtime.
 
-**Fix (approved — option a):** Add `analyze_cardiac_drift()` wrapper to `DriftEngine` that calls `compute_drift()` + `classify_drift()`. Caller (`main.py`) must not know internals. Test first: real `DriftEngine` instance + `cb_drift` path → no `AttributeError`.
+**Resolution:** Added `analyze_cardiac_drift()` wrapper to `DriftEngine` with guard handling for insufficient input and a stable payload contract (`drift_percent`, `assessment`, `lt_zone`), plus a new mirrored test module `tests/titan/science/test_drift_engine.py` covering the real `cb_drift` path and drift engine public methods. Final full-suite gate at closure: 1852 passed.
 
-**Acceptance gate (binary):** Failing test written first → wrapper added → test green → all gates green.
+**Task learning:** Telegram callback integrations can silently mask API contract drift by catching exceptions and returning user-facing error strings; a real-engine callback path test is necessary to keep orchestration wiring and engine public APIs aligned.
 
 **Effort:** ~2h.
 
@@ -2591,7 +2591,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-23 | OPEN (Phase 8 — AFI docstring range correction ±15; trivial) | — |
 | T5-24 | OPEN (Phase 8 — Biomechanics typed orchestration contract; blocked pending brief) | — |
 | T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; related to T5-08-B) | — |
-| T5-26 | OPEN (Phase 8 — Drift Engine analyze_cardiac_drift wrapper; P1; test-first) | — |
+| T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | OPEN (Phase 8 — Durability Engine threshold extraction; separate PR) | — |
 | T5-28 | OPEN (Phase 8 — Fatigue Engine soreness threshold extraction; separate PR) | — |
 | T5-29 | OPEN (Phase 8 — Garmin sync sleep/HRV partial-failure policy; test-first) | — |

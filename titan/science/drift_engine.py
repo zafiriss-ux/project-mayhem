@@ -31,3 +31,39 @@ class DriftEngine:
             return "ACCEPTABLE"
         else:
             return "POOR"
+
+    def analyze_cardiac_drift(self, hr_data: list[float], duration_min: int) -> dict[str, object]:
+        """Public wrapper for drift analysis used by orchestration callbacks."""
+        if len(hr_data) < 2 or duration_min <= 0:
+            return {
+                "drift_percent": 0.0,
+                "assessment": "INSUFFICIENT_DATA",
+                "lt_zone": "UNKNOWN",
+            }
+
+        split_index = len(hr_data) // 2
+        first_half = hr_data[:split_index]
+        second_half = hr_data[split_index:]
+        if not first_half or not second_half:
+            return {
+                "drift_percent": 0.0,
+                "assessment": "INSUFFICIENT_DATA",
+                "lt_zone": "UNKNOWN",
+            }
+
+        first_half_avg = sum(first_half) / len(first_half)
+        second_half_avg = sum(second_half) / len(second_half)
+        drift_percent = round(self.compute_drift(first_half_avg, second_half_avg), 1)
+        assessment = self.classify_drift(drift_percent)
+        if drift_percent < 3.0:
+            lt_zone = "BELOW_LT"
+        elif drift_percent < 5.0:
+            lt_zone = "AT_LT"
+        else:
+            lt_zone = "ABOVE_LT"
+
+        return {
+            "drift_percent": drift_percent,
+            "assessment": assessment,
+            "lt_zone": lt_zone,
+        }
