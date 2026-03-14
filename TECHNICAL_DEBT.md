@@ -2153,7 +2153,7 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ### T5-26 · Drift Engine — analyze_cardiac_drift wrapper missing from public API ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: d985d67.
 **Source:** Binder1 audit / DEC-2 §Drift Engine finding. S1-CRITICAL. Approved fix: option (a) — add wrapper to `DriftEngine`.
 **Type:** API Contract
 **Priority:** P1. Test-first required. Highest priority within Binder1 batch.
