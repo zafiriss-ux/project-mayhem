@@ -702,6 +702,26 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC governance-facing threshold for peripheral fatigue tagging.',
     ),
 
+    'GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD': ThresholdEvidence(
+        parameter='GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD',
+        value=0.80,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal GovernanceEngine policy threshold (T5-30 Category A extraction).',
+        rationale='Override ratio above 80% over 14 days indicates plan-integrity breakdown and triggers conservative quality-session lockdown.',
+        policy_note='HEURISTIC governance control threshold pending outcome-linked override efficacy calibration.',
+    ),
+
+    'GOVERNANCE_CS_CONFIDENCE_THRESHOLD': ThresholdEvidence(
+        parameter='GOVERNANCE_CS_CONFIDENCE_THRESHOLD',
+        value=0.70,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal GovernanceEngine policy threshold (T5-30 Category A extraction).',
+        rationale='Critical speed confidence below 70% indicates inadequate calibration quality for race-simulation guidance.',
+        policy_note='HEURISTIC confidence quality floor; tune with calibration success and downstream prediction error.',
+    ),
+
     'DURABILITY_PACE_DECAY_EXCELLENT_MAX': ThresholdEvidence(
         parameter='DURABILITY_PACE_DECAY_EXCELLENT_MAX',
         value=2.0,

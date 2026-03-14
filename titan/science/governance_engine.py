@@ -8,6 +8,8 @@ from typing import Any
 
 from titan.config.thresholds import (
     CANONICAL_LOCK_CODES,
+    GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
+    GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
@@ -72,8 +74,8 @@ def _gate_event(gate: str, action: str, **fields: Any) -> None:
 
 
 class GovernanceEngine:
-    OVERRIDE_LOCKDOWN_THRESHOLD: float = 0.80
-    CS_CONFIDENCE_THRESHOLD: float = 0.70
+    OVERRIDE_LOCKDOWN_THRESHOLD: float = GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD
+    CS_CONFIDENCE_THRESHOLD: float = GOVERNANCE_CS_CONFIDENCE_THRESHOLD
 
     _QUALITY_SESSIONS = frozenset({"INTERVALS", "TEMPO", "RACE", "HAMMER"})
     _VO2_SESSIONS = frozenset({"HAMMER", "RACE"})

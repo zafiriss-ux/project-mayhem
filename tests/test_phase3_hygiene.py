@@ -18,6 +18,10 @@ import logging
 
 import pytest
 
+from titan.config.thresholds import (
+    GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
+    GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
+)
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.governance_contracts import (
     ContractViolation,
@@ -221,6 +225,37 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.check_override_lockdown(_BadRatioDB())
         assert result["locked"] is True
         assert result["error_code"] == "COMPUTATION_ERROR"
+
+
+    def test_override_lockdown_uses_thresholds_constant_boundary(self):
+        class _BoundaryDB:
+            def get_override_ratio(self, days=14):
+                return GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD
+
+        result = gov.check_override_lockdown(_BoundaryDB())
+        assert result["locked"] is False
+
+    def test_override_lockdown_locks_above_thresholds_constant(self):
+        class _AboveBoundaryDB:
+            def get_override_ratio(self, days=14):
+                return GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD + 0.01
+
+        result = gov.check_override_lockdown(_AboveBoundaryDB())
+        assert result["locked"] is True
+
+    def test_cs_confidence_lock_uses_thresholds_constant_boundary(self):
+        class _Tracker:
+            confidence = GOVERNANCE_CS_CONFIDENCE_THRESHOLD
+
+        result = gov.check_cs_confidence_lock(_Tracker())
+        assert result["locked"] is False
+
+    def test_cs_confidence_lock_triggers_below_thresholds_constant(self):
+        class _Tracker:
+            confidence = GOVERNANCE_CS_CONFIDENCE_THRESHOLD - 0.01
+
+        result = gov.check_cs_confidence_lock(_Tracker())
+        assert result["locked"] is True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
