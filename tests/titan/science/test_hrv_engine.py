@@ -114,6 +114,15 @@ def test_calculate_baseline_returns_safe_outcome_when_days_is_zero() -> None:
     assert engine.calculate_baseline(days=0) == (None, None)
 
 
+
+
+def test_calculate_baseline_days_zero_short_circuits_invalid_measurements() -> None:
+    engine = HRVGuidedEngine()
+    engine.add_hrv_measurement("2026-01-01", "not-a-float")  # type: ignore[arg-type]
+
+    assert engine.calculate_baseline(days=0) == (None, None)
+
+
 def test_calculate_baseline_returns_safe_outcome_when_days_is_negative() -> None:
     engine = _build_engine_with_history([40.0, 41.0, 42.0])
 
