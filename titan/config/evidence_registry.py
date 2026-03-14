@@ -692,6 +692,16 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
     ),
 
+    'FATIGUE_SORENESS_PERIPHERAL_MIN': ThresholdEvidence(
+        parameter='FATIGUE_SORENESS_PERIPHERAL_MIN',
+        value=5.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal FatigueEngine policy threshold (T5-28 Category A extraction).',
+        rationale='Soreness score at or above 5 marks peripheral fatigue contribution in classification output.',
+        policy_note='HEURISTIC governance-facing threshold for peripheral fatigue tagging.',
+    ),
+
     'DURABILITY_PACE_DECAY_EXCELLENT_MAX': ThresholdEvidence(
         parameter='DURABILITY_PACE_DECAY_EXCELLENT_MAX',
         value=2.0,

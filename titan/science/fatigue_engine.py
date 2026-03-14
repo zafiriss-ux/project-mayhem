@@ -1,6 +1,6 @@
 """Fatigue Classification Engine"""
 
-
+from titan.config.thresholds import FATIGUE_SORENESS_PERIPHERAL_MIN
 
 MODULE_VERSION = "1.0.0"
 
@@ -17,7 +17,7 @@ class FatigueEngine:
             types.append("CENTRAL")
         if pace_hr_divergence:
             types.append("METABOLIC")
-        if soreness >= 5:
+        if soreness >= FATIGUE_SORENESS_PERIPHERAL_MIN:
             types.append("PERIPHERAL")
 
         if not types:
