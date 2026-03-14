@@ -31,6 +31,7 @@ GARMIN_RATE_LIMIT = "GARMIN_RATE_LIMIT"
 GARMIN_PAYLOAD_MALFORMED = "GARMIN_PAYLOAD_MALFORMED"
 GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
+_DEFAULT_SYNC_TIMEOUT_S = 20
 
 
 class _CredentialSecret:
@@ -112,6 +113,33 @@ def _emit_failure(subsystem: str, failure_class: str, error: Exception, **fields
         error_message=str(error),
         **fields,
     )
+
+
+def _resolve_sync_timeout_seconds() -> int:
+    timeout_raw = os.getenv("GARMIN_SYNC_TIMEOUT_S", str(_DEFAULT_SYNC_TIMEOUT_S))
+    try:
+        timeout_s = int(timeout_raw)
+    except ValueError:
+        _garmin_event(
+            "invalid_sync_timeout",
+            subsystem="sync_all",
+            configured_timeout=timeout_raw,
+            fallback_timeout_s=_DEFAULT_SYNC_TIMEOUT_S,
+            detail="GARMIN_SYNC_TIMEOUT_S is not an integer; using default timeout.",
+        )
+        return _DEFAULT_SYNC_TIMEOUT_S
+
+    if timeout_s < 0:
+        _garmin_event(
+            "negative_sync_timeout",
+            subsystem="sync_all",
+            configured_timeout=timeout_s,
+            fallback_timeout_s=_DEFAULT_SYNC_TIMEOUT_S,
+            detail="GARMIN_SYNC_TIMEOUT_S is negative; using default timeout.",
+        )
+        return _DEFAULT_SYNC_TIMEOUT_S
+
+    return timeout_s
 
 
 class GarminSync:
@@ -235,7 +263,8 @@ class GarminSync:
             raw = self.client.get_weigh_ins(start, end)
             daily = raw.get("dailyWeightSummaries", [])
             for d in daily:
-                summ = d.get("allDayWeightSummaries", [{}])[0]
+                summaries = d.get("allDayWeightSummaries") or [{}]
+                summ = summaries[0]
                 w_g = summ.get("latestWeight", summ.get("minWeight", 0))
                 if w_g and w_g > 0:
                     entries.append(
@@ -379,7 +408,7 @@ class GarminSync:
         _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
         self.last_sync = datetime.now().isoformat()
         started = time.monotonic()
-        timeout_s = int(os.getenv("GARMIN_SYNC_TIMEOUT_S", "20"))
+        timeout_s = _resolve_sync_timeout_seconds()
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(self._sync_operation, days_back)
         try:
