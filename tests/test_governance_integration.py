@@ -166,6 +166,25 @@ class TestVo2EligibilityContract:
     def test_validate_none_input_returns_none(self):
         assert validate_vo2_eligibility(None) is None
 
+    def test_validate_non_dict_input_returns_contract_error(self):
+        error = validate_vo2_eligibility(123)  # type: ignore[arg-type]
+        assert error is not None
+        assert "must be dict" in error
+
+    def test_invalid_detail_operator_raises(self):
+        result = {
+            'eligible': False,
+            'failed_conditions': ['V1'],
+            'original_session': 'HAMMER',
+            'downgraded_to': 'TEMPO',
+            'detailed_failed_conditions': [
+                {'code': 'V1', 'metric': 'acwr', 'operator': 'invalid_op', 'actual': 1.5}
+            ],
+            'reason': 'bad',
+        }
+        with pytest.raises(ContractViolation, match='operator'):
+            assert_vo2_eligibility_contract(result)
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Integration contract tests — GovernanceEngine must always produce

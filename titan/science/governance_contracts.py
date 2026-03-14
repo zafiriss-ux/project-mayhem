@@ -42,6 +42,11 @@ def assert_vo2_eligibility_contract(result: dict[str, Any]) -> None:
 
     Raises ContractViolation on any violation.
     """
+    if not isinstance(result, dict):
+        raise ContractViolation(
+            f"vo2_eligibility result must be dict, got {type(result).__name__}"
+        )
+
     missing = [k for k in _VO2_REQUIRED_KEYS if k not in result]
     if missing:
         raise ContractViolation(f"vo2_eligibility missing required keys: {missing}")
@@ -101,6 +106,10 @@ def assert_vo2_eligibility_contract(result: dict[str, Any]) -> None:
         if detail["code"] not in _VALID_FAILURE_CODES:
             raise ContractViolation(
                 f"detailed_failed_conditions[{i}] has unknown code {detail['code']!r}"
+            )
+        if detail["operator"] not in _VALID_DETAIL_OPERATORS:
+            raise ContractViolation(
+                f"detailed_failed_conditions[{i}] has invalid operator {detail['operator']!r}"
             )
 
     # failed_conditions and detailed_failed_conditions must agree
