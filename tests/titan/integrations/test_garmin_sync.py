@@ -245,3 +245,90 @@ def test_sync_all_timeout_payload_marks_data_trust_invalid(monkeypatch):
 
     assert payload["data_trust"]["trust_level"] == "INVALID"
     assert "sync_timeout_cancelled" in payload["data_trust"]["reasons"]
+
+
+def test_sync_all_invalid_timeout_env_falls_back_to_default(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+    observed_timeout: dict[str, int] = {}
+
+    class _SuccessfulFuture:
+        def result(self, timeout):
+            observed_timeout["value"] = timeout
+            return {
+                "activities": [],
+                "weight": [],
+                "sleep": [],
+                "hrv": [],
+                "hrv_sync_metrics": {"days_back": 0, "synced_days": 0, "skipped_days": 0},
+                "data_trust": {"source": "garmin", "trust_level": "TRUSTED", "reasons": []},
+            }
+
+    class _FakeExecutor:
+        def __init__(self, max_workers):
+            self.max_workers = max_workers
+
+        def submit(self, fn, *args):
+            return _SuccessfulFuture()
+
+        def shutdown(self, wait, cancel_futures):
+            return None
+
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "abc")
+    monkeypatch.setattr(garmin_sync, "ThreadPoolExecutor", _FakeExecutor)
+
+    sync.sync_all(days_back=7)
+
+    assert observed_timeout["value"] == 20
+
+
+def test_sync_all_negative_timeout_env_falls_back_to_default(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+    observed_timeout: dict[str, int] = {}
+
+    class _SuccessfulFuture:
+        def result(self, timeout):
+            observed_timeout["value"] = timeout
+            return {
+                "activities": [],
+                "weight": [],
+                "sleep": [],
+                "hrv": [],
+                "hrv_sync_metrics": {"days_back": 0, "synced_days": 0, "skipped_days": 0},
+                "data_trust": {"source": "garmin", "trust_level": "TRUSTED", "reasons": []},
+            }
+
+    class _FakeExecutor:
+        def __init__(self, max_workers):
+            self.max_workers = max_workers
+
+        def submit(self, fn, *args):
+            return _SuccessfulFuture()
+
+        def shutdown(self, wait, cancel_futures):
+            return None
+
+    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "-5")
+    monkeypatch.setattr(garmin_sync, "ThreadPoolExecutor", _FakeExecutor)
+
+    sync.sync_all(days_back=7)
+
+    assert observed_timeout["value"] == 20
+
+
+def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_weigh_ins.return_value = {
+        "dailyWeightSummaries": [
+            {"calendarDate": "2026-03-09", "allDayWeightSummaries": []},
+            {
+                "calendarDate": "2026-03-10",
+                "allDayWeightSummaries": [{"latestWeight": 70200, "bmi": 22.0}],
+            },
+        ]
+    }
+
+    payload = sync.sync_weight(days_back=2)
+
+    assert payload == [{"date": "2026-03-10", "weight_kg": 70.2, "bmi": 22.0, "source": "garmin"}]
