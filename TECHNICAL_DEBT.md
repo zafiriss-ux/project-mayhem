@@ -1998,21 +1998,23 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-18 · Adaptive Memory — Category A threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-18 · Adaptive Memory — Category A threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-1 approved 2026-03-13; **UNBLOCKED 2026-03-14** — T5-19 closed NO_ACTION)
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit finding B4 / DEC-1 §4.2 (Architect DEC 2026-03-13). `1.08` and time windows confirmed Category A.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR required.
 **Workflow Path:** A
 
-**Scope (approved for execution — final):**
+**Original state (pre-fix):**
 - `1.08` — pace threshold for mechanical load risk in `titan/science/adaptive_memory.py`: **Category A** (governance-facing risk output). Extract to `thresholds.py`.
 - `24`, `36`, `48`, `72` — time window constants (hours) for SDI/supercompensation in `titan/science/adaptive_memory.py`: **Category A** (recalibration targets). Extract to `thresholds.py`.
 
 **Scope explicitly excluded:** `2.5`, `2.0`, `1.5` multipliers — confirmed Category B (algorithm-local) by Architect Follow-up Pack 2026-03-14 (T5-19 NO_ACTION). These values remain inline. Do NOT extract.
 
-**Acceptance gate (binary):** Same pattern as T5-17. Zero inline literals for approved values (`1.08`, `24`, `36`, `48`, `72`); `thresholds.py` + `evidence_registry.py` updated; all gates green.
+**Resolution:** Added the five approved Category A constants (`1.08`, `24`, `36`, `48`, `72`) in `titan/config/thresholds.py` and added matching provenance entries in `titan/config/evidence_registry.py`. Updated `titan/science/adaptive_memory.py` to import and use only these centralized constants for supercompensation windows, session-density windows, and easy-pace-drop risk detection, while leaving `2.5/2.0/1.5` inline per T5-19 NO_ACTION. Extended `test_new_modules.py` AdaptiveMemory coverage to assert thresholds-source wiring and boundary behavior. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green at 1912 collected/passed tests.
+
+**Task learning:** Category-A/Category-B partitioning must be encoded directly in tests during extraction work; this prevents accidental broadening where algorithm-local multipliers get centralized without architectural approval.
 
 **Effort:** ~2h. Extraction + evidence registry entries.
 
@@ -2619,7 +2621,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
 | T5-17 | OPEN (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | — |
-| T5-18 | OPEN (Phase 8 — Adaptive Memory 1.08 + time windows extraction; separate PR; **UNBLOCKED 2026-03-14** — T5-19 NO_ACTION; scope: 1.08 + 24/36/48/72 only) | — |
+| T5-18 | ✅ RESOLVED (Phase 8 — Adaptive Memory 1.08 + time windows extraction; scope respected: 1.08 + 24/36/48/72 only; Category B 2.5/2.0/1.5 left inline per T5-19) | 2026-03-14 |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
 | T5-20 | ✅ RESOLVED | 2026-03-14 |
 | T5-21 | ✅ RESOLVED (Phase 8 — Athlete Profile athlete_id uniqueness hardening; test-first) | 2026-03-14 |

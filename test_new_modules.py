@@ -28,10 +28,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from titan.config import thresholds
 from titan.core.database import DatabaseManager
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
 from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import GarminSync
+from titan.science import adaptive_memory as adaptive_memory_module
 from titan.science.adaptive_memory import AdaptiveMemory
 from titan.science.biomechanics import BiomechanicsAnalysis
 from titan.science.drift_engine import DriftEngine
@@ -882,6 +884,16 @@ class TestDurabilityEngine:
 
 class TestAdaptiveMemory:
 
+    def test_threshold_constants_sourced_from_thresholds(self):
+        assert (
+            adaptive_memory_module.EASY_PACE_DROP_MULTIPLIER
+            == thresholds.ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER
+        )
+        assert adaptive_memory_module.HOURS_24 == thresholds.ADAPTIVE_MEMORY_HOURS_24
+        assert adaptive_memory_module.HOURS_36 == thresholds.ADAPTIVE_MEMORY_HOURS_36
+        assert adaptive_memory_module.HOURS_48 == thresholds.ADAPTIVE_MEMORY_HOURS_48
+        assert adaptive_memory_module.HOURS_72 == thresholds.ADAPTIVE_MEMORY_HOURS_72
+
     @pytest.fixture
     def mem(self):
         return AdaptiveMemory()
@@ -1005,6 +1017,12 @@ class TestAdaptiveMemory:
         result = mem.session_density_index(now)
         assert "Safe" in result
 
+    def test_sdi_boundary_36h(self, mem):
+        now = datetime.now()
+        mem.last_quality_sessions = [now - timedelta(hours=100), now - timedelta(hours=36)]
+        result = mem.session_density_index(now)
+        assert "<48h" in result
+
     # ── mechanical_load_risk ──────────────────────────────────────────────────
 
     def test_mech_load_ok(self, mem):
@@ -1015,6 +1033,10 @@ class TestAdaptiveMemory:
         # today > baseline * 1.08
         result = mem.mechanical_load_risk(330, 300)  # 330 > 300*1.08=324
         assert "Watch" in result or "HIGH RISK" in result
+
+    def test_mech_load_no_drop_at_threshold_boundary(self, mem):
+        result = mem.mechanical_load_risk(324, 300)
+        assert "OK" in result
 
     def test_mech_load_high_soreness(self, mem):
         mem.last_3d_soreness = [6.0, 6.0, 6.0]  # avg = 6 ≥ 5

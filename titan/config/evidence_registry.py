@@ -642,6 +642,56 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Recalibrate with forecast error deltas versus age in production weather snapshots.',
     ),
 
+    'ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER': ThresholdEvidence(
+        parameter='ADAPTIVE_MEMORY_EASY_PACE_DROP_MULTIPLIER',
+        value=1.08,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal AdaptiveMemory policy threshold (T5-18 Category A extraction).',
+        rationale='Easy-pace slowdown greater than 8% versus baseline is treated as a mechanical-load stress proxy requiring caution.',
+        policy_note='HEURISTIC. Promote when OutcomeTracker supports athlete-level precision/recall for easy-pace-drop risk signaling.',
+    ),
+
+    'ADAPTIVE_MEMORY_HOURS_24': ThresholdEvidence(
+        parameter='ADAPTIVE_MEMORY_HOURS_24',
+        value=24.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal AdaptiveMemory recovery-window boundary policy (T5-18 Category A extraction).',
+        rationale='24 hours is the lower boundary for recovery and spacing advisories in AdaptiveMemory window checks.',
+        policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
+    ),
+
+    'ADAPTIVE_MEMORY_HOURS_36': ThresholdEvidence(
+        parameter='ADAPTIVE_MEMORY_HOURS_36',
+        value=36.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal AdaptiveMemory session-density policy boundary (T5-18 Category A extraction).',
+        rationale='36 hours marks the downgrade-intensity caution boundary for recent quality session spacing.',
+        policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
+    ),
+
+    'ADAPTIVE_MEMORY_HOURS_48': ThresholdEvidence(
+        parameter='ADAPTIVE_MEMORY_HOURS_48',
+        value=48.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal AdaptiveMemory recovery/peak transition policy boundary (T5-18 Category A extraction).',
+        rationale='48 hours separates recovery from supercompensation-peak classification and cautionary spacing messaging.',
+        policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
+    ),
+
+    'ADAPTIVE_MEMORY_HOURS_72': ThresholdEvidence(
+        parameter='ADAPTIVE_MEMORY_HOURS_72',
+        value=72.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal AdaptiveMemory supercompensation upper-bound policy (T5-18 Category A extraction).',
+        rationale='72 hours is the upper limit for supercompensation peak labeling before baseline classification resumes.',
+        policy_note='HEURISTIC. Shared time-window boundary centralization policy constant.',
+    ),
+
     'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
         parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
         value=0.25,
