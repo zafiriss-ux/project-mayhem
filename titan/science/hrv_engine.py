@@ -56,7 +56,7 @@ class HRVGuidedEngine:
 
     def calculate_baseline(self, days: int = 7) -> tuple[float | None, float | None]:
         """Calculate rolling baseline (mean ± SD)."""
-        if len(self.hrv_log) < days:
+        if days <= 0 or len(self.hrv_log) < days:
             return None, None
 
         recent = [hrv for _, hrv in self.hrv_log[-days:]]

@@ -108,6 +108,18 @@ def test_minimal_data_points_behavior_is_stable() -> None:
     assert engine.calculate_rmssd_from_rr_intervals([1000.0, 1020.0]) == 20.0
 
 
+def test_calculate_baseline_returns_safe_outcome_when_days_is_zero() -> None:
+    engine = _build_engine_with_history([40.0, 41.0, 42.0])
+
+    assert engine.calculate_baseline(days=0) == (None, None)
+
+
+def test_calculate_baseline_returns_safe_outcome_when_days_is_negative() -> None:
+    engine = _build_engine_with_history([40.0, 41.0, 42.0])
+
+    assert engine.calculate_baseline(days=-1) == (None, None)
+
+
 def test_slightly_low_hrv_keeps_easy_session_with_medium_confidence() -> None:
     engine = _build_engine_with_history([50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0])
 
