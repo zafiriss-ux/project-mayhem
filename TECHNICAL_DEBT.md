@@ -2227,16 +2227,20 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-30 · Governance Engine — class-local threshold literals not centralized in thresholds.py 🔴 OPEN
+### T5-30 · Governance Engine — class-local threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: 3d6284e.
+**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
 **Source:** Binder1 audit / DEC-2 §Governance Engine Pattern P5 finding. Category A confirmed by architect in DEC-2.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
 **Workflow Path:** A
 **Cross-reference:** T1-04 (RESOLVED 2026-03-02 — "Hardcoded safety thresholds bypassing thresholds.py") did not cover these specific class-local values. T5-30 is a missed case from T1-04's resolution scope.
 
-**Scope:** Class-local thresholds `0.80` and `0.70` in `titan/science/governance_engine.py` are Category A policy thresholds. Extract to `thresholds.py`.
+**Original state (pre-fix):** `GovernanceEngine` kept class-local Category A thresholds `0.80` and `0.70` instead of sourcing them from `titan/config/thresholds.py`.
+
+**Resolution:** Added `GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD` and `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` to `thresholds.py`, wired `GovernanceEngine` class defaults to these constants, and added matching provenance entries in `evidence_registry.py`. Extended governance hygiene tests and evidence-registry consistency tests to assert threshold source-of-truth behavior and value mirroring. Final closure gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, and `python -m pytest -q` all green (1925 tests).
+
+**Task learning:** Source-of-truth extraction is safest when tests assert both runtime boundary behavior and registry-value synchronization, because either side can drift independently without explicit assertions.
 
 **Acceptance gate (binary):** Same pattern as T5-17. `governance_engine.py` references constants from `thresholds.py`; no inline literals remain for these values; all gates green.
 
@@ -2639,7 +2643,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-27 | ✅ RESOLVED (Phase 8 — Durability Engine Category A threshold extraction to thresholds.py; separate PR scope) | 2026-03-14 |
 | T5-28 | ✅ RESOLVED (Phase 8 — Fatigue Engine soreness threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-29 | ✅ RESOLVED (Phase 8 — Garmin sync sleep/HRV partial-failure policy aligned; test-first) | 2026-03-14 |
-| T5-30 | OPEN (Phase 8 — Governance Engine class-local threshold extraction; separate PR after S1-S3) | — |
+| T5-30 | ✅ RESOLVED (Phase 8 — Governance Engine Category A threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-31 | OPEN (Phase 8 — Intensity Governor threshold extraction; separate PR) | — |
 | T5-32 | OPEN (Phase 8 — Lactate Logic threshold extraction; separate PR) | — |
 | T5-33 | BLOCKED PENDING MORE INPUT (read-only audit required: call direction, layer violation, shared mutable state; no implementation) | — |

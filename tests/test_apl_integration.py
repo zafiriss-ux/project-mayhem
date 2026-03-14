@@ -22,6 +22,8 @@ from titan.config.evidence_registry import (
     get_registry_summary,
 )
 from titan.config.thresholds import (
+    GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
+    GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
@@ -556,6 +558,7 @@ class TestEvidenceRegistry:
         'SUBJECTIVE_FATIGUE_EXTREME', 'SUBJECTIVE_FATIGUE_2OF4',
         'VO2_ACWR_MIN', 'VO2_ACWR_MAX', 'VO2_READINESS_MIN',
         'VO2_GLYCOGEN_DEBT_MAX', 'VO2_MIN_DAYS_SINCE_LAST',
+        'GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD', 'GOVERNANCE_CS_CONFIDENCE_THRESHOLD',
     }
 
     def test_all_canonical_parameters_registered(self):
@@ -597,6 +600,8 @@ class TestEvidenceRegistry:
             'VO2_READINESS_MIN': VO2_READINESS_MIN,
             'VO2_GLYCOGEN_DEBT_MAX': VO2_GLYCOGEN_DEBT_MAX,
             'VO2_MIN_DAYS_SINCE_LAST': float(VO2_MIN_DAYS_SINCE_LAST),
+            'GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD': GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
+            'GOVERNANCE_CS_CONFIDENCE_THRESHOLD': GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
         }
         for param, expected in live.items():
             record = get_evidence(param)
