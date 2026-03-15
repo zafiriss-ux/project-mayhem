@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from collections import defaultdict, deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
+from threading import Lock
+from time import monotonic
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -27,6 +31,78 @@ from titan.api.dependencies import (
     require_coach,
 )
 from titan.api.models import AuthUser, LoginRequest, LoginResponse
+
+_RATE_LIMIT_WINDOW_SECONDS = 60.0
+
+
+@dataclass(frozen=True)
+class RateLimitConfig:
+    coach_per_minute: int = 100
+    athlete_per_minute: int = 30
+
+
+class AuthenticatedRateLimiter:
+    """In-memory fixed-window limiter keyed by authenticated identity and endpoint."""
+
+    def __init__(self, config: RateLimitConfig | None = None) -> None:
+        self._config = config or RateLimitConfig()
+        self._requests: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)
+        self._lock = Lock()
+
+    async def __call__(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        user = self._resolve_user(request)
+        if user is None:
+            return await call_next(request)
+
+        key = (user.id, user.role, f"{request.method}:{request.url.path}")
+        limit = self._limit_for_role(user.role)
+        now = monotonic()
+
+        with self._lock:
+            bucket = self._requests[key]
+            cutoff = now - _RATE_LIMIT_WINDOW_SECONDS
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+            if len(bucket) >= limit:
+                return Response(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    media_type="application/json",
+                    content='{"detail":"Rate limit exceeded"}',
+                )
+            bucket.append(now)
+
+        return await call_next(request)
+
+    def _resolve_user(self, request: Request) -> AuthUser | None:
+        token = request.cookies.get(ACCESS_COOKIE_NAME)
+        if not token:
+            return None
+
+        try:
+            payload = decode_token(token, expected_type="access")
+        except AuthError:
+            return None
+
+        store = request.app.state.auth_store
+        if not isinstance(store, AuthStore):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Auth store unavailable",
+            )
+
+        user = store.get_user(payload.sub)
+        if user is None or not user.is_active:
+            return None
+        return user
+
+    def _limit_for_role(self, role: str) -> int:
+        if role == "COACH":
+            return self._config.coach_per_minute
+        return self._config.athlete_per_minute
 
 
 class AuditActionType(StrEnum):
@@ -67,6 +143,12 @@ def create_app(
     app = FastAPI(title="TITAN OS API", version="8B")
     app.state.auth_store = auth_store or AuthStore()
     app.state.audit_store = audit_store or CoachAuditStore()
+
+    rate_limiter = AuthenticatedRateLimiter()
+
+    @app.middleware("http")
+    async def rate_limit_middleware(request: Request, call_next):
+        return await rate_limiter(request, call_next)
 
     @app.middleware("http")
     async def coach_audit_middleware(request: Request, call_next):

@@ -114,3 +114,67 @@ def test_non_health_endpoint_rejects_unauthenticated_access(client: TestClient) 
     client.cookies.clear()
     response = client.get("/athletes/athlete-1/dashboard")
     assert response.status_code == 401
+
+
+def test_coach_rate_limit_enforced_with_429(client: TestClient) -> None:
+    login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+    assert login.status_code == 200
+
+    for _ in range(100):
+        response = client.get("/athletes/athlete-2/dashboard")
+        assert response.status_code == 200
+
+    limited = client.get("/athletes/athlete-2/dashboard")
+    assert limited.status_code == 429
+
+
+def test_athlete_rate_limit_enforced_with_429(client: TestClient) -> None:
+    login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
+    assert login.status_code == 200
+
+    for _ in range(30):
+        response = client.get("/athletes/athlete-1/dashboard")
+        assert response.status_code == 200
+
+    limited = client.get("/athletes/athlete-1/dashboard")
+    assert limited.status_code == 429
+
+
+def test_rate_limit_keyed_to_authenticated_identity_not_only_path(client: TestClient) -> None:
+    client.app.state.auth_store.upsert_user(
+        user_id="coach-2",
+        username="coach2",
+        password_hash=hash_password("coach2-pass"),
+        role="COACH",
+        athlete_id=None,
+    )
+
+    login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+    assert login.status_code == 200
+    for _ in range(100):
+        response = client.get("/athletes/athlete-2/dashboard")
+        assert response.status_code == 200
+
+    first_user_limited = client.get("/athletes/athlete-2/dashboard")
+    assert first_user_limited.status_code == 429
+
+    second_login = client.post("/auth/login", json={"username": "coach2", "password": "coach2-pass"})
+    assert second_login.status_code == 200
+    second_user_response = client.get("/athletes/athlete-2/dashboard")
+    assert second_user_response.status_code == 200
+
+
+def test_health_endpoint_remains_public_after_rate_limit_exceeded(client: TestClient) -> None:
+    login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
+    assert login.status_code == 200
+
+    for _ in range(30):
+        response = client.get("/athletes/athlete-1/dashboard")
+        assert response.status_code == 200
+
+    limited = client.get("/athletes/athlete-1/dashboard")
+    assert limited.status_code == 429
+
+    client.cookies.clear()
+    health = client.get("/health")
+    assert health.status_code == 200

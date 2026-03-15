@@ -2464,24 +2464,24 @@ python -m pytest -q
 
 ---
 
-### T5-36 · No API rate limiting — DoS risk on Phase 8B endpoints 🔴 OPEN
+### T5-36 · No API rate limiting — DoS risk on Phase 8B endpoints ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (P2 Phase 8B — does not block T5-11 implementation; must close before production deployment).
+**Status:** ✅ RESOLVED 2026-03-15. Commit: <this-commit>.
 **Workflow Path: A** *(FastAPI middleware addition; no ADR required)*
 **Source:** ADR-0048 §5 (Architect Decision 2026-03-15). Records-safe correction: architect text referenced T5-26, which is already assigned (Drift Engine — RESOLVED 2026-03-14). Assigned next available ID: T5-36.
 **Priority:** P2 Phase 8B.
 
-**Location:** `titan/api/middleware.py`
+**Location:** `titan/api/main.py`
 
 **Original state (pre-fix):**
 
-Phase 8B FastAPI endpoints have no per-user rate limiting. Any authenticated client (coach or athlete) can issue unlimited requests per minute, creating a DoS risk on local deployments.
+Phase 8B FastAPI endpoints had no per-user rate limiting. Any authenticated client (coach or athlete) could issue unlimited requests per minute, creating a DoS risk on local deployments.
 
-**Required:**
+**Resolution:**
 
-FastAPI rate limiting per user per endpoint (slowapi or custom middleware):
-- 100 req/min per `COACH` role
-- 30 req/min per `ATHLETE` role
+Added authenticated request rate limiting in the FastAPI middleware path keyed by `(user_id, role, method:path)`, with fixed limits of 100 req/min for `COACH` and 30 req/min for `ATHLETE`. Exceeding the threshold returns HTTP 429. Coverage was extended in `tests/titan/api/test_auth.py` for coach limit, athlete limit, authenticated 429 behavior, identity-keyed enforcement, and `/health` public behavior. Final suite count at closure: 1965 tests.
+
+**Task learning:** Keeping the limiter bound to authenticated identity in middleware avoids auth-contract changes while still enforcing per-role limits globally across protected endpoints.
 
 **Acceptance gate (binary):** Rate-limiting middleware active on all authenticated endpoints; requests exceeding the per-user limit receive HTTP 429; tests confirm limit enforcement; all mandatory gates green.
 
@@ -2858,7 +2858,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-33 | ✅ CLOSED — NO_ACTION | 2026-03-14 |
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
-| T5-36 | OPEN (P2 Phase 8B — rate limiting; does not block T5-11; must close before production deployment) | — |
+| T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
 | T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15) | — |
 | T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
