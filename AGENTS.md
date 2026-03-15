@@ -1477,6 +1477,84 @@ no longer blocked. A stale Bottleneck block is misleading and must be corrected 
 
 ---
 
+## §18 Canonical Source Map
+
+The following hierarchy defines which document is authoritative for each category of
+information. When two documents conflict, the document listed as canonical for that
+category wins.
+
+| Category | Canonical document | Role of other sources |
+|----------|-------------------|-----------------------|
+| Task status, sequencing, and open/closed state | **`TECHNICAL_DEBT.md`** | All other documents reflect snapshots; `TECHNICAL_DEBT.md` is the live register |
+| Process rules, workflow sequences, enforcement rules | **`AGENTS.md`** (this document) | `CLAUDE.md` §Engineering Rules is an index/reference; `AGENTS.md` wins on conflict |
+| Architecture decisions (ADRs) | **`docs/adr/`** | `CLAUDE.md` ADR index is a summary; the ADR file in `docs/adr/` is authoritative |
+| Backend interface contract (SQLite / PostgreSQL parity) | **`docs/PARITY_MATRIX.md`** | Inline notes in `TECHNICAL_DEBT.md` or `persistence.py` comments are summaries only |
+| Orientation, historical snapshot, module inventory | **`CLAUDE.md`** | Read-only orientation — not authoritative for live state |
+| Weekly Governance Log, Codex Handoff Blocks, session summaries | **Derived operational views** — not authoritative | These are convenience summaries; `TECHNICAL_DEBT.md` + `AGENTS.md` are the source |
+
+**Conflict resolution rule:** When a derived view (Governance Log, Handoff Block, session
+summary) contradicts the canonical source for its category, the canonical source wins and
+the derived view must be corrected at the next records pass.
+
+---
+
+## §19 Mandatory Change-Type Field (Phase 8+)
+
+Every new Phase 8+ item in `TECHNICAL_DEBT.md` must include a **`Change Type:`** field in
+its item header. This field is required at the time the brief is written — not retrospectively.
+
+**Valid values:**
+
+| Value | Meaning |
+|-------|---------|
+| `implementation` | Code changes, new or modified modules, test changes |
+| `records-only` | Documentation updates, `TECHNICAL_DEBT.md` records, no production code changes |
+| `policy-only` | `AGENTS.md` or process contract changes only; no code changes |
+| `architect-decision` | ADR authorship, architectural decisions, design artefacts; no Codex implementation handoff |
+| `audit-only` | Read-only assessment, call-site audit, or triage pass; no changes to any file |
+
+**Execution semantics:**
+
+- `implementation`: Standard Path A or Path B workflow (§17.2 / §17.3). All three mandatory
+  gates required.
+- `records-only`: No production code changes permitted. Gates 1 and 3 still required; Gate 2
+  (strict) required only if test files were touched. Commit message prefix: `records:`.
+- `policy-only`: Only `AGENTS.md`, `CLAUDE.md`, or process documents may change. No code, no
+  tests. All three gates still required to confirm no unintended side-effects.
+- `architect-decision`: No Codex implementation handoff at this stage. Architect authors
+  the artefact directly or under direct architect direction. May have no gate requirement
+  (document-only output), or gates apply if the decision produces a code artefact.
+- `audit-only`: No file modifications. Report-only output. No gates required.
+
+**Backfill policy:** Only items where the architect explicitly orders backfill receive the
+`Change Type:` field retroactively. Do not backfill older items beyond those explicitly
+directed.
+
+---
+
+## §20 Mini Drift Postmortem Rule
+
+When a process violation (workflow drift, skipped gate, scope creep, or instruction
+contradiction) is discovered and resolved, the resolving record (in `TECHNICAL_DEBT.md`,
+`AGENTS.md`, or `CHANGES.md` as appropriate) must include a mini drift postmortem in
+the following format:
+
+```
+- Drift: <one sentence describing what the process violation was>
+- Why it escaped: <one sentence explaining why the existing guard did not catch it>
+- Guard now in place: <one sentence describing the corrective rule or check added>
+```
+
+**Scope:** Required for any process violation that results in a rule addition or
+clarification to `AGENTS.md`. Optional (but recommended) for violations resolved
+entirely within `TECHNICAL_DEBT.md` task notes.
+
+**Purpose:** The mini postmortem is the mechanism by which process gaps are converted
+into durable guard rules. A drift that is resolved without a postmortem is likely to
+recur.
+
+---
+
 ## Opus QA Trigger Policy
 
 Opus QA is **not triggered by default**. Path A items proceed without Opus involvement unless the architect explicitly opts a task into Path B.
@@ -1521,4 +1599,4 @@ If Opus issued **QA FAIL** for a task and Codex returns after fixing the identif
 
 ---
 
-*Last updated: 2026-03-09 (§12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-15 — T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
