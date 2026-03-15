@@ -2025,6 +2025,11 @@ python -m pytest -q
 **Phase 8B gate:** T5-16-A must be RESOLVED before any multi-athlete coaching execution
 endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked by T5-16-A.
 
+**Architect note (2026-03-15 — records pass):** The T5-16-A resolution and ceiling
+calibration (61 → 62) were a preventive/historical record only. No new sequencing gate
+is created by this note. Execution sequencing for subsequent Phase 8B deliverables
+remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter that order.
+
 ---
 
 ### T5-17 · ACWR Engine — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
@@ -2815,6 +2820,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-15 — Records-only sync pass. T5-34-A implementation RESOLVED 2026-03-14. Weekly Governance Log and Codex Handoff Block D updated to reflect closure of T5-33 (NO_ACTION) and T5-34 (RESOLVED). No task status changes. No implementation performed.*
 
 *Updated: 2026-03-15 — T5-25 Records Pass. T5-25 RESOLVED: `docs/PARITY_MATRIX.md` v1.0 created; 32 PersistenceAdapter methods classified (MUST_MATCH / PERMITTED_DIVERGENCE) across 10 functional areas; D7/D9 closure gates defined in §4. T5-08-B D7 and D9 rows annotated with Change Type: implementation. AGENTS.md updated with §18 Canonical Source Map, §19 Mandatory Change-Type Field, §20 Mini Drift Postmortem Rule. No production code changes. No new architectural decisions. No renumbering.*
+
+*Updated: 2026-03-15 — Records/Governance Update Pass. AGENTS.md updated: §20 Mini Drift Postmortem Rule refined (not required for every corrective pass; triggered by recurrence or canonical-document impact only); §21 Governance Friction Principle added; §22 Friday Governance Review Output Rule added. TECHNICAL_DEBT.md: T5-16-A architect note added (preventive/historical; no new gate; sequencing D7 → D9 → T5-11 unchanged). No task status changes. No production code changes. No new debt items.*
 
 ---
 
