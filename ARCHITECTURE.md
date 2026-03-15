@@ -548,6 +548,7 @@ CREATE TABLE IF NOT EXISTS personal_bests (
 | 0006 | Architectural hardening: cold start and engine sync | Implemented |
 | 0007 | Intensity governance architecture audit (read-only) | Implemented |
 | 0008 | Adaptive Priority Lock and VLG specs | Proposed (VLG implemented; APL pending) |
+| 0049 | Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A / Category B taxonomy; Hybrid Sequential Model (T5-37/T5-38); ADR-0049 §7 confirmed correctly and substantively applied (Architect ruling 2026-03-15) | Accepted — T5-37/T5-38 CLOSED 2026-03-15 |
 
 Full records in `docs/adr/`.
 
@@ -575,6 +576,6 @@ Next cycle priorities:
 
 ---
 
-**Status**: v5.7.0 — 47 modules, 600+ tests passing across 12 test files
+**Status**: v5.8.0 — 58 modules, 1973+ tests passing
 **Python**: 3.11+ (mandatory)
-**Last updated**: 2026-03-01
+**Last updated**: 2026-03-15 — Records correction pass: T5-37/T5-38 stale closure hash replaced; ADR-0049 added to ADR table per Architect ruling 2026-03-15.

@@ -2489,7 +2489,7 @@ Added authenticated request rate limiting in the FastAPI middleware path keyed b
 
 ### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates ✅ RESOLVED 2026-03-15
 
-**Status:** ✅ RESOLVED 2026-03-15. Commit: 251df1c.
+**Status:** ✅ RESOLVED 2026-03-15. Commit: cc5ce69. Architect ruling 2026-03-15: CLOSED WITH REQUIRED RECORDS CORRECTION — ADR-0049 §7 correctly and substantively applied; stale closure hash (251df1c) replaced with canonical current closure commit.
 **Execution model:** Hybrid Sequential (per ADR-0049 §7) — Audit Pass → Sequential Migration Units → Single Final Closure.
 **Audit Pass status:** DONE (2026-03-15)
 **Migration units completed:** 4 / 4
@@ -2573,7 +2573,7 @@ Implemented the Pattern 4 deterministic CI gate and paired validating meta-test 
 
 ### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests ✅ RESOLVED 2026-03-15
 
-**Status:** ✅ RESOLVED 2026-03-15. Commit: 251df1c.
+**Status:** ✅ RESOLVED 2026-03-15. Commit: cc5ce69. Architect ruling 2026-03-15: CLOSED WITH REQUIRED RECORDS CORRECTION — ADR-0049 §7 correctly and substantively applied; stale closure hash (251df1c) replaced with canonical current closure commit.
 **Execution model:** Hybrid Sequential (per ADR-0049 §7, paired with T5-37 per-gate) — no independent closure before T5-37.
 **Migration units completed:** 4 / 4 (bound to T5-37 Audit Pass finalized list)
 **Workflow Path: A** *(meta-test work; no ADR required)*
@@ -3030,6 +3030,16 @@ Learnings:
 - Opus QA Trigger Policy formalised as standalone section in AGENTS.md; forward verdict logging rule established
 Required updates: AGENTS.md (Opus QA Trigger Policy added this session); TECHNICAL_DEBT.md (Weekly Governance Log template added)
 Next-week tactic: T5-33 and T5-34 are both closed (NO_ACTION and RESOLVED respectively). Codex execution lane continues Governance Contracts S1 hardening; T5-18 is unblocked and may be scheduled in its normal T5-1x position.
+
+### Friday Review — 2026-03-15
+State: healthy
+Learnings:
+- T5-37 / T5-38 CLOSED WITH REQUIRED RECORDS CORRECTION: Architect confirmed ADR-0049 §7 correctly and substantively applied; stale closure hash (251df1c) replaced with canonical current closure commit (cc5ce69)
+- Bounded Execution Unit Rule: each migration unit must constitute a self-contained, independently verifiable unit of work with its own CI gate and validating meta-test; no partial-unit closure permitted
+- Environment First Rule: environment bootstrap and gate verification must precede any implementation step within a migration unit; gate state is not assumed from prior unit
+- No Mixed-Pass Rule: a single pass must not mix migration unit implementation with records correction; records corrections are isolated passes with their own commit and verification trail
+Required updates: TECHNICAL_DEBT.md (stale closure hash corrected in T5-37 and T5-38 status entries); ARCHITECTURE.md (ADR-0049 added to ADR table)
+Next-week tactic: Records correction complete. Execution lane resumes from current open items in normal T5-sequence order.
 
 ---
 
