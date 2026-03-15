@@ -186,7 +186,7 @@ def test_technical_debt_tracking_table_matches_heading_status() -> None:
 
 
 def test_module_count_within_budget() -> None:
-    """Module count must not exceed 62 (Phase 8 ceiling + persistence.py T5-08-B D1)."""
+    """Module count must not exceed 62 (Phase 8 ceiling; calibrated 61→62 for coaching_scheduler.py T5-16-A — approved Architect Decision 2026-03-15; T5-08-B D1 also at 62)."""
     modules = [
         module.name
         for module in pkgutil.walk_packages(titan.__path__, "titan.")

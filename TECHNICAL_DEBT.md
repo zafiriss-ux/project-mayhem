@@ -83,6 +83,7 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
   T4-25 (dependency drift: automated CI audit for unpinned/stale deps)
   T4-26 (module boundary TypedDict contracts + coupling invariant test; ADR-0027)
   T4-27 (complexity budget CI check: module count ceiling; AGENTS.md §16.11)
+  T4-27-C (module ceiling update policy for feature additions — follow-up from T5-16-A closure 2026-03-15)
   T4-28 (context snapshot generator + multi-agent protocol; AGENTS.md §16.5)
   T4-30 (science module semantic versioning — MODULE_VERSION constants + CI; AGENTS.md §16.8; independent)
   T4-31 (athlete isolation invariant CI check — exemption register + comment annotations; AGENTS.md §16.10; IMMEDIATE)
@@ -1079,6 +1080,43 @@ python -m pytest -q
 
 ---
 
+### T4-27-C · Define module ceiling update policy for feature additions 🔴 OPEN
+
+**Status:** OPEN. Created 2026-03-15 — follow-up policy debt from T5-16-A closure.
+**Source:** Architect Decision 2026-03-15 (T5-16-A records steward pass). T4-27 child item.
+**Priority:** P3 (Tier 4 — maintainability). Independent.
+**Workflow Path: A**
+
+**Rationale:** Accepted features that add structural modules must update the ceiling explicitly
+through a records/policy path, so future additions do not require ad hoc corrections.
+
+**Problem:** T5-16-A closure was blocked because the complexity-budget guard ceiling (61) was
+stale — it had not been updated when the CoachingScheduler stub was added as a legitimate
+structural module. The ceiling update happened ad hoc as part of the closure records pass rather
+than as part of the feature implementation workflow.
+
+**Fix direction:**
+
+Add a subsection to AGENTS.md §16.11 (or equivalent policy location) specifying:
+1. When any task adds one or more new `titan/` modules as a deliberate structural choice
+   (not a bug fix or rename), the implementing engineer must update the ceiling in
+   `tests/test_documentation_consistency.py::test_module_count_within_budget` in the same
+   commit, with a one-line comment attributing the ceiling increment to the task ID.
+2. The architect must confirm the new ceiling value in the task acceptance criteria before
+   implementation begins.
+3. Ad hoc ceiling corrections after the fact are a process violation — same category as
+   a failed mandatory gate.
+
+**Acceptance criteria (binary):**
+- AGENTS.md §16.11 (or designated policy section) contains the three-rule module ceiling
+  update protocol described above.
+- At least one sentence cross-references T4-27-C as the source of this rule.
+- `python -m pytest -q` passes with no regressions.
+
+**Effort:** ~30 minutes. Policy text only — no implementation.
+
+---
+
 ### T4-28 · No multi-agent context handoff artifact — advisor recommendations operate without ADR context ✅ RESOLVED 2026-03-07 (independent)
 
 **Status:** ✅ RESOLVED 2026-03-07. Commit: `92555d3`.
@@ -1911,10 +1949,13 @@ safety or functional benefit.
 
 ---
 
-### T5-16-A · Extract `coaching_pipeline()` stateless function + `CoachingScheduler` stub 🔴 OPEN
+### T5-16-A · Extract `coaching_pipeline()` stateless function + `CoachingScheduler` stub ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (Phase 8B — required before any multi-athlete coaching execution endpoint
-is built; NOT required for dashboard read paths via T5-09).
+**Status:** ✅ RESOLVED 2026-03-15. Functionally accepted per Architect Decision 2026-03-15.
+**Closure note:** Formal closure was blocked by a stale complexity-budget ceiling (guard at 61),
+not by any functional regression. Implementation is complete and all acceptance criteria pass.
+Ceiling calibrated 61 → 62 to accommodate `coaching_scheduler.py` as a legitimate structural
+module addition (not a complexity regression). T4-27-C created as follow-up policy debt.
 **Workflow Path: A** *(multi-module refactor — PILOT-01 excluded)*
 **Source:** ADR-0046 (accepted 2026-03-08). Created by T5-16 resolution.
 **Priority:** P0 for Phase 8B multi-athlete coaching execution (not for T5-09/T5-11 which
@@ -2538,7 +2579,7 @@ This rule applies to all future verdicts. Historical tasks (T5-35 and earlier) a
 
 ---
 
-All Tier 5 decisions up to T5-16-A have been locked or deferred. T5-17 through T5-35 are new entries from the Binder1 audit triage (DEC-1 + DEC-2, 2026-03-13). T5-19, T5-24, T5-25, T5-33, T5-34 are blocked pending architect input or brief. See Tracking table for completion dates and PRs.
+All Tier 5 decisions up to T5-16-A have been locked or deferred. T5-16-A resolved 2026-03-15 (stale ceiling 61→62 was the blocker, not functional regression; T4-27-C created). T5-17 through T5-35 are new entries from the Binder1 audit triage (DEC-1 + DEC-2, 2026-03-13). T5-19, T5-24, T5-25, T5-33, T5-34 are blocked pending architect input or brief. See Tracking table for completion dates and PRs.
 Relevant ADRs: 0013 (UI path), 0014 (ML scaffold), 0015 (SQLite/multi-athlete), 0016 (multi-sport), 0022 (Phase 8 gate), 0028 (complexity budget), 0032 (ML explainability), 0033 (model aging), 0035 (feedback loop), 0036 (semantic versioning), 0043 (product direction + LLM seams), 0044 (PostgreSQL migration), 0045 (local LLM backend abstraction).
 
 ---
@@ -2662,6 +2703,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-25 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 9dd54af) |
 | T4-26 | ✅ RESOLVED (independent) | 2026-03-07 (commit: e40181a) |
 | T4-27 | ✅ RESOLVED | 2026-03-07 (commit: 33e8255) |
+| T4-27-C | OPEN — module ceiling update policy for feature additions | — |
 | T4-28 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 92555d3) |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
@@ -2685,7 +2727,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
-| T5-16-A | OPEN (Phase 8B — coaching_pipeline() extraction + CoachingScheduler stub) | — |
+| T5-16-A | ✅ RESOLVED — accepted 2026-03-15; closure was blocked by stale ceiling (61→62 calibrated); T4-27-C created | 2026-03-15 |
 | T5-17 | ✅ RESOLVED (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-18 | ✅ RESOLVED (Phase 8 — Adaptive Memory 1.08 + time windows extraction; scope respected: 1.08 + 24/36/48/72 only; Category B 2.5/2.0/1.5 left inline per T5-19) | 2026-03-14 |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
