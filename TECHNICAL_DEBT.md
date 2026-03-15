@@ -2296,14 +2296,20 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) — OPEN
+### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) ✅ RESOLVED 2026-03-14
 
-**Status:** OPEN — T5-34-A brief issued | 2026-03-14
+**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
 **Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
 **Type:** Architecture Debt
 **Priority:** P4.
 **Workflow Path:** A
 **Cross-reference:** T4-07 (RESOLVED — wizard credential duplicates), T4-12 (RESOLVED — wizard interactive flow tests) are distinct. T5-34 addresses the architectural divergence between the `titan/ui/setup_wizard.py` and `launcher/wizard.py` bootstrap contracts — a different concern not covered by T4-07/T4-12.
+
+**Original state (pre-fix):** `launcher/wizard.py` treated any existing `.env` file as ready regardless of missing or empty credentials, diverged on Garmin key naming (`GARMIN_USERNAME` without alias-read for `GARMIN_EMAIL`), accepted Telegram token length only when strictly greater than 20, and lacked numeric validation for `TELEGRAM_CHAT_ID`.
+
+**Resolution:** Added launcher tests first (`tests/launcher/test_wizard.py`) covering readiness rejection for empty/incomplete existing config, Garmin alias-read acceptance (`GARMIN_EMAIL`/`GARMIN_USERNAME`), Telegram token threshold `>=20`, and numeric chat-id validation. Implemented minimal launcher fixes by adding numeric `TELEGRAM_CHAT_ID` validation, aligning token threshold to `>=20`, and strengthening `ensure_config()` to validate loaded required credentials with Garmin alias-read support before returning ready.
+
+**Task learning:** Launcher bootstrap safety depends on semantic readiness checks, not file-presence checks; mirrored tests across the launcher path catch contract drift quickly when wizard and runtime expectations diverge.
 
 **Architect classification (2026-03-14):**
 
@@ -2697,7 +2703,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-31 | ✅ RESOLVED | 2026-03-14 |
 | T5-32 | ✅ RESOLVED (Phase 8 — Lactate Logic threshold extraction; separate PR) | 2026-03-14 |
 | T5-33 | ✅ CLOSED — NO_ACTION | 2026-03-14 |
-| T5-34 | OPEN — T5-34-A brief issued | 2026-03-14 |
+| T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
