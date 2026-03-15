@@ -2491,8 +2491,8 @@ Added authenticated request rate limiting in the FastAPI middleware path keyed b
 
 **Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; CI migration work not yet begun).
 **Execution model:** Hybrid Sequential (per ADR-0049 §7) — Audit Pass → Sequential Migration Units → Single Final Closure.
-**Audit Pass status:** NOT STARTED
-**Migration units completed:** 0 / TBD (finalized after Audit Pass)
+**Audit Pass status:** DONE (2026-03-15)
+**Migration units completed:** 0 / 4
 **Workflow Path: A** *(no ADR required beyond ADR-0049; clean implementation item)*
 **Change Type:** implementation
 **Source:** ADR-0049 (Opus QA Scope Reduction — Deterministic-to-CI Migration Policy, Accepted 2026-03-15). Records-safe: next available ID T5-37.
@@ -2516,6 +2516,26 @@ For each identified Category A pattern currently checked by Opus QA:
 3. Validate the CI test (see T5-38).
 4. Remove the pattern from Opus QA scope (update ADR-0049 §3 Category A list as each pattern migrates).
 
+**Finalized binding pattern list (Audit Pass):**
+- Pattern 1: Threshold Source-of-Truth Enforcement
+  - Why Category A / machine-checkable: AST/import inspection can deterministically assert that policy constants are sourced from `titan/config/thresholds.py` and not inline literals.
+  - CI gate type needed: static-structure pytest gate that scans target modules for disallowed inline Category A literals and validates threshold imports.
+  - Validating meta-test type needed: fixture-driven known-bad module sample asserting the CI gate deterministically fails on inline-literal violations.
+- Pattern 2: Evidence Registry Coverage Parity
+  - Why Category A / machine-checkable: set-difference between exported threshold constants and `EVIDENCE_REGISTRY` entries is deterministic and reproducible.
+  - CI gate type needed: parity pytest gate that enumerates threshold constants and asserts one-to-one provenance coverage.
+  - Validating meta-test type needed: monkeypatched known-bad registry snapshot asserting the parity gate fails with missing-entry diagnostics.
+- Pattern 3: Mirrored Test-File Path Contract
+  - Why Category A / machine-checkable: filesystem path mapping from `titan/<path>/<module>.py` to `tests/titan/<path>/test_<module>.py` is a deterministic convention check.
+  - CI gate type needed: repository-structure pytest gate that enumerates in-scope modules and asserts mirrored test-module presence.
+  - Validating meta-test type needed: temporary-tree known-bad layout asserting the structure gate fails on missing or misnamed mirrored tests.
+- Pattern 4: Category A Literal Regression Presence Check
+  - Why Category A / machine-checkable: deterministic literal scanners (AST/token) can assert that previously extracted Category A literals are not reintroduced inline in governed modules.
+  - CI gate type needed: baseline-regression pytest gate that scans scoped modules for banned Category A literals and enforces denylist policy.
+  - Validating meta-test type needed: injected known-bad source sample asserting the literal-regression gate fails on denied literal reintroduction.
+
+**Execution note (post-audit):** Next steps are sequential migration units only; one pattern at a time; no parallel units; no deferred T5-38 meta-tests; no T5-37/T5-38 closure before all 4 patterns migrate.
+
 **Acceptance gate (binary):** All identified Category A patterns from the initial triage have corresponding CI tests; each CI test is verified by its T5-38 validating test; Opus QA scope section in AGENTS.md updated to reflect migrated patterns; all mandatory gates green.
 
 ---
@@ -2524,7 +2544,7 @@ For each identified Category A pattern currently checked by Opus QA:
 
 **Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test).
 **Execution model:** Hybrid Sequential (per ADR-0049 §7, paired with T5-37 per-gate) — no independent closure before T5-37.
-**Migration units completed:** 0 / TBD (follows T5-37 Audit Pass finalized list)
+**Migration units completed:** 0 / 4 (bound to T5-37 Audit Pass finalized list)
 **Workflow Path: A** *(meta-test work; no ADR required)*
 **Change Type:** implementation
 **Source:** ADR-0049 §4 (Architect Decision 2026-03-15): every CI gate that replaces an Opus Category A finding must itself have a validating test to confirm the gate fires correctly on known-bad input. Records-safe: next available ID T5-38.
