@@ -1082,7 +1082,7 @@ python -m pytest -q
 
 ### T4-27-C · Define module ceiling update policy for feature additions ✅ RESOLVED 2026-03-15
 
-**Status:** ✅ RESOLVED 2026-03-15. Commit recorded in git history.
+**Status:** ✅ RESOLVED 2026-03-15. Commit: `e061042`.
 **Source:** Architect Decision 2026-03-15 (T5-16-A records steward pass). T4-27 child item.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 **Workflow Path: A**
@@ -1603,7 +1603,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
 
-**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit pending); D4 DONE (2026-03-13, commit pending); D5 DONE (2026-03-13, commit pending). **Complete D2 is now finished (D2a + D2b + D2c).** Remaining scope: D7, D9. **D4 closed; D7/D9 remain out of scope for this pass.** Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
+**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90). **Complete D2 is now finished (D2a + D2b + D2c).** Remaining scope: D7, D9. **D4 closed; D7/D9 remain out of scope for this pass.** Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1642,17 +1642,17 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 - **Complete D2 status:** ✅ D2 is now fully complete via D2a + D2b + D2c.
 
 **D3 closure update (records maintenance):**
-- **Status:** ✅ RESOLVED 2026-03-13. Commit: pending.
+- **Status:** ✅ RESOLVED 2026-03-13. Commit: `6f641eb`.
 - **Resolution:** Added Alembic D3 migration (`20260313_02`) to append `athlete_id TEXT NOT NULL DEFAULT 'default'` to `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, and `governance_outcomes`; updated PostgreSQLAdapter table metadata and backend parity tests to validate the new default-backed column contract.
 - **Task learning:** Introducing additive schema revisions requires migration tests that target fixed revisions (`20260313_01`) where historical expectations assume a single-head chain.
 
 **D5 closure update (records maintenance):**
-- **Status:** ✅ RESOLVED 2026-03-13. Commit: pending.
+- **Status:** ✅ RESOLVED 2026-03-13. Commit: `ca8db90`.
 - **Resolution:** Added Alembic D5 migration (`20260313_03`) creating `model_calibration_metadata` in the PostgreSQL/Alembic path with composite primary key (`model_name`, `athlete_id`) and default-backed `athlete_id`/`calibrated_for` columns; added migration tests for upgrade schema contract and downgrade removal behavior.
 - **Task learning:** Isolating D5 as an additive revision after D3 preserves the existing migration chain while keeping SQLite schema behavior unchanged.
 
 **D4 closure update (records maintenance):**
-- **Status:** ✅ RESOLVED 2026-03-13. Commit: pending.
+- **Status:** ✅ RESOLVED 2026-03-13. Commit: `4ccf36d`.
 - **Resolution:** Added Alembic D4 migration (`20260313_04`) that activates PostgreSQL Row-Level Security on `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`, and `model_calibration_metadata`, applying `titan_athlete_isolation` with `current_setting('app.current_athlete_id', true)` for both read and write enforcement; non-PostgreSQL dialects are explicit no-ops to preserve SQLite behavior.
 - **Task learning:** Dialect-gated migration logic keeps the SQLite path stable while enabling enforceable PostgreSQL athlete isolation in a single revision.
 - **Next deliverables:** D7 and D9 (both remain out of scope for this pass).
@@ -2724,7 +2724,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
-| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: pending); D4 DONE (2026-03-13, commit: pending); D5 DONE (2026-03-13, commit: pending); **complete D2 finished**; D7, D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13 |
+| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); **complete D2 finished**; D7, D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
@@ -2819,7 +2819,7 @@ Next-week tactic: [1–3 sentences max]
 ### Friday Review — 2026-03-14
 State: healthy
 Learnings:
-- T5-17 through T5-35 Binder1 audit complete; all 19 items resolved/closed; T5-25 confirmed debt-only / no implementation; T5-33 CLOSED NO_ACTION; T5-34 RESOLVED 2026-03-14
+- T5-17 through T5-35 Binder1 audit complete; 18 of 19 items resolved/closed; T5-25 remains OPEN (debt-only design artefact — no Codex implementation); T5-33 CLOSED NO_ACTION; T5-34 RESOLVED 2026-03-14
 - T5-19 NO_ACTION classification established the Category A / Category B threshold-extraction distinction; this lens is now reusable for future audit passes
 - Opus QA Trigger Policy formalised as standalone section in AGENTS.md; forward verdict logging rule established
 Required updates: AGENTS.md (Opus QA Trigger Policy added this session); TECHNICAL_DEBT.md (Weekly Governance Log template added)
