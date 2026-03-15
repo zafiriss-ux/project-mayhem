@@ -1536,7 +1536,7 @@ directed.
 
 When a process violation (workflow drift, skipped gate, scope creep, or instruction
 contradiction) is discovered and resolved, the resolving record (in `TECHNICAL_DEBT.md`,
-`AGENTS.md`, or `CHANGES.md` as appropriate) must include a mini drift postmortem in
+`AGENTS.md`, or `CHANGES.md` as appropriate) may include a mini drift postmortem in
 the following format:
 
 ```
@@ -1545,13 +1545,53 @@ the following format:
 - Guard now in place: <one sentence describing the corrective rule or check added>
 ```
 
-**Scope:** Required for any process violation that results in a rule addition or
-clarification to `AGENTS.md`. Optional (but recommended) for violations resolved
-entirely within `TECHNICAL_DEBT.md` task notes.
+**Scope — when postmortem IS required:**
+- The same drift pattern appears for a second time (recurrence trigger).
+- The drift concerns a canonical document (`AGENTS.md`, `TECHNICAL_DEBT.md`, `docs/adr/`).
+
+**Scope — when postmortem is NOT required:**
+- A single corrective pass that fixes a derived-view drift (Weekly Governance Log,
+  Codex Handoff Block, session summary, `CLAUDE.md` snapshot). In these cases, the
+  fix itself is sufficient; a postmortem is not required unless the pattern recurs.
 
 **Purpose:** The mini postmortem is the mechanism by which process gaps are converted
-into durable guard rules. A drift that is resolved without a postmortem is likely to
-recur.
+into durable guard rules. It is triggered by recurrence or canonical-document impact —
+not by every corrective pass.
+
+---
+
+## §21 Governance Friction Principle
+
+Every new governance rule added to `AGENTS.md` must satisfy at least one of the
+following conditions before it is accepted:
+
+- **(a) Replacement:** The new rule explicitly replaces an existing rule (the old rule
+  is removed or superseded, and the net rule count does not increase).
+- **(b) Friction reduction:** The new rule measurably reduces manual synchronisation
+  effort or operational friction (e.g., eliminates a recurring manual check, removes an
+  ambiguity that has required ad-hoc clarification, or replaces an implicit convention
+  with an explicit one that can be verified mechanically).
+
+If a proposed rule satisfies neither (a) nor (b), it is not added. The rationale must
+be stated in the record entry that introduces the rule.
+
+**Application:** This principle applies to rules added from 2026-03-15 onwards. It does
+not trigger retroactive review of existing rules.
+
+---
+
+## §22 Friday Governance Review Output Rule
+
+Every Friday Governance Review must produce a written output entry. The entry must be
+appended to the `## Weekly Governance Log` section in `TECHNICAL_DEBT.md` using the
+template defined there.
+
+**Minimum content:** Even if there is nothing substantive to record, a one-sentence
+"State: healthy — no changes" entry is sufficient and satisfies this rule.
+
+**Completion gate:** A Friday Governance Review that has no written output entry is not
+considered completed. It must not be referenced as a completed review in any document
+until the entry exists.
 
 ---
 
@@ -1599,4 +1639,4 @@ If Opus issued **QA FAIL** for a task and Codex returns after fixing the identif
 
 ---
 
-*Last updated: 2026-03-15 — T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-15 — Records/Governance Update Pass: §20 Mini Drift Postmortem Rule refined (postmortem NOT required for every corrective pass — required only on recurrence or canonical-document impact; derived-view drift requires fix only); §21 Governance Friction Principle added (new rules must replace an old rule or reduce friction — otherwise not added); §22 Friday Governance Review Output Rule added (written output required; no output = review not completed). Previous: T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
