@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
 import types
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -226,7 +228,7 @@ def _build_test_engine() -> tuple:
                 algorithm_version_snapshot TEXT
             )
         """))
-    adapter = PostgreSQLAdapter(dsn="postgres://unused", engine=engine)
+    adapter = PostgreSQLAdapter(dsn="postgres://unused/titan", engine=engine)
     return engine, adapter
 
 
@@ -289,10 +291,70 @@ def test_postgres_adapter_boundary_returns_safe_defaults() -> None:
         adapter.close()
 
 
-def test_postgres_adapter_boundary_backup_not_in_d2b() -> None:
+def test_postgres_adapter_backup_runs_pg_dump(tmp_path) -> None:
     _engine, adapter = _build_test_engine()
+    calls: list[list[str]] = []
+
+    def _fake_run(command, *, check, capture_output, text):
+        del check, capture_output, text
+        calls.append(command)
+        output_index = command.index("--file") + 1
+        Path(command[output_index]).write_bytes(b"backup")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr("titan.core.persistence.subprocess.run", _fake_run)
     try:
-        with pytest.raises(NotImplementedError, match="D7"):
-            adapter.backup_database()
+        result = adapter.backup_database(backup_dir=tmp_path, keep=5)
+        assert result is not None
+        assert result.name.endswith(".dump")
+        assert result.exists()
+        assert calls and calls[0][0] == "pg_dump"
+        assert "--dbname" in calls[0]
     finally:
+        monkeypatch.undo()
         adapter.close()
+
+
+def test_postgres_adapter_backup_failure_raises_runtime_error(tmp_path) -> None:
+    _engine, adapter = _build_test_engine()
+
+    def _fail_run(command, *, check, capture_output, text):
+        del check, capture_output, text
+        raise subprocess.CalledProcessError(1, command, stderr="boom")
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr("titan.core.persistence.subprocess.run", _fail_run)
+    try:
+        with pytest.raises(RuntimeError, match="pg_dump failed"):
+            adapter.backup_database(backup_dir=tmp_path)
+        assert list(tmp_path.glob("*.dump")) == []
+    finally:
+        monkeypatch.undo()
+        adapter.close()
+
+
+def test_sqlite_and_postgres_backup_paths_remain_backend_specific(tmp_path) -> None:
+    sqlite_adapter = SQLiteAdapter(db_name="adapter.db", db_dir=tmp_path)
+    _engine, postgres_adapter = _build_test_engine()
+
+    def _fake_run(command, *, check, capture_output, text):
+        del check, capture_output, text
+        output_index = command.index("--file") + 1
+        Path(command[output_index]).write_bytes(b"backup")
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr("titan.core.persistence.subprocess.run", _fake_run)
+    try:
+        sqlite_backup = sqlite_adapter.backup_database(backup_dir=tmp_path / "sqlite")
+        postgres_backup = postgres_adapter.backup_database(backup_dir=tmp_path / "postgres")
+
+        assert sqlite_backup is not None
+        assert sqlite_backup.suffix == ".db"
+        assert postgres_backup is not None
+        assert postgres_backup.suffix == ".dump"
+    finally:
+        monkeypatch.undo()
+        sqlite_adapter.close()
+        postgres_adapter.close()

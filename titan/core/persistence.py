@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import (
@@ -38,6 +40,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.url import make_url
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
@@ -522,6 +525,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
         engine: Engine | None = None,
         manager: PostgreSQLDatabaseManager | None = None,
     ) -> None:
+        self._dsn = dsn
         if engine is not None:
             self._engine = engine
         elif manager is not None and hasattr(manager, "_conn"):
@@ -1061,8 +1065,40 @@ class PostgreSQLAdapter(PersistenceAdapter):
         return None
 
     def backup_database(self, backup_dir: Any = None, keep: int = 30) -> Any:
-        del backup_dir, keep
-        raise NotImplementedError("D7 pg_dump backup strategy is not part of D2b")
+        target_dir = Path(backup_dir) if backup_dir is not None else (Path.cwd() / "backups")
+        target_dir.mkdir(parents=True, exist_ok=True)
+
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        dest = target_dir / f"titan_{date_str}.dump"
+        if dest.exists():
+            return None
+
+        database_name = make_url(self._dsn).database
+        if not database_name:
+            raise ValueError("PostgreSQL DSN must include a database name for backup")
+
+        command = [
+            "pg_dump",
+            "--format=custom",
+            "--file",
+            str(dest),
+            "--dbname",
+            self._dsn,
+        ]
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+        except (FileNotFoundError, subprocess.CalledProcessError) as error:
+            if dest.exists():
+                dest.unlink()
+            raise RuntimeError("PostgreSQL backup via pg_dump failed") from error
+
+        self._prune_old_backups(target_dir, keep=keep)
+        return dest
+
+    def _prune_old_backups(self, backup_dir: Path, keep: int) -> None:
+        backups = sorted(backup_dir.glob("titan_????-??-??.dump"))
+        for old in backups[:-keep] if len(backups) > keep else []:
+            old.unlink(missing_ok=True)
 
     def transaction(self) -> AbstractContextManager:
         return self._engine.begin()

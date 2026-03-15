@@ -676,6 +676,19 @@ def test_get_database_manager_postgres_requires_dsn():
         get_database_manager(backend="postgres", postgres_dsn=None)
 
 
+def test_get_database_manager_respects_backend_environment(monkeypatch, tmp_path):
+    from titan.core import database as db_module
+
+    monkeypatch.setenv("TITAN_DB_BACKEND", "postgres")
+    monkeypatch.setenv("TITAN_POSTGRES_DSN", "postgres://fake")
+    monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
+
+    db = db_module.get_database_manager(db_name="unused.db", db_dir=tmp_path)
+
+    assert isinstance(db, db_module.PostgreSQLDatabaseManager)
+    db.close()
+
+
 def test_postgres_backend_matches_sqlite_ctl_atl_and_history(tmp_path, monkeypatch):
     from titan.core import database as db_module
 
