@@ -48,6 +48,68 @@ from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
 _log = logging.getLogger(__name__)
 
 
+def _to_json_serializable(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, float):
+        return round(value, 2)
+    if isinstance(value, dict):
+        return {str(k): _to_json_serializable(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_to_json_serializable(v) for v in value]
+    if isinstance(value, tuple):
+        return [_to_json_serializable(v) for v in value]
+    return value
+
+
+def get_athlete_context(
+    athlete_id: str,
+    days: int = 7,
+    include_governance: bool = True,
+    include_training: bool = True,
+    include_biometrics: bool = True,
+) -> dict[str, Any]:
+    """Return a unified JSON-serialisable context payload for an athlete."""
+    if days <= 0:
+        raise ValueError("days must be >= 1")
+
+    adapter = SQLiteAdapter()
+    try:
+        context: dict[str, Any] = {
+            "athlete_id": athlete_id,
+            "days": days,
+        }
+
+        if include_biometrics:
+            hrv_history = adapter.get_hrv_history(days=days)
+            weight_history = adapter.get_weight_history(days=days)
+            context["biometrics"] = {
+                "baseline_rhr": adapter.get_baseline_rhr(days=days),
+                "hrv_history": hrv_history,
+                "weight_history": weight_history,
+                "latest_hrv": hrv_history[0][1] if hrv_history else None,
+                "latest_weight": weight_history[0][1] if weight_history else None,
+            }
+
+        if include_training:
+            ctl, atl, tsb = adapter.get_ctl_atl_tsb()
+            context["training"] = {
+                "training_load_history": adapter.get_training_load_history(days=days),
+                "ctl": ctl,
+                "atl": atl,
+                "tsb": tsb,
+            }
+
+        if include_governance:
+            context["governance"] = {
+                "recent_decisions": adapter.get_governance_decisions(limit=days),
+            }
+
+        return _to_json_serializable(context)
+    finally:
+        adapter.close()
+
+
 class PersistenceAdapter(ABC):
     """Abstract persistence adapter — the storage-backend contract for TITAN.
 
