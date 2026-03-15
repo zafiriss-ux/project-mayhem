@@ -2490,6 +2490,9 @@ Added authenticated request rate limiting in the FastAPI middleware path keyed b
 ### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates 🔴 OPEN
 
 **Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; CI migration work not yet begun).
+**Execution model:** Hybrid Sequential (per ADR-0049 §7) — Audit Pass → Sequential Migration Units → Single Final Closure.
+**Audit Pass status:** NOT STARTED
+**Migration units completed:** 0 / TBD (finalized after Audit Pass)
 **Workflow Path: A** *(no ADR required beyond ADR-0049; clean implementation item)*
 **Change Type:** implementation
 **Source:** ADR-0049 (Opus QA Scope Reduction — Deterministic-to-CI Migration Policy, Accepted 2026-03-15). Records-safe: next available ID T5-37.
@@ -2520,12 +2523,14 @@ For each identified Category A pattern currently checked by Opus QA:
 ### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests 🔴 OPEN
 
 **Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test).
+**Execution model:** Hybrid Sequential (per ADR-0049 §7, paired with T5-37 per-gate) — no independent closure before T5-37.
+**Migration units completed:** 0 / TBD (follows T5-37 Audit Pass finalized list)
 **Workflow Path: A** *(meta-test work; no ADR required)*
 **Change Type:** implementation
 **Source:** ADR-0049 §4 (Architect Decision 2026-03-15): every CI gate that replaces an Opus Category A finding must itself have a validating test to confirm the gate fires correctly on known-bad input. Records-safe: next available ID T5-38.
 **Priority:** P1 — a CI gate without a validating test is an unverified gate.
 
-**Sequencing constraint:** T5-38 must be executed alongside T5-37 — each CI gate written under T5-37 is paired with its validating test under T5-38 in the same implementation pass. T5-38 is not a separate later pass; it is the per-gate safeguard discipline for T5-37.
+**Sequencing constraint:** T5-38 must be executed alongside T5-37 — each CI gate written under T5-37 is paired with its validating test under T5-38 in the same implementation pass. T5-38 is not a separate later pass; it is the per-gate safeguard discipline for T5-37. Under the Hybrid Sequential Model (ADR-0049 §7), T5-38 has no asynchronous closure path: it cannot be declared DONE before T5-37, and neither is closed mid-lane.
 
 **Problem:**
 
@@ -2859,8 +2864,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
-| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15) | — |
-| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate) | — |
+| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15; Hybrid Sequential Model per §7; Audit Pass NOT STARTED) | — |
+| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate; Hybrid Sequential Model per ADR-0049 §7) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |

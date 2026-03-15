@@ -51,7 +51,7 @@
 | [0046](0046-dailycoach-multi-athlete-execution-model.md) | DailyCoach Multi-Athlete Execution Model: stateless coaching_pipeline + CoachingScheduler | Architecture / Orchestration | ✅ Accepted (2026-03-08) — T5-16 closed; T5-16-A Phase 8B implementation entry created | — |
 | [0047](0047-architecture-fitness-functions.md) | Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3) | Architecture / Quality | ✅ Accepted (2026-03-09) — T8-01 execution pending | — |
 | [0048](0048-api-authentication-layer.md) | API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11 | Architecture / Security | ✅ Accepted (2026-03-15) — T5-11 Codex implementation pass authorized; Path B | — |
-| [0049](0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md) | Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A / Category B finding taxonomy; repeated deterministic findings migrate to CI gates; implements T5-37, T5-38 | Architecture / Quality | ✅ Accepted (2026-03-15) — T5-37, T5-38 authorized; execution after T5-13 | — |
+| [0049](0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md) | Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A / Category B finding taxonomy; repeated deterministic findings migrate to CI gates; implements T5-37, T5-38; §7 Migration Lane Execution Protocol (Hybrid Sequential Model) | Architecture / Quality | ✅ Accepted (2026-03-15) — T5-37, T5-38 authorized; execution after T5-13; §7 addendum: migration lane clarified 2026-03-15 | — |
 
 ---
 
