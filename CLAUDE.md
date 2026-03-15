@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1965 tests all green as of Phase 8B / T5-36 close (2026-03-15). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 1973 tests all green as of Phase 8B / T5-37/T5-38 Migration Unit 4 close (2026-03-15). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -318,7 +318,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
 - `0047` — Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3); engineering execution T8-01 (Accepted — 2026-03-09)
 - `0048` — API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11; prerequisite for all Phase 8B FastAPI endpoints (Accepted — 2026-03-15)
-- `0049` — Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A (machine-checkable) / Category B (judgment-required) finding taxonomy; repeated deterministic findings migrate to CI gates (T5-37); validating meta-test requirement (T5-38) (Accepted — 2026-03-15)
+- `0049` — Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A (machine-checkable) / Category B (judgment-required) finding taxonomy; repeated deterministic findings migrate to CI gates (T5-37); validating meta-test requirement (T5-38); §7 Migration Lane Execution Protocol: Hybrid Sequential Model (Audit Pass → Sequential Migration Units → Single Final Closure; no child GitHub issues before Audit Pass; T5-37 / T5-38 remain OPEN until all migration units complete) (Accepted — 2026-03-15)
 
 ### Future Design Notes
 

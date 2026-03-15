@@ -145,5 +145,49 @@ This list is the starting triage. T5-37 implementation must confirm, add, or rem
 
 ---
 
+## §7 Migration Lane Execution Protocol
+
+**Architect Decision: 2026-03-15 — Hybrid Sequential Model**
+
+T5-37 and T5-38 are **aggregate container items**. They do not use GitHub child issues and do not use a pure aggregate-lane model without binary intermediate structure. The binding execution lane is:
+
+### 7.1 Model: Hybrid Sequential
+
+1. **Audit Pass** (one-time prerequisite): Confirm, add, or remove patterns from the ADR-0049 §3 triage list based on a fresh codebase audit. The finalized pattern list is the binding scope for all subsequent migration units. No migration unit may begin before the Audit Pass is recorded in TECHNICAL_DEBT.md.
+
+2. **Sequential Migration Units** (one per pattern, in order): For each pattern on the finalized list:
+   - Write the CI gate (T5-37 unit)
+   - Write the paired meta-test (T5-38 unit)
+   - Run all three mandatory gates (Gate 1 ruff, Gate 2 strict, Gate 3 canonical)
+   - Record partial progress in T5-37 / T5-38 entries in TECHNICAL_DEBT.md
+   Migration units are executed one at a time. No parallel migration units. No deferred meta-tests.
+
+3. **Single Final Closure**: T5-37 and T5-38 are declared DONE only when all migration units on the finalized list are complete and all three mandatory gates are green for the full suite.
+
+### 7.2 Invariants
+
+- T5-37 and T5-38 remain OPEN until all migration units on the finalized list are complete.
+- No child GitHub issues are created for individual migration units before the Audit Pass is complete.
+- No asynchronous closure: T5-38 is not closed before T5-37, and neither is closed mid-lane.
+- Partial progress is recorded in TECHNICAL_DEBT.md after each migration unit (not deferred to final closure).
+
+### 7.3 T5-37 Definition of Done
+
+- Audit Pass recorded (finalized pattern list confirmed in TECHNICAL_DEBT.md)
+- CI gate exists for every pattern on the finalized list
+- Each CI gate passes on a known-good repo state
+- Each CI gate is paired with a T5-38 validating meta-test
+- Opus QA scope section in AGENTS.md updated to exclude all migrated patterns
+- All three mandatory gates green on the full suite
+
+### 7.4 T5-38 Definition of Done
+
+- Validating meta-test exists alongside every CI gate created under T5-37
+- Each meta-test asserts the CI gate fails/raises on known-bad input
+- No CI gate added under T5-37 is left without its validating test
+- All three mandatory gates green on the full suite
+
+---
+
 **ADR-0049 status: Accepted — 2026-03-15**
 **Codex handoff: T5-37 and T5-38 authorized — execution order after T5-13 (Path A for both)**

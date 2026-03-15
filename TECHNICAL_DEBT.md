@@ -2487,23 +2487,20 @@ Added authenticated request rate limiting in the FastAPI middleware path keyed b
 
 ---
 
-### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates 🔴 OPEN
+### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; CI migration work not yet begun).
+**Status:** ✅ RESOLVED 2026-03-15. Commit: 251df1c.
+**Execution model:** Hybrid Sequential (per ADR-0049 §7) — Audit Pass → Sequential Migration Units → Single Final Closure.
+**Audit Pass status:** DONE (2026-03-15)
+**Migration units completed:** 4 / 4
 **Workflow Path: A** *(no ADR required beyond ADR-0049; clean implementation item)*
 **Change Type:** implementation
 **Source:** ADR-0049 (Opus QA Scope Reduction — Deterministic-to-CI Migration Policy, Accepted 2026-03-15). Records-safe: next available ID T5-37.
 **Priority:** P1 — reduces Opus QA overhead and makes deterministic checks durable in CI.
 
-**Problem:**
+**Original state (pre-fix):**
 
-Opus QA reviews currently include **Category A findings** — machine-checkable, deterministic patterns such as:
-- Threshold source assertions (constants imported from `thresholds.py`, not inline)
-- Test file naming conventions (module → test file path contract)
-- Evidence registry completeness (all extracted constants have provenance entries)
-- Category A literal presence checks (inline literals that should have been extracted)
-
-These patterns can be checked by automated CI tests without Opus involvement. Keeping them in Opus scope wastes QA cycles on deterministic verification that a test runner can perform reliably and repeatably.
+Opus QA reviews included **Category A findings** (machine-checkable deterministic patterns) that should have been encoded as CI checks: threshold source assertions, test-file path contracts, evidence-registry completeness, and Category A literal regression presence checks.
 
 **Required:**
 
@@ -2513,32 +2510,123 @@ For each identified Category A pattern currently checked by Opus QA:
 3. Validate the CI test (see T5-38).
 4. Remove the pattern from Opus QA scope (update ADR-0049 §3 Category A list as each pattern migrates).
 
-**Acceptance gate (binary):** All identified Category A patterns from the initial triage have corresponding CI tests; each CI test is verified by its T5-38 validating test; Opus QA scope section in AGENTS.md updated to reflect migrated patterns; all mandatory gates green.
+**Finalized binding pattern list (Audit Pass):**
+- Pattern 1: Threshold Source-of-Truth Enforcement
+- Pattern 2: Evidence Registry Coverage Parity
+- Pattern 3: Mirrored Test-File Path Contract
+- Pattern 4: Category A Literal Regression Presence Check
+
+**MIGRATION UNIT 1 — CLOSED**
+- Pattern: Pattern 1 — Threshold Source-of-Truth Enforcement
+- CI gate: `test_ci_gate_threshold_source_of_truth_enforcement`
+- Validating meta-test: `test_meta_threshold_source_of_truth_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 1 / 4
+  - T5-38: 1 / 4
+- Parent status invariant: T5-37 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 2 — CLOSED**
+- Pattern: Pattern 2 — EVIDENCE REGISTRY COVERAGE PARITY
+- CI gate: `test_ci_gate_evidence_registry_coverage_parity`
+- Validating meta-test: `test_meta_evidence_registry_coverage_parity_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 2 / 4
+  - T5-38: 2 / 4
+- Parent status invariant: T5-37 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 3 — CLOSED**
+- Pattern: Pattern 3 — MIRRORED TEST-FILE PATH CONTRACT
+- CI gate: `test_ci_gate_mirrored_test_file_path_contract`
+- Validating meta-test: `test_meta_mirrored_test_file_path_contract_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 3 / 4
+  - T5-38: 3 / 4
+- Parent status invariant: T5-37 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 4 — CLOSED**
+- Pattern: Pattern 4 — CATEGORY A LITERAL REGRESSION PRESENCE CHECK
+- CI gate: `test_ci_gate_category_a_literal_regression_presence_check`
+- Validating meta-test: `test_meta_category_a_literal_regression_presence_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 4 / 4
+  - T5-38: 4 / 4
+
+**Resolution:**
+
+Implemented the Pattern 4 deterministic CI gate and paired validating meta-test in `tests/test_opus_category_a_literal_regression_presence_gate.py`. The gate performs module-scoped AST/source-token inspection to prevent reintroduction of previously extracted Category A literals; the meta-test injects known-bad input and proves the gate fails. With Unit 4 closed, all finalized binding patterns (1–4) are now migrated with paired validating tests, and mandatory gates are green on the full suite.
+
+**Parent closure proof (all conditions satisfied):**
+1. Audit Pass DONE and recorded.
+2. Migration Unit 1 CLOSED.
+3. Migration Unit 2 CLOSED.
+4. Migration Unit 3 CLOSED.
+5. MIGRATION UNIT 4 — CLOSED.
+6. Every CI gate has paired validating meta-test.
+7. All mandatory gates green (`ruff check .`, strict pytest, full pytest).
+8. No remaining pattern outside finalized binding list (4-pattern list complete).
+
+**Task learning:** The literal-regression gate must compare source-level numeric tokens (including unary negatives) instead of only numeric values, so exact regression literals are blocked while avoiding false positives from semantically different literals.
+
+**Acceptance gate (binary):** All identified Category A patterns from the initial triage have corresponding CI tests; each CI test is verified by its T5-38 validating test; Opus QA scope section in AGENTS.md reflects migrated-pattern exclusion; all mandatory gates green.
 
 ---
 
-### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests 🔴 OPEN
+### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test).
+**Status:** ✅ RESOLVED 2026-03-15. Commit: 251df1c.
+**Execution model:** Hybrid Sequential (per ADR-0049 §7, paired with T5-37 per-gate) — no independent closure before T5-37.
+**Migration units completed:** 4 / 4 (bound to T5-37 Audit Pass finalized list)
 **Workflow Path: A** *(meta-test work; no ADR required)*
 **Change Type:** implementation
 **Source:** ADR-0049 §4 (Architect Decision 2026-03-15): every CI gate that replaces an Opus Category A finding must itself have a validating test to confirm the gate fires correctly on known-bad input. Records-safe: next available ID T5-38.
 **Priority:** P1 — a CI gate without a validating test is an unverified gate.
 
-**Sequencing constraint:** T5-38 must be executed alongside T5-37 — each CI gate written under T5-37 is paired with its validating test under T5-38 in the same implementation pass. T5-38 is not a separate later pass; it is the per-gate safeguard discipline for T5-37.
+**Original state (pre-fix):**
 
-**Problem:**
-
-When a deterministic Opus finding is migrated to a CI test (T5-37), the CI test itself could be incorrectly written — passing on bad input, missing the exact failure mode, or silently no-oping. Without a validating test (a meta-test that confirms the CI gate fires on known-bad input), a broken CI gate provides false confidence.
-
-**Required:**
-
-For each CI gate created under T5-37:
-1. Write a meta-test that provides known-bad input and asserts the CI gate fails/raises as expected.
-2. The meta-test lives alongside the CI gate in the same test file.
-3. Both gate and meta-test must pass the mandatory gates before the T5-37/T5-38 item is declared DONE.
+When a deterministic Opus finding was migrated to a CI test (T5-37), that CI gate could still be incorrectly written (pass on bad input, miss the failure mode, or silently no-op). Without validating meta-tests, a broken CI gate could create false confidence.
 
 **Acceptance gate (binary):** Every CI gate added by T5-37 has a paired meta-test confirming it fires on known-bad input; no CI gate added under T5-37 is left without a validating test; all mandatory gates green.
+
+**MIGRATION UNIT 1 — CLOSED**
+- Pattern: Pattern 1 — Threshold Source-of-Truth Enforcement
+- CI gate: `test_ci_gate_threshold_source_of_truth_enforcement`
+- Validating meta-test: `test_meta_threshold_source_of_truth_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 1 / 4
+  - T5-38: 1 / 4
+- Parent status invariant: T5-38 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 2 — CLOSED**
+- Pattern: Pattern 2 — EVIDENCE REGISTRY COVERAGE PARITY
+- CI gate: `test_ci_gate_evidence_registry_coverage_parity`
+- Validating meta-test: `test_meta_evidence_registry_coverage_parity_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 2 / 4
+  - T5-38: 2 / 4
+- Parent status invariant: T5-38 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 3 — CLOSED**
+- Pattern: Pattern 3 — MIRRORED TEST-FILE PATH CONTRACT
+- CI gate: `test_ci_gate_mirrored_test_file_path_contract`
+- Validating meta-test: `test_meta_mirrored_test_file_path_contract_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 3 / 4
+  - T5-38: 3 / 4
+- Parent status invariant: T5-38 remained OPEN at this checkpoint.
+
+**MIGRATION UNIT 4 — CLOSED**
+- Pattern: Pattern 4 — CATEGORY A LITERAL REGRESSION PRESENCE CHECK
+- CI gate: `test_ci_gate_category_a_literal_regression_presence_check`
+- Validating meta-test: `test_meta_category_a_literal_regression_presence_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 4 / 4
+  - T5-38: 4 / 4
+
+**Resolution:** Added the Pattern 4 validating meta-test in the same gate file as the new CI gate (`tests/test_opus_category_a_literal_regression_presence_gate.py`) and preserved one-to-one pairing discipline across all four migration units.
+
+**Parent closure proof:** T5-38 closure is valid because T5-37 lane completion is now 4/4 with paired meta-tests per unit and all mandatory gates green in the same pass.
+
+**Task learning:** Pairing each CI gate with an immediate known-bad meta-test in the same module keeps the migration lane deterministic and prevents unverified gate drift.
 
 ---
 
@@ -2859,8 +2947,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
-| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15) | — |
-| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate) | — |
+| T5-37 | ✅ RESOLVED (P1 — Opus Category A findings → CI gates; ADR-0049 Hybrid Sequential lane completed; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
+| T5-38 | ✅ RESOLVED (P1 — validating meta-tests for each T5-37 CI gate; paired lane complete; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
