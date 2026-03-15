@@ -1080,9 +1080,9 @@ python -m pytest -q
 
 ---
 
-### T4-27-C · Define module ceiling update policy for feature additions 🔴 OPEN
+### T4-27-C · Define module ceiling update policy for feature additions ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN. Created 2026-03-15 — follow-up policy debt from T5-16-A closure.
+**Status:** ✅ RESOLVED 2026-03-15. Commit recorded in git history.
 **Source:** Architect Decision 2026-03-15 (T5-16-A records steward pass). T4-27 child item.
 **Priority:** P3 (Tier 4 — maintainability). Independent.
 **Workflow Path: A**
@@ -1090,7 +1090,7 @@ python -m pytest -q
 **Rationale:** Accepted features that add structural modules must update the ceiling explicitly
 through a records/policy path, so future additions do not require ad hoc corrections.
 
-**Problem:** T5-16-A closure was blocked because the complexity-budget guard ceiling (61) was
+**Original state (pre-fix):** T5-16-A closure was blocked because the complexity-budget guard ceiling (61) was
 stale — it had not been updated when the CoachingScheduler stub was added as a legitimate
 structural module. The ceiling update happened ad hoc as part of the closure records pass rather
 than as part of the feature implementation workflow.
@@ -1112,6 +1112,10 @@ Add a subsection to AGENTS.md §16.11 (or equivalent policy location) specifying
   update protocol described above.
 - At least one sentence cross-references T4-27-C as the source of this rule.
 - `python -m pytest -q` passes with no regressions.
+
+**Resolution:** Updated `AGENTS.md` §16.11 to codify the three-rule T4-27-C protocol for module ceiling updates on accepted structural feature additions, including a direct cross-reference back to T4-27-C as the rule source.
+
+**Task learning:** Policy-only safeguards still need explicit ownership timing (architect confirms before implementation; implementing engineer updates in-commit) to avoid post-hoc records fixes.
 
 **Effort:** ~30 minutes. Policy text only — no implementation.
 
@@ -2703,7 +2707,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-25 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 9dd54af) |
 | T4-26 | ✅ RESOLVED (independent) | 2026-03-07 (commit: e40181a) |
 | T4-27 | ✅ RESOLVED | 2026-03-07 (commit: 33e8255) |
-| T4-27-C | OPEN — module ceiling update policy for feature additions | — |
+| T4-27-C | ✅ RESOLVED | 2026-03-15 |
 | T4-28 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 92555d3) |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
