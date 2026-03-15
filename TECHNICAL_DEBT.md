@@ -1610,7 +1610,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
 
-**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90). **Complete D2 is now finished (D2a + D2b + D2c).** Remaining scope: D7, D9. **D4 closed; D7/D9 remain out of scope for this pass.** Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
+**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90). **Complete D2 is now finished (D2a + D2b + D2c).** Remaining scope: D9. **D7 closed in this pass; D9 remains out of scope for this pass.** Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1628,7 +1628,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 | D4 | Row-Level Security policies active and tested | ✓ DONE 2026-03-13 | Implemented in Alembic revision `20260313_04` with PostgreSQL-only RLS enablement + athlete isolation policy for D4 tables; tests added in `tests/titan/core/test_athlete_rls_isolation.py`. |
 | D5 | `model_calibration_metadata` table in Alembic migration (ADR-0033 T5-07 Layer 1) | ✓ DONE 2026-03-13 | Implemented in Alembic revision `20260313_03`; migration tests added for upgrade contract + downgrade removal. |
 | D6 | `TITAN_DB_BACKEND=sqlite\|postgres` feature flag | ✓ DONE (T5-08) | `get_database_manager()` switches on env var |
-| D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✗ NOT DONE | **Change Type:** implementation |
+| D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✓ DONE 2026-03-15 | Implemented in `PostgreSQLAdapter.backup_database()` using `pg_dump`; tests added for PostgreSQL happy-path, failure-path, backend-specific backup behavior, and backend env selection. **Change Type:** implementation |
 | D8 | `TECHNICAL_DEBT.md` T5-08 marked RESOLVED | ✗ NOT DONE | Blocked — T5-08-B must be RESOLVED first |
 | D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✗ NOT DONE | **Change Type:** implementation |
 
@@ -1662,7 +1662,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 - **Status:** ✅ RESOLVED 2026-03-13. Commit: `4ccf36d`.
 - **Resolution:** Added Alembic D4 migration (`20260313_04`) that activates PostgreSQL Row-Level Security on `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`, and `model_calibration_metadata`, applying `titan_athlete_isolation` with `current_setting('app.current_athlete_id', true)` for both read and write enforcement; non-PostgreSQL dialects are explicit no-ops to preserve SQLite behavior.
 - **Task learning:** Dialect-gated migration logic keeps the SQLite path stable while enabling enforceable PostgreSQL athlete isolation in a single revision.
-- **Next deliverables:** D7 and D9 (both remain out of scope for this pass).
+- **Next deliverables:** D9 (D7 resolved in this pass).
 
 **Note — D6 already done (T5-08):** `TITAN_DB_BACKEND=sqlite|postgres` feature flag via `get_database_manager()` is active. SQLite path remains fully operational throughout this migration. No test refactoring required against SQLite until the fallback is formally retired (no earlier than Phase 8B close).
 
@@ -2736,7 +2736,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
-| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); **complete D2 finished**; D7, D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13 |
+| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); **complete D2 finished**; D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
