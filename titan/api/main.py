@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -26,9 +29,50 @@ from titan.api.dependencies import (
 from titan.api.models import AuthUser, LoginRequest, LoginResponse
 
 
-def create_app(auth_store: AuthStore | None = None) -> FastAPI:
+class AuditActionType(StrEnum):
+    VIEW_DATA = "VIEW_DATA"
+    SUBMIT_OVERRIDE = "SUBMIT_OVERRIDE"
+    EXPORT_DATA = "EXPORT_DATA"
+    DELETE_DATA = "DELETE_DATA"
+
+
+@dataclass(frozen=True)
+class CoachAuditRow:
+    coach_id: str
+    athlete_id: str
+    action_type: str
+    resource: str
+    action_detail: dict[str, Any] | None
+    performed_at: datetime
+
+
+class CoachAuditStore:
+    """In-memory audit persistence adapter for API layer."""
+
+    def __init__(self) -> None:
+        self._rows: list[CoachAuditRow] = []
+
+    def log_action(self, row: CoachAuditRow) -> None:
+        self._rows.append(row)
+
+    @property
+    def rows(self) -> list[CoachAuditRow]:
+        return list(self._rows)
+
+
+def create_app(
+    auth_store: AuthStore | None = None,
+    audit_store: CoachAuditStore | None = None,
+) -> FastAPI:
     app = FastAPI(title="TITAN OS API", version="8B")
     app.state.auth_store = auth_store or AuthStore()
+    app.state.audit_store = audit_store or CoachAuditStore()
+
+    @app.middleware("http")
+    async def coach_audit_middleware(request: Request, call_next):
+        response = await call_next(request)
+        _audit_request(request)
+        return response
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -104,7 +148,74 @@ def create_app(auth_store: AuthStore | None = None) -> FastAPI:
     def create_coach_note(_: dict[str, Any], __: AuthUser = Depends(require_coach)) -> dict[str, str]:
         return {"status": "created"}
 
+    @app.post("/coach/overrides")
+    def submit_coach_override(athlete_id: str, _: dict[str, Any], __: AuthUser = Depends(require_coach)) -> dict[str, str]:
+        return {"status": "override_submitted", "athlete_id": athlete_id}
+
+    @app.get("/coach/export")
+    def export_health_data(athlete_id: str, _: AuthUser = Depends(require_coach)) -> dict[str, str]:
+        return {"status": "export_ready", "athlete_id": athlete_id}
+
+    @app.delete("/coach/athlete-data")
+    def delete_athlete_data(athlete_id: str, _: AuthUser = Depends(require_coach)) -> dict[str, str]:
+        return {"status": "deleted", "athlete_id": athlete_id}
+
     return app
+
+
+def _audit_request(request: Request) -> None:
+    route = _match_audit_route(request)
+    if route is None:
+        return
+
+    current_user = getattr(request.state, "current_user", None)
+    if not isinstance(current_user, AuthUser) or current_user.role != "COACH":
+        return
+
+    athlete_id = _resolve_athlete_id(request)
+    if athlete_id is None:
+        return
+
+    detail = _build_action_detail(request, route)
+    row = CoachAuditRow(
+        coach_id=current_user.id,
+        athlete_id=athlete_id,
+        action_type=route["action_type"],
+        resource=route["resource"],
+        action_detail=detail,
+        performed_at=datetime.now(UTC),
+    )
+    request.app.state.audit_store.log_action(row)
+
+
+def _match_audit_route(request: Request) -> dict[str, str] | None:
+    method = request.method
+    if method == "GET" and request.url.path.startswith("/athletes/") and request.url.path.endswith("/dashboard"):
+        return {"action_type": AuditActionType.VIEW_DATA.value, "resource": "athlete_dashboard"}
+    if method == "POST" and request.url.path == "/coach/overrides":
+        return {"action_type": AuditActionType.SUBMIT_OVERRIDE.value, "resource": "coach_override"}
+    if method == "GET" and request.url.path == "/coach/export":
+        return {"action_type": AuditActionType.EXPORT_DATA.value, "resource": "health_export"}
+    if method == "DELETE" and request.url.path == "/coach/athlete-data":
+        return {"action_type": AuditActionType.DELETE_DATA.value, "resource": "athlete_data"}
+    return None
+
+
+def _resolve_athlete_id(request: Request) -> str | None:
+    path_params = request.path_params
+    if "athlete_id" in path_params:
+        value = path_params["athlete_id"]
+        return value if isinstance(value, str) else None
+
+    athlete_id = request.query_params.get("athlete_id")
+    return athlete_id if athlete_id else None
+
+
+def _build_action_detail(request: Request, route: dict[str, str]) -> dict[str, Any] | None:
+    query = dict(request.query_params)
+    if route["action_type"] == AuditActionType.SUBMIT_OVERRIDE.value:
+        return {"source": "coach_override_endpoint", "query": query}
+    return {"query": query} if query else None
 
 
 def _set_auth_cookies(response: Response, access_token: str, refresh_token: str) -> None:
