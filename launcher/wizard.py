@@ -99,7 +99,12 @@ def validate_garmin_username(username: str) -> bool:
 def validate_telegram_token(token: str) -> bool:
     """Basic sanity check for Telegram bot token format."""
     # Expected format: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
-    return ':' in token and len(token) > 20
+    return ':' in token and len(token) >= 20
+
+
+def validate_telegram_chat_id(chat_id: str) -> bool:
+    """Validate Telegram chat ID as a signed integer string."""
+    return chat_id.lstrip('-').isdigit()
 
 
 def validate_openai_key(key: str) -> bool:
@@ -177,6 +182,7 @@ def run_wizard() -> dict[str, str]:
     )
     config['TELEGRAM_CHAT_ID'] = prompt_input(
         "Your Telegram chat ID (send /start to your bot to get it)",
+        validator=validate_telegram_chat_id,
     )
 
     # 3. OpenAI API key (optional)
@@ -218,8 +224,21 @@ def ensure_config() -> bool:
         True if config is ready, False if setup failed/cancelled
     """
     if env_exists():
-        print("✓ Configuration found.\n")
-        return True
+        env_vars = load_env()
+        garmin_username = env_vars.get('GARMIN_USERNAME') or env_vars.get('GARMIN_EMAIL')
+        required_values = [
+            garmin_username,
+            env_vars.get('GARMIN_PASSWORD'),
+            env_vars.get('TELEGRAM_BOT_TOKEN'),
+            env_vars.get('TELEGRAM_CHAT_ID'),
+        ]
+
+        if all(required_values):
+            print("✓ Configuration found.\n")
+            return True
+
+        print("⚠ Configuration file exists but is incomplete.\n")
+        return False
 
     # Run wizard
     try:
