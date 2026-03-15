@@ -5,8 +5,19 @@ activation path must explicitly disable it in controlled environments.
 """
 
 import os
+from dataclasses import dataclass
 
 MODULE_VERSION = "1.0.0"
+
+
+@dataclass(frozen=True)
+class ExplainableOutput:
+    """Deterministic explainability payload for advisory ML outputs."""
+
+    top_feature_contributions: tuple[tuple[str, float], tuple[str, float], tuple[str, float]]
+    confidence_range: tuple[float, float]
+    plain_text_reason: str
+    data_freshness_ok: bool
 
 
 def is_ml_kill_switch_enabled() -> bool:

@@ -1424,7 +1424,7 @@ An ADR will be required before implementing the calibration adjustment mechanism
 
 ### T5-06 · ML advisory models lack explainability contract — feature attribution and plain-text reason absent 🟢
 
-**Decision status:** OPEN — T5-06-A is **Phase 8A early work** (complete before Phase 8B); remainder deferred Phase 9.
+**Decision status:** ⚠️ PARTIALLY RESOLVED 2026-03-15 — T5-06-A complete (Phase 8A early work). T5-06-B remains deferred Phase 9.
 **Workflow Path (T5-06-A): A** *(touches ≥ 3 production modules — PILOT-01 excluded)*
 **Source:** Risk Review V7 — Risk: ML Physiological Safety & Ethical Opacity. Architecture Review 2026-03-06. ADR-0032.
 
@@ -1457,6 +1457,13 @@ Fix direction:
    - `test_injury_risk_stale_data_discarded` — stale data → `data_freshness_ok=False`
      → advisory output discarded by governance.
    - `test_plain_text_reason_nonempty` — reason string non-empty for all test cases.
+
+
+**Status (T5-06-A):** ✅ RESOLVED 2026-03-15. Commit: 9fe7e96.
+
+**Resolution (T5-06-A):** Added deterministic `ExplainableOutput` support to the injury risk advisory payload (top-3 contributions, confidence range, template `plain_text_reason`, and `data_freshness_ok`); extended `InjuryRiskEnsembleModel` with `assess_injury_risk()` + stale-data discard helper; surfaced explainability data through payload boundaries used by Operator Console session explorer when present; and added dedicated explainability tests (`tests/test_ml_explainability.py`) plus contract updates in existing injury-risk tests. Final full-suite count at closure: 1941 passing tests.
+
+**Task learning:** Existing advisory model contracts are consumed by multiple stability tests, so explainability extensions should be additive and backward-compatible (`assess_risk()` delegating to `assess_injury_risk()`) to avoid integration churn while still meeting ADR contract obligations.
 
 **T5-06-B — Shadow model promotion gate (deferred Phase 9):**
 `LoadPredictionShadowModel` and `AutomatedPeriodizationEngine` must satisfy the
@@ -2711,7 +2718,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-28 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 92555d3) |
 | T5-04 | OPEN (deferred — Phase 9+) | — |
 | T5-05 | OPEN (deferred — Phase 9+) | — |
-| T5-06 | OPEN (T5-06-A: Phase 8A early work, before Phase 8B; T5-06-B: deferred Phase 9) | — |
+| T5-06 | ⚠️ PARTIAL (T5-06-A ✅ RESOLVED 2026-03-15; T5-06-B deferred Phase 9) | 2026-03-15 |
 | T1-21 | ✅ RESOLVED | 2026-03-07 |
 | T1-22 | ✅ RESOLVED | 2026-03-07 |
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
