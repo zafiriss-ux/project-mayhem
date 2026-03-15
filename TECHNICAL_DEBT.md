@@ -1829,45 +1829,41 @@ handles for missing today-data.
 
 ---
 
-### T5-13 · No coach action audit trail — GDPR accountability gap for health data processors 🔴 OPEN
+### T5-13 · No coach action audit trail — GDPR accountability gap for health data processors ✅ RESOLVED 2026-03-16
 
-**Status:** OPEN (Phase 8B entry gate — must be implemented alongside first coach dashboard feature).
+**Status:** ✅ RESOLVED 2026-03-16. Commit: b9bddd6.
 **Workflow Path: A** *(schema migration + cross-subsystem middleware — PILOT-01 excluded)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P1 for Phase 8B (GDPR Article 5(2) accountability requirement).
 
 **Sequencing constraint:** T5-13 depends on T5-11. The `coach_audit_log` middleware writes `current_user.id` (coach identity) sourced from the `get_current_user()` FastAPI dependency established by T5-11. T5-13 must not begin until T5-11 is RESOLVED. See ADR-0048 §3.
 
-**Location:** New `coach_audit_log` table (Phase 8A Alembic migration), new `titan/api/audit.py` middleware.
+**Location:** New `coach_audit_log` table (Phase 8A Alembic migration), FastAPI audit middleware path in `titan/api/main.py`.
 
 **Original state (pre-fix):**
 
-Phase 8B grants coaches the ability to view all athletes' health data and submit manual
-overrides. Under GDPR, any entity that processes health data on behalf of another person
-is a **data processor** and must maintain records of processing activities (Article 30)
+Phase 8B granted coaches the ability to view all athletes' health data and submit manual
+overrides. Under GDPR, any entity that processed health data on behalf of another person
+was a **data processor** and had to maintain records of processing activities (Article 30)
 and be able to demonstrate accountability (Article 5(2)).
 
-Specifically: when a coach views Athlete A's HRV data and submits an override, that action
-must be logged with: coach identity, athlete affected, action type, timestamp, and reason.
-Without this log, a data subject access request or a supervisory authority audit cannot be
+Specifically: when a coach viewed Athlete A's HRV data and submitted an override, that action
+had to be logged with: coach identity, athlete affected, action type, timestamp, and reason.
+Without this log, a data subject access request or a supervisory authority audit could not be
 satisfied.
 
-**Required:**
+**Resolution:**
 
-```sql
-CREATE TABLE coach_audit_log (
-    id              SERIAL PRIMARY KEY,
-    coach_id        TEXT NOT NULL,
-    athlete_id      TEXT NOT NULL,
-    action_type     TEXT NOT NULL,   -- 'VIEW_DATA' | 'SUBMIT_OVERRIDE' | 'EXPORT_DATA' | 'DELETE_DATA'
-    resource        TEXT NOT NULL,   -- e.g., 'governance_outcomes', 'training_log'
-    action_detail   JSONB,           -- optional: override payload, query parameters
-    performed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-```
+Added Alembic revision `20260316_02` that creates `coach_audit_log` with the required
+contract (`id`, `coach_id`, `athlete_id`, `action_type`, `resource`, `action_detail`,
+`performed_at`). Added central FastAPI middleware-based auditing in `titan/api/main.py`
+that logs coach access for covered athlete health-data endpoints and records coach/athlete
+identities from the T5-11 auth dependency state. Added migration and API tests covering
+all required action types and non-bypassability. Final suite at closure: 1961 tests green.
 
-Every FastAPI endpoint that accesses athlete health data must write to this table via
-a shared middleware (not per-endpoint — this must be non-bypassable).
+**Task learning:** Middleware-only audit hooks still need a deterministic athlete-id extraction
+contract across path and query inputs; encoding that contract in tests prevents silent
+coverage gaps when new coach endpoints are added.
 
 ---
 
@@ -2840,7 +2836,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
-| T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
+| T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ✅ RESOLVED — accepted 2026-03-15; closure was blocked by stale ceiling (61→62 calibrated); T4-27-C created | 2026-03-15 |
 | T5-17 | ✅ RESOLVED (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | 2026-03-14 |

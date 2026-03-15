@@ -28,6 +28,7 @@ def get_current_user(
     user = store.get_user(payload.sub)
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
+    request.state.current_user = user
     return user
 
 
