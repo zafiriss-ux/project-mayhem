@@ -317,6 +317,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
 - `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
 - `0047` — Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3); engineering execution T8-01 (Accepted — 2026-03-09)
+- `0048` — API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11; prerequisite for all Phase 8B FastAPI endpoints (Accepted — 2026-03-15)
 
 ### Future Design Notes
 
