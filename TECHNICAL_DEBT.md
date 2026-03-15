@@ -1680,9 +1680,9 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ---
 
-### T5-09 · No unified `get_athlete_context()` query interface — LLM Seam 2 unbuilt 🔴 OPEN
+### T5-09 · No unified `get_athlete_context()` query interface — LLM Seam 2 unbuilt ✅ RESOLVED 2026-03-16
 
-**Status:** OPEN (Phase 8B prerequisite; also required for Phase 10 LLM layer).
+**Status:** ✅ RESOLVED 2026-03-16. Commit: 7952636.
 **Workflow Path: A** *(effort > 1 day — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (LLM Seam 2).
 **Priority:** P2 for Phase 8B; P5 for Phase 10.
@@ -1710,11 +1710,19 @@ def get_athlete_context(
 
 **Acceptance gate (binary):**
 ```bash
-ruff check titan/core/athlete_context.py tests/test_athlete_context.py
-python -m pytest tests/test_athlete_context.py -v
+ruff check titan/core/persistence.py tests/titan/core/test_persistence.py
+python -m pytest tests/titan/core/test_persistence.py -v
 python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
 ```
+
+**Resolution:**
+
+Implemented a new unified `get_athlete_context()` interface in `titan/core/persistence.py` to return a single JSON-serialisable payload with optional `biometrics`, `training`, and `governance` domains. The function normalises floats to two decimals and converts datetime values to ISO-8601 strings recursively to ensure no datetime objects leak into callers. Updated `tests/titan/core/test_persistence.py` with happy-path aggregation/normalisation and boundary validation (`days >= 1`) coverage for the new public function. Final closure test suite count: 1975 passing tests.
+
+**Task learning:**
+
+Seam-style query interfaces are safest when they reuse adapter contracts instead of calling storage internals directly, because it preserves backend portability while still allowing a stable payload contract for downstream LLM/UI consumers.
 
 **Effort:** ~1 week.
 
@@ -2920,7 +2928,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — all ADR-0044 deliverables D1–D9 complete; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished** | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
-| T5-09 | OPEN (Phase 8B prerequisite) | — |
+| T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |

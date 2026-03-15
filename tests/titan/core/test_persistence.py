@@ -10,7 +10,13 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine, text
 
-from titan.core.persistence import PersistenceAdapter, PostgreSQLAdapter, SQLiteAdapter
+from titan.core.persistence import (
+    PersistenceAdapter,
+    PostgreSQLAdapter,
+    SQLiteAdapter,
+    get_athlete_context,
+    get_persistence_adapter,
+)
 
 # The full set of methods that the adapter contract must expose as abstract.
 _REQUIRED_ABSTRACT_METHODS = frozenset(
@@ -358,3 +364,98 @@ def test_sqlite_and_postgres_backup_paths_remain_backend_specific(tmp_path) -> N
         monkeypatch.undo()
         sqlite_adapter.close()
         postgres_adapter.close()
+
+
+class _FakeAthleteContextAdapter:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def get_baseline_rhr(self, days: int = 7) -> float | None:
+        return 50.126
+
+    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+        return [("2026-03-14", 42.678)]
+
+    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+        return [("2026-03-14", 71.239)]
+
+    def get_training_load_history(self, days: int | None = None) -> list[tuple[str, float]]:
+        return [("2026-03-14", 123.456)]
+
+    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+        return (41.239, 51.875, -10.636)
+
+    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, object]]:
+        return [{"date": datetime(2026, 3, 14, 6, 30, tzinfo=UTC), "governance_clean": True}]
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_get_athlete_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", days=3)
+
+    assert result["athlete_id"] == "athlete-123"
+    assert result["days"] == 3
+    assert result["biometrics"]["baseline_rhr"] == 50.13
+    assert result["biometrics"]["latest_hrv"] == 42.68
+    assert result["training"]["ctl"] == 41.24
+    assert result["training"]["training_load_history"] == [["2026-03-14", 123.46]]
+    assert result["governance"]["recent_decisions"][0]["date"].startswith("2026-03-14T06:30:00")
+    assert fake.closed is True
+
+
+def test_get_athlete_context_boundary_invalid_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    with pytest.raises(ValueError, match="days must be >= 1"):
+        get_athlete_context("athlete-123", days=0)
+
+    assert fake.closed is False
+
+
+def test_get_athlete_context_omits_governance_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_governance=False)
+
+    assert "governance" not in result
+    assert "training" in result
+    assert "biometrics" in result
+
+
+def test_get_athlete_context_omits_training_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_training=False)
+
+    assert "training" not in result
+    assert "governance" in result
+    assert "biometrics" in result
+
+
+def test_get_athlete_context_omits_biometrics_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_biometrics=False)
+
+    assert "biometrics" not in result
+    assert "governance" in result
+    assert "training" in result
+
+
+def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TITAN_DB_BACKEND", "sqlite")
+
+    adapter = get_persistence_adapter()
+    try:
+        assert isinstance(adapter, SQLiteAdapter)
+    finally:
+        adapter.close()
