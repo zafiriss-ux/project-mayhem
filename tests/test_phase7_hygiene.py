@@ -239,6 +239,7 @@ class TestPhase7DictContractStability:
             'mode',
             'recall_target',
             'evidence_label',
+            'explainability',
         }
 
     def test_periodization_dict_keys(self):

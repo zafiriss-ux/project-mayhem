@@ -49,7 +49,9 @@ def test_assessment_dict_contract_is_stable():
         'mode',
         'recall_target',
         'evidence_label',
+        'explainability',
     }
+    assert payload['explainability']['plain_text_reason']
     assert payload['model_name'] == 'RF_GB_ENSEMBLE_BASELINE'
     assert payload['mode'] == 'ADVISORY'
     assert payload['recall_target'] == 0.80

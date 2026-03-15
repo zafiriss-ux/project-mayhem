@@ -144,18 +144,25 @@ class OperatorConsoleService:
                     }
                 )
 
-            sessions.append(
-                {
-                    "date": decision["date"],
-                    "phase": decision["phase"],
-                    "vlg_color": decision["vlg_color"],
-                    "manual_annotation": decision["outcome_notes"],
-                    "decision_trail": trail,
-                    "gate_findings": [
-                        {"gate": lock, "status": "TRIGGERED"} for lock in decision["locks_applied"]
-                    ],
+            session_payload = {
+                "date": decision["date"],
+                "phase": decision["phase"],
+                "vlg_color": decision["vlg_color"],
+                "manual_annotation": decision["outcome_notes"],
+                "decision_trail": trail,
+                "gate_findings": [
+                    {"gate": lock, "status": "TRIGGERED"} for lock in decision["locks_applied"]
+                ],
+            }
+
+            explainability = decision.get("injury_risk_explainability")
+            if isinstance(explainability, dict):
+                session_payload["injury_risk_explainability"] = {
+                    "plain_text_reason": explainability.get("plain_text_reason", ""),
+                    "top_feature_contributions": explainability.get("top_feature_contributions", []),
                 }
-            )
+
+            sessions.append(session_payload)
 
         summary = {
             "samples": len(sessions),
