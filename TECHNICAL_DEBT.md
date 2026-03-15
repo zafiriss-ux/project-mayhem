@@ -2489,10 +2489,10 @@ Added authenticated request rate limiting in the FastAPI middleware path keyed b
 
 ### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates 🔴 OPEN
 
-**Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; CI migration work not yet begun).
+**Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; Hybrid Sequential lane in progress; Migration Unit 1 completed, parent item remains OPEN).
 **Execution model:** Hybrid Sequential (per ADR-0049 §7) — Audit Pass → Sequential Migration Units → Single Final Closure.
 **Audit Pass status:** DONE (2026-03-15)
-**Migration units completed:** 0 / 4
+**Migration units completed:** 1 / 4
 **Workflow Path: A** *(no ADR required beyond ADR-0049; clean implementation item)*
 **Change Type:** implementation
 **Source:** ADR-0049 (Opus QA Scope Reduction — Deterministic-to-CI Migration Policy, Accepted 2026-03-15). Records-safe: next available ID T5-37.
@@ -2536,15 +2536,24 @@ For each identified Category A pattern currently checked by Opus QA:
 
 **Execution note (post-audit):** Next steps are sequential migration units only; one pattern at a time; no parallel units; no deferred T5-38 meta-tests; no T5-37/T5-38 closure before all 4 patterns migrate.
 
+**MIGRATION UNIT 1 — CLOSED**
+- Pattern: Pattern 1 — Threshold Source-of-Truth Enforcement
+- CI gate: `test_ci_gate_threshold_source_of_truth_enforcement`
+- Validating meta-test: `test_meta_threshold_source_of_truth_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 1 / 4
+  - T5-38: 1 / 4
+- Parent status invariant: T5-37 remains OPEN.
+
 **Acceptance gate (binary):** All identified Category A patterns from the initial triage have corresponding CI tests; each CI test is verified by its T5-38 validating test; Opus QA scope section in AGENTS.md updated to reflect migrated patterns; all mandatory gates green.
 
 ---
 
 ### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests 🔴 OPEN
 
-**Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test).
+**Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test; Migration Unit 1 completed, parent item remains OPEN).
 **Execution model:** Hybrid Sequential (per ADR-0049 §7, paired with T5-37 per-gate) — no independent closure before T5-37.
-**Migration units completed:** 0 / 4 (bound to T5-37 Audit Pass finalized list)
+**Migration units completed:** 1 / 4 (bound to T5-37 Audit Pass finalized list)
 **Workflow Path: A** *(meta-test work; no ADR required)*
 **Change Type:** implementation
 **Source:** ADR-0049 §4 (Architect Decision 2026-03-15): every CI gate that replaces an Opus Category A finding must itself have a validating test to confirm the gate fires correctly on known-bad input. Records-safe: next available ID T5-38.
@@ -2564,6 +2573,15 @@ For each CI gate created under T5-37:
 3. Both gate and meta-test must pass the mandatory gates before the T5-37/T5-38 item is declared DONE.
 
 **Acceptance gate (binary):** Every CI gate added by T5-37 has a paired meta-test confirming it fires on known-bad input; no CI gate added under T5-37 is left without a validating test; all mandatory gates green.
+
+**MIGRATION UNIT 1 — CLOSED**
+- Pattern: Pattern 1 — Threshold Source-of-Truth Enforcement
+- CI gate: `test_ci_gate_threshold_source_of_truth_enforcement`
+- Validating meta-test: `test_meta_threshold_source_of_truth_gate_rejects_known_bad_input`
+- Migration progress update:
+  - T5-37: 1 / 4
+  - T5-38: 1 / 4
+- Parent status invariant: T5-38 remains OPEN.
 
 ---
 
@@ -2884,8 +2902,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
-| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15; Hybrid Sequential Model per §7; Audit Pass NOT STARTED) | — |
-| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate; Hybrid Sequential Model per ADR-0049 §7) | — |
+| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15; Hybrid Sequential Model per §7; Audit Pass DONE; Migration Unit 1 CLOSED; progress 1/4) | — |
+| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate; Hybrid Sequential Model per ADR-0049 §7; Migration Unit 1 CLOSED; progress 1/4) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
