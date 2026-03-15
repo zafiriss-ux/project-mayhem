@@ -1630,7 +1630,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 | D6 | `TITAN_DB_BACKEND=sqlite\|postgres` feature flag | ✓ DONE (T5-08) | `get_database_manager()` switches on env var |
 | D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✓ DONE 2026-03-15 | Implemented in `PostgreSQLAdapter.backup_database()` using `pg_dump`; tests added for PostgreSQL happy-path, failure-path, backend-specific backup behavior, and backend env selection. **Change Type:** implementation |
 | D8 | `TECHNICAL_DEBT.md` T5-08 marked RESOLVED | ✗ NOT DONE | Blocked — T5-08-B must be RESOLVED first |
-| D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✗ NOT DONE | **Change Type:** implementation |
+| D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✓ DONE 2026-03-15 | Implemented in Alembic revision `20260315_05`; upgrade/downgrade migration tests added. **Change Type:** implementation |
 
 **D2a closure update (records maintenance):**
 - **Status:** ✅ RESOLVED 2026-03-13. Commit: `df449e7`.
@@ -2736,7 +2736,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
 | T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
-| T5-08-B | 🔴 OPEN — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); **complete D2 finished**; D9 remaining | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15 |
+| T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished** | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
