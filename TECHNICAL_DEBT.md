@@ -1750,10 +1750,13 @@ def coach_query(prompt: str, athlete_context: dict) -> str:
 
 ### T5-11 · No API authentication layer for Phase 8B web UI — health data accessible without auth 🔴 OPEN
 
-**Status:** OPEN (Phase 8B entry gate — must be designed before any coach dashboard endpoints are built).
-**Workflow Path: A** *(cross-subsystem auth layer; ADR required before implementation — PILOT-01 excluded)*
+**Status:** OPEN (Phase 8B entry gate — ADR-0048 Accepted 2026-03-15; Codex implementation pass authorized).
+**Workflow Path: B (APPROVED)** *(cross-subsystem auth logic with security invariants — Opus QA required at closure)*
+**Change Type:** implementation
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P0 for Phase 8B (do NOT build any coach API endpoint without this resolved).
+
+**ADR:** ADR-0048 — API Authentication Layer (Accepted 2026-03-15). See `docs/adr/0048-api-authentication-layer.md`.
 
 **Location:** New `titan/api/auth.py` (Phase 8B); FastAPI app (`titan/api/main.py`).
 
@@ -1764,19 +1767,28 @@ confirms multi-athlete deployment. However, no auth layer has been designed. Fas
 endpoints serving health data (HRV, RHR, governance decisions, training log) for 50
 athletes with zero authentication is a GDPR violation and a serious security risk.
 
-**Required before any Phase 8B endpoint is built:**
+**Architect decision summary (ADR-0048 — 2026-03-15):**
 
-- Auth mechanism selected and locked in an ADR (options: JWT + refresh tokens, OAuth2 via
-  Google/GitHub, or session-based). Recommendation: OAuth2 (eliminates credential management;
-  Google Workspace is common in coaching contexts).
-- Coach role vs athlete role permissions defined.
-- All API endpoints behind auth middleware — no public endpoints except health check.
-- Athlete data never returned to a request authenticated as a different athlete (RLS +
-  application-level check).
-- Token expiry and rotation policy defined.
+- **Auth mechanism:** JWT (RS256) + refresh token rotation, HTTP-only Secure cookie transport. External OAuth2 provider (Google/GitHub) rejected: contradicts local-first architecture and adds internet dependency.
+- **Roles (flat, Phase 8B):** `COACH` (all athletes) and `ATHLETE` (own data only, `athlete_id` bound from JWT claim).
+- **Isolation invariant:** every athlete-data endpoint runs both RLS (PostgreSQL) and application-level check — defense in depth.
+- **Token policy:** access token 15 min (RS256), refresh token 7 days (server-side in `auth_tokens`, supports revocation), rotation on every use, max 3 active per user.
+- **Secrets:** `TITAN_JWT_PRIVATE_KEY` / `TITAN_JWT_PUBLIC_KEY` env vars (PEM). Not in code or config files.
+- **Sole public endpoint:** `GET /health`. All others behind `Depends(get_current_user)`.
+- **New tables:** `auth_users` (UUID PK, username, bcrypt hash, role, athlete_id, created_at, is_active), `auth_tokens` (UUID PK / jti claim, user_id FK, issued_at, expires_at, revoked).
+- **Module structure:** `titan/api/auth.py`, `titan/api/dependencies.py`, `titan/api/models.py`, `titan/api/main.py`.
 
-**Debt item:** A dedicated ADR (0046 or next available) must be written and accepted before
-Phase 8B begins. This item is not implementable without that ADR.
+**Sequencing constraint:** T5-11 → T5-13. The `coach_audit_log` middleware (T5-13) requires `coach_id` from the JWT claim produced by T5-11. T5-13 must not begin until T5-11 is RESOLVED.
+
+**Acceptance gate for T5-11 (binary):**
+
+1. `auth_users` and `auth_tokens` tables exist in Alembic migration
+2. `titan/api/auth.py` — JWT create/verify with RS256
+3. `titan/api/dependencies.py` — `get_current_user()`, `require_coach()` FastAPI dependencies
+4. Every existing or new endpoint is behind `Depends(get_current_user)` except `GET /health`
+5. Application-level isolation check: `ATHLETE` role sees only their own data
+6. `tests/titan/api/test_auth.py` — happy path + token expiry + role violation + isolation violation
+7. All mandatory gates green: `ruff check .` → `pytest -q -W error::pytest.PytestWarning` → `pytest -q`
 
 ---
 
@@ -1821,6 +1833,8 @@ handles for missing today-data.
 **Workflow Path: A** *(schema migration + cross-subsystem middleware — PILOT-01 excluded)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P1 for Phase 8B (GDPR Article 5(2) accountability requirement).
+
+**Sequencing constraint:** T5-13 depends on T5-11. The `coach_audit_log` middleware writes `current_user.id` (coach identity) sourced from the `get_current_user()` FastAPI dependency established by T5-11. T5-13 must not begin until T5-11 is RESOLVED. See ADR-0048 §3.
 
 **Location:** New `coach_audit_log` table (Phase 8A Alembic migration), new `titan/api/audit.py` middleware.
 
@@ -2452,6 +2466,29 @@ python -m pytest -q
 
 ---
 
+### T5-36 · No API rate limiting — DoS risk on Phase 8B endpoints 🔴 OPEN
+
+**Status:** OPEN (P2 Phase 8B — does not block T5-11 implementation; must close before production deployment).
+**Workflow Path: A** *(FastAPI middleware addition; no ADR required)*
+**Source:** ADR-0048 §5 (Architect Decision 2026-03-15). Records-safe correction: architect text referenced T5-26, which is already assigned (Drift Engine — RESOLVED 2026-03-14). Assigned next available ID: T5-36.
+**Priority:** P2 Phase 8B.
+
+**Location:** `titan/api/middleware.py`
+
+**Original state (pre-fix):**
+
+Phase 8B FastAPI endpoints have no per-user rate limiting. Any authenticated client (coach or athlete) can issue unlimited requests per minute, creating a DoS risk on local deployments.
+
+**Required:**
+
+FastAPI rate limiting per user per endpoint (slowapi or custom middleware):
+- 100 req/min per `COACH` role
+- 30 req/min per `ATHLETE` role
+
+**Acceptance gate (binary):** Rate-limiting middleware active on all authenticated endpoints; requests exceeding the per-user limit receive HTTP 429; tests confirm limit enforcement; all mandatory gates green.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -2744,7 +2781,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished** | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
-| T5-11 | OPEN (Phase 8B entry gate — auth ADR required first) | — |
+| T5-11 | OPEN (Phase 8B entry gate — ADR-0048 Accepted 2026-03-15; Codex implementation pass authorized; Path B) | — |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
@@ -2768,6 +2805,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-33 | ✅ CLOSED — NO_ACTION | 2026-03-14 |
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
+| T5-36 | OPEN (P2 Phase 8B — rate limiting; does not block T5-11; must close before production deployment) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -2822,6 +2860,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-15 — T5-25 Records Pass. T5-25 RESOLVED: `docs/PARITY_MATRIX.md` v1.0 created; 32 PersistenceAdapter methods classified (MUST_MATCH / PERMITTED_DIVERGENCE) across 10 functional areas; D7/D9 closure gates defined in §4. T5-08-B D7 and D9 rows annotated with Change Type: implementation. AGENTS.md updated with §18 Canonical Source Map, §19 Mandatory Change-Type Field, §20 Mini Drift Postmortem Rule. No production code changes. No new architectural decisions. No renumbering.*
 
 *Updated: 2026-03-15 — Records/Governance Update Pass. AGENTS.md updated: §20 Mini Drift Postmortem Rule refined (not required for every corrective pass; triggered by recurrence or canonical-document impact only); §21 Governance Friction Principle added; §22 Friday Governance Review Output Rule added. TECHNICAL_DEBT.md: T5-16-A architect note added (preventive/historical; no new gate; sequencing D7 → D9 → T5-11 unchanged). No task status changes. No production code changes. No new debt items.*
+
+*Updated: 2026-03-15 — ADR-0047 Records Pass (T5-11 / API Authentication Layer). ADR-0048 created (`docs/adr/0048-api-authentication-layer.md`; records-safe correction: ADR-0047 was already assigned to Architecture Fitness Functions — next available number 0048 used). T5-11 status updated: Workflow Path A → Path B (APPROVED), ADR-0048 Accepted 2026-03-15, architect decision summary and acceptance gate added, Codex implementation pass authorized. T5-13 sequencing constraint added: T5-13 depends on T5-11 (coach_id from JWT claim). T5-36 registered: No API rate limiting — DoS risk on Phase 8B endpoints (records-safe correction: architect text referenced T5-26 which is already assigned; next available ID T5-36 used). CLAUDE.md ADR index updated: ADR-0048 entry added. Tracking table updated: T5-11 row and T5-36 new row. No production code changes. No implementation performed.*
 
 ---
 
