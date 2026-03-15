@@ -2754,6 +2754,8 @@ updated accordingly. Next deliverable: D2a.*
 *(2) T5-34 OPEN — T5-34-A brief issued: Class 1 (GARMIN key alignment, launcher readiness semantics); Class 2 (Telegram token threshold ≥20, numeric CHAT_ID validation); Class 3 intentional divergence (env paths, OpenAI key, keyring, weather semantics). Next Codex-executable item: T5-34-A.*
 *No implementation performed. No new architectural decisions. No renumbering.*
 
+*Updated: 2026-03-15 — Records-only sync pass. T5-34-A implementation RESOLVED 2026-03-14. Weekly Governance Log and Codex Handoff Block D updated to reflect closure of T5-33 (NO_ACTION) and T5-34 (RESOLVED). No task status changes. No implementation performed.*
+
 ---
 
 ## Weekly Governance Log
@@ -2771,11 +2773,11 @@ Next-week tactic: [1–3 sentences max]
 ### Friday Review — 2026-03-14
 State: healthy
 Learnings:
-- T5-17 through T5-35 Binder1 audit complete; 16 of 19 items resolved/closed; T5-25 confirmed debt-only / no implementation; T5-33 and T5-34 remain blocked pending read-only audit
+- T5-17 through T5-35 Binder1 audit complete; all 19 items resolved/closed; T5-25 confirmed debt-only / no implementation; T5-33 CLOSED NO_ACTION; T5-34 RESOLVED 2026-03-14
 - T5-19 NO_ACTION classification established the Category A / Category B threshold-extraction distinction; this lens is now reusable for future audit passes
 - Opus QA Trigger Policy formalised as standalone section in AGENTS.md; forward verdict logging rule established
 Required updates: AGENTS.md (Opus QA Trigger Policy added this session); TECHNICAL_DEBT.md (Weekly Governance Log template added)
-Next-week tactic: T5-33 and T5-34 read-only audits are the only remaining Codex-facing items before the next architect loop. No implementation work is unblocked in those two items until audit results are returned and architect issues a brief.
+Next-week tactic: T5-33 and T5-34 are both closed (NO_ACTION and RESOLVED respectively). Codex execution lane continues Governance Contracts S1 hardening; T5-18 is unblocked and may be scheduled in its normal T5-1x position.
 
 ---
 
@@ -2819,11 +2821,11 @@ Audit complete. No direct coupling, no layer violation, no shared mutable state.
 
 ---
 
-### Block D — T5-34-A Implementation Handoff
+### Block D — CLOSED (T5-34)
 
-**T5-34 · Setup Wizard — T5-34-A brief issued | 2026-03-14**
+**T5-34 · Setup Wizard — ✅ RESOLVED | 2026-03-14**
 
-Next Codex-executable item. See T5-34 entry above for full brief (Class 1 must-fix items, Class 2 should-align items, explicit exclusions, acceptance gates, required tests).
+T5-34-A implementation complete. Class 1 and Class 2 fixes applied; launcher tests added; mandatory gates passed at closure. No further Codex action required on T5-34.
 
 > **T5-25 has no Codex implementation handoff.** It is a design artefact to be authored by the architect or under direct architect direction. Codex does not implement T5-25.
 
