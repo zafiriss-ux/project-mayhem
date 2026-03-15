@@ -8,6 +8,9 @@ RUNTIME_DEPENDENCIES = {
     "sqlalchemy==2.0.39",
     "alembic==1.15.2",
     "psycopg2-binary==2.9.10",
+    "fastapi==0.115.0",
+    "pyjwt[crypto]==2.9.0",
+    "bcrypt==4.2.0",
 }
 
 DEV_DEPENDENCIES = {
@@ -17,6 +20,7 @@ DEV_DEPENDENCIES = {
     "hypothesis==6.100.0",
     "ruff>=0.3.0",
     "mypy>=1.9.0",
+    "httpx==0.27.2",
 }
 
 BUILD_DEPENDENCIES = {

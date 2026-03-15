@@ -14,3 +14,8 @@ pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
 sqlalchemy==2.0.39
 alembic==1.15.2
 psycopg2-binary==2.9.10
+
+# Phase 8B API auth
+fastapi==0.115.0
+pyjwt[crypto]==2.9.0
+bcrypt==4.2.0
