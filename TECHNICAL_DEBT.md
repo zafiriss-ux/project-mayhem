@@ -1549,9 +1549,9 @@ python -m pytest -q
 
 ---
 
-### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ⚠️ PARTIAL 2026-03-08
+### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ✅ RESOLVED 2026-03-15
 
-**Status:** ⚠️ PARTIAL 2026-03-08. Commit: 54e95d9. QA verdict: FAIL — ADR-0044 deliverables D1–D9 not satisfied. See T5-08-B for remaining work.
+**Status:** ✅ RESOLVED 2026-03-15 (via T5-08-B). Commit: 54e95d9 (scaffold); all ADR-0044 deliverables D1–D9 completed in T5-08-B (final: D7 2026-03-15, D9 2026-03-15). See T5-08-B for full deliverable record. **Records drift correction (2026-03-15):** T5-08-B D8 deliverable ("mark T5-08 RESOLVED") executed as part of T5-08-B RESOLVED declaration.
 **Workflow Path: A** *(PostgreSQL migration + architectural refactor — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
@@ -1608,9 +1608,9 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ---
 
-### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema 🔴 OPEN
+### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN — D1 interface contract DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90). **Complete D2 is now finished (D2a + D2b + D2c).** Remaining scope: D9. **D7 closed in this pass; D9 remains out of scope for this pass.** Phase 8A prerequisite — blocks Phase 8B; G10 gate in ADR-0022 not cleared until this resolves.
+**Status:** ✅ RESOLVED 2026-03-15. All deliverables complete: D1 DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90); D6 DONE (T5-08); D7 DONE (2026-03-15); D9 DONE (2026-03-15). Phase 8A prerequisite CLEARED. **Records drift correction (2026-03-15):** heading and status were not updated when D9 was completed; tracking table correctly showed RESOLVED 2026-03-15 — section body is now aligned.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1629,7 +1629,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 | D5 | `model_calibration_metadata` table in Alembic migration (ADR-0033 T5-07 Layer 1) | ✓ DONE 2026-03-13 | Implemented in Alembic revision `20260313_03`; migration tests added for upgrade contract + downgrade removal. |
 | D6 | `TITAN_DB_BACKEND=sqlite\|postgres` feature flag | ✓ DONE (T5-08) | `get_database_manager()` switches on env var |
 | D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✓ DONE 2026-03-15 | Implemented in `PostgreSQLAdapter.backup_database()` using `pg_dump`; tests added for PostgreSQL happy-path, failure-path, backend-specific backup behavior, and backend env selection. **Change Type:** implementation |
-| D8 | `TECHNICAL_DEBT.md` T5-08 marked RESOLVED | ✗ NOT DONE | Blocked — T5-08-B must be RESOLVED first |
+| D8 | `TECHNICAL_DEBT.md` T5-08 marked RESOLVED | ✓ DONE 2026-03-15 | T5-08-B now RESOLVED; T5-08 marked RESOLVED (records correction, 2026-03-15) |
 | D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✓ DONE 2026-03-15 | Implemented in Alembic revision `20260315_05`; upgrade/downgrade migration tests added. **Change Type:** implementation |
 
 **D2a closure update (records maintenance):**
@@ -1748,11 +1748,13 @@ def coach_query(prompt: str, athlete_context: dict) -> str:
 
 ---
 
-### T5-11 · No API authentication layer for Phase 8B web UI — health data accessible without auth 🔴 OPEN
+### T5-11 · No API authentication layer for Phase 8B web UI — health data accessible without auth ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (Phase 8B entry gate — ADR-0048 Accepted 2026-03-15; Codex implementation pass authorized).
+**Status:** ✅ RESOLVED 2026-03-15. Implementation commit: 3bd7147 (T5-11: Implement Phase 8B API authentication layer). All acceptance gate criteria met. Opus QA verdict: QA PASS.
 **Workflow Path: B (APPROVED)** *(cross-subsystem auth logic with security invariants — Opus QA required at closure)*
 **Change Type:** implementation
+
+**[Opus QA] Task: T5-11 — QA PASS** — test coverage adequate for all acceptance criteria; happy path, token expiry, role violation, and isolation violation exercised; boundary conditions met; no gaps that would allow regression to pass undetected.
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P0 for Phase 8B (do NOT build any coach API endpoint without this resolved).
 
@@ -2489,6 +2491,61 @@ FastAPI rate limiting per user per endpoint (slowapi or custom middleware):
 
 ---
 
+### T5-37 · Opus QA — Category A (machine-checkable) findings not yet migrated to CI gates 🔴 OPEN
+
+**Status:** OPEN (P1 — ADR-0049 Accepted 2026-03-15; CI migration work not yet begun).
+**Workflow Path: A** *(no ADR required beyond ADR-0049; clean implementation item)*
+**Change Type:** implementation
+**Source:** ADR-0049 (Opus QA Scope Reduction — Deterministic-to-CI Migration Policy, Accepted 2026-03-15). Records-safe: next available ID T5-37.
+**Priority:** P1 — reduces Opus QA overhead and makes deterministic checks durable in CI.
+
+**Problem:**
+
+Opus QA reviews currently include **Category A findings** — machine-checkable, deterministic patterns such as:
+- Threshold source assertions (constants imported from `thresholds.py`, not inline)
+- Test file naming conventions (module → test file path contract)
+- Evidence registry completeness (all extracted constants have provenance entries)
+- Category A literal presence checks (inline literals that should have been extracted)
+
+These patterns can be checked by automated CI tests without Opus involvement. Keeping them in Opus scope wastes QA cycles on deterministic verification that a test runner can perform reliably and repeatably.
+
+**Required:**
+
+For each identified Category A pattern currently checked by Opus QA:
+1. Identify the pattern (documented in ADR-0049 §3).
+2. Write a CI test that checks the pattern deterministically.
+3. Validate the CI test (see T5-38).
+4. Remove the pattern from Opus QA scope (update ADR-0049 §3 Category A list as each pattern migrates).
+
+**Acceptance gate (binary):** All identified Category A patterns from the initial triage have corresponding CI tests; each CI test is verified by its T5-38 validating test; Opus QA scope section in AGENTS.md updated to reflect migrated patterns; all mandatory gates green.
+
+---
+
+### T5-38 · Opus QA — CI gates replacing Category A findings lack validating tests 🔴 OPEN
+
+**Status:** OPEN (P1 — follows T5-37; each CI gate created under T5-37 requires a validating test).
+**Workflow Path: A** *(meta-test work; no ADR required)*
+**Change Type:** implementation
+**Source:** ADR-0049 §4 (Architect Decision 2026-03-15): every CI gate that replaces an Opus Category A finding must itself have a validating test to confirm the gate fires correctly on known-bad input. Records-safe: next available ID T5-38.
+**Priority:** P1 — a CI gate without a validating test is an unverified gate.
+
+**Sequencing constraint:** T5-38 must be executed alongside T5-37 — each CI gate written under T5-37 is paired with its validating test under T5-38 in the same implementation pass. T5-38 is not a separate later pass; it is the per-gate safeguard discipline for T5-37.
+
+**Problem:**
+
+When a deterministic Opus finding is migrated to a CI test (T5-37), the CI test itself could be incorrectly written — passing on bad input, missing the exact failure mode, or silently no-oping. Without a validating test (a meta-test that confirms the CI gate fires on known-bad input), a broken CI gate provides false confidence.
+
+**Required:**
+
+For each CI gate created under T5-37:
+1. Write a meta-test that provides known-bad input and asserts the CI gate fails/raises as expected.
+2. The meta-test lives alongside the CI gate in the same test file.
+3. Both gate and meta-test must pass the mandatory gates before the T5-37/T5-38 item is declared DONE.
+
+**Acceptance gate (binary):** Every CI gate added by T5-37 has a paired meta-test confirming it fires on known-bad input; no CI gate added under T5-37 is left without a validating test; all mandatory gates green.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -2777,11 +2834,11 @@ When an item is completed, mark it here with date and PR reference:
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
-| T5-08 | ⚠️ PARTIAL (scaffold only; D6 done; D1–D5, D7–D9 open — see T5-08-B) | 2026-03-08 |
+| T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — all ADR-0044 deliverables D1–D9 complete; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished** | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | OPEN (Phase 8B prerequisite) | — |
 | T5-10 | OPEN (deferred — Phase 10) | — |
-| T5-11 | OPEN (Phase 8B entry gate — ADR-0048 Accepted 2026-03-15; Codex implementation pass authorized; Path B) | — |
+| T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | OPEN (Phase 8B entry gate — GDPR) | — |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
@@ -2806,6 +2863,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-34 | ✅ RESOLVED | 2026-03-14 |
 | T5-35 | ✅ RESOLVED | 2026-03-14 |
 | T5-36 | OPEN (P2 Phase 8B — rate limiting; does not block T5-11; must close before production deployment) | — |
+| T5-37 | OPEN (P1 — Opus Category A findings → CI gates; ADR-0049 Accepted 2026-03-15) | — |
+| T5-38 | OPEN (P1 — validating meta-tests for each T5-37 CI gate; paired with T5-37 per-gate) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -2862,6 +2921,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-15 — Records/Governance Update Pass. AGENTS.md updated: §20 Mini Drift Postmortem Rule refined (not required for every corrective pass; triggered by recurrence or canonical-document impact only); §21 Governance Friction Principle added; §22 Friday Governance Review Output Rule added. TECHNICAL_DEBT.md: T5-16-A architect note added (preventive/historical; no new gate; sequencing D7 → D9 → T5-11 unchanged). No task status changes. No production code changes. No new debt items.*
 
 *Updated: 2026-03-15 — ADR-0047 Records Pass (T5-11 / API Authentication Layer). ADR-0048 created (`docs/adr/0048-api-authentication-layer.md`; records-safe correction: ADR-0047 was already assigned to Architecture Fitness Functions — next available number 0048 used). T5-11 status updated: Workflow Path A → Path B (APPROVED), ADR-0048 Accepted 2026-03-15, architect decision summary and acceptance gate added, Codex implementation pass authorized. T5-13 sequencing constraint added: T5-13 depends on T5-11 (coach_id from JWT claim). T5-36 registered: No API rate limiting — DoS risk on Phase 8B endpoints (records-safe correction: architect text referenced T5-26 which is already assigned; next available ID T5-36 used). CLAUDE.md ADR index updated: ADR-0048 entry added. Tracking table updated: T5-11 row and T5-36 new row. No production code changes. No implementation performed.*
+
+*Updated: 2026-03-15 — T5-11 Path B Closure + Opus QA Scope Reduction Records Pass. PART A: T5-11 RESOLVED: implementation commit 3bd7147 merged; Opus QA verdict QA PASS logged in canonical format per PILOT-01 verdict logging rule; T5-11 tracking table row updated to RESOLVED. PART B: ADR-0049 created (`docs/adr/0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md`); AGENTS.md Opus QA scope section updated with Category A / Category B taxonomy and deterministic-to-CI migration policy; T5-37 registered (Category A findings → CI gates; ADR-0049 Accepted 2026-03-15); T5-38 registered (validating meta-tests for T5-37 CI gates; paired execution discipline); CLAUDE.md ADR index updated: ADR-0049 entry added; docs/adr/README.md updated: ADR-0049 row added. No production code changes. No Opus observations from T5-11 verdict converted to new debt items (cookie flags / logout coverage / token-cap trimming observations are not new implementation scope in this pass). No historical renumbering.*
 
 ---
 
