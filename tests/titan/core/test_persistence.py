@@ -15,6 +15,7 @@ from titan.core.persistence import (
     PostgreSQLAdapter,
     SQLiteAdapter,
     get_athlete_context,
+    get_persistence_adapter,
 )
 
 # The full set of methods that the adapter contract must expose as abstract.
@@ -393,7 +394,7 @@ class _FakeAthleteContextAdapter:
 
 def test_get_athlete_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
-    monkeypatch.setattr("titan.core.persistence.SQLiteAdapter", lambda: fake)
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
 
     result = get_athlete_context("athlete-123", days=3)
 
@@ -409,9 +410,52 @@ def test_get_athlete_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_get_athlete_context_boundary_invalid_days(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
-    monkeypatch.setattr("titan.core.persistence.SQLiteAdapter", lambda: fake)
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
 
     with pytest.raises(ValueError, match="days must be >= 1"):
         get_athlete_context("athlete-123", days=0)
 
     assert fake.closed is False
+
+
+def test_get_athlete_context_omits_governance_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_governance=False)
+
+    assert "governance" not in result
+    assert "training" in result
+    assert "biometrics" in result
+
+
+def test_get_athlete_context_omits_training_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_training=False)
+
+    assert "training" not in result
+    assert "governance" in result
+    assert "biometrics" in result
+
+
+def test_get_athlete_context_omits_biometrics_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeAthleteContextAdapter()
+    monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
+
+    result = get_athlete_context("athlete-123", include_biometrics=False)
+
+    assert "biometrics" not in result
+    assert "governance" in result
+    assert "training" in result
+
+
+def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TITAN_DB_BACKEND", "sqlite")
+
+    adapter = get_persistence_adapter()
+    try:
+        assert isinstance(adapter, SQLiteAdapter)
+    finally:
+        adapter.close()

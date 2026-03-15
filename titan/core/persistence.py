@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
@@ -73,7 +74,7 @@ def get_athlete_context(
     if days <= 0:
         raise ValueError("days must be >= 1")
 
-    adapter = SQLiteAdapter()
+    adapter = get_persistence_adapter()
     try:
         context: dict[str, Any] = {
             "athlete_id": athlete_id,
@@ -108,6 +109,25 @@ def get_athlete_context(
         return _to_json_serializable(context)
     finally:
         adapter.close()
+
+
+def get_persistence_adapter(
+    backend: str | None = None,
+    *,
+    db_name: str = "titan_core.db",
+    db_dir: Path | None = None,
+    postgres_dsn: str | None = None,
+) -> PersistenceAdapter:
+    """Return the configured persistence adapter for the selected backend."""
+    selected_backend = (backend or os.environ.get("TITAN_DB_BACKEND", "sqlite")).lower()
+    if selected_backend == "sqlite":
+        return SQLiteAdapter(db_name=db_name, db_dir=db_dir)
+    if selected_backend == "postgres":
+        dsn = postgres_dsn or os.environ.get("TITAN_POSTGRES_DSN")
+        if not dsn:
+            raise ValueError("TITAN_POSTGRES_DSN must be set for PostgreSQL backend")
+        return PostgreSQLAdapter(dsn=dsn)
+    raise ValueError(f"Unsupported TITAN_DB_BACKEND: {selected_backend}")
 
 
 class PersistenceAdapter(ABC):
