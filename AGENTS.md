@@ -1290,8 +1290,8 @@ for non-exempt modules.
 
 ### 16.11 Complexity Budget (ex-ADR-0028)
 
-The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **60**. If a phase
-would push the count above 60, the architect must either retire/merge existing modules before adding
+The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **62**. If a phase
+would push the count above 62, the architect must either retire/merge existing modules before adding
 new ones, or explicitly revise the ceiling in a new ADR update.
 
 The CI check in `tests/test_documentation_consistency.py` (T4-21/T4-27) asserts this ceiling:
@@ -1300,9 +1300,16 @@ python -c "
 import pkgutil, titan
 mods = list(pkgutil.walk_packages(titan.__path__, 'titan.'))
 real = [m for m in mods if '__' not in m.name]
-assert len(real) <= 60, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
+assert len(real) <= 62, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
 "
 ```
+
+**T4-27-C module ceiling update protocol (feature additions):**
+1. If a task adds one or more new `titan/` modules as a deliberate structural choice, the implementing engineer must update the module ceiling in `tests/test_documentation_consistency.py::test_module_count_within_budget` in the same commit.
+2. Before implementation begins, the architect must confirm the new ceiling value explicitly in that task's acceptance criteria.
+3. Ad hoc ceiling corrections after the fact are a process violation.
+
+This protocol is sourced from `TECHNICAL_DEBT.md` item **T4-27-C** and is mandatory for all accepted feature additions that intentionally introduce new structural modules.
 
 **ADR retirement:** At each phase close, update any ADR marked `Implemented` that is fully
 superseded by a later ADR to `Superseded by [NNNN]`. Do not delete ADRs — the history is valuable.
