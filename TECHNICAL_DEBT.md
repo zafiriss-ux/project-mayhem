@@ -1628,9 +1628,9 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 | D4 | Row-Level Security policies active and tested | ✓ DONE 2026-03-13 | Implemented in Alembic revision `20260313_04` with PostgreSQL-only RLS enablement + athlete isolation policy for D4 tables; tests added in `tests/titan/core/test_athlete_rls_isolation.py`. |
 | D5 | `model_calibration_metadata` table in Alembic migration (ADR-0033 T5-07 Layer 1) | ✓ DONE 2026-03-13 | Implemented in Alembic revision `20260313_03`; migration tests added for upgrade contract + downgrade removal. |
 | D6 | `TITAN_DB_BACKEND=sqlite\|postgres` feature flag | ✓ DONE (T5-08) | `get_database_manager()` switches on env var |
-| D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✗ NOT DONE | |
+| D7 | `pg_dump` hot backup replaces SQLite file copy (T1-17 re-implementation for PostgreSQL) | ✗ NOT DONE | **Change Type:** implementation |
 | D8 | `TECHNICAL_DEBT.md` T5-08 marked RESOLVED | ✗ NOT DONE | Blocked — T5-08-B must be RESOLVED first |
-| D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✗ NOT DONE | |
+| D9 | `consent_log` table in Alembic migration (athlete_id, consent_type, granted_at, revoked_at) | ✗ NOT DONE | **Change Type:** implementation |
 
 **D2a closure update (records maintenance):**
 - **Status:** ✅ RESOLVED 2026-03-13. Commit: `df449e7`.
@@ -2182,13 +2182,14 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 
 ---
 
-### T5-25 · Database Manager — SQLite/PostgreSQL interface parity matrix absent 🔴 OPEN
+### T5-25 · Database Manager — SQLite/PostgreSQL interface parity matrix absent ✅ RESOLVED 2026-03-15
 
-**Status:** OPEN (Phase 8 — Binder1 audit; DEC-2 approved 2026-03-13; **DEBT ONLY / NO IMPLEMENTATION — Architect Follow-up Pack 2026-03-14**)
+**Status:** ✅ RESOLVED 2026-03-15. Canonical artifact: `docs/PARITY_MATRIX.md` (v1.0).
+**Change Type:** architect-decision
 **Source:** Binder1 audit / DEC-2 §Database Manager Pattern P7 variant finding.
 **Type:** Architecture Debt — design artefact
 **Priority:** P4. Related to T5-08-B but distinct scope.
-**Workflow Path:** A
+**Workflow Path:** A (records pass — no Codex implementation handoff)
 **Cross-reference:** T5-08-B (OPEN — full ADR-0044 PostgreSQL migration) addresses implementation. T5-25 addresses the **interface parity matrix** as a documented architectural contract (what methods/behaviours must be identical across both backends). These are related but distinct debt items.
 
 **Architect Decision (2026-03-14):** This is a **design artefact / parity matrix document**, not a code task. No Codex implementation handoff is permitted for T5-25 at this stage.
@@ -2198,6 +2199,10 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 **Scope:** Produce a documented parity matrix specifying which methods and behaviours must be identical across `SQLiteDatabaseManager` and `PostgreSQLDatabaseManager`, and what backend-specific divergence (if any) is explicitly permitted. Output is a document (architecture artefact), not code.
 
 **Acceptance gate (binary):** Parity matrix document exists and is accepted by Architect; T5-08-B D7 and D9 may not close without it.
+
+**Resolution:** `docs/PARITY_MATRIX.md` created (2026-03-15, v1.0). All 32 `PersistenceAdapter` abstract methods classified across 10 functional areas (MUST_MATCH / PERMITTED_DIVERGENCE). D7 and D9 closure gates defined in §4. Sequencing constraint is now satisfied — T5-08-B D7 and D9 may proceed when they reach their turn in the execution queue.
+
+**Task learning:** Interface parity matrices for dual-backend systems are most useful when they classify every method individually (not just the ones with known divergence) — the MUST_MATCH entries are the safety net that prevents D7/D9 from accidentally regressing working backends. Creating the matrix before D7/D9 rather than after forces the classification decision while the implementation is still in progress, not retrospectively.
 
 ---
 
@@ -2747,7 +2752,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-22 | ✅ RESOLVED (Phase 8 — Athlete Profile serialization completeness incl guardrails + CS/D'; test-first) | 2026-03-14 |
 | T5-23 | ✅ RESOLVED (Phase 8 — AFI no-HRR range docstring correction; formula unchanged) | 2026-03-14 |
 | T5-24 | ✅ RESOLVED (BiomechanicsEngineProtocol in contracts.py; call-site audit complete; brief issued 2026-03-14) | 2026-03-14 (commit: ed1e20a) |
-| T5-25 | OPEN (Phase 8 — DB Manager SQLite/PostgreSQL parity matrix; **DEBT ONLY / NO IMPLEMENTATION**; design artefact; must exist before T5-08-B D7/D9 close) | — |
+| T5-25 | ✅ RESOLVED 2026-03-15 — `docs/PARITY_MATRIX.md` v1.0 created; 32 methods classified; D7/D9 closure gates defined | 2026-03-15 |
 | T5-26 | ✅ RESOLVED | 2026-03-14 |
 | T5-27 | ✅ RESOLVED (Phase 8 — Durability Engine Category A threshold extraction to thresholds.py; separate PR scope) | 2026-03-14 |
 | T5-28 | ✅ RESOLVED (Phase 8 — Fatigue Engine soreness threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
@@ -2808,6 +2813,8 @@ updated accordingly. Next deliverable: D2a.*
 *No implementation performed. No new architectural decisions. No renumbering.*
 
 *Updated: 2026-03-15 — Records-only sync pass. T5-34-A implementation RESOLVED 2026-03-14. Weekly Governance Log and Codex Handoff Block D updated to reflect closure of T5-33 (NO_ACTION) and T5-34 (RESOLVED). No task status changes. No implementation performed.*
+
+*Updated: 2026-03-15 — T5-25 Records Pass. T5-25 RESOLVED: `docs/PARITY_MATRIX.md` v1.0 created; 32 PersistenceAdapter methods classified (MUST_MATCH / PERMITTED_DIVERGENCE) across 10 functional areas; D7/D9 closure gates defined in §4. T5-08-B D7 and D9 rows annotated with Change Type: implementation. AGENTS.md updated with §18 Canonical Source Map, §19 Mandatory Change-Type Field, §20 Mini Drift Postmortem Rule. No production code changes. No new architectural decisions. No renumbering.*
 
 ---
 
