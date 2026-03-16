@@ -862,6 +862,32 @@ Observed artifacts indicate a stale/ambiguous module-path contract that can caus
 
 **Status:** REVIEW_REQUESTED
 
+### [OBS-020] AdaptivePriorityLock threshold source contract is ambiguous
+
+**Date:** 2026-03-16
+**Trigger:** Architect-authorized bounded audit pass 4 (`titan/science/` remaining modules)
+**Session context:** Audit Pass 4 / audit-only / observer-only / execution unit: remaining science modules (non-governance, non-ML lane)
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/adaptive_priority_lock.py` — defines default/override gate thresholds used for priority-vector output
+- `titan/config/thresholds.py` — canonical threshold registry used by science modules
+
+**Observation:**
+`adaptive_priority_lock.py` declares that its `_DEFAULT_THRESHOLDS` mirror GovernanceEngine static constants, but it mixes imported threshold constants with inline literals in both defaults and phase overrides. Specifically, `cs_min_confidence` is defined inline as `0.70` while the thresholds module already exposes `GOVERNANCE_CS_CONFIDENCE_THRESHOLD = 0.70`; additional phase overrides are encoded inline (`1.10`, `-20.0`, `0.85`, `1.15`, `-40.0`, `0.60`, `1.25`, `-15.0`, `0.80`) rather than sourced from `thresholds.py`.
+
+References: `titan/science/adaptive_priority_lock.py`:29-42, `titan/config/thresholds.py`:96.
+
+**Pattern / scope:**
+Single-module finding in this execution unit: threshold-source contract is mixed (imported + inline) inside a science module that controls governance-adjacent threshold values.
+
+**Architectural question raised:**
+For `AdaptivePriorityLock`, should phase/default threshold values be governed strictly by `thresholds.py` as canonical inputs, or is module-local literal override policy architect-approved for this component?
+
+**Codex assessment (data only, no decision):**
+Current implementation expresses the threshold contract in two source locations (`thresholds.py` and module-local literals), which creates threshold-origin ambiguity during future drift audits.
+
+**Status:** REVIEW_REQUESTED
+
 ## Architect Review Log
 
 ### [DEC-015] Response to OBS-015 — Phase 8B retrospective: D6 records correction authorised
