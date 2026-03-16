@@ -1927,3 +1927,50 @@ For audit registration in this lane, should partial mirrored coverage in an exis
 The feature module currently has untested public API surface in its mirrored test file, while adjacent feature modules in the same scope include broader method coverage.
 
 **Status:** REVIEW_REQUESTED
+
+### [OBS-024] Audit Pass 8 — UI test topology drift around operator console
+
+**Date:** 2026-03-16
+**Trigger:** Audit Pass 8 assignment (observer-only, `titan/orchestration/` + `titan/ui/`)
+**Session context:** Bounded audit execution unit for orchestration/UI modules
+**Urgency:** NON-BLOCKING
+
+**DoR (pre-OBS):**
+- SCOPE CLEAR: PASS
+- FILES IDENTIFIED: PASS
+- CRITERIA BINARY: PASS
+- TESTS KNOWN: PASS
+
+**Files inspected:**
+- `titan/orchestration/daily_coach.py`
+- `titan/orchestration/contracts.py`
+- `titan/orchestration/__init__.py`
+- `titan/ui/menu_system.py`
+- `titan/ui/operator_console.py`
+- `titan/ui/setup_wizard.py`
+- `titan/ui/__init__.py`
+- `tests/titan/orchestration/test_daily_coach.py`
+- `tests/titan/orchestration/test_daily_coach_observability.py`
+- `tests/titan/orchestration/test_contracts.py`
+- `tests/titan/ui/test_menu_system.py`
+- `tests/titan/ui/test_setup_wizard.py`
+- `tests/test_operator_console_dashboard.py`
+- `tests/test_phase6_hygiene.py`
+
+**Observation (factual):**
+1. **Missing mirrored tests / environment-test fragility signal (operator console test location diverges from local convention):**
+   - Within the same `titan/ui/` scope, mirrored tests exist under `tests/titan/ui/` for `menu_system.py` and `setup_wizard.py`.
+   - `titan/ui/operator_console.py` is part of the `titan.ui` public API surface via `titan/ui/__init__.py`, but its behavior-focused tests are located at repository-root test path `tests/test_operator_console_dashboard.py` rather than under `tests/titan/ui/`.
+   - A hygiene gate test explicitly imports that root-path module (`tests.test_operator_console_dashboard`) as part of Phase 6 validation, meaning this non-mirrored path is part of current enforcement assumptions.
+   - References: `tests/titan/ui/test_menu_system.py:1-8`, `tests/titan/ui/test_setup_wizard.py:1-8`, `titan/ui/__init__.py:3-5`, `tests/test_operator_console_dashboard.py:1-15`, `tests/test_phase6_hygiene.py:252-258`.
+
+**Pattern / scope:**
+Isolated within this execution unit to `titan/ui/operator_console.py` test topology; adjacent UI modules in the same scope follow mirrored `tests/titan/ui/` placement.
+
+**Architectural question raised:**
+For UI modules in this subsystem, is mixed test topology (mirrored-path for some modules, root-level path for operator console with explicit hygiene import dependency) an intentional contract or a register-level inconsistency to be normalized by architect decision?
+
+**Codex assessment (data only, no decision):**
+Current enforcement relies on both mirrored and root-level test module placement for `titan/ui` components, creating a scope-local convention split that is observable in active hygiene checks.
+
+**Status:** REVIEW_REQUESTED
