@@ -81,6 +81,21 @@ Agents execute. They do not design.
 
 Codex does not write closure wording or record commit hashes in canonical documents — those are Records Steward territory. The Records Steward does not make sequencing or governance interpretation decisions — those are Architect territory. These boundaries are not guidelines; violating them is a process violation.
 
+**Codex implementation reporting — explicit scope:**
+
+Allowed in a Codex implementation report:
+- Files changed
+- Tests added or updated
+- Gate results (ruff / pytest strict / pytest full)
+- Branch name, local commit hash, PR link
+- Blockers or stop reasons
+
+Forbidden in a Codex implementation report:
+- RESOLVED wording
+- Canonical status claims (DONE, CLOSED, or equivalent)
+- Commit hash recording instructions in canonical documents
+- Any language implying the task is closed
+
 **Owner authority vs Architect authority:** The project owner directs work and sets priorities.
 However, owner instructions do not automatically carry Architect-level authority. The Architect
 role is exercised by Claude operating in an architectural session with the project owner (§3.6).
@@ -629,9 +644,15 @@ of task completion. Stale register entries are as harmful as stale code.
 
 ### 12.1 On task closure (always)
 
-When a task reaches ✅ DONE (all three gates green, commit created):
+**Role split at closure (non-negotiable):** Codex delivers implementation evidence only. The Records Steward performs all canonical closure actions. RESOLVED marking, commit hash recording, and tracking table update are Records-Steward-only actions — Codex must not perform them.
 
-1. **Mark the debt entry** in `TECHNICAL_DEBT.md`:
+**Codex closure deliverable (Codex-only):** When all three mandatory gates are green, Codex reports: files changed, tests added/updated, gate results (ruff / pytest strict / pytest full), branch name, local commit hash, and any blockers or stop reasons. Codex does not write RESOLVED, DONE, CLOSED, or any equivalent closure language.
+
+**Canonical closure actions (Records Steward-only):**
+
+After remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote), the Records Steward performs:
+
+1. **Mark the debt entry** in `TECHNICAL_DEBT.md` (Records Steward action — not Codex):
    - Change the heading status from `🔴 OPEN` to `✅ RESOLVED <YYYY-MM-DD>`
    - Change the `**Status:**` line to: `✅ RESOLVED <YYYY-MM-DD>. Commit: <short-hash>.`
    - Rename `**Problem:**` to `**Original state (pre-fix):**` and convert present-tense verbs to past tense.
@@ -641,20 +662,30 @@ When a task reaches ✅ DONE (all three gates green, commit created):
      insights that would help the next engineer avoid the same trap. If the task was completely routine
      with no new insight, write: `Task learning: No new engineering insight — routine implementation.`
 
-2. **Update the tracking table** at the bottom of `TECHNICAL_DEBT.md`:
+2. **Update the tracking table** at the bottom of `TECHNICAL_DEBT.md` (Records Steward action — not Codex):
    - Change the row for this item from `OPEN` to `✅ RESOLVED` and fill in the date column.
 
 Both updates are **required**. Updating one without the other is incomplete.
 
 **Verify-first invariant (non-negotiable):** No hash — closure hash, implementation hash, or any other commit reference — may be recorded in `TECHNICAL_DEBT.md` or any other canonical document before remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote). If remote verification fails, stop and report the branch name and local commit hash. Every new implementation attempt starts fresh; a prior candidate hash that was not remotely verified must never be reused or recorded.
 
-**Heavy-task pre-close checkpoint (mandatory — not a new process phase, a pre-condition to step 1 above):** Before writing "✅ DONE", "RESOLVED", or any equivalent closure language, Codex must explicitly confirm all three of the following:
+**Heavy-task pre-close checkpoint (mandatory — not a new process phase, a pre-condition to Records Steward closure actions):**
+
+A task is **heavy** if any of the following is true:
+- It touches ≥4 production modules.
+- It crosses ≥2 of these 3 surfaces: orchestration / governance / output.
+- It includes both implementation surface and canonical-record risk in the same pass.
+- It is explicitly flagged as heavy by the architect in the task brief.
+
+For heavy tasks, Codex must explicitly confirm all three of the following before handing off to the Records Steward:
 
 1. Implementation exists at the claimed location — the file and module are present and correct.
 2. All three mandatory gates are green — current run (ruff + pytest strict + pytest full), not a cached or prior-session result.
 3. Remote state is verifiable — `git push` completed without error and the commit is confirmed present on the remote.
 
-If any of the three cannot be confirmed: do not write closure language. Stop and report the branch name and local commit hash instead.
+If any of the three cannot be confirmed: Codex does not write closure language. Codex delivers branch name and local commit hash only. Canonical closure is deferred to the Records Steward after remote verification.
+
+**Non-push environment fallback:** In non-push environments, Codex does not write closure language. Codex delivers branch name and local commit hash only. Canonical closure is deferred to the Records Steward after remote verification.
 
 ### 12.2 On out-of-scope finding (always)
 
