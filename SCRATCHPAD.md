@@ -837,7 +837,7 @@ The observed placement creates a contract-interpretation ambiguity between docum
 ### [OBS-019] ML explainability module path is stale/ambiguous
 
 **Date:** 2026-03-16
-**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop
+**Trigger:** Architect-authorized bounded audit pass (Audit Pass 3 correction lane)
 **Session context:** Audit Pass 3 / audit-only / observer-only / execution unit: `titan/science/` ML modules
 **Urgency:** NON-BLOCKING
 **Files involved:**
