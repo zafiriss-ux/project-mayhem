@@ -888,6 +888,34 @@ Current implementation expresses the threshold contract in two source locations 
 
 **Status:** REVIEWED
 
+
+### [OBS-021] `get_athlete_context` athlete_id contract is output-only in adapter calls
+
+**Date:** 2026-03-16
+**Trigger:** Architect-authorized bounded audit pass 5 (`titan/core/`)
+**Session context:** Audit Pass 5 / audit-only / observer-only / execution unit: `titan/core/`
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/persistence.py` — `get_athlete_context()` signature accepts `athlete_id` but adapter reads are invoked without athlete scoping arguments
+- `tests/titan/core/test_persistence.py` — `get_athlete_context` tests validate payload shape/flags but do not assert athlete scoping at adapter call boundary
+
+**Observation:**
+Within `titan/core/` scope, `get_athlete_context(athlete_id, ...)` stores the provided `athlete_id` in the returned payload, but all underlying adapter fetches are called without passing athlete identity (`get_baseline_rhr`, `get_hrv_history`, `get_weight_history`, `get_ctl_atl_tsb`, `get_training_load_history`, `get_governance_decisions`). The abstract adapter contract for these reads also has no `athlete_id` parameter in method signatures, so the boundary does not encode whether reads are athlete-scoped or global. Existing tests assert that `result["athlete_id"]` matches input and that optional sections are present/omitted, but they do not assert call-level athlete scoping semantics.
+
+References: `titan/core/persistence.py`:66-109,163-173,200-207,311-313; `tests/titan/core/test_persistence.py`:395-407,421-451.
+
+**Pattern / scope:**
+Single finding in this execution unit: contract ambiguity + suspicious coupling between multi-athlete-facing API (`athlete_id` input) and backend read contract (no athlete identity in signatures).
+
+**Architectural question raised:**
+For `PersistenceAdapter` read-path methods used by `get_athlete_context`, is athlete isolation intended to be explicit in the adapter contract (method-level identity) or implicitly delegated to backend/session state?
+
+**Codex assessment (data only, no decision):**
+Observed boundary currently permits an output payload tagged with a requested `athlete_id` even when adapter read-method contracts do not express athlete identity at call time.
+
+**Status:** REVIEW_REQUESTED
+
+
 ## Architect Review Log
 
 ### [DEC-020] Response to OBS-020 — APL threshold source: Category A extraction required for `cs_min_confidence = 0.70`; phase overrides remain inline (Category B)
