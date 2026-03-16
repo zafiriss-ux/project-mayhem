@@ -406,6 +406,62 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
     ),
 
+    # ── Environmental Stress Index (ESI) compensation thresholds ───────────
+    'ESI_DEW_POINT_MODERATE_MIN_C': ThresholdEvidence(
+        parameter='ESI_DEW_POINT_MODERATE_MIN_C',
+        value=15.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='NOAA heat-stress guidance and endurance coaching practice for humidity/dew-point strain bands.',
+        rationale='Dew point ≥15°C marks the first meaningful rise in thermal strain for sustained endurance work.',
+        policy_note='MODERATE proxy threshold; calibrated for conservative pace adjustment in recreational runners.',
+    ),
+    'ESI_DEW_POINT_HIGH_MIN_C': ThresholdEvidence(
+        parameter='ESI_DEW_POINT_HIGH_MIN_C',
+        value=18.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Endurance heat-stress field guidance using dew-point bands for pace/intensity scaling.',
+        rationale='Dew point ≥18°C corresponds to noticeably harder cardiorespiratory load at fixed pace.',
+        policy_note='MODERATE: operational banding for coaching decisions, not a medical heat-illness boundary.',
+    ),
+    'ESI_DEW_POINT_EXTREME_MIN_C': ThresholdEvidence(
+        parameter='ESI_DEW_POINT_EXTREME_MIN_C',
+        value=21.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Field heat-risk guidance in endurance events for high humidity / high dew-point conditions.',
+        rationale='Dew point ≥21°C indicates severe thermal burden where high-intensity prescriptions should be constrained.',
+        policy_note='MODERATE: conservative operational cutoff used to trigger VO2 safety downgrade in governance.',
+    ),
+    'ESI_TEMP_HIGH_MIN_C': ThresholdEvidence(
+        parameter='ESI_TEMP_HIGH_MIN_C',
+        value=28.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='ACSМ/industry endurance heat guidance for elevated ambient-temperature load.',
+        rationale='Ambient temperature ≥28°C materially increases thermal and cardiovascular strain at steady output.',
+        policy_note='MODERATE operational threshold aligned with dew-point bands for ESI level computation.',
+    ),
+    'ESI_TEMP_EXTREME_MIN_C': ThresholdEvidence(
+        parameter='ESI_TEMP_EXTREME_MIN_C',
+        value=32.0,
+        evidence_level='MODERATE',
+        population='MIXED',
+        source='Endurance heat-risk recommendations for high ambient temperature training constraints.',
+        rationale='Ambient temperature ≥32°C is treated as extreme environmental stress for intensity governance.',
+        policy_note='MODERATE conservative trigger; intended to reduce high-intensity exposure under heat stress.',
+    ),
+    'ESI_PACE_ADJUSTMENT_SEC_PER_KM': ThresholdEvidence(
+        parameter='ESI_PACE_ADJUSTMENT_SEC_PER_KM',
+        value=20,
+        evidence_level='HEURISTIC',
+        population='RECREATIONAL',
+        source='Internal policy table for ESI-linked pacing offsets (LOW/MODERATE/HIGH/EXTREME).',
+        rationale='Pace offsets provide actionable compensation when environmental stress rises despite fixed session intent.',
+        policy_note='HEURISTIC table; values should be calibrated against outcome quality and RPE drift over time.',
+    ),
+
     # ── Physiological Bounds (ADR-0023, T1-18) ────────────────────────────────
     # These bounds are INPUT SANITY GUARDS, not governance thresholds.
     # They live in titan/science/physiological_bounds.BOUNDS at runtime.

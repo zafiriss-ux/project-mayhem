@@ -98,6 +98,8 @@ class DailyCoachContext(TypedDict):
     injury_flag: bool
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
+    esi_level: NotRequired[str]
+    esi_pace_adjustment_sec_per_km: NotRequired[int]
     garmin_data_stale: NotRequired[bool]
     hrv_stress_context: NotRequired[str]
     data_trust: NotRequired[Mapping[str, object]]
@@ -127,6 +129,8 @@ class DailyCoachContextContract:
     injury_flag: bool
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
+    esi_level: str = "LOW"
+    esi_pace_adjustment_sec_per_km: int = 0
     garmin_data_stale: bool | None = None
     hrv_stress_context: str | None = None
     data_trust: Mapping[str, object] | None = None
@@ -155,6 +159,8 @@ class DailyCoachContextContract:
             "injury_flag": self.injury_flag,
             "priority_vector": self.priority_vector,
             "lock_thresholds": self.lock_thresholds,
+            "esi_level": self.esi_level,
+            "esi_pace_adjustment_sec_per_km": self.esi_pace_adjustment_sec_per_km,
         }
         if self.garmin_data_stale is not None:
             payload["garmin_data_stale"] = self.garmin_data_stale
@@ -176,6 +182,8 @@ class DailyCoachingPayload(TypedDict):
     optimal_time: str
     dew_point: float | str
     conditions: str
+    esi_level: NotRequired[str]
+    esi_pace_adjustment_sec_per_km: NotRequired[int]
     hrv_status: str
     hrv_value: float
     hrv_baseline: float

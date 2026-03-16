@@ -203,3 +203,27 @@ def test_get_motivational_message_unknown_phase_uses_default_message():
     message = planner._get_motivational_message("OFFSEASON", tsb=0)
 
     assert message == "Train smart, recover hard! 💪"
+
+
+def test_apply_esi_adjustment_adds_pace_guidance_for_training_sessions():
+    planner = _planner()
+
+    adjusted = planner.apply_esi_adjustment(
+        {"session_type": "TEMPO", "details": "Steady work"},
+        {"esi_level": "HIGH", "esi_pace_adjustment_sec_per_km": 12},
+    )
+
+    assert adjusted["esi_level"] == "HIGH"
+    assert "+12s/km" in adjusted["details"]
+
+
+def test_apply_esi_adjustment_keeps_rest_details_without_pace_guidance():
+    planner = _planner()
+
+    adjusted = planner.apply_esi_adjustment(
+        {"session_type": "REST", "details": "Recovery"},
+        {"esi_level": "EXTREME", "esi_pace_adjustment_sec_per_km": 20},
+    )
+
+    assert adjusted["esi_level"] == "EXTREME"
+    assert adjusted["details"] == "Recovery"

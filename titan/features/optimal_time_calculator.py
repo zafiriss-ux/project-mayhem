@@ -32,6 +32,8 @@ class OptimalTimeCalculator:
         day_offset: int = 0,
         tsb_value: float = None,
         athlete_preferences: dict = None,
+        esi_level: str = "LOW",
+        esi_pace_adjustment_sec_per_km: int = 0,
     ) -> dict:
         """
         Calculate optimal running time for a session.
@@ -61,6 +63,8 @@ class OptimalTimeCalculator:
                 "weather_window_omitted": False,
                 "weather_data_quality": data_quality,
                 "weather_confidence": weather_confidence,
+                "esi_level": str(esi_level or "LOW").upper(),
+                "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km or 0),
             }
 
         # Get weather forecast
@@ -75,6 +79,8 @@ class OptimalTimeCalculator:
                 "reasoning": [],
                 "weather_data_quality": data_quality,
                 "weather_confidence": weather_confidence,
+                "esi_level": str(esi_level or "LOW").upper(),
+                "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km or 0),
             }
 
         # Apply session-type specific adjustments
@@ -103,6 +109,8 @@ class OptimalTimeCalculator:
             "alternatives": windows[1:3] if len(windows) > 1 else [],
             "weather_data_quality": data_quality,
             "weather_confidence": weather_confidence,
+            "esi_level": str(esi_level or "LOW").upper(),
+            "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km or 0),
         }
 
     def _apply_session_type_preferences(self, windows: list[dict], session_type: str) -> list[dict]:

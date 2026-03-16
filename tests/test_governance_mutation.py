@@ -178,6 +178,27 @@ def test_data_confidence_low_ceiling_applies():
     assert "STARTUP_DATA_CONFIDENCE_CEILING" in result.get("governance_locks_applied", [])
 
 
+def test_vo2_eligibility_gate_blocks_vo2_when_esi_extreme():
+    """VO2 eligibility gate must downgrade VO2 sessions under ESI EXTREME."""
+    ctx = _base_context(esi_level="EXTREME")
+    session = _base_session(session_type="INTERVALS", zone=5)
+
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result["session_type"] == "TEMPO"
+    assert "VO2_ELIGIBILITY_GATE" in result.get("governance_locks_applied", [])
+
+
+def test_vo2_eligibility_gate_allows_vo2_when_esi_not_extreme():
+    """VO2 eligibility gate must not trigger from ESI when level is below EXTREME."""
+    ctx = _base_context(esi_level="HIGH")
+    session = _base_session(session_type="INTERVALS", zone=5)
+
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result.get("vo2_eligibility", {}).get("eligible") is True
+
+
 # ── No-gate clean path ────────────────────────────────────────────────────────
 
 def test_governance_clean_when_no_gate_fires():

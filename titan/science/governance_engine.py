@@ -410,6 +410,7 @@ class GovernanceEngine:
         glycogen_debt_raw = context.get("glycogen_debt", 0.0)
         fatigue_level_raw = context.get("fatigue_level", "LOW")
         days_since_last_vo2 = context.get("days_since_last_vo2")
+        esi_level = str(context.get("esi_level", "LOW") or "LOW").upper()
 
         acwr_invalid = False
         try:
@@ -550,6 +551,19 @@ class GovernanceEngine:
                     "operator": "!=",
                     "threshold": "HIGH",
                     "actual": fatigue_level,
+                }
+            )
+
+        if esi_level == "EXTREME":
+            failed.append("V4")
+            reasons.append("esi_level != EXTREME (actual: EXTREME)")
+            details.append(
+                {
+                    "code": "V4",
+                    "metric": "esi_level",
+                    "operator": "!=",
+                    "threshold": "EXTREME",
+                    "actual": esi_level,
                 }
             )
 

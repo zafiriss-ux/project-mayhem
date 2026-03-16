@@ -1875,9 +1875,9 @@ coverage gaps when new coach endpoints are added.
 
 ---
 
-### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN
+### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent ✅ RESOLVED 2026-03-16
 
-**Status:** OPEN (Phase 8 scheduled — implement after Phase 8 entry gate passes per AGENTS.md §16.2).
+**Status:** ✅ RESOLVED 2026-03-16. Commit: f846135.
 **Workflow Path: A** *(touches 5 production modules — PILOT-01 excluded)*
 **Reclassified:** 2026-03-07 from T4-29 (Tier 4) to T5-14 (Tier 5). Rationale: this is Phase 8 internal work, not a Phase 8 prerequisite; keeping it as an OPEN Tier 4 item blocked G1 of the Phase 8 entry gate despite the work being correctly deferred into Phase 8.
 **Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
@@ -1894,15 +1894,19 @@ implemented (`OptimalTimeCalculator`), but the training targets themselves are n
 adjusted when the athlete trains outside the optimal window or when conditions are
 unavoidably adverse.
 
-**Fix direction (per ADR-0034):**
+**Resolution:**
 
-1. Add ESI constants to `thresholds.py` (dew point thresholds, temp thresholds, pace adjustment table).
-2. Compute `esi_level` and `esi_pace_adjustment_sec_per_km` in `DailyCoach` from
-   current weather data.
-3. Pass ESI context to `WeeklyPlanGenerator` and `OptimalTimeCalculator`.
-4. Block VO₂max workouts when ESI is EXTREME (via `VO2_ELIGIBILITY_GATE` modification).
-5. Include ESI level and adjusted targets in Telegram briefing.
-6. Add `tests/test_esi_compensation.py`.
+Implemented the ADR-0034 ESI overlay with minimal scope:
+1. Added ESI constants in `thresholds.py` and registered them in `evidence_registry.py`.
+2. Added ESI computation (`esi_level`, `esi_pace_adjustment_sec_per_km`) in `DailyCoach` from weather inputs.
+3. Propagated ESI context into `WeeklyPlanGenerator` (session annotation) and `OptimalTimeCalculator` (payload context).
+4. Extended VO₂ eligibility to downgrade VO₂ sessions when ESI is `EXTREME`.
+5. Extended Telegram daily briefing with ESI level and adjusted pace guidance.
+6. Added `tests/test_esi_compensation.py` and updated existing mirrored tests for the changed modules.
+
+Closure validation: 1998 tests passed on full suite at task close (`python -m pytest -q`).
+
+**Task learning:** ESI integration touched orchestration and governance contracts simultaneously; keeping compatibility guards for optional collaborators (planner/weather stubs) prevented broad fixture breakage while preserving production behavior.
 
 **Acceptance gate (binary):**
 ```bash
@@ -2920,7 +2924,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T5-14 | OPEN (Phase 8 scheduled — formerly T4-29; reclassified 2026-03-07) | — |
+| T5-14 | ✅ RESOLVED (Phase 8 scheduled — formerly T4-29; reclassified 2026-03-07) | 2026-03-16 |
 | T5-15 | DEFERRED (Phase 9 housekeeping — test marker taxonomy) | — |
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |

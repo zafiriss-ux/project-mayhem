@@ -455,6 +455,11 @@ class TitanTelegramBot:
             f"🍽 *Nutrition:* {data.get('nutrition_plan', 'See /nutrition')}\n\n"
             f"👟 *Shoe:* {data.get('shoe', 'See /shoes')}\n"
         )
+        esi_level = str(data.get("esi_level", "LOW") or "LOW").upper()
+        pace_adjust = int(data.get("esi_pace_adjustment_sec_per_km", 0) or 0)
+        text += f"\n🌡 *ESI:* {esi_level}"
+        if pace_adjust > 0:
+            text += f"\n🎯 *Adjusted target pace:* +{pace_adjust}s/km"
         if data.get("primary_reason"):
             text += f"\n🧭 *Why this decision:* {data['primary_reason']}"
         if data.get("actionable_guidance"):

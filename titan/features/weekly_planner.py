@@ -89,6 +89,33 @@ class WeeklyPlanGenerator:
             "target_hr_zone": "N/A",
         }
 
+    def apply_esi_adjustment(self, session: dict, esi_context: dict | None) -> dict:
+        """Annotate the selected session with ESI pace guidance."""
+        if not isinstance(session, dict):
+            return session
+        if not isinstance(esi_context, dict):
+            return dict(session)
+
+        adjusted = dict(session)
+        esi_level = str(esi_context.get("esi_level", "LOW") or "LOW").upper()
+        pace_adjust = int(esi_context.get("esi_pace_adjustment_sec_per_km", 0) or 0)
+        adjusted["esi_level"] = esi_level
+        adjusted["esi_pace_adjustment_sec_per_km"] = pace_adjust
+
+        if pace_adjust > 0 and adjusted.get("session_type") in {
+            "EASY",
+            "TEMPO",
+            "LONG_RUN",
+            "INTERVALS",
+            "HAMMER",
+            "RACE",
+        }:
+            details = str(adjusted.get("details", "")).strip()
+            guidance = f"ESI {esi_level}: add +{pace_adjust}s/km to target pace"
+            adjusted["details"] = f"{details} ({guidance})" if details else guidance
+
+        return adjusted
+
     def analyze_past_week(self, sessions: list[dict]) -> dict:
         """
         Analyze past week's training.

@@ -66,4 +66,6 @@ def test_daily_coach_context_contract_shape():
         "injury_flag",
         "priority_vector",
         "lock_thresholds",
+        "esi_level",
+        "esi_pace_adjustment_sec_per_km",
     }

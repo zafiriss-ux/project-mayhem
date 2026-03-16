@@ -707,6 +707,8 @@ def test_build_daily_coach_context_supports_dict_access_and_serialization():
         "injury_flag",
         "priority_vector",
         "lock_thresholds",
+        "esi_level",
+        "esi_pace_adjustment_sec_per_km",
     }
 
 

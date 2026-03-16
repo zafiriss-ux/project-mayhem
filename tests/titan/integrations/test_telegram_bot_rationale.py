@@ -43,3 +43,35 @@ def test_send_daily_coaching_omits_rationale_when_missing(monkeypatch):
     assert ok is True
     assert "Why this decision" not in captured["text"]
     assert "Actionable guidance" not in captured["text"]
+
+
+def test_send_daily_coaching_includes_esi_section(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=None)
+    captured = {}
+
+    def _capture(text):
+        captured["text"] = text
+        return True
+
+    monkeypatch.setattr(bot, "send_message", _capture)
+
+    bot.send_daily_coaching({"esi_level": "HIGH", "esi_pace_adjustment_sec_per_km": 12})
+
+    assert "*ESI:* HIGH" in captured["text"]
+    assert "*Adjusted target pace:* +12s/km" in captured["text"]
+
+
+def test_send_daily_coaching_esi_zero_adjustment_omits_pace_line(monkeypatch):
+    bot = TitanTelegramBot(bot_token="", chat_id=None)
+    captured = {}
+
+    def _capture(text):
+        captured["text"] = text
+        return True
+
+    monkeypatch.setattr(bot, "send_message", _capture)
+
+    bot.send_daily_coaching({"esi_level": "LOW", "esi_pace_adjustment_sec_per_km": 0})
+
+    assert "*ESI:* LOW" in captured["text"]
+    assert "Adjusted target pace" not in captured["text"]

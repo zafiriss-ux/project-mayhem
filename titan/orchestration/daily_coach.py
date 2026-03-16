@@ -34,7 +34,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from titan.config.evidence_registry import get_metrics_under_review
-from titan.config.thresholds import CTL_DECAY_DAYS, GARMIN_DATA_MAX_AGE_HOURS
+from titan.config.thresholds import (
+    CTL_DECAY_DAYS,
+    ESI_DEW_POINT_EXTREME_MIN_C,
+    ESI_DEW_POINT_HIGH_MIN_C,
+    ESI_DEW_POINT_MODERATE_MIN_C,
+    ESI_PACE_ADJUSTMENT_SEC_PER_KM,
+    ESI_TEMP_EXTREME_MIN_C,
+    ESI_TEMP_HIGH_MIN_C,
+    GARMIN_DATA_MAX_AGE_HOURS,
+)
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -178,6 +187,28 @@ def _safe_int(value, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _compute_esi_level(dew_point_c: float, temp_c: float) -> str:
+    if dew_point_c >= ESI_DEW_POINT_EXTREME_MIN_C or temp_c >= ESI_TEMP_EXTREME_MIN_C:
+        return "EXTREME"
+    if dew_point_c >= ESI_DEW_POINT_HIGH_MIN_C or temp_c >= ESI_TEMP_HIGH_MIN_C:
+        return "HIGH"
+    if dew_point_c >= ESI_DEW_POINT_MODERATE_MIN_C:
+        return "MODERATE"
+    return "LOW"
+
+
+def _compute_esi_context(weather_now: dict[str, Any]) -> dict[str, Any]:
+    dew_point_c = _safe_float(weather_now.get("dew_point"), 0.0)
+    temp_c = _safe_float(weather_now.get("temp_c"), 0.0)
+    esi_level = _compute_esi_level(dew_point_c=dew_point_c, temp_c=temp_c)
+    return {
+        "esi_level": esi_level,
+        "esi_pace_adjustment_sec_per_km": int(ESI_PACE_ADJUSTMENT_SEC_PER_KM.get(esi_level, 0)),
+        "esi_dew_point_c": dew_point_c,
+        "esi_temp_c": temp_c,
+    }
 
 
 class DailyCoach:
@@ -614,6 +645,13 @@ class DailyCoach:
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         _daily_coach_event("step_started", step_number=8, step_name="load_today_session")
         today_session: TodaySessionPlan = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
+        weather_client = getattr(self, "weather", None)
+        weather_now_getter = getattr(weather_client, "get_current_conditions", None)
+        weather_now = weather_now_getter() if callable(weather_now_getter) else {}
+        esi_context = _compute_esi_context(weather_now)
+        planner_esi_adjustment = getattr(self.weekly_planner, "apply_esi_adjustment", None)
+        if callable(planner_esi_adjustment):
+            today_session = planner_esi_adjustment(today_session, esi_context)
 
         intensity_gate = ig.evaluate({
             'drift_pct': garmin_data.get('drift_pct', 0.0),
@@ -690,6 +728,8 @@ class DailyCoach:
             persistence_degraded=persistence_degraded,
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
+            esi_level=esi_context.get("esi_level", "LOW"),
+            esi_pace_adjustment_sec_per_km=esi_context.get("esi_pace_adjustment_sec_per_km", 0),
         )
 
         # Compute degraded flags (passed to _effect_runner via decision_trace)
@@ -719,6 +759,8 @@ class DailyCoach:
             duration_hours= today_session.get('duration_min', 45) / 60.0,
             day_offset    = 0,
             tsb_value     = tsb_value,
+            esi_level=esi_context.get("esi_level", "LOW"),
+            esi_pace_adjustment_sec_per_km=esi_context.get("esi_pace_adjustment_sec_per_km", 0),
         ))
         weather_data_quality = str(optimal_time.get('weather_data_quality', 'live'))
         weather_degraded_mode = weather_data_quality == 'synthetic'
@@ -780,6 +822,8 @@ class DailyCoach:
             'optimal_time'      : 'N/A' if weather_degraded_mode else optimal_time.get('recommended_time', 'N/A'),
             'dew_point'         : 'N/A' if weather_degraded_mode else optimal_time.get('dew_point', 'N/A'),
             'conditions'        : 'N/A' if weather_degraded_mode else optimal_time.get('quality', 'N/A'),
+            'esi_level': esi_context.get("esi_level", "LOW"),
+            'esi_pace_adjustment_sec_per_km': esi_context.get("esi_pace_adjustment_sec_per_km", 0),
             # Autonomic / HRV
             'hrv_status'        : hrv_summary.get('trend', 'N/A'),
             'hrv_value'         : round(latest_hrv, 1),
@@ -991,6 +1035,8 @@ class DailyCoach:
         injury_flag: bool,
         priority_vector: dict[str, Any],
         lock_thresholds: dict[str, Any],
+        esi_level: str = "LOW",
+        esi_pace_adjustment_sec_per_km: int = 0,
         data_confidence_low: bool | None = None,
         persistence_degraded: bool = False,
         garmin_data_stale: bool | None = None,
@@ -1020,6 +1066,8 @@ class DailyCoach:
             injury_flag=injury_flag,
             priority_vector=priority_vector,
             lock_thresholds=lock_thresholds,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
         ).to_payload()

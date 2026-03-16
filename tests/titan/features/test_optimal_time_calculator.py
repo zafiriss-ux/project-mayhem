@@ -58,3 +58,16 @@ def test_calculate_optimal_time_defaults_to_synthetic_confidence_when_quality_is
 
     assert result["weather_confidence"] == "SYNTHETIC"
     assert result["recommended_time"] == "06:00-09:00"
+
+
+def test_calculate_optimal_time_propagates_esi_adjustment_fields():
+    calculator = OptimalTimeCalculator(StubWeatherAPI(data_quality="live", weather_confidence="LIVE"))
+
+    result = calculator.calculate_optimal_time(
+        session_type="EASY",
+        esi_level="HIGH",
+        esi_pace_adjustment_sec_per_km=12,
+    )
+
+    assert result["esi_level"] == "HIGH"
+    assert result["esi_pace_adjustment_sec_per_km"] == 12
