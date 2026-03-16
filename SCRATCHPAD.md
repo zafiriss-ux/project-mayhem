@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -698,6 +698,62 @@ observation rather than identification of a concrete uncovered risk.
 **Status:** REVIEWED
 
 ---
+
+
+### [OBS-016] Phase 8B retrospective coverage + D6 verification
+
+**Date:** 2026-03-16
+**Trigger:** T-SCRATCHPAD-4 — Phase Retrospective (Phase 8B close)
+**Session context:** Phase 8B retrospective audit-only pass
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `TECHNICAL_DEBT.md` — Phase 8B closure records, open/deferred carry-overs, and timeline notes
+- `SCRATCHPAD.md` — Phase retrospective OBS log
+- `titan/core/database.py` — factual verification target for T5-08-B D6 feature-flag implementation
+- `titan/core/persistence.py` — factual verification target for T5-08-B D6 feature-flag implementation
+
+**Observation:**
+Phase 8B closed-item retrospective (root cause / what each item fixed):
+- **T5-08-B:** Phase 8 blocked on incomplete PostgreSQL migration path; this item completed adapter parity, Alembic migration chain, RLS/consent schema wiring, and closure gating records for migration readiness.
+- **T5-09:** No unified athlete-context seam existed; this item added a single `get_athlete_context()` query contract to prevent duplicated multi-query assembly.
+- **T5-11:** API endpoints lacked authentication/authorization; this item implemented JWT auth, role checks, and endpoint protection for health-data access control.
+- **T5-13:** Coach actions were not auditable; this item added coach audit trail coverage for accountability on health-data processing actions.
+- **T5-14:** Environmental compensation thresholds were not externalized; this item extracted/standardized ESI overlay threshold handling into governed config usage.
+- **T5-16-A:** DailyCoach multi-athlete state-isolation guardrails were under-specified; this item fixed execution-model contract and state isolation acceptance criteria.
+- **T5-17 → T5-35 (burn-down cluster):** Multiple modules carried hardcoded thresholds/contract drift risks; these items resolved the recorded threshold/governance contract inconsistencies in the Phase 8 sweep.
+- **T5-25:** PersistenceAdapter parity classification was undocumented; this item delivered the parity matrix artifact used by D7/D9 migration closure control.
+- **T5-36:** Phase 8B API had no authenticated rate limiting; this item implemented per-user/per-role limiting to close DoS exposure.
+- **T5-37:** Deterministic validation findings were not converted into CI gates; this item recorded the CI hardening debt lane for governance automation follow-through.
+- **T5-38:** CI hardening gates lacked validating meta-tests; this item recorded the paired validation debt lane for T5-37 gate reliability.
+
+Out-of-scope findings added during Phase 8B (T-ref + one-line summary):
+- **T5-36:** API rate-limiting gap identified during auth records pass; registered as separate DoS-risk debt entry.
+- **T5-37:** Opus QA scope-reduction process identified Category A findings that must become CI-enforced gates.
+- **T5-38:** Need for meta-tests to validate newly added CI gates was identified as a distinct follow-up finding.
+
+Findings added but not yet triaged:
+- No un-triaged Phase 8B out-of-scope finding is recorded in `SCRATCHPAD.md` as PENDING with missing architect DEC; however, in the debt register, **T5-12** remains OPEN with mitigation-design deferral to Phase 8C (not yet implementation-triaged).
+
+Potential Phase 8C incompleteness pattern (factual):
+- Phase 8B produced multiple late-registered follow-up debt items from audit/records passes (T5-36/T5-37/T5-38), indicating that closure-adjacent review continues to surface scope-critical controls after core implementation completes.
+
+Explicit verification note for **T5-08-B D6** (factual only):
+- D6 (`TITAN_DB_BACKEND` backend-switch feature flag) is implemented in:
+  - `titan/core/database.py` via `get_database_manager()`
+  - `titan/core/persistence.py` via `get_database_manager()`
+- D6 is documented as a **T5-08 pre-existing deliverable** carried in T5-08-B records, not a T5-08-B implementation deliverable.
+- This retrospective records only verification facts and does not open a new implementation lane.
+
+**Pattern / scope:**
+Phase 8B closure evidence is internally consistent for implemented deliverables; residual risk concentration sits in deferred/open entries and in findings discovered during records/audit passes near closure.
+
+**Architectural question raised:**
+Should the Phase 8C planning list be re-baselined against the late-discovery pattern (T5-36/T5-37/T5-38 + T5-12 open deferral) before sequencing implementation lanes?
+
+**Codex assessment (data only, no decision):**
+The data indicates Phase 8B closure was functionally complete for shipped items, but the timing of follow-up finding registration suggests the Phase 8C candidate list may not yet be exhaustive.
+
+**Status:** PENDING
 
 ## Architect Review Log
 
