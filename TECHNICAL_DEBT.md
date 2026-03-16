@@ -1462,6 +1462,7 @@ Fix direction:
 **Status (T5-06-A):** ✅ RESOLVED 2026-03-15. Commit: 9fe7e96.
 
 **Resolution (T5-06-A):** Added deterministic `ExplainableOutput` support to the injury risk advisory payload (top-3 contributions, confidence range, template `plain_text_reason`, and `data_freshness_ok`); extended `InjuryRiskEnsembleModel` with `assess_injury_risk()` + stale-data discard helper; surfaced explainability data through payload boundaries used by Operator Console session explorer when present; and added dedicated explainability tests (`tests/test_ml_explainability.py`) plus contract updates in existing injury-risk tests. Final full-suite count at closure: 1941 passing tests.
+**Implementation path note (DEC-019):** `ExplainableOutput` was added to `titan/science/ml_safety.py` — the first option listed in the fix direction. No separate `titan/science/ml_explainability.py` module was created, and none is expected going forward; `ml_safety.py` is the canonical home for this dataclass.
 
 **Task learning:** Existing advisory model contracts are consumed by multiple stability tests, so explainability extensions should be additive and backward-compatible (`assess_risk()` delegating to `assess_injury_risk()`) to avoid integration churn while still meeting ADR contract obligations.
 
