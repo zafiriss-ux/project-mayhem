@@ -804,6 +804,35 @@ Observed key-set composition indicates mixed provenance scope in a registry docu
 **Status:** PENDING
 
 
+### [OBS-018] Governance modules lack mirrored `tests/titan/science/` test files
+
+**Date:** 2026-03-16
+**Trigger:** Architect-authorized bounded audit pass 2 (`titan/science/governance_*.py`)
+**Session context:** Audit-only / observer-only / execution unit: governance-scoped science modules
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/governance_engine.py` — audited governance module in scope
+- `titan/science/governance_contracts.py` — audited governance module in scope
+- `tests/test_governance_integration.py` — current governance coverage located outside mirrored `tests/titan/science/` layout
+- `tests/test_governance_mutation.py` — current governance coverage located outside mirrored `tests/titan/science/` layout
+- `AGENTS.md` — defines mirrored test-file requirement for changed modules
+
+**Observation:**
+Within the scoped governance modules, no mirrored test files are present under `tests/titan/science/` for either `governance_engine.py` or `governance_contracts.py` (expected mirrored names: `test_governance_engine.py`, `test_governance_contracts.py`). Existing governance-focused tests are present in top-level test files (`tests/test_governance_integration.py`, `tests/test_governance_mutation.py`) rather than mirrored module-path locations.
+
+References: AGENTS.md:10-14, titan/science/governance_engine.py:1-2, titan/science/governance_contracts.py:1-3, tests/test_governance_integration.py:1-2, tests/test_governance_mutation.py:1-3, tests/titan/science/test_tsb_engine.py:6-7, tests/titan/science/test_override_signal.py:5.
+
+**Pattern / scope:**
+Single finding for this execution unit: test-placement contract mismatch specific to governance-scoped modules in `titan/science/governance_*.py`.
+
+**Architectural question raised:**
+For governance-scoped modules, should the mirrored-path requirement be enforced strictly at `tests/titan/science/test_<module>.py` even when substantial governance coverage exists in non-mirrored top-level test files?
+
+**Codex assessment (data only, no decision):**
+The observed placement creates a contract-interpretation ambiguity between documented mirrored-test policy and current governance test-file layout.
+
+**Status:** REVIEW_REQUESTED
+
 ## Architect Review Log
 
 ### [DEC-015] Response to OBS-015 — Phase 8B retrospective: D6 records correction authorised
