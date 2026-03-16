@@ -1888,3 +1888,42 @@ For integration modules, should runtime delivery contracts be treated as boolean
 Current integration-layer behavior shows mixed contract semantics and duplicated policy literals in weather decision logic, with one uncovered behavioral branch in notification gateway tests.
 
 **Status:** REVIEW_REQUESTED
+
+### [OBS-023] Audit Pass 7 — nutrition public API test-surface gap
+
+**Date:** 2026-03-16
+**Trigger:** Audit Pass 7 assignment (observer-only, `titan/features/`)
+**Session context:** Bounded audit execution unit for feature modules
+**Urgency:** NON-BLOCKING
+
+**DoR (pre-OBS):**
+- SCOPE CLEAR: PASS
+- FILES IDENTIFIED: PASS
+- CRITERIA BINARY: PASS
+- TESTS KNOWN: PASS
+
+**Files inspected:**
+- `titan/features/nutrition_optimizer.py`
+- `titan/features/weekly_planner.py`
+- `titan/features/optimal_time_calculator.py`
+- `titan/features/__init__.py`
+- `tests/titan/features/test_nutrition_optimizer.py`
+- `tests/titan/features/test_weekly_planner.py`
+- `tests/titan/features/test_optimal_time_calculator.py`
+
+**Observation (factual):**
+1. **Missing mirrored tests (public-method coverage gap in nutrition feature module):**
+   - `NutritionOptimizer` exposes public methods `add_weight_entry()`, `analyze_weight_trend()`, and `calculate_daily_nutrition()`.
+   - Current mirrored nutrition tests cover `analyze_weight_trend()` scenarios only; there are no tests targeting `add_weight_entry()` retention behavior or `calculate_daily_nutrition()` output contract/branching.
+   - References: `titan/features/nutrition_optimizer.py:35-216`, `tests/titan/features/test_nutrition_optimizer.py:1-65`.
+
+**Pattern / scope:**
+Isolated to `titan/features/nutrition_optimizer.py` within this execution unit; mirrored test file exists but does not exercise all public methods.
+
+**Architectural question raised:**
+For audit registration in this lane, should partial mirrored coverage in an existing module-level test file be tracked as a standalone debt item when uncovered public methods include recommendation and hydration contract outputs?
+
+**Codex assessment (data only, no decision):**
+The feature module currently has untested public API surface in its mirrored test file, while adjacent feature modules in the same scope include broader method coverage.
+
+**Status:** REVIEW_REQUESTED
