@@ -43,7 +43,12 @@ class WeeklyPlanGenerator:
         self.acwr_engine = acwr_engine
         self.last_plan = None
 
-    def get_today_session(self) -> dict:
+    def get_today_session(
+        self,
+        *,
+        esi_level: str | None = None,
+        esi_pace_adjustment_sec_per_km: int = 0,
+    ) -> dict:
         """
         Return the planned session for today from the last generated plan.
 
@@ -57,6 +62,8 @@ class WeeklyPlanGenerator:
                 "distance_km": 8.0,
                 "details": "Easy Run (generate a weekly plan first)",
                 "target_hr_zone": "Z2",
+                "esi_level": str(esi_level or "LOW").upper(),
+                "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km),
             }
 
         today_name = datetime.now().strftime("%A")  # 'Monday', 'Tuesday', …
@@ -78,6 +85,8 @@ class WeeklyPlanGenerator:
                     pace = pace_map.get(result.get("session_type", "EASY"), 6.0)
                     dist = float(result.get("distance_km", 0))
                     result["duration_min"] = max(0, int(dist * pace))
+                result["esi_level"] = str(esi_level or "LOW").upper()
+                result["esi_pace_adjustment_sec_per_km"] = int(esi_pace_adjustment_sec_per_km)
                 return result
 
         # Today not found in plan (shouldn't happen for a 7-day plan)
@@ -87,6 +96,8 @@ class WeeklyPlanGenerator:
             "distance_km": 0.0,
             "details": "Rest day (not scheduled in current plan)",
             "target_hr_zone": "N/A",
+            "esi_level": str(esi_level or "LOW").upper(),
+            "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km),
         }
 
     def analyze_past_week(self, sessions: list[dict]) -> dict:

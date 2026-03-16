@@ -1074,6 +1074,66 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC policy threshold for threshold-zone classification pending cohort-specific validation.',
     ),
 
+    'ESI_MODERATE_MIN': ThresholdEvidence(
+        parameter='ESI_MODERATE_MIN',
+        value=16.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy model: composite environmental stress score (temperature + 0.5*dew point).',
+        rationale='Lower bound for beginning pace-compensation guidance under mild environmental stress.',
+        policy_note='HEURISTIC. Calibrate against cohort-specific heat-strain response and completion quality.',
+    ),
+
+    'ESI_HIGH_MIN': ThresholdEvidence(
+        parameter='ESI_HIGH_MIN',
+        value=22.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy model: composite environmental stress score (temperature + 0.5*dew point).',
+        rationale='Boundary for high stress where stronger pace compensation is required.',
+        policy_note='HEURISTIC. Tune after accumulating telemetry for heat/pace divergence under comparable workloads.',
+    ),
+
+    'ESI_EXTREME_MIN': ThresholdEvidence(
+        parameter='ESI_EXTREME_MIN',
+        value=28.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy model: composite environmental stress score (temperature + 0.5*dew point).',
+        rationale='Boundary for extreme stress; VO2 work is blocked by governance V4 safety condition.',
+        policy_note='HEURISTIC safety threshold. Review against adverse-outcome rate and false-positive lock frequency.',
+    ),
+
+    'ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM': ThresholdEvidence(
+        parameter='ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM',
+        value=8,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy calibration seed (moderate stress pace compensation).',
+        rationale='Baseline pace reduction to preserve internal load under moderate ESI.',
+        policy_note='HEURISTIC. Adjust with athlete-specific response profiles from post-run strain markers.',
+    ),
+
+    'ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM': ThresholdEvidence(
+        parameter='ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM',
+        value=15,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy calibration seed (high stress pace compensation).',
+        rationale='Higher pace reduction for high ESI to maintain intended zone distribution.',
+        policy_note='HEURISTIC. Calibrate with quality-session completion and post-session recovery drift.',
+    ),
+
+    'ESI_PACE_ADJUSTMENT_EXTREME_SEC_PER_KM': ThresholdEvidence(
+        parameter='ESI_PACE_ADJUSTMENT_EXTREME_SEC_PER_KM',
+        value=25,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='T5-14 ESI policy calibration seed (extreme stress pace compensation).',
+        rationale='Maximal pace reduction recommendation used in Telegram guidance during extreme ESI.',
+        policy_note='HEURISTIC conservative guardrail; reassess after heat-event telemetry review.',
+    ),
+
     'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
         parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
         value=0.25,
