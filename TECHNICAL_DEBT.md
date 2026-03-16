@@ -2668,6 +2668,48 @@ When a deterministic Opus finding was migrated to a CI test (T5-37), that CI gat
 
 ---
 
+### T5-39 · `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical threshold import 🟡 OPEN
+
+**Status:** OPEN
+**Workflow Path: A** *(narrow import replacement — no ADR required)*
+**Source:** DEC-020 (Response to OBS-020, 2026-03-16). `titan/science/adaptive_priority_lock.py`:35, `titan/config/thresholds.py`:96.
+**Type:** Threshold Governance — Category A extraction
+**Priority:** P3. Independent.
+**Effort:** ~30 min.
+
+**Scope constraint (hard):** This item covers **only** the `cs_min_confidence = 0.70` default-dict duplicate at `adaptive_priority_lock.py`:35. Phase override values (`PEAK`, `BUILD_OVERLOAD`, `TAPER` per-phase `cs_min_confidence` literals at lines 40–42) are **Category B** per DEC-020 and must remain inline. Do NOT extract phase overrides as part of this task.
+
+**Location:** `titan/science/adaptive_priority_lock.py`:35.
+
+**Original state (pre-fix):**
+
+`_DEFAULT_THRESHOLDS` in `adaptive_priority_lock.py` defines `"cs_min_confidence": 0.70` as an
+inline literal, with a comment acknowledging the duplicate (`# GovernanceEngine.CS_CONFIDENCE_THRESHOLD`).
+The canonical constant `GOVERNANCE_CS_CONFIDENCE_THRESHOLD = 0.70` already exists in
+`titan/config/thresholds.py`:96. The inline value is a Category A threshold duplication that
+creates drift risk: a future change to `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` would not
+automatically propagate to `_DEFAULT_THRESHOLDS`.
+
+**Required:**
+
+1. Import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` from `titan/config/thresholds.py` at the top
+   of `adaptive_priority_lock.py` (alongside any existing threshold imports).
+2. Replace the inline `0.70` at `_DEFAULT_THRESHOLDS["cs_min_confidence"]` with
+   `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`.
+3. Remove the now-redundant inline comment (`# GovernanceEngine.CS_CONFIDENCE_THRESHOLD`).
+4. Add or extend a test in `tests/titan/science/test_adaptive_priority_lock.py` asserting that
+   `_DEFAULT_THRESHOLDS["cs_min_confidence"]` equals `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` (source
+   binding assertion — not just value equality).
+5. Mandatory gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`,
+   `python -m pytest -q` — all green.
+
+**Acceptance gate (binary):** `adaptive_priority_lock.py` imports and uses
+`GOVERNANCE_CS_CONFIDENCE_THRESHOLD` for the default `cs_min_confidence` value; phase override
+literals remain inline unchanged; a source-binding test asserts the import; all mandatory gates
+green.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -2987,6 +3029,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
 | T5-37 | ✅ RESOLVED (P1 — Opus Category A findings → CI gates; ADR-0049 Hybrid Sequential lane completed; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-38 | ✅ RESOLVED (P1 — validating meta-tests for each T5-37 CI gate; paired lane complete; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
+| T5-39 | 🟡 OPEN (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -3045,6 +3088,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-15 — ADR-0047 Records Pass (T5-11 / API Authentication Layer). ADR-0048 created (`docs/adr/0048-api-authentication-layer.md`; records-safe correction: ADR-0047 was already assigned to Architecture Fitness Functions — next available number 0048 used). T5-11 status updated: Workflow Path A → Path B (APPROVED), ADR-0048 Accepted 2026-03-15, architect decision summary and acceptance gate added, Codex implementation pass authorized. T5-13 sequencing constraint added: T5-13 depends on T5-11 (coach_id from JWT claim). T5-36 registered: No API rate limiting — DoS risk on Phase 8B endpoints (records-safe correction: architect text referenced T5-26 which is already assigned; next available ID T5-36 used). CLAUDE.md ADR index updated: ADR-0048 entry added. Tracking table updated: T5-11 row and T5-36 new row. No production code changes. No implementation performed.*
 
 *Updated: 2026-03-15 — T5-11 Path B Closure + Opus QA Scope Reduction Records Pass. PART A: T5-11 RESOLVED: implementation commit 3bd7147 merged; Opus QA verdict QA PASS logged in canonical format per PILOT-01 verdict logging rule; T5-11 tracking table row updated to RESOLVED. PART B: ADR-0049 created (`docs/adr/0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md`); AGENTS.md Opus QA scope section updated with Category A / Category B taxonomy and deterministic-to-CI migration policy; T5-37 registered (Category A findings → CI gates; ADR-0049 Accepted 2026-03-15); T5-38 registered (validating meta-tests for T5-37 CI gates; paired execution discipline); CLAUDE.md ADR index updated: ADR-0049 entry added; docs/adr/README.md updated: ADR-0049 row added. No production code changes. No Opus observations from T5-11 verdict converted to new debt items (cookie flags / logout coverage / token-cap trimming observations are not new implementation scope in this pass). No historical renumbering.*
+
+*Updated: 2026-03-16 — DEC-020 records pass (OBS-020 / T5-39 registration). T5-39 registered: `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import (Category A; Workflow Path A; ~30 min; phase overrides remain inline per DEC-020). OBS-020 marked REVIEWED in SCRATCHPAD.md; DEC-020 written. No implementation performed. Architect decision recorded: DEC-020 (response to OBS-020). No renumbering.*
 
 ---
 

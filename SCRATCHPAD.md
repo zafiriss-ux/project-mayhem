@@ -886,9 +886,57 @@ For `AdaptivePriorityLock`, should phase/default threshold values be governed st
 **Codex assessment (data only, no decision):**
 Current implementation expresses the threshold contract in two source locations (`thresholds.py` and module-local literals), which creates threshold-origin ambiguity during future drift audits.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 ## Architect Review Log
+
+### [DEC-020] Response to OBS-020 — APL threshold source: Category A extraction required for `cs_min_confidence = 0.70`; phase overrides remain inline (Category B)
+
+**Date:** 2026-03-16
+**Architect:** Claude
+**OBS verified:** YES — read `titan/science/adaptive_priority_lock.py`:29–42 and
+  `titan/config/thresholds.py`:96. Confirmed: `_DEFAULT_THRESHOLDS["cs_min_confidence"]`
+  is inline `0.70` with comment `# GovernanceEngine.CS_CONFIDENCE_THRESHOLD` at line 35.
+  Confirmed: `GOVERNANCE_CS_CONFIDENCE_THRESHOLD = 0.70` exists at `thresholds.py`:96.
+  Phase override literals (`PEAK` 0.85, `BUILD_OVERLOAD` 0.60, `TAPER` 0.80) at lines 40–42
+  are phase-specific tuning values with no direct canonical equivalent in `thresholds.py` —
+  confirmed no `GOVERNANCE_CS_CONFIDENCE_*_PEAK` or similar constants exist in thresholds.
+
+**Architect finding:**
+OBS-020 is factually correct and the Category A / Category B partition is clear:
+
+- `_DEFAULT_THRESHOLDS["cs_min_confidence"] = 0.70` (line 35) is a **Category A** duplicate.
+  The comment on the same line explicitly acknowledges the canonical source
+  (`GovernanceEngine.CS_CONFIDENCE_THRESHOLD`), confirming the author's intent was to mirror
+  the canonical value. This is threshold-source contract divergence: a future change to
+  `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` would silently miss the APL default path. This must
+  be corrected by import replacement.
+
+- Phase override literals `PEAK: 0.85`, `BUILD_OVERLOAD: 0.60`, `TAPER: 0.80` (lines 40–42)
+  are **Category B** — algorithm-local phase tuning values with no canonical equivalent in
+  `thresholds.py`. Extracting them would require new constants whose semantic scope is
+  APL-internal. No extraction is warranted; they remain inline. This is an explicit scope
+  exclusion from T5-39.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-39: replace `cs_min_confidence = 0.70` inline literal at `adaptive_priority_lock.py`:35 with `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import from `thresholds.py`. Category A extraction. Workflow Path A. ~30 min. No ADR required. |
+| NO_ACTION (phase overrides) | `PEAK`/`BUILD_OVERLOAD`/`TAPER` per-phase `cs_min_confidence` values are Category B (algorithm-local APL tuning). Remain inline. Explicitly excluded from T5-39 scope. |
+
+**Rationale:**
+The inline `0.70` at line 35 is an acknowledged duplicate with a comment pointing directly to
+the canonical source. The canonical value already exists and is imported elsewhere in the science
+layer. The fix is a single import addition and one reference substitution — a well-bounded
+Category A extraction with no architectural ambiguity. Phase overrides are APL-internal policy
+and have no cross-module governance contract; centralising them would require inventing new
+threshold names without evidence-based provenance, violating the Category A/B discipline
+established by DEC-1/T5-19.
+
+**OBS-020 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
 
 ### [DEC-015] Response to OBS-015 — Phase 8B retrospective: D6 records correction authorised
 
