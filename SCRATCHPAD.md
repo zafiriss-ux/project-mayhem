@@ -714,6 +714,7 @@ observation rather than identification of a concrete uncovered risk.
 
 **Observation:**
 Phase 8B closed-item retrospective (root cause / what each item fixed):
+- Itemization note: `T5-17` through `T5-35` are intentionally enumerated individually below (no grouped burn-down cluster line in this OBS).
 - **T5-08-B:** Phase 8 blocked on incomplete PostgreSQL migration path; this item completed adapter parity, Alembic migration chain, RLS/consent schema wiring, and closure gating records for migration readiness.
 - **T5-09:** No unified athlete-context seam existed; this item added a single `get_athlete_context()` query contract to prevent duplicated multi-query assembly.
 - **T5-11:** API endpoints lacked authentication/authorization; this item implemented JWT auth, role checks, and endpoint protection for health-data access control.
