@@ -34,7 +34,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from titan.config.evidence_registry import get_metrics_under_review
-from titan.config.thresholds import CTL_DECAY_DAYS, GARMIN_DATA_MAX_AGE_HOURS
+from titan.config.thresholds import (
+    CTL_DECAY_DAYS,
+    ESI_EXTREME_MIN,
+    ESI_HIGH_MIN,
+    ESI_MODERATE_MIN,
+    ESI_PACE_ADJUSTMENT_EXTREME_SEC_PER_KM,
+    ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM,
+    ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM,
+    GARMIN_DATA_MAX_AGE_HOURS,
+)
 from titan.core.database import DatabaseManager
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -178,6 +187,52 @@ def _safe_int(value, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _compute_esi(*, temperature_c: float, dew_point_c: float) -> tuple[str, int]:
+    """Compute ESI level and target pace adjustment in sec/km."""
+    score = float(temperature_c) + (0.5 * float(dew_point_c))
+    if score >= ESI_EXTREME_MIN:
+        return "EXTREME", ESI_PACE_ADJUSTMENT_EXTREME_SEC_PER_KM
+    if score >= ESI_HIGH_MIN:
+        return "HIGH", ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM
+    if score >= ESI_MODERATE_MIN:
+        return "MODERATE", ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM
+    return "LOW", 0
+
+
+def _apply_esi_context_to_session(
+    session: dict,
+    *,
+    esi_level: str,
+    esi_pace_adjustment_sec_per_km: int,
+) -> dict:
+    updated = dict(session)
+    updated["esi_level"] = esi_level
+    updated["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
+    updated["adjusted_target"] = (
+        f"+{esi_pace_adjustment_sec_per_km}s/km pace adjustment"
+        if esi_pace_adjustment_sec_per_km > 0
+        else "No pace adjustment"
+    )
+    return updated
+
+
+def _apply_esi_context_to_optimal_time(
+    optimal_time: dict,
+    *,
+    esi_level: str,
+    esi_pace_adjustment_sec_per_km: int,
+) -> dict:
+    updated = dict(optimal_time)
+    updated["esi_level"] = esi_level
+    updated["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
+    updated["adjusted_target"] = (
+        f"+{esi_pace_adjustment_sec_per_km}s/km"
+        if esi_pace_adjustment_sec_per_km > 0
+        else "No adjustment"
+    )
+    return updated
 
 
 class DailyCoach:
@@ -612,8 +667,30 @@ class DailyCoach:
         ig = IntensityGovernor()
 
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
+        esi_level, esi_pace_adjustment_sec_per_km = _compute_esi(
+            temperature_c=_safe_float(garmin_data.get("temperature_c"), 20.0),
+            dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0),
+        )
+
         _daily_coach_event("step_started", step_number=8, step_name="load_today_session")
-        today_session: TodaySessionPlan = _run_step(8, "load_today_session", self.weekly_planner.get_today_session)
+
+        def _load_today_session_with_esi() -> TodaySessionPlan:
+            try:
+                return self.weekly_planner.get_today_session(
+                    esi_level=esi_level,
+                    esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+                )
+            except TypeError as exc:
+                if "unexpected keyword argument" not in str(exc):
+                    raise
+                return self.weekly_planner.get_today_session()
+
+        today_session: TodaySessionPlan = _run_step(8, "load_today_session", _load_today_session_with_esi)
+        today_session = _apply_esi_context_to_session(
+            today_session,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+        )
 
         intensity_gate = ig.evaluate({
             'drift_pct': garmin_data.get('drift_pct', 0.0),
@@ -691,6 +768,8 @@ class DailyCoach:
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
         )
+        context_payload["esi_level"] = esi_level
+        context_payload["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
 
         # Compute degraded flags (passed to _effect_runner via decision_trace)
         _data_confidence_low = bool(
@@ -714,12 +793,32 @@ class DailyCoach:
 
         # ── Step 10: Optimal time ────────────────────────────────────────────
         _daily_coach_event("step_started", step_number=10, step_name="calculate_optimal_time")
-        optimal_time = _run_step(10, "calculate_optimal_time", lambda: self.optimal_time.calculate_optimal_time(
-            session_type  = today_session.get('session_type', 'EASY'),
-            duration_hours= today_session.get('duration_min', 45) / 60.0,
-            day_offset    = 0,
-            tsb_value     = tsb_value,
-        ))
+        def _calculate_optimal_time_with_esi() -> dict:
+            try:
+                return self.optimal_time.calculate_optimal_time(
+                    session_type=today_session.get('session_type', 'EASY'),
+                    duration_hours=today_session.get('duration_min', 45) / 60.0,
+                    day_offset=0,
+                    tsb_value=tsb_value,
+                    esi_level=esi_level,
+                    esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+                )
+            except TypeError as exc:
+                if "unexpected keyword argument" not in str(exc):
+                    raise
+                return self.optimal_time.calculate_optimal_time(
+                    session_type=today_session.get('session_type', 'EASY'),
+                    duration_hours=today_session.get('duration_min', 45) / 60.0,
+                    day_offset=0,
+                    tsb_value=tsb_value,
+                )
+
+        optimal_time = _run_step(10, "calculate_optimal_time", _calculate_optimal_time_with_esi)
+        optimal_time = _apply_esi_context_to_optimal_time(
+            optimal_time,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+        )
         weather_data_quality = str(optimal_time.get('weather_data_quality', 'live'))
         weather_degraded_mode = weather_data_quality == 'synthetic'
         weather_trust = evaluate_weather_trust(data_quality=weather_data_quality, data_age_hours=0.0)
@@ -780,6 +879,9 @@ class DailyCoach:
             'optimal_time'      : 'N/A' if weather_degraded_mode else optimal_time.get('recommended_time', 'N/A'),
             'dew_point'         : 'N/A' if weather_degraded_mode else optimal_time.get('dew_point', 'N/A'),
             'conditions'        : 'N/A' if weather_degraded_mode else optimal_time.get('quality', 'N/A'),
+            'esi_level'         : esi_level,
+            'esi_pace_adjustment_sec_per_km': esi_pace_adjustment_sec_per_km,
+            'adjusted_target'   : today_session.get('adjusted_target', 'No pace adjustment'),
             # Autonomic / HRV
             'hrv_status'        : hrv_summary.get('trend', 'N/A'),
             'hrv_value'         : round(latest_hrv, 1),
@@ -821,6 +923,10 @@ class DailyCoach:
             coaching_data['special_note'] = '⚠️ Weather data unavailable — optimal time window omitted'
         elif overall_trust == DataTrustLevel.SUSPECT:
             coaching_data['special_note'] = '⚠️ Some source data is suspect — recommendations remain conservative.'
+        if esi_level != "LOW" and not coaching_data.get("actionable_guidance"):
+            coaching_data["actionable_guidance"] = (
+                f"ESI {esi_level}: adjust pace target by +{esi_pace_adjustment_sec_per_km}s/km."
+            )
 
         # ── Build DecisionResult ─────────────────────────────────────────────
         _readiness_score = _safe_float(readiness.get('score', 50), 50)

@@ -178,6 +178,49 @@ def test_data_confidence_low_ceiling_applies():
     assert "STARTUP_DATA_CONFIDENCE_CEILING" in result.get("governance_locks_applied", [])
 
 
+# ── VO2 eligibility ESI EXTREME boundary (T5-14 / ADR-0034) ────────────────
+
+def test_vo2_esi_extreme_boundary_on_blocks_vo2_session():
+    """Boundary-ON: esi_level=EXTREME must fail V4 and downgrade VO2 work."""
+    ctx = _base_context(
+        esi_level="EXTREME",
+        acwr=1.0,
+        readiness_score=75.0,
+        glycogen_debt=1.0,
+        fatigue_level="LOW",
+        days_since_last_vo2=5,
+    )
+    session = _base_session(session_type="HAMMER", max_zone=5)
+
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result["session_type"] == "TEMPO"
+    assert "VO2_ELIGIBILITY_GATE" in result.get("governance_locks_applied", [])
+    vo2 = result.get("vo2_eligibility", {})
+    assert vo2.get("eligible") is False
+    assert "V4" in vo2.get("failed_conditions", [])
+
+
+def test_vo2_esi_extreme_boundary_off_does_not_block_vo2_session():
+    """Boundary-OFF: non-EXTREME ESI must not trigger VO2 V4 failure by itself."""
+    ctx = _base_context(
+        esi_level="HIGH",
+        acwr=1.0,
+        readiness_score=75.0,
+        glycogen_debt=1.0,
+        fatigue_level="LOW",
+        days_since_last_vo2=5,
+    )
+    session = _base_session(session_type="HAMMER", max_zone=5)
+
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result["session_type"] == "HAMMER"
+    assert "VO2_ELIGIBILITY_GATE" not in result.get("governance_locks_applied", [])
+    vo2 = result.get("vo2_eligibility", {})
+    assert vo2.get("eligible") is True
+
+
 # ── No-gate clean path ────────────────────────────────────────────────────────
 
 def test_governance_clean_when_no_gate_fires():
