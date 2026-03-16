@@ -1877,7 +1877,7 @@ coverage gaps when new coach endpoints are added.
 
 ### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent ✅ RESOLVED 2026-03-16
 
-**Status:** ✅ RESOLVED 2026-03-16. Commit: f846135.
+**Status:** ✅ RESOLVED 2026-03-16. Commit: 0dc651c (ADR-0034 implementation commit).
 **Workflow Path: A** *(touches 5 production modules — PILOT-01 excluded)*
 **Reclassified:** 2026-03-07 from T4-29 (Tier 4) to T5-14 (Tier 5). Rationale: this is Phase 8 internal work, not a Phase 8 prerequisite; keeping it as an OPEN Tier 4 item blocked G1 of the Phase 8 entry gate despite the work being correctly deferred into Phase 8.
 **Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
