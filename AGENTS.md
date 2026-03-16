@@ -635,6 +635,8 @@ When a task reaches ✅ DONE (all three gates green, commit created):
 
 Both updates are **required**. Updating one without the other is incomplete.
 
+**Verify-first invariant (non-negotiable):** No hash — closure hash, implementation hash, or any other commit reference — may be recorded in `TECHNICAL_DEBT.md` or any other canonical document before remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote). If remote verification fails, stop and report the branch name and local commit hash. Every new implementation attempt starts fresh; a prior candidate hash that was not remotely verified must never be reused or recorded.
+
 ### 12.2 On out-of-scope finding (always)
 
 When you discover an issue outside the current task scope:
