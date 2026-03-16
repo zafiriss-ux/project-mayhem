@@ -2710,6 +2710,75 @@ green.
 
 ---
 
+### T5-40 · `notification_gateway.py` — boolean-return handling + branch coverage test 🟡 OPEN
+
+**Status:** OPEN
+**Workflow Path: A** *(narrow call-site fix + targeted test — no ADR required)*
+**Source:** DEC-022 (Response to OBS-022, 2026-03-16). `titan/integrations/notification_gateway.py`:75–95, `titan/integrations/telegram_bot.py`:444–467, `tests/titan/integrations/test_notification_gateway.py`.
+**Type:** Silent-failure path — delivery boolean ignored
+**Priority:** P3. Independent.
+**Effort:** ~1–2h.
+
+**Canonical issue:**
+
+`TelegramChannel.send()` currently ignores the boolean return value from the underlying bot
+delivery call. Any non-exception path is treated as success, meaning a `False` return (delivery
+rejected without raising) is a silent failure: the caller receives no indication that the message
+was not delivered.
+
+**Required:**
+
+1. Consume the boolean return value from the bot delivery call inside `TelegramChannel.send()`
+   (`notification_gateway.py`:75–95) and propagate delivery failure correctly to the caller
+   (e.g., return `False` or raise a typed delivery exception — consistent with the existing
+   channel contract).
+2. Audit `telegram_bot.py`:444–467 for the same pattern and apply the same fix if present.
+3. Add a targeted test in `tests/titan/integrations/test_notification_gateway.py` covering the
+   `False`-without-exception branch: mock the bot call to return `False` without raising and
+   assert that the failure is surfaced to the caller (not silently swallowed).
+4. Mandatory gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`,
+   `python -m pytest -q` — all green.
+
+**Acceptance gate (binary):** `TelegramChannel.send()` consumes and propagates the boolean
+return; the `False`-without-exception branch has explicit test coverage; all mandatory gates green.
+
+---
+
+### T5-41 · `weather_api.py` — dew-point decision bands extraction to `thresholds.py` 🟡 OPEN
+
+**Status:** OPEN
+**Workflow Path: A** *(Category A constant extraction — no ADR required)*
+**Source:** DEC-022 (Response to OBS-022, 2026-03-16). `titan/integrations/weather_api.py`:158–170, 529–537.
+**Type:** Threshold Governance — Category A extraction
+**Priority:** P3. Independent.
+**Effort:** ~1h.
+
+**Canonical issue:**
+
+Dew-point decision bands are represented by multiple independent literal clusters inside
+`titan/integrations/weather_api.py` (lines 158–170 and 529–537). The same weather-decision
+domain is duplicated in at least two locations without a shared named constant, creating drift
+risk: a future calibration change must be applied consistently across all clusters or the
+decision boundaries diverge silently.
+
+**Required:**
+
+1. Identify all dew-point band literals in `weather_api.py` (both clusters at lines 158–170
+   and 529–537, plus any others found during audit).
+2. Extract the dew-point decision bands to named constants in `titan/config/thresholds.py`
+   (alongside existing weather/environmental constants; add `evidence_registry.py` provenance
+   entries as HEURISTIC if not already present).
+3. Replace all inline literals in `weather_api.py` with imports of the new named constants.
+4. Confirm no other module duplicates these literals (Grep sweep); fix any found.
+5. Mandatory gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`,
+   `python -m pytest -q` — all green.
+
+**Acceptance gate (binary):** All dew-point decision band literals in `weather_api.py` are
+replaced by named constants imported from `thresholds.py`; `evidence_registry.py` has
+provenance entries; no remaining inline duplicates found by Grep; all mandatory gates green.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3030,6 +3099,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-37 | ✅ RESOLVED (P1 — Opus Category A findings → CI gates; ADR-0049 Hybrid Sequential lane completed; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-38 | ✅ RESOLVED (P1 — validating meta-tests for each T5-37 CI gate; paired lane complete; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-39 | 🟡 OPEN (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | — |
+| T5-40 | 🟡 OPEN (P3 — `TelegramChannel.send()` ignores boolean return; `False`-without-exception is silent failure; add branch coverage test) | — |
+| T5-41 | 🟡 OPEN (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -3090,6 +3161,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-15 — T5-11 Path B Closure + Opus QA Scope Reduction Records Pass. PART A: T5-11 RESOLVED: implementation commit 3bd7147 merged; Opus QA verdict QA PASS logged in canonical format per PILOT-01 verdict logging rule; T5-11 tracking table row updated to RESOLVED. PART B: ADR-0049 created (`docs/adr/0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md`); AGENTS.md Opus QA scope section updated with Category A / Category B taxonomy and deterministic-to-CI migration policy; T5-37 registered (Category A findings → CI gates; ADR-0049 Accepted 2026-03-15); T5-38 registered (validating meta-tests for T5-37 CI gates; paired execution discipline); CLAUDE.md ADR index updated: ADR-0049 entry added; docs/adr/README.md updated: ADR-0049 row added. No production code changes. No Opus observations from T5-11 verdict converted to new debt items (cookie flags / logout coverage / token-cap trimming observations are not new implementation scope in this pass). No historical renumbering.*
 
 *Updated: 2026-03-16 — DEC-020 records pass (OBS-020 / T5-39 registration). T5-39 registered: `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import (Category A; Workflow Path A; ~30 min; phase overrides remain inline per DEC-020). OBS-020 marked REVIEWED in SCRATCHPAD.md; DEC-020 written. No implementation performed. Architect decision recorded: DEC-020 (response to OBS-020). No renumbering.*
+
+*Updated: 2026-03-16 — DEC-022 records pass (OBS-022 / T5-40 + T5-41 registration). T5-40 registered: `TelegramChannel.send()` boolean-return silent-failure path + branch coverage test (`notification_gateway.py`:75–95, `telegram_bot.py`:444–467; Workflow Path A; P3; ~1–2h). T5-41 registered: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants (Category A; Workflow Path A; P3; ~1h). No implementation performed. No new ADR. No renumbering.*
 
 ---
 
