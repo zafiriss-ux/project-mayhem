@@ -1,10 +1,12 @@
 """
-Parameter Provenance Registry — source evidence for all governance thresholds.
+Parameter Provenance Registry — source evidence for constants, bounds, and
+parameters used across the project.
 
-Every constant in titan/config/thresholds.py has a corresponding entry here.
-This registry is the mandatory prerequisite before any science-tuning of those
-values. Without provenance, changes are noise; with provenance, they are
-evidence-based decisions.
+This is the project-wide provenance registry. titan/config/thresholds.py is
+one source of parameters tracked here, not the exclusive source; constants
+owned by other modules may also have entries. This registry is the mandatory
+prerequisite before any science-tuning of tracked values. Without provenance,
+changes are noise; with provenance, they are evidence-based decisions.
 
 Evidence levels:
   STRONG    — replicated RCT or large cohort (n > 200), directly applicable to
@@ -33,13 +35,13 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class ThresholdEvidence:
     """
-    Provenance record for a single governance threshold constant.
+    Provenance record for a single tracked constant or parameter.
 
-    The `value` field mirrors the live constant in thresholds.py.
-    It is stored here for reference only — thresholds.py remains the
+    The `value` field mirrors the live constant in its owning module.
+    It is stored here for reference only — the owning module remains the
     single source of truth at runtime. Do not import from here to drive logic.
     """
-    parameter: str          # Exact name as in thresholds.py
+    parameter: str          # Exact name as defined in the owning module
     value: float            # Mirror of the current live value (informational)
     evidence_level: str     # STRONG / MODERATE / HEURISTIC
     population: str         # ELITE / RECREATIONAL / MASTER / MIXED
@@ -52,7 +54,8 @@ class ThresholdEvidence:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Registry — one entry per constant in thresholds.py
+# Registry — entries for constants across all owning modules (thresholds.py
+# and others); one entry per tracked parameter
 # ──────────────────────────────────────────────────────────────────────────────
 
 EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
