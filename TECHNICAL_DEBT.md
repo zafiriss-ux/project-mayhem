@@ -2779,6 +2779,44 @@ provenance entries; no remaining inline duplicates found by Grep; all mandatory 
 
 ---
 
+### T5-42 · `NutritionOptimizer` — public API test coverage gap 🟡 OPEN
+
+**Status:** OPEN
+**Workflow Path: A** *(test-only; no production code changes)*
+**Source:** DEC-023 (Response to OBS-023, 2026-03-16). `titan/features/nutrition_optimizer.py`.
+**Type:** Test Coverage — public API contract
+**Priority:** P3. Independent.
+**Effort:** ~1–2h.
+
+**Canonical issue:**
+
+`NutritionOptimizer` exposes three public methods. Mirrored tests currently cover
+`analyze_weight_trend()` only. `add_weight_entry()` and `calculate_daily_nutrition()`
+are public recommendation/hydration contract outputs and have no explicit test coverage.
+
+**Required:**
+
+`tests/titan/features/test_nutrition_optimizer.py` — add tests for:
+
+1. `add_weight_entry()`:
+   - happy path
+   - duplicate date boundary
+   - empty input boundary
+
+2. `calculate_daily_nutrition()`:
+   - happy path output contract
+   - zero weight boundary
+   - extreme macro target boundary
+   - hydration edge cases
+
+3. Mandatory gates: `ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`,
+   `python -m pytest -q` — all green.
+
+**Acceptance gate (binary):** `add_weight_entry()` and `calculate_daily_nutrition()` each
+have explicit tests covering happy path and the stated boundary cases; all mandatory gates green.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3101,6 +3139,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-39 | 🟡 OPEN (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | — |
 | T5-40 | 🟡 OPEN (P3 — `TelegramChannel.send()` ignores boolean return; `False`-without-exception is silent failure; add branch coverage test) | — |
 | T5-41 | 🟡 OPEN (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | — |
+| T5-42 | 🟡 OPEN (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests; test-only) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -3163,6 +3202,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-16 — DEC-020 records pass (OBS-020 / T5-39 registration). T5-39 registered: `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import (Category A; Workflow Path A; ~30 min; phase overrides remain inline per DEC-020). OBS-020 marked REVIEWED in SCRATCHPAD.md; DEC-020 written. No implementation performed. Architect decision recorded: DEC-020 (response to OBS-020). No renumbering.*
 
 *Updated: 2026-03-16 — DEC-022 records pass (OBS-022 / T5-40 + T5-41 registration). T5-40 registered: `TelegramChannel.send()` boolean-return silent-failure path + branch coverage test (`notification_gateway.py`:75–95, `telegram_bot.py`:444–467; Workflow Path A; P3; ~1–2h). T5-41 registered: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants (Category A; Workflow Path A; P3; ~1h). No implementation performed. No new ADR. No renumbering.*
+
+*Updated: 2026-03-16 — DEC-023 records pass (T5-42 registration). T5-42 registered: `NutritionOptimizer` public API test coverage gap — `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests in `tests/titan/features/test_nutrition_optimizer.py` (Workflow Path A; P3; ~1–2h; test-only; no production code changes). No implementation performed. No new ADR. No renumbering.*
 
 ---
 
