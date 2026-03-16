@@ -1827,3 +1827,64 @@ Codex **MAY START** execution ONLY after ALL of the following are confirmed:
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*
+
+### [OBS-022] Audit Pass 6 — integrations contract/threshold/test-surface observations
+
+**Date:** 2026-03-16
+**Trigger:** Audit Pass 6 assignment (observer-only, `titan/integrations/`)
+**Session context:** Bounded audit execution unit for integration modules
+**Urgency:** NON-BLOCKING
+
+**DoR (pre-OBS):**
+- SCOPE CLEAR: PASS
+- FILES IDENTIFIED: PASS
+- CRITERIA BINARY: PASS
+- TESTS KNOWN: PASS
+
+**Files inspected:**
+- `titan/integrations/garmin_sync.py`
+- `titan/integrations/weather_api.py`
+- `titan/integrations/telegram_bot.py`
+- `titan/integrations/notification_gateway.py`
+- `titan/integrations/__init__.py`
+- `tests/titan/integrations/test_garmin_sync.py`
+- `tests/titan/integrations/test_weather_api.py`
+- `tests/titan/integrations/test_notification_gateway.py`
+- `tests/titan/integrations/test_telegram_bot_observability.py`
+- `tests/titan/integrations/test_telegram_bot_rationale.py`
+- `tests/test_garmin_sync.py`
+- `tests/test_garmin_sync_worker_lifecycle.py`
+- `tests/test_telegram_scheduler_lifecycle.py`
+- `tests/test_telegram_calibration_command.py`
+- `tests/test_requirements_telegram_dependency_alignment.py`
+- `tests/test_secret_handling_integrations.py`
+
+**Observation (factual):**
+1. **Contract ambiguity / suspicious coupling (notification fallback semantics):**
+   - `TelegramChannel.send()` invokes `self._bot.send_daily_coaching(payload)` and returns `True` unless an exception is raised.
+   - `TitanTelegramBot.send_daily_coaching()` returns the boolean result of `send_message()`.
+   - Because `TelegramChannel.send()` does not read that returned boolean, a `False` return path from bot delivery is not represented at channel contract level unless the bot raises. This creates a contract-shape mismatch between boolean-returning downstream API and exception-only upstream success semantics.
+   - References: `titan/integrations/notification_gateway.py:75-95`, `titan/integrations/telegram_bot.py:444-467`.
+
+2. **Hidden threshold drift / repeated anti-pattern (inline environmental decision bands):**
+   - Dew-point bands are encoded inline in `classify_heat_stress()` (`>24`, `>21`, `>18`, `>15`, `>12`, `>8`).
+   - Additional dew-point scoring bands are encoded separately in `find_optimal_training_windows()` (`>21`, `>18`, `>15`, `<12`) with independent scoring weights.
+   - The same decision domain (dew-point based training condition handling) is represented by multiple independent literal clusters in the same module.
+   - References: `titan/integrations/weather_api.py:158-170`, `titan/integrations/weather_api.py:529-537`.
+
+3. **Missing mirrored tests (behavioural branch coverage gap):**
+   - Mirrored integration test file exists for notification gateway (`tests/titan/integrations/test_notification_gateway.py`), and it validates exception-path fallback.
+   - Existing tests do not exercise the branch where bot call returns `False` without raising; current stubs return `None`/success or raise exceptions.
+   - This leaves an unverified behavioural path at the channel boundary where boolean-returning downstream API contracts can differ from exception-driven assumptions.
+   - References: `tests/titan/integrations/test_notification_gateway.py:15-139`, `titan/integrations/notification_gateway.py:75-97`, `titan/integrations/telegram_bot.py:359-417`, `titan/integrations/telegram_bot.py:444-467`.
+
+**Pattern / scope:**
+These findings are all within `titan/integrations/` and concern delivery/decision contract surfaces and literal policy encoding in integration-layer runtime logic.
+
+**Architectural question raised:**
+For integration modules, should runtime delivery contracts be treated as boolean-semantic interfaces end-to-end, exception-semantic interfaces, or explicitly mixed with documented precedence?
+
+**Codex assessment (data only, no decision):**
+Current integration-layer behavior shows mixed contract semantics and duplicated policy literals in weather decision logic, with one uncovered behavioral branch in notification gateway tests.
+
+**Status:** REVIEW_REQUESTED
