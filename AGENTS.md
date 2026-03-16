@@ -1647,6 +1647,56 @@ until the entry exists.
 
 ---
 
+## §23 Bounded Execution Unit Rule
+
+For any aggregate or multi-step lane, the architect brief must explicitly declare:
+
+1. **Exact execution unit** for this pass (which deliverable, which sub-step, or which scope slice)
+2. **Pass type** (audit / implementation / records / closure)
+3. **Closure rule** (whether the parent task remains OPEN after this pass or becomes closure-capable)
+4. **Required canonical doc update** (which document must reflect the outcome of this pass)
+
+If any of the four declarations is absent: **DoR FAIL** — architect clarification is required before implementation begins. The implementer does not select the scope slice independently.
+
+---
+
+## §24 Environment First Rule
+
+For tasks with elevated environment or dependency risk — CI-heavy lanes, multi-module integration, or any task explicitly flagged by the architect — before any implementation begins:
+
+1. Confirm `scripts/setup_env.sh` completed successfully.
+2. Verify all critical imports resolve without error.
+3. Run the full gate suite once from a clean state (Gate 1: `ruff check .`; Gate 2: `python -m pytest -q -W error::pytest.PytestWarning`; Gate 3: `python -m pytest -q`).
+
+This separates environment drift from code regression. If the clean-state gate run fails: **stop, report as environment issue, do not begin implementation**.
+
+---
+
+## §25 No Mixed-Pass Rule
+
+A single Codex pass may execute only **one** of the following pass types:
+
+- **audit** — read-only analysis, no document or code changes
+- **implementation** — code changes, with or without paired tests
+- **records** — document updates only (TECHNICAL_DEBT.md, AGENTS.md, CLAUDE.md, CHANGES.md)
+- **closure** — formal closure declaration with all required canonical doc updates
+
+Combining two pass types in a single pass is permitted **only** when the architect brief explicitly names the two pass types being combined and states the reason. The `Change Type:` field (§19) must match the declared pass type. A pass that drifts into a second type without explicit architect authorisation is a process violation equivalent in severity to scope creep.
+
+---
+
+## §26 Canonical Records Separation Rule
+
+For **heavy tasks** (as defined in §12.1), the records pass is separate from the implementation pass **by default**.
+
+The architect brief must declare one of:
+- **Bundled** — records closure is permitted within the implementation pass (explicit reason required)
+- **Separated** — records pass follows as a distinct subsequent pass
+
+If neither is declared: records pass is assumed separate. A Codex implementation report for a heavy task that contains closure language — without an explicit architect bundling declaration — is a process violation.
+
+---
+
 ## Opus QA Trigger Policy
 
 Opus QA is **not triggered by default**. Path A items proceed without Opus involvement unless the architect explicitly opts a task into Path B.
@@ -1709,4 +1759,4 @@ If Opus issued **QA FAIL** for a task and Codex returns after fixing the identif
 
 ---
 
-*Last updated: 2026-03-15 — Architect Decision Execution Pass (T5-37/T5-38 Closure Model): Multi-pattern migration lane rule added to Opus QA Trigger Policy (ADR-0049 §7 Hybrid Sequential Model: audit pass → sequential migration units → single final closure; no child GitHub issues before audit pass; no mid-lane closure). Previous: T5-11 Path B Closure + Opus QA Scope Reduction Records Pass: Opus QA scope section updated with Category A / Category B finding taxonomy (ADR-0049 Accepted 2026-03-15); deterministic-to-CI migration policy added (Category A findings migrate to CI gates under T5-37; validating meta-test requirement per T5-38; ADR-0049 §2.2–2.3); Opus QA out-of-scope list updated: migrated Category A patterns explicitly excluded after T5-37 completion. Trigger policy unchanged — no additional trigger criteria added or removed. Previous: Records/Governance Update Pass: §20 Mini Drift Postmortem Rule refined (postmortem NOT required for every corrective pass — required only on recurrence or canonical-document impact; derived-view drift requires fix only); §21 Governance Friction Principle added (new rules must replace an old rule or reduce friction — otherwise not added); §22 Friday Governance Review Output Rule added (written output required; no output = review not completed). Previous: T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+*Last updated: 2026-03-16 — Phase 8B Governance Pass (policy-only): §23 Bounded Execution Unit Rule, §24 Environment First Rule, §25 No Mixed-Pass Rule, §26 Canonical Records Separation Rule added. Change Type: policy-only. Previous: Architect Decision Execution Pass (T5-37/T5-38 Closure Model): Multi-pattern migration lane rule added to Opus QA Trigger Policy (ADR-0049 §7 Hybrid Sequential Model: audit pass → sequential migration units → single final closure; no child GitHub issues before audit pass; no mid-lane closure). Previous: T5-11 Path B Closure + Opus QA Scope Reduction Records Pass: Opus QA scope section updated with Category A / Category B finding taxonomy (ADR-0049 Accepted 2026-03-15); deterministic-to-CI migration policy added (Category A findings migrate to CI gates under T5-37; validating meta-test requirement per T5-38; ADR-0049 §2.2–2.3); Opus QA out-of-scope list updated: migrated Category A patterns explicitly excluded after T5-37 completion. Trigger policy unchanged — no additional trigger criteria added or removed. Previous: Records/Governance Update Pass: §20 Mini Drift Postmortem Rule refined (postmortem NOT required for every corrective pass — required only on recurrence or canonical-document impact; derived-view drift requires fix only); §21 Governance Friction Principle added (new rules must replace an old rule or reduce friction — otherwise not added); §22 Friday Governance Review Output Rule added (written output required; no output = review not completed). Previous: T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
