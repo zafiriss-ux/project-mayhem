@@ -720,8 +720,25 @@ Phase 8B closed-item retrospective (root cause / what each item fixed):
 - **T5-13:** Coach actions were not auditable; this item added coach audit trail coverage for accountability on health-data processing actions.
 - **T5-14:** Environmental compensation thresholds were not externalized; this item extracted/standardized ESI overlay threshold handling into governed config usage.
 - **T5-16-A:** DailyCoach multi-athlete state-isolation guardrails were under-specified; this item fixed execution-model contract and state isolation acceptance criteria.
-- **T5-17 → T5-35 (burn-down cluster):** Multiple modules carried hardcoded thresholds/contract drift risks; these items resolved the recorded threshold/governance contract inconsistencies in the Phase 8 sweep.
-- **T5-25:** PersistenceAdapter parity classification was undocumented; this item delivered the parity matrix artifact used by D7/D9 migration closure control.
+- **T5-17:** ACWR thresholds were hardcoded in-module; this item centralized those constants into `thresholds.py`.
+- **T5-18:** Adaptive Memory Category-A thresholds were inline; this item moved the governed constants to `thresholds.py` while preserving category boundaries.
+- **T5-19:** Adaptive Memory multiplier constants lacked category classification; this item closed the ambiguity by classifying them Category-B (NO_ACTION for extraction).
+- **T5-20:** APL integration coverage was missing for DailyCoach argument wiring; this item added/closed the resolve-contract integration test gap.
+- **T5-21:** Athlete profile IDs risked timestamp collision; this item hardened identifier generation to prevent same-timestamp collisions.
+- **T5-22:** Athlete profile serialization omitted `weight_ceiling`/`weight_panic`; this item fixed round-trip field parity.
+- **T5-23:** Autonomic fusion documentation claimed an incorrect range; this item corrected the contract documentation to match implemented formula bounds.
+- **T5-24:** Biomechanics orchestration contract was typed as `object`; this item resolved the contract typing gap with explicit orchestration-facing typing.
+- **T5-25:** PersistenceAdapter SQLite/PostgreSQL behavior classes were undocumented; this item delivered the parity matrix artifact used by migration closure controls.
+- **T5-26:** Drift engine lacked a public `analyze_cardiac_drift` wrapper; this item closed the API-surface contract gap.
+- **T5-27:** Durability-engine Category-A thresholds were hardcoded; this item centralized those thresholds in `thresholds.py`.
+- **T5-28:** Fatigue soreness threshold remained inline; this item moved it to governed threshold configuration.
+- **T5-29:** Garmin live sync had inconsistent partial-failure policy semantics for sleep/HRV paths; this item aligned the policy contract.
+- **T5-30:** Governance-engine class-local thresholds diverged from central config; this item centralized those values into `thresholds.py`.
+- **T5-31:** Intensity-governor thresholds were inline literals; this item centralized them under governed thresholds.
+- **T5-32:** Lactate-logic thresholds were inline literals; this item centralized those constants in `thresholds.py`.
+- **T5-33:** Periodization/Automated coupling concern lacked a justified remediation path; this item triaged and closed it as NO_ACTION with documented rationale.
+- **T5-34:** Setup wizard had dual-bootstrap contract divergence between titan and launcher paths; this item aligned bootstrap contract behavior.
+- **T5-35:** Volume-load-gauge thresholds were inline literals; this item centralized them in `thresholds.py`.
 - **T5-36:** Phase 8B API had no authenticated rate limiting; this item implemented per-user/per-role limiting to close DoS exposure.
 - **T5-37:** Deterministic validation findings were not converted into CI gates; this item recorded the CI hardening debt lane for governance automation follow-through.
 - **T5-38:** CI hardening gates lacked validating meta-tests; this item recorded the paired validation debt lane for T5-37 gate reliability.
