@@ -1636,3 +1636,33 @@ Codex **MAY START** execution ONLY after ALL of the following are confirmed:
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*
+
+### [OBS-017] Evidence registry includes out-of-contract parameter set
+
+**Date:** 2026-03-16
+**Trigger:** T-SCRATCHPAD-5 — Architect-authorized bounded audit pass (`titan/config/`)
+**Session context:** Audit-only pass 1 / Subsystem: `titan/config/`
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/config/evidence_registry.py` — declares one-entry-per-`thresholds.py` contract and stores registry entries
+- `titan/config/thresholds.py` — canonical threshold constant set used as registry reference target
+
+**Observation:**
+`evidence_registry.py` declares that every constant in `thresholds.py` has a corresponding registry entry and labels the registry section as "one entry per constant in thresholds.py". In the same file, eight `PHYS_BOUNDS_*` entries are included inside `EVIDENCE_REGISTRY` while no `PHYS_BOUNDS_*` constants exist in `thresholds.py`; `thresholds.py` defines governance/safety constants and lock codes but not this prefix family.
+
+File-local evidence:
+- Contract statement and registry framing: `evidence_registry.py` lines 4 and 55.
+- Additional registry keys: `evidence_registry.py` lines 416, 431, 446, 461, 476, 490, 504, 518.
+- Bounds note says runtime location is elsewhere (`titan/science/physiological_bounds.BOUNDS`): `evidence_registry.py` lines 410-412.
+- No `PHYS_BOUNDS_*` symbol family appears in `thresholds.py` (module lines 1-135).
+
+**Pattern / scope:**
+Isolated to the bounded config scope in this pass: contract wording in the evidence registry and the concrete key-set composition of `EVIDENCE_REGISTRY` are not aligned 1:1 with the symbol family present in `thresholds.py`.
+
+**Architectural question raised:**
+Should `EVIDENCE_REGISTRY` be treated as a strict mirror of `thresholds.py` constants only, or as a broader provenance registry that may include non-threshold runtime bounds sourced from other modules?
+
+**Codex assessment (data only, no decision):**
+Observed key-set composition indicates mixed provenance scope in a registry documented as thresholds-only; this creates contract-interpretation ambiguity for future audit/automation checks that assume strict parity.
+
+**Status:** PENDING
