@@ -1551,7 +1551,7 @@ python -m pytest -q
 
 ### T5-08 · PostgreSQL migration not yet implemented — multi-athlete persistence layer unbuilt ✅ RESOLVED 2026-03-15
 
-**Status:** ✅ RESOLVED 2026-03-15 (via T5-08-B). Commit: 54e95d9 (scaffold); all ADR-0044 deliverables D1–D9 completed in T5-08-B (final: D7 2026-03-15, D9 2026-03-15). See T5-08-B for full deliverable record. **Records drift correction (2026-03-15):** T5-08-B D8 deliverable ("mark T5-08 RESOLVED") executed as part of T5-08-B RESOLVED declaration.
+**Status:** ✅ RESOLVED 2026-03-15 (via T5-08-B). Commit: 54e95d9 (scaffold); ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 completed in T5-08-B (final: D7 2026-03-15, D9 2026-03-15). D6 was a T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable (DEC-015 2026-03-16). See T5-08-B for full deliverable record. **Records drift correction (2026-03-15):** T5-08-B D8 deliverable ("mark T5-08 RESOLVED") executed as part of T5-08-B RESOLVED declaration.
 **Workflow Path: A** *(PostgreSQL migration + architectural refactor — PILOT-01 excluded)*
 **Source:** FUTURE_UPGRADES.md Phase 8/10 scope (product direction), ADR-0044 (storage topology decision). Fulfills ADR-0015 Phase 8 gate.
 **Priority:** P1 for Phase 8 (Phase 8A prerequisite).
@@ -1610,7 +1610,7 @@ TITAN_DB_BACKEND=sqlite python -m pytest -q
 
 ### T5-08-B · ADR-0044 full migration — PersistenceAdapter + Alembic + RLS + consent schema ✅ RESOLVED 2026-03-15
 
-**Status:** ✅ RESOLVED 2026-03-15. All deliverables complete: D1 DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90); D6 DONE (T5-08); D7 DONE (2026-03-15); D9 DONE (2026-03-15). Phase 8A prerequisite CLEARED. **Records drift correction (2026-03-15):** heading and status were not updated when D9 was completed; tracking table correctly showed RESOLVED 2026-03-15 — section body is now aligned.
+**Status:** ✅ RESOLVED 2026-03-15. T5-08-B deliverables: D1 DONE (2026-03-08, commit eaaa35e); D2a DONE (2026-03-13, commit df449e7); D2b DONE (2026-03-13, commit d7ad4b7); D2c DONE (2026-03-13, commit f6901b6); D3 DONE (2026-03-13, commit 6f641eb); D4 DONE (2026-03-13, commit 4ccf36d); D5 DONE (2026-03-13, commit ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15). Phase 8A prerequisite CLEARED. **Note — D6:** D6 (`TITAN_DB_BACKEND` feature flag) was a T5-08 deliverable (commit 54e95d9, 2026-03-08), not a T5-08-B implementation deliverable; carried in T5-08-B tracking table as a pre-existing ✓ reference only. D6 status not explicitly confirmed in T5-08-B closure record. Functional verification (DEC-015, 2026-03-16): `get_database_manager()` in `titan/core/database.py:1975` and `titan/core/persistence.py:122` both implement `TITAN_DB_BACKEND` env-var switching — D6 is present and correct. **Records drift correction (2026-03-15):** heading and status were not updated when D9 was completed; tracking table correctly showed RESOLVED 2026-03-15 — section body now aligned. **Records correction (2026-03-16, DEC-015):** "D6 DONE (T5-08)" removed from T5-08-B deliverable list; D6 note added above.
 **Workflow Path: A** *(full ADR-0044 D2–D5, D7–D9 implementation; PILOT-01 excluded)*
 **Source:** ADR-0044 (PostgreSQL migration decision); QA FAIL on T5-08 scaffold (2026-03-08); OBS-007 process finding.
 **Priority:** P1 for Phase 8 (Phase 8B cannot begin until T5-08-B is RESOLVED).
@@ -1808,6 +1808,27 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 **Workflow Path: A** *(no implementation until Phase 8C; path applies when mitigation design begins)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
+
+**Architect brief (2026-03-16):**
+- **Execution unit (Phase 8C, Pass 1):** Mitigation design pass — produce a written mitigation
+  design document (not code). Scope: structured Garmin-degraded event definition, coach dashboard
+  indicator specification, `garminconnect` library pinning strategy, and multi-device fallback
+  interface sketch referencing ADR-0016/ADR-0041.
+- **Pass type:** audit / design (no code changes in Pass 1)
+- **Closure rule:** T5-12 remains OPEN after Pass 1; closure-capable only after implementation
+  pass (Pass 2) is complete and acceptance gate met.
+- **Required canonical doc update:** Mitigation design document created; T5-12 status updated
+  to reflect design-complete.
+
+**ADR scope declaration (2026-03-16):**
+- ADR required before implementation (Pass 2) begins: YES — the multi-device fallback
+  interface (Polar/Whoop/COROS via unified adapter) must be scoped against ADR-0016
+  (multi-sport scope) and ADR-0041 (unified external data trust contract). A new ADR or
+  amendment to ADR-0016/ADR-0041 is required if the fallback introduces a new sensor-source
+  category not covered by those ADRs.
+- ADR required before design pass (Pass 1): NO — the design pass may proceed; ADR authorship
+  follows after the design document exists.
+- Implementation (Pass 2) is **blocked** until the design ADR is accepted by the architect.
 
 **Location:** `titan/integrations/garmin_sync.py`.
 
@@ -2934,8 +2955,8 @@ When an item is completed, mark it here with date and PR reference:
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
 | T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
-| T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — all ADR-0044 deliverables D1–D9 complete; T5-08-B D8 closure record) | 2026-03-15 |
-| T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished** | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
+| T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 RESOLVED 2026-03-15; D6 was T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable — DEC-015 2026-03-16; T5-08-B D8 closure record) | 2026-03-15 |
+| T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished**. D6 was a T5-08 pre-existing deliverable — not a T5-08-B implementation deliverable; D6 status not explicitly confirmed in T5-08-B closure record (DEC-015 2026-03-16: D6 functionally verified present in `persistence.py:122` + `database.py:1975`). | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
