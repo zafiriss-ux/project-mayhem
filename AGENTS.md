@@ -67,8 +67,19 @@ If an override is required for the suite to run at all, that is a **repo-level i
 | **Architect** (Claude operating in an architectural session — see §3.6) | System design, ADR authorship, tier ordering, scope approval |
 | **Owner** (project owner directing work) | Work priorities, strategic direction, task assignment — not automatic Architect authority |
 | **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions, no ADR authorship |
+| **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit hash recording, OPEN↔RESOLVED integrity |
 
 Agents execute. They do not design.
+
+**Operating responsibility split (written clarification of existing roles — non-negotiable):**
+
+| Role | Owns exclusively |
+|------|-----------------|
+| **Codex** | Implementation, tests, mandatory gates (ruff + pytest), local-scoped result reporting |
+| **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit hash recording, OPEN↔RESOLVED integrity |
+| **Architect** | Process rules, task sequencing, escalation decisions, governance interpretation |
+
+Codex does not write closure wording or record commit hashes in canonical documents — those are Records Steward territory. The Records Steward does not make sequencing or governance interpretation decisions — those are Architect territory. These boundaries are not guidelines; violating them is a process violation.
 
 **Owner authority vs Architect authority:** The project owner directs work and sets priorities.
 However, owner instructions do not automatically carry Architect-level authority. The Architect
@@ -636,6 +647,14 @@ When a task reaches ✅ DONE (all three gates green, commit created):
 Both updates are **required**. Updating one without the other is incomplete.
 
 **Verify-first invariant (non-negotiable):** No hash — closure hash, implementation hash, or any other commit reference — may be recorded in `TECHNICAL_DEBT.md` or any other canonical document before remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote). If remote verification fails, stop and report the branch name and local commit hash. Every new implementation attempt starts fresh; a prior candidate hash that was not remotely verified must never be reused or recorded.
+
+**Heavy-task pre-close checkpoint (mandatory — not a new process phase, a pre-condition to step 1 above):** Before writing "✅ DONE", "RESOLVED", or any equivalent closure language, Codex must explicitly confirm all three of the following:
+
+1. Implementation exists at the claimed location — the file and module are present and correct.
+2. All three mandatory gates are green — current run (ruff + pytest strict + pytest full), not a cached or prior-session result.
+3. Remote state is verifiable — `git push` completed without error and the commit is confirmed present on the remote.
+
+If any of the three cannot be confirmed: do not write closure language. Stop and report the branch name and local commit hash instead.
 
 ### 12.2 On out-of-scope finding (always)
 
