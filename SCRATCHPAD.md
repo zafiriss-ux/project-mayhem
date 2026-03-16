@@ -833,6 +833,35 @@ The observed placement creates a contract-interpretation ambiguity between docum
 
 **Status:** REVIEW_REQUESTED
 
+
+### [OBS-019] ML explainability module path is stale/ambiguous
+
+**Date:** 2026-03-16
+**Trigger:** Architect-authorized bounded audit pass (Audit Pass 3 correction lane)
+**Session context:** Audit Pass 3 / audit-only / observer-only / execution unit: `titan/science/` ML modules
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/ml_safety.py` — contains the shared `ExplainableOutput` contract
+- `titan/science/injury_risk_model.py` — consumes explainability contract and builds explainability payloads
+- `tests/test_ml_explainability.py` — explainability test file name points to a module path not present in the scoped module list
+- `TECHNICAL_DEBT.md` — records a prior deliverable statement that names `titan/science/ml_explainability.py`
+
+**Observation:**
+Within this execution unit, the scoped module list includes `titan/science/ml_explainability.py`, but no such file is present in `titan/science/`. Explainability behaviour is currently implemented across `ml_safety.py` and `injury_risk_model.py` (`ExplainableOutput` definition in `ml_safety.py`; explainability payload construction in `injury_risk_model.py`), while the test file is still named `tests/test_ml_explainability.py` and validates injury-risk explainability through `InjuryRiskEnsembleModel` rather than a dedicated `ml_explainability` module. The debt/register record for T5-06-A also names `titan/science/ml_explainability.py` as if it exists.
+
+References: titan/science/ml_safety.py:13-21, titan/science/injury_risk_model.py:13,145-170, tests/test_ml_explainability.py:1, TECHNICAL_DEBT.md:1448,1464-1477.
+
+**Pattern / scope:**
+Single finding in this pass: module-path identity for explainability is inconsistent across scoped file list, implementation locations, test naming, and debt/register wording.
+
+**Architectural question raised:**
+For the ML explainability contract, what is the architect-approved canonical module boundary and naming contract (`ml_explainability.py` as a dedicated module vs explainability hosted in existing ML modules)?
+
+**Codex assessment (data only, no decision):**
+Observed artifacts indicate a stale/ambiguous module-path contract that can cause audit/test-routing ambiguity in subsequent bounded passes.
+
+**Status:** REVIEW_REQUESTED
+
 ## Architect Review Log
 
 ### [DEC-015] Response to OBS-015 — Phase 8B retrospective: D6 records correction authorised
@@ -1696,4 +1725,3 @@ Codex **MAY START** execution ONLY after ALL of the following are confirmed:
 *Protocol v1.1 — Last updated: 2026-03-07. Structural upgrade: BLOCKING/NON-BLOCKING queues
 (mechanical gate via `scripts/check_scratchpad.sh`), CLARIFICATION_NEEDED state, per-phase
 archive policy. Replaces STATUS-field-only v1.0.*
-
