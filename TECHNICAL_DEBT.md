@@ -1875,9 +1875,9 @@ coverage gaps when new coach endpoints are added.
 
 ---
 
-### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent 🔴 OPEN
+### T5-14 · Training zone thresholds not adjusted for environmental stress — ESI framework absent ✅ RESOLVED 2026-03-16
 
-**Status:** OPEN (Phase 8 scheduled — implement after Phase 8 entry gate passes per AGENTS.md §16.2).
+**Status:** ✅ RESOLVED 2026-03-16. Merge commit: 31f8ef4 (PR #468).
 **Workflow Path: A** *(touches 5 production modules — PILOT-01 excluded)*
 **Reclassified:** 2026-03-07 from T4-29 (Tier 4) to T5-14 (Tier 5). Rationale: this is Phase 8 internal work, not a Phase 8 prerequisite; keeping it as an OPEN Tier 4 item blocked G1 of the Phase 8 entry gate despite the work being correctly deferred into Phase 8.
 **Source:** Risk Review V8 — Risk: Static Thresholding. ADR-0034.
@@ -1913,6 +1913,14 @@ python -m pytest tests/test_esi_compensation.py -v
 python -m pytest -q -W error::pytest.PytestWarning
 python -m pytest -q
 ```
+
+**Resolution:**
+
+ESI framework implemented across 5 production modules per ADR-0034. ESI constants (`ESI_MODERATE_DEW_POINT_C`, `ESI_EXTREME_DEW_POINT_C`, `ESI_TEMP_THRESHOLD_C`, `ESI_PACE_ADJUSTMENT_TABLE`) added to `thresholds.py`. `esi_level` and `esi_pace_adjustment_sec_per_km` computed in `DailyCoach` from current weather data and propagated as ESI context to `WeeklyPlanGenerator` and `OptimalTimeCalculator`. VO₂max workouts blocked under `ESI_EXTREME` via `VO2_ELIGIBILITY_GATE` in `governance_engine.py`. ESI level and adjusted zone targets surfaced in Telegram briefing. `tests/test_esi_compensation.py` added with boundary mutation coverage for the VO₂ eligibility guard and pace adjustment logic.
+
+**Task learning:**
+
+ESI is safest implemented as a multiplicative overlay anchored entirely to `thresholds.py` constants rather than as inline magic numbers, which keeps the compensation logic unit-testable without live weather data. Routing the VO₂ block through the existing `VO2_ELIGIBILITY_GATE` rather than adding a parallel planner-level guard preserves the safety-partition invariant: the block fires regardless of which downstream consumer requests a session prescription.
 
 **Effort:** ~4h. ESI computation function + integration into 3 consumers + tests.
 
@@ -2920,7 +2928,7 @@ When an item is completed, mark it here with date and PR reference:
 | T1-23 | ✅ RESOLVED (independent; Phase 8 entry gate) | 2026-03-07 |
 | T2-16 | ✅ RESOLVED | 2026-03-07 |
 | T2-17 | ✅ RESOLVED (independent) | 2026-03-07 |
-| T5-14 | OPEN (Phase 8 scheduled — formerly T4-29; reclassified 2026-03-07) | — |
+| T5-14 | ✅ RESOLVED 2026-03-16 — ESI framework: constants in `thresholds.py`, ESI context in `DailyCoach`, VO₂ block via `VO2_ELIGIBILITY_GATE`, Telegram surfacing, `test_esi_compensation.py`; merge commit 31f8ef4 (PR #468) | 2026-03-16 |
 | T5-15 | DEFERRED (Phase 9 housekeeping — test marker taxonomy) | — |
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
