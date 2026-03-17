@@ -18,7 +18,11 @@ Design principles (from ADR-0008 / docs/specs/adaptive_priority_lock.md):
 import json
 import logging
 
-from titan.config.thresholds import HARD_STOP_TSB_FLOOR, VO2_ACWR_MAX
+from titan.config.thresholds import (
+    GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
+    HARD_STOP_TSB_FLOOR,
+    VO2_ACWR_MAX,
+)
 from titan.science.volume_load_gauge import VLGState
 
 MODULE_VERSION = "1.0.0"
@@ -32,7 +36,7 @@ _log = logging.getLogger(__name__)
 _DEFAULT_THRESHOLDS: dict[str, float] = {
     "acwr_ceiling": VO2_ACWR_MAX,
     "tsb_floor": HARD_STOP_TSB_FLOOR,
-    "cs_min_confidence": 0.70,  # GovernanceEngine.CS_CONFIDENCE_THRESHOLD
+    "cs_min_confidence": GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
 }
 
 # Per-spec threshold overrides (Section 5.3 of adaptive_priority_lock.md)

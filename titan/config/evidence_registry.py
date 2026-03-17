@@ -1137,6 +1137,67 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC conservative guardrail; reassess after heat-event telemetry review.',
     ),
 
+
+    'WEATHER_DEW_POINT_EXTREME_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_EXTREME_MIN_C',
+        value=24.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='NOAA/NWS operational dew-point comfort advisories adapted for training safety messaging (T5-41 extraction).',
+        rationale='Exclusive lower bound where conditions are treated as extreme and training avoidance is recommended.',
+        policy_note='HEURISTIC policy boundary for conservative athlete guidance; calibrate with heat-strain outcomes.',
+    ),
+
+    'WEATHER_DEW_POINT_OPPRESSIVE_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_OPPRESSIVE_MIN_C',
+        value=21.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Operational meteorology dew-point comfort bands (T5-41 extraction).',
+        rationale='Boundary for oppressive humidity where significant intensity reduction guidance begins.',
+        policy_note='HEURISTIC categorization threshold aligned with practical coaching heat-risk communication.',
+    ),
+
+    'WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C',
+        value=18.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Operational meteorology dew-point comfort bands (T5-41 extraction).',
+        rationale='Boundary for uncomfortable conditions used in heat-status messaging and window scoring.',
+        policy_note='HEURISTIC threshold pending cohort-specific completion/performance validation.',
+    ),
+
+    'WEATHER_DEW_POINT_STICKY_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_STICKY_MIN_C',
+        value=15.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Operational meteorology dew-point comfort bands (T5-41 extraction).',
+        rationale='Boundary for sticky humidity where mild pacing penalties are applied.',
+        policy_note='HEURISTIC comfort threshold; tune with athlete subjective heat-load reports.',
+    ),
+
+    'WEATHER_DEW_POINT_COMFORTABLE_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_COMFORTABLE_MIN_C',
+        value=12.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Operational meteorology dew-point comfort bands (T5-41 extraction).',
+        rationale='Boundary separating pleasant/comfortable domain from drier bonus conditions in window scoring.',
+        policy_note='HEURISTIC advisory threshold for training comfort messaging.',
+    ),
+
+    'WEATHER_DEW_POINT_PLEASANT_MIN_C': ThresholdEvidence(
+        parameter='WEATHER_DEW_POINT_PLEASANT_MIN_C',
+        value=8.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Operational meteorology dew-point comfort bands (T5-41 extraction).',
+        rationale='Boundary above dry/cold classification for pleasant-condition labeling.',
+        policy_note='HEURISTIC messaging threshold; retain as policy constant for centralized tuning.',
+    ),
+
     'OPERATOR_TRUST_DRIFT_WARNING_RATE_30D': ThresholdEvidence(
         parameter='OPERATOR_TRUST_DRIFT_WARNING_RATE_30D',
         value=0.25,

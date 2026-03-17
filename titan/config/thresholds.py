@@ -95,6 +95,14 @@ VLG_GLYCOGEN_RED_MIN = 7.0
 GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD = 0.80
 GOVERNANCE_CS_CONFIDENCE_THRESHOLD = 0.70
 
+# WeatherAPI dew-point decision bands — T5-41 (Category A only).
+WEATHER_DEW_POINT_EXTREME_MIN_C = 24.0
+WEATHER_DEW_POINT_OPPRESSIVE_MIN_C = 21.0
+WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C = 18.0
+WEATHER_DEW_POINT_STICKY_MIN_C = 15.0
+WEATHER_DEW_POINT_COMFORTABLE_MIN_C = 12.0
+WEATHER_DEW_POINT_PLEASANT_MIN_C = 8.0
+
 # Data freshness thresholds — ADR-0026 / T1-19.
 # Hours since last Garmin sync before the system emits warnings or degrades confidence.
 STALE_DATA_WARN_HOURS = 24        # Emit data_freshness_warn structured log event

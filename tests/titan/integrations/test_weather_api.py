@@ -359,3 +359,25 @@ def test_get_hourly_forecast_synthetic_sets_weather_confidence(monkeypatch):
     assert len(forecast) == 2
     assert all(item["data_quality"] == "synthetic" for item in forecast)
     assert all(item["weather_confidence"] == "SYNTHETIC" for item in forecast)
+
+
+def test_classify_heat_stress_uses_threshold_source_of_truth(monkeypatch):
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_EXTREME_MIN_C", 25.0)
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_OPPRESSIVE_MIN_C", 22.0)
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C", 19.0)
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_STICKY_MIN_C", 16.0)
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_COMFORTABLE_MIN_C", 13.0)
+    monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_PLEASANT_MIN_C", 9.0)
+
+    status, _ = WeatherAPI.classify_heat_stress(25.5)
+    assert status == "🔥 EXTREME"
+
+    boundary_status, _ = WeatherAPI.classify_heat_stress(25.0)
+    assert boundary_status == "🟥 OPPRESSIVE"
+
+
+def test_classify_heat_stress_boundary_below_pleasant_is_dry_cold():
+    status, recommendation = WeatherAPI.classify_heat_stress(8.0)
+
+    assert status == "🟪 DRY/COLD"
+    assert recommendation == "Good for fast running"

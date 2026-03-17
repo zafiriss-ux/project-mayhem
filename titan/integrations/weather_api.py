@@ -25,6 +25,14 @@ import urllib.request
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
+from titan.config.thresholds import (
+    WEATHER_DEW_POINT_COMFORTABLE_MIN_C,
+    WEATHER_DEW_POINT_EXTREME_MIN_C,
+    WEATHER_DEW_POINT_OPPRESSIVE_MIN_C,
+    WEATHER_DEW_POINT_PLEASANT_MIN_C,
+    WEATHER_DEW_POINT_STICKY_MIN_C,
+    WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C,
+)
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.data_trust import evaluate_weather_trust
 
@@ -155,17 +163,17 @@ class WeatherAPI:
         Returns:
             Tuple of (status, recommendation)
         """
-        if dew_point > 24:
+        if dew_point > WEATHER_DEW_POINT_EXTREME_MIN_C:
             return "🔥 EXTREME", "Avoid training - dangerous conditions"
-        elif dew_point > 21:
+        elif dew_point > WEATHER_DEW_POINT_OPPRESSIVE_MIN_C:
             return "🟥 OPPRESSIVE", "Reduce intensity 20-30%, increase hydration"
-        elif dew_point > 18:
+        elif dew_point > WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C:
             return "🟧 UNCOMFORTABLE", "Reduce pace 10-15 sec/km, monitor closely"
-        elif dew_point > 15:
+        elif dew_point > WEATHER_DEW_POINT_STICKY_MIN_C:
             return "🟨 STICKY", "Slight pace reduction, extra hydration"
-        elif dew_point > 12:
+        elif dew_point > WEATHER_DEW_POINT_COMFORTABLE_MIN_C:
             return "🟩 COMFORTABLE", "Normal training possible"
-        elif dew_point > 8:
+        elif dew_point > WEATHER_DEW_POINT_PLEASANT_MIN_C:
             return "🟦 PLEASANT", "Ideal conditions"
         else:
             return "🟪 DRY/COLD", "Good for fast running"
@@ -527,13 +535,13 @@ class WeatherAPI:
             score = 0
 
             # Dew point scoring (prefer < 15°C)
-            if avg_dew > 21:
+            if avg_dew > WEATHER_DEW_POINT_OPPRESSIVE_MIN_C:
                 score += 50
-            elif avg_dew > 18:
+            elif avg_dew > WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C:
                 score += 30
-            elif avg_dew > 15:
+            elif avg_dew > WEATHER_DEW_POINT_STICKY_MIN_C:
                 score += 15
-            elif avg_dew < 12:
+            elif avg_dew < WEATHER_DEW_POINT_COMFORTABLE_MIN_C:
                 score -= 10  # Bonus for good conditions
 
             # Temperature scoring (prefer 12-18°C)
