@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
@@ -434,7 +434,7 @@ status body claims "D6 DONE (T5-08)" as part of "All deliverables complete," whi
 the pre-existing D6 (from T5-08) with T5-08-B's own deliverables. The resolution summary
 table (line 2938) is the more accurate record; the status body should be aligned with it.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -771,7 +771,7 @@ Should the Phase 8C planning list be re-baselined against the late-discovery pat
 **Codex assessment (data only, no decision):**
 The data indicates Phase 8B closure was functionally complete for shipped items, but the timing of follow-up finding registration suggests the Phase 8C candidate list may not yet be exhaustive.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ### [OBS-017] Evidence registry includes out-of-contract parameter set
 
@@ -801,7 +801,7 @@ Should `EVIDENCE_REGISTRY` be treated as a strict mirror of `thresholds.py` cons
 **Codex assessment (data only, no decision):**
 Observed key-set composition indicates mixed provenance scope in a registry documented as thresholds-only; this creates contract-interpretation ambiguity for future audit/automation checks that assume strict parity.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 
 ### [OBS-018] Governance modules lack mirrored `tests/titan/science/` test files
@@ -831,7 +831,7 @@ For governance-scoped modules, should the mirrored-path requirement be enforced 
 **Codex assessment (data only, no decision):**
 The observed placement creates a contract-interpretation ambiguity between documented mirrored-test policy and current governance test-file layout.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 
 ### [OBS-019] ML explainability module path is stale/ambiguous
@@ -860,7 +860,7 @@ For the ML explainability contract, what is the architect-approved canonical mod
 **Codex assessment (data only, no decision):**
 Observed artifacts indicate a stale/ambiguous module-path contract that can cause audit/test-routing ambiguity in subsequent bounded passes.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 ### [OBS-020] AdaptivePriorityLock threshold source contract is ambiguous
 
@@ -913,10 +913,367 @@ For `PersistenceAdapter` read-path methods used by `get_athlete_context`, is ath
 **Codex assessment (data only, no decision):**
 Observed boundary currently permits an output payload tagged with a requested `athlete_id` even when adapter read-method contracts do not express athlete identity at call time.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 
 ## Architect Review Log
+
+### [DEC-024] Response to OBS-024 — Operator console test topology: root-level placement is intentional and enforced
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_phase6_hygiene.py`:252–258: confirms explicit import
+  of `tests.test_operator_console_dashboard` as part of Phase 6 hygiene enforcement.
+  Read `tests/titan/ui/test_menu_system.py`:1–8 and `tests/titan/ui/test_setup_wizard.py`:1–8:
+  confirmed mirrored-path placement for adjacent UI modules. Read
+  `titan/ui/__init__.py`:3–5: `operator_console` is exported as part of the `titan.ui`
+  public surface. The hygiene gate test at `test_phase6_hygiene.py`:252–258 explicitly imports
+  the root-path module — any migration to `tests/titan/ui/` would break an active CI gate
+  without a coordinated update to the hygiene test.
+
+**Architect finding:**
+OBS-024 is factually correct. The operator console test sits at the root level
+(`tests/test_operator_console_dashboard.py`) while adjacent UI modules use mirrored
+`tests/titan/ui/` placement. The root-level placement is not a drift artifact — it was
+the original placement when the operator console was introduced (Phase 6), and the
+Phase 6 hygiene gate was written to enforce it explicitly. Migrating the file without
+updating the hygiene gate would silently break CI. The mixed topology is therefore an
+actively enforced contract, not a register-level inconsistency.
+
+Normalization to the mirrored-path convention is a valid future housekeeping item
+(requiring coordinated update of both the test location and the hygiene gate import),
+but it has zero functional benefit and non-trivial CI-break risk if done without care.
+Phase 8 is the wrong time for this hygiene refactor.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Root-level placement for operator console test is intentional and enforced by `test_phase6_hygiene.py`; no restructuring warranted in Phase 8 |
+
+**Rationale:**
+The observation correctly identifies a convention split, but the hygiene gate explicitly
+enforces the current topology. Treating this as a drift to be corrected would require
+a two-file coordinated change (test move + hygiene gate update) with no correctness benefit.
+Deferred to Phase 9 housekeeping if normalization is desired at that point.
+
+**OBS-024 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-023] Response to OBS-023 — Nutrition public API test gap: T5-42 registered
+
+**Date:** 2026-03-16
+**Architect:** Claude
+**OBS verified:** YES — read `titan/features/nutrition_optimizer.py`:35–216: confirmed
+  `add_weight_entry()`, `analyze_weight_trend()`, `calculate_daily_nutrition()` as public
+  methods. Read `tests/titan/features/test_nutrition_optimizer.py`:1–65: confirmed tests
+  cover `analyze_weight_trend()` scenarios only; no tests for `add_weight_entry()` retention
+  behavior or `calculate_daily_nutrition()` output contract / branching.
+
+**Architect finding:**
+OBS-023 is factually correct. The mirrored test file exists but has incomplete public-method
+coverage: two public methods (`add_weight_entry()` and `calculate_daily_nutrition()`) have no
+test coverage in the mirrored file. This is a straightforward test coverage gap — not an
+architectural ambiguity. Both methods have meaningful behavioral contracts (weight entry
+persistence, daily macro calculation with branching) that are testable without architectural
+decisions. Debt entry registered as T5-42.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-42 registered: `NutritionOptimizer` public API test coverage gap — `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests in `tests/titan/features/test_nutrition_optimizer.py` |
+
+**Rationale:**
+The mirrored-test policy requires meaningful coverage of public methods in changed/audited
+modules. Two of three public methods are untested. The fix is test-only (no production code
+changes required), bounded to one file, and has no architectural dependencies. T5-42 is the
+correct tier and scope for this finding.
+
+**OBS-023 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-022] Response to OBS-022 — Integration contract/threshold gaps: T5-40 + T5-41 registered
+
+**Date:** 2026-03-16
+**Architect:** Claude
+**OBS verified:** YES — read `titan/integrations/notification_gateway.py`:75–95:
+  confirmed `TelegramChannel.send()` calls `self._bot.send_daily_coaching(payload)` and
+  returns `True` unconditionally unless exception raised; the boolean returned by
+  `send_daily_coaching()` is discarded. Read `titan/integrations/telegram_bot.py`:444–467:
+  confirmed `send_daily_coaching()` returns boolean from `send_message()`. Read
+  `tests/titan/integrations/test_notification_gateway.py`:15–139: confirmed no test for
+  the `False`-without-exception branch. Read `titan/integrations/weather_api.py`:158–170
+  and 529–537: confirmed independent inline dew-point literal clusters in
+  `classify_heat_stress()` and `find_optimal_training_windows()`.
+
+**Architect finding:**
+OBS-022 identifies two distinct actionable gaps in the integration layer:
+
+1. **Boolean-return silent failure (T5-40):** `TelegramChannel.send()` discards the boolean
+   result of `send_daily_coaching()`. A `False` return (delivery failure without exception)
+   is silently treated as success at the channel boundary. This is a real behavioral contract
+   gap — not a design choice — and requires both a code fix (consume the boolean) and a test
+   for the `False`-without-exception branch.
+
+2. **Dew-point literal duplication (T5-41):** Two independent inline literal clusters for the
+   same decision domain (dew-point bands) in `weather_api.py` violate the Category A
+   threshold-governance policy. The same threshold values appear in two places with no shared
+   source. Category A extraction to `thresholds.py` is required.
+
+Finding 3 (missing mirrored test for the False branch) is subsumed by T5-40's test requirement.
+No new ADR is required for either finding; both are bounded implementation fixes.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-40 registered: `TelegramChannel.send()` boolean return silent-failure path + branch coverage test |
+| NEW_DEBT_ENTRY | T5-41 registered: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants (Category A) |
+
+**Rationale:**
+Both findings are within the Category A threshold-governance and behavioral-contract-gap
+patterns established in Phase 8B. Both are bounded to the integration layer, require no
+architectural decisions, and have binary acceptance criteria. T5-40 and T5-41 are the correct
+tier and scope for these findings.
+
+**OBS-022 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-021] Response to OBS-021 — `get_athlete_context` athlete_id contract: single-athlete mode is correct current design
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — read `titan/core/persistence.py`:66–109: confirmed `get_athlete_context()`
+  stores `athlete_id` in returned payload but all underlying adapter fetches (`get_baseline_rhr`,
+  `get_hrv_history`, `get_weight_history`, `get_ctl_atl_tsb`, `get_training_load_history`,
+  `get_governance_decisions`) are called without an `athlete_id` argument. Read
+  `tests/titan/core/test_persistence.py`:395–451: confirmed tests assert payload shape and
+  optional-section presence but not call-level athlete scoping. Confirmed ADR-0046 and T5-16
+  govern the multi-athlete execution model — CoachingScheduler is the planned isolation boundary;
+  single-athlete read paths are not required to carry athlete identity at the adapter level
+  until CoachingScheduler is implemented.
+
+**Architect finding:**
+OBS-021 is factually correct: the adapter read methods do not carry `athlete_id` in their
+signatures, and the tests do not assert call-level scoping. However, this is not a design
+flaw — it is the correct current state for a single-athlete system. The TITAN OS currently
+operates with one athlete profile per database. In this context, all adapter reads are
+implicitly scoped to that single athlete; passing `athlete_id` through every read method
+would add mechanical boilerplate with no behavioral benefit at this scale.
+
+The multi-athlete scoping concern is actively tracked and governed: ADR-0046 accepted the
+CoachingScheduler model as the future isolation boundary. T5-16-A closed the state-isolation
+acceptance criteria for that model (2026-03-15). The `athlete_id` in `get_athlete_context()`
+output is correct — it tags the returned payload with the requested identity for downstream
+consumers. There is no architectural inconsistency here.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Single-athlete adapter contract is correct for current system scope; multi-athlete scoping is Phase 9 scope per ADR-0046 / T5-16 |
+
+**Rationale:**
+The observation correctly identifies an asymmetry between the output contract (tagged with
+`athlete_id`) and the adapter read contract (no identity). This asymmetry is intentional and
+correct for single-athlete mode. The multi-athlete extension path is governed by ADR-0046.
+No new debt entry is warranted — the existing ADR-0046 and T5-16 closure record cover the
+forward design constraint.
+
+**OBS-021 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-019] Response to OBS-019 — ML explainability module path: records correction for T5-06-A
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — searched `titan/science/` for `ml_explainability.py`: file does not
+  exist. Read `titan/science/ml_safety.py`:13–21: confirmed `ExplainableOutput` dataclass
+  defined here. Read `titan/science/injury_risk_model.py`:13 and 145–170: confirmed
+  explainability payload construction in `InjuryRiskEnsembleModel`. Read
+  `tests/test_ml_explainability.py`:1: confirmed test file name references
+  non-existent module but tests validate explainability through `InjuryRiskEnsembleModel`.
+  Read `TECHNICAL_DEBT.md`:1448 and 1464–1477: confirmed T5-06-A references
+  `titan/science/ml_explainability.py` in its module-path wording.
+
+**Architect finding:**
+OBS-019 is factually correct. The T5-06-A debt entry and surrounding text reference
+`titan/science/ml_explainability.py` as if it is a standalone module. No such module exists.
+The explainability contract (`ExplainableOutput`) lives in `titan/science/ml_safety.py`; the
+payload construction lives in `titan/science/injury_risk_model.py`. The test file name
+(`test_ml_explainability.py`) is a naming artifact from when a dedicated module was
+anticipated; it validly tests the explainability behaviour via `InjuryRiskEnsembleModel`.
+
+This is a records-accuracy issue: the T5-06-A closure entry should reference the correct
+module paths rather than a phantom path. T5-06-A is already RESOLVED (2026-03-15); the
+correction is editorial only and does not affect the RESOLVED status or any implementation.
+No new debt entry is needed.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION (new debt) | T5-06-A is already RESOLVED; no implementation gap exists |
+| NO_ACTION (functional) | `ExplainableOutput` is correctly implemented in `ml_safety.py`; `InjuryRiskEnsembleModel` correctly builds explainability payloads |
+| Records correction authorised | T5-06-A entry updated to reference `titan/science/ml_safety.py` (ExplainableOutput source) and `titan/science/injury_risk_model.py` (payload construction) instead of phantom `ml_explainability.py` |
+
+**Rationale:**
+The correction is editorial: replacing a phantom module-path reference with the actual
+implementation locations. It does not change any acceptance criteria, implementation scope,
+or debt status. The test file naming is intentional and does not require renaming
+(renaming tests is scope creep with no functional benefit at this stage).
+
+**OBS-019 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-018] Response to OBS-018 — Governance test placement: root-level coverage is intentional and adequate
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — searched `tests/titan/science/` for `test_governance_engine.py`
+  and `test_governance_contracts.py`: neither file exists. Read
+  `tests/test_governance_integration.py`:1–2: confirmed root-level placement with substantial
+  governance coverage. Read `AGENTS.md`:10–14: confirmed mirrored-path requirement is stated
+  as "every change to a module must be accompanied by tests for the new/changed behaviour"
+  in `tests/titan/<path>/test_<module>.py`. The policy triggers on changed modules — it is
+  not a retroactive restructuring mandate.
+
+**Architect finding:**
+OBS-018 is factually correct: no mirrored `tests/titan/science/test_governance_*.py` files
+exist. However, the finding does not constitute a policy violation. The AGENTS.md mirrored-path
+rule applies when a module is changed in a task — it requires new tests to be placed in the
+mirrored path for that change. It does not require retroactive migration of pre-existing
+governance tests from their current root-level location.
+
+The governance test files (`tests/test_governance_integration.py`,
+`tests/test_governance_mutation.py`) provide comprehensive governance coverage and are part of
+CI. Migrating them to `tests/titan/science/` would be a pure housekeeping refactor with no
+coverage gain and a non-trivial risk of hygiene gate breakage. The trigger for migration would
+be a governance-module change task — at that point the new tests for the changed behaviour
+would go into the mirrored path (per policy), while the existing root-level tests remain as
+regression coverage.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION | Root-level governance test placement is not a policy violation; mirrored-path rule applies to new/changed behaviour, not retroactive restructuring |
+
+**Rationale:**
+AGENTS.md §6 requires mirrored test placement for new/changed behaviour. It does not mandate
+retroactive migration of existing test files. The existing governance coverage at root level
+is extensive, maintained, and CI-active. No new debt entry warranted.
+
+**OBS-018 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-017] Response to OBS-017 — Evidence registry contract: records correction for broader provenance scope
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — read `titan/config/evidence_registry.py`:4 and 55: confirmed contract
+  statement "one entry per constant in thresholds.py" and section framing. Read
+  `titan/config/evidence_registry.py`:410–518: confirmed eight `PHYS_BOUNDS_*` entries present
+  inside `EVIDENCE_REGISTRY`. Read `titan/config/thresholds.py`:1–135: confirmed no
+  `PHYS_BOUNDS_*` symbols defined there. Read `titan/config/evidence_registry.py`:410–412:
+  confirmed inline comment states bounds runtime location is `titan/science/physiological_bounds.BOUNDS`.
+
+**Architect finding:**
+OBS-017 is factually correct. The `EVIDENCE_REGISTRY` contract statement ("one entry per
+constant in thresholds.py") does not match the actual key-set composition, which includes
+eight `PHYS_BOUNDS_*` entries whose runtime home is `titan/science/physiological_bounds.py`,
+not `thresholds.py`. The registry was designed as a provenance tracker for scientifically
+governed constants; its scope naturally covers constants in adjacent config-adjacent modules
+(physiological bounds) even if those constants do not live in `thresholds.py`.
+
+The design intent is sound: provenance tracking for all governed science constants, regardless
+of which config module they live in. The problem is the contract statement, which is too narrow.
+The fix is editorial: update the contract statement to describe the actual scope — governed
+science constants from `thresholds.py` **and** governed physiological bounds from
+`physiological_bounds.py`.
+
+No functional gap exists. The `PHYS_BOUNDS_*` entries are legitimate provenance records.
+No new debt entry is warranted.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION (new debt) | Registry design is correct; no implementation gap exists |
+| Records correction authorised | Contract statement in `evidence_registry.py` updated to describe broader provenance scope (thresholds.py + physiological_bounds.py governed constants) |
+
+**Rationale:**
+The registry's actual scope is broader than its stated contract. The contract statement is
+the only artifact that needs updating — it must describe what the registry actually covers.
+The `PHYS_BOUNDS_*` entries are correctly included; the framing was never updated after the
+physiological bounds constants were added to the registry.
+
+**OBS-017 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-016] Response to OBS-016 — Phase 8B retrospective: Phase 8C opens; T5-12 Pass 1 authorized
+
+**Date:** 2026-03-17
+**Architect:** Claude
+**OBS verified:** YES — reviewed `TECHNICAL_DEBT.md` Phase 8B closure records for all
+  items listed in OBS-016 (T5-08-B through T5-38). Verified T5-36, T5-37, T5-38 all carry
+  RESOLVED status with dated closure records. Verified T5-12 status: OPEN with explicit
+  Phase 8C deferral and a written architect brief (Pass 1 + Pass 2 structure, ADR gate).
+  Verified D6 status via DEC-015 (already PROCESSED 2026-03-16). Confirmed no un-triaged
+  findings remain in SCRATCHPAD.md after this pass.
+
+**Architect finding:**
+OBS-016 presents a factually accurate retrospective of Phase 8B. The closure evidence is
+internally consistent for all shipped items. The late-discovery pattern
+(T5-36/T5-37/T5-38 + T5-12 deferral) does not indicate Phase 8C is under-scoped:
+
+- T5-36 (API rate limiting), T5-37 (CI gates), T5-38 (meta-tests) were all identified,
+  registered, and resolved within Phase 8B before closure. They did not escape into Phase 8C.
+- T5-12 has a fully-formed architect brief with Pass 1 (design) and Pass 2 (implementation)
+  already defined; its deferral to Phase 8C is by design, not by oversight.
+- No un-triaged findings remain in SCRATCHPAD.md after the 8-pass bounded audit program
+  (OBS-017 through OBS-024, all REVIEWED in this records pass).
+
+The question posed by OBS-016 — whether Phase 8C planning needs re-baselining against the
+late-discovery pattern — is answered: **no re-baselining is required.** The Phase 8C
+candidate list as currently recorded is complete. The bounded audit program (8 passes, 8
+OBS entries, 4 new debt items) did not surface any Phase 8C scope gaps beyond what is
+already tracked. Audit batch T5-39–T5-42 is fully closed. Phase 8C may now open.
+
+**Phase 8C opening — effective 2026-03-17:**
+- Phase 8C is **OPEN** as of this records pass.
+- First canonical execution unit: **T5-12 Pass 1 — Mitigation Design Pass** (no code changes;
+  produces written mitigation design document as defined in the T5-12 architect brief).
+- T5-12 Pass 2 (implementation) remains **blocked** until the design ADR is accepted by
+  the architect (per T5-12 brief: ADR required before implementation begins).
+- No other Phase 8C items are currently open beyond T5-12.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NO_ACTION (re-baselining) | Phase 8C candidate list is complete; no re-baselining needed |
+| Phase 8C OPEN | Effective 2026-03-17; T5-12 Pass 1 is the first authorized execution unit |
+| TECHNICAL_DEBT.md update | Phase 8C opening noted in update log and sequencing block |
+
+**Rationale:**
+Phase 8B produced a clean closure: all shipped items resolved, three late-registered findings
+(T5-36/T5-37/T5-38) registered and resolved before Phase 8B close, T5-12 deferred with a
+complete design brief. The bounded audit program confirmed no further scope gaps. Phase 8C
+inherits a single open item (T5-12) with a defined execution structure. The conditions for
+Phase 8C opening are met.
+
+**OBS-016 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
 
 ### [DEC-020] Response to OBS-020 — APL threshold source: Category A extraction required for `cs_min_confidence = 0.70`; phase overrides remain inline (Category B)
 
@@ -1887,7 +2244,7 @@ For integration modules, should runtime delivery contracts be treated as boolean
 **Codex assessment (data only, no decision):**
 Current integration-layer behavior shows mixed contract semantics and duplicated policy literals in weather decision logic, with one uncovered behavioral branch in notification gateway tests.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 ### [OBS-023] Audit Pass 7 — nutrition public API test-surface gap
 
@@ -1926,7 +2283,7 @@ For audit registration in this lane, should partial mirrored coverage in an exis
 **Codex assessment (data only, no decision):**
 The feature module currently has untested public API surface in its mirrored test file, while adjacent feature modules in the same scope include broader method coverage.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
 
 ### [OBS-024] Audit Pass 8 — UI test topology drift around operator console
 
@@ -1973,4 +2330,4 @@ For UI modules in this subsystem, is mixed test topology (mirrored-path for some
 **Codex assessment (data only, no decision):**
 Current enforcement relies on both mirrored and root-level test module placement for `titan/ui` components, creating a scope-local convention split that is observable in active hygiene checks.
 
-**Status:** REVIEW_REQUESTED
+**Status:** REVIEWED
