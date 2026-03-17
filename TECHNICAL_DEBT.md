@@ -2875,9 +2875,9 @@ have explicit tests covering happy path and the stated boundary cases; all manda
 
 ---
 
-### T5-43 · cryptography/cffi native extension broken in CI environment 🔴 OPEN
+### T5-43 · cryptography/cffi native extension broken in CI environment ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: 3a7a67b. **Resolution:** Pinned `withings-sync==4.1.0` in `constraints.txt`. Root cause was broken `.VERSION` file in withings-sync 4.2.6/4.2.7 build process, which prevented cryptography/cffi from installing correctly. All 10 previously-erroring test files now collect and pass. Gate 2/Gate 3 fully restored.
 **Workflow Path: A**
 **Change Type:** implementation
 **Source:** Repository State Verification Report 2026-03-17.
@@ -2905,6 +2905,8 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Bottleneck:** Environment repair only — no production code changes.
 **Owner:** Codex
 **Unblock condition:** All 10 previously-erroring test files collect and pass cleanly.
+
+**Task learning:** Transitive dependency build failures can silently block unrelated test modules. constraints.txt is the correct intervention point — not requirements.txt — when the broken package is a transitive dependency pulled by a pinned direct dependency.
 
 ---
 
@@ -3232,7 +3234,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-40 | ✅ RESOLVED (P3 — `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green) | 2026-03-17 |
 | T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
 | T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
-| T5-43 | OPEN — cffi/cryptography environment gap; 10 test files uncollectable | — |
+| T5-43 | ✅ RESOLVED 2026-03-17 — withings-sync pinned to 4.1.0 in constraints.txt; all 10 test files collectable; 1999 tests green | 2026-03-17 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
