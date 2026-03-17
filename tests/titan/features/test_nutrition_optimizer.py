@@ -63,3 +63,96 @@ def test_analyze_weight_trend_returns_safe_outcome_when_first_weight_is_negative
         "velocity": 0,
         "recommendation": "Need valid baseline weight data",
     }
+
+
+def test_add_weight_entry_happy_path_appends_weight_history():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    optimizer.add_weight_entry("2026-03-08", 70.2)
+
+    assert optimizer.weight_history == [("2026-03-08", 70.2)]
+
+
+def test_add_weight_entry_duplicate_date_boundary_keeps_both_entries():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    optimizer.add_weight_entry("2026-03-08", 70.2)
+    optimizer.add_weight_entry("2026-03-08", 70.0)
+
+    assert optimizer.weight_history == [
+        ("2026-03-08", 70.2),
+        ("2026-03-08", 70.0),
+    ]
+
+
+def test_add_weight_entry_empty_input_boundary_accepts_empty_date():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    optimizer.add_weight_entry("", 0.0)
+
+    assert optimizer.weight_history == [("", 0.0)]
+
+
+def test_calculate_daily_nutrition_happy_path_returns_expected_contract_keys():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+    for day in range(1, 8):
+        optimizer.add_weight_entry(f"2026-03-0{day}", 70.0)
+
+    plan = optimizer.calculate_daily_nutrition(
+        weight_kg=70.0,
+        today_session={"session_type": "TEMPO", "duration_min": 60, "dew_point": 18},
+        tomorrow_session={"session_type": "INTERVALS"},
+    )
+
+    assert plan["total_calories"] == 2814.0
+    assert plan["carbs_g"] == 490.0
+    assert plan["carbs_range"] == "420-560g"
+    assert plan["protein_g"] == 126.0
+    assert plan["fat_g"] == 40
+    assert plan["hydration_ml"] == 960
+    assert isinstance(plan["special_notes"], list)
+    assert "⚡ High glycogen demand - ensure adequate carbs" in plan["special_notes"]
+
+
+def test_calculate_daily_nutrition_zero_weight_boundary_returns_safe_macro_floor():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    plan = optimizer.calculate_daily_nutrition(
+        weight_kg=0,
+        today_session={"session_type": "REST", "duration_min": 0, "dew_point": 10},
+    )
+
+    assert plan["carbs_g"] == 0
+    assert plan["protein_g"] == 0
+    assert plan["fat_g"] == 127.0
+    assert plan["hydration_ml"] == 0
+
+
+def test_calculate_daily_nutrition_extreme_macro_target_boundary_for_race_day():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    plan = optimizer.calculate_daily_nutrition(
+        weight_kg=120,
+        today_session={"session_type": "RACE", "duration_min": 180, "dew_point": 22},
+    )
+
+    assert plan["carbs_g"] == 1320.0
+    assert plan["carbs_range"] == "1200-1440g"
+    assert plan["hydration_ml"] == 3600
+    assert plan["fat_g"] == 40
+
+
+def test_calculate_daily_nutrition_hydration_edge_cases_cover_heat_and_session_intensity():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    cool_easy = optimizer.calculate_daily_nutrition(
+        weight_kg=70,
+        today_session={"session_type": "EASY", "duration_min": 30, "dew_point": 10},
+    )
+    sticky_hammer = optimizer.calculate_daily_nutrition(
+        weight_kg=70,
+        today_session={"session_type": "HAMMER", "duration_min": 30, "dew_point": 21},
+    )
+
+    assert cool_easy["hydration_ml"] == 250
+    assert sticky_hammer["hydration_ml"] == 560
