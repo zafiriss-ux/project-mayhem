@@ -107,6 +107,15 @@ Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is 
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0022 for gate record.
 
+**Phase 8C execution sequence (OPEN — 2026-03-17):**
+```
+T5-12 Pass 1 — Mitigation Design Pass (first execution unit; no code changes;
+               produces written mitigation design document per T5-12 architect brief)
+T5-12 Pass 2 — BLOCKED (implementation; blocked until design ADR accepted by architect)
+```
+Phase 8C opened 2026-03-17 (DEC-016). Bounded audit batch T5-39–T5-42 fully closed.
+No further open Phase 8C items beyond T5-12 at time of opening.
+
 ---
 
 ## TIER 1 — Data Integrity (All Resolved ✅)
@@ -3216,6 +3225,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-17 — T5-39 + T5-41 closure records pass. T5-39 RESOLVED: `adaptive_priority_lock.py` `cs_min_confidence = 0.70` replaced with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import; source-binding test added. T5-41 RESOLVED: dew-point decision band literals in `weather_api.py`:158–170, 529–537 extracted to `thresholds.py` named constants; `evidence_registry.py` provenance entries added. Closure commit: `2f46d59` (PR #489 merge). CLAUDE.md test snapshot updated to 1991 (accepted as correct). Branch prefix anomaly: PR #489 used `codex/*` prefix instead of canonical `claude/*` — recorded as process blemish only, no functional impact. Tracking table rows updated: T5-39 → RESOLVED 2026-03-17; T5-41 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No re-review of functional content.*
 
 *Updated: 2026-03-17 — T5-40 + T5-42 closure records pass. T5-40 RESOLVED: `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green. T5-42 RESOLVED: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green. Closure commit: `b058ed2` (PR #491 merge). CLAUDE.md test snapshot accepted as 1999 (correct per architect verdict). Process blemishes recorded: PR #491 used `codex/*` branch prefix instead of canonical `claude/*`; PR title was generic (not `T<tier>-<id>: <short title>` format) — both non-functional deviations only. Tracking table rows updated: T5-40 → RESOLVED 2026-03-17; T5-42 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No implementation changes. Audit batch T5-39–T5-42 fully closed; Phase 8C sequencing may now open.*
+
+*Updated: 2026-03-17 — DEC-016 records pass: Phase 8C opens. SCRATCHPAD.md queue fully cleared: OBS-015 through OBS-024 all REVIEWED; DEC-016 through DEC-024 (excl. DEC-020 already processed 2026-03-16) written in Architect Review Log; SCRATCHPAD STATUS → IDLE. Architect decisions summary: DEC-016 (OBS-016) — Phase 8B closure evidence complete; Phase 8C OPEN; T5-12 Pass 1 authorized as first execution unit; T5-12 Pass 2 blocked until design ADR accepted. DEC-017 (OBS-017) — evidence_registry contract statement records correction authorized (broader provenance scope: thresholds.py + physiological_bounds.py). DEC-018 (OBS-018) — governance test root-level placement is intentional; NO_ACTION. DEC-019 (OBS-019) — T5-06-A module-path records correction authorized (phantom ml_explainability.py → actual ml_safety.py + injury_risk_model.py). DEC-021 (OBS-021) — single-athlete adapter contract is correct for current scope; NO_ACTION; multi-athlete scoping is Phase 9 per ADR-0046. DEC-022 (OBS-022) — already processed 2026-03-16 (T5-40 + T5-41). DEC-023 (OBS-023) — already processed 2026-03-16 (T5-42). DEC-024 (OBS-024) — operator console test root-level placement is enforced by test_phase6_hygiene.py; NO_ACTION. Phase 8C execution sequence added to header sequencing block. No new debt items in this pass. No implementation changes. No AGENTS.md changes.*
 
 ---
 
