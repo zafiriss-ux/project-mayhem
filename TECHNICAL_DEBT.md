@@ -2668,9 +2668,9 @@ When a deterministic Opus finding was migrated to a CI test (T5-37), that CI gat
 
 ---
 
-### T5-39 · `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical threshold import 🟡 OPEN
+### T5-39 · `adaptive_priority_lock.py` — replace inline `cs_min_confidence = 0.70` with canonical threshold import ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: `2f46d59` (PR #489 merge commit).
 **Workflow Path: A** *(narrow import replacement — no ADR required)*
 **Source:** DEC-020 (Response to OBS-020, 2026-03-16). `titan/science/adaptive_priority_lock.py`:35, `titan/config/thresholds.py`:96.
 **Type:** Threshold Governance — Category A extraction
@@ -2708,6 +2708,8 @@ automatically propagate to `_DEFAULT_THRESHOLDS`.
 literals remain inline unchanged; a source-binding test asserts the import; all mandatory gates
 green.
 
+**Task learning:** Branch created under `codex/*` prefix instead of canonical `claude/*` — process blemish only, no functional impact. Category A constant extractions benefit from pairing the import replacement and source-binding assertion in the same commit to keep the acceptance gate verifiable atomically.
+
 ---
 
 ### T5-40 · `notification_gateway.py` — boolean-return handling + branch coverage test 🟡 OPEN
@@ -2744,9 +2746,9 @@ return; the `False`-without-exception branch has explicit test coverage; all man
 
 ---
 
-### T5-41 · `weather_api.py` — dew-point decision bands extraction to `thresholds.py` 🟡 OPEN
+### T5-41 · `weather_api.py` — dew-point decision bands extraction to `thresholds.py` ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: `2f46d59` (PR #489 merge commit).
 **Workflow Path: A** *(Category A constant extraction — no ADR required)*
 **Source:** DEC-022 (Response to OBS-022, 2026-03-16). `titan/integrations/weather_api.py`:158–170, 529–537.
 **Type:** Threshold Governance — Category A extraction
@@ -2776,6 +2778,8 @@ decision boundaries diverge silently.
 **Acceptance gate (binary):** All dew-point decision band literals in `weather_api.py` are
 replaced by named constants imported from `thresholds.py`; `evidence_registry.py` has
 provenance entries; no remaining inline duplicates found by Grep; all mandatory gates green.
+
+**Task learning:** Branch created under `codex/*` prefix instead of canonical `claude/*` — process blemish only, no functional impact. Multi-cluster literal extraction (two separate line ranges in the same file) requires a Grep sweep before writing replacements to avoid missing a third cluster introduced by future edits.
 
 ---
 
@@ -3136,9 +3140,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-36 | ✅ RESOLVED (P2 Phase 8B — authenticated per-role/per-user rate limiting implemented) | 2026-03-15 |
 | T5-37 | ✅ RESOLVED (P1 — Opus Category A findings → CI gates; ADR-0049 Hybrid Sequential lane completed; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-38 | ✅ RESOLVED (P1 — validating meta-tests for each T5-37 CI gate; paired lane complete; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
-| T5-39 | 🟡 OPEN (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | — |
+| T5-39 | ✅ RESOLVED (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | 2026-03-17 |
 | T5-40 | 🟡 OPEN (P3 — `TelegramChannel.send()` ignores boolean return; `False`-without-exception is silent failure; add branch coverage test) | — |
-| T5-41 | 🟡 OPEN (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | — |
+| T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
 | T5-42 | 🟡 OPEN (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests; test-only) | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
@@ -3204,6 +3208,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-16 — DEC-022 records pass (OBS-022 / T5-40 + T5-41 registration). T5-40 registered: `TelegramChannel.send()` boolean-return silent-failure path + branch coverage test (`notification_gateway.py`:75–95, `telegram_bot.py`:444–467; Workflow Path A; P3; ~1–2h). T5-41 registered: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants (Category A; Workflow Path A; P3; ~1h). No implementation performed. No new ADR. No renumbering.*
 
 *Updated: 2026-03-16 — DEC-023 records pass (T5-42 registration). T5-42 registered: `NutritionOptimizer` public API test coverage gap — `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests in `tests/titan/features/test_nutrition_optimizer.py` (Workflow Path A; P3; ~1–2h; test-only; no production code changes). No implementation performed. No new ADR. No renumbering.*
+
+*Updated: 2026-03-17 — T5-39 + T5-41 closure records pass. T5-39 RESOLVED: `adaptive_priority_lock.py` `cs_min_confidence = 0.70` replaced with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import; source-binding test added. T5-41 RESOLVED: dew-point decision band literals in `weather_api.py`:158–170, 529–537 extracted to `thresholds.py` named constants; `evidence_registry.py` provenance entries added. Closure commit: `2f46d59` (PR #489 merge). CLAUDE.md test snapshot updated to 1991 (accepted as correct). Branch prefix anomaly: PR #489 used `codex/*` prefix instead of canonical `claude/*` — recorded as process blemish only, no functional impact. Tracking table rows updated: T5-39 → RESOLVED 2026-03-17; T5-41 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No re-review of functional content.*
 
 ---
 
