@@ -319,6 +319,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0047` — Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3); engineering execution T8-01 (Accepted — 2026-03-09)
 - `0048` — API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11; prerequisite for all Phase 8B FastAPI endpoints (Accepted — 2026-03-15)
 - `0049` — Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A (machine-checkable) / Category B (judgment-required) finding taxonomy; repeated deterministic findings migrate to CI gates (T5-37); validating meta-test requirement (T5-38); §7 Migration Lane Execution Protocol: Hybrid Sequential Model (Audit Pass → Sequential Migration Units → Single Final Closure; no child GitHub issues before Audit Pass; T5-37 / T5-38 remain OPEN until all migration units complete) (Accepted — 2026-03-15)
+- `0050` — Garmin API Fragility Mitigation: garmin_api_degraded CRITICAL event contract; coach dashboard indicator (3 wording states); garminconnect exact-version pinning policy; BiometricSourceAdapter fallback boundary (SourceCapabilities / NormalizedBiometricSample / BiometricSourceSyncResult); T5-12 Pass 2 implementation obligations O1–O7 (Accepted — 2026-03-17)
 
 ### Future Design Notes
 
