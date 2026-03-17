@@ -2093,9 +2093,11 @@ remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter tha
 
 ---
 
-### T5-16-B · CoachingScheduler stub + coaching_pipeline module extraction 🔴 OPEN
+### T5-16-B · CoachingScheduler stub + coaching_pipeline module extraction ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: 4e79c4a.
+**Resolution:** `titan/orchestration/coaching_pipeline.py` created with `AthleteCoachingContext` frozen dataclass and stateless `coaching_pipeline()` function. `titan/orchestration/coaching_scheduler.py` created with `register_athlete()`, `start()`, `stop()` lifecycle and per-athlete overlap lock. `DailyCoach.run_morning_routine()` delegates to `coaching_pipeline()` via context object. State isolation oracle implemented and passing. Module ceiling updated 67→69 for the two new structural modules. 2008 tests green.
+**Task learning:** The `coach: Any` field in `AthleteCoachingContext` passes the full `DailyCoach` instance — acceptable for single-athlete Phase 8C scope where state isolation is proven by the oracle test. For Phase 9 multi-athlete promotion, `coach` must be replaced by explicit callable contracts (per ADR-0046) to eliminate implicit shared-state risk.
 **Workflow Path: A** *(structural extraction — PILOT-01 excluded)*
 **Change Type:** implementation
 **Source:** Architect records correction 2026-03-17. T5-16-A partial closure finding.
@@ -3207,7 +3209,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
-| T5-16-B | OPEN — CoachingScheduler stub + coaching_pipeline module extraction; blocking multi-athlete execution | — |
+| T5-16-B | ✅ RESOLVED 2026-03-17 — coaching_pipeline.py + coaching_scheduler.py extracted; DailyCoach delegates; state isolation oracle green; 2008 tests | 2026-03-17 |
 | T5-17 | ✅ RESOLVED (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-18 | ✅ RESOLVED (Phase 8 — Adaptive Memory 1.08 + time windows extraction; scope respected: 1.08 + 24/36/48/72 only; Category B 2.5/2.0/1.5 left inline per T5-19) | 2026-03-14 |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
