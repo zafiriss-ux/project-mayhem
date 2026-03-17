@@ -1,1 +1,1 @@
-withings-sync!=4.2.6
+withings-sync==4.1.0
