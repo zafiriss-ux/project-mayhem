@@ -1814,7 +1814,7 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 
 ### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
 
-**Status:** OPEN (risk monitoring — no immediate action; mitigation design deferred Phase 8C).
+**Status:** OPEN (Pass 1 COMPLETE — design document created at `docs/specs/garmin_api_fragility_mitigation.md`; Pass 2 BLOCKED pending architect ADR acceptance).
 **Workflow Path: A** *(no implementation until Phase 8C; path applies when mitigation design begins)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
@@ -1829,6 +1829,11 @@ athletes with zero authentication is a GDPR violation and a serious security ris
   pass (Pass 2) is complete and acceptance gate met.
 - **Required canonical doc update:** Mitigation design document created; T5-12 status updated
   to reflect design-complete.
+
+**Pass 1 execution update (2026-03-17):** COMPLETE.
+- Design document created: `docs/specs/garmin_api_fragility_mitigation.md`.
+- T5-12 remains OPEN by design.
+- Pass 2 remains BLOCKED pending architect ADR acceptance.
 
 **ADR scope declaration (2026-03-16):**
 - ADR required before implementation (Pass 2) begins: YES — the multi-device fallback
