@@ -2712,9 +2712,9 @@ green.
 
 ---
 
-### T5-40 · `notification_gateway.py` — boolean-return handling + branch coverage test 🟡 OPEN
+### T5-40 · `notification_gateway.py` — boolean-return handling + branch coverage test ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: `b058ed2` (PR #491 merge commit).
 **Workflow Path: A** *(narrow call-site fix + targeted test — no ADR required)*
 **Source:** DEC-022 (Response to OBS-022, 2026-03-16). `titan/integrations/notification_gateway.py`:75–95, `titan/integrations/telegram_bot.py`:444–467, `tests/titan/integrations/test_notification_gateway.py`.
 **Type:** Silent-failure path — delivery boolean ignored
@@ -2743,6 +2743,8 @@ was not delivered.
 
 **Acceptance gate (binary):** `TelegramChannel.send()` consumes and propagates the boolean
 return; the `False`-without-exception branch has explicit test coverage; all mandatory gates green.
+
+**Task learning:** Branch created under `codex/*` prefix instead of canonical `claude/*` — process blemish only, no functional impact. PR title remained generic (did not follow `T<tier>-<id>: <short title>` format) — process blemish only, no functional impact. Both deviations are non-functional and did not affect test gate outcomes.
 
 ---
 
@@ -2783,9 +2785,9 @@ provenance entries; no remaining inline duplicates found by Grep; all mandatory 
 
 ---
 
-### T5-42 · `NutritionOptimizer` — public API test coverage gap 🟡 OPEN
+### T5-42 · `NutritionOptimizer` — public API test coverage gap ✅ RESOLVED 2026-03-17
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-03-17. Commit: `b058ed2` (PR #491 merge commit).
 **Workflow Path: A** *(test-only; no production code changes)*
 **Source:** DEC-023 (Response to OBS-023, 2026-03-16). `titan/features/nutrition_optimizer.py`.
 **Type:** Test Coverage — public API contract
@@ -2818,6 +2820,8 @@ are public recommendation/hydration contract outputs and have no explicit test c
 
 **Acceptance gate (binary):** `add_weight_entry()` and `calculate_daily_nutrition()` each
 have explicit tests covering happy path and the stated boundary cases; all mandatory gates green.
+
+**Task learning:** Branch created under `codex/*` prefix instead of canonical `claude/*` — process blemish only, no functional impact. PR title remained generic (did not follow `T<tier>-<id>: <short title>` format) — process blemish only, no functional impact. Both deviations are non-functional and did not affect test gate outcomes.
 
 ---
 
@@ -3141,9 +3145,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-37 | ✅ RESOLVED (P1 — Opus Category A findings → CI gates; ADR-0049 Hybrid Sequential lane completed; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-38 | ✅ RESOLVED (P1 — validating meta-tests for each T5-37 CI gate; paired lane complete; Migration UNIT 1/2/3/4 CLOSED; progress 4/4) | 2026-03-15 |
 | T5-39 | ✅ RESOLVED (P3 — Category A: `cs_min_confidence = 0.70` in `adaptive_priority_lock.py` → import `GOVERNANCE_CS_CONFIDENCE_THRESHOLD`; phase overrides remain inline per DEC-020) | 2026-03-17 |
-| T5-40 | 🟡 OPEN (P3 — `TelegramChannel.send()` ignores boolean return; `False`-without-exception is silent failure; add branch coverage test) | — |
+| T5-40 | ✅ RESOLVED (P3 — `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green) | 2026-03-17 |
 | T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
-| T5-42 | 🟡 OPEN (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests; test-only) | — |
+| T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
@@ -3210,6 +3214,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-16 — DEC-023 records pass (T5-42 registration). T5-42 registered: `NutritionOptimizer` public API test coverage gap — `add_weight_entry()` and `calculate_daily_nutrition()` lack explicit tests in `tests/titan/features/test_nutrition_optimizer.py` (Workflow Path A; P3; ~1–2h; test-only; no production code changes). No implementation performed. No new ADR. No renumbering.*
 
 *Updated: 2026-03-17 — T5-39 + T5-41 closure records pass. T5-39 RESOLVED: `adaptive_priority_lock.py` `cs_min_confidence = 0.70` replaced with canonical `GOVERNANCE_CS_CONFIDENCE_THRESHOLD` import; source-binding test added. T5-41 RESOLVED: dew-point decision band literals in `weather_api.py`:158–170, 529–537 extracted to `thresholds.py` named constants; `evidence_registry.py` provenance entries added. Closure commit: `2f46d59` (PR #489 merge). CLAUDE.md test snapshot updated to 1991 (accepted as correct). Branch prefix anomaly: PR #489 used `codex/*` prefix instead of canonical `claude/*` — recorded as process blemish only, no functional impact. Tracking table rows updated: T5-39 → RESOLVED 2026-03-17; T5-41 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No re-review of functional content.*
+
+*Updated: 2026-03-17 — T5-40 + T5-42 closure records pass. T5-40 RESOLVED: `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green. T5-42 RESOLVED: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green. Closure commit: `b058ed2` (PR #491 merge). CLAUDE.md test snapshot accepted as 1999 (correct per architect verdict). Process blemishes recorded: PR #491 used `codex/*` branch prefix instead of canonical `claude/*`; PR title was generic (not `T<tier>-<id>: <short title>` format) — both non-functional deviations only. Tracking table rows updated: T5-40 → RESOLVED 2026-03-17; T5-42 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No implementation changes. Audit batch T5-39–T5-42 fully closed; Phase 8C sequencing may now open.*
 
 ---
 
