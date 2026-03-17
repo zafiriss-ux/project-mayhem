@@ -16,12 +16,13 @@ class _OkTelegramBot:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def send_daily_coaching(self, message: str) -> None:
+    def send_daily_coaching(self, message: str) -> bool:
         self.calls.append(message)
+        return True
 
 
 class _FailTelegramBot:
-    def send_daily_coaching(self, message: str) -> None:
+    def send_daily_coaching(self, message: str) -> bool:
         raise RuntimeError("Telegram API unavailable")
 
 
@@ -29,13 +30,14 @@ class _StructuredTelegramBot:
     def __init__(self) -> None:
         self.calls: list[dict] = []
 
-    def send_daily_coaching(self, payload: dict) -> None:
+    def send_daily_coaching(self, payload: dict) -> bool:
         self.calls.append(payload)
         payload["session_type"]
         payload["special_note"]
         payload["primary_reason"]
         payload["actionable_guidance"]
         payload["hrv_stress_context"]
+        return True
 
 
 def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
@@ -96,6 +98,28 @@ def test_gateway_uses_primary_channel_on_success(tmp_path):
     # File channel must not have been triggered
     assert list(tmp_path.glob("daily_briefing_*.txt")) == []
 
+
+
+
+class _FalseTelegramBot:
+    def send_daily_coaching(self, payload: dict) -> bool:
+        return False
+
+
+def test_gateway_falls_back_when_telegram_returns_false_without_exception(tmp_path):
+    telegram = TelegramChannel(_FalseTelegramBot())
+    file_ch = FileChannel(output_dir=tmp_path)
+
+    gateway = NotificationGateway([telegram, file_ch])
+    result = gateway.send("Morning briefing — fallback", level="info")
+
+    assert result.success is True
+    assert result.channel == "file"
+    assert result.tried == 2
+
+    files = list(tmp_path.glob("daily_briefing_*.txt"))
+    assert len(files) == 1
+    assert files[0].read_text(encoding="utf-8") == "Morning briefing — fallback"
 
 def test_gateway_falls_back_to_file_on_telegram_failure(tmp_path):
     """When Telegram fails, the gateway must write to the file channel."""

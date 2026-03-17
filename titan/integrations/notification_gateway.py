@@ -90,8 +90,11 @@ class TelegramChannel(NotificationChannel):
                 "hrv_stress_context": "",
                 "special_note": message,
             }
-            self._bot.send_daily_coaching(payload)
-            return True
+            send_ok = self._bot.send_daily_coaching(payload)
+            if send_ok is False:
+                _gw_event("channel_failed", channel=self.name, error_class="BooleanSendFailure")
+                return False
+            return bool(send_ok)
         except Exception as exc:
             _gw_event("channel_failed", channel=self.name, error_class=type(exc).__name__)
             return False
