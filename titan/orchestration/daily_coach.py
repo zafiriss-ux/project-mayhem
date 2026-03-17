@@ -45,6 +45,7 @@ from titan.config.thresholds import (
     GARMIN_DATA_MAX_AGE_HOURS,
 )
 from titan.core.database import DatabaseManager
+from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
 from titan.orchestration.contracts import (
     DailyCoachContext,
     DailyCoachContextContract,
@@ -557,7 +558,9 @@ class DailyCoach:
         self._startup_confidence_applies_next_routine = False
 
         # ── Decision Pipeline (steps 7–11, pure: no DB writes, no Telegram) ──
-        result = self._decision_pipeline(
+        context = AthleteCoachingContext(
+            athlete_id="default",
+            coach=self,
             garmin_data=garmin_data,
             soreness=soreness,
             subjective_fatigue_score=subjective_fatigue_score,
@@ -581,8 +584,8 @@ class DailyCoach:
             startup_confidence_applies=startup_confidence_applies,
         )
 
-        # ── Effect Runner (step 9c + step 12) ────────────────────────────────
-        return self._effect_runner(result)
+        # ── Delegated pipeline/effect execution ───────────────────────────────
+        return coaching_pipeline(context)
 
     # ═══════════════════════════════════════════════════════════════════════
     # DECISION PIPELINE (steps 7–11, pure: no DB writes, no Telegram sends)
