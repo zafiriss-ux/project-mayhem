@@ -60,7 +60,7 @@ project-mayhem/
 │   │                        # operator_console_manual_override_workflow.md,
 │   │                        # operator_console_technology_path.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (58 modules, excl. __init__/__main__)
+└── titan/                   # Main package (60 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment, PersistenceAdapter
     ├── science/             # 26 modules (engines + governance + ML scaffold)
@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 1999 tests all green as of T5-40 + T5-42 implementation pass (2026-03-17). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2008 tests all green as of T5-16-B implementation pass (2026-03-17). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
