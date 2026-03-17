@@ -10,6 +10,10 @@ This document defines the **Pass 1 mitigation design only** for T5-12. It is int
 
 Pass 1 is design-only and does **not** include runtime implementation, adapter implementation, UI implementation, CI implementation, or ADR authorship.
 
+**Task state declaration (required):**
+- **T5-12 remains OPEN after this Pass 1 design artifact.**
+- **Pass 2 implementation is BLOCKED until an architect-accepted design ADR is in place.**
+
 ## Current-state constraints informing this design
 
 - `GarminSync` currently emits structured events via `_garmin_event(...)` with component `"garmin_sync"`, and classifies failures into stable classes (`GARMIN_AUTH_FAIL`, `GARMIN_RATE_LIMIT`, `GARMIN_PAYLOAD_MALFORMED`, `GARMIN_TIMEOUT`, `GARMIN_API_UNAVAILABLE`).
@@ -133,6 +137,13 @@ Define a provider-agnostic **Biometric Source Adapter boundary** that exposes:
 
 No concrete provider adapters are defined in Pass 1.
 
+### Candidate fallback sources (design shortlist only)
+- **Polar**
+- **Whoop**
+- **COROS**
+
+These are candidate providers for future adapter implementation in Pass 2+ and are listed here only to define the intended multi-device expansion boundary.
+
 ### High-level contract/data shape
 Proposed conceptual contracts (names illustrative):
 - `SourceCapabilities`
@@ -178,3 +189,4 @@ Proposed conceptual contracts (names illustrative):
 
 This document provides the required architect-reviewable mitigation design for T5-12 Pass 1 only.
 No production code, tests, adapters, or UI behavior are implemented in this pass.
+T5-12 remains OPEN after this pass, and Pass 2 is blocked pending architect acceptance of the design ADR.
