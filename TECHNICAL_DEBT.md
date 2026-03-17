@@ -2875,6 +2875,39 @@ have explicit tests covering happy path and the stated boundary cases; all manda
 
 ---
 
+### T5-43 · cryptography/cffi native extension broken in CI environment 🔴 OPEN
+
+**Status:** OPEN
+**Workflow Path: A**
+**Change Type:** implementation
+**Source:** Repository State Verification Report 2026-03-17.
+**Priority:** P2 — blocks Gate 2/Gate 3 for all T5-11/T5-13/T5-08-B related work.
+
+**Original state:** `_cffi_backend` native extension absent from environment.
+Causes `ModuleNotFoundError` at collection time for 10 test files:
+- `tests/titan/api/test_audit.py`
+- `tests/titan/api/test_auth.py`
+- `tests/titan/core/test_alembic_d2a_migration.py`
+- `tests/titan/core/test_alembic_d3_migration.py`
+- `tests/titan/core/test_alembic_d5_model_calibration_metadata_migration.py`
+- `tests/titan/core/test_alembic_d9_consent_log_migration.py`
+- `tests/titan/core/test_alembic_t5_11_auth_migration.py`
+- `tests/titan/core/test_alembic_t5_13_coach_audit_log_migration.py`
+- `tests/titan/core/test_persistence.py`
+- `tests/titan/core/test_postgresql_adapter_concurrency.py`
+
+**Acceptance criteria (binary):**
+- `python -c "import _cffi_backend"` exits 0
+- `python -m pytest -q --no-header 2>&1 | tail -3` shows 0 collection errors
+- `python -m pytest -q` passes with count ≥ 1999
+- `ruff check .` zero findings
+
+**Bottleneck:** Environment repair only — no production code changes.
+**Owner:** Codex
+**Unblock condition:** All 10 previously-erroring test files collect and pass cleanly.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3199,6 +3232,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-40 | ✅ RESOLVED (P3 — `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green) | 2026-03-17 |
 | T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
 | T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
+| T5-43 | OPEN — cffi/cryptography environment gap; 10 test files uncollectable | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |

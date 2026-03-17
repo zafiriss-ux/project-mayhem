@@ -1731,6 +1731,47 @@ Forbidden:                Opportunistic improvements; scope expansion; records b
 Expected response format: Correction summary: what was wrong, what was changed, gate confirmation
 ```
 
+### Canonical Codex Delivery Format
+
+Every Codex implementation report must use exactly this structure.
+No free-form text outside this format. No exceptions.
+
+```
+DELIVERY REPORT — <T-id> — <YYYY-MM-DD>
+
+FILES CREATED:
+  ✅ <filepath> (<bytes> bytes)
+  ✅ <filepath> (<bytes> bytes)
+
+FILES MODIFIED:
+  ✅ <filepath>
+
+FILES VERIFIED ABSENT (scope exclusions):
+  — <filepath> NOT touched
+
+GATE OUTPUT:
+  ruff:          [exact last line of: ruff check .]
+  pytest strict: [exact last line of: pytest -q -W error::pytest.PytestWarning]
+  pytest full:   [exact last 2 lines of: pytest -q]
+
+BRANCH: claude/<name>
+COMMIT: <short-hash>
+
+ACCEPTANCE CRITERIA CHECK:
+  ✅/❌ <criterion 1 — verbatim from TECHNICAL_DEBT.md brief>
+  ✅/❌ <criterion 2 — verbatim from TECHNICAL_DEBT.md brief>
+
+SELF-ASSESSMENT: COMPLETE / INCOMPLETE
+  If INCOMPLETE: [exactly what is missing — file:line]
+```
+
+**Enforcement rules:**
+- If any FILES CREATED entry cannot be filled → SELF-ASSESSMENT: INCOMPLETE
+- If any gate is not clean → SELF-ASSESSMENT: INCOMPLETE
+- INCOMPLETE report is not accepted — Records Steward returns it without action
+- Branch must be `claude/*` — never `codex/*`
+- Free-form text outside this structure is ignored by Records Steward
+
 ### Periodic Bounded Audit Ritual
 
 A bounded audit pass is a structured, scope-limited read-only sweep of the codebase or a
