@@ -2019,13 +2019,10 @@ safety or functional benefit.
 
 ---
 
-### T5-16-A · Extract `coaching_pipeline()` stateless function + `CoachingScheduler` stub ✅ RESOLVED 2026-03-15
+### T5-16-A · Extract `coaching_pipeline()` stateless function + `CoachingScheduler` stub ⚠️ PARTIALLY RESOLVED 2026-03-15 — see T5-16-B
 
-**Status:** ✅ RESOLVED 2026-03-15. Functionally accepted per Architect Decision 2026-03-15.
-**Closure note:** Formal closure was blocked by a stale complexity-budget ceiling (guard at 61),
-not by any functional regression. Implementation is complete and all acceptance criteria pass.
-Ceiling calibrated 61 → 62 to accommodate `coaching_scheduler.py` as a legitimate structural
-module addition (not a complexity regression). T4-27-C created as follow-up policy debt.
+**Status:** ⚠️ PARTIALLY RESOLVED 2026-03-15. ADR-0018 Phase B kernel boundary refactor complete (`_decision_pipeline()` + `_effect_runner()` inside `DailyCoach`). Three T5-16-A structural deliverables absent: `titan/orchestration/coaching_pipeline.py` module, `AthleteCoachingContext` dataclass, `titan/orchestration/coaching_scheduler.py` stub. Tracked in T5-16-B.
+**Partial closure note:** The ADR-0018 Phase B refactor (pure decision pipeline + effect runner) was delivered and is correct. The T5-16-A structural extraction — standalone `coaching_pipeline.py` module, `AthleteCoachingContext`, and `CoachingScheduler` stub — was not delivered. Ceiling calibration (61→62) and T4-27-C remain valid; the ceiling increment was premature (anticipated a module that does not yet exist) but the policy is correct and stands.
 **Workflow Path: A** *(multi-module refactor — PILOT-01 excluded)*
 **Source:** ADR-0046 (accepted 2026-03-08). Created by T5-16 resolution.
 **Priority:** P0 for Phase 8B multi-athlete coaching execution (not for T5-09/T5-11 which
@@ -2088,6 +2085,50 @@ endpoint is built. T5-09, T5-11, T5-13 are independent — they are not blocked 
 calibration (61 → 62) were a preventive/historical record only. No new sequencing gate
 is created by this note. Execution sequencing for subsequent Phase 8B deliverables
 remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter that order.
+
+**Drift postmortem (§20):**
+- Drift: T5-16-A declared RESOLVED while three structural deliverables (`coaching_pipeline.py`, `AthleteCoachingContext`, `CoachingScheduler`) were absent from the repository.
+- Why it escaped: Closure was evaluated against the ceiling calibration blocker only; no file-existence verification was performed against the acceptance criteria checklist before Records Steward closure actions.
+- Guard now in place: ADR Deliverable Checklist rule (DEC-007 / §12.1) applies to T5-16-B — file existence must be confirmed by `ls` or equivalent before closure is declared.
+
+---
+
+### T5-16-B · CoachingScheduler stub + coaching_pipeline module extraction 🔴 OPEN
+
+**Status:** OPEN
+**Workflow Path: A** *(structural extraction — PILOT-01 excluded)*
+**Change Type:** implementation
+**Source:** Architect records correction 2026-03-17. T5-16-A partial closure finding.
+**Priority:** P1 for multi-athlete execution (blocking gate — no multi-athlete endpoint before this resolves).
+**Predecessor:** T5-16-A PARTIALLY RESOLVED (ADR-0018 Phase B kernel boundary complete).
+
+**ADR Deliverable Checklist (T5-16-A remaining scope):**
+
+| # | Deliverable | Status |
+|---|---|---|
+| D1 | `titan/orchestration/coaching_pipeline.py` — `coaching_pipeline(ctx)` stateless function + `AthleteCoachingContext` dataclass | ✗ NOT DONE |
+| D2 | `DailyCoach.run_morning_routine()` delegates to `coaching_pipeline()` with no behaviour change observed by existing tests | ✗ NOT DONE |
+| D3 | `titan/orchestration/coaching_scheduler.py` — `CoachingScheduler` stub with `register_athlete()`, `start()`, `stop()`, per-athlete overlap lock | ✗ NOT DONE |
+| D4 | State isolation oracle test: sequential calls for two athletes with opposing readiness states produce independent outputs | ✗ NOT DONE |
+| D5 | All three mandatory gates green: ruff + pytest -W error + pytest -q | ✗ NOT DONE |
+
+**Acceptance criteria (binary):**
+- `titan/orchestration/coaching_pipeline.py` exists and contains `AthleteCoachingContext` dataclass and `coaching_pipeline()` function
+- `DailyCoach.run_morning_routine()` delegates to `coaching_pipeline()` — all existing tests remain green with no behaviour change
+- `titan/orchestration/coaching_scheduler.py` exists with `register_athlete()`, `start()`, `stop()` lifecycle, and per-athlete overlap lock
+- State isolation oracle: test verifies two sequential `coaching_pipeline()` calls for athletes with opposing readiness states produce independent outputs
+- `ruff check .` zero findings
+- `python -m pytest -q -W error::pytest.PytestWarning` 100% green
+- `python -m pytest -q` 100% green, count same or higher
+- File existence verified by `ls titan/orchestration/coaching_pipeline.py titan/orchestration/coaching_scheduler.py` before closure is declared
+
+**Effort:** ~4h.
+
+**Blocking gate:** No multi-athlete coaching execution endpoint may be built until T5-16-B is RESOLVED.
+
+**Bottleneck:** None — ready for implementation.
+**Owner:** Codex
+**Unblock condition:** All five deliverables confirmed present and gates green.
 
 ---
 
@@ -3130,7 +3171,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
-| T5-16-A | ✅ RESOLVED — accepted 2026-03-15; closure was blocked by stale ceiling (61→62 calibrated); T4-27-C created | 2026-03-15 |
+| T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
+| T5-16-B | OPEN — CoachingScheduler stub + coaching_pipeline module extraction; blocking multi-athlete execution | — |
 | T5-17 | ✅ RESOLVED (Phase 8 — ACWR threshold extraction to thresholds.py; separate PR) | 2026-03-14 |
 | T5-18 | ✅ RESOLVED (Phase 8 — Adaptive Memory 1.08 + time windows extraction; scope respected: 1.08 + 24/36/48/72 only; Category B 2.5/2.0/1.5 left inline per T5-19) | 2026-03-14 |
 | T5-19 | ✅ CLOSED — NO_ACTION (2026-03-14): 2.5/2.0/1.5 confirmed Category B; remain inline; T5-18 unblocked | 2026-03-14 |
