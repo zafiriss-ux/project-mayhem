@@ -109,9 +109,9 @@ Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0
 
 **Phase 8C execution sequence (OPEN — 2026-03-17):**
 ```
-T5-12 Pass 1 — Mitigation Design Pass (first execution unit; no code changes;
-               produces written mitigation design document per T5-12 architect brief)
-T5-12 Pass 2 — BLOCKED (implementation; blocked until design ADR accepted by architect)
+T5-12 Pass 1 — ✅ COMPLETE 2026-03-18 (design document created:
+               docs/specs/garmin_api_fragility_mitigation.md; ADR-0050 accepted)
+T5-12 Pass 2 — BLOCKED (implementation; blocked pending architect ADR acceptance)
 ```
 Phase 8C opened 2026-03-17 (DEC-016). Bounded audit batch T5-39–T5-42 fully closed.
 No further open Phase 8C items beyond T5-12 at time of opening.
@@ -1814,8 +1814,8 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 
 ### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
 
-**Status:** OPEN (risk monitoring — no immediate action; mitigation design deferred Phase 8C).
-**Workflow Path: A** *(no implementation until Phase 8C; path applies when mitigation design begins)*
+**Status:** OPEN — Pass 1 COMPLETE 2026-03-18 (design document: `docs/specs/garmin_api_fragility_mitigation.md`; ADR-0050 accepted). Pass 2 BLOCKED pending architect ADR acceptance.
+**Workflow Path: A** *(no implementation until Pass 2 ADR accepted)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
 
@@ -3205,7 +3205,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
-| T5-12 | OPEN (risk monitoring; mitigation design Phase 8C) | — |
+| T5-12 | OPEN — Pass 1 COMPLETE 2026-03-18; Pass 2 BLOCKED pending ADR acceptance | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
