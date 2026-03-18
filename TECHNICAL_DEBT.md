@@ -1814,7 +1814,7 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 
 ### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
 
-**Status:** OPEN (risk monitoring — no immediate action; mitigation design deferred Phase 8C).
+**Status:** OPEN (Pass 1 COMPLETE — mitigation design documented; Pass 2 BLOCKED pending architect ADR acceptance).
 **Workflow Path: A** *(no implementation until Phase 8C; path applies when mitigation design begins)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
@@ -1865,6 +1865,13 @@ handles for missing today-data.
   (`pip-audit` or `pip-check` on the pinned version).
 - Phase 8C multi-device adapter: if Garmin fails, HRV/RHR may be sourced from a
   secondary device (Polar, Whoop, COROS) via the unified adapter (ADR-0016/ADR-0041).
+
+**Pass 1 update (2026-03-17):**
+
+- ✅ Pass 1 COMPLETE (audit/design only).
+- Design document created: `docs/specs/garmin_api_fragility_mitigation.md`.
+- T5-12 remains OPEN by rule.
+- Pass 2 remains BLOCKED pending architect ADR acceptance.
 
 ---
 
