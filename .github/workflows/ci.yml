@@ -268,7 +268,7 @@ jobs:
                   if "__" not in module.name
               ]
           )
-          module_ceiling = 65  # raised 60→65 at Phase 8 entry (ADR-0022, 2026-03-08)
+          module_ceiling = 69  # raised 65→69 for T5-16-B + T5-11 approved modules (2026-03-17)
 
           if module_count > module_ceiling:
               raise SystemExit(
