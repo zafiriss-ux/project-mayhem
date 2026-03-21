@@ -3353,6 +3353,16 @@ Learnings:
 Required updates: Weekly Governance Log entry only for this pass. No new debt registration in this pass.
 Next-week tactic: After this records pass, execute the post-audit sequencing already confirmed by architect: (1) threshold-extraction batch first: T5-39 + T5-41; (2) then implementation/test batch: T5-40 + T5-42.
 
+### Friday Review — 2026-03-21
+State: healthy
+Learnings:
+- F1 (:memory: DB bug), F3 (CTL/ATL training_load=0), F4 (Windows skip) fixed in PR #508 (commit 3d5352e)
+- CI failures are billing/infrastructure — not code regressions
+- Garmin sync returning 0/0/0/0 post-merge: API rate-limit suspected, not a code bug
+- Edwards TRIMP now wired: future syncs with HR data will produce non-zero CTL/ATL
+Required updates: CLAUDE.md snapshot already updated to 2013 in PR #508
+Next-week tactic: Verify CTL/ATL populates after next successful Garmin sync. If still 0, investigate _persist_garmin_data() call path directly.
+
 ---
 
 ## Codex Handoff Blocks (Records Steward — 2026-03-14)
