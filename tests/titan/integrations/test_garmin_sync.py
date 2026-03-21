@@ -332,3 +332,55 @@ def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
     payload = sync.sync_weight(days_back=2)
 
     assert payload == [{"date": "2026-03-10", "weight_kg": 70.2, "bmi": 22.0, "source": "garmin"}]
+
+
+def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
+    """sync_activities() must populate estimated_training_load > 0 when avg_hr and max_hr are valid."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_activities_by_date.return_value = [
+        {
+            "startTimeLocal": "2026-03-21 07:00:00",
+            "activityType": {"typeKey": "running"},
+            "duration": 3600,
+            "distance": 10000.0,
+            "averageHR": 145,
+            "maxHR": 175,
+            "calories": 600,
+            "elevationGain": 50,
+            "activityId": "act-001",
+        }
+    ]
+
+    activities = sync.sync_activities(days_back=1)
+
+    assert len(activities) == 1
+    act = activities[0]
+    assert "estimated_training_load" in act
+    assert act["estimated_training_load"] > 0
+
+
+def test_sync_activities_estimated_training_load_zero_when_no_hr_data():
+    """sync_activities() sets estimated_training_load=0 when HR data is absent."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_activities_by_date.return_value = [
+        {
+            "startTimeLocal": "2026-03-21 07:00:00",
+            "activityType": {"typeKey": "running"},
+            "duration": 3600,
+            "distance": 10000.0,
+            "averageHR": 0,
+            "maxHR": 0,
+            "calories": 600,
+            "elevationGain": 50,
+            "activityId": "act-002",
+        }
+    ]
+
+    activities = sync.sync_activities(days_back=1)
+
+    assert len(activities) == 1
+    assert activities[0]["estimated_training_load"] == 0.0

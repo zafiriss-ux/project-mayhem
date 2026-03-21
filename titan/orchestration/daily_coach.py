@@ -1249,6 +1249,8 @@ class DailyCoach:
                     activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
 
                     try:
+                        _est_load = act.get('estimated_training_load')
+                        _tl_override = int(_est_load) if _est_load else None
                         self.db.save_session(
                             date              = activity_date,
                             session_type      = act.get('session_type', 'EASY'),
@@ -1257,6 +1259,7 @@ class DailyCoach:
                             avg_hr            = _safe_int(act.get('avg_hr')) or None,
                             max_hr            = _safe_int(act.get('max_hr')) or None,
                             rpe               = act.get('rpe'),
+                            training_load     = _tl_override,
                             notes             = act.get('name', ''),
                             garmin_activity_id= act.get('activity_id'),
                             quality_flag      = activity_quality_flag,

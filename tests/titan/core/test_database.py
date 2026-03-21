@@ -293,6 +293,21 @@ def test_governance_and_science_write_methods_cursor_inside_lock(tmp_path, name,
     _assert_write_method_uses_locked_guard(db, lambda: write_call(db))
 
 
+def test_memory_db_with_db_dir_does_not_raise(tmp_path):
+    """DatabaseManager(db_name=':memory:', db_dir=<path>) must not construct an invalid path."""
+    db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
+    try:
+        # Confirm functional: can save and retrieve a metric
+        db.save_daily_metric(date="2026-03-21", weight=70.0)
+        with db._lock:
+            db._ensure_open_locked()
+            cursor = db.conn.cursor()
+            cursor.execute("SELECT weight_kg FROM daily_metrics WHERE date = ?", ("2026-03-21",))
+            assert cursor.fetchone()[0] == 70.0
+    finally:
+        db.close()
+
+
 def test_write_after_close_raises(tmp_path):
     db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
     db.close()
@@ -728,3 +743,40 @@ def test_postgres_backend_matches_sqlite_governance_persistence(tmp_path, monkey
 
     sqlite_db.close()
     postgres_db.close()
+
+
+def test_save_session_direct_training_load_overrides_rpe_calculation(tmp_path):
+    """save_session(training_load=N) stores N directly, bypassing RPE computation."""
+    db = DatabaseManager(db_name="direct_tl.db", db_dir=tmp_path)
+    try:
+        db.save_session(
+            date="2026-03-21",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            rpe=None,
+            training_load=120,
+        )
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT training_load FROM training_log WHERE date = ?", ("2026-03-21",))
+        assert cursor.fetchone()[0] == 120
+    finally:
+        db.close()
+
+
+def test_save_session_rpe_used_when_training_load_not_provided(tmp_path):
+    """When training_load is not passed, sRPE formula is used as before."""
+    db = DatabaseManager(db_name="sRPE_tl.db", db_dir=tmp_path)
+    try:
+        db.save_session(
+            date="2026-03-21",
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,  # 60 min
+            rpe=5,
+        )
+        cursor = db.conn.cursor()
+        cursor.execute("SELECT training_load FROM training_log WHERE date = ?", ("2026-03-21",))
+        assert cursor.fetchone()[0] == 5 * 60  # rpe × minutes
+    finally:
+        db.close()
