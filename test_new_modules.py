@@ -18,6 +18,7 @@ Run with:
     pytest test_new_modules.py -v
 """
 
+import platform
 import stat
 import sys
 from datetime import datetime, timedelta
@@ -1221,6 +1222,7 @@ class TestDailyCoachHelpers:
 
 class TestSetupWizard:
 
+    @pytest.mark.skipif(platform.system() == "Windows", reason="POSIX permissions not enforceable on Windows")
     def test_save_env_sanitizes_newlines_and_sets_permissions(self, tmp_path):
         env_file = tmp_path / ".env"
         repo_gitignore = Path(".gitignore")

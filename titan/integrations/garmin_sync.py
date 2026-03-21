@@ -22,6 +22,7 @@ from titan.orchestration.contracts import (
     HRVSyncMetricsContract,
 )
 from titan.science.data_trust import evaluate_garmin_trust
+from titan.science.trimp_engine import TRIMPEngine
 from titan.utils.constants import _Secret
 
 _log = logging.getLogger(__name__)
@@ -216,6 +217,12 @@ class GarminSync:
                     avg_hr = a.get("averageHR") or a.get("averageHeartRate", 0)
                     max_hr = a.get("maxHR") or a.get("maxHeartRate", 0)
                     pace_sec = int(dur_sec / (dist_m / 1000)) if dist_m > 0 else 0
+                    trimp_val, _ = TRIMPEngine.calculate_edwards_trimp(
+                        dur_sec / 60,
+                        int(avg_hr) if avg_hr else 0,
+                        int(max_hr) if max_hr else 0,
+                    )
+                    estimated_load = round(trimp_val, 1) if trimp_val else 0.0
                     activities.append(
                         {
                             "date": a.get("startTimeLocal", "")[:10],
@@ -228,6 +235,7 @@ class GarminSync:
                             "calories": int(a.get("calories", 0)),
                             "elevation_gain_m": int(a.get("elevationGain", 0)),
                             "activity_id": a.get("activityId"),
+                            "estimated_training_load": estimated_load,
                         }
                     )
                 except Exception as e:

@@ -157,17 +157,21 @@ class DatabaseManager:
         else:
             base_dir = db_dir
 
-        # Ensure directory exists
-        base_dir.mkdir(parents=True, exist_ok=True)
+        if db_name == ":memory:":
+            self.db_path = Path(":memory:")
+            self.conn = sqlite3.connect(":memory:", check_same_thread=False)
+        else:
+            # Ensure directory exists
+            base_dir.mkdir(parents=True, exist_ok=True)
 
-        self.db_path = base_dir / db_name
+            self.db_path = base_dir / db_name
 
-        # Thread-safe connection: allow access from multiple threads
-        # (Garmin sync, Telegram callback, and main thread all share one DB)
-        self.conn = sqlite3.connect(
-            str(self.db_path),
-            check_same_thread=False,
-        )
+            # Thread-safe connection: allow access from multiple threads
+            # (Garmin sync, Telegram callback, and main thread all share one DB)
+            self.conn = sqlite3.connect(
+                str(self.db_path),
+                check_same_thread=False,
+            )
         self._lock = threading.RLock()  # Serialise all writes (supports nested transaction paths)
         self._closed = False
         self._transaction_depth = 0
@@ -780,6 +784,7 @@ class DatabaseManager:
         notes: str | None = None,
         garmin_activity_id: str | None = None,
         quality_flag: str | None = None,
+        training_load: int | None = None,
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
@@ -815,8 +820,9 @@ class DatabaseManager:
             )
             temperature_c = temperature
 
-        # Calculate training load (RPE * duration in minutes)
-        training_load = (rpe * (duration_sec / 60)) if rpe else 0
+        # Calculate training load: prefer explicit override, fall back to sRPE
+        computed_load = (rpe * (duration_sec / 60)) if rpe else 0
+        training_load = training_load if training_load is not None else int(computed_load)
 
         with self._lock:
             self._ensure_open_locked()
@@ -1807,12 +1813,14 @@ class PostgreSQLDatabaseManager:
         notes: str | None = None,
         garmin_activity_id: str | None = None,
         quality_flag: str | None = None,
+        training_load: int | None = None,
         temperature: float | None = None,
     ) -> None:
         if temperature_c is None and temperature is not None:
             temperature_c = temperature
 
-        training_load = (rpe * (duration_sec / 60)) if rpe else 0
+        computed_load = (rpe * (duration_sec / 60)) if rpe else 0
+        training_load = training_load if training_load is not None else int(computed_load)
         with self._conn.cursor() as cursor:
             cursor.execute(
                 """
