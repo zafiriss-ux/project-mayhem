@@ -208,6 +208,20 @@ class GarminSync:
                     _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
                     return True
                 except Exception as token_err:
+                    _token_failure_class = _classify_failure(token_err)
+                    if _token_failure_class == GARMIN_RATE_LIMIT:
+                        # Garmin rate-limited the verification ping — the token itself
+                        # is most likely still valid.  Do NOT delete it and do NOT fall
+                        # through to a fresh login (which would also hit 429).
+                        self.client = client
+                        self.is_connected = True
+                        _garmin_event(
+                            "connect_token_assumed_valid",
+                            subsystem="connect",
+                            error_class=token_err.__class__.__name__,
+                            detail="Token ping rate-limited (429); assuming token valid, skipping re-login",
+                        )
+                        return True
                     _garmin_event(
                         "connect_token_load_failed",
                         subsystem="connect",
