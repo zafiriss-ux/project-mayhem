@@ -197,6 +197,11 @@ class GarminSync:
                     token_data = token_path.read_text(encoding="utf-8")
                     client = Garmin()
                     client.garth.loads(token_data)
+                    # Verify the token is still accepted by the Garmin API.
+                    # garth.loads() only deserialises from disk — it does NOT check the
+                    # server.  A single lightweight call here ensures we catch expired
+                    # tokens before any sync attempt, preventing the silent 0/0/0 failure.
+                    client.connectapi("userprofile-service/socialProfile")
                     self.client = client
                     self.is_connected = True
                     _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
@@ -277,6 +282,23 @@ class GarminSync:
             return self.connect()
         return True
 
+    def _invalidate_session(self) -> None:
+        """Reset auth state and delete the stale token file.
+
+        Called whenever a sync method receives a GARMIN_AUTH_FAIL response so
+        that the next _ensure_connected() call attempts a fresh login instead
+        of re-using a session that the Garmin server has already rejected.
+        """
+        self.is_connected = False
+        self.client = None
+        with contextlib.suppress(Exception):
+            self._get_token_path().unlink(missing_ok=True)
+        _garmin_event(
+            "session_invalidated",
+            subsystem="auth",
+            detail="Auth failure detected during sync; session invalidated for re-auth",
+        )
+
     # ------------------------------------------------------------------ #
     # ACTIVITIES
     # ------------------------------------------------------------------ #
@@ -333,8 +355,11 @@ class GarminSync:
                 _garmin_event("activity_skip_summary", subsystem="sync_activities", skipped_records=skipped_records, detail=f"Skipped {skipped_records} malformed activity record(s)")
             self._log_sync("activities", len(activities))
         except Exception as e:
-            _emit_failure("sync_activities", _classify_failure(e), e, days_back=days_back)
-            _garmin_event("sync_activities_failed", subsystem="sync_activities", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Activity sync failed", error_message=str(e), days_back=days_back)
+            failure_class = _classify_failure(e)
+            if failure_class == GARMIN_AUTH_FAIL:
+                self._invalidate_session()
+            _emit_failure("sync_activities", failure_class, e, days_back=days_back)
+            _garmin_event("sync_activities_failed", subsystem="sync_activities", failure_class=failure_class, error_class=e.__class__.__name__, detail="Activity sync failed", error_message=str(e), days_back=days_back)
         return activities
 
     # ------------------------------------------------------------------ #
@@ -365,8 +390,11 @@ class GarminSync:
             _garmin_event("weight_synced", subsystem="sync_weight", count=len(entries), days_back=days_back, detail=f"Synced {len(entries)} weight entries")
             self._log_sync("weight", len(entries))
         except Exception as e:
-            _emit_failure("sync_weight", _classify_failure(e), e, days_back=days_back)
-            _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
+            failure_class = _classify_failure(e)
+            if failure_class == GARMIN_AUTH_FAIL:
+                self._invalidate_session()
+            _emit_failure("sync_weight", failure_class, e, days_back=days_back)
+            _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=failure_class, error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
         return entries
 
     # ------------------------------------------------------------------ #
@@ -417,6 +445,9 @@ class GarminSync:
                         error_class=error_class,
                         error_message=error_message,
                     )
+                    if failure_class == GARMIN_AUTH_FAIL:
+                        self._invalidate_session()
+                        break
                     continue
         except Exception as e:
             _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
@@ -476,6 +507,9 @@ class GarminSync:
                         error_class=error_class,
                         error_message=error_message,
                     )
+                    if failure_class == GARMIN_AUTH_FAIL:
+                        self._invalidate_session()
+                        break
                     continue
         except Exception as e:
             _emit_failure("sync_hrv", _classify_failure(e), e, days_back=days_back)

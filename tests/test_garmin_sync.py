@@ -131,7 +131,9 @@ def test_sync_weight_error_emits_failure_class_event(monkeypatch):
     result = sync.sync_weight(days_back=7)
 
     assert result == []
-    action, fields = events[0]
+    auth_fail_events = [(a, f) for a, f in events if a == GARMIN_AUTH_FAIL]
+    assert auth_fail_events, f"Expected GARMIN_AUTH_FAIL event; got: {[a for a, _ in events]}"
+    action, fields = auth_fail_events[0]
     assert action == GARMIN_AUTH_FAIL
     assert fields["subsystem"] == "sync_weight"
 
@@ -466,6 +468,10 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
         def login(self):
             login_called.append(True)
 
+        def connectapi(self, path):
+            # Simulate successful token verification ping.
+            return {}
+
     import sys
     monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
 
@@ -477,7 +483,7 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
     assert login_called == []
 
 
-def test_connect_expired_token_falls_back_to_login(monkeypatch, tmp_path):
+def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch, tmp_path):
     """Expired/invalid token causes garth.loads() to fail; falls back to full login and saves new token."""
     token_file = tmp_path / ".garth_token"
     token_file.write_text("expired_token", encoding="utf-8")
@@ -508,6 +514,135 @@ def test_connect_expired_token_falls_back_to_login(monkeypatch, tmp_path):
     assert sync.is_connected is True
     assert login_called == [True]
     assert token_file.read_text(encoding="utf-8") == "new_token"
+
+
+def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp_path):
+    """Token loads from disk successfully but server rejects it (api ping fails).
+
+    This covers the root-cause of the 0/0/0 silent-failure bug: garth.loads()
+    succeeds (token deserialises) but the Garmin server returns 401 on the
+    first API call.  The verification ping in connect() catches this before any
+    sync attempt and falls through to a full login.
+    """
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("stale_but_parseable_token", encoding="utf-8")
+
+    login_called = []
+
+    class _FakeGarth:
+        def loads(self, data):
+            pass  # Deserialises without error – token *looks* fine
+
+        def dumps(self):
+            return "fresh_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            login_called.append(True)
+
+        def connectapi(self, path):
+            raise RuntimeError("GarthHTTPError: 401 Unauthorized")
+
+    import sys
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    assert sync.connect() is True
+    assert sync.is_connected is True
+    # login() must have been called to obtain a fresh session
+    assert login_called == [True]
+    # Stale token file must have been replaced with the fresh one
+    assert token_file.read_text(encoding="utf-8") == "fresh_token"
+
+
+def test_invalidate_session_resets_state_and_deletes_token(monkeypatch, tmp_path):
+    """_invalidate_session() sets is_connected=False, clears client, deletes token."""
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("active_token", encoding="utf-8")
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = GarminSync(email="u", password="p")
+    sync.is_connected = True
+    sync.client = object()
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    sync._invalidate_session()
+
+    assert sync.is_connected is False
+    assert sync.client is None
+    assert not token_file.exists()
+    assert any(action == "session_invalidated" for action, _ in events)
+
+
+def test_sync_activities_auth_fail_invalidates_session(monkeypatch):
+    """GARMIN_AUTH_FAIL during activities sync resets is_connected for re-auth."""
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(_FakeClient(activities=Exception("401 Unauthorized")))
+    invalidated = []
+    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+
+    result = sync.sync_activities(days_back=1)
+
+    assert result == []
+    assert invalidated == [True]
+
+
+def test_sync_weight_auth_fail_invalidates_session(monkeypatch):
+    """GARMIN_AUTH_FAIL during weight sync resets is_connected for re-auth."""
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(_FakeClient(weigh_ins=Exception("401 forbidden")))
+    invalidated = []
+    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+
+    result = sync.sync_weight(days_back=7)
+
+    assert result == []
+    assert invalidated == [True]
+
+
+def test_sync_sleep_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
+    """GARMIN_AUTH_FAIL on a sleep day invalidates session and stops iterating further days."""
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    # 3 days requested; first day returns auth fail, remaining days should NOT be fetched
+    sync = _connected_sync(_FakeClient(sleep=[Exception("401 Unauthorized"), {}, {}]))
+    invalidated = []
+    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+
+    result = sync.sync_sleep(days_back=3)
+
+    assert result == []
+    assert invalidated == [True]
+    # Only one date should have been requested (loop broke after auth fail)
+    assert len(sync.client.requested_sleep_dates) == 1
+
+
+def test_sync_hrv_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
+    """GARMIN_AUTH_FAIL on an HRV day invalidates session and stops iterating further days."""
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(_FakeClient(hrv=[Exception("401 Unauthorized"), {}, {}]))
+    invalidated = []
+    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+
+    result = sync.sync_hrv(days_back=3)
+
+    assert result == []
+    assert invalidated == [True]
+    assert len(sync.client.requested_hrv_dates) == 1
 
 
 def test_connect_token_save_failure_does_not_break_connect(monkeypatch, tmp_path):
