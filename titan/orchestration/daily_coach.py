@@ -1159,34 +1159,48 @@ class DailyCoach:
         for entry in sleep_entries:
             if not entry:
                 continue
-            # Garmin API returns nested dict; extract what we need safely
-            rhr   = entry.get('restingHeartRate') or entry.get('rhr') or 0
-            score = entry.get('sleepScores', {})
-            if isinstance(score, dict):
-                overall = score.get('overall', {})
-                if isinstance(overall, dict):
-                    s_val = overall.get('value', 0)
+            # sync_sleep() returns flattened keys; fall back to raw Garmin keys for
+            # backward-compatibility with any callers using the pre-flattened shape.
+            rhr = entry.get('restingHeartRate') or entry.get('rhr') or 0
+            # F-29: prefer flattened 'sleep_score' from sync_sleep(); fall back to nested
+            s_val = entry.get('sleep_score') or 0
+            if not s_val:
+                score = entry.get('sleepScores', {})
+                if isinstance(score, dict):
+                    overall = score.get('overall', {})
+                    if isinstance(overall, dict):
+                        s_val = overall.get('value', 0)
+                    else:
+                        s_val = _safe_float(overall, 0)
                 else:
-                    s_val = _safe_float(overall, 0)
-            else:
-                s_val = _safe_float(score, 0)
+                    s_val = _safe_float(score, 0)
 
-            dur_sec = entry.get('sleepTimeSeconds') or entry.get('duration_sec', 0)
+            # F-29: prefer 'total_sleep_hours' from sync_sleep() (already in hours);
+            # fall back to seconds-based keys from raw Garmin API shape.
+            total_h = entry.get('total_sleep_hours') or 0
+            dur_sec = 0 if total_h else (entry.get('sleepTimeSeconds') or entry.get('duration_sec', 0))
 
             if rhr:
                 today_rhr = _safe_int(rhr)
             if s_val:
                 today_sleep_score = _safe_int(s_val)
-            if dur_sec:
+            if total_h:
+                today_sleep_hours = _safe_float(total_h)
+            elif dur_sec:
                 today_sleep_hours = _safe_float(dur_sec) / 3600.0
 
         # ── HRV → daily_metrics ───────────────────────────────────────────
         hrv_entries = garmin_data.get('hrv', [])
         latest_rmssd = None
+        past_hrv_entries: list[dict] = []
         for entry in hrv_entries:
-            if entry.get('date') == today_str:
-                latest_rmssd = _safe_float(entry.get('rmssd', 0)) or None
-                break
+            entry_date = entry.get('date')
+            rmssd_val = _safe_float(entry.get('rmssd', 0)) or None
+            if entry_date == today_str:
+                latest_rmssd = rmssd_val
+            elif entry_date and rmssd_val is not None:
+                # F-32: collect historical HRV entries for multi-day persistence
+                past_hrv_entries.append({'date': entry_date, 'rmssd': rmssd_val})
 
         # ── Weight → daily_metrics ────────────────────────────────────────
         weight_entries = garmin_data.get('weight', [])
@@ -1316,6 +1330,15 @@ class DailyCoach:
                     sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
                     quality_flag = daily_quality_flag,
                 )
+
+                # F-32: persist HRV for all historical days returned by sync_hrv()
+                for past_hrv in past_hrv_entries:
+                    past_hrv_sanity = _sanity.check_hrv(
+                        {"date": past_hrv['date'], "rmssd": past_hrv['rmssd']},
+                        context="persist_garmin_data",
+                    )
+                    if not has_rejects(past_hrv_sanity):
+                        self.db.save_daily_metric(date=past_hrv['date'], hrv=past_hrv['rmssd'])
 
             if activities:
                 _daily_coach_event(

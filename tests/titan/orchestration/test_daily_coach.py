@@ -576,6 +576,68 @@ def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
         db.close()
 
 
+def test_persist_garmin_data_f29_flattened_sleep_keys_are_parsed(tmp_path):
+    """F-29: _persist_garmin_data must read sync_sleep() flattened keys
+    (sleep_score, total_sleep_hours) and return correct values."""
+    db = DatabaseManager(db_name="f29_flattened_sleep.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-10"
+
+    # Payload using the flattened keys returned by sync_sleep()
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = [{"sleep_score": 85, "total_sleep_hours": 7.5}]
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        assert sleep_score == 85
+        assert sleep_hours == 7.5
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_f32_multi_day_hrv_all_persisted(tmp_path):
+    """F-32: _persist_garmin_data must persist HRV for every date returned by
+    sync_hrv(), not only today."""
+    db = DatabaseManager(db_name="f32_multi_day_hrv.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    today = "2026-03-10"
+    yesterday = "2026-03-09"
+    two_days_ago = "2026-03-08"
+
+    payload = _garmin_payload_for_day(today)
+    payload["hrv"] = [
+        {"date": today, "rmssd": 45.0},
+        {"date": yesterday, "rmssd": 42.0},
+        {"date": two_days_ago, "rmssd": 38.0},
+    ]
+
+    try:
+        coach._persist_garmin_data(payload, today)
+
+        # Today's HRV is stored via the main save_daily_metric call
+        assert _count_rows(db, "daily_metrics", today) == 1
+        # Historical HRV entries must each have a row too
+        assert _count_rows(db, "daily_metrics", yesterday) == 1
+        assert _count_rows(db, "daily_metrics", two_days_ago) == 1
+
+        row_today = db.conn.execute(
+            "SELECT hrv_rmssd FROM daily_metrics WHERE date = ?", (today,)
+        ).fetchone()
+        row_yesterday = db.conn.execute(
+            "SELECT hrv_rmssd FROM daily_metrics WHERE date = ?", (yesterday,)
+        ).fetchone()
+        row_two_days_ago = db.conn.execute(
+            "SELECT hrv_rmssd FROM daily_metrics WHERE date = ?", (two_days_ago,)
+        ).fetchone()
+
+        assert row_today[0] == pytest.approx(45.0, abs=0.1)
+        assert row_yesterday[0] == pytest.approx(42.0, abs=0.1)
+        assert row_two_days_ago[0] == pytest.approx(38.0, abs=0.1)
+    finally:
+        db.close()
+
+
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)
