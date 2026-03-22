@@ -384,3 +384,91 @@ def test_sync_activities_estimated_training_load_zero_when_no_hr_data():
 
     assert len(activities) == 1
     assert activities[0]["estimated_training_load"] == 0.0
+
+
+def test_connect_retries_on_429_and_succeeds(monkeypatch, tmp_path):
+    """connect() retries on 429, emits retry events, and succeeds on a later attempt."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    call_count = {"n": 0}
+    sleep_calls = []
+
+    class _FakeGarth:
+        def dumps(self):
+            return "new_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            call_count["n"] += 1
+            if call_count["n"] < 3:
+                raise RuntimeError("429 too many requests")
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setattr(garmin_sync.time, "sleep", lambda s: sleep_calls.append(s))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    assert result is True
+    assert sync.is_connected is True
+    assert call_count["n"] == 3
+    # Two retries → two sleeps with the first two backoff values
+    assert sleep_calls == [60, 120]
+    retry_events = [(a, f) for a, f in events if a == "connect_retry_429"]
+    assert len(retry_events) == 2
+    assert retry_events[0][1]["attempt"] == 1
+    assert retry_events[0][1]["wait_s"] == 60
+    assert retry_events[1][1]["attempt"] == 2
+    assert retry_events[1][1]["wait_s"] == 120
+
+
+def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
+    """connect() fails after exhausting all 3 retries on persistent 429 errors."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    call_count = {"n": 0}
+    sleep_calls = []
+
+    class _FakeGarth:
+        def dumps(self):
+            return "new_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            call_count["n"] += 1
+            raise RuntimeError("429 too many requests")
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setattr(garmin_sync.time, "sleep", lambda s: sleep_calls.append(s))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    assert result is False
+    assert sync.is_connected is False
+    # 1 initial attempt + 3 retries = 4 total login() calls
+    assert call_count["n"] == 4
+    # 3 retries → 3 sleeps
+    assert sleep_calls == [60, 120, 240]
+    retry_events = [(a, f) for a, f in events if a == "connect_retry_429"]
+    assert len(retry_events) == 3
+    # Final failure emits connect_failed
+    assert any(a == "connect_failed" for a, _ in events)
