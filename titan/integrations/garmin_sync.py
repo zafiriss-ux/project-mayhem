@@ -4,6 +4,7 @@ Garmin Connect Live API Integration
 REAL implementation using garminconnect library (not mock).
 """
 
+import contextlib
 import json
 import logging
 import os
@@ -35,6 +36,7 @@ GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 20
 _GARTH_TOKEN_FILENAME = ".garth_token"
+_LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
 
 
 class _CredentialSecret:
@@ -207,10 +209,37 @@ class GarminSync:
                         error_class=token_err.__class__.__name__,
                         detail="Saved token invalid or expired; falling back to full login",
                     )
+                    # Delete the stale token so the next startup attempts a fresh login.
+                    with contextlib.suppress(Exception):
+                        token_path.unlink(missing_ok=True)
 
             # Full login — token missing or expired.
-            client = Garmin(self.email.reveal(), self.password.reveal())
-            client.login()
+            # Retry up to 3 times with exponential backoff on GARMIN_RATE_LIMIT (429) only.
+            client = None
+            for _attempt in range(len(_LOGIN_RETRY_WAITS_S) + 1):
+                try:
+                    client = Garmin(self.email.reveal(), self.password.reveal())
+                    client.login()
+                    break
+                except Exception as _login_err:
+                    if (
+                        _classify_failure(_login_err) != GARMIN_RATE_LIMIT
+                        or _attempt >= len(_LOGIN_RETRY_WAITS_S)
+                    ):
+                        raise
+                    # Delete the fallback token path before retrying.
+                    _alt_token = Path.home() / "Documents" / "TITAN" / _GARTH_TOKEN_FILENAME
+                    with contextlib.suppress(Exception):
+                        _alt_token.unlink(missing_ok=True)
+                    wait_s = _LOGIN_RETRY_WAITS_S[_attempt]
+                    _garmin_event(
+                        "connect_retry_429",
+                        subsystem="connect",
+                        attempt=_attempt + 1,
+                        wait_s=wait_s,
+                        detail=f"Rate-limited (429); retrying login in {wait_s}s",
+                    )
+                    time.sleep(wait_s)
 
             # Persist the new session token for future connections.
             try:
