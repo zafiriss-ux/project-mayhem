@@ -12,6 +12,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
@@ -33,6 +34,7 @@ GARMIN_PAYLOAD_MALFORMED = "GARMIN_PAYLOAD_MALFORMED"
 GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 20
+_GARTH_TOKEN_FILENAME = ".garth_token"
 
 
 class _CredentialSecret:
@@ -167,6 +169,17 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # CONNECTION
     # ------------------------------------------------------------------ #
+    def _get_token_path(self) -> Path:
+        """Return path to the persisted Garth session token file."""
+        try:
+            from launcher.validator import get_data_directory
+            base_dir = get_data_directory()
+        except ModuleNotFoundError as err:
+            if err.name not in {"launcher", "launcher.validator"}:
+                raise
+            base_dir = Path.home() / "Documents" / "TITAN"
+        return base_dir / _GARTH_TOKEN_FILENAME
+
     def connect(self) -> bool:
         if not self.email or not self.password:
             _garmin_event("connect_missing_credentials", subsystem="connect", detail="Garmin credentials missing – run setup first.")
@@ -174,8 +187,45 @@ class GarminSync:
         try:
             from garminconnect import Garmin
 
-            self.client = Garmin(self.email.reveal(), self.password.reveal())
-            self.client.login()
+            token_path = self._get_token_path()
+
+            # Try loading a persisted session token to avoid re-login 429s.
+            if token_path.exists():
+                try:
+                    token_data = token_path.read_text(encoding="utf-8")
+                    client = Garmin()
+                    client.garth.loads(token_data)
+                    self.client = client
+                    self.is_connected = True
+                    _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
+                    _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
+                    return True
+                except Exception as token_err:
+                    _garmin_event(
+                        "connect_token_load_failed",
+                        subsystem="connect",
+                        error_class=token_err.__class__.__name__,
+                        detail="Saved token invalid or expired; falling back to full login",
+                    )
+
+            # Full login — token missing or expired.
+            client = Garmin(self.email.reveal(), self.password.reveal())
+            client.login()
+
+            # Persist the new session token for future connections.
+            try:
+                token_path.parent.mkdir(parents=True, exist_ok=True)
+                token_path.write_text(client.garth.dumps(), encoding="utf-8")
+                _garmin_event("connect_token_saved", subsystem="connect", detail="Garth session token saved")
+            except Exception as save_err:
+                _garmin_event(
+                    "connect_token_save_failed",
+                    subsystem="connect",
+                    error_class=save_err.__class__.__name__,
+                    detail="Could not persist Garth session token",
+                )
+
+            self.client = client
             self.is_connected = True
             _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
             return True
