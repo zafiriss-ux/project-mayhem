@@ -422,6 +422,120 @@ def test_connect_missing_credentials_fails_safely():
     assert sync.is_connected is False
 
 
+def test_connect_saves_token_after_login(monkeypatch, tmp_path):
+    """Successful login persists garth token to disk."""
+    token_file = tmp_path / ".garth_token"
+
+    class _FakeGarth:
+        def dumps(self):
+            return "garth_token_data"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            pass
+
+    import sys
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    assert sync.connect() is True
+    assert sync.is_connected is True
+    assert token_file.read_text(encoding="utf-8") == "garth_token_data"
+
+
+def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
+    """Existing valid token is loaded from disk; login() is not called."""
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("stored_token", encoding="utf-8")
+
+    login_called = []
+
+    class _FakeGarth:
+        def loads(self, data):
+            pass
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            login_called.append(True)
+
+    import sys
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    assert sync.connect() is True
+    assert sync.is_connected is True
+    assert login_called == []
+
+
+def test_connect_expired_token_falls_back_to_login(monkeypatch, tmp_path):
+    """Expired/invalid token causes garth.loads() to fail; falls back to full login and saves new token."""
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("expired_token", encoding="utf-8")
+
+    login_called = []
+
+    class _FakeGarth:
+        def loads(self, data):
+            raise RuntimeError("GarthHTTPError: token expired")
+
+        def dumps(self):
+            return "new_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            login_called.append(True)
+
+    import sys
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    assert sync.connect() is True
+    assert sync.is_connected is True
+    assert login_called == [True]
+    assert token_file.read_text(encoding="utf-8") == "new_token"
+
+
+def test_connect_token_save_failure_does_not_break_connect(monkeypatch, tmp_path):
+    """If saving the token fails, connect() still returns True."""
+    token_file = tmp_path / "readonly_dir" / ".garth_token"  # parent dir does not exist yet
+
+    class _FakeGarth:
+        def dumps(self):
+            raise OSError("disk full")
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def login(self):
+            pass
+
+    import sys
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    # garth.dumps() raises before mkdir, so token file should not exist
+    assert sync.connect() is True
+    assert sync.is_connected is True
+
+
 def test_bg_worker_continues_until_stop_event_is_set(monkeypatch):
     sync = GarminSync(email="u", password="p")
     ticks = []
