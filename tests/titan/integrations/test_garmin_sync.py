@@ -472,3 +472,87 @@ def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
     assert len(retry_events) == 3
     # Final failure emits connect_failed
     assert any(a == "connect_failed" for a, _ in events)
+
+
+def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypatch, tmp_path):
+    """When connectapi() raises a 429, token is assumed valid: is_connected=True, no re-login."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("saved_token_data", encoding="utf-8")
+
+    login_called = {"n": 0}
+
+    class _FakeGarth:
+        def loads(self, _data):
+            pass
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def connectapi(self, _path):
+            raise RuntimeError("429 too many requests")
+
+        def login(self):
+            login_called["n"] += 1
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    assert result is True
+    assert sync.is_connected is True
+    assert login_called["n"] == 0, "Must NOT fall through to fresh login on 429 ping"
+    assert token_file.exists(), "Token file must NOT be deleted on 429 ping"
+    assumed_events = [a for a, _ in events if a == "connect_token_assumed_valid"]
+    assert assumed_events, "connect_token_assumed_valid event must be emitted"
+
+
+def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_path):
+    """When connectapi() raises an auth error, token is deleted and fresh login is attempted."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("saved_token_data", encoding="utf-8")
+
+    login_called = {"n": 0}
+
+    class _FakeGarth:
+        def loads(self, _data):
+            pass
+
+        def dumps(self):
+            return "fresh_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def connectapi(self, _path):
+            raise RuntimeError("401 unauthorized")
+
+        def login(self):
+            login_called["n"] += 1
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    assert result is True
+    assert sync.is_connected is True
+    assert login_called["n"] == 1, "Must fall through to fresh login on auth fail"
+    load_failed_events = [a for a, _ in events if a == "connect_token_load_failed"]
+    assert load_failed_events, "connect_token_load_failed event must be emitted"
