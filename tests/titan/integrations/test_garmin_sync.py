@@ -749,3 +749,237 @@ def test_instance_counter_logs_warning_on_duplicate(monkeypatch, caplog):
         GarminSync(email="x", password="y")
 
     assert any("garmin_sync_duplicate_instance" in r.message for r in caplog.records)
+
+
+# ─── ADR-0050 / T5-12 Pass 2 — garmin_api_degraded CRITICAL event tests ──────
+
+def _find_degraded_event(records):
+    """Return the garmin_api_degraded event record, or None."""
+    for r in records:
+        try:
+            payload = json.loads(r.message)
+            if payload.get("action") == "garmin_api_degraded":
+                return payload
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return None
+
+
+# C1 — authentication failure in _connect_impl()
+def test_garmin_api_degraded_emitted_on_auth_fail_in_connect(monkeypatch, caplog):
+    """C1: garmin_api_degraded CRITICAL is emitted when _connect_impl() fails with auth error.
+
+    Patches garminconnect at the sys.modules level so the exception is caught
+    by the try/except inside _connect_impl, which is where emission logic lives.
+    """
+    import sys
+    from unittest.mock import MagicMock
+
+    import titan.integrations.garmin_sync as _gs
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+
+    # Fake garminconnect so login raises a recognisable auth error.
+    fake_gc = MagicMock()
+    fake_gc.Garmin.return_value.login.side_effect = Exception("Unauthorized")
+    monkeypatch.setitem(sys.modules, "garminconnect", fake_gc)
+
+    sync = GarminSync(email="e@x.com", password="pw")
+    # Ensure no stale token file will be found.
+    monkeypatch.setattr(sync, "_get_token_path", lambda: _gs.Path("/nonexistent_token_file"))
+
+    with caplog.at_level(logging.ERROR):
+        result = sync._connect_impl()
+
+    assert result is False
+    event = _find_degraded_event(caplog.records)
+    assert event is not None, "garmin_api_degraded event not found in logs"
+    assert event["action"] == "garmin_api_degraded"
+    assert event["severity"] == "critical"
+    assert event["failure_class"] == "GARMIN_AUTH_FAIL"
+    assert event["sync_status"] == "connect_failed"
+    assert event["trust_level"] == "INVALID"
+    assert "GARMIN_AUTH_FAIL" in event["reasons"]
+    assert event["degraded_mode_expected"] is True
+
+
+# C1 — full connect() path emits garmin_api_degraded on auth failure
+def test_connect_emits_garmin_api_degraded_on_auth_failure(monkeypatch, caplog):
+    """C1: connect() propagates garmin_api_degraded when login raises an auth error."""
+    import sys
+    from unittest.mock import MagicMock
+
+    import titan.integrations.garmin_sync as _gs
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+
+    fake_gc = MagicMock()
+    fake_gc.Garmin.return_value.login.side_effect = Exception("401 Unauthorized")
+    monkeypatch.setitem(sys.modules, "garminconnect", fake_gc)
+
+    sync = GarminSync(email="e@x.com", password="pw")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: _gs.Path("/nonexistent_token_file"))
+
+    with caplog.at_level(logging.ERROR):
+        result = sync.connect()
+
+    assert result is False
+    event = _find_degraded_event(caplog.records)
+    assert event is not None, "garmin_api_degraded not emitted on auth failure"
+    assert event["severity"] == "critical"
+    assert event["failure_class"] == "GARMIN_AUTH_FAIL"
+
+
+# C2 — timeout in sync_all()
+def test_garmin_api_degraded_emitted_on_timeout(monkeypatch, caplog):
+    """C2: garmin_api_degraded CRITICAL is emitted when sync_all() times out."""
+    import time as _time
+
+    import titan.integrations.garmin_sync as _gs
+
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+    monkeypatch.setattr(_gs, "_resolve_sync_timeout_seconds", lambda: 1)
+
+    sync = GarminSync(email="e", password="p")
+
+    def _slow_operation(days_back):
+        _time.sleep(10)
+
+    monkeypatch.setattr(sync, "_sync_operation", _slow_operation)
+
+    with caplog.at_level(logging.ERROR):
+        result = sync.sync_all(days_back=1)
+
+    assert result.get("status") == "timeout_cancelled"
+    event = _find_degraded_event(caplog.records)
+    assert event is not None, "garmin_api_degraded not emitted on timeout"
+    assert event["severity"] == "critical"
+    assert event["failure_class"] == "GARMIN_TIMEOUT"
+    assert event["sync_status"] == "timeout_cancelled"
+    assert "SYNC_TIMEOUT" in event["reasons"]
+    assert sync._consecutive_failures == 1
+
+
+# C3 — consecutive failure threshold crossed
+def test_garmin_api_degraded_emitted_on_consecutive_failure_threshold(monkeypatch, caplog):
+    """C3: garmin_api_degraded is emitted when consecutive empty syncs reach threshold."""
+    import titan.integrations.garmin_sync as _gs
+
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+
+    sync = GarminSync(email="e", password="p")
+
+    def _empty_operation(days_back):
+        from titan.orchestration.contracts import GarminSyncResultContract, HRVSyncMetricsContract
+        from titan.science.data_trust import evaluate_garmin_trust
+        hrv_metrics = HRVSyncMetricsContract(days_back=days_back, synced_days=0, skipped_days=0).to_payload()
+        return GarminSyncResultContract(
+            activities=[],
+            weight=[],
+            sleep=[],
+            hrv=[],
+            hrv_sync_metrics=hrv_metrics,
+            data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
+        ).to_payload()
+
+    monkeypatch.setattr(sync, "_sync_operation", _empty_operation)
+
+    from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
+
+    # Run threshold - 1 syncs: no event yet
+    for _ in range(GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT - 1):
+        sync.sync_all(days_back=1)
+
+    caplog.clear()
+    with caplog.at_level(logging.ERROR):
+        sync.sync_all(days_back=1)
+
+    event = _find_degraded_event(caplog.records)
+    assert event is not None, "garmin_api_degraded not emitted at threshold crossing"
+    assert event["severity"] == "critical"
+    assert "CONSECUTIVE_FAILURE_THRESHOLD_CROSSED" in event["reasons"]
+    assert sync._consecutive_failures >= GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
+    assert sync.is_api_degraded is True
+
+
+# C4 — trust resolves to INVALID before threshold
+def test_garmin_api_degraded_emitted_on_trust_invalid(monkeypatch, caplog):
+    """C4: garmin_api_degraded is emitted when trust resolves INVALID before threshold crossed."""
+    import titan.integrations.garmin_sync as _gs
+    from titan.science.data_trust import DataTrustLevel, DataTrustReport, evaluate_garmin_trust
+
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+
+    sync = GarminSync(email="e", password="p")
+    # Inject a high data age so trust evaluates to INVALID
+    sync._last_successful_sync_at = None  # never synced → age = inf
+
+    def _empty_operation(days_back):
+        from titan.orchestration.contracts import GarminSyncResultContract, HRVSyncMetricsContract
+        hrv_metrics = HRVSyncMetricsContract(days_back=days_back, synced_days=0, skipped_days=0).to_payload()
+        return GarminSyncResultContract(
+            activities=[],
+            weight=[],
+            sleep=[],
+            hrv=[],
+            hrv_sync_metrics=hrv_metrics,
+            data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
+        ).to_payload()
+
+    monkeypatch.setattr(sync, "_sync_operation", _empty_operation)
+
+    # Keep consecutive_failures below threshold so C3 doesn't fire instead
+    sync._consecutive_failures = 0
+
+    with caplog.at_level(logging.ERROR):
+        sync.sync_all(days_back=1)
+
+    event = _find_degraded_event(caplog.records)
+    assert event is not None, "garmin_api_degraded not emitted on trust INVALID"
+    assert event["severity"] == "critical"
+    assert event["trust_level"] == "INVALID"
+    assert "TRUST_LEVEL_INVALID" in event["reasons"]
+
+
+# is_api_degraded property
+def test_is_api_degraded_property():
+    """is_api_degraded returns True only when threshold is reached."""
+    from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
+
+    sync = GarminSync(email="e", password="p")
+    assert sync.is_api_degraded is False
+
+    sync._consecutive_failures = GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT - 1
+    assert sync.is_api_degraded is False
+
+    sync._consecutive_failures = GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
+    assert sync.is_api_degraded is True
+
+
+# Reset on success
+def test_consecutive_failures_reset_on_successful_sync(monkeypatch):
+    """_consecutive_failures resets to 0 on a sync that returns records."""
+    import titan.integrations.garmin_sync as _gs
+
+    monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
+
+    sync = GarminSync(email="e", password="p")
+    sync._consecutive_failures = 5  # simulate prior failures
+
+    def _good_operation(days_back):
+        from titan.orchestration.contracts import GarminSyncResultContract, HRVSyncMetricsContract
+        from titan.science.data_trust import evaluate_garmin_trust
+        hrv_metrics = HRVSyncMetricsContract(days_back=days_back, synced_days=1, skipped_days=0).to_payload()
+        return GarminSyncResultContract(
+            activities=[{"date": "2026-03-23"}],
+            weight=[],
+            sleep=[],
+            hrv=[],
+            hrv_sync_metrics=hrv_metrics,
+            data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
+        ).to_payload()
+
+    monkeypatch.setattr(sync, "_sync_operation", _good_operation)
+    sync.sync_all(days_back=1)
+
+    assert sync._consecutive_failures == 0
+    assert sync._last_successful_sync_at is not None
+    assert sync.is_api_degraded is False

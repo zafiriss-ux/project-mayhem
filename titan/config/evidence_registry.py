@@ -595,6 +595,16 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Calibrate using observed sync-latency distribution and downstream coaching accuracy impact.',
     ),
 
+    'GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT': ThresholdEvidence(
+        parameter='GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT',
+        value=3.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal API resilience policy — ADR-0050 Garmin fragility mitigation.',
+        rationale='Three consecutive sync failures distinguish a transient outage from a non-transient provider degradation event requiring operator notification.',
+        policy_note='HEURISTIC. Calibrate using observed Garmin outage duration distribution; promote once field data covers at least 10 distinct outage episodes.',
+    ),
+
     'OUTCOME_INDEPENDENCE_WINDOW_DAYS': ThresholdEvidence(
         parameter='OUTCOME_INDEPENDENCE_WINDOW_DAYS',
         value=2.0,

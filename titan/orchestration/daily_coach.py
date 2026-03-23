@@ -987,12 +987,14 @@ class DailyCoach:
         """
         trace = result.decision_trace
 
-        # ── Degraded mode duration tracking (T2-13) ──────────────────────────
+        # ── Degraded mode duration tracking (T2-13 + ADR-0050) ───────────────
         self._degraded_tracker.update(
             flags={
                 "persistence_degraded": bool(trace.get("persistence_degraded", False)),
                 "data_confidence_low": bool(trace.get("data_confidence_low", False)),
                 "garmin_data_stale": bool(trace.get("garmin_data_stale", False)),
+                # ADR-0050: Garmin API degraded when consecutive failure threshold crossed.
+                "garmin_api_degraded": bool(getattr(self.garmin, "is_api_degraded", False)),
             },
             alert_fn=lambda msg: self.telegram.send_alert(msg),
         )

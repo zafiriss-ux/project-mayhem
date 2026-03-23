@@ -3,7 +3,10 @@
 from collections import Counter
 from typing import Any
 
-from titan.config.thresholds import OPERATOR_TRUST_DRIFT_WARNING_RATE_30D
+from titan.config.thresholds import (
+    GARMIN_DATA_MAX_AGE_HOURS,
+    OPERATOR_TRUST_DRIFT_WARNING_RATE_30D,
+)
 from titan.core.database import DatabaseManager
 
 
@@ -222,6 +225,58 @@ class OperatorConsoleService:
             reason=reason,
         )
         return True
+
+    @staticmethod
+    def garmin_sync_indicator(
+        *,
+        is_degraded: bool,
+        has_baseline: bool,
+        data_age_hours: float | None,
+        trust_level: str,
+        last_successful_sync_at: str | None,
+        trusted_age_threshold_hours: float = GARMIN_DATA_MAX_AGE_HOURS,
+    ) -> dict[str, Any]:
+        """Build the Garmin sync indicator payload for the coach dashboard.
+
+        Implements the three-state indicator wording from ADR-0050 D2.
+
+        Appearance condition (indicator shown when either holds):
+          - ``is_degraded`` is True (active garmin_api_degraded event)
+          - ``trust_level`` is ``"SUSPECT"`` or ``"INVALID"``
+
+        Clear condition (all three required):
+          1. ``is_degraded`` is False
+          2. ``trust_level`` is ``"TRUSTED"``
+          3. ``data_age_hours`` is within ``trusted_age_threshold_hours``
+
+        Returns a dict with ``visible`` (bool) and ``message`` (str | None).
+        """
+        age_stale = data_age_hours is None or data_age_hours > trusted_age_threshold_hours
+        trust_degraded = trust_level in ("SUSPECT", "INVALID")
+
+        # Clear condition: all three must hold simultaneously.
+        all_clear = (
+            not is_degraded
+            and not trust_degraded
+            and not age_stale
+        )
+        if all_clear:
+            return {"visible": False, "message": None}
+
+        # Select wording state per ADR-0050 D2.
+        if is_degraded:
+            if has_baseline and last_successful_sync_at is not None and data_age_hours is not None:
+                age_h = round(data_age_hours, 1)
+                message = f"Garmin sync degraded — last valid data: {age_h}h ago."
+            else:
+                message = "Garmin sync degraded — no valid Garmin baseline available."
+        elif trust_level == "INVALID":
+            message = "Garmin data invalid/stale — conservative coaching mode expected."
+        else:
+            # trust_level == "SUSPECT" or age stale
+            message = "Garmin data stale — operating with caution."
+
+        return {"visible": True, "message": message}
 
     def calibration_review(self, limit: int = 365) -> dict[str, Any]:
         """Build calibration review payload for lock rates and promotion candidates."""

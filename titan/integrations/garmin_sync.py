@@ -12,10 +12,12 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.orchestration.contracts import (
     GarminSyncResult,
@@ -23,7 +25,7 @@ from titan.orchestration.contracts import (
     HRVSyncMetrics,
     HRVSyncMetricsContract,
 )
-from titan.science.data_trust import evaluate_garmin_trust
+from titan.science.data_trust import DataTrustLevel, evaluate_garmin_trust
 from titan.science.trimp_engine import TRIMPEngine
 from titan.utils.constants import _Secret
 
@@ -37,6 +39,50 @@ GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 20
 _GARTH_TOKEN_FILENAME = ".garth_token"
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
+
+
+# ── BiometricSourceAdapter boundary contracts (ADR-0050 D4 / T5-12 Pass 2) ──
+
+
+@dataclass
+class SourceCapabilities:
+    """Capability declaration per biometric source."""
+
+    source_name: str
+    supports_hrv: bool
+    supports_resting_hr: bool
+    supports_sleep: bool
+    supports_activity_load: bool
+
+
+@dataclass
+class NormalizedBiometricSample:
+    """Normalized biometric snapshot — source-agnostic.
+
+    All numeric fields are ``None`` when the source did not provide a reading.
+    ``provenance`` must be an ADR-0041 provenance label.
+    """
+
+    source_name: str
+    sampled_at: str          # ISO-8601 timestamp
+    hrv_rmssd: float | None
+    resting_hr: int | None
+    sleep_hours: float | None
+    provenance: str          # ADR-0041 provenance label
+
+
+@dataclass
+class BiometricSourceSyncResult:
+    """Result of a single sync attempt from any biometric source.
+
+    ``sync_status`` is one of ``"ok"``, ``"degraded"``, or ``"failed"``.
+    ``data_trust_report`` follows the ADR-0041 DataTrustReport payload schema.
+    """
+
+    samples: list[NormalizedBiometricSample] = field(default_factory=list)
+    sync_status: str = "ok"          # "ok" | "degraded" | "failed"
+    failure_class: str | None = None
+    data_trust_report: dict = field(default_factory=dict)
 
 
 class _CredentialSecret:
@@ -120,6 +166,40 @@ def _emit_failure(subsystem: str, failure_class: str, error: Exception, **fields
     )
 
 
+def _emit_garmin_api_degraded(
+    *,
+    failure_class: str,
+    sync_status: str,
+    error_class: str,
+    error_message: str,
+    last_successful_sync_at: str | None,
+    data_age_hours: float,
+    trust_level: str,
+    reasons: list[str],
+    degraded_mode_expected: bool,
+) -> None:
+    """Emit ``garmin_api_degraded`` at CRITICAL severity per ADR-0050 D1 payload contract."""
+    _log.error(
+        json.dumps(
+            structured_event_payload(
+                "garmin_sync",
+                "garmin_api_degraded",
+                severity=EventSeverity.CRITICAL,
+                failure_class=failure_class,
+                sync_status=sync_status,
+                error_class=error_class,
+                error_message=error_message,
+                last_successful_sync_at=last_successful_sync_at,
+                data_age_hours=data_age_hours,
+                trust_level=trust_level,
+                reasons=reasons,
+                degraded_mode_expected=degraded_mode_expected,
+            ),
+            default=str,
+        )
+    )
+
+
 def _resolve_sync_timeout_seconds() -> int:
     timeout_raw = os.getenv("GARMIN_SYNC_TIMEOUT_S", str(_DEFAULT_SYNC_TIMEOUT_S))
     try:
@@ -191,6 +271,23 @@ class GarminSync:
         self._connect_lock = threading.Lock()
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._consecutive_failures: int = 0
+        self._last_successful_sync_at: str | None = None
+
+    @property
+    def is_api_degraded(self) -> bool:
+        """True when consecutive sync failures have crossed the non-transient threshold."""
+        return self._consecutive_failures >= GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
+
+    def _compute_data_age_hours(self) -> float:
+        """Hours since the last successful sync, or ``float('inf')`` if never synced."""
+        if self._last_successful_sync_at is None:
+            return float("inf")
+        try:
+            last = datetime.fromisoformat(self._last_successful_sync_at)
+            return max(0.0, (datetime.now() - last).total_seconds() / 3600)
+        except Exception:
+            return float("inf")
 
     # ------------------------------------------------------------------ #
     # CONNECTION
@@ -350,8 +447,22 @@ class GarminSync:
                     "detail": str(e),
                 },
             )
+            failure_class = _classify_failure(e)
             self.last_connect_error = f"{e.__class__.__name__}: {e}"
-            _garmin_event("connect_failed", subsystem="connect", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Garmin connection failed. Please retry or re-run Garmin setup.", error_message=str(e))
+            _garmin_event("connect_failed", subsystem="connect", failure_class=failure_class, error_class=e.__class__.__name__, detail="Garmin connection failed. Please retry or re-run Garmin setup.", error_message=str(e))
+            # C1 — authentication failure triggers garmin_api_degraded (ADR-0050 D1).
+            if failure_class == GARMIN_AUTH_FAIL:
+                _emit_garmin_api_degraded(
+                    failure_class=failure_class,
+                    sync_status="connect_failed",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                    last_successful_sync_at=self._last_successful_sync_at,
+                    data_age_hours=0.0,
+                    trust_level=DataTrustLevel.INVALID.value,
+                    reasons=[GARMIN_AUTH_FAIL],
+                    degraded_mode_expected=True,
+                )
             self.is_connected = False
             return False
 
@@ -658,6 +769,19 @@ class GarminSync:
                 timeout_seconds=timeout_s,
                 operation_name="sync_all",
             )
+            # C2 — timeout exit triggers garmin_api_degraded (ADR-0050 D1).
+            self._consecutive_failures += 1
+            _emit_garmin_api_degraded(
+                failure_class=GARMIN_TIMEOUT,
+                sync_status="timeout_cancelled",
+                error_class="FuturesTimeoutError",
+                error_message=f"Garmin sync timed out after {timeout_s}s",
+                last_successful_sync_at=self._last_successful_sync_at,
+                data_age_hours=self._compute_data_age_hours(),
+                trust_level=DataTrustLevel.INVALID.value,
+                reasons=["SYNC_TIMEOUT"],
+                degraded_mode_expected=True,
+            )
             hrv_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
                 days_back=int(self.last_hrv_sync_metrics.get("days_back", 0)),
                 synced_days=int(self.last_hrv_sync_metrics.get("synced_days", 0)),
@@ -689,6 +813,51 @@ class GarminSync:
             )
         else:
             _garmin_event("sync_complete", elapsed_s=elapsed_s, timeout_s=timeout_s)
+
+        # Track sync quality for C3/C4 degradation detection (ADR-0050 D1).
+        total_records = (
+            len(payload.get("activities", []))
+            + len(payload.get("sleep", []))
+            + len(payload.get("hrv", []))
+            + len(payload.get("weight", []))
+        )
+        if total_records > 0:
+            # Sync succeeded — reset failure streak and record timestamp.
+            self._consecutive_failures = 0
+            self._last_successful_sync_at = datetime.now().isoformat()
+        else:
+            # Sync completed without data — count as a failure for C3 tracking.
+            self._consecutive_failures += 1
+            data_age_hours = self._compute_data_age_hours()
+            # C3 — consecutive failure threshold crossed (ADR-0050 D1 condition 3).
+            if self._consecutive_failures >= GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT:
+                _emit_garmin_api_degraded(
+                    failure_class=GARMIN_API_UNAVAILABLE,
+                    sync_status="sync_failed",
+                    error_class="EmptySync",
+                    error_message="Garmin sync completed but returned no records",
+                    last_successful_sync_at=self._last_successful_sync_at,
+                    data_age_hours=data_age_hours,
+                    trust_level=DataTrustLevel.INVALID.value,
+                    reasons=["CONSECUTIVE_FAILURE_THRESHOLD_CROSSED"],
+                    degraded_mode_expected=True,
+                )
+            else:
+                # C4 — trust INVALID before threshold crossed (ADR-0050 D1 condition 4).
+                trust_report = evaluate_garmin_trust(data_age_hours=data_age_hours)
+                if trust_report.trust_level == DataTrustLevel.INVALID:
+                    _emit_garmin_api_degraded(
+                        failure_class=GARMIN_API_UNAVAILABLE,
+                        sync_status="sync_failed",
+                        error_class="TrustInvalid",
+                        error_message="Garmin data trust level resolved to INVALID",
+                        last_successful_sync_at=self._last_successful_sync_at,
+                        data_age_hours=data_age_hours,
+                        trust_level=DataTrustLevel.INVALID.value,
+                        reasons=["TRUST_LEVEL_INVALID"],
+                        degraded_mode_expected=True,
+                    )
+
         return payload
 
     # ------------------------------------------------------------------ #
