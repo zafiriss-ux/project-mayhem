@@ -475,7 +475,7 @@ def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
 
 
 def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypatch, tmp_path):
-    """When connectapi() raises a 429, token is assumed valid: is_connected=True, no re-login."""
+    """429 on ping + secondary call succeeds → token assumed valid: is_connected=True, no re-login."""
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -493,6 +493,9 @@ def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypa
 
         def connectapi(self, _path):
             raise RuntimeError("429 too many requests")
+
+        def get_user_summary(self, _date):
+            return {"displayName": "test_user"}  # Secondary call succeeds → token valid
 
         def login(self):
             login_called["n"] += 1
@@ -513,6 +516,7 @@ def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypa
     assert token_file.exists(), "Token file must NOT be deleted on 429 ping"
     assumed_events = [a for a, _ in events if a == "connect_token_assumed_valid"]
     assert assumed_events, "connect_token_assumed_valid event must be emitted"
+
 
 
 def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_path):
@@ -556,3 +560,165 @@ def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_pa
     assert login_called["n"] == 1, "Must fall through to fresh login on auth fail"
     load_failed_events = [a for a, _ in events if a == "connect_token_load_failed"]
     assert load_failed_events, "connect_token_load_failed event must be emitted"
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: 429 on ping + auth fail on secondary call → session invalidated,
+#         token deleted, re-login attempted
+# ---------------------------------------------------------------------------
+
+def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypatch, tmp_path):
+    """429 on verification ping + auth error on secondary data call → token deleted, re-login."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("saved_token_data", encoding="utf-8")
+
+    login_called = {"n": 0}
+
+    class _FakeGarth:
+        def loads(self, _data):
+            pass
+
+        def dumps(self):
+            return "fresh_token"
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def connectapi(self, _path):
+            raise RuntimeError("429 too many requests")
+
+        def get_user_summary(self, _date):
+            raise RuntimeError("401 unauthorized")
+
+        def login(self):
+            login_called["n"] += 1
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    # Re-login must be attempted (stale token path triggered fallthrough)
+    assert login_called["n"] == 1, "Must fall through to fresh login after secondary auth failure"
+    # connect_token_stale_after_429 event must be emitted to signal the stale-token detection
+    stale_events = [a for a, _ in events if a == "connect_token_stale_after_429"]
+    assert stale_events, "connect_token_stale_after_429 event must be emitted"
+    # Should ultimately connect via fresh login
+    assert result is True
+    assert sync.is_connected is True
+    # Token file is recreated after successful fresh login — that is expected
+    assert token_file.exists(), "Token file must be saved after successful fresh login"
+
+
+def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tmp_path):
+    """429 on ping + 429 on secondary call → keep current assume-valid behavior."""
+    import sys
+
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text("saved_token_data", encoding="utf-8")
+
+    login_called = {"n": 0}
+
+    class _FakeGarth:
+        def loads(self, _data):
+            pass
+
+    class _Garmin:
+        def __init__(self, email=None, password=None):
+            self.garth = _FakeGarth()
+
+        def connectapi(self, _path):
+            raise RuntimeError("429 too many requests")
+
+        def get_user_summary(self, _date):
+            raise RuntimeError("429 rate limit again")
+
+        def login(self):
+            login_called["n"] += 1
+
+    monkeypatch.setitem(sys.modules, "garminconnect", type("_mod", (), {"Garmin": _Garmin})())
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = GarminSync(email="u", password="p")
+    monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+
+    result = sync.connect()
+
+    assert result is True
+    assert sync.is_connected is True
+    assert login_called["n"] == 0, "Must NOT fall through to fresh login when both calls are 429"
+    assert token_file.exists(), "Token file must NOT be deleted when both calls are rate-limited"
+    assumed_events = [a for a, _ in events if a == "connect_token_assumed_valid"]
+    assert assumed_events, "connect_token_assumed_valid event must be emitted"
+
+
+# ---------------------------------------------------------------------------
+# Fix 3: auth exception in sync_activities → _invalidate_session() called
+# ---------------------------------------------------------------------------
+
+def test_sync_activities_auth_exception_invalidates_session(monkeypatch):
+    """Auth exception in sync_activities outer except block → _invalidate_session() called."""
+    sync = GarminSync(email="u", password="p")
+    sync.is_connected = True
+
+    class _FakeClient:
+        def get_activities_by_date(self, *_args, **_kwargs):
+            raise RuntimeError("401 unauthorized")
+
+    sync.client = _FakeClient()
+
+    invalidated = {"called": False}
+
+    def _fake_invalidate():
+        invalidated["called"] = True
+
+    monkeypatch.setattr(sync, "_invalidate_session", _fake_invalidate)
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setattr(garmin_sync, "_emit_failure", lambda *_a, **_k: None)
+
+    result = sync.sync_activities(days_back=1)
+
+    assert result == [], "sync_activities must return empty list on exception"
+    assert invalidated["called"], "_invalidate_session must be called on auth exception"
+
+
+def test_sync_sleep_outer_auth_exception_invalidates_session(monkeypatch):
+    """Auth exception escaping sync_sleep outer try → _invalidate_session() called."""
+    sync = GarminSync(email="u", password="p")
+    sync.is_connected = True
+
+    class _FakeClient:
+        def get_sleep_data(self, _date):
+            raise RuntimeError("401 unauthorized")
+
+    sync.client = _FakeClient()
+
+    invalidated = {"called": False}
+
+    def _fake_invalidate():
+        invalidated["called"] = True
+
+    monkeypatch.setattr(sync, "_invalidate_session", _fake_invalidate)
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    monkeypatch.setattr(garmin_sync, "_emit_failure", lambda *_a, **_k: None)
+
+    # The inner per-day except catches auth errors and calls _invalidate_session + break,
+    # so the outer except won't fire here. Verify via the inner path.
+    result = sync.sync_sleep(days_back=1)
+
+    assert result == []
+    assert invalidated["called"], "_invalidate_session must be called on auth exception in sync_sleep"

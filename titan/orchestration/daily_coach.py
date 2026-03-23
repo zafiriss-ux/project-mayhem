@@ -402,8 +402,17 @@ class DailyCoach:
                 )
 
         sync_status = str(garmin_data.get("status", "ok"))
-        sync_ok = sync_status != "timeout_cancelled"
-        sync_error_class = "GARMIN_TIMEOUT" if not sync_ok else None
+        total_records = (
+            len(garmin_data.get("activities", []))
+            + len(garmin_data.get("sleep", []))
+            + len(garmin_data.get("hrv", []))
+            + len(garmin_data.get("weight", []))
+        )
+        sync_ok = sync_status != "timeout_cancelled" and total_records > 0
+        sync_error_class = (
+            "GARMIN_TIMEOUT" if sync_status == "timeout_cancelled"
+            else ("GARMIN_EMPTY_SYNC" if total_records == 0 else None)
+        )
         self.db.record_sync_outcome(
             source="garmin",
             attempted_at=datetime.now(tz=UTC),
