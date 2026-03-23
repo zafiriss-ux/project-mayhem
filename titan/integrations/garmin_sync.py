@@ -210,18 +210,48 @@ class GarminSync:
                 except Exception as token_err:
                     _token_failure_class = _classify_failure(token_err)
                     if _token_failure_class == GARMIN_RATE_LIMIT:
-                        # Garmin rate-limited the verification ping — the token itself
-                        # is most likely still valid.  Do NOT delete it and do NOT fall
-                        # through to a fresh login (which would also hit 429).
-                        self.client = client
-                        self.is_connected = True
-                        _garmin_event(
-                            "connect_token_assumed_valid",
-                            subsystem="connect",
-                            error_class=token_err.__class__.__name__,
-                            detail="Token ping rate-limited (429); assuming token valid, skipping re-login",
-                        )
-                        return True
+                        # Garmin rate-limited the verification ping.  The token may
+                        # still be valid, but we cannot confirm it.  Attempt one
+                        # lightweight data call as secondary validation to distinguish
+                        # "rate-limited but valid" from "rate-limited and expired".
+                        from datetime import date as _date
+                        try:
+                            client.get_user_summary(_date.today().isoformat())
+                            # Secondary call succeeded — token is genuinely valid.
+                            self.client = client
+                            self.is_connected = True
+                            _garmin_event(
+                                "connect_token_assumed_valid",
+                                subsystem="connect",
+                                error_class=token_err.__class__.__name__,
+                                detail="Token ping rate-limited (429); secondary call succeeded; token valid",
+                            )
+                            return True
+                        except Exception as secondary_err:
+                            _secondary_failure_class = _classify_failure(secondary_err)
+                            if _secondary_failure_class == GARMIN_RATE_LIMIT:
+                                # Both calls rate-limited — preserve token and assume valid.
+                                self.client = client
+                                self.is_connected = True
+                                _garmin_event(
+                                    "connect_token_assumed_valid",
+                                    subsystem="connect",
+                                    error_class=token_err.__class__.__name__,
+                                    detail="Token ping rate-limited (429); secondary call also rate-limited; assuming token valid, skipping re-login",
+                                )
+                                return True
+                            # Secondary call failed with auth (or other) error — token is stale.
+                            # Delete the token and fall through to full re-login.
+                            with contextlib.suppress(Exception):
+                                token_path.unlink(missing_ok=True)
+                            _garmin_event(
+                                "connect_token_stale_after_429",
+                                subsystem="connect",
+                                primary_error_class=token_err.__class__.__name__,
+                                secondary_error_class=secondary_err.__class__.__name__,
+                                secondary_failure_class=_secondary_failure_class,
+                                detail="Token ping rate-limited (429); secondary call failed; token stale, falling through to re-login",
+                            )
                     _garmin_event(
                         "connect_token_load_failed",
                         subsystem="connect",
@@ -464,8 +494,11 @@ class GarminSync:
                         break
                     continue
         except Exception as e:
-            _emit_failure("sync_sleep", _classify_failure(e), e, days_back=days_back)
-            _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
+            failure_class = _classify_failure(e)
+            if failure_class == GARMIN_AUTH_FAIL:
+                self._invalidate_session()
+            _emit_failure("sync_sleep", failure_class, e, days_back=days_back)
+            _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=failure_class, error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
         _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
         if skipped_days:
             _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
@@ -526,8 +559,11 @@ class GarminSync:
                         break
                     continue
         except Exception as e:
-            _emit_failure("sync_hrv", _classify_failure(e), e, days_back=days_back)
-            _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
+            failure_class = _classify_failure(e)
+            if failure_class == GARMIN_AUTH_FAIL:
+                self._invalidate_session()
+            _emit_failure("sync_hrv", failure_class, e, days_back=days_back)
+            _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=failure_class, error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
         _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
         if skipped_days:
             _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")

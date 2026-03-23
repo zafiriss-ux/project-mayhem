@@ -1922,3 +1922,45 @@ def test_run_morning_routine_delegates_pipeline_then_runner(monkeypatch):
     coach.run_morning_routine()
 
     assert call_log == ["pipeline", "runner"]
+
+
+# ---------------------------------------------------------------------------
+# Fix 2: sync returns 0/0/0/0 → sync_ok=False, recorded as failed sync
+# ---------------------------------------------------------------------------
+
+def test_sync_ok_false_when_all_empty_lists_returned(monkeypatch):
+    """When sync_all returns 0/0/0/0 (no timeout), sync_ok must be False and success=False recorded."""
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    # Override garmin to return empty data with no timeout status
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [],
+            "sleep": [],
+            "hrv": [],
+            "hrr": [],
+            "weight": [],
+            "temperature_c": 20,
+            "acwr": 1.0,
+        }
+    )
+    # Add send_structured_alert stub so the staleness branch (if triggered) doesn't error
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: True,
+        send_alert=lambda msg: None,
+        send_structured_alert=lambda **kwargs: None,
+    )
+
+    result = coach.run_morning_routine()
+    assert result is True
+
+    # The DB must have recorded success=False for the garmin sync
+    assert hasattr(coach.db, "_last_sync_outcome"), "record_sync_outcome must have been called"
+    assert coach.db._last_sync_outcome["success"] is False, (
+        "Empty 0/0/0/0 sync must be recorded as success=False"
+    )
+    assert coach.db._last_sync_outcome["error_class"] == "GARMIN_EMPTY_SYNC", (
+        "error_class must be GARMIN_EMPTY_SYNC for empty-data failure"
+    )
