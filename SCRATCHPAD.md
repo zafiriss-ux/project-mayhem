@@ -2331,3 +2331,59 @@ For UI modules in this subsystem, is mixed test topology (mirrored-path for some
 Current enforcement relies on both mirrored and root-level test module placement for `titan/ui` components, creating a scope-local convention split that is observable in active hygiene checks.
 
 **Status:** REVIEWED
+
+---
+
+### [OBS-027] Garmin audit program — findings summary (OBS-025 + OBS-026 + zero-sync investigation)
+
+**Date:** 2026-03-23
+**Trigger:** Garmin audit program registration (OBS-025 deterministic audit + OBS-026 data-to-action audit + zero-sync root-cause investigation)
+**Session context:** Garmin data pipeline correctness audit / safety-gate integrity
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `docs/OBS-025-garmin-audit.md` — line-by-line audit of sync + science engines (37 findings)
+- `docs/OBS-026-garmin-action-audit.md` — data-to-action pipeline audit (27 findings)
+- `docs/garmin_zero_sync_investigation.md` — root-cause analysis of silent 0/0/0/0 sync bug
+- `titan/integrations/garmin_sync.py`
+- `titan/science/trimp_engine.py`, `titan/science/hrv_engine.py`, `titan/science/efficiency_engine.py`
+- `titan/science/governance_engine.py`
+- `titan/science/critical_speed.py`, `titan/science/autonomic_engine.py`
+- `titan/orchestration/daily_coach.py`
+- `titan/features/weekly_plan.py`, `titan/features/nutrition_optimizer.py`
+
+**Observation:**
+Three audit documents produced a consolidated set of findings across the full Garmin data pipeline. The dominant failure mode is **optimistic defaulting**: when Garmin data is missing, stale, or null, the pipeline substitutes "healthy" or "optimal" values, systematically bypassing the safety gates the system was designed to enforce.
+
+**HIGH severity findings (not yet fixed):**
+- OBS-025 F-13: TRIMP uses session maxHR instead of athlete HRmax → misclassified training zones, skewed TSB/CTL/ATL
+- OBS-025 F-29: Sleep field mapping mismatch (`sync_sleep()` → `_persist_garmin_data`) → RHR defaults to 0, H3 gate cannot fire (separate decision pending)
+- OBS-025 F-27/F-32: HRV multi-day sync discards 6 of 7 days → baseline from single day on restart (separate decision pending)
+- OBS-026 B1-F04: ACWR defaults to 1.0 (sweet spot) when Garmin fails → VO2 eligibility and intensity gates see "all clear"
+- OBS-026 B2-F01: CS confidence defaults to 1.0 when `cs_tracker` is None → CS_CONFIDENCE_LOCK never fires
+- Zero-sync Z1+Z2: Stale token assumed valid on 429 + empty sync recorded as success → silent 0/0/0/0 loop (separate decision pending)
+
+**MEDIUM severity findings registered as T5-44–T5-59:**
+- OBS-025 F-07: Population SD in HRV baseline (should be sample SD per Plews et al.) → `hrv_engine.py:66`
+- OBS-025 F-08: No HRV deduplication — overlapping syncs inflate baseline log → `hrv_engine.py:55`
+- OBS-025 F-17: Unguarded ZeroDivisionError when Garmin pace=0 → `efficiency_engine.py:56`
+- OBS-025 F-20: Garmin data age not propagated into governance context → `governance_engine.py` context dict
+- OBS-025 F-21/F-22: Missing sleep/readiness defaults to 100 (safety-first requires conservative) → `governance_engine.py:198,205`
+- OBS-025 F-31: All Garmin activities classified as EASY regardless of actual session type → `daily_coach.py:1256`
+- OBS-026 B1-F03: ReadinessEngine TypeError on null HRV (unguarded null propagation crash path)
+- OBS-026 B1-F05: drift_pct defaults to 0.0 (perfect efficiency) when Garmin fails → `daily_coach.py:708`
+- OBS-026 B2-F02: `apply_thermal()` uses dry-bulb temperature only; ignores dew point despite ESI model in thresholds.py → `critical_speed.py:218-234`
+- OBS-026 B2-F03: AFI confidence not degraded for sparse HRR data → `autonomic_engine.py:120`
+- OBS-026 B3-F01: Weekly plan never re-evaluated on mid-week Garmin data changes → `weekly_plan.py`
+- OBS-026 B3-F02: `_apply_hrv_adjustments` TypeError on null HRV values → `weekly_plan.py`
+- OBS-026 B3-F04: NutritionOptimizer dew_point defaults to 15°C (optimistic) → `nutrition_optimizer.py:188`
+
+**Pattern / scope:**
+System-wide optimistic-default pattern across 9 modules in 4 architectural layers. No project-wide convention for "missing Garmin data → conservative assumption." Each module independently chose an optimistic default.
+
+**Architectural question raised:**
+Should a canonical `MISSING_DATA_POLICY` convention be established in `thresholds.py` that encodes the safety-first rule "missing Garmin data → conservative assumption, never optimistic"?
+
+**Codex assessment (data only, no decision):**
+All HIGH findings directly undermine active safety gates (H2, H3, CS_CONFIDENCE_LOCK, VO2 eligibility). F-29 and B1-F04 combine to allow VO2 eligibility to pass when it should fail due to absent data. The zero-sync bug silently produces stale/default-driven governance on every startup. MEDIUM findings registered as T5-44–T5-59 in TECHNICAL_DEBT.md.
+
+**Status:** PENDING

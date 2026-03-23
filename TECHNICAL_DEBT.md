@@ -2912,6 +2912,166 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### T5-44 · TRIMP uses session maxHR instead of athlete HRmax 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-13
+**Severity:** HIGH
+**Location:** `titan/science/trimp_engine.py:49`, `titan/integrations/garmin_sync.py:335-339`
+**Description:** `sync_activities()` passes session peak HR (not athlete physiological HRmax) to `TRIMPEngine.calculate_edwards_trimp()`, systematically misclassifying training zones and skewing TSB/CTL/ATL downstream.
+
+---
+
+### T5-45 · HRV baseline uses population SD instead of sample SD 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-07
+**Severity:** MEDIUM
+**Location:** `titan/science/hrv_engine.py:66`
+**Description:** HRV baseline divides by N instead of N-1 (Plews et al. require sample SD); for 7-day window this underestimates SD by ~8%, making suppression thresholds 8% tighter than intended.
+
+---
+
+### T5-46 · No HRV deduplication on overlapping Garmin syncs 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-08
+**Severity:** MEDIUM
+**Location:** `titan/science/hrv_engine.py:55`
+**Description:** Overlapping Garmin syncs inflate the HRV log with duplicate entries; duplicate measurements skew baseline and trend calculations.
+
+---
+
+### T5-47 · Unguarded ZeroDivisionError when Garmin activity pace is zero 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-17
+**Severity:** MEDIUM
+**Location:** `titan/science/efficiency_engine.py:56`
+**Description:** `1000.0 / avg_pace_sec_per_km` raises unguarded `ZeroDivisionError` for stationary or zero-pace activities synced from Garmin.
+
+---
+
+### T5-48 · Garmin data age not propagated into governance context 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-20
+**Severity:** MEDIUM
+**Location:** `titan/science/governance_engine.py` (context dict construction)
+**Description:** ADR-0041 `DataTrustLevel` is evaluated at sync boundary but governance cannot distinguish fresh from 24-hour-stale data; staleness is invisible to all safety gates.
+
+---
+
+### T5-49 · Governance defaults missing sleep/readiness to 100 (optimistic) 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-21/F-22
+**Severity:** MEDIUM
+**Location:** `titan/science/governance_engine.py:198,205`
+**Description:** When `sleep_score` or `readiness_score` are absent from context, governance defaults to 100; safety-first design requires conservative defaults (e.g. 40) so the 2-of-4 downgrade can fire.
+
+---
+
+### T5-50 · All Garmin activities persisted with session_type EASY 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-025 F-31
+**Severity:** MEDIUM
+**Location:** `titan/orchestration/daily_coach.py:1256`
+**Description:** `sync_activities()` never sets `session_type`; the hardcoded default `'EASY'` is written to the DB for every activity regardless of actual effort level.
+
+---
+
+### T5-51 · ACWR defaults to 1.0 (sweet spot) when Garmin sync fails 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B1-F04
+**Severity:** HIGH
+**Location:** `titan/orchestration/daily_coach.py:713,727`
+**Description:** `garmin_data.get('acwr', 1.0)` defaults to ACWR=1.0 (sweet spot) on sync failure; `IntensityGovernor` and `VolumeLoadGauge` see "all clear" instead of "unknown," allowing VO2 eligibility and intensity gates to pass on absent data.
+
+---
+
+### T5-52 · CS confidence defaults to 1.0 when cs_tracker is None, bypassing CS_CONFIDENCE_LOCK 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B2-F01
+**Severity:** HIGH
+**Location:** `titan/science/governance_engine.py:149`
+**Description:** `getattr(cs_tracker, "confidence", 1.0)` returns 100% confidence when `cs_tracker` is `None` or uncalibrated; `CS_CONFIDENCE_LOCK` (70% threshold) never fires for athletes with no calibration data.
+
+---
+
+### T5-53 · ReadinessEngine TypeError on null HRV from physiological bounds clamping 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B1-F03
+**Severity:** MEDIUM
+**Location:** `titan/orchestration/daily_coach.py` → `titan/science/readiness_engine.py`
+**Description:** `physiological_bounds.validate_and_clamp()` can null `hrv_ms`; `DailyCoach` passes null `latest_hrv` to `ReadinessEngine.analyze_readiness()` which performs `hrv_diff = today_hrv - baseline_hrv` → unguarded `TypeError` crash.
+
+---
+
+### T5-54 · drift_pct defaults to 0.0 (perfect efficiency) when Garmin sync fails 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B1-F05
+**Severity:** MEDIUM
+**Location:** `titan/orchestration/daily_coach.py:708`
+**Description:** `garmin_data.get('drift_pct', 0.0)` defaults to 0.0 (perfect cardiac efficiency) on sync failure; `IntensityGovernor` should treat `None` drift as a YELLOW trigger, not a pass.
+
+---
+
+### T5-55 · Thermal degradation ignores dew point — ESI model unused in apply_thermal 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B2-F02
+**Severity:** MEDIUM
+**Location:** `titan/science/critical_speed.py:218-234`
+**Description:** `CriticalSpeedTracker.apply_thermal()` uses dry-bulb temperature only; the ESI model (`ESI = temp_c + 0.5 * dew_point_c`) exists in `thresholds.py` and is used for pace adjustments in `DailyCoach`, but is not applied to thermal degradation — a 25°C/90% humidity day (ESI 36.5) gets only 2.5% degradation instead of the physiologically appropriate penalty.
+
+---
+
+### T5-56 · AFI confidence not degraded for sparse HRR data 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B2-F03
+**Severity:** MEDIUM
+**Location:** `titan/science/autonomic_engine.py:120`
+**Description:** `AutonomicFusionEngine` defaults `hrr_norm` to 0.0 (neutral) for sparse HRR data with no confidence penalty; AFI should apply a confidence degradation when HRR history is insufficient.
+
+---
+
+### T5-57 · Weekly plan never re-evaluated on mid-week Garmin data changes 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B3-F01
+**Severity:** MEDIUM
+**Location:** `titan/features/weekly_plan.py`
+**Description:** `WeeklyPlanGenerator` runs once Sunday 20:00 and is static for the week; significant mid-week Garmin data (race performance, illness, unexpected HRV drop) never triggers plan re-evaluation.
+
+---
+
+### T5-58 · WeeklyPlanner HRV TypeError on null values in _apply_hrv_adjustments 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B3-F02
+**Severity:** MEDIUM
+**Location:** `titan/features/weekly_plan.py` (`_apply_hrv_adjustments`)
+**Description:** `hrv_engine.get_hrv_summary()` can return `None` for `baseline` or `latest_hrv`; `_apply_hrv_adjustments` compares `latest < baseline - 10` without null guard → unguarded `TypeError` crash path.
+
+---
+
+### T5-59 · NutritionOptimizer dew_point defaults to 15°C (optimistic) 🔴 OPEN
+
+**Status:** 🔴 OPEN — registered 2026-03-23.
+**Source:** OBS-027 / OBS-026 B3-F04
+**Severity:** MEDIUM
+**Location:** `titan/features/nutrition_optimizer.py:188`
+**Description:** `NutritionOptimizer` defaults `dew_point` to 15°C when weather data is unavailable; 15°C is a comfortable value that underestimates sweat/electrolyte needs — should default to a conservative value or flag as unknown.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3237,6 +3397,22 @@ When an item is completed, mark it here with date and PR reference:
 | T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
 | T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
 | T5-43 | ✅ RESOLVED 2026-03-17 — withings-sync pinned to 4.1.0 in constraints.txt; all 10 test files collectable; 1999 tests green | 2026-03-17 |
+| T5-44 | 🔴 OPEN — OBS-025 F-13 (HIGH): TRIMP uses session maxHR instead of athlete HRmax | 2026-03-23 |
+| T5-45 | 🔴 OPEN — OBS-025 F-07 (MEDIUM): HRV baseline uses population SD instead of sample SD | 2026-03-23 |
+| T5-46 | 🔴 OPEN — OBS-025 F-08 (MEDIUM): No HRV deduplication on overlapping Garmin syncs | 2026-03-23 |
+| T5-47 | 🔴 OPEN — OBS-025 F-17 (MEDIUM): Unguarded ZeroDivisionError when Garmin activity pace=0 | 2026-03-23 |
+| T5-48 | 🔴 OPEN — OBS-025 F-20 (MEDIUM): Garmin data age not propagated into governance context | 2026-03-23 |
+| T5-49 | 🔴 OPEN — OBS-025 F-21/F-22 (MEDIUM): Governance defaults missing sleep/readiness to 100 | 2026-03-23 |
+| T5-50 | 🔴 OPEN — OBS-025 F-31 (MEDIUM): All Garmin activities persisted with session_type EASY | 2026-03-23 |
+| T5-51 | 🔴 OPEN — OBS-026 B1-F04 (HIGH): ACWR defaults to 1.0 when Garmin sync fails | 2026-03-23 |
+| T5-52 | 🔴 OPEN — OBS-026 B2-F01 (HIGH): CS confidence defaults to 1.0 when cs_tracker is None | 2026-03-23 |
+| T5-53 | 🔴 OPEN — OBS-026 B1-F03 (MEDIUM): ReadinessEngine TypeError on null HRV | 2026-03-23 |
+| T5-54 | 🔴 OPEN — OBS-026 B1-F05 (MEDIUM): drift_pct defaults to 0.0 when Garmin sync fails | 2026-03-23 |
+| T5-55 | 🔴 OPEN — OBS-026 B2-F02 (MEDIUM): Thermal degradation ignores dew point / ESI unused | 2026-03-23 |
+| T5-56 | 🔴 OPEN — OBS-026 B2-F03 (MEDIUM): AFI confidence not degraded for sparse HRR data | 2026-03-23 |
+| T5-57 | 🔴 OPEN — OBS-026 B3-F01 (MEDIUM): Weekly plan never re-evaluated on mid-week Garmin changes | 2026-03-23 |
+| T5-58 | 🔴 OPEN — OBS-026 B3-F02 (MEDIUM): WeeklyPlanner HRV TypeError on null values | 2026-03-23 |
+| T5-59 | 🔴 OPEN — OBS-026 B3-F04 (MEDIUM): NutritionOptimizer dew_point defaults to 15°C optimistic | 2026-03-23 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
