@@ -743,3 +743,57 @@ def test_process_override_reason_rejects_empty_reason():
     }
 
     assert bot.process_override_reason(123, "   ") == "⚠️ Override reason is required."
+
+
+def test_start_bot_removes_webhook_before_polling(monkeypatch):
+    """start_bot() calls remove_webhook() to prevent Telegram 409 Conflict."""
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    fake_bot = MagicMock()
+    bot.bot = fake_bot
+
+    # Prevent threads from actually starting
+    monkeypatch.setattr(threading.Thread, "start", lambda self: None)
+
+    bot.start_bot()
+
+    fake_bot.remove_webhook.assert_called_once()
+
+
+def test_start_bot_handles_webhook_removal_failure(monkeypatch):
+    """start_bot() survives remove_webhook() failure and still starts polling."""
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    fake_bot = MagicMock()
+    fake_bot.remove_webhook.side_effect = RuntimeError("network error")
+    bot.bot = fake_bot
+
+    monkeypatch.setattr(threading.Thread, "start", lambda self: None)
+
+    events = []
+    monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **kw: events.append(action))
+
+    bot.start_bot()
+
+    assert "webhook_removal_failed" in events
+    assert bot.is_running
+
+
+def test_start_bot_prevents_double_polling(monkeypatch):
+    """Calling start_bot() twice does not start a second polling thread."""
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    fake_bot = MagicMock()
+    bot.bot = fake_bot
+
+    thread_starts = {"count": 0}
+
+    def counting_start(self):
+        thread_starts["count"] += 1
+
+    monkeypatch.setattr(threading.Thread, "start", counting_start)
+
+    bot.start_bot()
+    first_count = thread_starts["count"]
+    bot.start_bot()  # second call — should be no-op
+    assert thread_starts["count"] == first_count, "Second start_bot() must not spawn extra threads"

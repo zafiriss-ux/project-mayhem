@@ -403,6 +403,14 @@ def main():
     weather  = WeatherAPI()
     telegram = TitanTelegramBot()
 
+    log.info(
+        "startup_instance_audit",
+        extra={
+            "garmin_sync_instances": getattr(GarminSync, "_instance_count", 1),
+            "telegram_bot_instances": 1,
+        },
+    )
+
     # ── Step 3: Science engines ──────────────────────────────────────────────
     hrv_engine       = HRVGuidedEngine()
     tsb_engine       = TSBEngine()

@@ -722,3 +722,30 @@ def test_sync_sleep_outer_auth_exception_invalidates_session(monkeypatch):
 
     assert result == []
     assert invalidated["called"], "_invalidate_session must be called on auth exception in sync_sleep"
+
+
+def test_instance_counter_increments(monkeypatch):
+    """Each GarminSync() increments the class-level instance counter."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *a, **kw: None)
+    monkeypatch.setattr(garmin_sync, "_emit_failure", lambda *a, **kw: None)
+
+    before = GarminSync._instance_count
+    GarminSync(email="a", password="b")
+    after_one = GarminSync._instance_count
+    GarminSync(email="c", password="d")
+    after_two = GarminSync._instance_count
+
+    assert after_one == before + 1
+    assert after_two == before + 2
+
+
+def test_instance_counter_logs_warning_on_duplicate(monkeypatch, caplog):
+    """Second+ GarminSync instance logs a warning about duplicate."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *a, **kw: None)
+    monkeypatch.setattr(garmin_sync, "_emit_failure", lambda *a, **kw: None)
+
+    # Ensure counter is > 0 from previous tests; create one more to trigger warning
+    with caplog.at_level(logging.WARNING):
+        GarminSync(email="x", password="y")
+
+    assert any("garmin_sync_duplicate_instance" in r.message for r in caplog.records)
