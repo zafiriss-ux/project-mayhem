@@ -188,6 +188,7 @@ class GarminSync:
             skipped_days=0,
         ).to_payload()
         self.last_connect_error: str | None = None
+        self._connect_lock = threading.Lock()
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
@@ -210,6 +211,14 @@ class GarminSync:
             self.last_connect_error = "Garmin credentials missing – run setup first."
             _garmin_event("connect_missing_credentials", subsystem="connect", detail="Garmin credentials missing – run setup first.")
             return False
+        with self._connect_lock:
+            # Re-check under lock: another thread may have connected while we waited.
+            if self.is_connected and self.client is not None:
+                return True
+            return self._connect_impl()
+
+    def _connect_impl(self) -> bool:
+        """Actual connection logic. Must be called under ``_connect_lock``."""
         try:
             from garminconnect import Garmin
 
