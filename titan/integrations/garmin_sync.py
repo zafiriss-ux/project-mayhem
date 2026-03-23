@@ -196,15 +196,12 @@ class GarminSync:
     # CONNECTION
     # ------------------------------------------------------------------ #
     def _get_token_path(self) -> Path:
-        """Return path to the persisted Garth session token file."""
-        try:
-            from launcher.validator import get_data_directory
-            base_dir = get_data_directory()
-        except ModuleNotFoundError as err:
-            if err.name not in {"launcher", "launcher.validator"}:
-                raise
-            base_dir = Path.home() / "Documents" / "TITAN"
-        return base_dir / _GARTH_TOKEN_FILENAME
+        """Return path to the persisted Garth session token file.
+
+        Co-located with .env in the project root so credentials and token
+        always live in the same directory.
+        """
+        return Path(__file__).parent.parent.parent / _GARTH_TOKEN_FILENAME
 
     def connect(self) -> bool:
         if not self.email or not self.password:
@@ -312,10 +309,9 @@ class GarminSync:
                         or _attempt >= len(_LOGIN_RETRY_WAITS_S)
                     ):
                         raise
-                    # Delete the fallback token path before retrying.
-                    _alt_token = Path.home() / "Documents" / "TITAN" / _GARTH_TOKEN_FILENAME
+                    # Delete the stale token before retrying.
                     with contextlib.suppress(Exception):
-                        _alt_token.unlink(missing_ok=True)
+                        token_path.unlink(missing_ok=True)
                     wait_s = _LOGIN_RETRY_WAITS_S[_attempt]
                     _garmin_event(
                         "connect_retry_429",
