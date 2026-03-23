@@ -223,6 +223,55 @@ class TestMenuGarminSync:
         # After sync, recent_activities must exist in ctx (may be empty)
         assert "recent_activities" in ctx
 
+    def test_failed_connection_shows_error_message(self, tmp_path, capsys):
+        """When Garmin is not connected, menu must show ❌ and error text."""
+        from titan.ui.menu_system import menu_garmin_sync
+        ctx = _make_ctx(tmp_path)
+        ctx["garmin"].is_connected = False
+        ctx["garmin"].last_connect_error = "InvalidCredentialsException: Invalid credentials"
+        ctx["garmin"].sync_all.return_value = {
+            "activities": [], "sleep": [], "weight": [], "hrv": [],
+        }
+        with patch("builtins.input", return_value=""):
+            menu_garmin_sync(ctx)
+        out = capsys.readouterr().out
+        assert "❌" in out
+        assert "Αποτυχία σύνδεσης" in out
+        assert "InvalidCredentialsException" in out
+
+    def test_timeout_shows_timeout_message(self, tmp_path, capsys):
+        """Timeout status must surface timeout message instead of silent zeros."""
+        from titan.ui.menu_system import menu_garmin_sync
+        ctx = _make_ctx(tmp_path)
+        ctx["garmin"].is_connected = False
+        ctx["garmin"].last_connect_error = None
+        ctx["garmin"].sync_all.return_value = {
+            "activities": [], "sleep": [], "weight": [], "hrv": [],
+            "status": "timeout_cancelled",
+        }
+        with patch("builtins.input", return_value=""):
+            menu_garmin_sync(ctx)
+        out = capsys.readouterr().out
+        assert "Timeout" in out
+        assert "❌" in out
+
+    def test_connected_with_data_shows_checkmarks(self, tmp_path, capsys):
+        """Successful sync with data must show ✅ for each non-zero count."""
+        from titan.ui.menu_system import menu_garmin_sync
+        ctx = _make_ctx(tmp_path)
+        ctx["garmin"].is_connected = True
+        ctx["garmin"].last_connect_error = None
+        ctx["garmin"].sync_all.return_value = {
+            "activities": [{"date": "2026-03-23", "distance_km": 10}],
+            "sleep": [{"date": "2026-03-23", "total_sleep_hours": 7}],
+            "weight": [],
+            "hrv": [],
+        }
+        with patch("builtins.input", return_value=""):
+            menu_garmin_sync(ctx)
+        out = capsys.readouterr().out
+        assert out.count("✅") >= 2  # at least activities + sleep
+
 
 class TestMenuWeightTrend:
 

@@ -703,3 +703,80 @@ def test_stop_background_sync_sets_event_and_joins_thread():
 
     assert sync._stop_event.is_set()
     assert not sync._sync_thread.is_alive()
+
+
+# ── last_connect_error ────────────────────────────────────────────────────────
+
+def test_last_connect_error_set_on_missing_credentials(monkeypatch):
+    """connect() must set last_connect_error when credentials are absent."""
+    monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
+    sync = GarminSync(email="", password="")
+    sync.connect()
+    assert sync.last_connect_error is not None
+    assert "missing" in sync.last_connect_error.lower()
+
+
+def test_last_connect_error_cleared_on_successful_token_load(monkeypatch, tmp_path):
+    """connect() must clear last_connect_error when token loads successfully."""
+    import sys
+    from unittest.mock import MagicMock
+
+    token_file = tmp_path / ".garth_token"
+    token_file.write_text('{"token": "ok"}', encoding="utf-8")
+
+    class _FakeGarminInstance:
+        class garth:
+            @staticmethod
+            def loads(_data):
+                pass
+
+            @staticmethod
+            def dumps():
+                return '{"token": "ok"}'
+
+        @staticmethod
+        def connectapi(_path):
+            pass  # token valid — no exception
+
+        @staticmethod
+        def login():
+            pass
+
+    fake_gc_module = MagicMock()
+    fake_gc_module.Garmin.return_value = _FakeGarminInstance()
+    monkeypatch.setitem(sys.modules, "garminconnect", fake_gc_module)
+    monkeypatch.setattr(
+        "titan.integrations.garmin_sync.GarminSync._get_token_path",
+        lambda _self: token_file,
+    )
+
+    sync = GarminSync(email="a@b.com", password="secret")
+    sync.last_connect_error = "previous error"
+    result = sync.connect()
+
+    assert result is True
+    assert sync.last_connect_error is None
+
+
+def test_last_connect_error_set_on_login_failure(monkeypatch, tmp_path):
+    """connect() must store the exception message when login raises."""
+    import sys
+    from unittest.mock import MagicMock
+
+    token_file = tmp_path / ".garth_token"  # does not exist
+
+    fake_gc_module = MagicMock()
+    fake_gc_module.Garmin.side_effect = RuntimeError("401 Unauthorized: bad password")
+    monkeypatch.setitem(sys.modules, "garminconnect", fake_gc_module)
+    monkeypatch.setattr(
+        "titan.integrations.garmin_sync.GarminSync._get_token_path",
+        lambda _self: token_file,
+    )
+
+    sync = GarminSync(email="a@b.com", password="wrongpass")
+    result = sync.connect()
+
+    assert result is False
+    assert sync.last_connect_error is not None
+    assert "RuntimeError" in sync.last_connect_error

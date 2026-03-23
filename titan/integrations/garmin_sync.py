@@ -187,6 +187,7 @@ class GarminSync:
             synced_days=0,
             skipped_days=0,
         ).to_payload()
+        self.last_connect_error: str | None = None
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
 
@@ -206,6 +207,7 @@ class GarminSync:
 
     def connect(self) -> bool:
         if not self.email or not self.password:
+            self.last_connect_error = "Garmin credentials missing – run setup first."
             _garmin_event("connect_missing_credentials", subsystem="connect", detail="Garmin credentials missing – run setup first.")
             return False
         try:
@@ -226,6 +228,7 @@ class GarminSync:
                     client.connectapi("userprofile-service/socialProfile")
                     self.client = client
                     self.is_connected = True
+                    self.last_connect_error = None
                     _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
                     _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
                     return True
@@ -242,6 +245,7 @@ class GarminSync:
                             # Secondary call succeeded — token is genuinely valid.
                             self.client = client
                             self.is_connected = True
+                            self.last_connect_error = None
                             _garmin_event(
                                 "connect_token_assumed_valid",
                                 subsystem="connect",
@@ -255,6 +259,7 @@ class GarminSync:
                                 # Both calls rate-limited — preserve token and assume valid.
                                 self.client = client
                                 self.is_connected = True
+                                self.last_connect_error = None
                                 _garmin_event(
                                     "connect_token_assumed_valid",
                                     subsystem="connect",
@@ -327,6 +332,7 @@ class GarminSync:
 
             self.client = client
             self.is_connected = True
+            self.last_connect_error = None
             _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
             return True
         except Exception as e:
@@ -339,6 +345,7 @@ class GarminSync:
                     "detail": str(e),
                 },
             )
+            self.last_connect_error = f"{e.__class__.__name__}: {e}"
             _garmin_event("connect_failed", subsystem="connect", failure_class=_classify_failure(e), error_class=e.__class__.__name__, detail="Garmin connection failed. Please retry or re-run Garmin setup.", error_message=str(e))
             self.is_connected = False
             return False
