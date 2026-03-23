@@ -575,6 +575,16 @@ class TitanTelegramBot:
 
         # Polling thread (real listener)
         if self.bot and TELEBOT_AVAILABLE:
+            # Clear any existing webhook to prevent 409 Conflict with polling
+            try:
+                self.bot.remove_webhook()
+            except Exception as e:
+                _telegram_event(
+                    "webhook_removal_failed",
+                    subsystem="start_bot",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                )
             self._poll_thread = threading.Thread(
                 target=self._poll_worker, daemon=True, name="TelegramPoller"
             )
@@ -627,21 +637,34 @@ class TitanTelegramBot:
             )
 
     def _poll_worker(self):
-        """Real polling loop – listens for user commands."""
+        """Real polling loop – listens for user commands.
+
+        Uses exponential backoff on repeated failures to avoid 409 Conflict
+        storms when two polling sessions overlap.
+        """
+        backoff_s = 5
+        max_backoff_s = 120
         while not self._stop_event.is_set():
             try:
                 self.bot.infinity_polling(timeout=10, long_polling_timeout=5)
+                # infinity_polling exited cleanly — reset backoff
+                backoff_s = 5
             except Exception as e:
-                if not self._stop_event.is_set():
-                    _telegram_event(
-                        "failure",
-                        failure_class=POLL_FAIL,
-                        subsystem="poll_worker",
-                        error_class=e.__class__.__name__,
-                        error_message=str(e),
-                    )
-                    _log.warning("telegram_polling_retry", extra={"detail": str(e)})
-                    self._stop_event.wait(timeout=5)
+                if self._stop_event.is_set():
+                    return
+                is_conflict = "409" in str(e).lower() or "conflict" in str(e).lower()
+                _telegram_event(
+                    "failure",
+                    failure_class=POLL_FAIL,
+                    subsystem="poll_worker",
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                    is_conflict=is_conflict,
+                    backoff_s=backoff_s,
+                )
+                _log.warning("telegram_polling_retry", extra={"detail": str(e), "backoff_s": backoff_s})
+                self._stop_event.wait(timeout=backoff_s)
+                backoff_s = min(backoff_s * 2, max_backoff_s)
 
     def _scheduler_worker(self):
         """Fires scheduled tasks at the right time."""

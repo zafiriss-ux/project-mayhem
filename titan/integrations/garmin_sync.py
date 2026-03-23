@@ -153,7 +153,29 @@ class GarminSync:
     Uses the 'garminconnect' library for real data.
     """
 
+    _instance_count: int = 0
+    _instance_lock = threading.Lock()
+
     def __init__(self, email: str = None, password: str = None):
+        with GarminSync._instance_lock:
+            GarminSync._instance_count += 1
+            instance_id = GarminSync._instance_count
+        _log.info(
+            "garmin_sync_instance_created",
+            extra={
+                "instance_id": instance_id,
+                "total_instances": instance_id,
+            },
+        )
+        if instance_id > 1:
+            _log.warning(
+                "garmin_sync_duplicate_instance",
+                extra={
+                    "instance_id": instance_id,
+                    "total_instances": instance_id,
+                    "detail": "Multiple GarminSync instances detected — expected exactly 1 in production",
+                },
+            )
         self.email = _CredentialSecret(email or os.getenv("GARMIN_EMAIL", ""))
         self.password = _CredentialSecret(password or os.getenv("GARMIN_PASSWORD", ""))
         self.client = None
