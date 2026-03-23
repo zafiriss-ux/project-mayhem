@@ -515,10 +515,33 @@ def menu_garmin_sync(ctx: dict):
             hrv_eng.add_hrv_measurement(e["date"], e["rmssd"])
 
     _divider()
-    print(f"  ✅ Activities:  {len(data['activities'])}")
-    print(f"  ✅ Weight:      {len(data['weight'])}")
-    print(f"  ✅ Sleep:       {len(data['sleep'])}")
-    print(f"  ✅ HRV:         {len(data['hrv'])}")
+
+    sync_status  = data.get("status", "ok")
+    acts         = len(data.get("activities", []))
+    wts          = len(data.get("weight", []))
+    slp          = len(data.get("sleep", []))
+    hrv_count    = len(data.get("hrv", []))
+    is_connected = getattr(garmin, "is_connected", True)
+
+    if sync_status == "timeout_cancelled":
+        print("  ❌ Timeout – η σύνδεση με Garmin ήρθε timeout.")
+        print("     Δοκίμασε ξανά σε λίγο ή αύξησε GARMIN_SYNC_TIMEOUT_S στο .env.\n")
+    elif not is_connected:
+        print("  ❌ Αποτυχία σύνδεσης στο Garmin Connect.")
+        last_err = getattr(garmin, "last_connect_error", None)
+        if last_err:
+            print(f"     Σφάλμα: {last_err}")
+        print("     Έλεγξε email/password στο .env ή τρέξε ξανά το setup (διέγραψε .env).\n")
+
+    def _icon(count: int) -> str:
+        if count > 0:
+            return "✅"
+        return "❌" if not is_connected else "⚠️"
+
+    print(f"  {_icon(acts)} Activities:  {acts}")
+    print(f"  {_icon(wts)} Weight:      {wts}")
+    print(f"  {_icon(slp)} Sleep:       {slp}")
+    print(f"  {_icon(hrv_count)} HRV:         {hrv_count}")
     _divider()
     input("  [Enter] ")
 
