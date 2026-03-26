@@ -2917,6 +2917,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-13
 **Severity:** HIGH
+**Workflow Path: A**
 **Location:** `titan/science/trimp_engine.py:49`, `titan/integrations/garmin_sync.py:335-339`
 **Description:** `sync_activities()` passes session peak HR (not athlete physiological HRmax) to `TRIMPEngine.calculate_edwards_trimp()`, systematically misclassifying training zones and skewing TSB/CTL/ATL downstream.
 
@@ -2927,6 +2928,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-07
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/hrv_engine.py:66`
 **Description:** HRV baseline divides by N instead of N-1 (Plews et al. require sample SD); for 7-day window this underestimates SD by ~8%, making suppression thresholds 8% tighter than intended.
 
@@ -2937,6 +2939,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-08
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/hrv_engine.py:55`
 **Description:** Overlapping Garmin syncs inflate the HRV log with duplicate entries; duplicate measurements skew baseline and trend calculations.
 
@@ -2947,6 +2950,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-17
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/efficiency_engine.py:56`
 **Description:** `1000.0 / avg_pace_sec_per_km` raises unguarded `ZeroDivisionError` for stationary or zero-pace activities synced from Garmin.
 
@@ -2957,6 +2961,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-20
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/governance_engine.py` (context dict construction)
 **Description:** ADR-0041 `DataTrustLevel` is evaluated at sync boundary but governance cannot distinguish fresh from 24-hour-stale data; staleness is invisible to all safety gates.
 
@@ -2967,6 +2972,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-21/F-22
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/governance_engine.py:198,205`
 **Description:** When `sleep_score` or `readiness_score` are absent from context, governance defaults to 100; safety-first design requires conservative defaults (e.g. 40) so the 2-of-4 downgrade can fire.
 
@@ -2977,6 +2983,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-025 F-31
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:1256`
 **Description:** `sync_activities()` never sets `session_type`; the hardcoded default `'EASY'` is written to the DB for every activity regardless of actual effort level.
 
@@ -2987,6 +2994,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B1-F04
 **Severity:** HIGH
+**Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:713,727`
 **Description:** `garmin_data.get('acwr', 1.0)` defaults to ACWR=1.0 (sweet spot) on sync failure; `IntensityGovernor` and `VolumeLoadGauge` see "all clear" instead of "unknown," allowing VO2 eligibility and intensity gates to pass on absent data.
 
@@ -2997,6 +3005,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B2-F01
 **Severity:** HIGH
+**Workflow Path: A**
 **Location:** `titan/science/governance_engine.py:149`
 **Description:** `getattr(cs_tracker, "confidence", 1.0)` returns 100% confidence when `cs_tracker` is `None` or uncalibrated; `CS_CONFIDENCE_LOCK` (70% threshold) never fires for athletes with no calibration data.
 
@@ -3007,6 +3016,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B1-F03
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py` → `titan/science/readiness_engine.py`
 **Description:** `physiological_bounds.validate_and_clamp()` can null `hrv_ms`; `DailyCoach` passes null `latest_hrv` to `ReadinessEngine.analyze_readiness()` which performs `hrv_diff = today_hrv - baseline_hrv` → unguarded `TypeError` crash.
 
@@ -3017,6 +3027,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B1-F05
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:708`
 **Description:** `garmin_data.get('drift_pct', 0.0)` defaults to 0.0 (perfect cardiac efficiency) on sync failure; `IntensityGovernor` should treat `None` drift as a YELLOW trigger, not a pass.
 
@@ -3027,6 +3038,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B2-F02
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/critical_speed.py:218-234`
 **Description:** `CriticalSpeedTracker.apply_thermal()` uses dry-bulb temperature only; the ESI model (`ESI = temp_c + 0.5 * dew_point_c`) exists in `thresholds.py` and is used for pace adjustments in `DailyCoach`, but is not applied to thermal degradation — a 25°C/90% humidity day (ESI 36.5) gets only 2.5% degradation instead of the physiologically appropriate penalty.
 
@@ -3037,6 +3049,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B2-F03
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/science/autonomic_engine.py:120`
 **Description:** `AutonomicFusionEngine` defaults `hrr_norm` to 0.0 (neutral) for sparse HRR data with no confidence penalty; AFI should apply a confidence degradation when HRR history is insufficient.
 
@@ -3047,6 +3060,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B3-F01
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/features/weekly_plan.py`
 **Description:** `WeeklyPlanGenerator` runs once Sunday 20:00 and is static for the week; significant mid-week Garmin data (race performance, illness, unexpected HRV drop) never triggers plan re-evaluation.
 
@@ -3057,6 +3071,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B3-F02
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/features/weekly_plan.py` (`_apply_hrv_adjustments`)
 **Description:** `hrv_engine.get_hrv_summary()` can return `None` for `baseline` or `latest_hrv`; `_apply_hrv_adjustments` compares `latest < baseline - 10` without null guard → unguarded `TypeError` crash path.
 
@@ -3067,6 +3082,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Status:** 🔴 OPEN — registered 2026-03-23.
 **Source:** OBS-027 / OBS-026 B3-F04
 **Severity:** MEDIUM
+**Workflow Path: A**
 **Location:** `titan/features/nutrition_optimizer.py:188`
 **Description:** `NutritionOptimizer` defaults `dew_point` to 15°C when weather data is unavailable; 15°C is a comfortable value that underestimates sweat/electrolyte needs — should default to a conservative value or flag as unknown.
 

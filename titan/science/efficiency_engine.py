@@ -50,7 +50,7 @@ class EfficiencyEngine:
         Returns:
             Efficiency factor value
         """
-        if avg_hr == 0:
+        if not avg_pace_sec_per_km or avg_hr == 0:
             return None
 
         speed_m_per_s = 1000.0 / avg_pace_sec_per_km
