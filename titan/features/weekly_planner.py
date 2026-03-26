@@ -366,7 +366,7 @@ class WeeklyPlanGenerator:
         baseline = hrv_summary.get("baseline")
         latest = hrv_summary.get("latest_hrv")
 
-        if baseline and latest and latest < baseline - 10:  # HRV significantly suppressed
+        if baseline is not None and latest is not None and latest < baseline - 10:
             # Reduce intensity across the week
             for day in structure:
                 if day["session_type"] in ["INTERVALS", "HAMMER"]:
