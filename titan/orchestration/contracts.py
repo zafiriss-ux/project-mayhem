@@ -83,7 +83,7 @@ class DailyCoachContext(TypedDict):
     readiness_score: float
     glycogen_debt: float
     fatigue_level: str
-    acwr: float
+    acwr: float | None
     days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int
@@ -112,7 +112,7 @@ class DailyCoachContextContract:
     readiness_score: float
     glycogen_debt: float
     fatigue_level: str
-    acwr: float
+    acwr: float | None
     days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int

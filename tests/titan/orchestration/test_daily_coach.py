@@ -1964,3 +1964,85 @@ def test_sync_ok_false_when_all_empty_lists_returned(monkeypatch):
     assert coach.db._last_sync_outcome["error_class"] == "GARMIN_EMPTY_SYNC", (
         "error_class must be GARMIN_EMPTY_SYNC for empty-data failure"
     )
+
+
+class TestT5_51_AcwrNullPropagation:
+    """T5-51: Missing ACWR must propagate as None, not silently default to 1.0 (sweet-spot)."""
+
+    def test_vlg_receives_none_when_acwr_absent_from_garmin(self):
+        """When garmin_data has no 'acwr' key, VLG.resolve must receive acwr=None (not 1.0)."""
+        from types import SimpleNamespace
+        coach = MinimalCoachFactory.build()
+        coach.garmin = SimpleNamespace(
+            sync_all=lambda: {
+                "activities": [],
+                "sleep": [{"restingHeartRate": 50, "sleepScores": {"overall": {"value": 80}}, "sleepTimeSeconds": 25200}],
+                "hrv": [{"date": "2026-03-04", "rmssd": 45.0}],
+                "hrr": [],
+                "weight": [],
+                "temperature_c": 20,
+                # deliberately omit 'acwr'
+            },
+            is_api_degraded=False,
+        )
+        captured = {}
+
+        def capturing_vlg_resolve(**kwargs):
+            captured["acwr"] = kwargs.get("acwr")
+            return SimpleNamespace(color="GREEN")
+
+        coach.vlg = SimpleNamespace(resolve=capturing_vlg_resolve)
+        coach.run_morning_routine()
+        assert captured.get("acwr") is None  # must be None, NOT 1.0
+
+    def test_record_decision_acwr_not_sweet_spot_when_absent(self):
+        """When garmin_data has no 'acwr', record_decision must NOT receive acwr=1.0."""
+        from types import SimpleNamespace
+        coach = MinimalCoachFactory.build()
+        coach.garmin = SimpleNamespace(
+            sync_all=lambda: {
+                "activities": [],
+                "sleep": [{"restingHeartRate": 50, "sleepScores": {"overall": {"value": 80}}, "sleepTimeSeconds": 25200}],
+                "hrv": [{"date": "2026-03-04", "rmssd": 45.0}],
+                "hrr": [],
+                "weight": [],
+                "temperature_c": 20,
+                # deliberately omit 'acwr'
+            },
+            is_api_degraded=False,
+        )
+        captured = {}
+        coach.outcome_tracker = SimpleNamespace(
+            record_decision=lambda **kwargs: captured.update({"acwr": kwargs.get("acwr")})
+        )
+        coach.run_morning_routine()
+        assert captured.get("acwr") != 1.0  # must NOT be the sweet-spot
+
+    def test_daily_coach_context_contract_accepts_none_acwr(self):
+        """DailyCoachContextContract must accept acwr=None without error."""
+        from titan.orchestration.contracts import DailyCoachContextContract
+        contract = DailyCoachContextContract(
+            db=object(),
+            cs_tracker=object(),
+            afi_constraints={},
+            intensity_gate_result={},
+            readiness_score=50.0,
+            glycogen_debt=0.0,
+            fatigue_level="LOW",
+            acwr=None,
+            days_since_last_vo2=None,
+            fueling_confirmed=False,
+            planned_duration_min=45,
+            today_hrv=0.0,
+            baseline_hrv=0.0,
+            hrv_std_dev=0.0,
+            today_rhr=0,
+            baseline_rhr=0.0,
+            sleep_score=0,
+            subjective_fatigue_score=0,
+            tsb_value=0.0,
+            injury_flag=False,
+            priority_vector={},
+            lock_thresholds={},
+        )
+        assert contract.acwr is None
