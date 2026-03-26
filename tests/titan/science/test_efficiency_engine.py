@@ -1,5 +1,34 @@
+import pytest
+
 from titan.science.efficiency_engine import EfficiencyEngine
 
+# ── T5-47: pace=0 / pace=None guard ──────────────────────────────────────────
+
+def test_calculate_efficiency_factor_returns_none_when_pace_is_zero() -> None:
+    """T5-47: ZeroDivisionError guard — pace=0 must return None, not raise."""
+    result = EfficiencyEngine.calculate_efficiency_factor(
+        avg_pace_sec_per_km=0, avg_hr=150
+    )
+    assert result is None
+
+
+def test_calculate_efficiency_factor_returns_none_when_pace_is_none() -> None:
+    """T5-47: TypeError guard — pace=None must return None, not raise."""
+    result = EfficiencyEngine.calculate_efficiency_factor(
+        avg_pace_sec_per_km=None, avg_hr=150  # type: ignore[arg-type]
+    )
+    assert result is None
+
+
+def test_calculate_efficiency_factor_happy_path_returns_ef() -> None:
+    """Regression: valid 5:00/km @ 150 bpm = 1000/300/150 ≈ 0.02222."""
+    result = EfficiencyEngine.calculate_efficiency_factor(
+        avg_pace_sec_per_km=300.0, avg_hr=150.0
+    )
+    assert result == pytest.approx(0.02222, rel=1e-3)
+
+
+# ── trend helpers ─────────────────────────────────────────────────────────────
 
 def _build_engine_with_history(previous_values: list[float], recent_values: list[float]) -> EfficiencyEngine:
     engine = EfficiencyEngine()
