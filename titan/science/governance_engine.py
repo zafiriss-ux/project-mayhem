@@ -146,7 +146,7 @@ class GovernanceEngine:
 
     def check_cs_confidence_lock(self, cs_tracker: Any, threshold: float | None = None) -> dict:
         effective_threshold = threshold if threshold is not None else self.CS_CONFIDENCE_THRESHOLD
-        confidence = getattr(cs_tracker, "confidence", 1.0)
+        confidence = getattr(cs_tracker, "confidence", 0.0)
         if confidence < effective_threshold:
             return {
                 "locked": True,
