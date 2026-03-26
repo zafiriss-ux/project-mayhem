@@ -166,7 +166,9 @@ class TestGovernanceEngineExceptionPaths:
         """subjective_fatigue_score non-castable → TypeError except in _evaluate_2of4
         and int() except in _check_hard_stops (H5 gate): both fall back to 0."""
         plan = {"session_type": "INTERVALS", "duration_min": 60}
-        ctx = {"subjective_fatigue_score": "extreme"}
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 downgrade gate does not
+        # fire alongside the subjective_fatigue fallback under test.
+        ctx = {"subjective_fatigue_score": "extreme", "sleep_score": 80, "readiness_score": 70}
         result = gov.apply_constraints(plan, ctx)
         # Falls back to 0 → no H5 gate fires
         assert result.get("session_type") == "INTERVALS"
@@ -348,7 +350,9 @@ class TestFuelingGateUncoveredBranches:
     def test_tempo_90min_without_fueling_locks_to_easy(self):
         """TEMPO ≥ 90 min, fueling_confirmed=False → LOCK phase 2 (lines 375-385)."""
         plan = {"session_type": "TEMPO", "duration_min": 90}
-        result = gov.apply_constraints(plan, {"fueling_confirmed": False})
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 downgrade does not fire
+        # before the fueling gate, which is what this test is specifically exercising.
+        result = gov.apply_constraints(plan, {"fueling_confirmed": False, "sleep_score": 80, "readiness_score": 70})
         assert result.get("fueling_gate", {}).get("action") == "LOCK"
         assert result.get("fueling_gate", {}).get("locked_to") == "EASY"
         assert result["session_type"] == "EASY"

@@ -195,16 +195,16 @@ class GovernanceEngine:
             indicators.append("I1_hrv_soft")
 
         try:
-            sleep_score = float(context.get("sleep_score", 100))
+            sleep_score = float(context.get("sleep_score", 40))
         except (TypeError, ValueError):
-            sleep_score = 100
+            sleep_score = 40
         if sleep_score < 60:
             indicators.append("I2_sleep")
 
         try:
-            readiness_score = float(context.get("readiness_score", 100))
+            readiness_score = float(context.get("readiness_score", 40))
         except (TypeError, ValueError):
-            readiness_score = 100
+            readiness_score = 40
         if readiness_score < 50:
             indicators.append("I3_readiness")
 
