@@ -710,7 +710,7 @@ class DailyCoach:
 
             'fatigue_level': fatigue_level,
 
-            'acwr': garmin_data.get('acwr', 1.0),
+            'acwr': garmin_data.get('acwr'),
             'readiness_score': readiness.get('score', 50),
             'planned_session': today_session.get('session_type', 'EASY'),
             'planned_volume_pct': today_session.get('volume_pct', 1.0),
@@ -724,7 +724,7 @@ class DailyCoach:
         # the APL resolve phase-aware gate ordering and adaptive thresholds.
         # Both results are injected into the governance context so that
         # GovernanceEngine reads them without any gate logic being altered.
-        _acwr_for_vlg = _safe_float(garmin_data.get('acwr', 1.0), 1.0)
+        _acwr_for_vlg = garmin_data.get('acwr')
         _tsb_for_vlg = _safe_float(tsb_value, 0.0)
         vlg_state = self.vlg.resolve(
             tsb_value    = _tsb_for_vlg,
@@ -1011,7 +1011,7 @@ class DailyCoach:
                     phase=str(trace.get("phase", "BASE")),
                     vlg_color=str(trace.get("vlg_color", "GREEN")),
                     apl_result=dict(trace.get("apl_result", {})),
-                    acwr=float(trace.get("acwr", 1.0)),
+                    acwr=_safe_float(trace.get("acwr"), 0.0),
                     tsb_value=float(trace.get("tsb", 0.0)),
                     readiness_score=float(trace.get("readiness_score", 50.0)),
                     glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
@@ -1096,7 +1096,7 @@ class DailyCoach:
         readiness_score: float,
         glycogen_debt: float,
         fatigue_level: str,
-        acwr: float,
+        acwr: float | None,
         days_since_last_vo2: Any,
         fueling_confirmed: bool,
         planned_duration_min: int,
