@@ -961,6 +961,38 @@ Deferred to Phase 9 housekeeping if normalization is desired at that point.
 
 ---
 
+### [DEC-025] Response to OBS-027 — Wave 1/2 sequencing: five safety-default fixes resolved; remaining findings staged for Wave 2
+
+**Date:** 2026-03-26
+**Architect:** Claude
+**OBS verified:** YES — verified PRs #526–#530 merged to main 2026-03-26. Read PR bodies and confirmed:
+  - PR #526 (T5-47): `EfficiencyEngine` pace zero-guard; commit `52537ed`.
+  - PR #527 (T5-53): `ReadinessEngine` null-HRV guard; commit `0d9f852`.
+  - PR #528 (T5-58): `_apply_hrv_adjustments` `is not None` guard; commit `d0dbd67`.
+  - PR #529 (T5-52): CS confidence default `1.0 → 0.0`; commit `19f9a1d`.
+  - PR #530 (T5-51): ACWR `None` propagation; commit `5f68fc5`.
+  All five are code-complete with tests and all three gates passed.
+
+**Architect finding:**
+OBS-027 surfaced a system-wide optimistic-defaulting pattern across 9 modules. Wave 1 targeted
+the five items with the clearest fix scope and no architectural ambiguity (T5-47, T5-51, T5-52,
+T5-53, T5-58). These are now RESOLVED. The remaining open items from OBS-027 (T5-44–T5-50,
+T5-54–T5-57, T5-59) require either deeper architectural decisions (e.g. T5-49 conservative
+defaults policy, T5-44 TRIMP HRmax source) or broader scope (T5-57 mid-week plan
+re-evaluation) and are deferred to Wave 2 sequencing under normal Phase 8 prioritization.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| RESOLVED | T5-47, T5-51, T5-52, T5-53, T5-58 — all closed via Wave 1 PRs #526–#530 |
+| DEFERRED | T5-44–T5-50, T5-54–T5-57, T5-59 — remain OPEN; Wave 2 sequencing per Phase 8 tier order |
+| NO_ACTION | `MISSING_DATA_POLICY` canonical convention (OBS-027 architectural question) — deferred; ADR_NEEDED before any policy codification |
+
+**OBS-027 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
 ### [DEC-023] Response to OBS-023 — Nutrition public API test gap: T5-42 registered
 
 **Date:** 2026-03-16
@@ -2386,4 +2418,4 @@ Should a canonical `MISSING_DATA_POLICY` convention be established in `threshold
 **Codex assessment (data only, no decision):**
 All HIGH findings directly undermine active safety gates (H2, H3, CS_CONFIDENCE_LOCK, VO2 eligibility). F-29 and B1-F04 combine to allow VO2 eligibility to pass when it should fail due to absent data. The zero-sync bug silently produces stale/default-driven governance on every startup. MEDIUM findings registered as T5-44–T5-59 in TECHNICAL_DEBT.md.
 
-**Status:** PENDING
+**Status:** REVIEWED
