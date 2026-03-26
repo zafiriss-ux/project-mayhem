@@ -170,6 +170,44 @@ def test_get_today_session_estimates_duration_for_missing_duration(monkeypatch):
     assert session["session_type"] == "TEMPO"
 
 
+# ── T5-58: null HRV guard in _apply_hrv_adjustments ──────────────────────────
+
+def test_apply_hrv_adjustments_does_not_raise_when_baseline_is_none() -> None:
+    """T5-58: TypeError guard — baseline=None must not raise."""
+    planner = _planner()
+    structure = [{"session_type": "INTERVALS", "details": "i"}]
+
+    result = planner._apply_hrv_adjustments(structure, {"baseline": None, "latest_hrv": 50.0})
+
+    assert result[0]["session_type"] == "INTERVALS"
+
+
+def test_apply_hrv_adjustments_does_not_raise_when_latest_hrv_is_none() -> None:
+    """T5-58: TypeError guard — latest_hrv=None must not raise."""
+    planner = _planner()
+    structure = [{"session_type": "INTERVALS", "details": "i"}]
+
+    result = planner._apply_hrv_adjustments(structure, {"baseline": 70.0, "latest_hrv": None})
+
+    assert result[0]["session_type"] == "INTERVALS"
+
+
+def test_apply_hrv_adjustments_does_not_downgrade_when_both_hrv_are_none() -> None:
+    """T5-58: when both HRV values are None, structure is unchanged."""
+    planner = _planner()
+    structure = [
+        {"session_type": "INTERVALS", "details": "i"},
+        {"session_type": "TEMPO", "details": "t"},
+    ]
+
+    result = planner._apply_hrv_adjustments(structure, {"baseline": None, "latest_hrv": None})
+
+    assert result[0]["session_type"] == "INTERVALS"
+    assert result[1]["session_type"] == "TEMPO"
+
+
+# ── existing tests ────────────────────────────────────────────────────────────
+
 def test_apply_hrv_adjustments_downgrades_intervals_and_tempo_when_suppressed():
     planner = _planner()
     structure = [

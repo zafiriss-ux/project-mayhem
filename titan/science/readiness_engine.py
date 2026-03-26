@@ -32,16 +32,19 @@ class ReadinessEngine:
         }
 
         # HRV component
-        hrv_diff = today_hrv - baseline_hrv
-        if hrv_diff < -8:
-            score -= 20
-            deductions["hrv"] = 20
-        elif hrv_diff < -5:
-            score -= 10
-            deductions["hrv"] = 10
-        elif hrv_diff > 10:
-            score += 10
-            deductions["hrv_bonus"] = 10
+        if today_hrv is not None and baseline_hrv is not None:
+            hrv_diff = today_hrv - baseline_hrv
+            if hrv_diff < -8:
+                score -= 20
+                deductions["hrv"] = 20
+            elif hrv_diff < -5:
+                score -= 10
+                deductions["hrv"] = 10
+            elif hrv_diff > 10:
+                score += 10
+                deductions["hrv_bonus"] = 10
+        else:
+            hrv_diff = None
 
         # RHR component
         rhr_diff = today_rhr - baseline_rhr
