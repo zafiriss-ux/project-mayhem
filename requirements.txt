@@ -7,7 +7,7 @@ numpy==1.26.4          # Data processing
 
 # API Integrations
 garminconnect==0.2.13  # Garmin Connect API (activity sync)
-requests==2.32.4       # HTTP client (Garmin, weather, webhooks)
+requests==2.33.0       # HTTP client (Garmin, weather, webhooks)
 pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
 
 # Persistence / migrations (T5-08-B D2a)
