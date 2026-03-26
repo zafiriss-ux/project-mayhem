@@ -2945,14 +2945,17 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-47 · Unguarded ZeroDivisionError when Garmin activity pace is zero 🔴 OPEN
+### T5-47 · Unguarded ZeroDivisionError when Garmin activity pace is zero ✅ RESOLVED 2026-03-26
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-26. Commit: 52537ed (PR #526).
 **Source:** OBS-027 / OBS-025 F-17
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/efficiency_engine.py:56`
 **Description:** `1000.0 / avg_pace_sec_per_km` raises unguarded `ZeroDivisionError` for stationary or zero-pace activities synced from Garmin.
+
+**Resolution:** `EfficiencyEngine.calculate_efficiency_factor` now returns `None` when `avg_pace_sec_per_km` is zero or `None`, eliminating the unguarded `ZeroDivisionError` on stationary or zero-pace Garmin activities.
+**Task learning:** Pace-based calculations must return `None` (not `0.0`) for absent or zero data so downstream callers can distinguish "no data" from "minimum efficiency."
 
 ---
 
@@ -2989,36 +2992,45 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-51 · ACWR defaults to 1.0 (sweet spot) when Garmin sync fails 🔴 OPEN
+### T5-51 · ACWR defaults to 1.0 (sweet spot) when Garmin sync fails ✅ RESOLVED 2026-03-26
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-26. Commit: 5f68fc5 (PR #530).
 **Source:** OBS-027 / OBS-026 B1-F04
 **Severity:** HIGH
 **Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:713,727`
 **Description:** `garmin_data.get('acwr', 1.0)` defaults to ACWR=1.0 (sweet spot) on sync failure; `IntensityGovernor` and `VolumeLoadGauge` see "all clear" instead of "unknown," allowing VO2 eligibility and intensity gates to pass on absent data.
 
+**Resolution:** `garmin_data.get('acwr', 1.0)` replaced with `None` propagation; downstream null guards use `0.0` where a float is required, so missing ACWR is no longer treated as an "all-clear" sweet-spot by the governance pipeline.
+**Task learning:** Optimistic defaults on safety-critical fields must be replaced with `None` propagation so governance gates correctly reflect data absence rather than optimal state.
+
 ---
 
-### T5-52 · CS confidence defaults to 1.0 when cs_tracker is None, bypassing CS_CONFIDENCE_LOCK 🔴 OPEN
+### T5-52 · CS confidence defaults to 1.0 when cs_tracker is None, bypassing CS_CONFIDENCE_LOCK ✅ RESOLVED 2026-03-26
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-26. Commit: 19f9a1d (PR #529).
 **Source:** OBS-027 / OBS-026 B2-F01
 **Severity:** HIGH
 **Workflow Path: A**
 **Location:** `titan/science/governance_engine.py:149`
 **Description:** `getattr(cs_tracker, "confidence", 1.0)` returns 100% confidence when `cs_tracker` is `None` or uncalibrated; `CS_CONFIDENCE_LOCK` (70% threshold) never fires for athletes with no calibration data.
 
+**Resolution:** `getattr(cs_tracker, "confidence", 1.0)` default changed to `0.0`, ensuring `CS_CONFIDENCE_LOCK` fires for any uncalibrated tracker instead of being silently bypassed.
+**Task learning:** Safety lock defaults must use the most conservative value (0.0) when the controlling attribute is absent, never the most permissive (1.0).
+
 ---
 
-### T5-53 · ReadinessEngine TypeError on null HRV from physiological bounds clamping 🔴 OPEN
+### T5-53 · ReadinessEngine TypeError on null HRV from physiological bounds clamping ✅ RESOLVED 2026-03-26
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-26. Commit: 0d9f852 (PR #527).
 **Source:** OBS-027 / OBS-026 B1-F03
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py` → `titan/science/readiness_engine.py`
 **Description:** `physiological_bounds.validate_and_clamp()` can null `hrv_ms`; `DailyCoach` passes null `latest_hrv` to `ReadinessEngine.analyze_readiness()` which performs `hrv_diff = today_hrv - baseline_hrv` → unguarded `TypeError` crash.
+
+**Resolution:** `ReadinessEngine.analyze_readiness` now null-guards the HRV diff calculation; when either `today_hrv` or `baseline_hrv` is `None`, the HRV component is skipped and the readiness score is computed from remaining components only.
+**Task learning:** Science engines receiving values from the physiological bounds clamping layer must guard every arithmetic operation on those values against `None`.
 
 ---
 
@@ -3066,14 +3078,17 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-58 · WeeklyPlanner HRV TypeError on null values in _apply_hrv_adjustments 🔴 OPEN
+### T5-58 · WeeklyPlanner HRV TypeError on null values in _apply_hrv_adjustments ✅ RESOLVED 2026-03-26
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-26. Commit: d0dbd67 (PR #528).
 **Source:** OBS-027 / OBS-026 B3-F02
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/features/weekly_plan.py` (`_apply_hrv_adjustments`)
 **Description:** `hrv_engine.get_hrv_summary()` can return `None` for `baseline` or `latest_hrv`; `_apply_hrv_adjustments` compares `latest < baseline - 10` without null guard → unguarded `TypeError` crash path.
+
+**Resolution:** `_apply_hrv_adjustments` now uses explicit `is not None` guards on both `baseline` and `latest_hrv` before comparison, preventing `TypeError` when `get_hrv_summary()` returns null HRV values.
+**Task learning:** Use `is not None` rather than truthy checks for numeric null guards to avoid silently skipping valid `0.0` values while correctly blocking `None`.
 
 ---
 
@@ -3416,18 +3431,18 @@ When an item is completed, mark it here with date and PR reference:
 | T5-44 | 🔴 OPEN — OBS-025 F-13 (HIGH): TRIMP uses session maxHR instead of athlete HRmax | 2026-03-23 |
 | T5-45 | 🔴 OPEN — OBS-025 F-07 (MEDIUM): HRV baseline uses population SD instead of sample SD | 2026-03-23 |
 | T5-46 | 🔴 OPEN — OBS-025 F-08 (MEDIUM): No HRV deduplication on overlapping Garmin syncs | 2026-03-23 |
-| T5-47 | 🔴 OPEN — OBS-025 F-17 (MEDIUM): Unguarded ZeroDivisionError when Garmin activity pace=0 | 2026-03-23 |
+| T5-47 | ✅ RESOLVED 2026-03-26 — `EfficiencyEngine` returns `None` for zero/null pace; crash path eliminated (PR #526, commit 52537ed) | 2026-03-26 |
 | T5-48 | 🔴 OPEN — OBS-025 F-20 (MEDIUM): Garmin data age not propagated into governance context | 2026-03-23 |
 | T5-49 | 🔴 OPEN — OBS-025 F-21/F-22 (MEDIUM): Governance defaults missing sleep/readiness to 100 | 2026-03-23 |
 | T5-50 | 🔴 OPEN — OBS-025 F-31 (MEDIUM): All Garmin activities persisted with session_type EASY | 2026-03-23 |
-| T5-51 | 🔴 OPEN — OBS-026 B1-F04 (HIGH): ACWR defaults to 1.0 when Garmin sync fails | 2026-03-23 |
-| T5-52 | 🔴 OPEN — OBS-026 B2-F01 (HIGH): CS confidence defaults to 1.0 when cs_tracker is None | 2026-03-23 |
-| T5-53 | 🔴 OPEN — OBS-026 B1-F03 (MEDIUM): ReadinessEngine TypeError on null HRV | 2026-03-23 |
+| T5-51 | ✅ RESOLVED 2026-03-26 — ACWR propagates `None` on sync failure; governance pipeline no longer sees optimistic sweet-spot (PR #530, commit 5f68fc5) | 2026-03-26 |
+| T5-52 | ✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d) | 2026-03-26 |
+| T5-53 | ✅ RESOLVED 2026-03-26 — `ReadinessEngine` null-guards HRV diff; skips HRV component gracefully when either value is `None` (PR #527, commit 0d9f852) | 2026-03-26 |
 | T5-54 | 🔴 OPEN — OBS-026 B1-F05 (MEDIUM): drift_pct defaults to 0.0 when Garmin sync fails | 2026-03-23 |
 | T5-55 | 🔴 OPEN — OBS-026 B2-F02 (MEDIUM): Thermal degradation ignores dew point / ESI unused | 2026-03-23 |
 | T5-56 | 🔴 OPEN — OBS-026 B2-F03 (MEDIUM): AFI confidence not degraded for sparse HRR data | 2026-03-23 |
 | T5-57 | 🔴 OPEN — OBS-026 B3-F01 (MEDIUM): Weekly plan never re-evaluated on mid-week Garmin changes | 2026-03-23 |
-| T5-58 | 🔴 OPEN — OBS-026 B3-F02 (MEDIUM): WeeklyPlanner HRV TypeError on null values | 2026-03-23 |
+| T5-58 | ✅ RESOLVED 2026-03-26 — `_apply_hrv_adjustments` uses explicit `is not None` guards; crash path on null HRV eliminated (PR #528, commit d0dbd67) | 2026-03-26 |
 | T5-59 | 🔴 OPEN — OBS-026 B3-F04 (MEDIUM): NutritionOptimizer dew_point defaults to 15°C optimistic | 2026-03-23 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
