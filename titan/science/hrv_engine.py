@@ -63,7 +63,9 @@ class HRVGuidedEngine:
 
         recent = [hrv for _, hrv in self.hrv_log[-days:]]
         baseline = sum(recent) / len(recent)
-        variance = sum((x - baseline) ** 2 for x in recent) / len(recent)
+        if len(recent) < 2:
+            return baseline, 0.0
+        variance = sum((x - baseline) ** 2 for x in recent) / (len(recent) - 1)
         std_dev = variance**0.5
 
         return baseline, std_dev
