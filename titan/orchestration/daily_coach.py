@@ -716,7 +716,7 @@ class DailyCoach:
         )
 
         intensity_gate = ig.evaluate({
-            'drift_pct': garmin_data.get('drift_pct', 0.0),
+            'drift_pct': garmin_data.get('drift_pct'),
             'glycogen_debt': self.glycogen.daily_debt,
 
             'fatigue_level': fatigue_level,

@@ -74,6 +74,8 @@ class IntensityGovernor:
             if signal_key not in signals:
                 return
             value = signals.get(signal_key)
+            if value is None:
+                return
             try:
                 numeric = float(value)
             except (TypeError, ValueError):
