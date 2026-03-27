@@ -390,6 +390,47 @@ class WeeklyPlanGenerator:
 
         return structure
 
+    def should_replan(self, garmin_data: dict) -> bool:
+        """
+        Return True if a mid-week plan re-evaluation is warranted.
+
+        Triggers (OR semantics — any one is sufficient):
+        1. HRV drop > 10 ms below engine baseline
+        2. HARD_STOP_SAFETY_GATES governance event within the last 24 h
+        3. Illness flag set in garmin_data
+
+        Args:
+            garmin_data: Dict from a mid-week Garmin sync.  Expected keys
+                (all optional — missing keys are treated as "not triggered"):
+                - hrv_latest_ms (float): most recent HRV reading in ms
+                - governance_events (list[dict]): each entry has ``type`` (str)
+                  and ``hours_ago`` (float)
+                - illness_flag (bool)
+
+        Returns:
+            True when the plan should be regenerated; False otherwise.
+        """
+        # ── Condition 1: HRV drop > 10 ms below baseline ─────────────────────
+        hrv_latest = garmin_data.get("hrv_latest_ms")
+        hrv_summary = self.hrv_engine.get_hrv_summary()
+        baseline = hrv_summary.get("baseline")
+        if hrv_latest is not None and baseline is not None and (baseline - hrv_latest) > 10.0:
+            _planner_event("replan_triggered", reason="hrv_drop", hrv_latest_ms=hrv_latest, baseline_ms=baseline)
+            return True
+
+        # ── Condition 2: HARD_STOP governance event in last 24 h ─────────────
+        for event in garmin_data.get("governance_events", []):
+            if event.get("type") == "HARD_STOP_SAFETY_GATES" and event.get("hours_ago", 25) <= 24:
+                _planner_event("replan_triggered", reason="hard_stop_governance", hours_ago=event.get("hours_ago"))
+                return True
+
+        # ── Condition 3: Illness flag ─────────────────────────────────────────
+        if garmin_data.get("illness_flag", False):
+            _planner_event("replan_triggered", reason="illness_flag")
+            return True
+
+        return False
+
     def _get_motivational_message(self, phase: str, tsb: float) -> str:
         """Get phase-appropriate motivational message."""
         messages = {

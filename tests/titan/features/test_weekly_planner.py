@@ -241,3 +241,182 @@ def test_get_motivational_message_unknown_phase_uses_default_message():
     message = planner._get_motivational_message("OFFSEASON", tsb=0)
 
     assert message == "Train smart, recover hard! 💪"
+
+
+# ── T5-57: should_replan() mid-week trigger ───────────────────────────────────
+
+
+def test_should_replan_returns_false_when_all_conditions_nominal():
+    """T5-57: no triggers → should_replan returns False."""
+    planner = _planner(baseline=60, latest_hrv=58)
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 58.0,
+            "governance_events": [],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_returns_true_when_hrv_drops_more_than_10ms_below_baseline():
+    """T5-57: HRV drop > 10ms below engine baseline triggers replan."""
+    planner = _planner(baseline=65, latest_hrv=65)
+
+    # 65 - 54 = 11ms drop > 10ms threshold
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 54.0,
+            "governance_events": [],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is True
+
+
+def test_should_replan_returns_false_when_hrv_drop_exactly_10ms_below_baseline():
+    """T5-57: HRV drop == 10ms (not strictly greater) → no trigger."""
+    planner = _planner(baseline=65, latest_hrv=65)
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 55.0,
+            "governance_events": [],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_returns_true_when_hard_stop_governance_event_present():
+    """T5-57: HARD_STOP_SAFETY_GATES governance event in last 24h triggers replan."""
+    planner = _planner()
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 60.0,
+            "governance_events": [{"type": "HARD_STOP_SAFETY_GATES", "hours_ago": 12}],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is True
+
+
+def test_should_replan_ignores_hard_stop_event_older_than_24h():
+    """T5-57: governance HARD_STOP older than 24h does not trigger replan."""
+    planner = _planner()
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 60.0,
+            "governance_events": [{"type": "HARD_STOP_SAFETY_GATES", "hours_ago": 25}],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_ignores_non_hard_stop_governance_events():
+    """T5-57: governance events that are not HARD_STOP type do not trigger replan."""
+    planner = _planner()
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 60.0,
+            "governance_events": [{"type": "INTENSITY_GATE_YELLOW", "hours_ago": 6}],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_returns_true_when_illness_flag_set():
+    """T5-57: illness_flag=True triggers replan."""
+    planner = _planner()
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 60.0,
+            "governance_events": [],
+            "illness_flag": True,
+        }
+    )
+
+    assert result is True
+
+
+def test_should_replan_returns_true_on_multiple_conditions():
+    """T5-57: multiple triggers simultaneously → still True (OR semantics)."""
+    planner = _planner(baseline=65, latest_hrv=65)
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 50.0,  # 15ms drop
+            "governance_events": [{"type": "HARD_STOP_SAFETY_GATES", "hours_ago": 3}],
+            "illness_flag": True,
+        }
+    )
+
+    assert result is True
+
+
+def test_should_replan_tolerates_missing_hrv_latest_ms():
+    """T5-57: garmin_data missing hrv_latest_ms → HRV condition not triggered."""
+    planner = _planner(baseline=65, latest_hrv=65)
+
+    result = planner.should_replan(
+        garmin_data={
+            "governance_events": [],
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_tolerates_missing_governance_events():
+    """T5-57: garmin_data missing governance_events key → no error, no trigger."""
+    planner = _planner()
+
+    result = planner.should_replan(
+        garmin_data={
+            "hrv_latest_ms": 60.0,
+            "illness_flag": False,
+        }
+    )
+
+    assert result is False
+
+
+def test_should_replan_triggers_generate_weekly_plan_and_updates_last_plan(monkeypatch):
+    """T5-57: when should_replan() returns True, calling it with athlete data re-evaluates plan."""
+    planner = _planner(baseline=65, latest_hrv=65)
+    planner.last_plan = {"phase": "BUILD", "daily_sessions": [], "total_km": 50}
+
+    garmin_data = {
+        "hrv_latest_ms": 50.0,  # triggers replan
+        "governance_events": [],
+        "illness_flag": False,
+        "athlete_profile": {"threshold_hr": 168},
+        "phase": "BUILD",
+    }
+
+    triggered = planner.should_replan(garmin_data)
+    assert triggered is True
+
+    # Caller re-evaluates plan after should_replan returns True
+    new_plan = planner.generate_weekly_plan(
+        athlete_profile=garmin_data.get("athlete_profile", {}),
+        weather_forecast=None,
+        phase=garmin_data.get("phase", "BUILD"),
+    )
+
+    assert new_plan is not None
+    assert planner.last_plan is new_plan
