@@ -18,6 +18,8 @@ Scientific Basis:
 
 from datetime import datetime
 
+from titan.config.thresholds import ESI_MODERATE_MIN
+
 MODULE_VERSION = "1.0.0"
 
 
@@ -215,21 +217,38 @@ class CriticalSpeedTracker:
 
     # ── Thermal Degradation ──────────────────────────────────────────────────
 
-    def apply_thermal(self, temp_c: float) -> float | None:
+    def apply_thermal(self, temp_c: float, dew_point_c: float | None = None) -> float | None:
         """
         Return heat-adjusted CS.
 
-        CS declines ~2.5% per 5°C above 20°C threshold.
-        (Jones & Doust, 1997 — validated for ambient temperature range 15–35°C)
+        When dew_point_c is provided, uses the Environmental Stress Index (ESI):
+          ESI = temp_c + 0.5 * dew_point_c
+        Degradation begins at ESI_MODERATE_MIN (16.0) and follows the same
+        ~2.5% per 5-unit ESI band formula, floored at 85% of CS.
 
-        Returns smoothed CS if temp ≤ 20°C (no degradation).
+        When dew_point_c is None, falls back to dry-bulb only:
+          CS declines ~2.5% per 5°C above 20°C threshold.
+          (Jones & Doust, 1997 — validated for ambient temperature range 15–35°C)
+
+        Returns smoothed CS if stress index is at or below threshold (no degradation).
         Returns None if no CS estimate available.
         """
         if self.cs_smoothed is None:
             return None
-        if temp_c <= 20.0:
+
+        if dew_point_c is None:
+            # Dry-bulb fallback: original behaviour
+            if temp_c <= 20.0:
+                return round(self.cs_smoothed, 3)
+            excess_bands = (temp_c - 20.0) / 5.0
+            factor = max(0.85, 1.0 - 0.025 * excess_bands)  # floor at 85% of CS
+            return round(self.cs_smoothed * factor, 3)
+
+        # ESI model: composite score accounts for humidity stress
+        esi = temp_c + 0.5 * dew_point_c
+        if esi <= ESI_MODERATE_MIN:
             return round(self.cs_smoothed, 3)
-        excess_bands = (temp_c - 20.0) / 5.0
+        excess_bands = (esi - ESI_MODERATE_MIN) / 5.0
         factor = max(0.85, 1.0 - 0.025 * excess_bands)  # floor at 85% of CS
         return round(self.cs_smoothed * factor, 3)
 
