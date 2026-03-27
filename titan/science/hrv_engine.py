@@ -51,8 +51,18 @@ class HRVGuidedEngine:
         self.baseline_days = baseline_days
 
     def add_hrv_measurement(self, measurement_date: str, rmssd: float) -> None:
-        """Add morning HRV measurement (rMSSD in ms)."""
+        """Add morning HRV measurement (rMSSD in ms).
+
+        Deduplicates by date: if an entry for measurement_date already exists, the
+        new value replaces it (most-recent-wins). This prevents overlapping Garmin
+        syncs from inflating the rolling baseline window.
+        """
         self.hrv_log.append((measurement_date, rmssd))
+        # Rebuild log keeping only the last entry per date (insertion-order preserved).
+        seen: dict[str, float] = {}
+        for date, val in self.hrv_log:
+            seen[date] = val  # later writes overwrite earlier ones
+        self.hrv_log = list(seen.items())
 
     def calculate_baseline(self, days: int = 7) -> tuple[float | None, float | None]:
         """Calculate rolling baseline (mean ± SD)."""
