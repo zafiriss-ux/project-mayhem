@@ -55,6 +55,10 @@ class AutonomicFusionEngine:
         self.hrr_log: list[tuple[str, int, int]] = []
         # Rolling AFI history for 48h CNS buffer
         self._afi_history: list[float] = []
+        # Confidence score for the most recent calculate_afi call.
+        # 0.7 when hrr_60_today is provided but hrr_log has < 3 entries
+        # (sparse history — z-score unreliable). 1.0 otherwise.
+        self.last_confidence: float = 1.0
 
     # ── HRR Input ───────────────────────────────────────────────────────────
 
@@ -116,8 +120,14 @@ class AutonomicFusionEngine:
         # HRR: z-score normalised to [-1, +1] by clamping at ±3σ
         if hrr_60_today is not None and len(self.hrr_log) >= 3:
             hrr_norm = max(-1.0, min(1.0, self._hrr_zscore(hrr_60_today) / 3.0))
+            self.last_confidence = 1.0
+        elif hrr_60_today is not None:
+            # Measurement present but history too sparse for a reliable z-score.
+            hrr_norm = 0.0
+            self.last_confidence = 0.7
         else:
             hrr_norm = 0.0
+            self.last_confidence = 1.0
 
         def clamp(v: float) -> float:
             return max(-1.0, min(1.0, v))
