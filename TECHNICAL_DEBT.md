@@ -3061,14 +3061,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-55 · Thermal degradation ignores dew point — ESI model unused in apply_thermal 🔴 OPEN
+### T5-55 · Thermal degradation ignores dew point — ESI model unused in apply_thermal ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #544.
 **Source:** OBS-027 / OBS-026 B2-F02
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/critical_speed.py:218-234`
 **Description:** `CriticalSpeedTracker.apply_thermal()` uses dry-bulb temperature only; the ESI model (`ESI = temp_c + 0.5 * dew_point_c`) exists in `thresholds.py` and is used for pace adjustments in `DailyCoach`, but is not applied to thermal degradation — a 25°C/90% humidity day (ESI 36.5) gets only 2.5% degradation instead of the physiologically appropriate penalty.
+
+**Resolution:** `apply_thermal()` now uses the ESI formula (`temp_c + 0.5 * dew_point_c`) when `dew_point` is available; falls back to dry-bulb temperature when absent. Thermal degradation penalty is now consistent with the ESI-based pace adjustment already applied in `DailyCoach`.
+
+**Task Learning:** When a physiological model (ESI) is already implemented and validated in one part of the system, every consumer of that input domain must use it. A partial adoption — where pace uses ESI but thermal degradation uses dry-bulb — creates silent inconsistency: two outputs from the same session use different humidity assumptions with no user-visible signal.
 
 ---
 
@@ -3087,14 +3091,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-57 · Weekly plan never re-evaluated on mid-week Garmin data changes 🔴 OPEN
+### T5-57 · Weekly plan never re-evaluated on mid-week Garmin data changes ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #545.
 **Source:** OBS-027 / OBS-026 B3-F01
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/features/weekly_plan.py`
 **Description:** `WeeklyPlanGenerator` runs once Sunday 20:00 and is static for the week; significant mid-week Garmin data (race performance, illness, unexpected HRV drop) never triggers plan re-evaluation.
+
+**Resolution:** `should_replan()` predicate added to `WeeklyPlanGenerator`; mid-week re-evaluation triggers on HRV drop >10 ms since plan generation, a `HARD_STOP` governance event within the preceding 24 hours, or an illness flag. When any trigger fires, the planner regenerates the remainder of the week's plan from current data.
+
+**Task Learning:** A plan is only as good as the assumptions it was built on. Static weekly plans assume the athlete's physiological state is stable for seven days — a reasonable default but a dangerous invariant. Safety-relevant events (HARD_STOP, illness, significant HRV deterioration) invalidate the plan's underlying assumptions and must have a defined re-evaluation path. Polling-only architectures (run once, never revisit) need an explicit predicate to answer "is this plan still valid?" before the question is forced by a bad outcome.
 
 ---
 
@@ -3462,9 +3470,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-52 | ✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d) | 2026-03-26 |
 | T5-53 | ✅ RESOLVED 2026-03-26 — `ReadinessEngine` null-guards HRV diff; skips HRV component gracefully when either value is `None` (PR #527, commit 0d9f852) | 2026-03-26 |
 | T5-54 | ✅ RESOLVED 2026-03-27 — drift_pct default changed from 0.0 to None; IntensityGovernor now treats missing drift as unknown not perfect efficiency (PR #541) | 2026-03-27 |
-| T5-55 | 🔴 OPEN — OBS-026 B2-F02 (MEDIUM): Thermal degradation ignores dew point / ESI unused | 2026-03-23 |
+| T5-55 | ✅ RESOLVED 2026-03-27 — `apply_thermal()` now uses ESI formula (temp + 0.5*dew_point) when dew_point available; falls back to dry-bulb when absent (PR #544) | 2026-03-27 |
 | T5-56 | ✅ RESOLVED 2026-03-27 — AFI confidence penalised to 0.7 when HRR history has fewer than 3 data points; absent HRR (None) carries no penalty (PR #542) | 2026-03-27 |
-| T5-57 | 🔴 OPEN — OBS-026 B3-F01 (MEDIUM): Weekly plan never re-evaluated on mid-week Garmin changes | 2026-03-23 |
+| T5-57 | ✅ RESOLVED 2026-03-27 — `should_replan()` predicate added; mid-week re-evaluation triggers on HRV drop >10ms, HARD_STOP event ≤24h, or illness flag (PR #545) | 2026-03-27 |
 | T5-58 | ✅ RESOLVED 2026-03-26 — `_apply_hrv_adjustments` uses explicit `is not None` guards; crash path on null HRV eliminated (PR #528, commit d0dbd67) | 2026-03-26 |
 | T5-59 | ✅ RESOLVED 2026-03-27 — `NutritionOptimizer` defaults `dew_point` to 25°C (conservative); sweat/electrolyte underestimation eliminated (PR #536) | 2026-03-27 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
