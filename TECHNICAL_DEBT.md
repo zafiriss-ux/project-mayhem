@@ -3046,14 +3046,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-54 · drift_pct defaults to 0.0 (perfect efficiency) when Garmin sync fails 🔴 OPEN
+### T5-54 · drift_pct defaults to 0.0 (perfect efficiency) when Garmin sync fails ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #541.
 **Source:** OBS-027 / OBS-026 B1-F05
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:708`
 **Description:** `garmin_data.get('drift_pct', 0.0)` defaults to 0.0 (perfect cardiac efficiency) on sync failure; `IntensityGovernor` should treat `None` drift as a YELLOW trigger, not a pass.
+
+**Resolution:** Default changed from `0.0` to `None`. `IntensityGovernor` now treats missing drift as unknown rather than perfect efficiency; `None` drift no longer silently suppresses a YELLOW trigger.
+
+**Task Learning:** Optimistic defaults for physiological metrics are indistinguishable from real clean data at the governance layer. Absence of a signal must propagate as `None`, not as a neutral value — the governor must decide what to do with missing data, not the data-fetch layer.
 
 ---
 
@@ -3068,14 +3072,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-56 · AFI confidence not degraded for sparse HRR data 🔴 OPEN
+### T5-56 · AFI confidence not degraded for sparse HRR data ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #542.
 **Source:** OBS-027 / OBS-026 B2-F03
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/autonomic_engine.py:120`
 **Description:** `AutonomicFusionEngine` defaults `hrr_norm` to 0.0 (neutral) for sparse HRR data with no confidence penalty; AFI should apply a confidence degradation when HRR history is insufficient.
+
+**Resolution:** AFI confidence penalised to 0.7 when HRR history contains fewer than 3 data points. Absent HRR (`None`) carries no penalty — absence is a known unknown; sparse history is an unreliable signal being treated as reliable.
+
+**Task Learning:** Sparse data and absent data are distinct failure modes and must be handled separately. A `None` value says "we have no reading"; a short history says "we have a reading but it may not be representative." Only the latter warrants a confidence penalty because it produces a value the engine will use.
 
 ---
 
@@ -3453,9 +3461,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-51 | ✅ RESOLVED 2026-03-26 — ACWR propagates `None` on sync failure; governance pipeline no longer sees optimistic sweet-spot (PR #530, commit 5f68fc5) | 2026-03-26 |
 | T5-52 | ✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d) | 2026-03-26 |
 | T5-53 | ✅ RESOLVED 2026-03-26 — `ReadinessEngine` null-guards HRV diff; skips HRV component gracefully when either value is `None` (PR #527, commit 0d9f852) | 2026-03-26 |
-| T5-54 | 🔴 OPEN — OBS-026 B1-F05 (MEDIUM): drift_pct defaults to 0.0 when Garmin sync fails | 2026-03-23 |
+| T5-54 | ✅ RESOLVED 2026-03-27 — drift_pct default changed from 0.0 to None; IntensityGovernor now treats missing drift as unknown not perfect efficiency (PR #541) | 2026-03-27 |
 | T5-55 | 🔴 OPEN — OBS-026 B2-F02 (MEDIUM): Thermal degradation ignores dew point / ESI unused | 2026-03-23 |
-| T5-56 | 🔴 OPEN — OBS-026 B2-F03 (MEDIUM): AFI confidence not degraded for sparse HRR data | 2026-03-23 |
+| T5-56 | ✅ RESOLVED 2026-03-27 — AFI confidence penalised to 0.7 when HRR history has fewer than 3 data points; absent HRR (None) carries no penalty (PR #542) | 2026-03-27 |
 | T5-57 | 🔴 OPEN — OBS-026 B3-F01 (MEDIUM): Weekly plan never re-evaluated on mid-week Garmin changes | 2026-03-23 |
 | T5-58 | ✅ RESOLVED 2026-03-26 — `_apply_hrv_adjustments` uses explicit `is not None` guards; crash path on null HRV eliminated (PR #528, commit d0dbd67) | 2026-03-26 |
 | T5-59 | ✅ RESOLVED 2026-03-27 — `NutritionOptimizer` defaults `dew_point` to 25°C (conservative); sweat/electrolyte underestimation eliminated (PR #536) | 2026-03-27 |
