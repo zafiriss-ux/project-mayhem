@@ -35,6 +35,9 @@ def _vo2_context(**overrides):
         'fatigue_level': 'LOW',
         'days_since_last_vo2': 3,
         'fueling_confirmed': True,
+        # T5-49: conservative defaults (40) fire I2_sleep; supply healthy value so
+        # VO2-focused tests are not disrupted by the 2-of-4 downgrade gate.
+        'sleep_score': 80,
     }
     base.update(overrides)
     return base
@@ -244,6 +247,8 @@ class TestGovernanceOutputContract:
             'fatigue_level': 'bad',
             'days_since_last_vo2': 'bad',
             'fueling_confirmed': True,
+            # T5-49: supply healthy sleep so only VO2 conditions fail (not 2-of-4 gate).
+            'sleep_score': 80,
         })
         self._assert_contract(result)
         assert result['vo2_eligibility']['failed_conditions'] == ['V1', 'V2', 'V3', 'V4', 'V5']
@@ -266,7 +271,8 @@ class TestGovernanceOutputContract:
 
     def test_non_numeric_duration_min_applies_fueling_lock_fallback(self, gov):
         plan = {'session_type': 'RACE', 'duration_min': 'ninety'}
-        result = gov.apply_constraints(plan, {'fueling_confirmed': False})
+        # T5-49: supply healthy sleep/readiness so only the fueling gate fires.
+        result = gov.apply_constraints(plan, {'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
 
         assert result['session_type'] == 'TEMPO'
         assert result['fueling_gate']['action'] == 'LOCK'

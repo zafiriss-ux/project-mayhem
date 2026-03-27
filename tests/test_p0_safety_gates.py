@@ -42,6 +42,10 @@ def make_context(**overrides) -> dict:
         "tsb_value":               0.0,
         "injury_flag":             False,
         "subjective_fatigue_score": 0,
+        # T5-49: conservative defaults (40) fire gates; supply healthy values here
+        # so that "no gate fires on nominal data" tests remain valid.
+        "sleep_score":             80,
+        "readiness_score":         70,
     }
     ctx.update(overrides)
     return ctx
@@ -81,6 +85,9 @@ def test_H1_no_injury_key_in_context_does_not_fire():
         "tsb_value": 0.0,
         "subjective_fatigue_score": 0,
         # 'injury_flag' key intentionally omitted
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
+        "sleep_score": 80,
+        "readiness_score": 70,
     }
     plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
     assert plan["session_type"] == "INTERVALS"

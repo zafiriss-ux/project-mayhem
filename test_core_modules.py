@@ -991,7 +991,8 @@ class TestGovernanceEngine:
             def get_override_ratio(self, days): return 0.0
 
         plan = {'session_type': 'INTERVALS'}
-        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker})
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 downgrade does not fire.
+        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker, 'sleep_score': 80, 'readiness_score': 70})
         assert result['governance_clean'] is True
         assert result['governance_locks_applied'] == []
 
@@ -1109,6 +1110,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 3.0,
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
+            'sleep_score': 80,  # T5-49: healthy sleep prevents I2 from firing alongside low readiness
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
@@ -1124,6 +1126,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 3.0,
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
+            'sleep_score': 80,  # T5-49: healthy sleep so only VO2 V1/V2 fail
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
@@ -1140,6 +1143,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 3.0,
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
+            'sleep_score': 80,  # T5-49: healthy sleep so only VO2 V1/V2 fail
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
@@ -1162,6 +1166,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 3.0,
             'fatigue_level': 'LOW',
             'fueling_confirmed': True,
+            'sleep_score': 80,  # T5-49: healthy sleep so only VO2 V1/V2 fail
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
@@ -1254,6 +1259,7 @@ class TestGovernanceVo2AndFuelingGates:
             'fatigue_level': 'extreme',
             'days_since_last_vo2': 'yesterday',
             'fueling_confirmed': True,
+            'sleep_score': 80,  # T5-49: healthy sleep so only VO2 conditions fail
         })
         assert result['session_type'] == 'TEMPO'
         assert result['vo2_eligibility']['eligible'] is False
@@ -1276,21 +1282,24 @@ class TestGovernanceVo2AndFuelingGates:
 
     def test_fueling_phase3_lock(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
-        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
         assert result['session_type'] == 'TEMPO'
         assert result['fueling_gate']['action'] == 'LOCK'
         assert result['fueling_gate']['phase'] == 3
 
     def test_fueling_phase2_flag(self, gov):
         plan = {'session_type': 'INTERVALS', 'duration_min': 70}
-        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
         assert result['session_type'] == 'INTERVALS'
         assert result['fueling_gate']['action'] == 'FLAG'
         assert result['fueling_gate']['session_unchanged'] is True
 
     def test_fueling_long_run_lock(self, gov):
         plan = {'session_type': 'LONG_RUN', 'duration_min': 110}
-        result = gov.apply_constraints(plan, context={'fueling_confirmed': False})
+        # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
         assert result['session_type'] == 'PROGRESSIVE'
         assert result['fueling_gate']['action'] == 'LOCK'
         assert result['fueling_gate']['locked_to'] == 'PROGRESSIVE'
@@ -1303,6 +1312,7 @@ class TestGovernanceVo2AndFuelingGates:
             'glycogen_debt': 3.0,
             'fatigue_level': 'LOW',
             'fueling_confirmed': False,
+            'sleep_score': 80,  # T5-49: healthy sleep so only VO2 V2 fails, not 2-of-4
         })
         assert result['vo2_eligibility']['eligible'] is False
         assert result['session_type'] == 'TEMPO'
