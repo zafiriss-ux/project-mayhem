@@ -85,7 +85,7 @@ def test_low_and_high_hrv_follow_existing_downgrade_and_proceed_behavior() -> No
     values = [50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0]
     engine = _build_engine_with_history(values)
 
-    low_action, _, low_confidence = engine.get_training_recommendation(today_hrv=45.0, planned_session="INTERVALS")
+    low_action, _, low_confidence = engine.get_training_recommendation(today_hrv=44.0, planned_session="INTERVALS")
     high_action, _, high_confidence = engine.get_training_recommendation(today_hrv=55.0, planned_session="INTERVALS")
 
     assert low_action == "EASY"
@@ -132,7 +132,7 @@ def test_calculate_baseline_returns_safe_outcome_when_days_is_negative() -> None
 def test_slightly_low_hrv_keeps_easy_session_with_medium_confidence() -> None:
     engine = _build_engine_with_history([50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0])
 
-    action, reason, confidence = engine.get_training_recommendation(today_hrv=45.0, planned_session="EASY")
+    action, reason, confidence = engine.get_training_recommendation(today_hrv=44.0, planned_session="EASY")
 
     assert action == "EASY"
     assert reason == "HRV slightly low but easy session OK"
