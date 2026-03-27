@@ -2923,25 +2923,31 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-45 · HRV baseline uses population SD instead of sample SD 🔴 OPEN
+### T5-45 · HRV baseline uses population SD instead of sample SD ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #537.
 **Source:** OBS-027 / OBS-025 F-07
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/hrv_engine.py:66`
 **Description:** HRV baseline divides by N instead of N-1 (Plews et al. require sample SD); for 7-day window this underestimates SD by ~8%, making suppression thresholds 8% tighter than intended.
 
+**Resolution:** `HRVEngine.calculate_baseline` now divides by N-1 (sample SD) instead of N (population SD), eliminating the ~8% systematic underestimation of SD for 7-day windows.
+**Task learning:** Statistical estimators for small clinical windows must use sample SD (N-1) to avoid systematically tightening suppression thresholds below the evidence-based intent.
+
 ---
 
-### T5-46 · No HRV deduplication on overlapping Garmin syncs 🔴 OPEN
+### T5-46 · No HRV deduplication on overlapping Garmin syncs ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #538.
 **Source:** OBS-027 / OBS-025 F-08
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/hrv_engine.py:55`
 **Description:** Overlapping Garmin syncs inflate the HRV log with duplicate entries; duplicate measurements skew baseline and trend calculations.
+
+**Resolution:** HRV log ingestion now deduplicates entries by timestamp before baseline and trend calculations, preventing overlapping Garmin syncs from inflating the HRV baseline.
+**Task learning:** Time-series ingestion pipelines must deduplicate on the natural key (timestamp) at the storage boundary to prevent measurement inflation from repeated syncs.
 
 ---
 
@@ -2970,25 +2976,31 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-49 · Governance defaults missing sleep/readiness to 100 (optimistic) 🔴 OPEN
+### T5-49 · Governance defaults missing sleep/readiness to 100 (optimistic) ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #535.
 **Source:** OBS-027 / OBS-025 F-21/F-22
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/governance_engine.py:198,205`
 **Description:** When `sleep_score` or `readiness_score` are absent from context, governance defaults to 100; safety-first design requires conservative defaults (e.g. 40) so the 2-of-4 downgrade can fire.
 
+**Resolution:** Governance engine now defaults missing `sleep_score` and `readiness_score` to 40 (conservative) instead of 100, ensuring the 2-of-4 downgrade gate fires correctly on absent data.
+**Task learning:** Safety-critical missing-value defaults must be conservative (low values trigger gates) rather than optimistic (high values suppress gates).
+
 ---
 
-### T5-50 · All Garmin activities persisted with session_type EASY 🔴 OPEN
+### T5-50 · All Garmin activities persisted with session_type EASY ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #539.
 **Source:** OBS-027 / OBS-025 F-31
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:1256`
 **Description:** `sync_activities()` never sets `session_type`; the hardcoded default `'EASY'` is written to the DB for every activity regardless of actual effort level.
+
+**Resolution:** `sync_activities()` now maps Garmin activity type to `session_type` before DB persistence, replacing the hardcoded `'EASY'` default with the actual effort classification from the source record.
+**Task learning:** Activity classification fields that drive downstream governance logic must be derived from the source record at ingestion; hardcoded defaults must not stand in for missing type mappings.
 
 ---
 
@@ -3092,14 +3104,17 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-59 · NutritionOptimizer dew_point defaults to 15°C (optimistic) 🔴 OPEN
+### T5-59 · NutritionOptimizer dew_point defaults to 15°C (optimistic) ✅ RESOLVED 2026-03-27
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-27. PR #536.
 **Source:** OBS-027 / OBS-026 B3-F04
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/features/nutrition_optimizer.py:188`
 **Description:** `NutritionOptimizer` defaults `dew_point` to 15°C when weather data is unavailable; 15°C is a comfortable value that underestimates sweat/electrolyte needs — should default to a conservative value or flag as unknown.
+
+**Resolution:** `NutritionOptimizer` now defaults `dew_point` to 25°C (conservative, high-humidity proxy) when weather data is unavailable, preventing underestimation of sweat and electrolyte needs.
+**Task learning:** Environmental defaults affecting safety-adjacent outputs (hydration, electrolytes) must use conservative worst-case values, not comfortable midpoint values.
 
 ---
 
@@ -3429,12 +3444,12 @@ When an item is completed, mark it here with date and PR reference:
 | T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
 | T5-43 | ✅ RESOLVED 2026-03-17 — withings-sync pinned to 4.1.0 in constraints.txt; all 10 test files collectable; 1999 tests green | 2026-03-17 |
 | T5-44 | 🔴 OPEN — OBS-025 F-13 (HIGH): TRIMP uses session maxHR instead of athlete HRmax | 2026-03-23 |
-| T5-45 | 🔴 OPEN — OBS-025 F-07 (MEDIUM): HRV baseline uses population SD instead of sample SD | 2026-03-23 |
-| T5-46 | 🔴 OPEN — OBS-025 F-08 (MEDIUM): No HRV deduplication on overlapping Garmin syncs | 2026-03-23 |
+| T5-45 | ✅ RESOLVED 2026-03-27 — `HRVEngine.calculate_baseline` uses sample SD (N-1); ~8% suppression-threshold underestimation eliminated (PR #537) | 2026-03-27 |
+| T5-46 | ✅ RESOLVED 2026-03-27 — HRV log deduplicates by timestamp at ingestion; baseline inflation from overlapping syncs eliminated (PR #538) | 2026-03-27 |
 | T5-47 | ✅ RESOLVED 2026-03-26 — `EfficiencyEngine` returns `None` for zero/null pace; crash path eliminated (PR #526, commit 52537ed) | 2026-03-26 |
 | T5-48 | 🔴 OPEN — OBS-025 F-20 (MEDIUM): Garmin data age not propagated into governance context | 2026-03-23 |
-| T5-49 | 🔴 OPEN — OBS-025 F-21/F-22 (MEDIUM): Governance defaults missing sleep/readiness to 100 | 2026-03-23 |
-| T5-50 | 🔴 OPEN — OBS-025 F-31 (MEDIUM): All Garmin activities persisted with session_type EASY | 2026-03-23 |
+| T5-49 | ✅ RESOLVED 2026-03-27 — Governance defaults missing sleep/readiness to 40 (conservative); 2-of-4 gate fires correctly on absent data (PR #535) | 2026-03-27 |
+| T5-50 | ✅ RESOLVED 2026-03-27 — `sync_activities()` maps Garmin activity type to `session_type`; hardcoded `'EASY'` default eliminated (PR #539) | 2026-03-27 |
 | T5-51 | ✅ RESOLVED 2026-03-26 — ACWR propagates `None` on sync failure; governance pipeline no longer sees optimistic sweet-spot (PR #530, commit 5f68fc5) | 2026-03-26 |
 | T5-52 | ✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d) | 2026-03-26 |
 | T5-53 | ✅ RESOLVED 2026-03-26 — `ReadinessEngine` null-guards HRV diff; skips HRV component gracefully when either value is `None` (PR #527, commit 0d9f852) | 2026-03-26 |
@@ -3443,7 +3458,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-56 | 🔴 OPEN — OBS-026 B2-F03 (MEDIUM): AFI confidence not degraded for sparse HRR data | 2026-03-23 |
 | T5-57 | 🔴 OPEN — OBS-026 B3-F01 (MEDIUM): Weekly plan never re-evaluated on mid-week Garmin changes | 2026-03-23 |
 | T5-58 | ✅ RESOLVED 2026-03-26 — `_apply_hrv_adjustments` uses explicit `is not None` guards; crash path on null HRV eliminated (PR #528, commit d0dbd67) | 2026-03-26 |
-| T5-59 | 🔴 OPEN — OBS-026 B3-F04 (MEDIUM): NutritionOptimizer dew_point defaults to 15°C optimistic | 2026-03-23 |
+| T5-59 | ✅ RESOLVED 2026-03-27 — `NutritionOptimizer` defaults `dew_point` to 25°C (conservative); sweat/electrolyte underestimation eliminated (PR #536) | 2026-03-27 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
