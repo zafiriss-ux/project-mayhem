@@ -236,6 +236,17 @@ def _apply_esi_context_to_optimal_time(
     return updated
 
 
+# Mapping from Garmin activityType.typeKey values to internal session_type constants.
+# The act dict produced by GarminSync uses 'activity_type' (not 'session_type'), so
+# a direct act.get('session_type', 'EASY') always falls through to the default.
+_GARMIN_ACTIVITY_TYPE_MAP: dict[str, str] = {
+    "running": "EASY",
+    "interval_training": "INTERVALS",
+    "tempo_run": "TEMPO",
+    "long_run": "LONG_RUN",
+}
+
+
 class DailyCoach:
     """Daily coaching orchestrator with real data persistence."""
 
@@ -1278,7 +1289,7 @@ class DailyCoach:
                         _tl_override = int(_est_load) if _est_load else None
                         self.db.save_session(
                             date              = activity_date,
-                            session_type      = act.get('session_type', 'EASY'),
+                            session_type      = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get('activity_type', ''), 'EASY'),
                             distance_km       = _safe_float(act.get('distance_km', 0)),
                             duration_sec      = _safe_int(act.get('duration_sec', 0)),
                             avg_hr            = _safe_int(act.get('avg_hr')) or None,
