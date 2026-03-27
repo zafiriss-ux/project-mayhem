@@ -184,7 +184,7 @@ class NutritionOptimizer:
         # Hydration — combine dew_point and session intensity
         hydration_ml = self._calculate_hydration(
             duration_min,
-            today_session.get("dew_point", 15),
+            today_session.get("dew_point", 25.0),
             session_type,
         )
 
