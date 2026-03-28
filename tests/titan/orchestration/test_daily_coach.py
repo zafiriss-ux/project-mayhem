@@ -726,6 +726,89 @@ def test_persist_garmin_data_f32_multi_day_hrv_all_persisted(tmp_path):
         db.close()
 
 
+def test_persist_garmin_data_f32_seven_day_hrv_all_persisted(tmp_path):
+    """F-32 / T5-61: 7-day HRV sync result must produce exactly 7 rows in daily_metrics."""
+    db = DatabaseManager(db_name="f32_seven_day_hrv.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    today = "2026-03-10"
+    dates = [
+        "2026-03-10",
+        "2026-03-09",
+        "2026-03-08",
+        "2026-03-07",
+        "2026-03-06",
+        "2026-03-05",
+        "2026-03-04",
+    ]
+
+    payload = _garmin_payload_for_day(today)
+    payload["hrv"] = [{"date": d, "rmssd": 40.0 + i} for i, d in enumerate(dates)]
+
+    try:
+        coach._persist_garmin_data(payload, today)
+
+        for d in dates:
+            assert _count_rows(db, "daily_metrics", d) == 1, f"Missing row for {d}"
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_f32_historical_entry_not_overwritten(tmp_path):
+    """T5-61: Historical HRV entries use INSERT OR IGNORE — manually entered data must
+    not be overwritten by a Garmin sync backfill."""
+    db = DatabaseManager(db_name="f32_no_overwrite.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    today = "2026-03-10"
+    yesterday = "2026-03-09"
+
+    # Manually entered HRV for yesterday (simulates user check-in)
+    db.save_daily_metric(date=yesterday, hrv=99.0, rhr=48)
+
+    payload = _garmin_payload_for_day(today)
+    payload["hrv"] = [
+        {"date": today, "rmssd": 45.0},
+        {"date": yesterday, "rmssd": 55.0},  # Garmin value must NOT overwrite manual 99.0
+    ]
+
+    try:
+        coach._persist_garmin_data(payload, today)
+
+        row = db.conn.execute(
+            "SELECT hrv_rmssd, resting_hr FROM daily_metrics WHERE date = ?", (yesterday,)
+        ).fetchone()
+        assert row is not None
+        # hrv_rmssd must remain 99.0 (manual entry), not 55.0 (Garmin backfill)
+        assert row[0] == pytest.approx(99.0, abs=0.1), (
+            f"Historical HRV was overwritten: expected 99.0, got {row[0]}"
+        )
+        # Other fields must also survive intact
+        assert row[1] == 48
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_f32_today_entry_persisted_normally(tmp_path):
+    """T5-61 regression: today's entry must still be persisted via INSERT OR REPLACE
+    (today uses save_daily_metric, not save_daily_metric_if_missing)."""
+    db = DatabaseManager(db_name="f32_today_regression.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    today = "2026-03-10"
+
+    payload = _garmin_payload_for_day(today)
+    payload["hrv"] = [{"date": today, "rmssd": 52.0}]
+
+    try:
+        coach._persist_garmin_data(payload, today)
+
+        row = db.conn.execute(
+            "SELECT hrv_rmssd FROM daily_metrics WHERE date = ?", (today,)
+        ).fetchone()
+        assert row is not None
+        assert row[0] == pytest.approx(52.0, abs=0.1)
+    finally:
+        db.close()
+
+
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)

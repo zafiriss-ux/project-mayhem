@@ -1386,13 +1386,16 @@ class DailyCoach:
                 )
 
                 # F-32: persist HRV for all historical days returned by sync_hrv()
+                # INSERT OR IGNORE — never overwrite manually entered historical data.
                 for past_hrv in past_hrv_entries:
                     past_hrv_sanity = _sanity.check_hrv(
                         {"date": past_hrv['date'], "rmssd": past_hrv['rmssd']},
                         context="persist_garmin_data",
                     )
                     if not has_rejects(past_hrv_sanity):
-                        self.db.save_daily_metric(date=past_hrv['date'], hrv=past_hrv['rmssd'])
+                        self.db.save_daily_metric_if_missing(
+                            date=past_hrv['date'], hrv=past_hrv['rmssd']
+                        )
 
             if activities:
                 _daily_coach_event(

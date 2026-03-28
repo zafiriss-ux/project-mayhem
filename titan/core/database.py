@@ -763,6 +763,29 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
+    def save_daily_metric_if_missing(self, date: str, hrv: float | None = None) -> None:
+        """Persist HRV for a historical date only if no row exists yet.
+
+        Uses INSERT OR IGNORE so that manually entered data for past dates is
+        never overwritten by backfill from Garmin sync.
+
+        Args:
+            date: Date in ISO format (YYYY-MM-DD)
+            hrv: HRV RMSSD in ms
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO daily_metrics (date, hrv_rmssd)
+                VALUES (?, ?)
+                """,
+                (date, hrv),
+            )
+            if self._transaction_depth == 0:
+                self.conn.commit()
+
     # --- TRAINING LOG ---
 
     def _ensure_open_locked(self) -> None:
