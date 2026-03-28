@@ -46,6 +46,9 @@ def make_context(**overrides) -> dict:
         # so that "no gate fires on nominal data" tests remain valid.
         "sleep_score":             80,
         "readiness_score":         70,
+        # T5-63: missing acwr now triggers V1 (OBS-028 fix); supply safe value so
+        # hard-stop gate tests are not disrupted by the VO2 eligibility gate.
+        "acwr":                    1.1,
     }
     ctx.update(overrides)
     return ctx
@@ -88,6 +91,8 @@ def test_H1_no_injury_key_in_context_does_not_fire():
         # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
         "sleep_score": 80,
         "readiness_score": 70,
+        # T5-63: supply acwr so VO2 eligibility gate (OBS-028 fix) does not fire.
+        "acwr": 1.1,
     }
     plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
     assert plan["session_type"] == "INTERVALS"

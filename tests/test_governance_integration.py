@@ -256,8 +256,11 @@ class TestGovernanceOutputContract:
     def test_contract_on_invalid_numeric_path(self, gov):
         plan = {'session_type': 'RACE', 'duration_min': 90}
         result = gov.apply_constraints(plan, _vo2_context(acwr=None, readiness_score=None))
-        # None inputs: acwr/readiness_score both treated as None → safe defaults
+        # None inputs: acwr/readiness_score treated as missing → conservative fail (V1+V2)
         self._assert_contract(result)
+        assert result['vo2_eligibility']['eligible'] is False
+        assert 'V1' in result['vo2_eligibility']['failed_conditions']
+        assert 'V2' in result['vo2_eligibility']['failed_conditions']
 
     def test_contract_on_non_numeric_zone_denies_and_downgrades(self, gov):
         plan = {'session_type': 'INTERVALS', 'zone': 'bad-zone', 'duration_min': 45}
@@ -272,7 +275,8 @@ class TestGovernanceOutputContract:
     def test_non_numeric_duration_min_applies_fueling_lock_fallback(self, gov):
         plan = {'session_type': 'RACE', 'duration_min': 'ninety'}
         # T5-49: supply healthy sleep/readiness so only the fueling gate fires.
-        result = gov.apply_constraints(plan, {'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
+        # T5-63: supply acwr so VO2 eligibility gate (OBS-028 fix) does not fire.
+        result = gov.apply_constraints(plan, {'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70, 'acwr': 1.1})
 
         assert result['session_type'] == 'TEMPO'
         assert result['fueling_gate']['action'] == 'LOCK'
@@ -424,3 +428,64 @@ def test_startup_data_confidence_false_does_not_apply_easy_ceiling(gov):
 
     assert result['session_type'] == 'HAMMER'
     assert 'STARTUP_DATA_CONFIDENCE_CEILING' not in result['governance_locks_applied']
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OBS-028 / T5-63: missing-data policy — acwr=None and readiness_score=None
+# must produce conservative (ineligible) gate outcome, never optimistic default
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestVo2EligibilityMissingDataPolicy:
+    """acwr=None and readiness_score=None must each trigger a conservative fail."""
+
+    def test_acwr_none_in_context_triggers_v1_fail(self, gov):
+        """Explicit None for acwr (key present, value None) → V1 ineligible."""
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        ctx = _vo2_context(acwr=None)
+        result = gov.apply_constraints(plan, ctx)
+        vo2 = result['vo2_eligibility']
+        assert vo2['eligible'] is False, "acwr=None must not be treated as safe default 1.0"
+        assert 'V1' in vo2['failed_conditions']
+        assert 'VO2_ELIGIBILITY_GATE' in result['governance_locks_applied']
+
+    def test_acwr_absent_from_context_triggers_v1_fail(self, gov):
+        """Absent acwr key (not present in context at all) → V1 ineligible."""
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        ctx = {k: v for k, v in _vo2_context().items() if k != 'acwr'}
+        result = gov.apply_constraints(plan, ctx)
+        vo2 = result['vo2_eligibility']
+        assert vo2['eligible'] is False, "absent acwr must not be treated as safe default 1.0"
+        assert 'V1' in vo2['failed_conditions']
+        assert 'VO2_ELIGIBILITY_GATE' in result['governance_locks_applied']
+
+    def test_readiness_score_none_in_context_triggers_v2_fail(self, gov):
+        """Explicit None for readiness_score (key present, value None) → V2 ineligible."""
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        ctx = _vo2_context(readiness_score=None)
+        result = gov.apply_constraints(plan, ctx)
+        vo2 = result['vo2_eligibility']
+        assert vo2['eligible'] is False, "readiness_score=None must not be treated as safe default 100"
+        assert 'V2' in vo2['failed_conditions']
+        assert 'VO2_ELIGIBILITY_GATE' in result['governance_locks_applied']
+
+    def test_readiness_score_absent_from_context_triggers_v2_fail(self, gov):
+        """Absent readiness_score key (not present in context at all) → V2 ineligible."""
+        plan = {'session_type': 'HAMMER', 'duration_min': 45}
+        ctx = {k: v for k, v in _vo2_context().items() if k != 'readiness_score'}
+        result = gov.apply_constraints(plan, ctx)
+        vo2 = result['vo2_eligibility']
+        assert vo2['eligible'] is False, "absent readiness_score must not be treated as safe default 100"
+        assert 'V2' in vo2['failed_conditions']
+        assert 'VO2_ELIGIBILITY_GATE' in result['governance_locks_applied']
+
+    def test_both_none_triggers_v1_and_v2_fail(self, gov):
+        """Both acwr=None and readiness_score=None → V1 + V2 ineligible (contract-valid)."""
+        plan = {'session_type': 'RACE', 'duration_min': 90}
+        ctx = _vo2_context(acwr=None, readiness_score=None)
+        result = gov.apply_constraints(plan, ctx)
+        vo2 = result['vo2_eligibility']
+        assert vo2['eligible'] is False
+        assert 'V1' in vo2['failed_conditions']
+        assert 'V2' in vo2['failed_conditions']
+        # Downgrade must be applied
+        assert result['session_type'] == 'TEMPO'
