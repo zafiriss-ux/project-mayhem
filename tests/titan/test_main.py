@@ -425,7 +425,7 @@ class _CallbackGarmin:
             "sleep": ["ok"],
         }
 
-    def sync_activities(self, days_back):
+    def sync_activities(self, days_back, **kw):
         if days_back == 14:
             return [{"avg_hr": 151, "duration_sec": 3600}]
         return [{"date": "2026-03-01", "distance_km": 10.2, "avg_hr": 149}]
@@ -563,7 +563,7 @@ def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messa
         def sync_all(self):
             raise RuntimeError("sync failed")
 
-        def sync_activities(self, days_back):
+        def sync_activities(self, days_back, **kw):
             return [] if days_back == 14 else (_ for _ in ()).throw(RuntimeError("activities failed"))
 
     class _RaisingDrift:

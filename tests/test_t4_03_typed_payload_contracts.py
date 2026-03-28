@@ -4,7 +4,7 @@ from titan.orchestration.daily_coach import DailyCoach
 
 def test_garmin_sync_all_contract_shape():
     sync = GarminSync(email="x", password="y")
-    sync.sync_activities = lambda days_back=7: []
+    sync.sync_activities = lambda days_back=7, **kw: []
     sync.sync_weight = lambda days_back=14: []
     sync.sync_sleep = lambda days_back=7: []
     sync.sync_hrv = lambda days_back=7: []

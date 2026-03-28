@@ -95,7 +95,7 @@ def test_stop_background_sync_hung_thread_emits_error_timeout_event(caplog):
 
 def test_sync_all_payload_supports_dict_access_and_json_serialization():
     sync = GarminSync(email="e", password="p")
-    sync.sync_activities = lambda days_back=7: [{"date": "2026-03-04"}]
+    sync.sync_activities = lambda days_back=7, **kw: [{"date": "2026-03-04"}]
     sync.sync_weight = lambda days_back=14: [{"date": "2026-03-04", "weight": 70.2}]
     sync.sync_sleep = lambda days_back=7: [{"date": "2026-03-04", "sleep_score": 80}]
     sync.sync_hrv = lambda days_back=7: [{"date": "2026-03-04", "rmssd": 41.5}]
@@ -115,7 +115,7 @@ def test_sync_all_payload_supports_dict_access_and_json_serialization():
 
 def test_sync_all_payload_coerces_hrv_metrics_to_ints():
     sync = GarminSync(email="e", password="p")
-    sync.sync_activities = lambda days_back=7: []
+    sync.sync_activities = lambda days_back=7, **kw: []
     sync.sync_weight = lambda days_back=14: []
     sync.sync_sleep = lambda days_back=7: []
     sync.sync_hrv = lambda days_back=7: []
@@ -206,7 +206,7 @@ def test_sync_all_timeout_emits_cancel_event_and_attempts_future_cancel(monkeypa
 
 def test_sync_all_payload_includes_data_trust_contract():
     sync = GarminSync(email="e", password="p")
-    sync.sync_activities = lambda days_back=7: []
+    sync.sync_activities = lambda days_back=7, **kw: []
     sync.sync_weight = lambda days_back=14: []
     sync.sync_sleep = lambda days_back=7: []
     sync.sync_hrv = lambda days_back=7: []

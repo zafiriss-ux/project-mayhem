@@ -261,6 +261,9 @@ class GarminSync:
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
+        # Athlete physiological HRmax — injected by DailyCoach after construction
+        # so that _sync_operation can forward it to sync_activities().
+        self.athlete_max_hr: int = 0
         self.sync_history: list = []
         self.last_hrv_sync_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
             days_back=0,
@@ -740,7 +743,7 @@ class GarminSync:
     # FULL SYNC
     # ------------------------------------------------------------------ #
     def _sync_operation(self, days_back: int) -> GarminSyncResult:
-        activities = self.sync_activities(days_back)
+        activities = self.sync_activities(days_back, athlete_max_hr=self.athlete_max_hr)
         weight = self.sync_weight(max(days_back, 14))
         sleep = self.sync_sleep(days_back)
         hrv = self.sync_hrv(days_back)

@@ -281,7 +281,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
     def cb_activities():
         garmin: GarminSync = ctx["garmin"]
         try:
-            acts = garmin.sync_activities(days_back=7)
+            _max_hr = ctx.get("athlete_profile", {}).get("max_hr") or 0
+            acts = garmin.sync_activities(days_back=7, athlete_max_hr=_max_hr)
             if not acts:
                 return "Δεν βρέθηκαν activities τελευταίες 7 μέρες."
             lines = ["🏃 *RECENT ACTIVITIES*\n"]
@@ -300,7 +301,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
         try:
             acts = ctx.get("last_garmin_data", {}).get("activities", [])
             if not acts:
-                acts = garmin.sync_activities(days_back=14)
+                _max_hr = ctx.get("athlete_profile", {}).get("max_hr") or 0
+                acts = garmin.sync_activities(days_back=14, athlete_max_hr=_max_hr)
             if not acts:
                 return "Δεν υπάρχουν activities για drift analysis."
             # Use most recent activity
@@ -440,21 +442,7 @@ def main():
         extra={"database": "titan_core.db"},
     )
 
-    # ── Step 5: Orchestration ────────────────────────────────────────────────
-    daily_coach = DailyCoach(
-        garmin_sync=garmin,
-        weather_api=weather,
-        telegram_bot=telegram,
-        hrv_engine=hrv_engine,
-        tsb_engine=tsb_engine,
-        readiness_engine=readiness_engine,
-        optimal_time_calc=optimal_time_calc,
-        nutrition_optimizer=nutrition_optimizer,
-        weekly_planner=weekly_planner,
-        db=db,
-    )
-
-    # ── Step 6: Build context dict (passed to menu system & callbacks) ────────
+    # ── Step 5: Athlete profile (built before DailyCoach so max_hr is available) ──
     athlete_profile: AthleteProfile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
 
@@ -467,6 +455,23 @@ def main():
         "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
         "goal":           os.getenv("TRAINING_GOAL", "5K"),
     }
+
+    # ── Step 6: Orchestration ────────────────────────────────────────────────
+    daily_coach = DailyCoach(
+        garmin_sync=garmin,
+        weather_api=weather,
+        telegram_bot=telegram,
+        hrv_engine=hrv_engine,
+        tsb_engine=tsb_engine,
+        readiness_engine=readiness_engine,
+        optimal_time_calc=optimal_time_calc,
+        nutrition_optimizer=nutrition_optimizer,
+        weekly_planner=weekly_planner,
+        db=db,
+        athlete_max_hr=athlete_profile["max_hr"] or 0,
+    )
+
+    # ── Step 7: Build context dict (passed to menu system & callbacks) ─────────
 
     titan_ctx: TitanContext = TitanContextContract(
         garmin=garmin,

@@ -63,7 +63,7 @@ class _GarminWithActivity:
     def sync_all(self):
         return {"activities": [], "weight": [], "hrv": [], "sleep": []}
 
-    def sync_activities(self, days_back):
+    def sync_activities(self, days_back, **kw):
         assert days_back == 14
         return [{"avg_hr": 150, "duration_sec": 3600}]
 

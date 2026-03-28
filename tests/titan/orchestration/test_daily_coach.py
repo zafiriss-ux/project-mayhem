@@ -124,6 +124,7 @@ class MinimalCoachFactory:
             get_governance_report=lambda **k: {},
         )
         coach.outcome_tracker = SimpleNamespace(record_decision=lambda **k: None)
+        coach.athlete_max_hr = 0
         coach._degraded_tracker = DegradedModeTracker()
         coach.optimal_time = SimpleNamespace(calculate_optimal_time=lambda **k: {"recommended_time": "07:00", "dew_point": 12, "quality": "GOOD"})
         coach.nutrition = SimpleNamespace(
@@ -2046,3 +2047,59 @@ class TestT5_51_AcwrNullPropagation:
             lock_thresholds={},
         )
         assert contract.acwr is None
+
+
+# ── T5-44: athlete_max_hr threading through DailyCoach → sync_all ────────────
+
+
+def test_daily_coach_passes_athlete_max_hr_to_garmin_sync_instance(monkeypatch):
+    """DailyCoach.__init__(athlete_max_hr=185) must inject the value into
+    garmin_sync.athlete_max_hr so that _sync_operation forwards it to
+    sync_activities() during every sync_all() call.
+
+    Verifies the injection chain:
+    DailyCoach.__init__(athlete_max_hr=185)
+      → garmin_sync.athlete_max_hr = 185
+    """
+    monkeypatch.setattr(DailyCoach, "_hydrate_engines_from_db", lambda self: {})
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda *a, **kw: None)
+
+    fake_garmin = SimpleNamespace(
+        sync_all=lambda: {},
+        athlete_max_hr=0,   # starts at 0; must be overwritten by DailyCoach
+    )
+
+    coach = DailyCoach(
+        garmin_sync=fake_garmin,
+        weather_api=SimpleNamespace(),
+        telegram_bot=SimpleNamespace(send_alert=lambda *a, **kw: None),
+        hrv_engine=SimpleNamespace(),
+        tsb_engine=SimpleNamespace(),
+        readiness_engine=SimpleNamespace(),
+        optimal_time_calc=SimpleNamespace(),
+        nutrition_optimizer=SimpleNamespace(),
+        weekly_planner=SimpleNamespace(),
+        db=DummyDB(),
+        athlete_max_hr=185,
+    )
+
+    assert coach.athlete_max_hr == 185
+    # The injection is done via setattr — confirm the GarminSync instance was updated.
+    assert fake_garmin.athlete_max_hr == 185
+
+
+def test_daily_coach_athlete_max_hr_defaults_to_zero():
+    """When athlete_max_hr is not supplied, DailyCoach stores 0 (safe default)."""
+    coach = DailyCoach(
+        garmin_sync=SimpleNamespace(),
+        weather_api=SimpleNamespace(),
+        telegram_bot=SimpleNamespace(),
+        hrv_engine=SimpleNamespace(),
+        tsb_engine=SimpleNamespace(),
+        readiness_engine=SimpleNamespace(),
+        optimal_time_calc=SimpleNamespace(),
+        nutrition_optimizer=SimpleNamespace(),
+        weekly_planner=SimpleNamespace(),
+        db=DummyDB(),
+    )
+    assert coach.athlete_max_hr == 0
