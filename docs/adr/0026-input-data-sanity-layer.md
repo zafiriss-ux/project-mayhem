@@ -194,3 +194,15 @@ architectural complexity. Consistent with the existing pipeline structure.
 
 Accepted. Engineering execution: **T1-19** (Tier 1 — data integrity; executes after
 T1-18 in Phase 7.9+ sprint).
+
+---
+
+## Implementation Notes
+
+**OBS-036 / T5-69 (pending):** `sync_activities()` does not extract Garmin's `activityId`
+field, and `training_log` has no `activity_id` column. Overlapping sync windows (6h background
+sync + manual /sync) can insert duplicate activity rows into `training_log`, silently inflating
+CTL/ATL/TSB. This is the same structural gap that T1-19 / T5-46 closed for HRV entries
+(INSERT OR IGNORE per date), but activities require activity-ID deduplication rather than
+per-date deduplication (double-day training is valid). Fix registered as T5-69.
+The schema migration must follow the additive-migration policy (ADR-0015).

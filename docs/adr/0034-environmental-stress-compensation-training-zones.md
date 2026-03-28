@@ -172,3 +172,21 @@ Phase 9 enhancement if solar radiation data becomes available.
   They are better than no adjustment but are not individually calibrated per athlete.
   Per-athlete ESI calibration is a Phase 9 item (see ADR-0033 Layer 3).
 - Constraint: T4-29 is Phase 8 work. No implementation occurs in Phase 7.9.
+
+---
+
+## Implementation Notes
+
+**OBS-035 / T5-68 (pending):** `titan/orchestration/daily_coach.py:713` uses the literal
+`12.0` as the fallback dew_point when Garmin data does not include `dew_point`:
+`dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0)`. This literal is not present
+in `thresholds.py` or `evidence_registry.py`, violating ADR-0034's requirement that ESI
+parameters be governed constants. Additionally, `NutritionOptimizer` uses `25.0°C` as the
+conservative dew_point fallback (T5-59), creating an internal inconsistency between the ESI
+path (12.0°C) and the nutrition hydration path (25.0°C) for the same physical quantity.
+
+Fix registered as T5-68: extract `12.0` to `ESI_DEW_POINT_FALLBACK_C` in `thresholds.py`
+with conservative value (≥18.0°C per safety-first principle); register in `evidence_registry.py`
+with HEURISTIC provenance. The conservative direction is higher dew_point (overestimates
+thermal stress → more cautious pacing).
+

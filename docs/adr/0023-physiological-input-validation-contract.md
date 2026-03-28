@@ -189,3 +189,18 @@ retroactively protects historical data. Chosen for Phase 7.8.
 
 Accepted. Engineering execution: **T1-18** (Tier 1 — data integrity; execute before
 any Tier 2 items in Phase 7.9+).
+
+---
+
+## Implementation Notes
+
+**T5-63 (2026-03-28):** Extended the validation contract to `_check_vo2_eligibility_gate`
+in `GovernanceEngine`. Prior to this fix, `acwr=None` and `readiness_score=None` both
+defaulted to safe-range values (1.0 and 100 respectively), causing VO2 eligibility gates
+V1 and V2 to pass silently on missing Garmin data. The fix applies the conservative-fail
+principle (ADR-0051): absent/None inputs produce gate-failure outcomes. PR #556 merged
+2026-03-28.
+
+**OBS-030 / T5-65 (pending):** `_classify_hrv_drop` carries the same pattern — `acwr=None`
+falls through `float(None)` TypeError to `acwr = 1.0`. This is a remaining non-compliant
+call site. Fix registered as T5-65; implement after ADR-0051 acceptance.

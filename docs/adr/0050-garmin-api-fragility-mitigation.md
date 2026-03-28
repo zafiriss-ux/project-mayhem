@@ -181,3 +181,21 @@ Explicitly deferred (not in T5-12 Pass 2 scope):
 - `BiometricSourceSyncResult` (and related dataclasses) defined per D4
 - All T5-12 Pass 2 tests green
 - This ADR file exists in `docs/adr/`
+
+---
+
+## Implementation Notes
+
+**T5-64 (2026-03-28):** Fixed a related cs_confidence defaulting error in DailyCoach.
+`titan/orchestration/daily_coach.py:768` used `getattr(self.cs_tracker, 'confidence', 1.0)`
+when assembling the APL call arguments. When `cs_tracker` has no `confidence` attribute
+(new athlete, no time trial history), the APL received `cs_confidence=1.0` (maximum
+confidence), bypassing the APL tightening path (`confidence < 0.50` raises
+`cs_min_confidence` from 0.70 to 0.85). This is not a Garmin API failure scenario per se,
+but it is structurally the same data-absence → optimistic-default pattern governed by
+ADR-0050's resilience philosophy. Fix: `getattr(..., 0.0)` — absent confidence defaults to
+the most conservative value. PR #557 merged 2026-03-28.
+
+Note: the `governance_engine` internal read (`getattr(cs_tracker, 'confidence', 0.0)`) was
+fixed by T5-52 (PR #529, 2026-03-26). T5-64 fixed the remaining instance in the DailyCoach
+APL feed path, which T5-52's scope had missed.

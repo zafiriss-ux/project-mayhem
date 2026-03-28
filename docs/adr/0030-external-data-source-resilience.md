@@ -167,3 +167,16 @@ out of scope.
   This is a lightweight addition (single-row update per sync attempt) with no schema
   migration complexity beyond a new column or table.
 - Constraint: T1-20 must be completed before T2-15 (see above).
+
+---
+
+## Implementation Notes
+
+**OBS-032 / T5-67 (pending):** `sync_sleep()`, `sync_hrv()`, `sync_activities()`, and
+`sync_weight()` in `titan/integrations/garmin_sync.py` all emit a `_garmin_event("synced",
+count=0)` success event unconditionally after the outer `try/except` block. When the sync
+method aborts due to an exception, the emitted event is structurally identical to a normal
+zero-activity day. SLO alerting cannot distinguish the two states. Fix registered as T5-67:
+gate success event emission on absence of exception (boolean flag or move inside try block).
+This finding is directly related to ADR-0030's goal of making degraded-mode operations
+visible to operators.
