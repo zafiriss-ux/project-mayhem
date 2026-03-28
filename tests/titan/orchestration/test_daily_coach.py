@@ -1967,6 +1967,72 @@ def test_sync_ok_false_when_all_empty_lists_returned(monkeypatch):
     )
 
 
+# ---------------------------------------------------------------------------
+# T5-62 Part B — garmin_sync_empty event + regression guard
+# ---------------------------------------------------------------------------
+
+def test_sync_empty_emits_garmin_sync_empty_warning_event(monkeypatch):
+    """B1: 0/0/0/0 sync with no timeout → 'garmin_sync_empty' WARNING event emitted."""
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [],
+            "sleep": [],
+            "hrv": [],
+            "hrr": [],
+            "weight": [],
+            "temperature_c": 20,
+            "acwr": 1.0,
+        }
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: True,
+        send_alert=lambda msg: None,
+        send_structured_alert=lambda **kwargs: None,
+    )
+
+    coach.run_morning_routine()
+
+    empty_events = [e for e in events if e["action"] == "garmin_sync_empty"]
+    assert empty_events, "'garmin_sync_empty' event must be emitted when sync returns 0/0/0/0"
+    ev = empty_events[0]
+    assert ev.get("severity") in ("WARNING", "warning", "EventSeverity.WARNING"), (
+        "'garmin_sync_empty' event must carry severity=WARNING"
+    )
+
+
+def test_sync_with_data_does_not_emit_garmin_sync_empty_event(monkeypatch):
+    """B2: Regression guard — sync with data must NOT emit 'garmin_sync_empty' event."""
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [{"activityId": 1, "activityType": {"typeKey": "running"}, "distance": 10000, "duration": 3600, "averageHR": 150, "maxHR": 175, "startTimeLocal": "2026-03-28 07:00:00", "averageSpeed": 2.78}],
+            "sleep": [],
+            "hrv": [],
+            "hrr": [],
+            "weight": [],
+            "temperature_c": 20,
+            "acwr": 1.0,
+        }
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda payload: True,
+        send_alert=lambda msg: None,
+        send_structured_alert=lambda **kwargs: None,
+    )
+
+    coach.run_morning_routine()
+
+    empty_events = [e for e in events if e["action"] == "garmin_sync_empty"]
+    assert not empty_events, "'garmin_sync_empty' must NOT be emitted when sync returns data"
+
+
 class TestT5_51_AcwrNullPropagation:
     """T5-51: Missing ACWR must propagate as None, not silently default to 1.0 (sweet-spot)."""
 
