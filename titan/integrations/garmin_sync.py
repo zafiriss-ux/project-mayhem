@@ -261,6 +261,9 @@ class GarminSync:
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
+        # Athlete physiological HRmax — injected by DailyCoach after construction
+        # so that _sync_operation can forward it to sync_activities().
+        self.athlete_max_hr: int = 0
         self.sync_history: list = []
         self.last_hrv_sync_metrics: HRVSyncMetrics = HRVSyncMetricsContract(
             days_back=0,
@@ -491,7 +494,18 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # ACTIVITIES
     # ------------------------------------------------------------------ #
-    def sync_activities(self, days_back: int = 7) -> list[dict]:
+    def sync_activities(self, days_back: int = 7, athlete_max_hr: int = 0) -> list[dict]:
+        """Fetch running activities from Garmin for the past ``days_back`` days.
+
+        Args:
+            days_back: Number of days back to fetch.
+            athlete_max_hr: Athlete's physiological HRmax from the athlete
+                profile.  Used as the zone-boundary ceiling in Edwards TRIMP
+                calculation.  Must be sourced from ``AthleteProfile.max_hr``,
+                NOT from the session peak HR in the Garmin payload.
+                When 0 (not supplied), TRIMP calculation returns None and
+                ``estimated_training_load`` defaults to 0.0.
+        """
         if not self._ensure_connected():
             return []
         activities = []
@@ -505,12 +519,16 @@ class GarminSync:
                     dur_sec = int(a.get("duration", 0))
                     dist_m = float(a.get("distance", 0))
                     avg_hr = a.get("averageHR") or a.get("averageHeartRate", 0)
-                    max_hr = a.get("maxHR") or a.get("maxHeartRate", 0)
+                    # session_max_hr is retained in the activity record for
+                    # diagnostic value but is NOT used as the HRmax ceiling
+                    # for zone boundaries — athlete_max_hr (physiological
+                    # HRmax from the athlete profile) serves that role.
+                    session_max_hr = a.get("maxHR") or a.get("maxHeartRate", 0)
                     pace_sec = int(dur_sec / (dist_m / 1000)) if dist_m > 0 else 0
                     trimp_val, _ = TRIMPEngine.calculate_edwards_trimp(
                         dur_sec / 60,
                         int(avg_hr) if avg_hr else 0,
-                        int(max_hr) if max_hr else 0,
+                        athlete_max_hr,
                     )
                     estimated_load = round(trimp_val, 1) if trimp_val else 0.0
                     activities.append(
@@ -520,7 +538,7 @@ class GarminSync:
                             "distance_km": round(dist_m / 1000, 2),
                             "duration_sec": dur_sec,
                             "avg_hr": int(avg_hr) if avg_hr else 0,
-                            "max_hr": int(max_hr) if max_hr else 0,
+                            "max_hr": int(session_max_hr) if session_max_hr else 0,
                             "avg_pace_sec_per_km": pace_sec,
                             "calories": int(a.get("calories", 0)),
                             "elevation_gain_m": int(a.get("elevationGain", 0)),
@@ -725,7 +743,7 @@ class GarminSync:
     # FULL SYNC
     # ------------------------------------------------------------------ #
     def _sync_operation(self, days_back: int) -> GarminSyncResult:
-        activities = self.sync_activities(days_back)
+        activities = self.sync_activities(days_back, athlete_max_hr=self.athlete_max_hr)
         weight = self.sync_weight(max(days_back, 14))
         sleep = self.sync_sleep(days_back)
         hrv = self.sync_hrv(days_back)

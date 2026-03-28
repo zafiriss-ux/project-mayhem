@@ -272,8 +272,15 @@ class DailyCoach:
         apl:              AdaptivePriorityLock | None  = None,
         volume_load_gauge: VolumeLoadGauge | None      = None,
         outcome_tracker:  OutcomeTracker | None        = None,
+        # Athlete physiological HRmax — used as zone-boundary ceiling in TRIMP
+        # calculation.  Source from AthleteProfile.max_hr (never session peak HR).
+        athlete_max_hr: int = 0,
     ):
         self.garmin         = garmin_sync
+        # Inject athlete HRmax into the sync instance so _sync_operation can
+        # forward it to sync_activities() without changing sync_all()'s signature.
+        if hasattr(garmin_sync, "athlete_max_hr"):
+            garmin_sync.athlete_max_hr = athlete_max_hr
         self.weather        = weather_api
         self.telegram       = telegram_bot
         self.hrv            = hrv_engine
@@ -294,6 +301,7 @@ class DailyCoach:
         self.apl            = apl             or AdaptivePriorityLock()
         self.vlg            = volume_load_gauge or VolumeLoadGauge()
         self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
+        self.athlete_max_hr = athlete_max_hr
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
         self._degraded_tracker = DegradedModeTracker()

@@ -2,7 +2,7 @@
 
 import math
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.0.1"
 
 
 class TRIMPEngine:
@@ -21,7 +21,7 @@ class TRIMPEngine:
 
     @staticmethod
     def calculate_edwards_trimp(
-        duration_min: float, avg_hr: int, max_hr: int
+        duration_min: float, avg_hr: int, athlete_max_hr: int
     ) -> tuple[float | None, int]:
         """
         Edwards (1993) TRIMP - Zone-based method.
@@ -37,16 +37,20 @@ class TRIMPEngine:
 
         Args:
             duration_min: Session duration in minutes
-            avg_hr: Average heart rate
-            max_hr: Maximum heart rate
+            avg_hr: Average heart rate during the session
+            athlete_max_hr: Athlete's physiological HRmax (used for zone
+                boundary calculation). This is the ceiling from the athlete
+                profile — NOT the session peak HR. Passing the session peak
+                HR here will systematically misclassify zones whenever the
+                session peak is below the physiological HRmax.
 
         Returns:
             (trimp_value, zone_multiplier)
         """
-        if not max_hr or max_hr < 100:  # Physiologically impossible below 100 bpm
+        if not athlete_max_hr or athlete_max_hr < 100:  # Physiologically impossible below 100 bpm
             return None, 0
 
-        hr_percent = (avg_hr / max_hr) * 100
+        hr_percent = (avg_hr / athlete_max_hr) * 100
 
         # Determine zone multiplier
         if hr_percent < 60:
