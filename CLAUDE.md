@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2139 tests all green as of T5-62 zero-sync silent failure fix (2026-03-28). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2177 tests all green as of T5-60 sleep field mapping fix (2026-03-28). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
