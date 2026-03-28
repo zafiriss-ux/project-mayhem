@@ -2912,14 +2912,17 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-44 · TRIMP uses session maxHR instead of athlete HRmax 🔴 OPEN
+### T5-44 · TRIMP uses session maxHR instead of athlete HRmax ✅ RESOLVED 2026-03-28
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-28. PR #547 (commits 68b3bf6 + af5d1fb).
 **Source:** OBS-027 / OBS-025 F-13
 **Severity:** HIGH
 **Workflow Path: A**
 **Location:** `titan/science/trimp_engine.py:49`, `titan/integrations/garmin_sync.py:335-339`
 **Description:** `sync_activities()` passes session peak HR (not athlete physiological HRmax) to `TRIMPEngine.calculate_edwards_trimp()`, systematically misclassifying training zones and skewing TSB/CTL/ATL downstream.
+
+**Resolution:** `TRIMPEngine.calculate_edwards_trimp()` parameter renamed from `max_hr` to `athlete_max_hr`; zone boundaries now use athlete physiological HRmax from `AthleteProfile`, not session peak HR. `GarminSync.sync_activities()` accepts `athlete_max_hr` parameter; `DailyCoach` injects `athlete_profile.max_hr` at construction via `GarminSync.athlete_max_hr` attribute. Session peak HR retained in activity dict as `max_hr` for diagnostic value. `MODULE_VERSION` bumped to 1.0.1.
+**Task learning:** Engine contract fixes that add a new required parameter need caller wiring in the same PR to avoid a production silent-failure window where the parameter defaults to a safe-but-wrong value.
 
 ---
 
@@ -2965,14 +2968,17 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-48 · Garmin data age not propagated into governance context 🔴 OPEN
+### T5-48 · Garmin data age not propagated into governance context ✅ RESOLVED 2026-03-28
 
-**Status:** 🔴 OPEN — registered 2026-03-23.
+**Status:** ✅ RESOLVED 2026-03-28. PR #548.
 **Source:** OBS-027 / OBS-025 F-20
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/governance_engine.py` (context dict construction)
 **Description:** ADR-0041 `DataTrustLevel` is evaluated at sync boundary but governance cannot distinguish fresh from 24-hour-stale data; staleness is invisible to all safety gates.
+
+**Resolution:** `data_age_hours` field added to `GarminSyncResult` TypedDict and `GarminSyncResultContract`. Garmin sync paths (success, empty, timeout) populate the field correctly — timeout path bug fixed (was hardcoded `0.0`, now uses `_compute_data_age_hours()`). `DailyCoach` propagates `garmin_data_age_hours` and `garmin_data_trust_level` into governance context dict. `GovernanceEngine` includes both fields in every `_gate_event()` call across all gates (H1–H5, `VO2_ELIGIBILITY`, `FUELING`, `PARASYMPATHETIC_GUARD`, `OVERRIDE_LOCKDOWN`, `CS_CONFIDENCE_LOCK`, `APPLY_CONSTRAINTS`). Defensive defaults: `None` / `"UNKNOWN"` when absent from context.
+**Task learning:** Observability-only propagation tasks can still surface real bugs (hardcoded `0.0` in timeout path). Scope constraint "no gate logic changes" must be verified explicitly in the diff before merge.
 
 ---
 
@@ -3459,11 +3465,11 @@ When an item is completed, mark it here with date and PR reference:
 | T5-41 | ✅ RESOLVED (P3 — Category A: dew-point decision band literals in `weather_api.py`:158–170, 529–537 → extract to `thresholds.py` named constants) | 2026-03-17 |
 | T5-42 | ✅ RESOLVED (P3 — `NutritionOptimizer` public API test coverage gap: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green) | 2026-03-17 |
 | T5-43 | ✅ RESOLVED 2026-03-17 — withings-sync pinned to 4.1.0 in constraints.txt; all 10 test files collectable; 1999 tests green | 2026-03-17 |
-| T5-44 | 🔴 OPEN — OBS-025 F-13 (HIGH): TRIMP uses session maxHR instead of athlete HRmax | 2026-03-23 |
+| T5-44 | ✅ RESOLVED 2026-03-28 — TRIMP zone calculation uses athlete HRmax; DailyCoach wiring complete (PRs #547, #548) | 2026-03-28 |
 | T5-45 | ✅ RESOLVED 2026-03-27 — `HRVEngine.calculate_baseline` uses sample SD (N-1); ~8% suppression-threshold underestimation eliminated (PR #537) | 2026-03-27 |
 | T5-46 | ✅ RESOLVED 2026-03-27 — HRV log deduplicates by timestamp at ingestion; baseline inflation from overlapping syncs eliminated (PR #538) | 2026-03-27 |
 | T5-47 | ✅ RESOLVED 2026-03-26 — `EfficiencyEngine` returns `None` for zero/null pace; crash path eliminated (PR #526, commit 52537ed) | 2026-03-26 |
-| T5-48 | 🔴 OPEN — OBS-025 F-20 (MEDIUM): Garmin data age not propagated into governance context | 2026-03-23 |
+| T5-48 | ✅ RESOLVED 2026-03-28 — Garmin data age propagated to governance context and all gate events; timeout path bug fixed (PR #548) | 2026-03-28 |
 | T5-49 | ✅ RESOLVED 2026-03-27 — Governance defaults missing sleep/readiness to 40 (conservative); 2-of-4 gate fires correctly on absent data (PR #535) | 2026-03-27 |
 | T5-50 | ✅ RESOLVED 2026-03-27 — `sync_activities()` maps Garmin activity type to `session_type`; hardcoded `'EASY'` default eliminated (PR #539) | 2026-03-27 |
 | T5-51 | ✅ RESOLVED 2026-03-26 — ACWR propagates `None` on sync failure; governance pipeline no longer sees optimistic sweet-spot (PR #530, commit 5f68fc5) | 2026-03-26 |
