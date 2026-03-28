@@ -1190,7 +1190,9 @@ class DailyCoach:
             (today_rhr, today_sleep_score, today_sleep_hours)
         """
         today_rhr         = 0
-        today_sleep_score = 75        # conservative default
+        # Conservative default: score 50 → sleep_delta ≈ -0.67, which discourages
+        # training when sleep data is absent.  75 was optimistic (sleep_delta +0.17).
+        today_sleep_score = 50
         today_sleep_hours = 7.5
 
         # ── Activities → training_log ─────────────────────────────────────
@@ -1201,21 +1203,31 @@ class DailyCoach:
         for entry in sleep_entries:
             if not entry:
                 continue
-            # sync_sleep() returns flattened keys; fall back to raw Garmin keys for
-            # backward-compatibility with any callers using the pre-flattened shape.
+            # RHR note: sync_sleep() does NOT emit a restingHeartRate / rhr key.
+            # The 'restingHeartRate' key only exists in the legacy raw Garmin API
+            # shape (pre-flattening).  When the entry comes from sync_sleep() the
+            # rhr variable will be 0 and today_rhr will remain 0 (→ None after
+            # physiological validation), which is the correct conservative outcome.
             rhr = entry.get('restingHeartRate') or entry.get('rhr') or 0
-            # F-29: prefer flattened 'sleep_score' from sync_sleep(); fall back to nested
-            s_val = entry.get('sleep_score') or 0
-            if not s_val:
+
+            # F-29: prefer flattened 'sleep_score' from sync_sleep() (primary path).
+            # Fall back to nested sleepScores for backward-compat with the raw
+            # Garmin API shape.  Use explicit None checks so that a None sleep_score
+            # (Garmin API did not provide a score) does not accidentally collapse to
+            # the 0 sentinel and trigger the raw-key fallback with an empty dict.
+            s_val = entry.get('sleep_score')
+            if s_val is None:
                 score = entry.get('sleepScores', {})
                 if isinstance(score, dict):
                     overall = score.get('overall', {})
                     if isinstance(overall, dict):
-                        s_val = overall.get('value', 0)
+                        s_val = overall.get('value')
                     else:
-                        s_val = _safe_float(overall, 0)
+                        raw = _safe_float(overall, 0)
+                        s_val = raw if raw else None
                 else:
-                    s_val = _safe_float(score, 0)
+                    raw = _safe_float(score, 0)
+                    s_val = raw if raw else None
 
             # F-29: prefer 'total_sleep_hours' from sync_sleep() (already in hours);
             # fall back to seconds-based keys from raw Garmin API shape.
@@ -1224,7 +1236,7 @@ class DailyCoach:
 
             if rhr:
                 today_rhr = _safe_int(rhr)
-            if s_val:
+            if s_val is not None:
                 today_sleep_score = _safe_int(s_val)
             if total_h:
                 today_sleep_hours = _safe_float(total_h)

@@ -597,6 +597,93 @@ def test_persist_garmin_data_f29_flattened_sleep_keys_are_parsed(tmp_path):
         db.close()
 
 
+def test_persist_garmin_data_sync_sleep_output_sleep_score_extracted_correctly(tmp_path):
+    """T5-60: _persist_garmin_data must extract sleep_score from the exact shape
+    that sync_sleep() produces — not fall back to the optimistic 75 default."""
+    db = DatabaseManager(db_name="t5_60_sleep_score.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-20"
+
+    # Exact output shape returned by sync_sleep() — no raw Garmin keys present.
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = [
+        {
+            "date": day,
+            "total_sleep_hours": 7.2,
+            "deep_sleep_hours": 1.4,
+            "rem_sleep_hours": 1.9,
+            "sleep_score": 78,
+        }
+    ]
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        # sleep_score must reflect the sync_sleep() value, NOT the 75 default.
+        assert sleep_score == 78
+        assert sleep_hours == pytest.approx(7.2, abs=0.01)
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_sync_sleep_output_rhr_is_absent(tmp_path):
+    """T5-60: sync_sleep() does not include a restingHeartRate key.
+    _persist_garmin_data must return today_rhr == 0 (→ None after validation)
+    when the sleep entry comes from sync_sleep(), not a non-zero phantom value."""
+    db = DatabaseManager(db_name="t5_60_rhr_absent.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-21"
+
+    # Exact sync_sleep() output shape — deliberately omits restingHeartRate / rhr.
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = [
+        {
+            "date": day,
+            "total_sleep_hours": 7.0,
+            "deep_sleep_hours": 1.2,
+            "rem_sleep_hours": 1.7,
+            "sleep_score": 82,
+        }
+    ]
+    # Remove HRV so that RHR cannot come from another source in this test.
+    payload["hrv"] = []
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        # RHR must be 0 (→ None downstream) because sync_sleep() has no RHR key.
+        assert rhr == 0
+        assert sleep_score == 82
+    finally:
+        db.close()
+
+
+def test_persist_garmin_data_missing_sleep_data_defaults_are_conservative(tmp_path):
+    """T5-60 regression: when sleep data is entirely absent the default
+    sleep_score must be conservative (< 70, i.e. negative sleep_delta),
+    not the former optimistic 75 default."""
+    db = DatabaseManager(db_name="t5_60_conservative_default.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-22"
+
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = []   # No sleep data at all
+
+    try:
+        _rhr, sleep_score, _sleep_hours = coach._persist_garmin_data(payload, day)
+
+        # Conservative: score must be below 70 so sleep_delta is negative.
+        assert sleep_score < 70, (
+            f"Default sleep_score {sleep_score} is not conservative "
+            f"(must be < 70 to produce negative sleep_delta)"
+        )
+        # Sanity: definitely not the old optimistic 75 or a perfect 100.
+        assert sleep_score != 75
+        assert sleep_score != 100
+    finally:
+        db.close()
+
+
 def test_persist_garmin_data_f32_multi_day_hrv_all_persisted(tmp_path):
     """F-32: _persist_garmin_data must persist HRV for every date returned by
     sync_hrv(), not only today."""
@@ -971,7 +1058,7 @@ def test_run_morning_routine_partial_sleep_payload_uses_safe_defaults():
     coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
 
     assert coach.run_morning_routine() is True
-    assert payload["sleep_quality"] == 75
+    assert payload["sleep_quality"] == 50  # conservative default (< 70 → negative sleep_delta)
     assert payload["sleep_hours"] == 7.5
 
 
@@ -1410,7 +1497,7 @@ def test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults(m
 
     pf = exc_info.value
     assert pf.today_rhr == 0
-    assert pf.today_sleep_score == 75
+    assert pf.today_sleep_score == 50  # conservative default (< 70 → negative sleep_delta)
     assert pf.today_sleep_hours == 7.5
 
     persist_failed_events = [e for e in events if e.get("action") == "daily_metrics_persist_failed"]
