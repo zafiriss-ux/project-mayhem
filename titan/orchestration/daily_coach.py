@@ -438,6 +438,16 @@ class DailyCoach:
             success=sync_ok,
             error_class=sync_error_class,
         )
+        if sync_error_class == "GARMIN_EMPTY_SYNC":
+            _daily_coach_event(
+                "garmin_sync_empty",
+                severity=EventSeverity.WARNING,
+                activities=len(garmin_data.get("activities", [])),
+                sleep=len(garmin_data.get("sleep", [])),
+                hrv=len(garmin_data.get("hrv", [])),
+                weight=len(garmin_data.get("weight", [])),
+                detail="Garmin sync returned zero records across all data types; staleness gate will evaluate.",
+            )
 
         garmin_data_stale = False
         hours_since_success = GARMIN_DATA_MAX_AGE_HOURS + 1

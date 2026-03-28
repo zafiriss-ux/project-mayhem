@@ -569,7 +569,8 @@ def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_pa
 # ---------------------------------------------------------------------------
 
 def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypatch, tmp_path):
-    """429 on verification ping + auth error on secondary data call → token deleted, re-login."""
+    """429 on verification ping + auth error on secondary data call → _invalidate_session called,
+    token deleted, connect() returns False (no re-login in a rate-limited window)."""
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -602,21 +603,29 @@ def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypa
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
 
+    invalidated = []
     sync = GarminSync(email="u", password="p")
     monkeypatch.setattr(sync, "_get_token_path", lambda: token_file)
+    original_invalidate = sync._invalidate_session
+    def _track_invalidate():
+        invalidated.append(True)
+        original_invalidate()
+    monkeypatch.setattr(sync, "_invalidate_session", _track_invalidate)
 
     result = sync.connect()
 
-    # Re-login must be attempted (stale token path triggered fallthrough)
-    assert login_called["n"] == 1, "Must fall through to fresh login after secondary auth failure"
+    # Must NOT attempt a re-login — we are in a rate-limited window
+    assert login_called["n"] == 0, "Must NOT fall through to fresh login in a rate-limited window"
+    # _invalidate_session must have been called to clean up auth state
+    assert invalidated == [True], "_invalidate_session must be called on secondary auth failure"
     # connect_token_stale_after_429 event must be emitted to signal the stale-token detection
     stale_events = [a for a, _ in events if a == "connect_token_stale_after_429"]
     assert stale_events, "connect_token_stale_after_429 event must be emitted"
-    # Should ultimately connect via fresh login
-    assert result is True
-    assert sync.is_connected is True
-    # Token file is recreated after successful fresh login — that is expected
-    assert token_file.exists(), "Token file must be saved after successful fresh login"
+    # connect() must return False — the caller will retry on the next scheduled cycle
+    assert result is False, "connect() must return False when secondary call fails during rate-limited window"
+    assert sync.is_connected is False
+    # Token file must be deleted so the next cycle attempts a fresh credential login
+    assert not token_file.exists(), "Token file must be deleted after secondary auth failure"
 
 
 def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tmp_path):

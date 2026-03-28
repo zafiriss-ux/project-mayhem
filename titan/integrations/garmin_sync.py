@@ -373,18 +373,23 @@ class GarminSync:
                                     detail="Token ping rate-limited (429); secondary call also rate-limited; assuming token valid, skipping re-login",
                                 )
                                 return True
-                            # Secondary call failed with auth (or other) error — token is stale.
-                            # Delete the token and fall through to full re-login.
-                            with contextlib.suppress(Exception):
-                                token_path.unlink(missing_ok=True)
+                            # Secondary call failed with non-rate-limit error — token is stale.
+                            # Invalidate the session (resets auth state + deletes token file)
+                            # and return False immediately.  Do NOT attempt a fresh login now:
+                            # we are already in a rate-limited window and hammering the API
+                            # with another login request risks compounding the problem.
+                            # The token is deleted so the next scheduled sync cycle will
+                            # automatically attempt a fresh credential login.
+                            self._invalidate_session()
                             _garmin_event(
                                 "connect_token_stale_after_429",
                                 subsystem="connect",
                                 primary_error_class=token_err.__class__.__name__,
                                 secondary_error_class=secondary_err.__class__.__name__,
                                 secondary_failure_class=_secondary_failure_class,
-                                detail="Token ping rate-limited (429); secondary call failed; token stale, falling through to re-login",
+                                detail="Token ping rate-limited (429); secondary call failed; session invalidated, not retrying login in rate-limited window",
                             )
+                            return False
                     _garmin_event(
                         "connect_token_load_failed",
                         subsystem="connect",
