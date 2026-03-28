@@ -335,7 +335,8 @@ def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
 
 
 def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
-    """sync_activities() must populate estimated_training_load > 0 when avg_hr and max_hr are valid."""
+    """sync_activities() must populate estimated_training_load > 0 when avg_hr
+    and athlete_max_hr are valid."""
     sync = GarminSync(email="e", password="p")
     sync._ensure_connected = lambda: True
     sync.client = MagicMock()
@@ -353,7 +354,7 @@ def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
         }
     ]
 
-    activities = sync.sync_activities(days_back=1)
+    activities = sync.sync_activities(days_back=1, athlete_max_hr=190)
 
     assert len(activities) == 1
     act = activities[0]
@@ -983,3 +984,98 @@ def test_consecutive_failures_reset_on_successful_sync(monkeypatch):
     assert sync._consecutive_failures == 0
     assert sync._last_successful_sync_at is not None
     assert sync.is_api_degraded is False
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# athlete_max_hr source correctness (T5-44)
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def _make_activity_payload(avg_hr: int = 145, max_hr: int = 175) -> dict:
+    return {
+        "startTimeLocal": "2026-03-21 07:00:00",
+        "activityType": {"typeKey": "running"},
+        "duration": 3600,
+        "distance": 10000.0,
+        "averageHR": avg_hr,
+        "maxHR": max_hr,
+        "calories": 600,
+        "elevationGain": 50,
+        "activityId": "act-trimp-001",
+    }
+
+
+def test_sync_activities_uses_athlete_max_hr_not_session_peak_for_trimp():
+    """sync_activities() must pass athlete_max_hr to TRIMPEngine, not session peak HR.
+
+    avg_hr=130, session_max_hr=145, athlete_max_hr=190.
+      With session_peak as ceiling: 130/145 ≈ 89.7% → zone 4 → TRIMP = 60×4 = 240
+      With athlete_max_hr:          130/190 ≈ 68.4% → zone 2 → TRIMP = 60×2 = 120
+
+    Correct answer is 120.  The test confirms zone 2 by checking estimated_training_load.
+    """
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_activities_by_date.return_value = [
+        _make_activity_payload(avg_hr=130, max_hr=145)
+    ]
+
+    activities = sync.sync_activities(days_back=1, athlete_max_hr=190)
+
+    assert len(activities) == 1
+    act = activities[0]
+    # 60 min × zone-2 multiplier (2) = 120
+    assert act["estimated_training_load"] == 120.0
+
+
+def test_sync_activities_athlete_max_hr_zero_yields_zero_load():
+    """When athlete_max_hr is not supplied (defaults to 0), TRIMP cannot be
+    calculated and estimated_training_load must be 0.0."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_activities_by_date.return_value = [
+        _make_activity_payload(avg_hr=145, max_hr=175)
+    ]
+
+    activities = sync.sync_activities(days_back=1)  # athlete_max_hr defaults to 0
+
+    assert len(activities) == 1
+    assert activities[0]["estimated_training_load"] == 0.0
+
+
+def test_sync_activities_session_max_hr_preserved_in_activity_record():
+    """session_max_hr from Garmin payload must remain in the activity dict
+    under the 'max_hr' key for diagnostic purposes, regardless of athlete_max_hr."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    sync.client.get_activities_by_date.return_value = [
+        _make_activity_payload(avg_hr=145, max_hr=172)
+    ]
+
+    activities = sync.sync_activities(days_back=1, athlete_max_hr=190)
+
+    assert len(activities) == 1
+    # Session peak must be retained verbatim
+    assert activities[0]["max_hr"] == 172
+
+
+def test_sync_activities_session_peak_above_athlete_max_hr_does_not_crash():
+    """Noisy HR data can produce session_max_hr > athlete_max_hr.
+    sync_activities() must not crash and must clamp to zone 5."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    # avg_hr exceeds athlete_max_hr — extreme outlier
+    sync.client.get_activities_by_date.return_value = [
+        _make_activity_payload(avg_hr=200, max_hr=210)
+    ]
+
+    activities = sync.sync_activities(days_back=1, athlete_max_hr=190)
+
+    assert len(activities) == 1
+    act = activities[0]
+    # Should not raise; TRIMP should be zone 5 × 60 min = 300
+    assert act["estimated_training_load"] == 300.0
