@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -185,7 +185,320 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 
 ## BLOCKING Queue
 
-*No blocking observations.*
+### [OBS-028] VO2 eligibility gate retains optimistic ACWR and readiness defaults
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: GovernanceEngine VO2 gate
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/science/governance_engine.py` — `_check_vo2_eligibility_gate` lines 431, 440, 432, 447
+
+**Observation:**
+`_check_vo2_eligibility_gate` contains two independent optimistic-default paths that T5-49 and T5-51 did not address:
+
+1. ACWR (lines 431, 440):
+   ```python
+   acwr_raw = context.get("acwr", 1.0)          # absent key → 1.0 (sweet spot)
+   acwr = float(1.0 if acwr_raw is None else acwr_raw)  # None → 1.0
+   ```
+   Both absent-key and explicit None produce `acwr = 1.0`. The V1 gate (`VO2_ACWR_MIN=0.80 ≤ acwr ≤ VO2_ACWR_MAX=1.30`) passes because 1.0 is within the safe range.
+
+2. readiness_score (lines 432, 447):
+   ```python
+   readiness_raw = context.get("readiness_score", 100)       # absent key → 100
+   readiness = float(100 if readiness_raw is None else readiness_raw)  # None → 100
+   ```
+   Both absent-key and explicit None produce `readiness = 100`. The V2 gate (`readiness >= VO2_READINESS_MIN=65.0`) always passes because 100 ≥ 65.
+
+T5-49 fixed `context.get("sleep_score", 40)` and `context.get("readiness_score", 40)` in the **2-of-4 gate** (lines 198, 205). T5-51 fixed DailyCoach to pass `None` instead of `1.0` for ACWR. Neither task touched `_check_vo2_eligibility_gate`. The result: a complete Garmin data failure (all values None) still allows a VO2 session to be scheduled.
+
+**Pattern / scope:**
+Isolated to `_check_vo2_eligibility_gate` in governance_engine.py. Two separate default chains (one per field), each with two fallback points (.get() and None-conversion).
+
+**Architectural question raised:**
+Should `_check_vo2_eligibility_gate` treat `None` ACWR or `None` readiness_score as a disqualifying condition (return gate-failed with reason INSUFFICIENT_DATA), or should it apply a conservative non-None substitute value from `thresholds.py`?
+
+**Codex assessment (data only, no decision):**
+Conservative design intent (safety-first per governance philosophy) implies None should disqualify, not default to optimal. The current defaults make VO2 eligibility indistinguishable between "athlete has optimal readiness" and "no Garmin data available."
+
+**Status:** PENDING
+
+---
+
+### [OBS-029] T5-52 resolution record contradicts live code: cs_confidence default is 1.0
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: DailyCoach cs_tracker integration
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — line 768
+- `TECHNICAL_DEBT.md` — T5-52 resolution record
+
+**Observation:**
+T5-52 resolution record (TECHNICAL_DEBT.md) states:
+> "✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d)"
+
+Current live code at `daily_coach.py:768`:
+```python
+cs_confidence  = _safe_float(getattr(self.cs_tracker, 'confidence', 1.0), 1.0),
+```
+
+Both the `getattr` default (1.0) and the `_safe_float` fallback (1.0) are 1.0. If `cs_tracker` is `None` or absent, `confidence = 1.0`. `CS_CONFIDENCE_LOCK` fires when confidence ≤ 0.70; with confidence = 1.0 it cannot fire.
+
+T5-52 was supposed to change this default to 0.0. The live code and the resolution record are contradictory. Either:
+(a) PR #529 / commit 19f9a1d applied the fix to a different code path than line 768, or
+(b) a subsequent PR (one of #530–#554) accidentally reverted the fix.
+
+**Pattern / scope:**
+Single location (`daily_coach.py:768`). Resolution record claims DONE; live code shows it is NOT done. The two sources disagree.
+
+**Architectural question raised:**
+Is the T5-52 resolution record correct (the fix was applied and later reverted) or incorrect (the fix was never applied to the right location)? Architect must determine whether a new T5 item is needed or whether the T5-52 record should be re-opened.
+
+**Codex assessment (data only, no decision):**
+The record says RESOLVED. The code says it is not. One of them is wrong. With confidence = 1.0 when `cs_tracker` is None, `CS_CONFIDENCE_LOCK` is bypassed for new athletes who have never run a time trial.
+
+**Status:** PENDING
+
+---
+
+## NON-BLOCKING Queue
+
+### [OBS-030] `_classify_hrv_drop` converts None ACWR to 1.0 post T5-51
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: GovernanceEngine HRV classification
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/governance_engine.py` — `_classify_hrv_drop` lines 235–238
+
+**Observation:**
+`_classify_hrv_drop()` at line 235–238:
+```python
+try:
+    acwr = float(context.get("acwr", 1.0))
+except (TypeError, ValueError):
+    acwr = 1.0
+```
+After T5-51 fixed DailyCoach to propagate `None` for missing ACWR, governance context may now carry `acwr=None`. `_classify_hrv_drop` converts None (and any TypeError) to 1.0.
+
+The method then checks `if acwr > VO2_ACWR_MAX` (1.30) at line 240 to classify the drop as TRAINING_EXPLAINED. With acwr=1.0, that check fails. The HRV drop falls through to `hrv_delta` and `rhr_delta` checks. If those are also borderline, the drop may be classified as TRAINING_EXPLAINED rather than ILLNESS_PATTERN or UNEXPLAINED_MODERATE.
+
+Impact is confined to the classification label returned by this helper; it feeds into narrative output but not directly into hard-stop gate decisions.
+
+**Pattern / scope:**
+Single method. The same ACWR default pattern (None→1.0) appears in the VO2 gate (OBS-028), `_classify_hrv_drop`, and the original pre-T5-51 DailyCoach call site. Three locations total, all now post-T5-51 carry None risk.
+
+**Architectural question raised:**
+Should `_classify_hrv_drop` treat None ACWR as "unknown explanation" (return UNKNOWN or skip classification), or default to the most conservative label? The current behaviour silently produces TRAINING_EXPLAINED when ACWR is unavailable.
+
+**Codex assessment (data only, no decision):**
+Impact appears limited to the narrative classification label (TRAINING_EXPLAINED vs ILLNESS_PATTERN), not to any gate decision. Urgency is NON-BLOCKING. However, it is the third location where None ACWR→1.0 survives after T5-51.
+
+**Status:** PENDING
+
+---
+
+### [OBS-031] `save_daily_metric` INSERT OR REPLACE silently destroys manual field entries
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: DatabaseManager
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/database.py` — `save_daily_metric` line 758 (INSERT OR REPLACE semantics)
+
+**Observation:**
+`save_daily_metric` uses `INSERT OR REPLACE INTO daily_metrics ...` (line 758). INSERT OR REPLACE in SQLite deletes the existing row and inserts a new one. Any columns not explicitly provided in the new INSERT are reset to their DEFAULT values (typically NULL or 0).
+
+If an athlete has manually entered subjective data (mood score, soreness, notes, perceived effort) into `daily_metrics` for a date, and Garmin-triggered save is called for the same date without including those manual fields, the subjective fields are silently overwritten with NULL/default.
+
+This was identified as F-26 (MEDIUM) in OBS-025 (2026-03-22). No T5 item has been registered for it. The pattern is distinct from the INSERT OR IGNORE used elsewhere (`database.py:831` uses INSERT OR IGNORE for historical HRV, fixed by T5-61).
+
+**Pattern / scope:**
+Single call site (`save_daily_metric`). The INSERT OR IGNORE vs INSERT OR REPLACE inconsistency within the same file reflects an unresolved policy decision about data freshness vs data preservation.
+
+**Architectural question raised:**
+Should `save_daily_metric` use INSERT OR IGNORE (preserve existing manual entries), an UPSERT with per-column merge (preserve manual fields, overwrite Garmin fields), or INSERT OR REPLACE (current, overwrites all)? This is a data integrity policy decision.
+
+**Codex assessment (data only, no decision):**
+F-26 from OBS-025 was identified at MEDIUM severity. The subjective fields at risk are the primary source of athlete-reported fatigue signals. Silently overwriting them compromises the 2-of-4 gate inputs on re-sync days.
+
+**Status:** PENDING
+
+---
+
+### [OBS-032] `sync_sleep` and `sync_hrv` emit success events after outer exception is caught
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: GarminSync observability
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/integrations/garmin_sync.py` — `sync_sleep` line 469, `sync_hrv` line 531
+
+**Observation:**
+In both `sync_sleep` and `sync_hrv`, the structured "synced" and "skip_summary" events are emitted **outside** the outer `try/except` block. If the outer except catches a fatal exception (e.g., network error mid-sync), the method still emits a success event before returning an empty list.
+
+Pattern (both methods are identical):
+```python
+try:
+    ... # sync logic
+except Exception as e:
+    _garmin_event(...)  # error event inside except
+sessions = []  # or hrv_data = []
+_garmin_event("synced", count=len(sessions), ...)  # ← emitted unconditionally
+return sessions
+```
+`len([])` = 0, so the event says "synced 0 items" — technically not a lie in value, but semantically misleading because it suggests the sync completed normally rather than was aborted by an exception.
+
+This was identified as F-03 (MEDIUM) in OBS-025. No T5 item was registered.
+
+**Pattern / scope:**
+Two methods (`sync_sleep`, `sync_hrv`). `sync_activities` and `sync_weight` follow the same structural pattern and may have the same issue.
+
+**Architectural question raised:**
+Should success events be gated on the absence of exceptions (moved inside the try block or behind a flag), or is "synced 0 items" acceptable as a terminal state regardless of cause?
+
+**Codex assessment (data only, no decision):**
+Impact is observability/telemetry correctness. SLO alerting built on "synced 0 items" events will not distinguish normal zero-activity days from exception-aborted syncs.
+
+**Status:** PENDING
+
+---
+
+### [OBS-033] `MISSING_DATA_POLICY` ADR registered as ADR_NEEDED in DEC-025 but not yet created
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: Governance policy architecture
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `SCRATCHPAD.md` — DEC-025 (OBS-027 response), ADR_NEEDED decision recorded 2026-03-27
+- `docs/adr/` — no `MISSING_DATA_POLICY` ADR present
+
+**Observation:**
+DEC-025 (response to OBS-027, 2026-03-27) recorded:
+> "NO_ACTION | `MISSING_DATA_POLICY` canonical convention (OBS-027 architectural question) — deferred; ADR_NEEDED before any policy codification"
+
+As of this audit pass (2026-03-28), no ADR for `MISSING_DATA_POLICY` exists in `docs/adr/`. The last ADR is ADR-0050. T5-44 through T5-59 fixed individual module defaults to conservative values, but they did so independently — each module author chose their own conservative default without a shared policy document.
+
+Consequence: future modules that introduce Garmin-sourced fields will encounter the same ambiguity (what default is conservative?) with no canonical reference. OBS-028 and OBS-030 in this batch are direct evidence that the per-module fix approach missed code paths.
+
+**Pattern / scope:**
+Systemic policy gap. Not a single-file finding. ADR_NEEDED is a precondition before the VO2 gate fixes (OBS-028) and _classify_hrv_drop fix (OBS-030) can be implemented with consistent semantics.
+
+**Architectural question raised:**
+Is the ADR for `MISSING_DATA_POLICY` a prerequisite before OBS-028 and OBS-030 can be resolved, or can those items be fixed with a conservative constant while the ADR is authored in parallel?
+
+**Codex assessment (data only, no decision):**
+The absence of this ADR is why OBS-028 was possible — the VO2 eligibility gate author had no policy to consult. Without the ADR, each new fix risks being inconsistent with the others.
+
+**Status:** PENDING
+
+---
+
+### [OBS-034] No test coverage for VO2 eligibility gate with None ACWR or None readiness inputs
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: GovernanceEngine test surface
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/governance_engine.py` — `_check_vo2_eligibility_gate` lines 431–450
+- `tests/test_p0_safety_gates.py` — VO2 eligibility gate tests
+- `tests/test_governance_integration.py` — integration-level gate tests
+
+**Observation:**
+T5-49 added tests verifying that the **2-of-4 gate** fires correctly when sleep_score/readiness_score are absent (default 40). T5-51 added tests verifying that DailyCoach passes `None` (not `1.0`) for missing ACWR.
+
+No test exists for the scenario: governance context carries `acwr=None` or `readiness_score=None` AND a VO2 session is planned. In that scenario, `_check_vo2_eligibility_gate` silently returns eligible (V1 + V2 pass with defaults 1.0 and 100 respectively), as documented in OBS-028.
+
+A test constructing a governance context with `{"acwr": None, "session_type": "VO2MAX", ...}` and asserting that the gate returns ineligible (or a specific locked state) does not exist.
+
+**Pattern / scope:**
+Test gap affecting a single gate method. Structurally similar to the F-34 finding in OBS-025 (test fixtures bypassing real data paths).
+
+**Architectural question raised:**
+Should a test for OBS-028 be authored before or after the fix? If the fix requires an ADR (OBS-033), should the test be written to the to-be-defined policy, or to the current (broken) behavior as a regression marker?
+
+**Codex assessment (data only, no decision):**
+Without a test, the OBS-028 fix could be silently reverted (similar pattern to the T5-52 apparent regression in OBS-029). A test is needed to lock the corrected behavior.
+
+**Status:** PENDING
+
+---
+
+### [OBS-035] ESI default dew_point (12.0°C) is a hardcoded magic number in daily_coach.py
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: DailyCoach ESI computation
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — line 713
+- `titan/config/thresholds.py` — no ESI dew_point constant defined
+
+**Observation:**
+`daily_coach.py:713`:
+```python
+dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0),
+```
+When Garmin data does not include `dew_point`, `_compute_esi` receives 12.0°C. The ESI formula is `ESI = temperature_c + 0.5 * dew_point_c`. At 12.0°C dew point and 30°C air temp, ESI = 30 + 6 = 36 (HIGH). At the correct conservative default of 18.0°C (the T5-59 / `_calculate_hydration` sticky threshold), ESI = 30 + 9 = 39 (HIGH boundary). The difference is real but small.
+
+The concern is the constant 12.0:
+- Not present in `thresholds.py` or `evidence_registry.py`
+- ADR-0034 governs environmental stress compensation but does not specify a "safe default dew_point" constant
+- T5-59 established 25.0°C as the conservative default for NutritionOptimizer dew_point; daily_coach.py uses 12.0 for the same physical quantity in a different pipeline step
+
+Same unconstantized-literal pattern as the findings resolved in T5-04, T5-20, and OBS-026 B1-F02.
+
+**Pattern / scope:**
+Single call site. But the inconsistency between NutritionOptimizer's 25.0°C conservative default (T5-59) and daily_coach.py's 12.0°C default for the same physical quantity (dew_point) on the ESI path is a calibration inconsistency, not just a style issue.
+
+**Architectural question raised:**
+Should a canonical `DEFAULT_DEW_POINT_C` (or `ESI_DEW_POINT_FALLBACK`) constant be added to `thresholds.py`? And should it be 12.0, 15.0, or 25.0, given that T5-59 used 25.0 for the nutrition path?
+
+**Codex assessment (data only, no decision):**
+Two different fallback values for the same physical quantity (dew_point) in the same DailyCoach pipeline (ESI: 12.0; NutritionOptimizer: 25.0) will produce internally inconsistent thermal stress assessments.
+
+**Status:** PENDING
+
+---
+
+### [OBS-036] `garmin_activity_id` not persisted — duplicate activity detection impossible at DB layer
+
+**Date:** 2026-03-28
+**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
+**Session context:** Pass 1 audit / Phase 8C / Subsystem: DatabaseManager / GarminSync
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/database.py` — `training_log` table schema, `save_session` method
+- `titan/integrations/garmin_sync.py` — `sync_activities` return value
+- `titan/orchestration/daily_coach.py` — `_persist_garmin_data` activity persistence path
+
+**Observation:**
+`sync_activities()` returns dicts with fields: `date`, `distance_km`, `duration_sec`, `avg_hr`, `max_hr`, `activity_type`, `trimp`. No `activity_id` (Garmin's unique activity identifier) is extracted or returned.
+
+`database.py` `training_log` schema does not include an `activity_id` column. `save_session` has no deduplication logic based on activity identity.
+
+Consequence: if `sync_activities(days_back=7)` is called twice in overlapping windows (e.g., a 6h re-sync and a manual /sync command), the same activity can be inserted twice into `training_log`. This inflates TSB/CTL/ATL calculations because `get_training_load_history()` reads all rows without deduplication.
+
+T5-46 established per-date deduplication for HRV entries in `add_hrv_measurement`. No equivalent protection exists for activity records. F-28 (LOW) from OBS-025 noted the schema gap; no T5 item was registered.
+
+**Pattern / scope:**
+Two files (garmin_sync.py — no id extraction; database.py — no id column/deduplication). The pattern is analogous to the pre-T5-46 HRV deduplication gap.
+
+**Architectural question raised:**
+Should `sync_activities` extract `activityId` from the Garmin payload and `save_session` use it as a unique constraint (INSERT OR IGNORE / UPSERT), following the T5-46 HRV deduplication pattern? Or is per-date deduplication sufficient for activities?
+
+**Codex assessment (data only, no decision):**
+Duplicate activity records in `training_log` cause silent TSB/CTL/ATL inflation. A single strenuous long run double-counted would add ~50 TRIMP points to the load calculation, potentially pushing ATL above a HARD_STOP_TSB_FLOOR check falsely.
+
+**Status:** PENDING
 
 ---
 
