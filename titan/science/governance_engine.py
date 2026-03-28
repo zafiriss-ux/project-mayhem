@@ -263,6 +263,8 @@ class GovernanceEngine:
         Either signal alone is sufficient; dual collapse fires both.
         """
         reasons: list[dict] = []
+        _garmin_age = context.get("garmin_data_age_hours")
+        _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
 
         # H1 — Injury / Medical Flag (Gate 1: evaluated first, before all others)
         if bool(context.get("injury_flag", False)):
@@ -271,7 +273,10 @@ class GovernanceEngine:
             reason = "Active injury flag: no training permitted until cleared"
             session_plan["governance_override"] = reason
             reasons.append({"gate": "H1", "reason": reason})
-            _gate_event("H1", "REST", reason=reason, cause="TRAINING_LOGIC")
+            _gate_event(
+                "H1", "REST", reason=reason, cause="TRAINING_LOGIC",
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+            )
 
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
         # Fires when drop >= HARD_STOP_HRV_DELTA (inclusive boundary).
@@ -295,6 +300,8 @@ class GovernanceEngine:
                 cause="TRAINING_LOGIC",
                 today_hrv=context.get("today_hrv"),
                 baseline_hrv=context.get("baseline_hrv"),
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
@@ -319,6 +326,8 @@ class GovernanceEngine:
                 cause="TRAINING_LOGIC",
                 today_rhr=context.get("today_rhr"),
                 baseline_rhr=context.get("baseline_rhr"),
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         if h2_trigger or h3_trigger:
@@ -332,6 +341,8 @@ class GovernanceEngine:
                 h2_trigger=h2_trigger,
                 h3_trigger=h3_trigger,
                 acwr=context.get("acwr"),
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
             if hrv_stress_context == "ILLNESS_PATTERN":
@@ -346,13 +357,18 @@ class GovernanceEngine:
                     reason=reason,
                     cause="TRAINING_LOGIC",
                     stress_context=hrv_stress_context,
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
                 )
 
         # Dual collapse: both H2 and H3 fired — set combined override message.
         if h2_trigger and h3_trigger and session_plan.get("hrv_stress_context") != "ILLNESS_PATTERN":
             reason = "HRV/RHR dual collapse: autonomic stress — hard stop"
             session_plan["governance_override"] = reason
-            _gate_event("H2+H3", "REST", reason=reason, cause="TRAINING_LOGIC")
+            _gate_event(
+                "H2+H3", "REST", reason=reason, cause="TRAINING_LOGIC",
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+            )
 
         # H4 — TSB Critical Floor (Gate 4: load gate)
         try:
@@ -366,7 +382,10 @@ class GovernanceEngine:
             session_plan["governance_override"] = reason
             session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5)), 2)
             reasons.append({"gate": "H4", "reason": reason})
-            _gate_event("H4", "EASY", reason=reason, cause="TRAINING_LOGIC", tsb_value=tsb_value)
+            _gate_event(
+                "H4", "EASY", reason=reason, cause="TRAINING_LOGIC", tsb_value=tsb_value,
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+            )
 
         # H5 — Extreme Subjective Fatigue
         try:
@@ -386,11 +405,15 @@ class GovernanceEngine:
                 reason=reason,
                 cause="TRAINING_LOGIC",
                 subjective_fatigue=subjective_fatigue,
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         return reasons
 
     def _check_vo2_eligibility(self, session_plan: dict, context: dict) -> dict | None:
+        _garmin_age = context.get("garmin_data_age_hours")
+        _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
         session_type = str(session_plan.get("session_type", "")).upper()
         zone_raw = session_plan.get("zone", session_plan.get("max_zone", 0))
         zone_invalid = False
@@ -640,6 +663,8 @@ class GovernanceEngine:
                     "fatigue_level_invalid": fatigue_level_invalid,
                     "zone_invalid": zone_invalid,
                 },
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -651,10 +676,15 @@ class GovernanceEngine:
             "detailed_failed_conditions": [],
             "reason": "All VO2 eligibility conditions satisfied",
         }
-        _gate_event("VO2_ELIGIBILITY", "PASS", original_session=original)
+        _gate_event(
+            "VO2_ELIGIBILITY", "PASS", original_session=original,
+            garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+        )
         return result
 
     def _check_fueling_gate(self, session_plan: dict, context: dict) -> dict | None:
+        _garmin_age = context.get("garmin_data_age_hours")
+        _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
         session_type = str(session_plan.get("session_type", "")).upper()
         duration_raw = session_plan.get("duration_min", context.get("planned_duration_min", 0))
         try:
@@ -682,6 +712,8 @@ class GovernanceEngine:
                 original_session=session_type,
                 locked_to="TEMPO",
                 duration_min=duration,
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -701,6 +733,8 @@ class GovernanceEngine:
                 original_session=session_type,
                 locked_to="EASY",
                 duration_min=duration,
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -720,6 +754,8 @@ class GovernanceEngine:
                 original_session="LONG_RUN",
                 locked_to="PROGRESSIVE",
                 duration_min=duration,
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -731,7 +767,8 @@ class GovernanceEngine:
                 "session_unchanged": True,
             }
             _gate_event(
-                "FUELING", "FLAG", phase=2, session_type=session_type, duration_min=duration
+                "FUELING", "FLAG", phase=2, session_type=session_type, duration_min=duration,
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -743,7 +780,8 @@ class GovernanceEngine:
                 "session_unchanged": True,
             }
             _gate_event(
-                "FUELING", "FLAG", phase=1, session_type=session_type, duration_min=duration
+                "FUELING", "FLAG", phase=1, session_type=session_type, duration_min=duration,
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
             )
             return result
 
@@ -910,6 +948,8 @@ class GovernanceEngine:
         )
 
     def apply_constraints(self, session_plan: dict, context: dict) -> dict:
+        _garmin_age = context.get("garmin_data_age_hours")
+        _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
         db = context.get("db")
         cs_tracker = context.get("cs_tracker")
         afi_constr = context.get("afi_constraints", {})
@@ -961,6 +1001,8 @@ class GovernanceEngine:
                 indicators=indicators,
                 original=original,
                 downgraded_to=downgraded,
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         hard_stop_reasons = self._check_hard_stops(session_plan, context)
@@ -1005,7 +1047,10 @@ class GovernanceEngine:
                     session_plan["max_zone"] = 2
                     session_plan["governance_override"] = para_guard["reason"]
                     applied_locks.append("PARASYMPATHETIC_GUARD")
-                    _gate_event("PARASYMPATHETIC_GUARD", "EASY", reason=para_guard.get("reason"))
+                    _gate_event(
+                        "PARASYMPATHETIC_GUARD", "EASY", reason=para_guard.get("reason"),
+                        garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+                    )
                 continue
 
             if gate_name == "OVERRIDE_LOCKDOWN":
@@ -1024,6 +1069,8 @@ class GovernanceEngine:
                         cause="TRAINING_LOGIC",
                         ratio=lock.get("ratio"),
                         apl_threshold_override=override_threshold,
+                        garmin_data_age_hours=_garmin_age,
+                        garmin_data_trust_level=_garmin_trust,
                     )
                 continue
 
@@ -1043,6 +1090,8 @@ class GovernanceEngine:
                         cause="DATA_PROBLEM",
                         confidence=cs_lock.get("confidence"),
                         apl_threshold_override=cs_threshold,
+                        garmin_data_age_hours=_garmin_age,
+                        garmin_data_trust_level=_garmin_trust,
                     )
 
         if bool(context.get("data_confidence_low", False)):
@@ -1057,6 +1106,8 @@ class GovernanceEngine:
                 cause="DATA_PROBLEM",
                 original_session=current_session,
                 downgraded_to=session_plan.get("session_type", "EASY"),
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         if bool(context.get("persistence_degraded", False)):
@@ -1071,6 +1122,8 @@ class GovernanceEngine:
                 cause="DATA_PROBLEM",
                 original_session=current_session,
                 downgraded_to=session_plan.get("session_type", "EASY"),
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
             )
 
         session_plan["governance_locks_applied"] = applied_locks
@@ -1086,6 +1139,8 @@ class GovernanceEngine:
             governance_clean=session_plan["governance_clean"],
             priority_vector=priority_vector or None,
             apl_active=bool(priority_vector),
+            garmin_data_age_hours=_garmin_age,
+            garmin_data_trust_level=_garmin_trust,
         )
         return session_plan
 

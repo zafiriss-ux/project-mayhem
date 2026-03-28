@@ -801,6 +801,8 @@ class DailyCoach:
         )
         context_payload["esi_level"] = esi_level
         context_payload["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
+        context_payload["garmin_data_age_hours"] = garmin_trust.data_age_hours
+        context_payload["garmin_data_trust_level"] = garmin_trust.trust_level.value
 
         # Compute degraded flags (passed to _effect_runner via decision_trace)
         _data_confidence_low = bool(

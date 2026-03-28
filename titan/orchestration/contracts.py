@@ -33,6 +33,7 @@ class GarminSyncResult(TypedDict):
     hrv_sync_metrics: HRVSyncMetrics
     status: NotRequired[str]
     data_trust: NotRequired[Mapping[str, object]]
+    data_age_hours: NotRequired[float]
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class GarminSyncResultContract:
     hrv_sync_metrics: HRVSyncMetrics
     status: str | None = None
     data_trust: Mapping[str, object] | None = None
+    data_age_hours: float | None = None
 
     def to_payload(self) -> GarminSyncResult:
         payload: GarminSyncResult = {
@@ -57,6 +59,8 @@ class GarminSyncResultContract:
             payload["status"] = self.status
         if self.data_trust is not None:
             payload["data_trust"] = self.data_trust
+        if self.data_age_hours is not None:
+            payload["data_age_hours"] = self.data_age_hours
         return payload
 
 
