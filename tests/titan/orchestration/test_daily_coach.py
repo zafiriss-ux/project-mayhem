@@ -2339,3 +2339,49 @@ def test_daily_coach_athlete_max_hr_defaults_to_zero():
         db=DummyDB(),
     )
     assert coach.athlete_max_hr == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T5-64 / OBS-029: cs_confidence absent → must default to 0.0, not 1.0
+# CS_CONFIDENCE_LOCK must fire when cs_tracker has no confidence attribute.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_run_morning_routine_absent_cs_confidence_passes_zero_to_apl():
+    """T5-64: cs_tracker without confidence attr → APL called with cs_confidence=0.0, not 1.0."""
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    # cs_tracker without a 'confidence' attribute — simulates new/uncalibrated tracker.
+    coach.cs_tracker = SimpleNamespace(
+        apply_thermal=lambda *_: 1.0,
+        archetype="stable",
+        cs_smoothed=3.5,
+        # 'confidence' attr intentionally absent
+    )
+    captured_kwargs = {}
+
+    def _capture_apl_call(**kwargs):
+        captured_kwargs.update(kwargs)
+        return {"priority_vector": {}, "lock_thresholds": {}}
+
+    coach.apl = SimpleNamespace(resolve=_capture_apl_call)
+
+    assert coach.run_morning_routine() is True
+    assert "cs_confidence" in captured_kwargs, "APL.resolve must receive cs_confidence"
+    assert captured_kwargs["cs_confidence"] == pytest.approx(0.0), (
+        "absent cs_tracker.confidence must default to 0.0, not 1.0 (OBS-029 fix)"
+    )
+
+
+def test_cs_confidence_lock_fires_when_cs_tracker_confidence_absent():
+    """T5-64: governance CS_CONFIDENCE_LOCK must fire when cs_confidence defaults to 0.0."""
+    from titan.science.governance_engine import GovernanceEngine
+
+    engine = GovernanceEngine()
+    # Tracker without confidence attr — getattr default was 1.0 (bug), must be 0.0 (fix).
+    cs_tracker_no_confidence = SimpleNamespace()
+
+    result = engine.check_cs_confidence_lock(cs_tracker_no_confidence)
+    assert result["locked"] is True, (
+        "CS_CONFIDENCE_LOCK must fire when cs_tracker has no confidence attribute "
+        "(getattr default must be 0.0, not 1.0)"
+    )
+    assert result["confidence"] == pytest.approx(0.0)
