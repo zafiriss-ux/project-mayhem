@@ -3140,6 +3140,52 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### T5-60 · sleep field mapping mismatch — _persist_garmin_data reads raw Garmin format instead of sync_sleep() output ✅ RESOLVED 2026-03-28
+
+**Status:** ✅ RESOLVED 2026-03-28. Commit: eb3ddf4.
+**Source:** OBS-027 / OBS-025 F-29
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:** `titan/orchestration/daily_coach.py` (`_persist_garmin_data` sleep extraction block)
+**Description:** `sync_sleep()` returns flattened keys (`total_sleep_hours`, `sleep_score`). `_persist_garmin_data` was reading raw Garmin keys (`restingHeartRate`, `sleepScores.overall.value`, `sleepTimeSeconds`). None of these exist in the flattened output. Result: `today_sleep_score` defaulted to 75 (hardcoded optimistic value); sleep quality indicator could not fire correctly. (`today_rhr` is not provided by `sync_sleep()` — RHR comes from a separate Garmin endpoint; the 0-default is correct behaviour when no RHR sync runs.)
+
+**Resolution:** `_persist_garmin_data` sleep block now reads `sleep_score` and `total_sleep_hours` from flattened keys first, with raw Garmin keys as backward-compatible fallback. Test `test_persist_garmin_data_f29_flattened_sleep_keys_are_parsed` covers the corrected extraction path.
+**Task learning:** When a wrapper function flattens an external API response, every downstream consumer must be updated to read the flattened keys. Fallback to raw keys is acceptable for backwards-compat but must not be the primary path.
+
+---
+
+### T5-61 · multi-day HRV sync discards 6 of 7 days — only today persisted to DB ✅ RESOLVED 2026-03-28
+
+**Status:** ✅ RESOLVED 2026-03-28. Commit: eb3ddf4.
+**Source:** OBS-027 / OBS-025 F-27/F-32
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:** `titan/orchestration/daily_coach.py` (`_persist_garmin_data` HRV persistence block)
+**Description:** `sync_hrv(days_back=7)` fetches 7 days of HRV. `_persist_garmin_data` was persisting only the entry matching `today_str`. The other 6 days populated the in-memory hrv_engine but never reached the DB. On restart, HRV baseline was computed from a single day — not the 7-day window required for meaningful baseline computation (Plews et al.).
+
+**Resolution:** `_persist_garmin_data` HRV block now collects all non-today entries into `past_hrv_entries` and persists each via `db.save_daily_metric(date=..., hrv=...)` after passing ADR-0026 sanity checks. Test `test_persist_garmin_data_f32_multi_day_hrv_all_persisted` verifies all 7 days land in `daily_metrics`.
+**Task learning:** Any sync function returning N days of data requires N-iteration persistence; a single-entry path silently drops history that is essential for baseline computation.
+
+---
+
+### T5-62 · zero-sync silent failure — stale token assumed valid on 429 + empty sync recorded as success ✅ RESOLVED 2026-03-28
+
+**Status:** ✅ RESOLVED 2026-03-28. Commits: 624734e, 8ccb102.
+**Source:** OBS-027 / zero-sync investigation Z1+Z2
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:**
+- `titan/integrations/garmin_sync.py` (connect(), token validation block)
+- `titan/orchestration/daily_coach.py` (sync_ok determination)
+**Description:** Two-bug chain producing silent 0/0/0/0 sync loop. Bug 1: When verification ping got 429, token was assumed valid even if expired. Subsequent API calls failed silently — each sync method catches exception and returns []. Bug 2: DailyCoach determined success by `sync_status != "timeout_cancelled"` only. A sync returning 0/0/0/0 with no timeout was recorded as success=True, resetting the staleness timer. No alert fired.
+
+**Resolution:**
+- Part A (`garmin_sync.py`): On 429 from verification ping, a secondary lightweight API call is attempted. If the secondary call also fails with auth error, `_invalidate_session()` is called and the token file is deleted, forcing re-login. If secondary call also gets 429, token is assumed valid (avoiding unnecessary re-login storms).
+- Part B (`daily_coach.py`): `sync_ok = sync_status != "timeout_cancelled" and total_records > 0` — empty sync (all four lists empty) now records `success=False`, triggering the staleness mechanism and Telegram alert.
+**Task learning:** A 429 rate-limit on a health-check ping is not a token validity confirmation. Any ambiguous API response requires a secondary verification before assuming the positive case.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3481,6 +3527,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-57 | ✅ RESOLVED 2026-03-27 — `should_replan()` predicate added; mid-week re-evaluation triggers on HRV drop >10ms, HARD_STOP event ≤24h, or illness flag (PR #545) | 2026-03-27 |
 | T5-58 | ✅ RESOLVED 2026-03-26 — `_apply_hrv_adjustments` uses explicit `is not None` guards; crash path on null HRV eliminated (PR #528, commit d0dbd67) | 2026-03-26 |
 | T5-59 | ✅ RESOLVED 2026-03-27 — `NutritionOptimizer` defaults `dew_point` to 25°C (conservative); sweat/electrolyte underestimation eliminated (PR #536) | 2026-03-27 |
+| T5-60 | ✅ RESOLVED 2026-03-28 — `_persist_garmin_data` sleep block reads flattened `sleep_score`/`total_sleep_hours` keys from `sync_sleep()` output; raw Garmin keys retained as fallback (commit eb3ddf4) | 2026-03-28 |
+| T5-61 | ✅ RESOLVED 2026-03-28 — `_persist_garmin_data` now loops over all historical HRV entries and persists each to `daily_metrics`; 7-day window available on restart (commit eb3ddf4) | 2026-03-28 |
+| T5-62 | ✅ RESOLVED 2026-03-28 — 429 on token ping triggers secondary validation before assuming token valid; empty sync (0/0/0/0) recorded as `success=False`, staleness alert fires (commits 624734e, 8ccb102) | 2026-03-28 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |

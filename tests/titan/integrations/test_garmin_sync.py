@@ -103,7 +103,7 @@ def test_sync_all_payload_supports_dict_access_and_json_serialization():
 
     payload = sync.sync_all(days_back=7)
 
-    assert set(payload) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust"}
+    assert set(payload) == {"activities", "weight", "sleep", "hrv", "hrv_sync_metrics", "data_trust", "data_age_hours"}
     assert payload["activities"][0]["date"] == "2026-03-04"
     assert payload["hrv_sync_metrics"]["synced_days"] == 1
 
@@ -278,7 +278,7 @@ def test_sync_all_invalid_timeout_env_falls_back_to_default(monkeypatch):
 
     sync.sync_all(days_back=7)
 
-    assert observed_timeout["value"] == 20
+    assert observed_timeout["value"] == 90
 
 
 def test_sync_all_negative_timeout_env_falls_back_to_default(monkeypatch):
@@ -312,7 +312,7 @@ def test_sync_all_negative_timeout_env_falls_back_to_default(monkeypatch):
 
     sync.sync_all(days_back=7)
 
-    assert observed_timeout["value"] == 20
+    assert observed_timeout["value"] == 90
 
 
 def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
