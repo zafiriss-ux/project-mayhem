@@ -759,6 +759,7 @@ class GarminSync:
             hrv=hrv,
             hrv_sync_metrics=hrv_metrics,
             data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
+            data_age_hours=0.0,
         ).to_payload()
         return payload
 
@@ -805,6 +806,7 @@ class GarminSync:
                 synced_days=int(self.last_hrv_sync_metrics.get("synced_days", 0)),
                 skipped_days=int(self.last_hrv_sync_metrics.get("skipped_days", 0)),
             ).to_payload()
+            _timeout_age = self._compute_data_age_hours()
             return GarminSyncResultContract(
                 activities=[],
                 weight=[],
@@ -813,9 +815,10 @@ class GarminSync:
                 hrv_sync_metrics=hrv_metrics,
                 status="timeout_cancelled",
                 data_trust=evaluate_garmin_trust(
-                    data_age_hours=0.0,
+                    data_age_hours=_timeout_age,
                     sync_status="timeout_cancelled",
                 ).to_payload(),
+                data_age_hours=_timeout_age,
             ).to_payload()
         finally:
             executor.shutdown(wait=False, cancel_futures=True)
@@ -843,10 +846,12 @@ class GarminSync:
             # Sync succeeded — reset failure streak and record timestamp.
             self._consecutive_failures = 0
             self._last_successful_sync_at = datetime.now().isoformat()
+            payload["data_age_hours"] = 0.0
         else:
             # Sync completed without data — count as a failure for C3 tracking.
             self._consecutive_failures += 1
             data_age_hours = self._compute_data_age_hours()
+            payload["data_age_hours"] = data_age_hours
             # C3 — consecutive failure threshold crossed (ADR-0050 D1 condition 3).
             if self._consecutive_failures >= GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT:
                 _emit_garmin_api_degraded(
