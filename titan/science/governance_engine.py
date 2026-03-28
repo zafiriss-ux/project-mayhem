@@ -428,26 +428,34 @@ class GovernanceEngine:
         if not is_vo2_session:
             return None
 
-        acwr_raw = context.get("acwr", 1.0)
-        readiness_raw = context.get("readiness_score", 100)
+        acwr_raw = context.get("acwr")
+        readiness_raw = context.get("readiness_score")
         glycogen_debt_raw = context.get("glycogen_debt", 0.0)
         fatigue_level_raw = context.get("fatigue_level", "LOW")
         esi_level_raw = context.get("esi_level", "LOW")
         days_since_last_vo2 = context.get("days_since_last_vo2")
 
         acwr_invalid = False
-        try:
-            acwr = float(1.0 if acwr_raw is None else acwr_raw)
-        except (TypeError, ValueError):
+        if acwr_raw is None:
             acwr = None
             acwr_invalid = True
+        else:
+            try:
+                acwr = float(acwr_raw)
+            except (TypeError, ValueError):
+                acwr = None
+                acwr_invalid = True
 
         readiness_invalid = False
-        try:
-            readiness = float(100 if readiness_raw is None else readiness_raw)
-        except (TypeError, ValueError):
+        if readiness_raw is None:
             readiness = None
             readiness_invalid = True
+        else:
+            try:
+                readiness = float(readiness_raw)
+            except (TypeError, ValueError):
+                readiness = None
+                readiness_invalid = True
 
         glycogen_debt_invalid = False
         try:

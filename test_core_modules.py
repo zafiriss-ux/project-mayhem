@@ -1283,7 +1283,8 @@ class TestGovernanceVo2AndFuelingGates:
     def test_fueling_phase3_lock(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
         # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
-        result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
+        # T5-63: supply acwr so the VO2 eligibility gate (OBS-028 fix) does not fire.
+        result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70, 'acwr': 1.1})
         assert result['session_type'] == 'TEMPO'
         assert result['fueling_gate']['action'] == 'LOCK'
         assert result['fueling_gate']['phase'] == 3
@@ -1424,6 +1425,8 @@ class TestGovernanceHardStopsAnd2of4:
             'sleep_score': 72,
             'readiness_score': 68,
             'subjective_fatigue_score': 4,
+            # T5-63: supply acwr so VO2 eligibility gate (OBS-028 fix) does not fire.
+            'acwr': 1.1,
         })
         assert out['session_type'] == 'INTERVALS'
         assert 'downgrade_2of4' not in out
