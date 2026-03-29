@@ -169,23 +169,33 @@ If repair is permitted:
 
 ### SESSION_START (mandatory — before any code change)
 
-Run all five checks below and record outputs in your first response:
+Run the three steps below and record outputs in your first response:
 
 ```bash
-S1. Read CLAUDE.md completely (not summary).
-S2. grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md
-S3. python -m pytest -q --no-header 2>&1 | tail -1
-S4. ruff check . --statistics 2>&1 | tail -5
-S5. State explicitly: "Current open Tier N items: [list]"
+# Step 1 — Scratchpad gate (unchanged)
+scripts/check_scratchpad.sh
+# Exit 1 = BLOCKING queue non-empty; stop and await architect before continuing.
+
+# Step 2 — Gate confirmation
+scripts/titan_check.sh
+# Confirms all three mandatory gates are green before work begins.
+
+# Step 3 — System state summary (print all four lines)
+grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md          # open tier items
+python -m pytest --collect-only -q 2>&1 | tail -1             # current test count
+ruff check . --statistics 2>&1 | tail -5                      # lint status
+grep "^STATUS:\|^Phase" SCRATCHPAD.md | head -3               # current phase + scratchpad status
 ```
 
 Do not begin implementation until you have confirmed:
-- Open debt items (S2)
-- Baseline test count (S3)
-- Lint status (S4)
-- Active tier and open items (S5)
+- Scratchpad gate is clear (Step 1)
+- All three mandatory gates green (Step 2)
+- System state printed: open items, test count, lint status, phase/status (Step 3)
 
 Failure to run these checks before implementation is a PROCESS VIOLATION.
+
+> **Migration note:** Steps S1–S5 from earlier protocol versions are replaced by the above
+> three-step form. The gate logic is unchanged; only the delivery mechanism changes.
 
 ---
 
