@@ -1924,6 +1924,21 @@ A single Codex pass may execute only **one** of the following pass types:
 
 Combining two pass types in a single pass is permitted **only** when the architect brief explicitly names the two pass types being combined and states the reason. The `Change Type:` field (§19) must match the declared pass type. A pass that drifts into a second type without explicit architect authorisation is a process violation equivalent in severity to scope creep.
 
+### §26.1 Wave Bundling Exception
+
+Tasks that share the same governing ADR may be bundled into a single implementation PR if and
+only if **ALL** of the following hold:
+
+- **(a)** All tasks are implementation-type (no policy, no records tasks in the bundle)
+- **(b)** No schema change is included (schema changes follow §13.4 staged protocol and must
+  be separate PRs)
+- **(c)** The bundle is declared explicitly in the Scope Declaration with each task ID listed
+  separately
+- **(d)** Each bundled task has a distinct test section in the PR description
+
+When in doubt: separate PRs. This exception does **not** apply to mixed pass types
+(implementation + policy, implementation + records).
+
 ---
 
 ## §27 Canonical Records Separation Rule
