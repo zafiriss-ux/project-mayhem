@@ -287,3 +287,13 @@ without any changes.
   Maintenance cost is low: the interface is stable, and each backend is ~30 lines.
 - Constraint: Phase 10 implementation must include a mock backend for CI
   (`MockLLMBackend` that returns a fixed fixture string). No live API calls in CI.
+
+---
+
+## Review Trigger
+
+This ADR should be reviewed when:
+- Phase 10 LLM feature implementation begins, to confirm the backend interface contract is still sufficient.
+- A third LLM backend (beyond `claude` and `ollama`) is proposed.
+- The `MockLLMBackend` CI fixture is found to be insufficient for validating real backend behaviour.
+- On-device model performance benchmarks change the cost/benefit ratio of local vs. remote inference significantly.

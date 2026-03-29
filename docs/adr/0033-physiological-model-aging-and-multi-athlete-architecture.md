@@ -182,3 +182,13 @@ drift detection is the safer architecture.
   migration). Lightweight — single row per model, no high-frequency writes.
 - Constraint: T5-07 Layer 1 and 2 (Phase 7.9 guard rails) are Phase 8 prerequisites
   per ADR-0022 spirit (no Phase 8 work without active model staleness monitoring).
+
+---
+
+## Review Trigger
+
+This ADR should be reviewed when:
+- Layer 3 (multi-athlete isolation) is scheduled for implementation in Phase 9.
+- The HRV baseline drift detector fires more than twice in a 30-day window, suggesting the recalibration cadence needs adjustment.
+- A new physiological model is introduced that has a staleness profile different from the models described here (e.g., a model that requires daily recalibration rather than weekly).
+- The `model_calibration_metadata` schema requires a breaking change.

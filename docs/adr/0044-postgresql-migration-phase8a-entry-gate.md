@@ -226,3 +226,13 @@ architecturally inconsistent with the target topology.
   operational burden for a coach-facing product.
 - Constraint: T5-08 must be fully resolved before Phase 8B begins. No coach dashboard
   code may be written against SQLite.
+
+---
+
+## Review Trigger
+
+This ADR should be reviewed when:
+- Phase 8A implementation begins (T5-08 resolved), to confirm the migration sequence is still accurate.
+- A managed cloud database provider other than Supabase is proposed for production hosting.
+- Alembic is proposed to be replaced by a different schema migration tool.
+- The `TITAN_DB_BACKEND` feature flag is proposed for removal (i.e., SQLite support is dropped entirely).
