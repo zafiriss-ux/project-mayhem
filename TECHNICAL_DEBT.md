@@ -3201,16 +3201,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-66 · save_daily_metric INSERT OR REPLACE silently destroys subjective fields on re-sync 🟡 OPEN
+### T5-66 · save_daily_metric INSERT OR REPLACE silently destroys subjective fields on re-sync ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** RESOLVED 2026-03-29
 **Source:** DEC-029 / OBS-031
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/core/database.py:758` (`save_daily_metric`)
-**Description:** `save_daily_metric` uses `INSERT OR REPLACE INTO daily_metrics`. SQLite `INSERT OR REPLACE` semantics delete the existing row before inserting the new one; any column not included in the new insert is lost. On a Garmin re-sync, the new row contains only biometric fields — manually entered subjective fatigue scores (`subjective_fatigue_score`) and other manual fields are silently destroyed. The downstream consequence: on re-sync days, the 2-of-4 downgrade gate cannot fire correctly because the subjective fatigue input was erased.
+**Description:** `save_daily_metric` used `INSERT OR REPLACE INTO daily_metrics`. SQLite `INSERT OR REPLACE` semantics delete the existing row before inserting the new one; any column not included in the new insert is lost. On a Garmin re-sync, the new row contains only biometric fields — manually entered subjective fatigue scores (`subjective_fatigue_score`) and other manual fields are silently destroyed. The downstream consequence: on re-sync days, the 2-of-4 downgrade gate cannot fire correctly because the subjective fatigue input was erased.
 
-**Acceptance criteria (binary):** `save_daily_metric` uses a per-column `INSERT ... ON CONFLICT DO UPDATE SET` UPSERT that preserves existing non-null values for manual fields (e.g. `subjective_fatigue_score`) when only biometric columns are provided in the new data.
+**Resolution:** Replaced `INSERT OR REPLACE` with per-column `INSERT ... ON CONFLICT DO UPDATE SET` UPSERT. Garmin-sourced columns (`weight_kg`, `hrv_rmssd`, `resting_hr`, `sleep_hours`, `sleep_quality`, `quality_flag`) are overwritten on re-sync only when the new value is NOT NULL. Manual subjective fields (`soreness`, `fatigue_level`, `mood`, `notes`) are never touched by the `DO UPDATE SET` clause and are therefore preserved when a Garmin re-sync does not include them. Test: `tests/test_t5_66_save_daily_metric_upsert.py` (5 tests — all green).
+
+**Task learning:** `INSERT OR REPLACE` silently destroys rows on conflict — per-column UPSERT is always required when a table stores data from multiple sources (biometric + manual) that must be independently preserved.
 
 ---
 
@@ -3598,7 +3600,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-61 | ✅ RESOLVED 2026-03-28 — multi-day HRV persisted; INSERT OR IGNORE for historical (PR #553) | 2026-03-28 |
 | T5-62 | ✅ RESOLVED 2026-03-28 — zero-sync silent failure fixed; stale token + empty sync detection (PR #551) | 2026-03-28 |
 | T5-65 | ✅ RESOLVED 2026-03-29 — classify_hrv_stress_context returns UNKNOWN_ACWR for None/absent/unparseable ACWR; confirmed ADR-0051 compliant by architect 2026-03-29 | 2026-03-29 |
-| T5-66 | 🟡 OPEN — save_daily_metric INSERT OR REPLACE destroys subjective fields on re-sync; per-column UPSERT needed | — |
+| T5-66 | ✅ RESOLVED 2026-03-29 — per-column UPSERT preserves mood/soreness/fatigue/notes on Garmin re-sync; 5 tests green | 2026-03-29 |
 | T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
 | T5-68 | 🟡 OPEN — ESI dew_point 12.0°C magic number; extract to ESI_DEW_POINT_FALLBACK_C in thresholds.py | — |
 | T5-69 | 🟡 OPEN — sync_activities lacks activityId; training_log no activity_id column; no deduplication | — |
