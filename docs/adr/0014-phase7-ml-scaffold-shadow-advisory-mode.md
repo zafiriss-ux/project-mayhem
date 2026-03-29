@@ -129,3 +129,13 @@ Before any Phase 7 engine moves from shadow/advisory to athlete-facing Stage 1+:
 - ADR-0009 (Safety gate hardening — governance is non-bypassable)
 - `docs/specs/adaptive_priority_lock.md` (priority ordering context)
 - `titan/config/evidence_registry.py` (evidence label provenance model)
+
+---
+
+## Review Trigger
+
+This ADR should be reviewed when:
+- Any Phase 7 ML engine is proposed for promotion from shadow/advisory to athlete-facing Stage 1+.
+- The ML kill-switch (`TITAN_ML_KILL_SWITCH`) default is proposed to change from enabled to disabled.
+- A new ML model type is introduced that does not fit the shadow/advisory pattern defined here.
+- Post-mortem evidence shows that shadow-mode predictions diverged significantly from actual outcomes over a rolling 90-day window.

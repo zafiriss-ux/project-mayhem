@@ -66,3 +66,13 @@ No Phase 8 implementation may start until that ADR is accepted.
   - single-athlete constraint
   - Phase 8 precondition gate
   - lifecycle decision dimensions (retention window, DB topology, archive format)
+
+---
+
+## Review Trigger
+
+This ADR should be reviewed when:
+- The Phase 8A PostgreSQL migration gate (ADR-0044) is declared complete.
+- Daily row write rate in any SQLite table exceeds 10,000 rows/day for a sustained period.
+- A second athlete profile is added to the system, invalidating the single-athlete scope assumption.
+- A GDPR right-to-erasure request is received and cannot be fulfilled under the current schema.
