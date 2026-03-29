@@ -218,6 +218,29 @@ Every task follows this sequence exactly. No step may be skipped.
 
 **Steps 7–9 are only reachable after step 6 is confirmed GREEN.**
 
+### 2.1 Pre-Commit Enforcement
+
+A git pre-commit hook must be present at `.git/hooks/pre-commit` that runs
+`scripts/titan_check.sh` before any commit is accepted. If `titan_check.sh`
+exits 1, the commit is blocked.
+
+**Setup (run once after cloning):**
+
+```bash
+cp scripts/pre-commit-hook .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook source lives in `scripts/pre-commit-hook` (tracked by git) and contains:
+
+```bash
+#!/bin/bash
+exec scripts/titan_check.sh
+```
+
+`.git/hooks/` is not tracked by git. Re-link after every fresh clone using the
+setup instruction above.
+
 ### 2.2 Deliverable format (push-enabled environments)
 
 Run all three Mandatory Gates (Section HARD GATE) before doing anything below.
