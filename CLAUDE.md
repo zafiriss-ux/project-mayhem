@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2171 tests all green as of T5-61 multi-day HRV baseline fix (2026-03-28). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2233 tests all green as of Pass-3 test suite expansion (2026-03-29). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -320,6 +320,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0048` — API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11; prerequisite for all Phase 8B FastAPI endpoints (Accepted — 2026-03-15)
 - `0049` — Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A (machine-checkable) / Category B (judgment-required) finding taxonomy; repeated deterministic findings migrate to CI gates (T5-37); validating meta-test requirement (T5-38); §7 Migration Lane Execution Protocol: Hybrid Sequential Model (Audit Pass → Sequential Migration Units → Single Final Closure; no child GitHub issues before Audit Pass; T5-37 / T5-38 remain OPEN until all migration units complete) (Accepted — 2026-03-15)
 - `0050` — Garmin API Fragility Mitigation: garmin_api_degraded CRITICAL event contract; coach dashboard indicator (3 wording states); garminconnect exact-version pinning policy; BiometricSourceAdapter fallback boundary (SourceCapabilities / NormalizedBiometricSample / BiometricSourceSyncResult); T5-12 Pass 2 implementation obligations O1–O7 (Accepted — 2026-03-17)
+- `0051` — Missing Data Policy: Conservative-Fail Principle for Safety-Critical Inputs — governance pipeline missing-field policy for GovernanceEngine, DailyCoach, autonomic engines; optimistic-default elimination; T5-63, T5-64 (Accepted — 2026-03-28)
 
 ### Future Design Notes
 

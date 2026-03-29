@@ -53,6 +53,7 @@
 | [0048](0048-api-authentication-layer.md) | API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11 | Architecture / Security | ✅ Accepted (2026-03-15) — T5-11 Codex implementation pass authorized; Path B | — |
 | [0049](0049-opus-qa-scope-reduction-deterministic-to-ci-migration.md) | Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A / Category B finding taxonomy; repeated deterministic findings migrate to CI gates; implements T5-37, T5-38; §7 Migration Lane Execution Protocol (Hybrid Sequential Model) | Architecture / Quality | ✅ Accepted (2026-03-15) — T5-37, T5-38 authorized; execution after T5-13; §7 addendum: migration lane clarified 2026-03-15 | — |
 | [0050](0050-garmin-api-fragility-mitigation.md) | Garmin API Fragility Mitigation — degraded event, dashboard indicator, pinning policy, fallback boundary | Integration Resilience | Accepted — 2026-03-17 |
+| [0051](0051-missing-data-policy.md) | Missing Data Policy: Conservative-Fail Principle for Safety-Critical Inputs | Architecture / Safety | ✅ Accepted (2026-03-28) |
 
 ---
 
