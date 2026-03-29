@@ -1,0 +1,11 @@
+#!/bin/bash
+# scripts/pre-commit-hook — TITAN OS pre-commit gate enforcer
+#
+# Install once after cloning:
+#   cp scripts/pre-commit-hook .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# This file is tracked by git (scripts/pre-commit-hook).
+# .git/hooks/pre-commit is NOT tracked; re-link after fresh clones.
+
+exec scripts/titan_check.sh
