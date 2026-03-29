@@ -630,9 +630,10 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 [ ] I ran scripts/check_scratchpad.sh at Step 0.5 and it returned exit 0.
 [ ] If any trigger condition (T-SCRATCHPAD-1 through T-SCRATCHPAD-5) was met during this task, I wrote an OBS entry in the correct queue (BLOCKING or NON-BLOCKING) and set STATUS: REVIEW_REQUESTED.
 [ ] I did NOT write proposed solutions in OBS entries — only engineering observations (facts, file:line refs, architectural question).
+[ ] I ran `ls <every file I claim to have created>` and confirmed each path exists. I did not rely on my own prior output as proof of existence.
 ```
 
-**All 29 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+**All 30 boxes must be checked. A PR with any unchecked box is NOT DONE.**
 
 ---
 
