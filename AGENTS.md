@@ -169,23 +169,33 @@ If repair is permitted:
 
 ### SESSION_START (mandatory — before any code change)
 
-Run all five checks below and record outputs in your first response:
+Run the three steps below and record outputs in your first response:
 
 ```bash
-S1. Read CLAUDE.md completely (not summary).
-S2. grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md
-S3. python -m pytest -q --no-header 2>&1 | tail -1
-S4. ruff check . --statistics 2>&1 | tail -5
-S5. State explicitly: "Current open Tier N items: [list]"
+# Step 1 — Scratchpad gate (unchanged)
+scripts/check_scratchpad.sh
+# Exit 1 = BLOCKING queue non-empty; stop and await architect before continuing.
+
+# Step 2 — Gate confirmation
+scripts/titan_check.sh
+# Confirms all three mandatory gates are green before work begins.
+
+# Step 3 — System state summary (print all four lines)
+grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md          # open tier items
+python -m pytest --collect-only -q 2>&1 | tail -1             # current test count
+ruff check . --statistics 2>&1 | tail -5                      # lint status
+grep "^STATUS:\|^Phase" SCRATCHPAD.md | head -3               # current phase + scratchpad status
 ```
 
 Do not begin implementation until you have confirmed:
-- Open debt items (S2)
-- Baseline test count (S3)
-- Lint status (S4)
-- Active tier and open items (S5)
+- Scratchpad gate is clear (Step 1)
+- All three mandatory gates green (Step 2)
+- System state printed: open items, test count, lint status, phase/status (Step 3)
 
 Failure to run these checks before implementation is a PROCESS VIOLATION.
+
+> **Migration note:** Steps S1–S5 from earlier protocol versions are replaced by the above
+> three-step form. The gate logic is unchanged; only the delivery mechanism changes.
 
 ---
 
@@ -207,6 +217,29 @@ Every task follows this sequence exactly. No step may be skipped.
 ```
 
 **Steps 7–9 are only reachable after step 6 is confirmed GREEN.**
+
+### 2.1 Pre-Commit Enforcement
+
+A git pre-commit hook must be present at `.git/hooks/pre-commit` that runs
+`scripts/titan_check.sh` before any commit is accepted. If `titan_check.sh`
+exits 1, the commit is blocked.
+
+**Setup (run once after cloning):**
+
+```bash
+cp scripts/pre-commit-hook .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The hook source lives in `scripts/pre-commit-hook` (tracked by git) and contains:
+
+```bash
+#!/bin/bash
+exec scripts/titan_check.sh
+```
+
+`.git/hooks/` is not tracked by git. Re-link after every fresh clone using the
+setup instruction above.
 
 ### 2.2 Deliverable format (push-enabled environments)
 
@@ -634,6 +667,27 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 ```
 
 **All 30 boxes must be checked. A PR with any unchecked box is NOT DONE.**
+
+---
+
+## 11.1 Implementation Phase Test Runs
+
+During active implementation (before any commit), targeted test runs are permitted:
+
+```bash
+pytest tests/test_specific_file.py
+pytest -k "test_name_pattern"
+ruff check path/to/file.py
+```
+
+Full gates (`scripts/titan_check.sh`) are mandatory:
+- Before every commit
+- Before every PR
+- After any gate failure + fix cycle
+
+Targeted runs during development are not a substitute for full gates. They are a development
+aid only. Reporting targeted-run results as gate evidence in a delivery report is a
+**HARD GATE violation** — see §HARD GATE for the full list of forbidden shortcuts.
 
 ---
 
@@ -1812,6 +1866,39 @@ SELF-ASSESSMENT: COMPLETE / INCOMPLETE
 - Branch must be `claude/*` — never `codex/*`
 - Free-form text outside this structure is ignored by Records Steward
 
+### §23.1 Delivery Report Template (mandatory for all pass types)
+
+Every delivery report must include all four sections below. This format replaces
+narrative (free-form) delivery reports. No additional sections are required unless
+a SCRATCHPAD OBS is raised during the pass.
+
+```markdown
+## Scope Declaration
+Change type: [implementation | records | policy | audit]
+Tasks: [T5-XX, T5-YY, ...]           (comma-separated; "N/A" for non-task passes)
+ADR reference: [ADR-XXXX or N/A]
+Files changed: [list each file on a separate line]
+
+## Gate Results
+| Gate     | Command                            | Result           |
+|----------|------------------------------------|------------------|
+| G1 Lint  | ruff check .                       | ✅/❌            |
+| G2 Strict| pytest -q -W error::PytestWarning  | ✅/❌ N passed   |
+| G3 Full  | pytest -q                          | ✅/❌ N passed   |
+
+## Changes Summary
+[One sentence per task: what changed and why. Be specific — module name + behaviour delta.]
+
+## Task Learning
+[What was discovered during implementation that wasn't obvious from the spec.
+If nothing new: "No new findings."]
+```
+
+**Enforcement:**
+- All four sections must be present. A report missing any section is INCOMPLETE.
+- Gate Results table must use actual command output counts, not estimates.
+- Task Learning must be a substantive sentence or "No new findings." — blank is not accepted.
+
 ### Periodic Bounded Audit Ritual
 
 A bounded audit pass is a structured, scope-limited read-only sweep of the codebase or a
@@ -1869,6 +1956,21 @@ A single Codex pass may execute only **one** of the following pass types:
 - **closure** — formal closure declaration with all required canonical doc updates
 
 Combining two pass types in a single pass is permitted **only** when the architect brief explicitly names the two pass types being combined and states the reason. The `Change Type:` field (§19) must match the declared pass type. A pass that drifts into a second type without explicit architect authorisation is a process violation equivalent in severity to scope creep.
+
+### §26.1 Wave Bundling Exception
+
+Tasks that share the same governing ADR may be bundled into a single implementation PR if and
+only if **ALL** of the following hold:
+
+- **(a)** All tasks are implementation-type (no policy, no records tasks in the bundle)
+- **(b)** No schema change is included (schema changes follow §13.4 staged protocol and must
+  be separate PRs)
+- **(c)** The bundle is declared explicitly in the Scope Declaration with each task ID listed
+  separately
+- **(d)** Each bundled task has a distinct test section in the PR description
+
+When in doubt: separate PRs. This exception does **not** apply to mixed pass types
+(implementation + policy, implementation + records).
 
 ---
 

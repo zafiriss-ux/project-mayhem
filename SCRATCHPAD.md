@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
