@@ -647,6 +647,27 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 
 ---
 
+## 11.1 Implementation Phase Test Runs
+
+During active implementation (before any commit), targeted test runs are permitted:
+
+```bash
+pytest tests/test_specific_file.py
+pytest -k "test_name_pattern"
+ruff check path/to/file.py
+```
+
+Full gates (`scripts/titan_check.sh`) are mandatory:
+- Before every commit
+- Before every PR
+- After any gate failure + fix cycle
+
+Targeted runs during development are not a substitute for full gates. They are a development
+aid only. Reporting targeted-run results as gate evidence in a delivery report is a
+**HARD GATE violation** — see §HARD GATE for the full list of forbidden shortcuts.
+
+---
+
 ## 12. Debt Register Discipline — Mandatory on Every Task Close
 
 The debt register (`TECHNICAL_DEBT.md`) and the project overview (`CLAUDE.md`) are
