@@ -1864,6 +1864,26 @@ ambiguity of the chat-based review loop for routine operations.
 
 ---
 
+## §29 — Context Window Degradation Protocol
+
+Signal indicators (any one is sufficient to trigger):
+
+(a) Agent applies a rule inconsistently with how it applied the same rule earlier in the same session
+(b) Agent references file state that no longer matches the actual file (stale mental model)
+(c) Agent produces closure language ("task complete") without showing gate output
+(d) Delivery report contradicts what gate output actually showed
+
+Required response to any signal:
+
+1. STOP immediately. Do not attempt to patch the inconsistency inline.
+2. Open a SCRATCHPAD OBS entry: "Context degradation detected. Affected rule/file: [X]. Observed inconsistency: [Y]."
+3. Request a new session with a clean handoff.
+4. Do not mark any open task as closed until the new session re-confirms the gate output.
+
+Rationale: inline correction of context degradation compounds the error. A new session is cheaper than a corrupted baseline.
+
+---
+
 ## Opus QA Trigger Policy
 
 Opus QA is **not triggered by default**. Path A items proceed without Opus involvement unless the architect explicitly opts a task into Path B.
