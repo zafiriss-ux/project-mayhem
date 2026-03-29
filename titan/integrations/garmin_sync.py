@@ -661,16 +661,17 @@ class GarminSync:
                         self._invalidate_session()
                         break
                     continue
+            # T5-67: success events are gated on no outer exception.
+            _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
+            if skipped_days:
+                _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
+            self._log_sync("sleep", len(sessions))
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_sleep", failure_class, e, days_back=days_back)
             _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=failure_class, error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
-        _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
-        if skipped_days:
-            _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
-        self._log_sync("sleep", len(sessions))
         return sessions
 
     # ------------------------------------------------------------------ #
@@ -726,22 +727,23 @@ class GarminSync:
                         self._invalidate_session()
                         break
                     continue
+            # T5-67: success events and sync log are gated on no outer exception.
+            _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
+            if skipped_days:
+                _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")
+            self._log_sync("hrv", len(hrv_data))
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_hrv", failure_class, e, days_back=days_back)
             _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=failure_class, error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
-        _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
-        if skipped_days:
-            _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")
         self.last_hrv_sync_metrics = HRVSyncMetricsContract(
             days_back=days_back,
             synced_days=len(hrv_data),
             skipped_days=skipped_days,
         ).to_payload()
         _garmin_event("hrv_sync_metrics", **self.last_hrv_sync_metrics)
-        self._log_sync("hrv", len(hrv_data))
         return hrv_data
 
     # ------------------------------------------------------------------ #

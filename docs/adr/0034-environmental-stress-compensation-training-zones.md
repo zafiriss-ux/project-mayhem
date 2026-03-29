@@ -185,8 +185,10 @@ parameters be governed constants. Additionally, `NutritionOptimizer` uses `25.0�
 conservative dew_point fallback (T5-59), creating an internal inconsistency between the ESI
 path (12.0°C) and the nutrition hydration path (25.0°C) for the same physical quantity.
 
-Fix registered as T5-68: extract `12.0` to `ESI_DEW_POINT_FALLBACK_C` in `thresholds.py`
-with conservative value (≥18.0°C per safety-first principle); register in `evidence_registry.py`
-with HEURISTIC provenance. The conservative direction is higher dew_point (overestimates
-thermal stress → more cautious pacing).
+**T5-68 (Implemented — 2026-03-29):** `12.0` extracted to `ESI_DEW_POINT_FALLBACK_C = 18.0`
+in `thresholds.py`. `ESI_DEW_POINT_FALLBACK_C` is the canonical missing-data default for
+`dew_point` in the ESI computation path. Registered in `evidence_registry.py` with HEURISTIC
+provenance. The value equals `WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C` (18.0°C) — the conservative
+lower bound at which humidity begins to affect perceived exertion. ADR-0051 (missing-data policy)
+requires erring toward higher thermal stress when data is absent.
 
