@@ -3186,18 +3186,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-65 · classify_hrv_stress_context None ACWR returns TRAINING_EXPLAINED — fix to UNKNOWN conservative label 🟡 OPEN
+### T5-65 · classify_hrv_stress_context None ACWR returns TRAINING_EXPLAINED — fix to UNKNOWN conservative label ✅ RESOLVED
 
-**Status:** OPEN — code may already be compliant (see note below); architect verification required before RESOLVED.
+**Status:** RESOLVED 2026-03-29
 **Source:** DEC-028 / OBS-030
 **Severity:** MEDIUM
 **Workflow Path: A**
 **Location:** `titan/science/governance_engine.py:235–242` (`classify_hrv_stress_context`)
 **Description:** `classify_hrv_stress_context()` (originally described as `_classify_hrv_drop`) converted None ACWR to `1.0` via `float(context.get("acwr", 1.0))` and returned `TRAINING_EXPLAINED` when ACWR was absent. ADR-0051 (conservative-fail policy) requires None ACWR to return `UNKNOWN_ACWR`, not an optimistic classification. The fix was registered after ADR-0051 was accepted.
 
-**ADR-0051 compliance note:** Live code inspection on 2026-03-29 shows `classify_hrv_stress_context()` at lines 235–242 already returns `UNKNOWN_ACWR` for None ACWR (added comment references ADR-0051). Code appears compliant as of 2026-03-29 — architect verification required before RESOLVED. Do NOT mark RESOLVED without architect confirmation.
+**Resolution:** Fix applied as part of T5-65 wave 2026-03-29. Confirmed ADR-0051 compliant by architect 2026-03-29. `classify_hrv_stress_context()` returns `UNKNOWN_ACWR` for None/absent/unparseable ACWR. No further implementation required.
 
-**Acceptance criteria (binary):** `classify_hrv_stress_context({"acwr": None, ...})` returns a label that is not `TRAINING_EXPLAINED` (must be `UNKNOWN_ACWR` or equivalent conservative label).
+**Task learning:** Code compliance verification before implementation avoids unnecessary churn. When an ADR fix is applied before the debt entry is created, always confirm live code state before opening an implementation task.
 
 ---
 
@@ -3597,7 +3597,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-60 | ✅ RESOLVED 2026-03-28 — sleep field mapping fixed; H3 gate restored (PR #552) | 2026-03-28 |
 | T5-61 | ✅ RESOLVED 2026-03-28 — multi-day HRV persisted; INSERT OR IGNORE for historical (PR #553) | 2026-03-28 |
 | T5-62 | ✅ RESOLVED 2026-03-28 — zero-sync silent failure fixed; stale token + empty sync detection (PR #551) | 2026-03-28 |
-| T5-65 | 🟡 OPEN — classify_hrv_stress_context None ACWR conservative label; code may be compliant (2026-03-29 verification note); architect sign-off required | — |
+| T5-65 | ✅ RESOLVED 2026-03-29 — classify_hrv_stress_context returns UNKNOWN_ACWR for None/absent/unparseable ACWR; confirmed ADR-0051 compliant by architect 2026-03-29 | 2026-03-29 |
 | T5-66 | 🟡 OPEN — save_daily_metric INSERT OR REPLACE destroys subjective fields on re-sync; per-column UPSERT needed | — |
 | T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
 | T5-68 | 🟡 OPEN — ESI dew_point 12.0°C magic number; extract to ESI_DEW_POINT_FALLBACK_C in thresholds.py | — |
