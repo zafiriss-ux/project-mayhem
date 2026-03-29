@@ -1866,6 +1866,39 @@ SELF-ASSESSMENT: COMPLETE / INCOMPLETE
 - Branch must be `claude/*` — never `codex/*`
 - Free-form text outside this structure is ignored by Records Steward
 
+### §23.1 Delivery Report Template (mandatory for all pass types)
+
+Every delivery report must include all four sections below. This format replaces
+narrative (free-form) delivery reports. No additional sections are required unless
+a SCRATCHPAD OBS is raised during the pass.
+
+```markdown
+## Scope Declaration
+Change type: [implementation | records | policy | audit]
+Tasks: [T5-XX, T5-YY, ...]           (comma-separated; "N/A" for non-task passes)
+ADR reference: [ADR-XXXX or N/A]
+Files changed: [list each file on a separate line]
+
+## Gate Results
+| Gate     | Command                            | Result           |
+|----------|------------------------------------|------------------|
+| G1 Lint  | ruff check .                       | ✅/❌            |
+| G2 Strict| pytest -q -W error::PytestWarning  | ✅/❌ N passed   |
+| G3 Full  | pytest -q                          | ✅/❌ N passed   |
+
+## Changes Summary
+[One sentence per task: what changed and why. Be specific — module name + behaviour delta.]
+
+## Task Learning
+[What was discovered during implementation that wasn't obvious from the spec.
+If nothing new: "No new findings."]
+```
+
+**Enforcement:**
+- All four sections must be present. A report missing any section is INCOMPLETE.
+- Gate Results table must use actual command output counts, not estimates.
+- Task Learning must be a substantive sentence or "No new findings." — blank is not accepted.
+
 ### Periodic Bounded Audit Ritual
 
 A bounded audit pass is a structured, scope-limited read-only sweep of the codebase or a
