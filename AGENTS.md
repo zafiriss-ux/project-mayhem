@@ -814,6 +814,25 @@ covered by the task description or an existing ADR:
 permission to justify creating a new table, renaming a table, or any other topology change.
 When in doubt: stop and ask.
 
+### 13.4 Staged Schema Change Protocol
+
+All database schema changes must be executed in exactly three stages, each as a separate PR:
+
+**Stage 1 — Additive only:**
+Add new columns/tables. All new columns must be nullable or have defaults. No existing column
+may be dropped or renamed. No NOT NULL constraint on new columns without a default.
+
+**Stage 2 — Migrative:**
+Populate new columns from existing data. Update application code to write to both old and new
+structures. Read from old.
+
+**Stage 3 — Restrictive:**
+Remove old columns/tables. Switch reads to new structure. Add NOT NULL constraints if
+appropriate.
+
+Stages 1, 2, and 3 must never be combined in a single PR.
+A Stage 3 PR must reference the merged Stage 1 and Stage 2 PRs.
+
 ---
 
 ## 14. Project Safeguard Protocols — Protecting the Project from Well-Intentioned Mistakes
