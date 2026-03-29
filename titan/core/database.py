@@ -754,11 +754,24 @@ class DatabaseManager:
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
+            # T5-66: Per-column UPSERT semantics.
+            # Garmin-sourced columns (hrv_rmssd, resting_hr, sleep_hours,
+            # sleep_quality, weight_kg, quality_flag) are overwritten on re-sync.
+            # Manual subjective fields (soreness, fatigue_level, mood, notes) are
+            # preserved when a row already exists — a Garmin re-sync must not zero
+            # values the athlete manually entered.
             cursor.execute("""
-                INSERT OR REPLACE INTO daily_metrics
+                INSERT INTO daily_metrics
                 (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
                  soreness, fatigue_level, mood, notes, quality_flag)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(date) DO UPDATE SET
+                    weight_kg    = CASE WHEN excluded.weight_kg    IS NOT NULL THEN excluded.weight_kg    ELSE weight_kg    END,
+                    hrv_rmssd    = CASE WHEN excluded.hrv_rmssd    IS NOT NULL THEN excluded.hrv_rmssd    ELSE hrv_rmssd    END,
+                    resting_hr   = CASE WHEN excluded.resting_hr   IS NOT NULL THEN excluded.resting_hr   ELSE resting_hr   END,
+                    sleep_hours  = CASE WHEN excluded.sleep_hours  IS NOT NULL THEN excluded.sleep_hours  ELSE sleep_hours  END,
+                    sleep_quality= CASE WHEN excluded.sleep_quality IS NOT NULL THEN excluded.sleep_quality ELSE sleep_quality END,
+                    quality_flag = CASE WHEN excluded.quality_flag IS NOT NULL THEN excluded.quality_flag ELSE quality_flag END
             """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag))
             if self._transaction_depth == 0:
                 self.conn.commit()

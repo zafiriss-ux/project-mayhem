@@ -1378,9 +1378,12 @@ class TestGovernanceHardStopsAnd2of4:
 
     def test_h1_dual_collapse_forces_rest(self, gov):
         plan = {'session_type': 'INTERVALS', 'max_zone': 5}
+        # acwr=1.0 supplied explicitly — ADR-0051 requires ACWR present to reach
+        # illness-pattern classification (absent ACWR returns UNKNOWN_ACWR first).
         out = gov.apply_constraints(plan, context={
             'today_hrv': 28, 'baseline_hrv': 55,
             'today_rhr': 72, 'baseline_rhr': 52,
+            'acwr': 1.0,
         })
         assert out['session_type'] == 'REST'
         assert out['max_zone'] == 1

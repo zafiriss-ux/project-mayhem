@@ -32,6 +32,13 @@ ESI_MODERATE_MIN = 16.0
 ESI_HIGH_MIN = 22.0
 ESI_EXTREME_MIN = 28.0
 
+# ESI missing-data fallback for dew_point — T5-68 / ADR-0034 / ADR-0051.
+# When dew_point is absent from weather data, assume 18.0°C (lower boundary of
+# "uncomfortable" band per WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C).  Using 12.0°C
+# (comfortable) would underestimate thermal stress; the conservative-fail
+# principle (ADR-0051) requires we err toward higher perceived heat load.
+ESI_DEW_POINT_FALLBACK_C = 18.0
+
 ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM = 8
 ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM = 15
 ESI_PACE_ADJUSTMENT_EXTREME_SEC_PER_KM = 25

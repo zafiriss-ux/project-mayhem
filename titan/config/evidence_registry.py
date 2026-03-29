@@ -1147,6 +1147,31 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC conservative guardrail; reassess after heat-event telemetry review.',
     ),
 
+    'ESI_DEW_POINT_FALLBACK_C': ThresholdEvidence(
+        parameter='ESI_DEW_POINT_FALLBACK_C',
+        value=18.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source=(
+            'T5-68 / ADR-0034 / ADR-0051. '
+            'Aligned with WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C (18.0°C) — the lower '
+            'boundary of the uncomfortable dew-point band per NOAA/NWS operational guidance.'
+        ),
+        rationale=(
+            'When dew_point is absent from weather data, the ESI composite score '
+            '(temperature_c + 0.5 * dew_point_c) must not silently underestimate thermal '
+            'stress. Defaulting to 12.0°C (the comfortable band) would suppress ESI '
+            'modifiers when data is unknown. 18.0°C is the conservative-fail choice: '
+            'it is the minimum value at which humidity begins to affect perceived exertion, '
+            'consistent with ADR-0051 missing-data policy (optimistic defaults eliminated).'
+        ),
+        policy_note=(
+            'HEURISTIC — value equals WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C intentionally. '
+            'Calibrate with session-outcome data once dew_point telemetry coverage improves. '
+            'Do not set below WEATHER_DEW_POINT_COMFORTABLE_MIN_C (12.0°C).'
+        ),
+    ),
+
 
     'WEATHER_DEW_POINT_EXTREME_MIN_C': ThresholdEvidence(
         parameter='WEATHER_DEW_POINT_EXTREME_MIN_C',

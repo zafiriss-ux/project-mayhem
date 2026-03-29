@@ -232,10 +232,14 @@ class GovernanceEngine:
         except (TypeError, ValueError):
             rhr_delta = 0.0
 
+        # ADR-0051: None/absent ACWR is missing safety-critical data — conservative fail.
+        raw_acwr = context.get("acwr")
+        if raw_acwr is None:
+            return "UNKNOWN_ACWR"
         try:
-            acwr = float(context.get("acwr", 1.0))
+            acwr = float(raw_acwr)
         except (TypeError, ValueError):
-            acwr = 1.0
+            return "UNKNOWN_ACWR"
 
         if acwr > VO2_ACWR_MAX:
             return "TRAINING_EXPLAINED"

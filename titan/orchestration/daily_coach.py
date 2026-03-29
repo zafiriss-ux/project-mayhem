@@ -36,6 +36,7 @@ if TYPE_CHECKING:
 from titan.config.evidence_registry import get_metrics_under_review
 from titan.config.thresholds import (
     CTL_DECAY_DAYS,
+    ESI_DEW_POINT_FALLBACK_C,
     ESI_EXTREME_MIN,
     ESI_HIGH_MIN,
     ESI_MODERATE_MIN,
@@ -710,7 +711,7 @@ class DailyCoach:
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         esi_level, esi_pace_adjustment_sec_per_km = _compute_esi(
             temperature_c=_safe_float(garmin_data.get("temperature_c"), 20.0),
-            dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0),
+            dew_point_c=_safe_float(garmin_data.get("dew_point"), ESI_DEW_POINT_FALLBACK_C),
         )
 
         _daily_coach_event("step_started", step_number=8, step_name="load_today_session")
