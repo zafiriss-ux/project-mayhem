@@ -1,4 +1,6 @@
-# ARCHITECTURE LOCK — see ADR-0009 before modifying
+# Gate parameters: see thresholds.py + evidence_registry.py.
+# To change gate logic: (1) write ADR entry, (2) update evidence_registry.py,
+# (3) update tests/test_governance_mutation.py. All three are required.
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
 
 import json
