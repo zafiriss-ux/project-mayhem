@@ -20,6 +20,14 @@ Gate coverage:
   Governance clean             (test 1)
 """
 
+from titan.config.thresholds import (
+    HARD_STOP_HRV_DELTA,
+    HARD_STOP_RHR_DELTA,
+    HARD_STOP_TSB_FLOOR,
+    SUBJECTIVE_FATIGUE_EXTREME,
+    VO2_ACWR_MAX,
+    VO2_READINESS_MIN,
+)
 from titan.science.governance_engine import GovernanceEngine
 
 # ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -106,7 +114,7 @@ class TestGovernanceGoldenCases:
     # 2 — HRV collapse: H2 hard stop → REST
     def test_02_hrv_collapse_triggers_h2_rest(self) -> None:
         """HRV drop >= 15 ms (H2 threshold) must force REST and max_zone=1."""
-        plan, ctx = _make("INTERVALS", today_hrv=40.0, baseline_hrv=60.0)
+        plan, ctx = _make("INTERVALS", today_hrv=60.0 - HARD_STOP_HRV_DELTA - 5.0, baseline_hrv=60.0)
         _GOV.apply_constraints(plan, ctx)
 
         assert plan["session_type"] == "REST"
@@ -117,7 +125,7 @@ class TestGovernanceGoldenCases:
     # 3 — RHR spike: H3 hard stop → REST
     def test_03_rhr_spike_triggers_h3_rest(self) -> None:
         """RHR rise >= 8 bpm (H3 threshold) must force REST and max_zone=1."""
-        plan, ctx = _make("INTERVALS", today_rhr=62, baseline_rhr=50.0)
+        plan, ctx = _make("INTERVALS", today_rhr=50.0 + HARD_STOP_RHR_DELTA + 4, baseline_rhr=50.0)
         _GOV.apply_constraints(plan, ctx)
 
         assert plan["session_type"] == "REST"
@@ -128,7 +136,7 @@ class TestGovernanceGoldenCases:
     # 4 — TSB critical floor: H4 gate → EASY + max_zone capped at 2
     def test_04_tsb_critical_floor_triggers_h4_easy(self) -> None:
         """TSB <= -50 (H4 threshold) must downgrade quality session to EASY and cap max_zone=2."""
-        plan, ctx = _make("INTERVALS", tsb_value=-55.0)
+        plan, ctx = _make("INTERVALS", tsb_value=HARD_STOP_TSB_FLOOR - 5.0)
         _GOV.apply_constraints(plan, ctx)
 
         assert plan["session_type"] == "EASY"
@@ -150,7 +158,7 @@ class TestGovernanceGoldenCases:
     # 6 — Extreme fatigue: H5 gate → EASY
     def test_06_extreme_fatigue_triggers_h5_downgrade(self) -> None:
         """Subjective fatigue >= 8 (H5 threshold) must downgrade session and cap max_zone=2."""
-        plan, ctx = _make("INTERVALS", subjective_fatigue_score=9)
+        plan, ctx = _make("INTERVALS", subjective_fatigue_score=SUBJECTIVE_FATIGUE_EXTREME + 1)
         _GOV.apply_constraints(plan, ctx)
 
         assert plan["session_type"] in {"EASY", "REST"}
@@ -161,7 +169,7 @@ class TestGovernanceGoldenCases:
     # 7 — High ACWR: V1 VO2 eligibility failure → HAMMER ineligible
     def test_07_high_acwr_blocks_vo2_hammer(self) -> None:
         """ACWR > 1.30 (V1 condition) must fail VO2 eligibility gate for HAMMER."""
-        plan, ctx = _make("HAMMER", acwr=1.55)
+        plan, ctx = _make("HAMMER", acwr=VO2_ACWR_MAX + 0.25)
         _GOV.apply_constraints(plan, ctx)
 
         vo2 = plan.get("vo2_eligibility", {})
@@ -171,7 +179,7 @@ class TestGovernanceGoldenCases:
     # 8 — Low readiness: V2 VO2 eligibility failure → HAMMER ineligible
     def test_08_low_readiness_blocks_vo2_hammer(self) -> None:
         """readiness_score < 65 (V2 condition) must fail VO2 eligibility gate for HAMMER."""
-        plan, ctx = _make("HAMMER", readiness_score=55.0)
+        plan, ctx = _make("HAMMER", readiness_score=VO2_READINESS_MIN - 10.0)
         _GOV.apply_constraints(plan, ctx)
 
         vo2 = plan.get("vo2_eligibility", {})

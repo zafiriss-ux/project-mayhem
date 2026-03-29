@@ -3186,6 +3186,73 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### T5-65 · classify_hrv_stress_context None ACWR returns TRAINING_EXPLAINED — fix to UNKNOWN conservative label 🟡 OPEN
+
+**Status:** OPEN — code may already be compliant (see note below); architect verification required before RESOLVED.
+**Source:** DEC-028 / OBS-030
+**Severity:** MEDIUM
+**Workflow Path: A**
+**Location:** `titan/science/governance_engine.py:235–242` (`classify_hrv_stress_context`)
+**Description:** `classify_hrv_stress_context()` (originally described as `_classify_hrv_drop`) converted None ACWR to `1.0` via `float(context.get("acwr", 1.0))` and returned `TRAINING_EXPLAINED` when ACWR was absent. ADR-0051 (conservative-fail policy) requires None ACWR to return `UNKNOWN_ACWR`, not an optimistic classification. The fix was registered after ADR-0051 was accepted.
+
+**ADR-0051 compliance note:** Live code inspection on 2026-03-29 shows `classify_hrv_stress_context()` at lines 235–242 already returns `UNKNOWN_ACWR` for None ACWR (added comment references ADR-0051). Code appears compliant as of 2026-03-29 — architect verification required before RESOLVED. Do NOT mark RESOLVED without architect confirmation.
+
+**Acceptance criteria (binary):** `classify_hrv_stress_context({"acwr": None, ...})` returns a label that is not `TRAINING_EXPLAINED` (must be `UNKNOWN_ACWR` or equivalent conservative label).
+
+---
+
+### T5-66 · save_daily_metric INSERT OR REPLACE silently destroys subjective fields on re-sync 🟡 OPEN
+
+**Status:** OPEN
+**Source:** DEC-029 / OBS-031
+**Severity:** MEDIUM
+**Workflow Path: A**
+**Location:** `titan/core/database.py:758` (`save_daily_metric`)
+**Description:** `save_daily_metric` uses `INSERT OR REPLACE INTO daily_metrics`. SQLite `INSERT OR REPLACE` semantics delete the existing row before inserting the new one; any column not included in the new insert is lost. On a Garmin re-sync, the new row contains only biometric fields — manually entered subjective fatigue scores (`subjective_fatigue_score`) and other manual fields are silently destroyed. The downstream consequence: on re-sync days, the 2-of-4 downgrade gate cannot fire correctly because the subjective fatigue input was erased.
+
+**Acceptance criteria (binary):** `save_daily_metric` uses a per-column `INSERT ... ON CONFLICT DO UPDATE SET` UPSERT that preserves existing non-null values for manual fields (e.g. `subjective_fatigue_score`) when only biometric columns are provided in the new data.
+
+---
+
+### T5-67 · sync_sleep/sync_hrv/sync_activities/sync_weight emit success events unconditionally 🟡 OPEN
+
+**Status:** OPEN
+**Source:** DEC-030 / OBS-032
+**Severity:** MEDIUM
+**Workflow Path: A**
+**Location:** `titan/integrations/garmin_sync.py` (`sync_sleep`, `sync_hrv`, `sync_activities`, `sync_weight`)
+**Description:** All four sync methods emit a `_garmin_event("synced", count=len(sessions), ...)` success event regardless of whether an exception was caught and suppressed earlier in the method. When an exception path fires, `sessions` is `[]` (empty list), and the success event fires with `count=0` — indistinguishable at the SLO alerting layer from a legitimate zero-record sync. Misleading success events undermine SLO alerting reliability and mask real Garmin API failures.
+
+**Acceptance criteria (binary):** Each of the four sync methods gates the success event on explicit absence of exception (e.g. via a boolean flag set only in the non-exception path). An exception-suppressed sync must not emit a success event; it must emit a failure or warning event instead.
+
+---
+
+### T5-68 · ESI dew_point 12.0°C magic number in daily_coach.py — extract to ESI_DEW_POINT_FALLBACK_C 🟡 OPEN
+
+**Status:** OPEN
+**Source:** DEC-033 / OBS-035
+**Severity:** LOW
+**Workflow Path: A**
+**Location:** `titan/orchestration/daily_coach.py:713`
+**Description:** `dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0)` hardcodes `12.0°C` as the ESI dew-point fallback. `NutritionOptimizer` uses `25°C` as its dew-point conservative fallback (T5-59). Two different fallback values for the same physical quantity in the same thermal-stress pipeline produce internally inconsistent sweat/electrolyte assessments. Per ADR-0034 and the safety-first principle, the conservative default should be `≥18.0°C`. The constant must be named (`ESI_DEW_POINT_FALLBACK_C`) and registered in `thresholds.py` + `evidence_registry.py`.
+
+**Acceptance criteria (binary):** `daily_coach.py:713` uses `ESI_DEW_POINT_FALLBACK_C` imported from `thresholds.py`; `ESI_DEW_POINT_FALLBACK_C` is defined in `thresholds.py` with a value `≥18.0`; a provenance entry exists in `evidence_registry.py`; ADR-0034 is annotated with the constant name.
+
+---
+
+### T5-69 · sync_activities lacks activityId extraction — training_log has no activity_id column, no deduplication 🟡 OPEN
+
+**Status:** OPEN
+**Source:** DEC-034 / OBS-036
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:** `titan/integrations/garmin_sync.py` (`sync_activities`), `titan/core/database.py` (`save_session`, `training_log` schema)
+**Description:** `sync_activities()` does not extract `activityId` from the Garmin API response. The `training_log` schema has no `activity_id` column. `save_session()` has no activity-identity deduplication. On overlapping Garmin syncs, the same activity is inserted multiple times. Unlike HRV (where per-date deduplication is sufficient because there is at most one HRV measurement per day), activities can have multiple legitimate sessions on the same date (double-day training), so per-date deduplication would incorrectly drop valid sessions. Activity-ID deduplication is the correct approach. Impact: duplicate TRIMP loads silently inflate CTL/ATL/TSB, potentially falsely triggering or suppressing hard-stop gates. Fix pattern: follow T5-46 HRV deduplication pattern — extract ID, add column, `INSERT OR IGNORE` on `activity_id`.
+
+**Acceptance criteria (binary):** `sync_activities()` extracts `activityId`; `training_log` schema has an `activity_id` column (via staged schema migration per §13.4); `save_session()` uses `INSERT OR IGNORE` on `activity_id`; duplicate syncs of the same activity produce exactly one `training_log` row.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3530,6 +3597,11 @@ When an item is completed, mark it here with date and PR reference:
 | T5-60 | ✅ RESOLVED 2026-03-28 — sleep field mapping fixed; H3 gate restored (PR #552) | 2026-03-28 |
 | T5-61 | ✅ RESOLVED 2026-03-28 — multi-day HRV persisted; INSERT OR IGNORE for historical (PR #553) | 2026-03-28 |
 | T5-62 | ✅ RESOLVED 2026-03-28 — zero-sync silent failure fixed; stale token + empty sync detection (PR #551) | 2026-03-28 |
+| T5-65 | 🟡 OPEN — classify_hrv_stress_context None ACWR conservative label; code may be compliant (2026-03-29 verification note); architect sign-off required | — |
+| T5-66 | 🟡 OPEN — save_daily_metric INSERT OR REPLACE destroys subjective fields on re-sync; per-column UPSERT needed | — |
+| T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
+| T5-68 | 🟡 OPEN — ESI dew_point 12.0°C magic number; extract to ESI_DEW_POINT_FALLBACK_C in thresholds.py | — |
+| T5-69 | 🟡 OPEN — sync_activities lacks activityId; training_log no activity_id column; no deduplication | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
