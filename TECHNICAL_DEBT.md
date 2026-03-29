@@ -3227,16 +3227,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-68 · ESI dew_point 12.0°C magic number in daily_coach.py — extract to ESI_DEW_POINT_FALLBACK_C 🟡 OPEN
+### T5-68 · ESI dew_point 12.0°C magic number in daily_coach.py — extract to ESI_DEW_POINT_FALLBACK_C ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** RESOLVED 2026-03-29
 **Source:** DEC-033 / OBS-035
 **Severity:** LOW
 **Workflow Path: A**
 **Location:** `titan/orchestration/daily_coach.py:713`
-**Description:** `dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0)` hardcodes `12.0°C` as the ESI dew-point fallback. `NutritionOptimizer` uses `25°C` as its dew-point conservative fallback (T5-59). Two different fallback values for the same physical quantity in the same thermal-stress pipeline produce internally inconsistent sweat/electrolyte assessments. Per ADR-0034 and the safety-first principle, the conservative default should be `≥18.0°C`. The constant must be named (`ESI_DEW_POINT_FALLBACK_C`) and registered in `thresholds.py` + `evidence_registry.py`.
+**Description:** `dew_point_c=_safe_float(garmin_data.get("dew_point"), 12.0)` hardcoded `12.0°C` as the ESI dew-point fallback. `NutritionOptimizer` uses `25°C` as its dew-point conservative fallback (T5-59). Two different fallback values for the same physical quantity in the same thermal-stress pipeline produced internally inconsistent sweat/electrolyte assessments.
 
-**Acceptance criteria (binary):** `daily_coach.py:713` uses `ESI_DEW_POINT_FALLBACK_C` imported from `thresholds.py`; `ESI_DEW_POINT_FALLBACK_C` is defined in `thresholds.py` with a value `≥18.0`; a provenance entry exists in `evidence_registry.py`; ADR-0034 is annotated with the constant name.
+**Resolution:** `ESI_DEW_POINT_FALLBACK_C = 18.0` added to `titan/config/thresholds.py`; HEURISTIC provenance entry added to `titan/config/evidence_registry.py`; `daily_coach.py:714` replaced `12.0` literal with `ESI_DEW_POINT_FALLBACK_C` imported from `thresholds.py`; ADR-0034 annotated with T5-68 implementation note and constant name. Test: `tests/test_t5_68_esi_dew_point_fallback.py` (6 tests — all green).
+
+**Task learning:** All numeric thresholds used as fallback/default values must be named constants in `thresholds.py` with provenance in `evidence_registry.py`. Magic number fallbacks in pipeline code are silent ADR violations.
 
 ---
 
@@ -3600,7 +3602,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-65 | ✅ RESOLVED 2026-03-29 — classify_hrv_stress_context returns UNKNOWN_ACWR for None/absent/unparseable ACWR; confirmed ADR-0051 compliant by architect 2026-03-29 | 2026-03-29 |
 | T5-66 | 🟡 OPEN — save_daily_metric INSERT OR REPLACE destroys subjective fields on re-sync; per-column UPSERT needed | — |
 | T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
-| T5-68 | 🟡 OPEN — ESI dew_point 12.0°C magic number; extract to ESI_DEW_POINT_FALLBACK_C in thresholds.py | — |
+| T5-68 | ✅ RESOLVED 2026-03-29 — ESI_DEW_POINT_FALLBACK_C=18.0 in thresholds.py+evidence_registry; daily_coach.py:714 uses constant; ADR-0034 annotated; 6 tests green | 2026-03-29 |
 | T5-69 | 🟡 OPEN — sync_activities lacks activityId; training_log no activity_id column; no deduplication | — |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
