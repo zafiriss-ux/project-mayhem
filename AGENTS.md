@@ -1149,6 +1149,26 @@ This is the machine-enforced replacement for the original comment-lock.
 | G9 | ADR-0018 Phase B implemented: Effect Runner extracted as stateless decision function | Required for multi-athlete parallel DailyCoach execution |
 | G10 | ADR-0044 accepted and Phase 8A implementation plan documented | ADR-0044 already accepted. Also an ongoing Phase 8B prerequisite: the Phase 8A implementation plan must be current and active before any Phase 8B work begins. |
 | G11 | Phase 8 Simplicity Review conducted and output documented in `0022-review-phase8-go.md` | Even if output is "nothing to consolidate", review must have occurred |
+| G12 | FMEA PASS — see §16.2-G12 below | Required for any Phase introducing feedback loops, auto-calibration, ML promotion, or LLM advisory layer |
+
+**§16.2-G12 — FMEA PASS (Mandatory Before Phase Opening)**
+
+Applies to any Phase that introduces one or more of:
+- Feedback loops (output of one component becomes input of another in a closed loop)
+- Auto-calibration or self-modifying thresholds
+- ML model promotion from Stage 0 to any higher stage (ADR-0014)
+- LLM advisory layer (Phase 10 and beyond)
+
+Required output: completed FMEA table using `docs/templates/FMEA_TEMPLATE.md`, stored in
+`TECHNICAL_DEBT.md` under header: `## FMEA: Phase [X] — [date]`
+
+The FMEA must cover: all new components introduced in the Phase, top 3 highest-severity
+failure modes, their mitigations.
+
+Gate status: OPEN until FMEA table is present in `TECHNICAL_DEBT.md`.
+
+Phase 9 (multi-athlete calibration loops): G12 applies.
+Phase 10 (LLM advisory): G12 applies.
 
 **Enforcement:** Before any Phase 8 branch is created:
 1. The responsible engineer runs all verification commands above.
