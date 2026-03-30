@@ -3255,7 +3255,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 **Acceptance criteria (binary):** `sync_activities()` extracts `activityId`; `training_log` schema has an `activity_id` column (via staged schema migration per §13.4); `save_session()` uses `INSERT OR IGNORE` on `activity_id`; duplicate syncs of the same activity produce exactly one `training_log` row.
 
-**Resolution:** `sync_activities()` extracts `activityId` via `a.get("activityId")` and passes it as `activity_id` to `save_session()`; `training_log` schema gained `garmin_activity_id TEXT` column via staged migration (version 1: column, version 2: unique index `WHERE garmin_activity_id IS NOT NULL`); `save_session()` uses `INSERT OR IGNORE` on the unique `garmin_activity_id` index preventing duplicate rows on overlapping syncs. Resolution record lost in merge conflict 2026-03-29; restored from implementation evidence. Test: `tests/test_t5_69_activity_deduplication.py`.
+**Resolution:** `sync_activities()` extracts `activityId` via `a.get("activityId")` and passes it as `activity_id` to `save_session()`; `training_log` schema gained `garmin_activity_id TEXT` column via staged migration (version 1: column, version 2: unique index `WHERE garmin_activity_id IS NOT NULL`); `save_session()` uses `INSERT OR IGNORE` on the unique `garmin_activity_id` index preventing duplicate rows on overlapping syncs. Resolution record lost in merge conflict 2026-03-29; restored from implementation evidence. Stage 3 merged PR #572 2026-03-29. NOT NULL constraint is conditional — skipped when NULL rows exist (manual sessions without garmin_activity_id by design). Test: `tests/test_t5_69_activity_deduplication.py`.
 
 ---
 
@@ -3607,7 +3607,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-66 | ✅ RESOLVED 2026-03-29 — per-column UPSERT preserves mood/soreness/fatigue/notes on Garmin re-sync; 5 tests green | 2026-03-29 |
 | T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
 | T5-68 | ✅ RESOLVED 2026-03-29 — ESI_DEW_POINT_FALLBACK_C=18.0 in thresholds.py+evidence_registry; daily_coach.py:714 uses constant; ADR-0034 annotated; 6 tests green | 2026-03-29 |
-| T5-69 | ✅ RESOLVED 2026-03-29 — activityId extracted; garmin_activity_id column + unique index via staged migration; INSERT OR IGNORE deduplication; record restored after merge conflict | 2026-03-29 |
+| T5-69 | ✅ RESOLVED 2026-03-29 — activityId extracted; garmin_activity_id column + unique index via staged migration; INSERT OR IGNORE deduplication; record restored after merge conflict; Stage 3 merged PR #572 2026-03-29; NOT NULL constraint conditional (NULL rows skipped — manual sessions by design) | 2026-03-29 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
