@@ -192,7 +192,8 @@ def _build_test_engine() -> tuple:
                 surface TEXT,
                 temperature_c REAL,
                 zone_distribution TEXT,
-                notes TEXT
+                notes TEXT,
+                garmin_activity_id TEXT
             )
         """))
         conn.execute(text("""
