@@ -61,6 +61,7 @@ def _build_postgres_adapter_test_engine(tmp_path) -> tuple[Engine, PostgreSQLAda
                     temperature_c REAL,
                     zone_distribution TEXT,
                     notes TEXT,
+                    garmin_activity_id TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
                 """

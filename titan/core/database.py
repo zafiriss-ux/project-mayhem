@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 
 class DatabaseManager:
@@ -403,6 +403,11 @@ class DatabaseManager:
                 "calibration metadata ledger for model age and drift checks (T5-07 layer 1)",
                 None,  # DDL — see _apply_v7_migrations() below
             ),
+            8: (
+                "training_log",
+                "conditional NOT NULL on garmin_activity_id (T5-69 Stage 3)",
+                None,  # conditional DDL — see _apply_v8_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -485,6 +490,17 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 7,
                     "table_created": "model_calibration_metadata",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 8:
+            self._apply_v8_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 8,
+                    "note": "garmin_activity_id NOT NULL check (T5-69 Stage 3)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -630,6 +646,95 @@ class DatabaseManager:
             )
         """)
 
+
+    def _apply_v8_migrations(self, cursor) -> None:
+        """Version 8: conditional NOT NULL on training_log.garmin_activity_id (T5-69 Stage 3).
+
+        Per §13.4 Stage 3: adds NOT NULL only when ALL existing rows are confirmed
+        migrated (garmin_activity_id IS NOT NULL for every row) AND at least one row
+        exists.  Manually-logged sessions are by design allowed to have NULL
+        garmin_activity_id (they have no Garmin identity), so in practice this
+        constraint is almost always skipped.
+        """
+        null_count = (
+            cursor.execute(
+                "SELECT COUNT(*) FROM training_log WHERE garmin_activity_id IS NULL"
+            ).fetchone()[0]
+        )
+        total_count = (
+            cursor.execute("SELECT COUNT(*) FROM training_log").fetchone()[0]
+        )
+
+        if null_count > 0 or total_count == 0:
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_migration_v8_not_null_skipped",
+                    "reason": (
+                        f"null_count={null_count}, total_count={total_count} — "
+                        "NOT NULL constraint not applied "
+                        "(manual sessions present, or no rows to confirm migration)"
+                    ),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+            return
+
+        # All rows have garmin_activity_id and at least one row exists.
+        # Recreate table with NOT NULL + athlete_id column.
+        # SQLite does not support ALTER COLUMN — use the standard rename approach.
+        cursor.execute("""
+            CREATE TABLE training_log_v8_new (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id         TEXT NOT NULL DEFAULT 'default',
+                date               TEXT NOT NULL,
+                session_type       TEXT,
+                distance_km        REAL,
+                duration_sec       INTEGER,
+                avg_hr             INTEGER,
+                max_hr             INTEGER,
+                rpe                INTEGER,
+                training_load      INTEGER,
+                shoe_id            INTEGER,
+                surface            TEXT,
+                temperature_c      REAL,
+                zone_distribution  TEXT,
+                notes              TEXT,
+                garmin_activity_id TEXT NOT NULL,
+                quality_flag       TEXT,
+                FOREIGN KEY (shoe_id) REFERENCES gear_usage(id)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO training_log_v8_new
+                (id, date, session_type, distance_km, duration_sec,
+                 avg_hr, max_hr, rpe, training_load, shoe_id,
+                 surface, temperature_c, zone_distribution, notes,
+                 garmin_activity_id, quality_flag)
+            SELECT id, date, session_type, distance_km, duration_sec,
+                   avg_hr, max_hr, rpe, training_load, shoe_id,
+                   surface, temperature_c, zone_distribution, notes,
+                   garmin_activity_id, quality_flag
+            FROM training_log
+        """)
+        cursor.execute("DROP TABLE training_log")
+        cursor.execute("ALTER TABLE training_log_v8_new RENAME TO training_log")
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_training_log_garmin_id
+                ON training_log(garmin_activity_id)
+                WHERE garmin_activity_id IS NOT NULL
+        """)
+        _log.info(
+            json.dumps({
+                "flow": "database",
+                "action": "db_migration_v8_not_null_applied",
+                "detail": (
+                    "training_log.garmin_activity_id promoted to NOT NULL; "
+                    "athlete_id column added"
+                ),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+            })
+        )
 
     # --- BACKUP ---
 

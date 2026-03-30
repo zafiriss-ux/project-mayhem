@@ -42,6 +42,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.exc import IntegrityError
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
@@ -651,6 +652,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
             Column("temperature_c", Float),
             Column("zone_distribution", Text),
             Column("notes", Text),
+            Column("garmin_activity_id", Text),
         )
         self._gear_usage = Table(
             "gear_usage",
@@ -783,23 +785,29 @@ class PostgreSQLAdapter(PersistenceAdapter):
     ) -> None:
         rpe = kwargs.get("rpe")
         training_load = int(rpe * (duration_sec / 60)) if rpe else 0
-        with self._engine.begin() as conn:
-            conn.execute(
-                insert(self._training_log).values(
-                    date=date,
-                    session_type=session_type,
-                    distance_km=distance_km,
-                    duration_sec=duration_sec,
-                    avg_hr=kwargs.get("avg_hr"),
-                    max_hr=kwargs.get("max_hr"),
-                    rpe=rpe,
-                    training_load=training_load,
-                    shoe_id=kwargs.get("shoe_id"),
-                    surface=kwargs.get("surface"),
-                    temperature_c=kwargs.get("temperature_c"),
-                    notes=kwargs.get("notes"),
+        garmin_activity_id = kwargs.get("garmin_activity_id")
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    insert(self._training_log).values(
+                        date=date,
+                        session_type=session_type,
+                        distance_km=distance_km,
+                        duration_sec=duration_sec,
+                        avg_hr=kwargs.get("avg_hr"),
+                        max_hr=kwargs.get("max_hr"),
+                        rpe=rpe,
+                        training_load=training_load,
+                        shoe_id=kwargs.get("shoe_id"),
+                        surface=kwargs.get("surface"),
+                        temperature_c=kwargs.get("temperature_c"),
+                        notes=kwargs.get("notes"),
+                        garmin_activity_id=garmin_activity_id,
+                    )
                 )
-            )
+        except IntegrityError:
+            # Duplicate garmin_activity_id — silent no-op (INSERT OR IGNORE semantics).
+            pass
 
     def get_training_load_history(
         self, days: int | None = None
