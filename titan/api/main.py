@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -31,8 +33,11 @@ from titan.api.dependencies import (
     require_coach,
 )
 from titan.api.models import AuthUser, LoginRequest, LoginResponse
+from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
+from titan.core.structured_events import EventSeverity, structured_event_payload
 
 _RATE_LIMIT_WINDOW_SECONDS = 60.0
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -74,8 +79,38 @@ class AuthenticatedRateLimiter:
                     content='{"detail":"Rate limit exceeded"}',
                 )
             bucket.append(now)
+            if len(self._requests) > RATE_LIMITER_MAX_KEYS:
+                self._evict_lru_keys()
 
         return await call_next(request)
+
+    def _evict_lru_keys(self) -> None:
+        """Evict least-recently-used keys to stay within RATE_LIMITER_MAX_KEYS.
+
+        Must be called while ``self._lock`` is held.
+        Last-access for a key is the most recent timestamp in its deque
+        (rightmost element), or 0.0 for an empty deque.
+        """
+        n_to_evict = len(self._requests) - RATE_LIMITER_MAX_KEYS
+        if n_to_evict <= 0:
+            return
+        sorted_keys = sorted(
+            self._requests.keys(),
+            key=lambda k: self._requests[k][-1] if self._requests[k] else 0.0,
+        )
+        for k in sorted_keys[:n_to_evict]:
+            del self._requests[k]
+        _log.warning(
+            json.dumps(
+                structured_event_payload(
+                    "rate_limiter",
+                    "limiter_eviction",
+                    severity=EventSeverity.WARNING,
+                    keys_evicted=n_to_evict,
+                ),
+                default=str,
+            )
+        )
 
     def _resolve_user(self, request: Request) -> AuthUser | None:
         token = request.cookies.get(ACCESS_COOKIE_NAME)

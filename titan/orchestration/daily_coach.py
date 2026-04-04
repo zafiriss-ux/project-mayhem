@@ -20,6 +20,7 @@ Architectural Boundary:
   governance.apply_constraints() is the final, non-bypassable gate.
 """
 
+import contextlib
 import json
 import logging
 import sqlite3
@@ -91,11 +92,49 @@ class DegradedModeTracker:
     If any flag has been active for >= ``_DEGRADED_ALERT_THRESHOLD_HOURS``,
     a critical alert is fired via the provided callable.
 
-    State is in-memory only and resets on process restart.
+    State is persisted to the ``degraded_mode_state`` SQLite table so that
+    degradation timers survive process restarts (HD-06 / OBS-039).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, db: "DatabaseManager | None" = None) -> None:
+        self._db = db
         self._degraded_since: dict[str, datetime] = {}
+        if db is not None:
+            self._hydrate_from_db()
+
+    def _hydrate_from_db(self) -> None:
+        """Restore degradation timers from the database on startup."""
+        try:
+            rows = self._db.get_all_degraded_mode_states()  # type: ignore[union-attr]
+        except Exception:
+            return
+        for failure_type, ts_str in rows:
+            with contextlib.suppress(ValueError, TypeError):
+                self._degraded_since[failure_type] = datetime.fromisoformat(ts_str)
+        if self._degraded_since:
+            _daily_coach_event(
+                "degraded_mode_restored",
+                severity=EventSeverity.INFO,
+                failure_types=list(self._degraded_since.keys()),
+                count=len(self._degraded_since),
+            )
+
+    def _persist_state(self, failure_type: str, degraded_since: datetime | None) -> None:
+        """Upsert or delete a single failure_type row via DatabaseManager."""
+        if self._db is None:
+            return
+        try:
+            if degraded_since is not None:
+                self._db.upsert_degraded_mode_state(failure_type, degraded_since.isoformat())
+            else:
+                self._db.delete_degraded_mode_state(failure_type)
+        except Exception as exc:
+            _daily_coach_event(
+                "degraded_mode_persist_failed",
+                severity=EventSeverity.WARNING,
+                failure_type=failure_type,
+                error_class=type(exc).__name__,
+            )
 
     def update(
         self,
@@ -113,6 +152,7 @@ class DegradedModeTracker:
             if is_degraded:
                 if name not in self._degraded_since:
                     self._degraded_since[name] = now
+                    self._persist_state(name, now)
                 else:
                     elapsed_hours = (now - self._degraded_since[name]).total_seconds() / 3600
                     if elapsed_hours >= _DEGRADED_ALERT_THRESHOLD_HOURS:
@@ -129,8 +169,10 @@ class DegradedModeTracker:
                             )
                         # Reset timer after alerting to avoid alert storm
                         self._degraded_since[name] = now
+                        self._persist_state(name, now)
             else:
                 self._degraded_since.pop(name, None)
+                self._persist_state(name, None)
 
     def get_degraded_since(self) -> dict[str, str | None]:
         """Return ISO 8601 timestamps per failure type, or None when healthy."""
@@ -305,7 +347,7 @@ class DailyCoach:
         self.athlete_max_hr = athlete_max_hr
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
-        self._degraded_tracker = DegradedModeTracker()
+        self._degraded_tracker = DegradedModeTracker(db=self.db)
         self._startup_hydration_confidence: dict[str, bool] = {
             "hrv": False,
             "weight": False,

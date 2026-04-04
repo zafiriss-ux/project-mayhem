@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 10
 
 
 class DatabaseManager:
@@ -408,6 +408,16 @@ class DatabaseManager:
                 "conditional NOT NULL on garmin_activity_id (T5-69 Stage 3)",
                 None,  # conditional DDL — see _apply_v8_migrations() below
             ),
+            9: (
+                "degraded_mode_state",
+                "DegradedModeTracker persistence table (HD-06 / OBS-039)",
+                None,  # DDL — see _apply_v9_migrations() below
+            ),
+            10: (
+                "auth_users / auth_tokens",
+                "AuthStore SQLite persistence tables (HD-04 / T5-70 / ADR-0048)",
+                None,  # DDL — see _apply_v10_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -501,6 +511,28 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 8,
                     "note": "garmin_activity_id NOT NULL check (T5-69 Stage 3)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 9:
+            self._apply_v9_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 9,
+                    "table_created": "degraded_mode_state",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 10:
+            self._apply_v10_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 10,
+                    "tables_created": "auth_users, auth_tokens",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -735,6 +767,192 @@ class DatabaseManager:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             })
         )
+
+    def _apply_v9_migrations(self, cursor) -> None:
+        """Version 9: degraded_mode_state table for DegradedModeTracker persistence (HD-06)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS degraded_mode_state (
+                failure_type TEXT PRIMARY KEY,
+                degraded_since TEXT NOT NULL,
+                athlete_id TEXT NOT NULL DEFAULT 'default'
+            )
+        """)
+
+    def _apply_v10_migrations(self, cursor) -> None:
+        """Version 10: auth_users and auth_tokens tables (HD-04 / T5-70 / ADR-0048)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auth_users (
+                id TEXT PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL,
+                athlete_id TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                athlete_id TEXT,
+                issued_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked INTEGER NOT NULL DEFAULT 0,
+                FOREIGN KEY (user_id) REFERENCES auth_users(id)
+            )
+        """)
+
+    # --- Auth User / Token CRUD (HD-04 / T5-70) ---
+
+    def upsert_auth_user(
+        self,
+        user_id: str,
+        username: str,
+        password_hash: str,
+        role: str,
+        athlete_id: str | None,
+        is_active: bool = True,
+    ) -> None:
+        """Insert or replace an auth user record."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "INSERT OR REPLACE INTO auth_users "
+                "(id, username, password_hash, role, athlete_id, is_active) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (user_id, username, password_hash, role, athlete_id, int(is_active)),
+            )
+            self.conn.commit()
+
+    def get_auth_user_by_id(self, user_id: str) -> dict | None:
+        """Return the auth_users row for the given user_id, or None."""
+        with self._lock:
+            row = self.conn.cursor().execute(
+                "SELECT id, username, password_hash, role, athlete_id, is_active "
+                "FROM auth_users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "username": row[1],
+            "password_hash": row[2],
+            "role": row[3],
+            "athlete_id": row[4],
+            "is_active": bool(row[5]),
+        }
+
+    def get_auth_user_by_username(self, username: str) -> dict | None:
+        """Return the auth_users row for the given username, or None."""
+        with self._lock:
+            row = self.conn.cursor().execute(
+                "SELECT id, username, password_hash, role, athlete_id, is_active "
+                "FROM auth_users WHERE username = ?",
+                (username,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "username": row[1],
+            "password_hash": row[2],
+            "role": row[3],
+            "athlete_id": row[4],
+            "is_active": bool(row[5]),
+        }
+
+    def insert_auth_token(
+        self, jti: str, user_id: str, issued_at: str, expires_at: str
+    ) -> None:
+        """Insert a new refresh token row (revoked=0 by default)."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "INSERT OR REPLACE INTO auth_tokens "
+                "(id, user_id, issued_at, expires_at, revoked) VALUES (?, ?, ?, ?, 0)",
+                (jti, user_id, issued_at, expires_at),
+            )
+            self.conn.commit()
+
+    def get_auth_token(self, jti: str) -> dict | None:
+        """Return the auth_tokens row for the given jti, or None."""
+        with self._lock:
+            row = self.conn.cursor().execute(
+                "SELECT id, user_id, issued_at, expires_at, revoked "
+                "FROM auth_tokens WHERE id = ?",
+                (jti,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0],
+            "user_id": row[1],
+            "issued_at": row[2],
+            "expires_at": row[3],
+            "revoked": bool(row[4]),
+        }
+
+    def set_auth_token_revoked(self, jti: str) -> None:
+        """Mark a refresh token as revoked."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "UPDATE auth_tokens SET revoked = 1 WHERE id = ?",
+                (jti,),
+            )
+            self.conn.commit()
+
+    def delete_expired_auth_tokens(self, before_iso: str) -> None:
+        """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "DELETE FROM auth_tokens WHERE expires_at < ?",
+                (before_iso,),
+            )
+            self.conn.commit()
+
+    def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
+        """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""
+        with self._lock:
+            rows = self.conn.cursor().execute(
+                "SELECT id, issued_at FROM auth_tokens "
+                "WHERE user_id = ? AND revoked = 0 AND expires_at > ?",
+                (user_id, now_iso),
+            ).fetchall()
+        return [{"id": r[0], "issued_at": r[1]} for r in rows]
+
+    # --- Degraded Mode State (HD-06) ---
+
+    def get_all_degraded_mode_states(self, athlete_id: str = "default") -> list[tuple[str, str]]:
+        """Return all (failure_type, degraded_since) rows for the given athlete."""
+        with self._lock:
+            return self.conn.cursor().execute(
+                "SELECT failure_type, degraded_since "
+                "FROM degraded_mode_state WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchall()
+
+    def upsert_degraded_mode_state(
+        self, failure_type: str, degraded_since: str, athlete_id: str = "default"
+    ) -> None:
+        """Insert or replace a degraded-mode row keyed by failure_type."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "INSERT OR REPLACE INTO degraded_mode_state "
+                "(failure_type, degraded_since, athlete_id) VALUES (?, ?, ?)",
+                (failure_type, degraded_since, athlete_id),
+            )
+            self.conn.commit()
+
+    def delete_degraded_mode_state(
+        self, failure_type: str, athlete_id: str = "default"
+    ) -> None:
+        """Delete the degraded-mode row for a failure_type (degradation resolved)."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "DELETE FROM degraded_mode_state "
+                "WHERE failure_type = ? AND athlete_id = ?",
+                (failure_type, athlete_id),
+            )
+            self.conn.commit()
 
     # --- BACKUP ---
 

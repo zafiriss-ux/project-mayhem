@@ -5,12 +5,16 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import bcrypt
 import jwt
 from jwt import InvalidTokenError
 
 from titan.api.models import AuthUser, TokenPayload
+
+if TYPE_CHECKING:
+    from titan.core.database import DatabaseManager
 
 ACCESS_TOKEN_TTL = timedelta(minutes=15)
 REFRESH_TOKEN_TTL = timedelta(days=7)
@@ -24,11 +28,18 @@ class AuthError(Exception):
 
 
 class AuthStore:
-    """In-memory auth persistence for users and refresh tokens."""
+    """SQLite-backed auth persistence for users and refresh tokens (HD-04 / T5-70).
 
-    def __init__(self) -> None:
-        self._users: dict[str, dict[str, str | bool | None]] = {}
-        self._tokens: dict[str, dict[str, str | datetime | bool]] = {}
+    Accepts an optional ``DatabaseManager``. When none is provided, an in-memory
+    SQLite database is created — existing tests that call ``AuthStore()`` continue
+    to work without modification.
+    """
+
+    def __init__(self, db: DatabaseManager | None = None) -> None:
+        if db is None:
+            from titan.core.database import DatabaseManager
+            db = DatabaseManager(db_name=":memory:")
+        self._db = db
 
     def upsert_user(
         self,
@@ -39,79 +50,68 @@ class AuthStore:
         athlete_id: str | None,
         is_active: bool = True,
     ) -> None:
-        self._users[user_id] = {
-            "id": user_id,
-            "username": username,
-            "password_hash": password_hash,
-            "role": role,
-            "athlete_id": athlete_id,
-            "is_active": is_active,
-        }
+        self._db.upsert_auth_user(user_id, username, password_hash, role, athlete_id, is_active)
 
     def verify_credentials(self, username: str, plain_password: str) -> AuthUser | None:
-        for row in self._users.values():
-            if row["username"] != username:
-                continue
-            if not verify_password(plain_password, str(row["password_hash"])):
-                return None
-            return AuthUser(
-                id=str(row["id"]),
-                username=str(row["username"]),
-                role=str(row["role"]),
-                athlete_id=row["athlete_id"] if isinstance(row["athlete_id"], str) else None,
-                is_active=bool(row["is_active"]),
-            )
-        return None
+        row = self._db.get_auth_user_by_username(username)
+        if row is None:
+            return None
+        if not verify_password(plain_password, row["password_hash"]):
+            return None
+        return AuthUser(
+            id=row["id"],
+            username=row["username"],
+            role=row["role"],
+            athlete_id=row["athlete_id"],
+            is_active=row["is_active"],
+        )
 
     def get_user(self, user_id: str) -> AuthUser | None:
-        row = self._users.get(user_id)
+        row = self._db.get_auth_user_by_id(user_id)
         if row is None:
             return None
         return AuthUser(
-            id=str(row["id"]),
-            username=str(row["username"]),
-            role=str(row["role"]),
-            athlete_id=row["athlete_id"] if isinstance(row["athlete_id"], str) else None,
-            is_active=bool(row["is_active"]),
+            id=row["id"],
+            username=row["username"],
+            role=row["role"],
+            athlete_id=row["athlete_id"],
+            is_active=row["is_active"],
         )
 
     def add_refresh_token(self, jti: str, user_id: str, expires_at: datetime, issued_at: datetime) -> None:
-        self._tokens[jti] = {
-            "id": jti,
-            "user_id": user_id,
-            "issued_at": issued_at,
-            "expires_at": expires_at,
-            "revoked": False,
-        }
+        self._db.insert_auth_token(jti, user_id, issued_at.isoformat(), expires_at.isoformat())
         self._trim_active_refresh_tokens(user_id)
 
     def revoke_refresh_token(self, jti: str) -> None:
-        token = self._tokens.get(jti)
-        if token is not None:
-            token["revoked"] = True
+        self._db.set_auth_token_revoked(jti)
 
     def is_refresh_token_active(self, jti: str) -> bool:
-        token = self._tokens.get(jti)
-        if token is None or bool(token["revoked"]):
+        row = self._db.get_auth_token(jti)
+        if row is None or row["revoked"]:
             return False
-        expires_at = token["expires_at"]
-        return isinstance(expires_at, datetime) and expires_at > _utc_now()
+        try:
+            expires_at = datetime.fromisoformat(row["expires_at"])
+        except (ValueError, TypeError):
+            return False
+        return expires_at > _utc_now()
+
+    def cleanup_expired(self) -> None:
+        """Remove tokens past their expiry time (housekeeping)."""
+        self._db.delete_expired_auth_tokens(_utc_now().isoformat())
 
     def _trim_active_refresh_tokens(self, user_id: str) -> None:
-        active = []
-        now = _utc_now()
-        for jti, row in self._tokens.items():
-            if row["user_id"] != user_id or bool(row["revoked"]):
-                continue
-            expires_at = row["expires_at"]
-            issued_at = row["issued_at"]
-            if isinstance(expires_at, datetime) and expires_at > now and isinstance(issued_at, datetime):
-                active.append((issued_at, jti))
+        """Revoke oldest active tokens when user exceeds MAX_ACTIVE_REFRESH_TOKENS."""
+        now_iso = _utc_now().isoformat()
+        active = self._db.get_active_auth_tokens_for_user(user_id, now_iso)
         if len(active) <= MAX_ACTIVE_REFRESH_TOKENS:
             return
-        active.sort(key=lambda item: item[0])
-        for _, jti in active[: len(active) - MAX_ACTIVE_REFRESH_TOKENS]:
-            self.revoke_refresh_token(jti)
+        # Sort by issued_at ascending (oldest first) and revoke the excess
+        try:
+            active_sorted = sorted(active, key=lambda r: r["issued_at"])
+        except (KeyError, TypeError):
+            return
+        for row in active_sorted[: len(active) - MAX_ACTIVE_REFRESH_TOKENS]:
+            self.revoke_refresh_token(row["id"])
 
 
 def _utc_now() -> datetime:
