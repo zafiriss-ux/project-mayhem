@@ -1402,7 +1402,7 @@ class DatabaseManager:
         # Check compression recovery
         if last_used:
             last_used_date = datetime.fromisoformat(last_used)
-            hours_since = (datetime.now() - last_used_date).total_seconds() / 3600
+            hours_since = (datetime.now(UTC) - last_used_date).total_seconds() / 3600
 
             if hours_since < recovery_hours:
                 hours_left = recovery_hours - hours_since
@@ -1840,7 +1840,7 @@ class DatabaseManager:
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
-            cutoff = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+            cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
             cursor.execute(
                 """SELECT AVG(resting_hr) FROM daily_metrics
                    WHERE date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0""",
