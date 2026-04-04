@@ -1,13 +1,13 @@
 """
-T5-67: sync_sleep / sync_hrv success events must not fire when outer except triggers.
+T5-67: success events must not fire when the outer except block triggers.
 
-Acceptance criterion: when the outer except block is triggered, no "synced"
-success event is emitted by that method — only the error event fires.
+Acceptance criterion: when the outer except block is triggered in any of the
+four sync methods (sync_sleep, sync_hrv, sync_activities, sync_weight), no
+"synced" success event is emitted — only the error/failure event fires.
 
-Outer exceptions are triggered by patching datetime.now() (called in the loop
-body outside the per-day inner try) to raise. Both sync_sleep and sync_hrv
-gate their success event and _log_sync inside the outer try block (T5-67 fix),
-so they are unreachable when the outer except fires.
+All four methods use a boolean ``sync_succeeded`` flag (T5-67 fix): the flag
+is set True only after all processing completes without raising; success events
+are emitted under ``if sync_succeeded:`` outside the try/except block.
 """
 
 from unittest.mock import MagicMock, patch
@@ -150,4 +150,127 @@ class TestSyncHrvSuccessEventGating:
         assert "hrv_synced" not in emitted
         assert "sync_hrv_failed" in emitted, (
             f"'sync_hrv_failed' not emitted; events: {emitted}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# sync_activities
+# ---------------------------------------------------------------------------
+
+class TestSyncActivitiesSuccessEventGating:
+
+    def test_activities_synced_not_emitted_on_outer_exception(self, monkeypatch):
+        """activities_synced must not fire when the outer try raises.
+
+        Patching get_activities_by_date to raise triggers the outer except
+        before sync_succeeded can be set True, so activities_synced is blocked.
+        """
+        sync = _make_connected_sync()
+        sync.client.get_activities_by_date = MagicMock(
+            side_effect=RuntimeError("network reset")
+        )
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_activities(days_back=3)
+
+        assert "activities_synced" not in emitted, (
+            f"'activities_synced' emitted after outer exception; events: {emitted}"
+        )
+
+    def test_activities_synced_emitted_on_success(self, monkeypatch):
+        """activities_synced fires when the sync completes without outer exception."""
+        sync = _make_connected_sync()
+        sync.client.get_activities_by_date = MagicMock(return_value=[
+            {
+                "startTimeLocal": "2026-04-03 07:00:00",
+                "activityType": {"typeKey": "running"},
+                "duration": 3600,
+                "distance": 10000,
+                "averageHR": 145,
+                "maxHR": 175,
+                "calories": 600,
+                "elevationGain": 50,
+                "activityId": "act-1",
+            }
+        ])
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_activities(days_back=1)
+
+        assert "activities_synced" in emitted, (
+            f"'activities_synced' not emitted on success; events: {emitted}"
+        )
+
+    def test_activities_synced_not_emitted_but_failed_event_is(self, monkeypatch):
+        """On outer exception, sync_activities_failed is emitted, activities_synced is not."""
+        sync = _make_connected_sync()
+        sync.client.get_activities_by_date = MagicMock(
+            side_effect=ConnectionError("timeout")
+        )
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_activities(days_back=1)
+
+        assert "activities_synced" not in emitted
+        assert "sync_activities_failed" in emitted, (
+            f"'sync_activities_failed' not emitted; events: {emitted}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# sync_weight
+# ---------------------------------------------------------------------------
+
+class TestSyncWeightSuccessEventGating:
+
+    def test_weight_synced_not_emitted_on_outer_exception(self, monkeypatch):
+        """weight_synced must not fire when the outer try raises.
+
+        Patching get_weigh_ins to raise triggers the outer except before
+        sync_succeeded is set True, so weight_synced is blocked.
+        """
+        sync = _make_connected_sync()
+        sync.client.get_weigh_ins = MagicMock(
+            side_effect=RuntimeError("API unavailable")
+        )
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_weight(days_back=7)
+
+        assert "weight_synced" not in emitted, (
+            f"'weight_synced' emitted after outer exception; events: {emitted}"
+        )
+
+    def test_weight_synced_emitted_on_success(self, monkeypatch):
+        """weight_synced fires when the sync completes without outer exception."""
+        sync = _make_connected_sync()
+        sync.client.get_weigh_ins = MagicMock(return_value={
+            "dailyWeightSummaries": [
+                {
+                    "calendarDate": "2026-04-03",
+                    "allDayWeightSummaries": [{"latestWeight": 70000}],
+                }
+            ]
+        })
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_weight(days_back=1)
+
+        assert "weight_synced" in emitted, (
+            f"'weight_synced' not emitted on success; events: {emitted}"
+        )
+
+    def test_weight_synced_not_emitted_but_failed_event_is(self, monkeypatch):
+        """On outer exception, sync_weight_failed is emitted, weight_synced is not."""
+        sync = _make_connected_sync()
+        sync.client.get_weigh_ins = MagicMock(
+            side_effect=OSError("connection refused")
+        )
+        emitted = _capture_events(monkeypatch)
+
+        sync.sync_weight(days_back=1)
+
+        assert "weight_synced" not in emitted
+        assert "sync_weight_failed" in emitted, (
+            f"'sync_weight_failed' not emitted; events: {emitted}"
         )

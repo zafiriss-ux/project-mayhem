@@ -3216,9 +3216,9 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-67 · sync_sleep/sync_hrv/sync_activities/sync_weight emit success events unconditionally 🟡 OPEN
+### T5-67 · sync_sleep/sync_hrv/sync_activities/sync_weight emit success events unconditionally ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** RESOLVED 2026-04-04
 **Source:** DEC-030 / OBS-032
 **Severity:** MEDIUM
 **Workflow Path: A**
@@ -3226,6 +3226,10 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Description:** All four sync methods emit a `_garmin_event("synced", count=len(sessions), ...)` success event regardless of whether an exception was caught and suppressed earlier in the method. When an exception path fires, `sessions` is `[]` (empty list), and the success event fires with `count=0` — indistinguishable at the SLO alerting layer from a legitimate zero-record sync. Misleading success events undermine SLO alerting reliability and mask real Garmin API failures.
 
 **Acceptance criteria (binary):** Each of the four sync methods gates the success event on explicit absence of exception (e.g. via a boolean flag set only in the non-exception path). An exception-suppressed sync must not emit a success event; it must emit a failure or warning event instead.
+
+**Resolution:** Boolean flag `sync_succeeded = False` added to all four methods. Flag is set `True` only after all processing completes without raising. Success events (`activities_synced`, `weight_synced`, `sleep_synced`, `hrv_synced`) and `_log_sync()` moved outside the try/except block, guarded by `if sync_succeeded:`. Exception path emits only the `*_failed` event. Tests: `tests/test_t5_67_sync_success_event_gating.py` extended with 6 new tests for `sync_activities` and `sync_weight` (3 each: outer-exception suppresses success, success path emits event, failure event fires on exception) — all 12 T5-67 tests green.
+
+**Task learning:** Placing success events inside a try block without a flag creates a race: if a later statement in the try raises (e.g. `_log_sync`), both success and failure events fire. Explicit boolean flag + post-block gating is the only pattern that guarantees mutual exclusion.
 
 ---
 
@@ -3605,7 +3609,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-62 | ✅ RESOLVED 2026-03-28 — zero-sync silent failure fixed; stale token + empty sync detection (PR #551) | 2026-03-28 |
 | T5-65 | ✅ RESOLVED 2026-03-29 — classify_hrv_stress_context returns UNKNOWN_ACWR for None/absent/unparseable ACWR; confirmed ADR-0051 compliant by architect 2026-03-29 | 2026-03-29 |
 | T5-66 | ✅ RESOLVED 2026-03-29 — per-column UPSERT preserves mood/soreness/fatigue/notes on Garmin re-sync; 5 tests green | 2026-03-29 |
-| T5-67 | 🟡 OPEN — sync_sleep/sync_hrv/sync_activities/sync_weight emit unconditional success events; gate on exception absence | — |
+| T5-67 | ✅ RESOLVED 2026-04-04 — boolean flag gates success events in all 4 sync methods; 12 tests green | 2026-04-04 |
+| HD-07 | ✅ RESOLVED 2026-04-04 — _activity_utc_date() replaces [:10] truncation; fromisoformat()+UTC for tz-aware timestamps; 10 tests green | 2026-04-04 |
 | T5-68 | ✅ RESOLVED 2026-03-29 — ESI_DEW_POINT_FALLBACK_C=18.0 in thresholds.py+evidence_registry; daily_coach.py:714 uses constant; ADR-0034 annotated; 6 tests green | 2026-03-29 |
 | T5-69 | ✅ RESOLVED 2026-03-29 — activityId extracted; garmin_activity_id column + unique index via staged migration; INSERT OR IGNORE deduplication; record restored after merge conflict; Stage 3 merged PR #572 2026-03-29; NOT NULL constraint conditional (NULL rows skipped — manual sessions by design) | 2026-03-29 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
