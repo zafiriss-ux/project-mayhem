@@ -64,6 +64,8 @@ class StubTelegram:
 
 
 class StubSimpleEngine:
+    hrv_log: list = []
+
     def add_hrv_measurement(self, *_args, **_kwargs):
         return None
 
@@ -72,6 +74,9 @@ class StubSimpleEngine:
 
     def get_hrv_summary(self):
         return {"latest_hrv": 49.0, "baseline": 45.0, "trend": "steady", "std_dev": 1.2}
+
+    def check_baseline_drift(self, window_days: int = 14) -> bool:
+        return False
 
 
 class StubAutonomic:
