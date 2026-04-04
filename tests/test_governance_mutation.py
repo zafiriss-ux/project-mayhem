@@ -266,6 +266,43 @@ def test_vo2_nan_glycogen_debt_blocks_vo2_session():
     )
 
 
+# ── NaN boundary tests: H5, FUELING_GATE, INTENSITY_GATE (T5-72b / ADR-0009) ─
+
+def test_h5_nan_fatigue_does_not_fire_silently():
+    """H5: NaN subjective_fatigue_score must NOT silently trigger the gate (INV-01)."""
+    ctx = _base_context(subjective_fatigue_score=float("nan"))
+    result = _engine().apply_constraints(_base_session(), ctx)
+    assert result is not None
+    hard_stop_gates = [r.get("gate") for r in result.get("hard_stop_reasons", [])]
+    assert "H5" not in hard_stop_gates, "H5 must not fire on NaN fatigue score (INV-01)"
+
+
+def test_fueling_gate_nan_duration_does_not_lock():
+    """FUELING_GATE: NaN duration_min must be rejected without applying a lock (INV-01)."""
+    ctx = _base_context(fueling_confirmed=False)
+    session = _base_session(session_type="TEMPO", duration_min=float("nan"))
+    result = _engine().apply_constraints(session, ctx)
+    assert result is not None
+    applied_locks = result.get("governance_locks_applied", [])
+    assert "FUELING_GATE_LOCK" not in applied_locks, (
+        f"FUELING_GATE_LOCK must not fire on NaN duration (INV-01); "
+        f"applied_locks={applied_locks}"
+    )
+
+
+def test_intensity_gate_nan_volume_modifier_defaults_to_one():
+    """INTENSITY_GATE: NaN volume_modifier must be rejected and default to 1.0 (INV-01)."""
+    ctx = _base_context(
+        intensity_gate_result={"color": "GREEN", "max_zone": 5, "volume_modifier": float("nan")}
+    )
+    result = _engine().apply_constraints(_base_session(), ctx)
+    assert result is not None
+    assert result.get("volume_modifier") == 1.0, (
+        f"volume_modifier must default to 1.0 on NaN input (INV-01); "
+        f"got {result.get('volume_modifier')}"
+    )
+
+
 # ── VO2 eligibility ESI EXTREME boundary (T5-14 / ADR-0034) ────────────────
 
 def test_vo2_esi_extreme_boundary_on_blocks_vo2_session():

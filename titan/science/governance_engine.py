@@ -433,7 +433,15 @@ class GovernanceEngine:
 
         # H5 — Extreme Subjective Fatigue
         try:
-            subjective_fatigue = int(context.get("subjective_fatigue_score", 0))
+            _h5_raw = float(context.get("subjective_fatigue_score", 0))
+            if not math.isfinite(_h5_raw):
+                _gate_event("H5", "NAN_REJECTED",
+                            reason="non-finite fatigue input rejected (INV-01)",
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust)
+                subjective_fatigue = 0
+            else:
+                subjective_fatigue = int(_h5_raw)
         except (TypeError, ValueError):
             subjective_fatigue = 0
         if subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME:
@@ -755,7 +763,16 @@ class GovernanceEngine:
         session_type = str(session_plan.get("session_type", "")).upper()
         duration_raw = session_plan.get("duration_min", context.get("planned_duration_min", 0))
         try:
-            duration = int(duration_raw or 0)
+            _dur_f = float(duration_raw or 0)
+            if not math.isfinite(_dur_f):
+                _gate_event(
+                    "FUELING", "NAN_REJECTED",
+                    reason="non-finite duration rejected (INV-01)",
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
+                return None
+            duration = int(_dur_f)
         except (TypeError, ValueError):
             duration = 90
         fueling_confirmed = bool(context.get("fueling_confirmed", False))
@@ -1036,9 +1053,16 @@ class GovernanceEngine:
                 int(session_plan.get("max_zone", 5) or 5),
                 int(intensity_gate.get("max_zone", 5) or 5),
             )
-            session_plan["volume_modifier"] = float(
-                intensity_gate.get("volume_modifier", 1.0) or 1.0
-            )
+            _vol_mod = float(intensity_gate.get("volume_modifier", 1.0) or 1.0)
+            if not math.isfinite(_vol_mod):
+                _gate_event(
+                    "INTENSITY_GATE", "NAN_REJECTED",
+                    reason="non-finite volume_modifier rejected (INV-01)",
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
+                _vol_mod = 1.0
+            session_plan["volume_modifier"] = _vol_mod
             override = intensity_gate.get("session_override")
             if override:
                 session_plan["session_type"] = override
