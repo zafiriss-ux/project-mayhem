@@ -264,6 +264,99 @@ The record says RESOLVED. The code says it is not. One of them is wrong. With co
 
 ---
 
+### [OBS-037] HD-04 — AuthStore is in-memory only; all users and tokens lost on process restart
+
+**Date:** 2026-04-04
+**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
+**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/api/auth.py
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/api/auth.py` — `AuthStore` class (lines 26–114): `self._users: dict` and `self._tokens: dict` are process-local
+
+**Observation:**
+`AuthStore.__init__` stores users and refresh tokens in plain Python dicts (`self._users`, `self._tokens`). These dicts exist only in the process heap. On any process restart (deliberate deploy, crash, OOM kill), all authenticated sessions are invalidated — every active client receives HTTP 401 on their next request and must re-authenticate.
+
+Garmin sync and Telegram bot run as daemon threads that may outlive an API process restart. If the API restarts mid-sync, in-flight requests using valid tokens will fail immediately after restart.
+
+There is no fallback, no pre-warm mechanism, and no persistence layer for auth state. `MAX_ACTIVE_REFRESH_TOKENS = 3` and `REFRESH_TOKEN_TTL = timedelta(days=7)` are defined but unenforceable across restarts.
+
+ADR-0048 accepted JWT + HTTP-only cookie transport and defined the `AuthStore` interface as the storage contract. ADR-0048 did not mandate that the backing store be in-memory — it accepted the interface. The persistence question was deferred.
+
+**Pattern / scope:**
+Single class (`AuthStore`) in `titan/api/auth.py`. No other in-process auth state exists. The issue affects ALL authenticated API users, not a subset. T5-12 Pass 2 (Garmin API fragility) is a separate concern but shares the same "process-local state fragility" failure class.
+
+**Architectural question raised:**
+Should `AuthStore` be backed by the existing SQLite `DatabaseManager` (adding an `auth_users` and `auth_refresh_tokens` table), by a dedicated Redis-compatible KV store, or by a new SQLAlchemy-managed PostgreSQL schema (aligning with ADR-0044 D2 target)? This is an architecture decision that determines schema, migration path, and concurrency semantics — it cannot be answered without a new ADR or an amendment to ADR-0048.
+
+**Codex assessment (data only, no decision):**
+SQLite is the simplest option and aligns with the current storage tier; Redis would require a new infrastructure dependency; PostgreSQL aligns with ADR-0044 but requires D2 to land first. Any persistent store requires a schema migration. No implementation should start until the persistence target is architect-selected.
+
+**Status:** PENDING
+
+---
+
+### [OBS-038] HD-05 — AuthenticatedRateLimiter accumulates keys unboundedly; no eviction policy
+
+**Date:** 2026-04-04
+**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
+**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/api/main.py
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/api/main.py` — `AuthenticatedRateLimiter.__init__` line 49: `self._requests: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)`
+
+**Observation:**
+`AuthenticatedRateLimiter` stores per-key request timestamps in `self._requests`, keyed by `(user_id, user_role, "METHOD:path")`. The `defaultdict(deque)` is never pruned. Each unique `(user_id, role, path)` combination that receives at least one request creates a permanent entry in the dict.
+
+Within a single `deque`, expired timestamps are removed on each request (`while bucket and bucket[0] <= cutoff: bucket.popleft()`). But the `(key → deque)` entry in `self._requests` is never removed, even after the deque is empty. A user who makes one request to each of N endpoints creates N permanent dict entries.
+
+Failure mode: an attacker (or automated scanner) issuing requests with many unique paths or cycling through user accounts would inflate `self._requests` without bound. No ceiling, no eviction, no size limit is implemented. At scale this constitutes a memory DoS vector.
+
+Current role limits: coach 100 req/min, athlete 30 req/min. Both prevent request-rate abuse per key, but do not prevent key-count abuse.
+
+**Pattern / scope:**
+Single class (`AuthenticatedRateLimiter`) in `titan/api/main.py`. No other rate-limiting layer exists. The fix requires a TTL-based eviction policy (e.g. remove keys with empty deques after a time window), a key-count ceiling with LRU eviction, or an external rate-limiter (Redis). Each option has different architectural implications.
+
+**Architectural question raised:**
+Should the eviction strategy be: (A) in-process LRU with a fixed max-keys ceiling (e.g. 10,000), (B) periodic background sweep removing keys with empty deques older than `_RATE_LIMIT_WINDOW_SECONDS`, or (C) delegate rate-limiting to an external store (Redis / API gateway) to avoid in-process state entirely? Option C introduces a new infrastructure dependency and may be out of scope for Phase 9. Option A requires an agreed ceiling constant in `thresholds.py`. Option B requires a background thread or hook. Architect decision required before implementation.
+
+**Codex assessment (data only, no decision):**
+Option B (periodic sweep) is the least-invasive and fits the current in-process model. A background daemon thread sweeping every `_RATE_LIMIT_WINDOW_SECONDS` and removing keys whose deque has been empty since the last sweep would bound memory growth without requiring new infrastructure. However, it introduces thread coordination. Option A (LRU ceiling) is simpler to reason about but risks evicting legitimate rate-limit state.
+
+**Status:** PENDING
+
+---
+
+### [OBS-039] HD-06 — DegradedModeTracker._degraded_since is in-memory only; resets on restart
+
+**Date:** 2026-04-04
+**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
+**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/orchestration/daily_coach.py
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — `DegradedModeTracker` class (lines 87–140): `self._degraded_since: dict[str, datetime] = {}`
+
+**Observation:**
+`DegradedModeTracker` tracks how long each named failure type has been in a degraded state. The `_degraded_since` dict maps failure-type names to the `datetime` when degradation began. This dict is process-local.
+
+On process restart, `_degraded_since` is reset to `{}`. If the system has been in a degraded state for 20 of the required 24 hours (`_DEGRADED_ALERT_THRESHOLD_HOURS = 24`), a restart silently resets the timer to zero. The 24-hour SLO alert never fires; the operator receives no notification.
+
+`get_degraded_since()` (line 135) returns the in-memory state as ISO strings. This is used by the Operator Console dashboard (ADR-0010). After restart, the dashboard shows no degradation history, contradicting what the system was actually experiencing.
+
+Failure scenario: a Garmin sync degradation starts at 08:00. The process restarts at 18:00 (10h elapsed). The timer resets. The 24h alert would have fired at 08:00 next day but now fires at 18:00 next day — 10 hours late. The coach and athlete receive a degraded coaching decision for an unmonitored additional 10 hours.
+
+**Pattern / scope:**
+Single class in `daily_coach.py`. `DegradedModeTracker` is instantiated once per `DailyCoach` instance (line 308). The schema change is minimal: a single table (or a column in an existing table) to persist `{failure_type: degraded_since_iso}`. However, the persistence target (SQLite `daily_metrics` extension vs new table vs PostgreSQL) requires an architectural decision consistent with ADR-0020, ADR-0044, and the Phase 9 scope.
+
+**Architectural question raised:**
+Should `_degraded_since` be persisted to: (A) a new `degraded_mode_log` SQLite table (minimal footprint, consistent with current storage tier), (B) an existing table column (e.g. a JSON blob in `governance_outcomes`), or (C) a key-value namespace in the forthcoming PostgreSQL adapter (ADR-0044 D2)? Option C defers the fix until D2 lands. Option A is immediately implementable but adds a schema migration. What persistence target and migration strategy does the architect approve?
+
+**Codex assessment (data only, no decision):**
+Option A (new SQLite table `degraded_mode_state` with columns `failure_type TEXT PRIMARY KEY, degraded_since TEXT`) is the smallest-footprint fix and does not depend on any in-flight deliverable. The `DegradedModeTracker` would read state on first access and write on every `update()` call. This is consistent with how `OutcomeTracker` uses `governance_outcomes`. No external dependencies are introduced.
+
+**Status:** PENDING
+
+---
+
 ## NON-BLOCKING Queue
 
 ### [OBS-030] `_classify_hrv_drop` converts None ACWR to 1.0 post T5-51
@@ -499,6 +592,37 @@ Should `sync_activities` extract `activityId` from the Garmin payload and `save_
 Duplicate activity records in `training_log` cause silent TSB/CTL/ATL inflation. A single strenuous long run double-counted would add ~50 TRIMP points to the load calculation, potentially pushing ATL above a HARD_STOP_TSB_FLOOR check falsely.
 
 **Status:** REVIEWED
+
+---
+
+### [OBS-040] HD-08 — DailyCoach decision pipeline runs on mixed data epochs after partial persistence failure
+
+**Date:** 2026-04-04
+**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
+**Session context:** Phase 9 hardening Wave 4 / Subsystem: titan/orchestration/daily_coach.py
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — `_persist_garmin_data`, `_run_governance`, `_build_coaching_context`, the 12-step morning routine pipeline (steps 1–12)
+
+**Observation:**
+The DailyCoach 12-step morning routine runs sequentially. Each step either succeeds (writes to DB, updates engine state) or partially fails (logs error, continues). ADR-0020 established `PERSISTENCE_DEGRADED_CEILING` — a confidence ceiling applied when persistence fails — but it addresses only the case where ALL persistence fails. It does not address the case where SOME steps succeed and SOME fail within a single morning routine run.
+
+Concrete mixed-epoch scenario: Step 4 (HRV sync + persist) succeeds, writing fresh HRV data (epoch T). Step 6 (sleep sync + persist) fails, leaving stale sleep data (epoch T-7d) in the DB. Steps 8–10 (governance, session recommendation) now read: fresh HRV from epoch T, stale sleep from epoch T-7d. The governance engine receives a mixed-epoch context — not an all-fresh or all-stale context — and cannot distinguish this from a fully fresh one.
+
+The `PERSISTENCE_DEGRADED_CEILING` fires when the persistence adapter itself raises (ADR-0020 policy). It does NOT fire when individual sync methods return partial data (empty lists due to inner exceptions) that is then saved alongside fresh data from other sources.
+
+No "data epoch coherence check" exists. The governance context has no `mixed_epoch` flag or `data_freshness_confidence` field that would cause downstream gates to apply additional conservatism.
+
+**Pattern / scope:**
+The pattern affects the full 12-step pipeline in `daily_coach.py`. The fix scope is unclear: it could range from (a) a per-step epoch tag attached to each data source in the governance context, to (b) a pipeline abort-on-partial-failure policy (conservative but potentially over-restrictive), to (c) a data freshness confidence penalty applied proportionally to the number of failed sync steps. Each option has different safety/availability tradeoffs.
+
+**Architectural question raised:**
+What is the architect-approved scope for the HD-08 Frankenstein-state fix? Specifically: (1) Should a mixed-epoch state be detected and surfaced as a flag in the governance context, or should it trigger a pipeline abort? (2) Is a per-source freshness timestamp in the governance context (already partially present via `garmin_data_age_hours`) sufficient, or is a new coherence check needed? (3) What is the appropriate conservative response: apply `PERSISTENCE_DEGRADED_CEILING`, downgrade to REST recommendation, or emit an alert and proceed?
+
+**Codex assessment (data only, no decision):**
+`garmin_data_age_hours` (T5-48) already propagates a single age timestamp to governance context. However, it represents the age of the LAST sync, not a per-source freshness map. If HRV was synced 1h ago but sleep was synced 7 days ago, `garmin_data_age_hours` reflects 1h — masking the stale sleep path. A per-source freshness dict would capture this, but requires schema changes to the governance context payload.
+
+**Status:** PENDING
 
 ---
 
