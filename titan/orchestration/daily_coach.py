@@ -108,7 +108,7 @@ class DegradedModeTracker:
             flags: Mapping of failure_type → bool (True = currently degraded).
             alert_fn: Callable that sends an alert string to the operator.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         for name, is_degraded in flags.items():
             if is_degraded:
                 if name not in self._degraded_since:
@@ -136,7 +136,7 @@ class DegradedModeTracker:
         """Return ISO 8601 timestamps per failure type, or None when healthy."""
         result: dict[str, str | None] = {}
         for name, ts in self._degraded_since.items():
-            result[name] = ts.isoformat() + "Z"
+            result[name] = ts.isoformat()
         return result
 
 
@@ -359,7 +359,7 @@ class DailyCoach:
 
         _daily_coach_event(
             "routine_started",
-            started_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+            started_at=datetime.now(UTC).strftime('%Y-%m-%d %H:%M'),
         )
 
         def _run_step(step_number: int, step_name: str, fn):
@@ -390,7 +390,7 @@ class DailyCoach:
         garmin_data: GarminSyncResult = _run_step(1, "sync_garmin", self.garmin.sync_all)
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
-        today_str = datetime.now().strftime('%Y-%m-%d')
+        today_str = datetime.now(UTC).strftime('%Y-%m-%d')
         persistence_degraded = False
         try:
             today_rhr, today_sleep_score, today_sleep_hours = _run_step(
@@ -1004,7 +1004,7 @@ class DailyCoach:
             coaching_payload=coaching_data,
             planned_effects=planned_effects,
             decision_trace=decision_trace,
-            snapshot_at=datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+            snapshot_at=datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S'),
         )
 
     # ═══════════════════════════════════════════════════════════════════════

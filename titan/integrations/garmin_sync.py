@@ -13,7 +13,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -288,7 +288,10 @@ class GarminSync:
             return float("inf")
         try:
             last = datetime.fromisoformat(self._last_successful_sync_at)
-            return max(0.0, (datetime.now() - last).total_seconds() / 3600)
+            # Ensure both sides are UTC-aware for correct comparison (HR-01)
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=UTC)
+            return max(0.0, (datetime.now(UTC) - last).total_seconds() / 3600)
         except Exception:
             return float("inf")
 
@@ -516,8 +519,8 @@ class GarminSync:
         activities = []
         skipped_records = 0
         try:
-            start = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-            end = datetime.now().strftime("%Y-%m-%d")
+            start = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+            end = datetime.now(UTC).strftime("%Y-%m-%d")
             raw = self.client.get_activities_by_date(start, end, "running")
             for a in raw:
                 try:
@@ -582,8 +585,8 @@ class GarminSync:
             return []
         entries = []
         try:
-            start = (datetime.now() - timedelta(days=days_back)).strftime("%Y-%m-%d")
-            end = datetime.now().strftime("%Y-%m-%d")
+            start = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
+            end = datetime.now(UTC).strftime("%Y-%m-%d")
             raw = self.client.get_weigh_ins(start, end)
             daily = raw.get("dailyWeightSummaries", [])
             for d in daily:
@@ -619,7 +622,7 @@ class GarminSync:
         skipped_days = 0
         try:
             for i in range(days_back):
-                d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+                d = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
                 try:
                     raw = self.client.get_sleep_data(d)
                     summary = raw.get("dailySleepDTO", {})
@@ -690,7 +693,7 @@ class GarminSync:
         skipped_days = 0
         try:
             for i in range(days_back):
-                d = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+                d = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
                 try:
                     raw = self.client.get_hrv_data(d)
                     summary = raw.get("hrvSummary", {})
@@ -772,7 +775,7 @@ class GarminSync:
 
     def sync_all(self, days_back: int = 7) -> GarminSyncResult:
         _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
-        self.last_sync = datetime.now().isoformat()
+        self.last_sync = datetime.now(UTC).isoformat()
         started = time.monotonic()
         timeout_s = _resolve_sync_timeout_seconds()
         executor = ThreadPoolExecutor(max_workers=1)
@@ -852,7 +855,7 @@ class GarminSync:
         if total_records > 0:
             # Sync succeeded — reset failure streak and record timestamp.
             self._consecutive_failures = 0
-            self._last_successful_sync_at = datetime.now().isoformat()
+            self._last_successful_sync_at = datetime.now(UTC).isoformat()
             payload["data_age_hours"] = 0.0
         else:
             # Sync completed without data — count as a failure for C3 tracking.
@@ -928,7 +931,7 @@ class GarminSync:
                 return
 
     def _log_sync(self, data_type: str, count: int):
-        self.sync_history.append((data_type, datetime.now().isoformat(), count))
+        self.sync_history.append((data_type, datetime.now(UTC).isoformat(), count))
         if len(self.sync_history) > 100:
             self.sync_history = self.sync_history[-100:]
 

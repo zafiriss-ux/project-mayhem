@@ -5,6 +5,7 @@
 
 import json
 import logging
+import math
 from dataclasses import asdict, dataclass, is_dataclass
 from typing import Any
 
@@ -198,6 +199,8 @@ class GovernanceEngine:
 
         try:
             sleep_score = float(context.get("sleep_score", 40))
+            if not math.isfinite(sleep_score):
+                sleep_score = 40
         except (TypeError, ValueError):
             sleep_score = 40
         if sleep_score < 60:
@@ -205,6 +208,8 @@ class GovernanceEngine:
 
         try:
             readiness_score = float(context.get("readiness_score", 40))
+            if not math.isfinite(readiness_score):
+                readiness_score = 40
         except (TypeError, ValueError):
             readiness_score = 40
         if readiness_score < 50:
@@ -225,12 +230,24 @@ class GovernanceEngine:
     def classify_hrv_stress_context(context: dict) -> str:
         """Classify H2/H3 stress source for explicit non-training safety handling."""
         try:
-            hrv_delta = float(context.get("baseline_hrv")) - float(context.get("today_hrv"))
+            _bhrv = float(context.get("baseline_hrv"))
+            _thrv = float(context.get("today_hrv"))
+            if not (math.isfinite(_bhrv) and math.isfinite(_thrv)):
+                _gate_event("HRV_STRESS_CONTEXT", "NAN_REJECTED", reason="non-finite HRV input (INV-01)")
+                hrv_delta = 0.0
+            else:
+                hrv_delta = _bhrv - _thrv
         except (TypeError, ValueError):
             hrv_delta = 0.0
 
         try:
-            rhr_delta = float(context.get("today_rhr")) - float(context.get("baseline_rhr"))
+            _trhr = float(context.get("today_rhr"))
+            _brhr = float(context.get("baseline_rhr"))
+            if not (math.isfinite(_trhr) and math.isfinite(_brhr)):
+                _gate_event("HRV_STRESS_CONTEXT", "NAN_REJECTED", reason="non-finite RHR input (INV-01)")
+                rhr_delta = 0.0
+            else:
+                rhr_delta = _trhr - _brhr
         except (TypeError, ValueError):
             rhr_delta = 0.0
 
@@ -241,6 +258,9 @@ class GovernanceEngine:
         try:
             acwr = float(raw_acwr)
         except (TypeError, ValueError):
+            return "UNKNOWN_ACWR"
+        if not math.isfinite(acwr):
+            _gate_event("HRV_STRESS_CONTEXT", "NAN_REJECTED", reason="non-finite ACWR input (INV-01)")
             return "UNKNOWN_ACWR"
 
         if acwr > VO2_ACWR_MAX:
@@ -287,10 +307,16 @@ class GovernanceEngine:
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
         # Fires when drop >= HARD_STOP_HRV_DELTA (inclusive boundary).
         try:
-            h2_trigger = (
-                float(context.get("today_hrv"))
-                <= float(context.get("baseline_hrv")) - HARD_STOP_HRV_DELTA
-            )
+            _h2_today = float(context.get("today_hrv"))
+            _h2_base = float(context.get("baseline_hrv"))
+            if not (math.isfinite(_h2_today) and math.isfinite(_h2_base)):
+                _gate_event("H2", "NAN_REJECTED",
+                            reason="non-finite HRV input rejected (INV-01)",
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust)
+                h2_trigger = False
+            else:
+                h2_trigger = _h2_today <= _h2_base - HARD_STOP_HRV_DELTA
         except (TypeError, ValueError):
             h2_trigger = False
         if h2_trigger:
@@ -313,10 +339,16 @@ class GovernanceEngine:
         # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
         # Fires when rise >= HARD_STOP_RHR_DELTA (inclusive boundary).
         try:
-            h3_trigger = (
-                float(context.get("today_rhr"))
-                >= float(context.get("baseline_rhr")) + HARD_STOP_RHR_DELTA
-            )
+            _h3_today = float(context.get("today_rhr"))
+            _h3_base = float(context.get("baseline_rhr"))
+            if not (math.isfinite(_h3_today) and math.isfinite(_h3_base)):
+                _gate_event("H3", "NAN_REJECTED",
+                            reason="non-finite RHR input rejected (INV-01)",
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust)
+                h3_trigger = False
+            else:
+                h3_trigger = _h3_today >= _h3_base + HARD_STOP_RHR_DELTA
         except (TypeError, ValueError):
             h3_trigger = False
         if h3_trigger:
@@ -379,6 +411,12 @@ class GovernanceEngine:
         # H4 — TSB Critical Floor (Gate 4: load gate)
         try:
             tsb_value = float(context.get("tsb_value"))
+            if not math.isfinite(tsb_value):
+                _gate_event("H4", "NAN_REJECTED",
+                            reason="non-finite TSB input rejected (INV-01)",
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust)
+                tsb_value = None
         except (TypeError, ValueError):
             tsb_value = None
         if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
@@ -448,6 +486,11 @@ class GovernanceEngine:
         else:
             try:
                 acwr = float(acwr_raw)
+                if not math.isfinite(acwr):
+                    _gate_event("VO2_ELIGIBILITY", "NAN_REJECTED",
+                                reason="non-finite ACWR input rejected (INV-01)")
+                    acwr = None
+                    acwr_invalid = True
             except (TypeError, ValueError):
                 acwr = None
                 acwr_invalid = True
@@ -459,6 +502,11 @@ class GovernanceEngine:
         else:
             try:
                 readiness = float(readiness_raw)
+                if not math.isfinite(readiness):
+                    _gate_event("VO2_ELIGIBILITY", "NAN_REJECTED",
+                                reason="non-finite readiness input rejected (INV-01)")
+                    readiness = None
+                    readiness_invalid = True
             except (TypeError, ValueError):
                 readiness = None
                 readiness_invalid = True
@@ -466,6 +514,11 @@ class GovernanceEngine:
         glycogen_debt_invalid = False
         try:
             glycogen_debt = float(0.0 if glycogen_debt_raw is None else glycogen_debt_raw)
+            if not math.isfinite(glycogen_debt):
+                _gate_event("VO2_ELIGIBILITY", "NAN_REJECTED",
+                            reason="non-finite glycogen_debt input rejected (INV-01)")
+                glycogen_debt = None
+                glycogen_debt_invalid = True
         except (TypeError, ValueError):
             glycogen_debt = None
             glycogen_debt_invalid = True
