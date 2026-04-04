@@ -780,3 +780,102 @@ def test_save_session_rpe_used_when_training_load_not_provided(tmp_path):
         assert cursor.fetchone()[0] == 5 * 60  # rpe × minutes
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# T5-71 — HD-08: WARNING event when rowcount=0 in save_hrr / update_glycogen_debt
+# ---------------------------------------------------------------------------
+
+def test_save_hrr_emits_warning_when_no_row_updated(tmp_path, caplog):
+    """save_hrr() must emit a WARNING structured event when the UPDATE matches 0 rows."""
+    import json
+    import logging
+
+    db = DatabaseManager(db_name="hrr_warn.db", db_dir=tmp_path)
+    try:
+        with caplog.at_level(logging.WARNING, logger="titan.core.database"):
+            # No daily_metrics row for this date — rowcount will be 0
+            db.save_hrr("2026-04-04", hrr_60=28, hrr_120=35)
+
+        warning_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        assert warning_msgs, "Expected at least one WARNING log from save_hrr"
+        payload = json.loads(warning_msgs[0])
+        assert payload["action"] == "save_hrr_no_row_updated"
+        assert payload["severity"] == "warning"
+        assert payload["date"] == "2026-04-04"
+    finally:
+        db.close()
+
+
+def test_save_hrr_no_warning_when_row_updated(tmp_path, caplog):
+    """save_hrr() must NOT emit a WARNING when the UPDATE matches an existing row."""
+    import logging
+
+    db = DatabaseManager(db_name="hrr_ok.db", db_dir=tmp_path)
+    try:
+        # Insert a daily_metrics row first so the UPDATE will match
+        db.save_daily_metric(
+            date="2026-04-04",
+            rhr=55,
+            hrv=45.0,
+            sleep_quality=80,
+            sleep_hours=7.5,
+            weight=70.0,
+        )
+        with caplog.at_level(logging.WARNING, logger="titan.core.database"):
+            db.save_hrr("2026-04-04", hrr_60=28, hrr_120=35)
+
+        warning_msgs = [
+            r.getMessage() for r in caplog.records
+            if r.levelno == logging.WARNING and "save_hrr_no_row_updated" in r.getMessage()
+        ]
+        assert not warning_msgs, "save_hrr must NOT warn when a row is updated"
+    finally:
+        db.close()
+
+
+def test_update_glycogen_debt_emits_warning_when_no_row_updated(tmp_path, caplog):
+    """update_glycogen_debt() must emit a WARNING structured event when the UPDATE matches 0 rows."""
+    import json
+    import logging
+
+    db = DatabaseManager(db_name="glyco_warn.db", db_dir=tmp_path)
+    try:
+        with caplog.at_level(logging.WARNING, logger="titan.core.database"):
+            # No daily_metrics row for this date — rowcount will be 0
+            db.update_glycogen_debt("2026-04-04", debt_score=3.5)
+
+        warning_msgs = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        assert warning_msgs, "Expected at least one WARNING log from update_glycogen_debt"
+        payload = json.loads(warning_msgs[0])
+        assert payload["action"] == "update_glycogen_debt_no_row_updated"
+        assert payload["severity"] == "warning"
+        assert payload["date"] == "2026-04-04"
+    finally:
+        db.close()
+
+
+def test_update_glycogen_debt_no_warning_when_row_updated(tmp_path, caplog):
+    """update_glycogen_debt() must NOT emit a WARNING when the UPDATE matches an existing row."""
+    import logging
+
+    db = DatabaseManager(db_name="glyco_ok.db", db_dir=tmp_path)
+    try:
+        db.save_daily_metric(
+            date="2026-04-04",
+            rhr=55,
+            hrv=45.0,
+            sleep_quality=80,
+            sleep_hours=7.5,
+            weight=70.0,
+        )
+        with caplog.at_level(logging.WARNING, logger="titan.core.database"):
+            db.update_glycogen_debt("2026-04-04", debt_score=3.5)
+
+        warning_msgs = [
+            r.getMessage() for r in caplog.records
+            if r.levelno == logging.WARNING and "update_glycogen_debt_no_row_updated" in r.getMessage()
+        ]
+        assert not warning_msgs, "update_glycogen_debt must NOT warn when a row is updated"
+    finally:
+        db.close()

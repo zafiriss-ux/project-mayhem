@@ -1221,6 +1221,7 @@ class DailyCoach:
             payload["data_confidence_low"] = data_confidence_low
         if persistence_degraded:
             payload["persistence_degraded"] = True
+            payload["data_confidence_low"] = True
         return payload
 
     def _persist_garmin_data(
