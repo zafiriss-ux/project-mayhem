@@ -134,6 +134,13 @@ WEATHER_DATA_SUSPECT_AGE_HOURS = 2
 # Operator trust-drift monitor — ADR-0038 / T2-16.
 OPERATOR_TRUST_DRIFT_WARNING_RATE_30D = 0.25
 
+# API rate-limiter key ceiling — HD-05 / OBS-038.
+# Upper bound on the number of (user_id, role, endpoint) tuples retained in the
+# in-process rate-limiter. Prevents unbounded memory growth when many unique
+# authenticated identities hit distinct endpoints (or when tokens rotate).
+# Eviction policy: LRU (least-recently-used key is dropped first).
+RATE_LIMITER_MAX_KEYS = 10_000
+
 # Governance lock codes (ADR-0024 / T4-21): machine-readable canonical set.
 CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
     {

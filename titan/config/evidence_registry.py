@@ -1242,6 +1242,33 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         rationale='A 30-day warning threshold at 25% identifies sustained human-vs-system trust drift requiring operational review.',
         policy_note='HEURISTIC. Promote after correlating drift alerts with true governance quality regressions and override quality audits.',
     ),
+
+    # ── API rate-limiter key ceiling — HD-05 / OBS-038 ───────────────────────
+    'RATE_LIMITER_MAX_KEYS': ThresholdEvidence(
+        parameter='RATE_LIMITER_MAX_KEYS',
+        value=10_000.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source=(
+            'Internal capacity model — HD-05 / OBS-038. '
+            'No external RCT; derived from per-key memory footprint: '
+            'deque of float timestamps at ~8 bytes each, 60-entry max per window, '
+            '~500 bytes/key overhead → 10 000 keys ≈ 5 MB peak resident.'
+        ),
+        rationale=(
+            '10 000 unique (user_id, role, endpoint) tuples covers all plausible '
+            'concurrent session × endpoint combinations for a single-tenant TITAN '
+            'deployment. Beyond this ceiling the marginal key is from an evicted or '
+            'rotated identity and LRU eviction has negligible correctness impact: '
+            'the evicted key simply restarts its window on next access.'
+        ),
+        policy_note=(
+            'HEURISTIC. Calibration path: monitor limiter_eviction event frequency '
+            'in production. If evictions occur on active sessions (not just stale '
+            'keys), raise the ceiling in proportion to the observed concurrent-key '
+            'count. Do not lower below 1 000 without capacity analysis.'
+        ),
+    ),
 }
 
 
