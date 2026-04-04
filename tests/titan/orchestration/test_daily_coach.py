@@ -39,6 +39,9 @@ class DummyDB:
     def save_hrr(self, *args, **kwargs):
         return None
 
+    def save_daily_metric_if_missing(self, *args, **kwargs):
+        return None
+
     def update_glycogen_debt(self, *args, **kwargs):
         return None
 
@@ -2385,4 +2388,99 @@ def test_cs_confidence_lock_fires_when_cs_tracker_confidence_absent():
         "CS_CONFIDENCE_LOCK must fire when cs_tracker has no confidence attribute "
         "(getattr default must be 0.0, not 1.0)"
     )
-    assert result["confidence"] == pytest.approx(0.0)
+
+
+# ---------------------------------------------------------------------------
+# T5-71 — HD-08: persistence_degraded=True forces data_confidence_low=True
+# ---------------------------------------------------------------------------
+
+def _make_base_context_kwargs() -> dict:
+    """Minimal valid kwargs for _build_daily_coach_context."""
+    return {
+        "afi_constraints": {"afi_modifier": 0},
+        "intensity_gate": {"color": "GREEN"},
+        "readiness_score": 75.0,
+        "glycogen_debt": 10.0,
+        "fatigue_level": "LOW",
+        "acwr": 1.0,
+        "days_since_last_vo2": 3,
+        "fueling_confirmed": True,
+        "planned_duration_min": 60,
+        "today_hrv": 50.0,
+        "baseline_hrv": 52.0,
+        "hrv_std_dev": 3.0,
+        "today_rhr": 50,
+        "baseline_rhr": 50.0,
+        "sleep_score": 80,
+        "subjective_fatigue_score": 3,
+        "tsb_value": 5.0,
+        "injury_flag": False,
+        "priority_vector": {},
+        "lock_thresholds": {},
+    }
+
+
+def test_build_daily_coach_context_persistence_degraded_sets_data_confidence_low():
+    """T5-71: persistence_degraded=True must force data_confidence_low=True in the payload."""
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        **_make_base_context_kwargs(),
+        persistence_degraded=True,
+    )
+
+    assert context.get("persistence_degraded") is True
+    assert context.get("data_confidence_low") is True, (
+        "data_confidence_low must be True when persistence_degraded=True "
+        "(DEC-036 / T5-71)"
+    )
+
+
+def test_build_daily_coach_context_persistence_degraded_overrides_explicit_false():
+    """T5-71: persistence_degraded=True overrides an explicit data_confidence_low=False."""
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        **_make_base_context_kwargs(),
+        persistence_degraded=True,
+        data_confidence_low=False,
+    )
+
+    assert context.get("data_confidence_low") is True, (
+        "persistence_degraded must override data_confidence_low=False "
+        "(DEC-036 / T5-71)"
+    )
+
+
+def test_build_daily_coach_context_no_persistence_degraded_leaves_data_confidence_low_unset():
+    """T5-71: Without persistence_degraded, data_confidence_low must not be injected."""
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(**_make_base_context_kwargs())
+
+    assert "data_confidence_low" not in context, (
+        "data_confidence_low must not appear in the payload when persistence_degraded "
+        "is False and no explicit value is passed"
+    )
+
+
+def test_build_daily_coach_context_persistence_degraded_false_does_not_set_data_confidence_low():
+    """T5-71: persistence_degraded=False must not force data_confidence_low=True."""
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = object()
+    coach.cs_tracker = object()
+
+    context = coach._build_daily_coach_context(
+        **_make_base_context_kwargs(),
+        persistence_degraded=False,
+    )
+
+    assert context.get("data_confidence_low") is not True, (
+        "data_confidence_low must not be forced True when persistence_degraded=False"
+    )

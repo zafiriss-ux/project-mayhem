@@ -1482,6 +1482,14 @@ class DatabaseManager:
                 (hrr_60, hrr_120, date),
             )
             self.conn.commit()
+            if cursor.rowcount == 0:
+                _database_event(
+                    "save_hrr_no_row_updated",
+                    level=logging.WARNING,
+                    date=date,
+                    hrr_60=hrr_60,
+                    hrr_120=hrr_120,
+                )
 
     def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
         """
@@ -1517,6 +1525,13 @@ class DatabaseManager:
                 (round(debt_score, 2), date),
             )
             self.conn.commit()
+            if cursor.rowcount == 0:
+                _database_event(
+                    "update_glycogen_debt_no_row_updated",
+                    level=logging.WARNING,
+                    date=date,
+                    debt_score=debt_score,
+                )
 
     # --- CS CALIBRATION PERFORMANCES ---
 
