@@ -1698,8 +1698,9 @@ def test_degraded_tracker_fires_alert_after_24h():
     tracker = DegradedModeTracker()
     tracker.update({"persistence_degraded": True}, alert_fn=lambda _: None)
 
-    # Backdate the degraded_since to 25 hours ago
-    tracker._degraded_since["persistence_degraded"] = datetime.utcnow() - timedelta(hours=25)
+    # Backdate the degraded_since to 25 hours ago (UTC-aware, per HR-01)
+    from datetime import UTC
+    tracker._degraded_since["persistence_degraded"] = datetime.now(UTC) - timedelta(hours=25)
 
     alerts = []
     tracker.update({"persistence_degraded": True}, alert_fn=lambda msg: alerts.append(msg))

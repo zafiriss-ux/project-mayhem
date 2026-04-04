@@ -12,8 +12,10 @@ Four invariants are verified:
 """
 
 import ast
+import io
 import pathlib
 import re
+import tokenize
 
 # ── paths ──────────────────────────────────────────────────────────────────────
 
@@ -144,6 +146,41 @@ def test_all_governance_lock_codes_are_canonical():
     ]
     assert not violations, (
         "Non-canonical lock codes found (add to _CANONICAL_LOCK_CODES and CLAUDE.md):\n"
+        + "\n".join(violations)
+    )
+
+
+# ── Invariant 4b: UTC-only timestamps in governance/sync path (HR-01/HD-02) ────
+
+
+_GOVERNANCE_PATH_FILES = [
+    _TITAN_ROOT / "orchestration" / "daily_coach.py",
+    _TITAN_ROOT / "science" / "governance_engine.py",
+    _TITAN_ROOT / "integrations" / "garmin_sync.py",
+]
+
+_NAIVE_DATETIME_NOW = re.compile(
+    r"datetime\.now\(\s*\)",  # datetime.now() with no arguments
+)
+
+
+def test_governance_path_no_naive_datetime_now():
+    """No production code in the governance/sync path may call datetime.now()
+    without a timezone argument.  Use datetime.now(UTC) per HR-01.
+
+    Scoped to: daily_coach.py, governance_engine.py, garmin_sync.py.
+    """
+    violations: list[str] = []
+    for path in _GOVERNANCE_PATH_FILES:
+        src = path.read_text(encoding="utf-8")
+        for match in _NAIVE_DATETIME_NOW.finditer(src):
+            line_no = src[: match.start()].count("\n") + 1
+            violations.append(
+                f"{path.relative_to(_TITAN_ROOT.parent)}:{line_no} — "
+                f"naive datetime.now() (use datetime.now(UTC))"
+            )
+    assert not violations, (
+        "Naive datetime.now() found in governance/sync path (HR-01):\n"
         + "\n".join(violations)
     )
 

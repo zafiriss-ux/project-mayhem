@@ -178,6 +178,94 @@ def test_data_confidence_low_ceiling_applies():
     assert "STARTUP_DATA_CONFIDENCE_CEILING" in result.get("governance_locks_applied", [])
 
 
+# ── NaN Input Tests (INV-01 / HR-02 / HR-04) ────────────────────────────────
+# Every governance gate must produce a conservative outcome on NaN input —
+# the gate must not silently pass NaN comparisons (float("nan") <= x is False).
+
+
+def test_h2_nan_hrv_does_not_fire_silently():
+    """H2: NaN today_hrv must NOT silently pass (gate rejected, not triggered)."""
+    ctx = _base_context(today_hrv=float("nan"), baseline_hrv=50.0)
+    result = _engine().apply_constraints(_base_session(), ctx)
+    # NaN HRV → gate rejected via isfinite check → h2 does not fire
+    # (conservative ceiling applied upstream via data_confidence_low)
+    # Key invariant: H2 must NOT fire with session_type=REST due to NaN alone
+    # (NaN is not a confirmed HRV collapse — it is missing data)
+    assert result is not None  # pipeline must not raise
+    # NaN should not produce REST via H2 gate (would be silent false positive)
+    hard_stop_gates = [r.get("gate") for r in result.get("hard_stop_reasons", [])]
+    assert "H2" not in hard_stop_gates, "H2 must not fire on NaN HRV (INV-01)"
+
+
+def test_h3_nan_rhr_does_not_fire_silently():
+    """H3: NaN today_rhr must NOT silently pass (gate rejected, not triggered)."""
+    ctx = _base_context(today_rhr=float("nan"), baseline_rhr=50.0)
+    result = _engine().apply_constraints(_base_session(), ctx)
+    assert result is not None
+    hard_stop_gates = [r.get("gate") for r in result.get("hard_stop_reasons", [])]
+    assert "H3" not in hard_stop_gates, "H3 must not fire on NaN RHR (INV-01)"
+
+
+def test_h4_nan_tsb_does_not_fire_silently():
+    """H4: NaN tsb_value must NOT silently bypass the floor gate."""
+    # If NaN tsb silently returned False for <= HARD_STOP_TSB_FLOOR, the gate
+    # would be bypassed. The fix converts non-finite to None → gate skipped.
+    ctx = _base_context(tsb_value=float("nan"))
+    session = _base_session(session_type="INTERVALS")
+    result = _engine().apply_constraints(session, ctx)
+    assert result is not None
+    # NaN TSB → tsb_value becomes None → H4 does not fire (missing data, not confirmed floor)
+    hard_stop_gates = [r.get("gate") for r in result.get("hard_stop_reasons", [])]
+    assert "H4" not in hard_stop_gates, "H4 must not fire on NaN TSB (INV-01)"
+
+
+def test_vo2_nan_acwr_blocks_vo2_session():
+    """VO2 eligibility gate: NaN ACWR must mark V1 invalid and block VO2.
+
+    HAMMER and INTERVALS@zone5 are the VO2-session types that trigger the gate.
+    """
+    ctx = _base_context(acwr=float("nan"))
+    # INTERVALS with zone 5 triggers the VO2 eligibility check
+    session = _base_session(session_type="INTERVALS", max_zone=5)
+    session["zone"] = 5
+    result = _engine().apply_constraints(session, ctx)
+    assert result is not None
+    # NaN ACWR → acwr_invalid = True → V1 fails → session downgraded (not INTERVALS@5)
+    applied_locks = result.get("governance_locks_applied", [])
+    assert "VO2_ELIGIBILITY_GATE" in applied_locks, (
+        f"VO2_ELIGIBILITY_GATE must be locked when ACWR is NaN (INV-01); "
+        f"applied_locks={applied_locks}"
+    )
+
+
+def test_vo2_nan_readiness_blocks_vo2_session():
+    """VO2 eligibility gate: NaN readiness must mark V2 invalid and block VO2."""
+    ctx = _base_context(readiness_score=float("nan"))
+    session = _base_session(session_type="INTERVALS", max_zone=5)
+    session["zone"] = 5
+    result = _engine().apply_constraints(session, ctx)
+    assert result is not None
+    applied_locks = result.get("governance_locks_applied", [])
+    assert "VO2_ELIGIBILITY_GATE" in applied_locks, (
+        f"VO2_ELIGIBILITY_GATE must be locked when readiness is NaN (INV-01); "
+        f"applied_locks={applied_locks}"
+    )
+
+
+def test_vo2_nan_glycogen_debt_blocks_vo2_session():
+    """VO2 eligibility gate: NaN glycogen_debt must mark V3 invalid and block VO2."""
+    ctx = _base_context(glycogen_debt=float("nan"))
+    session = _base_session(session_type="INTERVALS", max_zone=5)
+    session["zone"] = 5
+    result = _engine().apply_constraints(session, ctx)
+    assert result is not None
+    applied_locks = result.get("governance_locks_applied", [])
+    assert "VO2_ELIGIBILITY_GATE" in applied_locks, (
+        f"VO2_ELIGIBILITY_GATE must be locked when glycogen_debt is NaN (INV-01); "
+        f"applied_locks={applied_locks}"
+    )
+
+
 # ── VO2 eligibility ESI EXTREME boundary (T5-14 / ADR-0034) ────────────────
 
 def test_vo2_esi_extreme_boundary_on_blocks_vo2_session():
