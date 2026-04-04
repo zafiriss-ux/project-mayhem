@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 
 class DatabaseManager:
@@ -408,6 +408,11 @@ class DatabaseManager:
                 "conditional NOT NULL on garmin_activity_id (T5-69 Stage 3)",
                 None,  # conditional DDL — see _apply_v8_migrations() below
             ),
+            9: (
+                "degraded_mode_state",
+                "DegradedModeTracker persistence table (HD-06 / OBS-039)",
+                None,  # DDL — see _apply_v9_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -501,6 +506,17 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 8,
                     "note": "garmin_activity_id NOT NULL check (T5-69 Stage 3)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 9:
+            self._apply_v9_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 9,
+                    "table_created": "degraded_mode_state",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -735,6 +751,51 @@ class DatabaseManager:
                 "timestamp": datetime.utcnow().isoformat() + "Z",
             })
         )
+
+    def _apply_v9_migrations(self, cursor) -> None:
+        """Version 9: degraded_mode_state table for DegradedModeTracker persistence (HD-06)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS degraded_mode_state (
+                failure_type TEXT PRIMARY KEY,
+                degraded_since TEXT NOT NULL,
+                athlete_id TEXT NOT NULL DEFAULT 'default'
+            )
+        """)
+
+    # --- Degraded Mode State (HD-06) ---
+
+    def get_all_degraded_mode_states(self, athlete_id: str = "default") -> list[tuple[str, str]]:
+        """Return all (failure_type, degraded_since) rows for the given athlete."""
+        with self._lock:
+            return self.conn.cursor().execute(
+                "SELECT failure_type, degraded_since "
+                "FROM degraded_mode_state WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchall()
+
+    def upsert_degraded_mode_state(
+        self, failure_type: str, degraded_since: str, athlete_id: str = "default"
+    ) -> None:
+        """Insert or replace a degraded-mode row keyed by failure_type."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "INSERT OR REPLACE INTO degraded_mode_state "
+                "(failure_type, degraded_since, athlete_id) VALUES (?, ?, ?)",
+                (failure_type, degraded_since, athlete_id),
+            )
+            self.conn.commit()
+
+    def delete_degraded_mode_state(
+        self, failure_type: str, athlete_id: str = "default"
+    ) -> None:
+        """Delete the degraded-mode row for a failure_type (degradation resolved)."""
+        with self._lock:
+            self.conn.cursor().execute(
+                "DELETE FROM degraded_mode_state "
+                "WHERE failure_type = ? AND athlete_id = ?",
+                (failure_type, athlete_id),
+            )
+            self.conn.commit()
 
     # --- BACKUP ---
 
