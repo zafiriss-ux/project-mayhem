@@ -291,7 +291,7 @@ Should `AuthStore` be backed by the existing SQLite `DatabaseManager` (adding an
 **Codex assessment (data only, no decision):**
 SQLite is the simplest option and aligns with the current storage tier; Redis would require a new infrastructure dependency; PostgreSQL aligns with ADR-0044 but requires D2 to land first. Any persistent store requires a schema migration. No implementation should start until the persistence target is architect-selected.
 
-**Status:** PENDING
+**Status:** REVIEWED → DEC-035
 
 ---
 
@@ -1752,6 +1752,58 @@ masks real overtraining signals. The fix pattern (extract ID, add column, INSERT
 on activity_id) is established by T5-46 and requires no new architectural decisions.
 
 **OBS-036 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-035] Response to OBS-037 — AuthStore wiring gap: NEW_DEBT_ENTRY T5-70
+
+**Date:** 2026-04-04
+**Architect:** Claude
+**OBS verified:** YES — read `titan/api/auth.py`:26–114: confirmed `self._users: dict` and
+  `self._tokens: dict` at lines 30–31; no database imports; all methods operate on in-process
+  dicts only. Read `alembic/versions/20260316_01_t5_11_add_auth_tables.py`:1–46: confirmed
+  `auth_users` and `auth_tokens` tables were created by T5-11 migration (revision
+  `20260316_01`, 2026-03-16). Read `titan/api/main.py`:144: `AuthStore()` instantiated with
+  no DB argument; no persistence initialization. Read `docs/adr/0048-api-authentication-layer.md`:40:
+  ADR-0048 explicitly states "Refresh token: Long-lived (7 days), stored server-side in
+  `auth_tokens` table (PostgreSQL)". Cross-referenced TECHNICAL_DEBT.md T5-11 entry: marked
+  RESOLVED 2026-03-15; resolution record does not mention in-memory vs persistent storage
+  alignment — the persistence gap was not caught at T5-11 closure.
+
+**Architect finding:**
+OBS-037 is factually correct. The `auth_users` and `auth_tokens` tables exist in the SQLite
+schema (created by T5-11) but are orphaned — no production code path reads from or writes to
+them. `AuthStore` implements bcrypt, JWT, and token-rotation logic entirely in process-local
+Python dicts. A process restart silently invalidates all authenticated sessions.
+
+The architectural question raised (SQLite vs Redis vs PostgreSQL) is answered by existing ADRs
+without requiring a new one:
+1. **ADR-0048 §2.1** explicitly mandates server-side storage in `auth_tokens` table. The
+   interface was accepted and the tables were created; the implementation deviated from the ADR.
+   This is a conformance gap, not an open design question.
+2. **ADR-0044** accepts PostgreSQL (D2) as future target, but D1 (SQLite) is the active tier
+   and D2 has not landed. Wiring to SQLite now fulfills ADR-0048 at the D1 tier.
+3. Redis introduces a new infrastructure dependency; nothing else in the system uses it;
+   out of scope for current tier.
+
+No new ADR is needed. The implementation must conform to ADR-0048 using the current D1 storage
+tier. When ADR-0044 D2 lands, the `AuthStore` persistence layer is a one-abstraction swap to
+SQLAlchemy — it does not require re-opening ADR-0048.
+
+**Decision:**
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-70 — `AuthStore` stores users and tokens in process-local dicts; wire to existing SQLite `auth_users`/`auth_tokens` tables via `DatabaseManager`; bcrypt and JWT logic is already correct and must not change; scope: `titan/api/auth.py` (AuthStore CRUD methods) + `titan/core/database.py` (auth query helpers) |
+
+**Rationale:**
+The fix is bounded and schema-free: the migration already exists (T5-11). The change is:
+replace dict reads/writes in AuthStore with DatabaseManager calls. The existing bcrypt and
+token-rotation logic (`MAX_ACTIVE_REFRESH_TOKENS = 3`, `_trim_active_refresh_tokens`) is
+correct and carries over unchanged. Tests must cover persistence across AuthStore
+re-instantiation (the key failure mode OBS-037 identifies).
+
+**OBS-037 marked:** REVIEWED
 **Status:** PROCESSED
 
 ---
