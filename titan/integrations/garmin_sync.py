@@ -200,6 +200,27 @@ def _emit_garmin_api_degraded(
     )
 
 
+def _activity_utc_date(start_time_local: str) -> str:
+    """Convert a Garmin startTimeLocal string to a UTC date (YYYY-MM-DD).
+
+    HD-07: ``startTimeLocal[:10]`` truncation discards the timezone offset,
+    assigning the local date rather than the UTC date.  When timezone info is
+    present (e.g. ``"2026-04-04T01:30:00+03:00"``), ``fromisoformat`` parses
+    it correctly; converting to UTC gives the correct day-bucket.  Strings
+    without timezone info are returned as-is using ``[:10]`` (unchanged
+    semantics for naive timestamps).
+    """
+    if not start_time_local:
+        return ""
+    try:
+        dt = datetime.fromisoformat(start_time_local)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(UTC)
+        return dt.strftime("%Y-%m-%d")
+    except (ValueError, TypeError):
+        return start_time_local[:10]
+
+
 def _resolve_sync_timeout_seconds() -> int:
     timeout_raw = os.getenv("GARMIN_SYNC_TIMEOUT_S", str(_DEFAULT_SYNC_TIMEOUT_S))
     try:
@@ -518,6 +539,7 @@ class GarminSync:
             return []
         activities = []
         skipped_records = 0
+        sync_succeeded = False
         try:
             start = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
             end = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -541,7 +563,7 @@ class GarminSync:
                     estimated_load = round(trimp_val, 1) if trimp_val else 0.0
                     activities.append(
                         {
-                            "date": a.get("startTimeLocal", "")[:10],
+                            "date": _activity_utc_date(a.get("startTimeLocal", "")),
                             "activity_type": a.get("activityType", {}).get("typeKey", "running"),
                             "distance_km": round(dist_m / 1000, 2),
                             "duration_sec": dur_sec,
@@ -565,16 +587,19 @@ class GarminSync:
                     )
                     _garmin_event("activity_skipped_malformed", subsystem="sync_activities", activity_id=activity_id, error_class=e.__class__.__name__, detail=f"Skipping malformed activity ({activity_id})", error_message=str(e))
                     continue
-            _garmin_event("activities_synced", subsystem="sync_activities", count=len(activities), days_back=days_back, detail=f"Synced {len(activities)} activities")
-            if skipped_records:
-                _garmin_event("activity_skip_summary", subsystem="sync_activities", skipped_records=skipped_records, detail=f"Skipped {skipped_records} malformed activity record(s)")
-            self._log_sync("activities", len(activities))
+            sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_activities", failure_class, e, days_back=days_back)
             _garmin_event("sync_activities_failed", subsystem="sync_activities", failure_class=failure_class, error_class=e.__class__.__name__, detail="Activity sync failed", error_message=str(e), days_back=days_back)
+        # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
+        if sync_succeeded:
+            _garmin_event("activities_synced", subsystem="sync_activities", count=len(activities), days_back=days_back, detail=f"Synced {len(activities)} activities")
+            if skipped_records:
+                _garmin_event("activity_skip_summary", subsystem="sync_activities", skipped_records=skipped_records, detail=f"Skipped {skipped_records} malformed activity record(s)")
+            self._log_sync("activities", len(activities))
         return activities
 
     # ------------------------------------------------------------------ #
@@ -584,6 +609,7 @@ class GarminSync:
         if not self._ensure_connected():
             return []
         entries = []
+        sync_succeeded = False
         try:
             start = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
             end = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -602,14 +628,17 @@ class GarminSync:
                             "source": "garmin",
                         }
                     )
-            _garmin_event("weight_synced", subsystem="sync_weight", count=len(entries), days_back=days_back, detail=f"Synced {len(entries)} weight entries")
-            self._log_sync("weight", len(entries))
+            sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_weight", failure_class, e, days_back=days_back)
             _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=failure_class, error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
+        # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
+        if sync_succeeded:
+            _garmin_event("weight_synced", subsystem="sync_weight", count=len(entries), days_back=days_back, detail=f"Synced {len(entries)} weight entries")
+            self._log_sync("weight", len(entries))
         return entries
 
     # ------------------------------------------------------------------ #
@@ -620,6 +649,7 @@ class GarminSync:
             return []
         sessions = []
         skipped_days = 0
+        sync_succeeded = False
         try:
             for i in range(days_back):
                 d = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -664,17 +694,19 @@ class GarminSync:
                         self._invalidate_session()
                         break
                     continue
-            # T5-67: success events are gated on no outer exception.
-            _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
-            if skipped_days:
-                _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
-            self._log_sync("sleep", len(sessions))
+            sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_sleep", failure_class, e, days_back=days_back)
             _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=failure_class, error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
+        # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
+        if sync_succeeded:
+            _garmin_event("sleep_synced", subsystem="sync_sleep", count=len(sessions), days_back=days_back, detail=f"Synced {len(sessions)} sleep sessions")
+            if skipped_days:
+                _garmin_event("sleep_skip_summary", subsystem="sync_sleep", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed sleep record(s)")
+            self._log_sync("sleep", len(sessions))
         return sessions
 
     # ------------------------------------------------------------------ #
@@ -691,6 +723,7 @@ class GarminSync:
             return []
         hrv_data = []
         skipped_days = 0
+        sync_succeeded = False
         try:
             for i in range(days_back):
                 d = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -730,17 +763,19 @@ class GarminSync:
                         self._invalidate_session()
                         break
                     continue
-            # T5-67: success events and sync log are gated on no outer exception.
-            _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
-            if skipped_days:
-                _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")
-            self._log_sync("hrv", len(hrv_data))
+            sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session()
             _emit_failure("sync_hrv", failure_class, e, days_back=days_back)
             _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=failure_class, error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
+        # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
+        if sync_succeeded:
+            _garmin_event("hrv_synced", subsystem="sync_hrv", count=len(hrv_data), days_back=days_back, detail=f"Synced {len(hrv_data)} HRV measurements")
+            if skipped_days:
+                _garmin_event("hrv_skip_summary", subsystem="sync_hrv", skipped_days=skipped_days, detail=f"Skipped {skipped_days} malformed HRV record(s)")
+            self._log_sync("hrv", len(hrv_data))
         self.last_hrv_sync_metrics = HRVSyncMetricsContract(
             days_back=days_back,
             synced_days=len(hrv_data),
