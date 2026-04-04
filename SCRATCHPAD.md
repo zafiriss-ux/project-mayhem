@@ -357,6 +357,63 @@ Option A (new SQLite table `degraded_mode_state` with columns `failure_type TEXT
 
 ---
 
+### [OBS-041] HD-08 — PersistenceFailure: specific mixed state reaching governance output
+
+**Date:** 2026-04-04
+**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
+**Session context:** Phase 9 hardening Wave 4 / Subsystem: DailyCoach / GovernanceEngine
+**Urgency:** BLOCKING
+**Files involved:**
+- `titan/orchestration/daily_coach.py` — `run_morning_routine` steps 2–6 (lines 437–601); `_decision_pipeline` steps 7, 9, 9a, 9b (lines 730–875)
+- `titan/science/governance_engine.py` — `apply_constraints` gate sequence (lines 1017–1212), `PERSISTENCE_DEGRADED_CEILING` check (lines 1180–1194)
+- `titan/core/database.py` — `save_hrr` (lines 1467–1484); `update_glycogen_debt` (lines 1507–1519)
+
+**Observation:**
+When `_persist_garmin_data` raises `PersistenceFailure` (daily_coach.py:1473 → caught at daily_coach.py:443), the DB transaction at daily_coach.py:1341 (`with self.db.transaction()`) is rolled back. `daily_metrics` has no row for `today_str`. The following steps continue unconditionally:
+
+**Step 3 (daily_coach.py:534–546)** — `_step3_feed_hrv_hrr()` runs after the rollback:
+- `self.hrv.add_hrv_measurement()` (line 537): today's HRV is added to the in-memory HRV engine. No DB row exists for this measurement.
+- `self.autonomic.add_hrr()` (line 543): today's HRR is added to the in-memory autonomic engine.
+- `self.db.save_hrr()` (line 544): executes `UPDATE daily_metrics SET hrr_60=?, hrr_120=? WHERE date=?` (database.py:1480–1483). Because the `daily_metrics` row for `today_str` was never inserted (rolled back), this UPDATE matches 0 rows and returns silently. No exception. No `_daily_coach_event` is emitted for this silent no-op.
+
+**Step 6 (daily_coach.py:597–601)** — glycogen runs after the rollback:
+- `self.glycogen.update()` (line 589) and `self.glycogen.overnight_resynthesis()` (line 597): both advance in-memory glycogen state using ephemeral `today_sleep_hours` from the `PersistenceFailure` object.
+- `self.db.update_glycogen_debt()` (line 601): executes `UPDATE daily_metrics SET glycogen_debt=? WHERE date=?` (database.py:1515–1518). Same condition as above — 0 rows matched, silent no-op, no event emitted.
+
+**Consequence of Steps 3 and 6**: After the morning routine, in-memory state diverges from DB state: `self.hrv` and `self.autonomic` contain today's data; `self.glycogen.daily_debt` reflects today's in-memory load; DB `daily_metrics` has no row for today. On next process restart, engine hydration (`_startup_hydration`, daily_coach.py:1598–1604) will re-read from DB — the HRV, HRR, and glycogen state from this session are permanently lost from DB.
+
+**Step 7 in `_decision_pipeline` (daily_coach.py:730–741)** — readiness computation:
+- `latest_hrv` (line 552) and `baseline_hrv` (line 553): both from `self.hrv.get_hrv_summary()` called after step 3; in-memory, include today's HRV not in DB.
+- `today_rhr` (line 733): ephemeral value from `PersistenceFailure.today_rhr`; not in DB.
+- `baseline_rhr_for_comparison` (line 734): returned by `_get_baseline_rhr(7)` (daily_coach.py:605), which reads `daily_metrics` from DB. Since today's row was rolled back, the 7-day average excludes today.
+
+H2 gate (`governance_engine.py:316–327`): fires if `hrv_delta ≥ HARD_STOP_HRV_DELTA (15.0)`. Both `today_hrv` and `baseline_hrv` are from in-memory (post step 3). Internally consistent in memory; not consistent with DB.
+
+H3 gate (`governance_engine.py:339–358`): fires if `rhr_delta = today_rhr − baseline_rhr ≥ HARD_STOP_RHR_DELTA (8.0)`. Numerator (`today_rhr`) is ephemeral; denominator (`baseline_rhr`) is DB-derived (excludes today). These come from different data epochs.
+
+**PERSISTENCE_DEGRADED_CEILING gate ordering** (`governance_engine.py:1180–1194`):
+This check runs LAST in `apply_constraints`, after `_check_hard_stops` (line 1075), VO2 eligibility (line 1080), fueling gate (line 1094), the sorted priority-gate loop (line 1110), and `data_confidence_low` (line 1164).
+
+The ceiling condition at line 1182: `if current_session not in {"REST", "EASY"}`. If `_check_hard_stops` has already set `session_type = "REST"` (H1 at line 297, H2 at line 323, H3 at line 355, or non-training stress at line 388), this condition is False. PERSISTENCE_DEGRADED_CEILING is appended to `applied_locks` (line 1185) but the session remains REST. A REST decision driven by H2 or H3 — which may be based on ephemeral HRV/RHR data not in DB — passes to coaching output unchanged.
+
+**Coaching payload** (`daily_coach.py:956–1007`): The assembled `coaching_data` dict has no `persistence_degraded` key. The only representation in coaching output is in `governance_locks` (line 961), which lists `PERSISTENCE_DEGRADED_CEILING` as a lock code string alongside other lock codes. No distinct field separates a persistence-degraded EASY from a normal EASY in the Telegram message payload.
+
+**Pattern / scope:**
+Concentrated in `run_morning_routine` steps 2–6 (daily_coach.py:437–601) and `_decision_pipeline` steps 7 and 9b (daily_coach.py:730–875). The silent no-ops in `save_hrr` and `update_glycogen_debt` are each single-call sites. The gate-ordering issue is in `apply_constraints` (governance_engine.py:1017–1212). Three distinct phenomena: (1) silent DB UPDATE no-ops after rollback; (2) hard-stop gates consuming ephemeral/in-memory data; (3) PERSISTENCE_DEGRADED_CEILING blocked by prior hard-stop REST state.
+
+**Architectural question raised:**
+What is the minimum bounded scope that closes all three phenomena? Specifically:
+(a) Should `save_hrr` and `update_glycogen_debt` calls be gated on `not persistence_degraded`, or should each emit a `_daily_coach_event` when 0 rows are affected?
+(b) Should hard-stop gates H2 and H3 apply additional conservatism (or be suppressed entirely) when `persistence_degraded=True` and the HRV/RHR inputs are in-memory only?
+(c) Should PERSISTENCE_DEGRADED_CEILING apply BEFORE hard-stop gates — so it sets the floor first — or is running it after (overriding only non-REST/EASY sessions) the intended design?
+
+**Codex assessment (data only, no decision):**
+The silent no-ops in `save_hrr` and `update_glycogen_debt` are observable only via SQLite row-count inspection — no event, no log. The H2/H3 asymmetric-epoch issue means a REST decision could be produced in a persistence-failure session that would not be reproduced in a post-restart re-run (DB hydration changes baseline values). The PERSISTENCE_DEGRADED_CEILING gate-ordering issue means REST from H2/H3 can pass to the athlete with no indication it was computed from non-persisted data.
+
+**Status:** PENDING
+
+---
+
 ## NON-BLOCKING Queue
 
 ### [OBS-030] `_classify_hrv_drop` converts None ACWR to 1.0 post T5-51
