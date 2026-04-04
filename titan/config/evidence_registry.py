@@ -91,6 +91,35 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
     ),
 
+    # ── HRV rolling-baseline drift detector (HD-01 / INV-06) ─────────────────
+    'HRV_DRIFT_THRESHOLD_MS': ThresholdEvidence(
+        parameter='HRV_DRIFT_THRESHOLD_MS',
+        value=8.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source=(
+            'Kiviniemi et al. (2007) Eur J Appl Physiol 101(6):743–751; '
+            'Plews et al. (2013) Int J Sports Physiol Perform 8(5):512–521'
+        ),
+        rationale=(
+            'The 8ms threshold represents a clinically meaningful chronic shift in '
+            'HRV rolling baseline. Unlike the per-cycle HARD_STOP_HRV_DELTA (15ms), '
+            'this detector operates on 14-day windows to catch gradual multi-day '
+            'deterioration that stays below the acute hard-stop threshold each day '
+            'but represents a physiologically significant cumulative trend. '
+            'The 8ms value sits at roughly half the hard-stop delta and corresponds '
+            'to approximately one standard deviation of inter-day HRV variability '
+            'in endurance athletes.'
+        ),
+        policy_note=(
+            'HEURISTIC: the 8ms/14-day window pairing is a conservative heuristic. '
+            'No published calibration study validates this exact threshold-window '
+            'combination. Calibration path: correlate drift-warning events with '
+            'athlete-reported recovery outcome and subsequent performance decline '
+            'over the following 7 days.'
+        ),
+    ),
+
     # ── Hard-stop gate H1: dual HRV/RHR collapse — RHR component ─────────────
     'HARD_STOP_RHR_DELTA': ThresholdEvidence(
         parameter='HARD_STOP_RHR_DELTA',

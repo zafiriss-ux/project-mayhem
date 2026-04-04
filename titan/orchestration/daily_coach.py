@@ -45,6 +45,7 @@ from titan.config.thresholds import (
     ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM,
     ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM,
     GARMIN_DATA_MAX_AGE_HOURS,
+    HRV_DRIFT_THRESHOLD_MS,
 )
 from titan.core.database import DatabaseManager
 from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
@@ -1567,9 +1568,12 @@ class DailyCoach:
             "cs": False,
         }
 
-        # 1. HRV history (last 14 days, oldest first so baseline builds correctly)
+        # 1. HRV history — load 28 days so the HD-01 baseline-drift detector
+        #    (window_days=14) has both a recent and an anchor window available.
+        _HRV_HISTORY_DAYS = 28
+        _DRIFT_WINDOW_DAYS = 14
         try:
-            rows = self.db.get_hrv_history(days=14)
+            rows = self.db.get_hrv_history(days=_HRV_HISTORY_DAYS)
             self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
@@ -1581,6 +1585,27 @@ class DailyCoach:
                 error_class=type(e).__name__,
                 error_message=str(e),
             )
+
+        # HRV baseline drift check (HD-01 / INV-06).
+        # Compares the mean of the most-recent _DRIFT_WINDOW_DAYS entries against
+        # the mean of the earlier anchor window.  Returns False silently when
+        # the log has fewer than _DRIFT_WINDOW_DAYS * 2 entries.
+        _drift_check = getattr(self.hrv, "check_baseline_drift", None)
+        if callable(_drift_check) and _drift_check(window_days=_DRIFT_WINDOW_DAYS):
+            _recent = [v for _, v in self.hrv.hrv_log[-_DRIFT_WINDOW_DAYS:]]
+            _anchor = [v for _, v in self.hrv.hrv_log[:-_DRIFT_WINDOW_DAYS]]
+            if _recent and _anchor:  # guard: both windows must be non-empty
+                _delta_ms = round(
+                    sum(_recent) / len(_recent) - sum(_anchor) / len(_anchor), 2
+                )
+                _daily_coach_event(
+                    "hrv_baseline_drift_warning",
+                    severity=EventSeverity.WARNING,
+                    delta_ms=_delta_ms,
+                    threshold_ms=HRV_DRIFT_THRESHOLD_MS,
+                    window_days=_DRIFT_WINDOW_DAYS,
+                )
+                confidence["hrv_baseline_drift"] = False
 
         # 2. Weight history (last 30 days, oldest first)
         try:

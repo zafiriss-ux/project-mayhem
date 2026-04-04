@@ -3263,6 +3263,45 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### T5-70 · AuthStore stores users and tokens in process-local dicts — not wired to SQLite auth tables
+
+**Status:** OPEN
+**Source:** DEC-035 / OBS-037
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:** `titan/api/auth.py` (`AuthStore`), `titan/core/database.py` (auth query helpers)
+**Description:** `AuthStore.__init__` stores users (`self._users`) and refresh tokens (`self._tokens`) in plain Python dicts. All session state is process-local. On any process restart, all authenticated sessions are invalidated (HTTP 401 for all clients). The `auth_users` and `auth_tokens` SQLite tables exist (created by T5-11 migration `20260316_01`) but are never read or written by production code. ADR-0048 §2.1 mandates server-side storage in `auth_tokens`; the current implementation deviates from the ADR.
+
+**Acceptance criteria (binary):** `AuthStore` CRUD methods read from and write to the `auth_users`/`auth_tokens` SQLite tables via `DatabaseManager`; bcrypt and JWT logic is unchanged; a test verifies that a session persists across `AuthStore` re-instantiation (the key failure mode of the in-memory design).
+
+---
+
+### HD-05 · AuthenticatedRateLimiter._requests accumulates keys unboundedly — memory DoS vector
+
+**Status:** OPEN
+**Source:** DEC-036 / OBS-038
+**Severity:** MEDIUM
+**Workflow Path: A**
+**Location:** `titan/api/main.py` (`AuthenticatedRateLimiter`), `titan/config/thresholds.py`
+**Description:** `AuthenticatedRateLimiter._requests` is a `defaultdict(deque)` keyed by `(user_id, role, method:path)`. Expired timestamps are pruned within each deque on every request, but dict entries for empty deques are never evicted. An adversary issuing requests across many unique paths or rotating through user accounts inflates the dict without bound. At scale this is a memory DoS vector.
+
+**Acceptance criteria (binary):** `RATE_LIMITER_MAX_KEYS = 10_000` constant added to `titan/config/thresholds.py`; `AuthenticatedRateLimiter` implements LRU eviction when `len(self._requests) >= RATE_LIMITER_MAX_KEYS` (oldest-by-last-request key evicted on new key insertion); tests verify the ceiling is enforced and legitimate state is preserved for active keys.
+
+---
+
+### HD-08 · PersistenceFailure mixed state: silent no-ops, mixed-epoch H3, unobservable degraded coaching output
+
+**Status:** OPEN
+**Source:** DEC-038 / OBS-041
+**Severity:** HIGH
+**Workflow Path: A**
+**Location:** `titan/orchestration/daily_coach.py` (steps 3, 6, payload assembly), `titan/science/governance_engine.py` (context passthrough only)
+**Description:** Three bounded observability/coherence gaps under `PersistenceFailure`: (1) `save_hrr()` and `update_glycogen_debt()` silently affect 0 rows when `daily_metrics` has no row for `today_str` after a persistence rollback — no event is emitted; (2) H3 gate consumes mixed-epoch data (`today_rhr` is ephemeral, `baseline_rhr` is DB-derived) with no flag propagated to the governance context; (3) `coaching_data` payload has no `persistence_degraded` bool field, making it impossible for the Telegram message or Operator Console to distinguish a persistence-degraded decision from a normal one. Gate logic must NOT be changed — ADR-0020 intent is preserved.
+
+**Acceptance criteria (binary):** `_daily_coach_event("hrr_persist_skipped")` and `("glycogen_persist_skipped")` are emitted when `persistence_degraded=True` and the respective UPDATE affects 0 rows; `persistence_degraded: bool` is added to the governance context dict and to `coaching_data` payload; the Telegram coaching message annotates the session type when `persistence_degraded=True`; no changes to any gate decision logic.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
@@ -3611,6 +3650,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-66 | ✅ RESOLVED 2026-03-29 — per-column UPSERT preserves mood/soreness/fatigue/notes on Garmin re-sync; 5 tests green | 2026-03-29 |
 | T5-67 | ✅ RESOLVED 2026-04-04 — boolean flag gates success events in all 4 sync methods; 12 tests green | 2026-04-04 |
 | HD-07 | ✅ RESOLVED 2026-04-04 — _activity_utc_date() replaces [:10] truncation; fromisoformat()+UTC for tz-aware timestamps; 10 tests green | 2026-04-04 |
+| T5-70 | OPEN — AuthStore process-local dicts; wire to SQLite auth_users/auth_tokens via DatabaseManager (DEC-035) | — |
+| HD-05 | OPEN — AuthenticatedRateLimiter unbounded key accumulation; RATE_LIMITER_MAX_KEYS + LRU eviction (DEC-036) | — |
+| HD-08 | OPEN — PersistenceFailure mixed state: silent no-ops + mixed-epoch flag + persistence_degraded payload field (DEC-038) | — |
 | T5-68 | ✅ RESOLVED 2026-03-29 — ESI_DEW_POINT_FALLBACK_C=18.0 in thresholds.py+evidence_registry; daily_coach.py:714 uses constant; ADR-0034 annotated; 6 tests green | 2026-03-29 |
 | T5-69 | ✅ RESOLVED 2026-03-29 — activityId extracted; garmin_activity_id column + unique index via staged migration; INSERT OR IGNORE deduplication; record restored after merge conflict; Stage 3 merged PR #572 2026-03-29; NOT NULL constraint conditional (NULL rows skipped — manual sessions by design) | 2026-03-29 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
