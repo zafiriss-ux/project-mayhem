@@ -3302,6 +3302,18 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### HD-09 · No population-specific threshold adaptation — static thresholds regardless of age/fitness tier
+
+**Status:** ADR-0052 Accepted 2026-04-04. Implementation deferred Phase 9.
+**Source:** TITAN_HARDENING_FRAMEWORK_v1.md §1.1 / HD-09
+**Severity:** MED
+**Failure Class:** Safety Logic
+**Location:** `titan/config/thresholds.py`, `titan/science/governance_engine.py`, `titan/science/outcome_tracker.py`
+**Description:** TITAN OS applies identical governance thresholds (HRV delta, RHR delta, ACWR safe band, readiness floors) regardless of athlete age, fitness tier, or accumulated training history. Masters athletes (>45) produce systematic false positives; beginners produce systematic false negatives. Static threshold half-life (~10–16 weeks) is too long for elite athlete adaptation. The `OutcomeTracker` already collects `decision→outcome` pairs per athlete but the calibration loop back into threshold constants does not exist.
+**Architecture decision:** ADR-0052 — per-athlete additive offset `δT` per threshold; `ThresholdAdapter` module; `GovernanceEngine` optional injection; `athlete_threshold_offsets` DB table; hard-stop gates (H1–H5) excluded from adaptation; circuit breaker at `FALSE_NEG > 20%` over 30 days; damping ±5% per cycle; |δT| ≤ 20% ceiling.
+
+---
+
 ### T2-18 · CTL/ATL decay windows are inline default parameters — not centralized in thresholds.py ✅ RESOLVED 2026-03-08
 
 **Status:** ✅ RESOLVED 2026-03-08. Commit: 54e95d9.
