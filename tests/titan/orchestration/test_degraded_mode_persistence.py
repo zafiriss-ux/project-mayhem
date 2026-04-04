@@ -156,11 +156,13 @@ class TestDegradedModePersistence:
         assert result is not None, "degraded_mode_state table was not created by migration"
         db.close()
 
-    def test_schema_version_is_nine(self, tmp_path: Path) -> None:
-        """After migration, PRAGMA user_version must equal 9."""
+    def test_schema_version_is_current(self, tmp_path: Path) -> None:
+        """After all migrations, PRAGMA user_version must equal SCHEMA_VERSION."""
+        from titan.core.database import SCHEMA_VERSION
+
         db = _make_db(tmp_path)
         version = db.conn.cursor().execute("PRAGMA user_version").fetchone()[0]
-        assert version == 9
+        assert version == SCHEMA_VERSION
         db.close()
 
     def test_persist_state_tolerates_db_error_gracefully(self, tmp_path: Path) -> None:
