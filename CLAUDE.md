@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2318 tests all green as of HD-05/HD-06/HD-04 implementation (2026-04-04). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2250 tests all green as of HD-01 implementation (2026-04-04). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

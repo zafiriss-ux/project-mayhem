@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
@@ -185,234 +185,11 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 
 ## BLOCKING Queue
 
-### [OBS-028] VO2 eligibility gate retains optimistic ACWR and readiness defaults
+> *All OBS entries in this queue have been reviewed and archived (2026-04-04).
+> See Architect Review Log: DEC-026 (OBS-028), DEC-027 (OBS-029), DEC-035 (OBS-037),
+> DEC-036 (OBS-038), DEC-037 (OBS-039), DEC-038 (OBS-041). New debt entries:
+> HD-05 (OBS-038, TECHNICAL_DEBT.md), HD-08 (OBS-041, TECHNICAL_DEBT.md).*
 
-**Date:** 2026-03-28
-**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
-**Session context:** Pass 1 audit / Phase 8C / Subsystem: GovernanceEngine VO2 gate
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/science/governance_engine.py` — `_check_vo2_eligibility_gate` lines 431, 440, 432, 447
-
-**Observation:**
-`_check_vo2_eligibility_gate` contains two independent optimistic-default paths that T5-49 and T5-51 did not address:
-
-1. ACWR (lines 431, 440):
-   ```python
-   acwr_raw = context.get("acwr", 1.0)          # absent key → 1.0 (sweet spot)
-   acwr = float(1.0 if acwr_raw is None else acwr_raw)  # None → 1.0
-   ```
-   Both absent-key and explicit None produce `acwr = 1.0`. The V1 gate (`VO2_ACWR_MIN=0.80 ≤ acwr ≤ VO2_ACWR_MAX=1.30`) passes because 1.0 is within the safe range.
-
-2. readiness_score (lines 432, 447):
-   ```python
-   readiness_raw = context.get("readiness_score", 100)       # absent key → 100
-   readiness = float(100 if readiness_raw is None else readiness_raw)  # None → 100
-   ```
-   Both absent-key and explicit None produce `readiness = 100`. The V2 gate (`readiness >= VO2_READINESS_MIN=65.0`) always passes because 100 ≥ 65.
-
-T5-49 fixed `context.get("sleep_score", 40)` and `context.get("readiness_score", 40)` in the **2-of-4 gate** (lines 198, 205). T5-51 fixed DailyCoach to pass `None` instead of `1.0` for ACWR. Neither task touched `_check_vo2_eligibility_gate`. The result: a complete Garmin data failure (all values None) still allows a VO2 session to be scheduled.
-
-**Pattern / scope:**
-Isolated to `_check_vo2_eligibility_gate` in governance_engine.py. Two separate default chains (one per field), each with two fallback points (.get() and None-conversion).
-
-**Architectural question raised:**
-Should `_check_vo2_eligibility_gate` treat `None` ACWR or `None` readiness_score as a disqualifying condition (return gate-failed with reason INSUFFICIENT_DATA), or should it apply a conservative non-None substitute value from `thresholds.py`?
-
-**Codex assessment (data only, no decision):**
-Conservative design intent (safety-first per governance philosophy) implies None should disqualify, not default to optimal. The current defaults make VO2 eligibility indistinguishable between "athlete has optimal readiness" and "no Garmin data available."
-
-**Status:** REVIEWED
-
----
-
-### [OBS-029] T5-52 resolution record contradicts live code: cs_confidence default is 1.0
-
-**Date:** 2026-03-28
-**Trigger:** T-SCRATCHPAD-3 — 3+ related out-of-scope findings in one audit session
-**Session context:** Pass 1 audit / Phase 8C / Subsystem: DailyCoach cs_tracker integration
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/orchestration/daily_coach.py` — line 768
-- `TECHNICAL_DEBT.md` — T5-52 resolution record
-
-**Observation:**
-T5-52 resolution record (TECHNICAL_DEBT.md) states:
-> "✅ RESOLVED 2026-03-26 — CS confidence default changed to 0.0; `CS_CONFIDENCE_LOCK` now fires for uncalibrated trackers (PR #529, commit 19f9a1d)"
-
-Current live code at `daily_coach.py:768`:
-```python
-cs_confidence  = _safe_float(getattr(self.cs_tracker, 'confidence', 1.0), 1.0),
-```
-
-Both the `getattr` default (1.0) and the `_safe_float` fallback (1.0) are 1.0. If `cs_tracker` is `None` or absent, `confidence = 1.0`. `CS_CONFIDENCE_LOCK` fires when confidence ≤ 0.70; with confidence = 1.0 it cannot fire.
-
-T5-52 was supposed to change this default to 0.0. The live code and the resolution record are contradictory. Either:
-(a) PR #529 / commit 19f9a1d applied the fix to a different code path than line 768, or
-(b) a subsequent PR (one of #530–#554) accidentally reverted the fix.
-
-**Pattern / scope:**
-Single location (`daily_coach.py:768`). Resolution record claims DONE; live code shows it is NOT done. The two sources disagree.
-
-**Architectural question raised:**
-Is the T5-52 resolution record correct (the fix was applied and later reverted) or incorrect (the fix was never applied to the right location)? Architect must determine whether a new T5 item is needed or whether the T5-52 record should be re-opened.
-
-**Codex assessment (data only, no decision):**
-The record says RESOLVED. The code says it is not. One of them is wrong. With confidence = 1.0 when `cs_tracker` is None, `CS_CONFIDENCE_LOCK` is bypassed for new athletes who have never run a time trial.
-
-**Status:** REVIEWED
-
----
-
-### [OBS-037] HD-04 — AuthStore is in-memory only; all users and tokens lost on process restart
-
-**Date:** 2026-04-04
-**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
-**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/api/auth.py
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/api/auth.py` — `AuthStore` class (lines 26–114): `self._users: dict` and `self._tokens: dict` are process-local
-
-**Observation:**
-`AuthStore.__init__` stores users and refresh tokens in plain Python dicts (`self._users`, `self._tokens`). These dicts exist only in the process heap. On any process restart (deliberate deploy, crash, OOM kill), all authenticated sessions are invalidated — every active client receives HTTP 401 on their next request and must re-authenticate.
-
-Garmin sync and Telegram bot run as daemon threads that may outlive an API process restart. If the API restarts mid-sync, in-flight requests using valid tokens will fail immediately after restart.
-
-There is no fallback, no pre-warm mechanism, and no persistence layer for auth state. `MAX_ACTIVE_REFRESH_TOKENS = 3` and `REFRESH_TOKEN_TTL = timedelta(days=7)` are defined but unenforceable across restarts.
-
-ADR-0048 accepted JWT + HTTP-only cookie transport and defined the `AuthStore` interface as the storage contract. ADR-0048 did not mandate that the backing store be in-memory — it accepted the interface. The persistence question was deferred.
-
-**Pattern / scope:**
-Single class (`AuthStore`) in `titan/api/auth.py`. No other in-process auth state exists. The issue affects ALL authenticated API users, not a subset. T5-12 Pass 2 (Garmin API fragility) is a separate concern but shares the same "process-local state fragility" failure class.
-
-**Architectural question raised:**
-Should `AuthStore` be backed by the existing SQLite `DatabaseManager` (adding an `auth_users` and `auth_refresh_tokens` table), by a dedicated Redis-compatible KV store, or by a new SQLAlchemy-managed PostgreSQL schema (aligning with ADR-0044 D2 target)? This is an architecture decision that determines schema, migration path, and concurrency semantics — it cannot be answered without a new ADR or an amendment to ADR-0048.
-
-**Codex assessment (data only, no decision):**
-SQLite is the simplest option and aligns with the current storage tier; Redis would require a new infrastructure dependency; PostgreSQL aligns with ADR-0044 but requires D2 to land first. Any persistent store requires a schema migration. No implementation should start until the persistence target is architect-selected.
-
-**Status:** REVIEWED → DEC-035
-
----
-
-### [OBS-038] HD-05 — AuthenticatedRateLimiter accumulates keys unboundedly; no eviction policy
-
-**Date:** 2026-04-04
-**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
-**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/api/main.py
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/api/main.py` — `AuthenticatedRateLimiter.__init__` line 49: `self._requests: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)`
-
-**Observation:**
-`AuthenticatedRateLimiter` stores per-key request timestamps in `self._requests`, keyed by `(user_id, user_role, "METHOD:path")`. The `defaultdict(deque)` is never pruned. Each unique `(user_id, role, path)` combination that receives at least one request creates a permanent entry in the dict.
-
-Within a single `deque`, expired timestamps are removed on each request (`while bucket and bucket[0] <= cutoff: bucket.popleft()`). But the `(key → deque)` entry in `self._requests` is never removed, even after the deque is empty. A user who makes one request to each of N endpoints creates N permanent dict entries.
-
-Failure mode: an attacker (or automated scanner) issuing requests with many unique paths or cycling through user accounts would inflate `self._requests` without bound. No ceiling, no eviction, no size limit is implemented. At scale this constitutes a memory DoS vector.
-
-Current role limits: coach 100 req/min, athlete 30 req/min. Both prevent request-rate abuse per key, but do not prevent key-count abuse.
-
-**Pattern / scope:**
-Single class (`AuthenticatedRateLimiter`) in `titan/api/main.py`. No other rate-limiting layer exists. The fix requires a TTL-based eviction policy (e.g. remove keys with empty deques after a time window), a key-count ceiling with LRU eviction, or an external rate-limiter (Redis). Each option has different architectural implications.
-
-**Architectural question raised:**
-Should the eviction strategy be: (A) in-process LRU with a fixed max-keys ceiling (e.g. 10,000), (B) periodic background sweep removing keys with empty deques older than `_RATE_LIMIT_WINDOW_SECONDS`, or (C) delegate rate-limiting to an external store (Redis / API gateway) to avoid in-process state entirely? Option C introduces a new infrastructure dependency and may be out of scope for Phase 9. Option A requires an agreed ceiling constant in `thresholds.py`. Option B requires a background thread or hook. Architect decision required before implementation.
-
-**Codex assessment (data only, no decision):**
-Option B (periodic sweep) is the least-invasive and fits the current in-process model. A background daemon thread sweeping every `_RATE_LIMIT_WINDOW_SECONDS` and removing keys whose deque has been empty since the last sweep would bound memory growth without requiring new infrastructure. However, it introduces thread coordination. Option A (LRU ceiling) is simpler to reason about but risks evicting legitimate rate-limit state.
-
-**Status:** PENDING
-
----
-
-### [OBS-039] HD-06 — DegradedModeTracker._degraded_since is in-memory only; resets on restart
-
-**Date:** 2026-04-04
-**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
-**Session context:** Phase 9 hardening Wave 3 / Subsystem: titan/orchestration/daily_coach.py
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/orchestration/daily_coach.py` — `DegradedModeTracker` class (lines 87–140): `self._degraded_since: dict[str, datetime] = {}`
-
-**Observation:**
-`DegradedModeTracker` tracks how long each named failure type has been in a degraded state. The `_degraded_since` dict maps failure-type names to the `datetime` when degradation began. This dict is process-local.
-
-On process restart, `_degraded_since` is reset to `{}`. If the system has been in a degraded state for 20 of the required 24 hours (`_DEGRADED_ALERT_THRESHOLD_HOURS = 24`), a restart silently resets the timer to zero. The 24-hour SLO alert never fires; the operator receives no notification.
-
-`get_degraded_since()` (line 135) returns the in-memory state as ISO strings. This is used by the Operator Console dashboard (ADR-0010). After restart, the dashboard shows no degradation history, contradicting what the system was actually experiencing.
-
-Failure scenario: a Garmin sync degradation starts at 08:00. The process restarts at 18:00 (10h elapsed). The timer resets. The 24h alert would have fired at 08:00 next day but now fires at 18:00 next day — 10 hours late. The coach and athlete receive a degraded coaching decision for an unmonitored additional 10 hours.
-
-**Pattern / scope:**
-Single class in `daily_coach.py`. `DegradedModeTracker` is instantiated once per `DailyCoach` instance (line 308). The schema change is minimal: a single table (or a column in an existing table) to persist `{failure_type: degraded_since_iso}`. However, the persistence target (SQLite `daily_metrics` extension vs new table vs PostgreSQL) requires an architectural decision consistent with ADR-0020, ADR-0044, and the Phase 9 scope.
-
-**Architectural question raised:**
-Should `_degraded_since` be persisted to: (A) a new `degraded_mode_log` SQLite table (minimal footprint, consistent with current storage tier), (B) an existing table column (e.g. a JSON blob in `governance_outcomes`), or (C) a key-value namespace in the forthcoming PostgreSQL adapter (ADR-0044 D2)? Option C defers the fix until D2 lands. Option A is immediately implementable but adds a schema migration. What persistence target and migration strategy does the architect approve?
-
-**Codex assessment (data only, no decision):**
-Option A (new SQLite table `degraded_mode_state` with columns `failure_type TEXT PRIMARY KEY, degraded_since TEXT`) is the smallest-footprint fix and does not depend on any in-flight deliverable. The `DegradedModeTracker` would read state on first access and write on every `update()` call. This is consistent with how `OutcomeTracker` uses `governance_outcomes`. No external dependencies are introduced.
-
-**Status:** PENDING
-
----
-
-### [OBS-041] HD-08 — PersistenceFailure: specific mixed state reaching governance output
-
-**Date:** 2026-04-04
-**Trigger:** T-SCRATCHPAD-5 — architectural decision-point stop (§13.2)
-**Session context:** Phase 9 hardening Wave 4 / Subsystem: DailyCoach / GovernanceEngine
-**Urgency:** BLOCKING
-**Files involved:**
-- `titan/orchestration/daily_coach.py` — `run_morning_routine` steps 2–6 (lines 437–601); `_decision_pipeline` steps 7, 9, 9a, 9b (lines 730–875)
-- `titan/science/governance_engine.py` — `apply_constraints` gate sequence (lines 1017–1212), `PERSISTENCE_DEGRADED_CEILING` check (lines 1180–1194)
-- `titan/core/database.py` — `save_hrr` (lines 1467–1484); `update_glycogen_debt` (lines 1507–1519)
-
-**Observation:**
-When `_persist_garmin_data` raises `PersistenceFailure` (daily_coach.py:1473 → caught at daily_coach.py:443), the DB transaction at daily_coach.py:1341 (`with self.db.transaction()`) is rolled back. `daily_metrics` has no row for `today_str`. The following steps continue unconditionally:
-
-**Step 3 (daily_coach.py:534–546)** — `_step3_feed_hrv_hrr()` runs after the rollback:
-- `self.hrv.add_hrv_measurement()` (line 537): today's HRV is added to the in-memory HRV engine. No DB row exists for this measurement.
-- `self.autonomic.add_hrr()` (line 543): today's HRR is added to the in-memory autonomic engine.
-- `self.db.save_hrr()` (line 544): executes `UPDATE daily_metrics SET hrr_60=?, hrr_120=? WHERE date=?` (database.py:1480–1483). Because the `daily_metrics` row for `today_str` was never inserted (rolled back), this UPDATE matches 0 rows and returns silently. No exception. No `_daily_coach_event` is emitted for this silent no-op.
-
-**Step 6 (daily_coach.py:597–601)** — glycogen runs after the rollback:
-- `self.glycogen.update()` (line 589) and `self.glycogen.overnight_resynthesis()` (line 597): both advance in-memory glycogen state using ephemeral `today_sleep_hours` from the `PersistenceFailure` object.
-- `self.db.update_glycogen_debt()` (line 601): executes `UPDATE daily_metrics SET glycogen_debt=? WHERE date=?` (database.py:1515–1518). Same condition as above — 0 rows matched, silent no-op, no event emitted.
-
-**Consequence of Steps 3 and 6**: After the morning routine, in-memory state diverges from DB state: `self.hrv` and `self.autonomic` contain today's data; `self.glycogen.daily_debt` reflects today's in-memory load; DB `daily_metrics` has no row for today. On next process restart, engine hydration (`_startup_hydration`, daily_coach.py:1598–1604) will re-read from DB — the HRV, HRR, and glycogen state from this session are permanently lost from DB.
-
-**Step 7 in `_decision_pipeline` (daily_coach.py:730–741)** — readiness computation:
-- `latest_hrv` (line 552) and `baseline_hrv` (line 553): both from `self.hrv.get_hrv_summary()` called after step 3; in-memory, include today's HRV not in DB.
-- `today_rhr` (line 733): ephemeral value from `PersistenceFailure.today_rhr`; not in DB.
-- `baseline_rhr_for_comparison` (line 734): returned by `_get_baseline_rhr(7)` (daily_coach.py:605), which reads `daily_metrics` from DB. Since today's row was rolled back, the 7-day average excludes today.
-
-H2 gate (`governance_engine.py:316–327`): fires if `hrv_delta ≥ HARD_STOP_HRV_DELTA (15.0)`. Both `today_hrv` and `baseline_hrv` are from in-memory (post step 3). Internally consistent in memory; not consistent with DB.
-
-H3 gate (`governance_engine.py:339–358`): fires if `rhr_delta = today_rhr − baseline_rhr ≥ HARD_STOP_RHR_DELTA (8.0)`. Numerator (`today_rhr`) is ephemeral; denominator (`baseline_rhr`) is DB-derived (excludes today). These come from different data epochs.
-
-**PERSISTENCE_DEGRADED_CEILING gate ordering** (`governance_engine.py:1180–1194`):
-This check runs LAST in `apply_constraints`, after `_check_hard_stops` (line 1075), VO2 eligibility (line 1080), fueling gate (line 1094), the sorted priority-gate loop (line 1110), and `data_confidence_low` (line 1164).
-
-The ceiling condition at line 1182: `if current_session not in {"REST", "EASY"}`. If `_check_hard_stops` has already set `session_type = "REST"` (H1 at line 297, H2 at line 323, H3 at line 355, or non-training stress at line 388), this condition is False. PERSISTENCE_DEGRADED_CEILING is appended to `applied_locks` (line 1185) but the session remains REST. A REST decision driven by H2 or H3 — which may be based on ephemeral HRV/RHR data not in DB — passes to coaching output unchanged.
-
-**Coaching payload** (`daily_coach.py:956–1007`): The assembled `coaching_data` dict has no `persistence_degraded` key. The only representation in coaching output is in `governance_locks` (line 961), which lists `PERSISTENCE_DEGRADED_CEILING` as a lock code string alongside other lock codes. No distinct field separates a persistence-degraded EASY from a normal EASY in the Telegram message payload.
-
-**Pattern / scope:**
-Concentrated in `run_morning_routine` steps 2–6 (daily_coach.py:437–601) and `_decision_pipeline` steps 7 and 9b (daily_coach.py:730–875). The silent no-ops in `save_hrr` and `update_glycogen_debt` are each single-call sites. The gate-ordering issue is in `apply_constraints` (governance_engine.py:1017–1212). Three distinct phenomena: (1) silent DB UPDATE no-ops after rollback; (2) hard-stop gates consuming ephemeral/in-memory data; (3) PERSISTENCE_DEGRADED_CEILING blocked by prior hard-stop REST state.
-
-**Architectural question raised:**
-What is the minimum bounded scope that closes all three phenomena? Specifically:
-(a) Should `save_hrr` and `update_glycogen_debt` calls be gated on `not persistence_degraded`, or should each emit a `_daily_coach_event` when 0 rows are affected?
-(b) Should hard-stop gates H2 and H3 apply additional conservatism (or be suppressed entirely) when `persistence_degraded=True` and the HRV/RHR inputs are in-memory only?
-(c) Should PERSISTENCE_DEGRADED_CEILING apply BEFORE hard-stop gates — so it sets the floor first — or is running it after (overriding only non-REST/EASY sessions) the intended design?
-
-**Codex assessment (data only, no decision):**
-The silent no-ops in `save_hrr` and `update_glycogen_debt` are observable only via SQLite row-count inspection — no event, no log. The H2/H3 asymmetric-epoch issue means a REST decision could be produced in a persistence-failure session that would not be reproduced in a post-restart re-run (DB hydration changes baseline values). The PERSISTENCE_DEGRADED_CEILING gate-ordering issue means REST from H2/H3 can pass to the athlete with no indication it was computed from non-persisted data.
-
-**Status:** PENDING
-
----
 
 ## NON-BLOCKING Queue
 
@@ -1861,6 +1638,70 @@ correct and carries over unchanged. Tests must cover persistence across AuthStor
 re-instantiation (the key failure mode OBS-037 identifies).
 
 **OBS-037 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-036] Response to OBS-038 — AuthenticatedRateLimiter key accumulation: NEW_DEBT_ENTRY HD-05
+
+**Date:** 2026-04-04
+**Architect:** Claude
+**OBS verified:** YES — read `titan/api/main.py`:49–57: confirmed `self._requests: dict[tuple[str, str, str], deque[float]] = defaultdict(deque)` with no eviction policy. Confirmed expired timestamps are pruned per-deque but empty deque keys are never removed. Cross-referenced TECHNICAL_DEBT.md: T5-36 covers rate-limiting implementation but does not address key eviction. No existing task covers this gap.
+
+**Architect finding:**
+OBS-038 is factually correct. The `defaultdict(deque)` accumulates one entry per unique `(user_id, role, method:path)` triplet indefinitely. An adversary issuing requests across many unique paths or rotating through many user accounts can inflate `self._requests` without bound. Option C (Redis) is out of Phase 9 scope. Option B (periodic sweep) introduces a background thread. Option A (LRU ceiling with a constant) is the cleanest architectural guarantee — a fixed ceiling cannot be exhausted by timing-based attacks.
+
+**Decision:** Option A — fixed max-keys ceiling with LRU eviction.
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | HD-05 — `AuthenticatedRateLimiter._requests` grows unboundedly; add `RATE_LIMITER_MAX_KEYS = 10_000` to `thresholds.py` and LRU eviction to `AuthenticatedRateLimiter` when key count exceeds ceiling; files: `titan/api/main.py`, `titan/config/thresholds.py` |
+
+**OBS-038 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-037] Response to OBS-039 — DegradedModeTracker persistence: NO_ACTION (already implemented by HD-06)
+
+**Date:** 2026-04-04
+**Architect:** Claude
+**OBS verified:** YES — read `titan/orchestration/daily_coach.py`:87–140: confirmed
+  `DegradedModeTracker.__init__` accepts `db: DatabaseManager | None`; `_hydrate_from_db()`
+  restores timers from `degraded_mode_state` SQLite table on startup; `_persist_state()` upserts/
+  deletes per failure-type rows via `DatabaseManager`. Class docstring: "State is persisted to
+  the `degraded_mode_state` SQLite table so that degradation timers survive process restarts
+  (HD-06 / OBS-039)."
+
+**Architect finding:** OBS-039 describes a gap that has already been closed by the HD-06 implementation. No further action required.
+
+| Action | Detail |
+|---|---|
+| NO_ACTION | HD-06 already resolved OBS-039. `DegradedModeTracker` persists to `degraded_mode_state` via `_hydrate_from_db()` + `_persist_state()`. |
+
+**OBS-039 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-038] Response to OBS-041 — PersistenceFailure mixed state: NEW_DEBT_ENTRY HD-08
+
+**Date:** 2026-04-04
+**Architect:** Claude
+**OBS verified:** YES — read `titan/orchestration/daily_coach.py`:534–601: confirmed
+  `_step3_feed_hrv_hrr()` calls `self.db.save_hrr()` without `persistence_degraded` guard;
+  step 6 calls `self.db.update_glycogen_debt(today_str, ...)` unconditionally. Both UPDATE
+  operations silently affect 0 rows when `daily_metrics` has no row for `today_str`. No event
+  emitted for the 0-row case. H3 gate: `today_rhr` (ephemeral) vs `baseline_rhr` (DB-derived)
+  confirmed as mixed-epoch. `PERSISTENCE_DEGRADED_CEILING` runs last in `apply_constraints`.
+
+**Architect finding:** Three bounded phenomena: (1) silent no-ops in `save_hrr`/`update_glycogen_debt` — fix: emit `_daily_coach_event` when `persistence_degraded=True`; (2) mixed-epoch H3 input — fix: add `persistence_degraded: bool` to governance context (gates unchanged — they are safety-critical); (3) gate ordering for `PERSISTENCE_DEGRADED_CEILING` is intentional (REST from H2/H3 is already maximally conservative) but observability is missing — fix: add `persistence_degraded` field to `coaching_data` payload and annotate Telegram message. No new ADR needed; ADR-0020 covers the policy; these are implementation completeness items.
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | HD-08 — Three bounded PersistenceFailure observability/coherence fixes: emit skip events when persist calls are no-ops; propagate `persistence_degraded` bool to governance context and coaching payload; annotate Telegram output. Files: `daily_coach.py` (steps 3, 6, payload); `governance_engine.py` (context passthrough only — no gate logic changes). |
+
+**OBS-041 marked:** REVIEWED
 **Status:** PROCESSED
 
 ---

@@ -6,6 +6,12 @@ HARD_STOP_TSB_FLOOR = -50.0
 ILLNESS_PATTERN_HRV_DELTA = 20.0
 ILLNESS_PATTERN_RHR_DELTA = 10.0
 
+# HRV rolling-baseline drift detector (HD-01 / INV-06 / T5-07).
+# Fires when the mean of the most-recent window diverges from the prior anchor
+# by more than this amount. Catches gradual multi-day deterioration that the
+# per-cycle HARD_STOP_HRV_DELTA check would miss.
+HRV_DRIFT_THRESHOLD_MS = 8.0
+
 SUBJECTIVE_FATIGUE_EXTREME = 8
 SUBJECTIVE_FATIGUE_2OF4 = 6
 

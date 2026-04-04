@@ -187,6 +187,36 @@ class HRVGuidedEngine:
         else:
             return f"➡️ STABLE: HRV change {change_pct:.1f}%"
 
+    def check_baseline_drift(self, window_days: int = 14) -> bool:
+        """Return True if |mean(recent) - mean(anchor)| > HRV_DRIFT_THRESHOLD_MS.
+
+        Compares the mean of the most-recent ``window_days`` entries against
+        the mean of all earlier entries (the anchor window).  Returns False
+        immediately when the log contains fewer than ``window_days * 2``
+        entries — insufficient history to form both windows.
+
+        Args:
+            window_days: Size of the recent and (minimum) anchor windows.
+                         Default 14 matches the HD-01 / INV-06 specification.
+
+        Returns:
+            True  — drift |delta| > HRV_DRIFT_THRESHOLD_MS; caller should
+                    emit hrv_baseline_drift_warning and flag data_confidence_low.
+            False — no drift, or insufficient data to compute.
+        """
+        from titan.config.thresholds import HRV_DRIFT_THRESHOLD_MS
+
+        if len(self.hrv_log) < window_days * 2:
+            return False
+
+        recent = [hrv for _, hrv in self.hrv_log[-window_days:]]
+        anchor = [hrv for _, hrv in self.hrv_log[:-window_days]]
+
+        recent_mean = sum(recent) / len(recent)
+        anchor_mean = sum(anchor) / len(anchor)
+
+        return abs(recent_mean - anchor_mean) > HRV_DRIFT_THRESHOLD_MS
+
     @staticmethod
     def describe_calibration_drift(
         *,

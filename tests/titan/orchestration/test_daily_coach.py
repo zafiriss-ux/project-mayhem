@@ -92,9 +92,11 @@ class MinimalCoachFactory:
             }
         )
         coach.hrv = SimpleNamespace(
+            hrv_log=[],
             add_hrv_measurement=lambda *a, **k: None,
             calculate_ln_rmssd_deviation=lambda **k: 0.0,
             get_hrv_summary=lambda: {"latest_hrv": 45.0, "baseline": 40.0, "trend": "steady", "std_dev": 1.0},
+            check_baseline_drift=lambda **k: False,
         )
         coach.autonomic = SimpleNamespace(
             hrr_log=[],
@@ -1348,7 +1350,7 @@ def test_run_morning_routine_telegram_exception_raises_delivery_error_event(monk
 def _make_hydration_coach(db):
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = db
-    coach.hrv = SimpleNamespace(hrv_log=[], add_hrv_measurement=lambda *_: None)
+    coach.hrv = SimpleNamespace(hrv_log=[], add_hrv_measurement=lambda *_: None, check_baseline_drift=lambda **k: False)
     coach.nutrition = SimpleNamespace(add_weight_entry=lambda *_: None)
     coach.tsb = SimpleNamespace(daily_loads=[], add_daily_load=lambda *_: None)
     coach.autonomic = SimpleNamespace(add_hrr=lambda *_: None)
