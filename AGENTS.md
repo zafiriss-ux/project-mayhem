@@ -583,6 +583,74 @@ will fail immediately if gate logic is silently altered. Adding a new gate requi
 2. Boundary tests in `test_governance_mutation.py`
 3. Lock code added to `_CANONICAL_LOCK_CODES` in `test_architectural_invariants.py` and the table in CLAUDE.md
 
+### §8.1 Execution Priority Order (non-negotiable)
+
+When multiple mechanisms conflict, resolution priority is strictly ordered (highest wins):
+
+```
+LAYER 5 (Hard-Stops H1–H5)
+  > LAYER 4 (Invariants INV-01 → INV-10)
+  > LAYER 3 (Governance gates)
+  > LAYER 2 (Fallback / degraded mode)
+  > LAYER 1 (Normal output)
+```
+
+Higher layer **always** wins. No exception path may bypass a higher layer.
+
+Source: TITAN_HARDENING_FRAMEWORK_v1.md §12.
+
+---
+
+### §8.2 Severity → Mandatory Runtime Response
+
+| Severity | Detection | Response | CI behaviour |
+|---|---|---|---|
+| CRITICAL | Invariant check Layer 4/5 | BLOCK + HARD-STOP + Telegram CRITICAL | Hard-fail CI gate — PR cannot merge |
+| HIGH | Pre-decision sanity gate | DEGRADE to EASY + ESCALATE WARNING | Hard-fail CI gate |
+| MEDIUM | Runtime pipeline | FALLBACK conservative | Soft-fail — architect ack required |
+| LOW | Periodic audit | LOG-ONLY | No CI gate |
+
+This table is **binding**. Any code that produces a CRITICAL-class violation without a BLOCK
+response is a process violation equivalent to a failed mandatory gate.
+
+Source: TITAN_HARDENING_FRAMEWORK_v1.md §17.
+
+---
+
+### §8.3 Invariant Enforcement (non-bypassable)
+
+The following invariants are structurally non-bypassable. Any PR that creates a code path
+bypassing them is a **HARD GATE failure**:
+
+| ID | Rule |
+|---|---|
+| INV-01 | `math.isfinite()` before every governance gate float comparison. |
+| INV-02 | All `datetime` in governance + sync path must be UTC-aware. |
+| INV-03 | `athlete_id` present in every per-athlete DB write. |
+| INV-05 | No governance gate defaults an absent field to an optimistic value (ADR-0051). |
+| INV-06 | HRV drift check on startup; emit WARNING + set `data_confidence_low=True` if \|delta\| > `HRV_DRIFT_THRESHOLD_MS`. |
+| INV-07 | Activity dedup by `garmin_activity_id` (`INSERT OR IGNORE`). |
+| INV-08 | Sync success event **only** when no exception raised (boolean flag pattern). |
+| INV-09 | `INSERT OR REPLACE` forbidden on multi-source tables. |
+| INV-10 | Rate-limiter key count bounded by `RATE_LIMITER_MAX_KEYS`. |
+
+**Test coverage:**
+
+- INV-02, INV-03, INV-09 — `tests/test_architectural_invariants.py`
+- INV-01 — `test_governance_mutation.py` NaN boundary tests
+- INV-06 — `test_baseline_drift_detection.py`
+- INV-07 — `test_t5_69_activity_deduplication.py`
+- INV-08 — `test_t5_67_sync_success_event_gating.py`
+- INV-10 — `test_rate_limiter_ceiling.py`
+
+**New gate requirement:** Any new gate added to `governance_engine.py` MUST have:
+
+(a) `math.isfinite()` guard (INV-01)
+(b) NaN boundary test in `test_governance_mutation.py` (HR-04)
+(c) ADR reference in commit message (ADR-0009)
+
+Source: TITAN_HARDENING_FRAMEWORK_v1.md §7 + §11.
+
 ---
 
 ## 9. Key Files Quick Reference
