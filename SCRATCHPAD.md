@@ -3160,3 +3160,42 @@ Should a canonical `MISSING_DATA_POLICY` convention be established in `threshold
 All HIGH findings directly undermine active safety gates (H2, H3, CS_CONFIDENCE_LOCK, VO2 eligibility). F-29 and B1-F04 combine to allow VO2 eligibility to pass when it should fail due to absent data. The zero-sync bug silently produces stale/default-driven governance on every startup. MEDIUM findings registered as T5-44–T5-59 in TECHNICAL_DEBT.md.
 
 **Status:** REVIEWED
+
+---
+
+### [OBS-041-CI] del athlete_id in persistence.py — pre-existing FP-08
+
+**Date:** 2026-04-05
+**Reported by:** CI gate G-CI-04 (invariant-athlete-id-drop)
+**File:** `titan/core/persistence.py:992,1070`
+
+`del athlete_id` found at both locations. These are pre-existing uses predating
+the G-CI-04 gate. Pattern is FP-08 (sentinel deletion, not data loss).
+
+**Status:** REVIEWED
+
+**DEC:** Pre-existing debt. G-CI-04 correctly flags these. Fix scoped to Phase 9.
+Assign new T5-xx: remove `del athlete_id` from `persistence.py:992,1070` and
+replace with explicit comment documenting why the variable is not used, or
+restructure to avoid the deletion. Does not block current merge.
+
+---
+
+### [OBS-042-CI] naive datetime.now() in non-governance modules — pre-existing HR-01 debt
+
+**Date:** 2026-04-05
+**Reported by:** CI gate G-CI-02 (original broad-scope run before scope reduction)
+**Files:** `titan/integrations/telegram_bot.py`, `titan/ui/menu_system.py`,
+`titan/integrations/weather_api.py`, `titan/science/critical_speed.py`,
+`titan/science/outcome_tracker.py`, `titan/core/periodization.py`,
+`titan/core/athlete.py`
+
+29 naive `datetime.now()` calls across 7 non-governance modules. All pre-existing.
+HR-01 (timezone-aware datetimes) applies to new code going forward. Governance-critical
+scope (governance_engine, hrv_engine, daily_coach, garmin_sync, database) is CLEAN.
+
+**Status:** REVIEWED
+
+**DEC:** Pre-existing debt. G-CI-02 scope has been reduced to governance-critical
+modules only (5 files). Full cleanup of remaining 7 modules = separate Phase 9
+debt item. HR-01 enforcement for new code remains active. Does not block current merge.

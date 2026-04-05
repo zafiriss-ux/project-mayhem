@@ -18,6 +18,7 @@ from titan.config.thresholds import (
     HARD_STOP_TSB_FLOOR,
     ILLNESS_PATTERN_HRV_DELTA,
     ILLNESS_PATTERN_RHR_DELTA,
+    INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
     SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
     VO2_ACWR_MAX,
@@ -1053,7 +1054,7 @@ class GovernanceEngine:
                 int(session_plan.get("max_zone", 5) or 5),
                 int(intensity_gate.get("max_zone", 5) or 5),
             )
-            _vol_mod = float(intensity_gate.get("volume_modifier", 1.0) or 1.0)
+            _vol_mod = float(intensity_gate.get("volume_modifier", INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE) or INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE)
             if not math.isfinite(_vol_mod):
                 _gate_event(
                     "INTENSITY_GATE", "NAN_REJECTED",
@@ -1112,7 +1113,7 @@ class GovernanceEngine:
                     )
                 )
             session_plan["vo2_eligibility"] = vo2_result
-            if not vo2_result.get("eligible", True):
+            if not vo2_result.get("eligible", False):
                 applied_locks.append("VO2_ELIGIBILITY_GATE")
 
         fueling_result = self._check_fueling_gate(session_plan, context)

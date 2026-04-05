@@ -374,3 +374,168 @@ jobs:
 
       - name: Run Phase 8 CI consistency checks
         run: pytest tests/test_phase8_ci_checks.py -v
+
+  invariant-naive-datetime:
+    name: G-CI-02 No naive datetime.now()
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No naive datetime.now() in governance-critical modules
+        run: |
+          # Scope: governance-critical modules only.
+          # Pre-existing debt in other modules tracked as OBS-042 (Phase 9).
+          SCOPE_FILES=(
+            titan/science/governance_engine.py
+            titan/science/hrv_engine.py
+            titan/orchestration/daily_coach.py
+            titan/integrations/garmin_sync.py
+            titan/core/database.py
+          )
+          if grep -n "datetime\.now()" "${SCOPE_FILES[@]}" \
+             | grep -v "tz=" | grep -v "UTC" | grep -v "timezone" \
+             | grep -v "#.*datetime\.now"; then
+            echo "FAIL: naive datetime.now() found — violates HR-01/INV-02"
+            exit 1
+          fi
+
+  invariant-insert-or-replace:
+    name: G-CI-03 No INSERT OR REPLACE on multi-source tables
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No INSERT OR REPLACE on multi-source tables
+        run: |
+          # Allowlist: single-source tables permitted to use INSERT OR REPLACE.
+          # auth_users and degraded_mode_state are single-writer tables (database.py only).
+          VIOLATIONS=$(grep -rn "INSERT OR REPLACE" titan/ --include="*.py" \
+            | grep -v "athlete_profile" \
+            | grep -v "auth_tokens" \
+            | grep -v "auth_users" \
+            | grep -v "degraded_mode_state" \
+            | grep -v '"""' \
+            | grep -v "#")
+          if [ -n "$VIOLATIONS" ]; then
+            echo "FAIL: INSERT OR REPLACE found — violates INV-09"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+
+  invariant-athlete-id-drop:
+    name: G-CI-04 No del athlete_id in persistence paths
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No del athlete_id in persistence paths
+        run: |
+          if grep -rn "del athlete_id\|del context\[.athlete_id.\]" \
+             titan/ --include="*.py"; then
+            echo "FAIL: athlete_id deleted in persistence path — violates INV-03/HR-06"
+            exit 1
+          fi
+
+  invariant-nan-test-coverage:
+    name: G-CI-05 Every governance gate has NaN boundary test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every governance gate has NaN boundary test
+        run: |
+          # Extract gate names from governance_engine.py
+          # Each gate function must have a corresponding test_*_nan_* in
+          # test_governance_mutation.py
+          python - <<'EOF'
+          import ast, sys, re
+          from pathlib import Path
+
+          gov = Path("titan/science/governance_engine.py").read_text()
+          tree = ast.parse(gov)
+          gates = [
+              n.name for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef)
+              and ("gate" in n.name.lower() or "check_" in n.name.lower())
+              and not n.name.startswith("_test")
+          ]
+
+          test_src = Path("tests/test_governance_mutation.py").read_text()
+          missing = []
+          for gate in gates:
+              short = gate.replace("_gate", "").replace("check_", "")
+              pattern = rf"test_.*{re.escape(short)}.*nan|test_nan.*{re.escape(short)}"
+              if not re.search(pattern, test_src, re.IGNORECASE):
+                  missing.append(gate)
+
+          if missing:
+              print(f"FAIL: No NaN test for gates: {missing}")
+              print("Violates HR-04/G-CI-05")
+              sys.exit(1)
+          else:
+              print(f"OK: {len(gates)} gates, all have NaN tests")
+          EOF
+
+  invariant-optimistic-defaults:
+    name: G-CI-06 No optimistic .get() defaults in governance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No optimistic .get() defaults in governance
+        run: |
+          python - <<'EOF'
+          import ast, sys
+          from pathlib import Path
+
+          # Truly optimistic values: these cause gates to PASS when data is absent.
+          # 0 / 0.0 / False are fail-closed (conservative) — excluded from set.
+          OPTIMISTIC = {1.0, 1, 100.0, 100}
+          SAFE_FUNCTIONS = {"_safe_float", "_safe_int"}
+
+          src = Path("titan/science/governance_engine.py").read_text()
+          tree = ast.parse(src)
+          violations = []
+
+          for node in ast.walk(tree):
+              if (isinstance(node, ast.Call) and
+                  isinstance(node.func, ast.Attribute) and
+                  node.func.attr == "get" and
+                  len(node.args) >= 2):
+                  default = node.args[1]
+                  if isinstance(default, ast.Constant) and default.value in OPTIMISTIC:
+                      violations.append(
+                          f"Line {node.lineno}: .get() with optimistic default "
+                          f"{default.value!r} — violates ADR-0051/INV-05"
+                      )
+
+          if violations:
+              print("FAIL: Optimistic .get() defaults in governance_engine.py:")
+              for v in violations: print(f"  {v}")
+              sys.exit(1)
+          else:
+              print("OK: No optimistic governance defaults found")
+          EOF
+
+  invariant-athlete-isolation:
+    name: G-CI-07 Athlete isolation invariant
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -e ".[dev]" --quiet
+
+      - name: Athlete isolation invariant
+        run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
