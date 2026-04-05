@@ -277,6 +277,22 @@ def test_h5_nan_fatigue_does_not_fire_silently():
     assert "H5" not in hard_stop_gates, "H5 must not fire on NaN fatigue score (INV-01)"
 
 
+# ── ADR-0051: None input → conservative fail (data_confidence_low) ───────────
+
+def test_h2_none_hrv_sets_data_confidence_low():
+    """H2: None today_hrv must set data_confidence_low (ADR-0051 conservative fail)."""
+    ctx = _base_context(today_hrv=None, baseline_hrv=50.0)
+    _engine().apply_constraints(_base_session(session_type="INTERVALS"), ctx)
+    assert ctx.get("data_confidence_low") is True
+
+
+def test_h3_none_rhr_sets_data_confidence_low():
+    """H3: None today_rhr must set data_confidence_low (ADR-0051 conservative fail)."""
+    ctx = _base_context(today_rhr=None, baseline_rhr=52.0)
+    _engine().apply_constraints(_base_session(session_type="INTERVALS"), ctx)
+    assert ctx.get("data_confidence_low") is True
+
+
 def test_fueling_gate_nan_duration_does_not_lock():
     """FUELING_GATE: NaN duration_min must be rejected without applying a lock (INV-01)."""
     ctx = _base_context(fueling_confirmed=False)
