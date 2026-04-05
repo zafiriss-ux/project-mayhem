@@ -185,9 +185,9 @@ If CLARIFICATION_NEEDED: explain what is missing and why it blocks the decision.
 
 ## BLOCKING Queue
 
-> *All OBS entries in this queue have been reviewed and archived (2026-04-04).
+> *All OBS entries in this queue have been reviewed and archived (2026-04-04/2026-04-05).
 > See Architect Review Log: DEC-026 (OBS-028), DEC-027 (OBS-029), DEC-035 (OBS-037),
-> DEC-036 (OBS-038), DEC-037 (OBS-039), DEC-038 (OBS-041). New debt entries:
+> DEC-036 (OBS-038), DEC-037 (OBS-039), DEC-038 (OBS-041), DEC-039 (OBS-040). New debt entries:
 > HD-05 (OBS-038, TECHNICAL_DEBT.md), HD-08 (OBS-041, TECHNICAL_DEBT.md).*
 
 
@@ -456,7 +456,7 @@ What is the architect-approved scope for the HD-08 Frankenstein-state fix? Speci
 **Codex assessment (data only, no decision):**
 `garmin_data_age_hours` (T5-48) already propagates a single age timestamp to governance context. However, it represents the age of the LAST sync, not a per-source freshness map. If HRV was synced 1h ago but sleep was synced 7 days ago, `garmin_data_age_hours` reflects 1h — masking the stale sleep path. A per-source freshness dict would capture this, but requires schema changes to the governance context payload.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -1702,6 +1702,34 @@ OBS-038 is factually correct. The `defaultdict(deque)` accumulates one entry per
 | NEW_DEBT_ENTRY | HD-08 — Three bounded PersistenceFailure observability/coherence fixes: emit skip events when persist calls are no-ops; propagate `persistence_degraded` bool to governance context and coaching payload; annotate Telegram output. Files: `daily_coach.py` (steps 3, 6, payload); `governance_engine.py` (context passthrough only — no gate logic changes). |
 
 **OBS-041 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-039] Response to OBS-040 — HD-08 pipeline phenomena: NO_ACTION
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — OBS-040 raises three phenomena in the DailyCoach 12-step pipeline after
+  partial persistence failure: (1) silent no-ops in `save_hrr`/`update_glycogen_debt` when
+  `persistence_degraded=True`; (2) mixed-epoch H2/H3 inputs (ephemeral today-data vs DB-derived
+  baseline); (3) `PERSISTENCE_DEGRADED_CEILING` ordering at end of `apply_constraints`. All three
+  phenomena were already identified and fully resolved by DEC-038 (T5-71 / HD-08):
+  `data_confidence_low=True` propagated when `persistence_degraded=True`; WARNING events emitted
+  for no-op persist calls; `persistence_degraded: bool` added to governance context and
+  `coaching_data` payload; Telegram message annotated when degraded. OBS-040 adds no new finding
+  beyond existing DEC-038 / HD-08 coverage.
+
+**Architect finding:** OBS-040 is substantively answered by DEC-038 (T5-71 / HD-08). The three
+phenomena (silent no-ops, H2/H3 ephemeral data, PERSISTENCE_DEGRADED_CEILING ordering) are
+addressed via `data_confidence_low=True` when `persistence_degraded=True`. No further
+architectural action required.
+
+| Action | Detail |
+|---|---|
+| NO_ACTION | Substantively answered by DEC-038 (T5-71/HD-08). All three phenomena addressed via `data_confidence_low=True` when `persistence_degraded=True`. No new finding beyond existing coverage. |
+
+**OBS-040 marked:** REVIEWED
 **Status:** PROCESSED
 
 ---

@@ -107,14 +107,18 @@ Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is 
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0022 for gate record.
 
-**Phase 8C execution sequence (OPEN — 2026-03-17):**
+**Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
 T5-12 Pass 1 — ✅ COMPLETE 2026-03-18 (design document created:
                docs/specs/garmin_api_fragility_mitigation.md; ADR-0050 accepted)
-T5-12 Pass 2 — BLOCKED (implementation; blocked pending architect ADR acceptance)
+T5-12 Pass 2 — DEFERRED Phase 9. Rationale: ADR-0050 accepted; mitigation design
+               complete (docs/specs/garmin_api_fragility_mitigation.md);
+               implementation requires multi-device adapter (ADR-0016/ADR-0041)
+               which is Phase 9 scope.
 ```
 Phase 8C opened 2026-03-17 (DEC-016). Bounded audit batch T5-39–T5-42 fully closed.
 No further open Phase 8C items beyond T5-12 at time of opening.
+Phase 8C CLOSED 2026-04-04.
 
 ---
 
@@ -3263,9 +3267,9 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
-### T5-70 · AuthStore stores users and tokens in process-local dicts — not wired to SQLite auth tables
+### T5-70 · AuthStore stores users and tokens in process-local dicts — not wired to SQLite auth tables ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-04-04
 **Source:** DEC-035 / OBS-037
 **Severity:** HIGH
 **Workflow Path: A**
@@ -3274,11 +3278,43 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 **Acceptance criteria (binary):** `AuthStore` CRUD methods read from and write to the `auth_users`/`auth_tokens` SQLite tables via `DatabaseManager`; bcrypt and JWT logic is unchanged; a test verifies that a session persists across `AuthStore` re-instantiation (the key failure mode of the in-memory design).
 
+**Resolution:** AuthStore wired to SQLite via DatabaseManager; bcrypt/JWT logic unchanged; 19 tests green. 2026-04-04.
+
 ---
 
-### HD-05 · AuthenticatedRateLimiter._requests accumulates keys unboundedly — memory DoS vector
+### HD-01 · HRVGuidedEngine lacks baseline drift detection — silent HRV baseline staleness ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-04-04
+**Source:** TITAN_HARDENING_FRAMEWORK_v1.md
+**Severity:** HIGH
+**Location:** `titan/science/hrv_engine.py` (`HRVGuidedEngine`)
+**Resolution:** `check_baseline_drift()` added to `HRVGuidedEngine`; emits `hrv_baseline_drift_warning` event when baseline drift exceeds threshold; 8 tests green. 2026-04-04.
+
+---
+
+### HD-02 · database.py activity timestamp truncation — UTC handling incorrect ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-04-04
+**Source:** TITAN_HARDENING_FRAMEWORK_v1.md
+**Severity:** HIGH
+**Location:** `titan/core/database.py` (lines 1405, 1843)
+**Resolution:** UTC fix applied at database.py:1405,1843; tz-aware timestamp handling corrected. 2026-04-04.
+
+---
+
+### HD-03 · H5/FUELING/INTENSITY gates missing NaN guards — silent governance bypass ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-04-04
+**Source:** TITAN_HARDENING_FRAMEWORK_v1.md / ADR-0009
+**Severity:** HIGH
+**Location:** `titan/science/governance_engine.py` (H5, FUELING, INTENSITY gates)
+**Resolution:** NaN guards added to H5, FUELING_GATE, and INTENSITY_GATE_RED/YELLOW paths per ADR-0009; 3 new tests green. 2026-04-04.
+
+---
+
+### HD-05 · AuthenticatedRateLimiter._requests accumulates keys unboundedly — memory DoS vector ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-04-04
 **Source:** DEC-036 / OBS-038
 **Severity:** MEDIUM
 **Workflow Path: A**
@@ -3287,11 +3323,23 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 **Acceptance criteria (binary):** `RATE_LIMITER_MAX_KEYS = 10_000` constant added to `titan/config/thresholds.py`; `AuthenticatedRateLimiter` implements LRU eviction when `len(self._requests) >= RATE_LIMITER_MAX_KEYS` (oldest-by-last-request key evicted on new key insertion); tests verify the ceiling is enforced and legitimate state is preserved for active keys.
 
+**Resolution:** `RATE_LIMITER_MAX_KEYS=10000` added to thresholds.py; LRU eviction implemented; `limiter_eviction` WARNING event emitted on eviction; 6 tests green. 2026-04-04.
+
 ---
 
-### HD-08 · PersistenceFailure mixed state: silent no-ops, mixed-epoch H3, unobservable degraded coaching output
+### HD-06 · DegradedModeTracker state not persisted — degradation timers lost on process restart ✅ RESOLVED
 
-**Status:** OPEN
+**Status:** ✅ RESOLVED 2026-04-04
+**Source:** DEC-037 / OBS-039
+**Severity:** HIGH
+**Location:** `titan/orchestration/daily_coach.py` (`DegradedModeTracker`)
+**Resolution:** `DegradedModeTracker` persists to `degraded_mode_state` SQLite table via `_persist_state()`; hydrates timers from DB on startup via `_hydrate_from_db()`; degradation timers survive process restarts; 9 tests green. 2026-04-04.
+
+---
+
+### HD-08 · PersistenceFailure mixed state: silent no-ops, mixed-epoch H3, unobservable degraded coaching output ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-04-04
 **Source:** DEC-038 / OBS-041
 **Severity:** HIGH
 **Workflow Path: A**
@@ -3299,6 +3347,8 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Description:** Three bounded observability/coherence gaps under `PersistenceFailure`: (1) `save_hrr()` and `update_glycogen_debt()` silently affect 0 rows when `daily_metrics` has no row for `today_str` after a persistence rollback — no event is emitted; (2) H3 gate consumes mixed-epoch data (`today_rhr` is ephemeral, `baseline_rhr` is DB-derived) with no flag propagated to the governance context; (3) `coaching_data` payload has no `persistence_degraded` bool field, making it impossible for the Telegram message or Operator Console to distinguish a persistence-degraded decision from a normal one. Gate logic must NOT be changed — ADR-0020 intent is preserved.
 
 **Acceptance criteria (binary):** `_daily_coach_event("hrr_persist_skipped")` and `("glycogen_persist_skipped")` are emitted when `persistence_degraded=True` and the respective UPDATE affects 0 rows; `persistence_degraded: bool` is added to the governance context dict and to `coaching_data` payload; the Telegram coaching message annotates the session type when `persistence_degraded=True`; no changes to any gate decision logic.
+
+**Resolution:** `data_confidence_low=True` when `persistence_degraded=True`; silent no-op WARNING events emitted for hrr/glycogen persist skips; `persistence_degraded` field added to governance context and `coaching_data` payload; 8 tests green. 2026-04-04.
 
 ---
 
@@ -3662,9 +3712,13 @@ When an item is completed, mark it here with date and PR reference:
 | T5-66 | ✅ RESOLVED 2026-03-29 — per-column UPSERT preserves mood/soreness/fatigue/notes on Garmin re-sync; 5 tests green | 2026-03-29 |
 | T5-67 | ✅ RESOLVED 2026-04-04 — boolean flag gates success events in all 4 sync methods; 12 tests green | 2026-04-04 |
 | HD-07 | ✅ RESOLVED 2026-04-04 — _activity_utc_date() replaces [:10] truncation; fromisoformat()+UTC for tz-aware timestamps; 10 tests green | 2026-04-04 |
-| T5-70 | OPEN — AuthStore process-local dicts; wire to SQLite auth_users/auth_tokens via DatabaseManager (DEC-035) | — |
-| HD-05 | OPEN — AuthenticatedRateLimiter unbounded key accumulation; RATE_LIMITER_MAX_KEYS + LRU eviction (DEC-036) | — |
-| HD-08 | OPEN — PersistenceFailure mixed state: silent no-ops + mixed-epoch flag + persistence_degraded payload field (DEC-038) | — |
+| HD-01 | ✅ RESOLVED 2026-04-04 — check_baseline_drift() in HRVGuidedEngine; emits hrv_baseline_drift_warning; 8 tests green | 2026-04-04 |
+| HD-02 | ✅ RESOLVED 2026-04-04 — database.py:1405,1843 UTC fix; fromisoformat()+UTC for tz-aware timestamps | 2026-04-04 |
+| HD-03 | ✅ RESOLVED 2026-04-04 — H5/FUELING/INTENSITY NaN guards; ADR-0009; 3 new tests green | 2026-04-04 |
+| HD-06 | ✅ RESOLVED 2026-04-04 — DegradedModeTracker persists to degraded_mode_state table; hydrates on startup; 9 tests green | 2026-04-04 |
+| T5-70 | ✅ RESOLVED 2026-04-04 — AuthStore wired to SQLite via DatabaseManager; bcrypt/JWT unchanged; 19 tests green | 2026-04-04 |
+| HD-05 | ✅ RESOLVED 2026-04-04 — RATE_LIMITER_MAX_KEYS=10000; LRU eviction; limiter_eviction WARNING event; 6 tests green | 2026-04-04 |
+| HD-08 | ✅ RESOLVED 2026-04-04 — data_confidence_low=True when persistence_degraded; silent no-op WARNING events; 8 tests green | 2026-04-04 |
 | T5-68 | ✅ RESOLVED 2026-03-29 — ESI_DEW_POINT_FALLBACK_C=18.0 in thresholds.py+evidence_registry; daily_coach.py:714 uses constant; ADR-0034 annotated; 6 tests green | 2026-03-29 |
 | T5-69 | ✅ RESOLVED 2026-03-29 — activityId extracted; garmin_activity_id column + unique index via staged migration; INSERT OR IGNORE deduplication; record restored after merge conflict; Stage 3 merged PR #572 2026-03-29; NOT NULL constraint conditional (NULL rows skipped — manual sessions by design) | 2026-03-29 |
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
