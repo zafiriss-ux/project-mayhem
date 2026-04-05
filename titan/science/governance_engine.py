@@ -1112,7 +1112,7 @@ class GovernanceEngine:
                     )
                 )
             session_plan["vo2_eligibility"] = vo2_result
-            if not vo2_result.get("eligible", True):
+            if not vo2_result.get("eligible", False):
                 applied_locks.append("VO2_ELIGIBILITY_GATE")
 
         fueling_result = self._check_fueling_gate(session_plan, context)
