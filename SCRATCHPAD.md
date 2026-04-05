@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
@@ -3247,7 +3247,7 @@ DATA_MISSING_CONSERVATIVE log + apply EASY ceiling), consistent with ADR-0051?
 Governance-critical. DailyCoach path is safe via _safe_float(). External / direct
 callers are FAIL-OPEN without visibility. No code change in this audit pass.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3298,7 +3298,7 @@ intended behavior for PG (forcing investigation of double-sync root cause)?
 No duplicate data is stored in either backend. The behavioral asymmetry (silent skip
 vs. exception) is the finding. No code change in this audit pass.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3344,7 +3344,7 @@ Single-athlete system currently (ADR-0033 Layer 3 deferred Phase 9). The DEFAULT
 'default' works for PostgreSQL. SQLite schema parity gap is a pre-Phase-9 risk. No
 code change in this audit pass.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3381,7 +3381,7 @@ mechanism (e.g., automatic flag after N consecutive divergence events) planned?
 Intentional by current design. OutcomeTracker records data for future threshold
 calibration (ADR-0052 deferred Phase 9). No code change in this audit pass.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3419,4 +3419,144 @@ advisory emission (logged WARNING after N days) planned?
 Intentional by current design. GovernanceEngine is stateless. No code change in this
 audit pass.
 
-**Status:** PENDING
+**Status:** REVIEWED
+
+---
+
+### [DEC-040] Response to OBS-043 — H2/H3 FAIL-OPEN on None input: NEW_DEBT_ENTRY T5-72
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — read `titan/science/governance_engine.py` lines 309–322 (H2) and
+  341–354 (H3): confirmed `except (TypeError, ValueError): h2_trigger = False` and
+  `except (TypeError, ValueError): h3_trigger = False`. Confirmed DailyCoach path is safe
+  via `_safe_float(hrv_summary.get('latest_hrv'), 0.0)` (line 553) and
+  `_safe_float(hrv_summary.get('baseline'), 50.0)` (line 554) — delta=50.0 ≥ 15.0 fires
+  H2 correctly. Confirmed no external direct callers exist in current single-process
+  deployment; operator console and API adapters pass context through DailyCoach pipeline.
+  FAIL-OPEN risk is latent, not active.
+
+**Architect finding:** The finding is real and correctly categorised under ADR-0051
+(Conservative-Fail Principle). DailyCoach path is safe via `_safe_float()` defensive
+guard. The exception handler silently swallowing `TypeError` on missing HRV/RHR inputs
+violates ADR-0051 policy for safety-critical gate inputs. Fix scope is narrow: replace
+`h2_trigger = False` with a DATA_MISSING_CONSERVATIVE WARNING event + EASY ceiling
+application (matching H4/H5 conservative behaviour rather than FAIL-OPEN). Same
+pattern for H3. No ADR required — ADR-0051 already governs this. Phase 9 timing is
+appropriate: no active bypass path exists in current deployment.
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-72 — `_check_hard_stops()` H2/H3: replace `TypeError`/`ValueError` except→False with DATA_MISSING_CONSERVATIVE WARNING emit + EASY ceiling application. Files: `governance_engine.py` lines 321–322, 353–354. ADR-0051 extension. Phase 9. |
+
+**OBS-043 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-041] Response to OBS-044 — PostgreSQL save_activity() missing ON CONFLICT: NEW_DEBT_ENTRY T5-73
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — read `titan/core/database.py` line 2201: confirmed plain `INSERT INTO
+  training_log` without `ON CONFLICT` clause. Read line 2139: confirmed `UNIQUE INDEX` on
+  `garmin_activity_id` (partial, WHERE NOT NULL). Read SQLite path line 1190: confirmed
+  `INSERT OR IGNORE INTO training_log`. PostgreSQL path will raise `psycopg2.IntegrityError`
+  on duplicate garmin_activity_id; SQLite path silently skips. Data integrity is preserved
+  in both backends — no duplicate rows are stored. Behavioral asymmetry (exception vs. silent
+  skip) is the actual gap. ADR-0044 confirmed: PostgreSQL migration = Phase 9 lane; D2 stage.
+
+**Architect finding:** No data integrity failure; UNIQUE constraint fires in both paths.
+The gap is exception propagation asymmetry: SQLite callers are immune to duplicate sync
+errors; PostgreSQL callers are not. The fix is a single-line `ON CONFLICT
+(garmin_activity_id) DO NOTHING` addition that makes PostgreSQL semantics match SQLite.
+No architectural ambiguity; no ADR required beyond ADR-0044. Scoped to Phase 9
+PostgreSQL migration lane.
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-73 — `PostgreSQLDatabaseManager.save_activity()`: add `ON CONFLICT (garmin_activity_id) DO NOTHING` to match SQLite `OR IGNORE` semantics. File: `database.py` line ~2201. Phase 9 (PostgreSQL migration lane). |
+
+**OBS-044 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-042] Response to OBS-045 — governance_outcomes athlete_id absent: NEW_DEBT_ENTRY T5-74
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — read `titan/core/database.py` lines 332–357 (SQLite schema): confirmed
+  `governance_outcomes` table has no `athlete_id` column. Read lines 1684–1692 (SQLite INSERT):
+  confirmed 22 columns, no `athlete_id`. Read lines 2265–2272 (PostgreSQL INSERT): same 22
+  columns, no `athlete_id`; relies on `DEFAULT 'default'` from Alembic D3 migration. Read
+  `titan/science/outcome_tracker.py` line 240: `GovernanceDecision.athlete_profile_id = "DEFAULT"`
+  set but silently dropped at DB write. ADR-0033 Layer 3 (multi-athlete) confirmed as Phase 9.
+  Current single-athlete system: no functional impact.
+
+**Architect finding:** The `athlete_profile_id` field in `GovernanceDecision` is set correctly
+but discarded at the DB boundary in both backends. PostgreSQL path works via DEFAULT; SQLite
+schema lacks the column entirely — a schema parity gap that will require a migration when
+ADR-0033 Layer 3 activates. No active functional failure in single-athlete deployment. Fix
+must land before Phase 9 multi-athlete work begins; it is a prerequisite for ADR-0033 Layer 3.
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-74 — `governance_outcomes`: add `athlete_id` column to SQLite `create_tables()` schema; include explicit `athlete_id` in both SQLite and PostgreSQL `save_governance_decision()` INSERTs. Phase 9 (ADR-0033 Layer 3 prerequisite). |
+
+**OBS-045 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-043] Response to OBS-046 — BE-02 DETECTION-ONLY: NO_ACTION
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — read `tests/test_adversarial_scenarios.py` lines 177–280: confirmed
+  `TestBE02ReadinessGaming` class docstring ("detection only") and test
+  `test_readiness_outcome_divergence_recorded_without_block` verifies `governance_clean=True`
+  on day 6. Read `titan/science/outcome_tracker.py` `record_outcome()`: confirmed divergence
+  data is stored without any lockdown trigger. Cross-referenced ADR-0052: ThresholdAdapter
+  feedback loop and enforcement wiring are explicitly Phase 9 scope (Stage 4).
+
+**Architect finding:** DETECTION-ONLY is the correct and intended policy for BE-02 in the
+current phase. `OutcomeTracker` accumulates divergence data to populate the feedback loop
+that ADR-0052 Stage 4 will act upon. Wiring enforcement before the ThresholdAdapter exists
+would couple the governance engine to incomplete ML calibration infrastructure. No debt entry
+warranted — this is an architectural boundary decision, not a gap.
+
+| Action | Detail |
+|---|---|
+| NO_ACTION | DETECTION-ONLY is by design per ADR-0052. Enforcement wiring (lockdown / flag after N consecutive divergence events) is Phase 9 Stage 4 scope. No new debt entry required; ADR-0052 already tracks the obligation. |
+
+**OBS-046 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-044] Response to OBS-047 — BE-03 DETECTION-ONLY stateless governance: NO_ACTION
+
+**Date:** 2026-04-05
+**Architect:** Claude
+**OBS verified:** YES — read `titan/science/governance_engine.py` `apply_constraints()`:
+  confirmed no streak counter, no session-level state, no escalation logic for consecutive
+  GREEN days. Read `tests/test_adversarial_scenarios.py` lines 286–372: confirmed
+  `test_four_consecutive_green_days_no_auto_block` verifies `governance_clean=True` on day 4
+  and `test_green_streak_does_not_add_quality_session_streak_lock` verifies empty lock codes.
+  GovernanceEngine is stateless by explicit architectural decision.
+
+**Architect finding:** Stateless governance is the correct design for the current phase.
+Each call to `apply_constraints()` is independent; no cross-session state is accumulated
+inside the engine. Advisory WARNING emission after N consecutive GREEN days would require
+persistent streak state — a complexity cost that is not yet justified by OutcomeTracker
+data. If future data from ADR-0052 calibration shows consecutive-GREEN streaks correlate
+with readiness overestimation, this becomes a Phase 9 feature candidate. No debt entry
+warranted now.
+
+| Action | Detail |
+|---|---|
+| NO_ACTION | Stateless governance is correct design for current phase. Streak-based advisory emission = Phase 9 feature candidate, contingent on OutcomeTracker data support. No new debt entry required. |
+
+**OBS-047 marked:** REVIEWED
+**Status:** PROCESSED
