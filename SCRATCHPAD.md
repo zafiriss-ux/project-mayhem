@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -3199,3 +3199,224 @@ scope (governance_engine, hrv_engine, daily_coach, garmin_sync, database) is CLE
 **DEC:** Pre-existing debt. G-CI-02 scope has been reduced to governance-critical
 modules only (5 files). Full cleanup of remaining 7 modules = separate Phase 9
 debt item. HR-01 enforcement for new code remains active. Does not block current merge.
+
+---
+
+### [OBS-043] H2/H3 except blocks: FAIL-OPEN on None/invalid input
+
+**Date:** 2026-04-05
+**Trigger:** Architect-authorized enforcement integrity audit (bypass path verification)
+**Session context:** Audit pass / read-only / enforcement integrity audit
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/science/governance_engine.py` — `_check_hard_stops()` lines 309–322 (H2) and 341–354 (H3)
+
+**Observation:**
+`_check_hard_stops()` H2 and H3 exception handlers:
+
+```python
+# H2
+except (TypeError, ValueError):
+    h2_trigger = False   # line 321–322
+
+# H3
+except (TypeError, ValueError):
+    h3_trigger = False   # line 353–354
+```
+
+When `context.get("today_hrv")` or `context.get("baseline_hrv")` is `None`,
+`float(None)` raises `TypeError`, caught here → `h2_trigger = False`. No REST is
+forced, no degraded flag is emitted. A session entering `apply_constraints()` as
+INTERVALS remains INTERVALS if both HRV keys are absent.
+
+Same pattern for H3 with `today_rhr`/`baseline_rhr`.
+
+**Mitigation in normal path:** DailyCoach uses `_safe_float(hrv_summary.get('latest_hrv'), 0.0)` (line 553) and `_safe_float(hrv_summary.get('baseline'), 50.0)` (line 554) before passing to governance, so `today=0.0, baseline=50.0 → delta=50.0 ≥ 15.0 → H2 fires`. Conservative-fail in the DailyCoach path.
+
+**Bypass path:** Direct callers of `apply_constraints({"today_hrv": None, ...})` — e.g., operator console, tests, API adapters — receive no REST and no warning. FAIL-OPEN for these call sites.
+
+**Pattern / scope:**
+H2 (line 321–322), H3 (line 353–354). H4 (line 421–422) and H5 (line 446–447) have the same pattern but are softer gates (EASY ceiling, not REST).
+
+**Architectural question raised:**
+Should `_check_hard_stops()` treat `TypeError`/`ValueError` on HRV/RHR input as
+missing safety-critical data and apply a conservative fallback (e.g., emit a
+DATA_MISSING_CONSERVATIVE log + apply EASY ceiling), consistent with ADR-0051?
+
+**Codex assessment (data only, no decision):**
+Governance-critical. DailyCoach path is safe via _safe_float(). External / direct
+callers are FAIL-OPEN without visibility. No code change in this audit pass.
+
+**Status:** PENDING
+
+---
+
+### [OBS-044] PostgreSQL training_log INSERT missing ON CONFLICT DO NOTHING
+
+**Date:** 2026-04-05
+**Trigger:** Architect-authorized enforcement integrity audit (bypass path verification)
+**Session context:** Audit pass / read-only / enforcement integrity audit
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/database.py` — `PostgreSQLDatabaseManager.save_activity()` line 2201
+
+**Observation:**
+`PostgreSQLDatabaseManager.save_activity()` at line 2201:
+
+```python
+cursor.execute("""
+    INSERT INTO training_log (
+        date, session_type, ... garmin_activity_id, quality_flag
+    ) VALUES (%s, ...)
+""", ...)
+```
+
+No `ON CONFLICT DO NOTHING` or `ON CONFLICT (garmin_activity_id) DO NOTHING`.
+
+A `UNIQUE INDEX` on `garmin_activity_id` exists (line 2139, partial where NOT NULL),
+so duplicate Garmin activities are blocked at DB level — no duplicate data is stored.
+However, a duplicate insert raises `psycopg2.IntegrityError` which propagates
+uncaught through `save_activity()` to `_persist_garmin_data()` to `run_morning_routine()`.
+
+Contrast with SQLite path (line 1190): `INSERT OR IGNORE INTO training_log` — duplicate
+is silently skipped.
+
+**INV-07 status:** BYPASSABLE in the sense that the PostgreSQL adapter errors rather
+than silently deduplicates, creating asymmetric behavior between the two backends.
+Data integrity (no actual duplicates) is preserved, but exception propagation from a
+duplicate sync differs.
+
+**Pattern / scope:**
+One location. SQLite path is clean. PostgreSQL-specific gap.
+
+**Architectural question raised:**
+Should `save_activity()` on the PostgreSQL adapter use `ON CONFLICT (garmin_activity_id)
+DO NOTHING` to match SQLite `OR IGNORE` semantics? Or is exception propagation the
+intended behavior for PG (forcing investigation of double-sync root cause)?
+
+**Codex assessment (data only, no decision):**
+No duplicate data is stored in either backend. The behavioral asymmetry (silent skip
+vs. exception) is the finding. No code change in this audit pass.
+
+**Status:** PENDING
+
+---
+
+### [OBS-045] governance_outcomes: athlete_id absent from SQLite schema and INSERT
+
+**Date:** 2026-04-05
+**Trigger:** Architect-authorized enforcement integrity audit (bypass path verification)
+**Session context:** Audit pass / read-only / enforcement integrity audit
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/core/database.py` — `create_tables()` line 332–357 (SQLite schema), `save_governance_decision()` lines 1684–1692 (SQLite INSERT), lines 2265–2272 (PostgreSQL INSERT)
+- `titan/science/outcome_tracker.py` — `record_decision()` line 240, 253
+
+**Observation:**
+`GovernanceDecision` dataclass has field `athlete_profile_id` (set to "DEFAULT" in
+`record_decision()` at line 240). `self._db.save_governance_decision(asdict(decision))`
+is called at line 253.
+
+Both `save_governance_decision()` implementations omit `athlete_profile_id`/`athlete_id`
+from the INSERT column list:
+
+- SQLite INSERT (line 1684–1692): 22 columns, no `athlete_id`.
+- PostgreSQL INSERT (line 2265–2272): same 22 columns, no `athlete_id`.
+- SQLite schema (line 332–357): `governance_outcomes` table has no `athlete_id` column.
+- PostgreSQL Alembic D3 migration: `athlete_id TEXT NOT NULL DEFAULT 'default'` was
+  added to `governance_outcomes` (TECHNICAL_DEBT.md line 1667), but the INSERT still
+  does not specify it — it relies on the DEFAULT value.
+
+**INV-03 status:** BYPASSABLE for SQLite path (column absent entirely). PostgreSQL
+path has the column but uses default rather than explicit insert. The `athlete_profile_id`
+field in `GovernanceDecision` is silently dropped on every DB write.
+
+**Pattern / scope:**
+Confined to `governance_outcomes` table. Other governance tables (`override_signals`)
+have `athlete_id NOT NULL` correctly included. This is isolated to outcome tracking.
+
+**Architectural question raised:**
+Should `save_governance_decision()` explicitly include `athlete_id`/`athlete_profile_id`
+in the INSERT, and should the SQLite schema add the column (matching Alembic D3)?
+
+**Codex assessment (data only, no decision):**
+Single-athlete system currently (ADR-0033 Layer 3 deferred Phase 9). The DEFAULT
+'default' works for PostgreSQL. SQLite schema parity gap is a pre-Phase-9 risk. No
+code change in this audit pass.
+
+**Status:** PENDING
+
+---
+
+### [OBS-046] BE-02 (Readiness Gaming): DETECTION-ONLY, no system action
+
+**Date:** 2026-04-05
+**Trigger:** Architect-authorized enforcement integrity audit (bypass path verification)
+**Session context:** Audit pass / read-only / enforcement integrity audit
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `tests/test_adversarial_scenarios.py` — `TestBE02ReadinessGaming` lines 177–280
+- `titan/science/outcome_tracker.py` — `record_decision()` / `record_outcome()` (detection mechanism)
+
+**Observation:**
+BE-02 (Readiness Gaming): five days of readiness=95 + RPE=9 divergence are recorded
+by `OutcomeTracker.record_outcome()` but produce no governance lockdown, no block, and
+no throttle on the subsequent governance run. Test `test_readiness_outcome_divergence_recorded_without_block`
+explicitly verifies `governance_clean=True` on day 6.
+
+**Detection mechanism:** OutcomeTracker stores the divergence data. Analytics surface
+divergence via `get_calibration_analytics()`. No threshold-based lockdown is wired to
+high divergence patterns.
+
+**System action:** NONE. DETECTION-ONLY.
+
+**Pattern / scope:**
+By design (test class docstring: "detection only"). No system action wired.
+
+**Architectural question raised:**
+Is DETECTION-ONLY the intended long-term policy for BE-02, or is a future enforcement
+mechanism (e.g., automatic flag after N consecutive divergence events) planned?
+
+**Codex assessment (data only, no decision):**
+Intentional by current design. OutcomeTracker records data for future threshold
+calibration (ADR-0052 deferred Phase 9). No code change in this audit pass.
+
+**Status:** PENDING
+
+---
+
+### [OBS-047] BE-03 (Green Means Go): DETECTION-ONLY, no streak-based lockdown
+
+**Date:** 2026-04-05
+**Trigger:** Architect-authorized enforcement integrity audit (bypass path verification)
+**Session context:** Audit pass / read-only / enforcement integrity audit
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `tests/test_adversarial_scenarios.py` — `TestBE03GreenMeansGo` lines 286–372
+- `titan/science/governance_engine.py` — `apply_constraints()` (no streak tracking logic)
+
+**Observation:**
+BE-03 (Green Means Go): four consecutive governance_clean=True days produce no
+auto-block or advisory lockdown in `GovernanceEngine.apply_constraints()`. Test
+`test_four_consecutive_green_days_no_auto_block` verifies `governance_clean=True`
+on day 4. Test `test_green_streak_does_not_add_quality_session_streak_lock` verifies
+no lock codes added.
+
+`governance_engine.py` contains no streak counter, no state, no escalation logic
+for consecutive GREEN days. Each call to `apply_constraints()` is stateless.
+
+**System action:** NONE. DETECTION-ONLY (advisory logged, no system block).
+
+**Pattern / scope:**
+By design (test class docstring: "consecutive GREEN days do not auto-block governance").
+GovernanceEngine is intentionally stateless per call.
+
+**Architectural question raised:**
+Is DETECTION-ONLY the permanent policy for consecutive GREEN streaks, or is a future
+advisory emission (logged WARNING after N days) planned?
+
+**Codex assessment (data only, no decision):**
+Intentional by current design. GovernanceEngine is stateless. No code change in this
+audit pass.
+
+**Status:** PENDING
