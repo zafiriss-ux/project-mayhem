@@ -95,6 +95,9 @@ INTENSITY_GOVERNOR_ACWR_RED = 1.5
 INTENSITY_GOVERNOR_READINESS_YELLOW = 55.0
 INTENSITY_GOVERNOR_READINESS_RED = 40.0
 
+# Conservative volume modifier when intensity gate fires but modifier is absent — ADR-0051.
+INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE = 0.7  # Conservative volume reduction when modifier absent (ADR-0051)
+
 # VolumeLoadGauge thresholds — T5-35 (Category A only).
 VLG_TSB_YELLOW_MIN = -30.0
 VLG_ACWR_RED_MIN = 0.7

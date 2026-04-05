@@ -815,6 +815,16 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC readiness hard floor for intensity governance.',
     ),
 
+    'INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE': ThresholdEvidence(
+        parameter='INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE',
+        value=0.7,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Conservative-fail default per ADR-0051; applied when intensity gate fires but volume_modifier key is absent from gate payload.',
+        rationale='A 30% volume reduction is the conservative fallback when the gate payload is incomplete. Absent modifier on a flagged gate must not silently pass full volume (optimistic default eliminated per ADR-0051/INV-05).',
+        policy_note='HEURISTIC policy constant; not derived from population data. Recalibrate via OutcomeTracker if conservative ceiling proves too restrictive.',
+    ),
+
     'VLG_TSB_YELLOW_MIN': ThresholdEvidence(
         parameter='VLG_TSB_YELLOW_MIN',
         value=-30.0,
