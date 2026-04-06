@@ -307,6 +307,7 @@ class GovernanceEngine:
 
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
         # Fires when drop >= HARD_STOP_HRV_DELTA (inclusive boundary).
+        h2_trigger = False
         try:
             _h2_today = float(context.get("today_hrv"))
             _h2_base = float(context.get("baseline_hrv"))
@@ -319,7 +320,19 @@ class GovernanceEngine:
             else:
                 h2_trigger = _h2_today <= _h2_base - HARD_STOP_HRV_DELTA
         except (TypeError, ValueError):
-            h2_trigger = False
+            # ADR-0051: keys present but non-castable → conservative fail.
+            # Absent keys mean the caller does not supply HRV; treat as no-op.
+            if "today_hrv" in context or "baseline_hrv" in context:
+                _gate_event(
+                    "H2_HRV",
+                    "EASY_ceiling_applied",
+                    reason="governance_data_missing_conservative",
+                    severity="WARNING",
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
+                # ADR-0051: missing HRV data → conservative fail
+                context["data_confidence_low"] = True
         if h2_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
@@ -339,6 +352,7 @@ class GovernanceEngine:
 
         # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
         # Fires when rise >= HARD_STOP_RHR_DELTA (inclusive boundary).
+        h3_trigger = False
         try:
             _h3_today = float(context.get("today_rhr"))
             _h3_base = float(context.get("baseline_rhr"))
@@ -351,7 +365,19 @@ class GovernanceEngine:
             else:
                 h3_trigger = _h3_today >= _h3_base + HARD_STOP_RHR_DELTA
         except (TypeError, ValueError):
-            h3_trigger = False
+            # ADR-0051: keys present but non-castable → conservative fail.
+            # Absent keys mean the caller does not supply RHR; treat as no-op.
+            if "today_rhr" in context or "baseline_rhr" in context:
+                _gate_event(
+                    "H3_RHR",
+                    "EASY_ceiling_applied",
+                    reason="governance_data_missing_conservative",
+                    severity="WARNING",
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
+                # ADR-0051: missing RHR data → conservative fail
+                context["data_confidence_low"] = True
         if h3_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
