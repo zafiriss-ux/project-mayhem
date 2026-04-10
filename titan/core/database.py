@@ -2203,6 +2203,7 @@ class PostgreSQLDatabaseManager:
                     training_load, shoe_id, surface, temperature_c, notes,
                     garmin_activity_id, quality_flag
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (garmin_activity_id) DO NOTHING
                 """,
                 (
                     date,

@@ -586,11 +586,16 @@ class _FakePostgresCursor:
         self._cursor = cursor
 
     def execute(self, query, params=None):
+        import re
+
         sql = (
             query.replace("%s", "?")
             .replace("BIGSERIAL PRIMARY KEY", "INTEGER PRIMARY KEY AUTOINCREMENT")
             .replace("DOUBLE PRECISION", "REAL")
         )
+        # Strip PostgreSQL ON CONFLICT (col) DO NOTHING — SQLite uses OR IGNORE at
+        # the INSERT level; the fake in-memory schema has no partial unique index.
+        sql = re.sub(r"\s*ON CONFLICT\s*\(\w+\)\s*DO NOTHING", "", sql)
         if params is None:
             self._cursor.execute(sql)
         else:
