@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 
 
 class DatabaseManager:
@@ -331,6 +331,7 @@ class DatabaseManager:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS governance_outcomes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'default',
                 date TEXT NOT NULL,
                 session_planned TEXT NOT NULL,
                 session_post_governance TEXT NOT NULL,
@@ -417,6 +418,11 @@ class DatabaseManager:
                 "auth_users / auth_tokens",
                 "AuthStore SQLite persistence tables (HD-04 / T5-70 / ADR-0048)",
                 None,  # DDL — see _apply_v10_migrations() below
+            ),
+            11: (
+                "governance_outcomes",
+                "athlete_id column for multi-athlete support (T5-74 / ADR-0033)",
+                None,  # DDL — see _apply_v11_migrations() below
             ),
         }
 
@@ -533,6 +539,17 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 10,
                     "tables_created": "auth_users, auth_tokens",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 11:
+            self._apply_v11_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 11,
+                    "columns_added": "governance_outcomes.athlete_id (T5-74)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -801,6 +818,24 @@ class DatabaseManager:
                 FOREIGN KEY (user_id) REFERENCES auth_users(id)
             )
         """)
+
+    def _apply_v11_migrations(self, cursor) -> None:
+        """Version 11: athlete_id column on governance_outcomes (T5-74 / ADR-0033)."""
+        try:
+            cursor.execute(
+                "ALTER TABLE governance_outcomes ADD COLUMN athlete_id TEXT NOT NULL DEFAULT 'default'"
+            )
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc).lower():
+                raise
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_migration_already_applied",
+                    "table": "governance_outcomes",
+                    "column": "athlete_id",
+                })
+            )
 
     # --- Auth User / Token CRUD (HD-04 / T5-70) ---
 
@@ -1682,6 +1717,7 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             cursor.execute(
                 """INSERT INTO governance_outcomes (
+                       athlete_id,
                        date, session_planned, session_post_governance,
                        locks_applied_json, governance_clean, phase, vlg_color,
                        apl_priority_vector_json, lock_thresholds_active_json,
@@ -1689,8 +1725,9 @@ class DatabaseManager:
                        outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes,
                        decision_was_followed, override_outcome_exclusion,
                        outcome_independence_ok, algorithm_version_snapshot
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
+                    decision.get('athlete_profile_id', 'default'),
                     decision['date'],
                     decision['session_planned'],
                     decision['session_post_governance'],
@@ -2145,6 +2182,7 @@ class PostgreSQLDatabaseManager:
                 """
                 CREATE TABLE IF NOT EXISTS governance_outcomes (
                     id BIGSERIAL PRIMARY KEY,
+                    athlete_id TEXT NOT NULL DEFAULT 'default',
                     date TEXT NOT NULL,
                     session_planned TEXT NOT NULL,
                     session_post_governance TEXT NOT NULL,
@@ -2264,15 +2302,17 @@ class PostgreSQLDatabaseManager:
             cursor.execute(
                 """
                 INSERT INTO governance_outcomes (
+                    athlete_id,
                     date, session_planned, session_post_governance, locks_applied_json,
                     governance_clean, phase, vlg_color, apl_priority_vector_json,
                     lock_thresholds_active_json, acwr, tsb_value, readiness_score,
                     glycogen_debt, afi_value, outcome_rpe, outcome_completed,
                     outcome_session_type_actual, outcome_notes, decision_was_followed,
                     override_outcome_exclusion, outcome_independence_ok, algorithm_version_snapshot
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
+                    decision.get("athlete_profile_id", "default"),
                     decision["date"],
                     decision["session_planned"],
                     decision["session_post_governance"],

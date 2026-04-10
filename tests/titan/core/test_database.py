@@ -884,3 +884,152 @@ def test_update_glycogen_debt_no_warning_when_row_updated(tmp_path, caplog):
         assert not warning_msgs, "update_glycogen_debt must NOT warn when a row is updated"
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# T5-74 — governance_outcomes athlete_id schema + INSERT
+# ---------------------------------------------------------------------------
+
+def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
+    """governance_outcomes CREATE TABLE must include athlete_id (Fix A)."""
+    db = DatabaseManager(db_name="gov_schema.db", db_dir=tmp_path)
+    try:
+        cursor = db.conn.cursor()
+        columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
+        assert "athlete_id" in columns, "governance_outcomes must have athlete_id column"
+    finally:
+        db.close()
+
+
+def test_schema_version_is_11():
+    """SCHEMA_VERSION must be 11 after T5-74 migration (Fix E)."""
+    from titan.core.database import SCHEMA_VERSION
+    assert SCHEMA_VERSION == 11
+
+
+def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
+    """save_governance_decision() must write athlete_profile_id to athlete_id column (Fix B)."""
+    db = DatabaseManager(db_name="gov_athlete_id.db", db_dir=tmp_path)
+    try:
+        db.save_governance_decision({
+            "date": "2026-04-10",
+            "session_planned": "EASY",
+            "session_post_governance": "EASY",
+            "athlete_profile_id": "ATH_42",
+        })
+        cursor = db.conn.cursor()
+        row = cursor.execute(
+            "SELECT athlete_id FROM governance_outcomes WHERE date = ?", ("2026-04-10",)
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "ATH_42"
+    finally:
+        db.close()
+
+
+def test_save_governance_decision_defaults_athlete_id_when_missing(tmp_path):
+    """save_governance_decision() must default athlete_id to 'default' when key absent (Fix B)."""
+    db = DatabaseManager(db_name="gov_default_athlete.db", db_dir=tmp_path)
+    try:
+        db.save_governance_decision({
+            "date": "2026-04-10",
+            "session_planned": "REST",
+            "session_post_governance": "REST",
+        })
+        cursor = db.conn.cursor()
+        row = cursor.execute(
+            "SELECT athlete_id FROM governance_outcomes WHERE date = ?", ("2026-04-10",)
+        ).fetchone()
+        assert row is not None
+        assert row[0] == "default"
+    finally:
+        db.close()
+
+
+def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path):
+    """v11 migration must add athlete_id to governance_outcomes in pre-existing databases."""
+    import sqlite3
+
+    db_path = tmp_path / "pre_v11.db"
+    # Create a governance_outcomes table without athlete_id (simulates a pre-v11 database).
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("""
+            CREATE TABLE governance_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_planned TEXT NOT NULL,
+                session_post_governance TEXT NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                vlg_color TEXT NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr REAL NOT NULL,
+                tsb_value REAL NOT NULL,
+                readiness_score REAL NOT NULL,
+                glycogen_debt REAL NOT NULL,
+                afi_value REAL
+            )
+        """)
+        conn.execute("PRAGMA user_version = 10")
+
+    # Open via DatabaseManager — v11 migration should add athlete_id.
+    db = DatabaseManager(db_name=db_path.name, db_dir=tmp_path)
+    try:
+        cursor = db.conn.cursor()
+        columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
+        assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
+        version = cursor.execute("PRAGMA user_version").fetchone()[0]
+        assert version == 11
+    finally:
+        db.close()
+
+
+def test_postgres_save_governance_decision_uses_athlete_profile_id(tmp_path, monkeypatch):
+    """PostgreSQL save_governance_decision() must write athlete_profile_id to athlete_id column (Fix C)."""
+    from titan.core import database as db_module
+
+    monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
+
+    db = db_module.PostgreSQLDatabaseManager(dsn="postgres://fake")
+    try:
+        db.save_governance_decision({
+            "date": "2026-04-10",
+            "session_planned": "EASY",
+            "session_post_governance": "EASY",
+            "athlete_profile_id": "ATH_PG",
+        })
+        with db._conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT athlete_id FROM governance_outcomes WHERE date = ?", ("2026-04-10",)
+            )
+            rows = cursor.fetchall()
+        assert rows, "Expected at least one governance_outcomes row"
+        assert rows[0][0] == "ATH_PG"
+    finally:
+        db.close()
+
+
+def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_path, monkeypatch):
+    """PostgreSQL save_governance_decision() must default athlete_id to 'default' (Fix C)."""
+    from titan.core import database as db_module
+
+    monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
+
+    db = db_module.PostgreSQLDatabaseManager(dsn="postgres://fake")
+    try:
+        db.save_governance_decision({
+            "date": "2026-04-11",
+            "session_planned": "REST",
+            "session_post_governance": "REST",
+        })
+        with db._conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT athlete_id FROM governance_outcomes WHERE date = ?", ("2026-04-11",)
+            )
+            rows = cursor.fetchall()
+        assert rows, "Expected at least one governance_outcomes row"
+        assert rows[0][0] == "default"
+    finally:
+        db.close()
