@@ -3,13 +3,13 @@ from pathlib import Path
 RUNTIME_DEPENDENCIES = {
     "numpy==1.26.4",
     "garminconnect==0.2.13",
-    "requests==2.32.4",
+    "requests==2.33.0",
     "pyTelegramBotAPI==4.21.0",
     "sqlalchemy==2.0.39",
     "alembic==1.15.2",
     "psycopg2-binary==2.9.10",
     "fastapi==0.115.0",
-    "pyjwt[crypto]==2.9.0",
+    "pyjwt[crypto]==2.12.0",
     "bcrypt==4.2.0",
 }
 
