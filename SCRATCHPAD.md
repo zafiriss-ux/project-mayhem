@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: IDLE
+STATUS: REVIEW_REQUESTED
 ```
 
 Valid states:
@@ -3560,3 +3560,110 @@ warranted now.
 
 **OBS-047 marked:** REVIEWED
 **Status:** PROCESSED
+
+---
+
+### [OBS-048] Structural bypass-path + central-gate test gap
+
+**Date:** 2026-04-11
+**Trigger:** Lane B structural audit — test-gap documentation
+**Session context:** Records-only audit pass / no code changes
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/orchestration/coaching_pipeline.py`
+- `titan/science/governance_engine.py`
+- `tests/test_architectural_invariants.py`
+
+**Observation:**
+Κανένα test δεν πιστοποιεί (a) ότι `_decision_pipeline()` έχει ακριβώς 1 call site στο
+production code, (b) ότι κάθε `_gate_*` method στο `GovernanceEngine` καλείται από το
+`apply_constraints()` body. Behavior είναι σωστό σήμερα. Regression protection απούσα.
+
+**Pattern / scope:**
+Structural invariants (single call-site, full gate coverage) are currently verified only
+by manual inspection. No AST-based or import-graph test enforces these properties. A
+refactor or copy-paste error that bypasses `_decision_pipeline()` or skips a gate method
+would not be caught by the current test suite before reaching CI.
+
+**Architectural question raised:**
+Πρέπει να προστεθούν AST-based structural invariant tests πριν Phase 9 multi-athlete
+entry; If yes, should they live in `tests/test_architectural_invariants.py` (new file) or
+in an existing phase-hygiene sweep?
+
+**Codex assessment (data only, no decision):**
+No code change made. Observation is data-only. Decision deferred to architect review.
+
+**Status:** PENDING
+
+---
+
+### [OBS-049] Interleaved decision+write + crash-midway + determinism gap
+
+**Date:** 2026-04-11
+**Trigger:** Lane B structural audit — test-gap documentation
+**Session context:** Records-only audit pass / no code changes
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `titan/orchestration/coaching_pipeline.py`
+- `titan/orchestration/daily_coach.py`
+- `tests/test_concurrency_consistency.py`
+
+**Observation:**
+Κανένα test δεν καλύπτει: (a) δύο παράλληλα `coaching_pipeline()` runs με shared DB,
+(b) SIGTERM μεταξύ step 8 και step 9 χωρίς governance trace, (c) deterministic plan
+output για seeded input υπό race conditions.
+
+**Pattern / scope:**
+Three distinct scenario classes are ungapped: (a) concurrent multi-athlete pipeline
+execution sharing the SQLite DatabaseManager lock, (b) mid-pipeline process termination
+leaving a partial governance trace in `governance_outcomes`, (c) output determinism under
+seeded-random or fixed-clock conditions (required for regression-diff workflows).
+Phase 9 multi-athlete architecture (ADR-0046) elevates scenarios (a) and (c) from
+theoretical to operational risk.
+
+**Architectural question raised:**
+Ποια από τα 3 scenarios είναι mandatory για Phase 9 multi-athlete entry gate? Specifically:
+(1) Is concurrent-pipeline coverage a P9 entry gate criterion per ADR-0046?
+(2) Is partial-trace SIGTERM handling in scope for T5-74 or a separate debt entry?
+(3) Is output determinism required for the regression suite or deferred to a later phase?
+
+**Codex assessment (data only, no decision):**
+No code change made. Observation is data-only. Decision deferred to architect review.
+
+**Status:** PENDING
+
+---
+
+### [OBS-050] tests/titan/api/* importorskip hygiene
+
+**Date:** 2026-04-11
+**Trigger:** Lane B structural audit — test-gap documentation
+**Session context:** Records-only audit pass / no code changes
+**Urgency:** NON-BLOCKING
+**Files involved:**
+- `tests/titan/api/test_rate_limiter_ceiling.py`
+- `tests/titan/api/test_audit.py`
+- `tests/titan/api/test_auth.py`
+- `tests/titan/api/test_auth_store_sqlite.py`
+
+**Observation:**
+4 test files κάνουν top-level import από `titan.api.main` χωρίς
+`pytest.importorskip("fastapi")`. Σε CI environment χωρίς fastapi (π.χ. lock-file drift),
+collection crashes αντί για graceful skip.
+
+**Pattern / scope:**
+If `fastapi` is absent from the environment (e.g., requirements drift, alternative CI
+matrix row, or developer setup without optional deps), pytest collection fails at import
+time for all four files rather than emitting a skip. This causes a PURPLE signal (import /
+collection error) that masks actual test failures in unrelated modules.
+
+**Architectural question raised:**
+Πρέπει να προστεθεί `importorskip` σε αυτά τα 4 files; If yes, should the guard be
+`pytest.importorskip("fastapi")` at module level, or a per-test `skipif` decorator? Is
+fastapi listed as a non-optional dependency in `requirements.txt` (in which case a
+collection crash is an environment error, not a test hygiene gap)?
+
+**Codex assessment (data only, no decision):**
+No code change made. Observation is data-only. Decision deferred to architect review.
+
+**Status:** PENDING
