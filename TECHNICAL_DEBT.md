@@ -3724,6 +3724,9 @@ When an item is completed, mark it here with date and PR reference:
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
+| T5-75 | OPEN — AST structural invariant: _decision_pipeline single call site + gate-method reachability | — |
+| T5-76 | OPEN — Concurrent coaching_pipeline() test (Phase 9 ADR-0046 entry gate) | — |
+| T5-77 | OPEN — SIGTERM mid-pipeline: no orphaned governance trace | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*

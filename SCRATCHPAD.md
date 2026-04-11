@@ -11,7 +11,7 @@ them to clean tasks in `TECHNICAL_DEBT.md`. Neither party acts on observations a
 ## Document Status
 
 ```
-STATUS: REVIEW_REQUESTED
+STATUS: IDLE
 ```
 
 Valid states:
@@ -3563,6 +3563,87 @@ warranted now.
 
 ---
 
+### [DEC-045] Response to OBS-048 — Structural bypass-path + central-gate test gap: NEW_DEBT_ENTRY T5-75
+
+**Date:** 2026-04-11
+**Architect:** Claude
+**OBS verified:** YES — confirmed via OBS-048 structural audit: `coaching_pipeline.py` and
+  `GovernanceEngine.apply_constraints()` have no AST-based or import-graph test covering
+  (a) single call-site invariant for `_decision_pipeline()` and (b) full gate-method
+  reachability from `apply_constraints()` body. Behavior is correct today; regression
+  protection is absent. Pattern confirmed as a structural test gap, not a runtime defect.
+
+**Architect finding:** An AST-based structural invariant test suite is warranted before
+Phase 9 multi-athlete entry. A refactor that silently bypasses `_decision_pipeline()` or
+drops a `_gate_*` method from `apply_constraints()` would not be caught by the current
+test suite. Two distinct invariants are being asserted: (1) single call-site for the
+decision pipeline, and (2) all gate methods are reachable. These are a single cohesive
+test item scoped to `tests/test_architectural_invariants.py` (new file).
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-75 — AST structural invariant tests: `_decision_pipeline()` has exactly one call site in production code; every `_gate_*` method in `GovernanceEngine` is called from `apply_constraints()`. File: `tests/test_architectural_invariants.py`. Phase 9 entry gate (structural). |
+
+**OBS-048 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-046] Response to OBS-049 — Interleaved decision+write + crash-midway + determinism gap: NEW_DEBT_ENTRY T5-76 + T5-77
+
+**Date:** 2026-04-11
+**Architect:** Claude
+**OBS verified:** YES — confirmed via OBS-049 audit: no test covers concurrent
+  `coaching_pipeline()` runs with shared DB, no test covers SIGTERM between steps 8
+  and 9, and no test covers deterministic output under seeded conditions. Three scenario
+  classes are ungapped. ADR-0046 confirmed: Phase 9 multi-athlete architecture elevates
+  concurrent-pipeline execution from theoretical to operational risk.
+
+**Architect finding:** The three scenarios split into two distinct debt items:
+  (a) Concurrent pipeline execution (T5-76): mandatory Phase 9 ADR-0046 entry gate;
+  a test must demonstrate that two concurrent `coaching_pipeline()` calls sharing
+  `DatabaseManager` do not corrupt governance state or produce interleaved writes.
+  (b) SIGTERM mid-pipeline (T5-77): independent data integrity concern — partial
+  `governance_outcomes` trace must not leave the DB in an inconsistent state;
+  this invariant is independent of multi-athlete scope.
+  (c) Output determinism (OBS-049 scenario 3): deferred — not a current data integrity
+  risk; regression-diff workflows are Phase 10 scope. No debt entry for (c).
+
+| Action | Detail |
+|---|---|
+| NEW_DEBT_ENTRY | T5-76 — Concurrent `coaching_pipeline()` test: two parallel calls sharing `DatabaseManager` must not corrupt governance state; ADR-0046 Phase 9 entry gate criterion. |
+| NEW_DEBT_ENTRY | T5-77 — SIGTERM mid-pipeline invariant: process termination between pipeline steps must not leave an orphaned (unpaired) `governance_outcomes` trace; data integrity test required. |
+
+**OBS-049 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
+### [DEC-047] Response to OBS-050 — tests/titan/api/* importorskip hygiene: NO_ACTION
+
+**Date:** 2026-04-11
+**Architect:** Claude
+**OBS verified:** YES — read `requirements.txt`: confirmed `fastapi` is listed as a pinned,
+  non-optional production dependency. A collection crash in the absence of `fastapi` is an
+  environment bootstrap failure, not a test hygiene gap. The `importorskip` guard is
+  appropriate only for truly optional dependencies; adding it here would mask an environment
+  misconfiguration rather than handle a legitimate optional-dep scenario.
+
+**Architect finding:** `fastapi` is not optional. If it is absent from the environment,
+the correct signal is a PURPLE (import/collection error) directing the engineer to fix
+the environment via `pip install -r requirements.txt`. Wrapping a mandatory dependency in
+`importorskip` would suppress that signal and produce a false green. No hygiene change
+required.
+
+| Action | Detail |
+|---|---|
+| NO_ACTION | `fastapi` is a pinned non-optional dependency in `requirements.txt`. A collection crash on absent `fastapi` is an environment error, not a test hygiene gap. An `importorskip` guard would suppress a legitimate PURPLE signal. No change required. |
+
+**OBS-050 marked:** REVIEWED
+**Status:** PROCESSED
+
+---
+
 ### [OBS-048] Structural bypass-path + central-gate test gap
 
 **Date:** 2026-04-11
@@ -3593,7 +3674,7 @@ in an existing phase-hygiene sweep?
 **Codex assessment (data only, no decision):**
 No code change made. Observation is data-only. Decision deferred to architect review.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3630,7 +3711,7 @@ theoretical to operational risk.
 **Codex assessment (data only, no decision):**
 No code change made. Observation is data-only. Decision deferred to architect review.
 
-**Status:** PENDING
+**Status:** REVIEWED
 
 ---
 
@@ -3666,4 +3747,4 @@ collection crash is an environment error, not a test hygiene gap)?
 **Codex assessment (data only, no decision):**
 No code change made. Observation is data-only. Decision deferred to architect review.
 
-**Status:** PENDING
+**Status:** REVIEWED
