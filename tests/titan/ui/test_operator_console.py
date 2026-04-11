@@ -1,5 +1,7 @@
 """Tests for OperatorConsoleService.garmin_sync_indicator — ADR-0050 / T5-12 Pass 2."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from titan.ui.operator_console import OperatorConsoleService
@@ -170,3 +172,61 @@ class TestGarminSyncIndicator:
             trusted_age_threshold_hours=4.0,
         )
         assert r["visible"] is False
+
+
+class TestReadinessLoadDashboardGarminIndicator:
+    """O7 — garmin_degradation_indicator in readiness_load_dashboard() — ADR-0050 / T5-12 Pass 2b."""
+
+    def _make_service(self) -> OperatorConsoleService:
+        db = MagicMock()
+        db.get_governance_decisions.return_value = []
+        return OperatorConsoleService(db=db)
+
+    def test_dashboard_shows_garmin_degraded_indicator_when_trust_invalid(self):
+        """trust_level=INVALID → garmin_degradation_indicator is not None."""
+        service = self._make_service()
+        result = service.readiness_load_dashboard(
+            garmin_state={
+                "is_degraded": False,
+                "has_baseline": True,
+                "data_age_hours": 30.0,
+                "trust_level": "INVALID",
+                "last_successful_sync_at": "2026-04-10T07:00:00",
+            }
+        )
+        assert "garmin_degradation_indicator" in result
+        assert result["garmin_degradation_indicator"] is not None
+
+    def test_dashboard_no_indicator_when_garmin_trusted(self):
+        """trust_level=TRUSTED, not degraded, fresh data → garmin_degradation_indicator is None."""
+        service = self._make_service()
+        result = service.readiness_load_dashboard(
+            garmin_state={
+                "is_degraded": False,
+                "has_baseline": True,
+                "data_age_hours": 1.0,
+                "trust_level": "TRUSTED",
+                "last_successful_sync_at": "2026-04-11T06:00:00",
+            }
+        )
+        assert "garmin_degradation_indicator" in result
+        assert result["garmin_degradation_indicator"] is None
+
+    def test_dashboard_indicator_wording_stale_data(self):
+        """data_age_hours > GARMIN_DATA_MAX_AGE_HOURS → indicator contains 'stale'."""
+        from titan.config.thresholds import GARMIN_DATA_MAX_AGE_HOURS
+
+        service = self._make_service()
+        result = service.readiness_load_dashboard(
+            garmin_state={
+                "is_degraded": False,
+                "has_baseline": True,
+                "data_age_hours": GARMIN_DATA_MAX_AGE_HOURS + 5.0,
+                "trust_level": "TRUSTED",
+                "last_successful_sync_at": "2026-04-09T07:00:00",
+            }
+        )
+        assert "garmin_degradation_indicator" in result
+        indicator = result["garmin_degradation_indicator"]
+        assert indicator is not None
+        assert "stale" in indicator
