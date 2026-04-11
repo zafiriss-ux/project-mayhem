@@ -254,3 +254,104 @@ def test_database_manager_raw_conn_access_only_inside_lock_context():
         "DatabaseManager methods access self.conn without self._lock:\n"
         + "\n".join(real_violations)
     )
+
+
+# ── T5-75-A: _decision_pipeline() has exactly one production call site ─────────
+
+
+def test_decision_pipeline_has_single_production_call_site() -> None:
+    """_decision_pipeline() must have exactly one call site in titan/ production code.
+
+    The method is defined on DailyCoach and must only be invoked from
+    coaching_pipeline() (ADR-0018 kernel boundary: Decision Pipeline / Effect Runner
+    split).  A second call site would bypass the boundary and violate the invariant
+    that _decision_pipeline is a pure, side-effect-free function.
+    """
+    call_sites: list[str] = []
+
+    for path in _TITAN_ROOT.rglob("*.py"):
+        if "__pycache__" in str(path):
+            continue
+        try:
+            source = path.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=str(path))
+        except SyntaxError:
+            continue
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if (
+                    isinstance(func, ast.Attribute) and func.attr == "_decision_pipeline"
+                ) or (
+                    isinstance(func, ast.Name) and func.id == "_decision_pipeline"
+                ):
+                    rel = path.relative_to(_TITAN_ROOT.parent)
+                    call_sites.append(f"{rel}:{node.lineno}")
+
+    n = len(call_sites)
+    assert n == 1, (
+        f"Found {n} call site(s) for _decision_pipeline() — expected exactly 1.\n"
+        f"Sites: {call_sites}"
+    )
+
+
+# ── T5-75-B: All GovernanceEngine _gate_/_check_ methods wired into apply_constraints
+
+
+def _collect_called_attr_names(node: ast.AST) -> set[str]:
+    """Return attribute names that appear as calls anywhere in the given AST subtree."""
+    names: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
+            names.add(child.func.attr)
+    return names
+
+
+def test_all_gate_methods_called_from_apply_constraints() -> None:
+    """Every _gate_ / _check_ class method on GovernanceEngine must appear as a
+    call inside apply_constraints().
+
+    Rationale: a gate method defined on GovernanceEngine but never invoked from
+    apply_constraints() is dead code in the governance critical path — a safety
+    defect per ADR-0009 / DECISION_MODEL §4.  This test locks the wiring so that
+    new gate methods cannot be added without being hooked into the constraint loop.
+    """
+    source = _GOVERNANCE_ENGINE.read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=str(_GOVERNANCE_ENGINE))
+
+    governance_class: ast.ClassDef | None = None
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and node.name == "GovernanceEngine":
+            governance_class = node
+            break
+
+    assert governance_class is not None, (
+        "GovernanceEngine class not found in governance_engine.py"
+    )
+
+    gate_methods: list[str] = []
+    apply_constraints_node: ast.FunctionDef | None = None
+
+    for item in governance_class.body:
+        if isinstance(item, ast.FunctionDef):
+            if item.name.startswith("_gate_") or item.name.startswith("_check_"):
+                gate_methods.append(item.name)
+            if item.name == "apply_constraints":
+                apply_constraints_node = item
+
+    assert apply_constraints_node is not None, (
+        "apply_constraints() method not found in GovernanceEngine"
+    )
+    assert gate_methods, (
+        "No _gate_/_check_ class methods found in GovernanceEngine — "
+        "check the naming convention or the class definition"
+    )
+
+    called_names = _collect_called_attr_names(apply_constraints_node)
+
+    missing = [m for m in gate_methods if m not in called_names]
+    assert not missing, (
+        f"Gate method(s) defined on GovernanceEngine but not called from "
+        f"apply_constraints(): {missing}"
+    )

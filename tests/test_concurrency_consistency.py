@@ -14,10 +14,12 @@ import threading
 from datetime import UTC, datetime, timedelta
 from time import monotonic
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
 from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
+from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
 from titan.orchestration.daily_coach import DegradedModeTracker
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -415,3 +417,117 @@ class TestConcurrentAthleteWritesNoCollision:
         for i in range(n_threads):
             date = f"2026-04-{i + 1:02d}"
             assert date in hrv_rows, f"Date '{date}' must be present after concurrent write"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CC-04 — coaching_pipeline() concurrent isolation
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestCoachingPipelineConcurrentIsolation:
+    """
+    Two concurrent coaching_pipeline() calls with different athlete contexts
+    must not cross-contaminate each other's results.
+
+    coaching_pipeline() is the ADR-0018 kernel boundary: it calls
+    context.coach._decision_pipeline() then context.coach._effect_runner().
+    The frozen AthleteCoachingContext dataclass binds each call to its own
+    coach instance, ensuring isolation.  These tests verify that invariant
+    holds under concurrent execution.
+    """
+
+    @staticmethod
+    def _make_context(athlete_id: str, coach: Any) -> AthleteCoachingContext:
+        garmin_data: dict[str, Any] = {
+            "activities": [],
+            "weight": [],
+            "sleep": [],
+            "hrv": [],
+            "hrv_sync_metrics": {"days_back": 7, "synced_days": 7, "skipped_days": 0},
+        }
+        return AthleteCoachingContext(
+            athlete_id=athlete_id,
+            coach=coach,
+            garmin_data=garmin_data,
+            soreness=1,
+            subjective_fatigue_score=3,
+            today_rhr=52,
+            today_sleep_score=78,
+            today_sleep_hours=7.5,
+            baseline_rhr_for_comparison=51.0,
+            persistence_degraded=False,
+            garmin_data_stale=False,
+            latest_hrv=65.0,
+            baseline_hrv=63.0,
+            hrv_summary={},
+            afi_final=0.1,
+            afi_constraints={},
+            tsb_value=5.0,
+            tsb_status="OPTIMAL",
+            cs_thermal=None,
+            garmin_trust=None,
+            garmin_report_payload={},
+            startup_hydration_confidence={},
+            startup_confidence_applies=False,
+        )
+
+    def test_concurrent_coaching_pipeline_no_cross_contamination(self) -> None:
+        """
+        CC-04-A: Two threads calling coaching_pipeline() simultaneously with
+        different athlete contexts must each use their own coach mock exactly
+        once — no cross-invocation between contexts.
+
+        threading.Barrier forces both threads into _decision_pipeline at the
+        same instant, guaranteeing genuinely concurrent execution rather than
+        accidental sequential ordering.
+        """
+        barrier = threading.Barrier(2, timeout=5)
+        results: dict[str, Any] = {}
+        errors: list[Exception] = []
+
+        def make_coach(athlete_id: str) -> MagicMock:
+            mock_coach = MagicMock(name=f"Coach_{athlete_id}")
+
+            def pipeline_side_effect(**kwargs: Any) -> MagicMock:
+                barrier.wait()  # Both threads rendezvous here simultaneously.
+                return MagicMock(name=f"DecisionResult_{athlete_id}")
+
+            mock_coach._decision_pipeline.side_effect = pipeline_side_effect
+            mock_coach._effect_runner.return_value = True
+            return mock_coach
+
+        coach_a = make_coach("athlete_A")
+        coach_b = make_coach("athlete_B")
+        context_a = self._make_context("athlete_A", coach_a)
+        context_b = self._make_context("athlete_B", coach_b)
+
+        def run(ctx: AthleteCoachingContext, athlete_id: str) -> None:
+            try:
+                results[athlete_id] = coaching_pipeline(ctx)
+            except Exception as exc:
+                errors.append(exc)
+
+        t1 = threading.Thread(target=run, args=(context_a, "athlete_A"), name="pipeline-A")
+        t2 = threading.Thread(target=run, args=(context_b, "athlete_B"), name="pipeline-B")
+        t1.start()
+        t2.start()
+        t1.join(timeout=10.0)
+        t2.join(timeout=10.0)
+
+        assert not t1.is_alive(), "athlete_A pipeline thread did not complete within timeout"
+        assert not t2.is_alive(), "athlete_B pipeline thread did not complete within timeout"
+        assert not errors, f"Pipeline threads raised unhandled exceptions: {errors}"
+        assert "athlete_A" in results, "athlete_A coaching_pipeline did not produce a result"
+        assert "athlete_B" in results, "athlete_B coaching_pipeline did not produce a result"
+
+        # Each coach must have been called exactly once — never by the other thread.
+        assert coach_a._decision_pipeline.call_count == 1, (
+            f"coach_a._decision_pipeline expected 1 call, "
+            f"got {coach_a._decision_pipeline.call_count} — cross-contamination detected"
+        )
+        assert coach_b._decision_pipeline.call_count == 1, (
+            f"coach_b._decision_pipeline expected 1 call, "
+            f"got {coach_b._decision_pipeline.call_count} — cross-contamination detected"
+        )
+        coach_a._effect_runner.assert_called_once()
+        coach_b._effect_runner.assert_called_once()
