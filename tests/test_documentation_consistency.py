@@ -186,11 +186,11 @@ def test_technical_debt_tracking_table_matches_heading_status() -> None:
 
 
 def test_module_count_within_budget() -> None:
-    """Module count must not exceed 69 (Phase 8 ceiling; +2 for T5-16-B coaching_pipeline.py + coaching_scheduler.py structural extraction — Architect approved 2026-03-17)."""
+    """Module count must not exceed 70 (Phase 8 ceiling; +2 for T5-16-B coaching_pipeline.py + coaching_scheduler.py structural extraction — Architect approved 2026-03-17; +1 for T5-12 Pass 2a biometric_source.py ADR-0050 D4 boundary contract — Architect approved 2026-04-10)."""
     modules = [
         module.name
         for module in pkgutil.walk_packages(titan.__path__, "titan.")
         if "__" not in module.name
     ]
 
-    assert len(modules) <= 69, f"Complexity budget exceeded: {len(modules)} modules"
+    assert len(modules) <= 70, f"Complexity budget exceeded: {len(modules)} modules"

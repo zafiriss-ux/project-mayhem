@@ -60,7 +60,7 @@ project-mayhem/
 │   │                        # operator_console_manual_override_workflow.md,
 │   │                        # operator_console_technology_path.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (60 modules, excl. __init__/__main__)
+└── titan/                   # Main package (61 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment, PersistenceAdapter
     ├── science/             # 26 modules (engines + governance + ML scaffold)

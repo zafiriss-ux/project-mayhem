@@ -12,13 +12,17 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
-from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
 from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.integrations.biometric_source import (
+    BiometricSourceSyncResult,  # noqa: F401 — re-exported for external consumers
+    NormalizedBiometricSample,  # noqa: F401 — re-exported for external consumers
+    SourceCapabilities,  # noqa: F401 — re-exported for external consumers
+)
 from titan.orchestration.contracts import (
     GarminSyncResult,
     GarminSyncResultContract,
@@ -39,50 +43,6 @@ GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 90
 _GARTH_TOKEN_FILENAME = ".garth_token"
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
-
-
-# ── BiometricSourceAdapter boundary contracts (ADR-0050 D4 / T5-12 Pass 2) ──
-
-
-@dataclass
-class SourceCapabilities:
-    """Capability declaration per biometric source."""
-
-    source_name: str
-    supports_hrv: bool
-    supports_resting_hr: bool
-    supports_sleep: bool
-    supports_activity_load: bool
-
-
-@dataclass
-class NormalizedBiometricSample:
-    """Normalized biometric snapshot — source-agnostic.
-
-    All numeric fields are ``None`` when the source did not provide a reading.
-    ``provenance`` must be an ADR-0041 provenance label.
-    """
-
-    source_name: str
-    sampled_at: str          # ISO-8601 timestamp
-    hrv_rmssd: float | None
-    resting_hr: int | None
-    sleep_hours: float | None
-    provenance: str          # ADR-0041 provenance label
-
-
-@dataclass
-class BiometricSourceSyncResult:
-    """Result of a single sync attempt from any biometric source.
-
-    ``sync_status`` is one of ``"ok"``, ``"degraded"``, or ``"failed"``.
-    ``data_trust_report`` follows the ADR-0041 DataTrustReport payload schema.
-    """
-
-    samples: list[NormalizedBiometricSample] = field(default_factory=list)
-    sync_status: str = "ok"          # "ok" | "degraded" | "failed"
-    failure_class: str | None = None
-    data_trust_report: dict = field(default_factory=dict)
 
 
 class _CredentialSecret:
