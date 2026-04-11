@@ -76,9 +76,36 @@ class OperatorConsoleService:
             "operator_trust_drift_warning": warning,
         }
 
-    def readiness_load_dashboard(self, limit: int = 90) -> dict[str, Any]:
-        """Build timeline + summary payload for readiness/load dashboard widgets."""
+    def readiness_load_dashboard(
+        self,
+        limit: int = 90,
+        *,
+        garmin_state: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build timeline + summary payload for readiness/load dashboard widgets.
+
+        Args:
+            limit: Maximum number of governance decisions to include in the timeline.
+            garmin_state: Optional Garmin sync state dict for the dashboard indicator
+                (ADR-0050 D2).  Expected keys: ``is_degraded`` (bool),
+                ``has_baseline`` (bool), ``data_age_hours`` (float | None),
+                ``trust_level`` (str), ``last_successful_sync_at`` (str | None).
+                When omitted the indicator is absent (None).
+        """
         decisions = self.db.get_governance_decisions(limit=limit)
+
+        # Compute Garmin degradation indicator (ADR-0050 D2).
+        garmin_degradation_indicator: str | None = None
+        if garmin_state is not None:
+            _ind = self.garmin_sync_indicator(
+                is_degraded=bool(garmin_state.get("is_degraded", False)),
+                has_baseline=bool(garmin_state.get("has_baseline", False)),
+                data_age_hours=garmin_state.get("data_age_hours"),
+                trust_level=str(garmin_state.get("trust_level", "TRUSTED")),
+                last_successful_sync_at=garmin_state.get("last_successful_sync_at"),
+            )
+            if _ind["visible"]:
+                garmin_degradation_indicator = _ind["message"]
 
         timeline: list[dict[str, Any]] = [
             {
@@ -102,6 +129,7 @@ class OperatorConsoleService:
                     "latest_vlg_color": None,
                     "vlg_distribution": {},
                 },
+                "garmin_degradation_indicator": garmin_degradation_indicator,
             }
 
         samples = len(timeline)
@@ -117,7 +145,11 @@ class OperatorConsoleService:
             "vlg_distribution": vlg_counts,
         }
 
-        return {"timeline": timeline, "summary": summary}
+        return {
+            "timeline": timeline,
+            "summary": summary,
+            "garmin_degradation_indicator": garmin_degradation_indicator,
+        }
 
     def session_explorer(self, limit: int = 50) -> dict[str, Any]:
         """Build payload for session log review and governance decision trail."""
