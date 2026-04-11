@@ -989,7 +989,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        del athlete_id
+        _athlete_id = athlete_id  # noqa: F841 — parameter required by interface contract
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)
@@ -1067,7 +1067,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        del athlete_id
+        _athlete_id = athlete_id  # noqa: F841 — parameter required by interface contract
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)

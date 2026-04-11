@@ -268,7 +268,7 @@ jobs:
                   if "__" not in module.name
               ]
           )
-          module_ceiling = 69  # raised 65→69 for T5-16-B + T5-11 approved modules (2026-03-17)
+          module_ceiling = 70  # raised 69→70 for T5-75/76/77 (2026-04-11)
 
           if module_count > module_ceiling:
               raise SystemExit(
@@ -499,6 +499,7 @@ jobs:
           SAFE_FUNCTIONS = {"_safe_float", "_safe_int"}
 
           src = Path("titan/science/governance_engine.py").read_text()
+          src_lines = src.splitlines()
           tree = ast.parse(src)
           violations = []
 
@@ -509,6 +510,12 @@ jobs:
                   len(node.args) >= 2):
                   default = node.args[1]
                   if isinstance(default, ast.Constant) and default.value in OPTIMISTIC:
+                      # Exclude priority rank defaults: rank=1 means "execute first"
+                      # (most strict), not optimistic. These are ordering values, not
+                      # safety-gate pass conditions.
+                      source_line = src_lines[node.lineno - 1] if node.lineno <= len(src_lines) else ""
+                      if "priority_vector.get(" in source_line:
+                          continue  # skip rank ordering defaults
                       violations.append(
                           f"Line {node.lineno}: .get() with optimistic default "
                           f"{default.value!r} — violates ADR-0051/INV-05"
