@@ -127,7 +127,8 @@ def test_postgres_adapter_concurrent_upserts_on_same_date_are_stable(tmp_path) -
     _engine, adapter = _build_postgres_adapter_test_engine(tmp_path)
     exceptions: list[Exception] = []
     exceptions_lock = threading.Lock()
-    same_date = "2026-04-01"
+    # Use a recent date so get_hrv_history(days=7) always finds this row
+    same_date = (datetime.now(UTC).date() - timedelta(days=2)).isoformat()
 
     def _worker(thread_index: int) -> None:
         try:

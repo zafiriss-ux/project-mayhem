@@ -18,8 +18,8 @@ DEV_DEPENDENCIES = {
     "pytest-cov==4.1.0",
     "pytest-timeout==2.3.1",
     "hypothesis==6.100.0",
-    "ruff>=0.3.0",
-    "mypy>=1.9.0",
+    "ruff==0.15.8",
+    "mypy==1.19.1",
     "httpx==0.27.2",
 }
 

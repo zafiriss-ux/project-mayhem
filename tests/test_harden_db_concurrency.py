@@ -29,33 +29,43 @@ class TestGetBaselineRhr:
         assert result is None
 
     def test_returns_average_of_rhr_rows(self, tmp_path):
+        import datetime
+
         db = DatabaseManager(db_name="t106_rhr2.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
+        today = datetime.date.today()
+        date1 = (today - datetime.timedelta(days=5)).isoformat()
+        date2 = (today - datetime.timedelta(days=3)).isoformat()
         cursor.execute(
-            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", ("2026-03-01", 55)
+            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", (date1, 55)
         )
         cursor.execute(
-            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", ("2026-03-02", 65)
+            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", (date2, 65)
         )
         db.conn.commit()
 
-        result = db.get_baseline_rhr(days=30)
+        result = db.get_baseline_rhr(days=7)
         db.close()
 
         assert result == 60.0
 
     def test_ignores_zero_rhr_rows(self, tmp_path):
+        import datetime
+
         db = DatabaseManager(db_name="t106_rhr3.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
+        today = datetime.date.today()
+        date1 = (today - datetime.timedelta(days=5)).isoformat()
+        date2 = (today - datetime.timedelta(days=3)).isoformat()
         cursor.execute(
-            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", ("2026-03-01", 0)
+            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", (date1, 0)
         )
         cursor.execute(
-            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", ("2026-03-02", 60)
+            "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", (date2, 60)
         )
         db.conn.commit()
 
-        result = db.get_baseline_rhr(days=30)
+        result = db.get_baseline_rhr(days=7)
         db.close()
 
         assert result == 60.0
@@ -138,16 +148,20 @@ class TestGetWeightHistory:
 
 def test_daily_coach_get_baseline_rhr_uses_db_method(tmp_path):
     """_get_baseline_rhr() must delegate to db.get_baseline_rhr(), not self.db.conn."""
+    import datetime
+
     from titan.orchestration.daily_coach import DailyCoach
 
     db = DatabaseManager(db_name="t106_dc.db", db_dir=tmp_path)
+    # Use a recent date so it always falls within the 7-day window
+    recent_date = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
     db.conn.execute(
-        "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", ("2026-03-01", 58)
+        "INSERT INTO daily_metrics (date, resting_hr) VALUES (?, ?)", (recent_date, 58)
     )
     db.conn.commit()
 
     coach = _make_minimal_coach(db)
-    result = coach._get_baseline_rhr(days=30)
+    result = coach._get_baseline_rhr(days=7)
     db.close()
 
     assert result == 58.0
