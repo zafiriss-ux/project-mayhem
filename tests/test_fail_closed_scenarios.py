@@ -14,6 +14,7 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -22,6 +23,7 @@ from titan.integrations.garmin_sync import _activity_utc_date
 from titan.orchestration.daily_coach import DegradedModeTracker
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.outcome_tracker import OutcomeTracker
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -482,3 +484,179 @@ class TestFS08StaleFreshMixedState:
                 f"max_zone must be ≤ 2 for {session_type} under data_confidence_low, "
                 f"got {result.get('max_zone')}"
             )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FS-09 — SIGTERM mid-pipeline leaves no orphaned governance trace
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _fs09_apl_result() -> dict[str, Any]:
+    return {
+        "priority_vector": {"PARASYMPATHETIC_GUARD": 1},
+        "lock_thresholds": {"acwr_ceiling": 1.15},
+    }
+
+
+def _fs09_save_valid_decision(tracker: OutcomeTracker, date: str) -> None:
+    """Persist one complete, valid governance decision via the tracker."""
+    tracker.record_decision(
+        session_planned="EASY",
+        session_post_governance="EASY",
+        locks_applied=[],
+        governance_clean=True,
+        phase="BASE",
+        vlg_color="GREEN",
+        apl_result=_fs09_apl_result(),
+        acwr=1.0,
+        tsb_value=5.0,
+        readiness_score=80.0,
+        glycogen_debt=2.0,
+        date=date,
+    )
+
+
+class TestFS09SIGTERMMidPipelineNoOrphanedGovernanceTrace:
+    """
+    FS-09: An exception at save_governance_decision() — simulating SIGTERM
+    between session-build (step 8) and governance-persist (step 9) — must
+    leave zero rows in governance_outcomes.  No orphaned or partial record
+    may survive the exception.
+    """
+
+    def test_exception_at_save_leaves_zero_rows(
+        self, db_manager_factory: Any
+    ) -> None:
+        """
+        FS-09-A: Patching save_governance_decision to raise RuntimeError.
+        Assert: governance_outcomes has 0 rows; the exception propagates cleanly.
+        """
+        db = db_manager_factory()
+        tracker = OutcomeTracker(db=db)
+
+        assert db.get_governance_decisions() == [], (
+            "Expected empty governance_outcomes table at test start"
+        )
+
+        with patch.object(
+            db,
+            "save_governance_decision",
+            side_effect=RuntimeError("Simulated SIGTERM mid-pipeline"),
+        ), pytest.raises(RuntimeError, match="Simulated SIGTERM mid-pipeline"):
+            tracker.record_decision(
+                session_planned="TEMPO",
+                session_post_governance="TEMPO",
+                locks_applied=[],
+                governance_clean=True,
+                phase="BUILD",
+                vlg_color="GREEN",
+                apl_result=_fs09_apl_result(),
+                acwr=1.1,
+                tsb_value=-5.0,
+                readiness_score=72.0,
+                glycogen_debt=3.0,
+                date="2026-04-11",
+            )
+
+        rows = db.get_governance_decisions()
+        assert rows == [], (
+            f"Expected 0 rows in governance_outcomes after mid-pipeline exception, "
+            f"found {len(rows)}: {rows}"
+        )
+
+    def test_every_row_has_required_fields_after_exception(
+        self, db_manager_factory: Any
+    ) -> None:
+        """
+        FS-09-B: Any row present in governance_outcomes must carry the minimum
+        required fields: date, session_planned, governance_clean.
+        A row missing any of these is an orphaned governance trace.
+
+        Injects one valid pre-existing row, then fires the exception.
+        Only the valid row must survive — the interrupted decision must not appear.
+        """
+        db = db_manager_factory()
+        tracker = OutcomeTracker(db=db)
+
+        _fs09_save_valid_decision(tracker, date="2026-04-10")
+
+        with patch.object(
+            db,
+            "save_governance_decision",
+            side_effect=RuntimeError("Simulated SIGTERM mid-pipeline"),
+        ), pytest.raises(RuntimeError):
+            tracker.record_decision(
+                session_planned="INTERVALS",
+                session_post_governance="INTERVALS",
+                locks_applied=[],
+                governance_clean=True,
+                phase="BUILD",
+                vlg_color="GREEN",
+                apl_result=_fs09_apl_result(),
+                acwr=1.05,
+                tsb_value=2.0,
+                readiness_score=75.0,
+                glycogen_debt=1.5,
+                date="2026-04-11",
+            )
+
+        rows = db.get_governance_decisions()
+        assert len(rows) == 1, (
+            f"Expected 1 row (the pre-existing valid decision), found {len(rows)}: {rows}"
+        )
+
+        # Every surviving row must have the minimum required governance fields.
+        for row in rows:
+            assert row.get("date"), f"Surviving row missing 'date': {row}"
+            assert row.get("session_planned"), f"Surviving row missing 'session_planned': {row}"
+            assert "governance_clean" in row, f"Surviving row missing 'governance_clean': {row}"
+
+    def test_db_remains_usable_after_mid_pipeline_exception(
+        self, db_manager_factory: Any
+    ) -> None:
+        """
+        FS-09-C: The DB connection must remain in a consistent, usable state
+        after the exception.  A subsequent successful record_decision() call
+        must produce exactly one row with correct field values.
+        """
+        db = db_manager_factory()
+
+        with patch.object(
+            db,
+            "save_governance_decision",
+            side_effect=RuntimeError("Simulated SIGTERM mid-pipeline"),
+        ):
+            tracker = OutcomeTracker(db=db)
+            with pytest.raises(RuntimeError):
+                tracker.record_decision(
+                    session_planned="TEMPO",
+                    session_post_governance="TEMPO",
+                    locks_applied=[],
+                    governance_clean=True,
+                    phase="BUILD",
+                    vlg_color="GREEN",
+                    apl_result=_fs09_apl_result(),
+                    acwr=1.1,
+                    tsb_value=-5.0,
+                    readiness_score=72.0,
+                    glycogen_debt=3.0,
+                    date="2026-04-11",
+                )
+
+        # Recovery: a new tracker must be able to save cleanly after the failure.
+        recovery_tracker = OutcomeTracker(db=db)
+        _fs09_save_valid_decision(recovery_tracker, date="2026-04-12")
+
+        rows = db.get_governance_decisions()
+        assert len(rows) == 1, (
+            f"Expected exactly 1 row after recovery save, got {len(rows)}"
+        )
+        assert rows[0]["date"] == "2026-04-12", (
+            f"Recovery row must have date '2026-04-12', got {rows[0]['date']!r}"
+        )
+        assert rows[0]["session_planned"] == "EASY", (
+            f"Recovery row must have session_planned 'EASY', got {rows[0]['session_planned']!r}"
+        )
+        assert rows[0]["governance_clean"] is True, (
+            f"Recovery row must have governance_clean=True, got {rows[0]['governance_clean']!r}"
+        )
