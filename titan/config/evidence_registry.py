@@ -1282,7 +1282,7 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC. Promote after correlating drift alerts with true governance quality regressions and override quality audits.',
     ),
 
-    # ── ADR-0052 H1–H5 exclusion set ─────────────────────────────────────────
+    # ── ADR-0052 H2–H5 exclusion set ─────────────────────────────────────────
     'HARD_STOP_THRESHOLD_KEYS': ThresholdEvidence(
         parameter='HARD_STOP_THRESHOLD_KEYS',
         value=0.0,          # frozenset — not a scalar; value field is informational only
@@ -1290,9 +1290,11 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         population='MIXED',
         source='ADR-0052 §H1–H5 exclusion — hard-stop gates are excluded from per-athlete threshold adaptation.',
         rationale=(
-            'H1–H5 gates are the system safety floor. Allowing per-athlete offsets on these '
-            'gates would undermine the non-bypassable safety invariant. The exclusion is a '
-            'policy decision, not an empirical threshold, and requires no calibration path.'
+            'H2–H5 gates (HRV, RHR, TSB, fatigue) are the system safety floor. Allowing '
+            'per-athlete offsets on these numeric thresholds would undermine the '
+            'non-bypassable safety invariant. H1 (injury_flag) is boolean and excluded '
+            'by type — it cannot appear in athlete_threshold_offsets. '
+            'The exclusion is a policy decision, not an empirical threshold.'
         ),
         policy_note='HEURISTIC. Policy invariant — not subject to promotion or data-driven revision.',
     ),
