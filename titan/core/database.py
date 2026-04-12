@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 
 
 class DatabaseManager:
@@ -357,6 +357,22 @@ class DatabaseManager:
             )
         """)
 
+        # Table 9: Per-athlete threshold offsets (ADR-0052 Stage 1)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athlete_threshold_offsets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL,
+                threshold_key TEXT NOT NULL,
+                delta_value REAL NOT NULL,
+                updated_at TEXT NOT NULL,
+                source TEXT NOT NULL
+                    CHECK (source IN ('manual', 'calibration')),
+                confidence REAL NOT NULL
+                    CHECK (confidence >= 0.0 AND confidence <= 1.0),
+                UNIQUE (athlete_id, threshold_key)
+            )
+        """)
+
         self.conn.commit()
         self._run_migrations(cursor)
 
@@ -423,6 +439,11 @@ class DatabaseManager:
                 "governance_outcomes",
                 "athlete_id column for multi-athlete support (T5-74 / ADR-0033)",
                 None,  # DDL — see _apply_v11_migrations() below
+            ),
+            12: (
+                "athlete_threshold_offsets",
+                "per-athlete threshold offset table (HD-09 / ADR-0052 Stage 1)",
+                None,  # DDL — see _apply_v12_migrations() below
             ),
         }
 
@@ -550,6 +571,17 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 11,
                     "columns_added": "governance_outcomes.athlete_id (T5-74)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 12:
+            self._apply_v12_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 12,
+                    "table_created": "athlete_threshold_offsets (HD-09 / ADR-0052 Stage 1)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -836,6 +868,80 @@ class DatabaseManager:
                     "column": "athlete_id",
                 })
             )
+
+    def _apply_v12_migrations(self, cursor) -> None:
+        """Version 12: athlete_threshold_offsets table (HD-09 / ADR-0052 Stage 1)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athlete_threshold_offsets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL,
+                threshold_key TEXT NOT NULL,
+                delta_value REAL NOT NULL,
+                updated_at TEXT NOT NULL,
+                source TEXT NOT NULL
+                    CHECK (source IN ('manual', 'calibration')),
+                confidence REAL NOT NULL
+                    CHECK (confidence >= 0.0 AND confidence <= 1.0),
+                UNIQUE (athlete_id, threshold_key)
+            )
+        """)
+
+    # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
+
+    def save_threshold_offset(
+        self,
+        athlete_id: str,
+        threshold_key: str,
+        delta_value: float,
+        source: str,
+        confidence: float,
+        updated_at: str,
+    ) -> None:
+        """Persist a per-athlete threshold offset (ADR-0052).
+
+        Raises ValueError if threshold_key is in HARD_STOP_THRESHOLD_KEYS —
+        hard-stop gates H1–H5 are permanently excluded from adaptation.
+        The ±20 % ceiling is ThresholdAdapter's responsibility (Stage 2);
+        this layer enforces only the H1–H5 exclusion invariant.
+
+        The INSERT ... ON CONFLICT DO UPDATE provides UPSERT semantics:
+        a second call with the same (athlete_id, threshold_key) replaces
+        delta_value, source, confidence, and updated_at.
+
+        Args:
+            athlete_id:    Athlete identifier (non-empty string).
+            threshold_key: Identifier for the threshold being offset.
+            delta_value:   Additive offset (positive or negative float).
+            source:        Origin — 'manual' or 'calibration'.
+            confidence:    Confidence score in [0.0, 1.0].
+            updated_at:    UTC ISO-8601 timestamp string.
+        """
+        from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS  # local import avoids circular
+        if threshold_key in HARD_STOP_THRESHOLD_KEYS:
+            raise ValueError(
+                f"threshold_key '{threshold_key}' is a hard-stop gate "
+                f"and cannot be adapted (ADR-0052)."
+            )
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO athlete_threshold_offsets
+                    (athlete_id, threshold_key, delta_value,
+                     updated_at, source, confidence)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (athlete_id, threshold_key)
+                DO UPDATE SET
+                    delta_value = excluded.delta_value,
+                    updated_at  = excluded.updated_at,
+                    source      = excluded.source,
+                    confidence  = excluded.confidence
+                """,
+                (athlete_id, threshold_key, delta_value, updated_at, source, confidence),
+            )
+            if self._transaction_depth == 0:
+                self.conn.commit()
 
     # --- Auth User / Token CRUD (HD-04 / T5-70) ---
 

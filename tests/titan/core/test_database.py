@@ -902,9 +902,9 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
 
 
 def test_schema_version_is_11():
-    """SCHEMA_VERSION must be 11 after T5-74 migration (Fix E)."""
+    """SCHEMA_VERSION must be 12 after ADR-0052 Stage 1 migration (HD-09)."""
     from titan.core.database import SCHEMA_VERSION
-    assert SCHEMA_VERSION == 11
+    assert SCHEMA_VERSION == 12
 
 
 def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
@@ -981,7 +981,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
         assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
         version = cursor.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 11
+        assert version == 12  # SCHEMA_VERSION bumped to 12 by ADR-0052 Stage 1 (HD-09)
     finally:
         db.close()
 

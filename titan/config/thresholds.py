@@ -150,6 +150,25 @@ OPERATOR_TRUST_DRIFT_WARNING_RATE_30D = 0.25
 # Eviction policy: LRU (least-recently-used key is dropped first).
 RATE_LIMITER_MAX_KEYS = 10_000
 
+# Hard-stop gate exclusion set — ADR-0052 Stage 1.
+# Threshold keys corresponding to H2–H5 safety gates that are permanently
+# excluded from per-athlete adaptation via ThresholdAdapter (Stage 2+).
+# Key names match the canonical constant names used in governance_engine.py:
+#   HARD_STOP_HRV_DELTA        → H2 HRV collapse gate
+#   HARD_STOP_RHR_DELTA        → H3 RHR spike gate
+#   HARD_STOP_TSB_FLOOR        → H4 TSB critical-floor gate
+#   SUBJECTIVE_FATIGUE_EXTREME → H5 extreme subjective fatigue gate
+#
+# H1 (injury_flag) is a boolean context input — not a numeric threshold.
+# It cannot appear in athlete_threshold_offsets (which stores REAL delta_value)
+# and is therefore excluded by type, not by this guard.
+HARD_STOP_THRESHOLD_KEYS: frozenset[str] = frozenset({
+    "HARD_STOP_HRV_DELTA",
+    "HARD_STOP_RHR_DELTA",
+    "HARD_STOP_TSB_FLOOR",
+    "SUBJECTIVE_FATIGUE_EXTREME",
+})
+
 # Governance lock codes (ADR-0024 / T4-21): machine-readable canonical set.
 CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
     {
