@@ -169,6 +169,16 @@ HARD_STOP_THRESHOLD_KEYS: frozenset[str] = frozenset({
     "SUBJECTIVE_FATIGUE_EXTREME",
 })
 
+# ── ADR-0052 — ThresholdAdapter (Phase 9) ────────────────────────────────────
+THRESHOLD_ADAPTER_DAMPING_PCT: float = 0.05        # ±5% δT change per adaptation cycle
+THRESHOLD_ADAPTER_MAX_DELTA_PCT: float = 0.20      # |δT| ceiling: ±20% of base value
+THRESHOLD_ADAPTER_FALSE_NEG_WINDOW_DAYS: int = 30  # circuit breaker look-back window
+THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT: float = 0.20  # 20% false-neg rate → breaker active
+
+# ── ADR-0033 Layer 3 L3-C — Cold-start conservative bias ─────────────────────
+COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR: float = 0.80  # 20% shift toward conservative
+COLD_START_HARD_STOP_FACTOR: float = 1.00               # Hard-stop gates (H1–H5) unchanged
+
 # Governance lock codes (ADR-0024 / T4-21): machine-readable canonical set.
 CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
     {

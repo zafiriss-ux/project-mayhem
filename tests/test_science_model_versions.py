@@ -41,6 +41,7 @@ SCIENCE_MODULES = [
     "physiological_bounds",
     "rcp_engine",
     "readiness_engine",
+    "threshold_adapter",
     "trimp_engine",
     "tsb_engine",
     "volume_load_gauge",

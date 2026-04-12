@@ -1325,6 +1325,46 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'count. Do not lower below 1 000 without capacity analysis.'
         ),
     ),
+
+    # ── ADR-0052 — ThresholdAdapter per-athlete offset mechanism ─────────────
+    'THRESHOLD_ADAPTER_DAMPING_PCT': ThresholdEvidence(
+        parameter='THRESHOLD_ADAPTER_DAMPING_PCT',
+        value=0.05,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal policy — ADR-0052 (2026-04-04) per-athlete threshold adaptation design.',
+        rationale=(
+            'A ±5% per-cycle damping step prevents rapid oscillation while allowing '
+            'threshold drift over multi-week training blocks. Combined with the ±20% '
+            'ceiling, at least 4 consecutive cycles are needed to reach any extreme.'
+        ),
+        policy_note=(
+            'PROVISIONAL (Phase 9). No multi-athlete outcome corpus yet. '
+            'Calibration path: once ≥100 adaptation cycles are logged per athlete, '
+            'evaluate whether 5% steps over- or under-shoot convergence. '
+            'Governance role: applied by ThresholdAdapter.propose_adaptation() '
+            'for soft gates only — hard-stop gates (H1–H5) are excluded.'
+        ),
+    ),
+
+    'THRESHOLD_ADAPTER_MAX_DELTA_PCT': ThresholdEvidence(
+        parameter='THRESHOLD_ADAPTER_MAX_DELTA_PCT',
+        value=0.20,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Internal policy — ADR-0052 (2026-04-04) per-athlete threshold adaptation design.',
+        rationale=(
+            '±20% absolute ceiling caps population-specific variance that evidence '
+            'supports (masters vs recreational delta typically 15–25%). '
+            'Prevents runaway adaptation in degenerate feedback loops.'
+        ),
+        policy_note=(
+            'PROVISIONAL (Phase 9). Governance role: enforced by '
+            'ThresholdAdapter.propose_adaptation() as |δT| hard ceiling. '
+            'Calibration path: compare threshold distributions at ceiling vs '
+            'unconstrained; raise ceiling only if outcome data shows saturation.'
+        ),
+    ),
 }
 
 
