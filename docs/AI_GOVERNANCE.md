@@ -1,7 +1,8 @@
 # TITAN OS — AI Governance Document
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-03-17
+**Revision:** 2026-04-12 — §1/§2 agent role updated per AGENTS.md §28; §5 RLS operational caveat added; Opus audit findings recorded.
 **Canonical location:** `docs/AI_GOVERNANCE.md`
 **Authored by:** Architect (Claude operating in architectural session)
 **Change Type:** architect-decision
@@ -23,7 +24,7 @@ Each surface has a defined role, layer, and scope boundary.
 | Agent | Role | Layer | Scope |
 |-------|------|-------|-------|
 | **Claude (Architect)** | Architectural advisor operating in sessions with the project owner | Design authority | ADR authorship, governance interpretation, task sequencing, escalation decisions, this document |
-| **Codex / Claude Code** | Implementation engineer | Execution | Scoped task implementation, tests, mandatory gates, audit observations — no design decisions |
+| **Codex / Claude Code** | Implementation engineer | Execution | Scoped task implementation, tests, mandatory gates, audit observations — Implementation Engineer for routine operations. Under AGENTS.md §28 (effective 2026-03-17), also holds architect authority for status closures, gate verification, and records passes. On any conflict: AGENTS.md wins. |
 | **Opus QA** | Advisory test quality reviewer (PILOT-01) | Quality advisory | Category B test quality review for Path B tasks — verdict only, no implementation authority |
 
 No AI agent has unilateral authority over canonical documents, ADRs, or governance gate logic.
@@ -150,7 +151,7 @@ The following governance infrastructure is already implemented and satisfies bas
 
 | Requirement | Implementation |
 |-------------|---------------|
-| Athlete data isolation | PostgreSQL RLS (ADR-0044) + application-level isolation check (ADR-0048) |
+| Athlete data isolation | PostgreSQL RLS (ADR-0044) + application-level isolation check (ADR-0048) (schema-level implementation; operational only under PostgreSQL backend — current single-athlete deployment uses SQLite) |
 | Right-to-erasure readiness | `DELETE FROM * WHERE athlete_id = ?` + RLS completeness guarantee |
 | Consent recording | `consent_log` table (T5-08-B D9) |
 | Coach action audit trail | `coach_audit_log` (T5-13) |
@@ -165,3 +166,4 @@ The following governance infrastructure is already implemented and satisfies bas
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 1.0 | 2026-03-17 | Architect | Initial creation — Friday Governance Pass output; minimal traceability backbone |
+| 1.1 | 2026-04-12 | Claude Code (records pass) | §1/§2 agent role updated per AGENTS.md §28; §5 RLS operational caveat added; Opus audit findings recorded. |
