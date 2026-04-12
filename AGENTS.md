@@ -627,7 +627,7 @@ bypassing them is a **HARD GATE failure**:
 | INV-01 | `math.isfinite()` before every governance gate float comparison. |
 | INV-02 | All `datetime` in governance + sync path must be UTC-aware. |
 | INV-03 | `athlete_id` present in every per-athlete DB write. |
-| INV-04 | **Reserved (unassigned)** — Intentionally unassigned. Slot reserved during Phase 8C §8.3 drafting; substantive invariant deferred pending Phase 9 multi-athlete scope definition (ADR-0033 Layer 3). No test reference. No enforcement obligation until assigned. |
+| INV-04 | **Per-athlete calibration isolation** — All `OutcomeTracker` reads are scoped to a single `athlete_id`; no cross-athlete query reaches the calibration path (ADR-0033 Layer 3, 2026-04-12). **Enforcement state: DEFERRED** — test file `tests/test_athlete_calibration_isolation.py` does not yet exist. Moves to ENFORCED upon T5-07-L3-B closure. |
 | INV-05 | No governance gate defaults an absent field to an optimistic value (ADR-0051). |
 | INV-06 | HRV drift check on startup; emit WARNING + set `data_confidence_low=True` if \|delta\| > `HRV_DRIFT_THRESHOLD_MS`. |
 | INV-07 | Activity dedup by `garmin_activity_id` (`INSERT OR IGNORE`). |
@@ -643,6 +643,7 @@ bypassing them is a **HARD GATE failure**:
 - INV-07 — `test_t5_69_activity_deduplication.py`
 - INV-08 — `test_t5_67_sync_success_event_gating.py`
 - INV-10 — `test_rate_limiter_ceiling.py`
+- INV-04 — `tests/test_athlete_calibration_isolation.py` (DEFERRED — created in T5-07-L3-B)
 
 **New gate requirement:** Any new gate added to `governance_engine.py` MUST have:
 
