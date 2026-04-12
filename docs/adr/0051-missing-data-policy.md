@@ -126,6 +126,29 @@ field = float(safe_value if field_raw is None else field_raw)  # None → safe_v
 
 ---
 
+### Conservative Default Decision Tree
+
+When implementing a new field that may be absent or None,
+select the conservative semantic using this table:
+
+| Field type | Absent/None means | Conservative value | Rationale |
+|---|---|---|---|
+| Confidence score (0.0–1.0) | Uncalibrated / unknown | `0.0` | Lowest confidence; gates will block |
+| Readiness / wellness score (0–100) | Unrecorded | `40` | Below threshold; triggers caution gate |
+| Physical constant (temperature °C, humidity %) | Sensor absent | Worst-case physiological value per `thresholds.py` constant | Avoids underestimating thermal/sweat load |
+| ACWR / ratio metric | Insufficient history | `None` (propagate) | Ratio requires history; do not impute |
+| Boolean flag (illness, override, sync_ok) | Unset | `False` (fail-closed) | Unset flag must not silently enable a path |
+| HRV / biometric delta (ms) | No reading | `None` (propagate) | Do not substitute zero; zero has physiological meaning |
+| Athlete isolation ID | Missing | Raise `ValueError` | Missing ID is a data integrity error, not a conservative case |
+
+**Rule:** Never introduce a new conservative numeric constant inline.
+All physical constants must be defined in `thresholds.py` and
+registered in `evidence_registry.py` (ADR-0034).
+None-propagation fields must be guarded with `is not None`
+before any arithmetic (INV-01).
+
+---
+
 ## Consequences
 
 ### Positive
