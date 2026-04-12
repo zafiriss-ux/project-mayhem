@@ -2397,7 +2397,7 @@ remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter tha
 
 ### T5-30 · Governance Engine — class-local threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: <pending>.
+**Status:** ✅ RESOLVED 2026-03-14. commit not individually recorded (pre-hash-enforcement era).
 **Source:** Binder1 audit / DEC-2 §Governance Engine Pattern P5 finding. Category A confirmed by architect in DEC-2.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2438,7 +2438,7 @@ remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter tha
 
 ### T5-32 · Lactate Logic — threshold literals not centralized in thresholds.py ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
+**Status:** ✅ RESOLVED 2026-03-14. commit not individually recorded (pre-hash-enforcement era).
 **Source:** Binder1 audit / DEC-2 §Lactate Logic Pattern P5 finding. Category A confirmed.
 **Type:** Threshold Governance
 **Priority:** P3. Independent. Separate PR.
@@ -2466,7 +2466,7 @@ remains: T5-08-B D7 → T5-08-B D9 → T5-11. T5-16-A closure does not alter tha
 
 ### T5-34 · Setup Wizard — dual bootstrap contract divergence (titan vs launcher wizard) ✅ RESOLVED 2026-03-14
 
-**Status:** ✅ RESOLVED 2026-03-14. Commit: pending.
+**Status:** ✅ RESOLVED 2026-03-14. commit not individually recorded (pre-hash-enforcement era).
 **Source:** Binder1 audit / DEC-2 §Setup Wizard Pattern S4 finding.
 **Type:** Architecture Debt
 **Priority:** P4.
@@ -3288,7 +3288,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Source:** TITAN_HARDENING_FRAMEWORK_v1.md
 **Severity:** HIGH
 **Location:** `titan/science/hrv_engine.py` (`HRVGuidedEngine`)
-**Resolution:** `check_baseline_drift()` added to `HRVGuidedEngine`; emits `hrv_baseline_drift_warning` event when baseline drift exceeds threshold; 8 tests green. 2026-04-04.
+**Resolution:** `check_baseline_drift()` added to `HRVGuidedEngine`; emits `hrv_baseline_drift_warning` event when baseline drift exceeds threshold; 8 tests green. 2026-04-04. commit: not individually recorded (batch closure 2026-04-04)
 
 ---
 
@@ -3298,7 +3298,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Source:** TITAN_HARDENING_FRAMEWORK_v1.md
 **Severity:** HIGH
 **Location:** `titan/core/database.py` (lines 1405, 1843)
-**Resolution:** UTC fix applied at database.py:1405,1843; tz-aware timestamp handling corrected. 2026-04-04.
+**Resolution:** UTC fix applied at database.py:1405,1843; tz-aware timestamp handling corrected. 2026-04-04. commit: not individually recorded (batch closure 2026-04-04)
 
 ---
 
@@ -3308,7 +3308,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Source:** TITAN_HARDENING_FRAMEWORK_v1.md / ADR-0009
 **Severity:** HIGH
 **Location:** `titan/science/governance_engine.py` (H5, FUELING, INTENSITY gates)
-**Resolution:** NaN guards added to H5, FUELING_GATE, and INTENSITY_GATE_RED/YELLOW paths per ADR-0009; 3 new tests green. 2026-04-04.
+**Resolution:** NaN guards added to H5, FUELING_GATE, and INTENSITY_GATE_RED/YELLOW paths per ADR-0009; 3 new tests green. 2026-04-04. commit: not individually recorded (batch closure 2026-04-04)
 
 ---
 
@@ -3333,7 +3333,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 **Source:** DEC-037 / OBS-039
 **Severity:** HIGH
 **Location:** `titan/orchestration/daily_coach.py` (`DegradedModeTracker`)
-**Resolution:** `DegradedModeTracker` persists to `degraded_mode_state` SQLite table via `_persist_state()`; hydrates timers from DB on startup via `_hydrate_from_db()`; degradation timers survive process restarts; 9 tests green. 2026-04-04.
+**Resolution:** `DegradedModeTracker` persists to `degraded_mode_state` SQLite table via `_persist_state()`; hydrates timers from DB on startup via `_hydrate_from_db()`; degradation timers survive process restarts; 9 tests green. 2026-04-04. commit: not individually recorded (batch closure 2026-04-04)
 
 ---
 

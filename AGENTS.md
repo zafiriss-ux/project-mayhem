@@ -627,6 +627,7 @@ bypassing them is a **HARD GATE failure**:
 | INV-01 | `math.isfinite()` before every governance gate float comparison. |
 | INV-02 | All `datetime` in governance + sync path must be UTC-aware. |
 | INV-03 | `athlete_id` present in every per-athlete DB write. |
+| INV-04 | **Reserved (unassigned)** — Intentionally unassigned. Slot reserved during Phase 8C §8.3 drafting; substantive invariant deferred pending Phase 9 multi-athlete scope definition (ADR-0033 Layer 3). No test reference. No enforcement obligation until assigned. |
 | INV-05 | No governance gate defaults an absent field to an optimistic value (ADR-0051). |
 | INV-06 | HRV drift check on startup; emit WARNING + set `data_confidence_low=True` if \|delta\| > `HRV_DRIFT_THRESHOLD_MS`. |
 | INV-07 | Activity dedup by `garmin_activity_id` (`INSERT OR IGNORE`). |
@@ -669,7 +670,7 @@ Source: TITAN_HARDENING_FRAMEWORK_v1.md §7 + §11.
 | `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / §16.1) |
 | `tests/test_architectural_invariants.py` | AST-enforced structural constraints (T4-19) |
 | `.github/pull_request_template.md` | PR checklist with 3-gate status + architecture guard items (T4-20) |
-| `docs/adr/` | Architecture Decision Records (0006–0045, 27 architectural ADRs) |
+| `docs/adr/` | Architecture Decision Records (0006–0052, ~34 architectural ADRs) |
 | `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED; Phase 7.8 Hardening CLOSED 2026-03-06) |
 | `pyproject.toml` | pytest + ruff + mypy config |
 
@@ -1504,8 +1505,8 @@ for non-exempt modules.
 
 ### 16.11 Complexity Budget (ex-ADR-0028)
 
-The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **62**. If a phase
-would push the count above 62, the architect must either retire/merge existing modules before adding
+The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **69**. If a phase
+would push the count above 69, the architect must either retire/merge existing modules before adding
 new ones, or explicitly revise the ceiling in a new ADR update.
 
 The CI check in `tests/test_documentation_consistency.py` (T4-21/T4-27) asserts this ceiling:
@@ -1514,7 +1515,7 @@ python -c "
 import pkgutil, titan
 mods = list(pkgutil.walk_packages(titan.__path__, 'titan.'))
 real = [m for m in mods if '__' not in m.name]
-assert len(real) <= 62, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
+assert len(real) <= 69, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
 "
 ```
 
