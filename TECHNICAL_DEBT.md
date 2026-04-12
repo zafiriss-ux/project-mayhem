@@ -91,7 +91,7 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
 
 TIER 5 (future / Phase 8+):
   T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8A early work — complete before Phase 8B begins)
-  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; ✅ Layers 1–2 RESOLVED 2026-03-13; Layer 3 deferred Phase 9)
+  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; ✅ Layers 1–2 RESOLVED 2026-03-13; Layer 3 ADR ACCEPTED 2026-04-12 — implementation tracked as T5-07-L3-A through L3-D)
   T5-14 (ESI environmental compensation overlay for training zones; ADR-0034; Phase 8 scheduled)
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
@@ -1502,7 +1502,7 @@ logic + governance integration update + tests.
 
 ### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime ✅ RESOLVED (Layers 1–2) — Layer 3 deferred Phase 9
 
-**Status:** ✅ RESOLVED (Layers 1–2) — 2026-03-13. Commit: b6bea2a. Foundation scaffold implemented: `model_calibration_metadata` schema migration (SQLite v7), `upsert_model_calibration_metadata()` + `get_recent_hrv_mean()` in `database.py` (Layer 1); `HrvCalibrationDriftState` dataclass + `describe_calibration_drift()` in `hrv_engine.py` (Layer 2). Layer 3 (multi-athlete isolation): deferred Phase 9 (see ADR-0033 §Layer 3). Alembic migration of this table remains tracked as T5-08-B D5.
+**Status:** ✅ RESOLVED (Layers 1–2) — 2026-03-13. Commit: b6bea2a. Layer 3: ADR ACCEPTED 2026-04-12 (Amendment appended to docs/adr/0033-*). Implementation tracked as T5-07-L3-A through T5-07-L3-D (Phase 9).
 **Workflow Path: A** *(schema migration — PILOT-01 excluded)*
 **Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
 **Priority:** P1 for Layers 1–2 (Phase 8A, high priority); P5 for Layer 3 (Phase 9).
@@ -1544,7 +1544,7 @@ mechanism exists to detect or flag this staleness. See ADR-0033 for full context
    If `|delta| > HRV_DRIFT_THRESHOLD_MS`: emit `hrv_baseline_drift_detected` structured
    event and flag in Operator Console readiness dashboard.
 
-**Layer 3 (Phase 9 — multi-athlete isolation):** See ADR-0033 §Layer 3. Deferred.
+**Layer 3 (Phase 9 — multi-athlete isolation):** ADR ACCEPTED 2026-04-12. See ADR-0033 Amendment §Layer 3. Implementation items below (T5-07-L3-A through L3-D).
 
 **Acceptance gate for Layers 1–2 (binary):**
 ```bash
@@ -1560,6 +1560,98 @@ python -m pytest -q
 **Phase 8A early work:** Layers 1–2 must be RESOLVED before Phase 8B begins. Schema migration aligns naturally with T5-08 (Phase 8A PostgreSQL migration). (Phase 8 is already OPEN — T5-07 is Tier 5 and did not block the G1–G11 entry gate.)
 
 ---
+
+### T5-07-L3-A · `athletes` canonical table + athlete_id FK enforcement 🟡 OPEN
+
+**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12).
+
+**Source:** ADR-0033 Layer 3, Sub-decision L3-A.
+
+**Fix direction:**
+1. Create `athletes` table in Alembic migration (schema per ADR-0033 Amendment L3-A).
+2. ALTER `governance_outcomes` — add `athlete_id TEXT NOT NULL`; backfill existing rows with `'owner'`.
+3. RENAME COLUMN `model_calibration_metadata.calibrated_for` → `athlete_id`.
+4. Bump SCHEMA_VERSION.
+5. Add migration upgrade + downgrade tests.
+
+**Acceptance criteria:**
+- `athletes` table exists in both SQLite and Alembic migration.
+- `governance_outcomes.athlete_id` exists and is non-null.
+- `model_calibration_metadata.athlete_id` exists (renamed from `calibrated_for`).
+- SCHEMA_VERSION incremented.
+- Migration upgrade + downgrade tests green.
+
+**Priority:** P1 — implement before any multi-athlete coaching endpoint is built.
+**Phase:** 9 — data integrity gate.
+**Blocking gate:** No multi-athlete coaching execution endpoint before T5-07-L3-A is RESOLVED.
+
+---
+
+### T5-07-L3-B · OutcomeTracker per-athlete query scoping + G-CI-07 extension 🟡 OPEN
+
+**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A.
+
+**Source:** ADR-0033 Layer 3, Sub-decision L3-B + INV-04 activation.
+
+**Fix direction:**
+1. Update all `OutcomeTracker` query methods to accept and enforce `athlete_id: str`.
+2. Extend G-CI-07 (athlete isolation invariant CI check) with AST check: any `OutcomeTracker` query method missing an `athlete_id` argument fails the gate.
+3. Implement per-athlete calibration diversity gate (≥30 paired records, ≥3 decision types, no single type >60%).
+4. Create `tests/test_athlete_calibration_isolation.py` — this satisfies INV-04 enforcement.
+
+**Acceptance criteria:**
+- All `OutcomeTracker` query methods accept `athlete_id`.
+- G-CI-07 extended; gate passes with new scope.
+- `tests/test_athlete_calibration_isolation.py` exists and is green.
+- INV-04 moves from DEFERRED to ENFORCED state (update AGENTS.md §8.3 test reference).
+
+**Priority:** P1 — Phase 9, after T5-07-L3-A.
+
+---
+
+### T5-07-L3-C · Cold-start protocol implementation 🟡 OPEN
+
+**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A; parallel with T5-07-L3-B.
+
+**Source:** ADR-0033 Layer 3, Sub-decision L3-C.
+
+**Fix direction:**
+1. Add `COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR = 0.80` and `COLD_START_HARD_STOP_FACTOR = 1.00` to `titan/science/thresholds.py`.
+2. In `coaching_pipeline()`: check `athletes.is_cold_start` at entry; apply conservative factor to soft gates if active.
+3. Implement cold-start exit: when both exit conditions met, write `cold_start_ends_at`, set `is_cold_start = 0` in same DB transaction.
+4. Emit `athlete_cold_start_completed` structured event (INFO severity).
+5. Owner athlete migration backfill (`is_cold_start=0`, `cold_start_sessions_count=30`).
+
+**Acceptance criteria:**
+- `COLD_START_*` constants in `thresholds.py`.
+- `coaching_pipeline()` applies conservative factor during cold-start; hard-stops unchanged.
+- Cold-start exit is atomic (same DB transaction as session write).
+- `athlete_cold_start_completed` event emitted on exit.
+- Owner athlete correctly bypasses cold-start after migration.
+- Tests cover: cold-start active path, exit condition trigger, owner bypass.
+
+**Priority:** P1 — Phase 9, after T5-07-L3-A.
+
+---
+
+### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution 🟡 OPEN
+
+**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A and T5-07-L3-B.
+
+**Source:** ADR-0033 Layer 3, Sub-decision L3-D + DEC-021 closure + T5-16-B task learning note.
+
+**Fix direction:**
+1. Update all `ADR-0040-SINGLE-ATHLETE-SHORTCUT`-annotated methods in `titan/core/persistence.py` to accept `athlete_id: str` as required parameter. Retire the annotation on each updated method.
+2. Replace `AthleteCoachingContext.coach: Any` with an explicit Protocol or TypedDict defining only the callable contracts consumed by `coaching_pipeline()`. No caller may pass a full `DailyCoach` instance after this change.
+
+**Acceptance criteria:**
+- All previously-annotated adapter methods in `persistence.py` accept `athlete_id: str`; no `ADR-0040-SINGLE-ATHLETE-SHORTCUT` annotations remain in updated methods.
+- `AthleteCoachingContext.coach` is typed (Protocol or TypedDict); `Any` removed.
+- All existing tests green after signature changes.
+- G-CI-07 passes with updated method signatures.
+
+**Priority:** P2 — Phase 9, after T5-07-L3-A and L3-B (depends on isolation contract being in place).
+**Blocking gate:** No multi-athlete coaching execution endpoint before T5-07-L3-D is RESOLVED.
 
 ---
 
@@ -3651,7 +3743,7 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: deferred Phase 9 | 2026-03-13 |
+| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; implementation T5-07-L3-A through L3-D | 2026-03-13 |
 | T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 RESOLVED 2026-03-15; D6 was T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable — DEC-015 2026-03-16; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished**. D6 was a T5-08 pre-existing deliverable — not a T5-08-B implementation deliverable; D6 status not explicitly confirmed in T5-08-B closure record (DEC-015 2026-03-16: D6 functionally verified present in `persistence.py:122` + `database.py:1975`). | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
