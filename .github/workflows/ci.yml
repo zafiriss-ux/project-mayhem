@@ -260,6 +260,7 @@ jobs:
           import pkgutil
 
           import titan
+          from titan.config.thresholds import MODULE_COUNT_CEILING as module_ceiling
 
           module_count = len(
               [
@@ -268,7 +269,6 @@ jobs:
                   if "__" not in module.name
               ]
           )
-          module_ceiling = 70  # raised 69→70 for T5-75/76/77 (2026-04-11)
 
           if module_count > module_ceiling:
               raise SystemExit(

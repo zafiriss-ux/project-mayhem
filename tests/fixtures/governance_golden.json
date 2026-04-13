@@ -1,0 +1,60 @@
+{
+  "decision_rationale": {
+    "actionable_guidance": "Execute planned session and continue normal monitoring.",
+    "gate_findings": [
+      {
+        "actual_value": false,
+        "gate": "H1",
+        "margin": null,
+        "reason": "Injury flag active: full rest is required.",
+        "status": "CLEAR",
+        "threshold_value": true
+      },
+      {
+        "actual_value": 0.0,
+        "gate": "H2",
+        "margin": -15.0,
+        "reason": "HRV collapse crossed safety threshold (0.0 vs 15.0, margin -15.0).",
+        "status": "CLEAR",
+        "threshold_value": 15.0
+      },
+      {
+        "actual_value": 0.0,
+        "gate": "H3",
+        "margin": -8.0,
+        "reason": "RHR spike crossed safety threshold (0.0 vs 8.0, margin -8.0).",
+        "status": "CLEAR",
+        "threshold_value": 8.0
+      },
+      {
+        "actual_value": 0.0,
+        "gate": "H4",
+        "margin": -50.0,
+        "reason": "TSB dropped below critical floor (0.0 vs -50.0, margin -50.0).",
+        "status": "CLEAR",
+        "threshold_value": -50.0
+      },
+      {
+        "actual_value": 0,
+        "gate": "H5",
+        "margin": -8.0,
+        "reason": "Subjective fatigue reached extreme level (0 vs 8, margin -8.0).",
+        "status": "CLEAR",
+        "threshold_value": 8
+      }
+    ],
+    "primary_reason": "No governance lock triggered: training proceeds as planned."
+  },
+  "governance_clean": true,
+  "governance_locks_applied": [],
+  "max_zone": 5,
+  "session_type": "INTERVALS",
+  "vo2_eligibility": {
+    "detailed_failed_conditions": [],
+    "downgraded_to": null,
+    "eligible": true,
+    "failed_conditions": [],
+    "original_session": "INTERVALS_Z5",
+    "reason": "All VO2 eligibility conditions satisfied"
+  }
+}

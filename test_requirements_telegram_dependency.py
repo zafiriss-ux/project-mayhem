@@ -21,6 +21,7 @@ DEV_DEPENDENCIES = {
     "ruff==0.15.8",
     "mypy==1.19.1",
     "httpx==0.27.2",
+    "pre-commit==3.7.1",
 }
 
 BUILD_DEPENDENCIES = {

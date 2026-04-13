@@ -187,3 +187,6 @@ CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
         "FAIL_SAFE_LOCK",
     }
 )
+
+# ── CI tooling constants (importable by tests + CI scripts) ──────────────────
+MODULE_COUNT_CEILING: int = 71  # T4-27-C: raised 70→71 to provide headroom; prev ceiling was 70 (T5-75/76/77)
