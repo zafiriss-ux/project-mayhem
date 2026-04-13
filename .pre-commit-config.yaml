@@ -1,0 +1,33 @@
+# TITAN OS pre-commit hooks
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff lint
+        entry: ruff check .
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: collect-only-zero-errors
+        name: pytest collect-only (zero collection errors)
+        entry: >
+          bash -c '
+            errors=$(python -m pytest --collect-only -q 2>&1 | grep "^ERROR" | wc -l);
+            if [ "$errors" -gt 0 ]; then
+              echo "Collection errors: $errors — fix imports before committing";
+              python -m pytest --collect-only -q 2>&1 | grep "^ERROR";
+              exit 1;
+            fi
+          '
+        language: system
+        pass_filenames: false
+
+      - id: schema-contracts
+        name: DB schema contract tests
+        entry: python -m pytest tests/test_db_schema_contracts.py -q
+        language: system
+        pass_filenames: false
+        stages: [pre-push]   # schema checks on push only — too slow for every commit
