@@ -2,12 +2,16 @@
 # To change gate logic: (1) write ADR entry, (2) update evidence_registry.py,
 # (3) update tests/test_governance_mutation.py. All three are required.
 """Governance Engine — intensity, readiness downgrade, and safety gates."""
+from __future__ import annotations
 
 import json
 import logging
 import math
 from dataclasses import asdict, dataclass, is_dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from titan.science.threshold_adapter import ThresholdAdapter
 
 from titan.config.thresholds import (
     CANONICAL_LOCK_CODES,
@@ -93,6 +97,32 @@ class GovernanceEngine:
         "EASY": "EASY",
         "REST": "REST",
     }
+
+    def __init__(
+        self,
+        threshold_adapter: ThresholdAdapter | None = None,
+    ) -> None:
+        """Initialise GovernanceEngine.
+
+        Args:
+            threshold_adapter: Optional per-athlete ThresholdAdapter injected by
+                the coaching pipeline (ADR-0052). When None, all gate thresholds
+                use unmodified constants from thresholds.py.
+        """
+        self._threshold_adapter = threshold_adapter
+
+    def _get_soft_threshold(self, threshold_name: str, base_value: float) -> float:
+        """Return the (possibly adapted) threshold value for soft gates.
+
+        Hard-stop gates (H2–H5) must NEVER be routed through this helper —
+        call the raw constant directly. This helper is safe only for soft gates
+        (readiness floors, VO2 eligibility bounds, intensity governor bands, etc.).
+
+        If no ThresholdAdapter is injected, returns base_value unchanged.
+        """
+        if self._threshold_adapter is not None:
+            return self._threshold_adapter.get_threshold(threshold_name, base_value)
+        return base_value
 
     def check_override_lockdown(self, db: Any, threshold: float | None = None) -> dict:
         effective_threshold = (

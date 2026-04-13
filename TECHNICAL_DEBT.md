@@ -3451,7 +3451,7 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ### HD-09 · No population-specific threshold adaptation — static thresholds regardless of age/fitness tier
 
-**Status:** ADR-0052 Accepted 2026-04-04. Implementation deferred Phase 9.
+**Status:** ✅ RESOLVED — 2026-04-12. ThresholdAdapter implemented in `titan/science/threshold_adapter.py` (MODULE_VERSION 1.0.0); `athlete_threshold_offsets` DB table (schema v12, Alembic migration 20260412_01); `GovernanceEngine.__init__` accepts optional `threshold_adapter` parameter; `GovernanceEngine._get_soft_threshold()` routes soft-gate lookups through adapter; ADR-0052 constants in `thresholds.py`; evidence_registry entries added. Tests: `tests/titan/science/test_threshold_adapter.py` (42 tests). All three gates passed: G1 ruff clean, G2 strict pytest 2482 passed, G3 full pytest 2482 passed.
 **Source:** TITAN_HARDENING_FRAMEWORK_v1.md §1.1 / HD-09
 **Severity:** MED
 **Failure Class:** Safety Logic
@@ -3821,6 +3821,7 @@ When an item is completed, mark it here with date and PR reference:
 | ADR-0018 Phase B (G9) | ✅ IMPLEMENTED — G9 cleared | 2026-03-08 (commit: c51e217) |
 | T2-18 | ✅ RESOLVED | 2026-03-08 |
 | T2-19 | ✅ RESOLVED — nominal coherence oracle implemented | 2026-03-08 |
+| HD-09 | ✅ RESOLVED 2026-04-12 — ThresholdAdapter MODULE_VERSION 1.0.0; athlete_threshold_offsets schema v12; GovernanceEngine._get_soft_threshold() injection; ADR-0052 constants; 42 tests green | 2026-04-12 |
 | T5-75 | ✅ RESOLVED 2026-04-12 — AST structural invariant: single _decision_pipeline call site + gate-method reachability; 2 tests green (commit: 29fcc49) | 2026-04-12 |
 | T5-76 | ✅ RESOLVED 2026-04-12 — Concurrent coaching_pipeline() no cross-contamination test; ADR-0046 entry gate satisfied (commit: 29fcc49) | 2026-04-12 |
 | T5-77 | ✅ RESOLVED 2026-04-12 — SIGTERM mid-pipeline: 3 tests confirm no orphaned governance trace (commit: 29fcc49) | 2026-04-12 |

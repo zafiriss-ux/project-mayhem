@@ -943,6 +943,86 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
+    def get_athlete_threshold_offsets(self, athlete_id: str) -> list[dict]:
+        """Return all threshold offset rows for an athlete.
+
+        Returns a list of dicts with keys 'threshold_key' and 'delta_value'.
+        Returns an empty list if the athlete has no recorded offsets.
+        Used by ThresholdAdapter.load() (ADR-0052 Stage 2).
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            rows = self.conn.cursor().execute(
+                "SELECT threshold_key, delta_value "
+                "FROM athlete_threshold_offsets WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchall()
+        return [{"threshold_key": r[0], "delta_value": r[1]} for r in rows]
+
+    def is_athlete_cold_start(self, athlete_id: str) -> bool:
+        """Return True if the athlete has insufficient outcome history for adaptation.
+
+        ADR-0033 L3-C conservative bias: any athlete with fewer than
+        CALIBRATION_MIN_OUTCOME_COUNT governance_outcomes records is treated as
+        cold-start. Unknown athletes (no records at all) always return True —
+        fail-closed per INV-05 (conservative default).
+
+        Used by ThresholdAdapter.is_circuit_breaker_active() (ADR-0052 Stage 2).
+        """
+        from titan.config.thresholds import CALIBRATION_MIN_OUTCOME_COUNT
+        with self._lock:
+            self._ensure_open_locked()
+            row = self.conn.cursor().execute(
+                "SELECT COUNT(*) FROM governance_outcomes WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchone()
+        count = row[0] if row else 0
+        return count < CALIBRATION_MIN_OUTCOME_COUNT
+
+    def get_false_negative_rate(self, athlete_id: str, window_days: int) -> float:
+        """Return the false-negative rate for the athlete over the last window_days.
+
+        FALSE_NEG = governance cleared training (governance_clean=1) AND athlete
+        followed the recommendation (decision_was_followed=1) AND session was not
+        completed (outcome_completed=0 with a non-NULL outcome_completed value).
+
+        Returns 0.0 if:
+        - Total followed-and-evaluated decisions < CALIBRATION_MIN_OUTCOME_COUNT
+        - The outcome quality data is unavailable
+
+        Used by ThresholdAdapter.is_circuit_breaker_active() (ADR-0052 Stage 2).
+        """
+        from titan.config.thresholds import CALIBRATION_MIN_OUTCOME_COUNT
+        cutoff = (
+            datetime.now(UTC) - timedelta(days=window_days)
+        ).date().isoformat()
+        with self._lock:
+            self._ensure_open_locked()
+            row = self.conn.cursor().execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (
+                        WHERE governance_clean = 1
+                          AND decision_was_followed = 1
+                          AND outcome_completed = 0
+                    ) AS false_neg_count,
+                    COUNT(*) FILTER (
+                        WHERE governance_clean = 1
+                          AND decision_was_followed = 1
+                          AND outcome_completed IS NOT NULL
+                    ) AS total_evaluated
+                FROM governance_outcomes
+                WHERE athlete_id = ? AND date >= ?
+                """,
+                (athlete_id, cutoff),
+            ).fetchone()
+        if row is None:
+            return 0.0
+        false_neg_count, total_evaluated = row
+        if (total_evaluated or 0) < CALIBRATION_MIN_OUTCOME_COUNT:
+            return 0.0
+        return false_neg_count / total_evaluated
+
     # --- Auth User / Token CRUD (HD-04 / T5-70) ---
 
     def upsert_auth_user(
