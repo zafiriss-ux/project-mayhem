@@ -25,6 +25,15 @@ from titan.orchestration.contracts import (
 from titan.science.governance_engine import GovernanceEngine
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--update-golden",
+        action="store_true",
+        default=False,
+        help="Regenerate governance_golden.json. Requires ADR reference in commit.",
+    )
+
+
 @pytest.fixture
 def athlete_profile_factory() -> Callable[..., UniversalAthleteProfile]:
     """Create athlete profiles with optional demographics/HR setup and attribute overrides."""

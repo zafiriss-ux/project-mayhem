@@ -1128,6 +1128,11 @@ Add a subsection to AGENTS.md §16.11 (or equivalent policy location) specifying
 
 **Resolution:** Updated `AGENTS.md` §16.11 to codify the three-rule T4-27-C protocol for module ceiling updates on accepted structural feature additions, including a direct cross-reference back to T4-27-C as the rule source.
 
+**Status:** ✅ RESOLVED — 2026-04-13. `MODULE_COUNT_CEILING = 71` moved to
+`thresholds.py` (importable); `tests/test_complexity_budget.py` replaces CI inline
+literal; ceiling is now testable and self-documenting. `ci.yml` complexity-budget job
+updated to import from `thresholds.py` instead of using a hardcoded literal.
+
 **Task learning:** Policy-only safeguards still need explicit ownership timing (architect confirms before implementation; implementing engineer updates in-commit) to avoid post-hoc records fixes.
 
 **Effort:** ~30 minutes. Policy text only — no implementation.

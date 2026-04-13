@@ -23,6 +23,6 @@ def test_complexity_budget_job_enforces_real_titan_module_count_with_ceiling() -
     assert "import titan" in content
     assert "pkgutil.walk_packages(titan.__path__, prefix=\"titan.\")" in content
     assert 'if "__" not in module.name' in content
-    assert "module_ceiling = 70" in content  # raised 69→70 for T5-75/76/77 (2026-04-11)
+    assert "MODULE_COUNT_CEILING" in content  # T4-27-C: ceiling imported from thresholds.py
     assert "if module_count > module_ceiling:" in content
     assert "Complexity budget exceeded: titan module count" in content
