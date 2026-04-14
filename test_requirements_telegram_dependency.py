@@ -2,7 +2,7 @@ from pathlib import Path
 
 RUNTIME_DEPENDENCIES = {
     "numpy==1.26.4",
-    "garminconnect==0.2.13",
+    "garminconnect==0.3.2",
     "requests==2.33.0",
     "pyTelegramBotAPI==4.21.0",
     "sqlalchemy==2.0.39",

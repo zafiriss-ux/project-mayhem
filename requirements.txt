@@ -6,7 +6,7 @@
 numpy==1.26.4          # Data processing
 
 # API Integrations
-garminconnect==0.2.13  # Garmin Connect API (activity sync)
+garminconnect==0.3.2   # upgraded from 0.2.13: drops broken withings-sync dep (T5-78)
 requests==2.33.0       # HTTP client (Garmin, weather, webhooks) — bumped 2.32.4→2.33.0 (GHSA-gc5v-m9x4-r6x2)
 pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
 

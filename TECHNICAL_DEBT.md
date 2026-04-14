@@ -3999,3 +3999,21 @@ T5-34-A implementation complete. Class 1 and Class 2 fixes applied; launcher tes
 > **T5-25 has no Codex implementation handoff.** It is a design artefact to be authored by the architect or under direct architect direction. Codex does not implement T5-25.
 
 ---
+
+### T5-78 · garminconnect 0.2.13 transitive dep (withings-sync) uninstallable on setuptools≥67 ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-04-14.
+**Source:** Environment bootstrap failure, session 2026-04-14.
+**Description:** garminconnect==0.2.13 declared withings-sync>=4.1.0 as
+install_requires. withings-sync has no binary wheel and its setup.py
+references self.install_layout (removed in setuptools≥67). Uninstallable
+on this platform (setuptools==68.1.2). pip aborted mid-install leaving
+alembic, bcrypt, fastapi, cffi uninstalled — causing 11 collection errors.
+**Resolution:** garminconnect upgraded to 0.3.2 (drops withings-sync dep).
+Compatibility audit (Phase A) confirmed all 11 titan/ call sites present.
+Breaking change found and fixed: client.garth.loads/dumps() →
+client.client.loads/dumps() (garmin_sync.py lines 313, 417; test mocks
+updated in tests/test_garmin_sync.py and tests/titan/integrations/test_garmin_sync.py).
+Collection errors: 0. Full suite: 2500 tests collected, all green.
+**Priority:** RESOLVED — no further action.
+**Phase:** Maintenance.
