@@ -37,19 +37,20 @@ def test_d5_upgrade_creates_model_calibration_metadata_with_expected_contract(
 
     assert _table_exists(db_path, "model_calibration_metadata")
 
+    # After upgrade to HEAD (which includes the v13 migration that drops
+    # calibrated_for), the column set no longer includes calibrated_for.
     columns = {row[1]: row for row in _column_metadata(db_path, "model_calibration_metadata")}
     assert set(columns) == {
         "model_name",
         "athlete_id",
         "calibrated_at",
-        "calibrated_for",
         "baseline_hrv_ms",
         "baseline_vo2",
         "schema_version",
-    }
+    }, (
+        "model_calibration_metadata must not contain calibrated_for after v13 migration"
+    )
     assert columns["athlete_id"][3] == 1
-    assert columns["athlete_id"][4] == "'default'"
-    assert columns["calibrated_for"][4] == "'default'"
 
     pk_columns = [row[1] for row in _column_metadata(db_path, "model_calibration_metadata") if row[5] > 0]
     assert pk_columns == ["model_name", "athlete_id"]

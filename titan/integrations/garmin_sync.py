@@ -310,9 +310,9 @@ class GarminSync:
                 try:
                     token_data = token_path.read_text(encoding="utf-8")
                     client = Garmin()
-                    client.garth.loads(token_data)
+                    client.client.loads(token_data)
                     # Verify the token is still accepted by the Garmin API.
-                    # garth.loads() only deserialises from disk — it does NOT check the
+                    # client.loads() only deserialises from disk — it does NOT check the
                     # server.  A single lightweight call here ensures we catch expired
                     # tokens before any sync attempt, preventing the silent 0/0/0 failure.
                     client.connectapi("userprofile-service/socialProfile")
@@ -414,8 +414,8 @@ class GarminSync:
             # Persist the new session token for future connections.
             try:
                 token_path.parent.mkdir(parents=True, exist_ok=True)
-                token_path.write_text(client.garth.dumps(), encoding="utf-8")
-                _garmin_event("connect_token_saved", subsystem="connect", detail="Garth session token saved")
+                token_path.write_text(client.client.dumps(), encoding="utf-8")
+                _garmin_event("connect_token_saved", subsystem="connect", detail="Session token saved")
             except Exception as save_err:
                 _garmin_event(
                     "connect_token_save_failed",

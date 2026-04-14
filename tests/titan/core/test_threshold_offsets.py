@@ -8,7 +8,7 @@ Tests cover:
   5. Invalid source → DB CHECK constraint raises
   6. Confidence out of range → DB CHECK constraint raises
   7. Alembic upgrade + downgrade
-  8. SCHEMA_VERSION incremented to 12
+  8. SCHEMA_VERSION incremented to 13
 """
 
 from __future__ import annotations
@@ -203,15 +203,15 @@ def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
 # ── Test 8 ────────────────────────────────────────────────────────────────────
 
 def test_schema_version_incremented(tmp_path: Path) -> None:
-    """Fresh DB must carry SCHEMA_VERSION == 12 in PRAGMA user_version."""
-    assert SCHEMA_VERSION == 12, (
-        f"Expected SCHEMA_VERSION=12 in database.py, got {SCHEMA_VERSION}"
+    """Fresh DB must carry SCHEMA_VERSION == 13 in PRAGMA user_version."""
+    assert SCHEMA_VERSION == 13, (
+        f"Expected SCHEMA_VERSION=13 in database.py, got {SCHEMA_VERSION}"
     )
     db = DatabaseManager(db_name="version_check.db", db_dir=tmp_path)
     try:
         version = db.conn.execute("PRAGMA user_version").fetchone()[0]
     finally:
         db.close()
-    assert version == 12, (
-        f"PRAGMA user_version must be 12 after create_tables(), got {version}"
+    assert version == 13, (
+        f"PRAGMA user_version must be 13 after create_tables(), got {version}"
     )

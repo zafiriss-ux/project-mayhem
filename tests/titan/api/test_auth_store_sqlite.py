@@ -230,8 +230,8 @@ class TestAuthStoreBackwardCompat:
         assert store.get_user("u1") is not None
 
     def test_schema_version_is_twelve(self, tmp_path: Path) -> None:
-        """After migration v12 (athlete_threshold_offsets — HD-09), PRAGMA user_version must equal 12."""
+        """After migration v13 (athletes table — T5-07-L3-A), PRAGMA user_version must equal 13."""
         db = DatabaseManager(db_name="test_auth.db", db_dir=tmp_path)
         version = db.conn.cursor().execute("PRAGMA user_version").fetchone()[0]
-        assert version == 12
+        assert version == 13
         db.close()

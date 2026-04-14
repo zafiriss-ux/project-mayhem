@@ -401,7 +401,7 @@ def test_connect_retries_on_429_and_succeeds(monkeypatch, tmp_path):
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             call_count["n"] += 1
@@ -446,7 +446,7 @@ def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             call_count["n"] += 1
@@ -490,7 +490,7 @@ def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypa
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def connectapi(self, _path):
             raise RuntimeError("429 too many requests")
@@ -538,7 +538,7 @@ def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_pa
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def connectapi(self, _path):
             raise RuntimeError("401 unauthorized")
@@ -587,7 +587,7 @@ def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypa
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def connectapi(self, _path):
             raise RuntimeError("429 too many requests")
@@ -643,7 +643,7 @@ def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tm
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def connectapi(self, _path):
             raise RuntimeError("429 too many requests")

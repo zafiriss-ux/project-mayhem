@@ -434,7 +434,7 @@ def test_connect_saves_token_after_login(monkeypatch, tmp_path):
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             pass
@@ -463,7 +463,7 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             login_called.append(True)
@@ -499,7 +499,7 @@ def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             login_called.append(True)
@@ -538,7 +538,7 @@ def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             login_called.append(True)
@@ -655,7 +655,7 @@ def test_connect_token_save_failure_does_not_break_connect(monkeypatch, tmp_path
 
     class _Garmin:
         def __init__(self, email=None, password=None):
-            self.garth = _FakeGarth()
+            self.client = _FakeGarth()
 
         def login(self):
             pass
@@ -726,7 +726,7 @@ def test_last_connect_error_cleared_on_successful_token_load(monkeypatch, tmp_pa
     token_file.write_text('{"token": "ok"}', encoding="utf-8")
 
     class _FakeGarminInstance:
-        class garth:
+        class client:
             @staticmethod
             def loads(_data):
                 pass
