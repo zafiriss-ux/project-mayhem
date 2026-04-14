@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 
 
 class DatabaseManager:
@@ -331,7 +331,7 @@ class DatabaseManager:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS governance_outcomes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL,
                 session_planned TEXT NOT NULL,
                 session_post_governance TEXT NOT NULL,
@@ -371,6 +371,28 @@ class DatabaseManager:
                     CHECK (confidence >= 0.0 AND confidence <= 1.0),
                 UNIQUE (athlete_id, threshold_key)
             )
+        """)
+
+        # Table 10: Canonical athletes table (ADR-0033 Layer 3 — T5-07-L3-A)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athletes (
+                athlete_id                TEXT PRIMARY KEY,
+                display_name              TEXT NOT NULL,
+                created_at                TEXT NOT NULL,
+                is_cold_start             INTEGER NOT NULL DEFAULT 1,
+                cold_start_ends_at        TEXT,
+                cold_start_sessions_count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        # Seed owner row for single-athlete installations (is_cold_start=0: owner
+        # bypasses cold-start per ADR-0033 L3-C).
+        cursor.execute("""
+            INSERT OR IGNORE INTO athletes
+                (athlete_id, display_name, created_at, is_cold_start,
+                 cold_start_ends_at, cold_start_sessions_count)
+            VALUES
+                ('owner', 'Owner', datetime('now'), 0,
+                 datetime('now'), 30)
         """)
 
         self.conn.commit()
@@ -444,6 +466,12 @@ class DatabaseManager:
                 "athlete_threshold_offsets",
                 "per-athlete threshold offset table (HD-09 / ADR-0052 Stage 1)",
                 None,  # DDL — see _apply_v12_migrations() below
+            ),
+            13: (
+                "athletes / governance_outcomes / model_calibration_metadata",
+                "athletes canonical table + owner seed + governance_outcomes owner backfill "
+                "+ drop calibrated_for (T5-07-L3-A / T5-74 / ADR-0033)",
+                None,  # DDL — see _apply_v13_migrations() below
             ),
         }
 
@@ -582,6 +610,19 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 12,
                     "table_created": "athlete_threshold_offsets (HD-09 / ADR-0052 Stage 1)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 13:
+            self._apply_v13_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 13,
+                    "tables_created": "athletes (owner seed)",
+                    "columns_backfilled": "governance_outcomes.athlete_id default→owner",
+                    "columns_dropped": "model_calibration_metadata.calibrated_for (T5-07-L3-A)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -885,6 +926,89 @@ class DatabaseManager:
                 UNIQUE (athlete_id, threshold_key)
             )
         """)
+
+    def _apply_v13_migrations(self, cursor) -> None:
+        """Version 13: athletes canonical table + owner seed + governance backfill
+        + drop calibrated_for (T5-07-L3-A / T5-74 / ADR-0033).
+
+        Steps:
+          1. CREATE TABLE IF NOT EXISTS athletes (owner seeded via INSERT OR IGNORE).
+          2. Backfill governance_outcomes.athlete_id: rows with 'default' or
+             'DEFAULT' become 'owner' (single-athlete installations).
+          3. Drop the redundant calibrated_for column from model_calibration_metadata
+             by recreating the table without it (SQLite RENAME COLUMN supported from
+             3.25+, but DROP COLUMN requires 3.35+; table-recreation is safer).
+        """
+        # 1 ── athletes table (idempotent via IF NOT EXISTS + INSERT OR IGNORE)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athletes (
+                athlete_id                TEXT PRIMARY KEY,
+                display_name              TEXT NOT NULL,
+                created_at                TEXT NOT NULL,
+                is_cold_start             INTEGER NOT NULL DEFAULT 1,
+                cold_start_ends_at        TEXT,
+                cold_start_sessions_count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        cursor.execute("""
+            INSERT OR IGNORE INTO athletes
+                (athlete_id, display_name, created_at, is_cold_start,
+                 cold_start_ends_at, cold_start_sessions_count)
+            VALUES
+                ('owner', 'Owner', datetime('now'), 0,
+                 datetime('now'), 30)
+        """)
+
+        # 2 ── Backfill governance_outcomes.athlete_id 'default'/'DEFAULT' → 'owner'
+        cursor.execute("""
+            UPDATE governance_outcomes
+               SET athlete_id = 'owner'
+             WHERE athlete_id IN ('default', 'DEFAULT')
+        """)
+
+        # 3 ── Drop calibrated_for from model_calibration_metadata
+        #      Only act if the table and the column both exist.
+        mcm_tables = cursor.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' "
+            "AND name='model_calibration_metadata'"
+        ).fetchone()
+        if mcm_tables is None:
+            return  # table not yet created (fresh DB running all migrations)
+
+        mcm_cols = [
+            row[1]
+            for row in cursor.execute(
+                "PRAGMA table_info(model_calibration_metadata)"
+            ).fetchall()
+        ]
+        if "calibrated_for" not in mcm_cols:
+            return  # already dropped or never added
+
+        # Recreate without calibrated_for (safe for all SQLite versions).
+        cursor.execute("""
+            CREATE TABLE model_calibration_metadata_v13 (
+                model_name      TEXT NOT NULL,
+                athlete_id      TEXT NOT NULL DEFAULT 'owner',
+                calibrated_at   TEXT NOT NULL,
+                baseline_hrv_ms REAL,
+                baseline_vo2    REAL,
+                schema_version  INTEGER NOT NULL,
+                PRIMARY KEY (model_name, athlete_id)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO model_calibration_metadata_v13
+                (model_name, athlete_id, calibrated_at,
+                 baseline_hrv_ms, baseline_vo2, schema_version)
+            SELECT model_name, athlete_id, calibrated_at,
+                   baseline_hrv_ms, baseline_vo2, schema_version
+            FROM model_calibration_metadata
+        """)
+        cursor.execute("DROP TABLE model_calibration_metadata")
+        cursor.execute(
+            "ALTER TABLE model_calibration_metadata_v13 "
+            "RENAME TO model_calibration_metadata"
+        )
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
@@ -1913,7 +2037,7 @@ class DatabaseManager:
                        outcome_independence_ok, algorithm_version_snapshot
                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    decision.get('athlete_profile_id', 'default'),
+                    decision.get('athlete_profile_id', 'owner'),
                     decision['date'],
                     decision['session_planned'],
                     decision['session_post_governance'],
@@ -2119,8 +2243,7 @@ class DatabaseManager:
         *,
         model_name: str,
         calibrated_at: str,
-        athlete_id: str = "default",
-        calibrated_for: str = "default",
+        athlete_id: str = "owner",
         baseline_hrv_ms: float | None = None,
         baseline_vo2: float | None = None,
         schema_version: int = SCHEMA_VERSION,
@@ -2134,14 +2257,12 @@ class DatabaseManager:
                         model_name,
                         athlete_id,
                         calibrated_at,
-                        calibrated_for,
                         baseline_hrv_ms,
                         baseline_vo2,
                         schema_version
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(model_name, athlete_id) DO UPDATE SET
                         calibrated_at = excluded.calibrated_at,
-                        calibrated_for = excluded.calibrated_for,
                         baseline_hrv_ms = excluded.baseline_hrv_ms,
                         baseline_vo2 = excluded.baseline_vo2,
                         schema_version = excluded.schema_version""",
@@ -2149,7 +2270,6 @@ class DatabaseManager:
                     model_name,
                     athlete_id,
                     calibrated_at,
-                    calibrated_for,
                     baseline_hrv_ms,
                     baseline_vo2,
                     schema_version,
@@ -2161,14 +2281,14 @@ class DatabaseManager:
     def get_model_calibration_metadata(
         self,
         model_name: str,
-        athlete_id: str = "default",
+        athlete_id: str = "owner",
     ) -> dict[str, Any] | None:
         """Return calibration metadata for a model, or None when no row exists."""
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute(
-                """SELECT model_name, athlete_id, calibrated_at, calibrated_for,
+                """SELECT model_name, athlete_id, calibrated_at,
                           baseline_hrv_ms, baseline_vo2, schema_version
                      FROM model_calibration_metadata
                      WHERE model_name = ? AND athlete_id = ?""",
@@ -2183,10 +2303,9 @@ class DatabaseManager:
             "model_name": str(row[0]),
             "athlete_id": str(row[1]),
             "calibrated_at": str(row[2]),
-            "calibrated_for": str(row[3]),
-            "baseline_hrv_ms": float(row[4]) if row[4] is not None else None,
-            "baseline_vo2": float(row[5]) if row[5] is not None else None,
-            "schema_version": int(row[6]),
+            "baseline_hrv_ms": float(row[3]) if row[3] is not None else None,
+            "baseline_vo2": float(row[4]) if row[4] is not None else None,
+            "schema_version": int(row[5]),
         }
 
     def record_sync_outcome(
@@ -2368,7 +2487,7 @@ class PostgreSQLDatabaseManager:
                 """
                 CREATE TABLE IF NOT EXISTS governance_outcomes (
                     id BIGSERIAL PRIMARY KEY,
-                    athlete_id TEXT NOT NULL DEFAULT 'default',
+                    athlete_id TEXT NOT NULL DEFAULT 'owner',
                     date TEXT NOT NULL,
                     session_planned TEXT NOT NULL,
                     session_post_governance TEXT NOT NULL,
@@ -2498,7 +2617,7 @@ class PostgreSQLDatabaseManager:
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    decision.get("athlete_profile_id", "default"),
+                    decision.get("athlete_profile_id", "owner"),
                     decision["date"],
                     decision["session_planned"],
                     decision["session_post_governance"],
