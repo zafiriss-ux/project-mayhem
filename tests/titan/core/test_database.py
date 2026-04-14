@@ -902,9 +902,9 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
 
 
 def test_schema_version_is_11():
-    """SCHEMA_VERSION must be 12 after ADR-0052 Stage 1 migration (HD-09)."""
+    """SCHEMA_VERSION must be 13 after athletes table + v13 migration (T5-07-L3-A)."""
     from titan.core.database import SCHEMA_VERSION
-    assert SCHEMA_VERSION == 12
+    assert SCHEMA_VERSION == 13
 
 
 def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
@@ -928,7 +928,7 @@ def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
 
 
 def test_save_governance_decision_defaults_athlete_id_when_missing(tmp_path):
-    """save_governance_decision() must default athlete_id to 'default' when key absent (Fix B)."""
+    """save_governance_decision() must default athlete_id to 'owner' when key absent (v13)."""
     db = DatabaseManager(db_name="gov_default_athlete.db", db_dir=tmp_path)
     try:
         db.save_governance_decision({
@@ -941,7 +941,7 @@ def test_save_governance_decision_defaults_athlete_id_when_missing(tmp_path):
             "SELECT athlete_id FROM governance_outcomes WHERE date = ?", ("2026-04-10",)
         ).fetchone()
         assert row is not None
-        assert row[0] == "default"
+        assert row[0] == "owner"
     finally:
         db.close()
 
@@ -981,7 +981,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
         assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
         version = cursor.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 12  # SCHEMA_VERSION bumped to 12 by ADR-0052 Stage 1 (HD-09)
+        assert version == 13  # SCHEMA_VERSION bumped to 13 by athletes table (T5-07-L3-A)
     finally:
         db.close()
 
@@ -1012,7 +1012,7 @@ def test_postgres_save_governance_decision_uses_athlete_profile_id(tmp_path, mon
 
 
 def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_path, monkeypatch):
-    """PostgreSQL save_governance_decision() must default athlete_id to 'default' (Fix C)."""
+    """PostgreSQL save_governance_decision() must default athlete_id to 'owner' when key absent (v13)."""
     from titan.core import database as db_module
 
     monkeypatch.setattr(db_module, "psycopg2", _FakePsycopg2())
@@ -1030,6 +1030,6 @@ def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_
             )
             rows = cursor.fetchall()
         assert rows, "Expected at least one governance_outcomes row"
-        assert rows[0][0] == "default"
+        assert rows[0][0] == "owner"
     finally:
         db.close()

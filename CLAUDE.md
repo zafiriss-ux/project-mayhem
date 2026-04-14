@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2500 tests all green as of T5-78 garminconnect upgrade + collection error fix (2026-04-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2511 tests all green as of T5-07-L3-A + T5-74 SCHEMA_VERSION 12→13 (athletes table, governance_outcomes backfill, calibrated_for removal) (2026-04-14). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

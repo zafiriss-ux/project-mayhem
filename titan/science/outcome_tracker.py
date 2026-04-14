@@ -71,7 +71,7 @@ class GovernanceDecision:
     readiness_score: float
     glycogen_debt: float
     afi_value: float | None
-    athlete_profile_id: str = "DEFAULT"
+    athlete_profile_id: str = "owner"
 
     # Outcome — filled post-session via record_outcome()
     outcome_rpe: int | None = None
@@ -82,6 +82,12 @@ class GovernanceDecision:
     override_outcome_exclusion: bool = False
     outcome_independence_ok: bool = True
     algorithm_version_snapshot: dict[str, str] | None = None
+
+    def __post_init__(self) -> None:
+        # Normalise sentinel: callers that pass athlete_profile_id=None or the
+        # legacy "DEFAULT" string both resolve to the canonical owner identifier.
+        if not self.athlete_profile_id or self.athlete_profile_id == "DEFAULT":
+            self.athlete_profile_id = "owner"
 
 
 def _classify_lock_cause(
@@ -237,7 +243,7 @@ class OutcomeTracker:
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
-            athlete_profile_id=str(athlete_profile_id or "DEFAULT"),
+            athlete_profile_id=str(athlete_profile_id or "owner"),
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get("priority_vector", {})),
             lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),

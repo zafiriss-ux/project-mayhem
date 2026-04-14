@@ -2,14 +2,15 @@
 DB schema contract tests — ADR-0033 Layer 3 + ADR-0052 + Phase 9 entry gate.
 Any migration that changes a column set MUST update this file in the same PR.
 
-Column sets verified against: DatabaseManager (SCHEMA_VERSION=12).
+Column sets verified against: DatabaseManager (SCHEMA_VERSION=13).
 Run to re-verify: python -c "
     import tempfile; from pathlib import Path
     from titan.core.database import DatabaseManager
     with tempfile.TemporaryDirectory() as d:
         db = DatabaseManager(db_name='t.db', db_dir=Path(d))
         for t in ['daily_metrics','training_log','gear_usage',
-                  'personal_bests','governance_outcomes','athlete_threshold_offsets']:
+                  'personal_bests','governance_outcomes','athlete_threshold_offsets',
+                  'athletes','model_calibration_metadata']:
             cols = sorted(r[1] for r in db.conn.execute(f'PRAGMA table_info({t})').fetchall())
             print(t, cols)
 "
@@ -19,10 +20,10 @@ from __future__ import annotations
 
 import pytest
 
-from titan.core.database import DatabaseManager
+from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 # ── Column contract sets (source-of-truth for schema regression) ─────────────
-# These include all columns added by migrations up to SCHEMA_VERSION=12.
+# These include all columns added by migrations up to SCHEMA_VERSION=13.
 
 GOVERNANCE_OUTCOMES_COLUMNS = {
     "id",
@@ -118,6 +119,24 @@ PERSONAL_BESTS_COLUMNS = {
     "race_name",
 }
 
+ATHLETES_COLUMNS = {
+    "athlete_id",          # PK
+    "display_name",
+    "created_at",
+    "is_cold_start",
+    "cold_start_ends_at",
+    "cold_start_sessions_count",
+}
+
+MODEL_CALIBRATION_METADATA_COLUMNS = {
+    "model_name",          # PK (composite with athlete_id)
+    "athlete_id",          # PK + FK reference — calibrated_for removed in v13
+    "calibrated_at",
+    "baseline_hrv_ms",
+    "baseline_vo2",
+    "schema_version",
+}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -161,3 +180,32 @@ def test_gear_usage_schema(test_db_conn) -> None:
 
 def test_personal_bests_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "personal_bests") == PERSONAL_BESTS_COLUMNS
+
+
+def test_athletes_schema(test_db_conn) -> None:
+    """athletes canonical table must match ATHLETES_COLUMNS contract (T5-07-L3-A)."""
+    assert get_columns(test_db_conn, "athletes") == ATHLETES_COLUMNS, (
+        f"athletes schema mismatch. Got: {get_columns(test_db_conn, 'athletes')}"
+    )
+
+
+def test_model_calibration_metadata_schema(test_db_conn) -> None:
+    """model_calibration_metadata must NOT contain calibrated_for after v13 (T5-07-L3-A)."""
+    cols = get_columns(test_db_conn, "model_calibration_metadata")
+    assert cols == MODEL_CALIBRATION_METADATA_COLUMNS, (
+        f"model_calibration_metadata schema mismatch. Got: {cols}"
+    )
+    assert "calibrated_for" not in cols, (
+        "calibrated_for must be absent from model_calibration_metadata after v13 migration"
+    )
+
+
+def test_schema_version_is_thirteen(test_db_conn) -> None:
+    """PRAGMA user_version must equal 13 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 13, (
+        f"Expected SCHEMA_VERSION=13 in database.py, got {SCHEMA_VERSION}"
+    )
+    version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
+    assert version == 13, (
+        f"PRAGMA user_version must be 13 after create_tables(), got {version}"
+    )

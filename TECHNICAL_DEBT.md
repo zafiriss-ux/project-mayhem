@@ -1566,9 +1566,18 @@ python -m pytest -q
 
 ---
 
-### T5-07-L3-A · `athletes` canonical table + athlete_id FK enforcement 🟡 OPEN
+### T5-07-L3-A · `athletes` canonical table + athlete_id FK enforcement ✅ RESOLVED
 
-**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12).
+**Status:** ✅ RESOLVED — 2026-04-14. Commit: pending push.
+`athletes` canonical table created in SQLite `create_tables()` + Alembic migration
+(`20260414_01`). Owner athlete seeded (`is_cold_start=0`, `cold_start_sessions_count=30`).
+`governance_outcomes.athlete_id` column confirmed present; existing rows backfilled
+`'default'`→`'owner'` via v13 migration. `model_calibration_metadata.calibrated_for`
+dropped (table recreation); `athlete_id` is the sole athlete FK. `save_governance_decision()`
+now uses explicit `'owner'` fallback in both SQLite and PostgreSQL backends.
+`record_decision()` in `outcome_tracker.py` normalises sentinel to `'owner'`.
+SCHEMA_VERSION bumped 12→13. Schema contract tests updated + 8 new DB tests green.
+Bundled with T5-74 (overlapping schema scope).
 
 **Source:** ADR-0033 Layer 3, Sub-decision L3-A.
 
@@ -1580,15 +1589,37 @@ python -m pytest -q
 5. Add migration upgrade + downgrade tests.
 
 **Acceptance criteria:**
-- `athletes` table exists in both SQLite and Alembic migration.
-- `governance_outcomes.athlete_id` exists and is non-null.
-- `model_calibration_metadata.athlete_id` exists (renamed from `calibrated_for`).
-- SCHEMA_VERSION incremented.
-- Migration upgrade + downgrade tests green.
+- `athletes` table exists in both SQLite and Alembic migration. ✅
+- `governance_outcomes.athlete_id` exists and is non-null. ✅
+- `model_calibration_metadata.athlete_id` exists (renamed from `calibrated_for`). ✅
+- SCHEMA_VERSION incremented. ✅ (12→13)
+- Migration upgrade + downgrade tests green. ✅
 
 **Priority:** P1 — implement before any multi-athlete coaching endpoint is built.
 **Phase:** 9 — data integrity gate.
 **Blocking gate:** No multi-athlete coaching execution endpoint before T5-07-L3-A is RESOLVED.
+
+---
+
+### T5-74 · `governance_outcomes`: add `athlete_id` column to SQLite schema + explicit INSERT ✅ RESOLVED
+
+**Status:** ✅ RESOLVED — 2026-04-14. Bundled with T5-07-L3-A (overlapping schema scope).
+`governance_outcomes.athlete_id` confirmed present in SQLite `create_tables()` (CREATE TABLE
+DEFAULT `'owner'`; v11 migration ALTER TABLE guard for existing DBs). Both SQLite and
+PostgreSQL `save_governance_decision()` INSERTs now pass `athlete_profile_id` explicitly with
+`'owner'` fallback. Existing rows backfilled `'default'`→`'owner'` via v13 migration.
+OBS-045 closed. Schema contract tests updated; 2 focused INSERT tests green.
+
+**Source:** DEC-042 / OBS-045 — governance_outcomes athlete_id absent from SQLite schema and
+INSERT.
+
+**Acceptance criteria:**
+- `governance_outcomes.athlete_id` column in SQLite create_tables(). ✅
+- Explicit `athlete_id` in both SQLite and PostgreSQL save_governance_decision() INSERTs. ✅
+- Existing rows backfilled with `'owner'`. ✅
+- Tests: schema contract + INSERT default verification green. ✅
+
+**Priority:** P1 — Phase 9 (ADR-0033 Layer 3 prerequisite). ✅ RESOLVED.
 
 ---
 
@@ -3748,7 +3779,9 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; implementation T5-07-L3-A through L3-D | 2026-03-13 |
+| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; L3-A ✅ RESOLVED 2026-04-14; L3-B/C/D OPEN Phase 9 | 2026-03-13 |
+| T5-07-L3-A | ✅ RESOLVED 2026-04-14 — athletes table + owner seed + governance_outcomes owner backfill + calibrated_for removal; SCHEMA_VERSION 12→13; 8 new DB tests green | 2026-04-14 |
+| T5-74 | ✅ RESOLVED 2026-04-14 — governance_outcomes.athlete_id confirmed in SQLite schema; explicit 'owner' fallback in both backends; v13 backfill; OBS-045 closed; bundled with T5-07-L3-A | 2026-04-14 |
 | T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 RESOLVED 2026-03-15; D6 was T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable — DEC-015 2026-03-16; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished**. D6 was a T5-08 pre-existing deliverable — not a T5-08-B implementation deliverable; D6 status not explicitly confirmed in T5-08-B closure record (DEC-015 2026-03-16: D6 functionally verified present in `persistence.py:122` + `database.py:1975`). | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
@@ -3825,6 +3858,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-75 | ✅ RESOLVED 2026-04-12 — AST structural invariant: single _decision_pipeline call site + gate-method reachability; 2 tests green (commit: 29fcc49) | 2026-04-12 |
 | T5-76 | ✅ RESOLVED 2026-04-12 — Concurrent coaching_pipeline() no cross-contamination test; ADR-0046 entry gate satisfied (commit: 29fcc49) | 2026-04-12 |
 | T5-77 | ✅ RESOLVED 2026-04-12 — SIGTERM mid-pipeline: 3 tests confirm no orphaned governance trace (commit: 29fcc49) | 2026-04-12 |
+| T5-78 | ✅ RESOLVED 2026-04-14 — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
