@@ -1670,9 +1670,15 @@ INSERT.
 
 ---
 
-### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution 🟡 OPEN
+### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution ⚠️ PARTIALLY RESOLVED
 
-**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A and T5-07-L3-B.
+**Status:** ⚠️ PARTIALLY RESOLVED — 2026-04-15. Commit: TBD.
+coach: Any eliminated from AthleteCoachingContext; replaced with explicit
+CoachCallables Protocol covering only consumed methods (_decision_pipeline,
+_effect_runner) (T5-24 precedent, ADR-0046).
+Remaining scope: adapter read method isolation (ADR-0040-annotated methods
+in persistence.py) — deferred until T5-07-L3-B completes.
+Original status: OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A and T5-07-L3-B.
 
 **Source:** ADR-0033 Layer 3, Sub-decision L3-D + DEC-021 closure + T5-16-B task learning note.
 
@@ -3779,8 +3785,9 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; L3-A ✅ RESOLVED 2026-04-14; L3-B/C/D OPEN Phase 9 | 2026-03-13 |
+| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; L3-A ✅ RESOLVED 2026-04-14; L3-B/C OPEN Phase 9; L3-D ⚠️ PARTIAL 2026-04-15 | 2026-03-13 |
 | T5-07-L3-A | ✅ RESOLVED 2026-04-14 — athletes table + owner seed + governance_outcomes owner backfill + calibrated_for removal; SCHEMA_VERSION 12→13; 8 new DB tests green | 2026-04-14 |
+| T5-07-L3-D | ⚠️ PARTIAL — coach:Any resolved; CoachCallables Protocol in coaching_pipeline.py; adapter isolation pending T5-07-L3-B | 2026-04-15 |
 | T5-74 | ✅ RESOLVED 2026-04-14 — governance_outcomes.athlete_id confirmed in SQLite schema; explicit 'owner' fallback in both backends; v13 backfill; OBS-045 closed; bundled with T5-07-L3-A | 2026-04-14 |
 | T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 RESOLVED 2026-03-15; D6 was T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable — DEC-015 2026-03-16; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished**. D6 was a T5-08 pre-existing deliverable — not a T5-08-B implementation deliverable; D6 status not explicitly confirmed in T5-08-B closure record (DEC-015 2026-03-16: D6 functionally verified present in `persistence.py:122` + `database.py:1975`). | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
