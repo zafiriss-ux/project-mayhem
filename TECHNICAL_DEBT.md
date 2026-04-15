@@ -1672,7 +1672,7 @@ INSERT.
 
 ### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution ⚠️ PARTIALLY RESOLVED
 
-**Status:** ⚠️ PARTIALLY RESOLVED — 2026-04-15. Commit: TBD.
+**Status:** ⚠️ PARTIALLY RESOLVED — 2026-04-15. Commit: 490a41c.
 coach: Any eliminated from AthleteCoachingContext; replaced with explicit
 CoachCallables Protocol covering only consumed methods (_decision_pipeline,
 _effect_runner) (T5-24 precedent, ADR-0046).
