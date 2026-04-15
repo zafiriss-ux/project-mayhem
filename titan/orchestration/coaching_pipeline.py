@@ -1,15 +1,28 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 from titan.orchestration.contracts import DecisionResult, GarminSyncResult
+
+
+@runtime_checkable
+class CoachCallables(Protocol):
+    """
+    Explicit callable contract for coaching_pipeline() callers.
+    Replaces coach: Any (T5-07-L3-D, ADR-0046).
+    Only methods actually consumed by coaching_pipeline() are declared here.
+    Do NOT add speculative methods — follow T5-24 precedent.
+    """
+
+    def _decision_pipeline(self, **kwargs: Any) -> DecisionResult: ...
+    def _effect_runner(self, result: DecisionResult) -> bool: ...
 
 
 @dataclass(frozen=True)
 class AthleteCoachingContext:
     athlete_id: str
-    coach: Any
+    coach: CoachCallables
     garmin_data: GarminSyncResult
     soreness: int
     subjective_fatigue_score: int
