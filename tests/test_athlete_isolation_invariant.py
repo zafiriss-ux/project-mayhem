@@ -85,6 +85,43 @@ def test_non_database_modules_do_not_add_sql_without_athlete_filter() -> None:
     )
 
 
+def test_outcome_tracker_query_methods_accept_athlete_id() -> None:
+    """
+    G-CI-07 extension: every public query method on OutcomeTracker must accept
+    an athlete_id parameter so callers can scope reads per athlete.
+    INV-04 enforcement (ADR-0033 Layer 3, Sub-decision L3-B).
+    """
+    import ast
+
+    source = (_TITAN_ROOT / "science" / "outcome_tracker.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    _QUERY_METHODS = frozenset(
+        {
+            "record_outcome",
+            "get_decisions",
+            "get_lock_rate_by_phase",
+            "get_lock_outcome_correlation",
+            "get_calibration_summary",
+            "check_calibration_diversity",
+            "get_calibration_analytics",
+        }
+    )
+
+    violations: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef) or node.name not in _QUERY_METHODS:
+            continue
+        param_names = {arg.arg for arg in node.args.args} | {arg.arg for arg in node.args.kwonlyargs}
+        if "athlete_id" not in param_names:
+            violations.append(
+                f"OutcomeTracker.{node.name}() at line {node.lineno} "
+                "missing athlete_id parameter — INV-04 / G-CI-07 violation (ADR-0033 L3-B)"
+            )
+
+    assert not violations, "\n".join(violations)
+
+
 def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_global() -> None:
     """New CREATE TABLE statements in migrations must include athlete_id by default."""
     tree = _parse(_DATABASE_FILE)

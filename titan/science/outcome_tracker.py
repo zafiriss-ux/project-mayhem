@@ -291,15 +291,17 @@ class OutcomeTracker:
         notes: str | None = None,
         decision_was_followed: bool | None = None,
         outcome_date: str | None = None,
+        athlete_id: str = "owner",
     ) -> bool:
         """
         Attach post-session outcome to the recorded decision for that date.
 
         Returns True if a matching decision was found and updated.
         Call this after the athlete's session (e.g., from Telegram /post-run command).
+        Scoped to athlete_id — decisions belonging to other athletes are never matched.
         """
         for decision in reversed(self._decisions):
-            if decision.date == date:
+            if decision.date == date and decision.athlete_profile_id == athlete_id:
                 decision.outcome_rpe = rpe
                 decision.outcome_completed = completed
                 decision.outcome_session_type_actual = actual_session_type
@@ -375,9 +377,10 @@ class OutcomeTracker:
         date: str | None = None,
         with_outcomes_only: bool = False,
         phase: str | None = None,
+        athlete_id: str = "owner",
     ) -> list[GovernanceDecision]:
-        """Return stored decisions, optionally filtered."""
-        result = list(self._decisions)
+        """Return stored decisions for athlete_id, optionally filtered further."""
+        result = [d for d in self._decisions if d.athlete_profile_id == athlete_id]
         if date:
             result = [d for d in result if d.date == date]
         if phase:
@@ -386,9 +389,9 @@ class OutcomeTracker:
             result = [d for d in result if d.outcome_completed is not None]
         return result
 
-    def get_lock_rate_by_phase(self) -> dict[str, float]:
+    def get_lock_rate_by_phase(self, athlete_id: str = "owner") -> dict[str, float]:
         """
-        Return governance lock rate grouped by training phase.
+        Return governance lock rate grouped by training phase for athlete_id.
 
         Useful for identifying whether a specific phase consistently
         triggers more locks than expected, which may indicate miscalibrated
@@ -396,6 +399,8 @@ class OutcomeTracker:
         """
         by_phase: dict[str, list[bool]] = {}
         for d in self._decisions:
+            if d.athlete_profile_id != athlete_id:
+                continue
             by_phase.setdefault(d.phase, []).append(not d.governance_clean)
         return {
             phase: round(sum(locked) / len(locked), 3)
@@ -403,17 +408,21 @@ class OutcomeTracker:
             if locked
         }
 
-    def get_lock_outcome_correlation(self, min_samples: int = 3) -> dict[str, dict]:
+    def get_lock_outcome_correlation(
+        self, min_samples: int = 3, athlete_id: str = "owner"
+    ) -> dict[str, dict]:
         """
         Correlate each lock trigger with downstream completion + RPE outcomes.
 
         This is a Phase-5 calibration primitive used to identify which gates
         are most strongly associated with session success/failure.
+        Scoped to athlete_id — cross-athlete pooling is forbidden here.
         """
         decided = [
             d
             for d in self._decisions
-            if d.outcome_completed is not None
+            if d.athlete_profile_id == athlete_id
+            and d.outcome_completed is not None
             and d.outcome_independence_ok
             and not d.override_outcome_exclusion
         ]
@@ -459,17 +468,19 @@ class OutcomeTracker:
 
     # ── Calibration summary ──────────────────────────────────────────────────
 
-    def get_calibration_summary(self) -> dict:
+    def get_calibration_summary(self, athlete_id: str = "owner") -> dict:
         """
         Compute Phase-1 calibration metrics from recorded decisions + outcomes.
 
         Phase 1 is coarse aggregate statistics. Accurate threshold calibration
         requires ≥ 30 outcome-paired decisions and a DB-backed accumulation cycle.
+        Scoped to athlete_id — cross-athlete pooling is forbidden.
 
         Returns a structured dict safe to log or display in Telegram /stats.
         """
-        n_total = len(self._decisions)
-        decided = [d for d in self._decisions if d.outcome_completed is not None]
+        athlete_decisions = [d for d in self._decisions if d.athlete_profile_id == athlete_id]
+        n_total = len(athlete_decisions)
+        decided = [d for d in athlete_decisions if d.outcome_completed is not None]
         reusable = [
             d
             for d in decided
@@ -504,7 +515,7 @@ class OutcomeTracker:
         athlete_override_rate = round(n_deviated / n_reusable, 3) if n_reusable else None
 
         calibration_ready = n_reusable >= max(30, thresholds.CALIBRATION_MIN_OUTCOME_COUNT)
-        lock_outcome_correlation = self.get_lock_outcome_correlation()
+        lock_outcome_correlation = self.get_lock_outcome_correlation(athlete_id=athlete_id)
 
         return {
             "status": "CALIBRATION_AVAILABLE" if calibration_ready else "ACCUMULATING",
@@ -516,7 +527,7 @@ class OutcomeTracker:
             "completion_rate": completion_rate,
             "athlete_override_rate": athlete_override_rate,
             "avg_rpe_when_completed": avg_rpe,
-            "lock_rate_by_phase": self.get_lock_rate_by_phase(),
+            "lock_rate_by_phase": self.get_lock_rate_by_phase(athlete_id=athlete_id),
             "lock_outcome_correlation": lock_outcome_correlation,
             "heuristic_promotion_candidates": self._get_heuristic_promotion_candidates(
                 lock_outcome_correlation
@@ -532,6 +543,72 @@ class OutcomeTracker:
                 f"override or failed independence checks are excluded from calibration reuse."
             ),
         }
+
+    def check_calibration_diversity(self, athlete_id: str = "owner") -> bool:
+        """
+        Per-athlete calibration diversity gate (ADR-0033 L3-B).
+
+        Returns True only when the athlete's outcome-paired dataset is
+        large and diverse enough for threshold calibration review.
+        Gate criteria:
+          - ≥ 30 reusable paired decision→outcome records for athlete_id
+          - ≥ 3 distinct session types in those records
+          - No single session type accounts for > 60% of the dataset
+        Cross-athlete pooling is explicitly forbidden.
+        """
+        from collections import Counter
+
+        reusable = [
+            d
+            for d in self._decisions
+            if d.athlete_profile_id == athlete_id
+            and d.outcome_completed is not None
+            and d.outcome_independence_ok
+            and not d.override_outcome_exclusion
+        ]
+        n = len(reusable)
+        if n < 30:  # noqa: PLR2004
+            _log.warning(
+                json.dumps(
+                    {
+                        "outcome_tracker": "calibration_diversity_insufficient",
+                        "athlete_id": athlete_id,
+                        "reason": "insufficient_records",
+                        "n_records": n,
+                        "required": 30,
+                    }
+                )
+            )
+            return False
+
+        type_counts = Counter(d.session_post_governance for d in reusable)
+        distinct_types = len(type_counts)
+        max_fraction = max(type_counts.values()) / n
+
+        if distinct_types < 3 or max_fraction > 0.60:  # noqa: PLR2004
+            _log.warning(
+                json.dumps(
+                    {
+                        "outcome_tracker": "calibration_diversity_insufficient",
+                        "athlete_id": athlete_id,
+                        "reason": "insufficient_diversity",
+                        "distinct_types": distinct_types,
+                        "max_type_fraction": round(max_fraction, 3),
+                    }
+                )
+            )
+            return False
+
+        return True
+
+    def get_calibration_analytics(self, athlete_id: str = "owner") -> list[dict]:
+        """
+        Return all decision records for athlete_id as dicts for calibration review.
+
+        Cross-athlete pooling is explicitly forbidden — only records belonging
+        to athlete_id are returned.
+        """
+        return [asdict(d) for d in self._decisions if d.athlete_profile_id == athlete_id]
 
     def _get_heuristic_promotion_candidates(
         self,
