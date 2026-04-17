@@ -4034,6 +4034,18 @@ Learnings:
 Required updates: CLAUDE.md snapshot already updated to 2013 in PR #508
 Next-week tactic: Verify CTL/ATL populates after next successful Garmin sync. If still 0, investigate _persist_garmin_data() call path directly.
 
+### Friday Review — 2026-04-17
+State: healthy
+Learnings:
+- ADR-0033 Layer 3 fully complete (L3-A through L3-D, four commits)
+- T5-72 / T5-73 resolved; governance FAIL-OPEN gap closed
+- scripts/hard_audit.sh created — replaces 14+ manual audit patterns
+- setup_env.sh now auto-activates pyenv 3.11
+Required updates: TECHNICAL_DEBT.md (this entry)
+Next-week tactic: Run hard_audit.sh at session start instead of
+manual checks. ADR-0052 Stage 3 (ThresholdAdapter wiring) is next.
+Opus governance audit warranted after ADR-0052 Stage 3 closes Phase 9.
+
 ---
 
 ## Codex Handoff Blocks (Records Steward — 2026-03-14)
