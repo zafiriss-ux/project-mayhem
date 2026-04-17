@@ -78,6 +78,9 @@ class DummyDB:
     def increment_cold_start_sessions(self, athlete_id: str) -> None:
         return None
 
+    def get_athlete_threshold_offsets(self, athlete_id: str) -> list:
+        return []
+
 
 class MinimalCoachFactory:
     @staticmethod
