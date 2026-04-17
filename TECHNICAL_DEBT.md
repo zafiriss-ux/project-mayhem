@@ -1643,9 +1643,17 @@ Tests: +11 new tests all green (1 AST gate + 10 calibration isolation tests).
 
 ---
 
-### T5-07-L3-C · Cold-start protocol implementation 🟡 OPEN
+### T5-07-L3-C · Cold-start protocol implementation ✅ RESOLVED
 
-**Status:** OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A; parallel with T5-07-L3-B.
+**Status:** ✅ RESOLVED — 2026-04-17. After T5-07-L3-A; parallel with T5-07-L3-B.
+is_athlete_cold_start() replaced with flag-based implementation reading athletes.is_cold_start
+(fail-closed for unknown athletes, INV-05). check_and_exit_cold_start() and
+increment_cold_start_sessions() added to DatabaseManager. coaching_pipeline() checks cold-start
+at entry; applies COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR=0.80 to context; exits atomically when
+both conditions met (sessions>=30 + outcomes>=CALIBRATION_MIN_OUTCOME_COUNT); emits
+athlete_cold_start_completed (INFO). Owner athlete bypasses cold-start (is_cold_start=0 seeded).
+DailyCoach passes db=self.db to AthleteCoachingContext. setup_env.sh (root + scripts/): pyenv
+3.11 auto-activation added. Tests: tests/titan/core/test_cold_start.py (+8 tests).
 
 **Source:** ADR-0033 Layer 3, Sub-decision L3-C.
 

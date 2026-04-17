@@ -643,6 +643,7 @@ class DailyCoach:
         context = AthleteCoachingContext(
             athlete_id="default",
             coach=self,
+            db=self.db,
             garmin_data=garmin_data,
             soreness=soreness,
             subjective_fatigue_score=subjective_fatigue_score,

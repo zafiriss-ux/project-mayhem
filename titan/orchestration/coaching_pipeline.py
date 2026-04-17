@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from titan.orchestration.contracts import DecisionResult, GarminSyncResult
+
+if TYPE_CHECKING:
+    from titan.core.database import DatabaseManager
 
 
 @runtime_checkable
@@ -44,10 +48,36 @@ class AthleteCoachingContext:
     garmin_report_payload: dict[str, Any]
     startup_hydration_confidence: dict[str, bool]
     startup_confidence_applies: bool
+    # Cold-start protocol fields (ADR-0033 L3-C) — optional, default-safe
+    db: DatabaseManager | None = None
+    cold_start_active: bool = False
+    cold_start_conservative_factor: float = 1.0
 
 
 def coaching_pipeline(context: AthleteCoachingContext) -> bool:
     """Run decision pipeline and effect runner for one athlete context."""
+    _athlete_id = context.athlete_id
+    _was_cold_start = False
+
+    if context.db is not None:
+        _is_cold_start = context.db.is_athlete_cold_start(_athlete_id)
+        if _is_cold_start:
+            from titan.config.thresholds import COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR
+            context = dataclasses.replace(
+                context,
+                cold_start_active=True,
+                cold_start_conservative_factor=COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR,
+            )
+            _was_cold_start = True
+            _exit_met = context.db.check_and_exit_cold_start(_athlete_id)
+            if _exit_met:
+                context = dataclasses.replace(
+                    context,
+                    cold_start_active=False,
+                    cold_start_conservative_factor=1.0,
+                )
+                _was_cold_start = False
+
     decision_result: DecisionResult = context.coach._decision_pipeline(
         garmin_data=context.garmin_data,
         soreness=context.soreness,
@@ -71,4 +101,8 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
         startup_hydration_confidence=context.startup_hydration_confidence,
         startup_confidence_applies=context.startup_confidence_applies,
     )
+
+    if context.db is not None and _was_cold_start:
+        context.db.increment_cold_start_sessions(_athlete_id)
+
     return context.coach._effect_runner(decision_result)

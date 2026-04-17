@@ -1084,24 +1084,95 @@ class DatabaseManager:
         return [{"threshold_key": r[0], "delta_value": r[1]} for r in rows]
 
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
-        """Return True if the athlete has insufficient outcome history for adaptation.
+        """Return True if the athlete is in the cold-start bootstrapping period.
 
-        ADR-0033 L3-C conservative bias: any athlete with fewer than
-        CALIBRATION_MIN_OUTCOME_COUNT governance_outcomes records is treated as
-        cold-start. Unknown athletes (no records at all) always return True —
-        fail-closed per INV-05 (conservative default).
+        Reads the is_cold_start flag from the athletes table. Fail-closed:
+        returns True (conservative) for unknown athletes (INV-05).
 
-        Used by ThresholdAdapter.is_circuit_breaker_active() (ADR-0052 Stage 2).
+        The flag is cleared atomically by check_and_exit_cold_start() when both
+        exit conditions are met: cold_start_sessions_count >= 30 AND
+        governance_outcomes >= CALIBRATION_MIN_OUTCOME_COUNT (ADR-0033 L3-C).
+
+        Used by coaching_pipeline() and ThresholdAdapter.is_circuit_breaker_active().
         """
-        from titan.config.thresholds import CALIBRATION_MIN_OUTCOME_COUNT
         with self._lock:
             self._ensure_open_locked()
             row = self.conn.cursor().execute(
-                "SELECT COUNT(*) FROM governance_outcomes WHERE athlete_id = ?",
+                "SELECT is_cold_start FROM athletes WHERE athlete_id = ?",
                 (athlete_id,),
             ).fetchone()
-        count = row[0] if row else 0
-        return count < CALIBRATION_MIN_OUTCOME_COUNT
+        if row is None:
+            return True  # fail-closed: unknown athlete → treat as cold-start
+        return bool(row[0])
+
+    def check_and_exit_cold_start(self, athlete_id: str) -> bool:
+        """Check cold-start exit conditions and graduate the athlete if met.
+
+        Exit requires both (ADR-0033 L3-C):
+          1. cold_start_sessions_count >= 30
+          2. governance_outcomes completed >= CALIBRATION_MIN_OUTCOME_COUNT
+
+        When both are met, sets is_cold_start=0 and cold_start_ends_at=now
+        atomically and emits athlete_cold_start_completed (INFO).
+
+        Returns True if the athlete was graduated in this call.
+        """
+        from titan.config.thresholds import CALIBRATION_MIN_OUTCOME_COUNT
+
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            row = cursor.execute(
+                "SELECT is_cold_start, cold_start_sessions_count "
+                "FROM athletes WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchone()
+
+            if row is None or not row[0]:
+                return False  # not in cold-start
+
+            sessions_ok = row[1] >= 30
+
+            outcome_count = cursor.execute(
+                "SELECT COUNT(*) FROM governance_outcomes "
+                "WHERE athlete_id = ? AND outcome_completed = 1",
+                (athlete_id,),
+            ).fetchone()[0]
+            outcomes_ok = outcome_count >= CALIBRATION_MIN_OUTCOME_COUNT
+
+            if not (sessions_ok and outcomes_ok):
+                return False
+
+            now_iso = datetime.now(UTC).isoformat()
+            cursor.execute(
+                "UPDATE athletes SET is_cold_start = 0, cold_start_ends_at = ? "
+                "WHERE athlete_id = ?",
+                (now_iso, athlete_id),
+            )
+            self.conn.commit()
+
+        _database_event(
+            "athlete_cold_start_completed",
+            logging.INFO,
+            athlete_id=athlete_id,
+        )
+        return True
+
+    def increment_cold_start_sessions(self, athlete_id: str) -> None:
+        """Increment cold_start_sessions_count for a cold-start athlete.
+
+        No-op if the athlete is not found or is already graduated (is_cold_start=0).
+        Called once per coaching session during the cold-start period.
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            self.conn.cursor().execute(
+                "UPDATE athletes "
+                "SET cold_start_sessions_count = cold_start_sessions_count + 1 "
+                "WHERE athlete_id = ? AND is_cold_start = 1",
+                (athlete_id,),
+            )
+            self.conn.commit()
 
     def get_false_negative_rate(self, athlete_id: str, window_days: int) -> float:
         """Return the false-negative rate for the athlete over the last window_days.
