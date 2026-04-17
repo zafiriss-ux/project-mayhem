@@ -150,7 +150,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE daily_metrics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL UNIQUE,
                 weight_kg REAL,
                 hrv_rmssd REAL,
@@ -166,7 +166,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE gear_usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 shoe_name TEXT NOT NULL,
                 total_km REAL DEFAULT 0,
                 last_used TEXT,
@@ -179,7 +179,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE training_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL,
                 session_type TEXT,
                 distance_km REAL,
@@ -199,7 +199,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE personal_bests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 distance_km REAL NOT NULL,
                 time_sec INTEGER NOT NULL,
                 pace_sec_per_km REAL,
@@ -210,7 +210,7 @@ def _build_test_engine() -> tuple:
         conn.execute(text("""
             CREATE TABLE governance_outcomes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'default',
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL,
                 session_planned TEXT NOT NULL,
                 session_post_governance TEXT NOT NULL,
@@ -273,13 +273,13 @@ def test_postgres_adapter_happy_path_core_queries() -> None:
         assert adapter.get_governance_decisions(limit=10)[0]["date"] == today
 
         with _engine.connect() as conn:
-            assert conn.execute(text("SELECT athlete_id FROM daily_metrics LIMIT 1")).scalar_one() == "default"
-            assert conn.execute(text("SELECT athlete_id FROM training_log LIMIT 1")).scalar_one() == "default"
-            assert conn.execute(text("SELECT athlete_id FROM gear_usage LIMIT 1")).scalar_one() == "default"
-            assert conn.execute(text("SELECT athlete_id FROM personal_bests LIMIT 1")).scalar_one() == "default"
+            assert conn.execute(text("SELECT athlete_id FROM daily_metrics LIMIT 1")).scalar_one() == "owner"
+            assert conn.execute(text("SELECT athlete_id FROM training_log LIMIT 1")).scalar_one() == "owner"
+            assert conn.execute(text("SELECT athlete_id FROM gear_usage LIMIT 1")).scalar_one() == "owner"
+            assert conn.execute(text("SELECT athlete_id FROM personal_bests LIMIT 1")).scalar_one() == "owner"
             assert (
                 conn.execute(text("SELECT athlete_id FROM governance_outcomes LIMIT 1")).scalar_one()
-                == "default"
+                == "owner"
             )
     finally:
         adapter.close()
@@ -371,22 +371,30 @@ class _FakeAthleteContextAdapter:
     def __init__(self) -> None:
         self.closed = False
 
-    def get_baseline_rhr(self, days: int = 7) -> float | None:
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         return 50.126
 
-    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+    def get_hrv_history(
+        self, days: int = 14, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         return [("2026-03-14", 42.678)]
 
-    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+    def get_weight_history(
+        self, days: int = 30, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         return [("2026-03-14", 71.239)]
 
-    def get_training_load_history(self, days: int | None = None) -> list[tuple[str, float]]:
+    def get_training_load_history(
+        self, days: int | None = None, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         return [("2026-03-14", 123.456)]
 
-    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+    def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
         return (41.239, 51.875, -10.636)
 
-    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, object]]:
+    def get_governance_decisions(
+        self, limit: int = 1000, athlete_id: str = "owner"
+    ) -> list[dict[str, object]]:
         return [{"date": datetime(2026, 3, 14, 6, 30, tzinfo=UTC), "governance_clean": True}]
 
     def close(self) -> None:
@@ -458,5 +466,242 @@ def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatc
     adapter = get_persistence_adapter()
     try:
         assert isinstance(adapter, SQLiteAdapter)
+    finally:
+        adapter.close()
+
+
+# ---------------------------------------------------------------------------
+# ADR-0033-L3-D-RESOLVED: athlete_id isolation tests
+# One test per updated read method confirming cross-athlete contamination
+# is prevented. (PostgreSQLAdapter path, using in-memory SQLite engine.)
+# ---------------------------------------------------------------------------
+
+
+def _build_two_athlete_engine() -> tuple:
+    """Return (engine, adapter) with daily_metrics, training_log, and
+    governance_outcomes pre-seeded for 'athlete_a' and 'athlete_b'."""
+    from datetime import UTC, datetime
+
+    _today = datetime.now(UTC).date().isoformat()
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE daily_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
+                date TEXT NOT NULL,
+                weight_kg REAL,
+                hrv_rmssd REAL,
+                resting_hr INTEGER,
+                sleep_hours REAL,
+                sleep_quality INTEGER,
+                soreness INTEGER,
+                fatigue_level INTEGER,
+                mood INTEGER,
+                notes TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE training_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
+                date TEXT NOT NULL,
+                session_type TEXT,
+                distance_km REAL,
+                duration_sec INTEGER,
+                avg_hr INTEGER,
+                max_hr INTEGER,
+                rpe INTEGER,
+                training_load INTEGER,
+                shoe_id INTEGER,
+                surface TEXT,
+                temperature_c REAL,
+                zone_distribution TEXT,
+                notes TEXT,
+                garmin_activity_id TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE gear_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
+                shoe_name TEXT NOT NULL,
+                total_km REAL DEFAULT 0,
+                last_used TEXT,
+                compression_recovery_hours INTEGER DEFAULT 24,
+                status TEXT DEFAULT 'ACTIVE',
+                shoe_type TEXT,
+                max_km_limit REAL DEFAULT 800
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE personal_bests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
+                distance_km REAL NOT NULL,
+                time_sec INTEGER NOT NULL,
+                pace_sec_per_km REAL,
+                date TEXT NOT NULL,
+                race_name TEXT
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE governance_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
+                date TEXT NOT NULL,
+                session_planned TEXT NOT NULL,
+                session_post_governance TEXT NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                vlg_color TEXT NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr REAL NOT NULL,
+                tsb_value REAL NOT NULL,
+                readiness_score REAL NOT NULL,
+                glycogen_debt REAL NOT NULL,
+                afi_value REAL,
+                outcome_rpe INTEGER,
+                outcome_completed INTEGER,
+                outcome_session_type_actual TEXT,
+                outcome_notes TEXT,
+                decision_was_followed INTEGER NOT NULL DEFAULT 1,
+                override_outcome_exclusion INTEGER NOT NULL DEFAULT 0,
+                outcome_independence_ok INTEGER NOT NULL DEFAULT 1,
+                algorithm_version_snapshot TEXT
+            )
+        """))
+
+        # Seed daily_metrics: athlete_a rhr=55, athlete_b rhr=70
+        conn.execute(text(
+            "INSERT INTO daily_metrics (athlete_id, date, resting_hr, hrv_rmssd, weight_kg) "
+            f"VALUES ('athlete_a', '{_today}', 55, 42.0, 68.0)"
+        ))
+        conn.execute(text(
+            "INSERT INTO daily_metrics (athlete_id, date, resting_hr, hrv_rmssd, weight_kg) "
+            f"VALUES ('athlete_b', '{_today}', 70, 35.0, 80.0)"
+        ))
+
+        # Seed training_log: athlete_a load=100, athlete_b load=200
+        conn.execute(text(
+            "INSERT INTO training_log (athlete_id, date, session_type, distance_km, "
+            "duration_sec, training_load) "
+            f"VALUES ('athlete_a', '{_today}', 'EASY', 10.0, 3600, 100)"
+        ))
+        conn.execute(text(
+            "INSERT INTO training_log (athlete_id, date, session_type, distance_km, "
+            "duration_sec, training_load) "
+            f"VALUES ('athlete_b', '{_today}', 'TEMPO', 8.0, 2400, 200)"
+        ))
+
+        # Seed governance_outcomes: athlete_a acwr=0.9, athlete_b acwr=1.2
+        conn.execute(text(
+            "INSERT INTO governance_outcomes "
+            "(athlete_id, date, session_planned, session_post_governance, "
+            "locks_applied_json, governance_clean, phase, vlg_color, "
+            "apl_priority_vector_json, lock_thresholds_active_json, "
+            "acwr, tsb_value, readiness_score, glycogen_debt, algorithm_version_snapshot) "
+            f"VALUES ('athlete_a', '{_today}', 'EASY', 'EASY', '[]', 1, 'P8', "
+            "'GREEN', '[]', '{}', 0.9, 5.0, 80.0, 0.1, '{}')"
+        ))
+        conn.execute(text(
+            "INSERT INTO governance_outcomes "
+            "(athlete_id, date, session_planned, session_post_governance, "
+            "locks_applied_json, governance_clean, phase, vlg_color, "
+            "apl_priority_vector_json, lock_thresholds_active_json, "
+            "acwr, tsb_value, readiness_score, glycogen_debt, algorithm_version_snapshot) "
+            f"VALUES ('athlete_b', '{_today}', 'TEMPO', 'TEMPO', '[]', 1, 'P8', "
+            "'YELLOW', '[]', '{}', 1.2, -5.0, 70.0, 2.0, '{}')"
+        ))
+
+    adapter = PostgreSQLAdapter(dsn="postgres://unused/titan", engine=engine)
+    return engine, adapter
+
+
+def test_get_baseline_rhr_isolated_by_athlete_id() -> None:
+    """get_baseline_rhr() returns data for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        rhr_a = adapter.get_baseline_rhr(days=365, athlete_id="athlete_a")
+        rhr_b = adapter.get_baseline_rhr(days=365, athlete_id="athlete_b")
+        assert rhr_a == 55.0
+        assert rhr_b == 70.0
+        assert rhr_a != rhr_b
+    finally:
+        adapter.close()
+
+
+def test_get_hrv_history_isolated_by_athlete_id() -> None:
+    """get_hrv_history() returns data for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        hrv_a = adapter.get_hrv_history(days=365, athlete_id="athlete_a")
+        hrv_b = adapter.get_hrv_history(days=365, athlete_id="athlete_b")
+        assert len(hrv_a) == 1
+        assert hrv_a[0][1] == 42.0
+        assert len(hrv_b) == 1
+        assert hrv_b[0][1] == 35.0
+        assert hrv_a[0][1] != hrv_b[0][1]
+    finally:
+        adapter.close()
+
+
+def test_get_weight_history_isolated_by_athlete_id() -> None:
+    """get_weight_history() returns data for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        w_a = adapter.get_weight_history(days=365, athlete_id="athlete_a")
+        w_b = adapter.get_weight_history(days=365, athlete_id="athlete_b")
+        assert len(w_a) == 1
+        assert w_a[0][1] == 68.0
+        assert len(w_b) == 1
+        assert w_b[0][1] == 80.0
+        assert w_a[0][1] != w_b[0][1]
+    finally:
+        adapter.close()
+
+
+def test_get_training_load_history_isolated_by_athlete_id() -> None:
+    """get_training_load_history() returns data for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        loads_a = adapter.get_training_load_history(days=365, athlete_id="athlete_a")
+        loads_b = adapter.get_training_load_history(days=365, athlete_id="athlete_b")
+        assert len(loads_a) == 1
+        assert loads_a[0][1] == 100.0
+        assert len(loads_b) == 1
+        assert loads_b[0][1] == 200.0
+        assert loads_a[0][1] != loads_b[0][1]
+    finally:
+        adapter.close()
+
+
+def test_get_ctl_atl_tsb_isolated_by_athlete_id() -> None:
+    """get_ctl_atl_tsb() returns computed values for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        ctl_a, atl_a, tsb_a = adapter.get_ctl_atl_tsb(athlete_id="athlete_a")
+        ctl_b, atl_b, tsb_b = adapter.get_ctl_atl_tsb(athlete_id="athlete_b")
+        # athlete_a has training_load=100, athlete_b has training_load=200
+        assert ctl_a != ctl_b or atl_a != atl_b  # at least one differs
+        # Verify isolation: athlete_b load (200) must produce higher CTL than athlete_a (100)
+        assert ctl_b > ctl_a
+    finally:
+        adapter.close()
+
+
+def test_get_governance_decisions_isolated_by_athlete_id() -> None:
+    """get_governance_decisions() returns data for the specified athlete only."""
+    _engine, adapter = _build_two_athlete_engine()
+    try:
+        decisions_a = adapter.get_governance_decisions(limit=100, athlete_id="athlete_a")
+        decisions_b = adapter.get_governance_decisions(limit=100, athlete_id="athlete_b")
+        assert len(decisions_a) == 1
+        assert decisions_a[0]["acwr"] == 0.9
+        assert len(decisions_b) == 1
+        assert decisions_b[0]["acwr"] == 1.2
+        assert decisions_a[0]["acwr"] != decisions_b[0]["acwr"]
     finally:
         adapter.close()

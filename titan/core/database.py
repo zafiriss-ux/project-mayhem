@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 
 class DatabaseManager:
@@ -232,6 +232,7 @@ class DatabaseManager:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS daily_metrics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL UNIQUE,
                 weight_kg REAL,
                 hrv_rmssd REAL,
@@ -249,6 +250,7 @@ class DatabaseManager:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS training_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id TEXT NOT NULL DEFAULT 'owner',
                 date TEXT NOT NULL,
                 session_type TEXT,
                 distance_km REAL,
@@ -473,6 +475,11 @@ class DatabaseManager:
                 "+ drop calibrated_for (T5-07-L3-A / T5-74 / ADR-0033)",
                 None,  # DDL — see _apply_v13_migrations() below
             ),
+            14: (
+                "daily_metrics / training_log",
+                "athlete_id column for read-path isolation (T5-07-L3-D / ADR-0033-L3-D-RESOLVED)",
+                None,  # DDL — see _apply_v14_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -623,6 +630,18 @@ class DatabaseManager:
                     "tables_created": "athletes (owner seed)",
                     "columns_backfilled": "governance_outcomes.athlete_id default→owner",
                     "columns_dropped": "model_calibration_metadata.calibrated_for (T5-07-L3-A)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+        if current_version < 14:
+            self._apply_v14_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 14,
+                    "columns_added": "daily_metrics.athlete_id, training_log.athlete_id "
+                                     "(T5-07-L3-D / ADR-0033-L3-D-RESOLVED)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -1009,6 +1028,17 @@ class DatabaseManager:
             "ALTER TABLE model_calibration_metadata_v13 "
             "RENAME TO model_calibration_metadata"
         )
+
+    def _apply_v14_migrations(self, cursor) -> None:
+        """Version 14: athlete_id on daily_metrics and training_log (T5-07-L3-D / ADR-0033)."""
+        for table in ("daily_metrics", "training_log"):
+            try:
+                cursor.execute(
+                    f"ALTER TABLE {table} ADD COLUMN athlete_id TEXT NOT NULL DEFAULT 'owner'"
+                )
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
@@ -1618,12 +1648,15 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
-    def get_training_load_history(self, days: int | None = None) -> list[tuple[str, float]]:
+    def get_training_load_history(
+        self, days: int | None = None, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         """
         Get training load for last N days (for TSB calculation).
 
         Args:
             days: Number of days to retrieve (default 42 for CTL)
+            athlete_id: Athlete identifier for row-level isolation (ADR-0033-L3-D-RESOLVED).
 
         Returns:
             List of tuples (date, training_load)
@@ -1636,9 +1669,9 @@ class DatabaseManager:
             cursor.execute("""
                 SELECT date, training_load
                 FROM training_log
-                WHERE date >= date('now', '-' || ? || ' days')
+                WHERE athlete_id = ? AND date >= date('now', '-' || ? || ' days')
                 ORDER BY date DESC
-            """, (lookback_days,))
+            """, (athlete_id, lookback_days))
             rows = cursor.fetchall()
 
         from titan.science.physiological_bounds import (
@@ -1651,7 +1684,7 @@ class DatabaseManager:
                 validated.append((date_str, clean))
         return validated
 
-    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+    def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
         """
         Calculate Training Stress Balance from database history.
 
@@ -1673,7 +1706,7 @@ class DatabaseManager:
             - Coggan (2003) - Training Stress Score/Balance
             - Busso (2003) - Variable dose-response model
         """
-        loads = self.get_training_load_history(CTL_DECAY_DAYS)
+        loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
 
         if not loads:
             return 0.0, 0.0, 0.0
@@ -2184,7 +2217,9 @@ class DatabaseManager:
             self.conn.commit()
             return cursor.rowcount > 0
 
-    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
+    def get_governance_decisions(
+        self, limit: int = 1000, athlete_id: str = "owner"
+    ) -> list[dict[str, Any]]:
         """Fetch governance decisions ordered by insertion order (oldest first)."""
         with self._lock:
             self._ensure_open_locked()
@@ -2198,9 +2233,10 @@ class DatabaseManager:
                           decision_was_followed, override_outcome_exclusion,
                           outcome_independence_ok, algorithm_version_snapshot
                    FROM governance_outcomes
+                   WHERE athlete_id = ?
                    ORDER BY id ASC
                    LIMIT ?""",
-                (limit,),
+                (athlete_id, limit),
             )
 
             rows = cursor.fetchall()
@@ -2253,7 +2289,7 @@ class DatabaseManager:
             self.conn.commit()
             return cursor.rowcount > 0
 
-    def get_baseline_rhr(self, days: int = 7) -> float | None:
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         """Return rolling N-day average resting HR from daily_metrics, or None."""
         with self._lock:
             self._ensure_open_locked()
@@ -2261,8 +2297,8 @@ class DatabaseManager:
             cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
             cursor.execute(
                 """SELECT AVG(resting_hr) FROM daily_metrics
-                   WHERE date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0""",
-                (cutoff,),
+                   WHERE athlete_id = ? AND date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0""",
+                (athlete_id, cutoff),
             )
             row = cursor.fetchone()
         if row and row[0]:
@@ -2273,7 +2309,7 @@ class DatabaseManager:
             return validate_single("rhr_bpm", raw, "baseline_rhr")
         return None
 
-    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+    def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return (date, hrv_rmssd) rows from the last N days, newest-first.
 
         Values are validated against physiological bounds (ADR-0023 / T1-18).
@@ -2284,9 +2320,9 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             cursor.execute(
                 """SELECT date, hrv_rmssd FROM daily_metrics
-                   WHERE hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
+                   WHERE athlete_id = ? AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
                    ORDER BY date DESC LIMIT ?""",
-                (days,),
+                (athlete_id, days),
             )
             rows = cursor.fetchall()
 
@@ -2478,16 +2514,16 @@ class DatabaseManager:
         except (ValueError, TypeError):
             return None
 
-    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+    def get_weight_history(self, days: int = 30, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return (date, weight_kg) rows from the last N days, newest-first."""
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute(
                 """SELECT date, weight_kg FROM daily_metrics
-                   WHERE weight_kg IS NOT NULL AND weight_kg > 0
+                   WHERE athlete_id = ? AND weight_kg IS NOT NULL AND weight_kg > 0
                    ORDER BY date DESC LIMIT ?""",
-                (days,),
+                (athlete_id, days),
             )
             rows = cursor.fetchall()
 
