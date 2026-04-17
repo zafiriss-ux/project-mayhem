@@ -69,6 +69,15 @@ class DummyDB:
     def get_last_sync_outcome(self, source: str):
         return None
 
+    def is_athlete_cold_start(self, athlete_id: str) -> bool:
+        return False
+
+    def check_and_exit_cold_start(self, athlete_id: str) -> bool:
+        return False
+
+    def increment_cold_start_sessions(self, athlete_id: str) -> None:
+        return None
+
 
 class MinimalCoachFactory:
     @staticmethod
