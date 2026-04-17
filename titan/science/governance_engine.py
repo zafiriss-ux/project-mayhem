@@ -363,6 +363,14 @@ class GovernanceEngine:
                 )
                 # ADR-0051: missing HRV data → conservative fail
                 context["data_confidence_low"] = True
+                # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
+                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                    session_plan["session_type"] = "EASY"
+                context["_h2_data_missing"] = True
+                reasons.append({
+                    "gate": "H2_MISSING",
+                    "reason": "HRV data missing or non-numeric — EASY ceiling applied (ADR-0051)",
+                })
         if h2_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
@@ -408,6 +416,14 @@ class GovernanceEngine:
                 )
                 # ADR-0051: missing RHR data → conservative fail
                 context["data_confidence_low"] = True
+                # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
+                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                    session_plan["session_type"] = "EASY"
+                context["_h3_data_missing"] = True
+                reasons.append({
+                    "gate": "H3_MISSING",
+                    "reason": "RHR data missing or non-numeric — EASY ceiling applied (ADR-0051)",
+                })
         if h3_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
@@ -1157,6 +1173,11 @@ class GovernanceEngine:
         if hard_stop_reasons:
             session_plan["hard_stop_reasons"] = hard_stop_reasons
             applied_locks.append("HARD_STOP_SAFETY_GATES")
+        # ADR-0051: conservative missing-data lock codes signalled by _check_hard_stops.
+        if context.get("_h2_data_missing"):
+            applied_locks.append("DATA_MISSING_CONSERVATIVE_H2")
+        if context.get("_h3_data_missing"):
+            applied_locks.append("DATA_MISSING_CONSERVATIVE_H3")
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:

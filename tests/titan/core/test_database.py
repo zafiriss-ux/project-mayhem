@@ -1033,3 +1033,23 @@ def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_
         assert rows[0][0] == "owner"
     finally:
         db.close()
+
+
+def test_postgres_save_session_sql_has_on_conflict_do_nothing():
+    """T5-73: PostgreSQL save_session INSERT must contain ON CONFLICT (garmin_activity_id) DO NOTHING.
+
+    Matches SQLite INSERT OR IGNORE semantics. Without this clause a duplicate
+    garmin_activity_id from a re-sync raises IntegrityError.
+
+    Source inspection is used because the _FakePsycopg2 adapter strips ON CONFLICT
+    clauses to remain compatible with the in-memory SQLite backend.
+    """
+    import inspect
+
+    from titan.core.database import PostgreSQLDatabaseManager
+
+    source = inspect.getsource(PostgreSQLDatabaseManager.save_session)
+    assert "ON CONFLICT (garmin_activity_id) DO NOTHING" in source, (
+        "PostgreSQLDatabaseManager.save_session must include "
+        "'ON CONFLICT (garmin_activity_id) DO NOTHING' to match SQLite OR IGNORE semantics"
+    )

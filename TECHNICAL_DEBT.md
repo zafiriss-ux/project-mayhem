@@ -3411,6 +3411,38 @@ Causes `ModuleNotFoundError` at collection time for 10 test files:
 
 ---
 
+### T5-72 · H2/H3 gates fail-open on missing HRV/RHR data — EASY ceiling not applied ✅ RESOLVED
+
+**Status:** ✅ RESOLVED — 2026-04-17. Commit: pending push.
+H2 and H3 except blocks (TypeError/ValueError on missing HRV/RHR) now apply EASY ceiling
+directly to session_plan and signal apply_constraints via context flags
+`_h2_data_missing` / `_h3_data_missing`. Lock codes `DATA_MISSING_CONSERVATIVE_H2` and
+`DATA_MISSING_CONSERVATIVE_H3` added to CANONICAL_LOCK_CODES in thresholds.py and
+_CANONICAL_LOCK_CODES in test_architectural_invariants.py. 2 new tests in
+test_governance_mutation.py verify None HRV → EASY ceiling (not fail-open) and
+None RHR → EASY ceiling.
+
+**Source:** OBS from governance_engine.py H2/H3 except blocks.
+**Severity:** HIGH — ADR-0051: missing safety-critical data must default conservative.
+**Location:** `titan/science/governance_engine.py` (H2/H3 except blocks, apply_constraints)
+`titan/config/thresholds.py` (CANONICAL_LOCK_CODES)
+`tests/test_architectural_invariants.py` (_CANONICAL_LOCK_CODES)
+
+---
+
+### T5-73 · PostgreSQL save_session lacks ON CONFLICT — duplicate garmin_activity_id raises IntegrityError ✅ RESOLVED
+
+**Status:** ✅ RESOLVED — ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present in
+PostgreSQLDatabaseManager.save_session() INSERT statement (line 2656). Matches SQLite
+INSERT OR IGNORE semantics. Source inspection test added to tests/titan/core/test_database.py
+to assert clause presence in perpetuity.
+
+**Source:** OBS from PostgreSQLDatabaseManager schema review.
+**Severity:** HIGH — duplicate Garmin re-sync raises IntegrityError without this clause.
+**Location:** `titan/core/database.py` (PostgreSQLDatabaseManager.save_session)
+
+---
+
 ### T5-70 · AuthStore stores users and tokens in process-local dicts — not wired to SQLite auth tables ✅ RESOLVED
 
 **Status:** ✅ RESOLVED 2026-04-04
@@ -3877,6 +3909,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-76 | ✅ RESOLVED 2026-04-12 — Concurrent coaching_pipeline() no cross-contamination test; ADR-0046 entry gate satisfied (commit: 29fcc49) | 2026-04-12 |
 | T5-77 | ✅ RESOLVED 2026-04-12 — SIGTERM mid-pipeline: 3 tests confirm no orphaned governance trace (commit: 29fcc49) | 2026-04-12 |
 | T5-78 | ✅ RESOLVED 2026-04-14 — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
+| T5-72 | ✅ RESOLVED 2026-04-17 — H2/H3 except: EASY ceiling + DATA_MISSING_CONSERVATIVE_H2/H3 lock codes; 2 tests green | 2026-04-17 |
+| T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
