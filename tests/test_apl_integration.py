@@ -464,7 +464,7 @@ class TestOutcomeTracker:
                 acwr=1.2, tsb_value=-15.0, readiness_score=60.0,
                 glycogen_debt=6.0, athlete_profile_id='ATHLETE_A', date=date,
             )
-            tracker.record_outcome(date=date, rpe=8, completed=False)
+            tracker.record_outcome(date=date, rpe=8, completed=False, athlete_id='ATHLETE_A')
 
         for i in range(8):
             date = f'2026-07-{i+1:02d}'
@@ -476,7 +476,7 @@ class TestOutcomeTracker:
                 acwr=1.18, tsb_value=-13.0, readiness_score=62.0,
                 glycogen_debt=5.5, athlete_profile_id='ATHLETE_B', date=date,
             )
-            tracker.record_outcome(date=date, rpe=8, completed=False)
+            tracker.record_outcome(date=date, rpe=8, completed=False, athlete_id='ATHLETE_B')
 
         for i in range(20):
             date = f'2026-08-{i+1:02d}'
@@ -488,9 +488,10 @@ class TestOutcomeTracker:
                 acwr=1.0, tsb_value=-5.0, readiness_score=75.0,
                 glycogen_debt=2.0, athlete_profile_id='ATHLETE_A', date=date,
             )
-            tracker.record_outcome(date=date, rpe=5, completed=True)
+            tracker.record_outcome(date=date, rpe=5, completed=True, athlete_id='ATHLETE_A')
 
-        summary = tracker.get_calibration_summary()
+        # Per-athlete correlation for ATHLETE_A; profile replication gate checks all athletes.
+        summary = tracker.get_calibration_summary(athlete_id='ATHLETE_A')
         candidates = summary['moderate_promotion_candidates']
 
         assert candidates
@@ -509,7 +510,7 @@ class TestOutcomeTracker:
                 acwr=1.2, tsb_value=-16.0, readiness_score=58.0,
                 glycogen_debt=6.5, athlete_profile_id='ATHLETE_A', date=date,
             )
-            tracker.record_outcome(date=date, rpe=8, completed=False)
+            tracker.record_outcome(date=date, rpe=8, completed=False, athlete_id='ATHLETE_A')
 
         for i in range(12):
             date = f'2026-10-{i+1:02d}'
@@ -521,9 +522,10 @@ class TestOutcomeTracker:
                 acwr=1.02, tsb_value=-4.0, readiness_score=76.0,
                 glycogen_debt=2.0, athlete_profile_id='ATHLETE_A', date=date,
             )
-            tracker.record_outcome(date=date, rpe=5, completed=True)
+            tracker.record_outcome(date=date, rpe=5, completed=True, athlete_id='ATHLETE_A')
 
-        summary = tracker.get_calibration_summary()
+        # Per-athlete summary for ATHLETE_A; only one profile shows signal → gate blocks.
+        summary = tracker.get_calibration_summary(athlete_id='ATHLETE_A')
         assert summary['moderate_promotion_candidates'] == []
 
     def test_get_lock_rate_by_phase(self, tracker, dummy_apl_result):
