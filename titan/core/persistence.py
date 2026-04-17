@@ -1,3 +1,7 @@
+# ADR-0033-L3-D-RESOLVED (2026-04-17): All adapter read methods now accept
+# explicit athlete_id parameter. ADR-0040-SINGLE-ATHLETE-SHORTCUT exemptions
+# retired. Multi-athlete isolation complete for read path.
+
 """TITAN Persistence Adapter — T5-08-B D1 scaffolding
 
 Abstract contract layer that separates the coaching pipeline from any specific
@@ -83,10 +87,10 @@ def get_athlete_context(
         }
 
         if include_biometrics:
-            hrv_history = adapter.get_hrv_history(days=days)
-            weight_history = adapter.get_weight_history(days=days)
+            hrv_history = adapter.get_hrv_history(days=days, athlete_id=athlete_id)
+            weight_history = adapter.get_weight_history(days=days, athlete_id=athlete_id)
             context["biometrics"] = {
-                "baseline_rhr": adapter.get_baseline_rhr(days=days),
+                "baseline_rhr": adapter.get_baseline_rhr(days=days, athlete_id=athlete_id),
                 "hrv_history": hrv_history,
                 "weight_history": weight_history,
                 "latest_hrv": hrv_history[0][1] if hrv_history else None,
@@ -94,9 +98,11 @@ def get_athlete_context(
             }
 
         if include_training:
-            ctl, atl, tsb = adapter.get_ctl_atl_tsb()
+            ctl, atl, tsb = adapter.get_ctl_atl_tsb(athlete_id=athlete_id)
             context["training"] = {
-                "training_load_history": adapter.get_training_load_history(days=days),
+                "training_load_history": adapter.get_training_load_history(
+                    days=days, athlete_id=athlete_id
+                ),
                 "ctl": ctl,
                 "atl": atl,
                 "tsb": tsb,
@@ -104,7 +110,9 @@ def get_athlete_context(
 
         if include_governance:
             context["governance"] = {
-                "recent_decisions": adapter.get_governance_decisions(limit=days),
+                "recent_decisions": adapter.get_governance_decisions(
+                    limit=days, athlete_id=athlete_id
+                ),
             }
 
         return _to_json_serializable(context)
@@ -162,15 +170,17 @@ class PersistenceAdapter(ABC):
         """Persist a morning check-in row (INSERT OR REPLACE semantics)."""
 
     @abstractmethod
-    def get_baseline_rhr(self, days: int = 7) -> float | None:
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         """Return the rolling median RHR over the last *days* days, or None."""
 
     @abstractmethod
-    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+    def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return [(date_iso, hrv_rmssd), ...] ordered newest-first."""
 
     @abstractmethod
-    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+    def get_weight_history(
+        self, days: int = 30, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         """Return [(date_iso, weight_kg), ...] ordered newest-first."""
 
     # ------------------------------------------------------------------ #
@@ -199,12 +209,12 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_training_load_history(
-        self, days: int | None = None
+        self, days: int | None = None, athlete_id: str = "owner"
     ) -> list[tuple[str, float]]:
         """Return [(date_iso, training_load), ...] ordered newest-first."""
 
     @abstractmethod
-    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+    def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
         """Return (CTL, ATL, TSB) as floats (Banister/Coggan model)."""
 
     # ------------------------------------------------------------------ #
@@ -345,7 +355,7 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_governance_decisions(
-        self, limit: int = 1000
+        self, limit: int = 1000, athlete_id: str = "owner"
     ) -> list[dict[str, Any]]:
         """Return the most recent governance decision rows as dicts."""
 
@@ -409,14 +419,16 @@ class SQLiteAdapter(PersistenceAdapter):
     def save_daily_metric(self, date: str, **kwargs: Any) -> None:
         self._manager.save_daily_metric(date, **kwargs)
 
-    def get_baseline_rhr(self, days: int = 7) -> float | None:
-        return self._manager.get_baseline_rhr(days=days)
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
+        return self._manager.get_baseline_rhr(days=days, athlete_id=athlete_id)
 
-    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
-        return self._manager.get_hrv_history(days=days)
+    def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
+        return self._manager.get_hrv_history(days=days, athlete_id=athlete_id)
 
-    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
-        return self._manager.get_weight_history(days=days)
+    def get_weight_history(
+        self, days: int = 30, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
+        return self._manager.get_weight_history(days=days, athlete_id=athlete_id)
 
     def save_session(
         self,
@@ -435,12 +447,12 @@ class SQLiteAdapter(PersistenceAdapter):
         )
 
     def get_training_load_history(
-        self, days: int | None = None
+        self, days: int | None = None, athlete_id: str = "owner"
     ) -> list[tuple[str, float]]:
-        return self._manager.get_training_load_history(days=days)
+        return self._manager.get_training_load_history(days=days, athlete_id=athlete_id)
 
-    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
-        return self._manager.get_ctl_atl_tsb()
+    def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
+        return self._manager.get_ctl_atl_tsb(athlete_id=athlete_id)
 
     def add_shoe(
         self, name: str, shoe_type: str = "DAILY", max_km: int = 800
@@ -561,8 +573,10 @@ class SQLiteAdapter(PersistenceAdapter):
             athlete_id=athlete_id,
         )
 
-    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
-        return self._manager.get_governance_decisions(limit=limit)
+    def get_governance_decisions(
+        self, limit: int = 1000, athlete_id: str = "owner"
+    ) -> list[dict[str, Any]]:
+        return self._manager.get_governance_decisions(limit=limit, athlete_id=athlete_id)
 
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
         return self._manager.annotate_governance_outcome(date=date, note=note)
@@ -724,13 +738,14 @@ class PostgreSQLAdapter(PersistenceAdapter):
             conn.execute(self._daily_metrics.delete().where(self._daily_metrics.c.date == date))
             conn.execute(insert(self._daily_metrics).values(**values))
 
-    def get_baseline_rhr(self, days: int = 7) -> float | None:
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._daily_metrics.c.resting_hr)
                 .where(
                     and_(
+                        self._daily_metrics.c.athlete_id == athlete_id,
                         self._daily_metrics.c.date >= start_date,
                         self._daily_metrics.c.resting_hr.is_not(None),
                     )
@@ -745,13 +760,16 @@ class PostgreSQLAdapter(PersistenceAdapter):
             return sorted_rows[mid]
         return (sorted_rows[mid - 1] + sorted_rows[mid]) / 2
 
-    def get_hrv_history(self, days: int = 14) -> list[tuple[str, float]]:
+    def get_hrv_history(
+        self, days: int = 14, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._daily_metrics.c.date, self._daily_metrics.c.hrv_rmssd)
                 .where(
                     and_(
+                        self._daily_metrics.c.athlete_id == athlete_id,
                         self._daily_metrics.c.date >= start_date,
                         self._daily_metrics.c.hrv_rmssd.is_not(None),
                     )
@@ -760,13 +778,16 @@ class PostgreSQLAdapter(PersistenceAdapter):
             ).all()
         return [(str(row[0]), float(row[1])) for row in rows]
 
-    def get_weight_history(self, days: int = 30) -> list[tuple[str, float]]:
+    def get_weight_history(
+        self, days: int = 30, athlete_id: str = "owner"
+    ) -> list[tuple[str, float]]:
         start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._daily_metrics.c.date, self._daily_metrics.c.weight_kg)
                 .where(
                     and_(
+                        self._daily_metrics.c.athlete_id == athlete_id,
                         self._daily_metrics.c.date >= start_date,
                         self._daily_metrics.c.weight_kg.is_not(None),
                     )
@@ -810,20 +831,25 @@ class PostgreSQLAdapter(PersistenceAdapter):
             pass
 
     def get_training_load_history(
-        self, days: int | None = None
+        self, days: int | None = None, athlete_id: str = "owner"
     ) -> list[tuple[str, float]]:
         lookback_days = CTL_DECAY_DAYS if days is None else days
         start_date = (datetime.now(UTC) - timedelta(days=lookback_days)).strftime("%Y-%m-%d")
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._training_log.c.date, self._training_log.c.training_load)
-                .where(self._training_log.c.date >= start_date)
+                .where(
+                    and_(
+                        self._training_log.c.athlete_id == athlete_id,
+                        self._training_log.c.date >= start_date,
+                    )
+                )
                 .order_by(self._training_log.c.date.desc())
             ).all()
         return [(str(row[0]), float(row[1] or 0)) for row in rows]
 
-    def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
-        loads = self.get_training_load_history(CTL_DECAY_DAYS)
+    def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
+        loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
         if not loads:
             return (0.0, 0.0, 0.0)
         chronological_loads = list(reversed(loads))
@@ -1083,10 +1109,13 @@ class PostgreSQLAdapter(PersistenceAdapter):
                 )
             )
 
-    def get_governance_decisions(self, limit: int = 1000) -> list[dict[str, Any]]:
+    def get_governance_decisions(
+        self, limit: int = 1000, athlete_id: str = "owner"
+    ) -> list[dict[str, Any]]:
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._governance_outcomes)
+                .where(self._governance_outcomes.c.athlete_id == athlete_id)
                 .order_by(self._governance_outcomes.c.id.desc())
                 .limit(limit)
             ).mappings().all()

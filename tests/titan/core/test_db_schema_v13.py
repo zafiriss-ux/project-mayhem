@@ -129,13 +129,13 @@ def test_model_calibration_metadata_calibrated_for_absent(
 
 
 def test_schema_version_is_thirteen(db: DatabaseManager) -> None:
-    """PRAGMA user_version must equal 13 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 13, (
-        f"SCHEMA_VERSION constant must be 13, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 14 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 14, (
+        f"SCHEMA_VERSION constant must be 14, got {SCHEMA_VERSION}"
     )
     version = db.conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 13, (
-        f"PRAGMA user_version must be 13 after create_tables(), got {version}"
+    assert version == 14, (
+        f"PRAGMA user_version must be 14 after create_tables(), got {version}"
     )
 
 
@@ -158,7 +158,7 @@ def test_v13_migration_idempotent_on_existing_db(tmp_path: Path) -> None:
         ).fetchone()
         assert rows[0] == 1, "owner row must exist exactly once after idempotent open"
         version = db2.conn.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 13
+        assert version == 14
     finally:
         db2.close()
 
@@ -220,6 +220,6 @@ def test_v13_migration_upgrades_pre_v13_database(tmp_path: Path) -> None:
         )
 
         version = db.conn.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 13
+        assert version == 14
     finally:
         db.close()

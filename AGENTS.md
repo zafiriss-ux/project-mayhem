@@ -1477,6 +1477,11 @@ and the deprecation documented in `CHANGES.md` and the evidence registry.
 **Effective from 2026-03-06 forward. Applies to new code only.** Existing violations are documented
 in the exemption register (module-level comment in `titan/core/database.py` and other exempt files).
 
+**Exempt modules** — status as of 2026-04-17:
+`titan/core/persistence.py` exemptions **RETIRED** (ADR-0033-L3-D-RESOLVED, 2026-04-17).
+All read methods now accept explicit `athlete_id: str = "owner"`. No remaining active
+ADR-0040-SINGLE-ATHLETE-SHORTCUT exemptions in `persistence.py`.
+
 **Rule A40-1 — No new implicit athlete queries:** New database access methods must accept
 `athlete_id: str = "default"` as a parameter. The parameter must exist in the signature.
 

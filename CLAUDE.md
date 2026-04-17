@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2522 tests all green as of T5-07-L3-B OutcomeTracker per-athlete query scoping + INV-04 ENFORCED (2026-04-17). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2506 tests all green as of T5-07-L3-D ADR-0040 annotation retirement + athlete_id isolation (2026-04-17). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

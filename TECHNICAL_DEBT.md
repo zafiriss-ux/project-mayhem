@@ -1507,7 +1507,7 @@ logic + governance integration update + tests.
 
 ### T5-07 · No model calibration age tracking or adaptation drift detection — physiological model staleness invisible at runtime ✅ RESOLVED (Layers 1–2) — Layer 3 deferred Phase 9
 
-**Status:** ✅ RESOLVED (Layers 1–2) — 2026-03-13. Commit: b6bea2a. Layer 3: ADR ACCEPTED 2026-04-12 (Amendment appended to docs/adr/0033-*). Implementation tracked as T5-07-L3-A through T5-07-L3-D (Phase 9).
+**Status:** ✅ RESOLVED (Layers 1–2) — 2026-03-13. Commit: b6bea2a. Layer 3: ADR ACCEPTED 2026-04-12. L3-A ✅ L3-B ✅ L3-C ✅ L3-D ✅ RESOLVED 2026-04-17. All four sub-decisions complete.
 **Workflow Path: A** *(schema migration — PILOT-01 excluded)*
 **Source:** Risk Review V8 — Risks: Model Aging, Calibration Bias, Athlete Adaptation Lag, Single-Athlete Overfitting. ADR-0033.
 **Priority:** P1 for Layers 1–2 (Phase 8A, high priority); P5 for Layer 3 (Phase 9).
@@ -1676,14 +1676,18 @@ DailyCoach passes db=self.db to AthleteCoachingContext. setup_env.sh (root + scr
 
 ---
 
-### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution ⚠️ PARTIALLY RESOLVED
+### T5-07-L3-D · Adapter read method isolation + coach:Any contract resolution ✅ RESOLVED
 
-**Status:** ⚠️ PARTIALLY RESOLVED — 2026-04-15. Commit: 490a41c.
-coach: Any eliminated from AthleteCoachingContext; replaced with explicit
-CoachCallables Protocol covering only consumed methods (_decision_pipeline,
-_effect_runner) (T5-24 precedent, ADR-0046).
-Remaining scope: adapter read method isolation (ADR-0040-annotated methods
-in persistence.py) — deferred until T5-07-L3-B completes.
+**Status:** ✅ RESOLVED — 2026-04-17.
+coach: Any eliminated from AthleteCoachingContext (commit: 490a41c, 2026-04-15).
+Adapter read method isolation complete: all six read methods in `PersistenceAdapter`,
+`SQLiteAdapter`, and `PostgreSQLAdapter` now accept `athlete_id: str = "owner"`.
+`DatabaseManager` read methods updated with `WHERE athlete_id = ?` filtering.
+Schema v14 migration adds `athlete_id TEXT NOT NULL DEFAULT 'owner'` to `daily_metrics`
+and `training_log`. ADR-0040-SINGLE-ATHLETE-SHORTCUT exemptions retired in persistence.py
+(replaced with ADR-0033-L3-D-RESOLVED comment). Isolation tests added for all six
+methods in `test_persistence.py`. SCHEMA_VERSION bumped 13→14.
+ADR-0033 Layer 3 complete: L3-A ✅ L3-B ✅ L3-C ✅ L3-D ✅.
 Original status: OPEN — Phase 9. ADR-0033 Amendment (2026-04-12). After T5-07-L3-A and T5-07-L3-B.
 
 **Source:** ADR-0033 Layer 3, Sub-decision L3-D + DEC-021 closure + T5-16-B task learning note.

@@ -2,7 +2,7 @@
 DB schema contract tests — ADR-0033 Layer 3 + ADR-0052 + Phase 9 entry gate.
 Any migration that changes a column set MUST update this file in the same PR.
 
-Column sets verified against: DatabaseManager (SCHEMA_VERSION=13).
+Column sets verified against: DatabaseManager (SCHEMA_VERSION=14).
 Run to re-verify: python -c "
     import tempfile; from pathlib import Path
     from titan.core.database import DatabaseManager
@@ -23,7 +23,7 @@ import pytest
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 # ── Column contract sets (source-of-truth for schema regression) ─────────────
-# These include all columns added by migrations up to SCHEMA_VERSION=13.
+# These include all columns added by migrations up to SCHEMA_VERSION=14.
 
 GOVERNANCE_OUTCOMES_COLUMNS = {
     "id",
@@ -64,6 +64,7 @@ ATHLETE_THRESHOLD_OFFSETS_COLUMNS = {
 
 DAILY_METRICS_COLUMNS = {
     "id",
+    "athlete_id",    # migration v14 — read-path isolation (T5-07-L3-D / ADR-0033)
     "date",
     "weight_kg",
     "hrv_rmssd",
@@ -82,6 +83,7 @@ DAILY_METRICS_COLUMNS = {
 
 TRAINING_LOG_COLUMNS = {
     "id",
+    "athlete_id",        # migration v14 — read-path isolation (T5-07-L3-D / ADR-0033)
     "date",
     "session_type",
     "distance_km",
@@ -201,11 +203,11 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
 
 
 def test_schema_version_is_thirteen(test_db_conn) -> None:
-    """PRAGMA user_version must equal 13 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 13, (
-        f"Expected SCHEMA_VERSION=13 in database.py, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 14 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 14, (
+        f"Expected SCHEMA_VERSION=14 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 13, (
-        f"PRAGMA user_version must be 13 after create_tables(), got {version}"
+    assert version == 14, (
+        f"PRAGMA user_version must be 14 after create_tables(), got {version}"
     )
