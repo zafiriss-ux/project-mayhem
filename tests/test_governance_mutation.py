@@ -494,3 +494,43 @@ def test_guidance_for_gate_nan_input_conservative():
     assert "conservative" in result.lower() or "monitor" in result.lower(), (
         "_guidance_for_gate default must contain conservative training guidance"
     )
+
+
+# ── T5-72: H2/H3 missing-data conservative ceiling ───────────────────────────
+
+def test_h2_none_hrv_applies_easy_ceiling_not_fail_open():
+    """T5-72: H2 gate with None HRV must apply EASY ceiling, not fail-open.
+
+    ADR-0051: missing safety-critical HRV data → conservative response.
+    Silent pass-through (fail-open) would allow INTERVALS through unchecked.
+    """
+    ctx = _base_context(today_hrv=None)
+    session = _base_session(session_type="INTERVALS")
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result["session_type"] == "EASY", (
+        "H2 with None HRV must apply EASY ceiling, not pass INTERVALS through (fail-open)"
+    )
+    applied_locks = result.get("governance_locks_applied", [])
+    assert any("DATA_MISSING_CONSERVATIVE" in code for code in applied_locks), (
+        "DATA_MISSING_CONSERVATIVE_H2 lock code must be present when HRV is None"
+    )
+
+
+def test_h3_none_rhr_applies_easy_ceiling_not_fail_open():
+    """T5-72: H3 gate with None RHR must apply EASY ceiling, not fail-open.
+
+    ADR-0051: missing safety-critical RHR data → conservative response.
+    Silent pass-through (fail-open) would allow THRESHOLD through unchecked.
+    """
+    ctx = _base_context(today_rhr=None)
+    session = _base_session(session_type="THRESHOLD")
+    result = _engine().apply_constraints(session, ctx)
+
+    assert result["session_type"] == "EASY", (
+        "H3 with None RHR must apply EASY ceiling, not pass THRESHOLD through (fail-open)"
+    )
+    applied_locks = result.get("governance_locks_applied", [])
+    assert any("DATA_MISSING_CONSERVATIVE" in code for code in applied_locks), (
+        "DATA_MISSING_CONSERVATIVE_H3 lock code must be present when RHR is None"
+    )
