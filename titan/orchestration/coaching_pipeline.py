@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from titan.orchestration.contracts import DecisionResult, GarminSyncResult
+from titan.science.governance_engine import GovernanceEngine
+from titan.science.threshold_adapter import ThresholdAdapter
 
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
@@ -77,6 +79,21 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
                     cold_start_conservative_factor=1.0,
                 )
                 _was_cold_start = False
+
+    # ── ThresholdAdapter (ADR-0052 Stage 3) ──────────────────────────────────
+    # Instantiate per-athlete, per-run. Never shared across pipeline calls.
+    # Cold-start bypass: adapter skipped entirely during cold-start (ADR-0033
+    # L3-C). GovernanceEngine handles None gracefully (no adaptation applied).
+    _threshold_adapter: ThresholdAdapter | None = None
+    if context.db is not None and not _was_cold_start:
+        _threshold_adapter = ThresholdAdapter(
+            athlete_id=_athlete_id,
+            db=context.db,
+        )
+        _threshold_adapter.load()
+    # Construct per-athlete GovernanceEngine bound to this adapter.
+    # Stage 4 will wire this engine into the decision pipeline call.
+    _ = GovernanceEngine(threshold_adapter=_threshold_adapter)
 
     decision_result: DecisionResult = context.coach._decision_pipeline(
         garmin_data=context.garmin_data,

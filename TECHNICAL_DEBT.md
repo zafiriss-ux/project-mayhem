@@ -3531,6 +3531,8 @@ to assert clause presence in perpetuity.
 ### HD-09 · No population-specific threshold adaptation — static thresholds regardless of age/fitness tier
 
 **Status:** ✅ RESOLVED — 2026-04-12. ThresholdAdapter implemented in `titan/science/threshold_adapter.py` (MODULE_VERSION 1.0.0); `athlete_threshold_offsets` DB table (schema v12, Alembic migration 20260412_01); `GovernanceEngine.__init__` accepts optional `threshold_adapter` parameter; `GovernanceEngine._get_soft_threshold()` routes soft-gate lookups through adapter; ADR-0052 constants in `thresholds.py`; evidence_registry entries added. Tests: `tests/titan/science/test_threshold_adapter.py` (42 tests). All three gates passed: G1 ruff clean, G2 strict pytest 2482 passed, G3 full pytest 2482 passed.
+
+**ADR-0052 Stage 3 (2026-04-17):** ThresholdAdapter wired into `coaching_pipeline()`. Instantiated per-athlete, per-run. `load()` called at pipeline entry. `GovernanceEngine` constructed with `threshold_adapter=` argument and injected into `DailyCoach._decision_pipeline()` via `governance_engine=` kwarg; `_decision_pipeline()` uses injected engine for step 9 (`apply_constraints`) and step 12 (`get_governance_report`), falling back to `self.governance` when `None`. Cold-start bypass enforced: adapter skipped entirely during cold-start per ADR-0033 L3-C. `propose_adaptation()` NOT called (Stage 4 scope). Tests: `tests/titan/orchestration/test_coaching_pipeline_adapter.py` (+5).
 **Source:** TITAN_HARDENING_FRAMEWORK_v1.md §1.1 / HD-09
 **Severity:** MED
 **Failure Class:** Safety Logic
