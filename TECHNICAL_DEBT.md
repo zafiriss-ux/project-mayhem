@@ -4048,6 +4048,22 @@ Next-week tactic: Run hard_audit.sh at session start instead of
 manual checks. ADR-0052 Stage 3 (ThresholdAdapter wiring) is next.
 Opus governance audit warranted after ADR-0052 Stage 3 closes Phase 9.
 
+### Governance Note — 2026-04-18
+State: healthy
+Learnings:
+- scripts/module_audit.sh + scripts/full_module_audit.sh created (Lane C implementation)
+- Full audit: 51 modules PASS, 11 modules FAIL — no crashes, clean finding list produced
+- Findings (not yet SCRATCHPAD OBS): ADR-0040 annotation in data_sanity.py; silent
+  except:pass in data_sanity.py + persistence.py; missing mirrored tests for
+  governance_contracts.py, ml_safety.py, adaptive_memory.py, biometric_source.py,
+  thresholds.py, api/dependencies.py, api/models.py; unscoped SQL in database.py +
+  physiological_bounds.py
+- hard_audit.sh unmodified and still passes (module audit integration deferred — optional)
+Required updates: TECHNICAL_DEBT.md (this entry)
+Next-week tactic: Route each module_audit finding through SCRATCHPAD OBS before
+scheduling fixes. Priority: silent except:pass items (persistence.py, data_sanity.py)
+are highest-risk and smallest scope.
+
 ---
 
 ## Codex Handoff Blocks (Records Steward — 2026-03-14)
