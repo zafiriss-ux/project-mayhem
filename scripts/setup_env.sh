@@ -4,6 +4,25 @@
 # Safe to run multiple times (idempotent).
 set -euo pipefail
 
+install_runtime_dependencies() {
+  if pip install -r requirements.txt -c constraints.txt --quiet; then
+    return 0
+  fi
+
+  echo "WARNING: Runtime dependency install failed on the first attempt."
+
+  if [ -n "${PIP_INDEX_URL:-}" ]; then
+    echo "ERROR: PIP_INDEX_URL is set to '$PIP_INDEX_URL' and install still failed."
+    echo "Fix your proxy/index and rerun scripts/setup_env.sh"
+    return 1
+  fi
+
+  echo "Retrying runtime dependency install against public PyPI..."
+  PIP_INDEX_URL="https://pypi.org/simple" \
+  PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org" \
+    pip install -r requirements.txt -c constraints.txt --quiet
+}
+
 # ── Python 3.11 activation via pyenv (if available) ──────────────────────────
 if command -v pyenv &>/dev/null; then
   PY311=$(pyenv versions --bare 2>/dev/null | grep "^3\.11\." | sort -V | tail -1)
@@ -31,7 +50,7 @@ echo "==> Upgrading pip"
 python -m pip install --upgrade pip --quiet
 
 echo "==> Installing runtime dependencies"
-pip install -r requirements.txt -c constraints.txt --quiet
+install_runtime_dependencies
 
 echo "==> Installing dev/test dependencies"
 pip install -r requirements-dev.txt --quiet
