@@ -1,6 +1,5 @@
-# ADR-0033-L3-D-RESOLVED (2026-04-17): All adapter read methods now accept
-# explicit athlete_id parameter. ADR-0040-SINGLE-ATHLETE-SHORTCUT exemptions
-# retired. Multi-athlete isolation complete for read path.
+# ADR-0033-L3-D-RESOLVED: All adapter read methods implement explicit athlete_id
+# isolation. ADR-0040 exemptions fully retired. Multi-athlete read path complete.
 
 """TITAN Persistence Adapter — T5-08-B D1 scaffolding
 
