@@ -103,29 +103,40 @@ fi
 # Primary: tests/titan/<subdir>/test_<module>.py (exact match)
 # Secondary: any file in tests/titan/<subdir>/ containing the module name
 # Fallback: any file in tests/ root containing the module name
-if [ -n "$SUBDIR" ]; then
-  TEST_EXACT="tests/titan/${SUBDIR}/test_${MODULE_NAME}.py"
-  TEST_GLOB=$(find "tests/titan/${SUBDIR}/" -name "*${MODULE_NAME}*" \
-              2>/dev/null | head -1 || true)
+# Exempt: config-only modules with no executable logic
+EXEMPT_TEST_MODULES="thresholds"
+if echo "$EXEMPT_TEST_MODULES" | grep -qw "$MODULE_NAME"; then
+  _skip "Mirrored test (config-only module — no logic; T5-79 exempted)"
 else
-  TEST_EXACT="tests/titan/test_${MODULE_NAME}.py"
-  TEST_GLOB=$(find "tests/titan/" -maxdepth 1 -name "*${MODULE_NAME}*" \
-              2>/dev/null | head -1 || true)
-fi
-TEST_ROOT=$(find tests/ -maxdepth 1 -name "*${MODULE_NAME}*" 2>/dev/null | head -1 || true)
+  if [ -n "$SUBDIR" ]; then
+    TEST_EXACT="tests/titan/${SUBDIR}/test_${MODULE_NAME}.py"
+    TEST_GLOB=$(find "tests/titan/${SUBDIR}/" -name "*${MODULE_NAME}*" \
+                2>/dev/null | head -1 || true)
+  else
+    TEST_EXACT="tests/titan/test_${MODULE_NAME}.py"
+    TEST_GLOB=$(find "tests/titan/" -maxdepth 1 -name "*${MODULE_NAME}*" \
+                2>/dev/null | head -1 || true)
+  fi
+  TEST_ROOT=$(find tests/ -maxdepth 1 -name "*${MODULE_NAME}*" 2>/dev/null | head -1 || true)
 
-if [ -f "$TEST_EXACT" ]; then
-  _pass "Mirrored test: $TEST_EXACT"
-elif [ -n "$TEST_GLOB" ]; then
-  _pass "Mirrored test (variant name): $TEST_GLOB"
-elif [ -n "$TEST_ROOT" ]; then
-  _pass "Root test: $TEST_ROOT"
-else
-  _fail "No mirrored test found (checked tests/titan/${SUBDIR:+$SUBDIR/}test_${MODULE_NAME}.py and variants)"
+  if [ -f "$TEST_EXACT" ]; then
+    _pass "Mirrored test: $TEST_EXACT"
+  elif [ -n "$TEST_GLOB" ]; then
+    _pass "Mirrored test (variant name): $TEST_GLOB"
+  elif [ -n "$TEST_ROOT" ]; then
+    _pass "Root test: $TEST_ROOT"
+  else
+    _fail "No mirrored test found (checked tests/titan/${SUBDIR:+$SUBDIR/}test_${MODULE_NAME}.py and variants)"
+  fi
 fi
 
 # ── Check 6: Per-athlete SQL queries scoped with athlete_id ──────────────────
-UNSCOPED=$(python3 -c "
+# Exempt: database.py (contains migration DDL builders, not business queries)
+EXEMPT_SQL_MODULES="database"
+if echo "$EXEMPT_SQL_MODULES" | grep -qw "$MODULE_NAME"; then
+  _skip "SQL scope check (migration/DDL module — not a business query site)"
+else
+  UNSCOPED=$(python3 -c "
 import ast, sys
 PER_ATHLETE_TABLES = {
     'governance_outcomes', 'daily_metrics', 'training_log',
@@ -146,10 +157,11 @@ try:
 except Exception:
     print(0)
 " "$MODULE" 2>/dev/null || echo 0)
-if [ "$UNSCOPED" -eq 0 ]; then
-  _pass "Per-athlete SQL queries scoped with athlete_id"
-else
-  _fail "Per-athlete SQL missing athlete_id scope: $UNSCOPED location(s)"
+  if [ "$UNSCOPED" -eq 0 ]; then
+    _pass "Per-athlete SQL queries scoped with athlete_id"
+  else
+    _fail "Per-athlete SQL missing athlete_id scope: $UNSCOPED location(s)"
+  fi
 fi
 
 # ── Result ────────────────────────────────────────────────────────────────────

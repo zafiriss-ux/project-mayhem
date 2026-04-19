@@ -3913,6 +3913,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-78 | ✅ RESOLVED 2026-04-14 — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
 | T5-72 | ✅ RESOLVED 2026-04-17 — H2/H3 except: EASY ceiling + DATA_MISSING_CONSERVATIVE_H2/H3 lock codes; 2 tests green | 2026-04-17 |
 | T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
+| T5-79 | 🟡 OPEN — missing mirrored tests for 6 modules (api/dependencies, api/models, biometric_source, adaptive_memory, governance_contracts, ml_safety); P4 housekeeping | 2026-04-18 |
+| T5-80 | 🟡 OPEN — residual ADR-0040 annotations in data_sanity.py + physiological_bounds.py; silent except:pass in persistence.py + data_sanity.py; P3 pre-GO/NO-GO | 2026-04-18 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4133,3 +4135,46 @@ updated in tests/test_garmin_sync.py and tests/titan/integrations/test_garmin_sy
 Collection errors: 0. Full suite: 2500 tests collected, all green.
 **Priority:** RESOLVED — no further action.
 **Phase:** Maintenance.
+
+---
+
+### T5-79 · Missing mirrored test files — 6 modules 🟡 OPEN
+
+**Status:** OPEN — Phase 9 debt, LOW priority.
+**Source:** scripts/full_module_audit.sh 2026-04-18. Architect triage 2026-04-18.
+**Severity:** LOW (test coverage gap, no safety impact)
+**Workflow Path:** A
+
+**Modules affected:**
+- `titan/api/dependencies.py` — no `tests/titan/api/test_dependencies.py`
+- `titan/api/models.py` — no `tests/titan/api/test_models.py`
+- `titan/integrations/biometric_source.py` — no mirrored test
+- `titan/science/adaptive_memory.py` — root test exists; no mirrored
+- `titan/science/governance_contracts.py` — no mirrored test
+- `titan/science/ml_safety.py` — no mirrored test
+
+**Fix direction:** Create minimal mirrored test file per module covering
+public API contract (happy path + 1 boundary). Follow nearest existing
+pattern in `tests/titan/<subsystem>/`.
+
+**Priority:** P4 — housekeeping. Does not block Phase 9 close or Opus audit.
+
+---
+
+### T5-80 · Residual ADR-0040 annotations + silent except patterns 🟡 OPEN
+
+**Status:** OPEN — Phase 9 debt, MEDIUM priority.
+**Source:** scripts/full_module_audit.sh 2026-04-18. Architect triage 2026-04-18.
+**Severity:** MEDIUM (ADR compliance gap; silent failures may hide errors)
+**Workflow Path:** A
+
+**Findings:**
+- `titan/core/persistence.py` — 1 `silent except: pass` (run `grep -n "except" titan/core/persistence.py` for exact line)
+- `titan/science/data_sanity.py` — ADR-0040-SINGLE-ATHLETE-SHORTCUT annotation + 1 silent except: pass
+- `titan/science/physiological_bounds.py` — ADR-0040-SINGLE-ATHLETE-SHORTCUT annotation (should have been retired in L3-D pass)
+
+**Fix direction:**
+1. `physiological_bounds.py` + `data_sanity.py`: Replace ADR-0040 comment with `# ADR-0033-L3-D-RESOLVED: single-athlete assumption resolved`.
+2. `persistence.py` + `data_sanity.py`: Replace `except: pass` with explicit exception handling or structured log-and-continue. Read context before fixing — silent pass may be intentional in one location.
+
+**Priority:** P3 — fix before Phase 9 GO/NO-GO decision.
