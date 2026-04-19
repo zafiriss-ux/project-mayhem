@@ -3914,7 +3914,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-72 | ✅ RESOLVED 2026-04-17 — H2/H3 except: EASY ceiling + DATA_MISSING_CONSERVATIVE_H2/H3 lock codes; 2 tests green | 2026-04-17 |
 | T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
 | T5-79 | 🟡 OPEN — missing mirrored tests for 6 modules (api/dependencies, api/models, biometric_source, adaptive_memory, governance_contracts, ml_safety); P4 housekeeping | 2026-04-18 |
-| T5-80 | 🟡 OPEN — residual ADR-0040 annotations in data_sanity.py + physiological_bounds.py; silent except:pass in persistence.py + data_sanity.py; P3 pre-GO/NO-GO | 2026-04-18 |
+| T5-80 | ✅ RESOLVED 2026-04-19 — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4161,20 +4161,17 @@ pattern in `tests/titan/<subsystem>/`.
 
 ---
 
-### T5-80 · Residual ADR-0040 annotations + silent except patterns 🟡 OPEN
+### T5-80 · Residual ADR-0040 annotations + silent except patterns ✅ RESOLVED
 
-**Status:** OPEN — Phase 9 debt, MEDIUM priority.
+**Status:** RESOLVED 2026-04-19. commit: branch `claude/fix-adr-0040-exceptions-OtyGk`
 **Source:** scripts/full_module_audit.sh 2026-04-18. Architect triage 2026-04-18.
 **Severity:** MEDIUM (ADR compliance gap; silent failures may hide errors)
 **Workflow Path:** A
 
-**Findings:**
-- `titan/core/persistence.py` — 1 `silent except: pass` (run `grep -n "except" titan/core/persistence.py` for exact line)
-- `titan/science/data_sanity.py` — ADR-0040-SINGLE-ATHLETE-SHORTCUT annotation + 1 silent except: pass
-- `titan/science/physiological_bounds.py` — ADR-0040-SINGLE-ATHLETE-SHORTCUT annotation (should have been retired in L3-D pass)
+**Resolution:**
+1. `titan/science/physiological_bounds.py` line 19: ADR-0040-SINGLE-ATHLETE-SHORTCUT → ADR-0033-L3-D-RESOLVED comment.
+2. `titan/science/data_sanity.py` line 23: ADR-0040-SINGLE-ATHLETE-SHORTCUT → ADR-0033-L3-D-RESOLVED comment.
+3. `titan/science/data_sanity.py` line 224: `except (TypeError, ValueError): pass` → `_log.debug(...)` (rmssd not-numeric case; bounds validation catches it downstream).
+4. `titan/core/persistence.py` line 828: `except IntegrityError: pass` → `_log.debug(...)` (duplicate garmin_activity_id INSERT OR IGNORE semantics).
 
-**Fix direction:**
-1. `physiological_bounds.py` + `data_sanity.py`: Replace ADR-0040 comment with `# ADR-0033-L3-D-RESOLVED: single-athlete assumption resolved`.
-2. `persistence.py` + `data_sanity.py`: Replace `except: pass` with explicit exception handling or structured log-and-continue. Read context before fixing — silent pass may be intentional in one location.
-
-**Priority:** P3 — fix before Phase 9 GO/NO-GO decision.
+**Task Learning:** AST-based audit check (`len(node.body) == 1 and isinstance(node.body[0], ast.Pass)`) is not fooled by inline comments — only actual AST statements clear the flag. Replacing `pass` with `_log.debug()` satisfies both the audit and observability goals.

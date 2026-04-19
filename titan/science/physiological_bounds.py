@@ -16,9 +16,9 @@ MODULE_VERSION = "1.0.0"
 
 _log = logging.getLogger(__name__)
 
-# ADR-0040-SINGLE-ATHLETE-SHORTCUT: This module assumes a single active athlete.
-# Multi-athlete isolation is deferred to Phase 9 (ADR-0033 Layer 3, T5-07).
-# Do NOT introduce new structural coupling that would be harder to isolate later.
+# ADR-0033-L3-D-RESOLVED (2026-04-18): Single-athlete assumption resolved.
+# Multi-athlete isolation complete. This module contains no per-athlete
+# DB queries — bounds validation is athlete-agnostic by design.
 
 # Physiological plausibility ranges for each measured field.
 # Evidence: HEURISTIC (see evidence_registry.py § Physiological Bounds).

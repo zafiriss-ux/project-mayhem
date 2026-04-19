@@ -826,8 +826,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     )
                 )
         except IntegrityError:
-            # Duplicate garmin_activity_id — silent no-op (INSERT OR IGNORE semantics).
-            pass
+            _log.debug("Duplicate garmin_activity_id — skipped (INSERT OR IGNORE semantics)")
 
     def get_training_load_history(
         self, days: int | None = None, athlete_id: str = "owner"

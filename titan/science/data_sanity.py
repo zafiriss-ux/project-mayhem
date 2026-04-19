@@ -20,8 +20,9 @@ MODULE_VERSION = "1.0.0"
 
 _log = logging.getLogger(__name__)
 
-# ADR-0040-SINGLE-ATHLETE-SHORTCUT: This module assumes a single active athlete.
-# Multi-athlete isolation is deferred to Phase 9 (ADR-0033 Layer 3, T5-07).
+# ADR-0033-L3-D-RESOLVED (2026-04-18): Single-athlete assumption resolved.
+# Multi-athlete isolation complete. This module contains no per-athlete
+# DB queries — sanity validation is athlete-agnostic by design.
 
 
 @dataclass
@@ -222,7 +223,7 @@ class DataSanityChecker:
                     violations.append(v)
                     _emit(context, v)
             except (TypeError, ValueError):
-                pass
+                _log.debug("rmssd not numeric — zero-check skipped; bounds validation will catch it")
         timestamp_str = row.get("date") or row.get("timestamp")
         if timestamp_str:
             try:
