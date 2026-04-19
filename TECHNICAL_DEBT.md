@@ -3913,7 +3913,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-78 | ✅ RESOLVED 2026-04-14 — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
 | T5-72 | ✅ RESOLVED 2026-04-17 — H2/H3 except: EASY ceiling + DATA_MISSING_CONSERVATIVE_H2/H3 lock codes; 2 tests green | 2026-04-17 |
 | T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
-| T5-79 | 🟡 OPEN — missing mirrored tests for 6 modules (api/dependencies, api/models, biometric_source, adaptive_memory, governance_contracts, ml_safety); P4 housekeeping | 2026-04-18 |
+| T5-79 | ✅ RESOLVED 2026-04-19 — 6 mirrored test files created; full_module_audit.sh 0 FAILs; snapshot updated to 2546 | 2026-04-19 |
 | T5-80 | ✅ RESOLVED 2026-04-19 — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
 
 *This document is the single source of truth for technical debt. Update it when items are
@@ -4138,26 +4138,26 @@ Collection errors: 0. Full suite: 2500 tests collected, all green.
 
 ---
 
-### T5-79 · Missing mirrored test files — 6 modules 🟡 OPEN
+### T5-79 · Missing mirrored test files — 6 modules ✅ RESOLVED
 
-**Status:** OPEN — Phase 9 debt, LOW priority.
+**Status:** RESOLVED 2026-04-19. Correction pass (Lane D).
 **Source:** scripts/full_module_audit.sh 2026-04-18. Architect triage 2026-04-18.
 **Severity:** LOW (test coverage gap, no safety impact)
 **Workflow Path:** A
 
-**Modules affected:**
-- `titan/api/dependencies.py` — no `tests/titan/api/test_dependencies.py`
-- `titan/api/models.py` — no `tests/titan/api/test_models.py`
-- `titan/integrations/biometric_source.py` — no mirrored test
-- `titan/science/adaptive_memory.py` — root test exists; no mirrored
-- `titan/science/governance_contracts.py` — no mirrored test
-- `titan/science/ml_safety.py` — no mirrored test
+**Mirrored test files created:**
+- `tests/titan/api/test_dependencies.py`
+- `tests/titan/api/test_models.py`
+- `tests/titan/integrations/test_biometric_source.py`
+- `tests/titan/science/test_adaptive_memory.py`
+- `tests/titan/science/test_governance_contracts.py`
+- `tests/titan/science/test_ml_safety.py`
 
-**Fix direction:** Create minimal mirrored test file per module covering
-public API contract (happy path + 1 boundary). Follow nearest existing
-pattern in `tests/titan/<subsystem>/`.
+**Bundled fixes:** `_EXEMPT_SHORTCUT_MODULES` emptied (T5-80 retired all ADR-0040
+annotations); CLAUDE.md snapshot updated to 2546. full_module_audit.sh → 0 FAILs.
 
-**Priority:** P4 — housekeeping. Does not block Phase 9 close or Opus audit.
+**Task learning:** Module audit failures and snapshot drift are coupled — always
+resolve mirrored test gaps and update snapshot atomically.
 
 ---
 

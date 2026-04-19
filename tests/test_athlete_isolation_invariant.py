@@ -12,13 +12,8 @@ from pathlib import Path
 _TITAN_ROOT = Path(__file__).resolve().parents[1] / "titan"
 _DATABASE_FILE = _TITAN_ROOT / "core" / "database.py"
 
-# Modules intentionally carrying single-athlete shortcuts until Phase 9.
-_EXEMPT_SHORTCUT_MODULES: frozenset[Path] = frozenset(
-    {
-        Path("titan/science/data_sanity.py"),
-        Path("titan/science/physiological_bounds.py"),
-    }
-)
+# T5-80 retired all ADR-0040 annotations — no modules carry the shortcut tag.
+_EXEMPT_SHORTCUT_MODULES: frozenset[Path] = frozenset()
 
 _SHORTCUT_TAG = "ADR-0040-SINGLE-ATHLETE-SHORTCUT"
 _SQL_DML_PREFIXES: tuple[str, ...] = ("SELECT", "UPDATE", "DELETE", "INSERT")
