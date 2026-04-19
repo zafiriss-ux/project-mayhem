@@ -91,7 +91,7 @@ TIER 4 (maintainability — independent; can run in parallel after Tier 1–3 cl
 
 TIER 5 (future / Phase 8+):
   T5-06 (ML advisory explainability contract; ADR-0032; T5-06-A is Phase 8A early work — complete before Phase 8B begins)
-  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; ✅ Layers 1–2 RESOLVED 2026-03-13; Layer 3 ADR ACCEPTED 2026-04-12 — implementation tracked as T5-07-L3-A through L3-D)
+  T5-07 (model calibration metadata table + adaptation drift detection; ADR-0033; ✅ ALL RESOLVED 2026-04-17 — Layers 1–2: 2026-03-13 commit b6bea2a; L3-A ✅ ba9c804; L3-B ✅ 543a0c6; L3-C ✅ 1fc4f1a; L3-D ✅ 34fab6d — ADR-0033 Layer 3 complete)
   T5-14 (ESI environmental compensation overlay for training zones; ADR-0034; Phase 8 scheduled)
 ```
 T1-20, T1-21, T1-22, T1-23 are marked `independent` (no ordering dependency between them).
@@ -3829,10 +3829,11 @@ When an item is completed, mark it here with date and PR reference:
 | T4-30 | ✅ RESOLVED (independent) | 2026-03-07 (commit: 4ddc184) |
 | T4-31 | ✅ RESOLVED (IMMEDIATE — AGENTS.md §16.10 active) | 2026-03-07 (commit: eb20bb2) |
 | T4-32 | ✅ RESOLVED | 2026-03-07 (commit: dfe8907) |
-| T5-07 | ✅ RESOLVED (Layers 1–2) — 2026-03-13 (commit: b6bea2a); Layer 3: ADR ACCEPTED 2026-04-12; L3-A ✅ RESOLVED 2026-04-14; L3-B ✅ RESOLVED 2026-04-17; L3-C OPEN Phase 9; L3-D ⚠️ PARTIAL 2026-04-15 | 2026-03-13 |
+| T5-07 | ✅ RESOLVED — Layers 1–2: 2026-03-13 (commit: b6bea2a); Layer 3: L3-A ✅ ba9c804, L3-B ✅ 543a0c6, L3-C ✅ 1fc4f1a, L3-D ✅ 34fab6d — all RESOLVED 2026-04-17. ADR-0033 Layer 3 complete. | 2026-04-17 |
 | T5-07-L3-A | ✅ RESOLVED 2026-04-14 — athletes table + owner seed + governance_outcomes owner backfill + calibrated_for removal; SCHEMA_VERSION 12→13; 8 new DB tests green | 2026-04-14 |
 | T5-07-L3-B | ✅ RESOLVED 2026-04-17 — OutcomeTracker per-athlete query scoping; check_calibration_diversity(); get_calibration_analytics(); G-CI-07 AST gate; INV-04 ENFORCED; 11 new tests green | 2026-04-17 |
-| T5-07-L3-D | ⚠️ PARTIAL — coach:Any resolved; CoachCallables Protocol in coaching_pipeline.py; adapter isolation pending T5-07-L3-D re-evaluation post L3-B closure | 2026-04-15 |
+| T5-07-L3-C | ✅ RESOLVED 2026-04-17 (commit: 1fc4f1a) — cold-start protocol; is_athlete_cold_start(), check_and_exit_cold_start(), increment_cold_start_sessions(); coaching_pipeline() gate; 8 tests green | 2026-04-17 |
+| T5-07-L3-D | ✅ RESOLVED 2026-04-17 (commit: 34fab6d) — all 6 adapter read methods accept athlete_id; ADR-0040 exemptions retired; 6 isolation tests green. ADR-0033 Layer 3 complete. | 2026-04-17 |
 | T5-74 | ✅ RESOLVED 2026-04-14 — governance_outcomes.athlete_id confirmed in SQLite schema; explicit 'owner' fallback in both backends; v13 backfill; OBS-045 closed; bundled with T5-07-L3-A | 2026-04-14 |
 | T5-08 | ✅ RESOLVED 2026-03-15 (via T5-08-B — ADR-0044 deliverables D1, D2a/b/c, D3, D4, D5, D7, D9 RESOLVED 2026-03-15; D6 was T5-08 pre-existing deliverable, not a T5-08-B implementation deliverable — DEC-015 2026-03-16; T5-08-B D8 closure record) | 2026-03-15 |
 | T5-08-B | ✅ RESOLVED 2026-03-15 — D1 DONE (2026-03-08); D2a DONE (2026-03-13, commit: df449e7); D2b DONE (2026-03-13, commit: d7ad4b7); D2c DONE (2026-03-13, commit: f6901b6); D3 DONE (2026-03-13, commit: 6f641eb); D4 DONE (2026-03-13, commit: 4ccf36d); D5 DONE (2026-03-13, commit: ca8db90); D7 DONE (2026-03-15); D9 DONE (2026-03-15); **complete D2 finished**. D6 was a T5-08 pre-existing deliverable — not a T5-08-B implementation deliverable; D6 status not explicitly confirmed in T5-08-B closure record (DEC-015 2026-03-16: D6 functionally verified present in `persistence.py:122` + `database.py:1975`). | D1: 2026-03-08; D2a: 2026-03-13; D2b: 2026-03-13; D2c: 2026-03-13; D3: 2026-03-13; D4: 2026-03-13; D5: 2026-03-13; D7: 2026-03-15; D9: 2026-03-15 |
@@ -3915,6 +3916,9 @@ When an item is completed, mark it here with date and PR reference:
 | T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
 | T5-79 | ✅ RESOLVED 2026-04-19 — 6 mirrored test files created; full_module_audit.sh 0 FAILs; snapshot updated to 2546 | 2026-04-19 |
 | T5-80 | ✅ RESOLVED 2026-04-19 — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
+| T5-81 | 🟡 OPEN — del athlete_id sentinel pattern in persistence.py:992,1070; LOW priority | — |
+| T5-82 | 🟡 OPEN — naive datetime.now() in 7 non-governance modules (29 locations); LOW priority | — |
+| T5-83 | 🟡 OPEN — slow tests with real network calls (810s, 102s, 10s sleep); MEDIUM priority | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4175,3 +4179,56 @@ resolve mirrored test gaps and update snapshot atomically.
 4. `titan/core/persistence.py` line 828: `except IntegrityError: pass` → `_log.debug(...)` (duplicate garmin_activity_id INSERT OR IGNORE semantics).
 
 **Task Learning:** AST-based audit check (`len(node.body) == 1 and isinstance(node.body[0], ast.Pass)`) is not fooled by inline comments — only actual AST statements clear the flag. Replacing `pass` with `_log.debug()` satisfies both the audit and observability goals.
+
+---
+
+### T5-81 · del athlete_id in persistence.py — pre-existing FP-08 pattern 🟡 OPEN
+
+**Status:** OPEN — Phase 9 debt. Source: OBS-041-CI (2026-04-05), DEC from SCRATCHPAD.
+**Severity:** LOW
+**Location:** `titan/core/persistence.py:992, 1070`
+**Description:** `del athlete_id` at two locations in persistence.py. These are pre-existing
+sentinel deletion patterns (FP-08 — not data loss). G-CI-04 correctly flags them. Pattern is:
+variable set, used, then deleted to signal "not available downstream". No data integrity risk;
+naming clarity issue only.
+**Fix direction:** Replace `del athlete_id` with explicit `athlete_id = None` or restructure to
+avoid deletion. Add inline comment documenting intent.
+**Priority:** LOW — no safety impact. Maintenance pass.
+**Phase:** 9 maintenance (no phase boundary required).
+
+---
+
+### T5-82 · naive datetime.now() in 7 non-governance modules 🟡 OPEN
+
+**Status:** OPEN — Phase 9 debt. Source: OBS-042-CI (2026-04-05).
+**Severity:** LOW (non-governance-critical modules only)
+**Location:** `titan/integrations/telegram_bot.py`, `titan/ui/menu_system.py`,
+`titan/integrations/weather_api.py`, `titan/science/critical_speed.py`,
+`titan/science/outcome_tracker.py`, `titan/core/periodization.py`, `titan/core/athlete.py`
+**Description:** 29 naive `datetime.now()` calls across 7 non-governance modules. All
+pre-existing. G-CI-02 scope was reduced to governance-critical modules only (5 files) — these
+7 modules are outside that scope. Governance-critical modules are CLEAN. HR-01
+(timezone-aware datetimes) enforcement for new code remains active.
+**Fix direction:** Replace `datetime.now()` with `datetime.now(timezone.utc)` in each location.
+Low-risk mechanical change.
+**Priority:** LOW — no governance impact. Batch fix in one maintenance pass.
+**Phase:** 9 maintenance.
+
+---
+
+### T5-83 · Slow tests with real network calls — no mock isolation 🟡 OPEN
+
+**Status:** OPEN. Source: hard_audit.sh 2026-04-19.
+**Severity:** MEDIUM (CI stability risk)
+**Location:**
+- `tests/test_phase4_slo_alerts.py:239` — 810s (GarminSync real network call)
+- `tests/test_garmin_sync.py:420` — 102s (connect() retry loop without mock)
+- `tests/titan/integrations/test_garmin_sync.py:854` — hardcoded `time.sleep(10)`
+**Description:** Three tests issue real DNS/HTTPS calls or real sleeps without monkeypatching
+the garminconnect library. Results in 13+ minute test runs and flaky CI under network
+restrictions.
+**Fix direction:** Monkeypatch `titan.integrations.garmin_sync.Garmin` before test execution,
+or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized timeout +
+`sleep(0.1)`.
+**Priority:** MEDIUM — affects CI wall-clock time significantly.
+**Phase:** 9 maintenance.
