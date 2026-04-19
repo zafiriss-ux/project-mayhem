@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2544 tests all green as of ADR-0052 Stage 3 ThresholdAdapter wiring into coaching_pipeline() (2026-04-17). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2514 tests all green as of triage-audit-debt pass (module_audit.sh false-positive fixes + T5-79/T5-80 registered) (2026-04-18). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
