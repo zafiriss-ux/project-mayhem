@@ -644,6 +644,7 @@ bypassing them is a **HARD GATE failure**:
 - INV-08 — `test_t5_67_sync_success_event_gating.py`
 - INV-10 — `test_rate_limiter_ceiling.py`
 - INV-04 — `tests/test_athlete_calibration_isolation.py`
+- INV-05 — `tests/test_missing_data_policy.py`
 
 **New gate requirement:** Any new gate added to `governance_engine.py` MUST have:
 

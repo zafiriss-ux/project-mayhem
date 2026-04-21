@@ -81,7 +81,7 @@ before Phase 8A deliverables pass the ADR-0044 binary gate.
 
 ---
 
-## Phase 9 — Autonomous Coaching Intelligence (PLANNED, 2028)
+## Phase 9 — Autonomous Coaching Intelligence (OPEN, 2026-04-20)
 Goal: Close the adaptive loop — the system self-improves from accumulated evidence
 across multiple athlete profiles without requiring manual threshold edits.
 

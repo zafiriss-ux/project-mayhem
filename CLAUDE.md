@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2576 tests all green as of pre-Opus audit cleanup pass (T5-81/T5-82/T5-83 registered; T5-07 L3-C/L3-D tracking corrected) (2026-04-19). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2583 tests all green as of pre-Opus audit cleanup pass (T5-81/T5-82/T5-83 registered; T5-07 L3-C/L3-D tracking corrected) (2026-04-19). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -316,12 +316,12 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
 - `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
-- `0047` — Architecture Fitness Functions: cyclomatic complexity gate (F1), intra-layer coupling ratio gate (F2), dependency topology DAG gate (F3); engineering execution T8-01 (Accepted — 2026-03-09)
-- `0048` — API Authentication Layer: JWT (RS256) + HTTP-only cookie transport, COACH/ATHLETE roles, isolation invariant; implements T5-11; prerequisite for all Phase 8B FastAPI endpoints (Accepted — 2026-03-15)
-- `0049` — Opus QA Scope Reduction: Deterministic-to-CI Migration Policy — Category A (machine-checkable) / Category B (judgment-required) finding taxonomy; repeated deterministic findings migrate to CI gates (T5-37); validating meta-test requirement (T5-38); §7 Migration Lane Execution Protocol: Hybrid Sequential Model (Audit Pass → Sequential Migration Units → Single Final Closure; no child GitHub issues before Audit Pass; T5-37 / T5-38 remain OPEN until all migration units complete) (Accepted — 2026-03-15)
-- `0050` — Garmin API Fragility Mitigation: garmin_api_degraded CRITICAL event contract; coach dashboard indicator (3 wording states); garminconnect exact-version pinning policy; BiometricSourceAdapter fallback boundary (SourceCapabilities / NormalizedBiometricSample / BiometricSourceSyncResult); T5-12 Pass 2 implementation obligations O1–O7 (Accepted — 2026-03-17)
-- `0051` — Missing Data Policy: Conservative-Fail Principle for Safety-Critical Inputs — governance pipeline missing-field policy for GovernanceEngine, DailyCoach, autonomic engines; optimistic-default elimination; T5-63, T5-64 (Accepted — 2026-03-28)
-- `0052` — Population-Specific Threshold Adaptation via OutcomeTracker: per-athlete δT additive offsets; ThresholdAdapter module; GovernanceEngine optional injection; athlete_threshold_offsets DB table; hard-stop gates (H1–H5) excluded; circuit breaker + damping; HD-09 (Accepted — 2026-04-04; Implementation deferred Phase 9)
+- `0047` — JWT RS256 API Authentication Layer
+- `0048` — API Authentication detailed spec
+- `0049` — Opus QA Scope Reduction
+- `0050` — Garmin API Fragility Mitigation design
+- `0051` — Missing Data Policy (Conservative-Fail)
+- `0052` — ThresholdAdapter per-athlete calibration
 
 ### Future Design Notes
 
@@ -508,7 +508,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7.9 CLOSED; Phase 8 OPEN (2026-03-08) |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7.9 CLOSED; Phase 9 OPEN (ACTIVE, 2026-04-20) |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
