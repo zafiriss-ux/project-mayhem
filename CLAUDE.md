@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2583 tests all green as of pre-Opus audit cleanup pass (T5-81/T5-82/T5-83 registered; T5-07 L3-C/L3-D tracking corrected) (2026-04-19). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2557 tests all green as of Phase 9 close audit fix pass (collection errors resolved, ADR-0052 indexed, combined gate tests added) (2026-04-21). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -321,7 +321,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0049` — Opus QA Scope Reduction
 - `0050` — Garmin API Fragility Mitigation design
 - `0051` — Missing Data Policy (Conservative-Fail)
-- `0052` — ThresholdAdapter per-athlete calibration
+- `0052` — ADR-0052 Population-Specific Threshold Adaptation via OutcomeTracker (Accepted — 2026-04-04)
 
 ### Future Design Notes
 
