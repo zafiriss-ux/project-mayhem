@@ -3948,6 +3948,20 @@ When an item is completed, mark it here with date and PR reference:
 | T5-81 | 🟡 OPEN — del athlete_id sentinel pattern in persistence.py:992,1070; LOW priority | — |
 | T5-82 | 🟡 OPEN — naive datetime.now() in 7 non-governance modules (29 locations); LOW priority | — |
 | T5-83 | 🟡 OPEN — slow tests with real network calls (810s, 102s, 10s sleep); MEDIUM priority | — |
+| T5-84 | 🟡 OPEN — Phase 10 (mutation testing / mutmut) | — |
+| T5-85 | 🟡 OPEN — Phase 10 (stateful Hypothesis property-based testing) | — |
+| T5-86 | 🟡 OPEN — Phase 10 (differential fuzzing SQLite vs PostgreSQL) | — |
+| T5-87 | 🟡 OPEN — Phase 10 (metamorphic testing for physiological models) | — |
+| T5-88 | ✅ IMPLEMENTED 2026-04-21 (scripts/flakiness_tracker.sh) | 2026-04-21 |
+| T5-89 | 🟡 OPEN — Phase 10 (chaos engineering) | — |
+| T5-90 | 🟡 OPEN — Phase 10 (TLA+ formal methods for governance gates) | — |
+| T5-91 | ✅ IMPLEMENTED 2026-04-21 (.semgrep/titan_rules.yaml) | 2026-04-21 |
+| T5-92 | 🟡 OPEN — Phase 10 (OPA/Rego policy-as-code) | — |
+| T5-93 | 🟡 OPEN — Phase 9 maintenance (architectural dependency linting) | — |
+| T5-94 | 🟡 OPEN — Phase 9 (schemathesis FastAPI contract testing) | — |
+| T5-95 | 🟡 OPEN — Phase 10 (Great Expectations for Garmin data quality) | — |
+| T5-96 | ✅ IMPLEMENTED 2026-04-21 (scripts/gate_coverage_matrix.sh) | 2026-04-21 |
+| T5-97 | ✅ IMPLEMENTED 2026-04-21 (scripts/phase_close_audit.sh) | 2026-04-21 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4261,3 +4275,132 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 `sleep(0.1)`.
 **Priority:** MEDIUM — affects CI wall-clock time significantly.
 **Phase:** 9 maintenance.
+
+---
+
+## Opus Part D — State-of-the-Art Method Registrations (2026-04-21)
+
+*Source: Opus Phase 9 Governance & Security Audit, Part D.*
+*Items marked ✅ IMPLEMENTED were delivered in the same session.*
+*Items marked 🟡 OPEN are tracked for future phases.*
+
+### T5-84 · Mutation testing (D-1) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** mutmut / cosmic-ray automated mutation testing for governance gates.
+**Rationale:** Automates what test_governance_mutation.py does manually. Kill rate metric for gate test quality.
+**Prerequisite:** Stable governance gate surface (Phase 9 close).
+**Priority:** P3.
+
+---
+
+### T5-85 · Stateful property-based testing (D-2) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** Hypothesis stateful testing for sequences of DailyCoach + Garmin sync operations.
+**Rationale:** Current T4-23 tests are stateless. Stateful covers invariant drift across state transitions.
+**Priority:** P3.
+
+---
+
+### T5-86 · Differential fuzzing SQLite vs PostgreSQL (D-3) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** Fuzz random valid inputs against both backends, compare outputs.
+**Prerequisite:** ADR-0044 PostgreSQL migration complete.
+**Priority:** P4.
+
+---
+
+### T5-87 · Metamorphic testing for physiological models (D-4) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** "If A→X then A+ε→X±δ" assertions for HRV engine, ACWR, critical speed.
+**Rationale:** Catches silent regression in science engines where outputs are continuous.
+**Priority:** P3.
+
+---
+
+### T5-88 · Flakiness tracker (D-5) ✅ IMPLEMENTED 2026-04-21
+
+**Status:** ✅ IMPLEMENTED — `scripts/flakiness_tracker.sh`.
+**Method:** Multi-run test suite (N configurable, default 3), reports <100% pass rate tests as quarantine candidates.
+**Usage:** `bash scripts/flakiness_tracker.sh [runs] [filter]`
+**Rationale:** Automates T5-83 quarantine identification. CI can flag flaky tests before they block.
+
+---
+
+### T5-89 · Chaos engineering (D-6) 🟡 OPEN
+
+**Status:** OPEN — Phase 10 (requires production-like multi-athlete deployment).
+**Method:** Netflix chaos-monkey pattern: random Garmin API kill, network latency injection, DB lock simulation.
+**Priority:** P4.
+
+---
+
+### T5-90 · Formal methods TLA+ for governance gates (D-7) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** Model H1-H5, FUELING, INTENSITY, 2-of-4, VO2 gates in TLA+. Model checker verifies no input bypasses combined gates.
+**Priority:** P2 (high safety value, high investment).
+
+---
+
+### T5-91 · Semgrep governance rules (D-8) ✅ IMPLEMENTED 2026-04-21
+
+**Status:** ✅ IMPLEMENTED — `.semgrep/titan_rules.yaml`.
+**Rules enforced:**
+- `titan-silent-except-pass`: silent except:pass (T5-80 pattern)
+- `titan-optimistic-get-default-*`: optimistic `.get()` defaults on safety-critical fields (INV-05 / ADR-0051)
+- `titan-naive-datetime-now`: naive `datetime.now()` (INV-02 / HR-01 / T5-82)
+- `titan-del-athlete-id`: `del athlete_id` sentinel pattern (T5-81 / G-CI-04)
+**Usage:** `semgrep --config .semgrep/titan_rules.yaml titan/`
+
+---
+
+### T5-92 · Open Policy Agent / Rego (D-9) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** Policy-as-code for PILOT-01 applicability gate and complex governance rules.
+**Priority:** P4.
+
+---
+
+### T5-93 · Architectural dependency linting (D-10) 🟡 OPEN
+
+**Status:** OPEN — Phase 9 maintenance.
+**Method:** dependency-cruiser or import-linter for Python. Enforce titan/science/ does not import from titan/orchestration/.
+**Priority:** P3.
+
+---
+
+### T5-94 · Contract testing with schemathesis (D-11) 🟡 OPEN
+
+**Status:** OPEN — Phase 9 (FastAPI surface active).
+**Method:** Auto-generate API tests from OpenAPI schema. Brute-force edge cases for JWT + override endpoints.
+**Priority:** P3.
+
+---
+
+### T5-95 · Great Expectations for Garmin data quality (D-12) 🟡 OPEN
+
+**Status:** OPEN — Phase 10.
+**Method:** Data contracts in YAML at Garmin boundary. Alert on distribution drift (ADR-0050 / ADR-0026).
+**Priority:** P3.
+
+---
+
+### T5-96 · Gate Coverage Matrix (D-21) ✅ IMPLEMENTED 2026-04-21
+
+**Status:** ✅ IMPLEMENTED — `scripts/gate_coverage_matrix.sh`.
+**Method:** 9×4 matrix (9 gates × 4 dimensions: trigger boundary, non-trigger boundary, NaN/None input, combined-gate interaction). Scans all test_*.py files; reports COVERED/MISSING per cell with aggregate %.
+**Usage:** `bash scripts/gate_coverage_matrix.sh`
+
+---
+
+### T5-97 · Phase Close Automated Audit Suite (D-25) ✅ IMPLEMENTED 2026-04-21
+
+**Status:** ✅ IMPLEMENTED — `scripts/phase_close_audit.sh`.
+**Method:** Runs `hard_audit.sh` + K (FMEA presence) + L (INV-01–10 coverage) + M (ADR index freshness) + N (Semgrep scan) + O (Gate Coverage Matrix summary).
+**Usage:** `bash scripts/phase_close_audit.sh [phase_number]`
+**Replaces:** Manual Opus audit for routine phase boundaries (not full governance audit).

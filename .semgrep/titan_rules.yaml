@@ -1,0 +1,82 @@
+rules:
+  - id: titan-silent-except-pass
+    pattern: |
+      try:
+        ...
+      except ...:
+        pass
+    message: >
+      Silent except:pass detected. Replace with explicit handling or
+      add ADR-justified comment. See AGENTS.md §14 / T5-80.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-optimistic-get-default-acwr
+    pattern: $CTX.get("acwr", 1.0)
+    message: >
+      Optimistic default detected (ADR-0051 violation / INV-05).
+      Missing safety-critical field must propagate None, not optimistic value.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-optimistic-get-default-readiness
+    pattern: $CTX.get("readiness_score", 100)
+    message: >
+      Optimistic default detected (ADR-0051 violation / INV-05).
+      Missing safety-critical field must propagate None, not optimistic value.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-optimistic-get-default-sleep
+    pattern: $CTX.get("sleep_score", 100)
+    message: >
+      Optimistic default detected (ADR-0051 violation / INV-05).
+      Missing safety-critical field must propagate None, not optimistic value.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-optimistic-get-default-cs-confidence
+    pattern: $CTX.get("cs_confidence", 1.0)
+    message: >
+      Optimistic default detected (ADR-0051 violation / INV-05).
+      Missing safety-critical field must propagate None, not optimistic value.
+    languages: [python]
+    severity: ERROR
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-naive-datetime-now
+    pattern: datetime.now()
+    message: >
+      Naive datetime.now() detected (INV-02 / HR-01).
+      Use datetime.now(timezone.utc) instead.
+      Governance-critical modules: mandatory. Others: T5-82 scheduled fix.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - "titan/**"
+
+  - id: titan-del-athlete-id
+    pattern: del athlete_id
+    message: >
+      del athlete_id detected (T5-81 / G-CI-04).
+      Replace with explicit None assignment or restructure.
+    languages: [python]
+    severity: WARNING
+    paths:
+      include:
+        - "titan/**"
