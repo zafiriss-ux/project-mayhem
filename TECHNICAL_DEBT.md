@@ -105,7 +105,7 @@ T5-06-A (`InjuryRiskEnsembleModel` explainability) is **Phase 8A early work** �
 before Phase 8B coach-dashboard work begins. (Note: G1 of the Phase 8 entry gate covers only
 Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is now OPEN.)
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
-Phase 8 OPEN — all G1–G11 cleared 2026-03-08. See AGENTS.md §16.2 and ADR-0022 for gate record.
+Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0022 for gate record.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -3488,6 +3488,15 @@ to assert clause presence in perpetuity.
 
 ---
 
+
+### HD-04 · [INTENTIONALLY UNASSIGNED — slot retired]
+
+**Status:** N/A — HD-04 slot was never assigned during TITAN_HARDENING_FRAMEWORK_v1.md authoring (2026-04-03).
+HD-01 through HD-09 were assigned non-sequentially; HD-04 was skipped. No work item was lost.
+Confirmed by architect review (Opus audit C-B03, 2026-04-20).
+
+---
+
 ### HD-05 · AuthenticatedRateLimiter._requests accumulates keys unboundedly — memory DoS vector ✅ RESOLVED
 
 **Status:** ✅ RESOLVED 2026-04-04
@@ -3732,6 +3741,25 @@ These patterns are correct and must be preserved in all future work:
 
 ---
 
+
+## FMEA: Phase 9 — Multi-Athlete Calibration & Isolation (2026-04-20)
+
+**Scope:** Phase 9 features: multi-athlete architecture (ADR-0033 Layer 3), ThresholdAdapter calibration (ADR-0052), cold-start protocol (ADR-0033 L3-C).
+**Architect:** Claude | **Date:** 2026-04-20 | **Status:** G12 SATISFIED
+
+| Component | Failure Mode | Effect | Likelihood | Severity | Mitigation | Status |
+|---|---|---|---|---|---|---|
+| OutcomeTracker calibration | Cross-athlete data contamination → wrong thresholds for athlete B from athlete A data | Systematic governance errors for athlete B | LOW (INV-04 enforced) | CRITICAL | Per-athlete scoping (T5-07-L3-B); G-CI-07 AST gate; `test_athlete_calibration_isolation.py` (10 tests) | ✅ MITIGATED |
+| ThresholdAdapter δT learning | Premature adaptation on thin data → threshold drift before calibration valid | False negatives on safety gates | LOW | HIGH | Cold-start bypass (ADR-0033 L3-C): adapter disabled for 30 sessions; circuit breaker FALSE_NEG>20%; damping ±5%/cycle; `test_threshold_adapter.py` (42 tests) | ✅ MITIGATED |
+| Cold-start exit protocol | Adversarial synthetic sessions → premature exit from cold-start (30-session counter) | New athlete gets unadapted thresholds too early | MEDIUM | MEDIUM | Both conditions required (sessions≥30 AND outcomes≥CALIBRATION_MIN_OUTCOME_COUNT); atomic DB transaction; owner seeded bypasses cold-start | ⚠️ PARTIAL — no adversarial session test (OBS pending, B5-F02) |
+| governance_outcomes athlete_id | SQL query without athlete_id scope → cross-athlete governance decision read | Wrong coaching decision for athlete | LOW | CRITICAL | INV-04 ENFORCED; G-CI-07 AST gate; athlete_id explicit in all INSERTs (T5-74) | ✅ MITIGATED |
+| HRV drift detection | Stale calibration baseline post-adaptation → H2 gate fires on normal day | Unnecessary REST recommendation | MEDIUM | MEDIUM | ADR-0033 L3-2: HRV drift detection weekly; `HRV_DRIFT_THRESHOLD_MS=8.0`; `model_calibration_metadata` table | ✅ MITIGATED |
+| Missing data (ADR-0051) | Absent Garmin field defaults to optimistic value → safety gate bypassed | False negative on H2/H3/VO2 gates | LOW (T5-63/64 fixed specific paths) | HIGH | ADR-0051 policy; T5-63/T5-64/T5-65 fixes; INV-05 system-wide test (C-B02) | ✅ MITIGATED |
+
+**G12 gate:** SATISFIED.
+
+---
+
 ## Tracking
 
 When an item is completed, mark it here with date and PR reference:
@@ -3898,6 +3926,7 @@ When an item is completed, mark it here with date and PR reference:
 | HD-01 | ✅ RESOLVED 2026-04-04 — check_baseline_drift() in HRVGuidedEngine; emits hrv_baseline_drift_warning; 8 tests green | 2026-04-04 |
 | HD-02 | ✅ RESOLVED 2026-04-04 — database.py:1405,1843 UTC fix; fromisoformat()+UTC for tz-aware timestamps | 2026-04-04 |
 | HD-03 | ✅ RESOLVED 2026-04-04 — H5/FUELING/INTENSITY NaN guards; ADR-0009; 3 new tests green | 2026-04-04 |
+| HD-04 | N/A — slot intentionally unassigned (non-sequential HD numbering confirmed 2026-04-20) | — |
 | HD-06 | ✅ RESOLVED 2026-04-04 — DegradedModeTracker persists to degraded_mode_state table; hydrates on startup; 9 tests green | 2026-04-04 |
 | T5-70 | ✅ RESOLVED 2026-04-04 — AuthStore wired to SQLite via DatabaseManager; bcrypt/JWT unchanged; 19 tests green | 2026-04-04 |
 | HD-05 | ✅ RESOLVED 2026-04-04 — RATE_LIMITER_MAX_KEYS=10000; LRU eviction; limiter_eviction WARNING event; 6 tests green | 2026-04-04 |
