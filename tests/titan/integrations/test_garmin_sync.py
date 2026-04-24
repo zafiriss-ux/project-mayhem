@@ -841,17 +841,17 @@ def test_connect_emits_garmin_api_degraded_on_auth_failure(monkeypatch, caplog):
 # C2 — timeout in sync_all()
 def test_garmin_api_degraded_emitted_on_timeout(monkeypatch, caplog):
     """C2: garmin_api_degraded CRITICAL is emitted when sync_all() times out."""
-    import time as _time
-
     import titan.integrations.garmin_sync as _gs
 
     monkeypatch.setattr(_gs, "_garmin_event", lambda *a, **kw: None)
-    monkeypatch.setattr(_gs, "_resolve_sync_timeout_seconds", lambda: 1)
+    monkeypatch.setattr(_gs, "_resolve_sync_timeout_seconds", lambda: 0)
 
     sync = GarminSync(email="e", password="p")
 
+    _block = threading.Event()
+
     def _slow_operation(days_back):
-        _time.sleep(10)
+        _block.wait()
 
     monkeypatch.setattr(sync, "_sync_operation", _slow_operation)
 
@@ -866,6 +866,7 @@ def test_garmin_api_degraded_emitted_on_timeout(monkeypatch, caplog):
     assert event["sync_status"] == "timeout_cancelled"
     assert "SYNC_TIMEOUT" in event["reasons"]
     assert sync._consecutive_failures == 1
+    _block.set()  # release background thread so executor shuts down cleanly
 
 
 # C3 — consecutive failure threshold crossed
