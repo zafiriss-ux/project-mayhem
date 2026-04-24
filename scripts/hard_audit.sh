@@ -42,7 +42,7 @@ else
 fi
 
 # Capture collection output once; use awk to count errors (always exits 0).
-COLLECT_OUT=$(pytest --collect-only -q --no-cov 2>&1 || true)
+COLLECT_OUT=$(.venv/bin/pytest --collect-only -q --no-cov 2>&1 || true)
 ERR_COUNT=$(echo "$COLLECT_OUT" | awk '/^ERROR/{c++}END{print c+0}')
 if [ "$ERR_COUNT" -eq 0 ]; then
   _pass "Collection errors: 0"
@@ -55,18 +55,18 @@ fi
 _section "B. Schema integrity"
 # ─────────────────────────────────────────────────────────────────────────────
 
-pytest tests/test_db_schema_contracts.py -q --tb=short --no-cov 2>&1 | tail -3
-if pytest tests/test_db_schema_contracts.py -q --tb=no --no-cov \
+.venv/bin/pytest tests/test_db_schema_contracts.py -q --tb=short --no-cov 2>&1 | tail -3
+if .venv/bin/pytest tests/test_db_schema_contracts.py -q --tb=no --no-cov \
      2>&1 | grep -q "passed"; then
   _pass "Schema contract tests"
 else
   _fail "Schema contract tests"
 fi
 
-pytest tests/titan/core/test_db_schema_v13.py \
+.venv/bin/pytest tests/titan/core/test_db_schema_v13.py \
        tests/titan/core/test_cold_start.py \
        -q --tb=no --no-cov 2>&1 | tail -2
-if pytest tests/titan/core/test_db_schema_v13.py \
+if .venv/bin/pytest tests/titan/core/test_db_schema_v13.py \
           tests/titan/core/test_cold_start.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Phase 9 schema tests (v13/v14 + cold-start)"
@@ -84,7 +84,7 @@ echo "  → SCHEMA_VERSION = $SCHEMA_VERSION"
 _section "C. Governance invariants (AST)"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if pytest tests/test_architectural_invariants.py \
+if .venv/bin/pytest tests/test_architectural_invariants.py \
      tests/test_fitness_functions.py \
      tests/test_athlete_isolation_invariant.py \
      -q --tb=short --no-cov 2>&1 | grep -q "passed"; then
@@ -93,14 +93,14 @@ else
   _fail "AST architectural invariants"
 fi
 
-if pytest tests/test_governance_mutation.py \
+if .venv/bin/pytest tests/test_governance_mutation.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Governance mutation tests"
 else
   _fail "Governance mutation tests"
 fi
 
-if pytest tests/test_governance_golden.py \
+if .venv/bin/pytest tests/test_governance_golden.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Governance golden file (decision regression)"
 else
@@ -111,7 +111,7 @@ fi
 _section "D. Threshold source-of-truth"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if pytest tests/test_documentation_consistency.py \
+if .venv/bin/pytest tests/test_documentation_consistency.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Documentation consistency (threshold/evidence/ADR)"
 else
@@ -148,7 +148,7 @@ fi
 _section "E. Dependency hygiene"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if pytest tests/test_t4_25_dependency_drift_audit.py \
+if .venv/bin/pytest tests/test_t4_25_dependency_drift_audit.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Dependency drift audit"
 else
@@ -176,7 +176,7 @@ else
 fi
 
 echo "  Running G2 (strict pytest)..."
-G2_OUT=$(pytest -q -W error::pytest.PytestWarning --tb=no 2>&1 | tail -3)
+G2_OUT=$(.venv/bin/pytest -q -W error::pytest.PytestWarning --tb=no 2>&1 | tail -3)
 echo "  $G2_OUT"
 if echo "$G2_OUT" | grep -q "passed"; then
   _pass "G2 strict pytest"
@@ -185,7 +185,7 @@ else
 fi
 
 echo "  Running G3 (full pytest)..."
-G3_OUT=$(pytest -q --tb=no 2>&1 | tail -3)
+G3_OUT=$(.venv/bin/pytest -q --tb=no 2>&1 | tail -3)
 echo "  $G3_OUT"
 if echo "$G3_OUT" | grep -q "passed"; then
   _pass "G3 full pytest"
@@ -197,7 +197,7 @@ fi
 _section "G. Coverage gate"
 # ─────────────────────────────────────────────────────────────────────────────
 
-COV=$(pytest --cov=titan --cov-report=term-missing -q --tb=no \
+COV=$(.venv/bin/pytest --cov=titan --cov-report=term-missing -q --tb=no \
       2>&1 | { grep "TOTAL" || true; } | awk '{print $NF}' | tr -d '%')
 if [ -n "$COV" ] && [ "$COV" -ge 80 ]; then
   _pass "Coverage: ${COV}% ≥ 80%"
@@ -227,7 +227,7 @@ fi
 _section "I. Documentation consistency"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if pytest tests/test_claude_md_integrity.py \
+if .venv/bin/pytest tests/test_claude_md_integrity.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "CLAUDE.md integrity"
 else
