@@ -32,7 +32,7 @@ for i in $(seq 1 "$RUNS"); do
         PYTEST_ARGS="$PYTEST_ARGS -k $FILTER"
     fi
     # shellcheck disable=SC2086
-    pytest $PYTEST_ARGS 2>&1 \
+    .venv/bin/pytest $PYTEST_ARGS 2>&1 \
         | grep -E " (PASSED|FAILED|ERROR)( |$)" \
         > "$RESULTS_DIR/run_${i}.txt" || true
 done

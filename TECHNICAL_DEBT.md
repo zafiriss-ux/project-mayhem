@@ -3965,7 +3965,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-95 | 🟡 OPEN — Phase 10 (Great Expectations for Garmin data quality) | — |
 | T5-96 | ✅ IMPLEMENTED 2026-04-21 (scripts/gate_coverage_matrix.sh) | 2026-04-21 |
 | T5-97 | ✅ IMPLEMENTED 2026-04-21 (scripts/phase_close_audit.sh) | 2026-04-21 |
-| T5-98 | 🟡 OPEN — pyo3_runtime.PanicException hang at hard_audit.sh G2 (tests/titan/api/* + tests/titan/core/test_alembic_*); MEDIUM priority | — |
+| T5-98 | ✅ IMPLEMENTED 2026-04-24 (project venv + .venv/bin/pytest in CI scripts; 12 → 0 collection errors) | 2026-04-24 |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4411,25 +4411,27 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 
 ---
 
-### T5-98 · pyo3_runtime.PanicException hang at hard_audit.sh G2 🟡 OPEN
+### T5-98 · pyo3_runtime.PanicException hang at hard_audit.sh G2 ✅ IMPLEMENTED
 
-**Status:** OPEN — Phase 10 maintenance.
-**Source:** C-W11 observation, 2026-04-24. Pre-existing; first surfaced in hard_audit.sh G2 gate run.
-**Priority:** MEDIUM — blocks `hard_audit.sh` G2 gate; does not block main test suite (`python -m pytest -q`).
-**Severity:** MEDIUM (CI/audit tooling hang; no production safety impact).
+**Status:** IMPLEMENTED 2026-04-24.
+**Source:** C-W11 observation, 2026-04-24.
+**Commit:** see branch `claude/diagnose-pyo3-panic-mrT8D`
 
-**Description:** `pytest` collection of `tests/titan/api/*` and `tests/titan/core/test_alembic_*`
-triggers a `pyo3_runtime.PanicException` that hangs the `hard_audit.sh` G2 gate.
-The hang is reproducible when `hard_audit.sh` runs a full collection sweep.
-The main test suite (`python -m pytest -q`) is not affected because the manifest excludes
-or skips these paths during normal CI runs.
+**Root cause (confirmed):** The `/root/.local/bin/pytest` binary runs inside a uv isolated venv
+(`/root/.local/share/uv/tools/pytest/`) that has no project dependencies. The 12 test files in
+`tests/titan/api/` and `tests/titan/core/test_alembic_*.py` require `fastapi`, `alembic`,
+`bcrypt`, `pydantic`, `cryptography` — none visible to the uv venv. This produced
+`ModuleNotFoundError` during collection (previously surfaced as pyo3 PanicException when
+`cryptography` was partially visible with an ABI mismatch).
 
-**Acceptance criteria (binary):**
-- `bash scripts/hard_audit.sh` G2 gate completes without hang or PanicException.
-- `python -m pytest -q` still passes with count ≥ current snapshot.
+**Fix:** Canonical project venv (`.venv`) created via `setup_env.sh`; all CI scripts
+(`hard_audit.sh`, `flakiness_tracker.sh`) updated to use `.venv/bin/pytest`.
 
-**Notes:**
-- Root cause is likely a pyo3/Rust extension (possibly `cryptography` or `bcrypt` wheel) that
-  panics during import in certain collection contexts. Requires targeted diagnosis.
-- Do not add `--ignore` flags as a workaround — fix root cause or confirm the paths are
-  intentionally excluded from collection scope.
+**Result:** 12 → 0 collection errors. 2533 → 2594 tests collected. Coverage: 95.20%.
+
+**Acceptance criteria:** MET.
+- `bash scripts/hard_audit.sh` G2 gate: completes without hang or PanicException. ✅
+- Test count ≥ current snapshot: 2594 ≥ 2557. ✅
+
+**Task Learning:** uv tool installs create isolated venvs with no project deps; always verify
+which Python/pytest binary CI scripts resolve to, and ensure project deps are in that venv.

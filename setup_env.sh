@@ -27,15 +27,32 @@ if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]; }
 fi
 echo "Python $(python --version) — OK"
 
+# ── Project venv setup ────────────────────────────────────────────────────────
+setup_project_venv() {
+  echo "[setup] Setting up project venv..."
+  if [ ! -f ".venv/bin/activate" ]; then
+    python -m venv .venv
+  fi
+  .venv/bin/pip install --quiet --upgrade pip
+  .venv/bin/pip install --quiet -r requirements.txt
+  if [ -f requirements-dev.txt ]; then
+    .venv/bin/pip install --quiet -r requirements-dev.txt
+  fi
+  .venv/bin/pip install --quiet pytest pytest-cov
+  echo "[setup] Project venv ready: $(.venv/bin/python --version)"
+}
+
 echo "=== TITAN OS Environment Bootstrap ==="
-echo "[1/2] Installing dependencies..."
-pip install -r requirements.txt -q
-pip install -r requirements-dev.txt -q
-echo "[2/2] Verifying collection..."
-errors=$(python -m pytest --collect-only -q 2>&1 | grep "^ERROR" | wc -l)
+echo "[1/3] Installing system-level dependencies (best-effort)..."
+pip install -r requirements.txt -q || true
+pip install -r requirements-dev.txt -q || true
+echo "[2/3] Setting up project venv..."
+setup_project_venv
+echo "[3/3] Verifying collection..."
+errors=$(.venv/bin/pytest --collect-only -q --no-cov 2>&1 | grep "^ERROR" | wc -l)
 if [ "$errors" -gt 0 ]; then
   echo "FAIL: $errors collection error(s) remain:"
-  python -m pytest --collect-only -q 2>&1 | grep "^ERROR"
+  .venv/bin/pytest --collect-only -q --no-cov 2>&1 | grep "^ERROR"
   exit 1
 fi
 echo "OK: zero collection errors."

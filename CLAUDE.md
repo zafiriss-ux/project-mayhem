@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2557 tests all green as of Phase 9 close audit fix pass (collection errors resolved, ADR-0052 indexed, combined gate tests added) (2026-04-21). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2594 tests all green as of T5-98 collection fix (project venv + .venv/bin/pytest in CI scripts; previously uncollected api/alembic tests now included) (2026-04-24). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
