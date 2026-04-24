@@ -1414,6 +1414,8 @@ Corrupted calibration data is a Tier 1 data integrity issue.
    than `CALIBRATION_MAX_THRESHOLD_DELTA_PCT = 0.10` (10%). Minimum evidence set:
    `CALIBRATION_MIN_OUTCOME_COUNT = 10`. Both constants are in `thresholds.py`.
 
+**ADR-0052 implementation status (2026-04-24):** Stages 1–4 complete. Stage 4 delivers `OutcomeTracker.run_calibration_cycle()` — the closed-loop path from `get_calibration_summary()` rates to `ThresholdAdapter.propose_adaptation()` calls; hard-stop gates permanently excluded. Tests: `tests/test_adr0052_stage4_calibration_cycle.py` (7 tests).
+
 ---
 
 ### 16.8 Science Model Versioning (ex-ADR-0036)
