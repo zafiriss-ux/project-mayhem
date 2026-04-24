@@ -1512,8 +1512,8 @@ for non-exempt modules.
 
 ### 16.11 Complexity Budget (ex-ADR-0028)
 
-The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **69**. If a phase
-would push the count above 69, the architect must either retire/merge existing modules before adding
+The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **63**. If a phase
+would push the count above 63, the architect must either retire/merge existing modules before adding
 new ones, or explicitly revise the ceiling in a new ADR update.
 
 The CI check in `tests/test_documentation_consistency.py` (T4-21/T4-27) asserts this ceiling:
@@ -1522,7 +1522,7 @@ python -c "
 import pkgutil, titan
 mods = list(pkgutil.walk_packages(titan.__path__, 'titan.'))
 real = [m for m in mods if '__' not in m.name]
-assert len(real) <= 69, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
+assert len(real) <= 63, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
 "
 ```
 

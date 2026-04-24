@@ -1128,10 +1128,11 @@ Add a subsection to AGENTS.md §16.11 (or equivalent policy location) specifying
 
 **Resolution:** Updated `AGENTS.md` §16.11 to codify the three-rule T4-27-C protocol for module ceiling updates on accepted structural feature additions, including a direct cross-reference back to T4-27-C as the rule source.
 
-**Status:** ✅ RESOLVED — 2026-04-13. `MODULE_COUNT_CEILING = 71` moved to
+**Status:** ✅ RESOLVED — 2026-04-13. `MODULE_COUNT_CEILING = 63` moved to
 `thresholds.py` (importable); `tests/test_complexity_budget.py` replaces CI inline
 literal; ceiling is now testable and self-documenting. `ci.yml` complexity-budget job
 updated to import from `thresholds.py` instead of using a hardcoded literal.
+*(C-W04 records correction 2026-04-24: ceiling value aligned to canonical full_module_audit.sh output — 63 modules.)*
 
 **Task learning:** Policy-only safeguards still need explicit ownership timing (architect confirms before implementation; implementing engineer updates in-commit) to avoid post-hoc records fixes.
 
@@ -1962,7 +1963,7 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 
 ### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
 
-**Status:** OPEN — Pass 1 COMPLETE 2026-03-18 (design document: `docs/specs/garmin_api_fragility_mitigation.md`; ADR-0050 accepted). Pass 2 BLOCKED pending architect ADR acceptance.
+**Status:** OPEN — Pass 1 COMPLETE 2026-03-18 (design document: `docs/specs/garmin_api_fragility_mitigation.md`; ADR-0050 accepted). Pass 2 DEFERRED (ADR-0050 accepted; Phase 9 implementation).
 **Workflow Path: A** *(no implementation until Pass 2 ADR accepted)*
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
@@ -3868,7 +3869,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
-| T5-12 | OPEN — Pass 1 COMPLETE 2026-03-18; Pass 2 BLOCKED pending ADR acceptance | — |
+| T5-12 | OPEN — Pass 1 COMPLETE 2026-03-18; Pass 2 DEFERRED (ADR-0050 accepted; Phase 9 implementation) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -3940,11 +3941,11 @@ When an item is completed, mark it here with date and PR reference:
 | T5-75 | ✅ RESOLVED 2026-04-12 — AST structural invariant: single _decision_pipeline call site + gate-method reachability; 2 tests green (commit: 29fcc49) | 2026-04-12 |
 | T5-76 | ✅ RESOLVED 2026-04-12 — Concurrent coaching_pipeline() no cross-contamination test; ADR-0046 entry gate satisfied (commit: 29fcc49) | 2026-04-12 |
 | T5-77 | ✅ RESOLVED 2026-04-12 — SIGTERM mid-pipeline: 3 tests confirm no orphaned governance trace (commit: 29fcc49) | 2026-04-12 |
-| T5-78 | ✅ RESOLVED 2026-04-14 — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
+| T5-78 | ✅ RESOLVED 2026-04-14 (commit: 11201df) — garminconnect upgraded 0.2.13→0.3.2; withings-sync dep removed; garmin_sync.py loads/dumps call sites updated; 0 collection errors | 2026-04-14 |
 | T5-72 | ✅ RESOLVED 2026-04-17 — H2/H3 except: EASY ceiling + DATA_MISSING_CONSERVATIVE_H2/H3 lock codes; 2 tests green | 2026-04-17 |
 | T5-73 | ✅ RESOLVED 2026-04-17 — PostgreSQLDatabaseManager.save_session() ON CONFLICT (garmin_activity_id) DO NOTHING confirmed present; source inspection test added | 2026-04-17 |
-| T5-79 | ✅ RESOLVED 2026-04-19 — 6 mirrored test files created; full_module_audit.sh 0 FAILs; snapshot updated to 2546 | 2026-04-19 |
-| T5-80 | ✅ RESOLVED 2026-04-19 — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
+| T5-79 | ✅ RESOLVED 2026-04-19 (commit: 0d54612) — 6 mirrored test files created; full_module_audit.sh 0 FAILs; snapshot updated to 2546 | 2026-04-19 |
+| T5-80 | ✅ RESOLVED 2026-04-19 (commit: 590639e) — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
 | T5-81 | 🟡 OPEN — del athlete_id sentinel pattern in persistence.py:992,1070; LOW priority | — |
 | T5-82 | 🟡 OPEN — naive datetime.now() in 7 non-governance modules (29 locations); LOW priority | — |
 | T5-83 | 🟡 OPEN — slow tests with real network calls (810s, 102s, 10s sleep); MEDIUM priority | — |
@@ -3962,6 +3963,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-95 | 🟡 OPEN — Phase 10 (Great Expectations for Garmin data quality) | — |
 | T5-96 | ✅ IMPLEMENTED 2026-04-21 (scripts/gate_coverage_matrix.sh) | 2026-04-21 |
 | T5-97 | ✅ IMPLEMENTED 2026-04-21 (scripts/phase_close_audit.sh) | 2026-04-21 |
+| T5-98 | 🟡 OPEN — pyo3_runtime.PanicException hang at hard_audit.sh G2 (tests/titan/api/* + tests/titan/core/test_alembic_*); MEDIUM priority | — |
 
 *This document is the single source of truth for technical debt. Update it when items are
 resolved, not in commit messages alone.*
@@ -4404,3 +4406,28 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 **Method:** Runs `hard_audit.sh` + K (FMEA presence) + L (INV-01–10 coverage) + M (ADR index freshness) + N (Semgrep scan) + O (Gate Coverage Matrix summary).
 **Usage:** `bash scripts/phase_close_audit.sh [phase_number]`
 **Replaces:** Manual Opus audit for routine phase boundaries (not full governance audit).
+
+---
+
+### T5-98 · pyo3_runtime.PanicException hang at hard_audit.sh G2 🟡 OPEN
+
+**Status:** OPEN — Phase 10 maintenance.
+**Source:** C-W11 observation, 2026-04-24. Pre-existing; first surfaced in hard_audit.sh G2 gate run.
+**Priority:** MEDIUM — blocks `hard_audit.sh` G2 gate; does not block main test suite (`python -m pytest -q`).
+**Severity:** MEDIUM (CI/audit tooling hang; no production safety impact).
+
+**Description:** `pytest` collection of `tests/titan/api/*` and `tests/titan/core/test_alembic_*`
+triggers a `pyo3_runtime.PanicException` that hangs the `hard_audit.sh` G2 gate.
+The hang is reproducible when `hard_audit.sh` runs a full collection sweep.
+The main test suite (`python -m pytest -q`) is not affected because the manifest excludes
+or skips these paths during normal CI runs.
+
+**Acceptance criteria (binary):**
+- `bash scripts/hard_audit.sh` G2 gate completes without hang or PanicException.
+- `python -m pytest -q` still passes with count ≥ current snapshot.
+
+**Notes:**
+- Root cause is likely a pyo3/Rust extension (possibly `cryptography` or `bcrypt` wheel) that
+  panics during import in certain collection contexts. Requires targeted diagnosis.
+- Do not add `--ignore` flags as a workaround — fix root cause or confirm the paths are
+  intentionally excluded from collection scope.
