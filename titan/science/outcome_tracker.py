@@ -20,10 +20,16 @@ Observability contract:
   means an integration issue (Garmin sync, metric pipeline), not overtraining.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from titan.science.threshold_adapter import ThresholdAdapter
 
 from titan.config import thresholds
 from titan.config.evidence_registry import get_evidence
@@ -725,3 +731,83 @@ class OutcomeTracker:
                 )
 
         return sorted(candidates, key=lambda x: abs(x["completion_delta_pp"]), reverse=True)
+
+    # ── Calibration cycle ────────────────────────────────────────────────────
+
+    def run_calibration_cycle(
+        self,
+        athlete_id: str,
+        threshold_adapter: ThresholdAdapter,
+        base_values: dict[str, float],
+    ) -> dict[str, object]:
+        """
+        Execute one calibration cycle: evaluate summary rates → propose δT updates.
+
+        Hard-stop gates are never adapted (delegated to ThresholdAdapter.is_hard_stop_gate).
+        Returns a structured event record that is the authoritative output of this cycle;
+        no additional side-effect emit is performed beyond ThresholdAdapter's DB write.
+        """
+        if not self.check_calibration_diversity(athlete_id):
+            return {
+                "status": "INSUFFICIENT_DIVERSITY",
+                "athlete_id": athlete_id,
+                "adaptations_attempted": 0,
+                "adaptations_applied": 0,
+                "circuit_breaker_active": False,
+            }
+
+        if threshold_adapter.is_circuit_breaker_active():
+            return {
+                "status": "CIRCUIT_BREAKER_ACTIVE",
+                "athlete_id": athlete_id,
+                "adaptations_attempted": 0,
+                "adaptations_applied": 0,
+                "circuit_breaker_active": True,
+            }
+
+        summary = self.get_calibration_summary(athlete_id)
+        if summary["status"] != "CALIBRATION_AVAILABLE":
+            return {
+                "status": "ACCUMULATING",
+                "athlete_id": athlete_id,
+                "adaptations_attempted": 0,
+                "adaptations_applied": 0,
+                "circuit_breaker_active": False,
+            }
+
+        false_positive_rate = summary.get("false_positive_rate", 0.0)
+        false_negative_rate = summary.get("false_negative_rate", 0.0)
+
+        _FALSE_POS_THRESHOLD = 0.30
+        _FALSE_NEG_THRESHOLD = 0.15
+
+        attempted = 0
+        applied = 0
+
+        for threshold_name, base_value in base_values.items():
+            if threshold_adapter.is_hard_stop_gate(threshold_name):
+                continue
+            direction = None
+            if false_positive_rate > _FALSE_POS_THRESHOLD:
+                direction = +1.0
+            elif false_negative_rate > _FALSE_NEG_THRESHOLD:
+                direction = -1.0
+            if direction is not None:
+                attempted += 1
+                result = threshold_adapter.propose_adaptation(
+                    threshold_name, direction, base_value
+                )
+                if result:
+                    applied += 1
+
+        return {
+            "status": "CALIBRATION_COMPLETE",
+            "athlete_id": athlete_id,
+            "adaptations_attempted": attempted,
+            "adaptations_applied": applied,
+            "false_positive_rate": false_positive_rate,
+            "false_negative_rate": false_negative_rate,
+            "circuit_breaker_active": False,
+            "thresholds_evaluated": list(base_values.keys()),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
