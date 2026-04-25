@@ -39,6 +39,7 @@ setup_project_venv() {
     .venv/bin/pip install --quiet -r requirements-dev.txt
   fi
   .venv/bin/pip install --quiet pytest pytest-cov
+  .venv/bin/pip install --quiet "import-linter>=2.1"
   echo "[setup] Project venv ready: $(.venv/bin/python --version)"
 }
 

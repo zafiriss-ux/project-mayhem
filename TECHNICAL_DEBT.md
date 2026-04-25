@@ -3960,7 +3960,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-90 | 🟡 OPEN — Phase 10 (TLA+ formal methods for governance gates) | — |
 | T5-91 | ✅ IMPLEMENTED 2026-04-21 (.semgrep/titan_rules.yaml) | 2026-04-21 |
 | T5-92 | 🟡 OPEN — Phase 10 (OPA/Rego policy-as-code) | — |
-| T5-93 | 🟡 OPEN — Phase 9 maintenance (architectural dependency linting) | — |
+| T5-93 | ✅ IMPLEMENTED 2026-04-25 (.importlinter — 5 contracts; import-linter==2.11) | 2026-04-25 |
 | T5-94 | 🟡 OPEN — Phase 9 (schemathesis FastAPI contract testing) | — |
 | T5-95 | 🟡 OPEN — Phase 10 (Great Expectations for Garmin data quality) | — |
 | T5-96 | ✅ IMPLEMENTED 2026-04-21 (scripts/gate_coverage_matrix.sh) | 2026-04-21 |
@@ -4370,11 +4370,12 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 
 ---
 
-### T5-93 · Architectural dependency linting (D-10) 🟡 OPEN
+### T5-93 · Architectural dependency linting (D-10) ✅ IMPLEMENTED 2026-04-25
 
-**Status:** OPEN — Phase 9 maintenance.
-**Method:** dependency-cruiser or import-linter for Python. Enforce titan/science/ does not import from titan/orchestration/.
-**Priority:** P3.
+**Status:** ✅ IMPLEMENTED — `.importlinter` (5 contracts; import-linter==2.11). Section P added to `scripts/hard_audit.sh`.
+**Method:** import-linter enforcing canonical layer hierarchy: `config→core→science→features/integrations→orchestration`. Two pre-existing violations documented as `ignore_imports`: `titan.core.database→titan.science.physiological_bounds` (ADR-0023 lazy import workaround) and `titan.integrations.garmin_sync→titan.orchestration.contracts` (known coupling, Contract 4).
+**Usage:** `lint-imports --config .importlinter`
+**Result:** 5 contracts kept, 0 broken (73 files, 143 dependencies analyzed).
 
 ---
 

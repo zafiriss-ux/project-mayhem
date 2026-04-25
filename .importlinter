@@ -1,0 +1,62 @@
+[importlinter]
+root_package = titan
+include_external_packages = False
+
+# Contract 1 — science must not import from orchestration (ENFORCE — 0 violations)
+[importlinter:contract:science-no-orchestration]
+name = science must not import from orchestration
+type = forbidden
+source_modules = titan.science
+forbidden_modules = titan.orchestration
+
+# Contract 2 — config is the pure base layer (ENFORCE — 0 violations)
+[importlinter:contract:config-no-upward]
+name = config must not import from upper layers
+type = forbidden
+source_modules = titan.config
+forbidden_modules =
+    titan.science
+    titan.orchestration
+    titan.features
+    titan.integrations
+    titan.api
+    titan.ui
+
+# Contract 3 — core must not import from orchestration, api, ui (ENFORCE — 0 violations)
+[importlinter:contract:core-no-upper]
+name = core must not import from orchestration, api, ui
+type = forbidden
+source_modules = titan.core
+forbidden_modules =
+    titan.orchestration
+    titan.api
+    titan.ui
+
+# Contract 4 — integrations should not import from orchestration
+# Pre-existing violation: garmin_sync imports orchestration.contracts (T5-93 documented)
+[importlinter:contract:integrations-no-orchestration]
+name = integrations should not import from orchestration
+type = forbidden
+source_modules = titan.integrations
+forbidden_modules = titan.orchestration
+ignore_imports =
+    titan.integrations.garmin_sync -> titan.orchestration.contracts
+
+# Contract 5 — Canonical layer ordering
+# Pre-existing violations documented as ignore_imports (T5-93):
+#   core.database -> science.physiological_bounds (ADR-0023 lazy import workaround)
+#   integrations.garmin_sync -> orchestration.contracts (known coupling, see Contract 4)
+[importlinter:contract:layer-ordering]
+name = Canonical layer ordering
+type = layers
+containers = titan
+layers =
+    orchestration
+    features
+    integrations
+    science
+    core
+    config
+ignore_imports =
+    titan.core.database -> titan.science.physiological_bounds
+    titan.integrations.garmin_sync -> titan.orchestration.contracts
