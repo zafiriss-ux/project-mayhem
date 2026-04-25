@@ -70,7 +70,7 @@ class TestGetBaselineRhr:
 
         assert result == 60.0
 
-    def test_raises_on_closed_db(self, tmp_path):
+    def test_baseline_rhr_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_closed.db", db_dir=tmp_path)
         db.close()
         with pytest.raises(RuntimeError):
@@ -78,7 +78,7 @@ class TestGetBaselineRhr:
 
 
 class TestGetHrvHistory:
-    def test_returns_empty_list_when_no_data(self, tmp_path):
+    def test_hrv_history_empty(self, tmp_path):
         db = DatabaseManager(db_name="t106_hrv.db", db_dir=tmp_path)
         result = db.get_hrv_history(days=14)
         db.close()
@@ -103,7 +103,7 @@ class TestGetHrvHistory:
         assert result[0][0] == "2026-03-02"
         assert result[1][0] == "2026-03-01"
 
-    def test_raises_on_closed_db(self, tmp_path):
+    def test_hrv_history_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_hrv_closed.db", db_dir=tmp_path)
         db.close()
         with pytest.raises(RuntimeError):
@@ -111,7 +111,7 @@ class TestGetHrvHistory:
 
 
 class TestGetWeightHistory:
-    def test_returns_empty_list_when_no_data(self, tmp_path):
+    def test_weight_history_empty(self, tmp_path):
         db = DatabaseManager(db_name="t106_wt.db", db_dir=tmp_path)
         result = db.get_weight_history(days=30)
         db.close()
@@ -134,7 +134,7 @@ class TestGetWeightHistory:
         assert len(result) == 2
         assert result[0][0] == "2026-03-02"
 
-    def test_raises_on_closed_db(self, tmp_path):
+    def test_weight_history_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_wt_closed.db", db_dir=tmp_path)
         db.close()
         with pytest.raises(RuntimeError):

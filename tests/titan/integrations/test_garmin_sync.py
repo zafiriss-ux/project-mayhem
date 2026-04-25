@@ -146,7 +146,7 @@ def test_sync_all_timeout_returns_timeout_cancelled_status(monkeypatch):
     sync = GarminSync(email="e", password="p")
 
     def _slow_sync_operation(_days_back):
-        time.sleep(0.2)
+        time.sleep(0.02)
         return {
             "activities": [{"date": "never"}],
             "weight": [],

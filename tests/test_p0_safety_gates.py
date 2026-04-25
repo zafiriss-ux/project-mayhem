@@ -115,25 +115,6 @@ def test_H2_hrv_collapse_alone_forces_rest():
     assert any(r["gate"] == "H2" for r in plan["hard_stop_reasons"])
 
 
-def test_H2_hrv_just_above_threshold_does_not_fire():
-    """HRV delta = (HARD_STOP_HRV_DELTA - 1) ms → H2 does NOT fire."""
-    ctx = make_context(
-        today_hrv=50.0 - (HARD_STOP_HRV_DELTA - 1),
-        baseline_hrv=50.0,
-    )
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "INTERVALS"
-
-
-def test_H2_hrv_exactly_at_threshold_fires():
-    """HRV drop of exactly HARD_STOP_HRV_DELTA → H2 fires (< boundary: strict)."""
-    ctx = make_context(
-        today_hrv=50.0 - HARD_STOP_HRV_DELTA,   # exactly at threshold
-        baseline_hrv=50.0,
-    )
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "REST"
-    assert any(r["gate"] == "H2" for r in plan["hard_stop_reasons"])
 
 
 # ── AT-H3: RHR Spike — OR semantics (gate fires on RHR alone) ────────────────
@@ -153,25 +134,6 @@ def test_H3_rhr_spike_alone_forces_rest():
     assert any(r["gate"] == "H3" for r in plan["hard_stop_reasons"])
 
 
-def test_H3_rhr_just_below_threshold_does_not_fire():
-    """RHR delta = (HARD_STOP_RHR_DELTA - 1) bpm → H3 does NOT fire."""
-    ctx = make_context(
-        today_rhr=50.0 + (HARD_STOP_RHR_DELTA - 1),
-        baseline_rhr=50.0,
-    )
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "INTERVALS"
-
-
-def test_H3_rhr_exactly_at_threshold_fires():
-    """RHR spike of exactly HARD_STOP_RHR_DELTA bpm → H3 fires (> boundary: strict)."""
-    ctx = make_context(
-        today_rhr=50.0 + HARD_STOP_RHR_DELTA,   # exactly at threshold
-        baseline_rhr=50.0,
-    )
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "REST"
-    assert any(r["gate"] == "H3" for r in plan["hard_stop_reasons"])
 
 
 def test_H2_H3_dual_collapse_fires_both_gates():
@@ -218,11 +180,6 @@ def test_H4_tsb_exactly_at_floor_fires():
     assert any(r["gate"] == "H4" for r in plan["hard_stop_reasons"])
 
 
-def test_H4_tsb_just_above_floor_does_not_fire():
-    """tsb=-49 (above floor) → H4 does NOT fire."""
-    ctx = make_context(tsb_value=-49.0)
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "INTERVALS"
 
 
 # ── AT-H5: Extreme Subjective Fatigue ────────────────────────────────────────
@@ -236,18 +193,36 @@ def test_H5_extreme_fatigue_downgrades_to_easy():
     assert any(r["gate"] == "H5" for r in plan["hard_stop_reasons"])
 
 
-def test_H5_fatigue_below_threshold_does_not_fire():
-    """AT-H5b: score=7 (< 8) → gate does NOT fire."""
-    ctx = make_context(subjective_fatigue_score=7)
-    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "INTERVALS"
 
 
-def test_H5_fatigue_exactly_at_threshold_fires():
-    """score=8 (== SUBJECTIVE_FATIGUE_EXTREME) → gate fires (inclusive)."""
-    ctx = make_context(subjective_fatigue_score=SUBJECTIVE_FATIGUE_EXTREME)
+# ── Parametrized boundary sweep (below / exactly-at for H2, H3, H4, H5) ─────
+
+
+@pytest.mark.parametrize(
+    "ctx_overrides,expect_fire,gate",
+    [
+        # H2 HRV — one below threshold (no fire), one exactly at threshold (fires)
+        ({"today_hrv": 50.0 - (HARD_STOP_HRV_DELTA - 1), "baseline_hrv": 50.0}, False, "H2"),
+        ({"today_hrv": 50.0 - HARD_STOP_HRV_DELTA, "baseline_hrv": 50.0}, True, "H2"),
+        # H3 RHR — one below threshold (no fire), one exactly at threshold (fires)
+        ({"today_rhr": 50.0 + (HARD_STOP_RHR_DELTA - 1), "baseline_rhr": 50.0}, False, "H3"),
+        ({"today_rhr": 50.0 + HARD_STOP_RHR_DELTA, "baseline_rhr": 50.0}, True, "H3"),
+        # H4 TSB — one above floor (no fire), one exactly at floor (fires)
+        ({"tsb_value": HARD_STOP_TSB_FLOOR + 1.0}, False, "H4"),
+        ({"tsb_value": HARD_STOP_TSB_FLOOR}, True, "H4"),
+        # H5 fatigue — one below threshold (no fire), one exactly at threshold (fires)
+        ({"subjective_fatigue_score": SUBJECTIVE_FATIGUE_EXTREME - 1}, False, "H5"),
+        ({"subjective_fatigue_score": SUBJECTIVE_FATIGUE_EXTREME}, True, "H5"),
+    ],
+)
+def test_hard_stop_gate_boundary(ctx_overrides, expect_fire, gate):
+    """Boundary sweep: each gate does not fire just below threshold, fires exactly at it."""
+    ctx = make_context(**ctx_overrides)
     plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
-    assert plan["session_type"] == "EASY"
+    if expect_fire:
+        assert any(r["gate"] == gate for r in plan["hard_stop_reasons"])
+    else:
+        assert plan["session_type"] == "INTERVALS"
 
 
 # ── AT-CONFIG: Thresholds are config-driven ──────────────────────────────────
