@@ -22,3 +22,6 @@ bcrypt==4.2.0
 
 # Architectural dependency linting (T5-93)
 import-linter==2.11
+
+# Contract testing (T5-94)
+schemathesis==4.15.2
