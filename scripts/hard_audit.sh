@@ -15,6 +15,7 @@
 #   H. Complexity budget
 #   I. Documentation consistency
 #   J. Scratchpad gate
+#   P. Architectural dependency lint (import-linter)
 #
 # Pattern: each section prints PASS or FAIL.
 # Script continues on FAIL (accumulates); exits 1 if any FAIL found.
@@ -263,6 +264,24 @@ fi
 
 SCRATCHPAD_STATUS=$(grep "^STATUS:" SCRATCHPAD.md | head -1 | awk '{print $2}')
 echo "  → SCRATCHPAD STATUS: $SCRATCHPAD_STATUS"
+
+# ─────────────────────────────────────────────────────────────────────────────
+_section "P. Architectural dependency lint (import-linter)"
+# ─────────────────────────────────────────────────────────────────────────────
+
+if command -v lint-imports &>/dev/null || \
+   [ -f ".venv/bin/lint-imports" ]; then
+  LINTER=".venv/bin/lint-imports"
+  LINT_OUT=$($LINTER --config .importlinter 2>&1)
+  if echo "$LINT_OUT" | grep -q "0 broken"; then
+    _pass "import-linter: all contracts kept"
+  else
+    _fail "import-linter: contract violation detected"
+    echo "$LINT_OUT" | grep -E "BROKEN|KEPT|ERROR|broken" || true
+  fi
+else
+  echo "  ⏭  import-linter not installed — skipping"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 _section "SUMMARY"
