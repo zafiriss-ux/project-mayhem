@@ -3961,7 +3961,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-91 | ✅ IMPLEMENTED 2026-04-21 (.semgrep/titan_rules.yaml) | 2026-04-21 |
 | T5-92 | 🟡 OPEN — Phase 10 (OPA/Rego policy-as-code) | — |
 | T5-93 | ✅ IMPLEMENTED 2026-04-25 (.importlinter — 5 contracts; import-linter==2.11) | 2026-04-25 |
-| T5-94 | 🟡 OPEN — Phase 9 (schemathesis FastAPI contract testing) | — |
+| T5-94 | ✅ IMPLEMENTED 2026-04-25 (tests/titan/api/test_schemathesis_contracts.py — 5 contract tests; schemathesis>=3.27) | 2026-04-25 |
 | T5-95 | 🟡 OPEN — Phase 10 (Great Expectations for Garmin data quality) | — |
 | T5-96 | ✅ IMPLEMENTED 2026-04-21 (scripts/gate_coverage_matrix.sh) | 2026-04-21 |
 | T5-97 | ✅ IMPLEMENTED 2026-04-21 (scripts/phase_close_audit.sh) | 2026-04-21 |
@@ -4379,10 +4379,11 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 
 ---
 
-### T5-94 · Contract testing with schemathesis (D-11) 🟡 OPEN
+### T5-94 · Contract testing with schemathesis (D-11) ✅ IMPLEMENTED 2026-04-25
 
-**Status:** OPEN — Phase 9 (FastAPI surface active).
-**Method:** Auto-generate API tests from OpenAPI schema. Brute-force edge cases for JWT + override endpoints.
+**Status:** ✅ IMPLEMENTED — `tests/titan/api/test_schemathesis_contracts.py` (5 tests).
+**Method:** OpenAPI schema validity via `schemathesis.openapi.from_dict`; health contract; login rejection (5 malformed payloads); 5 protected endpoints → 401; login response schema conformance.
+**Deps added:** `schemathesis>=3.27` in `requirements.txt`; explicit install in `setup_env.sh`.
 **Priority:** P3.
 
 ---

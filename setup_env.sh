@@ -40,6 +40,7 @@ setup_project_venv() {
   fi
   .venv/bin/pip install --quiet pytest pytest-cov
   .venv/bin/pip install --quiet "import-linter>=2.1"
+  .venv/bin/pip install --quiet "schemathesis==4.15.2"
   echo "[setup] Project venv ready: $(.venv/bin/python --version)"
 }
 
