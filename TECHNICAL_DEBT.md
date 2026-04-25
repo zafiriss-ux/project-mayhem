@@ -3763,6 +3763,24 @@ These patterns are correct and must be preserved in all future work:
 
 ---
 
+## FMEA: Phase 10 — Advanced Testing, LLM Coach & Observability (2026-04-25)
+
+**Scope:** Phase 10 features: LLM coach query layer (T5-10), advanced testing tooling (T5-84–T5-95), architectural dependency linting (T5-93), schemathesis contract testing (T5-94).
+**Architect:** Claude | **Date:** 2026-04-25 | **Status:** G12 SATISFIED (pre-phase gate — no Phase 10 items implemented except T5-93/T5-94)
+
+| Component | Failure Mode | Effect | Likelihood | Severity | Mitigation | Status |
+|---|---|---|---|---|---|---|
+| import-linter (T5-93) | Contract definition drift → layer violations not caught | Hidden coupling accumulates between layers | LOW | HIGH | `.importlinter` 5 contracts; Section P in `hard_audit.sh`; CI gate enforced | ✅ MITIGATED |
+| schemathesis contracts (T5-94) | FastAPI schema drift → contract tests stale | API consumer breakage not detected | LOW | HIGH | 5 contract tests in `tests/titan/api/test_schemathesis_contracts.py`; pydantic `BaseModel` enforces schema | ✅ MITIGATED |
+| LLM coach (T5-10) | Athlete context assembly from multiple DB tables → cross-athlete data leak | Wrong coaching recommendation; athlete privacy violation | MEDIUM | CRITICAL | Deferred until Phase 9 multi-athlete corpus available; INV-04 athlete_id scoping required before implementation | ⚠️ DEFERRED — not yet designed |
+| Mutation testing (T5-84) | Missing mutations escape test suite → false confidence in coverage | Safety-gate regressions not caught by tests | MEDIUM | HIGH | Deferred Phase 10; existing 2600+ tests provide baseline; coverage gate ≥80% | ⚠️ DEFERRED |
+| Hypothesis stateful testing (T5-85) | State machine violations in DailyCoach pipeline not caught | Governance gate skipped under specific state sequence | LOW | CRITICAL | Deferred Phase 10; existing governance golden tests mitigate | ⚠️ DEFERRED |
+| Chaos engineering (T5-89) | DB/network failure paths not exercised → unknown degraded-mode behavior | Silent data loss or wrong coaching under infra failure | LOW | HIGH | Deferred Phase 10; ADR-0020 degraded conservative mode implemented | ⚠️ DEFERRED |
+
+**G12 gate:** SATISFIED — implemented items (T5-93, T5-94) mitigated; deferred items scoped with documented rationale.
+
+---
+
 ## Tracking
 
 When an item is completed, mark it here with date and PR reference:
