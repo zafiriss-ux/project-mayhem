@@ -11,6 +11,8 @@ RUNTIME_DEPENDENCIES = {
     "fastapi==0.115.0",
     "pyjwt[crypto]==2.12.0",
     "bcrypt==4.2.0",
+    "import-linter==2.11",
+    "schemathesis==4.15.2",
 }
 
 DEV_DEPENDENCIES = {
