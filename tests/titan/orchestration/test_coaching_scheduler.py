@@ -1,5 +1,4 @@
 import threading
-import time
 
 from titan.orchestration.coaching_scheduler import CoachingScheduler
 
@@ -68,7 +67,7 @@ def test_per_athlete_overlap_lock_skips_overlapping_cycle():
 
 def test_start_when_already_running_does_not_spawn_new_thread():
     scheduler = CoachingScheduler(interval_seconds=0.05)
-    scheduler.register_athlete("athlete-1", lambda: time.sleep(0.01))
+    scheduler.register_athlete("athlete-1", lambda: None)
 
     scheduler.start()
     first_thread = scheduler._thread

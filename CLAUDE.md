@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2599 tests all green as of T5-94 schemathesis contracts addition (5 new contract tests in tests/titan/api/test_schemathesis_contracts.py) (2026-04-25). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2597 tests all green as of audit-fixes branch (removed 8 zombie tests from test_titan_logic.py, added 5 biometric contract tests, parametrized 7 boundary tests into 1×8-case parametrize) (2026-04-25). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
