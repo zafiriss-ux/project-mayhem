@@ -4,7 +4,11 @@ from unittest.mock import MagicMock
 
 from titan.features.nutrition_optimizer import NutritionOptimizer
 from titan.features.weekly_planner import WeeklyPlanGenerator
+from titan.science.acwr_engine import ACWREngine
+from titan.science.glycogen_model import GlycogenModel
+from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.readiness_engine import ReadinessEngine
+from titan.science.tsb_engine import TSBEngine
 
 
 def _json_messages(caplog):
@@ -40,14 +44,14 @@ def test_readiness_emits_structured_event(caplog):
 def test_weekly_planner_emits_generation_events(caplog):
     caplog.set_level(logging.INFO)
 
-    hrv_engine = MagicMock()
+    hrv_engine = MagicMock(spec=HRVGuidedEngine)
     hrv_engine.get_hrv_summary.return_value = {"baseline": 60, "latest_hrv": 58}
     hrv_engine.get_trend_analysis.return_value = {"trend": "STABLE"}
 
-    tsb_engine = MagicMock()
+    tsb_engine = MagicMock(spec=TSBEngine)
     tsb_engine.calculate_tsb.return_value = (-12.0, "MANAGEABLE")
 
-    acwr_engine = MagicMock()
+    acwr_engine = MagicMock(spec=ACWREngine)
 
     planner = WeeklyPlanGenerator(hrv_engine=hrv_engine, tsb_engine=tsb_engine, acwr_engine=acwr_engine)
 
@@ -66,7 +70,7 @@ def test_weekly_planner_emits_generation_events(caplog):
 def test_nutrition_emits_weight_and_plan_events(caplog):
     caplog.set_level(logging.INFO)
 
-    optimizer = NutritionOptimizer(glycogen_model=MagicMock())
+    optimizer = NutritionOptimizer(glycogen_model=MagicMock(spec=GlycogenModel))
     for i in range(7):
         optimizer.add_weight_entry(f"2026-03-{i+1:02d}", 75.0 - (i * 0.1))
 
