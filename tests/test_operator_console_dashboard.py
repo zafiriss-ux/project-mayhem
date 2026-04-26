@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from titan.core.database import DatabaseManager
 from titan.ui.operator_console import OperatorConsoleService
 
@@ -64,8 +66,8 @@ def test_readiness_dashboard_aggregates_timeline_and_distribution(tmp_path):
 
     assert [p["date"] for p in payload["timeline"]] == ["2026-03-01", "2026-03-02"]
     assert payload["summary"]["samples"] == 2
-    assert payload["summary"]["avg_readiness"] == 70.5
-    assert payload["summary"]["avg_acwr"] == 1.07
+    assert payload["summary"]["avg_readiness"] == pytest.approx(70.5, rel=1e-6)
+    assert payload["summary"]["avg_acwr"] == pytest.approx(1.07, rel=1e-6)
     assert payload["summary"]["latest_vlg_color"] == "GREEN"
     assert payload["summary"]["vlg_distribution"] == {"YELLOW": 1, "GREEN": 1}
 
