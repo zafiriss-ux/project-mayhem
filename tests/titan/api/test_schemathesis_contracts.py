@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime
 
 import pytest
@@ -30,8 +29,8 @@ _EXPECTED_PATHS = frozenset(
 )
 
 
-@pytest.fixture(scope="module")
-def jwt_keys() -> None:  # type: ignore[return]
+@pytest.fixture
+def jwt_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -42,15 +41,12 @@ def jwt_keys() -> None:  # type: ignore[return]
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     ).decode("utf-8")
-    os.environ["TITAN_JWT_PRIVATE_KEY"] = private_pem
-    os.environ["TITAN_JWT_PUBLIC_KEY"] = public_pem
-    yield
-    os.environ.pop("TITAN_JWT_PRIVATE_KEY", None)
-    os.environ.pop("TITAN_JWT_PUBLIC_KEY", None)
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem)
 
 
-@pytest.fixture(scope="module")
-def app_fixture(jwt_keys: None):  # noqa: ARG001
+@pytest.fixture
+def app_fixture(jwt_keys: None) -> object:  # noqa: ARG001
     store = AuthStore()
     store.upsert_user(
         user_id="coach-1",
@@ -69,7 +65,7 @@ def app_fixture(jwt_keys: None):  # noqa: ARG001
     return create_app(auth_store=store)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def client(app_fixture) -> TestClient:
     return TestClient(app_fixture, base_url="https://testserver")
 
