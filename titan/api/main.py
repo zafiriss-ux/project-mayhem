@@ -140,6 +140,29 @@ class AuthenticatedRateLimiter:
         return self._config.athlete_per_minute
 
 
+class LoginRateLimiter:
+    """IP-based fixed-window limiter for /auth/login — pre-auth."""
+
+    LOGIN_RATE_LIMIT_ATTEMPTS: int = 10
+    LOGIN_RATE_LIMIT_WINDOW: float = 60.0
+
+    def __init__(self) -> None:
+        self._requests: dict[str, deque[float]] = defaultdict(deque)
+        self._lock = Lock()
+
+    def is_allowed(self, client_ip: str) -> bool:
+        with self._lock:
+            now = monotonic()
+            bucket = self._requests[client_ip]
+            cutoff = now - self.LOGIN_RATE_LIMIT_WINDOW
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+            if len(bucket) >= self.LOGIN_RATE_LIMIT_ATTEMPTS:
+                return False
+            bucket.append(now)
+            return True
+
+
 class AuditActionType(StrEnum):
     VIEW_DATA = "VIEW_DATA"
     SUBMIT_OVERRIDE = "SUBMIT_OVERRIDE"
@@ -180,6 +203,7 @@ def create_app(
     app.state.audit_store = audit_store or CoachAuditStore()
 
     rate_limiter = AuthenticatedRateLimiter()
+    login_rate_limiter = LoginRateLimiter()
 
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
@@ -196,11 +220,31 @@ def create_app(
         return {"status": "ok"}
 
     @app.post("/auth/login", response_model=LoginResponse)
-    def login(payload: LoginRequest, response: Response, store: AuthStore = Depends(get_auth_store)) -> Any:
+    def login(
+        payload: LoginRequest,
+        request: Request,
+        response: Response,
+        store: AuthStore = Depends(get_auth_store),
+    ) -> Any:
+        client_ip = request.client.host if request.client else "unknown"
+        if not login_rate_limiter.is_allowed(client_ip):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts",
+            )
+
+        if store.is_locked_out(payload.username):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Account temporarily locked",
+            )
+
         user = store.verify_credentials(payload.username, payload.password)
         if user is None:
+            store.record_failed_attempt(payload.username)
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
+        store.clear_failed_attempts(payload.username)
         access_token, access_expires_at = create_access_token(user)
         refresh_token, _, _ = create_refresh_token(user, store)
         _set_auth_cookies(response, access_token, refresh_token)
