@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import os
 import uuid
+from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
+from threading import Lock
+from time import monotonic
 from typing import TYPE_CHECKING
 
 import bcrypt
@@ -21,6 +24,10 @@ REFRESH_TOKEN_TTL = timedelta(days=7)
 MAX_ACTIVE_REFRESH_TOKENS = 3
 ACCESS_COOKIE_NAME = "titan_access_token"
 REFRESH_COOKIE_NAME = "titan_refresh_token"
+
+LOCKOUT_MAX_ATTEMPTS: int = 5
+LOCKOUT_WINDOW_SECONDS: float = 300.0
+LOCKOUT_DURATION_SECONDS: float = 900.0
 
 
 class AuthError(Exception):
@@ -40,6 +47,9 @@ class AuthStore:
             from titan.core.database import DatabaseManager
             db = DatabaseManager(db_name=":memory:")
         self._db = db
+        self._failed_attempts: dict[str, deque[float]] = defaultdict(deque)
+        self._lockout_until: dict[str, float] = {}
+        self._lock: Lock = Lock()
 
     def upsert_user(
         self,
@@ -65,6 +75,33 @@ class AuthStore:
             athlete_id=row["athlete_id"],
             is_active=row["is_active"],
         )
+
+    def record_failed_attempt(self, username: str) -> None:
+        with self._lock:
+            now = monotonic()
+            bucket = self._failed_attempts[username]
+            cutoff = now - LOCKOUT_WINDOW_SECONDS
+            while bucket and bucket[0] <= cutoff:
+                bucket.popleft()
+            bucket.append(now)
+            if len(bucket) >= LOCKOUT_MAX_ATTEMPTS:
+                self._lockout_until[username] = now + LOCKOUT_DURATION_SECONDS
+
+    def is_locked_out(self, username: str) -> bool:
+        with self._lock:
+            until = self._lockout_until.get(username)
+            if until is None:
+                return False
+            if monotonic() >= until:
+                del self._lockout_until[username]
+                self._failed_attempts.pop(username, None)
+                return False
+            return True
+
+    def clear_failed_attempts(self, username: str) -> None:
+        with self._lock:
+            self._failed_attempts.pop(username, None)
+            self._lockout_until.pop(username, None)
 
     def get_user(self, user_id: str) -> AuthUser | None:
         row = self._db.get_auth_user_by_id(user_id)

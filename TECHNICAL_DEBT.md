@@ -4455,3 +4455,22 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 
 **Task Learning:** uv tool installs create isolated venvs with no project deps; always verify
 which Python/pytest binary CI scripts resolve to, and ensure project deps are in that venv.
+
+---
+
+### T5-99 · Auth hardening: account lockout + pre-auth login rate limiting (C-W09) ✅ IMPLEMENTED 2026-04-26
+
+**Status:** ✅ IMPLEMENTED 2026-04-26.
+**Source:** C-W09 execution unit — auth hardening sprint.
+**Branch:** `claude/harden-auth-implementation-ernkJ`
+
+**Changes:**
+- `titan/api/auth.py`: Added `LOCKOUT_MAX_ATTEMPTS=5`, `LOCKOUT_WINDOW_SECONDS=300`, `LOCKOUT_DURATION_SECONDS=900` constants. `AuthStore.__init__` gains `_failed_attempts`, `_lockout_until`, `_lock` in-memory state. New methods: `record_failed_attempt()`, `is_locked_out()`, `clear_failed_attempts()`.
+- `titan/api/main.py`: New `LoginRateLimiter` class (IP-based fixed-window, 10 req/60 s). Login handler wired: IP rate-limit (429) → account lockout check (423) → credential verify (401 + record_failed_attempt) → success (clear_failed_attempts).
+- `tests/titan/api/test_auth_hardening.py`: 8 new tests covering lockout trigger, expiry, rolling-window reset, successful-login clear, 423-vs-401 distinction, post-expiry login, IP rate-limit threshold, and IP isolation.
+
+**Acceptance criteria:** MET.
+- 8 new tests pass. ✅
+- 0 regressions in `tests/titan/api/` (62 total). ✅
+- `ruff check .` clean. ✅
+- Full suite exit code 0. ✅
