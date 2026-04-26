@@ -111,10 +111,9 @@ Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0
 ```
 T5-12 Pass 1 — ✅ COMPLETE 2026-03-18 (design document created:
                docs/specs/garmin_api_fragility_mitigation.md; ADR-0050 accepted)
-T5-12 Pass 2 — DEFERRED Phase 9. Rationale: ADR-0050 accepted; mitigation design
-               complete (docs/specs/garmin_api_fragility_mitigation.md);
-               implementation requires multi-device adapter (ADR-0016/ADR-0041)
-               which is Phase 9 scope.
+T5-12 Pass 2 — ✅ VERIFIED COMPLETE 2026-04-26. O1–O7 all confirmed implemented
+               (b2cdc37 era). D4 (adapters, switching, arbitration) deferred
+               → T5-100 (Phase 12).
 ```
 Phase 8C opened 2026-03-17 (DEC-016). Bounded audit batch T5-39–T5-42 fully closed.
 No further open Phase 8C items beyond T5-12 at time of opening.
@@ -1961,10 +1960,10 @@ athletes with zero authentication is a GDPR violation and a serious security ris
 
 ---
 
-### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism 🟡 OPEN
+### T5-12 · Garmin unofficial API fragility — no fallback if Garmin changes auth mechanism ✅ VERIFIED COMPLETE 2026-04-26
 
-**Status:** OPEN — Pass 1 COMPLETE 2026-03-18 (design document: `docs/specs/garmin_api_fragility_mitigation.md`; ADR-0050 accepted). Pass 2 DEFERRED (ADR-0050 accepted; Phase 9 implementation).
-**Workflow Path: A** *(no implementation until Pass 2 ADR accepted)*
+**Status:** ✅ VERIFIED COMPLETE 2026-04-26. Pass 1 COMPLETE 2026-03-18 (design document: `docs/specs/garmin_api_fragility_mitigation.md`; ADR-0050 accepted). Pass 2 VERIFIED COMPLETE 2026-04-26: O1–O7 all confirmed implemented (b2cdc37 era); D4 (adapters, switching, arbitration) deferred → T5-100 (Phase 12).
+**Workflow Path: A**
 **Source:** Architecture review 2026-03-06. Not previously recorded.
 **Priority:** P3 (medium — risk is real but not blocking current phases).
 
@@ -3889,7 +3888,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-09 | ✅ RESOLVED 2026-03-16 — unified `get_athlete_context()` seam with JSON-safe payload + tests | 2026-03-16 |
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
-| T5-12 | OPEN — Pass 1 COMPLETE 2026-03-18; Pass 2 DEFERRED (ADR-0050 accepted; Phase 9 implementation) | — |
+| T5-12 | ✅ VERIFIED COMPLETE 2026-04-26 — Pass 1 COMPLETE 2026-03-18; Pass 2 VERIFIED: O1–O7 implemented (b2cdc37 era); D4 → T5-100 (Phase 12) | 2026-04-26 |
+| T5-100 | 🟡 OPEN — Phase 12 (Garmin fallback D4: multi-device adapters, source switching, arbitration logic; deferred from T5-12 Pass 2) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4051,6 +4051,8 @@ updated accordingly. Next deliverable: D2a.*
 *Updated: 2026-03-17 — T5-40 + T5-42 closure records pass. T5-40 RESOLVED: `TelegramChannel.send()` boolean return consumed and propagated; `False`-without-exception branch has explicit test coverage; all gates green. T5-42 RESOLVED: `add_weight_entry()` and `calculate_daily_nutrition()` now have explicit happy-path + boundary tests; all gates green. Closure commit: `b058ed2` (PR #491 merge). CLAUDE.md test snapshot accepted as 1999 (correct per architect verdict). Process blemishes recorded: PR #491 used `codex/*` branch prefix instead of canonical `claude/*`; PR title was generic (not `T<tier>-<id>: <short title>` format) — both non-functional deviations only. Tracking table rows updated: T5-40 → RESOLVED 2026-03-17; T5-42 → RESOLVED 2026-03-17. Task learning notes added to both entries. No new debt items. No AGENTS.md changes. No implementation changes. Audit batch T5-39–T5-42 fully closed; Phase 8C sequencing may now open.*
 
 *Updated: 2026-03-17 — DEC-016 records pass: Phase 8C opens. SCRATCHPAD.md queue fully cleared: OBS-015 through OBS-024 all REVIEWED; DEC-016 through DEC-024 (excl. DEC-020 already processed 2026-03-16) written in Architect Review Log; SCRATCHPAD STATUS → IDLE. Architect decisions summary: DEC-016 (OBS-016) — Phase 8B closure evidence complete; Phase 8C OPEN; T5-12 Pass 1 authorized as first execution unit; T5-12 Pass 2 blocked until design ADR accepted. DEC-017 (OBS-017) — evidence_registry contract statement records correction authorized (broader provenance scope: thresholds.py + physiological_bounds.py). DEC-018 (OBS-018) — governance test root-level placement is intentional; NO_ACTION. DEC-019 (OBS-019) — T5-06-A module-path records correction authorized (phantom ml_explainability.py → actual ml_safety.py + injury_risk_model.py). DEC-021 (OBS-021) — single-athlete adapter contract is correct for current scope; NO_ACTION; multi-athlete scoping is Phase 9 per ADR-0046. DEC-022 (OBS-022) — already processed 2026-03-16 (T5-40 + T5-41). DEC-023 (OBS-023) — already processed 2026-03-16 (T5-42). DEC-024 (OBS-024) — operator console test root-level placement is enforced by test_phase6_hygiene.py; NO_ACTION. Phase 8C execution sequence added to header sequencing block. No new debt items in this pass. No implementation changes. No AGENTS.md changes.*
+
+*Updated: 2026-04-26 — T5-12 Pass 2 closure records pass (records-only). T5-12 Pass 2 status changed DEFERRED → ✅ VERIFIED COMPLETE: O1–O7 all confirmed implemented (b2cdc37 era); D4 (adapters, switching, arbitration) deferred to Phase 12 and registered as T5-100. T5-12 heading + status field + tracking table row updated to VERIFIED COMPLETE 2026-04-26. T5-100 registered: Garmin fallback D4 — multi-device adapters, source switching, arbitration logic (Phase 12; blocked until architect Phase 12 scope gate). Phase 8C execution sequence block updated. AGENTS.md Last updated prepended with T5-12 CLOSED note. No implementation performed. No production code changes. Change Type: records-only.*
 
 ---
 
@@ -4474,3 +4476,20 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 - 0 regressions in `tests/titan/api/` (62 total). ✅
 - `ruff check .` clean. ✅
 - Full suite exit code 0. ✅
+
+---
+
+### T5-100 · Garmin fallback D4: multi-device adapters, source switching, arbitration 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 12.
+**Source:** T5-12 Pass 2 closure, 2026-04-26. D4 items deferred from T5-12 (Garmin API fragility mitigation).
+**Priority:** P3 (medium — O1–O7 mitigations already active; D4 extends coverage to multi-device path).
+
+**Scope:** Three sub-deliverables deferred from T5-12 D4:
+1. **Adapters** — unified device adapter implementations for Polar, Whoop, COROS (per ADR-0016 / ADR-0041 unified external data trust contract).
+2. **Source switching** — automatic failover logic when Garmin sync is degraded: promote secondary device as HRV/RHR source.
+3. **Arbitration logic** — conflict-resolution policy when multiple device sources are simultaneously available (trust-level ordering per ADR-0041).
+
+**Blocking gate:** ADR-0016 / ADR-0041 scope validation required before implementation begins. No implementation until Phase 12 scope gate is cleared by the architect.
+
+**Location:** `titan/integrations/garmin_sync.py`, new `titan/integrations/device_adapters/` (to be created in Phase 12).
