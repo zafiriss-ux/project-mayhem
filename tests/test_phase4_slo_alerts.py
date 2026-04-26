@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 import pytest
+from freezegun import freeze_time
 
 from titan.integrations.garmin_sync import (
     GARMIN_PAYLOAD_MALFORMED,
@@ -173,7 +174,7 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "0")
 
     sync = GarminSync(email="x", password="y")
-    sync._sync_operation = lambda days_back=7: time.sleep(0.02) or {
+    sync._sync_operation = lambda days_back=7: time.sleep(0.05) or {  # WHY: must exceed GARMIN_SYNC_TIMEOUT_S=0 reliably
         "activities": [],
         "weight": [],
         "sleep": [],
@@ -192,6 +193,7 @@ def test_garmin_sync_logs_timeout_slo_alert(caplog, monkeypatch):
     assert alerts[0]["slo_key"] == "garmin_sync_timeout"
 
 
+@freeze_time("2026-04-26")
 def test_sync_hrv_logs_skipped_malformed_records(caplog):
     class _Client:
         def get_hrv_data(self, day):
