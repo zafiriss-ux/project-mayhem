@@ -2498,3 +2498,156 @@ def test_build_daily_coach_context_persistence_degraded_false_does_not_set_data_
     assert context.get("data_confidence_low") is not True, (
         "data_confidence_low must not be forced True when persistence_degraded=False"
     )
+
+
+# ---------------------------------------------------------------------------
+# Audit 2026-04-26: Step 8 + Step 10 ESI TypeError fallback and dew-point
+# propagation tests (TASK 6)
+# ---------------------------------------------------------------------------
+
+
+def test_step8_planned_session_engine_exception_falls_to_conservative_mode(monkeypatch):
+    """Step 8: TypeError('unexpected keyword argument') from get_today_session()
+    triggers the ESI-less fallback call; routine completes and step 8 emits SUCCESS."""
+    events: list[dict] = []
+    monkeypatch.setattr(
+        daily_coach,
+        "_daily_coach_event",
+        lambda action, **fields: events.append({"action": action, **fields}),
+    )
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    fallback_calls: list[str] = []
+
+    def _planner(**kwargs):
+        if kwargs:
+            raise TypeError(
+                "get_today_session() got an unexpected keyword argument 'esi_level'"
+            )
+        fallback_calls.append("no_args")
+        return {"session_type": "EASY", "volume_pct": 1.0, "duration_min": 45, "distance_km": 8}
+
+    coach.weekly_planner = SimpleNamespace(get_today_session=_planner)
+
+    assert coach.run_morning_routine() is True
+    assert fallback_calls == ["no_args"], "no-args fallback must be called exactly once"
+    assert any(
+        e["action"] == "step_event"
+        and e["step_number"] == 8
+        and e["outcome"] == "SUCCESS"
+        for e in events
+    ), "Step 8 must emit SUCCESS after the ESI-TypeError fallback"
+
+
+def test_step8_planned_session_missing_athlete_profile_returns_safe_default(monkeypatch):
+    """Step 8: when get_today_session() returns {} (no athlete profile configured),
+    the routine completes using .get() safe defaults and step 8 emits SUCCESS."""
+    events: list[dict] = []
+    monkeypatch.setattr(
+        daily_coach,
+        "_daily_coach_event",
+        lambda action, **fields: events.append({"action": action, **fields}),
+    )
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    # Planner accepts ESI kwargs but returns empty dict (no plan for athlete)
+    coach.weekly_planner = SimpleNamespace(get_today_session=lambda **k: {})
+
+    assert coach.run_morning_routine() is True
+    assert any(
+        e["action"] == "step_event"
+        and e["step_number"] == 8
+        and e["outcome"] == "SUCCESS"
+        for e in events
+    ), "Step 8 must succeed even when the session dict is empty (safe .get() defaults apply)"
+
+
+def test_step10_optimal_time_weather_unavailable_uses_fallback_window(monkeypatch):
+    """Step 10: TypeError('unexpected keyword argument') from calculate_optimal_time()
+    triggers the ESI-less fallback call; routine completes and step 10 emits SUCCESS."""
+    events: list[dict] = []
+    monkeypatch.setattr(
+        daily_coach,
+        "_daily_coach_event",
+        lambda action, **fields: events.append({"action": action, **fields}),
+    )
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    fallback_calls: list[str] = []
+
+    def _calc_optimal(**kwargs):
+        if "esi_level" in kwargs:
+            raise TypeError(
+                "calculate_optimal_time() got an unexpected keyword argument 'esi_level'"
+            )
+        fallback_calls.append("no_esi")
+        return {
+            "recommended_time": "07:00",
+            "dew_point": 12,
+            "quality": "GOOD",
+            "weather_data_quality": "live",
+        }
+
+    coach.optimal_time = SimpleNamespace(calculate_optimal_time=_calc_optimal)
+
+    assert coach.run_morning_routine() is True
+    assert fallback_calls == ["no_esi"], "no-ESI-args fallback must be called exactly once"
+    assert any(
+        e["action"] == "step_event"
+        and e["step_number"] == 10
+        and e["outcome"] == "SUCCESS"
+        for e in events
+    ), "Step 10 must emit SUCCESS after the ESI-TypeError fallback"
+
+
+def test_step10_optimal_time_dew_point_above_threshold_pushes_session_window():
+    """Step 10: garmin data with temperature_c=28, dew_point=22 produces ESI EXTREME
+    (score=39 >= ESI_EXTREME_MIN=28); telegram payload carries esi_level='EXTREME'
+    and a 25 s/km pace adjustment annotation."""
+    payload: dict = {}
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+
+    # temperature_c=28, dew_point=22 → score = 28 + 0.5×22 = 39 ≥ ESI_EXTREME_MIN(28)
+    coach.garmin = SimpleNamespace(
+        sync_all=lambda: {
+            "activities": [],
+            "sleep": [
+                {
+                    "restingHeartRate": 50,
+                    "sleepScores": {"overall": {"value": 80}},
+                    "sleepTimeSeconds": 25200,
+                }
+            ],
+            "hrv": [{"date": "2026-03-04", "rmssd": 45.0}],
+            "hrr": [],
+            "weight": [],
+            "temperature_c": 28.0,
+            "dew_point": 22.0,
+            "acwr": 1.0,
+        }
+    )
+    # calculate_optimal_time accepts all kwargs (no fallback needed for this test)
+    coach.optimal_time = SimpleNamespace(
+        calculate_optimal_time=lambda **k: {
+            "recommended_time": "06:00",
+            "dew_point": 22,
+            "quality": "EXTREME HEAT",
+            "weather_data_quality": "live",
+        }
+    )
+    coach.telegram = SimpleNamespace(
+        send_daily_coaching=lambda p: payload.update(p) or True,
+        send_alert=lambda msg: None,
+    )
+
+    assert coach.run_morning_routine() is True
+    assert payload.get("esi_level") == "EXTREME", (
+        f"expected esi_level='EXTREME', got {payload.get('esi_level')!r}"
+    )
+    assert payload.get("esi_pace_adjustment_sec_per_km") == 25, (
+        f"expected 25 s/km adjustment, got {payload.get('esi_pace_adjustment_sec_per_km')!r}"
+    )
+    assert "+25s/km" in (payload.get("adjusted_target") or ""), (
+        f"adjusted_target must include '+25s/km', got {payload.get('adjusted_target')!r}"
+    )
