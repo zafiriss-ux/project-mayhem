@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2629 tests all green as of audit-tests-bugs branch (audit 2026-04-26: fixed 13 hygiene issues — mutable class-level state, bare MagicMock(), float == assertions, contextlib.suppress anti-pattern, module-level os.environ mutation, datetime.now() flakiness, sleep flakiness; added 32 new tests covering P0 boundaries, PARASYMPATHETIC_GUARD, DailyCoach step 8/10 ESI fallback) (2026-04-26). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2642 tests all green as of claude/fix-schemathesis-metamorphic-BoNf9 branch (T5-87: added 13 metamorphic tests for ACWR/TSB/HRV/TRIMP; schemathesis freezegun dep installed) (2026-04-27). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
