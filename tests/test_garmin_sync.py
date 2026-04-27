@@ -417,7 +417,9 @@ def test_connect_uses_redacted_secret_container_without_duplicate_aliases():
     assert not hasattr(sync, "_password_secret")
 
 
-def test_connect_missing_credentials_fails_safely():
+def test_connect_missing_credentials_fails_safely(monkeypatch):
+    monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
     sync = GarminSync(email="", password="")
 
     assert sync.connect() is False

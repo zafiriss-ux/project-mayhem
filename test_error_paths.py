@@ -43,12 +43,15 @@ class TestGarminSyncErrorPaths:
         from titan.integrations.garmin_sync import GarminSync
         return GarminSync(email="test@example.com", password="wrong_password")
 
-    def test_connect_missing_email_returns_false(self):
+    def test_connect_missing_email_returns_false(self, monkeypatch):
+        monkeypatch.setenv("GARMIN_EMAIL", "")
+        monkeypatch.setenv("GARMIN_PASSWORD", "")
         from titan.integrations.garmin_sync import GarminSync
         g = GarminSync(email="", password="")
         assert g.connect() is False
 
-    def test_connect_missing_password_returns_false(self):
+    def test_connect_missing_password_returns_false(self, monkeypatch):
+        monkeypatch.setenv("GARMIN_PASSWORD", "")
         from titan.integrations.garmin_sync import GarminSync
         g = GarminSync(email="user@example.com", password="")
         assert g.connect() is False

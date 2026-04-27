@@ -471,6 +471,11 @@ class TestOptimalTimeCalculator:
 
 class TestGarminSync:
 
+    @pytest.fixture(autouse=True)
+    def _clear_garmin_env(self, monkeypatch):
+        monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+        monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
+
     def test_connect_missing_credentials_returns_false(self):
         gs = GarminSync(email="", password="")
         result = gs.connect()

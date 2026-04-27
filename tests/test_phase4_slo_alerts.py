@@ -238,7 +238,9 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
 
 
 
-def test_sync_hrv_emits_metrics_when_disconnected(caplog):
+def test_sync_hrv_emits_metrics_when_disconnected(caplog, monkeypatch):
+    monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+    monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
     caplog.set_level(logging.INFO)
 
     sync = GarminSync(email="", password="")
