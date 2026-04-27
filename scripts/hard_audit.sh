@@ -26,6 +26,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+PYTEST_BIN="${VENV_PYTEST:-.venv/bin/pytest}"
+if [ ! -f "$PYTEST_BIN" ]; then
+    if _pb=$(which pytest 2>/dev/null); then
+        PYTEST_BIN="$_pb"
+    elif python3 -m pytest --version &>/dev/null 2>&1; then
+        PYTEST_BIN="python3 -m pytest"
+    fi
+fi
+
 _pass() { echo "  ✅ PASS — $1"; }
 _fail() { echo "  ❌ FAIL — $1"; FAILURES=$((FAILURES + 1)); }
 _section() { echo ""; echo "══ $1 ══"; }
@@ -43,7 +52,7 @@ else
 fi
 
 # Capture collection output once; use awk to count errors (always exits 0).
-COLLECT_OUT=$(.venv/bin/pytest --collect-only -q --no-cov 2>&1 || true)
+COLLECT_OUT=$($PYTEST_BIN --collect-only -q --no-cov 2>&1 || true)
 ERR_COUNT=$(echo "$COLLECT_OUT" | awk '/^ERROR/{c++}END{print c+0}')
 if [ "$ERR_COUNT" -eq 0 ]; then
   _pass "Collection errors: 0"
@@ -56,18 +65,18 @@ fi
 _section "B. Schema integrity"
 # ─────────────────────────────────────────────────────────────────────────────
 
-.venv/bin/pytest tests/test_db_schema_contracts.py -q --tb=short --no-cov 2>&1 | tail -3
-if .venv/bin/pytest tests/test_db_schema_contracts.py -q --tb=no --no-cov \
+$PYTEST_BIN tests/test_db_schema_contracts.py -q --tb=short --no-cov 2>&1 | tail -3
+if $PYTEST_BIN tests/test_db_schema_contracts.py -q --tb=no --no-cov \
      2>&1 | grep -q "passed"; then
   _pass "Schema contract tests"
 else
   _fail "Schema contract tests"
 fi
 
-.venv/bin/pytest tests/titan/core/test_db_schema_v13.py \
+$PYTEST_BIN tests/titan/core/test_db_schema_v13.py \
        tests/titan/core/test_cold_start.py \
        -q --tb=no --no-cov 2>&1 | tail -2
-if .venv/bin/pytest tests/titan/core/test_db_schema_v13.py \
+if $PYTEST_BIN tests/titan/core/test_db_schema_v13.py \
           tests/titan/core/test_cold_start.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Phase 9 schema tests (v13/v14 + cold-start)"
@@ -85,7 +94,7 @@ echo "  → SCHEMA_VERSION = $SCHEMA_VERSION"
 _section "C. Governance invariants (AST)"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if .venv/bin/pytest tests/test_architectural_invariants.py \
+if $PYTEST_BIN tests/test_architectural_invariants.py \
      tests/test_fitness_functions.py \
      tests/test_athlete_isolation_invariant.py \
      -q --tb=short --no-cov 2>&1 | grep -q "passed"; then
@@ -94,14 +103,14 @@ else
   _fail "AST architectural invariants"
 fi
 
-if .venv/bin/pytest tests/test_governance_mutation.py \
+if $PYTEST_BIN tests/test_governance_mutation.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Governance mutation tests"
 else
   _fail "Governance mutation tests"
 fi
 
-if .venv/bin/pytest tests/test_governance_golden.py \
+if $PYTEST_BIN tests/test_governance_golden.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Governance golden file (decision regression)"
 else
@@ -112,7 +121,7 @@ fi
 _section "D. Threshold source-of-truth"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if .venv/bin/pytest tests/test_documentation_consistency.py \
+if $PYTEST_BIN tests/test_documentation_consistency.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Documentation consistency (threshold/evidence/ADR)"
 else
@@ -149,7 +158,7 @@ fi
 _section "E. Dependency hygiene"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if .venv/bin/pytest tests/test_t4_25_dependency_drift_audit.py \
+if $PYTEST_BIN tests/test_t4_25_dependency_drift_audit.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "Dependency drift audit"
 else
@@ -177,7 +186,7 @@ else
 fi
 
 echo "  Running G2 (strict pytest)..."
-G2_OUT=$(.venv/bin/pytest -q -W error::pytest.PytestWarning --tb=no 2>&1 | tail -3)
+G2_OUT=$($PYTEST_BIN -q -W error::pytest.PytestWarning --tb=no 2>&1 | tail -3)
 echo "  $G2_OUT"
 if echo "$G2_OUT" | grep -q "passed"; then
   _pass "G2 strict pytest"
@@ -186,7 +195,7 @@ else
 fi
 
 echo "  Running G3 (full pytest)..."
-G3_OUT=$(.venv/bin/pytest -q --tb=no 2>&1 | tail -3)
+G3_OUT=$($PYTEST_BIN -q --tb=no 2>&1 | tail -3)
 echo "  $G3_OUT"
 if echo "$G3_OUT" | grep -q "passed"; then
   _pass "G3 full pytest"
@@ -198,7 +207,7 @@ fi
 _section "G. Coverage gate"
 # ─────────────────────────────────────────────────────────────────────────────
 
-COV=$(.venv/bin/pytest --cov=titan --cov-report=term-missing -q --tb=no \
+COV=$($PYTEST_BIN --cov=titan --cov-report=term-missing -q --tb=no \
       2>&1 | { grep "TOTAL" || true; } | awk '{print $NF}' | tr -d '%')
 if [ -n "$COV" ] && [ "$COV" -ge 80 ]; then
   _pass "Coverage: ${COV}% ≥ 80%"
@@ -228,7 +237,7 @@ fi
 _section "I. Documentation consistency"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if .venv/bin/pytest tests/test_claude_md_integrity.py \
+if $PYTEST_BIN tests/test_claude_md_integrity.py \
      -q --tb=no --no-cov 2>&1 | grep -q "passed"; then
   _pass "CLAUDE.md integrity"
 else
