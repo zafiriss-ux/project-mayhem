@@ -67,7 +67,7 @@ class TestAutonomicFusionEngine:
 
     def test_afi_neutral_signals_returns_zero(self, afe):
         afi = afe.calculate_afi(0.0, None, 0.0, 0.0)
-        assert afi == 0.0
+        assert afi == pytest.approx(0.0, abs=1e-9)
 
     def test_afi_result_rounded_to_three_places(self, afe):
         afi = afe.calculate_afi(0.333, None, 0.222, 0.111)
@@ -97,8 +97,8 @@ class TestAutonomicFusionEngine:
         max_afi = afe.calculate_afi(1.0, hrr_60_today=None, sleep_depth_delta=1.0, resp_delta=1.0)
         min_afi = afe.calculate_afi(-1.0, hrr_60_today=None, sleep_depth_delta=-1.0, resp_delta=-1.0)
 
-        assert max_afi == 0.65
-        assert min_afi == -0.65
+        assert max_afi == pytest.approx(0.65, rel=1e-6)
+        assert min_afi == pytest.approx(-0.65, rel=1e-6)
 
     def test_calculate_afi_docstring_declares_no_hrr_boundary_range(self):
         from titan.science.autonomic_engine import AutonomicFusionEngine
@@ -114,14 +114,14 @@ class TestAutonomicFusionEngine:
         afe.add_hrr("2026-01-02", 38)
         # Only 2 records — threshold is 3
         z = afe._hrr_zscore(36)
-        assert z == 0.0
+        assert z == pytest.approx(0.0, abs=1e-9)
 
     def test_hrr_zscore_zero_mad_returns_zero(self, afe):
         """All identical values → MAD = 0 → z-score = 0."""
         for i in range(5):
             afe.add_hrr(f"2026-01-{i+1:02d}", 40)
         z = afe._hrr_zscore(40)
-        assert z == 0.0
+        assert z == pytest.approx(0.0, abs=1e-9)
 
     def test_hrr_zscore_above_median_is_positive(self, afe):
         """Today's HRR well above median → positive z-score."""
@@ -148,7 +148,7 @@ class TestAutonomicFusionEngine:
 
     def test_48h_buffer_single_entry_returns_unchanged(self, afe):
         result = afe.apply_48h_buffer(0.6)
-        assert result == 0.6
+        assert result == pytest.approx(0.6, rel=1e-6)
 
     def test_48h_buffer_formula_applied_correctly(self, afe):
         """AFI_final = (today + 0.5 * yesterday) / 1.5"""
@@ -234,7 +234,7 @@ class TestAutonomicFusionEngine:
 
     def test_get_readiness_constraints_afi_propagated(self, afe):
         result = afe.get_readiness_constraints(0.5, 5.0)
-        assert result['afi'] == 0.5
+        assert result['afi'] == pytest.approx(0.5, rel=1e-6)
 
     def test_get_readiness_constraints_positive_afi_positive_modifier(self, afe):
         result = afe.get_readiness_constraints(1.0, 5.0)
@@ -344,20 +344,20 @@ class TestIntensityGovernor:
         })
         assert result.color == "GREEN"
         assert result.max_zone == 5
-        assert result.volume_modifier == 1.0
+        assert result.volume_modifier == pytest.approx(1.0, rel=1e-6)
         assert result.session_override is None
 
     def test_single_yellow_signal_yields_yellow(self, gov):
         result = gov.evaluate({"drift_pct": 4.0})  # YELLOW
         assert result.color == "YELLOW"
         assert result.max_zone == 3
-        assert result.volume_modifier == 0.8
+        assert result.volume_modifier == pytest.approx(0.8, rel=1e-6)
 
     def test_single_red_signal_yields_red(self, gov):
         result = gov.evaluate({"drift_pct": 6.0})  # RED
         assert result.color == "RED"
         assert result.max_zone == 2
-        assert result.volume_modifier == 0.0
+        assert result.volume_modifier == pytest.approx(0.0, abs=1e-9)
         assert result.session_override == "EASY"
 
     def test_red_overrides_yellow(self, gov):
@@ -580,7 +580,7 @@ class TestCriticalSpeedTracker:
 
     def test_first_update_sets_smoothed_to_raw(self, tracker):
         tracker.update("2026-01-01", 3.5, 200.0)
-        assert tracker.cs_smoothed == 3.5
+        assert tracker.cs_smoothed == pytest.approx(3.5, rel=1e-6)
 
     def test_ewma_smoothing_applied_on_second_update(self, tracker):
         tracker.update("2026-01-01", 3.5, 200.0)
@@ -622,15 +622,15 @@ class TestCriticalSpeedTracker:
 
     def test_tau_multiplier_speed(self, tracker):
         tracker.update("2026-01-01", 3.0, 1000.0)  # SPEED
-        assert tracker.tau_w_prime_multiplier == 1.175
+        assert tracker.tau_w_prime_multiplier == pytest.approx(1.175, rel=1e-6)
 
     def test_tau_multiplier_endurance(self, tracker):
         tracker.update("2026-01-01", 4.0, 400.0)  # ENDURANCE
-        assert tracker.tau_w_prime_multiplier == 0.925
+        assert tracker.tau_w_prime_multiplier == pytest.approx(0.925, rel=1e-6)
 
     def test_tau_multiplier_hybrid(self, tracker):
         tracker.update("2026-01-01", 4.0, 800.0)  # HYBRID
-        assert tracker.tau_w_prime_multiplier == 1.0
+        assert tracker.tau_w_prime_multiplier == pytest.approx(1.0, rel=1e-6)
 
     # ── Thermal degradation ────────────────────────────────────────────────
 
@@ -695,7 +695,7 @@ class TestCriticalSpeedTracker:
     # ── Confidence ─────────────────────────────────────────────────────────
 
     def test_confidence_zero_before_any_update(self, tracker):
-        assert tracker.confidence == 0.0
+        assert tracker.confidence == pytest.approx(0.0, abs=1e-9)
 
     def test_confidence_increases_with_more_updates(self, tracker):
         tracker.update("2026-01-01", 3.5, 200.0)
@@ -930,7 +930,7 @@ class TestOutcomeTracker:
 
     def test_record_decision_afi_value_stored(self, tracker):
         decision = self._make_decision(tracker, afi_value=0.65)
-        assert decision.afi_value == 0.65
+        assert decision.afi_value == pytest.approx(0.65, rel=1e-6)
 
     def test_record_decision_afi_none_stored(self, tracker):
         decision = self._make_decision(tracker)
@@ -1016,12 +1016,12 @@ class TestOutcomeTracker:
         self._make_decision(tracker, phase="BUILD", governance_clean=False)
         self._make_decision(tracker, phase="BUILD", governance_clean=False)
         rates = tracker.get_lock_rate_by_phase()
-        assert rates["BUILD"] == 1.0
+        assert rates["BUILD"] == pytest.approx(1.0, rel=1e-6)
 
     def test_lock_rate_by_phase_none_locked(self, tracker):
         self._make_decision(tracker, phase="BASE", governance_clean=True, locks_applied=[])
         rates = tracker.get_lock_rate_by_phase()
-        assert rates["BASE"] == 0.0
+        assert rates["BASE"] == pytest.approx(0.0, abs=1e-9)
 
     def test_lock_rate_by_phase_mixed(self, tracker):
         self._make_decision(tracker, phase="PEAK", governance_clean=False)
@@ -1064,7 +1064,7 @@ class TestOutcomeTracker:
         summary = tracker.get_calibration_summary()
         assert "governance_lock_rate" in summary
         assert "completion_rate" in summary
-        assert summary["completion_rate"] == 1.0
+        assert summary["completion_rate"] == pytest.approx(1.0, rel=1e-6)
         assert "lock_outcome_correlation" in summary
 
     def test_lock_outcome_correlation_returns_empty_without_outcomes(self, tracker):
@@ -1096,9 +1096,9 @@ class TestOutcomeTracker:
         assert "LOCK_A" in corr
         assert corr["LOCK_A"]["n_with_lock"] == 4
         assert corr["LOCK_A"]["n_without_lock"] == 4
-        assert corr["LOCK_A"]["completion_with_lock"] == 0.75
-        assert corr["LOCK_A"]["completion_without_lock"] == 1.0
-        assert corr["LOCK_A"]["completion_delta_pp"] == -25.0
+        assert corr["LOCK_A"]["completion_with_lock"] == pytest.approx(0.75, rel=1e-6)
+        assert corr["LOCK_A"]["completion_without_lock"] == pytest.approx(1.0, rel=1e-6)
+        assert corr["LOCK_A"]["completion_delta_pp"] == pytest.approx(-25.0, rel=1e-6)
 
     def test_calibration_summary_avg_rpe(self, tracker):
         for i, rpe in enumerate([5, 7]):
@@ -1215,7 +1215,7 @@ class TestLactateLogic:
     def test_lt2_stores_inputs(self, lt):
         result = lt.estimate_lt2(hr_stable=True, rpe=6.8)
         assert result["hr_stable"] is True
-        assert result["rpe"] == 6.8
+        assert result["rpe"] == pytest.approx(6.8, rel=1e-6)
 
     # ── tempo_volume_decision ──────────────────────────────────────────────
 

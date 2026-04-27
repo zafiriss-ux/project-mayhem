@@ -31,9 +31,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from titan.config import thresholds
 from titan.core.database import DatabaseManager
+from titan.features.nutrition_optimizer import NutritionOptimizer
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
+from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import GarminSync
+from titan.integrations.telegram_bot import TitanTelegramBot
+from titan.integrations.weather_api import WeatherAPI
 from titan.science import adaptive_memory as adaptive_memory_module
 from titan.science.adaptive_memory import AdaptiveMemory
 from titan.science.biomechanics import BiomechanicsAnalysis
@@ -41,7 +45,10 @@ from titan.science.drift_engine import DriftEngine
 from titan.science.durability_engine import DurabilityEngine
 from titan.science.efficiency_engine import EfficiencyEngine
 from titan.science.fatigue_engine import FatigueEngine
+from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.rcp_engine import RCPEngine
+from titan.science.readiness_engine import ReadinessEngine
+from titan.science.tsb_engine import TSBEngine
 from titan.ui import setup_wizard
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1066,42 +1073,42 @@ class TestDailyCoachHelpers:
         """Minimal stubs for all DailyCoach constructor parameters."""
         from titan.orchestration.daily_coach import DailyCoach
 
-        garmin = MagicMock()
+        garmin = MagicMock(spec=GarminSync)
         garmin.sync_all.return_value = {
             "activities": [], "weight": [], "sleep": [], "hrv": []
         }
 
-        hrv_engine = MagicMock()
+        hrv_engine = MagicMock(spec=HRVGuidedEngine)
         hrv_engine.hrv_log = []
         hrv_engine.add_hrv_measurement = MagicMock()
 
-        tsb_engine = MagicMock()
+        tsb_engine = MagicMock(spec=TSBEngine)
         tsb_engine.daily_loads = []
         tsb_engine.add_daily_load = MagicMock()
         tsb_engine.calculate_tsb.return_value = (5.0, "FRESH")
 
-        readiness_engine = MagicMock()
+        readiness_engine = MagicMock(spec=ReadinessEngine)
         readiness_engine.analyze_readiness.return_value = {"score": 80, "status": "GOOD"}
 
-        weather_api = MagicMock()
+        weather_api = MagicMock(spec=WeatherAPI)
         weather_api.find_optimal_training_windows.return_value = [
             _make_window(6, score=10.0)
         ]
 
-        optimal_time_calc = MagicMock()
+        optimal_time_calc = MagicMock(spec=OptimalTimeCalculator)
         optimal_time_calc.calculate_optimal_time.return_value = {
             "recommended_time": "06:00", "quality": "GOOD",
             "dew_point": 10.0, "reasoning": []
         }
 
-        nutrition_optimizer = MagicMock()
+        nutrition_optimizer = MagicMock(spec=NutritionOptimizer)
         nutrition_optimizer.analyze_weight_trend.return_value = {"current_weight": 75.0}
         nutrition_optimizer.add_weight_entry = MagicMock()
         nutrition_optimizer.calculate_daily_nutrition.return_value = {
             "carbs_g": 300, "protein_g": 120
         }
 
-        weekly_planner = MagicMock()
+        weekly_planner = MagicMock(spec=WeeklyPlanGenerator)
         weekly_planner.get_today_session.return_value = {
             "session_type": "EASY", "duration_min": 45,
             "distance_km": 8, "details": "Easy run"
@@ -1112,7 +1119,7 @@ class TestDailyCoachHelpers:
         coach = DailyCoach(
             garmin_sync=garmin,
             weather_api=weather_api,
-            telegram_bot=MagicMock(send_daily_coaching=MagicMock(return_value=True)),
+            telegram_bot=MagicMock(spec=TitanTelegramBot),
             hrv_engine=hrv_engine,
             tsb_engine=tsb_engine,
             readiness_engine=readiness_engine,

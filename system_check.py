@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def test_imports(return_results=False):
+def check_imports(return_results=False):
     """Test all critical imports"""
     print("🔍 Testing imports...")
     errors = []
@@ -68,7 +68,7 @@ def test_imports(return_results=False):
         return len(errors) == 0, errors
     assert not errors, f"Import check failed: {errors}"
 
-def test_instantiation(return_results=False):
+def check_instantiation(return_results=False):
     """Test that key classes can be instantiated"""
     print("\n🔍 Testing instantiation...")
     errors = []
@@ -99,7 +99,7 @@ def test_instantiation(return_results=False):
         return len(errors) == 0, errors
     assert not errors, f"Instantiation check failed: {errors}"
 
-def test_basic_functionality(return_results=False):
+def check_basic_functionality(return_results=False):
     """Test basic functionality of key classes"""
     print("\n🔍 Testing functionality...")
     errors = []
@@ -156,7 +156,7 @@ def test_basic_functionality(return_results=False):
         return len(errors) == 0, errors
     assert not errors, f"Functionality check failed: {errors}"
 
-def test_threading(return_results=False):
+def check_threading(return_results=False):
     """Test that classes are thread-aware"""
     print("\n🔍 Testing threading awareness...")
     errors = []
@@ -206,7 +206,7 @@ def main():
     all_passed = True
 
     # Test 1: Imports
-    passed, errors = test_imports(return_results=True)
+    passed, errors = check_imports(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Import test failed ({len(errors)} errors)")
@@ -214,7 +214,7 @@ def main():
         print("\n✅ All imports successful")
 
     # Test 2: Instantiation
-    passed, errors = test_instantiation(return_results=True)
+    passed, errors = check_instantiation(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Instantiation test failed ({len(errors)} errors)")
@@ -222,7 +222,7 @@ def main():
         print("\n✅ All classes instantiate")
 
     # Test 3: Functionality
-    passed, errors = test_basic_functionality(return_results=True)
+    passed, errors = check_basic_functionality(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Functionality test failed ({len(errors)} errors)")
@@ -230,7 +230,7 @@ def main():
         print("\n✅ All functionality works")
 
     # Test 4: Threading
-    passed, errors = test_threading(return_results=True)
+    passed, errors = check_threading(return_results=True)
     if not passed:
         all_passed = False
         print(f"\n❌ Threading test failed ({len(errors)} errors)")

@@ -8,13 +8,28 @@ import pytest
 
 import titan.main as titan_main
 from titan.core.database import DatabaseManager
+from titan.features.nutrition_optimizer import NutritionOptimizer
+from titan.features.optimal_time_calculator import OptimalTimeCalculator
+from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
 from titan.integrations.weather_api import WeatherAPI
 from titan.orchestration.daily_coach import DailyCoach
+from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+from titan.science.autonomic_engine import AutonomicFusionEngine
+from titan.science.critical_speed import CriticalSpeedEngine
+from titan.science.fatigue_engine import FatigueEngine
+from titan.science.glycogen_model import GlycogenEngine
+from titan.science.governance_engine import GovernanceEngine
+from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.outcome_tracker import OutcomeTracker
+from titan.science.readiness_engine import ReadinessEngine
+from titan.science.tsb_engine import TSBEngine
+from titan.science.volume_load_gauge import VolumeLoadGauge
 
 
 @pytest.mark.timeout(30)
+@pytest.mark.usefixtures("frozen_date")
 def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, tmp_path):
     """T4-13: Start all workers together, run a few scheduler ticks, then stop cleanly."""
     db = DatabaseManager(db_name="stress_test.db", db_dir=tmp_path)
@@ -30,31 +45,31 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
     telegram = TitanTelegramBot(bot_token="", chat_id="123")
 
     # Minimal DailyCoach with fully mocked dependencies except DB
-    hrv = MagicMock()
+    hrv = MagicMock(spec=HRVGuidedEngine)
     hrv.hrv_log = []
     hrv.add_hrv_measurement = MagicMock()
-    tsb = MagicMock()
+    tsb = MagicMock(spec=TSBEngine)
     tsb.daily_loads = {}
     tsb.add_daily_load = MagicMock()
-    readiness = MagicMock()
-    optimal_time = MagicMock()
-    nutrition = MagicMock()
+    readiness = MagicMock(spec=ReadinessEngine)
+    optimal_time = MagicMock(spec=OptimalTimeCalculator)
+    nutrition = MagicMock(spec=NutritionOptimizer)
     nutrition.analyze_weight_trend.return_value = {"current_weight": 70.0}
-    weekly_planner = MagicMock()
+    weekly_planner = MagicMock(spec=WeeklyPlanGenerator)
     weekly_planner.get_today_session.return_value = {"session_type": "EASY", "duration_min": 30}
-    autonomic = MagicMock()
-    cs_tracker = MagicMock()
+    autonomic = MagicMock(spec=AutonomicFusionEngine)
+    cs_tracker = MagicMock(spec=CriticalSpeedEngine)
     cs_tracker.confidence = 1.0
     cs_tracker.archetype = "AEROBIC"
     cs_tracker.cs_smoothed = None
-    glycogen = MagicMock()
+    glycogen = MagicMock(spec=GlycogenEngine)
     glycogen.daily_debt = 0.0
     glycogen.status = "OK"
-    governance = MagicMock()
-    fatigue_engine = MagicMock()
-    apl = MagicMock()
-    volume_load_gauge = MagicMock()
-    outcome_tracker = MagicMock()
+    governance = MagicMock(spec=GovernanceEngine)
+    fatigue_engine = MagicMock(spec=FatigueEngine)
+    apl = MagicMock(spec=AdaptivePriorityLock)
+    volume_load_gauge = MagicMock(spec=VolumeLoadGauge)
+    outcome_tracker = MagicMock(spec=OutcomeTracker)
 
     coach = DailyCoach(
         garmin_sync=garmin,
@@ -99,7 +114,7 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
                 now = datetime.now().strftime("%Y-%m-%d")
                 db.save_daily_metric(date=now, hrv=45.0, rhr=52, sleep_hours=7.0)
                 db.get_training_load_history(days=7)
-                time.sleep(0.01)
+                time.sleep(0.05)  # WHY: yield to other threads during stress test
         except sqlite3.ProgrammingError as exc:
             programming_errors.append(exc)
             raise
@@ -147,6 +162,7 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
 
         if coach._routine_thread is not None:
             coach._routine_thread.join(timeout=10)
+            assert not coach._routine_thread.is_alive(), "Routine thread did not exit cleanly"
 
         db.close()
 

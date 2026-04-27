@@ -64,7 +64,8 @@ class StubTelegram:
 
 
 class StubSimpleEngine:
-    hrv_log: list = []
+    def __init__(self) -> None:
+        self.hrv_log: list = []
 
     def add_hrv_measurement(self, *_args, **_kwargs):
         return None
@@ -80,7 +81,8 @@ class StubSimpleEngine:
 
 
 class StubAutonomic:
-    hrr_log: list[tuple] = []
+    def __init__(self) -> None:
+        self.hrr_log: list[tuple] = []
 
     def add_hrr(self, *_args, **_kwargs):
         return None

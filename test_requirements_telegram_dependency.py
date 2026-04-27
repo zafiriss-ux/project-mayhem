@@ -24,6 +24,7 @@ DEV_DEPENDENCIES = {
     "mypy==1.19.1",
     "httpx==0.27.2",
     "pre-commit==3.7.1",
+    "freezegun==1.5.1",
 }
 
 BUILD_DEPENDENCIES = {

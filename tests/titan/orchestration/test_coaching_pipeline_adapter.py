@@ -5,7 +5,6 @@ ADR-0052 Stage 3: ThresholdAdapter injection into coaching_pipeline().
 """
 from __future__ import annotations
 
-import contextlib
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -136,8 +135,7 @@ class TestThresholdAdapterInjection:
         with patch(
             "titan.orchestration.coaching_pipeline.ThresholdAdapter"
         ) as mock_adapter_cls:
-            with contextlib.suppress(Exception):
-                coaching_pipeline(ctx)
+            coaching_pipeline(ctx)
             mock_adapter_cls.assert_not_called()
 
     def test_adapter_instantiated_for_graduated_athlete(self):
@@ -157,8 +155,7 @@ class TestThresholdAdapterInjection:
             "titan.orchestration.coaching_pipeline.ThresholdAdapter",
             return_value=mock_adapter,
         ):
-            with contextlib.suppress(Exception):
-                coaching_pipeline(ctx)
+            coaching_pipeline(ctx)
             mock_adapter.load.assert_called_once()
 
     def test_adapter_none_when_no_db(self):
@@ -171,8 +168,7 @@ class TestThresholdAdapterInjection:
         with patch(
             "titan.orchestration.coaching_pipeline.ThresholdAdapter"
         ) as mock_adapter_cls:
-            with contextlib.suppress(Exception):
-                coaching_pipeline(ctx)
+            coaching_pipeline(ctx)
             mock_adapter_cls.assert_not_called()
 
     def test_governance_engine_receives_adapter(self):
@@ -197,14 +193,13 @@ class TestThresholdAdapterInjection:
             mock_engine_cls.return_value.apply_constraints.return_value = MagicMock(
                 session_type="EASY", lock_codes=[], governance_clean=True
             )
-            with contextlib.suppress(Exception):
-                coaching_pipeline(ctx)
+            coaching_pipeline(ctx)
             call_kwargs = mock_engine_cls.call_args
-            if call_kwargs:
-                kwargs = call_kwargs.kwargs if call_kwargs.kwargs else {}
-                assert kwargs.get("threshold_adapter") is mock_adapter, (
-                    "GovernanceEngine must receive the ThresholdAdapter instance"
-                )
+            assert call_kwargs is not None, "GovernanceEngine must be instantiated"
+            kwargs = call_kwargs.kwargs if call_kwargs.kwargs else {}
+            assert kwargs.get("threshold_adapter") is mock_adapter, (
+                "GovernanceEngine must receive the ThresholdAdapter instance"
+            )
 
     def test_propose_adaptation_never_called(self):
         """
@@ -223,6 +218,5 @@ class TestThresholdAdapterInjection:
             "titan.orchestration.coaching_pipeline.ThresholdAdapter",
             return_value=mock_adapter,
         ):
-            with contextlib.suppress(Exception):
-                coaching_pipeline(ctx)
+            coaching_pipeline(ctx)
             mock_adapter.propose_adaptation.assert_not_called()

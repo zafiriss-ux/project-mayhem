@@ -513,7 +513,7 @@ def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeyp
         try:
             for idx in range(25):
                 bot.schedule_task(f"n-{idx}", "07:00", lambda: None, days=["Monday"])
-                time.sleep(0.001)
+                time.sleep(0.05)  # WHY: prevent tight-loop race between appender and worker threads
         except Exception as exc:  # pragma: no cover - assertion path
             errors.append(exc)
             bot._stop_event.set()

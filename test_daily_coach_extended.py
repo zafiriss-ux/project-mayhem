@@ -24,15 +24,19 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-os.environ.setdefault("GARMIN_EMAIL",        "test@example.com")
-os.environ.setdefault("GARMIN_PASSWORD",     "test")
-os.environ.setdefault("TELEGRAM_BOT_TOKEN",  "")
-os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
-os.environ.setdefault("WEATHER_API_KEY",     "test")
-os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
+from freezegun import freeze_time
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+
+@pytest.fixture(autouse=True)
+def _titan_env_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GARMIN_EMAIL",       "test@example.com")
+    monkeypatch.setenv("GARMIN_PASSWORD",    "test")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID",   "12345")
+    monkeypatch.setenv("WEATHER_API_KEY",    "test")
+    monkeypatch.setenv("WEATHER_LOCATION",   "Athens,GR")
 
 
 def _json_events(caplog):
@@ -121,6 +125,7 @@ def _make_coach(tmp_path):
 # 1. _persist_garmin_data
 # ════════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.usefixtures("frozen_date")
 class TestPersistGarminData:
     """Tests for DailyCoach._persist_garmin_data()."""
 
@@ -203,6 +208,7 @@ class TestPersistGarminData:
 # 2. _get_baseline_rhr
 # ════════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.usefixtures("frozen_date")
 class TestGetBaselineRhr:
 
     @pytest.fixture
@@ -273,6 +279,7 @@ class TestGetRecentTrimp:
 # 4. _feed_load_engines
 # ════════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.usefixtures("frozen_date")
 class TestFeedLoadEngines:
 
     @pytest.fixture
@@ -316,6 +323,7 @@ class TestFeedLoadEngines:
 # 5. _hydrate_engines_from_db (startup hydration)
 # ════════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.usefixtures("frozen_date")
 class TestHydrateEnginesFromDb:
 
     @pytest.fixture
@@ -386,6 +394,7 @@ class TestHydrateEnginesFromDb:
 # 6. run_morning_routine — full smoke test with mocked integrations
 # ════════════════════════════════════════════════════════════════════════════
 
+@pytest.mark.usefixtures("frozen_date")
 class TestRunMorningRoutineSmoke:
 
     @pytest.fixture
@@ -448,6 +457,7 @@ class TestRunMorningRoutineSmoke:
         assert vo2['detailed_failed_conditions'] == []
 
 
+@pytest.mark.usefixtures("frozen_date")
 class TestDailyCoachErrorTaxonomy:
 
     @pytest.fixture
