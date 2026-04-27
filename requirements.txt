@@ -25,3 +25,7 @@ import-linter==2.11
 
 # Contract testing (T5-94)
 schemathesis==4.15.2
+
+# Mutation testing (T5-84)
+# NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API
+mutmut==3.5.0
