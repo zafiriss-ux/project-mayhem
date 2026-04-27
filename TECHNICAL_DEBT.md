@@ -3780,6 +3780,27 @@ These patterns are correct and must be preserved in all future work:
 
 ---
 
+## FMEA: Phase 11
+
+**Phase:** 11 | **Date:** 2026-04-27 | **Author:** Architect
+
+### Failure Modes Analyzed
+
+| ID | Component | Failure Mode | Severity | Likelihood | Detection | Mitigation |
+|---|---|---|---|---|---|---|
+| F11-01 | AuthStore lockout | In-memory state lost on restart → lockout bypass | HIGH | LOW | Unit tests (test_auth_hardening.py) | Acceptable — lockout is transient by design |
+| F11-02 | LoginRateLimiter | IP spoofing bypasses per-IP limit | MEDIUM | LOW | None (by design) | Reverse proxy handles upstream; out of scope |
+| F11-03 | Telegram _poll_thread | Non-daemon thread blocks pytest exit | HIGH | CONFIRMED | T5-98 flakiness tracker | Fixed: daemon=True + mock (3c93e13) |
+| F11-04 | GarminSync env pollution | GARMIN_PASSWORD env leaks across test session | HIGH | CONFIRMED | Manual diagnosis | Fixed: monkeypatch.delenv pattern (07f9ef4, a6393e8) |
+| F11-05 | T5-12 Pass 2 | O1-O7 drift from spec | MEDIUM | LOW | phase_close_audit.sh | Verified complete — all obligations confirmed |
+
+### Phase 11 Verdict
+No unmitigated HIGH/CRITICAL items. F11-03 and F11-04 were confirmed
+and resolved within the phase. F11-01 and F11-02 are accepted risks
+with documented rationale.
+
+---
+
 ## Tracking
 
 When an item is completed, mark it here with date and PR reference:
