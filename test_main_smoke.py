@@ -44,84 +44,109 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 class TestMainImports:
     """
-    Verify that every top-level import in titan/main.py resolves without error.
-    If any import fails here, it will also fail at runtime.
+    Verify that every top-level import in titan/main.py resolves without error
+    and that the exported symbol is a callable class or function.
     """
 
     def test_import_garmin_sync(self):
-        from titan.integrations.garmin_sync import GarminSync  # noqa
+        from titan.integrations.garmin_sync import GarminSync
+        assert callable(GarminSync)
 
     def test_import_weather_api(self):
-        from titan.integrations.weather_api import WeatherAPI  # noqa
+        from titan.integrations.weather_api import WeatherAPI
+        assert callable(WeatherAPI)
 
     def test_import_telegram_bot(self):
-        from titan.integrations.telegram_bot import TitanTelegramBot  # noqa
+        from titan.integrations.telegram_bot import TitanTelegramBot
+        assert callable(TitanTelegramBot)
 
     def test_import_hrv_engine(self):
-        from titan.science.hrv_engine import HRVGuidedEngine  # noqa
+        from titan.science.hrv_engine import HRVGuidedEngine
+        assert callable(HRVGuidedEngine)
 
     def test_import_tsb_engine(self):
-        from titan.science.tsb_engine import TSBEngine  # noqa
+        from titan.science.tsb_engine import TSBEngine
+        assert callable(TSBEngine)
 
     def test_import_acwr_engine(self):
-        from titan.science.acwr_engine import ACWREngine  # noqa
+        from titan.science.acwr_engine import ACWREngine
+        assert callable(ACWREngine)
 
     def test_import_readiness_engine(self):
-        from titan.science.readiness_engine import ReadinessEngine  # noqa
+        from titan.science.readiness_engine import ReadinessEngine
+        assert callable(ReadinessEngine)
 
     def test_import_glycogen_model(self):
-        from titan.science.glycogen_model import GlycogenModel  # noqa
+        from titan.science.glycogen_model import GlycogenModel
+        assert callable(GlycogenModel)
 
     def test_import_drift_engine(self):
-        from titan.science.drift_engine import DriftEngine  # noqa
+        from titan.science.drift_engine import DriftEngine
+        assert callable(DriftEngine)
 
     def test_import_lactate_logic(self):
-        from titan.science.lactate_logic import LactateLogic  # noqa
+        from titan.science.lactate_logic import LactateLogic
+        assert callable(LactateLogic)
 
     def test_import_trimp_engine(self):
-        from titan.science.trimp_engine import TRIMPEngine  # noqa
+        from titan.science.trimp_engine import TRIMPEngine
+        assert callable(TRIMPEngine)
 
     def test_import_fatigue_engine(self):
-        from titan.science.fatigue_engine import FatigueEngine  # noqa
+        from titan.science.fatigue_engine import FatigueEngine
+        assert callable(FatigueEngine)
 
     def test_import_adaptive_memory(self):
-        from titan.science.adaptive_memory import AdaptiveMemory  # noqa
+        from titan.science.adaptive_memory import AdaptiveMemory
+        assert callable(AdaptiveMemory)
 
     def test_import_biomechanics(self):
-        from titan.science.biomechanics import BiomechanicsAnalysis  # noqa
+        from titan.science.biomechanics import BiomechanicsAnalysis
+        assert callable(BiomechanicsAnalysis)
 
     def test_import_efficiency_engine(self):
-        from titan.science.efficiency_engine import EfficiencyEngine  # noqa
+        from titan.science.efficiency_engine import EfficiencyEngine
+        assert callable(EfficiencyEngine)
 
     def test_import_durability_engine(self):
-        from titan.science.durability_engine import DurabilityEngine  # noqa
+        from titan.science.durability_engine import DurabilityEngine
+        assert callable(DurabilityEngine)
 
     def test_import_critical_speed(self):
-        from titan.science.critical_speed import CriticalSpeedEngine  # noqa
+        from titan.science.critical_speed import CriticalSpeedEngine
+        assert callable(CriticalSpeedEngine)
 
     def test_import_rcp_engine(self):
-        from titan.science.rcp_engine import RCPEngine  # noqa
+        from titan.science.rcp_engine import RCPEngine
+        assert callable(RCPEngine)
 
     def test_import_database_manager(self):
-        from titan.core.database import DatabaseManager  # noqa
+        from titan.core.database import DatabaseManager
+        assert callable(DatabaseManager)
 
     def test_import_weekly_planner(self):
-        from titan.features.weekly_planner import WeeklyPlanGenerator  # noqa
+        from titan.features.weekly_planner import WeeklyPlanGenerator
+        assert callable(WeeklyPlanGenerator)
 
     def test_import_optimal_time_calculator(self):
-        from titan.features.optimal_time_calculator import OptimalTimeCalculator  # noqa
+        from titan.features.optimal_time_calculator import OptimalTimeCalculator
+        assert callable(OptimalTimeCalculator)
 
     def test_import_nutrition_optimizer(self):
-        from titan.features.nutrition_optimizer import NutritionOptimizer  # noqa
+        from titan.features.nutrition_optimizer import NutritionOptimizer
+        assert callable(NutritionOptimizer)
 
     def test_import_daily_coach(self):
-        from titan.orchestration.daily_coach import DailyCoach  # noqa
+        from titan.orchestration.daily_coach import DailyCoach
+        assert callable(DailyCoach)
 
     def test_import_menu_system(self):
-        from titan.ui.menu_system import main_menu  # noqa
+        from titan.ui.menu_system import main_menu
+        assert callable(main_menu)
 
     def test_import_setup_wizard(self):
-        from titan.ui.setup_wizard import ensure_credentials  # noqa
+        from titan.ui.setup_wizard import ensure_credentials
+        assert callable(ensure_credentials)
 
 
 # ════════════════════════════════════════════════════════════════════════════
