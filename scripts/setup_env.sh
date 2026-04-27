@@ -58,6 +58,9 @@ pip install -r requirements-dev.txt --quiet
 echo "==> Verifying key tools"
 python -c "import pytest; import ruff" 2>/dev/null || pip install pytest pytest-cov ruff --quiet
 
+echo "==> Installing mutation testing tooling (T5-84)"
+pip install mutmut==3.5.0 --quiet
+
 echo "==> Environment ready"
 echo "    Python: $(python --version)"
 echo "    pytest: $(python -m pytest --version)"

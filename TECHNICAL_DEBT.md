@@ -3772,7 +3772,7 @@ These patterns are correct and must be preserved in all future work:
 | import-linter (T5-93) | Contract definition drift → layer violations not caught | Hidden coupling accumulates between layers | LOW | HIGH | `.importlinter` 5 contracts; Section P in `hard_audit.sh`; CI gate enforced | ✅ MITIGATED |
 | schemathesis contracts (T5-94) | FastAPI schema drift → contract tests stale | API consumer breakage not detected | LOW | HIGH | 5 contract tests in `tests/titan/api/test_schemathesis_contracts.py`; pydantic `BaseModel` enforces schema | ✅ MITIGATED |
 | LLM coach (T5-10) | Athlete context assembly from multiple DB tables → cross-athlete data leak | Wrong coaching recommendation; athlete privacy violation | MEDIUM | CRITICAL | Deferred until Phase 9 multi-athlete corpus available; INV-04 athlete_id scoping required before implementation | ⚠️ DEFERRED — not yet designed |
-| Mutation testing (T5-84) | Missing mutations escape test suite → false confidence in coverage | Safety-gate regressions not caught by tests | MEDIUM | HIGH | Deferred Phase 10; existing 2600+ tests provide baseline; coverage gate ≥80% | ⚠️ DEFERRED |
+| Mutation testing (T5-84) | Missing mutations escape test suite → false confidence in coverage | Safety-gate regressions not caught by tests | MEDIUM | HIGH | Targeted mutmut setup for H1-H5 gates; `scripts/mutation_test_governance.sh`; `setup.cfg [mutmut]`; not in CI (too slow); run manually before phase close | ✅ IMPLEMENTED |
 | Hypothesis stateful testing (T5-85) | State machine violations in DailyCoach pipeline not caught | Governance gate skipped under specific state sequence | LOW | CRITICAL | Deferred Phase 10; existing governance golden tests mitigate | ⚠️ DEFERRED |
 | Chaos engineering (T5-89) | DB/network failure paths not exercised → unknown degraded-mode behavior | Silent data loss or wrong coaching under infra failure | LOW | HIGH | Deferred Phase 10; ADR-0020 degraded conservative mode implemented | ⚠️ DEFERRED |
 
@@ -3990,7 +3990,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-81 | 🟡 OPEN — del athlete_id sentinel pattern in persistence.py:992,1070; LOW priority | — |
 | T5-82 | 🟡 OPEN — naive datetime.now() in 7 non-governance modules (29 locations); LOW priority | — |
 | T5-83 | 🟡 OPEN — slow tests with real network calls (810s, 102s, 10s sleep); MEDIUM priority | — |
-| T5-84 | 🟡 OPEN — Phase 10 (mutation testing / mutmut) | — |
+| T5-84 | ✅ IMPLEMENTED 2026-04-27 — `scripts/mutation_test_governance.sh`; `setup.cfg [mutmut]`; `mutmut==3.5.0` in requirements.txt; targeted H1-H5 gates only | 2026-04-27 |
 | T5-85 | 🟡 OPEN — Phase 10 (stateful Hypothesis property-based testing) | — |
 | T5-86 | 🟡 OPEN — Phase 10 (differential fuzzing SQLite vs PostgreSQL) | — |
 | T5-87 | 🟡 OPEN — Phase 10 (metamorphic testing for physiological models) | — |
@@ -4329,12 +4329,18 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 *Items marked ✅ IMPLEMENTED were delivered in the same session.*
 *Items marked 🟡 OPEN are tracked for future phases.*
 
-### T5-84 · Mutation testing (D-1) 🟡 OPEN
+### T5-84 · Mutation testing (D-1) ✅ IMPLEMENTED 2026-04-27
 
-**Status:** OPEN — Phase 10.
-**Method:** mutmut / cosmic-ray automated mutation testing for governance gates.
-**Rationale:** Automates what test_governance_mutation.py does manually. Kill rate metric for gate test quality.
-**Prerequisite:** Stable governance gate surface (Phase 9 close).
+**Status:** IMPLEMENTED — 2026-04-27.
+**Method:** mutmut 2.5.1 targeted at `titan/science/governance_engine.py` (H1-H5 gates only).
+**Rationale:** Automates kill-rate metric for gate test quality without full-suite overhead (~58s/mutant × N mutants).
+**Scope reduction:** Governance gates only — full-suite mutation (~8-14h) deferred indefinitely as impractical for CI.
+**Deliverables:**
+- `scripts/mutation_test_governance.sh` — manual runner (`--quick` for 50-mutant sample)
+- `setup.cfg [mutmut]` — paths/runner config for mutmut 2.5.1
+- `mutmut==3.5.0` added to `requirements.txt` (2.x uninstallable: `glob2` dep fails to build)
+- `setup_env.sh` updated to install mutmut
+**CI policy:** NOT in CI gate — run manually before phase close.
 **Priority:** P3.
 
 ---
