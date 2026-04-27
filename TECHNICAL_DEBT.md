@@ -3801,6 +3801,23 @@ with documented rationale.
 
 ---
 
+## FMEA: Phase 12
+
+**Phase:** 12 | **Date:** 2026-04-27 | **Author:** Architect
+
+| ID | Component | Failure Mode | Severity | Likelihood | Mitigation |
+|---|---|---|---|---|---|
+| F12-01 | mutmut 3.5.0 | API incompatibility με 2.x spec | LOW | CONFIRMED | Adapted to 3.x config-driven API (770b057) |
+| F12-02 | LLM advisory layer | Premature implementation without corpus | HIGH | MITIGATED | Gate enforced: corpus=0, T5-10 BLOCKED |
+| F12-03 | Metamorphic tests | MR assumptions wrong for edge cases | LOW | LOW | 13/13 MRs verified against actual engine behavior |
+| F12-04 | schemathesis 4.x | API drift από 3.x (from_dict location) | MEDIUM | CONFIRMED | Version-aware loader + freezegun fix |
+
+### Phase 12 Verdict
+No unmitigated HIGH items. T5-10 correctly blocked pending corpus gate.
+All tooling additions (T5-84, T5-87) operational and tested.
+
+---
+
 ## Tracking
 
 When an item is completed, mark it here with date and PR reference:
