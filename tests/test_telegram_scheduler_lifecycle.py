@@ -22,6 +22,7 @@ def test_telegram_scheduler_worker_lifecycle(monkeypatch):
         bot._stop_event.wait(timeout=0.01)
 
     monkeypatch.setattr(bot, "_scheduler_worker", _fast_scheduler_worker)
+    monkeypatch.setattr(bot, "_poll_worker", lambda: None)
 
     bot.start_bot()
     first_thread = bot._sched_thread
