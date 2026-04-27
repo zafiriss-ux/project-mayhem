@@ -161,7 +161,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2597 tests all green as of audit-fixes branch (removed 8 zombie tests from test_titan_logic.py, added 5 biometric contract tests, parametrized 7 boundary tests into 1×8-case parametrize) (2026-04-25). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2629 tests all green as of audit-tests-bugs branch (audit 2026-04-26: fixed 13 hygiene issues — mutable class-level state, bare MagicMock(), float == assertions, contextlib.suppress anti-pattern, module-level os.environ mutation, datetime.now() flakiness, sleep flakiness; added 32 new tests covering P0 boundaries, PARASYMPATHETIC_GUARD, DailyCoach step 8/10 ESI fallback) (2026-04-26). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
