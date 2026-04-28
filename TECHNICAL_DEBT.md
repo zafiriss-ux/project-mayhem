@@ -3818,6 +3818,38 @@ All tooling additions (T5-84, T5-87) operational and tested.
 
 ---
 
+### C-W12 · GitHub Actions free-tier exhausted
+
+**Status:** 🟡 OPEN
+**Priority:** MEDIUM
+**Phase:** 13
+**Impact:** CI checks do not run on PRs — automated gate verification disabled.
+**Options:**
+- (a) Self-hosted runner (free, requires persistent local machine)
+- (b) GitHub Pro/Team plan (paid)
+**Decision:** Zaf (architect) — pending billing strategy.
+
+---
+
+## Phase 13 — Entry Criteria & Scope
+
+**Entry gate (all must hold before any Phase 13 implementation begins):**
+- Phase 12 close audit: PASS ✅ (met: 2026-04-27)
+- B-1/B-2/B-3 optimistic defaults resolved: ✅ (this pass, 2026-04-28)
+- PRAGMA foreign_keys: ON — migration v15 (Phase 13 implementation blocker)
+- Garmin ban lifted (operational prerequisite — no implementation unblocks this)
+- corpus ≥ 1 athlete with ≥ 7 days of real data (LLM advisory gate)
+
+**Scope (items enter implementation only after all entry-gate criteria are met):**
+1. Migration v15: `PRAGMA foreign_keys = ON` + FK constraints on 5 tables
+2. `get_last_garmin_sync_timestamp()` scoped by `athlete_id`
+3. `datetime.now()` → `datetime.now(UTC)` in `critical_speed.py` + `outcome_tracker.py` (T5-82 governance-adjacent)
+4. T5-10 LLM advisory layer (corpus gate required first)
+5. C-W12 resolution (CI infrastructure — billing decision required)
+6. First production athlete onboarding
+
+---
+
 ## Tracking
 
 When an item is completed, mark it here with date and PR reference:

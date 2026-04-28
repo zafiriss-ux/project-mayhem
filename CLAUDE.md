@@ -20,7 +20,6 @@ project-mayhem/
 ├── pyproject.toml           # pytest + coverage config
 ├── test_core_modules.py     # Core module tests
 ├── test_new_modules.py      # Additional module tests
-├── test_titan_logic.py      # Science logic tests
 ├── test_main_smoke.py       # Entry point smoke tests
 ├── test_menu_system.py      # Menu system tests
 ├── test_daily_coach_extended.py  # Extended daily coach tests
@@ -154,14 +153,13 @@ python -m pytest tests/test_phase3_hygiene.py tests/test_phase4_hygiene.py tests
 
 # Specific test files
 python -m pytest test_core_modules.py
-python -m pytest test_titan_logic.py
 python -m pytest tests/test_p0_safety_gates.py
 python -m pytest tests/test_science_engines.py
 ```
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2642 tests all green as of claude/fix-schemathesis-metamorphic-BoNf9 branch (T5-87: added 13 metamorphic tests for ACWR/TSB/HRV/TRIMP; schemathesis freezegun dep installed) (2026-04-27). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2643 tests all green as of claude/review-security-audits-JWWGm branch (Phase 13 gate: B-1/B-2/B-3 optimistic defaults fixed; A-1 2of4-NaN test added) (2026-04-28). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -277,7 +275,7 @@ All SQLite writes use `threading.Lock` (`check_same_thread=False`).
 
 ### Database
 
-Five SQLite tables: `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`.
+15 SQLite tables (SCHEMA_VERSION 14): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`.
 - `governance_outcomes` — created by `OutcomeTracker` (v5.7.1); stores paired governance decisions + post-session outcomes for threshold calibration.
 Canonical column name for temperature: `temperature_c`.
 `get_training_load_history()` is used to rebuild CTL/ATL on startup.

@@ -20,6 +20,7 @@ from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
+    SUBJECTIVE_FATIGUE_2OF4,
     SUBJECTIVE_FATIGUE_EXTREME,
 )
 from titan.science.governance_engine import GovernanceEngine
@@ -180,3 +181,27 @@ def test_h5_combined_with_fueling_gate():
     assert plan["session_type"] == "EASY", "H5 must downgrade INTERVALS → EASY"
     gates_fired = [r["gate"] for r in plan.get("hard_stop_reasons", [])]
     assert "H5" in gates_fired, "H5 gate must appear in hard_stop_reasons"
+
+
+# ── 2OF4_GATE × NaN/None input (Gate Coverage Matrix col c) ────────────────
+
+def test_2of4_gate_with_none_sleep_score():
+    """2-of-4 gate with None sleep_score — DATA_MISSING_CONSERVATIVE.
+
+    sleep None 2of4: gate_coverage_matrix.sh col (c) NaN/None cell for
+    READINESS_2OF4_DOWNGRADE.  None sleep_score must not pass the indicator
+    silently; it falls back to 40 (< 60 threshold) so I2_sleep fires.
+    A second indicator (I4_subjective at SUBJECTIVE_FATIGUE_2OF4) completes
+    the 2-of-4 threshold → READINESS_2OF4_DOWNGRADE lock applied.
+    """
+    ctx = _ctx(
+        sleep_score=None,
+        subjective_fatigue_score=SUBJECTIVE_FATIGUE_2OF4,
+    )
+    plan = gov.apply_constraints(_plan("TEMPO"), ctx)
+
+    locks = plan["governance_locks_applied"]
+    assert "READINESS_2OF4_DOWNGRADE" in locks, (
+        "None sleep_score must be treated as low (conservative) — "
+        "2-of-4 gate must fire when a second indicator is also present"
+    )

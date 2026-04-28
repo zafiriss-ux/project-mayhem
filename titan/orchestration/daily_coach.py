@@ -740,7 +740,9 @@ class DailyCoach:
         readiness['score'] = max(0, min(100,
             readiness.get('score', 50) + afi_constraints.get('afi_modifier', 0)
         ))
-        readiness['score'] = min(readiness['score'], afi_constraints.get('readiness_clamp', 100))
+        _clamp = afi_constraints.get('readiness_clamp')  # None = no clamp applied
+        if _clamp is not None:
+            readiness['score'] = min(readiness['score'], _clamp)
 
         fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
             hr_suppression=bool(garmin_data.get('hr_suppression', False)),
@@ -785,9 +787,9 @@ class DailyCoach:
             'fatigue_level': fatigue_level,
 
             'acwr': garmin_data.get('acwr'),
-            'readiness_score': readiness.get('score', 50),
+            'readiness_score': readiness.get('score'),
             'planned_session': today_session.get('session_type', 'EASY'),
-            'planned_volume_pct': today_session.get('volume_pct', 1.0),
+            'planned_volume_pct': today_session.get('volume_pct'),
         })
 
         # ── Step 9: Feed activities into load engines ─────────────────────
