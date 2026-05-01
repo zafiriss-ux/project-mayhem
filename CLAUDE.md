@@ -62,7 +62,7 @@ project-mayhem/
 └── titan/                   # Main package (62 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment, PersistenceAdapter
-    ├── science/             # 27 modules (engines + governance + ML scaffold + ThresholdAdapter)
+    ├── science/             # 31 modules (engines + governance + ML scaffold + ThresholdAdapter)
     ├── features/            # Weekly planner, optimal time, nutrition optimizer
     ├── integrations/        # Garmin, Weather API, Telegram bot
     ├── orchestration/       # DailyCoach v5.8 (12-step morning routine)
@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2654 tests all green as of claude/code-review-improvements-Gk0u9 branch (Phase 13: security fixes A1/A4/A5/A9 — Telegram chat_id guard, override-reason length cap, ML kill-switch named constant; T5-101–T5-109 registered) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2657 tests all green as of claude/diagnose-ci-jwt-lakJ9 branch (Phase 13 Pass 1: T5-102 JWT startup validation, T5-105 CI ruff gate, T5-106 ADR stubs, T5-107–T5-109 CLAUDE.md doc fixes) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -226,7 +226,7 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 
 1. **Config** (`titan/config/`) — `thresholds.py`: single source of truth for all safety threshold constants
 2. **Core** (`titan/core/`) — `UniversalAthleteProfile`, `DatabaseManager` (SQLite, thread-safe), `PeriodizationManager`, `EquipmentManager`, `PersistenceAdapter` (T5-08-B D1 ABC)
-3. **Science** (`titan/science/`) — 26 modules:
+3. **Science** (`titan/science/`) — 31 modules:
    - Foundational engines (11): HRV, TSB/CTL/ATL, ACWR, lactate, drift, efficiency, durability, TRIMP, glycogen, fatigue, readiness
    - Autonomic & critical (4): `AutonomicFusionEngine` (AFI), `CriticalSpeedEngine`, `RCPEngine`, `BiomechanicsEngine`
    - Advanced (1): `AdaptiveMemory`
@@ -235,7 +235,7 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
 4. **Governance Layer** (within science/) — 7-gate safety system; must run before every session recommendation; non-bypassable
 5. **Integrations** (`titan/integrations/`) — `GarminSync` (6h background thread), `WeatherAPI` (1h cache, 48h forecast), `TitanTelegramBot`
 6. **Features** (`titan/features/`) — `WeeklyPlanGenerator`, `OptimalTimeCalculator`, `NutritionOptimizer`
-7. **Orchestration** (`titan/orchestration/`) — `DailyCoach` v5.7: 12-step morning routine, hydrates engines from DB on startup
+7. **Orchestration** (`titan/orchestration/`) — `DailyCoach` v5.8: 12-step morning routine, hydrates engines from DB on startup
 
 ### Key Safety Constants (`titan/config/thresholds.py`)
 
@@ -262,7 +262,9 @@ VO2_MIN_DAYS_SINCE_LAST   = 2
 `HARD_STOP_SAFETY_GATES`, `VO2_ELIGIBILITY_GATE`, `FUELING_GATE_LOCK`,
 `FUELING_GATE_FLAG`, `READINESS_2OF4_DOWNGRADE`, `INTENSITY_GATE_RED`,
 `INTENSITY_GATE_YELLOW`, `PARASYMPATHETIC_GUARD`, `OVERRIDE_LOCKDOWN`,
-`CS_CONFIDENCE_LOCK`
+`CS_CONFIDENCE_LOCK`, `PERSISTENCE_DEGRADED_CEILING`,
+`STARTUP_DATA_CONFIDENCE_CEILING`, `FAIL_SAFE_LOCK`,
+`DATA_MISSING_CONSERVATIVE_H2`, `DATA_MISSING_CONSERVATIVE_H3`
 
 ### Threading
 
@@ -298,23 +300,35 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0016` — Phase 8 multi-sport scope and unified adapter gate (Accepted — v5.8.0)
 - `0017` — Composition root fan-in and DailyCoach god-orchestrator audit (Accepted — assessment only, 2026-03-04)
 - `0018` — Kernel Boundary: Decision Pipeline / Effect Runner Split (Phase A Implemented — v5.8.0; Phase B Implemented — v5.8.0 2026-03-08)
+- `0019` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0020` — Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode (Accepted — 2026-03-05; T1-15 Implemented 2026-03-06)
+- `0021` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0022` — Phase 8 Entry Gate Review and Architect Sign-off (Accepted — Phase 8 OPEN 2026-03-08)
 - `0023` — Physiological Input Validation Contract: bounds layer at DB→science boundary (Accepted — T1-18 Implemented 2026-03-06)
+- `0024` — Canonical Lock Codes (Pending — referenced by thresholds.py:182; author in Phase 13)
+- `0025` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Implemented — T1-19 Implemented 2026-03-07)
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)
+- `0028` — Skipped — number reserved, not authored (see adjacent ADRs)
+- `0029` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0030` — External Data Source Resilience: staleness gates and fallback policy (Implemented — T1-20, T2-15 Implemented 2026-03-07)
+- `0031` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0032` — ML Advisory Explainability Protocol: evidence labels on all ML payloads (Implemented — 2026-03-06)
 - `0033` — Physiological Model Aging and Multi-Athlete Architecture Protocol (Accepted — Layers 1–2 implemented 2026-03-13 commit b6bea2a; Layer 3 deferred Phase 9)
 - `0034` — Environmental Stress Compensation for Training Zones (Accepted — 2026-03-06)
+- `0035` — Skipped — number reserved, not authored (see adjacent ADRs)
+- `0036` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Implemented — T1-21 Implemented 2026-03-07)
 - `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Implemented — T2-16 Implemented 2026-03-07)
+- `0039` — Skipped — number reserved, not authored (see adjacent ADRs)
+- `0040` — Athlete Identity Isolation (Pending — referenced by INV-04 and titan/core/persistence.py; author in Phase 13)
 - `0041` — Unified External Data Trust Contract: DataTrustLevel for all sensor sources (Implemented — T1-23 Implemented 2026-03-07)
 - `0042` — Human Override as First-Class Invariant: no recommendation without override path (Accepted — IMMEDIATE — 2026-03-06)
+- `0043` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0044` — PostgreSQL migration as Phase 8A entry gate; fulfills ADR-0015 storage topology gate (Accepted — 2026-03-06)
 - `0045` — Local LLM backend abstraction: Ollama / on-device support for Phase 10 (Accepted — 2026-03-06)
 - `0046` — DailyCoach multi-athlete execution model: stateless coaching_pipeline + CoachingScheduler (Accepted — T5-16 closed 2026-03-08)
-- `0047` — JWT RS256 API Authentication Layer
+- `0047` — Architecture Fitness Functions
 - `0048` — API Authentication detailed spec
 - `0049` — Opus QA Scope Reduction
 - `0050` — Garmin API Fragility Mitigation design

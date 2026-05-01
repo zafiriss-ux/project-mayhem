@@ -12,9 +12,11 @@ from fastapi.testclient import TestClient
 from titan.api.auth import (
     ACCESS_COOKIE_NAME,
     REFRESH_COOKIE_NAME,
+    AuthError,
     AuthStore,
     create_access_token,
     hash_password,
+    validate_jwt_keys_at_startup,
 )
 from titan.api.main import create_app
 from titan.api.models import AuthUser
@@ -178,3 +180,41 @@ def test_health_endpoint_remains_public_after_rate_limit_exceeded(client: TestCl
     client.cookies.clear()
     health = client.get("/health")
     assert health.status_code == 200
+
+
+# ── T5-102: validate_jwt_keys_at_startup ──────────────────────────────────────
+
+def test_validate_jwt_keys_at_startup_passes_when_both_keys_set(monkeypatch: pytest.MonkeyPatch) -> None:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem)
+    validate_jwt_keys_at_startup()  # must not raise
+
+
+def test_validate_jwt_keys_at_startup_raises_on_missing_private_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TITAN_JWT_PRIVATE_KEY", raising=False)
+    monkeypatch.delenv("TITAN_JWT_PUBLIC_KEY", raising=False)
+    with pytest.raises(AuthError, match="TITAN_JWT_PRIVATE_KEY missing or invalid"):
+        validate_jwt_keys_at_startup()
+
+
+def test_validate_jwt_keys_at_startup_raises_on_missing_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
+    monkeypatch.delenv("TITAN_JWT_PUBLIC_KEY", raising=False)
+    with pytest.raises(AuthError, match="TITAN_JWT_PUBLIC_KEY missing or invalid"):
+        validate_jwt_keys_at_startup()

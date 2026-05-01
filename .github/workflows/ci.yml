@@ -8,9 +8,8 @@ on:
 
 jobs:
   ruff-phase-a:
-    name: Ruff Phase A (target folders, warning)
+    name: Ruff Phase A (full repo, blocking)
     runs-on: ubuntu-latest
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -24,21 +23,8 @@ jobs:
       - name: Install Ruff
         run: python -m pip install ruff
 
-      - name: Run Ruff Phase A warning gate (target folders)
-        run: |
-          TARGET_FOLDERS=(
-            titan/config
-            titan/science
-            titan/core
-            titan/integrations
-            titan/orchestration
-            titan/features
-            titan/ui
-            titan/utils
-            tests
-          )
-
-          python -m ruff check "${TARGET_FOLDERS[@]}"
+      - name: Run Ruff Gate 1 (ruff check .)
+        run: python -m ruff check .
 
   ruff-phase-b:
     name: Ruff Phase B (clean folders, blocking)

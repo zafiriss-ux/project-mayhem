@@ -24,8 +24,8 @@ def test_ci_has_two_phase_ruff_gate() -> None:
     content = workflow.read_text(encoding="utf-8")
 
     assert "ruff-phase-a:" in content
-    assert "Ruff Phase A (target folders, warning)" in content
-    assert "continue-on-error: true" in content
+    assert "Ruff Phase A" in content
+    assert "continue-on-error: true" not in content.split("ruff-phase-a:", 1)[1].split("ruff-phase-b:", 1)[0]
 
     assert "ruff-phase-b:" in content
     assert "Ruff Phase B (clean folders, blocking)" in content
@@ -36,8 +36,8 @@ def test_phase_a_covers_current_warning_targets() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
 
-    for folder in PHASE_A_TARGET_FOLDERS:
-        assert folder in content
+    phase_a_section = content.split("ruff-phase-a:", 1)[1].split("ruff-phase-b:", 1)[0]
+    assert "ruff check ." in phase_a_section
 
 
 def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
