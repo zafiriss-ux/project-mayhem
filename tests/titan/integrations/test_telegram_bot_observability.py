@@ -227,7 +227,7 @@ def test_register_handlers_no_bot_is_noop():
 
 def test_command_handlers_route_to_callbacks_and_fallbacks():
     fake_bot = _FakeTeleBot()
-    bot = TitanTelegramBot(bot_token="", chat_id=999)
+    bot = TitanTelegramBot(bot_token="", chat_id=321)  # trusted = 321
     bot.bot = fake_bot
     bot._register_handlers()
 

@@ -78,6 +78,9 @@ class TitanTelegramBot:
     - Rich markdown messages
     """
 
+    # Hard cap on user-supplied override reason text (DB bloat + re-render guard).
+    _MAX_OVERRIDE_REASON_LEN: int = 500
+
     def __init__(self, bot_token: str = None, chat_id=None):
         self.bot_token = _CredentialSecret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
@@ -85,6 +88,11 @@ class TitanTelegramBot:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):
             self.chat_id = raw_id  # keep as str until set
+
+        # Trusted inbound chat ID for per-handler authorisation.
+        # None = unconfigured (allow all with a warning); str = strict match.
+        _raw_trusted = chat_id or os.getenv("TELEGRAM_CHAT_ID") or None
+        self._trusted_chat_id: str | None = str(_raw_trusted) if _raw_trusted else None
 
         self.bot = None
         self.is_running = False
@@ -125,6 +133,20 @@ class TitanTelegramBot:
                 _log.warning("telegram_init_warning", extra={"detail": str(e)})
 
     # ------------------------------------------------------------------ #
+    # AUTHORISATION
+    # ------------------------------------------------------------------ #
+    def _is_trusted(self, chat_id: int | str) -> bool:
+        """Return True if *chat_id* matches the configured trusted chat.
+
+        If no trusted chat is configured (_trusted_chat_id is None) every
+        sender is allowed — a warning is emitted so operators notice the gap.
+        """
+        if self._trusted_chat_id is None:
+            _log.warning("titan.telegram.no_trusted_chat_configured")
+            return True
+        return str(chat_id) == str(self._trusted_chat_id)
+
+    # ------------------------------------------------------------------ #
     # COMMAND HANDLERS
     # ------------------------------------------------------------------ #
     def _register_handlers(self):
@@ -133,7 +155,10 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["start", "help"])
         def cmd_help(message):
-            self.chat_id = message.chat.id  # auto-capture chat id
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            self.chat_id = message.chat.id  # auto-capture only for trusted sender
             text = (
                 "🎯 *TITAN AI Coach* – Available Commands\n\n"
                 "/today – Today's workout & optimal time\n"
@@ -151,6 +176,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["today"])
         def cmd_today(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "today" in self.cmd_callbacks:
                 result = self.cmd_callbacks["today"]()
                 self.bot.reply_to(message, result or "⏳ Calculating...")
@@ -159,6 +187,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["week"])
         def cmd_week(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "week" in self.cmd_callbacks:
                 result = self.cmd_callbacks["week"]()
                 self.bot.reply_to(message, result or "⏳ Generating plan...")
@@ -167,6 +198,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["stats"])
         def cmd_stats(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "stats" in self.cmd_callbacks:
                 result = self.cmd_callbacks["stats"]()
                 self.bot.reply_to(message, result or "⏳ Loading stats...")
@@ -175,6 +209,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["recovery"])
         def cmd_recovery(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "recovery" in self.cmd_callbacks:
                 result = self.cmd_callbacks["recovery"]()
                 self.bot.reply_to(message, result or "⏳ Checking recovery...")
@@ -183,6 +220,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["nutrition"])
         def cmd_nutrition(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "nutrition" in self.cmd_callbacks:
                 result = self.cmd_callbacks["nutrition"]()
                 self.bot.reply_to(message, result or "⏳ Building nutrition plan...")
@@ -191,6 +231,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["sync"])
         def cmd_sync(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             self.bot.reply_to(message, "🔄 Starting Garmin sync...")
             if "sync" in self.cmd_callbacks:
                 result = self.cmd_callbacks["sync"]()
@@ -200,6 +243,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "activities" in self.cmd_callbacks:
                 result = self.cmd_callbacks["activities"]()
                 self.bot.reply_to(message, result or "No activities found.")
@@ -208,6 +254,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["drift"])
         def cmd_drift(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "drift" in self.cmd_callbacks:
                 result = self.cmd_callbacks["drift"]()
                 self.bot.reply_to(message, result or "No drift data yet.")
@@ -216,6 +265,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["shoes"])
         def cmd_shoes(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "shoes" in self.cmd_callbacks:
                 result = self.cmd_callbacks["shoes"]()
                 self.bot.reply_to(message, result or "No shoe data configured.")
@@ -224,6 +276,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["calibration"])
         def cmd_calibration(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             if "calibration" in self.cmd_callbacks:
                 result = self.cmd_callbacks["calibration"]()
                 self.bot.reply_to(message, result or "⏳ No calibration data yet.")
@@ -232,6 +287,10 @@ class TitanTelegramBot:
 
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
         def cb_override(call):
+            if not self._is_trusted(call.message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": call.message.chat.id})
+                self.bot.answer_callback_query(call.id)
+                return
             response = self.process_override_callback(call.message.chat.id, call.data)
             self.bot.answer_callback_query(call.id, response)
             if call.data == "override:request":
@@ -239,6 +298,9 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(func=lambda message: message.chat.id in self._pending_override_prompts)
         def msg_override_reason(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
             response = self.process_override_reason(message.chat.id, message.text or "")
             self.bot.reply_to(message, response)
 
@@ -308,7 +370,7 @@ class TitanTelegramBot:
         if not pending or pending.get("awaiting_reason") != "1":
             return "⚠️ No override reason requested."
 
-        reason = reason_text.strip()
+        reason = reason_text.strip()[: self._MAX_OVERRIDE_REASON_LEN]
         if not reason:
             return "⚠️ Override reason is required."
 

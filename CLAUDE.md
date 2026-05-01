@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2643 tests all green as of claude/review-security-audits-JWWGm branch (Phase 13 gate: B-1/B-2/B-3 optimistic defaults fixed; A-1 2of4-NaN test added) (2026-04-28). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2654 tests all green as of claude/code-review-improvements-Gk0u9 branch (Phase 13: security fixes A1/A4/A5/A9 — Telegram chat_id guard, override-reason length cap, ML kill-switch named constant; T5-101–T5-109 registered) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
