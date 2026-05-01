@@ -3960,6 +3960,15 @@ When an item is completed, mark it here with date and PR reference:
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | ✅ VERIFIED COMPLETE 2026-04-26 — Pass 1 COMPLETE 2026-03-18; Pass 2 VERIFIED: O1–O7 implemented (b2cdc37 era); D4 → T5-100 (Phase 12) | 2026-04-26 |
 | T5-100 | 🟡 OPEN — Phase 12 (Garmin fallback D4: multi-device adapters, source switching, arbitration logic; deferred from T5-12 Pass 2) | — |
+| T5-101 | 🟡 OPEN — Phase 13 (.garth_token encryption + data-dir relocation; P1 security) | — |
+| T5-102 | 🟡 OPEN — Phase 13 (JWT key fail-fast at startup; P1 security) | — |
+| T5-103 | 🟡 OPEN — Phase 13 (OutcomeTracker → ThresholdAdapter calibration loop wiring; ADR-0052; P2) | — |
+| T5-104 | 🟡 OPEN — Phase 13 (PersistenceAdapter ABC: wire OutcomeTracker consumer; ADR-0044; P2) | — |
+| T5-105 | 🟡 OPEN — Phase 13 (CI ruff gate: align ci.yml with documented Mandatory Gate; P1 blocker) | — |
+| T5-106 | 🟡 OPEN — Phase 13 (Author/stub missing ADRs 0019,0021,0024,0025,0028,0029,0031,0035,0036,0039,0040,0043; P1 blocker) | — |
+| T5-107 | 🟡 OPEN — Phase 13 (Sync CLAUDE.md lock-code list with CANONICAL_LOCK_CODES; 5 codes missing; P2) | — |
+| T5-108 | 🟡 OPEN — Phase 13 (Normalise DailyCoach version label in CLAUDE.md v5.7→v5.8; P3) | — |
+| T5-109 | 🟡 OPEN — Phase 13 (Correct science module count in CLAUDE.md 27→31; P3) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4569,3 +4578,133 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Blocking gate:** ADR-0016 / ADR-0041 scope validation required before implementation begins. No implementation until Phase 12 scope gate is cleared by the architect.
 
 **Location:** `titan/integrations/garmin_sync.py`, new `titan/integrations/device_adapters/` (to be created in Phase 12).
+
+---
+
+### T5-101 · `.garth_token` encryption and data-dir relocation 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Pre-upgrade security audit (2026-05-01), finding A2.
+**Priority:** P1 (High — filesystem read = Garmin account takeover).
+
+**Scope:** Encrypt `.garth_token` at rest (Fernet symmetric key or OS keyring via `keyring` lib) and move the file from project root to the data directory alongside `titan.db`. Update `garmin_sync.py:282-288, 414-425` token load/save paths. Add startup warning if token file is found at project root.
+
+**Acceptance criteria:** `.garth_token` no longer written to project root; decryption key is not stored alongside the encrypted file; unit test verifies encrypted token round-trip.
+
+**Location:** `titan/integrations/garmin_sync.py:282-288, 414-425`.
+
+---
+
+### T5-102 · JWT key fail-fast validation at API startup 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Pre-upgrade security audit (2026-05-01), finding A3.
+**Priority:** P1 (High — missing keys discovered mid-request rather than at boot).
+
+**Scope:** Add startup probe in `titan/__main__.py` (or FastAPI `lifespan`) that calls `_jwt_private_key()` and `_jwt_public_key()` at boot time and raises `SystemExit` with a clear error message if either is absent or invalid. Add test verifying the probe fires on missing keys.
+
+**Acceptance criteria:** `python -m titan` exits immediately with a readable error when `TITAN_JWT_PRIVATE_KEY` / `TITAN_JWT_PUBLIC_KEY` are not set; existing auth tests still pass.
+
+**Location:** `titan/api/auth.py:158-169`, `titan/__main__.py`.
+
+---
+
+### T5-103 · OutcomeTracker → ThresholdAdapter calibration loop wiring 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Pre-upgrade architecture audit (2026-05-01), finding B2.
+**Priority:** P2 (Medium — calibration DB fills but thresholds never move; ADR-0052 closed-loop contract broken).
+
+**Scope:** Either (a) wire `OutcomeTracker.run_calibration_cycle()` to call `ThresholdAdapter.propose_adaptation()` from the DailyCoach orchestrator, or (b) add `# TODO(phase-13): wiring deferred` marker referencing ADR-0052 and update ADR-0052 status to reflect the deferral explicitly. Option (a) preferred.
+
+**Acceptance criteria:** `run_calibration_cycle()` produces at least one `ThresholdAdapter.propose_adaptation()` call in integration test with synthetic outcome data; or ADR-0052 explicitly states the loop is deferred with a phase target.
+
+**Location:** `titan/science/outcome_tracker.py:737`, `titan/science/threshold_adapter.py`.
+
+---
+
+### T5-104 · PersistenceAdapter ABC: wire at least one consumer 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (blocked: Phase 8A entry gate).
+**Source:** Pre-upgrade architecture audit (2026-05-01), finding B1. ADR-0044.
+**Priority:** P2 (Medium — ADR-0044 Phase 8A contract is unproven; PostgreSQL migration is theoretical until at least one path routes through the adapter).
+
+**Scope:** Migrate `OutcomeTracker` (narrowest read surface) to route all DB calls through `PersistenceAdapter` rather than `DatabaseManager` directly. Validate that the existing 64 APL integration tests still pass. Do not migrate other modules in this task.
+
+**Acceptance criteria:** `OutcomeTracker.__init__` accepts a `PersistenceAdapter` instance; `DatabaseManager` is not imported directly in `outcome_tracker.py`; existing test suite passes.
+
+**Location:** `titan/core/persistence.py:141-405`, `titan/science/outcome_tracker.py`.
+
+---
+
+### T5-105 · CI ruff gate: align ci.yml with documented Mandatory Gate 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (quick win).
+**Source:** Pre-upgrade documentation audit (2026-05-01), finding D1 / C1.
+**Priority:** P1 (High — BLOCKER: PRs can merge with lint debt while CLAUDE.md §Mandatory Gates claims zero findings required).
+
+**Scope:** Either (a) remove `continue-on-error: true` from `ruff-phase-a` in `.github/workflows/ci.yml` and expand the blocking scope to match Gate 1 (`ruff check .`), or (b) amend `CLAUDE.md` + `AGENTS.md` to declare that Gate 1 applies only to `titan/config`. Decision belongs to the architect; implementation follows the decision.
+
+**Acceptance criteria:** `ci.yml` Ruff gate behaviour matches the Gate 1 description in `CLAUDE.md` exactly, without ambiguity.
+
+**Location:** `.github/workflows/ci.yml:10-66`, `CLAUDE.md:121-127`.
+
+---
+
+### T5-106 · Author or stub all missing ADRs (0019, 0021, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040, 0043) 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (records-only for stubs; full authoring for 0024 and 0040).
+**Source:** Pre-upgrade documentation audit (2026-05-01), finding D2.
+**Priority:** P1 (High — BLOCKER: ADR-0040 and ADR-0024 are operationally referenced in `TECHNICAL_DEBT.md` and `thresholds.py:182` respectively but no files exist; auditability of athlete identity isolation and lock-code governance is broken).
+
+**Scope:**
+- **Must author** ADR-0040 (athlete identity isolation — the invariant cited in `TECHNICAL_DEBT.md:59` and `AGENTS.md §16.10`) and ADR-0024 (canonical lock codes — cited in `thresholds.py:182` comment).
+- **Stub only** for 0019, 0021, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0043: one-line `STATUS: SUPERSEDED/SKIPPED` placeholder files so `docs/adr/` numbering is contiguous and auditable.
+
+**Acceptance criteria:** `ls docs/adr/ | sort` shows no gaps between 0006 and 0052; ADR-0040.md and ADR-0024.md contain real content; ADR linting CI step (future T5-future) can be added without gap-detection failures.
+
+**Location:** `docs/adr/`.
+
+---
+
+### T5-107 · Synchronise CLAUDE.md lock-code list with CANONICAL_LOCK_CODES 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Source:** Pre-upgrade documentation audit (2026-05-01), finding D3.
+**Priority:** P2 (Medium — snapshot is 5 codes behind canonical; developers may inadvertently use undocumented codes).
+
+**Scope:** Update `CLAUDE.md §Governance Lock Codes` reference snapshot to include all 15 codes from `titan/config/thresholds.py:CANONICAL_LOCK_CODES`. Extend `tests/test_claude_md_integrity.py` with an assertion that the set of codes listed in CLAUDE.md equals `CANONICAL_LOCK_CODES` (machine-checked going forward).
+
+**Missing from CLAUDE.md:** `PERSISTENCE_DEGRADED_CEILING`, `STARTUP_DATA_CONFIDENCE_CEILING`, `FAIL_SAFE_LOCK`, `DATA_MISSING_CONSERVATIVE_H2`, `DATA_MISSING_CONSERVATIVE_H3`.
+
+**Acceptance criteria:** CI integrity test asserts CLAUDE.md lock-code list == `CANONICAL_LOCK_CODES`; test passes.
+
+**Location:** `CLAUDE.md:255-265`, `titan/config/thresholds.py:183-201`, `tests/test_claude_md_integrity.py`.
+
+---
+
+### T5-108 · Normalise DailyCoach version label in CLAUDE.md 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Source:** Pre-upgrade documentation audit (2026-05-01), finding D4.
+**Priority:** P3 (Low — cosmetic, but creates confusion about which version is deployed).
+
+**Scope:** `CLAUDE.md:238` reads "DailyCoach v5.7" while `CLAUDE.md:68` reads "DailyCoach v5.8" and `titan/__init__.py:15` is canonical at `5.8.0`. Update line 238 to "DailyCoach v5.8".
+
+**Acceptance criteria:** `grep "DailyCoach v5" CLAUDE.md` returns only "v5.8" (no "v5.7" for the orchestration description).
+
+**Location:** `CLAUDE.md:238`.
+
+---
+
+### T5-109 · Correct science module count in CLAUDE.md 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Source:** Pre-upgrade documentation audit (2026-05-01), finding D5.
+**Priority:** P3 (Low — module inventory is unreliable; MODULE_COUNT_CEILING headroom may be stale).
+
+**Scope:** Update `CLAUDE.md` science module count from "27 modules" (line 65) and "26 modules" (line 229) to the verified count of **31** (`find titan/science -maxdepth 1 -name "*.py" -not -name "__*" | wc -l`). Verify `MODULE_COUNT_CEILING=71` in `thresholds.py:204` still provides adequate headroom.
+
+**Acceptance criteria:** CLAUDE.md science module count matches `find titan/science …` output; `tests/test_claude_md_integrity.py` enforces this via a filesystem count assertion.
+
+**Location:** `CLAUDE.md:65, 229`, `titan/config/thresholds.py:204`.

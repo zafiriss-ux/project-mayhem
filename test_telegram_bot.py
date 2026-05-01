@@ -317,3 +317,100 @@ class TestStartStop:
 
     def test_stop_before_start_does_not_raise(self, bot):
         bot.stop_bot()   # no-op; must not raise
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 7. AUTHORISATION — _is_trusted + per-handler chat_id guard (A1/A5)
+# ════════════════════════════════════════════════════════════════════════════
+
+class TestTrustedChatAuthorisation:
+
+    def test_trusted_chat_id_set_from_param(self):
+        b = TitanTelegramBot(bot_token="", chat_id="99999")
+        assert b._trusted_chat_id == "99999"
+
+    def test_trusted_chat_id_none_when_unconfigured(self, monkeypatch):
+        monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+        b = TitanTelegramBot(bot_token="", chat_id=None)
+        assert b._trusted_chat_id is None
+
+    def test_is_trusted_returns_true_for_matching_int(self):
+        b = TitanTelegramBot(bot_token="", chat_id="99999")
+        assert b._is_trusted(99999) is True
+
+    def test_is_trusted_returns_true_for_matching_str(self):
+        b = TitanTelegramBot(bot_token="", chat_id="99999")
+        assert b._is_trusted("99999") is True
+
+    def test_is_trusted_returns_false_for_different_id(self):
+        b = TitanTelegramBot(bot_token="", chat_id="99999")
+        assert b._is_trusted(11111) is False
+
+    def test_is_trusted_unconfigured_allows_all(self, monkeypatch):
+        monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+        b = TitanTelegramBot(bot_token="", chat_id=None)
+        assert b._is_trusted(99999) is True
+
+    def test_is_trusted_unconfigured_emits_warning(self, monkeypatch, caplog):
+        monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+        b = TitanTelegramBot(bot_token="", chat_id=None)
+        with caplog.at_level(logging.WARNING, logger="titan.integrations.telegram_bot"):
+            b._is_trusted(99999)
+        assert "no_trusted_chat_configured" in caplog.text
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 8. OVERRIDE REASON LENGTH CAP (A4)
+# ════════════════════════════════════════════════════════════════════════════
+
+class TestOverrideReasonLengthCap:
+
+    def test_reason_within_limit_accepted(self, bot):
+        """A reason under 500 chars is stored as-is."""
+        bot._pending_override_prompts[12345] = {
+            "decision_id": "d1",
+            "athlete_id": "ath1",
+            "awaiting_reason": "1",
+        }
+        # No db_provider → returns "db missing" sentinel before persisting,
+        # which proves the reason passed validation and length-trimming.
+        result = bot.process_override_reason(12345, "Short valid reason")
+        assert "unavailable" in result  # db missing path — not a rejection
+
+    def test_reason_at_exact_limit_accepted(self, bot):
+        bot._pending_override_prompts[12345] = {
+            "decision_id": "d1",
+            "athlete_id": "ath1",
+            "awaiting_reason": "1",
+        }
+        long_reason = "x" * 500
+        result = bot.process_override_reason(12345, long_reason)
+        assert "unavailable" in result  # accepted, db path
+
+    def test_reason_exceeding_limit_is_truncated(self, bot):
+        """Reasons longer than 500 chars are silently capped before storage."""
+        bot._pending_override_prompts[12345] = {
+            "decision_id": "d1",
+            "athlete_id": "ath1",
+            "awaiting_reason": "1",
+        }
+        oversized = "y" * 600
+        def fake_db():
+            return MagicMock()
+
+        from unittest.mock import patch
+        with patch("titan.integrations.telegram_bot.record_override_signal") as mock_record:
+            bot.override_callbacks["db_provider"] = fake_db
+            bot.process_override_reason(12345, oversized)
+            assert mock_record.called
+            stored_reason = mock_record.call_args[0][1].override_reason
+            assert len(stored_reason) <= 500
+
+    def test_empty_reason_rejected(self, bot):
+        bot._pending_override_prompts[12345] = {
+            "decision_id": "d1",
+            "athlete_id": "ath1",
+            "awaiting_reason": "1",
+        }
+        result = bot.process_override_reason(12345, "   ")
+        assert "required" in result
