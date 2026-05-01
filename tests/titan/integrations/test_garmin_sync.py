@@ -4,8 +4,15 @@ import threading
 import time
 from unittest.mock import MagicMock
 
+from cryptography.fernet import Fernet
+
 from titan.integrations import garmin_sync
-from titan.integrations.garmin_sync import GarminSync
+from titan.integrations.garmin_sync import (
+    GarminSync,
+    _decrypt_token,
+    _encrypt_token,
+    _get_token_encryption_key,
+)
 
 
 def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
@@ -1089,3 +1096,52 @@ def test_sync_activities_session_peak_above_athlete_max_hr_does_not_crash():
     act = activities[0]
     # Should not raise; TRIMP should be zone 5 × 60 min = 300
     assert act["estimated_training_load"] == 300.0
+
+
+# ---------------------------------------------------------------------------
+# T5-101: Garth token Fernet encryption helpers
+# ---------------------------------------------------------------------------
+
+def test_token_encrypted_when_key_set(monkeypatch):
+    key = Fernet.generate_key()
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
+    encrypted = _encrypt_token("test_data")
+    assert encrypted != b"test_data"
+    assert _decrypt_token(encrypted) == "test_data"
+
+
+def test_token_plaintext_when_key_missing(monkeypatch):
+    monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
+    result = _encrypt_token("test_data")
+    assert result == b"test_data"
+
+
+def test_token_decrypt_plaintext_when_key_missing(monkeypatch):
+    monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
+    result = _decrypt_token(b"test_data")
+    assert result == "test_data"
+
+
+def test_token_decrypt_fallback_on_corrupt(monkeypatch):
+    key = Fernet.generate_key()
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
+    # Non-Fernet bytes → decryption fails → fallback to plaintext decode
+    result = _decrypt_token(b"plaintext_fallback")
+    assert result == "plaintext_fallback"
+
+
+def test_get_token_encryption_key_returns_none_when_unset(monkeypatch):
+    monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
+    assert _get_token_encryption_key() is None
+
+
+def test_get_token_encryption_key_returns_none_on_invalid_base64(monkeypatch):
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", "not-valid-base64!!!")
+    assert _get_token_encryption_key() is None
+
+
+def test_get_token_encryption_key_returns_bytes_on_valid_key(monkeypatch):
+    key = Fernet.generate_key()
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
+    result = _get_token_encryption_key()
+    assert isinstance(result, bytes)
