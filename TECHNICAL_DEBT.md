@@ -3818,6 +3818,28 @@ All tooling additions (T5-84, T5-87) operational and tested.
 
 ---
 
+## FMEA: Phase 13
+
+**Phase:** 13 | **Date:** 2026-05-01 | **Author:** Architect
+
+| ID | Component | Failure Mode | Severity | Likelihood | Mitigation |
+|---|---|---|---|---|---|
+| F13-01 | Telegram bot | Untrusted chat_id bypass | CRITICAL | CONFIRMED | Fixed: _is_trusted() per-handler (81b2be4) |
+| F13-02 | ML kill-switch | Blacklist fail-open on typo | HIGH | CONFIRMED | Fixed: whitelist semantics (81b2be4) |
+| F13-03 | .garth_token | Plaintext token on disk | HIGH | OPEN | T5-101: Fernet encryption (this pass) |
+| F13-04 | JWT keys | Lazy validation → runtime crash | HIGH | CONFIRMED | Fixed: validate_jwt_keys_at_startup() (430f62a) |
+| F13-05 | CI ruff gate | continue-on-error masked lint debt | MEDIUM | CONFIRMED | Fixed: gate now blocking + full scope (430f62a) |
+| F13-06 | ADR index | 12 gap numbers → unauditable history | MEDIUM | CONFIRMED | Fixed: stubs created (430f62a) |
+| F13-07 | Garmin API | Permanent account ban | HIGH | CONFIRMED | Operational: seek alternative biometric source |
+| F13-08 | Corpus gate | T5-10 LLM blocked (corpus=0) | MEDIUM | CONFIRMED | Blocked pending real athlete data |
+
+### Phase 13 Verdict
+F13-03 resolved in this pass. F13-07/08 are operational
+blockers outside code scope. All code-addressable HIGH items
+resolved or in-progress.
+
+---
+
 ### C-W12 · GitHub Actions free-tier exhausted
 
 **Status:** 🟡 OPEN

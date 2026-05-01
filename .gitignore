@@ -191,3 +191,6 @@ athletes/
 # Claude Code
 #  Internal session data, worktrees, and tool results created by Claude Code CLI.
 .claude/
+# Garmin session token (plaintext and encrypted)
+.garth_token
+.garth_token.enc

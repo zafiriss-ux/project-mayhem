@@ -4,6 +4,7 @@ Garmin Connect Live API Integration
 REAL implementation using garminconnect library (not mock).
 """
 
+import base64
 import contextlib
 import json
 import logging
@@ -43,6 +44,55 @@ GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 90
 _GARTH_TOKEN_FILENAME = ".garth_token"
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
+_TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"
+
+
+def _get_token_encryption_key() -> bytes | None:
+    """Return Fernet-ready key bytes from env var, or None if unset/invalid.
+
+    Fernet expects the URL-safe base64-encoded key (44 bytes) — we validate
+    the env value is decodable but return it in encoded form for Fernet.
+    """
+    key = os.environ.get(_TITAN_TOKEN_KEY_ENV)
+    if key is None:
+        return None
+    try:
+        decoded = base64.urlsafe_b64decode(key.encode())
+        if len(decoded) != 32:  # noqa: PLR2004
+            raise ValueError("key must decode to exactly 32 bytes")
+        return key.encode()
+    except Exception:
+        _log.warning("Invalid TITAN_GARTH_TOKEN_KEY format — ignoring")
+        return None
+
+
+def _encrypt_token(data: str) -> bytes:
+    """Encrypt token string. Falls back to plaintext if key not configured."""
+    from cryptography.fernet import Fernet
+
+    key = _get_token_encryption_key()
+    if key is None:
+        _log.warning(
+            "TITAN_GARTH_TOKEN_KEY not set — "
+            "storing token unencrypted. Set env var "
+            "for production deployments."
+        )
+        return data.encode()
+    return Fernet(key).encrypt(data.encode())
+
+
+def _decrypt_token(data: bytes) -> str:
+    """Decrypt token bytes. Falls back to plaintext decode if key not set or decryption fails."""
+    from cryptography.fernet import Fernet
+
+    key = _get_token_encryption_key()
+    if key is None:
+        return data.decode()
+    try:
+        return Fernet(key).decrypt(data).decode()
+    except Exception:
+        _log.warning("Token decryption failed — attempting plaintext read")
+        return data.decode()
 
 
 class _CredentialSecret:
@@ -308,7 +358,8 @@ class GarminSync:
             # Try loading a persisted session token to avoid re-login 429s.
             if token_path.exists():
                 try:
-                    token_data = token_path.read_text(encoding="utf-8")
+                    raw_token = token_path.read_bytes()
+                    token_data = _decrypt_token(raw_token)
                     client = Garmin()
                     client.client.loads(token_data)
                     # Verify the token is still accepted by the Garmin API.
@@ -414,7 +465,7 @@ class GarminSync:
             # Persist the new session token for future connections.
             try:
                 token_path.parent.mkdir(parents=True, exist_ok=True)
-                token_path.write_text(client.client.dumps(), encoding="utf-8")
+                token_path.write_bytes(_encrypt_token(client.client.dumps()))
                 _garmin_event("connect_token_saved", subsystem="connect", detail="Session token saved")
             except Exception as save_err:
                 _garmin_event(

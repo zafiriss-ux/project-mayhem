@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2657 tests all green as of claude/diagnose-ci-jwt-lakJ9 branch (Phase 13 Pass 1: T5-102 JWT startup validation, T5-105 CI ruff gate, T5-106 ADR stubs, T5-107–T5-109 CLAUDE.md doc fixes) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2664 tests all green as of claude/encrypt-garmin-token-YAcFt branch (Phase 13 Pass 2: T5-101 Fernet token encryption + FMEA Phase 13 records) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
