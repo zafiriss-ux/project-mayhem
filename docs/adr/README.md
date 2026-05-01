@@ -33,19 +33,31 @@
 | [0016](0016-phase8-multisport-scope-and-adapter-gate.md) | Phase 8 multi-sport scope and unified adapter gate | Architecture / Integrations | ✅ Accepted | TBD |
 | [0017](0017-composition-root-and-dailycoach-architecture-audit.md) | Composition root fan-in and DailyCoach god-orchestrator audit | Architecture / Audit | ✅ Accepted (assessment only, 2026-03-04) | TBD |
 | [0018](0018-kernel-boundary-decision-pipeline-effect-runner-split.md) | Kernel Boundary: Decision Pipeline / Effect Runner Split | Architecture / Safety | ✅ Phase A + Phase B Implemented (v5.8.0; commit c51e217) | TBD |
+| [0019](0019-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0020](0020-persistence-failure-policy-dailycoach.md) | Persistence Failure Behavioral Policy: DailyCoach degraded conservative mode | Architecture / Safety | ✅ Accepted (2026-03-05) — T1-15 execution pending | — |
+| [0021](0021-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0022](0022-review-phase8-go.md) | Phase 8 Entry Gate Review and Architect Sign-off | Architecture / Governance | ✅ Accepted — Phase 8 OPEN (2026-03-08) | — |
 | [0023](0023-physiological-input-validation-contract.md) | Physiological Input Validation Contract: bounds validation at DB→engine boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-18 execution pending | — |
+| [0024](0024-canonical-lock-codes.md) | Canonical Lock Codes | Architecture / Governance | Pending — author in Phase 13 | — |
+| [0025](0025-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0026](0026-input-data-sanity-layer.md) | Input Data Sanity Layer: structural/temporal validation at Garmin sync boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-19 execution pending | — |
 | [0027](0027-hidden-inter-module-coupling-prevention.md) | Hidden Inter-Module Coupling Prevention: TypedDict contracts + coupling invariant test | Architecture / Quality | ✅ Accepted (2026-03-06) — T4-26 execution pending | — |
+| [0028](0028-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
+| [0029](0029-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0030](0030-external-data-source-resilience.md) | External Data Source Resilience Policy: Garmin/Weather staleness gates + degraded-mode integration | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-20, T2-15 execution pending | — |
+| [0031](0031-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0032](0032-ml-advisory-explainability-protocol.md) | ML Advisory Explainability Protocol: ExplainableOutput contract for advisory models + promotion gate | Architecture / ML | ✅ Accepted (2026-03-06) — T5-06-A: Phase 8 prerequisite | — |
 | [0033](0033-physiological-model-aging-and-multi-athlete-architecture.md) | Physiological Model Aging & Multi-Athlete Architecture: model staleness detection + multi-athlete isolation contract | Architecture / Science | ✅ Accepted (2026-03-06) — T5-07 Layers 1–2: Phase 8 prerequisite; Layer 3: Phase 9 | — |
 | [0034](0034-environmental-stress-compensation-training-zones.md) | Environmental Stress Compensation for Training Zones: ESI framework (dew point / temperature) + zone adjustment overlay | Architecture / Science | ✅ Accepted (2026-03-06) — T4-29 execution deferred Phase 8 | — |
+| [0035](0035-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
+| [0036](0036-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0037](0037-non-training-stress-safety-partition.md) | Non-Training Stress Safety Partition: classify HRV/RHR anomalies as training-explained vs. illness-pattern vs. unexplained | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-21 execution pending | — |
 | [0038](0038-governance-decision-rationale-protocol.md) | Governance Decision Rationale Protocol: DecisionRationale contract + gate templates + override-rate monitoring | Architecture / Observability | ✅ Accepted (2026-03-06) — T2-16 execution pending | — |
+| [0039](0039-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
+| [0040](0040-athlete-identity-isolation.md) | Athlete Identity Isolation | Architecture / Invariant | Pending — referenced by INV-04; author in Phase 13 | — |
 | [0041](0041-unified-external-data-trust-contract.md) | Unified External Data Trust Contract: DataTrustLevel enum + DataTrustReport + mandatory onboarding gate for new data sources | Architecture / Invariant | ✅ Accepted (2026-03-06) — ACTIVE IMMEDIATELY — T1-23 implementation pending (Phase 8 prerequisite) | — |
 | [0042](0042-human-override-first-class-invariant.md) | Human Override as First-Class Architectural Invariant: OverrideSignal contract + Telegram override button + override handler registry per lock code | Architecture / Invariant | ✅ Accepted (2026-03-06) — ACTIVE IMMEDIATELY — T4-32 implementation pending | — |
+| [0043](0043-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0044](0044-postgresql-migration-phase8a-entry-gate.md) | PostgreSQL Migration as Phase 8A Entry Gate | Architecture / Data | ✅ Accepted (2026-03-06) | — |
 | [0045](0045-local-llm-backend-abstraction.md) | Local LLM Backend Abstraction: Ollama and On-Device Model Support | Architecture / AI Platform | ✅ Accepted (2026-03-06) | — |
 | [0046](0046-dailycoach-multi-athlete-execution-model.md) | DailyCoach Multi-Athlete Execution Model: stateless coaching_pipeline + CoachingScheduler | Architecture / Orchestration | ✅ Accepted (2026-03-08) — T5-16 closed; T5-16-A Phase 8B implementation entry created | — |

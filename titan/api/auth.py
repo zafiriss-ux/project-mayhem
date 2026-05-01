@@ -219,3 +219,25 @@ def decode_token(token: str, expected_type: str) -> TokenPayload:
     if payload.token_type != expected_type:
         raise AuthError("Invalid token type")
     return payload
+
+
+def validate_jwt_keys_at_startup() -> None:
+    """Fail fast if JWT keys are missing or malformed.
+
+    Call at application startup before accepting requests.
+    Raises AuthError with descriptive message.
+    """
+    try:
+        _jwt_private_key()
+    except AuthError as exc:
+        raise AuthError(
+            "TITAN_JWT_PRIVATE_KEY missing or invalid. "
+            "Set env var before starting API."
+        ) from exc
+    try:
+        _jwt_public_key()
+    except AuthError as exc:
+        raise AuthError(
+            "TITAN_JWT_PUBLIC_KEY missing or invalid. "
+            "Set env var before starting API."
+        ) from exc

@@ -3961,14 +3961,14 @@ When an item is completed, mark it here with date and PR reference:
 | T5-12 | ✅ VERIFIED COMPLETE 2026-04-26 — Pass 1 COMPLETE 2026-03-18; Pass 2 VERIFIED: O1–O7 implemented (b2cdc37 era); D4 → T5-100 (Phase 12) | 2026-04-26 |
 | T5-100 | 🟡 OPEN — Phase 12 (Garmin fallback D4: multi-device adapters, source switching, arbitration logic; deferred from T5-12 Pass 2) | — |
 | T5-101 | 🟡 OPEN — Phase 13 (.garth_token encryption + data-dir relocation; P1 security) | — |
-| T5-102 | 🟡 OPEN — Phase 13 (JWT key fail-fast at startup; P1 security) | — |
+| T5-102 | ✅ IMPLEMENTED 2026-05-01 — validate_jwt_keys_at_startup() added to auth.py; conditional call in __main__.py; 3 tests added to test_auth.py | 2026-05-01 |
 | T5-103 | 🟡 OPEN — Phase 13 (OutcomeTracker → ThresholdAdapter calibration loop wiring; ADR-0052; P2) | — |
 | T5-104 | 🟡 OPEN — Phase 13 (PersistenceAdapter ABC: wire OutcomeTracker consumer; ADR-0044; P2) | — |
-| T5-105 | 🟡 OPEN — Phase 13 (CI ruff gate: align ci.yml with documented Mandatory Gate; P1 blocker) | — |
-| T5-106 | 🟡 OPEN — Phase 13 (Author/stub missing ADRs 0019,0021,0024,0025,0028,0029,0031,0035,0036,0039,0040,0043; P1 blocker) | — |
-| T5-107 | 🟡 OPEN — Phase 13 (Sync CLAUDE.md lock-code list with CANONICAL_LOCK_CODES; 5 codes missing; P2) | — |
-| T5-108 | 🟡 OPEN — Phase 13 (Normalise DailyCoach version label in CLAUDE.md v5.7→v5.8; P3) | — |
-| T5-109 | 🟡 OPEN — Phase 13 (Correct science module count in CLAUDE.md 27→31; P3) | — |
+| T5-105 | ✅ IMPLEMENTED 2026-05-01 — ruff-phase-a: removed continue-on-error, renamed to "Ruff Gate 1 (full repo)", scope expanded to .; blocking | 2026-05-01 |
+| T5-106 | ✅ IMPLEMENTED 2026-05-01 — 12 ADR stubs created; 0024/0040 have real content; docs/adr/ now has 48 files (no gaps 0006–0052) | 2026-05-01 |
+| T5-107 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lock-code list expanded to all 15 CANONICAL_LOCK_CODES | 2026-05-01 |
+| T5-108 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md line 238 DailyCoach v5.7 → v5.8 | 2026-05-01 |
+| T5-109 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lines 65 and 229 science module count 27/26 → 31 | 2026-05-01 |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4595,9 +4595,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-102 · JWT key fail-fast validation at API startup 🟡 OPEN
+### T5-102 · JWT key fail-fast validation at API startup ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade security audit (2026-05-01), finding A3.
 **Priority:** P1 (High — missing keys discovered mid-request rather than at boot).
 
@@ -4637,9 +4637,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-105 · CI ruff gate: align ci.yml with documented Mandatory Gate 🟡 OPEN
+### T5-105 · CI ruff gate: align ci.yml with documented Mandatory Gate ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13 (quick win).
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade documentation audit (2026-05-01), finding D1 / C1.
 **Priority:** P1 (High — BLOCKER: PRs can merge with lint debt while CLAUDE.md §Mandatory Gates claims zero findings required).
 
@@ -4651,9 +4651,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-106 · Author or stub all missing ADRs (0019, 0021, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040, 0043) 🟡 OPEN
+### T5-106 · Author or stub all missing ADRs (0019, 0021, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040, 0043) ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13 (records-only for stubs; full authoring for 0024 and 0040).
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade documentation audit (2026-05-01), finding D2.
 **Priority:** P1 (High — BLOCKER: ADR-0040 and ADR-0024 are operationally referenced in `TECHNICAL_DEBT.md` and `thresholds.py:182` respectively but no files exist; auditability of athlete identity isolation and lock-code governance is broken).
 
@@ -4667,9 +4667,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-107 · Synchronise CLAUDE.md lock-code list with CANONICAL_LOCK_CODES 🟡 OPEN
+### T5-107 · Synchronise CLAUDE.md lock-code list with CANONICAL_LOCK_CODES ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade documentation audit (2026-05-01), finding D3.
 **Priority:** P2 (Medium — snapshot is 5 codes behind canonical; developers may inadvertently use undocumented codes).
 
@@ -4683,9 +4683,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-108 · Normalise DailyCoach version label in CLAUDE.md 🟡 OPEN
+### T5-108 · Normalise DailyCoach version label in CLAUDE.md ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade documentation audit (2026-05-01), finding D4.
 **Priority:** P3 (Low — cosmetic, but creates confusion about which version is deployed).
 
@@ -4697,9 +4697,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-109 · Correct science module count in CLAUDE.md 🟡 OPEN
+### T5-109 · Correct science module count in CLAUDE.md ✅ IMPLEMENTED
 
-**Status:** 🟡 OPEN — Phase 13 (quick win, records-only).
+**Status:** ✅ IMPLEMENTED 2026-05-01.
 **Source:** Pre-upgrade documentation audit (2026-05-01), finding D5.
 **Priority:** P3 (Low — module inventory is unreliable; MODULE_COUNT_CEILING headroom may be stale).
 
