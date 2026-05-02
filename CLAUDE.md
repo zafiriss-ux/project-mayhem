@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2664 tests all green as of claude/encrypt-garmin-token-YAcFt branch (Phase 13 Pass 2: T5-101 Fernet token encryption + FMEA Phase 13 records) (2026-05-01). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2667 tests all green as of claude/implement-governance-engine-Em9vk branch (C-01/C-02/S-08: H4/H5 conservative fail + cryptography pin) (2026-05-02). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -264,7 +264,8 @@ VO2_MIN_DAYS_SINCE_LAST   = 2
 `INTENSITY_GATE_YELLOW`, `PARASYMPATHETIC_GUARD`, `OVERRIDE_LOCKDOWN`,
 `CS_CONFIDENCE_LOCK`, `PERSISTENCE_DEGRADED_CEILING`,
 `STARTUP_DATA_CONFIDENCE_CEILING`, `FAIL_SAFE_LOCK`,
-`DATA_MISSING_CONSERVATIVE_H2`, `DATA_MISSING_CONSERVATIVE_H3`
+`DATA_MISSING_CONSERVATIVE_H2`, `DATA_MISSING_CONSERVATIVE_H3`,
+`DATA_MISSING_CONSERVATIVE_H4`, `DATA_MISSING_CONSERVATIVE_H5`
 
 ### Threading
 

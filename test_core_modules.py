@@ -992,7 +992,8 @@ class TestGovernanceEngine:
 
         plan = {'session_type': 'INTERVALS'}
         # T5-49: supply healthy sleep/readiness so the 2-of-4 downgrade does not fire.
-        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker, 'sleep_score': 80, 'readiness_score': 70})
+        # ADR-0051: supply subjective_fatigue_score so H5 missing-data gate does not fire.
+        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker, 'sleep_score': 80, 'readiness_score': 70, 'subjective_fatigue_score': 0})
         assert result['governance_clean'] is True
         assert result['governance_locks_applied'] == []
 

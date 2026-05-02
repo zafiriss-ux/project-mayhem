@@ -340,13 +340,7 @@ class TestOrchestrationBoundaryBackwardCompat:
 
     def test_locks_applied_contains_only_known_codes(self, gov):
         """All lock codes must be from the canonical set."""
-        known_codes = {
-            'INTENSITY_GATE_RED', 'INTENSITY_GATE_YELLOW',
-            'READINESS_2OF4_DOWNGRADE', 'HARD_STOP_SAFETY_GATES',
-            'VO2_ELIGIBILITY_GATE', 'FUELING_GATE_LOCK', 'FUELING_GATE_FLAG',
-            'PARASYMPATHETIC_GUARD', 'OVERRIDE_LOCKDOWN', 'CS_CONFIDENCE_LOCK',
-            'STARTUP_DATA_CONFIDENCE_CEILING',
-        }
+        from titan.config.thresholds import CANONICAL_LOCK_CODES as known_codes
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
         contexts = [
             _vo2_context(acwr=0.5),

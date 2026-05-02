@@ -11,6 +11,7 @@ RUNTIME_DEPENDENCIES = {
     "fastapi==0.115.0",
     "pyjwt[crypto]==2.12.0",
     "bcrypt==4.2.0",
+    "cryptography==41.0.7",
     "import-linter==2.11",
     "schemathesis==4.15.2",
     "mutmut==3.5.0",
