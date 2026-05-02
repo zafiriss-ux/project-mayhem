@@ -19,7 +19,7 @@ psycopg2-binary==2.9.10
 fastapi==0.115.0
 pyjwt[crypto]==2.12.0
 bcrypt==4.2.0
-cryptography==41.0.7  # explicit dep for Fernet token encryption (T5-101)
+cryptography==46.0.7  # explicit dep for Fernet token encryption (T5-101)
 
 # Architectural dependency linting (T5-93)
 import-linter==2.11
