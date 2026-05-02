@@ -337,9 +337,10 @@ def _browser_drift(ctx: dict):
             else:
                 drift = a.get("drift_pct", 0)
                 cls = DriftEngine.classify_drift(drift) if drift else "N/A"
+            drift_disp = f"{drift:.1f}%" if drift else "N/A"
             print(f"  {a.get('date',''):<12} "
                   f"{a.get('activity_type','run'):<12} "
-                  f"{drift:>7.1f}% "
+                  f"{drift_disp:>8} "
                   f"{cls:<20}")
     _divider()
     print("\n  📚 Ερμηνεία Drift:")

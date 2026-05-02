@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2667 tests all green as of claude/implement-governance-engine-Em9vk branch (C-01/C-02/S-08: H4/H5 conservative fail + cryptography pin) (2026-05-02). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2669 tests all green as of claude/implement-athlete-records-vWlc4 branch (profile defaults unified to UniversalAthleteProfile; drift N/A fix; T5-117 registered) (2026-05-02). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

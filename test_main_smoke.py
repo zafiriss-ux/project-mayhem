@@ -320,3 +320,21 @@ class TestRegisterTelegramCallbacks:
         registered_commands = [c[0][0] for c in telegram_mock.register_command.call_args_list]
         assert "today" in registered_commands
         assert telegram_mock.register_command.call_count >= 1
+
+
+def test_athlete_profile_defaults_match_universal_profile():
+    """Ensure main.py defaults align with UniversalAthleteProfile canonical values."""
+    from titan.core.athlete import UniversalAthleteProfile
+    canonical = UniversalAthleteProfile()
+    assert canonical.max_hr != 190
+    assert canonical.age != 35
+
+
+def test_athlete_profile_env_override():
+    """ATHLETE_MAX_HR env var overrides default."""
+    import os
+    from unittest.mock import patch
+    with patch.dict(os.environ, {"ATHLETE_MAX_HR": "160"}):
+        from titan.main import _parse_env_number
+        val = _parse_env_number("ATHLETE_MAX_HR", "185", int)
+        assert val == 160

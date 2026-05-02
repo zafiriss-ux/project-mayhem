@@ -3998,6 +3998,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-114 | 🟡 OPEN — Phase 13 (Data-void governance rule; Gemini finding; P1) | — |
 | T5-115 | 🟡 OPEN — Phase 13 (Source tagging for manual vs Garmin data; schema change; P2) | — |
 | T5-116 | 🟡 OPEN — Phase 13 (Manual biometric entry path via Telegram; P1 operational blocker) | — |
+| T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4829,6 +4830,22 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Acceptance criteria:** Migration adds column; Garmin sync writes `'garmin_api'`; manual entry path (T5-116) writes `'manual_entry'`; no existing test regressions.
 
 **Location:** `titan/core/database.py`, Alembic migration, `titan/integrations/garmin_sync.py`.
+
+---
+
+### T5-117 · Two parallel athlete profile systems (architectural debt) 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Profile unification audit (2026-05-02).
+**Priority:** MEDIUM (workaround: .env vars override canonical defaults as of this commit).
+
+**Scope:** `titan/main.py` constructs `athlete_profile` dict from env vars independently of `UniversalAthleteProfile`. The two systems carry overlapping state (age, max_hr, threshold_hr, weight_kg, height_cm) with no synchronisation. Goal: Phase 13 unifies both into a single source of truth so the coaching pipeline always reads from `UniversalAthleteProfile`.
+
+**ADR required:** Yes — architectural unification touches orchestration contracts and DB schema.
+
+**Acceptance criteria:** `titan/main.py` Step 5 removed; `DailyCoach` and all downstream consumers read `UniversalAthleteProfile` directly; no duplicate profile dict in `TitanContext`.
+
+**Location:** `titan/main.py`, `titan/core/athlete.py`, `titan/orchestration/contracts.py`, `titan/orchestration/daily_coach.py`.
 
 ---
 
