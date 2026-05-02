@@ -3991,6 +3991,13 @@ When an item is completed, mark it here with date and PR reference:
 | T5-107 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lock-code list expanded to all 15 CANONICAL_LOCK_CODES | 2026-05-01 |
 | T5-108 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md line 238 DailyCoach v5.7 → v5.8 | 2026-05-01 |
 | T5-109 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lines 65 and 229 science module count 27/26 → 31 | 2026-05-01 |
+| T5-110 | 🟡 OPEN — Phase 13 (S-01 Coach RBAC unscoped; coach_athlete_assignments table; P1) | — |
+| T5-111 | 🟡 OPEN — Phase 13 (S-03 Audit log in-memory only; coach_audit DB table; P2) | — |
+| T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
+| T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
+| T5-114 | 🟡 OPEN — Phase 13 (Data-void governance rule; Gemini finding; P1) | — |
+| T5-115 | 🟡 OPEN — Phase 13 (Source tagging for manual vs Garmin data; schema change; P2) | — |
+| T5-116 | 🟡 OPEN — Phase 13 (Manual biometric entry path via Telegram; P1 operational blocker) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4730,3 +4737,111 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Acceptance criteria:** CLAUDE.md science module count matches `find titan/science …` output; `tests/test_claude_md_integrity.py` enforces this via a filesystem count assertion.
 
 **Location:** `CLAUDE.md:65, 229`, `titan/config/thresholds.py:204`.
+
+---
+
+### T5-110 · S-01 Coach RBAC unscoped 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** FMEA Phase 13 security audit (2026-05-02), finding S-01.
+**Priority:** P1 (High — blocks multi-athlete onboarding; coach can access any athlete's data).
+
+**Scope:** Implement `coach_athlete_assignments` table to scope coach queries. All coach-facing DB reads must filter by `athlete_id` via the assignment table. No cross-athlete data leakage permitted.
+
+**Acceptance criteria:** A coach session can only retrieve data for athletes in their `coach_athlete_assignments` rows; integration test verifies cross-athlete isolation.
+
+**Location:** `titan/core/database.py`, `titan/ui/operator_console.py`.
+
+---
+
+### T5-111 · S-03 Audit log in-memory only 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** FMEA Phase 13 security audit (2026-05-02), finding S-03.
+**Priority:** P2 (Medium — audit trail is lost on restart; compliance and forensic use cases broken).
+
+**Scope:** Persist coach actions in a `coach_audit` DB table (columns: `id`, `actor_id`, `action`, `target_athlete_id`, `payload_json`, `timestamp`). Audit log must survive process restart.
+
+**Acceptance criteria:** `coach_audit` table exists in schema; all operator console override actions write a row; test verifies rows persist across a db reconnect.
+
+**Location:** `titan/ui/operator_console.py`, `titan/core/database.py`.
+
+---
+
+### T5-112 · S-02 No CSRF protection 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13 (before React/FastAPI UI launch).
+**Source:** FMEA Phase 13 security audit (2026-05-02), finding S-02.
+**Priority:** P2 (Medium — state-changing endpoints unprotected; must resolve before any browser-facing UI).
+
+**Scope:** Add CSRF token middleware to the FastAPI app before any browser-facing routes are deployed. Cookie-based or header-based double-submit pattern acceptable.
+
+**Acceptance criteria:** All POST/PUT/DELETE endpoints require valid CSRF token; test confirms 403 on missing token.
+
+**ADR required:** Yes (depends on ADR-0013 React+FastAPI technology path).
+
+**Location:** `titan/api/` (FastAPI router).
+
+---
+
+### T5-113 · S-06 JWT missing iss/aud claims 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** FMEA Phase 13 security audit (2026-05-02), finding S-06.
+**Priority:** P3 (Low — defence-in-depth; no active exploit path).
+
+**Scope:** Add `iss` (issuer) and `aud` (audience) claims to all issued JWTs; validate both on decode. This prevents token reuse across services/environments.
+
+**Acceptance criteria:** Decoded JWTs contain `iss="titan-os"` and `aud="titan-api"`; validation rejects tokens with wrong/missing claims.
+
+**Location:** `titan/api/auth.py` (or equivalent JWT issuance path).
+
+---
+
+### T5-114 · Data-void governance rule 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Gemini finding, FMEA Phase 13 (2026-05-02).
+**Priority:** P1 (High — athlete with stale/no data receives unrestricted recommendations).
+
+**Scope:** If `last_garmin_sync_timestamp > 48h` OR no `daily_metrics` row for the athlete in the last 48h: `governance_engine` must cap `max_zone ≤ 2` (Zone 2) AND emit `DATA_VOID_CONSERVATIVE` lock code.
+
+**ADR required:** Yes — new hard gate logic requires ADR.
+
+**Blocked on:** C-01/C-02 pass (this task extends the conservative-fail pattern).
+
+**Acceptance criteria:** Test verifies `DATA_VOID_CONSERVATIVE` in `governance_locks_applied` when sync is > 48h stale; `max_zone ≤ 2` enforced.
+
+**Location:** `titan/science/governance_engine.py`, `titan/integrations/garmin_sync.py` (staleness check).
+
+---
+
+### T5-115 · Source tagging for manual vs Garmin data 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** FMEA Phase 13 data lineage audit (2026-05-02).
+**Priority:** P2 (Medium — manual entries can poison Garmin baseline without lineage tracking).
+
+**Scope:** Add `data_source TEXT DEFAULT 'garmin_api'` column to `daily_metrics` table. Values: `'garmin_api' | 'manual_entry' | 'estimated'`. All existing rows default to `'garmin_api'`.
+
+**ADR required:** Yes — schema topology change.
+
+**Acceptance criteria:** Migration adds column; Garmin sync writes `'garmin_api'`; manual entry path (T5-116) writes `'manual_entry'`; no existing test regressions.
+
+**Location:** `titan/core/database.py`, Alembic migration, `titan/integrations/garmin_sync.py`.
+
+---
+
+### T5-116 · Manual biometric entry path via Telegram 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** FMEA Phase 13 operational gap (2026-05-02).
+**Priority:** P1 (High — operational blocker given Garmin API fragility; only fallback data path).
+
+**Scope:** Add `/manual_entry` Telegram command accepting `HRV=<n> RHR=<n> SLEEP=<n> FATIGUE=<n>`. Writes to `daily_metrics` with `data_source='manual_entry'` (requires T5-115). Tags each metric with source type.
+
+**Depends on:** T5-115 (source tagging schema).
+
+**Acceptance criteria:** `/manual_entry HRV=65 RHR=52 SLEEP=7 FATIGUE=3` inserts a row with correct values and `data_source='manual_entry'`; Telegram bot test verifies command parsing.
+
+**Location:** `titan/integrations/telegram_bot.py`, `titan/core/database.py`.

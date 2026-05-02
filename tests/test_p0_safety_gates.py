@@ -263,6 +263,35 @@ def test_config_rhr_delta_respected(monkeypatch):
     assert plan["session_type"] == "INTERVALS"
 
 
+# ── T-04: H4 missing TSB conservative lock (ADR-0051) ────────────────────────
+
+def test_h4_missing_tsb_triggers_conservative_lock():
+    """T-04: tsb_value=None in context → DATA_MISSING_CONSERVATIVE_H4 emitted."""
+    ctx = make_context(tsb_value=None)
+    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
+    assert "DATA_MISSING_CONSERVATIVE_H4" in plan["governance_locks_applied"]
+    assert plan.get("max_zone", 5) <= 2 or plan["session_type"] in {"EASY", "REST"}
+
+
+def test_h4_nan_tsb_triggers_conservative_lock():
+    """T-04b: tsb_value=NaN → non-finite rejected → DATA_MISSING_CONSERVATIVE_H4 emitted."""
+    ctx = make_context(tsb_value=float("nan"))
+    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
+    assert "DATA_MISSING_CONSERVATIVE_H4" in plan["governance_locks_applied"]
+
+
+# ── T-05: H5 absent fatigue conservative lock (ADR-0051) ─────────────────────
+
+def test_h5_absent_fatigue_not_treated_as_zero():
+    """T-05: absent subjective_fatigue_score key → conservative downgrade, not silent pass."""
+    ctx = make_context()
+    del ctx["subjective_fatigue_score"]
+    plan = gov.apply_constraints(make_plan("INTERVALS"), ctx)
+    assert "DATA_MISSING_CONSERVATIVE_H5" in plan["governance_locks_applied"]
+    # Must NOT be governance_clean — missing fatigue must register as a signal
+    assert plan.get("governance_clean") is not True
+
+
 # ── Gate clean path ───────────────────────────────────────────────────────────
 
 def test_no_gate_fires_session_unchanged():

@@ -489,8 +489,35 @@ class GovernanceEngine:
                             reason="non-finite TSB input rejected (INV-01)",
                             garmin_data_age_hours=_garmin_age,
                             garmin_data_trust_level=_garmin_trust)
+                # ADR-0051: non-finite TSB → conservative fail
+                context["data_confidence_low"] = True
+                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                    session_plan["session_type"] = "EASY"
+                context["_h4_data_missing"] = True
+                reasons.append({
+                    "gate": "H4_MISSING",
+                    "reason": "TSB data non-finite — EASY ceiling applied (ADR-0051)",
+                })
                 tsb_value = None
         except (TypeError, ValueError):
+            # ADR-0051: key present but non-castable → conservative fail.
+            if "tsb_value" in context:
+                _gate_event(
+                    "H4_TSB",
+                    "EASY_ceiling_applied",
+                    reason="governance_data_missing_conservative",
+                    severity="WARNING",
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
+                context["data_confidence_low"] = True
+                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                    session_plan["session_type"] = "EASY"
+                context["_h4_data_missing"] = True
+                reasons.append({
+                    "gate": "H4_MISSING",
+                    "reason": "TSB data missing or non-numeric — EASY ceiling applied (ADR-0051)",
+                })
             tsb_value = None
         if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
             if str(session_plan.get("session_type", "EASY")).upper() in self._QUALITY_SESSIONS:
@@ -505,18 +532,38 @@ class GovernanceEngine:
             )
 
         # H5 — Extreme Subjective Fatigue
-        try:
-            _h5_raw = float(context.get("subjective_fatigue_score", 0))
-            if not math.isfinite(_h5_raw):
-                _gate_event("H5", "NAN_REJECTED",
-                            reason="non-finite fatigue input rejected (INV-01)",
-                            garmin_data_age_hours=_garmin_age,
-                            garmin_data_trust_level=_garmin_trust)
-                subjective_fatigue = 0
-            else:
-                subjective_fatigue = int(_h5_raw)
-        except (TypeError, ValueError):
+        if "subjective_fatigue_score" not in context:
+            # ADR-0051: absent fatigue key → conservative soft downgrade (not hard stop).
+            # H5 is a soft gate — does NOT set data_confidence_low (that would escalate
+            # to STARTUP_DATA_CONFIDENCE_CEILING, an unintended hard downgrade).
+            _gate_event(
+                "H5_FATIGUE",
+                "MODERATE_ceiling_applied",
+                reason="governance_data_missing_conservative",
+                severity="WARNING",
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
+            )
+            session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5)), 3)
+            context["_h5_data_missing"] = True
+            reasons.append({
+                "gate": "H5_MISSING",
+                "reason": "Subjective fatigue data absent — MODERATE ceiling applied (ADR-0051)",
+            })
             subjective_fatigue = 0
+        else:
+            try:
+                _h5_raw = float(context.get("subjective_fatigue_score", 0))
+                if not math.isfinite(_h5_raw):
+                    _gate_event("H5", "NAN_REJECTED",
+                                reason="non-finite fatigue input rejected (INV-01)",
+                                garmin_data_age_hours=_garmin_age,
+                                garmin_data_trust_level=_garmin_trust)
+                    subjective_fatigue = 0
+                else:
+                    subjective_fatigue = int(_h5_raw)
+            except (TypeError, ValueError):
+                subjective_fatigue = 0
         if subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME:
             if str(session_plan.get("session_type", "EASY")).upper() != "REST":
                 session_plan["session_type"] = "EASY"
@@ -1178,6 +1225,10 @@ class GovernanceEngine:
             applied_locks.append("DATA_MISSING_CONSERVATIVE_H2")
         if context.get("_h3_data_missing"):
             applied_locks.append("DATA_MISSING_CONSERVATIVE_H3")
+        if context.get("_h4_data_missing"):
+            applied_locks.append("DATA_MISSING_CONSERVATIVE_H4")
+        if context.get("_h5_data_missing"):
+            applied_locks.append("DATA_MISSING_CONSERVATIVE_H5")
 
         vo2_result = self._check_vo2_eligibility(session_plan, context)
         if vo2_result is not None:
