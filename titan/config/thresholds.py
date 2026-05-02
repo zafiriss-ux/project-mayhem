@@ -179,6 +179,10 @@ THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT: float = 0.20  # 20% false-neg rate → b
 COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR: float = 0.80  # 20% shift toward conservative
 COLD_START_HARD_STOP_FACTOR: float = 1.00               # Hard-stop gates (H1–H5) unchanged
 
+# ── ADR-0053 — Data-void governance gate (H6) ────────────────────────────────
+DATA_VOID_THRESHOLD_HOURS: float = 48.0  # Hours since last Garmin sync before H6 fires
+DATA_VOID_ZONE_CAP: int = 2              # Max training zone permitted when H6 is active
+
 # Governance lock codes (ADR-0024 / T4-21): machine-readable canonical set.
 CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
     {
@@ -199,6 +203,7 @@ CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
         "DATA_MISSING_CONSERVATIVE_H3",
         "DATA_MISSING_CONSERVATIVE_H4",
         "DATA_MISSING_CONSERVATIVE_H5",
+        "DATA_VOID_CONSERVATIVE",
     }
 )
 

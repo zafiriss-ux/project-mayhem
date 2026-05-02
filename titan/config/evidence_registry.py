@@ -1365,6 +1365,30 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'unconstrained; raise ceiling only if outcome data shows saturation.'
         ),
     ),
+
+    # ── ADR-0053 — Data-void governance gate (H6) ─────────────────────────────
+    'DATA_VOID_THRESHOLD_HOURS': ThresholdEvidence(
+        parameter='DATA_VOID_THRESHOLD_HOURS',
+        value=48.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='ADR-0053 / Gemini architectural audit 2026-05-02',
+        rationale=(
+            'Beyond 48h without objective data, TSB/ATL decay creates false '
+            'freshness: the athlete appears recovered when actual state is '
+            'unknown. 48h aligns with the existing STALE_DATA_HARD_CEILING_HOURS '
+            'policy (ADR-0026) and covers a single missed daily sync cycle plus '
+            'one buffer day. Conservative Zone 2 cap prevents injury from '
+            'uninformed high-intensity recommendations.'
+        ),
+        policy_note=(
+            'HEURISTIC: 48h threshold is a policy decision consistent with '
+            'ADR-0051 conservative-fail principle. No published study directly '
+            'validates this specific staleness threshold for training governance. '
+            'Calibration path: correlate H6 trigger events with athlete-reported '
+            'fatigue and next-session completion rates to validate or adjust.'
+        ),
+    ),
 }
 
 
