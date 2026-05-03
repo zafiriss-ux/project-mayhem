@@ -338,7 +338,7 @@ def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
 
     payload = sync.sync_weight(days_back=2)
 
-    assert payload == [{"date": "2026-03-10", "weight_kg": 70.2, "bmi": 22.0, "source": "garmin"}]
+    assert payload == [{"date": "2026-03-10", "weight_kg": 70.2}]
 
 
 def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
