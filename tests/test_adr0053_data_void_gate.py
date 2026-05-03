@@ -71,3 +71,23 @@ def test_h6_cap_does_not_exceed_zone2():
     result = gov.apply_constraints(session, ctx)
     assert result["max_zone"] <= DATA_VOID_ZONE_CAP
     assert result["max_zone"] <= 2
+
+
+def test_h6_fires_from_real_context_payload():
+    """AT-H6-06: H6 fires when context_payload mirrors DailyCoach wiring (line 861).
+
+    Validates the end-to-end path: garmin_data_age_hours in context_payload
+    (set at daily_coach.py:861 via garmin_trust.data_age_hours) correctly
+    triggers DATA_VOID_CONSERVATIVE and caps max_zone.
+    """
+    context = make_context(garmin_data_age_hours=72.0)
+    result = gov.apply_constraints(make_plan(session_type="TEMPO", max_zone=4), context)
+    assert "DATA_VOID_CONSERVATIVE" in result["governance_locks_applied"]
+    assert result["max_zone"] <= DATA_VOID_ZONE_CAP
+
+
+def test_h6_does_not_fire_when_age_fresh():
+    """AT-H6-07: H6 silent when garmin_data_age_hours is within threshold."""
+    context = make_context(garmin_data_age_hours=12.0)
+    result = gov.apply_constraints(make_plan(), context)
+    assert "DATA_VOID_CONSERVATIVE" not in result["governance_locks_applied"]
