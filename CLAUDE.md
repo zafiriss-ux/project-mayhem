@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2694 tests all green as of claude/coach-athlete-rbac-QZSNU branch (T5-110 Coach-Athlete RBAC Scoping; 6 new tests in tests/test_t5_110_coach_rbac.py) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2699 tests all green as of claude/unify-athlete-profile-02U7k branch (T5-117 Unify athlete profile — from_env() classmethod; 5 new tests in tests/test_t5_117_profile_unification.py) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

@@ -340,3 +340,35 @@ class UniversalAthleteProfile:
         profile.d_prime_m = data.get("d_prime_m", 250.0)
 
         return profile
+
+    @classmethod
+    def from_env(cls) -> "UniversalAthleteProfile":
+        """Construct profile from environment variables.
+        Falls back to physiologically safe defaults
+        when vars are absent."""
+        import os
+        import sys
+
+        _defaults = cls()
+
+        def _parse(var: str, default, caster):
+            raw = os.environ.get(var, str(default))
+            try:
+                return caster(raw)
+            except (TypeError, ValueError):
+                print(
+                    f"Invalid environment variable {var}={raw!r}. "
+                    f"Expected {caster.__name__}.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+        profile = cls(name=os.environ.get("ATHLETE_NAME", "Athlete"))
+        profile.age = _parse("ATHLETE_AGE", _defaults.age, int)
+        profile.weight_kg = _parse("ATHLETE_WEIGHT", _defaults.weight_kg, float)
+        profile.height_cm = _parse("ATHLETE_HEIGHT", _defaults.height_cm, float)
+        profile.max_hr = _parse("ATHLETE_MAX_HR", _defaults.max_hr, int)
+        profile.threshold_hr = _parse("ATHLETE_THRESHOLD_HR", _defaults.threshold_hr, int)
+        profile.training_phase = os.environ.get("TRAINING_PHASE", "BUILD")
+        profile.current_goal = os.environ.get("TRAINING_GOAL", "5K")
+        return profile
