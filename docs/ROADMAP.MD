@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–7.8 — All CLOSED)
+## Phase History (Phases 0–8, 11–12 CLOSED; Phases 9, 10, 13 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -22,6 +22,12 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 7.7 | Engineering Audit V3 | 2026-03-06 | T1-13/T1-14, T2-09–T2-11, T3-08; 1535 tests |
 | Phase 7.8 | Architecture Risk Review | 2026-03-06 | ADR-0020–0042; 25 risk items locked; T1-18→T5-07 registered |
 | Phase 7.9 | Tier 1 Safety Hardening | 2026-03-08 | T1-18→T1-23 all RESOLVED; ADR-0022 G1–G11 all cleared; Phase 8 OPEN |
+| Phase 8 | Multi-Athlete Coach Platform | 2026-04-04 | 8A/8B/8C all CLOSED; athlete isolation (ADR-0033 L3), coaching_pipeline extracted |
+| Phase 9 | Autonomous Coaching Intelligence | OPEN 2026-04-20 | ThresholdAdapter (ADR-0052), cold-start protocol, athlete isolation L3 |
+| Phase 10 | LLM Coach Query Layer | OPEN (deferred) | Pending Phase 9 corpus gate (≥3 athlete profiles × ≥90 decisions) |
+| Phase 11 | Security Hardening Sprint | 2026-04-27 | Auth hardening, Telegram daemon fix (T5-98), Garmin env fix (T5-99) |
+| Phase 12 | Testing Infrastructure | 2026-04-27 | mutmut (T5-84), metamorphic tests (T5-87), schemathesis 4.x (T5-94) |
+| Phase 13 | Security & Data Integrity | OPEN 2026-05-01 | FMEA items T5-101–T5-118; Telegram trust fix, ML kill-switch whitelist |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -45,18 +51,17 @@ Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
 ---
 
-## Phase 8 — Multi-Athlete Coach Platform (OPEN, 2026-03-08)
+## Phase 8 — Multi-Athlete Coach Platform (CLOSED, 2026-04-04)
 
-**Opened:** 2026-03-08 — ADR-0022 entry gate G1–G11 all cleared. See TECHNICAL_DEBT.md
-line "Phase 8 OPEN — all G1–G11 cleared 2026-03-08" and ADR-0022 for the gate record.
+**Opened:** 2026-03-08 — ADR-0022 entry gate G1–G11 all cleared.
+**Closed:** 2026-04-04 — Phase 8C (final sub-phase) CLOSED.
 
 **Product direction:** Coach-managed, multi-athlete deployment (Phase 8 product direction).
 **Prerequisite:** ADR-0022 entry gate G1–G11 ALL PASS (binary gate check required). ✅ CLEARED
 
-Phase 8 is sequenced into three sub-phases. No Phase 8B or 8C code may begin
-before Phase 8A deliverables pass the ADR-0044 binary gate.
+All three sub-phases CLOSED as of 2026-04-04.
 
-### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation)
+### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation) ✅ CLOSED 2026-04-04
 
 **Gate document:** ADR-0044. No Phase 8B work without 8A binary complete.
 
@@ -66,14 +71,14 @@ before Phase 8A deliverables pass the ADR-0044 binary gate.
 - GDPR consent log table
 - ADR-0018 Phase B: Effect Runner extracted as stateless function
 
-### Phase 8B — Coach Dashboard
+### Phase 8B — Coach Dashboard ✅ CLOSED 2026-04-04
 
 - Readiness grid, risk alerts, session explorer for coach view (10–50 athletes)
 - `get_athlete_context(athlete_id, days) → dict` — Phase 8B Seam 2
 - `DecisionRationale` persisted to DB as JSON column (Phase 8B Seam 1)
 - React + FastAPI backend (ADR-0013); auth layer required first (T5-11 / ADR-0046)
 
-### Phase 8C — Multi-Device Adapters
+### Phase 8C — Multi-Device Adapters ✅ CLOSED 2026-04-04
 
 - Strava, Polar, Whoop, COROS integrations
 - DataTrustLevel contract per ADR-0041 (all adapters must comply)
@@ -97,6 +102,37 @@ across multiple athlete profiles without requiring manual threshold edits.
    advisory mode first (3+ correct predictions required before auto-apply)
 5. Multi-modal biometric ingestion: lab VO2max, lactate curve, HRV4Training exports;
    weighted by provenance (lab > wearable > self-reported)
+
+---
+
+## Phase 10 — LLM Coach Query Layer (OPEN, deferred)
+
+**Status:** Deferred — pending Phase 9 multi-athlete corpus gate.
+Implement only after Phase 9 closes with sufficient data (corpus ≥ 3 athlete profiles × 90 decisions each).
+Kill-switch pattern identical to ML safety (ADR-0014). See `FUTURE_UPGRADES.md` for full scope.
+
+---
+
+## Phase 11 — Security Hardening Sprint (CLOSED, 2026-04-27)
+
+Auth store lockout hardening, Telegram `_poll_thread` daemon fix (T5-98), Garmin env-var
+pollution fix (T5-99). FMEA: no unmitigated HIGH/CRITICAL items at close.
+
+---
+
+## Phase 12 — Testing Infrastructure (CLOSED, 2026-04-27)
+
+mutmut 3.5.0 mutation testing targeted at H1–H5 governance gates (T5-84), metamorphic
+testing for physiological models (T5-87), schemathesis 4.x API contract tests (T5-94).
+FMEA: no unmitigated HIGH items at close.
+
+---
+
+## Phase 13 — Security & Data Integrity (OPEN, 2026-05-01)
+
+Active phase. FMEA gate cleared 2026-05-01. Open items: T5-101 (.garth_token Fernet
+encryption), T5-110–T5-118 (RBAC, audit log, CSRF, data-void Stage 3, source tagging,
+manual biometric entry, athlete profile unification). See `TECHNICAL_DEBT.md` for register.
 
 ---
 
@@ -163,4 +199,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-03-08 (Phase 7.9 CLOSED: T1-18–T1-23 all RESOLVED; ADR-0022 G1–G11 all cleared; Phase 8 OPEN 2026-03-08; T5-16 RESOLVED — ADR-0046 accepted, T5-16-A implementation entry created)
+Last updated: 2026-05-03 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 OPEN 2026-05-01; Phase 10 deferred pending corpus gate; Phases 10–13 added to roadmap)

@@ -75,7 +75,7 @@ Telegram output, `EvidenceRegistry` promotion metadata schema enforcement).
 
 ---
 
-## Phase 6 — Web UI / Operator Console (Q2–Q3 2026)
+## Phase 6 — Web UI / Operator Console (CLOSED, 2026-03-02)
 
 **Why before ML**: Visibility and operational control deliver immediate value
 earlier than heavy ML investment.
@@ -89,7 +89,7 @@ earlier than heavy ML investment.
 
 ---
 
-## Phase 7 — ML Features (Q3–Q4 2026)
+## Phase 7 — ML Features (CLOSED, 2026-03-02)
 
 **Why after Web UI**: ML must land on a stable foundation of observability,
 contracts, calibrated thresholds, and safety gates.
@@ -114,16 +114,15 @@ contracts, calibrated thresholds, and safety gates.
 
 ---
 
-## Phase 8 — Multi-Athlete Coach Platform (2027)
+## Phase 8 — Multi-Athlete Coach Platform (CLOSED, 2026-04-04)
 
 **Product direction:** TITAN OS is a coach-managed, multi-athlete platform.
 The coach is the primary user. The athlete receives output; the coach owns configuration.
 **Interaction model:** phone = async planning and analysis; watch = during-workout (no change).
 
-Phase 8 is sequenced into three sub-phases. No Phase 8B or 8C code may begin until
-Phase 8A deliverables pass the ADR-0044 binary gate.
+All three sub-phases CLOSED as of 2026-04-04.
 
-### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation)
+### Phase 8A — Infrastructure (PostgreSQL migration + athlete isolation) ✅ CLOSED 2026-04-04
 
 **ADR-0044.** Prerequisite for all Phase 8 feature work.
 
@@ -136,7 +135,7 @@ Phase 8A deliverables pass the ADR-0044 binary gate.
   multi-athlete parallel execution of DailyCoach morning briefings)
 - Hot backup updated for PostgreSQL (`pg_dump` replaces SQLite file copy)
 
-### Phase 8B — Coach Dashboard
+### Phase 8B — Coach Dashboard ✅ CLOSED 2026-04-04
 
 **Primary user-visible feature of Phase 8.**
 
@@ -150,7 +149,7 @@ Phase 8A deliverables pass the ADR-0044 binary gate.
 - `DecisionRationale` persisted to DB as JSON column on `governance_outcomes`
   (Phase 8B Seam 1; required for LLM explainability in Phase 10)
 
-### Phase 8C — Multi-Device Adapters
+### Phase 8C — Multi-Device Adapters ✅ CLOSED 2026-04-04
 
 - Strava, Polar, Whoop, COROS integrations
 - Unified adapter interface in `integrations/` (ADR-0041 DataTrustLevel contract)
@@ -159,7 +158,7 @@ Phase 8A deliverables pass the ADR-0044 binary gate.
 
 ---
 
-## Phase 9 — Autonomous Coaching Intelligence (2028)
+## Phase 9 — Autonomous Coaching Intelligence (OPEN, 2026-04-20)
 
 **Now backed by multi-athlete corpus.** The auto-calibration gate ("≥3 corroborating
 athlete profiles") is achievable in months with Phase 8 data — not years.
@@ -171,6 +170,15 @@ sufficient evidence base is undefined behaviour.
 
 **Goal**: Close the adaptive loop — the system self-improves from accumulated
 evidence without requiring manual threshold edits.
+
+### Implemented (as of 2026-05-03)
+
+| Item | Status | Source |
+|------|--------|--------|
+| `coaching_pipeline()` stateless extraction + `CoachingScheduler` stub | ✅ DONE | ADR-0046, T5-16-B (2026-03-17) |
+| Athlete isolation — `athletes` table, `athlete_id` FK, RLS policies (ADR-0033 all layers L3-A–L3-D) | ✅ DONE | ADR-0033 L3-A: 2026-04-14; L3-B: 2026-04-14; L3-C: 2026-04-17; L3-D: 2026-04-17 |
+| Cold-start protocol — 30-session conservative adapter bypass for new athletes | ✅ DONE | ADR-0033 L3-C, T5-07-L3-C (2026-04-17) |
+| `ThresholdAdapter` — per-athlete additive offset δT for soft gates; all 4 stages (ADR-0052) | ✅ DONE | ADR-0052, T5-103; Stages 1–4 complete by 2026-04-24 |
 
 ### 1. Auto-Threshold Calibration
 - MODERATE → STRONG promotion without manual intervention when confidence
@@ -233,7 +241,8 @@ the system is complete and functional without Phase 10.
 | Garmin | garth / garminconnect |
 | Weather | OpenWeatherMap API |
 | Bot | python-telegram-bot |
-| Testing | pytest, hypothesis |
+| Testing | pytest, hypothesis, import-linter, schemathesis, mutmut |
+| Test count | 2676 (as of 2026-05-03) |
 | CI | GitHub Actions (3-job pipeline) |
 | ML (planned) | TensorFlow / scikit-learn |
 | Web UI (planned) | Streamlit → React + FastAPI |
@@ -252,7 +261,7 @@ Level 4  Parameter provenance for all thresholds      [v5.7.1 ✓]
 Level 5  DB-persisted outcomes + lock rates           [v5.7.1 ✓]
 Level 6  /calibration command + structured flow logs  [Phase 4 ✓]
 Level 7  Science calibration (≥30 outcomes)           [Phase 5 ✓]
-Level 8  ML layer on calibrated foundation            [Phase 7]
+Level 8  ML layer on calibrated foundation            [Phase 7 ✓]  ← current
 Level 9  Autonomous self-calibration from evidence    [Phase 9]
 Level 10 Multi-athlete corpus → population-level STRONG evidence  [Phase 9+]
 Level 11 LLM coach query layer over structured outcome data       [Phase 10, optional]
@@ -306,6 +315,10 @@ Level 11 LLM coach query layer over structured outcome data       [Phase 10, opt
 - `TITAN_LLM_COACH=0` (default): all code paths fall back to deterministic template summaries
 - LLM integration tested against `get_athlete_context()` fixture data (no live API calls in CI)
 - No LLM call in any governance gate evaluation path (CI assertion)
+
+---
+
+Last updated: 2026-05-03 (Phase 8 CLOSED 2026-04-04; Phase 9 OPEN 2026-04-20; Phase 6/7 headers corrected to CLOSED; Level 8 governance maturity active; test count 2676; import-linter, schemathesis, mutmut added to testing tools)
 
 ---
 
