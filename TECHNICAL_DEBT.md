@@ -3995,7 +3995,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-111 | 🟡 OPEN — Phase 13 (S-03 Audit log in-memory only; coach_audit DB table; P2) | — |
 | T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
-| T5-114 | 🟡 OPEN — Phase 13 (Data-void governance rule; Stage 2 complete; Stage 3 pending) | — |
+| T5-114 | ✅ RESOLVED — Phase 13 (Data-void governance rule; all stages complete 2026-05-03) | — |
 | T5-115 | 🟡 OPEN — Phase 13 (Source tagging for manual vs Garmin data; schema change; P2) | — |
 | T5-116 | 🟡 OPEN — Phase 13 (Manual biometric entry path via Telegram; P1 operational blocker) | — |
 | T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
@@ -4800,9 +4800,9 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-114 · Data-void governance rule 🟡 OPEN
+### T5-114 · Data-void governance rule ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13. Stage 1 complete (ADR-0053 accepted; constants + lock code registered 2026-05-02). Stage 2 complete (H6 gate + apply_constraints cap + 5 tests; 2026-05-03). Stage 3 (DB staleness query via `garmin_sync.py`) pending.
+**Status:** ✅ RESOLVED — Phase 13 (2026-05-03). Stage 1 complete (ADR-0053 accepted; constants + lock code registered 2026-05-02). Stage 2 complete (H6 gate + apply_constraints cap + 5 tests; 2026-05-03). Stage 3 complete — wiring confirmed present at `daily_coach.py:861` (`garmin_trust.data_age_hours` → `context_payload["garmin_data_age_hours"]`); 2 integration tests added (AT-H6-06, AT-H6-07; 2026-05-03).
 **Source:** Gemini finding, FMEA Phase 13 (2026-05-02).
 **Priority:** P1 (High — athlete with stale/no data receives unrestricted recommendations).
 
