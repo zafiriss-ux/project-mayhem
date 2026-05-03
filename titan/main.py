@@ -34,7 +34,7 @@ from titan.features.weekly_planner import WeeklyPlanGenerator
 # ── Core integrations ────────────────────────────────────────────────────────
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
-from titan.orchestration.contracts import AthleteProfile, TitanContext, TitanContextContract
+from titan.orchestration.contracts import TitanContext, TitanContextContract
 
 # ── Orchestration ────────────────────────────────────────────────────────────
 from titan.orchestration.daily_coach import DailyCoach
@@ -444,18 +444,16 @@ def main():
     )
 
     # ── Step 5: Athlete profile (built before DailyCoach so max_hr is available) ──
-    athlete_profile: AthleteProfile = {
-        "name":           os.getenv("ATHLETE_NAME", "Athlete"),
-
-        "age":            _parse_env_number("ATHLETE_AGE", str(UniversalAthleteProfile().age), int),
-        "weight_kg":      _parse_env_number("ATHLETE_WEIGHT", str(UniversalAthleteProfile().weight_kg), float),
-        "height_cm":      _parse_env_number("ATHLETE_HEIGHT", str(UniversalAthleteProfile().height_cm), float),
-        "max_hr":         _parse_env_number("ATHLETE_MAX_HR", str(UniversalAthleteProfile().max_hr), int),
-        "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", str(UniversalAthleteProfile().threshold_hr), int),
-
-        "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
-        "goal":           os.getenv("TRAINING_GOAL", "5K"),
-    }
+    athlete_profile = UniversalAthleteProfile.from_env()
+    log.info(
+        "athlete_profile_loaded",
+        extra={
+            "athlete_name": athlete_profile.name,
+            "age": athlete_profile.age,
+            "max_hr": athlete_profile.max_hr,
+            "source": "env",
+        },
+    )
 
     # ── Step 6: Orchestration ────────────────────────────────────────────────
     daily_coach = DailyCoach(
@@ -469,7 +467,7 @@ def main():
         nutrition_optimizer=nutrition_optimizer,
         weekly_planner=weekly_planner,
         db=db,
-        athlete_max_hr=athlete_profile["max_hr"] or 0,
+        athlete_max_hr=athlete_profile.max_hr or 0,
     )
 
     # ── Step 7: Build context dict (passed to menu system & callbacks) ─────────
@@ -498,7 +496,16 @@ def main():
         nutrition_optimizer=nutrition_optimizer,
         daily_coach=daily_coach,
         db=db,
-        athlete_profile=athlete_profile,
+        athlete_profile={
+            "name": athlete_profile.name,
+            "age": athlete_profile.age,
+            "weight_kg": athlete_profile.weight_kg,
+            "height_cm": float(athlete_profile.height_cm),
+            "max_hr": athlete_profile.max_hr,
+            "threshold_hr": athlete_profile.threshold_hr,
+            "phase": athlete_profile.training_phase,
+            "goal": athlete_profile.current_goal or "",
+        },
         last_garmin_data={},
         last_weekly_plan=None,
         today_session_type="EASY",
@@ -524,8 +531,8 @@ def main():
 
     def _send_weekly_plan():
         plan = weekly_planner.generate_weekly_plan(
-            athlete_profile=athlete_profile,
-            phase=athlete_profile.get("phase", "BUILD")
+            athlete_profile=athlete_profile.to_dict(),
+            phase=athlete_profile.training_phase,
         )
         titan_ctx["last_weekly_plan"] = plan
         telegram.send_weekly_plan(plan)
