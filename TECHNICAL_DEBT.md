@@ -3996,8 +3996,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
 | T5-114 | ✅ RESOLVED — Phase 13 (Data-void governance rule; all stages complete 2026-05-03) | — |
-| T5-115 | 🟡 OPEN — Phase 13 (Source tagging for manual vs Garmin data; schema change; P2) | — |
-| T5-116 | 🟡 OPEN — Phase 13 (Manual biometric entry path via Telegram; P1 operational blocker) | — |
+| T5-115 | ✅ RESOLVED — Phase 13 (data_source column; SCHEMA_VERSION 15; migration + UPSERT guard 2026-05-03) | — |
+| T5-116 | ✅ RESOLVED — Phase 13 (/manual_entry Telegram command; 8 tests; data_source='manual_entry' 2026-05-03) | — |
 | T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
 | T5-118 | 🟡 OPEN — Phase 13 (Garmin weight sync returns 0 records despite daily manual entry; diagnostic needed; MEDIUM) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
@@ -4818,19 +4818,15 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-115 · Source tagging for manual vs Garmin data 🟡 OPEN
+### T5-115 · Source tagging for manual vs Garmin data ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED — 2026-05-03. Commit 02aeff5 on claude/manual-entry-data-source-wSUIo.
 **Source:** FMEA Phase 13 data lineage audit (2026-05-02).
 **Priority:** P2 (Medium — manual entries can poison Garmin baseline without lineage tracking).
 
-**Scope:** Add `data_source TEXT DEFAULT 'garmin_api'` column to `daily_metrics` table. Values: `'garmin_api' | 'manual_entry' | 'estimated'`. All existing rows default to `'garmin_api'`.
+**Scope:** Added `data_source TEXT NOT NULL DEFAULT 'garmin_api'` to `daily_metrics`. SCHEMA_VERSION bumped 14→15. Migration `_apply_v15_migrations()` applies ALTER TABLE with duplicate-column guard. UPSERT in `save_daily_metric()` preserves `'manual_entry'` provenance on Garmin re-sync. `save_daily_metric_if_missing()` pins `'garmin_api'`.
 
-**ADR required:** Yes — schema topology change.
-
-**Acceptance criteria:** Migration adds column; Garmin sync writes `'garmin_api'`; manual entry path (T5-116) writes `'manual_entry'`; no existing test regressions.
-
-**Location:** `titan/core/database.py`, Alembic migration, `titan/integrations/garmin_sync.py`.
+**Task Learning:** The `DO UPDATE SET` CASE expression `WHEN data_source = 'manual_entry' THEN data_source ELSE excluded.data_source END` is the correct SQLite UPSERT pattern to preserve provenance — the NOT NULL DEFAULT on the column means excluded.data_source is never NULL, so a standard `COALESCE` would not protect it.
 
 ---
 
@@ -4850,19 +4846,15 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-116 · Manual biometric entry path via Telegram 🟡 OPEN
+### T5-116 · Manual biometric entry path via Telegram ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED — 2026-05-03. Commit 02aeff5 on claude/manual-entry-data-source-wSUIo.
 **Source:** FMEA Phase 13 operational gap (2026-05-02).
 **Priority:** P1 (High — operational blocker given Garmin API fragility; only fallback data path).
 
-**Scope:** Add `/manual_entry` Telegram command accepting `HRV=<n> RHR=<n> SLEEP=<n> FATIGUE=<n>`. Writes to `daily_metrics` with `data_source='manual_entry'` (requires T5-115). Tags each metric with source type.
+**Scope:** Added `/manual_entry` command to `TitanTelegramBot`. Accepts `HRV=<n> RHR=<n> SLEEP=<n> FATIGUE=<n> WEIGHT=<n>` (all optional). Range-validates each field and writes to `daily_metrics` with `data_source='manual_entry'`. Bot accepts optional `db=` constructor arg. 8 tests in `tests/test_t5_116_manual_entry.py`.
 
-**Depends on:** T5-115 (source tagging schema).
-
-**Acceptance criteria:** `/manual_entry HRV=65 RHR=52 SLEEP=7 FATIGUE=3` inserts a row with correct values and `data_source='manual_entry'`; Telegram bot test verifies command parsing.
-
-**Location:** `titan/integrations/telegram_bot.py`, `titan/core/database.py`.
+**Task Learning:** Inline `@self.bot.message_handler` closure is the correct pattern for commands requiring message text parsing (KEY=VALUE args). The `register_command` / callback pattern is for commands that delegate entirely to an injected callback and do not inspect message content.
 
 
 ---
