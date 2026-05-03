@@ -79,6 +79,7 @@ DAILY_METRICS_COLUMNS = {
     "hrr_120",       # migration v1
     "glycogen_debt", # migration v1
     "quality_flag",  # migration v3 — data sanity layer (ADR-0026 / T1-19)
+    "data_source",   # migration v15 — input provenance tagging (T5-115)
 }
 
 TRAINING_LOG_COLUMNS = {
@@ -203,11 +204,11 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
 
 
 def test_schema_version_is_thirteen(test_db_conn) -> None:
-    """PRAGMA user_version must equal 14 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 14, (
-        f"Expected SCHEMA_VERSION=14 in database.py, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 15 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 15, (
+        f"Expected SCHEMA_VERSION=15 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 14, (
-        f"PRAGMA user_version must be 14 after create_tables(), got {version}"
+    assert version == 15, (
+        f"PRAGMA user_version must be 15 after create_tables(), got {version}"
     )

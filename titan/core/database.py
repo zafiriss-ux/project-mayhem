@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 
 
 class DatabaseManager:
@@ -242,7 +242,8 @@ class DatabaseManager:
                 soreness INTEGER,
                 fatigue_level INTEGER,
                 mood INTEGER,
-                notes TEXT
+                notes TEXT,
+                data_source TEXT NOT NULL DEFAULT 'garmin_api'
             )
         """)
 
@@ -480,6 +481,11 @@ class DatabaseManager:
                 "athlete_id column for read-path isolation (T5-07-L3-D / ADR-0033-L3-D-RESOLVED)",
                 None,  # DDL — see _apply_v14_migrations() below
             ),
+            15: (
+                "daily_metrics",
+                "data_source column for input provenance tagging (T5-115)",
+                None,  # DDL — see _apply_v15_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -642,6 +648,18 @@ class DatabaseManager:
                     "version": 14,
                     "columns_added": "daily_metrics.athlete_id, training_log.athlete_id "
                                      "(T5-07-L3-D / ADR-0033-L3-D-RESOLVED)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 15:
+            self._apply_v15_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 15,
+                    "columns_added": "daily_metrics.data_source (T5-115)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -1039,6 +1057,17 @@ class DatabaseManager:
             except sqlite3.OperationalError as exc:
                 if "duplicate column name" not in str(exc).lower():
                     raise
+
+    def _apply_v15_migrations(self, cursor) -> None:
+        """Version 15: data_source provenance column on daily_metrics (T5-115)."""
+        try:
+            cursor.execute(
+                "ALTER TABLE daily_metrics ADD COLUMN "
+                "data_source TEXT NOT NULL DEFAULT 'garmin_api'"
+            )
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
@@ -1504,6 +1533,7 @@ class DatabaseManager:
         mood: int | None = None,
         notes: str | None = None,
         quality_flag: str | None = None,
+        data_source: str = "garmin_api",
     ) -> None:
         """
         Save morning check-in data.
@@ -1519,6 +1549,7 @@ class DatabaseManager:
             fatigue: Fatigue level (0-5 scale)
             mood: Mood score (0-5 scale)
             notes: Optional text notes
+            data_source: Provenance tag — 'garmin_api' or 'manual_entry'
         """
         with self._lock:
             self._ensure_open_locked()
@@ -1529,19 +1560,23 @@ class DatabaseManager:
             # Manual subjective fields (soreness, fatigue_level, mood, notes) are
             # preserved when a row already exists — a Garmin re-sync must not zero
             # values the athlete manually entered.
+            # T5-115: data_source is preserved if already set to 'manual_entry' so
+            # an automated Garmin re-sync never silently overwrites intentional
+            # manual provenance.
             cursor.execute("""
                 INSERT INTO daily_metrics
                 (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
-                 soreness, fatigue_level, mood, notes, quality_flag)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 soreness, fatigue_level, mood, notes, quality_flag, data_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(date) DO UPDATE SET
                     weight_kg    = CASE WHEN excluded.weight_kg    IS NOT NULL THEN excluded.weight_kg    ELSE weight_kg    END,
                     hrv_rmssd    = CASE WHEN excluded.hrv_rmssd    IS NOT NULL THEN excluded.hrv_rmssd    ELSE hrv_rmssd    END,
                     resting_hr   = CASE WHEN excluded.resting_hr   IS NOT NULL THEN excluded.resting_hr   ELSE resting_hr   END,
                     sleep_hours  = CASE WHEN excluded.sleep_hours  IS NOT NULL THEN excluded.sleep_hours  ELSE sleep_hours  END,
                     sleep_quality= CASE WHEN excluded.sleep_quality IS NOT NULL THEN excluded.sleep_quality ELSE sleep_quality END,
-                    quality_flag = CASE WHEN excluded.quality_flag IS NOT NULL THEN excluded.quality_flag ELSE quality_flag END
-            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag))
+                    quality_flag = CASE WHEN excluded.quality_flag IS NOT NULL THEN excluded.quality_flag ELSE quality_flag END,
+                    data_source  = CASE WHEN data_source = 'manual_entry' THEN data_source ELSE excluded.data_source END
+            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag, data_source))
             if self._transaction_depth == 0:
                 self.conn.commit()
 
@@ -1560,8 +1595,8 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             cursor.execute(
                 """
-                INSERT OR IGNORE INTO daily_metrics (date, hrv_rmssd)
-                VALUES (?, ?)
+                INSERT OR IGNORE INTO daily_metrics (date, hrv_rmssd, data_source)
+                VALUES (?, ?, 'garmin_api')
                 """,
                 (date, hrv),
             )

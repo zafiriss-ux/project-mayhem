@@ -81,7 +81,8 @@ class TitanTelegramBot:
     # Hard cap on user-supplied override reason text (DB bloat + re-render guard).
     _MAX_OVERRIDE_REASON_LEN: int = 500
 
-    def __init__(self, bot_token: str = None, chat_id=None):
+    def __init__(self, bot_token: str = None, chat_id=None, db=None):
+        self.db = db
         self.bot_token = _CredentialSecret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         try:
@@ -171,6 +172,7 @@ class TitanTelegramBot:
                 "/drift – Cardiac drift analysis\n"
                 "/shoes – Shoe recommendation for today\n"
                 "/calibration – Governance calibration summary\n"
+                "/manual_entry – Log metrics manually (HRV, RHR, Sleep, Fatigue, Weight)\n"
             )
             self.bot.reply_to(message, text)
 
@@ -285,6 +287,18 @@ class TitanTelegramBot:
             else:
                 self.bot.reply_to(message, "⏳ Outcome tracker not ready.")
 
+        @self.bot.message_handler(commands=["manual_entry"])
+        def cmd_manual_entry(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            text = (message.text or "").strip()
+            # Strip "/manual_entry" prefix to get the argument string
+            parts = text.split(None, 1)
+            args = parts[1] if len(parts) > 1 else ""
+            reply = self.handle_manual_entry_text(args)
+            self.bot.reply_to(message, reply)
+
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
         def cb_override(call):
             if not self._is_trusted(call.message.chat.id):
@@ -303,6 +317,86 @@ class TitanTelegramBot:
                 return
             response = self.process_override_reason(message.chat.id, message.text or "")
             self.bot.reply_to(message, response)
+
+    # Field name → (db_column, type_fn, min_val, max_val)
+    _MANUAL_ENTRY_FIELDS: dict = {
+        "HRV":     ("hrv_rmssd",    float, 0.0,  200.0),
+        "RHR":     ("resting_hr",   int,   20,   220),
+        "SLEEP":   ("sleep_hours",  float, 0.0,  24.0),
+        "FATIGUE": ("fatigue_level", int,  1,    10),
+        "WEIGHT":  ("weight_kg",    float, 20.0, 300.0),
+    }
+
+    def _parse_manual_entry(self, args: str) -> tuple[dict, str | None]:
+        """Parse KEY=VALUE pairs from a /manual_entry argument string.
+
+        Returns (parsed_dict, None) on success, ({}, error_message) on failure.
+        parsed_dict maps DB column names to typed values.
+        """
+        args = args.strip()
+        if not args:
+            return {}, "usage"
+
+        parsed: dict = {}
+        for token in args.split():
+            if "=" not in token:
+                return {}, "usage"
+            key, _, raw_val = token.partition("=")
+            key_upper = key.upper()
+            if key_upper not in self._MANUAL_ENTRY_FIELDS:
+                return {}, "usage"
+            col, type_fn, min_val, max_val = self._MANUAL_ENTRY_FIELDS[key_upper]
+            try:
+                value = type_fn(raw_val)
+            except (ValueError, TypeError):
+                return {}, f"Invalid value for {key_upper}: '{raw_val}'"
+            if not (min_val < value <= max_val if min_val == 0.0 and type_fn is float
+                    else min_val <= value <= max_val):
+                return {}, (
+                    f"{key_upper} out of range: {value} "
+                    f"(valid: {min_val}–{max_val})"
+                )
+            parsed[col] = value
+
+        if not parsed:
+            return {}, "usage"
+        return parsed, None
+
+    def handle_manual_entry_text(self, args: str) -> str:
+        """Process /manual_entry argument string; save to DB; return reply text."""
+        usage = "Usage: /manual_entry HRV=65 RHR=52 SLEEP=7.5 FATIGUE=3 WEIGHT=75.0"
+        parsed, err = self._parse_manual_entry(args)
+        if err == "usage":
+            return usage
+        if err:
+            return f"❌ {err}\n{usage}"
+
+        if self.db is None:
+            return "❌ Database not available."
+
+        today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        self.db.save_daily_metric(
+            date=today_str,
+            hrv=parsed.get("hrv_rmssd"),
+            rhr=parsed.get("resting_hr"),
+            sleep_hours=parsed.get("sleep_hours"),
+            fatigue=parsed.get("fatigue_level"),
+            weight=parsed.get("weight_kg"),
+            data_source="manual_entry",
+        )
+
+        summary_parts = []
+        label_map = {
+            "hrv_rmssd":    "HRV",
+            "resting_hr":   "RHR",
+            "sleep_hours":  "Sleep",
+            "fatigue_level": "Fatigue",
+            "weight_kg":    "Weight",
+        }
+        for col, label in label_map.items():
+            if col in parsed:
+                summary_parts.append(f"{label}={parsed[col]}")
+        return "✅ Logged: " + ", ".join(summary_parts)
 
     def register_override_callback(self, name: str, callback: Callable) -> None:
         """Register override callback dependencies (e.g., db_provider, athlete_id_provider)."""

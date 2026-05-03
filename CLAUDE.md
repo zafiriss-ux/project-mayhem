@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2676 tests all green as of claude/implement-daily-coach-EjcJH branch (T5-114 Stage 3: H6 integration tests AT-H6-06/07 added; wiring confirmed at daily_coach.py:861) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2684 tests all green as of claude/manual-entry-data-source-wSUIo branch (T5-115 data_source column + T5-116 /manual_entry command; tests/test_t5_116_manual_entry.py added) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
