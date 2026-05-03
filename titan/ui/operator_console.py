@@ -449,3 +449,23 @@ class OperatorConsoleService:
                 reverse=True,
             ),
         }
+
+    def check_coach_athlete_access(
+        self, coach_id: str, athlete_id: str
+    ) -> None:
+        """Verify coach_id is assigned to athlete_id; raise PermissionError if not.
+
+        # T5-110: enforcement point for Phase 9 — call before any coach-facing query.
+        """
+        allowed = self.db.get_assigned_athletes(coach_id)
+        if athlete_id not in allowed:
+            raise PermissionError(
+                f"Coach {coach_id!r} is not assigned to athlete {athlete_id!r}"
+            )
+
+    def get_athlete_ids_for_coach(self, coach_id: str) -> list[str]:
+        """Return the list of athlete_ids the coach may access.
+
+        # T5-110: enforcement point for Phase 9 — use to filter multi-athlete results.
+        """
+        return self.db.get_assigned_athletes(coach_id)

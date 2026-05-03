@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2688 tests all green as of claude/fix-garmin-weight-sync-8n2ZJ branch (T5-118 Garmin weight sync dual-format fix; 4 new tests in tests/test_garmin_sync.py) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2694 tests all green as of claude/coach-athlete-rbac-QZSNU branch (T5-110 Coach-Athlete RBAC Scoping; 6 new tests in tests/test_t5_110_coach_rbac.py) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -337,6 +337,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0051` — Missing Data Policy (Conservative-Fail)
 - `0052` — ADR-0052 Population-Specific Threshold Adaptation via OutcomeTracker (Accepted — 2026-04-04)
 - `0053` — ADR-0053 Data-Void Conservative Governance Gate: H6 soft gate, DATA_VOID_CONSERVATIVE lock code (Accepted — 2026-05-02)
+- `0054` — ADR-0054 Coach-Athlete RBAC Scoping: coach_athlete_assignments table, get_assigned_athletes enforcement contract (Accepted — T5-110 Implemented 2026-05-03)
 
 ### Future Design Notes
 

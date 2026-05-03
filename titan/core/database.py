@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 
 
 class DatabaseManager:
@@ -398,6 +398,23 @@ class DatabaseManager:
                  datetime('now'), 30)
         """)
 
+        # Table 11: Coach-athlete RBAC scoping (ADR-0054 / T5-110)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS coach_athlete_assignments (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    TEXT NOT NULL,
+                athlete_id  TEXT NOT NULL,
+                assigned_at TEXT NOT NULL,
+                UNIQUE(coach_id, athlete_id)
+            )
+        """)
+        # Seed system coach → owner assignment so single-athlete mode works out of the box.
+        cursor.execute("""
+            INSERT OR IGNORE INTO coach_athlete_assignments
+                (coach_id, athlete_id, assigned_at)
+            VALUES ('system', 'owner', datetime('now'))
+        """)
+
         self.conn.commit()
         self._run_migrations(cursor)
 
@@ -485,6 +502,11 @@ class DatabaseManager:
                 "daily_metrics",
                 "data_source column for input provenance tagging (T5-115)",
                 None,  # DDL — see _apply_v15_migrations() below
+            ),
+            16: (
+                "coach_athlete_assignments",
+                "coach-athlete RBAC scoping table + system→owner seed (ADR-0054 / T5-110)",
+                None,  # DDL — see _apply_v16_migrations() below
             ),
         }
 
@@ -660,6 +682,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 15,
                     "columns_added": "daily_metrics.data_source (T5-115)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 16:
+            self._apply_v16_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 16,
+                    "table_created": "coach_athlete_assignments (ADR-0054 / T5-110)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -1069,6 +1103,23 @@ class DatabaseManager:
             if "duplicate column name" not in str(exc).lower():
                 raise
 
+    def _apply_v16_migrations(self, cursor) -> None:
+        """Version 16: coach_athlete_assignments RBAC scoping table (ADR-0054 / T5-110)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS coach_athlete_assignments (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id    TEXT NOT NULL,
+                athlete_id  TEXT NOT NULL,
+                assigned_at TEXT NOT NULL,
+                UNIQUE(coach_id, athlete_id)
+            )
+        """)
+        cursor.execute("""
+            INSERT OR IGNORE INTO coach_athlete_assignments
+                (coach_id, athlete_id, assigned_at)
+            VALUES ('system', 'owner', datetime('now'))
+        """)
+
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
     def save_threshold_offset(
@@ -1393,6 +1444,43 @@ class DatabaseManager:
                 (user_id, now_iso),
             ).fetchall()
         return [{"id": r[0], "issued_at": r[1]} for r in rows]
+
+    # --- Coach-Athlete RBAC Scoping (ADR-0054 / T5-110) ---
+
+    def _get_all_athlete_ids(self) -> list[str]:
+        """Return all athlete_ids from the athletes table."""
+        with self._lock:
+            self._ensure_open_locked()
+            rows = self.conn.cursor().execute(
+                "SELECT athlete_id FROM athletes"
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def get_assigned_athletes(self, coach_id: str) -> list[str]:
+        """Return athlete_ids the coach is permitted to access.
+
+        'system' coach bypasses the assignment table and returns all athletes.
+        """
+        if coach_id == "system":
+            return self._get_all_athlete_ids()
+        with self._lock:
+            self._ensure_open_locked()
+            rows = self.conn.cursor().execute(
+                "SELECT athlete_id FROM coach_athlete_assignments WHERE coach_id = ?",
+                (coach_id,),
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def assign_athlete_to_coach(self, coach_id: str, athlete_id: str) -> None:
+        """Grant coach_id access to athlete_id (idempotent via INSERT OR IGNORE)."""
+        with self._lock:
+            self._ensure_open_locked()
+            self.conn.cursor().execute(
+                "INSERT OR IGNORE INTO coach_athlete_assignments "
+                "(coach_id, athlete_id, assigned_at) VALUES (?, ?, datetime('now'))",
+                (coach_id, athlete_id),
+            )
+            self.conn.commit()
 
     # --- Degraded Mode State (HD-06) ---
 
