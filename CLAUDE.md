@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2667 tests all green as of claude/implement-governance-engine-Em9vk branch (C-01/C-02/S-08: H4/H5 conservative fail + cryptography pin) (2026-05-02). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2669 tests all green as of claude/implement-athlete-records-vWlc4 branch (profile defaults unified to UniversalAthleteProfile; drift N/A fix; T5-117 registered) (2026-05-02). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -265,7 +265,8 @@ VO2_MIN_DAYS_SINCE_LAST   = 2
 `CS_CONFIDENCE_LOCK`, `PERSISTENCE_DEGRADED_CEILING`,
 `STARTUP_DATA_CONFIDENCE_CEILING`, `FAIL_SAFE_LOCK`,
 `DATA_MISSING_CONSERVATIVE_H2`, `DATA_MISSING_CONSERVATIVE_H3`,
-`DATA_MISSING_CONSERVATIVE_H4`, `DATA_MISSING_CONSERVATIVE_H5`
+`DATA_MISSING_CONSERVATIVE_H4`, `DATA_MISSING_CONSERVATIVE_H5`,
+`DATA_VOID_CONSERVATIVE`
 
 ### Threading
 
@@ -335,6 +336,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0050` — Garmin API Fragility Mitigation design
 - `0051` — Missing Data Policy (Conservative-Fail)
 - `0052` — ADR-0052 Population-Specific Threshold Adaptation via OutcomeTracker (Accepted — 2026-04-04)
+- `0053` — ADR-0053 Data-Void Conservative Governance Gate: H6 soft gate, DATA_VOID_CONSERVATIVE lock code (Accepted — 2026-05-02)
 
 ### Future Design Notes
 

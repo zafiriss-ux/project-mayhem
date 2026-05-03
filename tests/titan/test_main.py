@@ -264,13 +264,15 @@ def test_main_smoke_uses_profile_defaults_when_env_missing(monkeypatch):
 
     titan_main.main()
 
+    from titan.core.athlete import UniversalAthleteProfile
+    _canonical = UniversalAthleteProfile()
     assert captured_ctx["athlete_profile"] == {
         "name": "Athlete",
-        "age": 35,
-        "weight_kg": 75.0,
-        "height_cm": 175.0,
-        "max_hr": 190,
-        "threshold_hr": 168,
+        "age": _canonical.age,
+        "weight_kg": _canonical.weight_kg,
+        "height_cm": float(_canonical.height_cm),
+        "max_hr": _canonical.max_hr,
+        "threshold_hr": _canonical.threshold_hr,
         "phase": "BUILD",
         "goal": "5K",
     }

@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ── Credentials (must happen before anything reads env vars) ────────────────
 # ── Core (database) ───────────────────────────────────────────────────────────
+from titan.core.athlete import UniversalAthleteProfile
 from titan.core.database import DatabaseManager
 from titan.features.nutrition_optimizer import NutritionOptimizer
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
@@ -446,11 +447,11 @@ def main():
     athlete_profile: AthleteProfile = {
         "name":           os.getenv("ATHLETE_NAME", "Athlete"),
 
-        "age":            _parse_env_number("ATHLETE_AGE", "35", int),
-        "weight_kg":      _parse_env_number("ATHLETE_WEIGHT", "75", float),
-        "height_cm":      _parse_env_number("ATHLETE_HEIGHT", "175", float),
-        "max_hr":         _parse_env_number("ATHLETE_MAX_HR", "190", int),
-        "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", "168", int),
+        "age":            _parse_env_number("ATHLETE_AGE", str(UniversalAthleteProfile().age), int),
+        "weight_kg":      _parse_env_number("ATHLETE_WEIGHT", str(UniversalAthleteProfile().weight_kg), float),
+        "height_cm":      _parse_env_number("ATHLETE_HEIGHT", str(UniversalAthleteProfile().height_cm), float),
+        "max_hr":         _parse_env_number("ATHLETE_MAX_HR", str(UniversalAthleteProfile().max_hr), int),
+        "threshold_hr":   _parse_env_number("ATHLETE_THRESHOLD_HR", str(UniversalAthleteProfile().threshold_hr), int),
 
         "phase":          os.getenv("TRAINING_PHASE", "BUILD"),
         "goal":           os.getenv("TRAINING_GOAL", "5K"),

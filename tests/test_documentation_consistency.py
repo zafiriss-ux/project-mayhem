@@ -129,10 +129,17 @@ def _extract_tracking_table_statuses(tech_debt_text: str) -> dict[str, str]:
 def test_governance_lock_codes_match_canonical_list() -> None:
     emitted = _collect_governance_lock_codes()
 
-    assert emitted == set(CANONICAL_LOCK_CODES), (
+    # ADR-0053 Stage 2 landed: DATA_VOID_CONSERVATIVE is now emitted by
+    # governance_engine.py — pending set is empty.
+    _stage1_registered_pending_stage2: frozenset[str] = frozenset()
+
+    canonical_active = set(CANONICAL_LOCK_CODES) - _stage1_registered_pending_stage2
+
+    assert emitted == canonical_active, (
         "Governance lock codes drift detected.\n"
-        f"Missing from thresholds.CANONICAL_LOCK_CODES: {sorted(emitted - set(CANONICAL_LOCK_CODES))}\n"
-        f"Extra in thresholds.CANONICAL_LOCK_CODES: {sorted(set(CANONICAL_LOCK_CODES) - emitted)}"
+        f"Missing from thresholds.CANONICAL_LOCK_CODES: {sorted(emitted - canonical_active)}\n"
+        f"Extra in thresholds.CANONICAL_LOCK_CODES (not in pending set): "
+        f"{sorted(canonical_active - emitted)}"
     )
 
 

@@ -3995,9 +3995,11 @@ When an item is completed, mark it here with date and PR reference:
 | T5-111 | 🟡 OPEN — Phase 13 (S-03 Audit log in-memory only; coach_audit DB table; P2) | — |
 | T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
-| T5-114 | 🟡 OPEN — Phase 13 (Data-void governance rule; Gemini finding; P1) | — |
+| T5-114 | 🟡 OPEN — Phase 13 (Data-void governance rule; Stage 2 complete; Stage 3 pending) | — |
 | T5-115 | 🟡 OPEN — Phase 13 (Source tagging for manual vs Garmin data; schema change; P2) | — |
 | T5-116 | 🟡 OPEN — Phase 13 (Manual biometric entry path via Telegram; P1 operational blocker) | — |
+| T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
+| T5-118 | 🟡 OPEN — Phase 13 (Garmin weight sync returns 0 records despite daily manual entry; diagnostic needed; MEDIUM) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4800,7 +4802,7 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ### T5-114 · Data-void governance rule 🟡 OPEN
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** 🟡 OPEN — Phase 13. Stage 1 complete (ADR-0053 accepted; constants + lock code registered 2026-05-02). Stage 2 complete (H6 gate + apply_constraints cap + 5 tests; 2026-05-03). Stage 3 (DB staleness query via `garmin_sync.py`) pending.
 **Source:** Gemini finding, FMEA Phase 13 (2026-05-02).
 **Priority:** P1 (High — athlete with stale/no data receives unrestricted recommendations).
 
@@ -4832,6 +4834,22 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
+### T5-117 · Two parallel athlete profile systems (architectural debt) 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Profile unification audit (2026-05-02).
+**Priority:** MEDIUM (workaround: .env vars override canonical defaults as of this commit).
+
+**Scope:** `titan/main.py` constructs `athlete_profile` dict from env vars independently of `UniversalAthleteProfile`. The two systems carry overlapping state (age, max_hr, threshold_hr, weight_kg, height_cm) with no synchronisation. Goal: Phase 13 unifies both into a single source of truth so the coaching pipeline always reads from `UniversalAthleteProfile`.
+
+**ADR required:** Yes — architectural unification touches orchestration contracts and DB schema.
+
+**Acceptance criteria:** `titan/main.py` Step 5 removed; `DailyCoach` and all downstream consumers read `UniversalAthleteProfile` directly; no duplicate profile dict in `TitanContext`.
+
+**Location:** `titan/main.py`, `titan/core/athlete.py`, `titan/orchestration/contracts.py`, `titan/orchestration/daily_coach.py`.
+
+---
+
 ### T5-116 · Manual biometric entry path via Telegram 🟡 OPEN
 
 **Status:** 🟡 OPEN — Phase 13.
@@ -4845,3 +4863,20 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Acceptance criteria:** `/manual_entry HRV=65 RHR=52 SLEEP=7 FATIGUE=3` inserts a row with correct values and `data_source='manual_entry'`; Telegram bot test verifies command parsing.
 
 **Location:** `titan/integrations/telegram_bot.py`, `titan/core/database.py`.
+
+
+---
+
+### T5-118 · Garmin weight sync returns 0 records 🟡 OPEN
+
+**Status:** 🟡 OPEN — Phase 13.
+**Source:** Operational observation (2026-05-02); daily manual weight entry visible in Garmin Connect app but weight sync returns 0 records.
+**Priority:** MEDIUM.
+
+**Scope:** Diagnose why `GarminSync.sync_weight()` returns 0 records despite confirmed daily weight entries in Garmin Connect. Potential causes: API endpoint change, body composition data in a different endpoint, authentication scope gap, or data visibility delay. Requires diagnostic before fix.
+
+**ADR required:** No — diagnostic task; fix scope TBD after root cause is identified.
+
+**Acceptance criteria:** Root cause identified and documented; weight sync either fixed or a known-limitation entry added to `TECHNICAL_DEBT.md`.
+
+**Location:** `titan/integrations/garmin_sync.py`.
