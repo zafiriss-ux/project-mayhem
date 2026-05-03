@@ -129,13 +129,9 @@ def _extract_tracking_table_statuses(tech_debt_text: str) -> dict[str, str]:
 def test_governance_lock_codes_match_canonical_list() -> None:
     emitted = _collect_governance_lock_codes()
 
-    # Lock codes registered in Stage 1 of a multi-stage implementation are
-    # pre-registered in CANONICAL_LOCK_CODES before the gate logic (Stage 2)
-    # is written into governance_engine.py. This allowlist must be cleared
-    # when Stage 2 lands; these codes must appear in governance_engine.py then.
-    _stage1_registered_pending_stage2: frozenset[str] = frozenset({
-        "DATA_VOID_CONSERVATIVE",  # ADR-0053 Stage 2 — T5-114
-    })
+    # ADR-0053 Stage 2 landed: DATA_VOID_CONSERVATIVE is now emitted by
+    # governance_engine.py — pending set is empty.
+    _stage1_registered_pending_stage2: frozenset[str] = frozenset()
 
     canonical_active = set(CANONICAL_LOCK_CODES) - _stage1_registered_pending_stage2
 

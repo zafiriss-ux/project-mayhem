@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 from titan.config.thresholds import (
     CANONICAL_LOCK_CODES,
+    DATA_VOID_THRESHOLD_HOURS,
+    DATA_VOID_ZONE_CAP,
     GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
     GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
     HARD_STOP_HRV_DELTA,
@@ -580,6 +582,25 @@ class GovernanceEngine:
                 garmin_data_age_hours=_garmin_age,
                 garmin_data_trust_level=_garmin_trust,
             )
+
+        # ── H6: Data-void conservative gate (ADR-0053) ──────────
+        try:
+            garmin_age = context.get("garmin_data_age_hours")
+            if (
+                garmin_age is not None
+                and math.isfinite(float(garmin_age))
+                and float(garmin_age) > DATA_VOID_THRESHOLD_HOURS
+            ):
+                context["_h6_data_void"] = True
+                _gate_event(
+                    "H6_DATA_VOID",
+                    "DATA_VOID_CONSERVATIVE",
+                    garmin_data_age_hours=garmin_age,
+                    threshold_hours=DATA_VOID_THRESHOLD_HOURS,
+                    severity="WARNING",
+                )
+        except (TypeError, ValueError):
+            pass
 
         return reasons
 
@@ -1251,6 +1272,12 @@ class GovernanceEngine:
                 applied_locks.append("FUELING_GATE_LOCK")
             else:
                 applied_locks.append("FUELING_GATE_FLAG")
+
+        # H6 data-void cap (ADR-0053)
+        if context.get("_h6_data_void"):
+            if session_plan.get("max_zone", 5) > DATA_VOID_ZONE_CAP:
+                session_plan["max_zone"] = DATA_VOID_ZONE_CAP
+            applied_locks.append("DATA_VOID_CONSERVATIVE")
 
         para_guard = afi_constr.get("parasympathetic_guard", {})
 
