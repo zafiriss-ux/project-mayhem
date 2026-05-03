@@ -619,26 +619,53 @@ class GarminSync:
     def sync_weight(self, days_back: int = 30) -> list[dict]:
         if not self._ensure_connected():
             return []
-        entries = []
+        results = []
         sync_succeeded = False
         try:
             start = (datetime.now(UTC) - timedelta(days=days_back)).strftime("%Y-%m-%d")
             end = datetime.now(UTC).strftime("%Y-%m-%d")
             raw = self.client.get_weigh_ins(start, end)
-            daily = raw.get("dailyWeightSummaries", [])
-            for d in daily:
-                summaries = d.get("allDayWeightSummaries") or [{}]
-                summ = summaries[0]
-                w_g = summ.get("latestWeight", summ.get("minWeight", 0))
-                if w_g and w_g > 0:
-                    entries.append(
-                        {
-                            "date": d.get("calendarDate", ""),
-                            "weight_kg": round(w_g / 1000, 2),  # grams → kg
-                            "bmi": summ.get("bmi"),
-                            "source": "garmin",
-                        }
-                    )
+
+            # Format A: garminconnect 0.3.2 — /weight/range/ returns dateWeightList
+            entries = raw.get("dateWeightList", [])
+
+            # Format B: legacy fallback for pre-0.3.2 API shape (offline mocks, older envs)
+            if not entries:
+                daily = raw.get("dailyWeightSummaries", [])
+                for d in daily:
+                    summaries = d.get("allDayWeightSummaries") or [{}]
+                    summ = summaries[0]
+                    w_g = summ.get("latestWeight", summ.get("minWeight", 0))
+                    if w_g:
+                        entries.append({
+                            "calendarDate": d.get("calendarDate"),
+                            "value": round(w_g / 1000, 2),
+                            "unitKey": "kg",
+                        })
+
+            # Neither known key present — surface as WARNING for diagnosis
+            if not entries and raw and "dateWeightList" not in raw and "dailyWeightSummaries" not in raw:
+                _garmin_event(
+                    "weight_sync_format_unknown",
+                    severity="WARNING",
+                    raw_keys=list(raw.keys())[:10],
+                )
+
+            for entry in entries:
+                date_str = entry.get("calendarDate") or entry.get("date")
+                unit = entry.get("unitKey", "kg")
+                value = entry.get("value", 0)
+
+                if not date_str or not value:
+                    continue
+
+                weight_kg = round(value * 0.453592, 2) if unit == "lbs" else round(float(value), 2)
+
+                if weight_kg <= 0:
+                    continue
+
+                results.append({"date": date_str, "weight_kg": weight_kg})
+
             sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
@@ -648,9 +675,9 @@ class GarminSync:
             _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=failure_class, error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
         # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
         if sync_succeeded:
-            _garmin_event("weight_synced", subsystem="sync_weight", count=len(entries), days_back=days_back, detail=f"Synced {len(entries)} weight entries")
-            self._log_sync("weight", len(entries))
-        return entries
+            _garmin_event("weight_synced", subsystem="sync_weight", count=len(results), days_back=days_back, detail=f"Synced {len(results)} weight entries")
+            self._log_sync("weight", len(results))
+        return results
 
     # ------------------------------------------------------------------ #
     # SLEEP

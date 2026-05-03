@@ -118,7 +118,7 @@ def test_sync_weight_happy_path(monkeypatch):
 
     result = sync.sync_weight(days_back=7)
 
-    assert result == [{"date": "2026-03-02", "weight_kg": 72.4, "bmi": 22.8, "source": "garmin"}]
+    assert result == [{"date": "2026-03-02", "weight_kg": 72.4}]
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
 
 
@@ -159,6 +159,82 @@ def test_sync_weight_empty_all_day_summaries_does_not_raise(monkeypatch):
 
     assert result == []
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 0, "days_back": 7, "detail": "Synced 0 weight entries"}) in events
+
+
+def test_sync_weight_new_format(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(
+        _FakeClient(
+            weigh_ins={
+                "dateWeightList": [
+                    {"calendarDate": "2026-05-01", "value": 75.4, "unitKey": "kg"},
+                ]
+            }
+        )
+    )
+
+    result = sync.sync_weight(days_back=7)
+
+    assert result == [{"date": "2026-05-01", "weight_kg": 75.4}]
+    assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
+
+
+def test_sync_weight_legacy_format_fallback(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(
+        _FakeClient(
+            weigh_ins={
+                "dailyWeightSummaries": [
+                    {
+                        "calendarDate": "2026-05-01",
+                        "allDayWeightSummaries": [{"latestWeight": 75400}],
+                    }
+                ]
+            }
+        )
+    )
+
+    result = sync.sync_weight(days_back=7)
+
+    assert result == [{"date": "2026-05-01", "weight_kg": 75.4}]
+    assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
+
+
+def test_sync_weight_unknown_format_emits_warning(monkeypatch):
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+
+    sync = _connected_sync(_FakeClient(weigh_ins={"unexpectedKey": []}))
+
+    result = sync.sync_weight(days_back=7)
+
+    assert result == []
+    emitted_actions = [a for a, _ in events]
+    assert "weight_sync_format_unknown" in emitted_actions, f"Warning not emitted; events: {emitted_actions}"
+
+
+def test_sync_weight_lbs_conversion(monkeypatch):
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: None)
+
+    sync = _connected_sync(
+        _FakeClient(
+            weigh_ins={
+                "dateWeightList": [
+                    {"calendarDate": "2026-05-01", "value": 166.2, "unitKey": "lbs"},
+                ]
+            }
+        )
+    )
+
+    result = sync.sync_weight(days_back=7)
+
+    assert len(result) == 1
+    assert result[0]["date"] == "2026-05-01"
+    assert abs(result[0]["weight_kg"] - 75.39) < 0.01
 
 
 def test_sync_sleep_happy_path(monkeypatch):

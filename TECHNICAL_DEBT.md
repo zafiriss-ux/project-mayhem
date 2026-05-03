@@ -3999,7 +3999,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-115 | ✅ RESOLVED — Phase 13 (data_source column; SCHEMA_VERSION 15; migration + UPSERT guard 2026-05-03) | — |
 | T5-116 | ✅ RESOLVED — Phase 13 (/manual_entry Telegram command; 8 tests; data_source='manual_entry' 2026-05-03) | — |
 | T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
-| T5-118 | 🟡 OPEN — Phase 13 (Garmin weight sync returns 0 records despite daily manual entry; diagnostic needed; MEDIUM) | — |
+| T5-118 | ✅ RESOLVED — Phase 13 (Garmin weight sync dual-format fix; dateWeightList primary + dailyWeightSummaries fallback; WARNING on unknown format; 4 tests; 2026-05-03) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4859,16 +4859,22 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-118 · Garmin weight sync returns 0 records 🟡 OPEN
+### T5-118 · Garmin weight sync returns 0 records ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED — Phase 13 (2026-05-03).
 **Source:** Operational observation (2026-05-02); daily manual weight entry visible in Garmin Connect app but weight sync returns 0 records.
 **Priority:** MEDIUM.
 
-**Scope:** Diagnose why `GarminSync.sync_weight()` returns 0 records despite confirmed daily weight entries in Garmin Connect. Potential causes: API endpoint change, body composition data in a different endpoint, authentication scope gap, or data visibility delay. Requires diagnostic before fix.
+**Root cause:** garminconnect 0.3.2 `/weight/range/` endpoint returns `dateWeightList` (flat list, weight as `value` in kg) instead of the legacy `dailyWeightSummaries` (nested, weight as `latestWeight` in grams). The library's own `delete_weigh_ins` and `add_weigh_in` methods confirmed the newer field names. Since `raw.get("dailyWeightSummaries", [])` always returned `[]` on the live API, the loop never ran — zero entries, no exception, no warning.
 
-**ADR required:** No — diagnostic task; fix scope TBD after root cause is identified.
+**Fix:** `sync_weight()` now uses dual-format parsing: `dateWeightList` as primary (0.3.2+), `dailyWeightSummaries` as silent legacy fallback (offline mocks / older envs). Both paths normalize to `{"date": ..., "weight_kg": ...}` output. A `weight_sync_format_unknown` WARNING event fires when neither key is present, giving diagnostic visibility for any future API change. Unit conversions for `lbs` entries added. Output dict simplified (dropped unused `bmi` and `source` fields).
 
-**Acceptance criteria:** Root cause identified and documented; weight sync either fixed or a known-limitation entry added to `TECHNICAL_DEBT.md`.
+**ADR required:** No.
 
-**Location:** `titan/integrations/garmin_sync.py`.
+**Acceptance criteria:** ✅ Root cause identified; fix implemented; 4 new tests green; 0 regressions.
+
+**Location:** `titan/integrations/garmin_sync.py:619`.
+
+**Tests:** 4 new tests in `tests/test_garmin_sync.py` — `test_sync_weight_new_format`, `test_sync_weight_legacy_format_fallback`, `test_sync_weight_unknown_format_emits_warning`, `test_sync_weight_lbs_conversion`.
+
+**Task learning:** When upgrading a third-party API wrapper, scan the library's own read-back methods (not just write methods) to confirm response field names. `delete_weigh_ins` revealed `dateWeightList`/`samplePk` which are invisible from `get_weigh_ins` docstring alone.
