@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2699 tests all green as of claude/unify-athlete-profile-02U7k branch (T5-117 Unify athlete profile — from_env() classmethod; 5 new tests in tests/test_t5_117_profile_unification.py) (2026-05-03). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2705 tests all green as of claude/add-profile-editor-gU9jW branch (T5-119 Profile editor — _save_athlete_profile_to_env + interactive menu; 6 new tests in tests/test_t5_119_profile_editor.py) (2026-05-04). This is not a live reading — always run the suite to confirm current state.
 
 ---
 

@@ -198,6 +198,33 @@ def _save_env(creds: dict):
         print("     Verify .env access manually if this machine is shared.")
 
 
+def _save_athlete_profile_to_env(changes: dict) -> None:
+    """Update or append ATHLETE_* / TRAINING_* keys in the .env file.
+
+    Reads the existing .env, replaces lines whose key appears in *changes*,
+    and appends any key that is not already present.  All other lines
+    (credentials, comments) are preserved untouched.
+    """
+    existing_lines: list[str] = ENV_PATH.read_text().splitlines() if ENV_PATH.exists() else []
+    updated: set[str] = set()
+    result: list[str] = []
+    for line in existing_lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in stripped:
+            key = stripped.split("=", 1)[0].strip()
+            if key in changes:
+                value = str(changes[key]).replace("\n", "").replace("\r", "")
+                result.append(f"{key}={value}")
+                updated.add(key)
+                continue
+        result.append(line)
+    for key, value in changes.items():
+        if key not in updated:
+            value = str(value).replace("\n", "").replace("\r", "")
+            result.append(f"{key}={value}")
+    ENV_PATH.write_text("\n".join(result) + "\n")
+
+
 def ensure_credentials() -> bool:
     """
     Called at startup.

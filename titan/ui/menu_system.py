@@ -14,6 +14,10 @@ import logging
 import sys
 from datetime import datetime
 
+# ── Profile-editor constants (importable for tests) ──────────────────────────
+VALID_TRAINING_PHASES: frozenset[str] = frozenset({"BASE", "BUILD", "PEAK", "TAPER"})
+VALID_TRAINING_GOALS: frozenset[str] = frozenset({"5K", "10K", "HM", "M"})
+
 _log = logging.getLogger(__name__)
 
 ANSI_CLEAR_SCREEN = "\033[2J\033[H"
@@ -608,16 +612,143 @@ def menu_analytics(ctx: dict):
 # ══════════════════════════════════════════════════════════════════════════
 # 9. ΡΥΘΜΙΣΕΙΣ
 # ══════════════════════════════════════════════════════════════════════════
-def menu_settings(ctx: dict):
-    _clear()
-    _header("Ρυθμίσεις Αθλητή")
+
+def _validate_int(value: str, lo: int, hi: int) -> tuple[bool, str]:
+    try:
+        n = int(value)
+    except ValueError:
+        return False, "Must be a whole number"
+    if not lo <= n <= hi:
+        return False, f"Must be between {lo} and {hi}"
+    return True, ""
+
+
+def _validate_float(value: str, lo: float, hi: float) -> tuple[bool, str]:
+    try:
+        n = float(value)
+    except ValueError:
+        return False, "Must be a number"
+    if not lo <= n <= hi:
+        return False, f"Must be between {lo} and {hi}"
+    return True, ""
+
+
+def _validate_field(key: str, value: str) -> tuple[bool, str]:
+    """Validate a single athlete-profile env key/value pair."""
+    _validators: dict[str, object] = {
+        "ATHLETE_NAME":         lambda v: (bool(v.strip()), "Name cannot be empty"),
+        "ATHLETE_AGE":          lambda v: _validate_int(v, 10, 100),
+        "ATHLETE_WEIGHT":       lambda v: _validate_float(v, 20.0, 300.0),
+        "ATHLETE_HEIGHT":       lambda v: _validate_int(v, 100, 250),
+        "ATHLETE_MAX_HR":       lambda v: _validate_int(v, 100, 220),
+        "ATHLETE_THRESHOLD_HR": lambda v: _validate_int(v, 80, 210),
+        "TRAINING_PHASE":       lambda v: (
+            v.upper() in VALID_TRAINING_PHASES,
+            f"Must be one of: {', '.join(sorted(VALID_TRAINING_PHASES))}",
+        ),
+        "TRAINING_GOAL":        lambda v: (
+            v.upper() in VALID_TRAINING_GOALS,
+            f"Must be one of: {', '.join(sorted(VALID_TRAINING_GOALS))}",
+        ),
+    }
+    fn = _validators.get(key)
+    if fn is None:
+        return True, ""
+    return fn(value)  # type: ignore[return-value]
+
+
+def _prompt_field(label: str, current: str, env_key: str) -> str | None:
+    """Prompt the user for a new value; re-prompt once on validation failure.
+
+    Returns the new value string if the user entered a valid value, or None
+    to signal "keep current value".
+    """
+    current_display = current if current else "N/A"
+    for attempt in range(2):
+        raw = input(
+            f"\n  Current {label}: {current_display}. New value (Enter to keep): "
+        ).strip()
+        if not raw:
+            return None
+        ok, err = _validate_field(env_key, raw)
+        if ok:
+            return raw
+        print(f"  ⚠️  {err}")
+        if attempt == 1:
+            print("  Keeping current value.")
+            return None
+    return None
+
+
+def _edit_athlete_profile(ctx: dict) -> None:
+    """Interactive field-by-field profile editor; persists changes to .env."""
+    from titan.ui.setup_wizard import _save_athlete_profile_to_env  # local import avoids circular
+
     profile = ctx.get("athlete_profile", {})
-    print(f"\n  Όνομα:     {profile.get('name','N/A')}")
-    print(f"  Βάρος:     {profile.get('weight_kg','N/A')} kg")
-    print(f"  Ηλικία:    {profile.get('age','N/A')}")
-    print(f"  Max HR:    {profile.get('max_hr','N/A')}")
-    print(f"  Threshold HR: {profile.get('threshold_hr','N/A')}")
-    print(f"  Στόχος:    {profile.get('current_goal','N/A')}")
+
+    fields: list[tuple[str, str, str]] = [
+        ("ATHLETE_NAME",         "Name",                              str(profile.get("name", ""))),
+        ("ATHLETE_AGE",          "Age",                               str(profile.get("age", ""))),
+        ("ATHLETE_WEIGHT",       "Weight (kg)",                       str(profile.get("weight_kg", ""))),
+        ("ATHLETE_HEIGHT",       "Height (cm)",                       str(profile.get("height_cm", ""))),
+        ("ATHLETE_MAX_HR",       "Max HR",                            str(profile.get("max_hr", ""))),
+        ("ATHLETE_THRESHOLD_HR", "Threshold HR",                      str(profile.get("threshold_hr", ""))),
+        ("TRAINING_PHASE",       "Training phase (BASE/BUILD/PEAK/TAPER)", str(profile.get("training_phase", ""))),
+        ("TRAINING_GOAL",        "Training goal (5K/10K/HM/M)",      str(profile.get("current_goal", ""))),
+    ]
+
+    _clear()
+    _header("✏️  Edit Athlete Profile")
+    print()
+
+    changes: dict[str, str] = {}
+    for env_key, label, current in fields:
+        new_val = _prompt_field(label, current, env_key)
+        if new_val is not None:
+            # Normalise choice fields to uppercase
+            if env_key in ("TRAINING_PHASE", "TRAINING_GOAL"):
+                new_val = new_val.upper()
+            changes[env_key] = new_val
+
+    if not changes:
+        print("\n  No changes made.")
+        input("  [Enter] ")
+        return
+
+    _clear()
+    _header("Επιβεβαίωση Αλλαγών")
+    print("\n  Summary of changes:")
+    for k, v in changes.items():
+        print(f"    {k} = {v}")
     _divider()
-    print("  (Επεξεργασία profile: ανοίξε config.yaml ή titan/core/athlete.py)")
+    confirm = input("  Save changes? (y/n): ").strip().lower()
+    if confirm == "y":
+        _save_athlete_profile_to_env(changes)
+        print("\n  ✅ Changes saved. Restart TITAN to apply.")
+    else:
+        print("\n  No changes made.")
     input("  [Enter] ")
+
+
+def menu_settings(ctx: dict):
+    while True:
+        _clear()
+        _header("Ρυθμίσεις Αθλητή")
+        profile = ctx.get("athlete_profile", {})
+        print(f"\n  Όνομα:        {profile.get('name', 'N/A')}")
+        print(f"  Ηλικία:       {profile.get('age', 'N/A')}")
+        print(f"  Βάρος:        {profile.get('weight_kg', 'N/A')} kg")
+        print(f"  Ύψος:         {profile.get('height_cm', 'N/A')} cm")
+        print(f"  Max HR:       {profile.get('max_hr', 'N/A')}")
+        print(f"  Threshold HR: {profile.get('threshold_hr', 'N/A')}")
+        print(f"  Φάση:         {profile.get('training_phase', 'N/A')}")
+        print(f"  Στόχος:       {profile.get('current_goal', 'N/A')}")
+        _divider()
+        print("  1. ✏️  Edit athlete profile")
+        print("  0. ← Πίσω")
+        _divider()
+        choice = input("  Επιλογή: ").strip()
+        if choice == "1":
+            _edit_athlete_profile(ctx)
+        else:
+            break

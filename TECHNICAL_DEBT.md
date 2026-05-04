@@ -4000,6 +4000,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-116 | ✅ RESOLVED — Phase 13 (/manual_entry Telegram command; 8 tests; data_source='manual_entry' 2026-05-03) | — |
 | T5-117 | 🟡 OPEN — Phase 13 (Two parallel athlete profile systems; architectural debt; MEDIUM) | — |
 | T5-118 | ✅ RESOLVED — Phase 13 (Garmin weight sync dual-format fix; dateWeightList primary + dailyWeightSummaries fallback; WARNING on unknown format; 4 tests; 2026-05-03) | — |
+| T5-119 | ✅ RESOLVED — Phase 13 (Profile editor in menu; _save_athlete_profile_to_env; validation; 6 tests; 2026-05-04) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
 | T5-16 | ✅ RESOLVED — ADR-0046 accepted; T5-16-A implementation entry created | 2026-03-08 |
 | T5-16-A | ⚠️ PARTIALLY RESOLVED 2026-03-15 — ADR-0018 Phase B complete; `coaching_pipeline.py` + `AthleteCoachingContext` + `CoachingScheduler` absent; see T5-16-B | 2026-03-15 |
@@ -4878,3 +4879,25 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Tests:** 4 new tests in `tests/test_garmin_sync.py` — `test_sync_weight_new_format`, `test_sync_weight_legacy_format_fallback`, `test_sync_weight_unknown_format_emits_warning`, `test_sync_weight_lbs_conversion`.
 
 **Task learning:** When upgrading a third-party API wrapper, scan the library's own read-back methods (not just write methods) to confirm response field names. `delete_weigh_ins` revealed `dateWeightList`/`samplePk` which are invisible from `get_weigh_ins` docstring alone.
+
+---
+
+### T5-119 · Profile editor in menu — athlete profile fields editable from UI ✅ RESOLVED
+
+**Status:** ✅ RESOLVED — Phase 13 (2026-05-04).
+**Source:** Operational gap identified in env audit 2026-05-03; users had to edit `.env` manually to change athlete profile fields.
+**Priority:** MEDIUM.
+
+**Root cause:** `menu_settings()` was read-only — it displayed profile values and directed users to edit `config.yaml` or `titan/core/athlete.py` manually.
+
+**Fix:** Added interactive profile editor to `menu_settings()`. Users can now edit all 8 athlete profile fields (name, age, weight, height, max HR, threshold HR, training phase, training goal) field-by-field with validation and confirmation prompt. Changes are persisted to `.env` via new `_save_athlete_profile_to_env(changes)` in `setup_wizard.py`, which updates existing keys and appends missing keys while preserving all other `.env` content (credentials untouched).
+
+**ADR required:** No.
+
+**Acceptance criteria:** ✅ Interactive editor in menu; `.env` persistence; validation with re-prompt-once; 6 tests green; 0 regressions.
+
+**Location:** `titan/ui/menu_system.py` (`menu_settings`, `_edit_athlete_profile`, `_validate_field`, `VALID_TRAINING_PHASES`, `VALID_TRAINING_GOALS`); `titan/ui/setup_wizard.py` (`_save_athlete_profile_to_env`).
+
+**Tests:** 6 new tests in `tests/test_t5_119_profile_editor.py` — `test_save_athlete_profile_updates_existing_key`, `test_save_athlete_profile_appends_missing_key`, `test_save_athlete_profile_preserves_other_keys`, `test_phase_choices_are_valid`, `test_goal_choices_are_valid`, `test_invalid_max_hr_rejected`.
+
+**Task learning:** Persist-only UI helpers belong in the layer that already owns `.env` writes (`setup_wizard.py`) to keep menu_system.py free of file I/O. A local import inside the editor function avoids any circular-import risk.
