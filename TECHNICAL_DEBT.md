@@ -3991,7 +3991,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-107 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lock-code list expanded to all 15 CANONICAL_LOCK_CODES | 2026-05-01 |
 | T5-108 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md line 238 DailyCoach v5.7 → v5.8 | 2026-05-01 |
 | T5-109 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lines 65 and 229 science module count 27/26 → 31 | 2026-05-01 |
-| T5-110 | 🟡 OPEN — Phase 13 (S-01 Coach RBAC unscoped; coach_athlete_assignments table; P1) | — |
+| T5-110 | ✅ RESOLVED 2026-05-04 — ADR-0054; coach_athlete_assignments table + RBAC enforcement stubs; commit 44986cb | — |
 | T5-111 | 🟡 OPEN — Phase 13 (S-03 Audit log in-memory only; coach_audit DB table; P2) | — |
 | T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
@@ -4743,15 +4743,15 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-110 · S-01 Coach RBAC unscoped 🟡 OPEN
+### T5-110 · S-01 Coach RBAC unscoped ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED 2026-05-04.
 **Source:** FMEA Phase 13 security audit (2026-05-02), finding S-01.
 **Priority:** P1 (High — blocks multi-athlete onboarding; coach can access any athlete's data).
 
-**Scope:** Implement `coach_athlete_assignments` table to scope coach queries. All coach-facing DB reads must filter by `athlete_id` via the assignment table. No cross-athlete data leakage permitted.
+**Resolution:** `coach_athlete_assignments` table added (SCHEMA_VERSION 16); `get_assigned_athletes()` and `assign_athlete_to_coach()` implemented in `titan/core/database.py`; operator console enforcement stubs wired; ADR-0054 authored. 6 tests green in `tests/test_t5_110_coach_rbac.py`. Commit 44986cb (branch claude/coach-athlete-rbac-QZSNU, 2026-05-04).
 
-**Acceptance criteria:** A coach session can only retrieve data for athletes in their `coach_athlete_assignments` rows; integration test verifies cross-athlete isolation.
+**Acceptance criteria:** ✅ A coach session can only retrieve data for athletes in their `coach_athlete_assignments` rows; integration test verifies cross-athlete isolation.
 
 **Location:** `titan/core/database.py`, `titan/ui/operator_console.py`.
 

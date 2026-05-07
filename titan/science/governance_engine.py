@@ -600,7 +600,10 @@ class GovernanceEngine:
                     severity="WARNING",
                 )
         except (TypeError, ValueError):
-            pass
+            _log.debug(
+                "H6 gate skipped: garmin_data_age_hours "
+                "is not numeric: %r", garmin_age
+            )
 
         return reasons
 
