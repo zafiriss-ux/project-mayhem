@@ -14,6 +14,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+PYTEST_BIN="${PYTEST_BIN:-.venv/bin/pytest}"
+if [ ! -f "$PYTEST_BIN" ]; then
+    if _pb=$(which pytest 2>/dev/null); then
+        PYTEST_BIN="$_pb"
+    fi
+fi
+
 RESULTS_DIR=".flakiness_results"
 mkdir -p "$RESULTS_DIR"
 
@@ -32,7 +39,7 @@ for i in $(seq 1 "$RUNS"); do
         PYTEST_ARGS="$PYTEST_ARGS -k $FILTER"
     fi
     # shellcheck disable=SC2086
-    .venv/bin/pytest $PYTEST_ARGS 2>&1 \
+    $PYTEST_BIN $PYTEST_ARGS 2>&1 \
         | grep -E " (PASSED|FAILED|ERROR)( |$)" \
         > "$RESULTS_DIR/run_${i}.txt" || true
 done

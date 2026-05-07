@@ -26,12 +26,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-PYTEST_BIN="${VENV_PYTEST:-.venv/bin/pytest}"
+PYTEST_BIN="${PYTEST_BIN:-.venv/bin/pytest}"
 if [ ! -f "$PYTEST_BIN" ]; then
-    if _pb=$(which pytest 2>/dev/null); then
-        PYTEST_BIN="$_pb"
+    if python -m pytest --version &>/dev/null 2>&1; then
+        PYTEST_BIN="python -m pytest"
     elif python3 -m pytest --version &>/dev/null 2>&1; then
         PYTEST_BIN="python3 -m pytest"
+    elif _pb=$(which pytest 2>/dev/null); then
+        PYTEST_BIN="$_pb"
     fi
 fi
 
@@ -278,9 +280,12 @@ echo "  → SCRATCHPAD STATUS: $SCRATCHPAD_STATUS"
 _section "P. Architectural dependency lint (import-linter)"
 # ─────────────────────────────────────────────────────────────────────────────
 
-if command -v lint-imports &>/dev/null || \
-   [ -f ".venv/bin/lint-imports" ]; then
+if [ -f ".venv/bin/lint-imports" ]; then
   LINTER=".venv/bin/lint-imports"
+elif command -v lint-imports &>/dev/null; then
+  LINTER="lint-imports"
+fi
+if [ -n "${LINTER:-}" ]; then
   LINT_OUT=$($LINTER --config .importlinter 2>&1)
   if echo "$LINT_OUT" | grep -q "0 broken"; then
     _pass "import-linter: all contracts kept"
