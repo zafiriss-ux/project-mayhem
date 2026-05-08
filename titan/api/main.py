@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from time import monotonic
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from titan.api.auth import (
     ACCESS_COOKIE_NAME,
@@ -38,6 +41,35 @@ from titan.core.structured_events import EventSeverity, structured_event_payload
 
 _RATE_LIMIT_WINDOW_SECONDS = 60.0
 _log = logging.getLogger(__name__)
+
+CSRF_COOKIE_NAME = "titan_csrf"
+CSRF_HEADER_NAME = "X-CSRF-Token"
+CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+_CSRF_EXEMPT_PATHS = {"/health", "/auth/login"}
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if request.method in CSRF_SAFE_METHODS:
+            return await call_next(request)
+
+        if request.url.path in _CSRF_EXEMPT_PATHS:
+            return await call_next(request)
+
+        cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
+        header_token = request.headers.get(CSRF_HEADER_NAME)
+
+        if (
+            not cookie_token
+            or not header_token
+            or not secrets.compare_digest(cookie_token, header_token)
+        ):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token missing or invalid"},
+            )
+
+        return await call_next(request)
 
 
 @dataclass(frozen=True)
@@ -202,6 +234,8 @@ def create_app(
     app.state.auth_store = auth_store or AuthStore()
     app.state.audit_store = audit_store or CoachAuditStore()
 
+    app.add_middleware(CSRFMiddleware)
+
     rate_limiter = AuthenticatedRateLimiter()
     login_rate_limiter = LoginRateLimiter()
 
@@ -218,6 +252,19 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/csrf-token")
+    def get_csrf_token(response: Response) -> dict[str, str]:
+        """Issue a CSRF token cookie. Call this before any state-changing request."""
+        token = secrets.token_urlsafe(32)
+        response.set_cookie(
+            key=CSRF_COOKIE_NAME,
+            value=token,
+            httponly=False,
+            secure=True,
+            samesite="strict",
+        )
+        return {"csrf_token": token}
 
     @app.post("/auth/login", response_model=LoginResponse)
     def login(

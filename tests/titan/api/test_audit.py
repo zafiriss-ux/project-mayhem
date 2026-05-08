@@ -8,7 +8,12 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 from titan.api.auth import AuthStore, hash_password
-from titan.api.main import AuditActionType, CoachAuditStore, create_app
+from titan.api.main import CSRF_HEADER_NAME, AuditActionType, CoachAuditStore, create_app
+
+
+def _csrf_headers(client: TestClient) -> dict[str, str]:
+    r = client.get("/api/csrf-token")
+    return {CSRF_HEADER_NAME: r.json()["csrf_token"]}
 
 
 @pytest.fixture
@@ -57,11 +62,12 @@ def test_audit_middleware_writes_rows_for_all_required_action_types(client: tupl
     test_client, audit_store = client
     _login_coach(test_client)
 
+    csrf = _csrf_headers(test_client)
     responses = [
         test_client.get("/athletes/athlete-2/dashboard?include=hrv"),
-        test_client.post("/coach/overrides?athlete_id=athlete-2", json={"reason": "coach"}),
+        test_client.post("/coach/overrides?athlete_id=athlete-2", json={"reason": "coach"}, headers=csrf),
         test_client.get("/coach/export?athlete_id=athlete-2&format=json"),
-        test_client.delete("/coach/athlete-data?athlete_id=athlete-2"),
+        test_client.delete("/coach/athlete-data?athlete_id=athlete-2", headers=csrf),
     ]
     assert all(response.status_code == 200 for response in responses)
 
@@ -99,14 +105,15 @@ def test_audit_path_is_non_bypassable_for_covered_health_data_endpoints(
         ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
     ]
 
+    csrf = _csrf_headers(test_client)
     for method, url, payload in covered:
         before = len(audit_store.rows)
         if method == "GET":
             response = test_client.get(url)
         elif method == "POST":
-            response = test_client.post(url, json=payload)
+            response = test_client.post(url, json=payload, headers=csrf)
         else:
-            response = test_client.delete(url)
+            response = test_client.delete(url, headers=csrf)
         assert response.status_code == 200
         assert len(audit_store.rows) == before + 1
 

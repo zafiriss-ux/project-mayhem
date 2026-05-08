@@ -12,7 +12,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 
 from titan.api.auth import AuthStore, hash_password
-from titan.api.main import create_app
+from titan.api.main import CSRF_HEADER_NAME, create_app
 
 _EXPECTED_PATHS = frozenset(
     {
@@ -105,6 +105,8 @@ def test_login_rejects_missing_fields(client: TestClient) -> None:
 
 def test_protected_endpoints_reject_no_auth(client: TestClient) -> None:
     fresh = TestClient(client.app, base_url="https://testserver")
+    csrf_token = fresh.get("/api/csrf-token").json()["csrf_token"]
+    csrf_headers = {CSRF_HEADER_NAME: csrf_token}
     protected = [
         ("GET", "/athletes/owner/dashboard"),
         ("POST", "/coach/notes"),
@@ -113,7 +115,8 @@ def test_protected_endpoints_reject_no_auth(client: TestClient) -> None:
         ("DELETE", "/coach/athlete-data"),
     ]
     for method, path in protected:
-        r = fresh.request(method, path)
+        headers = csrf_headers if method not in {"GET", "HEAD", "OPTIONS"} else {}
+        r = fresh.request(method, path, headers=headers)
         assert r.status_code == 401, f"{method} {path} → expected 401, got {r.status_code}"
 
 
