@@ -27,7 +27,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 10 | LLM Coach Query Layer | OPEN (deferred) | Pending Phase 9 corpus gate (≥3 athlete profiles × ≥90 decisions) |
 | Phase 11 | Security Hardening Sprint | 2026-04-27 | Auth hardening, Telegram daemon fix (T5-98), Garmin env fix (T5-99) |
 | Phase 12 | Testing Infrastructure | 2026-04-27 | mutmut (T5-84), metamorphic tests (T5-87), schemathesis 4.x (T5-94) |
-| Phase 13 | Security & Data Integrity | OPEN 2026-05-01 | FMEA items T5-101–T5-118; Telegram trust fix, ML kill-switch whitelist |
+| Phase 13 | Security & Data Integrity | CLOSED 2026-05-08 | FMEA items T5-101–T5-118; Telegram trust fix, ML kill-switch whitelist; 7 P1 items resolved (T5-110, T5-114–T5-119) |
+| Phase 14 | Production Hardening | OPEN 2026-05-08 | C-W12 CI restoration, T5-101 token encryption, T5-100 Garmin fallback, T5-111 audit log, T5-112 CSRF |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -128,11 +129,31 @@ FMEA: no unmitigated HIGH items at close.
 
 ---
 
-## Phase 13 — Security & Data Integrity (OPEN, 2026-05-01)
+## Phase 13 — Security & Data Integrity (CLOSED, 2026-05-08)
 
-Active phase. FMEA gate cleared 2026-05-01. Open items: T5-101 (.garth_token Fernet
-encryption), T5-110–T5-118 (RBAC, audit log, CSRF, data-void Stage 3, source tagging,
-manual biometric entry, athlete profile unification). See `TECHNICAL_DEBT.md` for register.
+Closed 2026-05-08. `phase_close_audit.sh 13` exit 0; 2699 tests passing, 6 skipped;
+SCRATCHPAD STATUS: IDLE. Resolved (7 P1 items): T5-110 (Coach-Athlete RBAC scoping,
+ADR-0054), T5-114 (data-void governance rule, all stages), T5-115 (`data_source` column
++ SCHEMA_VERSION 15 + UPSERT guard), T5-116 (`/manual_entry` Telegram command), T5-117
+(athlete profile unification, `UniversalAthleteProfile.from_env()`), T5-118 (Garmin
+weight sync dual-format fix), T5-119 (in-menu profile editor). Deferred to Phase 14:
+T5-101 (.garth_token Fernet encryption, P1 security), T5-100 (Garmin fallback adapters,
+blocking gate for second athlete onboarding), T5-111 (audit log persistence, P2),
+T5-112 (CSRF protection, P2), C-W12 (CI restoration, highest priority).
+
+---
+
+## Phase 14 — Production Hardening (OPEN, 2026-05-08)
+
+Active phase. Entry gate: Phase 13 close audit PASS (2026-05-08); pending Opus
+governance audit of Phase 13 work. Scope (priority order): C-W12 (CI restoration —
+self-hosted runner or GitHub Pro), T5-101 (.garth_token Fernet encryption), T5-100
+(Garmin fallback adapters — blocking gate for second athlete onboarding), T5-111
+(audit log persistence), T5-112 (CSRF protection, pre-UI), Opus governance audit
+findings. FMEA: F14-01 Garmin auth (CRIT/HIGH → T5-100), F14-02 .garth_token
+(CRIT/MED → T5-101), F14-03 CI absence (HIGH/CONFIRMED → C-W12), F14-04 multi-athlete
+state leak (HIGH/MED → T5-76 + M.3), F14-05 audit log loss on restart (MED/CONFIRMED
+→ T5-111). See `TECHNICAL_DEBT.md` for register.
 
 ---
 
@@ -199,4 +220,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-03 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 OPEN 2026-05-01; Phase 10 deferred pending corpus gate; Phases 10–13 added to roadmap)
+Last updated: 2026-05-08 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 OPEN 2026-05-08; Phase 10 deferred pending corpus gate)
