@@ -3870,6 +3870,53 @@ resolved or in-progress.
 5. C-W12 resolution (CI infrastructure — billing decision required)
 6. First production athlete onboarding
 
+**Phase 13 CLOSED — 2026-05-08**
+Close criteria met:
+- phase_close_audit.sh 13 exit 0 ✅
+- 2699 tests passing, 6 skipped ✅
+- SCRATCHPAD STATUS: IDLE ✅
+- All P1 items resolved:
+  T5-114 ✅ T5-115 ✅ T5-116 ✅
+  T5-117 ✅ T5-118 ✅ T5-110 ✅ T5-119 ✅
+- Known deferred to Phase 14:
+  T5-101 (P1 security — .garth_token)
+  T5-111 (P2 — audit log)
+  T5-112 (P2 — CSRF)
+  C-W12  (CI restoration — highest priority)
+  T5-100 (Phase 14 blocking gate)
+
+---
+
+## Phase 14 — Production Hardening (OPEN, 2026-05-08)
+
+**Entry gate (all must hold):**
+- Phase 13 close audit: PASS ✅ (2026-05-08)
+- Opus governance audit of Phase 13 work: PASS
+
+**Scope (priority order):**
+1. C-W12: CI restoration (self-hosted runner
+   or GitHub Pro) — highest leverage
+2. T5-101: .garth_token Fernet encryption
+   (P1 security, ~4h)
+3. T5-100: Garmin fallback adapters
+   (blocking gate for second athlete onboarding)
+4. T5-111: Audit log persistence (P2)
+5. T5-112: CSRF protection (P2, pre-UI)
+6. Opus governance audit findings
+   (pending audit completion)
+
+---
+
+## FMEA: Phase 14 — Production Hardening
+
+| ID | Component | Failure Mode | Sev | Like | Mit |
+|---|---|---|---|---|---|
+| F14-01 | Garmin auth | API change → zero sync | CRIT | HIGH | T5-100 blocking gate |
+| F14-02 | .garth_token | Filesystem read → account takeover | CRIT | MED | T5-101 (this phase) |
+| F14-03 | CI absence | Silent gate regression | HIGH | CONFIRMED | C-W12 (this phase) |
+| F14-04 | Multi-athlete | Object-scope state leak | HIGH | MED | T5-76 tests + M.3 audit finding |
+| F14-05 | Audit log | Coach action irrecoverable on restart | MED | CONFIRMED | T5-111 (this phase) |
+
 ---
 
 ## Tracking
