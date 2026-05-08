@@ -127,6 +127,7 @@ All schema changes are managed via Alembic migration scripts:
 |---|---|---|
 | D1 | `PersistenceAdapter` implemented, all existing queries ported | `python -m pytest -q` → 0 failures, same count as Phase 7 baseline |
 | D2 | Alembic migration for all 5 current tables (`daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `governance_outcomes`) | `alembic upgrade head` → no errors on fresh DB |
+| D2-freeze | Baseline migration (SCHEMA_VERSION 17 → Alembic revision 0000) must be authored before Phase 8A Postgres cutover. Freeze notice documented in `alembic/README_FREEZE.md`. See ADR-0044 §D2. |
 | D3 | `athlete_id` column on all 5 tables (`DEFAULT 'default'` for backward compat) | Schema inspection test green |
 | D4 | Row-Level Security policies active and tested | `tests/test_athlete_rls_isolation.py` → green |
 | D5 | `model_calibration_metadata` table migrated (ADR-0033 T5-07 Layer 1) | Schema inspection test green |
