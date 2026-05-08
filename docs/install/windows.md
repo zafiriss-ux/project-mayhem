@@ -55,7 +55,7 @@ Open Telegram on your phone or [web.telegram.org](https://web.telegram.org).
    - **Bot username:** `MyTitanCoachBot` (must be unique, must end in `bot`)
 5. BotFather replies with your **bot token**:
    ```
-   123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456
+   YOUR_TELEGRAM_BOT_TOKEN_HERE
    ```
    **Copy this token** — you'll need it in Step 4.
 
@@ -120,7 +120,7 @@ Enter your Garmin Connect login. TITAN syncs your activities, HRV, sleep, weight
 ```
 ── Telegram Bot ────────────────────────────────────────────────────
 
-   Telegram bot token: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz123456
+   Telegram bot token: YOUR_TELEGRAM_BOT_TOKEN_HERE
    Your Telegram chat ID: 123456789
 ```
 

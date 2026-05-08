@@ -98,7 +98,7 @@ def validate_garmin_username(username: str) -> bool:
 
 def validate_telegram_token(token: str) -> bool:
     """Basic sanity check for Telegram bot token format."""
-    # Expected format: 1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+    # Expected format: <bot_id>:<token>  e.g. 1234567890:YOUR_BOT_TOKEN
     return ':' in token and len(token) >= 20
 
 

@@ -9,7 +9,7 @@ def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
         {
             "GARMIN_EMAIL": "runner@example.com",
             "GARMIN_PASSWORD": "not-a-real-password",
-            "TELEGRAM_BOT_TOKEN": "123456789:fake-token-for-cli-entrypoint",
+            "TELEGRAM_BOT_TOKEN": "fake_token_for_cli_entrypoint_test",
             "ATHLETE_AGE": "invalid-int",
         }
     )

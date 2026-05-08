@@ -19,6 +19,10 @@ on:
   pull_request:
     branches: ["main"]
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   ruff-phase-a:
     name: Ruff Phase A (full repo, blocking)
@@ -592,8 +596,22 @@ jobs:
         run: python3 --version
       - name: Check venv
         run: |
-          test -f .venv/bin/pytest || \
-          (echo "venv missing — run bash setup_env.sh" \
-           && exit 1)
+          python - <<'EOF'
+          import os, sys
+          scripts = "Scripts" if sys.platform == "win32" else "bin"
+          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
+          path = os.path.join(".venv", scripts, exe)
+          if not os.path.exists(path):
+              print(f"venv missing — run setup_env.sh (looked for {path})")
+              sys.exit(1)
+          print(f"OK: found {path}")
+          EOF
       - name: Check pytest
-        run: .venv/bin/pytest --version
+        run: |
+          python - <<'EOF'
+          import os, sys, subprocess
+          scripts = "Scripts" if sys.platform == "win32" else "bin"
+          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
+          pytest = os.path.join(".venv", scripts, exe)
+          subprocess.run([pytest, "--version"], check=True)
+          EOF

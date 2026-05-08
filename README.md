@@ -172,7 +172,7 @@ GARMIN_USERNAME=your_email@example.com
 GARMIN_PASSWORD=your_password
 
 # Telegram Bot
-TELEGRAM_BOT_TOKEN=123456:ABC-DEF1234ghIkl  # Get from @BotFather
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE  # Get from @BotFather
 TELEGRAM_CHAT_ID=123456789                   # Send /start to your bot
 
 # OpenAI (Optional — for LLM coaching narratives)
@@ -277,7 +277,7 @@ Week of: 2026-02-17
 
 ### 3. Προσθήκη στο .env
 ```bash
-TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 TELEGRAM_CHAT_ID=123456789
 ```
 
