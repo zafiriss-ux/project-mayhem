@@ -118,6 +118,19 @@ def test_key_files_section_points_to_existing_paths() -> None:
     )
 
 
+def test_claude_md_schema_version_matches_code() -> None:
+    """CLAUDE.md SCHEMA_VERSION must match titan/core/database.py SCHEMA_VERSION."""
+    import importlib
+
+    db_module = importlib.import_module("titan.core.database")
+    code_version = db_module.SCHEMA_VERSION
+    content = _claude_text()
+    assert f"SCHEMA_VERSION {code_version}" in content, (
+        f"CLAUDE.md does not mention SCHEMA_VERSION {code_version}. "
+        "Update the Database section of CLAUDE.md to match titan/core/database.py."
+    )
+
+
 def test_phase_state_label_consistent_between_tech_debt_and_claude_md() -> None:
     """Phase state in CLAUDE.md ROADMAP row must match TECHNICAL_DEBT.md canonical declaration.
 

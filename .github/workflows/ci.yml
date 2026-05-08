@@ -515,6 +515,25 @@ jobs:
               print("OK: No optimistic governance defaults found")
           EOF
 
+  dependency-audit:
+    name: Dependency CVE Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run CVE audit
+        # GHSA-gc5v-m9x4-r6x2 is tracked manually in requirements.txt (requests bump)
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-gc5v-m9x4-r6x2
+
   invariant-athlete-isolation:
     name: G-CI-07 Athlete isolation invariant
     runs-on: ubuntu-latest

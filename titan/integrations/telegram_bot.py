@@ -9,6 +9,7 @@ import logging
 import os
 import threading
 import time
+from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -24,6 +25,21 @@ POLL_FAIL = "POLL_FAIL"
 SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
 CALLBACK_ERROR = "CALLBACK_ERROR"
 OVERRIDE_SILENCE = "OVERRIDE_SILENCE"
+
+_CMD_COOLDOWN_S = 30
+_cmd_rate: dict[tuple[int, str], float] = defaultdict(float)
+_cmd_rate_lock = threading.Lock()
+
+
+def _check_rate_limit(chat_id: int, command: str) -> bool:
+    """Return True if the command is allowed, False if within the cooldown window."""
+    key = (chat_id, command)
+    now = time.monotonic()
+    with _cmd_rate_lock:
+        if now - _cmd_rate[key] < _CMD_COOLDOWN_S:
+            return False
+        _cmd_rate[key] = now
+        return True
 
 
 class _CredentialSecret:
@@ -181,6 +197,9 @@ class TitanTelegramBot:
             if not self._is_trusted(message.chat.id):
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
+            if not _check_rate_limit(message.chat.id, "today"):
+                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                return
             if "today" in self.cmd_callbacks:
                 result = self.cmd_callbacks["today"]()
                 self.bot.reply_to(message, result or "⏳ Calculating...")
@@ -191,6 +210,9 @@ class TitanTelegramBot:
         def cmd_week(message):
             if not self._is_trusted(message.chat.id):
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            if not _check_rate_limit(message.chat.id, "week"):
+                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
                 return
             if "week" in self.cmd_callbacks:
                 result = self.cmd_callbacks["week"]()
@@ -235,6 +257,9 @@ class TitanTelegramBot:
         def cmd_sync(message):
             if not self._is_trusted(message.chat.id):
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            if not _check_rate_limit(message.chat.id, "sync"):
+                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
                 return
             self.bot.reply_to(message, "🔄 Starting Garmin sync...")
             if "sync" in self.cmd_callbacks:
@@ -281,6 +306,9 @@ class TitanTelegramBot:
             if not self._is_trusted(message.chat.id):
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
+            if not _check_rate_limit(message.chat.id, "calibration"):
+                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                return
             if "calibration" in self.cmd_callbacks:
                 result = self.cmd_callbacks["calibration"]()
                 self.bot.reply_to(message, result or "⏳ No calibration data yet.")
@@ -291,6 +319,9 @@ class TitanTelegramBot:
         def cmd_manual_entry(message):
             if not self._is_trusted(message.chat.id):
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            if not _check_rate_limit(message.chat.id, "manual_entry"):
+                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
                 return
             text = (message.text or "").strip()
             # Strip "/manual_entry" prefix to get the argument string

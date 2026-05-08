@@ -245,34 +245,42 @@ def test_command_handlers_route_to_callbacks_and_fallbacks():
         "calibration": ("⏳ No calibration data yet.", "⏳ Outcome tracker not ready."),
     }
 
+    from titan.integrations.telegram_bot import _cmd_rate
+
     for command, (empty_fallback, no_callback_fallback) in callback_matrix.items():
+        _cmd_rate.clear()
         fake_bot.replies.clear()
         bot.cmd_callbacks.pop(command, None)
         fake_bot.handlers[command](message)
         assert fake_bot.replies[-1][1] == no_callback_fallback
 
+        _cmd_rate.clear()
         fake_bot.replies.clear()
         bot.cmd_callbacks[command] = lambda: ""
         fake_bot.handlers[command](message)
         assert fake_bot.replies[-1][1] == empty_fallback
 
+        _cmd_rate.clear()
         fake_bot.replies.clear()
         bot.cmd_callbacks[command] = lambda: "READY"
         fake_bot.handlers[command](message)
         assert fake_bot.replies[-1][1] == "READY"
 
+    _cmd_rate.clear()
     fake_bot.replies.clear()
     bot.cmd_callbacks.pop("sync", None)
     fake_bot.handlers["sync"](message)
     assert fake_bot.replies[0][1] == "🔄 Starting Garmin sync..."
     assert fake_bot.replies[1][1] == "⏳ Sync not available yet."
 
+    _cmd_rate.clear()
     fake_bot.replies.clear()
     bot.cmd_callbacks["sync"] = lambda: ""
     fake_bot.handlers["sync"](message)
     assert fake_bot.replies[0][1] == "🔄 Starting Garmin sync..."
     assert fake_bot.replies[1][1] == "✅ Sync complete."
 
+    _cmd_rate.clear()
     fake_bot.replies.clear()
     bot.cmd_callbacks["sync"] = lambda: "SYNCED"
     fake_bot.handlers["sync"](message)

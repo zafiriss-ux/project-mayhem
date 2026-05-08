@@ -46,6 +46,15 @@ _GARTH_TOKEN_FILENAME = ".garth_token"
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
 _TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"
 
+# Token is stored alongside titan.db in the data directory, not at the project root.
+_DATA_DIR = Path(
+    os.environ.get(
+        "TITAN_DATA_DIR",
+        str(Path.home() / "Documents" / "TITAN"),
+    )
+)
+_GARTH_TOKEN_PATH = _DATA_DIR / _GARTH_TOKEN_FILENAME
+
 
 def _get_token_encryption_key() -> bytes | None:
     """Return Fernet-ready key bytes from env var, or None if unset/invalid.
@@ -332,10 +341,18 @@ class GarminSync:
     def _get_token_path(self) -> Path:
         """Return path to the persisted Garth session token file.
 
-        Co-located with .env in the project root so credentials and token
-        always live in the same directory.
+        Stored in TITAN_DATA_DIR (default ~/Documents/TITAN) alongside titan.db.
+        A startup warning is emitted if a legacy project-root token exists but
+        the canonical data-dir path does not, prompting the operator to migrate.
         """
-        return Path(__file__).parent.parent.parent / _GARTH_TOKEN_FILENAME
+        legacy_path = Path(__file__).parent.parent.parent / _GARTH_TOKEN_FILENAME
+        if legacy_path.exists() and not _GARTH_TOKEN_PATH.exists():
+            _log.warning(
+                "Legacy Garth token found at project root — "
+                "move to %s for production use.",
+                _GARTH_TOKEN_PATH,
+            )
+        return _GARTH_TOKEN_PATH
 
     def connect(self) -> bool:
         if not self.email or not self.password:
