@@ -1,0 +1,10 @@
+title = "TITAN gitleaks config"
+
+# Test fixtures and unit-test credential stubs are intentionally fake.
+# They exercise validation logic and must not be flagged as real secrets.
+[allowlist]
+description = "Test fixtures — fake credentials used in unit tests"
+paths = [
+    '''(^|/)tests/''',
+    '''(^|/)test_[^/]+\.py$''',
+]
