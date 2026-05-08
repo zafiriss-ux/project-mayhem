@@ -4029,7 +4029,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | ✅ VERIFIED COMPLETE 2026-04-26 — Pass 1 COMPLETE 2026-03-18; Pass 2 VERIFIED: O1–O7 implemented (b2cdc37 era); D4 → T5-100 (Phase 12) | 2026-04-26 |
 | T5-100 | 🟡 OPEN — Phase 12 (Garmin fallback D4: multi-device adapters, source switching, arbitration logic; deferred from T5-12 Pass 2) | — |
-| T5-101 | 🟡 OPEN — Phase 13 (.garth_token encryption + data-dir relocation; P1 security) | — |
+| T5-101 | ✅ RESOLVED 2026-05-08 — token encryption (Fernet) already implemented; token path relocated to TITAN_DATA_DIR; legacy-root warning added; 4 tests in tests/test_t5_101_garth_encryption.py | 2026-05-08 |
 | T5-102 | ✅ IMPLEMENTED 2026-05-01 — validate_jwt_keys_at_startup() added to auth.py; conditional call in __main__.py; 3 tests added to test_auth.py | 2026-05-01 |
 | T5-103 | 🟡 OPEN — Phase 13 (OutcomeTracker → ThresholdAdapter calibration loop wiring; ADR-0052; P2) | — |
 | T5-104 | 🟡 OPEN — Phase 13 (PersistenceAdapter ABC: wire OutcomeTracker consumer; ADR-0044; P2) | — |
@@ -4660,17 +4660,19 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-101 · `.garth_token` encryption and data-dir relocation 🟡 OPEN
+### T5-101 · `.garth_token` encryption and data-dir relocation ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED 2026-05-08.
 **Source:** Pre-upgrade security audit (2026-05-01), finding A2.
 **Priority:** P1 (High — filesystem read = Garmin account takeover).
 
-**Scope:** Encrypt `.garth_token` at rest (Fernet symmetric key or OS keyring via `keyring` lib) and move the file from project root to the data directory alongside `titan.db`. Update `garmin_sync.py:282-288, 414-425` token load/save paths. Add startup warning if token file is found at project root.
+**Scope:** Encrypt `.garth_token` at rest (Fernet) and move the file from project root to the data directory alongside `titan.db`. Update `garmin_sync.py` token load/save paths. Add startup warning if token file is found at project root.
 
-**Acceptance criteria:** `.garth_token` no longer written to project root; decryption key is not stored alongside the encrypted file; unit test verifies encrypted token round-trip.
+**Resolution:** Fernet `_encrypt_token`/`_decrypt_token` already present. Token path relocated: `_GARTH_TOKEN_PATH = _DATA_DIR / _GARTH_TOKEN_FILENAME` where `_DATA_DIR` reads from `TITAN_DATA_DIR` env (default: `~/Documents/TITAN`). `_get_token_path()` emits WARNING on legacy project-root token presence. 4 tests added: `tests/test_t5_101_garth_encryption.py`.
 
-**Location:** `titan/integrations/garmin_sync.py:282-288, 414-425`.
+**Task learning:** Fernet encryption was already implemented in a prior pass; the gap was the token path still pointing to the project root. Path relocation + legacy warning were the outstanding deliverables.
+
+**Location:** `titan/integrations/garmin_sync.py`.
 
 ---
 
@@ -4948,3 +4950,78 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 **Tests:** 6 new tests in `tests/test_t5_119_profile_editor.py` — `test_save_athlete_profile_updates_existing_key`, `test_save_athlete_profile_appends_missing_key`, `test_save_athlete_profile_preserves_other_keys`, `test_phase_choices_are_valid`, `test_goal_choices_are_valid`, `test_invalid_max_hr_rejected`.
 
 **Task learning:** Persist-only UI helpers belong in the layer that already owns `.env` writes (`setup_wizard.py`) to keep menu_system.py free of file I/O. A local import inside the editor function avoids any circular-import risk.
+
+---
+
+## Phase 14 — Code Audit Debt Items (resolved 2026-05-08)
+
+The following items were identified in the token-encryption / debt-fixes audit pass
+(branch `claude/token-encryption-debt-fixes-nOOgB`) and resolved in the same pass.
+
+### D5 · pip-audit CVE gate absent ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit.
+**Priority:** P2 (Medium — no automated CVE scanning on dependencies).
+
+**Resolution:** `pip-audit>=2.7.0` added to `requirements.txt`. `dependency-audit` CI job added to `.github/workflows/ci.yml`. GHSA-gc5v-m9x4-r6x2 (requests, already tracked in requirements.txt comment) ignored; all other CVEs blocking.
+
+---
+
+### D10 · ADR-0024 and ADR-0040 stub-only ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit — live code references both ADRs; stubs say "N/A — pending".
+**Priority:** P2 (Medium — referenced by thresholds.py and CI invariant).
+
+**Resolution:** `docs/adr/0024-canonical-lock-codes.md` and `docs/adr/0040-athlete-identity-isolation.md` rewritten with full Decision, Context, Consequences, and enforcement contract. CLAUDE.md ADR-list entries updated from "Pending" to "Accepted". Status in both ADRs updated to "Accepted — 2026-05-08".
+
+---
+
+### D17 · Telegram per-command rate limit absent ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit.
+**Priority:** P2 (Medium — repeated /sync or /today calls can DoS-hammer Garmin API).
+
+**Resolution:** `_check_rate_limit(chat_id, command)` function added to `titan/integrations/telegram_bot.py` with a 30-second per-chat per-command cooldown. Applied to /today, /week, /sync, /calibration, /manual_entry. /start and /help exempt. 2 tests in `tests/test_telegram_rate_limit.py`.
+
+---
+
+### D18 · οδηγος.docx at repo root ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit — binary file at repo root adds noise to git history and `ls`.
+**Priority:** P3 (Low — no functional impact).
+
+**Resolution:** `git mv οδηγος.docx docs/οδηγος.docx`.
+
+---
+
+### D19 · constraints.txt withings-sync entry stale ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit — `withings-sync==4.1.0` was pinned as a workaround for T5-43 but garminconnect 0.3.2 (T5-78) dropped the withings-sync dep entirely; the pin is now dead weight.
+**Priority:** P3 (Low — no functional impact; pip ignores it since withings-sync is not in requirements.txt).
+
+**Resolution:** `withings-sync==4.1.0` line removed from `constraints.txt`.
+
+---
+
+### D20 · CLAUDE.md SCHEMA_VERSION drift ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit — CLAUDE.md said "SCHEMA_VERSION 14" and "15 SQLite tables" but `titan/core/database.py` has SCHEMA_VERSION = 16 and 16 tables (coach_athlete_assignments added by T5-110/ADR-0054).
+**Priority:** P2 (Medium — CLAUDE.md is the architecture context snapshot; drift causes confusion).
+
+**Resolution:** CLAUDE.md line 282 updated to "16 SQLite tables (SCHEMA_VERSION 16)" with `coach_athlete_assignments` added to the table list. `test_claude_md_schema_version_matches_code()` added to `tests/test_claude_md_integrity.py` to enforce this in CI.
+
+---
+
+### M4 · PRAGMA user_version f-string in database.py ✅ RESOLVED
+
+**Status:** ✅ RESOLVED 2026-05-08.
+**Source:** Phase 14 code audit — `cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")` is an f-string anti-pattern (even though the value is a trusted internal constant, it violates the style gate).
+**Priority:** P3 (Low — no injection risk since SCHEMA_VERSION is int, but inconsistent with codebase style).
+
+**Resolution:** Changed to `cursor.execute("PRAGMA user_version = " + str(SCHEMA_VERSION))` with comment explaining why `?` binding is not applicable to PRAGMA.

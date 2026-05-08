@@ -159,7 +159,7 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2705 tests all green as of claude/add-profile-editor-gU9jW branch (T5-119 Profile editor — _save_athlete_profile_to_env + interactive menu; 6 new tests in tests/test_t5_119_profile_editor.py) (2026-05-04). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2712 tests all green as of claude/token-encryption-debt-fixes-nOOgB branch (T5-101 token path relocation; D5 pip-audit CI; D10 ADR-0024/0040 authored; D17 Telegram rate limit; D18/D19 dead files; D20 SCHEMA_VERSION; M4 PRAGMA; 8 new tests in tests/test_t5_101_garth_encryption.py + tests/test_telegram_rate_limit.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
 
 ---
 
@@ -279,7 +279,7 @@ All SQLite writes use `threading.Lock` (`check_same_thread=False`).
 
 ### Database
 
-15 SQLite tables (SCHEMA_VERSION 14): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`.
+16 SQLite tables (SCHEMA_VERSION 16): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `coach_athlete_assignments`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`.
 - `governance_outcomes` — created by `OutcomeTracker` (v5.7.1); stores paired governance decisions + post-session outcomes for threshold calibration.
 Canonical column name for temperature: `temperature_c`.
 `get_training_load_history()` is used to rebuild CTL/ATL on startup.
@@ -307,7 +307,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0021` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0022` — Phase 8 Entry Gate Review and Architect Sign-off (Accepted — Phase 8 OPEN 2026-03-08)
 - `0023` — Physiological Input Validation Contract: bounds layer at DB→science boundary (Accepted — T1-18 Implemented 2026-03-06)
-- `0024` — Canonical Lock Codes (Pending — referenced by thresholds.py:182; author in Phase 13)
+- `0024` — Canonical Lock Codes (Accepted — 2026-05-08; D10 resolved)
 - `0025` — Skipped — number reserved, not authored (see adjacent ADRs)
 - `0026` — Input Data Sanity Layer: Garmin sync cross-field validation (Implemented — T1-19 Implemented 2026-03-07)
 - `0027` — Hidden Inter-Module Coupling Prevention: dependency boundary gates (Accepted — 2026-03-06)
@@ -323,7 +323,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0037` — Non-Training Stress Safety Partition: illness vs life-stress H2/H3 (Implemented — T1-21 Implemented 2026-03-07)
 - `0038` — Governance Decision Rationale Protocol: DecisionRationale object + Telegram surfacing (Implemented — T2-16 Implemented 2026-03-07)
 - `0039` — Skipped — number reserved, not authored (see adjacent ADRs)
-- `0040` — Athlete Identity Isolation (Pending — referenced by INV-04 and titan/core/persistence.py; author in Phase 13)
+- `0040` — Athlete Identity Isolation (Accepted — 2026-05-08; D10 resolved; enforced by G-CI-07)
 - `0041` — Unified External Data Trust Contract: DataTrustLevel for all sensor sources (Implemented — T1-23 Implemented 2026-03-07)
 - `0042` — Human Override as First-Class Invariant: no recommendation without override path (Accepted — IMMEDIATE — 2026-03-06)
 - `0043` — Skipped — number reserved, not authored (see adjacent ADRs)

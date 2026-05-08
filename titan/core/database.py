@@ -701,7 +701,8 @@ class DatabaseManager:
         # Suppress unused-variable warning for _migrations (kept as documentation).
         _ = _migrations
 
-        cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+        # PRAGMA does not support ? binding — version is a trusted internal constant
+        cursor.execute("PRAGMA user_version = " + str(SCHEMA_VERSION))
         self.conn.commit()
 
     def _apply_v1_migrations(self, cursor) -> None:

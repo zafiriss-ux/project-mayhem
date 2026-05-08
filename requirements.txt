@@ -30,3 +30,6 @@ schemathesis==4.15.2
 # Mutation testing (T5-84)
 # NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API
 mutmut==3.5.0
+
+# Dependency CVE audit (D5)
+pip-audit>=2.7.0

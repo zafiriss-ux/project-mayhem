@@ -15,6 +15,7 @@ RUNTIME_DEPENDENCIES = {
     "import-linter==2.11",
     "schemathesis==4.15.2",
     "mutmut==3.5.0",
+    "pip-audit>=2.7.0",
 }
 
 DEV_DEPENDENCIES = {
