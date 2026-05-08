@@ -29,6 +29,9 @@ LOCKOUT_MAX_ATTEMPTS: int = 5
 LOCKOUT_WINDOW_SECONDS: float = 300.0
 LOCKOUT_DURATION_SECONDS: float = 900.0
 
+JWT_ISSUER = "titan-os"
+JWT_AUDIENCE = "titan-api"
+
 
 class AuthError(Exception):
     """Raised when auth verification or lifecycle operations fail."""
@@ -186,6 +189,8 @@ def create_access_token(user: AuthUser, now: datetime | None = None) -> tuple[st
         "athlete_id": user.athlete_id,
         "exp": expires_at,
         "token_type": "access",
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
     }
     return jwt.encode(payload, _jwt_private_key(), algorithm="RS256"), expires_at
 
@@ -205,6 +210,8 @@ def create_refresh_token(
         "exp": expires_at,
         "token_type": "refresh",
         "jti": jti,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
     }
     store.add_refresh_token(jti, user.id, expires_at, issued_at)
     return jwt.encode(payload, _jwt_private_key(), algorithm="RS256"), jti, expires_at
@@ -212,7 +219,14 @@ def create_refresh_token(
 
 def decode_token(token: str, expected_type: str) -> TokenPayload:
     try:
-        decoded = jwt.decode(token, _jwt_public_key(), algorithms=["RS256"])
+        decoded = jwt.decode(
+            token,
+            _jwt_public_key(),
+            algorithms=["RS256"],
+            audience=JWT_AUDIENCE,
+            issuer=JWT_ISSUER,
+            options={"verify_aud": True},
+        )
     except InvalidTokenError as exc:
         raise AuthError("Invalid token") from exc
     payload = TokenPayload(**decoded)

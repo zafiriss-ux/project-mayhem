@@ -22,7 +22,7 @@ import ssl
 import threading
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from titan.config.thresholds import (
@@ -214,7 +214,7 @@ class WeatherAPI:
         """Infer baseline synthetic temperature/humidity from configured location."""
         _, country = self._parse_location()
         country_code = country.upper()
-        month = datetime.now().month
+        month = datetime.now().replace(tzinfo=UTC).month
 
         tropical_countries = {"SG", "ID", "MY", "TH", "PH", "VN", "BR", "CO", "EC", "KE"}
         southern_hemisphere_countries = {"AU", "NZ", "ZA", "AR", "CL", "UY"}
@@ -241,7 +241,7 @@ class WeatherAPI:
         dew_point = self.calculate_dew_point(base_temp, base_humidity)
         heat_status, heat_rec = self.classify_heat_stress(dew_point)
         return {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().replace(tzinfo=UTC).isoformat(),
             "temp_c": round(base_temp, 1),
             "humidity": int(base_humidity),
             "wind_speed": 10,
@@ -313,7 +313,7 @@ class WeatherAPI:
         dew_point = self.calculate_dew_point(temp_c, humidity)
         heat_status, heat_rec = self.classify_heat_stress(dew_point)
         current = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().replace(tzinfo=UTC).isoformat(),
             "temp_c": round(temp_c, 1),
             "humidity": int(humidity),
             "wind_speed": round(wind_speed, 1),
@@ -359,7 +359,7 @@ class WeatherAPI:
         """
         # Check cache first
         if self.cache and self.cache_timestamp:
-            age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
+            age = (datetime.now().replace(tzinfo=UTC) - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
                 current = copy.deepcopy(self.cache.get("current", {}))
                 current["data_quality"] = "cached"
@@ -376,7 +376,7 @@ class WeatherAPI:
                 entry["weather_confidence"] = "LIVE"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
-            self.cache_timestamp = datetime.now()
+            self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
             payload = copy.deepcopy(current)
             payload["data_trust"] = evaluate_weather_trust(data_quality="live", data_age_hours=0.0).to_payload()
             return payload
@@ -397,7 +397,7 @@ class WeatherAPI:
             )
             current = self._create_synthetic_fallback()
             self.cache["current"] = current
-            self.cache_timestamp = datetime.now()
+            self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
             current["data_trust"] = evaluate_weather_trust(data_quality="synthetic", data_age_hours=0.0).to_payload()
             return current
 
@@ -413,7 +413,7 @@ class WeatherAPI:
         """
         # Check cache
         if self.cache and "hourly" in self.cache:
-            age = (datetime.now() - self.cache_timestamp).total_seconds() / 3600
+            age = (datetime.now().replace(tzinfo=UTC) - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
                 forecast = copy.deepcopy(self.cache["hourly"][:hours])
                 for entry in forecast:
@@ -430,7 +430,7 @@ class WeatherAPI:
                 entry["weather_confidence"] = "LIVE"
             self.cache["current"] = current
             self.cache["hourly"] = forecast
-            self.cache_timestamp = datetime.now()
+            self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
             return copy.deepcopy(forecast[:hours])
         except Exception as exc:
             # Fallback to deterministic simulated data when API is unavailable
@@ -451,7 +451,7 @@ class WeatherAPI:
             base_temp, base_humidity = self._infer_climate_profile()
 
             for i in range(hours):
-                hour_time = datetime.now() + timedelta(hours=i)
+                hour_time = datetime.now().replace(tzinfo=UTC) + timedelta(hours=i)
 
                 # Simulate temperature variation (cooler at night)
                 hour_of_day = hour_time.hour
@@ -483,7 +483,7 @@ class WeatherAPI:
 
             # Update cache
             self.cache["hourly"] = forecast
-            self.cache_timestamp = datetime.now()
+            self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
 
             return forecast
 
@@ -515,7 +515,7 @@ class WeatherAPI:
         required_slots = max(1, math.ceil(duration_hours))
 
         # Filter to target day
-        target_date = (datetime.now() + timedelta(days=day_offset)).date()
+        target_date = (datetime.now().replace(tzinfo=UTC) + timedelta(days=day_offset)).date()
         day_forecast = [
             f for f in forecast if datetime.fromisoformat(f["timestamp"]).date() == target_date
         ]

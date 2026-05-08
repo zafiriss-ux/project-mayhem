@@ -561,7 +561,7 @@ class TitanTelegramBot:
                 self.bot.send_message(int(self.chat_id), text, parse_mode=parse_mode)
                 self.message_history.append(
                     {
-                        "ts": datetime.now().isoformat(),
+                        "ts": datetime.now().replace(tzinfo=UTC).isoformat(),
                         "message_length": len(text),
                         "delivery_mode": "telegram_api",
                     }
@@ -631,7 +631,7 @@ class TitanTelegramBot:
     def send_daily_coaching(self, data: dict) -> bool:
         text = (
             f"🌅 *GOOD MORNING!*\n"
-            f"{datetime.now().strftime('%A, %B %d, %Y')}\n\n"
+            f"{datetime.now().replace(tzinfo=UTC).strftime('%A, %B %d, %Y')}\n\n"
             f"🏃 *Today:* {data.get('session_type', 'REST')} – {data.get('duration', 'N/A')}\n\n"
             f"⏰ *Optimal Run Time:* {data.get('optimal_time', 'N/A')}\n"
             f"  └ Dew point: {data.get('dew_point', 'N/A')}°C  |  {data.get('conditions', '')}\n\n"
@@ -868,7 +868,7 @@ class TitanTelegramBot:
                         drift_seconds=round(drift_seconds, 3),
                     )
 
-            now = datetime.now()
+            now = datetime.now()  # strftime-only; no tz math needed; mock compatibility
             cur_time = now.strftime("%H:%M")
             cur_day = now.strftime("%A")
             with self._tasks_lock:
