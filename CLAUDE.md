@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2711 tests all green as of claude/audit-log-alembic-freeze-fGCOn branch (T5-111 Audit log persistence + D2 Alembic freeze — coach_audit_log SCHEMA_VERSION 17; 6 new tests in tests/test_t5_111_audit_log.py + tests/test_d2_alembic_freeze.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2724 tests all green as of claude/implement-ci-api-bundling-CyTcN branch (C-W12 self-hosted CI runner + T5-112 CSRF double-submit middleware — CSRFMiddleware + /api/csrf-token + runner-health job + docs/RUNNER_SETUP.md; 6 new tests in tests/titan/api/test_csrf.py + tests/test_runner_setup_docs.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

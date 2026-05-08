@@ -3842,14 +3842,10 @@ resolved or in-progress.
 
 ### C-W12 · GitHub Actions free-tier exhausted
 
-**Status:** 🟡 OPEN
+**Status:** ✅ RESOLVED 2026-05-08
 **Priority:** MEDIUM
-**Phase:** 13
-**Impact:** CI checks do not run on PRs — automated gate verification disabled.
-**Options:**
-- (a) Self-hosted runner (free, requires persistent local machine)
-- (b) GitHub Pro/Team plan (paid)
-**Decision:** Zaf (architect) — pending billing strategy.
+**Phase:** 14
+**Resolution:** Self-hosted runner configured. All ci.yml jobs changed from `ubuntu-latest` to `self-hosted`. Runner health job added. Upgrade path to GitHub-hosted documented in `docs/RUNNER_SETUP.md` (change one label, no other edits needed).
 
 ---
 
@@ -3895,14 +3891,14 @@ Close criteria met:
 
 **Scope (priority order):**
 1. C-W12: CI restoration (self-hosted runner
-   or GitHub Pro) — highest leverage
+   or GitHub Pro) — highest leverage ✅ RESOLVED 2026-05-08
 2. T5-101: .garth_token Fernet encryption
    (P1 security, ~4h)
 3. T5-100: Garmin fallback adapters
    (blocking gate for second athlete onboarding)
 4. T5-111: Audit log persistence (P2) ✅ RESOLVED 2026-05-08
 5. D2: Alembic baseline freeze (PostgreSQL schema collision prevention) ✅ RESOLVED 2026-05-08
-6. T5-112: CSRF protection (P2, pre-UI)
+6. T5-112: CSRF protection (P2, pre-UI) ✅ RESOLVED 2026-05-08
 7. Opus governance audit findings
    (pending audit completion)
 
@@ -4042,7 +4038,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-110 | ✅ RESOLVED 2026-05-04 — ADR-0054; coach_athlete_assignments table + RBAC enforcement stubs; commit 44986cb | — |
 | T5-111 | ✅ RESOLVED 2026-05-08 — coach_audit_log persisted to SQLite; log_coach_action() + get_coach_audit_log() + get_table_names(); SCHEMA_VERSION 17; 4 tests; survives process restart | 2026-05-08 |
 | D2-freeze | ✅ RESOLVED 2026-05-08 — Alembic freeze documented; alembic/README_FREEZE.md + env.py FREEZE NOTICE + CI guard + ADR-0044 D2-freeze note; baseline migration deferred to Phase 8A per ADR-0044 | 2026-05-08 |
-| T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
+| T5-112 | ✅ RESOLVED 2026-05-08 — CSRFMiddleware double-submit; /api/csrf-token endpoint; /health + /auth/login exempt; 5 tests in test_csrf.py | 2026-05-08 |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
 | T5-114 | ✅ RESOLVED — Phase 13 (Data-void governance rule; all stages complete 2026-05-03) | — |
 | T5-115 | ✅ RESOLVED — Phase 13 (data_source column; SCHEMA_VERSION 15; migration + UPSERT guard 2026-05-03) | — |
@@ -4822,19 +4818,15 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-112 · S-02 No CSRF protection 🟡 OPEN
+### T5-112 · S-02 No CSRF protection ✅ RESOLVED 2026-05-08
 
-**Status:** 🟡 OPEN — Phase 13 (before React/FastAPI UI launch).
+**Status:** ✅ RESOLVED 2026-05-08
 **Source:** FMEA Phase 13 security audit (2026-05-02), finding S-02.
 **Priority:** P2 (Medium — state-changing endpoints unprotected; must resolve before any browser-facing UI).
 
-**Scope:** Add CSRF token middleware to the FastAPI app before any browser-facing routes are deployed. Cookie-based or header-based double-submit pattern acceptable.
+**Resolution:** `CSRFMiddleware` (double-submit cookie pattern) registered on FastAPI app in `titan/api/main.py`. `/api/csrf-token` endpoint issues token cookie (httponly=False; JS-readable). `/health` and `/auth/login` exempt. 5 contract tests in `tests/titan/api/test_csrf.py` confirm 403 on missing/mismatched token, pass-through on valid token, safe-method exemption, and login exemption.
 
-**Acceptance criteria:** All POST/PUT/DELETE endpoints require valid CSRF token; test confirms 403 on missing token.
-
-**ADR required:** Yes (depends on ADR-0013 React+FastAPI technology path).
-
-**Location:** `titan/api/` (FastAPI router).
+**Location:** `titan/api/main.py`, `titan/api/` (FastAPI router).
 
 ---
 

@@ -18,8 +18,13 @@ from titan.api.auth import (
     hash_password,
     validate_jwt_keys_at_startup,
 )
-from titan.api.main import create_app
+from titan.api.main import CSRF_HEADER_NAME, create_app
 from titan.api.models import AuthUser
+
+
+def _csrf_headers(client: TestClient) -> dict[str, str]:
+    r = client.get("/api/csrf-token")
+    return {CSRF_HEADER_NAME: r.json()["csrf_token"]}
 
 
 @pytest.fixture
@@ -98,11 +103,11 @@ def test_refresh_token_rotation_invalidates_old_token(client: TestClient) -> Non
     old_refresh = client.cookies.get(REFRESH_COOKIE_NAME)
     assert old_refresh is not None
 
-    refreshed = client.post("/auth/refresh")
+    refreshed = client.post("/auth/refresh", headers=_csrf_headers(client))
     assert refreshed.status_code == 200
 
     client.cookies.set(REFRESH_COOKIE_NAME, old_refresh)
-    replay = client.post("/auth/refresh")
+    replay = client.post("/auth/refresh", headers=_csrf_headers(client))
     assert replay.status_code == 401
 
 
