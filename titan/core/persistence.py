@@ -998,7 +998,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
         *,
         athlete_id: str = "default",
     ) -> None:
-        del original_recommendation, athlete_id
+        del original_recommendation  # not used downstream; athlete_id: ABC interface param only
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)

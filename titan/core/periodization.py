@@ -3,7 +3,7 @@ TITAN Periodization Manager
 Race goal and training phase management based on scientific periodization principles
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 
@@ -57,12 +57,12 @@ class PeriodizationManager:
             >>> pm.add_goal(21.1, "1:30:00", "2026-04-26")
         """
         goal = {
-            "goal_id": f"GOAL_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            "goal_id": f"GOAL_{datetime.now().replace(tzinfo=UTC).strftime('%Y%m%d%H%M%S')}",
             "distance_km": distance_km,
             "target_time": target_time_str,
             "race_date": datetime.strptime(race_date_str, "%Y-%m-%d"),
             "status": "ACTIVE",
-            "created": datetime.now()
+            "created": datetime.now().replace(tzinfo=UTC)
         }
 
         self.goals.append(goal)
@@ -101,8 +101,9 @@ class PeriodizationManager:
             - Build phase: 4-6 weeks progressive overload
             - Base phase: 8+ weeks foundation building
         """
-        today = datetime.now()
-        days_to_race = (race_date - today).days
+        today = datetime.now().replace(tzinfo=UTC)
+        # race_date arrives as naive from strptime; compare dates only to avoid mixed-tz TypeError
+        days_to_race = (race_date.date() - today.date()).days
 
         if days_to_race < 0:
             return "POST_RACE"
@@ -143,7 +144,7 @@ class PeriodizationManager:
         # Mark as completed
         goal["status"] = "COMPLETED"
         goal["actual_time"] = actual_time_str
-        goal["completion_date"] = datetime.now()
+        goal["completion_date"] = datetime.now().replace(tzinfo=UTC)
 
         # Move to completed list
         self.completed_goals.append(goal)

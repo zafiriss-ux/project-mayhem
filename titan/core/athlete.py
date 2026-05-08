@@ -3,7 +3,7 @@ TITAN Athlete Profile Module
 Complete athlete demographics, physiology, and training data
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from itertools import count
 from typing import Any
 from uuid import uuid4
@@ -49,7 +49,7 @@ class UniversalAthleteProfile:
             name: Athlete's name
         """
         self.athlete_id = athlete_id or (
-            f"ATH_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}{next(_ATHLETE_ID_SEQUENCE):04d}"
+            f"ATH_{datetime.now().replace(tzinfo=UTC).strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:8]}{next(_ATHLETE_ID_SEQUENCE):04d}"
         )
         self.name = name
 
@@ -97,8 +97,8 @@ class UniversalAthleteProfile:
         self.personal_bests = {}
 
         # Metadata
-        self.created_date = datetime.now()
-        self.last_modified = datetime.now()
+        self.created_date = datetime.now().replace(tzinfo=UTC)
+        self.last_modified = datetime.now().replace(tzinfo=UTC)
 
     # --- COMPATIBILITY BRIDGE ---
     # Maintains backward compatibility with legacy code
@@ -146,7 +146,7 @@ class UniversalAthleteProfile:
             self.weight_ceiling = weight_kg + 1.2
             self.weight_panic = weight_kg - 1.5
 
-        self.last_modified = datetime.now()
+        self.last_modified = datetime.now().replace(tzinfo=UTC)
 
     def set_hr_data(
         self,
@@ -173,7 +173,7 @@ class UniversalAthleteProfile:
             # Threshold HR typically ~88% of max HR
             self.threshold_hr = int(self.max_hr * 0.88)
 
-        self.last_modified = datetime.now()
+        self.last_modified = datetime.now().replace(tzinfo=UTC)
 
     def calculate_bmr(self) -> int:
         """

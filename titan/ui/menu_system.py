@@ -12,7 +12,7 @@ Central navigation hub:
 
 import logging
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 
 # ── Profile-editor constants (importable for tests) ──────────────────────────
 VALID_TRAINING_PHASES: frozenset[str] = frozenset({"BASE", "BUILD", "PEAK", "TAPER"})
@@ -45,7 +45,7 @@ def main_menu(titan_ctx: dict):
     while True:
         _clear()
         _header()
-        now = datetime.now().strftime("%a %d %b %Y  %H:%M")
+        now = datetime.now().replace(tzinfo=UTC).strftime("%a %d %b %Y  %H:%M")
         print(f"  {now}\n")
         print("  1. 🌅  Σημερινό πλάνο (coaching + optimal time)")
         print("  2. 📅  Εβδομαδιαίο πλάνο προπόνησης")
@@ -96,7 +96,7 @@ def menu_daily_plan(ctx: dict):
     hrv_summary = hrv_eng.get_hrv_summary() if hrv_eng else {}
     tsb_val, tsb_status = tsb_eng.calculate_tsb() if tsb_eng else (None, "N/A")
 
-    print(f"\n  📅 {datetime.now().strftime('%A %d %B %Y')}\n")
+    print(f"\n  📅 {datetime.now().replace(tzinfo=UTC).strftime('%A %d %B %Y')}\n")
 
     print("  💊 ΑΝΑΚΑΜΨΗ:")
     print(f"    HRV:  {hrv_summary.get('latest_hrv', 'N/A')} ms  ({hrv_summary.get('trend','N/A')})")
@@ -117,7 +117,7 @@ def menu_daily_plan(ctx: dict):
     # Today's session
     plan = ctx.get("last_weekly_plan")
     if plan:
-        today_name = datetime.now().strftime("%A")
+        today_name = datetime.now().replace(tzinfo=UTC).strftime("%A")
         for d in plan.get("daily_sessions", []):
             if d["day"] == today_name:
                 print(f"\n  🏃 ΠΡΟΠΟΝΗΣΗ: {d['session_type']} – {d.get('distance_km',0)} km")
@@ -251,7 +251,7 @@ def menu_nutrition(ctx: dict):
         tg = ctx.get("telegram")
         if tg:
             msg = (
-                f"🍽 *ΠΛΑΝΟ ΔΙΑΤΡΟΦΗΣ – {datetime.now().strftime('%d/%m')}*\n\n"
+                f"🍽 *ΠΛΑΝΟ ΔΙΑΤΡΟΦΗΣ – {datetime.now().replace(tzinfo=UTC).strftime('%d/%m')}*\n\n"
                 f"⚖️ Βάρος: {weight} kg\n"
                 f"🔥 Θερμίδες: {plan['total_calories']} kcal\n"
                 f"🍞 Carbs: {plan['carbs_range']}\n"
