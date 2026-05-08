@@ -203,15 +203,15 @@ def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
 # ── Test 8 ────────────────────────────────────────────────────────────────────
 
 def test_schema_version_incremented(tmp_path: Path) -> None:
-    """Fresh DB must carry SCHEMA_VERSION == 16 in PRAGMA user_version."""
-    assert SCHEMA_VERSION == 16, (
-        f"Expected SCHEMA_VERSION=16 in database.py, got {SCHEMA_VERSION}"
+    """Fresh DB must carry SCHEMA_VERSION == 17 in PRAGMA user_version."""
+    assert SCHEMA_VERSION == 17, (
+        f"Expected SCHEMA_VERSION=17 in database.py, got {SCHEMA_VERSION}"
     )
     db = DatabaseManager(db_name="version_check.db", db_dir=tmp_path)
     try:
         version = db.conn.execute("PRAGMA user_version").fetchone()[0]
     finally:
         db.close()
-    assert version == 16, (
-        f"PRAGMA user_version must be 16 after create_tables(), got {version}"
+    assert version == 17, (
+        f"PRAGMA user_version must be 17 after create_tables(), got {version}"
     )

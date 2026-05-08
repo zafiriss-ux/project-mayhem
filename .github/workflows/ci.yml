@@ -551,3 +551,22 @@ jobs:
 
       - name: Athlete isolation invariant
         run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
+
+  alembic-freeze-guard:
+    name: Alembic freeze guard (SQLite collision prevention)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Alembic freeze guard
+        run: |
+          # Alembic must not be invoked in SQLite mode
+          # This guard prevents accidental schema collision
+          if grep -r "alembic upgrade" scripts/ \
+             Makefile 2>/dev/null | \
+             grep -v "postgres\|POSTGRES"; then
+            echo "ERROR: alembic upgrade found without postgres context. See alembic/README_FREEZE.md"
+            exit 1
+          fi
+          echo "Alembic freeze: OK"

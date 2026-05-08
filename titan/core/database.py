@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 16
+SCHEMA_VERSION = 17
 
 
 class DatabaseManager:
@@ -415,6 +415,19 @@ class DatabaseManager:
             VALUES ('system', 'owner', datetime('now'))
         """)
 
+        # Table 12: Coach audit log — persistent coach action history (T5-111)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS coach_audit_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id     TEXT NOT NULL,
+                athlete_id   TEXT NOT NULL,
+                action_type  TEXT NOT NULL,
+                resource     TEXT NOT NULL DEFAULT '',
+                action_detail TEXT,
+                performed_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+
         self.conn.commit()
         self._run_migrations(cursor)
 
@@ -507,6 +520,11 @@ class DatabaseManager:
                 "coach_athlete_assignments",
                 "coach-athlete RBAC scoping table + system→owner seed (ADR-0054 / T5-110)",
                 None,  # DDL — see _apply_v16_migrations() below
+            ),
+            17: (
+                "coach_audit_log",
+                "persistent coach action audit log (T5-111)",
+                None,  # DDL — see _apply_v17_migrations() below
             ),
         }
 
@@ -694,6 +712,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 16,
                     "table_created": "coach_athlete_assignments (ADR-0054 / T5-110)",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+            )
+
+        if current_version < 17:
+            self._apply_v17_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 17,
+                    "table_created": "coach_audit_log (T5-111)",
                     "timestamp": datetime.utcnow().isoformat() + "Z",
                 })
             )
@@ -1121,6 +1151,20 @@ class DatabaseManager:
             VALUES ('system', 'owner', datetime('now'))
         """)
 
+    def _apply_v17_migrations(self, cursor) -> None:
+        """Version 17: coach_audit_log persistent action history (T5-111)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS coach_audit_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                coach_id     TEXT NOT NULL,
+                athlete_id   TEXT NOT NULL,
+                action_type  TEXT NOT NULL,
+                resource     TEXT NOT NULL DEFAULT '',
+                action_detail TEXT,
+                performed_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
     def save_threshold_offset(
@@ -1482,6 +1526,65 @@ class DatabaseManager:
                 (coach_id, athlete_id),
             )
             self.conn.commit()
+
+    # --- Coach audit log (T5-111) ---
+
+    def log_coach_action(
+        self,
+        coach_id: str,
+        action_type: str,
+        target_athlete_id: str,
+        action_detail: str = "",
+        resource: str = "",
+    ) -> None:
+        """Persist coach action to coach_audit_log. Survives process restart (T5-111)."""
+        with self._lock:
+            self._ensure_open_locked()
+            self.conn.cursor().execute(
+                """INSERT INTO coach_audit_log
+                   (coach_id, athlete_id, action_type, resource, action_detail,
+                    performed_at)
+                   VALUES (?, ?, ?, ?, ?, datetime('now'))""",
+                (coach_id, target_athlete_id, action_type, resource, action_detail),
+            )
+            self.conn.commit()
+
+    def get_coach_audit_log(
+        self,
+        coach_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Retrieve audit log entries ordered newest-first."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            if coach_id:
+                cursor.execute(
+                    """SELECT * FROM coach_audit_log
+                       WHERE coach_id = ?
+                       ORDER BY performed_at DESC
+                       LIMIT ?""",
+                    (coach_id, limit),
+                )
+            else:
+                cursor.execute(
+                    """SELECT * FROM coach_audit_log
+                       ORDER BY performed_at DESC
+                       LIMIT ?""",
+                    (limit,),
+                )
+            rows = cursor.fetchall()
+            cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row, strict=True)) for row in rows]
+
+    def get_table_names(self) -> list[str]:
+        """Return all table names present in the database."""
+        with self._lock:
+            self._ensure_open_locked()
+            rows = self.conn.cursor().execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+        return [r[0] for r in rows]
 
     # --- Degraded Mode State (HD-06) ---
 

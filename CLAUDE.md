@@ -159,7 +159,9 @@ python -m pytest tests/test_science_engines.py
 
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
-> **Historical snapshot:** 2712 tests all green as of claude/token-encryption-debt-fixes-nOOgB branch (T5-101 token path relocation; D5 pip-audit CI; D10 ADR-0024/0040 authored; D17 Telegram rate limit; D18/D19 dead files; D20 SCHEMA_VERSION; M4 PRAGMA; 8 new tests in tests/test_t5_101_garth_encryption.py + tests/test_telegram_rate_limit.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
+
+> **Historical snapshot:** 2711 tests all green as of claude/audit-log-alembic-freeze-fGCOn branch (T5-111 Audit log persistence + D2 Alembic freeze — coach_audit_log SCHEMA_VERSION 17; 6 new tests in tests/test_t5_111_audit_log.py + tests/test_d2_alembic_freeze.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
+
 
 ---
 
@@ -279,7 +281,9 @@ All SQLite writes use `threading.Lock` (`check_same_thread=False`).
 
 ### Database
 
-16 SQLite tables (SCHEMA_VERSION 16): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `coach_athlete_assignments`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`.
+
+17 SQLite tables (SCHEMA_VERSION 17): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`, `coach_athlete_assignments`, `coach_audit_log`.
+
 - `governance_outcomes` — created by `OutcomeTracker` (v5.7.1); stores paired governance decisions + post-session outcomes for threshold calibration.
 Canonical column name for temperature: `temperature_c`.
 `get_training_load_history()` is used to rebuild CTL/ATL on startup.
