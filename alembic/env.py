@@ -1,3 +1,7 @@
+# FREEZE NOTICE: This Alembic env targets
+# PostgreSQL (ADR-0044 Phase 8A) ONLY.
+# Do not run against SQLite.
+# See alembic/README_FREEZE.md.
 from __future__ import annotations
 
 from logging.config import fileConfig

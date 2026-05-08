@@ -3900,9 +3900,10 @@ Close criteria met:
    (P1 security, ~4h)
 3. T5-100: Garmin fallback adapters
    (blocking gate for second athlete onboarding)
-4. T5-111: Audit log persistence (P2)
-5. T5-112: CSRF protection (P2, pre-UI)
-6. Opus governance audit findings
+4. T5-111: Audit log persistence (P2) ✅ RESOLVED 2026-05-08
+5. D2: Alembic baseline freeze (PostgreSQL schema collision prevention) ✅ RESOLVED 2026-05-08
+6. T5-112: CSRF protection (P2, pre-UI)
+7. Opus governance audit findings
    (pending audit completion)
 
 ---
@@ -4039,7 +4040,8 @@ When an item is completed, mark it here with date and PR reference:
 | T5-108 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md line 238 DailyCoach v5.7 → v5.8 | 2026-05-01 |
 | T5-109 | ✅ IMPLEMENTED 2026-05-01 — CLAUDE.md lines 65 and 229 science module count 27/26 → 31 | 2026-05-01 |
 | T5-110 | ✅ RESOLVED 2026-05-04 — ADR-0054; coach_athlete_assignments table + RBAC enforcement stubs; commit 44986cb | — |
-| T5-111 | 🟡 OPEN — Phase 13 (S-03 Audit log in-memory only; coach_audit DB table; P2) | — |
+| T5-111 | ✅ RESOLVED 2026-05-08 — coach_audit_log persisted to SQLite; log_coach_action() + get_coach_audit_log() + get_table_names(); SCHEMA_VERSION 17; 4 tests; survives process restart | 2026-05-08 |
+| D2-freeze | ✅ RESOLVED 2026-05-08 — Alembic freeze documented; alembic/README_FREEZE.md + env.py FREEZE NOTICE + CI guard + ADR-0044 D2-freeze note; baseline migration deferred to Phase 8A per ADR-0044 | 2026-05-08 |
 | T5-112 | 🟡 OPEN — Phase 13 (S-02 No CSRF protection; before React/FastAPI UI; P2) | — |
 | T5-113 | 🟡 OPEN — Phase 13 (S-06 JWT missing iss/aud claims; LOW) | — |
 | T5-114 | ✅ RESOLVED — Phase 13 (Data-void governance rule; all stages complete 2026-05-03) | — |
@@ -4804,15 +4806,15 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-111 · S-03 Audit log in-memory only 🟡 OPEN
+### T5-111 · S-03 Audit log in-memory only ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED 2026-05-08 — `coach_audit_log` table added to SQLite (SCHEMA_VERSION 17); `log_coach_action()` + `get_coach_audit_log()` + `get_table_names()` added to `DatabaseManager`; v17 migration; 4 tests; rows survive process restart.
 **Source:** FMEA Phase 13 security audit (2026-05-02), finding S-03.
 **Priority:** P2 (Medium — audit trail is lost on restart; compliance and forensic use cases broken).
 
-**Scope:** Persist coach actions in a `coach_audit` DB table (columns: `id`, `actor_id`, `action`, `target_athlete_id`, `payload_json`, `timestamp`). Audit log must survive process restart.
+**Scope:** Persist coach actions in a `coach_audit_log` DB table. Audit log must survive process restart.
 
-**Acceptance criteria:** `coach_audit` table exists in schema; all operator console override actions write a row; test verifies rows persist across a db reconnect.
+**Acceptance criteria:** ✅ `coach_audit_log` table exists in schema; `log_coach_action()` writes rows; `test_audit_log_survives_reconnect` verifies persistence across reconnect.
 
 **Location:** `titan/ui/operator_console.py`, `titan/core/database.py`.
 
