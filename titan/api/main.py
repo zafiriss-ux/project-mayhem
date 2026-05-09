@@ -7,6 +7,7 @@ import logging
 import secrets
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -28,6 +29,7 @@ from titan.api.auth import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    validate_jwt_keys_at_startup,
 )
 from titan.api.dependencies import (
     get_auth_store,
@@ -229,10 +231,17 @@ class CoachAuditStore:
 def create_app(
     auth_store: AuthStore | None = None,
     audit_store: CoachAuditStore | None = None,
+    db: Any = None,
 ) -> FastAPI:
-    app = FastAPI(title="TITAN OS API", version="8B")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):  # noqa: ANN001
+        validate_jwt_keys_at_startup()
+        yield
+
+    app = FastAPI(title="TITAN OS API", version="8B", lifespan=lifespan)
     app.state.auth_store = auth_store or AuthStore()
     app.state.audit_store = audit_store or CoachAuditStore()
+    app.state.db = db
 
     app.add_middleware(CSRFMiddleware)
 
@@ -371,6 +380,23 @@ def create_app(
     return app
 
 
+def _get_user_from_request(request: Request) -> str | None:
+    """Extract user_id from JWT without full validation — for audit DB writes only.
+
+    Auth has already passed at this point; this is a belt-and-suspenders read
+    for the DB persistence path when request.state.current_user is unavailable.
+    """
+    try:
+        auth = request.headers.get("Authorization", "")
+        token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
+        if not token:
+            return None
+        payload = decode_token(token)
+        return payload.sub
+    except Exception:
+        return None
+
+
 def _audit_request(request: Request) -> None:
     route = _match_audit_route(request)
     if route is None:
@@ -394,6 +420,19 @@ def _audit_request(request: Request) -> None:
         performed_at=datetime.now(UTC),
     )
     request.app.state.audit_store.log_action(row)
+
+    user_id = _get_user_from_request(request)
+    db = getattr(request.app.state, "db", None)
+    if user_id and db is not None:
+        try:
+            db.log_coach_action(
+                coach_id=user_id,
+                action_type=route["action_type"],
+                target_athlete_id=athlete_id,
+                resource=route["resource"],
+            )
+        except Exception:
+            _log.warning("audit_db_persist_failed")
 
 
 def _match_audit_route(request: Request) -> dict[str, str] | None:

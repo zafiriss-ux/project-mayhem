@@ -174,7 +174,6 @@ jobs:
   dependency-drift-audit:
     name: Dependency Drift Audit (unpinned + stale)
     runs-on: self-hosted
-    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4

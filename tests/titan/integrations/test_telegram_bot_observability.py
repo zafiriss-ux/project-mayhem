@@ -206,9 +206,9 @@ def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
 def test_init_uses_redacted_secret_container_without_duplicate_aliases():
     bot = TitanTelegramBot(bot_token="token-1", chat_id=123)
 
-    assert bot.bot_token.reveal() == "token-1"
-    assert str(bot.bot_token) == "***"
-    assert repr(bot.bot_token) == "'***'"
+    assert bot.bot_token.get_secret_value() == "token-1"
+    assert "token-1" not in str(bot.bot_token)
+    assert "token-1" not in repr(bot.bot_token)
     assert not hasattr(bot, "_bot_token_secret")
 
 
@@ -805,3 +805,29 @@ def test_start_bot_prevents_double_polling(monkeypatch):
     first_count = thread_starts["count"]
     bot.start_bot()  # second call — should be no-op
     assert thread_starts["count"] == first_count, "Second start_bot() must not spawn extra threads"
+
+
+def test_rate_limit_reply_message_sent():
+    """Second command within cooldown window gets a 'please wait' reply (M5)."""
+    from titan.integrations.telegram_bot import _cmd_rate
+
+    fake_bot = _FakeTeleBot()
+    bot = TitanTelegramBot(bot_token="", chat_id=999)
+    bot.bot = fake_bot
+    bot._register_handlers()
+
+    _cmd_rate.clear()
+    message = type("_Message", (), {"chat": type("_Chat", (), {"id": 999})()})()
+
+    # First call — allowed
+    bot.cmd_callbacks["today"] = lambda: "RESULT"
+    fake_bot.handlers["today"](message)
+    assert fake_bot.replies[-1][1] == "RESULT"
+
+    # Second call immediately — rate limited
+    fake_bot.replies.clear()
+    fake_bot.handlers["today"](message)
+    assert len(fake_bot.replies) == 1
+    assert "30 seconds" in fake_bot.replies[0][1]
+
+    _cmd_rate.clear()

@@ -485,10 +485,10 @@ def test_connect_auth_failure_logs_startup_failure(caplog, monkeypatch):
 def test_connect_uses_redacted_secret_container_without_duplicate_aliases():
     sync = GarminSync(email="runner@example.com", password="s3cr3t")
 
-    assert sync.email.reveal() == "runner@example.com"
-    assert sync.password.reveal() == "s3cr3t"
-    assert str(sync.email) == "***"
-    assert repr(sync.password) == "'***'"
+    assert sync.email.get_secret_value() == "runner@example.com"
+    assert sync.password.get_secret_value() == "s3cr3t"
+    assert "runner@example.com" not in str(sync.email)
+    assert "s3cr3t" not in repr(sync.password)
     assert not hasattr(sync, "_email_secret")
     assert not hasattr(sync, "_password_secret")
 

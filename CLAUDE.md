@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2730 tests all green as of claude/add-garmin-fallback-couz3 branch (T5-100 ADR-0055 BiometricRouter + ManualEntryAdapter Garmin fallback; 6 new tests in tests/titan/integrations/test_biometric_router.py) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2734 tests all green as of claude/implement-type-records-KBdUu branch (Phase 15 Opus audit — C2/C3/C7/D-19/D-20/D-21/M5 fixes; 4 new tests: 3 in tests/titan/api/test_audit_middleware.py + 1 rate-limit test in tests/titan/integrations/test_telegram_bot_observability.py) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

@@ -32,7 +32,7 @@ from titan.orchestration.contracts import (
 )
 from titan.science.data_trust import DataTrustLevel, evaluate_garmin_trust
 from titan.science.trimp_engine import TRIMPEngine
-from titan.utils.constants import _Secret
+from titan.utils.secrets import SecretStr
 
 _log = logging.getLogger(__name__)
 
@@ -102,27 +102,6 @@ def _decrypt_token(data: bytes) -> str:
     except Exception:
         _log.warning("Token decryption failed — attempting plaintext read")
         return data.decode()
-
-
-class _CredentialSecret:
-    """Redacted credential wrapper with explicit reveal semantics."""
-
-    __slots__ = ("_value",)
-
-    def __init__(self, value: str | None):
-        self._value = _Secret(value or "")
-
-    def reveal(self) -> str:
-        return str(self._value)
-
-    def __bool__(self) -> bool:
-        return bool(self._value)
-
-    def __repr__(self) -> str:
-        return "'***'"
-
-    def __str__(self) -> str:
-        return "***"
 
 
 def _garmin_event(
@@ -296,8 +275,8 @@ class GarminSync:
                     "detail": "Multiple GarminSync instances detected — expected exactly 1 in production",
                 },
             )
-        self.email = _CredentialSecret(email or os.getenv("GARMIN_EMAIL", ""))
-        self.password = _CredentialSecret(password or os.getenv("GARMIN_PASSWORD", ""))
+        self.email = SecretStr(_value=email or os.getenv("GARMIN_EMAIL", ""))
+        self.password = SecretStr(_value=password or os.getenv("GARMIN_PASSWORD", ""))
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
@@ -457,7 +436,7 @@ class GarminSync:
             client = None
             for _attempt in range(len(_LOGIN_RETRY_WAITS_S) + 1):
                 try:
-                    client = Garmin(self.email.reveal(), self.password.reveal())
+                    client = Garmin(self.email.get_secret_value(), self.password.get_secret_value())
                     client.login()
                     break
                 except Exception as _login_err:

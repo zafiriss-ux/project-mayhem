@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.override_signal import OverrideSignal, record_override_signal
-from titan.utils.constants import _Secret
+from titan.utils.secrets import SecretStr
 
 _log = logging.getLogger(__name__)
 
@@ -40,27 +40,6 @@ def _check_rate_limit(chat_id: int, command: str) -> bool:
             return False
         _cmd_rate[key] = now
         return True
-
-
-class _CredentialSecret:
-    """Redacted credential wrapper with explicit reveal semantics."""
-
-    __slots__ = ("_value",)
-
-    def __init__(self, value: str | None):
-        self._value = _Secret(value or "")
-
-    def reveal(self) -> str:
-        return str(self._value)
-
-    def __bool__(self) -> bool:
-        return bool(self._value)
-
-    def __repr__(self) -> str:
-        return "'***'"
-
-    def __str__(self) -> str:
-        return "***"
 
 
 def _telegram_event(
@@ -99,7 +78,7 @@ class TitanTelegramBot:
 
     def __init__(self, bot_token: str = None, chat_id=None, db=None):
         self.db = db
-        self.bot_token = _CredentialSecret(bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
+        self.bot_token = SecretStr(_value=bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
         raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
         try:
             self.chat_id = int(raw_id)
@@ -126,7 +105,7 @@ class TitanTelegramBot:
         self.override_callbacks: dict[str, Callable] = {}
         self._pending_override_prompts: dict[int, dict[str, str]] = {}
 
-        bot_token_value = self.bot_token.reveal()
+        bot_token_value = self.bot_token.get_secret_value()
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
@@ -198,7 +177,7 @@ class TitanTelegramBot:
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "today"):
-                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
             if "today" in self.cmd_callbacks:
                 result = self.cmd_callbacks["today"]()
@@ -212,7 +191,7 @@ class TitanTelegramBot:
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "week"):
-                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
             if "week" in self.cmd_callbacks:
                 result = self.cmd_callbacks["week"]()
@@ -259,7 +238,7 @@ class TitanTelegramBot:
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "sync"):
-                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
             self.bot.reply_to(message, "🔄 Starting Garmin sync...")
             if "sync" in self.cmd_callbacks:
@@ -307,7 +286,7 @@ class TitanTelegramBot:
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "calibration"):
-                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
             if "calibration" in self.cmd_callbacks:
                 result = self.cmd_callbacks["calibration"]()
@@ -321,7 +300,7 @@ class TitanTelegramBot:
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "manual_entry"):
-                self.bot.reply_to(message, "⏳ Please wait before repeating this command.")
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
             text = (message.text or "").strip()
             # Strip "/manual_entry" prefix to get the argument string
