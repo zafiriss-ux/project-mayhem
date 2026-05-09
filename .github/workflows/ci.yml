@@ -592,8 +592,11 @@ jobs:
     name: Runner Health Check
     runs-on: self-hosted
     steps:
+      - uses: actions/checkout@v4
+
       - name: Check Python
         run: python3 --version
+
       - name: Check venv
         run: |
           python - <<'EOF'
@@ -602,10 +605,12 @@ jobs:
           exe = "pytest.exe" if sys.platform == "win32" else "pytest"
           path = os.path.join(".venv", scripts, exe)
           if not os.path.exists(path):
-              print(f"venv missing — run setup_env.sh (looked for {path})")
+              print(f"venv missing — run: python3 -m venv .venv && pip install -r requirements.txt")
+              print(f"(looked for {path!r} relative to {os.getcwd()!r})")
               sys.exit(1)
           print(f"OK: found {path}")
           EOF
+
       - name: Check pytest
         run: |
           python - <<'EOF'
