@@ -176,9 +176,12 @@ def _save_credentials(creds: dict) -> str:
         _credential_storage_event("keyring")
         return "keyring"
 
-    _save_env(creds)
-    _credential_storage_event("env_file")
-    return "env_file"
+    env_only = {k: v for k, v in creds.items() if k not in KEYRING_SERVICES}
+    _save_env(env_only)
+    print("  ⚠️  Keyring μη διαθέσιμο: τα ευαίσθητα credentials (password/tokens/api key) δεν αποθηκεύτηκαν σε .env.")
+    print("     Εγκατέστησε/ενεργοποίησε keyring backend για ασφαλή αποθήκευση και ξανατρέξε setup.")
+    _credential_storage_event("env_file_partial")
+    return "env_file_partial"
 
 
 def _save_keyring_credentials(creds: dict, keyring) -> None:
