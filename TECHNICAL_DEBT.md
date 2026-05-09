@@ -4029,6 +4029,77 @@ Close criteria met:
 
 ---
 
+### P15-D22 · Telegram — legacy Markdown parse mode 🟡 OPEN
+
+**Status:** 🟡 OPEN — deferred; _escape_md2 helper added as scaffold
+**Source:** Opus audit 2026-05-09, finding D-22. Three explicit `parse_mode="Markdown"` call sites (lines 111, 444, 525 in `titan/integrations/telegram_bot.py`). Telegram's legacy Markdown parser is deprecated.
+**Type:** Integration / UX
+**Priority:** P3. Workflow Path: A.
+
+**Blocker:** Line 652 actively uses `*bold*` Markdown syntax (`f"{emoji} *{title}*\n\n{message}"`). The TeleBot default at line 111 implicitly covers all `reply_to` call sites. A safe MarkdownV2 migration requires a full message audit to escape all special characters (`_*[]()~\`>#+-=|{}.!`) throughout all composed message strings before switching the parse mode.
+
+**Acceptance criteria:** All message composition sites audited; all text passed to Telegram either uses `_escape_md2()` before `parse_mode="MarkdownV2"` or uses `parse_mode=None` (plain text). Zero `parse_mode="Markdown"` remaining. Test added to assert `parse_mode` arg equals `"MarkdownV2"` or `None`.
+
+---
+
+## Opus Audit 2026-05-09 — Open Findings Register
+
+> Source: Production readiness audit (Opus), 2026-05-09.
+> Items marked ✅ resolved in PR #675 or this pass.
+> Items marked 🟡 OPEN are tracked for Phase 15+.
+
+### Resolved in PR #675
+
+| ID | Finding | Status |
+|---|---|---|
+| P15-C2 | JWT `validate_jwt_keys_at_startup()` never called at startup | ✅ RESOLVED |
+| P15-C3 | Audit middleware no-op — no JWT decode fallback, no DB write | ✅ RESOLVED |
+| P15-C7 | DEPLOYMENT_GUIDE.md: Python 3.8, stale branch ref, OpenWeatherMap | ✅ RESOLVED |
+| P15-D19 | Duplicate `_CredentialSecret` × 3 → `SecretStr` | ✅ RESOLVED |
+| P15-D20 | `archive/TITAN_v50_FULL_KERNEL_FINAL.py` 213 KB tracked in git | ✅ RESOLVED |
+| P15-D21 | `dependency-drift-audit` CI job has `continue-on-error: true` | ✅ RESOLVED |
+| P15-M5 | Rate-limit handlers return silently without user feedback | ✅ RESOLVED |
+
+### Resolved in this pass (2026-05-09)
+
+| ID | Finding | Status |
+|---|---|---|
+| P15-D22 | Telegram legacy `parse_mode="Markdown"` — `_escape_md2` helper added; mode change deferred | 🟡 OPEN (scaffold only — see P15-D22 entry above) |
+
+### Open — Phase 15+ (implementation deferred)
+
+| ID | Finding | Priority | Notes |
+|---|---|---|---|
+| P15-H1 | `daily_coach.py` god-orchestrator 1747 LOC | HIGH | ADR-0046 partial; split ongoing |
+| P15-H2 | `database.py` monolith 3264 LOC | HIGH | Split by aggregate |
+| P15-H3 | `datetime.utcnow()` in `database.py` (deprecated in 3.12) | HIGH | Mass-rename pass |
+| P15-H6 | No HTTPS/TLS story for FastAPI | HIGH | Nginx/Caddy reference |
+| P15-H9 | `DegradedModeTracker`: one alert then silence | MED | Continuous alerting signal |
+| P15-D4 | SQLite SPOF — no automated backup | HIGH | Litestream / `sqlite3 .backup` |
+| P15-D6 | No Dockerfile / process supervisor | MED | Containerise |
+| P15-D8 | No load/performance tests | MED | k6 / locust |
+| P15-D13 | Process-doc bloat (`AGENTS.md` 113 KB) | MED | Section caps / archival |
+| P15-D14 | No metrics export | MED | Prometheus / OTel |
+| P15-D15 | No distributed tracing | MED | OTel auto-instrument |
+| P15-D16 | No Dockerfile | MED | One-day task |
+| P15-D17 | Backup is `cp` cron — no restore drill | HIGH | Litestream |
+| P15-D22 | Telegram legacy `parse_mode="Markdown"` — full message audit needed | MED | See entry above |
+| P15-D23 | No load tests | LOW | k6 against `/health` |
+| P15-M2 | Garmin invalidation: no backoff retry | MED | Exponential backoff |
+| P15-M3 | Telegram legacy `parse_mode` (alias of D22 in original report) | MED | Merged into P15-D22 |
+| P15-M6 | `INSERT OR IGNORE` owner seed runs every startup | LOW | One-shot migration flag |
+| P15-M10 | Auth state (rate limit, lockout) in-memory | MED | Accept or Redis |
+| P15-SEC3 | Login trusts `request.client.host`, no `X-Forwarded-For` | HIGH | Proxy-aware IP extraction |
+| P15-SEC7 | JWT no `kid` support — all tokens invalid on key rotation | MED | `kid` versioning |
+| P15-SEC8 | No rate limit on `/auth/refresh` | MED | Add limiter |
+| P15-OPS1 | No process supervisor (crash = silent death) | HIGH | systemd unit |
+| P15-OPS3 | No log aggregation | MED | vector / loki |
+| P15-OPS5 | Schedule collision: Garmin 07:00 + DailyCoach 07:00 | MED | Coordinate schedule |
+| P15-ARCH5 | Config split across 6+ surfaces | MED | pydantic-settings consolidation |
+| P15-ARCH6 | Threading model has no happens-before invariant | MED | Document or enforce |
+
+---
+
 ## FMEA: Phase 15 — Multi-Device & Scale
 
 | ID | Component | Failure Mode | Sev | Mit |
