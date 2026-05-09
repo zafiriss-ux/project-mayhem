@@ -32,4 +32,4 @@ schemathesis==4.15.2
 mutmut==3.5.0
 
 # Dependency CVE audit (D5)
-pip-audit>=2.7.0
+pip-audit==2.10.0

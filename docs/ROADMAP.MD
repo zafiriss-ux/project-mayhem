@@ -28,7 +28,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 11 | Security Hardening Sprint | 2026-04-27 | Auth hardening, Telegram daemon fix (T5-98), Garmin env fix (T5-99) |
 | Phase 12 | Testing Infrastructure | 2026-04-27 | mutmut (T5-84), metamorphic tests (T5-87), schemathesis 4.x (T5-94) |
 | Phase 13 | Security & Data Integrity | CLOSED 2026-05-08 | FMEA items T5-101–T5-118; Telegram trust fix, ML kill-switch whitelist; 7 P1 items resolved (T5-110, T5-114–T5-119) |
-| Phase 14 | Production Hardening | OPEN 2026-05-08 | C-W12 CI restoration, T5-101 token encryption, T5-100 Garmin fallback, T5-111 audit log, T5-112 CSRF |
+| Phase 14 | Production Hardening | CLOSED 2026-05-09 | C-W12 CI restoration, T5-101 token encryption, T5-100 Garmin fallback, T5-111 audit log, T5-112 CSRF, T5-113 pip-audit pin |
+| Phase 15 | Multi-Device & Scale | OPEN 2026-05-09 | Opus audit, Polar/Whoop/COROS adapters (ADR-0055), D6 containerization, D13 pipeline decoupling, vcrpy Garmin contracts |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -143,17 +144,27 @@ T5-112 (CSRF protection, P2), C-W12 (CI restoration, highest priority).
 
 ---
 
-## Phase 14 — Production Hardening (OPEN, 2026-05-08)
+## Phase 14 — Production Hardening (CLOSED, 2026-05-09)
 
-Active phase. Entry gate: Phase 13 close audit PASS (2026-05-08); pending Opus
-governance audit of Phase 13 work. Scope (priority order): C-W12 (CI restoration —
-self-hosted runner or GitHub Pro), T5-101 (.garth_token Fernet encryption), T5-100
-(Garmin fallback adapters — blocking gate for second athlete onboarding), T5-111
-(audit log persistence), T5-112 (CSRF protection, pre-UI), Opus governance audit
-findings. FMEA: F14-01 Garmin auth (CRIT/HIGH → T5-100), F14-02 .garth_token
-(CRIT/MED → T5-101), F14-03 CI absence (HIGH/CONFIRMED → C-W12), F14-04 multi-athlete
-state leak (HIGH/MED → T5-76 + M.3), F14-05 audit log loss on restart (MED/CONFIRMED
-→ T5-111). See `TECHNICAL_DEBT.md` for register.
+Closed 2026-05-09. All items resolved: C-W12 (CI restoration), T5-101 (.garth_token
+Fernet encryption), T5-100 (Garmin fallback adapters — BiometricRouter + ManualEntryAdapter,
+ADR-0055), T5-111 (audit log persistence), T5-112 (CSRF protection), T5-113 (pip-audit
+pinned to ==2.10.0), T5-81/T5-82 (test-requirements sync), D2/D5/D10/D17/D18-20/M4
+(audit close items). Deferred to Phase 15: Polar/Whoop/COROS adapters, D6
+containerization, D13 process decoupling. phase_close_audit.sh 14 exit 0; 2724 tests
+green. See `TECHNICAL_DEBT.md` for register.
+
+---
+
+## Phase 15 — Multi-Device & Scale (OPEN, 2026-05-09)
+
+Entry gate: Phase 14 close audit PASS (2026-05-09); Opus governance audit Phase 14
+pending. Scope: Opus governance audit (mandatory), Polar/Whoop/COROS adapters
+(BiometricSourceAdapter protocol — ADR-0055 ready), D6 Dockerfile + systemd unit,
+D13 pipeline decoupling (long-term), real Garmin contract tests (vcrpy cassettes).
+FMEA: F15-01 Polar/Whoop API auth change (MED → ADR-0055 protocol), F15-02 Docker
+volume mount loss on deploy (LOW → rehearsed restore), F15-03 stale vcrpy cassettes
+(MED → monthly refresh gate). See `TECHNICAL_DEBT.md` for register.
 
 ---
 
@@ -220,4 +231,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-08 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 OPEN 2026-05-08; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-09 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 15 OPEN 2026-05-09; Phase 10 deferred pending corpus gate)
