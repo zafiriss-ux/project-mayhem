@@ -7,6 +7,7 @@ Uses pyTelegramBotAPI for real polling (not mock).
 import json
 import logging
 import os
+import re
 import threading
 import time
 from collections import defaultdict
@@ -40,6 +41,19 @@ def _check_rate_limit(chat_id: int, command: str) -> bool:
             return False
         _cmd_rate[key] = now
         return True
+
+
+_MD2_SPECIAL = re.compile(r"([_*\[\]()~`>#+=|{}.!\-\\])")
+
+
+def _escape_md2(text: str) -> str:
+    """Escape *text* for Telegram MarkdownV2.
+
+    NOTE: parse_mode="Markdown" (legacy) is still in use throughout this module.
+    Switch to parse_mode="MarkdownV2" only after all message composition sites
+    have been audited and their content wrapped with this helper — see P15-D22.
+    """
+    return _MD2_SPECIAL.sub(r"\\\1", text)
 
 
 def _telegram_event(

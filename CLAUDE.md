@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2734 tests all green as of claude/implement-type-records-KBdUu branch (Phase 15 Opus audit — C2/C3/C7/D-19/D-20/D-21/M5 fixes; 4 new tests: 3 in tests/titan/api/test_audit_middleware.py + 1 rate-limit test in tests/titan/integrations/test_telegram_bot_observability.py) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2727 passed + 7 skipped (2734 total) all green as of claude/refactor-technical-debt-dVyts branch (Phase 15 Opus audit pass 2 — Open Findings Register added to TECHNICAL_DEBT.md; _escape_md2 scaffold added to telegram_bot.py; P15-D22 registered as OPEN; no new tests — all changes are register/scaffold only) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
