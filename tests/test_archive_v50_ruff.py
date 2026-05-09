@@ -1,15 +1,9 @@
-import subprocess
 from pathlib import Path
 
 
-def test_archive_kernel_is_ruff_clean() -> None:
+def test_archive_monolith_removed() -> None:
+    """D-20: TITAN_v50_FULL_KERNEL_FINAL.py must not exist in archive/."""
     target = Path("archive/TITAN_v50_FULL_KERNEL_FINAL.py")
-
-    result = subprocess.run(
-        ["ruff", "check", str(target)],
-        capture_output=True,
-        text=True,
-        check=False,
+    assert not target.exists(), (
+        "archive/TITAN_v50_FULL_KERNEL_FINAL.py must be removed (D-20 fix)."
     )
-
-    assert result.returncode == 0, result.stdout + result.stderr

@@ -12,7 +12,8 @@ def test_ci_has_dependency_drift_audit_job() -> None:
 
     assert "dependency-drift-audit:" in content
     assert "Dependency Drift Audit (unpinned + stale)" in content
-    assert "continue-on-error: true" in content
+    # D-21: continue-on-error must be absent — audit failures must block the pipeline.
+    assert "continue-on-error: true" not in content
 
 
 def test_dependency_drift_audit_checks_unpinned_dependencies() -> None:

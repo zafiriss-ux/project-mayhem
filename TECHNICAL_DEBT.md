@@ -3948,6 +3948,87 @@ Close criteria met:
 
 ---
 
+### P15-C2 · API — validate_jwt_keys_at_startup not called at startup ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding C2. JWT keys validated lazily; runtime crash on first token operation if keys absent.
+**Type:** Security / Fail-Fast
+**Priority:** P1. Workflow Path: A.
+
+**Fix:** Added FastAPI `lifespan` context manager to `create_app()` that calls `validate_jwt_keys_at_startup()` before the app accepts requests. Also added `db` parameter to `create_app()` for future DB audit persistence injection.
+
+**Tests added:** `tests/titan/api/test_audit_middleware.py::test_jwt_startup_validation_raises_without_keys`
+
+---
+
+### P15-C3 · API — audit middleware reads request.state but JWT decode path missing ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding C3. Audit middleware had no fallback if request.state.current_user was unset; no DB persistence path.
+**Type:** Observability / Correctness
+**Priority:** P2. Workflow Path: A.
+
+**Fix:** Added `_get_user_from_request()` helper that extracts user_id from JWT (decode-only, no re-validation) as a belt-and-suspenders path. Added optional DB persistence: `_audit_request` now writes to `DatabaseManager.log_coach_action()` when a `db` instance is injected via `create_app(db=...)`.
+
+**Tests added:** `tests/titan/api/test_audit_middleware.py::test_authenticated_post_creates_audit_row`, `test_unauthenticated_request_no_audit_row`
+
+---
+
+### P15-C7 · DEPLOYMENT_GUIDE.md drift ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding C7. Guide had Python 3.8, stale branch refs, OpenWeatherMap references.
+**Type:** Documentation Accuracy
+**Priority:** P3. Workflow Path: A.
+
+**Fix:** Updated Python version to 3.11+, replaced `git checkout claude/...` with `git checkout main`, replaced OpenWeatherMap section with Open-Meteo (free, no key), removed stale WEATHER_API_KEY references.
+
+---
+
+### P15-D19 · Duplicate _CredentialSecret class in integrations ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding D-19. `_CredentialSecret` duplicated in `garmin_sync.py` and `telegram_bot.py` — `SecretStr` in `titan/utils/secrets.py` is the canonical implementation.
+**Type:** Code Duplication
+**Priority:** P3. Workflow Path: A.
+
+**Fix:** Removed `_CredentialSecret` class from both integration modules. Replaced all usages with `SecretStr` from `titan.utils.secrets`. Updated `.reveal()` call sites to `.get_secret_value()`. Updated 3 test files accordingly.
+
+---
+
+### P15-D20 · Archive monolith file ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding D-20. `archive/TITAN_v50_FULL_KERNEL_FINAL.py` (~v50 monolith) should not be tracked in git — bloats clone, confuses navigation.
+**Type:** Repository Hygiene
+**Priority:** P3. Workflow Path: A.
+
+**Fix:** `git rm archive/TITAN_v50_FULL_KERNEL_FINAL.py`. Archive directory retained (other historical docs remain). Test updated to verify removal.
+
+---
+
+### P15-D21 · dependency-drift-audit CI job has continue-on-error: true ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding D-21. Dependency drift audit job set `continue-on-error: true` — failures were silently swallowed in CI.
+**Type:** CI Reliability
+**Priority:** P2. Workflow Path: A.
+
+**Fix:** Removed `continue-on-error: true` from `dependency-drift-audit` job in `.github/workflows/ci.yml`. Drift failures now block the pipeline. Updated `tests/test_t4_25_dependency_drift_audit.py` to assert absence.
+
+---
+
+### P15-M5 · Rate-limit handlers return silently without user feedback ✅ RESOLVED 2026-05-09
+
+**Status:** ✅ RESOLVED 2026-05-09
+**Source:** Opus audit 2026-05-09, finding M5. Telegram command handlers that hit rate-limit said "please wait" without specifying the cooldown duration.
+**Type:** UX
+**Priority:** P3. Workflow Path: A.
+
+**Fix:** Updated all 5 rate-limited handlers in `titan/integrations/telegram_bot.py` to reply "⏳ Please wait 30 seconds before repeating this command." Added `test_rate_limit_reply_message_sent` to `tests/titan/integrations/test_telegram_bot_observability.py`.
+
+---
+
 ## FMEA: Phase 15 — Multi-Device & Scale
 
 | ID | Component | Failure Mode | Sev | Mit |

@@ -17,7 +17,7 @@
 ## Απαιτήσεις Συστήματος
 
 ### Software
-- **Python**: 3.8 ή νεότερο
+- **Python**: 3.11+
 - **OS**: Linux, macOS, ή Windows (με WSL)
 - **Git**: Για version control
 - **Internet**: Για API calls (Garmin, Weather, Telegram)
@@ -36,7 +36,7 @@
 cd ~/
 git clone https://github.com/zafiriss-ux/project-mayhem.git
 cd project-mayhem
-git checkout claude/kernel-restructure-training-plan-0UZmS
+git checkout main
 ```
 
 ### 2. Δημιουργία Virtual Environment
@@ -146,16 +146,13 @@ EOF
 
 ## Ρύθμιση Weather API
 
-### Βήμα 1: Δημιουργία OpenWeatherMap Account
+### Βήμα 1: Open-Meteo (δωρεάν, χωρίς API key)
 
-1. Πήγαινε στο [https://openweathermap.org/api](https://openweathermap.org/api)
-2. Κάνε sign up (δωρεάν)
-3. Πήγαινε στο "API keys" tab
-4. Κράτα το **API Key**
+TITAN χρησιμοποιεί το [Open-Meteo](https://open-meteo.com/) — δωρεάν, χωρίς εγγραφή ή API key.
 
 ### Βήμα 2: Προσθήκη στο .env
 ```bash
-WEATHER_API_KEY=your_api_key_here
+# WEATHER_API_KEY — δεν απαιτείται, το TITAN χρησιμοποιεί Open-Meteo (δωρεάν, χωρίς key)
 WEATHER_LOCATION=Athens,GR  # ή το location σου
 ```
 
@@ -330,14 +327,12 @@ python -c "from titan.integrations.telegram_bot import TitanTelegramBot; bot = T
 ```bash
 # Πρόβλημα: Weather data not updating
 
-# Λύση 1: Έλεγξε API key
-echo $WEATHER_API_KEY
+# Open-Meteo δεν απαιτεί API key.
+# Λύση 1: Έλεγξε το WEATHER_LOCATION στο .env
+echo $WEATHER_LOCATION
 
 # Λύση 2: Test API
-curl "https://api.openweathermap.org/data/2.5/weather?q=Athens&appid=<YOUR_KEY>"
-
-# Λύση 3: Έλεγξε quota
-# Free tier: 60 calls/minute, 1,000,000 calls/month
+python -c "from titan.integrations.weather_api import WeatherAPI; w = WeatherAPI(); print(w.get_current_conditions())"
 ```
 
 ### Memory Issues
@@ -373,7 +368,7 @@ find data/logs -type f -mtime +30 -delete
 ### Updates
 ```bash
 # Pull latest changes
-git pull origin claude/kernel-restructure-training-plan-0UZmS
+git pull origin main
 
 # Restart TITAN
 pkill -f "python main.py"
