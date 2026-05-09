@@ -69,6 +69,7 @@
 | [0052](0052-population-threshold-adaptation.md) | Population-Specific Threshold Adaptation via OutcomeTracker: per-athlete δT offsets, adaptation loop, circuit breaker; hard-stop gates excluded | Architecture / Science | ✅ Accepted (2026-04-04) — Implementation deferred Phase 9 |
 | [0053](0053-data-void-conservative-gate.md) | Data-Void Conservative Governance Gate: H6 soft gate caps Zone 2 when Garmin data is stale >48h; DATA_VOID_CONSERVATIVE lock code | Architecture / Safety | ✅ Accepted (2026-05-02) — Stage 1 complete; Stage 2–3 pending |
 | [0054](0054-coach-athlete-rbac.md) | Coach-Athlete RBAC Scoping: coach_athlete_assignments table, get_assigned_athletes enforcement contract; application-level only (PostgreSQL RLS deferred Phase 9) | Architecture / Auth | ✅ Accepted (2026-05-03) — T5-110 Implemented |
+| [0055](0055-garmin-fallback-adapters.md) | Garmin Fallback Adapter Interface: BiometricSourceAdapter protocol, ManualEntryAdapter fallback, BiometricRouter arbitration (Garmin preferred <48h; manual_entry fallback ≥48h) | Architecture / Integrations | ✅ Accepted (2026-05-09) — T5-100 Implemented |
 
 ---
 

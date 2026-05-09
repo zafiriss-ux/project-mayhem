@@ -48,6 +48,7 @@ from titan.config.thresholds import (
     HRV_DRIFT_THRESHOLD_MS,
 )
 from titan.core.database import DatabaseManager
+from titan.integrations.biometric_router import BiometricRouter, ManualEntryAdapter
 from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -860,6 +861,18 @@ class DailyCoach:
         context_payload["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
         context_payload["garmin_data_age_hours"] = garmin_trust.data_age_hours
         context_payload["garmin_data_trust_level"] = garmin_trust.trust_level.value
+
+        # ADR-0055: source arbitration — Garmin preferred; ManualEntry fallback (≥48h stale)
+        _today = datetime.now(UTC).strftime("%Y-%m-%d")
+        _manual_adapter = ManualEntryAdapter(self.db)
+        _router = BiometricRouter(
+            garmin_age_hours=garmin_trust.data_age_hours,
+            manual_adapter=_manual_adapter,
+        )
+        _router.get_hrv(_today, garmin_data.get("hrv_rmssd"))
+        _router.get_rhr(_today, garmin_data.get("resting_hr"))
+        context_payload["biometric_source"] = _router.active_source
+        context_payload["biometric_fallback_active"] = _router.using_fallback
 
         # Compute degraded flags (passed to _effect_runner via decision_trace)
         _data_confidence_low = bool(

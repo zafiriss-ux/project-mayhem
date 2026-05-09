@@ -59,12 +59,12 @@ project-mayhem/
 │   │                        # operator_console_manual_override_workflow.md,
 │   │                        # operator_console_technology_path.md
 │   └── training/            # OPERATIONAL_MODEL.md, DECISION_MODEL.md, profiles/
-└── titan/                   # Main package (62 modules, excl. __init__/__main__)
+└── titan/                   # Main package (63 modules, excl. __init__/__main__)
     ├── config/              # thresholds.py (safety constants), evidence_registry.py
     ├── core/                # Athlete, Database, Periodization, Equipment, PersistenceAdapter
     ├── science/             # 31 modules (engines + governance + ML scaffold + ThresholdAdapter)
     ├── features/            # Weekly planner, optimal time, nutrition optimizer
-    ├── integrations/        # Garmin, Weather API, Telegram bot
+    ├── integrations/        # Garmin, Weather API, Telegram bot, BiometricRouter (ADR-0055)
     ├── orchestration/       # DailyCoach v5.8 (12-step morning routine)
     ├── ui/                  # Menu system, setup wizard, OperatorConsole
     └── utils/               # MathCore, constants
@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2724 tests all green as of claude/implement-ci-api-bundling-CyTcN branch (C-W12 self-hosted CI runner + T5-112 CSRF double-submit middleware — CSRFMiddleware + /api/csrf-token + runner-health job + docs/RUNNER_SETUP.md; 6 new tests in tests/titan/api/test_csrf.py + tests/test_runner_setup_docs.py) (2026-05-08). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2730 tests all green as of claude/add-garmin-fallback-couz3 branch (T5-100 ADR-0055 BiometricRouter + ManualEntryAdapter Garmin fallback; 6 new tests in tests/titan/integrations/test_biometric_router.py) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
@@ -235,7 +235,7 @@ When anything here conflicts with `AGENTS.md`: **`AGENTS.md` wins.**
    - Governance infrastructure (6): `GovernanceEngine`, `GovernanceContracts`, `IntensityGovernor`, `VolumeLoadGauge`, `AdaptivePriorityLock`, `OutcomeTracker`
    - ML scaffold — shadow/advisory mode (4): `LoadPredictionShadowModel`, `InjuryRiskEnsembleModel`, `AutomatedPeriodizationEngine`, `MLSafety` (kill-switch)
 4. **Governance Layer** (within science/) — 7-gate safety system; must run before every session recommendation; non-bypassable
-5. **Integrations** (`titan/integrations/`) — `GarminSync` (6h background thread), `WeatherAPI` (1h cache, 48h forecast), `TitanTelegramBot`
+5. **Integrations** (`titan/integrations/`) — `GarminSync` (6h background thread), `WeatherAPI` (1h cache, 48h forecast), `TitanTelegramBot`, `BiometricRouter` + `ManualEntryAdapter` (ADR-0055 fallback layer)
 6. **Features** (`titan/features/`) — `WeeklyPlanGenerator`, `OptimalTimeCalculator`, `NutritionOptimizer`
 7. **Orchestration** (`titan/orchestration/`) — `DailyCoach` v5.8: 12-step morning routine, hydrates engines from DB on startup
 
@@ -342,6 +342,7 @@ Process rules are in `AGENTS.md §16`. Historical bug-fix records are in `CHANGE
 - `0052` — ADR-0052 Population-Specific Threshold Adaptation via OutcomeTracker (Accepted — 2026-04-04)
 - `0053` — ADR-0053 Data-Void Conservative Governance Gate: H6 soft gate, DATA_VOID_CONSERVATIVE lock code (Accepted — 2026-05-02)
 - `0054` — ADR-0054 Coach-Athlete RBAC Scoping: coach_athlete_assignments table, get_assigned_athletes enforcement contract (Accepted — T5-110 Implemented 2026-05-03)
+- `0055` — ADR-0055 Garmin Fallback Adapter Interface: BiometricSourceAdapter protocol, ManualEntryAdapter, BiometricRouter arbitration (Garmin preferred <48h; manual_entry fallback ≥48h) (Accepted — T5-100 Implemented 2026-05-09)
 
 ### Future Design Notes
 
@@ -545,6 +546,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `titan/science/injury_risk_model.py` | Ensemble injury risk model (advisory; recall > 80% target; kill-switch enforced) |
 | `titan/science/automated_periodization.py` | Genetic-algorithm periodization suggester (suggest-only; kill-switch enforced) |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC — storage-backend contract for Phase 8A (T5-08-B D1 scaffold) |
+| `titan/integrations/biometric_router.py` | `BiometricRouter` + `ManualEntryAdapter`: Garmin fallback arbitration layer (ADR-0055 / T5-100) |
 | `GOVERNANCE_PRINCIPLES.md` | Standalone governance principles: Owner Proposal Guardrail, Engineering Ctrl-Z, Architect Constrained by Invariants, Rules Decide (extracted from `AGENTS.md`; `AGENTS.md` wins on conflict) |
 | `TECHNICAL_DEBT.md` | Tiered technical debt register + upgrade roadmap (all findings, prioritized) |
 | `SCRATCHPAD.md` | Engineer→Architect communication channel; OBS entries (Codex) + DEC entries (Claude); canonical out-of-scope routing rule |
