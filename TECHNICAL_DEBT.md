@@ -4025,7 +4025,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-10 | OPEN (deferred — Phase 10) | — |
 | T5-11 | ✅ RESOLVED 2026-03-15 — JWT (RS256) + HTTP-only cookie auth layer; `auth_users` + `auth_tokens` tables; `get_current_user()` + `require_coach()` dependencies; isolation invariant enforced; Opus QA PASS; commit 3bd7147 | 2026-03-15 |
 | T5-12 | ✅ VERIFIED COMPLETE 2026-04-26 — Pass 1 COMPLETE 2026-03-18; Pass 2 VERIFIED: O1–O7 implemented (b2cdc37 era); D4 → T5-100 (Phase 12) | 2026-04-26 |
-| T5-100 | 🟡 OPEN — Phase 12 (Garmin fallback D4: multi-device adapters, source switching, arbitration logic; deferred from T5-12 Pass 2) | — |
+| T5-100 | ✅ RESOLVED 2026-05-09 — BiometricRouter + ManualEntryAdapter; ADR-0055; HRV+RHR fallback wired in DailyCoach; 6 tests in tests/titan/integrations/test_biometric_router.py | 2026-05-09 |
 | T5-101 | ✅ RESOLVED 2026-05-08 — token encryption (Fernet) already implemented; token path relocated to TITAN_DATA_DIR; legacy-root warning added; 4 tests in tests/test_t5_101_garth_encryption.py | 2026-05-08 |
 | T5-102 | ✅ IMPLEMENTED 2026-05-01 — validate_jwt_keys_at_startup() added to auth.py; conditional call in __main__.py; 3 tests added to test_auth.py | 2026-05-01 |
 | T5-103 | 🟡 OPEN — Phase 13 (OutcomeTracker → ThresholdAdapter calibration loop wiring; ADR-0052; P2) | — |
@@ -4641,20 +4641,19 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 ---
 
-### T5-100 · Garmin fallback D4: multi-device adapters, source switching, arbitration 🟡 OPEN
+### T5-100 · Garmin fallback D4: multi-device adapters, source switching, arbitration ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 12.
+**Status:** ✅ RESOLVED 2026-05-09.
 **Source:** T5-12 Pass 2 closure, 2026-04-26. D4 items deferred from T5-12 (Garmin API fragility mitigation).
 **Priority:** P3 (medium — O1–O7 mitigations already active; D4 extends coverage to multi-device path).
 
-**Scope:** Three sub-deliverables deferred from T5-12 D4:
-1. **Adapters** — unified device adapter implementations for Polar, Whoop, COROS (per ADR-0016 / ADR-0041 unified external data trust contract).
-2. **Source switching** — automatic failover logic when Garmin sync is degraded: promote secondary device as HRV/RHR source.
-3. **Arbitration logic** — conflict-resolution policy when multiple device sources are simultaneously available (trust-level ordering per ADR-0041).
+**Scope (resolved):** BiometricSourceAdapter protocol + ManualEntryAdapter (reads `daily_metrics WHERE data_source='manual_entry'`) + BiometricRouter (Garmin preferred <48h; ManualEntry fallback ≥48h). DailyCoach wires router after `garmin_trust`; annotates `context_payload` with `biometric_source` / `biometric_fallback_active`. Governance gate logic (H1–H5) unchanged.
 
-**Blocking gate:** ADR-0016 / ADR-0041 scope validation required before implementation begins. No implementation until Phase 12 scope gate is cleared by the architect.
+**Resolution:** ADR-0055 authored. `titan/integrations/biometric_router.py` created. `DatabaseManager.get_daily_metric()` added. DailyCoach wired. 6 tests: `tests/titan/integrations/test_biometric_router.py`.
 
-**Location:** `titan/integrations/garmin_sync.py`, new `titan/integrations/device_adapters/` (to be created in Phase 12).
+**Task learning:** The existing `data_source='manual_entry'` column (T5-115) made the fallback adapter straightforward — no schema changes required. The arbitration threshold (48h) aligns with the existing `DATA_VOID_CONSERVATIVE` gate in ADR-0053.
+
+**Location:** `titan/integrations/biometric_router.py`, `titan/core/database.py`, `titan/orchestration/daily_coach.py`.
 
 ---
 

@@ -2764,6 +2764,29 @@ class DatabaseManager:
                 validated.append((date_str, clean))
         return validated
 
+    def get_daily_metric(self, date: str, athlete_id: str = "owner") -> dict | None:
+        """Return a single daily_metrics row for *date* as a dict, or None if absent."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source
+                   FROM daily_metrics
+                   WHERE athlete_id = ? AND date = ?""",
+                (athlete_id, date),
+            )
+            row = cursor.fetchone()
+        if row is None:
+            return None
+        return {
+            "date": row[0],
+            "hrv_rmssd": row[1],
+            "resting_hr": row[2],
+            "sleep_hours": row[3],
+            "weight_kg": row[4],
+            "data_source": row[5],
+        }
+
     def close(self) -> None:
         """Close database connection."""
         with self._lock:
