@@ -3883,7 +3883,7 @@ Close criteria met:
 
 ---
 
-## Phase 14 — Production Hardening (OPEN, 2026-05-08)
+## Phase 14 — Production Hardening (CLOSED, 2026-05-09)
 
 **Entry gate (all must hold):**
 - Phase 13 close audit: PASS ✅ (2026-05-08)
@@ -3893,14 +3893,30 @@ Close criteria met:
 1. C-W12: CI restoration (self-hosted runner
    or GitHub Pro) — highest leverage ✅ RESOLVED 2026-05-08
 2. T5-101: .garth_token Fernet encryption
-   (P1 security, ~4h)
+   (P1 security, ~4h) ✅ RESOLVED 2026-05-08
 3. T5-100: Garmin fallback adapters
-   (blocking gate for second athlete onboarding)
+   (blocking gate for second athlete onboarding) ✅ RESOLVED 2026-05-09
 4. T5-111: Audit log persistence (P2) ✅ RESOLVED 2026-05-08
 5. D2: Alembic baseline freeze (PostgreSQL schema collision prevention) ✅ RESOLVED 2026-05-08
 6. T5-112: CSRF protection (P2, pre-UI) ✅ RESOLVED 2026-05-08
-7. Opus governance audit findings
-   (pending audit completion)
+7. T5-113: pip-audit pinned (dep hygiene) ✅ RESOLVED 2026-05-09
+8. T5-81, T5-82: test-requirements sync ✅ RESOLVED 2026-05-09
+9. D5, D10, D17, D18-20, M4: audit close items ✅ RESOLVED 2026-05-09
+
+**Phase 14 CLOSED — 2026-05-09**
+Close criteria met:
+- phase_close_audit.sh 14 exit 0 ✅
+- 2724 tests passing ✅
+- SCRATCHPAD STATUS: IDLE ✅
+- All items resolved:
+  T5-100 ✅ T5-101 ✅ T5-111 ✅
+  T5-112 ✅ C-W12 ✅ D2 ✅ D5 ✅
+  D10 ✅ D17 ✅ D18-20 ✅ M4 ✅
+  T5-81 ✅ T5-82 ✅ T5-113 ✅
+- Deferred to Phase 15:
+  T5-100 multi-device (Polar/Whoop/COROS)
+  D13 process decoupling (long-term)
+  D6 containerization (long-term)
 
 ---
 
@@ -3913,6 +3929,32 @@ Close criteria met:
 | F14-03 | CI absence | Silent gate regression | HIGH | CONFIRMED | C-W12 (this phase) |
 | F14-04 | Multi-athlete | Object-scope state leak | HIGH | MED | T5-76 tests + M.3 audit finding |
 | F14-05 | Audit log | Coach action irrecoverable on restart | MED | CONFIRMED | T5-111 (this phase) |
+
+---
+
+## Phase 15 — Multi-Device & Scale (OPEN, 2026-05-09)
+
+**Entry gate:**
+- Phase 14 close audit: PASS ✅ (2026-05-09)
+- Opus governance audit Phase 14: pending
+
+**Scope:**
+1. Opus governance audit (mandatory first step)
+2. Polar/Whoop/COROS adapters
+   (BiometricSourceAdapter protocol — ADR-0055 ready)
+3. D6: Dockerfile + systemd unit
+4. D13: decouple pipeline (long-term)
+5. Real Garmin contract tests (vcrpy cassettes)
+
+---
+
+## FMEA: Phase 15 — Multi-Device & Scale
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F15-01 | Polar/Whoop API | Auth change → zero sync | MED | ADR-0055 protocol |
+| F15-02 | Docker | Volume mount loss on deploy | LOW | Rehearsed restore procedure |
+| F15-03 | vcrpy cassettes | Stale cassettes → false-green tests | MED | Monthly refresh gate |
 
 ---
 
