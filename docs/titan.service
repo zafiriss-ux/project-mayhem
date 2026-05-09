@@ -1,0 +1,24 @@
+[Unit]
+Description=TITAN OS Athletic Training System
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/project-mayhem
+EnvironmentFile=/home/%i/Documents/TITAN/.env
+ExecStart=/home/%i/project-mayhem/.venv/bin/python \
+  -m titan
+Restart=on-failure
+RestartSec=30s
+StartLimitInterval=200s
+StartLimitBurst=3
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=titan-os
+
+[Install]
+WantedBy=multi-user.target

@@ -223,3 +223,21 @@ def test_validate_jwt_keys_at_startup_raises_on_missing_public_key(monkeypatch: 
     monkeypatch.delenv("TITAN_JWT_PUBLIC_KEY", raising=False)
     with pytest.raises(AuthError, match="TITAN_JWT_PUBLIC_KEY missing or invalid"):
         validate_jwt_keys_at_startup()
+
+
+# ── P15-SEC8: /auth/refresh rate limit ────────────────────────────────────────
+
+def test_refresh_rate_limit_blocks_after_5(client: TestClient) -> None:
+    headers = _csrf_headers(client)
+    for _ in range(5):
+        client.post("/auth/refresh", headers=headers)
+    response = client.post("/auth/refresh", headers=headers)
+    assert response.status_code == 429
+    assert "Too many refresh attempts" in response.json()["detail"]
+
+
+# ── P15-OPS1: systemd unit file ───────────────────────────────────────────────
+
+def test_systemd_unit_exists() -> None:
+    from pathlib import Path
+    assert Path("docs/titan.service").exists()

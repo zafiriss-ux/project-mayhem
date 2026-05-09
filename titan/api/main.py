@@ -175,12 +175,14 @@ class AuthenticatedRateLimiter:
 
 
 class LoginRateLimiter:
-    """IP-based fixed-window limiter for /auth/login — pre-auth."""
+    """IP-based fixed-window limiter for pre-auth endpoints."""
 
     LOGIN_RATE_LIMIT_ATTEMPTS: int = 10
     LOGIN_RATE_LIMIT_WINDOW: float = 60.0
 
-    def __init__(self) -> None:
+    def __init__(self, *, limit: int | None = None, window: float | None = None) -> None:
+        self._limit = limit if limit is not None else self.LOGIN_RATE_LIMIT_ATTEMPTS
+        self._window = window if window is not None else self.LOGIN_RATE_LIMIT_WINDOW
         self._requests: dict[str, deque[float]] = defaultdict(deque)
         self._lock = Lock()
 
@@ -188,10 +190,10 @@ class LoginRateLimiter:
         with self._lock:
             now = monotonic()
             bucket = self._requests[client_ip]
-            cutoff = now - self.LOGIN_RATE_LIMIT_WINDOW
+            cutoff = now - self._window
             while bucket and bucket[0] <= cutoff:
                 bucket.popleft()
-            if len(bucket) >= self.LOGIN_RATE_LIMIT_ATTEMPTS:
+            if len(bucket) >= self._limit:
                 return False
             bucket.append(now)
             return True
@@ -247,6 +249,7 @@ def create_app(
 
     rate_limiter = AuthenticatedRateLimiter()
     login_rate_limiter = LoginRateLimiter()
+    refresh_rate_limiter = LoginRateLimiter(limit=5, window=60.0)
 
     @app.middleware("http")
     async def rate_limit_middleware(request: Request, call_next):
@@ -312,6 +315,12 @@ def create_app(
         response: Response,
         store: AuthStore = Depends(get_auth_store),
     ) -> Any:
+        client_ip = request.client.host if request.client else "unknown"
+        if not refresh_rate_limiter.is_allowed(client_ip):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many refresh attempts. Wait 60 seconds.",
+            )
         refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
         if not refresh_token:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
