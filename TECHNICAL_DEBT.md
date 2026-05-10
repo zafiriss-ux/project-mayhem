@@ -4065,6 +4065,9 @@ Close criteria met:
 | ID | Finding | Status |
 |---|---|---|
 | P15-D22 | Telegram legacy `parse_mode="Markdown"` — `_escape_md2` helper added; mode change deferred | 🟡 OPEN (scaffold only — see P15-D22 entry above) |
+| P15-SEC8 | No rate limit on `/auth/refresh` — `LoginRateLimiter(limit=5, window=60)` wired in | ✅ RESOLVED |
+| P15-H3 | `datetime.utcnow()` in `database.py` — all 20 occurrences replaced with `datetime.now(UTC)` | ✅ RESOLVED |
+| P15-OPS1 | No process supervisor — `docs/titan.service` + `docs/SYSTEMD_SETUP.md` added | ✅ RESOLVED |
 
 ### Open — Phase 15+ (implementation deferred)
 
@@ -4072,7 +4075,6 @@ Close criteria met:
 |---|---|---|---|
 | P15-H1 | `daily_coach.py` god-orchestrator 1747 LOC | HIGH | ADR-0046 partial; split ongoing |
 | P15-H2 | `database.py` monolith 3264 LOC | HIGH | Split by aggregate |
-| P15-H3 | `datetime.utcnow()` in `database.py` (deprecated in 3.12) | HIGH | Mass-rename pass |
 | P15-H6 | No HTTPS/TLS story for FastAPI | HIGH | Nginx/Caddy reference |
 | P15-H9 | `DegradedModeTracker`: one alert then silence | MED | Continuous alerting signal |
 | P15-D4 | SQLite SPOF — no automated backup | HIGH | Litestream / `sqlite3 .backup` |
@@ -4091,8 +4093,6 @@ Close criteria met:
 | P15-M10 | Auth state (rate limit, lockout) in-memory | MED | Accept or Redis |
 | P15-SEC3 | Login trusts `request.client.host`, no `X-Forwarded-For` | HIGH | Proxy-aware IP extraction |
 | P15-SEC7 | JWT no `kid` support — all tokens invalid on key rotation | MED | `kid` versioning |
-| P15-SEC8 | No rate limit on `/auth/refresh` | MED | Add limiter |
-| P15-OPS1 | No process supervisor (crash = silent death) | HIGH | systemd unit |
 | P15-OPS3 | No log aggregation | MED | vector / loki |
 | P15-OPS5 | Schedule collision: Garmin 07:00 + DailyCoach 07:00 | MED | Coordinate schedule |
 | P15-ARCH5 | Config split across 6+ surfaces | MED | pydantic-settings consolidation |

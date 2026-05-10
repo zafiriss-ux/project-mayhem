@@ -536,7 +536,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 1,
                     "columns_added": "hrr_60, hrr_120, glycogen_debt, garmin_activity_id",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -548,7 +548,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 2,
                     "index_created": "idx_training_log_garmin_id",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -560,7 +560,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 3,
                     "columns_added": "quality_flag (daily_metrics, training_log)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -572,7 +572,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 4,
                     "table_created": "sync_metadata",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 5:
@@ -586,7 +586,7 @@ class DatabaseManager:
                         "decision_was_followed, override_outcome_exclusion, "
                         "outcome_independence_ok, algorithm_version_snapshot"
                     ),
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 6:
@@ -597,7 +597,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 6,
                     "table_created": "override_signals",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 7:
@@ -608,7 +608,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 7,
                     "table_created": "model_calibration_metadata",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 8:
@@ -619,7 +619,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 8,
                     "note": "garmin_activity_id NOT NULL check (T5-69 Stage 3)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 9:
@@ -630,7 +630,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 9,
                     "table_created": "degraded_mode_state",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 10:
@@ -641,7 +641,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 10,
                     "tables_created": "auth_users, auth_tokens",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 11:
@@ -652,7 +652,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 11,
                     "columns_added": "governance_outcomes.athlete_id (T5-74)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 12:
@@ -663,7 +663,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 12,
                     "table_created": "athlete_threshold_offsets (HD-09 / ADR-0052 Stage 1)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 13:
@@ -676,7 +676,7 @@ class DatabaseManager:
                     "tables_created": "athletes (owner seed)",
                     "columns_backfilled": "governance_outcomes.athlete_id default→owner",
                     "columns_dropped": "model_calibration_metadata.calibrated_for (T5-07-L3-A)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
         if current_version < 14:
@@ -688,7 +688,7 @@ class DatabaseManager:
                     "version": 14,
                     "columns_added": "daily_metrics.athlete_id, training_log.athlete_id "
                                      "(T5-07-L3-D / ADR-0033-L3-D-RESOLVED)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -700,7 +700,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 15,
                     "columns_added": "daily_metrics.data_source (T5-115)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -712,7 +712,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 16,
                     "table_created": "coach_athlete_assignments (ADR-0054 / T5-110)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -724,7 +724,7 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 17,
                     "table_created": "coach_audit_log (T5-111)",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
 
@@ -899,7 +899,7 @@ class DatabaseManager:
                         "NOT NULL constraint not applied "
                         "(manual sessions present, or no rows to confirm migration)"
                     ),
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
             return
@@ -956,7 +956,7 @@ class DatabaseManager:
                     "training_log.garmin_activity_id promoted to NOT NULL; "
                     "athlete_id column added"
                 ),
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
             })
         )
 
@@ -1645,7 +1645,7 @@ class DatabaseManager:
             backup_dir = self.db_path.parent / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
 
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         dest = backup_dir / f"titan_{date_str}.db"
 
         if dest.exists():

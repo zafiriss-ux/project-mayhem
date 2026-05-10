@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2727 passed + 7 skipped (2734 total) all green as of claude/refactor-technical-debt-dVyts branch (Phase 15 Opus audit pass 2 — Open Findings Register added to TECHNICAL_DEBT.md; _escape_md2 scaffold added to telegram_bot.py; P15-D22 registered as OPEN; no new tests — all changes are register/scaffold only) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2736 tests all green as of claude/rate-limit-systemd-setup-B3Vn1 branch (P15-SEC8: /auth/refresh rate-limited; P15-H3: datetime.utcnow() → datetime.now(UTC) in database.py; P15-OPS1: docs/titan.service + docs/SYSTEMD_SETUP.md added; 2 new tests) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
