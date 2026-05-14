@@ -166,7 +166,7 @@ class PersistenceAdapter(ABC):
         notes: str | None = None,
         quality_flag: str | None = None,
     ) -> None:
-        """Persist a morning check-in row (INSERT OR REPLACE semantics)."""
+        """Persist a morning check-in row (upsert: overwrite if key exists)."""
 
     @abstractmethod
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:

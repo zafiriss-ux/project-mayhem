@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2736 tests all green as of claude/rate-limit-systemd-setup-B3Vn1 branch (P15-SEC8: /auth/refresh rate-limited; P15-H3: datetime.utcnow() → datetime.now(UTC) in database.py; P15-OPS1: docs/titan.service + docs/SYSTEMD_SETUP.md added; 2 new tests) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2742 tests all green as of claude/fix-ci-dev-deps-install branch (FIX: CI dev deps; persistence.py docstring; 3 pre-existing test fixes + 3 outcome_tracker coverage tests; Phase 4 coverage gate now 98.15%) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

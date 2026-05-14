@@ -1,17 +1,6 @@
 name: CI — Deterministic Tests & Baseline Hardening
 
-# Runner strategy:
-# self-hosted = free, runs on owner's machine
-# To switch to GitHub-hosted (requires GitHub Pro):
-#   Change all "self-hosted" below to "ubuntu-latest"
-#   No other changes needed.
-#
-# To start the self-hosted runner locally:
-#   1. Go to: github.com/zafiriss-ux/project-mayhem
-#      → Settings → Actions → Runners → New self-hosted runner
-#   2. Follow the Linux/macOS instructions
-#   3. Run: ./run.sh (keep terminal open, or use systemd)
-#   4. Push any commit to trigger CI
+# Runner strategy: ubuntu-latest (GitHub-hosted, included in GitHub Pro plan)
 
 on:
   push:
@@ -29,7 +18,7 @@ defaults:
 jobs:
   ruff-phase-a:
     name: Ruff Phase A (full repo, blocking)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +37,7 @@ jobs:
 
   ruff-phase-b:
     name: Ruff Phase B (clean folders, blocking)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [ruff-phase-a]
 
     steps:
@@ -73,7 +62,7 @@ jobs:
 
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
@@ -89,7 +78,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run full test suite
         run: pytest --tb=short -q
@@ -107,7 +96,7 @@ jobs:
 
   determinism:
     name: Determinism Guard
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -119,7 +108,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run determinism check (3 runs must produce identical exit codes)
         run: |
@@ -130,7 +119,7 @@ jobs:
 
   env-policy:
     name: Environment Policy Baseline
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +165,7 @@ jobs:
 
   dependency-drift-audit:
     name: Dependency Drift Audit (unpinned + stale)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -245,7 +234,7 @@ jobs:
 
   complexity-budget:
     name: Complexity Budget (module count ceiling)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -287,7 +276,7 @@ jobs:
 
   phase4-observability:
     name: Phase 4 Observability & E2E
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -299,7 +288,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run Phase 4 observability & SLO alert tests
         run: |
@@ -325,7 +314,7 @@ jobs:
 
   docs-consistency:
     name: Documentation Consistency Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -337,14 +326,14 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run documentation consistency tests
         run: pytest tests/test_documentation_consistency.py -v
 
   claude-md-integrity:
     name: CLAUDE.md Integrity Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -356,14 +345,14 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run CLAUDE.md integrity tests
         run: pytest tests/test_claude_md_integrity.py -v
 
   phase8-ci-checks:
     name: Phase 8 CI Consistency Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -375,14 +364,14 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run Phase 8 CI consistency checks
         run: pytest tests/test_phase8_ci_checks.py -v
 
   invariant-naive-datetime:
     name: G-CI-02 No naive datetime.now()
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -407,7 +396,7 @@ jobs:
 
   invariant-insert-or-replace:
     name: G-CI-03 No INSERT OR REPLACE on multi-source tables
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -422,7 +411,7 @@ jobs:
             | grep -v "auth_users" \
             | grep -v "degraded_mode_state" \
             | grep -v '"""' \
-            | grep -v "#")
+            | grep -v "#" || true)
           if [ -n "$VIOLATIONS" ]; then
             echo "FAIL: INSERT OR REPLACE found — violates INV-09"
             echo "$VIOLATIONS"
@@ -431,7 +420,7 @@ jobs:
 
   invariant-athlete-id-drop:
     name: G-CI-04 No del athlete_id in persistence paths
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -446,7 +435,7 @@ jobs:
 
   invariant-nan-test-coverage:
     name: G-CI-05 Every governance gate has NaN boundary test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -487,7 +476,7 @@ jobs:
 
   invariant-optimistic-defaults:
     name: G-CI-06 No optimistic .get() defaults in governance
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -536,7 +525,7 @@ jobs:
 
   dependency-audit:
     name: Dependency CVE Audit
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -555,7 +544,7 @@ jobs:
 
   invariant-athlete-isolation:
     name: G-CI-07 Athlete isolation invariant
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -566,14 +555,14 @@ jobs:
           python-version: "3.11"
 
       - name: Install deps
-        run: pip install ".[dev]" --quiet
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Athlete isolation invariant
         run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
 
   alembic-freeze-guard:
     name: Alembic freeze guard (SQLite collision prevention)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -592,33 +581,21 @@ jobs:
 
   runner-health:
     name: Runner Health Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Python
-        run: python3 --version
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-      - name: Check venv
-        run: |
-          python - <<'EOF'
-          import os, sys
-          scripts = "Scripts" if sys.platform == "win32" else "bin"
-          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
-          path = os.path.join(".venv", scripts, exe)
-          if not os.path.exists(path):
-              print(f"venv missing — run: python3 -m venv .venv && pip install -r requirements.txt")
-              print(f"(looked for {path!r} relative to {os.getcwd()!r})")
-              sys.exit(1)
-          print(f"OK: found {path}")
-          EOF
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Check pytest
-        run: |
-          python - <<'EOF'
-          import os, sys, subprocess
-          scripts = "Scripts" if sys.platform == "win32" else "bin"
-          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
-          pytest = os.path.join(".venv", scripts, exe)
-          subprocess.run([pytest, "--version"], check=True)
-          EOF
+      - name: Check Python version
+        run: python --version
+
+      - name: Check pytest available
+        run: python -m pytest --version
