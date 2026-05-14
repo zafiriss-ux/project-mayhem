@@ -201,13 +201,22 @@ def _save_env(creds: dict):
         print("     Verify .env access manually if this machine is shared.")
 
 
+_UPPERCASE_KEYS: frozenset[str] = frozenset({"TRAINING_PHASE", "TRAINING_GOAL"})
+
+
 def _save_athlete_profile_to_env(changes: dict) -> None:
     """Update or append ATHLETE_* / TRAINING_* keys in the .env file.
 
     Reads the existing .env, replaces lines whose key appears in *changes*,
     and appends any key that is not already present.  All other lines
     (credentials, comments) are preserved untouched.
+
+    TRAINING_PHASE and TRAINING_GOAL are always normalised to uppercase.
     """
+    normalised = {
+        k: (v.upper() if k in _UPPERCASE_KEYS and isinstance(v, str) else v)
+        for k, v in changes.items()
+    }
     existing_lines: list[str] = ENV_PATH.read_text().splitlines() if ENV_PATH.exists() else []
     updated: set[str] = set()
     result: list[str] = []
@@ -215,13 +224,13 @@ def _save_athlete_profile_to_env(changes: dict) -> None:
         stripped = line.strip()
         if stripped and not stripped.startswith("#") and "=" in stripped:
             key = stripped.split("=", 1)[0].strip()
-            if key in changes:
-                value = str(changes[key]).replace("\n", "").replace("\r", "")
+            if key in normalised:
+                value = str(normalised[key]).replace("\n", "").replace("\r", "")
                 result.append(f"{key}={value}")
                 updated.add(key)
                 continue
         result.append(line)
-    for key, value in changes.items():
+    for key, value in normalised.items():
         if key not in updated:
             value = str(value).replace("\n", "").replace("\r", "")
             result.append(f"{key}={value}")

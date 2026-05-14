@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2736 tests all green as of claude/rate-limit-systemd-setup-B3Vn1 branch (P15-SEC8: /auth/refresh rate-limited; P15-H3: datetime.utcnow() → datetime.now(UTC) in database.py; P15-OPS1: docs/titan.service + docs/SYSTEMD_SETUP.md added; 2 new tests) (2026-05-09). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2739 tests all green as of claude/fix-profile-menu-display-NP0LM branch (FIX: menu_settings re-reads profile from .env instead of stale ctx object; TRAINING_GOAL/TRAINING_PHASE normalised to uppercase in _save_athlete_profile_to_env; _read_current_profile() added to menu_system; 3 new tests) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

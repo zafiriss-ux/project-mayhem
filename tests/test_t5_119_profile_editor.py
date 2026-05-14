@@ -5,6 +5,7 @@ import pytest
 from titan.ui.menu_system import (
     VALID_TRAINING_GOALS,
     VALID_TRAINING_PHASES,
+    _read_current_profile,
     _validate_field,
 )
 from titan.ui.setup_wizard import _save_athlete_profile_to_env
@@ -70,3 +71,38 @@ def test_invalid_max_hr_rejected():
 
     valid_ok, _ = _validate_field("ATHLETE_MAX_HR", "160")
     assert valid_ok, "160 bpm should be accepted"
+
+
+# ── Case-insensitive normalisation ───────────────────────────────────────────
+
+def test_goal_case_insensitive(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("GARMIN_EMAIL=foo@bar.com\n")
+    monkeypatch.setattr("titan.ui.setup_wizard.ENV_PATH", env_file)
+
+    _save_athlete_profile_to_env({"TRAINING_GOAL": "10k"})
+
+    content = env_file.read_text()
+    assert "TRAINING_GOAL=10K" in content
+
+
+def test_phase_case_insensitive(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("GARMIN_EMAIL=foo@bar.com\n")
+    monkeypatch.setattr("titan.ui.setup_wizard.ENV_PATH", env_file)
+
+    _save_athlete_profile_to_env({"TRAINING_PHASE": "build"})
+
+    content = env_file.read_text()
+    assert "TRAINING_PHASE=BUILD" in content
+
+
+def test_display_reads_from_env_not_object(tmp_path, monkeypatch):
+    env_file = tmp_path / ".env"
+    env_file.write_text("ATHLETE_NAME=OldName\n")
+    monkeypatch.setattr("titan.ui.setup_wizard.ENV_PATH", env_file)
+
+    _save_athlete_profile_to_env({"ATHLETE_NAME": "TestAthlete"})
+    profile = _read_current_profile()
+
+    assert profile["name"] == "TestAthlete"

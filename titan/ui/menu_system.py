@@ -613,6 +613,29 @@ def menu_analytics(ctx: dict):
 # 9. ΡΥΘΜΙΣΕΙΣ
 # ══════════════════════════════════════════════════════════════════════════
 
+def _read_current_profile() -> dict:
+    """Read athlete profile directly from .env — always fresh, never stale."""
+    from titan.ui.setup_wizard import ENV_PATH  # local import avoids circular
+
+    vals: dict[str, str] = {}
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text().splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and "=" in stripped:
+                k, _, v = stripped.partition("=")
+                vals[k.strip()] = v.strip()
+    return {
+        "name":           vals.get("ATHLETE_NAME", "—"),
+        "age":            vals.get("ATHLETE_AGE", "—"),
+        "weight_kg":      vals.get("ATHLETE_WEIGHT", "—"),
+        "height_cm":      vals.get("ATHLETE_HEIGHT", "—"),
+        "max_hr":         vals.get("ATHLETE_MAX_HR", "—"),
+        "threshold_hr":   vals.get("ATHLETE_THRESHOLD_HR", "—"),
+        "training_phase": vals.get("TRAINING_PHASE", "—"),
+        "current_goal":   vals.get("TRAINING_GOAL", "—"),
+    }
+
+
 def _validate_int(value: str, lo: int, hi: int) -> tuple[bool, str]:
     try:
         n = int(value)
@@ -684,7 +707,7 @@ def _edit_athlete_profile(ctx: dict) -> None:
     """Interactive field-by-field profile editor; persists changes to .env."""
     from titan.ui.setup_wizard import _save_athlete_profile_to_env  # local import avoids circular
 
-    profile = ctx.get("athlete_profile", {})
+    profile = _read_current_profile()
 
     fields: list[tuple[str, str, str]] = [
         ("ATHLETE_NAME",         "Name",                              str(profile.get("name", ""))),
@@ -734,7 +757,7 @@ def menu_settings(ctx: dict):
     while True:
         _clear()
         _header("Ρυθμίσεις Αθλητή")
-        profile = ctx.get("athlete_profile", {})
+        profile = _read_current_profile()
         print(f"\n  Όνομα:        {profile.get('name', 'N/A')}")
         print(f"  Ηλικία:       {profile.get('age', 'N/A')}")
         print(f"  Βάρος:        {profile.get('weight_kg', 'N/A')} kg")
