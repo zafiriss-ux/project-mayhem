@@ -78,7 +78,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run full test suite
         run: pytest --tb=short -q
@@ -108,7 +108,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run determinism check (3 runs must produce identical exit codes)
         run: |
@@ -288,7 +288,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run Phase 4 observability & SLO alert tests
         run: |
@@ -326,7 +326,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run documentation consistency tests
         run: pytest tests/test_documentation_consistency.py -v
@@ -345,7 +345,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run CLAUDE.md integrity tests
         run: pytest tests/test_claude_md_integrity.py -v
@@ -364,7 +364,7 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run Phase 8 CI consistency checks
         run: pytest tests/test_phase8_ci_checks.py -v
@@ -555,7 +555,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install deps
-        run: pip install ".[dev]" --quiet
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Athlete isolation invariant
         run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
