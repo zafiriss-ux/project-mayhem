@@ -411,7 +411,7 @@ jobs:
             | grep -v "auth_users" \
             | grep -v "degraded_mode_state" \
             | grep -v '"""' \
-            | grep -v "#")
+            | grep -v "#" || true)
           if [ -n "$VIOLATIONS" ]; then
             echo "FAIL: INSERT OR REPLACE found — violates INV-09"
             echo "$VIOLATIONS"
