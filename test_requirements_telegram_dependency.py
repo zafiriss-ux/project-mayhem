@@ -1,33 +1,33 @@
 from pathlib import Path
 
 RUNTIME_DEPENDENCIES = {
-    "numpy==1.26.4",
+    "numpy==2.4.4",
     "garminconnect==0.3.2",
-    "requests==2.33.0",
-    "pyTelegramBotAPI==4.21.0",
-    "sqlalchemy==2.0.39",
-    "alembic==1.15.2",
-    "psycopg2-binary==2.9.10",
-    "fastapi==0.115.0",
-    "pyjwt[crypto]==2.12.0",
-    "bcrypt==4.2.0",
-    "cryptography==46.0.7",
+    "requests==2.34.1",
+    "pyTelegramBotAPI==4.33.0",
+    "sqlalchemy==2.0.49",
+    "alembic==1.18.4",
+    "psycopg2-binary==2.9.12",
+    "fastapi==0.136.1",
+    "pyjwt[crypto]==2.12.1",
+    "bcrypt==5.0.0",
+    "cryptography==48.0.0",
     "import-linter==2.11",
-    "schemathesis==4.15.2",
+    "schemathesis==4.18.5",
     "mutmut==3.5.0",
     "pip-audit==2.10.0",
 }
 
 DEV_DEPENDENCIES = {
-    "pytest>=9.0,<10",
-    "pytest-cov==4.1.0",
-    "pytest-timeout==2.3.1",
-    "hypothesis>=6.108.0,<7",
-    "ruff==0.15.8",
-    "mypy==1.19.1",
-    "httpx==0.27.2",
-    "pre-commit==3.7.1",
-    "freezegun==1.5.1",
+    "pytest==9.0.3",
+    "pytest-cov==7.1.0",
+    "pytest-timeout==2.4.0",
+    "hypothesis==6.152.7",
+    "ruff==0.15.13",
+    "mypy==2.1.0",
+    "httpx==0.28.1",
+    "pre-commit==4.6.0",
+    "freezegun==1.5.5",
 }
 
 BUILD_DEPENDENCIES = {
@@ -63,7 +63,7 @@ def test_telegram_dependency_matches_telebot_import():
     requirements = Path("requirements.txt").read_text(encoding="utf-8")
     telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
 
-    assert "pyTelegramBotAPI==4.21.0" in requirements
+    assert "pyTelegramBotAPI==4.33.0" in requirements
     assert "python-telegram-bot" not in requirements
     assert "import telebot" in telegram_module
 
