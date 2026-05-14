@@ -1,17 +1,6 @@
 name: CI — Deterministic Tests & Baseline Hardening
 
-# Runner strategy:
-# self-hosted = free, runs on owner's machine
-# To switch to GitHub-hosted (requires GitHub Pro):
-#   Change all "self-hosted" below to "ubuntu-latest"
-#   No other changes needed.
-#
-# To start the self-hosted runner locally:
-#   1. Go to: github.com/zafiriss-ux/project-mayhem
-#      → Settings → Actions → Runners → New self-hosted runner
-#   2. Follow the Linux/macOS instructions
-#   3. Run: ./run.sh (keep terminal open, or use systemd)
-#   4. Push any commit to trigger CI
+# Runner strategy: ubuntu-latest (GitHub-hosted, included in GitHub Pro plan)
 
 on:
   push:
@@ -29,7 +18,7 @@ defaults:
 jobs:
   ruff-phase-a:
     name: Ruff Phase A (full repo, blocking)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +37,7 @@ jobs:
 
   ruff-phase-b:
     name: Ruff Phase B (clean folders, blocking)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [ruff-phase-a]
 
     steps:
@@ -73,7 +62,7 @@ jobs:
 
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
@@ -107,7 +96,7 @@ jobs:
 
   determinism:
     name: Determinism Guard
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +119,7 @@ jobs:
 
   env-policy:
     name: Environment Policy Baseline
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -176,7 +165,7 @@ jobs:
 
   dependency-drift-audit:
     name: Dependency Drift Audit (unpinned + stale)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -245,7 +234,7 @@ jobs:
 
   complexity-budget:
     name: Complexity Budget (module count ceiling)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -287,7 +276,7 @@ jobs:
 
   phase4-observability:
     name: Phase 4 Observability & E2E
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -325,7 +314,7 @@ jobs:
 
   docs-consistency:
     name: Documentation Consistency Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -344,7 +333,7 @@ jobs:
 
   claude-md-integrity:
     name: CLAUDE.md Integrity Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -363,7 +352,7 @@ jobs:
 
   phase8-ci-checks:
     name: Phase 8 CI Consistency Checks
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -382,7 +371,7 @@ jobs:
 
   invariant-naive-datetime:
     name: G-CI-02 No naive datetime.now()
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -407,7 +396,7 @@ jobs:
 
   invariant-insert-or-replace:
     name: G-CI-03 No INSERT OR REPLACE on multi-source tables
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -431,7 +420,7 @@ jobs:
 
   invariant-athlete-id-drop:
     name: G-CI-04 No del athlete_id in persistence paths
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -446,7 +435,7 @@ jobs:
 
   invariant-nan-test-coverage:
     name: G-CI-05 Every governance gate has NaN boundary test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -487,7 +476,7 @@ jobs:
 
   invariant-optimistic-defaults:
     name: G-CI-06 No optimistic .get() defaults in governance
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -536,7 +525,7 @@ jobs:
 
   dependency-audit:
     name: Dependency CVE Audit
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -555,7 +544,7 @@ jobs:
 
   invariant-athlete-isolation:
     name: G-CI-07 Athlete isolation invariant
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -573,7 +562,7 @@ jobs:
 
   alembic-freeze-guard:
     name: Alembic freeze guard (SQLite collision prevention)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -592,33 +581,21 @@ jobs:
 
   runner-health:
     name: Runner Health Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check Python
-        run: python3 --version
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-      - name: Check venv
-        run: |
-          python - <<'EOF'
-          import os, sys
-          scripts = "Scripts" if sys.platform == "win32" else "bin"
-          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
-          path = os.path.join(".venv", scripts, exe)
-          if not os.path.exists(path):
-              print(f"venv missing — run: python3 -m venv .venv && pip install -r requirements.txt")
-              print(f"(looked for {path!r} relative to {os.getcwd()!r})")
-              sys.exit(1)
-          print(f"OK: found {path}")
-          EOF
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - name: Check pytest
-        run: |
-          python - <<'EOF'
-          import os, sys, subprocess
-          scripts = "Scripts" if sys.platform == "win32" else "bin"
-          exe = "pytest.exe" if sys.platform == "win32" else "pytest"
-          pytest = os.path.join(".venv", scripts, exe)
-          subprocess.run([pytest, "--version"], check=True)
-          EOF
+      - name: Check Python version
+        run: python --version
+
+      - name: Check pytest available
+        run: python -m pytest --version
