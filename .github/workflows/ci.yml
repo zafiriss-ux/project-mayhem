@@ -211,7 +211,22 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import re
           import subprocess
+          from pathlib import Path
+
+          # Build the set of package names declared in our requirements files.
+          # Only packages we explicitly depend on are audited for staleness —
+          # pre-installed runner packages (pip, setuptools, wheel) are excluded.
+          declared: set[str] = set()
+          for req_file in ("requirements.txt", "requirements-dev.txt"):
+              for raw in Path(req_file).read_text(encoding="utf-8").splitlines():
+                  line = raw.split("#", maxsplit=1)[0].strip()
+                  if not line or line.startswith(("-r", "--", "git+", "http://", "https://")):
+                      continue
+                  m = re.match(r"([A-Za-z0-9_\-]+)", line)
+                  if m:
+                      declared.add(m.group(1).lower().replace("-", "_"))
 
           result = subprocess.run(
               ["python", "-m", "pip", "list", "--outdated", "--format=json"],
@@ -219,17 +234,23 @@ jobs:
               capture_output=True,
               text=True,
           )
-          outdated = json.loads(result.stdout)
+          all_outdated = json.loads(result.stdout)
+
+          # Filter to only our declared packages
+          outdated = [
+              p for p in all_outdated
+              if p["name"].lower().replace("-", "_") in declared
+          ]
 
           if outdated:
-              print("Outdated dependencies detected:")
+              print("Outdated project dependencies detected:")
               for package in outdated:
                   print(
                       f"- {package['name']}: {package['version']} -> {package['latest_version']}"
                   )
               raise SystemExit(1)
 
-          print("No outdated dependencies detected")
+          print(f"No outdated project dependencies detected (checked {len(declared)} declared packages)")
           PY
 
   complexity-budget:

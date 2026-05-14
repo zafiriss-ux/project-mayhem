@@ -208,4 +208,4 @@ CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
 )
 
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
-MODULE_COUNT_CEILING: int = 71  # T4-27-C: raised 70→71 to provide headroom; prev ceiling was 70 (T5-75/76/77)
+MODULE_COUNT_CEILING: int = 72  # T4-27-C: raised 71→72; biometric_router.py added in T5-100 (ADR-0055, 2026-05-09)

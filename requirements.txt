@@ -1,31 +1,31 @@
 # TITAN OS v5.8.0 — Production Runtime Requirements
 # Build Environment: Python 3.11.9 (Windows 11 x64)
-# Last Updated: 2026-03-03
+# Last Updated: 2026-05-14
 
 # Core Runtime Dependencies
-numpy==1.26.4          # Data processing
+numpy==2.4.4            # Data processing
 
 # API Integrations
-garminconnect==0.3.2   # upgraded from 0.2.13: drops broken withings-sync dep (T5-78)
-requests==2.33.0       # HTTP client (Garmin, weather, webhooks) — bumped 2.32.4→2.33.0 (GHSA-gc5v-m9x4-r6x2)
-pyTelegramBotAPI==4.21.0      # Telegram bot framework (telebot)
+garminconnect==0.3.2    # upgraded from 0.2.13: drops broken withings-sync dep (T5-78)
+requests==2.34.1        # HTTP client (Garmin, weather, webhooks) — bumped 2.32.4→2.33.0 (GHSA-gc5v-m9x4-r6x2), 2.33.0→2.34.1 (stale)
+pyTelegramBotAPI==4.33.0       # Telegram bot framework (telebot)
 
 # Persistence / migrations (T5-08-B D2a)
-sqlalchemy==2.0.39
-alembic==1.15.2
-psycopg2-binary==2.9.10
+sqlalchemy==2.0.49
+alembic==1.18.4
+psycopg2-binary==2.9.12
 
 # Phase 8B API auth
-fastapi==0.115.0
-pyjwt[crypto]==2.12.0
-bcrypt==4.2.0
-cryptography==46.0.7  # explicit dep for Fernet token encryption (T5-101)
+fastapi==0.136.1        # bumped 0.115.0→0.136.1: pulls starlette>=0.46.0 (CVE-2024-47874, CVE-2025-54121)
+pyjwt[crypto]==2.12.1
+bcrypt==5.0.0
+cryptography==48.0.0   # explicit dep for Fernet token encryption (T5-101)
 
 # Architectural dependency linting (T5-93)
 import-linter==2.11
 
 # Contract testing (T5-94)
-schemathesis==4.15.2
+schemathesis==4.18.5
 
 # Mutation testing (T5-84)
 # NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API

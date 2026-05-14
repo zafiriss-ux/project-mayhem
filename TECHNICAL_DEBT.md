@@ -4843,7 +4843,7 @@ which Python/pytest binary CI scripts resolve to, and ensure project deps are in
 
 **Scope (resolved):** BiometricSourceAdapter protocol + ManualEntryAdapter (reads `daily_metrics WHERE data_source='manual_entry'`) + BiometricRouter (Garmin preferred <48h; ManualEntry fallback ≥48h). DailyCoach wires router after `garmin_trust`; annotates `context_payload` with `biometric_source` / `biometric_fallback_active`. Governance gate logic (H1–H5) unchanged.
 
-**Resolution:** ADR-0055 authored. `titan/integrations/biometric_router.py` created. `DatabaseManager.get_daily_metric()` added. DailyCoach wired. 6 tests: `tests/titan/integrations/test_biometric_router.py`.
+**Resolution:** ADR-0055 authored. `titan/integrations/biometric_router.py` created. `DatabaseManager.get_daily_metric()` added. DailyCoach wired. 6 tests: `tests/titan/integrations/test_biometric_router.py`. `MODULE_COUNT_CEILING` bumped 71→72 per T4-27-C protocol (2026-05-14).
 
 **Task learning:** The existing `data_source='manual_entry'` column (T5-115) made the fallback adapter straightforward — no schema changes required. The arbitration threshold (48h) aligns with the existing `DATA_VOID_CONSERVATIVE` gate in ADR-0053.
 

@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2742 tests all green as of claude/fix-ci-dev-deps-install branch (FIX: CI dev deps; persistence.py docstring; 3 pre-existing test fixes + 3 outcome_tracker coverage tests; Phase 4 coverage gate now 98.15%) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2746 tests all green as of claude/fix-governance-thresholds-3gdrY branch (FIX: MODULE_COUNT_CEILING 71→72; dep refresh + CVE fix starlette; G-CI-05 naming aliases; requirements pinned) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

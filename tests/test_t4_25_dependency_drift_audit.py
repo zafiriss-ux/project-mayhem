@@ -31,6 +31,6 @@ def test_dependency_drift_audit_checks_outdated_packages() -> None:
     content = _workflow_content()
 
     assert '"list", "--outdated", "--format=json"' in content
-    assert "Outdated dependencies detected:" in content
-    assert "No outdated dependencies detected" in content
+    assert "Outdated project dependencies detected:" in content
+    assert "No outdated project dependencies detected" in content
     assert "raise SystemExit(1)" in content
