@@ -122,10 +122,11 @@ def test_save_credentials_defaults_to_env_backend(monkeypatch):
 
     backend = setup_wizard._save_credentials(creds)
 
-    assert backend == "env_file"
-    assert captured == creds
+    non_sensitive = {k: v for k, v in creds.items() if k not in setup_wizard.KEYRING_SERVICES}
+    assert backend == "env_file_partial"
+    assert captured == non_sensitive
     assert messages[-1]["action"] == "credential_storage_backend_selected"
-    assert messages[-1]["backend"] == "env_file"
+    assert messages[-1]["backend"] == "env_file_partial"
 
 
 def test_save_credentials_uses_keyring_when_enabled(monkeypatch):
@@ -186,8 +187,10 @@ def test_save_credentials_falls_back_to_env_when_keyring_import_fails(monkeypatc
 
     backend = setup_wizard._save_credentials(creds)
 
-    assert backend == "env_file"
-    assert saved_env == creds
+    # All 3 creds are sensitive (in KEYRING_SERVICES); none are saved to env
+    # when keyring is enabled but fails — security policy: no plaintext fallback.
+    assert backend == "env_file_partial"
+    assert saved_env == {}
 
 
 def test_load_env_file_preserves_existing_environment_values(tmp_path, monkeypatch):

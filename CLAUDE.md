@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2739 tests all green as of claude/fix-profile-menu-display-NP0LM branch (FIX: menu_settings re-reads profile from .env instead of stale ctx object; TRAINING_GOAL/TRAINING_PHASE normalised to uppercase in _save_athlete_profile_to_env; _read_current_profile() added to menu_system; 3 new tests) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2742 tests all green as of claude/fix-ci-dev-deps-install branch (FIX: CI dev deps; persistence.py docstring; 3 pre-existing test fixes + 3 outcome_tracker coverage tests; Phase 4 coverage gate now 98.15%) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

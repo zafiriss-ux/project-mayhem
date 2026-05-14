@@ -173,4 +173,42 @@ def test_get_governance_decisions_parses_valid_json_columns(db_manager_factory):
     assert decisions[0]['apl_priority_vector'] == {'FATIGUE_LOCK': 2}
     assert decisions[0]['lock_thresholds_active'] == {'acwr_ceiling': 1.2}
 
-    db.close()
+
+def test_parse_iso_date_returns_none_on_invalid_input():
+    from titan.science.outcome_tracker import _parse_iso_date
+
+    assert _parse_iso_date("not-a-date") is None
+    assert _parse_iso_date("") is None
+
+
+def test_outcome_is_independent_returns_false_on_invalid_dates():
+    from titan.science.outcome_tracker import _outcome_is_independent
+
+    assert _outcome_is_independent("bad-date", "2026-01-10") is False
+    assert _outcome_is_independent("2026-01-01", "also-bad") is False
+
+
+def test_governance_decision_normalises_sentinel_athlete_id():
+    from titan.science.outcome_tracker import GovernanceDecision
+
+    _base = {
+        "date": "2026-01-01",
+        "session_planned": "EASY",
+        "session_post_governance": "EASY",
+        "locks_applied": [],
+        "governance_clean": True,
+        "phase": "BASE",
+        "vlg_color": "GREEN",
+        "apl_priority_vector": {},
+        "lock_thresholds_active": {},
+        "acwr": 0.9,
+        "tsb_value": 5.0,
+        "readiness_score": 70.0,
+        "glycogen_debt": 2.0,
+        "afi_value": None,
+    }
+    dec_none = GovernanceDecision(**_base, athlete_profile_id=None)
+    assert dec_none.athlete_profile_id == "owner"
+
+    dec_legacy = GovernanceDecision(**_base, athlete_profile_id="DEFAULT")
+    assert dec_legacy.athlete_profile_id == "owner"

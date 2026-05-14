@@ -328,9 +328,12 @@ def test_get_ctl_atl_tsb_changes_when_canonical_decay_constants_change(tmp_path,
 
     db = DatabaseManager(db_name="test_ctl_canonical_boundary.db", db_dir=tmp_path)
 
+    import datetime
+    today = datetime.date.today()
     for i in range(28):
+        d = today - datetime.timedelta(days=27 - i)
         db.save_session(
-            date=f"2026-03-{i + 1:02d}",
+            date=d.isoformat(),
             session_type="TEMPO",
             distance_km=6.0 + (i % 7),
             duration_sec=2400 + (i * 45),
