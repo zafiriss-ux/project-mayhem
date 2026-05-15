@@ -4134,7 +4134,7 @@ Close criteria met:
 3. TD-17: Telegram replay protection (S) ✅ RESOLVED 2026-05-15
 4. TD-19: gitleaks allowlist tighten (XS) ✅ RESOLVED 2026-05-15
 5. TD-10: print() migration (M)
-6. TD-06: Dockerfile (M) — if time allows
+6. TD-06: Dockerfile (M) ✅ RESOLVED 2026-05-15
 7. Hydration bug: NutritionOptimizer._calculate_hydration returned 1000 ml for 60-min session instead of per-day weight-based total (XS) ✅ RESOLVED 2026-05-15
 
 ---
@@ -5291,7 +5291,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 |---|---|---|
 | TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 16) |
 | TD-04 | DailyCoach god-orchestrator | HIGH |
-| TD-06 | No deployable artifact | HIGH |
+| TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
 | TD-07 | CodeQL upload disabled | MED |
 | TD-08 | Schema in two places | MED |
 | TD-09 | coach_audit_log not written | ✅ RESOLVED 2026-05-15 — `_get_user_from_request` now passes `"access"` to `decode_token`; `_audit_request` uses returned `TokenPayload.sub` for DB write |

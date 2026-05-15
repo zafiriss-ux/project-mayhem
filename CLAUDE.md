@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2780 tests all green as of claude/fix-telegram-replay-td17-uVINb branch (TD-17 Telegram replay protection: nonce-based one-time override confirmation, 5 replay tests; prior: hydration bug fix, TD-09/TD-13/TD-19 resolved; TD-02 reader lock partial; CI drift; requests 2.34.2; TD-01/03/05/18/20) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2785 tests all green as of claude/setup-docker-config-YLa27 branch (TD-06 Docker config: Dockerfile + docker-compose.yml + .dockerignore + docs/DOCKER_SETUP.md + 5 existence tests; prior: TD-17 Telegram replay protection, hydration bug fix, TD-09/TD-13/TD-19 resolved; TD-02 reader lock partial; CI drift; requests 2.34.2; TD-01/03/05/18/20) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
