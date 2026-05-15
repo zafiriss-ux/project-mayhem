@@ -110,6 +110,8 @@ VLG_GLYCOGEN_RED_MIN = 7.0
 # GovernanceEngine thresholds — T5-30 (Category A only).
 GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD = 0.80
 GOVERNANCE_CS_CONFIDENCE_THRESHOLD = 0.70
+# Cold-start: no outcome history → default-deny override lockdown (TD-03).
+OVERRIDE_LOCKDOWN_COLD_START_DEFAULT = True
 
 # WeatherAPI dew-point decision bands — T5-41 (Category A only).
 WEATHER_DEW_POINT_EXTREME_MIN_C = 24.0

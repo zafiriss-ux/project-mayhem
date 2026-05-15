@@ -75,28 +75,40 @@ def _get_token_encryption_key() -> bytes | None:
         return None
 
 
+def _is_dev_environment() -> bool:
+    """Return True when TITAN_ENV is explicitly set to dev or test."""
+    return os.environ.get("TITAN_ENV", "").lower() in ("dev", "test")
+
+
 def _encrypt_token(data: str) -> bytes:
-    """Encrypt token string. Falls back to plaintext if key not configured."""
+    """Encrypt token string. Raises in production if key not configured."""
     from cryptography.fernet import Fernet
 
     key = _get_token_encryption_key()
     if key is None:
-        _log.warning(
-            "TITAN_GARTH_TOKEN_KEY not set — "
-            "storing token unencrypted. Set env var "
-            "for production deployments."
+        if _is_dev_environment():
+            _log.warning("garth_token_unencrypted_dev_mode")
+            return data.encode()
+        # Production: refuse to store token without encryption key (TD-18).
+        raise RuntimeError(
+            "TITAN_GARTH_TOKEN_KEY must be set in production. "
+            "Set TITAN_ENV=dev to bypass in development."
         )
-        return data.encode()
     return Fernet(key).encrypt(data.encode())
 
 
 def _decrypt_token(data: bytes) -> str:
-    """Decrypt token bytes. Falls back to plaintext decode if key not set or decryption fails."""
+    """Decrypt token bytes. Falls back to plaintext decode in dev if key not set."""
     from cryptography.fernet import Fernet
 
     key = _get_token_encryption_key()
     if key is None:
-        return data.decode()
+        if _is_dev_environment():
+            return data.decode()
+        raise RuntimeError(
+            "TITAN_GARTH_TOKEN_KEY must be set in production. "
+            "Set TITAN_ENV=dev to bypass in development."
+        )
     try:
         return Fernet(key).decrypt(data).decode()
     except Exception:
