@@ -4131,7 +4131,7 @@ Close criteria met:
 **Scope (priority order):**
 1. TD-09: coach_audit_log wiring (XS) ✅ RESOLVED 2026-05-15
 2. TD-13: threshold mirrors (XS) ✅ RESOLVED 2026-05-15
-3. TD-17: Telegram replay protection (S)
+3. TD-17: Telegram replay protection (S) ✅ RESOLVED 2026-05-15
 4. TD-19: gitleaks allowlist tighten (XS) ✅ RESOLVED 2026-05-15
 5. TD-10: print() migration (M)
 6. TD-06: Dockerfile (M) — if time allows
@@ -5302,5 +5302,5 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-14 | Persistence ABC unused | LOW |
 | TD-15 | No load/perf tests | MED |
 | TD-16 | No DB corruption recovery test | MED |
-| TD-17 | Telegram replay protection | HIGH |
+| TD-17 | Telegram replay protection | ✅ RESOLVED 2026-05-15 — nonce-based one-time override confirmation; `_create_override_nonce` / `_consume_override_nonce` in telegram_bot.py; 5-min TTL; 5 replay tests in tests/test_td17_replay.py |
 | TD-19 | Gitleaks allowlist too broad | ✅ RESOLVED 2026-05-15 — converted from path-based (`paths = [...]`) to regex-based patterns covering only known test fixture shapes |

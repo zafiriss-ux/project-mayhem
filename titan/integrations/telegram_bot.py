@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import secrets as _secrets_mod
 import threading
 import time
 from collections import defaultdict
@@ -30,6 +31,31 @@ OVERRIDE_SILENCE = "OVERRIDE_SILENCE"
 _CMD_COOLDOWN_S = 30
 _cmd_rate: dict[tuple[int, str], float] = defaultdict(float)
 _cmd_rate_lock = threading.Lock()
+
+# TD-17: per-decision nonce registry — {nonce: (decision_id, expires_at)}
+_PENDING_OVERRIDES: dict[str, tuple[str, float]] = {}
+_OVERRIDE_TTL_SECONDS = 300  # 5 minutes
+
+
+def _create_override_nonce(decision_id: str) -> str:
+    """Create a one-time nonce for an override confirmation."""
+    nonce = _secrets_mod.token_urlsafe(16)
+    _PENDING_OVERRIDES[nonce] = (decision_id, time.monotonic() + _OVERRIDE_TTL_SECONDS)
+    return nonce
+
+
+def _consume_override_nonce(nonce: str) -> str | None:
+    """Consume a nonce — returns decision_id if valid, None if invalid/expired/replayed.
+
+    One-time use: nonce is deleted on first valid consumption.
+    """
+    entry = _PENDING_OVERRIDES.pop(nonce, None)
+    if entry is None:
+        return None  # Already used or unknown
+    decision_id, expires_at = entry
+    if time.monotonic() > expires_at:
+        return None  # Expired
+    return decision_id
 
 
 def _check_rate_limit(chat_id: int, command: str) -> bool:
@@ -331,7 +357,7 @@ class TitanTelegramBot:
                 return
             response = self.process_override_callback(call.message.chat.id, call.data)
             self.bot.answer_callback_query(call.id, response)
-            if call.data == "override:request":
+            if str(call.data).startswith("override:request"):
                 self.bot.send_message(call.message.chat.id, response)
 
         @self.bot.message_handler(func=lambda message: message.chat.id in self._pending_override_prompts)
@@ -449,10 +475,11 @@ class TitanTelegramBot:
         if not (self.bot and TELEBOT_AVAILABLE):
             return self.send_message(text)
 
+        nonce = _create_override_nonce(decision_id)
         keyboard = telebot.types.InlineKeyboardMarkup()  # type: ignore[attr-defined]
         keyboard.row(
-            telebot.types.InlineKeyboardButton("✅ Accept", callback_data="override:accept"),
-            telebot.types.InlineKeyboardButton("⚠️ Override (add reason)", callback_data="override:request"),
+            telebot.types.InlineKeyboardButton("✅ Accept", callback_data=f"override:accept:{nonce}"),
+            telebot.types.InlineKeyboardButton("⚠️ Override (add reason)", callback_data=f"override:request:{nonce}"),
         )
         try:
             self.bot.send_message(int(self.chat_id), text, parse_mode="Markdown", reply_markup=keyboard)
@@ -469,18 +496,27 @@ class TitanTelegramBot:
 
     def process_override_callback(self, chat_id: int, callback_data: str) -> str:
         """Handle override callback payload from Telegram CallbackQuery."""
-        if callback_data == "override:accept":
+        parts = callback_data.split(":", 2)
+        if len(parts) < 2:
+            return "⚠️ Unknown override action."
+        action = parts[1]
+        nonce = parts[2] if len(parts) >= 3 else None
+
+        if nonce is not None and _consume_override_nonce(nonce) is None:
+            return "⚠️ This override request has already been used or has expired."
+
+        if action == "accept":
             self._pending_override_prompts.pop(chat_id, None)
             return "✅ Decision accepted."
 
-        if callback_data != "override:request":
-            return "⚠️ Unknown override action."
+        if action == "request":
+            pending = self._pending_override_prompts.get(chat_id)
+            if pending is None:
+                return "⚠️ No active decision to override."
+            pending["awaiting_reason"] = "1"
+            return "⚠️ Reply with your override reason (required)."
 
-        pending = self._pending_override_prompts.get(chat_id)
-        if pending is None:
-            return "⚠️ No active decision to override."
-        pending["awaiting_reason"] = "1"
-        return "⚠️ Reply with your override reason (required)."
+        return "⚠️ Unknown override action."
 
     def process_override_reason(self, chat_id: int, reason_text: str) -> str:
         """Validate override reason and persist OverrideSignal."""
