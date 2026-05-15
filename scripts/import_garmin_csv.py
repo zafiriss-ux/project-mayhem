@@ -16,7 +16,6 @@ import argparse
 import csv
 import hashlib
 import sys
-from datetime import datetime  # noqa: F401 (used by callers of this module)
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
