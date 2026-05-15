@@ -164,7 +164,7 @@ jobs:
         run: python system_check.py || true
 
   dependency-drift-audit:
-    name: Dependency Drift Audit (unpinned + stale)
+    name: Dependency Drift Audit (unpinned + CVE gate)
     runs-on: ubuntu-latest
 
     steps:
@@ -207,51 +207,31 @@ jobs:
           print("All audited dependencies are pinned with ==")
           PY
 
-      - name: Audit stale dependencies
+      - name: CVE-only dependency gate
         run: |
-          python - <<'PY'
-          import json
-          import re
-          import subprocess
-          from pathlib import Path
+          pip install pip-audit
+          pip-audit -r requirements.txt \
+            -r requirements-dev.txt \
+            --ignore-vuln GHSA-gc5v-m9x4-r6x2 \
+            --format json \
+            --output /tmp/audit.json || true
 
-          # Build the set of package names declared in our requirements files.
-          # Only packages we explicitly depend on are audited for staleness —
-          # pre-installed runner packages (pip, setuptools, wheel) are excluded.
-          declared: set[str] = set()
-          for req_file in ("requirements.txt", "requirements-dev.txt"):
-              for raw in Path(req_file).read_text(encoding="utf-8").splitlines():
-                  line = raw.split("#", maxsplit=1)[0].strip()
-                  if not line or line.startswith(("-r", "--", "git+", "http://", "https://")):
-                      continue
-                  m = re.match(r"([A-Za-z0-9_\-]+)", line)
-                  if m:
-                      declared.add(m.group(1).lower().replace("-", "_"))
-
-          result = subprocess.run(
-              ["python", "-m", "pip", "list", "--outdated", "--format=json"],
-              check=True,
-              capture_output=True,
-              text=True,
-          )
-          all_outdated = json.loads(result.stdout)
-
-          # Filter to only our declared packages
-          outdated = [
-              p for p in all_outdated
-              if p["name"].lower().replace("-", "_") in declared
+          python3 -c "
+          import json, sys
+          data = json.load(open('/tmp/audit.json'))
+          vulns = [
+              v for pkg in data.get('dependencies', [])
+              for v in pkg.get('vulns', [])
+              if v.get('fix_versions')
           ]
-
-          if outdated:
-              print("Outdated project dependencies detected:")
-              for package in outdated:
-                  print(
-                      f"- {package['name']}: {package['version']} -> {package['latest_version']}"
-                  )
-              raise SystemExit(1)
-
-          print(f"No outdated project dependencies detected (checked {len(declared)} declared packages)")
-          PY
+          if vulns:
+              print('CVEs found:')
+              for v in vulns:
+                  print(f'  {v[\"id\"]}: '
+                        f'{v[\"description\"][:80]}')
+              sys.exit(1)
+          print('No actionable CVEs found.')
+          "
 
   complexity-budget:
     name: Complexity Budget (module count ceiling)

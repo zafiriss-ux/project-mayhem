@@ -363,3 +363,48 @@ class TestGarminTokenProdRequirement:
 
         monkeypatch.delenv("TITAN_ENV", raising=False)
         assert _is_dev_environment() is False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TD-02: SQLite reader lock — concurrent read/write safety
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestSQLiteReaderLock:
+    def test_concurrent_read_write_no_corruption(self):
+        """TD-02: concurrent read+write must not corrupt training load history."""
+        from titan.core.database import DatabaseManager
+
+        db = DatabaseManager(":memory:")
+        errors = []
+
+        def writer():
+            for i in range(20):
+                try:
+                    db.save_session(
+                        date=f"2026-0{i % 9 + 1}-01",
+                        session_type="EASY",
+                        distance_km=10.0,
+                        duration_sec=3600,
+                        avg_hr=140,
+                    )
+                except Exception as e:
+                    errors.append(e)
+
+        def reader():
+            for _ in range(20):
+                try:
+                    db.get_training_load_history(30)
+                except Exception as e:
+                    errors.append(e)
+
+        threads = [
+            threading.Thread(target=writer),
+            threading.Thread(target=reader),
+            threading.Thread(target=reader),
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert errors == [], f"Concurrent errors: {errors}"

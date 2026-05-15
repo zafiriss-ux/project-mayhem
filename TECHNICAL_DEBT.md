@@ -5218,8 +5218,10 @@ The following items were identified in the token-encryption / debt-fixes audit p
 ## Production Readiness Audit 2026-05-15 — Open Findings Register
 
 > Source: Production Readiness Audit 2026-05-15.
-> Items TD-01, TD-03, TD-05, TD-18, TD-20 resolved in this pass (branch `claude/implement-type-records-bundling-zS1yD`).
-> Items TD-02 through TD-19 (excluding resolved items) tracked as Phase 16 open findings.
+> Items TD-01, TD-03, TD-05, TD-18, TD-20 resolved in first pass (branch `claude/implement-type-records-bundling-zS1yD`).
+> TD-02 partially resolved in second pass (branch `claude/fix-drift-reader-lock-QPjeo`): 4 key read methods protected by RLock; full coverage deferred Phase 16.
+> CI drift treadmill fixed in second pass: dependency-drift-audit job now uses CVE-only gate (pip-audit) instead of patch-version staleness check.
+> Items TD-04 through TD-19 (excluding resolved items) tracked as Phase 16 open findings.
 
 ### Resolved in this pass
 
@@ -5230,12 +5232,13 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-05 | Morning routine dedup race: `thread.is_alive()` check had a TOCTOU window where two concurrent callers could both pass before the first thread registered; replaced with non-blocking `threading.Lock` acquire | ✅ RESOLVED |
 | TD-18 | Garmin token plaintext default in production: missing `TITAN_GARTH_TOKEN_KEY` silently stored token unencrypted; now raises `RuntimeError` in prod, degrades gracefully with warning in dev/test | ✅ RESOLVED |
 | TD-20 | No CODEOWNERS file: architecture-critical paths had no required-reviewer enforcement | ✅ RESOLVED |
+| TD-02 | SQLite unprotected reads: 4 highest-risk read methods (get_training_load_history, get_ctl_atl_tsb, get_override_ratio, get_baseline_rhr) confirmed under RLock; concurrent read+write test added; full-method coverage deferred Phase 16 | ✅ RESOLVED (partial) |
 
 ### Open — Phase 16
 
 | ID | Finding | Priority |
 |---|---|---|
-| TD-02 | SQLite unprotected reads | HIGH |
+| TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 16) |
 | TD-04 | DailyCoach god-orchestrator | HIGH |
 | TD-06 | No deployable artifact | HIGH |
 | TD-07 | CodeQL upload disabled | MED |

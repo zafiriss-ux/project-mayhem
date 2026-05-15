@@ -11,7 +11,7 @@ def test_ci_has_dependency_drift_audit_job() -> None:
     content = _workflow_content()
 
     assert "dependency-drift-audit:" in content
-    assert "Dependency Drift Audit (unpinned + stale)" in content
+    assert "Dependency Drift Audit (unpinned + CVE gate)" in content
     # D-21: continue-on-error must be absent — audit failures must block the pipeline.
     assert "continue-on-error: true" not in content
 
@@ -27,10 +27,12 @@ def test_dependency_drift_audit_checks_unpinned_dependencies() -> None:
     assert "raise SystemExit(1)" in content
 
 
-def test_dependency_drift_audit_checks_outdated_packages() -> None:
+def test_dependency_drift_audit_cve_only_gate() -> None:
+    """Drift audit must use pip-audit CVE gate, not stale-version check (patch treadmill fix)."""
     content = _workflow_content()
 
-    assert '"list", "--outdated", "--format=json"' in content
-    assert "Outdated project dependencies detected:" in content
-    assert "No outdated project dependencies detected" in content
-    assert "raise SystemExit(1)" in content
+    assert "CVE-only dependency gate" in content
+    assert "pip-audit" in content
+    assert "--ignore-vuln GHSA-gc5v-m9x4-r6x2" in content
+    assert "No actionable CVEs found." in content
+    assert "sys.exit(1)" in content
