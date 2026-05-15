@@ -61,7 +61,9 @@ def credentials_exist() -> bool:
     # Check .env file
     if ENV_PATH.exists():
         text = ENV_PATH.read_text()
-        if "GARMIN_EMAIL=" in text and "TELEGRAM_BOT_TOKEN=" in text:
+        if ("GARMIN_EMAIL=" in text and
+                "GARMIN_PASSWORD=" in text and
+                "TELEGRAM_BOT_TOKEN=" in text):
             lines = {line.split("=")[0]: line.split("=", 1)[1].strip()
                      for line in text.splitlines() if "=" in line and not line.startswith("#")}
             if (lines.get("GARMIN_EMAIL","") and
@@ -131,7 +133,7 @@ def run_setup_wizard() -> dict:
         if ":" in token and len(token) >= 20:
             creds["TELEGRAM_BOT_TOKEN"] = token
             break
-        print("  ⚠️  Token άκυρο: ελάχιστο μήκος 20 και μορφή NNNNNNNN:ΑΛΦΑΡΙΘΜΗΤΙΚΟ")
+        print("  ⚠️  Token άκυρο: ελάχιστο μήκος 20 και μορφή NNNNNNNN:ΑΛΦΑΡΙΘΜΗΤΙΚΌ")
     print("  Πήγαινε στο @userinfobot → Πάρε το Chat ID σου")
     while True:
         chat_raw = input("  Chat ID (αριθμός): ").strip()
@@ -176,9 +178,8 @@ def _save_credentials(creds: dict) -> str:
         _credential_storage_event("keyring")
         return "keyring"
 
-    env_only = {k: v for k, v in creds.items() if k not in KEYRING_SERVICES}
-    _save_env(env_only)
-    print("  ⚠️  Keyring μη διαθέσιμο: τα ευαίσθητα credentials (password/tokens/api key) δεν αποθηκεύτηκαν σε .env.")
+    _save_env(creds)
+    print("  ⚠️  Keyring μη διαθέσιμο: τα credentials αποθηκεύτηκαν σε .env.")
     print("     Εγκατέστησε/ενεργοποίησε keyring backend για ασφαλή αποθήκευση και ξανατρέξε setup.")
     _credential_storage_event("env_file_partial")
     return "env_file_partial"

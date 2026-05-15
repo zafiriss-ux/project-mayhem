@@ -216,5 +216,9 @@ HYDRATION_TEMPO_ML: int = 500            # additional ml for tempo session
 HYDRATION_INTERVALS_ML: int = 600        # additional ml for interval/high-intensity session
 HYDRATION_LONG_RUN_ML: int = 800         # additional ml for long run session
 
+# ── Nutrition constants — fat macronutrient floor ────────────────────────────
+MIN_FAT_G: int = 40          # minimum daily fat intake in grams (dietary guideline floor)
+FAT_KCAL_PER_GRAM: int = 9   # caloric density of fat (Atwater factor)
+
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
 MODULE_COUNT_CEILING: int = 72  # T4-27-C: raised 71→72; biometric_router.py added in T5-100 (ADR-0055, 2026-05-09)

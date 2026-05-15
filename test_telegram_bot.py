@@ -204,11 +204,12 @@ class TestMessageFormatters:
             f"Expected emoji {emoji!r} for level {level!r} not found"
         )
 
-    def test_send_alert_unknown_level_uses_info_emoji(self, bot):
+    def test_send_alert_unknown_level_uses_warning_emoji(self, bot):
         captured = []
         bot.send_message = lambda text, **kw: captured.append(text) or True
         bot.send_alert("T", "B", level="unknown_level")
-        assert any("ℹ️" in t for t in captured)
+        # CP-05: invalid level falls back to "warning" (⚠️)
+        assert any("⚠️" in t for t in captured)
 
 
     def test_send_daily_coaching_sleep_scale_is_100(self, bot, _coaching_data):
