@@ -4134,6 +4134,7 @@ Close criteria met:
 2. TD-13: threshold mirrors (XS) ✅ RESOLVED 2026-05-15
 3. TD-17: Telegram replay protection (S) ✅ RESOLVED 2026-05-15
 4. TD-19: gitleaks allowlist tighten (XS) ✅ RESOLVED 2026-05-15
+=======
 5. TD-10: print() migration (M) ✅ RESOLVED (partial)
 6. TD-06: Dockerfile (M) — deferred to Phase 17
 7. Hydration bug: NutritionOptimizer._calculate_hydration returned 1000 ml for 60-min session instead of per-day weight-based total (XS) ✅ RESOLVED 2026-05-15
@@ -5350,7 +5351,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 |---|---|---|
 | TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 17) |
 | TD-04 | DailyCoach god-orchestrator | HIGH |
-| TD-06 | No deployable artifact | HIGH |
+| TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
 | TD-07 | CodeQL upload disabled | MED |
 | TD-08 | Schema in two places | MED |
 | TD-11 | No metrics export | HIGH |

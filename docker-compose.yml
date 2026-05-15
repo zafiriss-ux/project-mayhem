@@ -1,0 +1,29 @@
+version: "3.9"
+services:
+  titan:
+    build: .
+    image: titan-os:local
+    restart: unless-stopped
+    volumes:
+      - titan-data:/data
+      - ./.env:/app/.env:ro
+    environment:
+      - TITAN_DATA_DIR=/data
+      - TITAN_ENV=prod
+    env_file:
+      - .env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python3",
+          "-c",
+          "from titan.core.database import DatabaseManager; DatabaseManager('/data/titan.db')",
+        ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  titan-data:
+    driver: local
