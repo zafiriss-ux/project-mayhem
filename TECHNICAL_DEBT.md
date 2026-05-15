@@ -106,6 +106,7 @@ before Phase 8B coach-dashboard work begins. (Note: G1 of the Phase 8 entry gate
 Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is now OPEN.)
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0022 for gate record.
+Phase 16 OPEN — Phase 15 close audit PASS 2026-05-15 (2764 tests, 6 skipped, coverage 94%).
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -3932,11 +3933,11 @@ Close criteria met:
 
 ---
 
-## Phase 15 — Multi-Device & Scale (OPEN, 2026-05-09)
+## Phase 15 — Multi-Device & Scale (CLOSED, 2026-05-15)
 
 **Entry gate:**
 - Phase 14 close audit: PASS ✅ (2026-05-09)
-- Opus governance audit Phase 14: pending
+- Opus governance audit Phase 14: PASS ✅ (2026-05-09, 11 findings; P15-C2 through P15-OPS1)
 
 **Scope:**
 1. Opus governance audit (mandatory first step)
@@ -3945,6 +3946,18 @@ Close criteria met:
 3. D6: Dockerfile + systemd unit
 4. D13: decouple pipeline (long-term)
 5. Real Garmin contract tests (vcrpy cassettes)
+
+**Phase 15 CLOSED — 2026-05-15**
+Close criteria met:
+- phase_close_audit.sh 15 exit 0 ✅
+- 2764 tests passing, 6 skipped ✅
+- SCRATCHPAD STATUS: IDLE ✅
+- All P1 items resolved:
+  P15-C2 ✅ P15-C3 ✅ P15-D19 ✅ P15-D20 ✅
+  P15-D21 ✅ P15-M5 ✅ P15-SEC8 ✅ P15-H3 ✅ P15-OPS1 ✅
+- Deferred to Phase 16:
+  P15-D22 (Telegram MarkdownV2 migration)
+  TD-09 TD-10 TD-13 TD-17 TD-19 TD-06 (see Phase 16 scope)
 
 ---
 
@@ -4107,6 +4120,33 @@ Close criteria met:
 | F15-01 | Polar/Whoop API | Auth change → zero sync | MED | ADR-0055 protocol |
 | F15-02 | Docker | Volume mount loss on deploy | LOW | Rehearsed restore procedure |
 | F15-03 | vcrpy cassettes | Stale cassettes → false-green tests | MED | Monthly refresh gate |
+
+---
+
+## Phase 16 — Operational Hardening (OPEN, 2026-05-15)
+
+**Entry gate:**
+- Phase 15 close audit: PASS ✅ (2026-05-15)
+
+**Scope (priority order):**
+1. TD-09: coach_audit_log wiring (XS)
+2. TD-13: threshold mirrors (XS)
+3. TD-17: Telegram replay protection (S)
+4. TD-19: gitleaks allowlist tighten (XS)
+5. TD-10: print() migration (M)
+6. TD-06: Dockerfile (M) — if time allows
+
+---
+
+## FMEA: Phase 16 — Operational Hardening
+
+**Phase:** 16 | **Date:** 2026-05-15 | **Author:** Architect
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F16-01 | coach_audit_log | Audit trail silent: coach actions not written to DB on live requests | MED | TD-09 |
+| F16-02 | Telegram bot | Replay attack: duplicate command execution on network retry | HIGH | TD-17 |
+| F16-03 | All modules | print() leaks in prod logs: PII/debug noise in production output | MED | TD-10 |
 
 ---
 
@@ -4486,6 +4526,16 @@ Required updates: TECHNICAL_DEBT.md (this entry)
 Next-week tactic: Route each module_audit finding through SCRATCHPAD OBS before
 scheduling fixes. Priority: silent except:pass items (persistence.py, data_sanity.py)
 are highest-risk and smallest scope.
+
+### Governance Note — 2026-05-15
+State: healthy
+Learnings:
+- Phase 15 close audit: ALL GATES PASS — A through P, 2764 tests, coverage 94%, SCRATCHPAD IDLE
+- 9 P1 findings from Opus audit (2026-05-09) resolved within Phase 15; P15-D22 (Telegram MarkdownV2) deferred
+- Phase 16 opened with 6 items: TD-09/13/17/19 (XS), TD-10 print() migration (M), TD-06 Dockerfile (M)
+- Highest-severity open item entering Phase 16: F16-02 (Telegram replay, HIGH)
+Required updates: TECHNICAL_DEBT.md (Phase 15 close + Phase 16 open), docs/ROADMAP.MD (phase table + sections), CLAUDE.md (ROADMAP.MD description)
+Next-week tactic: Phase 16 execution begins with XS items (TD-09, TD-13, TD-19) to clear quick wins; TD-17 Telegram replay protection is the highest-priority S item.
 
 ---
 

@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–12 CLOSED; Phases 9, 10, 13 OPEN — see below)
+## Phase History (Phases 0–8, 11–15 CLOSED; Phases 9, 10, 16 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -29,7 +29,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 12 | Testing Infrastructure | 2026-04-27 | mutmut (T5-84), metamorphic tests (T5-87), schemathesis 4.x (T5-94) |
 | Phase 13 | Security & Data Integrity | CLOSED 2026-05-08 | FMEA items T5-101–T5-118; Telegram trust fix, ML kill-switch whitelist; 7 P1 items resolved (T5-110, T5-114–T5-119) |
 | Phase 14 | Production Hardening | CLOSED 2026-05-09 | C-W12 CI restoration, T5-101 token encryption, T5-100 Garmin fallback, T5-111 audit log, T5-112 CSRF, T5-113 pip-audit pin |
-| Phase 15 | Multi-Device & Scale | OPEN 2026-05-09 | Opus audit, Polar/Whoop/COROS adapters (ADR-0055), D6 containerization, D13 pipeline decoupling, vcrpy Garmin contracts |
+| Phase 15 | Multi-Device & Scale | CLOSED 2026-05-15 | Opus audit (11 findings), JWT startup validation, datetime.now(UTC) migration, auth rate-limit, process supervisor; P15-D22 deferred |
+| Phase 16 | Operational Hardening | OPEN 2026-05-15 | TD-09/13/17/19 (XS), TD-10 print() migration (M), TD-06 Dockerfile (M) |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -156,15 +157,31 @@ green. See `TECHNICAL_DEBT.md` for register.
 
 ---
 
-## Phase 15 — Multi-Device & Scale (OPEN, 2026-05-09)
+## Phase 15 — Multi-Device & Scale (CLOSED, 2026-05-15)
 
 Entry gate: Phase 14 close audit PASS (2026-05-09); Opus governance audit Phase 14
-pending. Scope: Opus governance audit (mandatory), Polar/Whoop/COROS adapters
-(BiometricSourceAdapter protocol — ADR-0055 ready), D6 Dockerfile + systemd unit,
+PASS (2026-05-09, 11 findings). Scope: Opus governance audit (mandatory), Polar/Whoop/COROS
+adapters (BiometricSourceAdapter protocol — ADR-0055 ready), D6 Dockerfile + systemd unit,
 D13 pipeline decoupling (long-term), real Garmin contract tests (vcrpy cassettes).
 FMEA: F15-01 Polar/Whoop API auth change (MED → ADR-0055 protocol), F15-02 Docker
 volume mount loss on deploy (LOW → rehearsed restore), F15-03 stale vcrpy cassettes
-(MED → monthly refresh gate). See `TECHNICAL_DEBT.md` for register.
+(MED → monthly refresh gate).
+**CLOSED 2026-05-15**: phase_close_audit.sh 15 exit 0; 2764 tests passing, 6 skipped;
+P1 items resolved: P15-C2 ✅ P15-C3 ✅ P15-D19 ✅ P15-D20 ✅ P15-D21 ✅ P15-M5 ✅
+P15-SEC8 ✅ P15-H3 ✅ P15-OPS1 ✅; P15-D22 deferred to Phase 16.
+See `TECHNICAL_DEBT.md` for register.
+
+---
+
+## Phase 16 — Operational Hardening (OPEN, 2026-05-15)
+
+Entry gate: Phase 15 close audit PASS (2026-05-15). Scope (priority order):
+TD-09 coach_audit_log wiring (XS), TD-13 threshold mirrors (XS), TD-17 Telegram
+replay protection (S), TD-19 gitleaks allowlist tighten (XS), TD-10 print() migration
+(M), TD-06 Dockerfile (M, if time allows).
+FMEA: F16-01 coach audit silent (MED → TD-09), F16-02 Telegram replay attack
+(HIGH → TD-17), F16-03 print() in prod logs (MED → TD-10).
+See `TECHNICAL_DEBT.md` for register.
 
 ---
 
@@ -231,4 +248,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-09 (Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 15 OPEN 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-15 (Phase 15 CLOSED 2026-05-15; Phase 16 OPEN 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)

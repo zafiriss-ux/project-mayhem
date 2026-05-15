@@ -529,7 +529,7 @@ A debt entry that fails any of these five criteria is sent back to design (ADR_N
 | `CHANGES.md` | Version history and changelog |
 | `DEPLOYMENT_GUIDE.md` | Deployment instructions |
 | `FUTURE_UPGRADES.md` | Roadmap (ML, Streamlit dashboard, mobile app) |
-| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–9); Phases 0–7.9 CLOSED; Phase 9 OPEN (ACTIVE, 2026-04-20) |
+| `docs/ROADMAP.MD` | Development workflow roadmap (Phase 0–16); Phases 0–8, 11–15 CLOSED; Phase 16 OPEN (ACTIVE, 2026-05-15) |
 | `docs/training/DECISION_MODEL.md` | Authoritative 7-gate decision pipeline |
 | `docs/training/OPERATIONAL_MODEL.md` | Generic endurance framework (profile-agnostic) |
 | `docs/specs/adaptive_priority_lock.md` | APL spec (implemented; v5.7.1) |
