@@ -398,10 +398,10 @@ class TestNutritionOptimizerPytest:
         })
         assert plan["carbs_g"] > 300
 
-    def test_hydration_higher_in_heat(self, nut):
-        hot  = self._plan(nut, 75.0, {"session_type": "INTERVALS", "duration_min": 60, "dew_point": 22})
-        mild = self._plan(nut, 75.0, {"session_type": "INTERVALS", "duration_min": 60, "dew_point": 10})
-        assert hot["hydration_ml"] > mild["hydration_ml"]
+    def test_hydration_higher_for_intense_sessions(self, nut):
+        long_run = self._plan(nut, 75.0, {"session_type": "LONG_RUN", "duration_min": 120})
+        easy     = self._plan(nut, 75.0, {"session_type": "EASY", "duration_min": 60})
+        assert long_run["hydration_ml"] > easy["hydration_ml"]
 
     def test_weight_trend_works_after_entries(self, nut):
         for i in range(10):

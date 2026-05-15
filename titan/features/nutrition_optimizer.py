@@ -6,6 +6,13 @@ Integrates with Garmin weight data to provide real-time dietary recommendations.
 
 import logging
 
+from titan.config.thresholds import (
+    HYDRATION_BASE_ML_PER_KG,
+    HYDRATION_EASY_ML,
+    HYDRATION_INTERVALS_ML,
+    HYDRATION_LONG_RUN_ML,
+    HYDRATION_TEMPO_ML,
+)
 from titan.core.structured_events import make_event_emitter
 
 _log = logging.getLogger(__name__)
@@ -181,12 +188,8 @@ class NutritionOptimizer:
         # Session-specific timing
         timing = self._get_meal_timing(session_type, duration_min)
 
-        # Hydration — combine dew_point and session intensity
-        hydration_ml = self._calculate_hydration(
-            duration_min,
-            today_session.get("dew_point", 25.0),
-            session_type,
-        )
+        # Hydration — weight-based daily need + session-type adjustment
+        hydration_ml = self._calculate_hydration(weight_kg, session_type)
 
         plan = {
             "total_calories": round(tdee, 0),
@@ -246,55 +249,40 @@ class NutritionOptimizer:
 
     def _calculate_hydration(
         self,
-        duration_min: int,
-        dew_point: float,
+        weight_kg: float,
         session_type: str = "EASY",
     ) -> int:
         """
-        Calculate hydration needs combining dew-point heat stress and
-        session intensity.
+        Calculate daily hydration need: body-weight baseline + session-type adjustment.
 
         Science:
-        - Fluid loss ~10-20% per 5°C rise in perceived heat (Sawka et al. 2007)
-        - High-intensity sessions increase sweat rate independent of temperature
-        - Base rate: 500 ml/h for mild easy aerobic
+        - Base: 35 ml/kg/day (Burke et al. 2011; Sawka et al. 2007 ACSM position stand)
+        - Session adjustments account for sweat losses by intensity class
 
-        Dew Point thresholds (°C):
-          ≥ 22  Oppressive  → 1000 ml/h
-          ≥ 18  Uncomfortable → 800 ml/h
-          ≥ 15  Sticky      → 650 ml/h
-          < 15  Comfortable → 500 ml/h
+        Session adjustments (ml):
+          LONG_RUN:             +800
+          INTERVALS / HAMMER:   +600
+          TEMPO / RACE:         +500
+          EASY / PROGRESSIVE:   +300
+          REST / other:         +0
 
-        Intensity multipliers:
-          INTERVALS / HAMMER → ×1.4
-          TEMPO / RACE       → ×1.2
-          LONG_RUN           → ×1.1  (duration compensates naturally)
-          EASY / REST        → ×1.0
+        Result is rounded to the nearest 100 ml.
         """
-        hours = duration_min / 60.0
+        base_ml = weight_kg * HYDRATION_BASE_ML_PER_KG
 
-        # Dew-point base rate
-        if dew_point >= 22:
-            hourly_rate = 1000
-        elif dew_point >= 18:
-            hourly_rate = 800
-        elif dew_point >= 15:
-            hourly_rate = 650
-        else:
-            hourly_rate = 500
-
-        # Intensity multiplier
-        intensity_map = {
-            "INTERVALS": 1.4,
-            "HAMMER": 1.4,
-            "TEMPO": 1.2,
-            "RACE": 1.2,
-            "LONG_RUN": 1.1,
+        session_adjustments = {
+            "LONG_RUN": HYDRATION_LONG_RUN_ML,
+            "INTERVALS": HYDRATION_INTERVALS_ML,
+            "HAMMER": HYDRATION_INTERVALS_ML,
+            "TEMPO": HYDRATION_TEMPO_ML,
+            "RACE": HYDRATION_TEMPO_ML,
+            "EASY": HYDRATION_EASY_ML,
+            "PROGRESSIVE": HYDRATION_EASY_ML,
         }
-        intensity_factor = intensity_map.get(session_type, 1.0)
+        adjustment = session_adjustments.get(session_type, 0)
 
-        total_ml = hours * hourly_rate * intensity_factor
-        return int(round(total_ml))
+        total_ml = base_ml + adjustment
+        return round(total_ml / 100) * 100
 
     def _get_special_notes(self, session_type: str, tomorrow_session: dict = None) -> list[str]:
         """Get special nutrition notes."""

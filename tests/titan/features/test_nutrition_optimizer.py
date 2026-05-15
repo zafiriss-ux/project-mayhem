@@ -109,7 +109,7 @@ def test_calculate_daily_nutrition_happy_path_returns_expected_contract_keys():
     assert plan["carbs_range"] == "420-560g"
     assert plan["protein_g"] == 126.0
     assert plan["fat_g"] == 40
-    assert plan["hydration_ml"] == 960
+    assert plan["hydration_ml"] == 3000
     assert isinstance(plan["special_notes"], list)
     assert "⚡ High glycogen demand - ensure adequate carbs" in plan["special_notes"]
 
@@ -138,21 +138,22 @@ def test_calculate_daily_nutrition_extreme_macro_target_boundary_for_race_day():
 
     assert plan["carbs_g"] == 1320.0
     assert plan["carbs_range"] == "1200-1440g"
-    assert plan["hydration_ml"] == 3600
+    assert plan["hydration_ml"] == 4700
     assert plan["fat_g"] == 40
 
 
-def test_calculate_daily_nutrition_hydration_edge_cases_cover_heat_and_session_intensity():
+def test_calculate_daily_nutrition_hydration_scales_with_session_intensity():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
-    cool_easy = optimizer.calculate_daily_nutrition(
+    easy = optimizer.calculate_daily_nutrition(
         weight_kg=70,
-        today_session={"session_type": "EASY", "duration_min": 30, "dew_point": 10},
+        today_session={"session_type": "EASY", "duration_min": 30},
     )
-    sticky_hammer = optimizer.calculate_daily_nutrition(
+    hammer = optimizer.calculate_daily_nutrition(
         weight_kg=70,
-        today_session={"session_type": "HAMMER", "duration_min": 30, "dew_point": 21},
+        today_session={"session_type": "HAMMER", "duration_min": 30},
     )
 
-    assert cool_easy["hydration_ml"] == 250
-    assert sticky_hammer["hydration_ml"] == 560
+    assert easy["hydration_ml"] == 2800
+    assert hammer["hydration_ml"] == 3000
+    assert hammer["hydration_ml"] > easy["hydration_ml"]
