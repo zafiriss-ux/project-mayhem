@@ -1399,6 +1399,33 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'fatigue and next-session completion rates to validate or adjust.'
         ),
     ),
+
+    # ── Hydration baseline — daily fluid need for endurance runners ────────────
+    'HYDRATION_BASE_ML_PER_KG': ThresholdEvidence(
+        parameter='HYDRATION_BASE_ML_PER_KG',
+        value=35.0,
+        evidence_level='MODERATE',
+        population='RECREATIONAL',
+        source=(
+            'Burke et al. (2011) J Sports Sci 29(S1):S17–S27; '
+            'Sawka et al. (2007) Med Sci Sports Exerc 39(2):377–390 '
+            '(ACSM position stand on exercise and fluid replacement)'
+        ),
+        rationale=(
+            '35 ml/kg/day sits in the midpoint of the 30–40 ml/kg/day range '
+            'recommended by ACSM for active adults. Training adjustments are '
+            'added on top of this baseline based on session type to account for '
+            'sweat losses that scale with intensity and duration.'
+        ),
+        policy_note=(
+            'MODERATE: the 30–40 ml/kg/day range is well supported; the specific '
+            '35 ml/kg midpoint is a policy choice. Training-type adjustments '
+            '(EASY +300 ml, TEMPO +500 ml, INTERVALS +600 ml, LONG_RUN +800 ml) '
+            'are HEURISTIC and should be calibrated against athlete sweat-rate '
+            'data when available. Calibration path: compare planned vs measured '
+            'sweat loss (pre/post weight delta) across session types.'
+        ),
+    ),
 }
 
 

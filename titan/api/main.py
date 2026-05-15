@@ -37,7 +37,7 @@ from titan.api.dependencies import (
     require_athlete_access,
     require_coach,
 )
-from titan.api.models import AuthUser, LoginRequest, LoginResponse
+from titan.api.models import AuthUser, LoginRequest, LoginResponse, TokenPayload
 from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
 from titan.core.structured_events import EventSeverity, structured_event_payload
 
@@ -389,19 +389,19 @@ def create_app(
     return app
 
 
-def _get_user_from_request(request: Request) -> str | None:
-    """Extract user_id from JWT without full validation — for audit DB writes only.
+def _get_user_from_request(request: Request) -> TokenPayload | None:
+    """Decode access JWT from the request for audit DB writes only.
 
-    Auth has already passed at this point; this is a belt-and-suspenders read
-    for the DB persistence path when request.state.current_user is unavailable.
+    Auth has already passed at this point; this reads the token a second time
+    as a belt-and-suspenders path for DB persistence when request.state.current_user
+    is unavailable. Returns a TokenPayload or None on any failure.
     """
     try:
         auth = request.headers.get("Authorization", "")
         token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
         if not token:
             return None
-        payload = decode_token(token)
-        return payload.sub
+        return decode_token(token, "access")
     except Exception:
         return None
 
@@ -430,12 +430,12 @@ def _audit_request(request: Request) -> None:
     )
     request.app.state.audit_store.log_action(row)
 
-    user_id = _get_user_from_request(request)
+    token_payload = _get_user_from_request(request)
     db = getattr(request.app.state, "db", None)
-    if user_id and db is not None:
+    if token_payload and db is not None:
         try:
             db.log_coach_action(
-                coach_id=user_id,
+                coach_id=token_payload.sub,
                 action_type=route["action_type"],
                 target_athlete_id=athlete_id,
                 resource=route["resource"],

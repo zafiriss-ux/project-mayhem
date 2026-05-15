@@ -2,9 +2,22 @@ title = "TITAN gitleaks config"
 
 # Test fixtures and unit-test credential stubs are intentionally fake.
 # They exercise validation logic and must not be flagged as real secrets.
+# Pattern-scoped so only known fixture shapes are exempted, not entire files.
 [allowlist]
 description = "Test fixtures — fake credentials used in unit tests"
-paths = [
-    '''(^|/)tests/''',
-    '''(^|/)test_[^/]+\.py$''',
+regexes = [
+    # RSA private/public key material generated at test runtime (rsa.generate_private_key)
+    '''_PRIVATE_KEY\s*=\s*rsa\.generate_private_key''',
+    '''_PRIVATE_PEM\s*=\s*_PRIVATE_KEY\.private_bytes''',
+    '''_PUBLIC_PEM\s*=\s*_PRIVATE_KEY\.public_key''',
+    # monkeypatch.setenv calls wiring test-generated keys into env (not real keys)
+    '''monkeypatch\.setenv\("TITAN_JWT_PRIVATE_KEY"''',
+    '''monkeypatch\.setenv\("TITAN_JWT_PUBLIC_KEY"''',
+    # Inline test-only PEM/password literals used in setup fixtures
+    '''private_pem\s*=\s*private_key\.private_bytes''',
+    '''public_pem\s*=\s*private_key\.public_key\(\)\.public_bytes''',
+    # Garmin password deletion in test teardown
+    '''monkeypatch\.delenv\("GARMIN_PASSWORD"''',
+    # Setup wizard test reading a literal password string from a config snippet
+    '''GARMIN_PASSWORD=file-secret''',
 ]

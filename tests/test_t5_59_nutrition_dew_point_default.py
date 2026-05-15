@@ -1,8 +1,10 @@
 """
-T5-59: NutritionOptimizer conservative dew_point default.
+T5-59: NutritionOptimizer hydration baseline is weight-based, not dew-point-based.
 
-When weather data is unavailable, dew_point must default to 25.0°C (conservative,
-high sweat/electrolyte assumption) rather than 15.0°C which underestimates fluid needs.
+The hydration calculation uses 35 ml/kg/day baseline + session-type adjustment,
+producing physiologically correct values for endurance runners (>2500 ml for 75 kg).
+The old dew-point-only formula produced 1000 ml for a 60-min session, which was
+insufficient as a daily hydration target.
 """
 
 from unittest.mock import MagicMock
@@ -11,9 +13,6 @@ import pytest
 
 from titan.features.nutrition_optimizer import NutritionOptimizer
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _make_optimizer() -> NutritionOptimizer:
     """Return a NutritionOptimizer with a mocked DatabaseManager."""
@@ -22,84 +21,39 @@ def _make_optimizer() -> NutritionOptimizer:
     return NutritionOptimizer(db)
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+class TestHydrationIsWeightBased:
+    """Hydration must use weight-based formula, not the old dew-point-only formula."""
 
-class TestDewPointDefaultIsConservative:
-    """dew_point default must be 25.0 when weather data is absent."""
-
-    def test_no_dew_point_key_produces_oppressive_hydration(self):
-        """
-        When today_session has no 'dew_point' key the default must land in
-        the 'Oppressive' dew-point bucket (≥22 → 1000 ml/h base rate).
-
-        With the old default of 15.0 the call lands in the 'Sticky' bucket
-        (≥15 → 650 ml/h), producing lower hydration_ml.
-
-        This test captures the exact hydration difference so it fails before
-        the fix and passes after.
-        """
+    def test_hydration_scales_with_weight(self):
+        """Heavier athlete gets more hydration."""
         optimizer = _make_optimizer()
+        light = optimizer._calculate_hydration(weight_kg=60.0, session_type="EASY")
+        heavy = optimizer._calculate_hydration(weight_kg=90.0, session_type="EASY")
+        assert heavy > light, "Heavier athlete must have higher daily hydration target"
 
-        # Session dict with NO dew_point key — exercises the default
-        session_no_dew_point = {
-            "type": "EASY",
-            "duration_min": 60,
-        }
+    def test_hydration_scales_with_session_intensity(self):
+        """Long run adds more hydration than easy run for same weight."""
+        optimizer = _make_optimizer()
+        easy = optimizer._calculate_hydration(weight_kg=75.0, session_type="EASY")
+        long_run = optimizer._calculate_hydration(weight_kg=75.0, session_type="LONG_RUN")
+        assert long_run > easy, "LONG_RUN must require more hydration than EASY"
 
-        # Directly exercise _calculate_hydration with both candidate defaults
-        hydration_with_new_default = optimizer._calculate_hydration(
-            duration_min=60,
-            dew_point=25.0,
-            session_type="EASY",
-        )
-        hydration_with_old_default = optimizer._calculate_hydration(
-            duration_min=60,
-            dew_point=15.0,
-            session_type="EASY",
-        )
-
-        # Sanity: new (conservative) default gives MORE hydration than old default
-        assert hydration_with_new_default > hydration_with_old_default, (
-            "dew_point=25 must produce more hydration_ml than dew_point=15"
+    def test_hydration_not_old_1000ml_bug(self):
+        """Regression guard: daily hydration must be well above 1000 ml for a 75 kg athlete."""
+        optimizer = _make_optimizer()
+        hydration = optimizer._calculate_hydration(weight_kg=75.0, session_type="EASY")
+        assert hydration > 1500, (
+            f"hydration_ml={hydration} — must be > 1500 ml for a 75 kg athlete; "
+            "the old dew-point formula produced ~1000 ml which is not a daily target"
         )
 
-        # The actual call path through calculate_daily_nutrition (which uses the .get default)
-        # must produce the same result as the explicit 25.0 call.
+    def test_calculate_daily_nutrition_returns_weight_based_hydration(self):
+        """calculate_daily_nutrition must forward weight_kg to the hydration calculation."""
+        optimizer = _make_optimizer()
         plan = optimizer.calculate_daily_nutrition(
-            weight_kg=70.0,
-            today_session=session_no_dew_point,
+            weight_kg=75.0,
+            today_session={"session_type": "EASY", "duration_min": 60},
             tomorrow_session={},
         )
-
-        # The returned hydration_ml must equal the conservative (25.0) value
-        assert plan["hydration_ml"] == hydration_with_new_default, (
-            f"Expected hydration_ml={hydration_with_new_default} (dew_point=25.0 default) "
-            f"but got {plan['hydration_ml']}. "
-            "The dew_point default in optimize_nutrition must be 25.0, not 15.0 or 15."
-        )
-
-    def test_explicit_dew_point_overrides_default(self):
-        """Explicit dew_point in today_session must be honoured regardless of default."""
-        optimizer = _make_optimizer()
-
-        # Explicit low dew_point → comfortable bucket (500 ml/h for 60 min = 500 ml)
-        hydration_low = optimizer._calculate_hydration(
-            duration_min=60,
-            dew_point=10.0,
-            session_type="EASY",
-        )
-        assert hydration_low == 500, (
-            f"Expected 500 ml for dew_point=10 EASY 60 min, got {hydration_low}"
-        )
-
-        # Explicit high dew_point → oppressive bucket (1000 ml/h for 60 min = 1000 ml)
-        hydration_high = optimizer._calculate_hydration(
-            duration_min=60,
-            dew_point=25.0,
-            session_type="EASY",
-        )
-        assert hydration_high == 1000, (
-            f"Expected 1000 ml for dew_point=25 EASY 60 min, got {hydration_high}"
-        )
+        expected = optimizer._calculate_hydration(weight_kg=75.0, session_type="EASY")
+        assert plan["hydration_ml"] == expected

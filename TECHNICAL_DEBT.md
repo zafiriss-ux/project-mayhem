@@ -4129,12 +4129,13 @@ Close criteria met:
 - Phase 15 close audit: PASS ✅ (2026-05-15)
 
 **Scope (priority order):**
-1. TD-09: coach_audit_log wiring (XS)
-2. TD-13: threshold mirrors (XS)
+1. TD-09: coach_audit_log wiring (XS) ✅ RESOLVED 2026-05-15
+2. TD-13: threshold mirrors (XS) ✅ RESOLVED 2026-05-15
 3. TD-17: Telegram replay protection (S)
-4. TD-19: gitleaks allowlist tighten (XS)
+4. TD-19: gitleaks allowlist tighten (XS) ✅ RESOLVED 2026-05-15
 5. TD-10: print() migration (M)
 6. TD-06: Dockerfile (M) — if time allows
+7. Hydration bug: NutritionOptimizer._calculate_hydration returned 1000 ml for 60-min session instead of per-day weight-based total (XS) ✅ RESOLVED 2026-05-15
 
 ---
 
@@ -5293,13 +5294,13 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-06 | No deployable artifact | HIGH |
 | TD-07 | CodeQL upload disabled | MED |
 | TD-08 | Schema in two places | MED |
-| TD-09 | coach_audit_log not written | MED |
+| TD-09 | coach_audit_log not written | ✅ RESOLVED 2026-05-15 — `_get_user_from_request` now passes `"access"` to `decode_token`; `_audit_request` uses returned `TokenPayload.sub` for DB write |
 | TD-10 | 172 print() calls | MED |
 | TD-11 | No metrics export | HIGH |
 | TD-12 | Runbooks missing | MED |
-| TD-13 | Threshold mirrors | MED |
+| TD-13 | Threshold mirrors | ✅ RESOLVED 2026-05-15 — dew-point literals (18, 15) in nutrition_optimizer eliminated by weight-based hydration rewrite; governance_engine.py already imported all Category A constants |
 | TD-14 | Persistence ABC unused | LOW |
 | TD-15 | No load/perf tests | MED |
 | TD-16 | No DB corruption recovery test | MED |
 | TD-17 | Telegram replay protection | HIGH |
-| TD-19 | Gitleaks allowlist too broad | MED |
+| TD-19 | Gitleaks allowlist too broad | ✅ RESOLVED 2026-05-15 — converted from path-based (`paths = [...]`) to regex-based patterns covering only known test fixture shapes |

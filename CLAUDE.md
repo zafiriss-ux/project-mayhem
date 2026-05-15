@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2770 tests all green as of claude/fix-drift-reader-lock-QPjeo branch (TD-02 reader lock partial; CI drift treadmill CVE-only gate; requests bumped 2.34.1→2.34.2; 1 new concurrency test; prior: TD-01 RBAC fix; TD-03 override lockdown cold-start; TD-05 morning routine mutex; TD-18 Garmin token prod key; TD-20 CODEOWNERS) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2775 tests all green as of claude/fix-nutrition-telegram-integration-GUXAG branch (hydration bug fix: weight-based formula replacing 1000 ml flat; TD-09 coach_audit_log DB wiring fixed; TD-13 threshold mirrors resolved via hydration rewrite; TD-19 gitleaks allowlist tightened to regex; +5 new hydration tests; prior: TD-02 reader lock partial; CI drift; requests 2.34.2; TD-01/03/05/18/20) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

@@ -209,5 +209,12 @@ CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
     }
 )
 
+# ── Hydration constants — daily baseline (Burke et al. 2011; Sawka et al. 2007) ──
+HYDRATION_BASE_ML_PER_KG: float = 35.0   # ml/kg body weight/day baseline
+HYDRATION_EASY_ML: int = 300             # additional ml for easy session
+HYDRATION_TEMPO_ML: int = 500            # additional ml for tempo session
+HYDRATION_INTERVALS_ML: int = 600        # additional ml for interval/high-intensity session
+HYDRATION_LONG_RUN_ML: int = 800         # additional ml for long run session
+
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
 MODULE_COUNT_CEILING: int = 72  # T4-27-C: raised 71→72; biometric_router.py added in T5-100 (ADR-0055, 2026-05-09)
