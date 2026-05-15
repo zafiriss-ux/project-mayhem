@@ -925,6 +925,16 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC confidence quality floor; tune with calibration success and downstream prediction error.',
     ),
 
+    'OVERRIDE_LOCKDOWN_COLD_START_DEFAULT': ThresholdEvidence(
+        parameter='OVERRIDE_LOCKDOWN_COLD_START_DEFAULT',
+        value=True,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Production Readiness Audit 2026-05-15 (TD-03).',
+        rationale='When no outcome history exists the override lockdown gate defaults to locked to prevent uncalibrated override-heavy behaviour on cold start.',
+        policy_note='Default-deny sentinel; becomes irrelevant once governance_outcomes has at least one row.',
+    ),
+
     'DURABILITY_PACE_DECAY_EXCELLENT_MAX': ThresholdEvidence(
         parameter='DURABILITY_PACE_DECAY_EXCELLENT_MAX',
         value=2.0,

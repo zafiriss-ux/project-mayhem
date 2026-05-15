@@ -396,6 +396,7 @@ def test_sync_activities_estimated_training_load_zero_when_no_hr_data():
 
 def test_connect_retries_on_429_and_succeeds(monkeypatch, tmp_path):
     """connect() retries on 429, emits retry events, and succeeds on a later attempt."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -484,6 +485,7 @@ def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
 
 def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypatch, tmp_path):
     """429 on ping + secondary call succeeds → token assumed valid: is_connected=True, no re-login."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -529,6 +531,7 @@ def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypa
 
 def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_path):
     """When connectapi() raises an auth error, token is deleted and fresh login is attempted."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -578,6 +581,7 @@ def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_pa
 def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypatch, tmp_path):
     """429 on verification ping + auth error on secondary data call → _invalidate_session called,
     token deleted, connect() returns False (no re-login in a rate-limited window)."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -637,6 +641,7 @@ def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypa
 
 def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tmp_path):
     """429 on ping + 429 on secondary call → keep current assume-valid behavior."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
 
     token_file = tmp_path / ".garth_token"
@@ -1112,12 +1117,14 @@ def test_token_encrypted_when_key_set(monkeypatch):
 
 def test_token_plaintext_when_key_missing(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
+    monkeypatch.setenv("TITAN_ENV", "dev")
     result = _encrypt_token("test_data")
     assert result == b"test_data"
 
 
 def test_token_decrypt_plaintext_when_key_missing(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
+    monkeypatch.setenv("TITAN_ENV", "dev")
     result = _decrypt_token(b"test_data")
     assert result == "test_data"
 

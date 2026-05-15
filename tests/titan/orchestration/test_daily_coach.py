@@ -275,6 +275,7 @@ def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing()
 def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
     coach = DailyCoach.__new__(DailyCoach)
     coach.run_morning_routine = lambda: True
+    coach._routine_mutex = threading.Lock()
 
     created_threads = []
 
@@ -295,8 +296,9 @@ def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
     monkeypatch.setattr(daily_coach.threading, "Thread", FakeThread)
     monkeypatch.setattr(daily_coach, "monotonic", lambda: 123.45)
 
-    coach.run_morning_routine_async(trigger_source="scheduler")
+    result = coach.run_morning_routine_async(trigger_source="scheduler")
 
+    assert result is True
     assert len(created_threads) == 1
     assert created_threads[0].name == "DailyCoachRoutine"
     assert created_threads[0].daemon is True
@@ -308,16 +310,9 @@ def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
 def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
     events = []
     coach = DailyCoach.__new__(DailyCoach)
-
-    class AliveThread:
-        name = "ExistingRoutine"
-
-        @staticmethod
-        def is_alive():
-            return True
-
-    coach._routine_thread = AliveThread()
-    coach._routine_started_monotonic = 987.6
+    coach._routine_mutex = threading.Lock()
+    # Simulate already-running: acquire the lock before calling async
+    coach._routine_mutex.acquire()
 
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
     monkeypatch.setattr(
@@ -326,20 +321,19 @@ def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("Thread should not be created on overlap")),
     )
 
-    coach.run_morning_routine_async(trigger_source="telegram_poll")
+    result = coach.run_morning_routine_async(trigger_source="telegram_poll")
+    coach._routine_mutex.release()
 
-    assert events == [
-        {
-            "action": "routine_skipped_overlap",
-            "trigger_source": "telegram_poll",
-            "running_since": 987.6,
-            "thread_name": "ExistingRoutine",
-        }
-    ]
+    assert result is False
+    assert len(events) == 1
+    assert events[0]["action"] == "morning_routine_skipped"
+    assert events[0]["reason"] == "already_running"
+    assert events[0]["trigger_source"] == "telegram_poll"
 
 
 def test_daily_coach_no_overlap_guard():
     coach = DailyCoach.__new__(DailyCoach)
+    coach._routine_mutex = threading.Lock()
     started = threading.Event()
     release = threading.Event()
     run_count = 0
@@ -370,6 +364,7 @@ def test_daily_coach_no_overlap_guard():
 
 def test_daily_coach_routine_thread_shutdown(tmp_path):
     coach = DailyCoach.__new__(DailyCoach)
+    coach._routine_mutex = threading.Lock()
     db = DatabaseManager(db_name="daily_coach_thread_shutdown.db", db_dir=tmp_path)
     programming_errors: list[sqlite3.ProgrammingError] = []
 

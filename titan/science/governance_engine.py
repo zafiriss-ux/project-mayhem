@@ -161,6 +161,25 @@ class GovernanceEngine:
             error_code = "SCHEMA_MISMATCH" if "no such table" in str(exc).lower() else "DB_READ_ERROR"
             return _fail_safe(error_code, exc)
 
+        if raw_ratio is None:
+            # No outcome history — cold start. Default-deny: require calibration
+            # before override-heavy behaviour (TD-03).
+            _gate_event(
+                "OVERRIDE_LOCKDOWN",
+                "OVERRIDE_LOCKDOWN",
+                cause="COLD_START",
+                reason="no_outcome_history",
+                gate_action="default_locked",
+            )
+            return {
+                "locked": True,
+                "ratio": None,
+                "reason": "cold_start_no_history",
+                "max_zone": 2,
+                "disabled_sessions": list(self._QUALITY_SESSIONS),
+                "action": "ZONE_2_ONLY",
+            }
+
         try:
             ratio = float(raw_ratio)
         except (AttributeError, TypeError, ValueError, ZeroDivisionError) as exc:

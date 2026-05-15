@@ -5212,3 +5212,41 @@ The following items were identified in the token-encryption / debt-fixes audit p
 **Priority:** P3 (Low — no injection risk since SCHEMA_VERSION is int, but inconsistent with codebase style).
 
 **Resolution:** Changed to `cursor.execute("PRAGMA user_version = " + str(SCHEMA_VERSION))` with comment explaining why `?` binding is not applicable to PRAGMA.
+
+---
+
+## Production Readiness Audit 2026-05-15 — Open Findings Register
+
+> Source: Production Readiness Audit 2026-05-15.
+> Items TD-01, TD-03, TD-05, TD-18, TD-20 resolved in this pass (branch `claude/implement-type-records-bundling-zS1yD`).
+> Items TD-02 through TD-19 (excluding resolved items) tracked as Phase 16 open findings.
+
+### Resolved in this pass
+
+| ID | Finding | Status |
+|---|---|---|
+| TD-01 | RBAC flat-trust: COACH role bypassed assignment check entirely — `require_athlete_access` returned without verifying coach→athlete assignment | ✅ RESOLVED |
+| TD-03 | Override lockdown fails open on cold start: `get_override_ratio()` returning `None` fell through to `float(None)` → `TypeError` → `_fail_safe` with error context; now explicit cold-start default-deny path | ✅ RESOLVED |
+| TD-05 | Morning routine dedup race: `thread.is_alive()` check had a TOCTOU window where two concurrent callers could both pass before the first thread registered; replaced with non-blocking `threading.Lock` acquire | ✅ RESOLVED |
+| TD-18 | Garmin token plaintext default in production: missing `TITAN_GARTH_TOKEN_KEY` silently stored token unencrypted; now raises `RuntimeError` in prod, degrades gracefully with warning in dev/test | ✅ RESOLVED |
+| TD-20 | No CODEOWNERS file: architecture-critical paths had no required-reviewer enforcement | ✅ RESOLVED |
+
+### Open — Phase 16
+
+| ID | Finding | Priority |
+|---|---|---|
+| TD-02 | SQLite unprotected reads | HIGH |
+| TD-04 | DailyCoach god-orchestrator | HIGH |
+| TD-06 | No deployable artifact | HIGH |
+| TD-07 | CodeQL upload disabled | MED |
+| TD-08 | Schema in two places | MED |
+| TD-09 | coach_audit_log not written | MED |
+| TD-10 | 172 print() calls | MED |
+| TD-11 | No metrics export | HIGH |
+| TD-12 | Runbooks missing | MED |
+| TD-13 | Threshold mirrors | MED |
+| TD-14 | Persistence ABC unused | LOW |
+| TD-15 | No load/perf tests | MED |
+| TD-16 | No DB corruption recovery test | MED |
+| TD-17 | Telegram replay protection | HIGH |
+| TD-19 | Gitleaks allowlist too broad | MED |

@@ -349,6 +349,7 @@ class DailyCoach:
         self.athlete_max_hr = athlete_max_hr
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
+        self._routine_mutex = threading.Lock()
         self._degraded_tracker = DegradedModeTracker(db=self.db)
         self._startup_hydration_confidence: dict[str, bool] = {
             "hrv": False,
@@ -1507,29 +1508,36 @@ class DailyCoach:
             )
             return None
 
-    def run_morning_routine_async(self, trigger_source: str = "async_call") -> None:
+    def run_morning_routine_async(self, trigger_source: str = "async_call") -> bool:
+        """Schedule ``run_morning_routine`` in a daemon thread.
+
+        Returns False if a routine is already running (lock not acquired),
+        True if the routine thread was successfully started.
         """
-        Schedule `run_morning_routine` in a daemon thread so the Telegram
-        polling thread is never blocked waiting for Garmin sync + calculations.
-        """
-        running_thread = getattr(self, "_routine_thread", None)
-        if running_thread is not None and running_thread.is_alive():
+        acquired = self._routine_mutex.acquire(blocking=False)
+        if not acquired:
             _daily_coach_event(
-                "routine_skipped_overlap",
+                "morning_routine_skipped",
                 trigger_source=trigger_source,
-                running_since=getattr(self, "_routine_started_monotonic", None),
-                thread_name=running_thread.name,
+                reason="already_running",
             )
-            return
+            return False
+
+        def _run_and_release() -> None:
+            try:
+                self.run_morning_routine()
+            finally:
+                self._routine_mutex.release()
 
         t = threading.Thread(
-            target=self.run_morning_routine,
+            target=_run_and_release,
             name="DailyCoachRoutine",
             daemon=True,
         )
         self._routine_thread = t
         self._routine_started_monotonic = monotonic()
         t.start()
+        return True
 
     def _get_recent_trimp(self, activities: list[dict]) -> float:
         """

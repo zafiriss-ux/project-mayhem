@@ -1,16 +1,32 @@
-# TITAN architecture-critical ownership
-# NOTE: replace with your org/team handle if needed.
+# TITAN OS — Code Owners
+# Architecture-critical paths require architect review before merge.
+
 # Default owner for everything
 * @zafiriss-ux
+
+# Governance engine — any change requires ADR reference in commit message
+/titan/science/governance_engine.py @zafiriss-ux
+
+# Safety thresholds
+/titan/config/thresholds.py @zafiriss-ux
+/titan/config/evidence_registry.py @zafiriss-ux
 
 # Core engines
 /titan/science/ @zafiriss-ux
 /titan/orchestration/ @zafiriss-ux
 
-# Governance / thresholds
-/titan/science/governance_engine.py @zafiriss-ux
-/titan/config/thresholds.py @zafiriss-ux
-/docs/architecture/ @zafiriss-ux
+# Database schema
+/titan/core/database.py @zafiriss-ux
+
+# Authentication
+/titan/api/auth.py @zafiriss-ux
+/titan/api/dependencies.py @zafiriss-ux
+
+# ADRs — all require review
+/docs/adr/ @zafiriss-ux
+
+# CI pipeline
+/.github/workflows/ @zafiriss-ux
 
 # Tests
 /tests/ @zafiriss-ux

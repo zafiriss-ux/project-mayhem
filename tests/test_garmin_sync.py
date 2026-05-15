@@ -504,6 +504,7 @@ def test_connect_missing_credentials_fails_safely(monkeypatch):
 
 def test_connect_saves_token_after_login(monkeypatch, tmp_path):
     """Successful login persists garth token to disk."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
 
     class _FakeGarth:
@@ -530,6 +531,7 @@ def test_connect_saves_token_after_login(monkeypatch, tmp_path):
 
 def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
     """Existing valid token is loaded from disk; login() is not called."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("stored_token", encoding="utf-8")
 
@@ -563,6 +565,7 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
 
 def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch, tmp_path):
     """Expired/invalid token causes garth.loads() to fail; falls back to full login and saves new token."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("expired_token", encoding="utf-8")
 
@@ -602,6 +605,7 @@ def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp
     first API call.  The verification ping in connect() catches this before any
     sync attempt and falls through to a full login.
     """
+    monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("stale_but_parseable_token", encoding="utf-8")
 
@@ -797,6 +801,7 @@ def test_last_connect_error_set_on_missing_credentials(monkeypatch):
 
 def test_last_connect_error_cleared_on_successful_token_load(monkeypatch, tmp_path):
     """connect() must clear last_connect_error when token loads successfully."""
+    monkeypatch.setenv("TITAN_ENV", "dev")
     import sys
     from unittest.mock import MagicMock
 

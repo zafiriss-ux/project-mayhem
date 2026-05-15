@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2746 tests all green as of claude/fix-governance-thresholds-3gdrY branch (FIX: MODULE_COUNT_CEILING 71→72; dep refresh + CVE fix starlette; G-CI-05 naming aliases; requirements pinned) (2026-05-14). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2769 tests all green as of claude/implement-type-records-bundling-zS1yD branch (TD-01 RBAC fix; TD-03 override lockdown cold-start; TD-05 morning routine mutex; TD-18 Garmin token prod key; TD-20 CODEOWNERS; 23 new tests) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
