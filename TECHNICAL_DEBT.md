@@ -4169,7 +4169,7 @@ Deferred to Phase 17:
 
 **Scope (priority order):**
 1. TD-06: Dockerfile + docker-compose (reproducible deploys, biggest operational gap after CI)
-2. TD-12: Author 3 missing runbooks referenced in docs/SLO.md
+2. ✅ TD-12: Author 3 missing runbooks referenced in docs/SLO.md — RESOLVED 2026-05-15
 3. TD-11: OpenTelemetry metrics export (6 SLOs that are currently unmeasured)
 4. TD-04: DailyCoach split (ADR required before implementation)
 5. TD-08: Schema single source of truth
@@ -4183,7 +4183,7 @@ Deferred to Phase 17:
 | ID | Component | Failure Mode | Sev | Mit |
 |---|---|---|---|---|
 | F17-01 | No Docker | Env drift between dev and prod | HIGH | TD-06 |
-| F17-02 | Runbooks missing | Incident response gap | MED | TD-12 |
+| F17-02 | Runbooks missing | Incident response gap | MED | ✅ TD-12 RESOLVED |
 | F17-03 | SLOs unmeasured | Silent SLO violations | HIGH | TD-11 |
 | F17-04 | DailyCoach monolith | Regression risk on split | MED | TD-04 |
 
@@ -5355,7 +5355,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-07 | CodeQL upload disabled | MED |
 | TD-08 | Schema in two places | MED |
 | TD-11 | No metrics export | HIGH |
-| TD-12 | Runbooks missing | MED |
+| TD-12 | Runbooks missing | ✅ RESOLVED 2026-05-15 — 3 SLO-referenced runbooks authored: garmin-sync-failure.md, governance-hard-stop-unexpected.md, database-recovery.md (all with Symptoms / Diagnosis / Recovery / Escalation sections) |
 | TD-14 | Persistence ABC unused | LOW |
 | TD-15 | No load/perf tests | MED |
 | TD-16 | No DB corruption recovery test | MED |
