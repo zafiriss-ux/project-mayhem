@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2785 tests all green as of claude/setup-docker-config-YLa27 branch (TD-06 Docker config: Dockerfile + docker-compose.yml + .dockerignore + docs/DOCKER_SETUP.md + 5 existence tests; prior: TD-17 Telegram replay protection, hydration bug fix, TD-09/TD-13/TD-19 resolved; TD-02 reader lock partial; CI drift; requests 2.34.2; TD-01/03/05/18/20) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2804 tests all green as of claude/garmin-historical-import-E3jnH branch (Garmin CSV historical import script + 19 tests; prior: TD-06 Docker config: Dockerfile + docker-compose.yml + .dockerignore + docs/DOCKER_SETUP.md + 5 existence tests; TD-17 Telegram replay protection, hydration bug fix, TD-09/TD-13/TD-19 resolved; TD-02 reader lock partial; CI drift; requests 2.34.2; TD-01/03/05/18/20) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
