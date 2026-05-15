@@ -106,7 +106,8 @@ before Phase 8B coach-dashboard work begins. (Note: G1 of the Phase 8 entry gate
 Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is now OPEN.)
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0022 for gate record.
-Phase 16 OPEN — Phase 15 close audit PASS 2026-05-15 (2764 tests, 6 skipped, coverage 94%).
+Phase 16 CLOSED — phase_close_audit.sh 16 exit 0; 2774 tests passing; SCRATCHPAD IDLE (2026-05-15).
+Phase 17 OPEN — Phase 16 close audit PASS 2026-05-15.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -4123,7 +4124,7 @@ Close criteria met:
 
 ---
 
-## Phase 16 — Operational Hardening (OPEN, 2026-05-15)
+## Phase 16 — Operational Hardening (CLOSED, 2026-05-15)
 
 **Entry gate:**
 - Phase 15 close audit: PASS ✅ (2026-05-15)
@@ -4133,9 +4134,58 @@ Close criteria met:
 2. TD-13: threshold mirrors (XS) ✅ RESOLVED 2026-05-15
 3. TD-17: Telegram replay protection (S) ✅ RESOLVED 2026-05-15
 4. TD-19: gitleaks allowlist tighten (XS) ✅ RESOLVED 2026-05-15
-5. TD-10: print() migration (M)
-6. TD-06: Dockerfile (M) ✅ RESOLVED 2026-05-15
+=======
+5. TD-10: print() migration (M) ✅ RESOLVED (partial)
+6. TD-06: Dockerfile (M) — deferred to Phase 17
 7. Hydration bug: NutritionOptimizer._calculate_hydration returned 1000 ml for 60-min session instead of per-day weight-based total (XS) ✅ RESOLVED 2026-05-15
+
+**Phase 16 CLOSED — 2026-05-15**
+
+Close criteria met:
+- phase_close_audit.sh 16 exit 0 ✅
+- 2774 tests passing ✅
+- SCRATCHPAD: IDLE ✅
+
+Resolved:
+- Hydration bug ✅
+- TD-09 ✅ TD-13 ✅ TD-17 ✅ TD-19 ✅
+- TD-10 ✅ (partial)
+- CodeQL #1 #2 ✅
+
+Deferred to Phase 17:
+- TD-04 DailyCoach split (XL)
+- TD-06 Dockerfile (M) — first P17 item
+- TD-11 Metrics export (M)
+- TD-08 Schema two places
+- TD-12 Missing runbooks
+- P15-ARCH5 pydantic-settings
+
+---
+
+## Phase 17 — Infrastructure & Scale (OPEN, 2026-05-15)
+
+**Entry gate:**
+- Phase 16 close audit: PASS ✅
+
+**Scope (priority order):**
+1. TD-06: Dockerfile + docker-compose (reproducible deploys, biggest operational gap after CI)
+2. TD-12: Author 3 missing runbooks referenced in docs/SLO.md
+3. TD-11: OpenTelemetry metrics export (6 SLOs that are currently unmeasured)
+4. TD-04: DailyCoach split (ADR required before implementation)
+5. TD-08: Schema single source of truth
+
+---
+
+## FMEA: Phase 17 — Infrastructure & Scale
+
+**Phase:** 17 | **Date:** 2026-05-15 | **Author:** Architect
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F17-01 | No Docker | Env drift between dev and prod | HIGH | TD-06 |
+| F17-02 | Runbooks missing | Incident response gap | MED | TD-12 |
+| F17-03 | SLOs unmeasured | Silent SLO violations | HIGH | TD-11 |
+| F17-04 | DailyCoach monolith | Regression risk on split | MED | TD-04 |
 
 ---
 
@@ -5285,22 +5335,27 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-20 | No CODEOWNERS file: architecture-critical paths had no required-reviewer enforcement | ✅ RESOLVED |
 | TD-02 | SQLite unprotected reads: 4 highest-risk read methods (get_training_load_history, get_ctl_atl_tsb, get_override_ratio, get_baseline_rhr) confirmed under RLock; concurrent read+write test added; full-method coverage deferred Phase 16 | ✅ RESOLVED (partial) |
 
-### Open — Phase 16
+### Resolved in Phase 16 (CLOSED 2026-05-15)
+
+| ID | Finding | Status |
+|---|---|---|
+| TD-09 | coach_audit_log not written | ✅ RESOLVED 2026-05-15 — `_get_user_from_request` now passes `"access"` to `decode_token`; `_audit_request` uses returned `TokenPayload.sub` for DB write |
+| TD-13 | Threshold mirrors | ✅ RESOLVED 2026-05-15 — dew-point literals (18, 15) in nutrition_optimizer eliminated by weight-based hydration rewrite; governance_engine.py already imported all Category A constants |
+| TD-17 | Telegram replay protection | ✅ RESOLVED 2026-05-15 — nonce-based one-time override confirmation; `_create_override_nonce` / `_consume_override_nonce` in telegram_bot.py; 5-min TTL; 5 replay tests in tests/test_td17_replay.py |
+| TD-19 | Gitleaks allowlist too broad | ✅ RESOLVED 2026-05-15 — converted from path-based (`paths = [...]`) to regex-based patterns covering only known test fixture shapes |
+| TD-10 | 172 print() calls | ✅ RESOLVED (partial) 2026-05-15 |
+
+### Open — Phase 17
 
 | ID | Finding | Priority |
 |---|---|---|
-| TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 16) |
+| TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 17) |
 | TD-04 | DailyCoach god-orchestrator | HIGH |
 | TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
 | TD-07 | CodeQL upload disabled | MED |
 | TD-08 | Schema in two places | MED |
-| TD-09 | coach_audit_log not written | ✅ RESOLVED 2026-05-15 — `_get_user_from_request` now passes `"access"` to `decode_token`; `_audit_request` uses returned `TokenPayload.sub` for DB write |
-| TD-10 | 172 print() calls | MED |
 | TD-11 | No metrics export | HIGH |
 | TD-12 | Runbooks missing | MED |
-| TD-13 | Threshold mirrors | ✅ RESOLVED 2026-05-15 — dew-point literals (18, 15) in nutrition_optimizer eliminated by weight-based hydration rewrite; governance_engine.py already imported all Category A constants |
 | TD-14 | Persistence ABC unused | LOW |
 | TD-15 | No load/perf tests | MED |
 | TD-16 | No DB corruption recovery test | MED |
-| TD-17 | Telegram replay protection | ✅ RESOLVED 2026-05-15 — nonce-based one-time override confirmation; `_create_override_nonce` / `_consume_override_nonce` in telegram_bot.py; 5-min TTL; 5 replay tests in tests/test_td17_replay.py |
-| TD-19 | Gitleaks allowlist too broad | ✅ RESOLVED 2026-05-15 — converted from path-based (`paths = [...]`) to regex-based patterns covering only known test fixture shapes |
