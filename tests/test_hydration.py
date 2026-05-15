@@ -7,8 +7,6 @@ rounded to nearest 100 ml. Regression guard against the old ~1000 ml bug.
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from titan.features.nutrition_optimizer import NutritionOptimizer
 
 
