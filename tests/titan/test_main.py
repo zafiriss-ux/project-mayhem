@@ -348,7 +348,7 @@ def test_main_has_no_print_calls_for_operational_output_guard():
         for node in ast.walk(tree)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print"
     ]
-    assert _print_call_function_names(print_calls) == ["_print_banner", "_parse_env_number"]
+    assert _print_call_function_names(print_calls) == ["_print_banner"]
 
 
 def test_main_emits_operational_startup_and_shutdown_events(monkeypatch, caplog):

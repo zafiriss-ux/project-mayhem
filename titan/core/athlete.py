@@ -3,10 +3,13 @@ TITAN Athlete Profile Module
 Complete athlete demographics, physiology, and training data
 """
 
+import logging
 from datetime import UTC, datetime
 from itertools import count
 from typing import Any
 from uuid import uuid4
+
+_log = logging.getLogger(__name__)
 
 _ATHLETE_ID_SEQUENCE = count()
 
@@ -356,10 +359,13 @@ class UniversalAthleteProfile:
             try:
                 return caster(raw)
             except (TypeError, ValueError):
-                print(
-                    f"Invalid environment variable {var}={raw!r}. "
-                    f"Expected {caster.__name__}.",
-                    file=sys.stderr,
+                _log.error(
+                    "startup_env_invalid",
+                    extra={
+                        "var": var,
+                        "raw": raw,
+                        "expected": caster.__name__,
+                    },
                 )
                 sys.exit(1)
 

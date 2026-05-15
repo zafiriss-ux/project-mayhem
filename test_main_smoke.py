@@ -236,14 +236,13 @@ class TestEnvNumericParsing:
         monkeypatch.setenv("ATHLETE_AGE", "42")
         assert _parse_env_number("ATHLETE_AGE", "35", int) == 42
 
-    def test_parse_env_number_invalid_exits(self, monkeypatch, capsys):
+    def test_parse_env_number_invalid_exits(self, monkeypatch, caplog):
         from titan.main import _parse_env_number
         monkeypatch.setenv("ATHLETE_AGE", "abc")
-        with pytest.raises(SystemExit) as exc:
+        with caplog.at_level("ERROR", logger="titan.main"), pytest.raises(SystemExit) as exc:
             _parse_env_number("ATHLETE_AGE", "35", int)
         assert exc.value.code == 1
-        out = capsys.readouterr().out
-        assert "Invalid environment variable ATHLETE_AGE" in out
+        assert any("ATHLETE_AGE" in str(r.__dict__) for r in caplog.records)
 
 
 
