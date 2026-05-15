@@ -375,7 +375,6 @@ def _parse_env_number(name: str, default: str, caster):
                 "detail": f"Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.",
             },
         )
-        print(f"❌ Invalid environment variable {name}={raw!r}. Expected {caster.__name__}.")
         sys.exit(1)
 
 # ════════════════════════════════════════════════════════════════════════════

@@ -194,6 +194,10 @@ def _save_env(creds: dict):
     for k, v in creds.items():
         value = str(v).replace("\n", "").replace("\r", "")
         lines.append(f"{k}={value}")
+    # nosec B105 — credentials stored in
+    # plaintext .env by design for local
+    # single-user deployment. Keyring
+    # integration is tracked in P15-ARCH5.
     ENV_PATH.write_text("\n".join(lines) + "\n")
     ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
     if os.name == "nt":
