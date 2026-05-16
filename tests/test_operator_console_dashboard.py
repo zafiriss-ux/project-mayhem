@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -245,14 +246,18 @@ def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)
 
+    # Use relative dates so this test stays valid regardless of when it runs.
+    date_1 = (date.today() - timedelta(days=5)).isoformat()
+    date_2 = (date.today() - timedelta(days=3)).isoformat()
+
     assert service.record_manual_override(
-        date="2026-05-01",
+        date=date_1,
         prescribed_type="REST",
         actual_type="EASY",
         reason="Travel day schedule shift",
     ) is True
     assert service.record_manual_override(
-        date="2026-05-03",
+        date=date_2,
         prescribed_type="TEMPO",
         actual_type="VO2",
         reason="Race simulation",
@@ -264,19 +269,19 @@ def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
         "samples": 2,
         "override_ratio_window_days": 14,
         "override_ratio": 0.143,
-        "latest_override_date": "2026-05-03",
+        "latest_override_date": date_2,
     }
     assert payload["override_metrics"]["window_days"] == 30
     assert payload["override_metrics"]["samples"] >= 0
     assert payload["overrides"] == [
         {
-            "date": "2026-05-01",
+            "date": date_1,
             "prescribed_type": "REST",
             "actual_type": "EASY",
             "reason": "Travel day schedule shift",
         },
         {
-            "date": "2026-05-03",
+            "date": date_2,
             "prescribed_type": "TEMPO",
             "actual_type": "VO2",
             "reason": "Race simulation",
