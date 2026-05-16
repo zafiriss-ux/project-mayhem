@@ -17,10 +17,9 @@ class BiomechanicsAnalysis:
         """
         if height_cm >= 185:
             return (165, 175)
-        elif height_cm >= 175:
+        if height_cm >= 175:
             return (170, 180)
-        else:
-            return (175, 185)
+        return (175, 185)
 
     @staticmethod
     def stride_length(speed_m_s: float, cadence_spm: int) -> float:

@@ -143,7 +143,6 @@ class EfficiencyEngine:
 
         if improvement_pct > 3:
             return f"✓ IMPROVING: EF up {improvement_pct:.1f}% (aerobic gains)"
-        elif improvement_pct < -3:
+        if improvement_pct < -3:
             return f"⚠️ DECLINING: EF down {improvement_pct:.1f}% (check fatigue/volume)"
-        else:
-            return f"→ STABLE: EF change {improvement_pct:.1f}%"
+        return f"→ STABLE: EF change {improvement_pct:.1f}%"

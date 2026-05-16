@@ -121,12 +121,12 @@ def check_data_directory() -> tuple[bool, TitanError | None]:
         test_file = data_dir / '.write_test'
         test_file.write_text('test', encoding='utf-8')
         test_file.unlink()
-
-        return True, None
     except PermissionError:
         return False, ConfigurationError.data_dir_permission(str(data_dir))
     except Exception:
         return False, SystemError.permission_denied(str(data_dir), 'create')
+    else:
+        return True, None
 
 
 def check_disk_space() -> tuple[bool, TitanError | None]:
@@ -142,9 +142,10 @@ def check_disk_space() -> tuple[bool, TitanError | None]:
         free_mb = stat.free / (1024 * 1024)
         if free_mb < MIN_DISK_SPACE_MB:
             return False, SystemError.disk_full(str(data_dir))
-        return True, None
     except Exception:
         # If we can't check, assume it's OK (proceed optimistically)
+        return True, None
+    else:
         return True, None
 
 
@@ -171,9 +172,10 @@ def check_database() -> tuple[bool, TitanError | None]:
         cursor = conn.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1")
         conn.close()
-        return True, None
     except Exception as e:
         return False, DatabaseError.corrupted(str(db_path), str(e))
+    else:
+        return True, None
 
 
 # ══════════════════════════════════════════════════════════════════════════════

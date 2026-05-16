@@ -21,7 +21,7 @@ def _run_launcher() -> None:
 
         main()
     except Exception as exc:
-        log.error(
+        log.exception(
             "startup_failure",
             extra={
                 "component": "launcher",

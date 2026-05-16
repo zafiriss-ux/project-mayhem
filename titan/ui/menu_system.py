@@ -284,7 +284,7 @@ def menu_data_browser(ctx: dict):
         c = input("  Επιλογή: ").strip()
         if c == "0":
             break
-        elif c == "1":
+        if c == "1":
             _browser_activities(ctx)
         elif c == "2":
             _browser_drift(ctx)

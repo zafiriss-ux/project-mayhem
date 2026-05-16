@@ -121,10 +121,11 @@ class FileChannel(NotificationChannel):
             dest = self._output_dir / f"daily_briefing_{date_str}.txt"
             dest.write_text(message, encoding="utf-8")
             _gw_event("file_channel_written", path=str(dest), date=date_str)
-            return True
         except Exception as exc:
             _gw_event("channel_failed", channel=self.name, error_class=type(exc).__name__)
             return False
+        else:
+            return True
 
 
 # ── Gateway ───────────────────────────────────────────────────────────────────

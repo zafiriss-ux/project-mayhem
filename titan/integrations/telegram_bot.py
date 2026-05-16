@@ -597,7 +597,6 @@ class TitanTelegramBot:
                         "delivery_mode": "telegram_api",
                     }
                 )
-                return True
             except Exception as e:
                 _telegram_event(
                     "slo_alert",
@@ -614,6 +613,8 @@ class TitanTelegramBot:
                 )
                 _log.error("telegram_send_error", extra={"detail": str(e)})
                 return False
+            else:
+                return True
         else:
             # Fallback: log only
             _telegram_event(

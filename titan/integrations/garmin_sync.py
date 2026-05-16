@@ -380,7 +380,6 @@ class GarminSync:
                     self.last_connect_error = None
                     _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
                     _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
-                    return True
                 except Exception as token_err:
                     _token_failure_class = _classify_failure(token_err)
                     if _token_failure_class == GARMIN_RATE_LIMIT:
@@ -401,7 +400,6 @@ class GarminSync:
                                 error_class=token_err.__class__.__name__,
                                 detail="Token ping rate-limited (429); secondary call succeeded; token valid",
                             )
-                            return True
                         except Exception as secondary_err:
                             _secondary_failure_class = _classify_failure(secondary_err)
                             if _secondary_failure_class == GARMIN_RATE_LIMIT:
@@ -433,6 +431,8 @@ class GarminSync:
                                 detail="Token ping rate-limited (429); secondary call failed; session invalidated, not retrying login in rate-limited window",
                             )
                             return False
+                        else:
+                            return True
                     _garmin_event(
                         "connect_token_load_failed",
                         subsystem="connect",
@@ -487,7 +487,6 @@ class GarminSync:
             self.is_connected = True
             self.last_connect_error = None
             _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
-            return True
         except Exception as e:
             _log.debug("Garmin connection failed", exc_info=True)
             _log.error(
@@ -516,6 +515,8 @@ class GarminSync:
                 )
             self.is_connected = False
             return False
+        else:
+            return True
 
     def _ensure_connected(self) -> bool:
         if not self.is_connected or self.client is None:

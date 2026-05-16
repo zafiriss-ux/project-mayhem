@@ -165,18 +165,17 @@ class WeatherAPI:
         """
         if dew_point > WEATHER_DEW_POINT_EXTREME_MIN_C:
             return "🔥 EXTREME", "Avoid training - dangerous conditions"
-        elif dew_point > WEATHER_DEW_POINT_OPPRESSIVE_MIN_C:
+        if dew_point > WEATHER_DEW_POINT_OPPRESSIVE_MIN_C:
             return "🟥 OPPRESSIVE", "Reduce intensity 20-30%, increase hydration"
-        elif dew_point > WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C:
+        if dew_point > WEATHER_DEW_POINT_UNCOMFORTABLE_MIN_C:
             return "🟧 UNCOMFORTABLE", "Reduce pace 10-15 sec/km, monitor closely"
-        elif dew_point > WEATHER_DEW_POINT_STICKY_MIN_C:
+        if dew_point > WEATHER_DEW_POINT_STICKY_MIN_C:
             return "🟨 STICKY", "Slight pace reduction, extra hydration"
-        elif dew_point > WEATHER_DEW_POINT_COMFORTABLE_MIN_C:
+        if dew_point > WEATHER_DEW_POINT_COMFORTABLE_MIN_C:
             return "🟩 COMFORTABLE", "Normal training possible"
-        elif dew_point > WEATHER_DEW_POINT_PLEASANT_MIN_C:
+        if dew_point > WEATHER_DEW_POINT_PLEASANT_MIN_C:
             return "🟦 PLEASANT", "Ideal conditions"
-        else:
-            return "🟪 DRY/COLD", "Good for fast running"
+        return "🟪 DRY/COLD", "Good for fast running"
 
     def _parse_location(self) -> tuple[str, str]:
         """Split location into city/country components."""
@@ -379,7 +378,6 @@ class WeatherAPI:
             self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
             payload = copy.deepcopy(current)
             payload["data_trust"] = evaluate_weather_trust(data_quality="live", data_age_hours=0.0).to_payload()
-            return payload
         except Exception as exc:
             # Fallback when API/network is unavailable — data is synthetic
             _weather_event(
@@ -400,6 +398,8 @@ class WeatherAPI:
             self.cache_timestamp = datetime.now().replace(tzinfo=UTC)
             current["data_trust"] = evaluate_weather_trust(data_quality="synthetic", data_age_hours=0.0).to_payload()
             return current
+        else:
+            return payload
 
     def get_hourly_forecast(self, hours: int = 48) -> list[dict]:
         """

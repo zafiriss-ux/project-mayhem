@@ -132,6 +132,7 @@ def validate_vo2_eligibility(result: dict[str, Any] | None) -> str | None:
         return None
     try:
         assert_vo2_eligibility_contract(result)
-        return None
     except ContractViolation as exc:
         return str(exc)
+    else:
+        return None

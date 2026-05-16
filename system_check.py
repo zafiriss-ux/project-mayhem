@@ -248,10 +248,9 @@ def main():
         print("="*60)
         print("\n✅ TITAN v51 is ready for deployment!")
         return 0
-    else:
-        print("⚠️ SOME TESTS FAILED")
-        print("="*60)
-        return 1
+    print("⚠️ SOME TESTS FAILED")
+    print("="*60)
+    return 1
 
 if __name__ == "__main__":
     sys.exit(main())

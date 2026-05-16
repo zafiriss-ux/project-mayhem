@@ -120,16 +120,15 @@ class TRIMPEngine:
 
         if percent_change > 50:
             return "🛑 DANGEROUS SPIKE: Reduce >30%", "CRITICAL"
-        elif percent_change > 30:
+        if percent_change > 30:
             return "⚠️ SPIKE: High injury/illness risk", "HIGH_RISK"
-        elif percent_change > 15:
+        if percent_change > 15:
             return "⚠️ HIGH: Monitor fatigue closely", "ELEVATED"
-        elif -10 <= percent_change <= 15:
+        if -10 <= percent_change <= 15:
             return "✅ OPTIMAL PROGRESSION", "SAFE"
-        elif -25 <= percent_change < -10:
+        if -25 <= percent_change < -10:
             return "➡️ DELOAD WEEK (planned recovery)", "RECOVERY"
-        else:
-            return "⚠️ SEVERE DELOAD (risk detraining)", "LOW"
+        return "⚠️ SEVERE DELOAD (risk detraining)", "LOW"
 
     @staticmethod
     def calculate_zone_time_trimp(zone_times: list, zone_multipliers: list | None = None) -> float:

@@ -178,9 +178,10 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
         coach: DailyCoach = ctx["daily_coach"]
         try:
             coach.run_morning_routine()
-            return "✅ Σημερινό coaching στάλθηκε!"
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
+        else:
+            return "✅ Σημερινό coaching στάλθηκε!"
 
     def cb_week():
         planner: WeeklyPlanGenerator = ctx["weekly_planner"]
@@ -192,9 +193,10 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             )
             ctx["last_weekly_plan"] = plan
             telegram.send_weekly_plan(plan)
-            return "✅ Εβδομαδιαίο πλάνο στάλθηκε!"
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
+        else:
+            return "✅ Εβδομαδιαίο πλάνο στάλθηκε!"
 
     def cb_stats():
         hrv: HRVGuidedEngine = ctx["hrv_engine"]
@@ -269,6 +271,9 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             hrv_c = len(data.get("hrv", []))
             slp = len(data.get("sleep", []))
             ctx["last_garmin_data"] = data
+        except Exception as e:
+            return f"❌ Garmin sync failed: {e}"
+        else:
             return (
                 f"🔄 *SYNC COMPLETE*\n"
                 f"• Activities: {acts}\n"
@@ -276,8 +281,6 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
                 f"• HRV readings: {hrv_c}\n"
                 f"• Sleep sessions: {slp}"
             )
-        except Exception as e:
-            return f"❌ Garmin sync failed: {e}"
 
     def cb_activities():
         garmin: GarminSync = ctx["garmin"]
@@ -329,9 +332,10 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             # Get today's session type from context if available
             session_type = ctx.get("today_session_type", "EASY")
             rec = equipment.recommend_shoe(session_type)
-            return f"👟 *SHOE RECOMMENDATION*\n• Session: {session_type}\n• Shoe: {rec}"
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
+        else:
+            return f"👟 *SHOE RECOMMENDATION*\n• Session: {session_type}\n• Shoe: {rec}"
 
     def cb_calibration():
         coach: DailyCoach = ctx["daily_coach"]
@@ -367,7 +371,7 @@ def _parse_env_number(name: str, default: str, caster):
     try:
         return caster(raw)
     except (TypeError, ValueError) as exc:
-        log.error(
+        log.exception(
             "startup_failure",
             extra={
                 "component": "launcher",

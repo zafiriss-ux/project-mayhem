@@ -244,7 +244,8 @@ def ensure_config() -> bool:
     try:
         config = run_wizard()
         write_env(config)
-        return True
     except Exception as e:
         print(f"\n❌ Setup failed: {e}\n")
         return False
+    else:
+        return True
