@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2848 tests all green as of claude/auto-detect-import-date-acCoL branch (auto-detect date via Activities.csv, folder batch mode, days_back 7→14, TSB source verification; 15 new tests; prior: 2833 as of claude/fix-garmin-data-browser-bugs-npBg6) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2854 tests all green as of claude/fix-ctl-atl-data-error-smWNz branch (CTL/ATL INSUFFICIENT DATA fix: save_session athlete_id, v18 backfill migration; 6 new tests; prior: 2848 as of claude/auto-detect-import-date-acCoL) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
@@ -282,7 +282,7 @@ All SQLite writes use `threading.Lock` (`check_same_thread=False`).
 ### Database
 
 
-17 SQLite tables (SCHEMA_VERSION 17): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`, `coach_athlete_assignments`, `coach_audit_log`.
+17 SQLite tables (SCHEMA_VERSION 18): `daily_metrics`, `training_log`, `gear_usage`, `personal_bests`, `cs_performances`, `override_log`, `override_signals`, `governance_outcomes`, `athlete_threshold_offsets`, `athletes`, `sync_metadata`, `model_calibration_metadata`, `degraded_mode_state`, `auth_users`, `auth_tokens`, `coach_athlete_assignments`, `coach_audit_log`.
 
 - `governance_outcomes` — created by `OutcomeTracker` (v5.7.1); stores paired governance decisions + post-session outcomes for threshold calibration.
 Canonical column name for temperature: `temperature_c`.

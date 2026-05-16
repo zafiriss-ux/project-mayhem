@@ -158,6 +158,7 @@ def main() -> None:
                     avg_hr=avg_hr if avg_hr > 0 else None,
                     max_hr=max_hr_act if max_hr_act > 0 else None,
                     training_load=int(trimp),
+                    athlete_id="owner",
                     garmin_activity_id=synthetic_id,
                     notes=f"Imported from CSV: {title}",
                 )
