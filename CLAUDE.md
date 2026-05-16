@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2814 tests all green as of claude/fix-copilot-findings-KifbX branch (CP-01..07 Copilot findings: nonce-per-action, is_configured password check, keyring fallback saves all creds, fat macro constants, send_alert Literal level, alert-history corruption reset, Greek typo; 10 new tests; prior: 2804 as of claude/garmin-historical-import-E3jnH) (2026-05-15). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2833 tests all green as of claude/fix-garmin-data-browser-bugs-npBg6 branch (parse_hr decimal support, data-browser DB union fix, lap importer + 18 tests, github cleanup; 19 new tests; prior: 2814 as of claude/fix-copilot-findings-KifbX) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

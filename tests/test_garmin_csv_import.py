@@ -51,6 +51,14 @@ def test_parse_hr_missing():
     assert parse_hr("--") == 0
 
 
+def test_parse_hr_decimal():
+    assert parse_hr("21,8") == 21
+    assert parse_hr("59,5") == 59
+    assert parse_hr("--") == 0
+    assert parse_hr("") == 0
+    assert parse_hr("144") == 144
+
+
 def test_infer_session_type_long_run():
     assert infer_session_type("Long Run", 21.0, 7200) == "LONG_RUN"
 

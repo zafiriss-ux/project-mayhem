@@ -1875,6 +1875,50 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
+    def get_recent_activities(
+        self, limit: int = 90, athlete_id: str = "owner"
+    ) -> list[dict]:
+        """Return recent training sessions from training_log for the data browser.
+
+        Reads from ``training_log`` (the canonical session store for all
+        imported and synced activities).  The result is sorted newest-first
+        so the caller can slice with ``[-N:]`` or display directly.
+
+        Args:
+            limit:      Maximum rows to return (default 90 — ~3 months).
+            athlete_id: Row-level isolation key (ADR-0033).
+
+        Returns:
+            List of dicts with keys: date, session_type, distance_km,
+            duration_sec, avg_hr, training_load.
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """
+                SELECT date, session_type, distance_km, duration_sec,
+                       avg_hr, training_load
+                FROM training_log
+                WHERE athlete_id = ?
+                ORDER BY date DESC
+                LIMIT ?
+                """,
+                (athlete_id, limit),
+            )
+            rows = cursor.fetchall()
+        return [
+            {
+                "date": r[0],
+                "session_type": r[1],
+                "distance_km": r[2] or 0.0,
+                "duration_sec": r[3] or 0,
+                "avg_hr": r[4] or 0,
+                "training_load": r[5] or 0,
+            }
+            for r in rows
+        ]
+
     def get_training_load_history(
         self, days: int | None = None, athlete_id: str = "owner"
     ) -> list[tuple[str, float]]:

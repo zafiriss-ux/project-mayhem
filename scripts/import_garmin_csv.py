@@ -52,13 +52,10 @@ def parse_duration(s: str) -> int:
 
 
 def parse_hr(s: str) -> int:
-    """'144' → 144; '--' → 0"""
+    """'144' → 144; '21,8' → 21; '--' → 0"""
     if not s or s == "--":
         return 0
-    try:
-        return int(s)
-    except ValueError:
-        return 0
+    return int(float(s.replace(",", ".")))
 
 
 def infer_session_type(title: str, distance: float, duration_sec: int) -> str:  # noqa: ARG001
