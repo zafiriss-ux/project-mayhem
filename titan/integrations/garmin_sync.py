@@ -542,7 +542,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # ACTIVITIES
     # ------------------------------------------------------------------ #
-    def sync_activities(self, days_back: int = 7, athlete_max_hr: int = 0) -> list[dict]:
+    def sync_activities(self, days_back: int = 14, athlete_max_hr: int = 0) -> list[dict]:
         """Fetch running activities from Garmin for the past ``days_back`` days.
 
         Args:
@@ -690,7 +690,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # SLEEP
     # ------------------------------------------------------------------ #
-    def sync_sleep(self, days_back: int = 7) -> list[dict]:
+    def sync_sleep(self, days_back: int = 14) -> list[dict]:
         if not self._ensure_connected():
             return []
         sessions = []
@@ -758,7 +758,7 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # HRV
     # ------------------------------------------------------------------ #
-    def sync_hrv(self, days_back: int = 7) -> list[dict]:
+    def sync_hrv(self, days_back: int = 14) -> list[dict]:
         if not self._ensure_connected():
             self.last_hrv_sync_metrics = HRVSyncMetricsContract(
                 days_back=days_back,
@@ -854,7 +854,7 @@ class GarminSync:
         ).to_payload()
         return payload
 
-    def sync_all(self, days_back: int = 7) -> GarminSyncResult:
+    def sync_all(self, days_back: int = 14) -> GarminSyncResult:
         _garmin_event("sync_all_started", subsystem="sync_all", days_back=days_back, detail="Full Garmin sync starting")
         self.last_sync = datetime.now(UTC).isoformat()
         started = time.monotonic()
