@@ -11,7 +11,6 @@ _apply_v18_migrations() backfills existing rows where athlete_id='default'→'ow
 
 import sqlite3
 from datetime import date, timedelta
-from pathlib import Path
 
 import pytest
 
