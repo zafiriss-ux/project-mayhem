@@ -14,6 +14,7 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import uuid4
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
@@ -502,14 +503,15 @@ class TitanTelegramBot:
         action = parts[1]
         nonce = parts[2] if len(parts) >= 3 else None
 
-        if nonce is not None and _consume_override_nonce(nonce) is None:
-            return "⚠️ This override request has already been used or has expired."
-
         if action == "accept":
+            if nonce is None or _consume_override_nonce(nonce) is None:
+                return "⚠️ This override request has already been used or has expired."
             self._pending_override_prompts.pop(chat_id, None)
             return "✅ Decision accepted."
 
         if action == "request":
+            if nonce is None or _consume_override_nonce(nonce) is None:
+                return "⚠️ This override request has already been used or has expired."
             pending = self._pending_override_prompts.get(chat_id)
             if pending is None:
                 return "⚠️ No active decision to override."
@@ -697,8 +699,24 @@ class TitanTelegramBot:
         )
         return self.send_message(text)
 
-    def send_alert(self, title: str, message: str, level: str = "warning") -> bool:
-        emoji = {"critical": "🛑", "warning": "⚠️", "info": "ℹ️", "ok": "✅"}.get(level, "ℹ️")
+    def send_alert(
+        self,
+        title: str,
+        message: str,
+        level: Literal["critical", "warning", "info", "ok"] = "warning",
+    ) -> bool:
+        level_to_emoji = {
+            "critical": "🛑",
+            "warning":  "⚠️",
+            "info":     "ℹ️",
+            "ok":       "✅",
+        }
+        if level not in level_to_emoji:
+            _log.error(
+                "Invalid alert level %r; defaulting to 'warning'.", level
+            )
+            level = "warning"
+        emoji = level_to_emoji[level]
         return self.send_message(f"{emoji} *{title}*\n\n{message}")
 
     def send_structured_alert(self, event_type: str, lock_code: str, message: str) -> bool:
@@ -720,7 +738,22 @@ class TitanTelegramBot:
         last_sent = snapshot["last_sent"]
         first_seen = snapshot["first_seen"]
         if not isinstance(last_sent, datetime) or not isinstance(first_seen, datetime):
-            return False
+            _log.warning(
+                "Corrupted alert history key=%s last_sent=%r (%s) first_seen=%r (%s). Resetting.",
+                key,
+                last_sent, type(last_sent).__name__,
+                first_seen, type(first_seen).__name__,
+            )
+            self._alert_history[key] = {
+                "first_seen": now,
+                "last_sent":  now,
+                "suppressed_count": 0,
+            }
+            return self.send_alert(
+                "ALERT HISTORY CORRUPTION",
+                "Internal state reset. Monitor for recurrence.",
+                level="critical",
+            )
 
         if now - last_sent < dedup_window:
             snapshot["suppressed_count"] = int(snapshot["suppressed_count"]) + 1

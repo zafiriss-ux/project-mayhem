@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import titan.integrations.telegram_bot as telegram_bot
-from titan.integrations.telegram_bot import TitanTelegramBot
+from titan.integrations.telegram_bot import TitanTelegramBot, _create_override_nonce
 
 
 class _FakeTeleBot:
@@ -662,8 +662,9 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
 
     result = bot.send_alert("Title", "Body", level="unsupported")
 
+    # CP-05: invalid level falls back to "warning" (⚠️), not "info"
     assert result is True
-    assert captured["text"].startswith("ℹ️ *Title*")
+    assert captured["text"].startswith("⚠️ *Title*")
 
 def test_telegram_bot_has_no_print_calls():
     source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
@@ -735,7 +736,8 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
         "created_at": "2026-03-07T09:00:00+00:00",
     }
 
-    assert "required" in bot.process_override_callback(123, "override:request")
+    nonce = _create_override_nonce("d-2")
+    assert "required" in bot.process_override_callback(123, f"override:request:{nonce}")
     assert bot.process_override_reason(123, "Need to adjust due to artifact") == "✅ Override recorded."
     assert db.rows[0]["decision_id"] == "d-2"
 

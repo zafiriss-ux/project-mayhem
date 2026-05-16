@@ -7,11 +7,13 @@ Integrates with Garmin weight data to provide real-time dietary recommendations.
 import logging
 
 from titan.config.thresholds import (
+    FAT_KCAL_PER_GRAM,
     HYDRATION_BASE_ML_PER_KG,
     HYDRATION_EASY_ML,
     HYDRATION_INTERVALS_ML,
     HYDRATION_LONG_RUN_ML,
     HYDRATION_TEMPO_ML,
+    MIN_FAT_G,
 )
 from titan.core.structured_events import make_event_emitter
 
@@ -183,7 +185,7 @@ class NutritionOptimizer:
         carb_kcal = carb_g * 4
         protein_kcal = protein_g * 4
         fat_kcal = tdee - carb_kcal - protein_kcal
-        fat_g = max(40, fat_kcal / 9)  # Minimum 40g fat
+        fat_g = max(MIN_FAT_G, fat_kcal / FAT_KCAL_PER_GRAM)
 
         # Session-specific timing
         timing = self._get_meal_timing(session_type, duration_min)
