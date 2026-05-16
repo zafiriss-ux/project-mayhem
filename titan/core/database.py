@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 18
 
 
 class DatabaseManager:
@@ -526,6 +526,11 @@ class DatabaseManager:
                 "persistent coach action audit log (T5-111)",
                 None,  # DDL — see _apply_v17_migrations() below
             ),
+            18: (
+                "training_log",
+                "backfill athlete_id='default'→'owner' (v8 migration DEFAULT mismatch fix)",
+                None,  # DML — see _apply_v18_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -728,6 +733,18 @@ class DatabaseManager:
                 })
             )
 
+        if current_version < 18:
+            self._apply_v18_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 18,
+                    "rows_backfilled": "training_log athlete_id 'default'→'owner'",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
         # Suppress unused-variable warning for _migrations (kept as documentation).
         _ = _migrations
 
@@ -910,7 +927,7 @@ class DatabaseManager:
         cursor.execute("""
             CREATE TABLE training_log_v8_new (
                 id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id         TEXT NOT NULL DEFAULT 'default',
+                athlete_id         TEXT NOT NULL DEFAULT 'owner',
                 date               TEXT NOT NULL,
                 session_type       TEXT,
                 distance_km        REAL,
@@ -1164,6 +1181,20 @@ class DatabaseManager:
                 performed_at TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
+
+    def _apply_v18_migrations(self, cursor) -> None:
+        """Version 18: backfill training_log rows where athlete_id='default'→'owner'.
+
+        The v8 migration erroneously created training_log_v8_new with
+        DEFAULT 'default' instead of DEFAULT 'owner'. When v14 tried to add the
+        athlete_id column it hit a duplicate-column error (silently swallowed),
+        leaving the wrong default in place. All rows in affected databases have
+        athlete_id='default', invisible to get_training_load_history() which
+        queries athlete_id='owner'. This backfill corrects those rows.
+        """
+        cursor.execute(
+            "UPDATE training_log SET athlete_id = 'owner' WHERE athlete_id = 'default'"
+        )
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
@@ -1817,6 +1848,7 @@ class DatabaseManager:
         garmin_activity_id: str | None = None,
         quality_flag: str | None = None,
         training_load: int | None = None,
+        athlete_id: str = "owner",
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
@@ -1836,6 +1868,7 @@ class DatabaseManager:
             temperature_c: Air temperature in °C  ← canonical name
             notes:         Optional text notes
             garmin_activity_id: Stable Garmin external activity identity
+            athlete_id:    Athlete identifier for row-level isolation (ADR-0033)
             temperature:   Deprecated alias for temperature_c
 
         Training Load Calculation:
@@ -1861,11 +1894,11 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             cursor.execute("""
                 INSERT OR IGNORE INTO training_log
-                (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
+                (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
                  quality_flag)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
                   training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
                   quality_flag))
             if cursor.rowcount == 1 and shoe_id and distance_km:
