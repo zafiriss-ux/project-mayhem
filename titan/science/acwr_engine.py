@@ -23,16 +23,15 @@ class ACWREngine:
 
         if acwr < ACWR_SEVERE_DETRAINING_MAX:
             return round(acwr, 2), "🛑 SEVERE DETRAINING", "Increase gradually"
-        elif acwr < ACWR_DETRAINING_RISK_MAX:
+        if acwr < ACWR_DETRAINING_RISK_MAX:
             return round(acwr, 2), "⚠️ DETRAINING RISK", "Consider volume increase"
-        elif acwr <= ACWR_MAINTENANCE_MAX:
+        if acwr <= ACWR_MAINTENANCE_MAX:
             return round(acwr, 2), "➡️ MAINTENANCE", "Good for recovery weeks"
-        elif acwr <= ACWR_SWEET_SPOT_MAX:
+        if acwr <= ACWR_SWEET_SPOT_MAX:
             return round(acwr, 2), "✅ SWEET SPOT", "Optimal adaptation"
-        elif acwr <= ACWR_MODERATE_RISK_MAX:
+        if acwr <= ACWR_MODERATE_RISK_MAX:
             return round(acwr, 2), "⚠️ MODERATE RISK", "Monitor fatigue"
-        else:
-            return round(acwr, 2), "🛑 HIGH INJURY RISK", "REDUCE LOAD (2-4x risk)"
+        return round(acwr, 2), "🛑 HIGH INJURY RISK", "REDUCE LOAD (2-4x risk)"
 
     @staticmethod
     def weekly_load_recommendation(chronic_avg: float, target: float = 1.2) -> float:
@@ -42,15 +41,14 @@ class ACWREngine:
     def injury_risk_score(acwr: float) -> tuple[int, str]:
         if acwr < ACWR_DETRAINING_RISK_MAX:
             return 1, "Very Low"
-        elif acwr <= ACWR_MAINTENANCE_MAX:
+        if acwr <= ACWR_MAINTENANCE_MAX:
             return 2, "Low"
-        elif acwr <= 1.15:
+        if acwr <= 1.15:
             return 3, "Low-Moderate"
-        elif acwr <= ACWR_SWEET_SPOT_MAX:
+        if acwr <= ACWR_SWEET_SPOT_MAX:
             return 4, "Moderate"
-        elif acwr <= ACWR_MODERATE_RISK_MAX:
+        if acwr <= ACWR_MODERATE_RISK_MAX:
             return 6, "Moderate-High"
-        elif acwr <= ACWR_HIGH_RISK_MAX:
+        if acwr <= ACWR_HIGH_RISK_MAX:
             return 8, "High (2-3x risk)"
-        else:
-            return 10, "Extreme (4x+ risk)"
+        return 10, "Extreme (4x+ risk)"

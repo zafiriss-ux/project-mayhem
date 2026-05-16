@@ -95,15 +95,13 @@ class HRVGuidedEngine:
 
         if today_hrv < threshold_critical:
             return "REST", f"⚠️ HRV CRITICAL: {today_hrv:.1f} < {threshold_critical:.1f}", "HIGH"
-        elif today_hrv < threshold_caution:
+        if today_hrv < threshold_caution:
             if planned_session in ["INTERVALS", "TEMPO", "PROGRESSIVE", "HAMMER"]:
                 return "EASY", f"⚠️ HRV LOW: {today_hrv:.1f} → Downgrade", "HIGH"
-            else:
-                return planned_session, "HRV slightly low but easy session OK", "MEDIUM"
-        elif today_hrv >= baseline:
+            return planned_session, "HRV slightly low but easy session OK", "MEDIUM"
+        if today_hrv >= baseline:
             return planned_session, f"✅ HRV NORMAL: {today_hrv:.1f} → Proceed", "HIGH"
-        else:
-            return planned_session, f"HRV acceptable: {today_hrv:.1f}", "MEDIUM"
+        return planned_session, f"HRV acceptable: {today_hrv:.1f}", "MEDIUM"
 
     @staticmethod
     def calculate_rmssd_from_rr_intervals(rr_intervals_ms: list[float]) -> float | None:
@@ -182,10 +180,9 @@ class HRVGuidedEngine:
 
         if change_pct > 5:
             return f"📈 IMPROVING: HRV up {change_pct:.1f}%"
-        elif change_pct < -5:
+        if change_pct < -5:
             return f"📉 DECLINING: HRV down {change_pct:.1f}%"
-        else:
-            return f"➡️ STABLE: HRV change {change_pct:.1f}%"
+        return f"➡️ STABLE: HRV change {change_pct:.1f}%"
 
     def check_baseline_drift(self, window_days: int = 14) -> bool:
         """Return True if |mean(recent) - mean(anchor)| > HRV_DRIFT_THRESHOLD_MS.

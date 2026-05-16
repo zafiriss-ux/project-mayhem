@@ -536,12 +536,13 @@ def run_gui_wizard() -> bool:
         root = tk.Tk()
         WizardWindow(root)
         root.mainloop()
-        return True
     except KeyboardInterrupt:
         return False
     except Exception as e:
         messagebox.showerror("Error", f"Wizard failed:\n{e}")
         return False
+    else:
+        return True
 
 
 if __name__ == '__main__':

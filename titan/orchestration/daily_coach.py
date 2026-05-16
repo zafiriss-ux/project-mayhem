@@ -410,14 +410,6 @@ class DailyCoach:
         def _run_step(step_number: int, step_name: str, fn):
             try:
                 result = fn()
-                _daily_coach_event(
-                    "step_event",
-                    step_number=step_number,
-                    step_name=step_name,
-                    outcome="SUCCESS",
-                    failure_class=None,
-                )
-                return result
             except Exception as exc:
                 _daily_coach_event(
                     "step_event",
@@ -429,6 +421,15 @@ class DailyCoach:
                     error_message=str(exc),
                 )
                 raise
+            else:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="SUCCESS",
+                    failure_class=None,
+                )
+                return result
 
         # ── Step 1: Sync Garmin ──────────────────────────────────────────────
         _daily_coach_event("step_started", step_number=1, step_name="sync_garmin")
@@ -710,14 +711,6 @@ class DailyCoach:
         def _run_step(step_number: int, step_name: str, fn):
             try:
                 result = fn()
-                _daily_coach_event(
-                    "step_event",
-                    step_number=step_number,
-                    step_name=step_name,
-                    outcome="SUCCESS",
-                    failure_class=None,
-                )
-                return result
             except Exception as exc:
                 _daily_coach_event(
                     "step_event",
@@ -729,6 +722,15 @@ class DailyCoach:
                     error_message=str(exc),
                 )
                 raise
+            else:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=step_number,
+                    step_name=step_name,
+                    outcome="SUCCESS",
+                    failure_class=None,
+                )
+                return result
 
         # ── Step 7: Readiness ─────────────────────────────────────────────────
         readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(

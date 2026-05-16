@@ -107,14 +107,13 @@ class PeriodizationManager:
 
         if days_to_race < 0:
             return "POST_RACE"
-        elif days_to_race <= 10:
+        if days_to_race <= 10:
             return "TAPER"
-        elif days_to_race <= 35:
+        if days_to_race <= 35:
             return "PEAK"
-        elif days_to_race <= 70:
+        if days_to_race <= 70:
             return "BUILD"
-        else:
-            return "BASE"
+        return "BASE"
 
     def complete_goal(
         self,

@@ -237,7 +237,6 @@ def main() -> int:
     # Step 4: Run TITAN kernel
     try:
         run_titan_kernel()
-        return 0
     except TitanError as e:
         print(f"\n{e.to_user_message()}\n")
         if e.details:
@@ -251,6 +250,8 @@ def main() -> int:
         print("   Please report this issue to:")
         print("   https://github.com/zafiriss-ux/project-mayhem/issues\n")
         return 1
+    else:
+        return 0
 
 
 if __name__ == '__main__':

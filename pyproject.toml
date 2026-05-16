@@ -55,10 +55,16 @@ select = [
     "B",   # flake8-bugbear (likely bugs / design issues)
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
+    "RET", # flake8-return (mixed/inconsistent returns)
+    "TRY", # tryceratops (exception handling patterns)
 ]
 ignore = [
-    "E501",  # line too long (handled by formatter)
-    "B008",  # do not perform function calls in argument defaults
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "TRY003", # long exception messages ok
+    "TRY301", # abstracting raise to inner function is excessive refactoring
+    "SIM108", # ternary not always clearer
+    "RET504", # assignment before return ok
 ]
 
 [tool.ruff.lint.per-file-ignores]

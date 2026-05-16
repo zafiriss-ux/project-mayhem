@@ -230,24 +230,24 @@ class NutritionOptimizer:
                 else "Water only",
                 "post_session": "1.2g carbs/kg + 20-30g protein within 30min",
             }
-        elif session_type == "LONG_RUN":
+        if session_type == "LONG_RUN":
             return {
                 "pre_session": "30-60g carbs (can train low if not hammering)",
                 "during_session": "60g carbs/hour (gels/sports drink)",
                 "post_session": "1.2-1.5g carbs/kg within 2h + 20-30g protein",
             }
-        elif session_type == "EASY":
+        if session_type == "EASY":
             return {
                 "pre_session": "Optional - can train fasted",
                 "during_session": "Water only",
                 "post_session": "Normal breakfast - prioritize protein 20-30g",
             }
-        else:  # REST
-            return {
-                "pre_session": "N/A",
-                "during_session": "N/A",
-                "post_session": "Regular meals - focus on whole foods",
-            }
+        # REST
+        return {
+            "pre_session": "N/A",
+            "during_session": "N/A",
+            "post_session": "Regular meals - focus on whole foods",
+        }
 
     def _calculate_hydration(
         self,

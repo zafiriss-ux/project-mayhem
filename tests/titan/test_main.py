@@ -73,17 +73,17 @@ class _DummyTelegram:
 
     def schedule_task(self, **kwargs):
         self.scheduled_tasks.append(kwargs)
-        return None
+        return
 
     def send_weekly_plan(self, plan):
         self.sent_weekly_plans.append(plan)
-        return None
+        return
 
 
 class _DummyWeeklyPlanner:
     def __init__(self, *args, **kwargs):
         self.calls = []
-        return None
+        return
 
     def generate_weekly_plan(self, athlete_profile, phase):
         self.calls.append({"athlete_profile": athlete_profile, "phase": phase})
@@ -93,11 +93,11 @@ class _DummyWeeklyPlanner:
 class _DummyDailyCoach:
     def __init__(self, *args, **kwargs):
         self.morning_calls = 0
-        return None
+        return
 
     def run_morning_routine_async(self):
         self.morning_calls += 1
-        return None
+        return
 
 
 class _DummyDatabase:

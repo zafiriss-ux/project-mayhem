@@ -25,12 +25,11 @@ class DriftEngine:
         """Classify aerobic efficiency"""
         if drift_percent < 2.0:
             return "EXCELLENT"
-        elif drift_percent < 3.5:
+        if drift_percent < 3.5:
             return "GOOD"
-        elif drift_percent < 5.0:
+        if drift_percent < 5.0:
             return "ACCEPTABLE"
-        else:
-            return "POOR"
+        return "POOR"
 
     def analyze_cardiac_drift(self, hr_data: list[float], duration_min: int) -> dict[str, object]:
         """Public wrapper for drift analysis used by orchestration callbacks."""

@@ -44,9 +44,8 @@ def get_bundle_dir() -> Path:
     if is_frozen():
         # PyInstaller creates a temp folder and stores path in _MEIPASS
         return Path(sys._MEIPASS)
-    else:
-        # Development mode — launcher/ is in project root
-        return Path(__file__).parent.parent.resolve()
+    # Development mode — launcher/ is in project root
+    return Path(__file__).parent.parent.resolve()
 
 
 def get_executable_dir() -> Path:
@@ -60,9 +59,8 @@ def get_executable_dir() -> Path:
     if is_frozen():
         # sys.executable points to TITAN.exe
         return Path(sys.executable).parent.resolve()
-    else:
-        # __file__ is launcher/paths.py
-        return Path(__file__).parent.resolve()
+    # __file__ is launcher/paths.py
+    return Path(__file__).parent.resolve()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
