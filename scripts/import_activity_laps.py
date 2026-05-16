@@ -2,9 +2,22 @@
 Import Garmin lap data from a CSV export and store in activity_laps table.
 
 Usage:
+    # Single file with explicit date
     python scripts/import_activity_laps.py \\
       --csv activity_22896346850.csv \\
       --date 2026-05-10 \\
+      [--dry-run]
+
+    # Single file with date auto-detected from Activities.csv
+    python scripts/import_activity_laps.py \\
+      --csv activity_22896346850.csv \\
+      --activities-csv Activities.csv \\
+      [--dry-run]
+
+    # Batch: process all activity_*.csv in a folder
+    python scripts/import_activity_laps.py \\
+      --folder /path/to/garmin_export/ \\
+      --activities-csv Activities.csv \\
       [--dry-run]
 
 Reads a Garmin lap-detail CSV (Greek locale), computes cardiac drift from
@@ -16,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sqlite3
 import sys
 from pathlib import Path
@@ -257,6 +271,102 @@ def _update_training_log_drift(
 
 
 # ---------------------------------------------------------------------------
+# Date auto-detection
+# ---------------------------------------------------------------------------
+
+def _extract_numeric_id(lap_csv_path: Path) -> str | None:
+    """Extract the numeric activity ID from a lap CSV filename.
+
+    'activity_22896346850.csv' → '22896346850'.  Returns None if no
+    digit sequence is found after the underscore.
+    """
+    m = re.search(r"_(\d+)", lap_csv_path.stem)
+    return m.group(1) if m else None
+
+
+def lookup_date(lap_csv_path: str | Path, activities_csv_path: str | Path) -> str:
+    """Look up the activity date from Activities.csv by matching the activity ID.
+
+    Extracts the numeric ID from the lap CSV filename and searches every
+    column in Activities.csv for a cell that contains that number.  Returns
+    the date string in YYYY-MM-DD format from the matching row.
+
+    Raises SystemExit with a descriptive message when the ID cannot be found.
+    """
+    lap_path = Path(lap_csv_path)
+    activity_id_num = _extract_numeric_id(lap_path)
+    if not activity_id_num:
+        raise SystemExit(
+            f"ERROR: Cannot extract numeric activity ID from filename: {lap_path.name}\n"
+            "Provide --date explicitly."
+        )
+
+    acts_path = Path(activities_csv_path)
+    if not acts_path.exists():
+        raise SystemExit(f"ERROR: Activities CSV not found: {acts_path}")
+
+    date_col = "Ημερομηνία"  # standard Garmin Greek-locale date column
+    with acts_path.open(encoding="utf-8-sig", newline="") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            # Search every column value for the numeric ID string
+            if any(activity_id_num in str(v) for v in row.values()):
+                raw_date = row.get(date_col, "")
+                if not raw_date:
+                    raise SystemExit(
+                        f"ERROR: Found activity {activity_id_num} but date column "
+                        f"'{date_col}' is empty."
+                    )
+                return raw_date[:10]  # trim to YYYY-MM-DD
+
+    raise SystemExit(
+        f"ERROR: Activity ID {activity_id_num} not found in {acts_path.name}.\n"
+        "Ensure the correct Activities.csv is provided, or use --date."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Single-file import logic (shared by single and batch modes)
+# ---------------------------------------------------------------------------
+
+def _import_one(
+    csv_path: Path,
+    activity_date: str,
+    dry_run: bool,
+    db_path: Path,
+) -> tuple[int, int]:
+    """Import one lap CSV.  Returns (laps_inserted, tl_rows_updated)."""
+    activity_id = csv_path.stem
+
+    laps = read_laps_from_csv(csv_path)
+    if not laps:
+        print(f"  SKIP {csv_path.name}: no valid lap rows found.")
+        return 0, 0
+
+    cardiac_drift = compute_cardiac_drift(laps)
+
+    if dry_run:
+        print(
+            f"  [dry-run] {csv_path.name}  date={activity_date}  "
+            f"laps={len(laps)}  drift={cardiac_drift:.2f}%"
+        )
+        return len(laps), 0
+
+    conn = sqlite3.connect(str(db_path))
+    try:
+        _ensure_activity_laps_table(conn)
+        _ensure_training_log_cardiac_drift_column(conn)
+        inserted = _insert_laps(conn, laps, activity_id, activity_date, cardiac_drift)
+        _update_activity_laps_drift(conn, activity_id, cardiac_drift)
+        tl_updated = _update_training_log_drift(conn, activity_date, cardiac_drift)
+        conn.commit()
+    finally:
+        conn.close()
+
+    return inserted, tl_updated
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -264,9 +374,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Import Garmin lap CSV into activity_laps table."
     )
-    parser.add_argument("--csv", required=True, help="Path to Garmin lap CSV file.")
+    # --csv is required unless --folder is given; enforced below
+    parser.add_argument("--csv", default=None, help="Path to Garmin lap CSV file.")
     parser.add_argument(
-        "--date", required=True, help="Activity date in YYYY-MM-DD format."
+        "--folder",
+        default=None,
+        help="Directory containing activity_*.csv files to batch-import.",
+    )
+    parser.add_argument(
+        "--date",
+        default=None,
+        help="Activity date in YYYY-MM-DD format (required unless --activities-csv is given).",
+    )
+    parser.add_argument(
+        "--activities-csv",
+        default=None,
+        dest="activities_csv",
+        help="Path to Activities.csv for automatic date lookup by activity ID.",
     )
     parser.add_argument(
         "--dry-run",
@@ -275,8 +399,66 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # ── Resolve DB path ────────────────────────────────────────────────────
+    home = Path.home()
+    db_path = home / "Documents" / "TITAN" / "titan_core.db"
+
+    # ── Batch / folder mode ────────────────────────────────────────────────
+    if args.folder is not None:
+        folder = Path(args.folder)
+        if not folder.is_dir():
+            print(f"ERROR: --folder path is not a directory: {folder}")
+            return 1
+
+        files = sorted(folder.glob("activity_*.csv"))
+        if not files:
+            print(f"ERROR: No activity_*.csv files found in {folder}")
+            return 1
+
+        total_inserted = 0
+        total_tl = 0
+        errors = 0
+
+        print(f"Batch mode: {len(files)} file(s) in {folder}\n")
+        for csv_path in files:
+            try:
+                if args.date:
+                    activity_date = args.date
+                elif args.activities_csv:
+                    activity_date = lookup_date(csv_path, args.activities_csv)
+                else:
+                    raise SystemExit(
+                        f"ERROR: Provide --date or --activities-csv to resolve date for {csv_path.name}"
+                    )
+                inserted, tl_updated = _import_one(csv_path, activity_date, args.dry_run, db_path)
+                total_inserted += inserted
+                total_tl += tl_updated
+                if not args.dry_run:
+                    print(f"  OK  {csv_path.name}  date={activity_date}  laps={inserted}")
+            except SystemExit as exc:
+                print(f"  ERR {csv_path.name}: {exc}")
+                errors += 1
+
+        print(f"\nBatch complete: {total_inserted} laps inserted, "
+              f"{total_tl} training_log rows updated, {errors} error(s).")
+        return 0 if errors == 0 else 1
+
+    # ── Single-file mode ───────────────────────────────────────────────────
+    if args.csv is None:
+        print("ERROR: Provide --csv <file> or --folder <directory>.")
+        return 1
+
     csv_path = Path(args.csv)
-    activity_date = args.date
+
+    # Resolve activity date
+    if args.date:
+        activity_date = args.date
+    elif args.activities_csv:
+        activity_date = lookup_date(csv_path, args.activities_csv)
+    else:
+        print("ERROR: Provide --date YYYY-MM-DD or --activities-csv <Activities.csv>.")
+        return 1
+
     # Derive activity_id from filename: strip path and extension
     activity_id = csv_path.stem  # e.g. "activity_22896346850"
 
@@ -304,10 +486,6 @@ def main(argv: list[str] | None = None) -> int:
                   f"dist={lap['distance_km']:.2f}km  "
                   f"HR={lap['avg_hr']}")
         return 0
-
-    # Resolve DB path using the same default as DatabaseManager
-    home = Path.home()
-    db_path = home / "Documents" / "TITAN" / "titan_core.db"
 
     conn = sqlite3.connect(str(db_path))
     try:

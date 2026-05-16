@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2833 tests all green as of claude/fix-garmin-data-browser-bugs-npBg6 branch (parse_hr decimal support, data-browser DB union fix, lap importer + 18 tests, github cleanup; 19 new tests; prior: 2814 as of claude/fix-copilot-findings-KifbX) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2848 tests all green as of claude/auto-detect-import-date-acCoL branch (auto-detect date via Activities.csv, folder batch mode, days_back 7→14, TSB source verification; 15 new tests; prior: 2833 as of claude/fix-garmin-data-browser-bugs-npBg6) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
 
 
 ---
