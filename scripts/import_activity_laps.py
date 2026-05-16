@@ -71,7 +71,7 @@ def _parse_lap_time(s: str) -> int:
         if len(parts) == 3:
             return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
     except (ValueError, IndexError):
-        pass
+        return 0  # Malformed time string (non-numeric segment) — safe default
     return 0
 
 
@@ -84,7 +84,7 @@ def _parse_pace(s: str) -> int:
         if len(parts) == 2:
             return int(parts[0]) * 60 + int(parts[1])
     except (ValueError, IndexError):
-        pass
+        return 0  # Unparseable pace value (malformed/non-numeric) — safe default
     return 0
 
 

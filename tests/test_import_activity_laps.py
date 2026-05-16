@@ -19,7 +19,6 @@ from scripts.import_activity_laps import (
     _parse_pace,
     compute_cardiac_drift,
     main,
-    read_laps_from_csv,
 )
 
 # ---------------------------------------------------------------------------
