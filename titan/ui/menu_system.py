@@ -301,18 +301,25 @@ def menu_data_browser(ctx: dict):
 def _browser_activities(ctx: dict):
     _clear()
     _header("Πρόσφατες Δραστηριότητες")
-    activities = ctx.get("recent_activities", [])
+    # Prefer the full training_log from the database (all-time history) so
+    # the browser is not limited to the 7-day sync window.  Fall back to the
+    # in-memory sync buffer only when no database is available.
+    db = ctx.get("db")
+    if db is not None:
+        activities = db.get_recent_activities(limit=90)
+    else:
+        activities = ctx.get("recent_activities", [])
     if not activities:
         print("  ℹ️  Κάνε sync πρώτα (Επιλογή 6 στο κεντρικό μενού).")
     else:
         print(f"  {'Ημερομηνία':<12} {'Τύπος':<10} {'km':>5} {'min':>6} {'HR':>5} {'Pace':>8}")
         _divider()
-        for a in activities[-15:]:
+        for a in activities[:15]:
             pace_s = a.get("avg_pace_sec_per_km", 0)
             pace_str = f"{pace_s//60}:{pace_s%60:02d}" if pace_s else "N/A"
             dur_min = a.get("duration_sec", 0) // 60
             print(f"  {a.get('date',''):<12} "
-                  f"{a.get('activity_type','run'):<10} "
+                  f"{a.get('activity_type', a.get('session_type', 'run')):<10} "
                   f"{a.get('distance_km',0):>5.1f} "
                   f"{dur_min:>6} "
                   f"{a.get('avg_hr',0):>5} "

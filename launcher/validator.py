@@ -125,8 +125,8 @@ def check_data_directory() -> tuple[bool, TitanError | None]:
         return True, None
     except PermissionError:
         return False, ConfigurationError.data_dir_permission(str(data_dir))
-    except Exception as e:
-        return False, SystemError.permission_denied(str(data_dir), 'create', details=str(e))
+    except Exception:
+        return False, SystemError.permission_denied(str(data_dir), 'create')
 
 
 def check_disk_space() -> tuple[bool, TitanError | None]:

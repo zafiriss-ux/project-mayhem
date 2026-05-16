@@ -77,7 +77,7 @@ def test_run_migrations_emits_structured_log_on_column_add(tmp_path, caplog):
             if payload.get("action") == "db_schema_migration":
                 migration_payloads.append(payload)
         except (ValueError, AttributeError):
-            pass
+            pass  # Non-JSON log records are intentionally skipped here
 
     assert migration_payloads, "Expected db_schema_migration JSON log events on first init"
     assert all("version" in p for p in migration_payloads)

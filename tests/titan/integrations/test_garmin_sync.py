@@ -114,8 +114,6 @@ def test_sync_all_payload_supports_dict_access_and_json_serialization():
     assert payload["activities"][0]["date"] == "2026-03-04"
     assert payload["hrv_sync_metrics"]["synced_days"] == 1
 
-    import json
-
     serialized = json.loads(json.dumps(payload))
     assert serialized["weight"][0]["weight"] == 70.2
 

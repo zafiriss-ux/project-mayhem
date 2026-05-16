@@ -67,6 +67,7 @@ def check_imports(return_results=False):
     if return_results:
         return len(errors) == 0, errors
     assert not errors, f"Import check failed: {errors}"
+    return None
 
 def check_instantiation(return_results=False):
     """Test that key classes can be instantiated"""
@@ -98,6 +99,7 @@ def check_instantiation(return_results=False):
     if return_results:
         return len(errors) == 0, errors
     assert not errors, f"Instantiation check failed: {errors}"
+    return None
 
 def check_basic_functionality(return_results=False):
     """Test basic functionality of key classes"""
@@ -155,6 +157,7 @@ def check_basic_functionality(return_results=False):
     if return_results:
         return len(errors) == 0, errors
     assert not errors, f"Functionality check failed: {errors}"
+    return None
 
 def check_threading(return_results=False):
     """Test that classes are thread-aware"""
@@ -195,6 +198,7 @@ def check_threading(return_results=False):
     if return_results:
         return len(errors) == 0, errors
     assert not errors, f"Threading check failed: {errors}"
+    return None
 
 def main():
     print("""

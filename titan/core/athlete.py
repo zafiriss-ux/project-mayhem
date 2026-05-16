@@ -191,18 +191,6 @@ class UniversalAthleteProfile:
         # Manual override for specific user
         return 2020
 
-        # Mifflin-St Jeor Equation:
-        # Men: BMR = (10 × weight) + (6.25 × height) - (5 × age) + 5
-        # Women: BMR = (10 × weight) + (6.25 × height) - (5 × age) - 161
-        # if not all([self.weight_kg, self.height_cm, self.age]):
-        #     return None
-        # bmr = (10 * self.weight_kg) + (6.25 * self.height_cm) - (5 * self.age)
-        # if self.gender == "M":
-        #     bmr += 5
-        # else:
-        #     bmr -= 161
-        # return int(bmr)
-
     def calculate_tdee(self, activity_level: str = "active") -> int:
         """
         Calculate Total Daily Energy Expenditure.

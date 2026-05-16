@@ -157,7 +157,7 @@ def test_gateway_logs_delivery_chain_result(tmp_path, caplog):
             if payload.get("action") == "delivery_success":
                 delivery_events.append(payload)
         except (ValueError, AttributeError):
-            pass
+            pass  # Non-JSON log records are intentionally skipped here
 
     assert delivery_events, "delivery_success event must be logged"
     assert delivery_events[0]["channel"] == "telegram"
