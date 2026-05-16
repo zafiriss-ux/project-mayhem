@@ -2,11 +2,8 @@
 
 import os
 import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 os.environ.setdefault("GARMIN_EMAIL", "test@example.com")
 os.environ.setdefault("GARMIN_PASSWORD", "test")
