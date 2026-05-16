@@ -1973,7 +1973,9 @@ class DatabaseManager:
             cursor.execute("""
                 SELECT date, training_load
                 FROM training_log
-                WHERE athlete_id = ? AND date >= date('now', '-' || ? || ' days')
+                WHERE athlete_id = ?
+                  AND date >= date('now', '-' || ? || ' days')
+                  AND training_load IS NOT NULL
                 ORDER BY date DESC
             """, (athlete_id, lookback_days))
             rows = cursor.fetchall()
@@ -1983,6 +1985,8 @@ class DatabaseManager:
         )
         validated: list[tuple[str, float]] = []
         for date_str, training_load in rows:
+            if training_load is None:
+                continue
             clean = validate_single("training_load", float(training_load), "training_load_history")
             if clean is not None:
                 validated.append((date_str, clean))

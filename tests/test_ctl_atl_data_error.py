@@ -197,3 +197,93 @@ def test_import_csv_produces_nonzero_trimp(tmp_db):
     assert all(load > 0 for load in loads), (
         f"All imported rows should have nonzero training_load; got: {loads}"
     )
+
+
+# ---------------------------------------------------------------------------
+# NULL training_load regression — must not throw TypeError / must return data
+# ---------------------------------------------------------------------------
+
+def test_get_training_load_history_returns_data(tmp_db):
+    """get_training_load_history returns valid rows even when NULL rows exist.
+
+    Root cause: float(None) raised TypeError when a legacy NULL training_load
+    row was encountered, silently swallowed by DailyCoach._hydrate_engines,
+    leaving daily_loads empty → TSBEngine reported INSUFFICIENT DATA.
+    Fix: SQL filter adds AND training_load IS NOT NULL; Python loop guards None.
+    """
+    import sqlite3
+
+    # Insert 10 valid rows via save_session
+    for i in range(1, 11):
+        tmp_db.save_session(
+            date=_recent(i),
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            avg_hr=135,
+            max_hr=150,
+            training_load=55,
+            athlete_id="owner",
+        )
+    # Insert a NULL training_load row directly (simulates legacy/Garmin-imported data)
+    conn = sqlite3.connect(str(tmp_db.db_path))
+    conn.execute(
+        "INSERT INTO training_log "
+        "(athlete_id, date, session_type, distance_km, duration_sec, training_load) "
+        "VALUES ('owner', ?, 'EASY', 8.0, 3200, NULL)",
+        (_recent(11),),
+    )
+    conn.commit()
+    conn.close()
+
+    result = tmp_db.get_training_load_history(60)
+    assert len(result) == 10, (
+        f"Expected 10 non-NULL rows, got {len(result)}"
+    )
+    assert all(r["load"] > 0 if isinstance(r, dict) else r[1] > 0 for r in result), (
+        f"All returned rows must have load > 0; got: {result[:3]}"
+    )
+
+
+def test_tsb_calculates_with_training_log_data(tmp_db):
+    """TSBEngine produces a non-None CTL when training_log has valid rows.
+
+    Verifies the full pipeline: save_session → get_training_load_history →
+    TSBEngine.add_daily_load → calculate_ctl returns a float (not None / INSUFFICIENT DATA).
+    """
+    import sqlite3
+
+    from titan.science.tsb_engine import TSBEngine
+
+    # Insert 10 valid rows and one NULL row
+    for i in range(1, 11):
+        tmp_db.save_session(
+            date=_recent(i),
+            session_type="EASY",
+            distance_km=12.0,
+            duration_sec=4200,
+            avg_hr=138,
+            max_hr=155,
+            training_load=60,
+            athlete_id="owner",
+        )
+    conn = sqlite3.connect(str(tmp_db.db_path))
+    conn.execute(
+        "INSERT INTO training_log "
+        "(athlete_id, date, session_type, distance_km, duration_sec, training_load) "
+        "VALUES ('owner', ?, 'EASY', 5.0, 1800, NULL)",
+        (_recent(12),),
+    )
+    conn.commit()
+    conn.close()
+
+    loads = tmp_db.get_training_load_history(60)
+    assert len(loads) == 10, f"Expected 10 rows, got {len(loads)}"
+
+    tsb = TSBEngine()
+    for date_str, load in reversed(loads):
+        tsb.add_daily_load(date_str, float(load))
+
+    ctl = tsb.calculate_ctl()
+    assert ctl is not None, "CTL must be a float, not None (INSUFFICIENT DATA)"
+    assert ctl > 0, f"CTL must be > 0 with nonzero training loads; got {ctl}"
