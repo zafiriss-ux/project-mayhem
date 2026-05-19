@@ -287,3 +287,70 @@ def test_tsb_calculates_with_training_log_data(tmp_db):
     ctl = tsb.calculate_ctl()
     assert ctl is not None, "CTL must be a float, not None (INSUFFICIENT DATA)"
     assert ctl > 0, f"CTL must be > 0 with nonzero training loads; got {ctl}"
+
+
+# ---------------------------------------------------------------------------
+# training_load > 0 filter: zero-load rows excluded; historical rows included
+# ---------------------------------------------------------------------------
+
+def _date_str(days_ago: int) -> str:
+    return (date.today() - timedelta(days=days_ago)).isoformat()
+
+
+def test_get_training_load_history_returns_188(tmp_db):
+    """get_training_load_history(400) returns all 188 rows with training_load > 0.
+
+    Simulates the production scenario where 188 historical rows span
+    Apr 2025-May 2026 (up to 400 days ago) with training_load=55 each.
+    All must be returned and all loads must be > 0.
+    """
+    conn = sqlite3.connect(str(tmp_db.db_path))
+    for i in range(1, 189):
+        conn.execute(
+            "INSERT INTO training_log "
+            "(athlete_id, date, session_type, distance_km, duration_sec, training_load) "
+            "VALUES ('owner', ?, 'EASY', 10.0, 3600, 55)",
+            (_date_str(i),),
+        )
+    conn.commit()
+    conn.close()
+
+    result = tmp_db.get_training_load_history(400)
+    assert len(result) == 188, (
+        f"Expected 188 rows from 400-day window, got {len(result)}"
+    )
+    assert all(r[1] > 0 for r in result), (
+        f"All returned rows must have training_load > 0; first 3: {result[:3]}"
+    )
+
+
+def test_get_training_load_history_date_window(tmp_db):
+    """Date window filter returns only rows within the requested window.
+
+    Inserts 50 rows in the last 30 days and 50 rows older than 90 days.
+    get_training_load_history(90) must return only the 50 recent rows.
+    """
+    conn = sqlite3.connect(str(tmp_db.db_path))
+    # 50 rows in last 30 days (days 1..50 ago, all within 90-day window)
+    for i in range(1, 51):
+        conn.execute(
+            "INSERT INTO training_log "
+            "(athlete_id, date, session_type, distance_km, duration_sec, training_load) "
+            "VALUES ('owner', ?, 'EASY', 10.0, 3600, 58)",
+            (_date_str(i),),
+        )
+    # 50 rows older than 90 days (days 100..149 ago, outside 90-day window)
+    for i in range(100, 150):
+        conn.execute(
+            "INSERT INTO training_log "
+            "(athlete_id, date, session_type, distance_km, duration_sec, training_load) "
+            "VALUES ('owner', ?, 'EASY', 10.0, 3600, 57)",
+            (_date_str(i),),
+        )
+    conn.commit()
+    conn.close()
+
+    result = tmp_db.get_training_load_history(90)
+    assert len(result) == 50, (
+        f"Expected 50 rows within 90-day window, got {len(result)}"
+    )

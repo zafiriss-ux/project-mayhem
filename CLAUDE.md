@@ -160,7 +160,7 @@ python -m pytest tests/test_science_engines.py
 Test configuration is in `pyproject.toml`. Tests discover all `test_*.py` files in the root directory and `tests/`.
 
 
-> **Historical snapshot:** 2856 tests all green as of claude/fix-ctl-atl-data-GhEz9 branch (CTL/ATL INSUFFICIENT DATA final fix: NULL training_load guard in get_training_load_history; 2 new tests; prior: 2854 as of claude/fix-ctl-atl-data-error-smWNz) (2026-05-16). This is not a live reading — always run the suite to confirm current state.
+> **Historical snapshot:** 2858 tests all green as of claude/fix-training-load-filter-oDQn1 branch (get_training_load_history wrong filter: add training_load > 0, ORDER BY date ASC; 2 new tests; prior: 2856 as of claude/fix-ctl-atl-data-GhEz9) (2026-05-19). This is not a live reading — always run the suite to confirm current state.
 
 
 ---

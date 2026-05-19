@@ -1976,7 +1976,8 @@ class DatabaseManager:
                 WHERE athlete_id = ?
                   AND date >= date('now', '-' || ? || ' days')
                   AND training_load IS NOT NULL
-                ORDER BY date DESC
+                  AND training_load > 0
+                ORDER BY date ASC
             """, (athlete_id, lookback_days))
             rows = cursor.fetchall()
 
@@ -2019,9 +2020,9 @@ class DatabaseManager:
         if not loads:
             return 0.0, 0.0, 0.0
 
-        # Training history query returns newest-first (DESC). EMA must be
-        # applied oldest→newest to reflect how fitness/fatigue evolve over time.
-        chronological_loads = list(reversed(loads))
+        # Training history query returns oldest-first (ASC). EMA is applied
+        # in that same chronological order so fitness/fatigue evolve correctly.
+        chronological_loads = loads
 
         # Calculate CTL (42-day EMA)
         ctl = 0.0
@@ -3014,7 +3015,9 @@ class PostgreSQLDatabaseManager:
                 SELECT date, training_load
                 FROM training_log
                 WHERE date >= %s
-                ORDER BY date DESC
+                  AND training_load IS NOT NULL
+                  AND training_load > 0
+                ORDER BY date ASC
                 """,
                 (start_date,),
             )
@@ -3026,7 +3029,7 @@ class PostgreSQLDatabaseManager:
         if not loads:
             return 0.0, 0.0, 0.0
 
-        chronological_loads = list(reversed(loads))
+        chronological_loads = loads
         ctl = 0.0
         ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
         for _date, load in chronological_loads:
