@@ -335,7 +335,15 @@ class DailyCoach:
         self.nutrition      = nutrition_optimizer
         self.weekly_planner = weekly_planner
         # Database for persistent memory (CTL/ATL/TSB, RHR baselines, etc.)
-        self.db = db or DatabaseManager()
+        # db must always be injected — never create DatabaseManager() inside the pipeline
+        # because the caller controls db_dir and the correct file cannot be inferred here.
+        if db is None:
+            raise TypeError(
+                "DailyCoach requires an explicit db= argument. "
+                "Pass the DatabaseManager instance created by the caller. "
+                "Never instantiate DatabaseManager() inside the pipeline."
+            )
+        self.db = db
         # v5.7: Closed-Loop science engines
         self.autonomic  = autonomic_engine or AutonomicFusionEngine()
         self.cs_tracker = cs_tracker       or CriticalSpeedTracker()

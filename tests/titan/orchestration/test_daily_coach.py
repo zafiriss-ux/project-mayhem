@@ -2646,3 +2646,70 @@ def test_step10_optimal_time_dew_point_above_threshold_pushes_session_window():
     assert "+25s/km" in (payload.get("adjusted_target") or ""), (
         f"adjusted_target must include '+25s/km', got {payload.get('adjusted_target')!r}"
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DB injection: _hydrate_engines_from_db must read from the injected db,
+# never from a freshly created DatabaseManager() with a default path.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_daily_coach_uses_injected_db(tmp_path, monkeypatch):
+    """TSBEngine must be loaded from the injected db, not a default-path DatabaseManager."""
+    from titan.science.tsb_engine import TSBEngine
+
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda *a, **kw: None)
+    monkeypatch.setattr(daily_coach, "get_metrics_under_review", lambda: [])
+
+    db = DatabaseManager(db_name="injection_test.db", db_dir=tmp_path)
+    today = datetime.now()
+    for i in range(30):
+        day = (today - timedelta(days=29 - i)).strftime("%Y-%m-%d")
+        db.save_session(
+            date=day,
+            session_type="EASY",
+            distance_km=10.0,
+            duration_sec=3600,
+            training_load=55,
+            athlete_id="owner",
+        )
+
+    tsb = TSBEngine()
+    stub = SimpleNamespace(
+        hrv_log=[],
+        add_hrv_measurement=lambda *a, **kw: None,
+        check_baseline_drift=lambda **kw: False,
+        add_weight_entry=lambda *a, **kw: None,
+        add_hrr=lambda *a, **kw: None,
+        sync_all=lambda: {},
+        athlete_max_hr=0,
+        send_alert=lambda **kw: None,
+    )
+    cs = SimpleNamespace(update=lambda *a, **kw: None, confidence=0.0, archetype="unknown")
+    ot = SimpleNamespace(record_decision=lambda **kw: None)
+
+    coach = DailyCoach(
+        garmin_sync=stub,
+        weather_api=stub,
+        telegram_bot=stub,
+        hrv_engine=stub,
+        tsb_engine=tsb,
+        readiness_engine=stub,
+        optimal_time_calc=stub,
+        nutrition_optimizer=stub,
+        weekly_planner=stub,
+        db=db,
+        autonomic_engine=stub,
+        cs_tracker=cs,
+        glycogen_accum=stub,
+        governance=stub,
+        fatigue_engine=stub,
+        apl=stub,
+        volume_load_gauge=stub,
+        outcome_tracker=ot,
+    )
+
+    assert len(tsb.daily_loads) == 30, (
+        f"TSBEngine loaded {len(tsb.daily_loads)} entries from injected db; expected 30"
+    )
+    assert coach._startup_hydration_confidence.get("load") is True
+    db.close()
