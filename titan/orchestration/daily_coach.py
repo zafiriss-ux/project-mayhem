@@ -1572,7 +1572,7 @@ class DailyCoach:
         try:
             loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
             self.tsb.daily_loads.clear()
-            for date_str, load in reversed(loads):  # oldest-first for correct EMA
+            for date_str, load in loads:
                 self.tsb.add_daily_load(date_str, float(load))
             _daily_coach_event("load_engines_refreshed", sessions=len(loads))
         except Exception as e:
@@ -1659,8 +1659,7 @@ class DailyCoach:
         try:
             loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
             self.tsb.daily_loads.clear()
-            # DB returns DESC; add oldest-first so EMA builds chronologically
-            for date_str, load in reversed(loads):
+            for date_str, load in loads:
                 self.tsb.add_daily_load(date_str, float(load))
             confidence["load"] = bool(loads)
             _daily_coach_event("training_load_hydrated", sessions=len(loads))
