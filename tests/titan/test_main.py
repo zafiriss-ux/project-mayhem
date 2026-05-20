@@ -107,6 +107,9 @@ class _DummyDatabase:
     def close(self):
         self.closed = True
 
+    def get_training_load_history(self, days=42):
+        return []
+
 
 class _DummyTitanContextContract:
     def __init__(self, **payload):
