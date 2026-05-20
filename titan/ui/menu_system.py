@@ -425,23 +425,35 @@ def _browser_weight(ctx: dict):
 def _browser_tsb(ctx: dict):
     _clear()
     _header("Training Stress Balance (CTL / ATL / TSB)")
-    tsb_eng = ctx.get("tsb_engine")
+    # Prefer the engine owned by DailyCoach (authoritative post-hydration reference).
+    # Fall back to ctx["tsb_engine"] for call-sites that don't include daily_coach
+    # (e.g. unit tests, standalone invocations).
+    daily_coach = ctx.get("daily_coach")
+    tsb_eng = (
+        getattr(daily_coach, "tsb", None)
+        if daily_coach is not None
+        else ctx.get("tsb_engine")
+    ) or ctx.get("tsb_engine")
     if not tsb_eng:
         print("  ⚠️  TSB engine not available.")
     else:
         ctl = tsb_eng.calculate_ctl()
         atl = tsb_eng.calculate_atl()
         tsb, status = tsb_eng.calculate_tsb()
-        print(f"\n  💪 CTL (Fitness, 42d):  {ctl}")
-        print(f"  😓 ATL (Fatigue,  7d):  {atl}")
-        print(f"  🎯 TSB (Form):          {tsb}  →  {status}")
-        _divider()
-        print("\n  Οδηγός:")
-        print("    TSB > +15        ⚠️  Αποπροπόνηση")
-        print("    +5 έως +15       ✅  Φρέσκος")
-        print("    -10 έως +5       🎯  Race form")
-        print("    -30 έως -10      💪  Παραγωγικό overload")
-        print("    < -30            ⚠️  Κίνδυνος overreach")
+        if ctl is None:
+            print("\n  ℹ️  Ανεπαρκή δεδομένα προπόνησης.")
+            print("     Κάνε Garmin sync (επιλογή 6) για να φορτωθεί ιστορικό.")
+        else:
+            print(f"\n  💪 CTL (Fitness, 42d):  {ctl}")
+            print(f"  😓 ATL (Fatigue,  7d):  {atl}")
+            print(f"  🎯 TSB (Form):          {tsb}  →  {status}")
+            _divider()
+            print("\n  Οδηγός:")
+            print("    TSB > +15        ⚠️  Αποπροπόνηση")
+            print("    +5 έως +15       ✅  Φρέσκος")
+            print("    -10 έως +5       🎯  Race form")
+            print("    -30 έως -10      💪  Παραγωγικό overload")
+            print("    < -30            ⚠️  Κίνδυνος overreach")
     _divider()
     input("  [Enter] ")
 
