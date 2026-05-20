@@ -473,6 +473,12 @@ def main():
         athlete_max_hr=athlete_profile.max_hr or 0,
     )
 
+    # _hydrate_engines_from_db runs at DailyCoach init but tsb_engine must be
+    # populated before the menu system reads it; hydrate explicitly here.
+    _tsb_loads = db.get_training_load_history(days=42)
+    for _d, _l in _tsb_loads:
+        tsb_engine.add_daily_load(_d, float(_l))
+
     # ── Step 7: Build context dict (passed to menu system & callbacks) ─────────
 
     titan_ctx: TitanContext = TitanContextContract(
