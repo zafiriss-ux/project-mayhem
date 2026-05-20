@@ -1258,8 +1258,8 @@ def test_feed_load_engines_rehydrates_tsb_in_oldest_first_order(monkeypatch):
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(
         get_training_load_history=lambda days=42: [
-            ("2026-03-04", 80.0),
             ("2026-03-03", 70.0),
+            ("2026-03-04", 80.0),
         ]
     )
     coach.tsb = SimpleNamespace(
@@ -2713,3 +2713,27 @@ def test_daily_coach_uses_injected_db(tmp_path, monkeypatch):
     )
     assert coach._startup_hydration_confidence.get("load") is True
     db.close()
+
+
+def test_tsb_loads_in_asc_order(monkeypatch):
+    from titan.science.tsb_engine import TSBEngine
+
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda *_a, **_k: None)
+
+    base = datetime(2026, 5, 11).date()
+    loads_asc = [
+        ((base + timedelta(days=i)).isoformat(), float((i + 1) * 10))
+        for i in range(10)
+    ]
+
+    tsb = TSBEngine()
+    coach = _make_hydration_coach(_HydrationDB(load=loads_asc))
+    coach.tsb = tsb
+
+    coach._hydrate_engines_from_db()
+
+    assert tsb.daily_loads[0] == (loads_asc[0][0], 10.0), (
+        f"oldest entry expected first; got {tsb.daily_loads[0]}"
+    )
+    ctl = tsb.calculate_ctl()
+    assert ctl is not None, "CTL must be non-None after hydration with valid loads"
