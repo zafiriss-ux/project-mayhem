@@ -128,6 +128,37 @@ def test_browser_tsb_without_engine_shows_warning(monkeypatch, capsys):
     assert "TSB engine not available" in capsys.readouterr().out
 
 
+def test_browser_tsb_shows_ctl_after_hydration(monkeypatch, capsys):
+    """_browser_tsb must display numeric CTL/ATL/TSB when daily_loads is populated.
+
+    Regression for: "TSB shows None despite loaded daily_loads".
+    ctx["tsb_engine"] must resolve to the same TSBEngine that DailyCoach
+    hydrates; when it does the output must contain a number, not the string
+    "None" or "INSUFFICIENT DATA".
+    """
+    from titan.science.tsb_engine import TSBEngine
+
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    tsb = TSBEngine()
+    for i in range(15):
+        tsb.add_daily_load(f"2026-04-{i + 1:02d}", float(50 + i * 3))
+
+    ctx = {"tsb_engine": tsb}
+    menu_system._browser_tsb(ctx)
+
+    out = capsys.readouterr().out
+    assert "None" not in out
+    assert "INSUFFICIENT DATA" not in out
+    assert "CTL" in out
+    # Verify a numeric value is present (not just the label line)
+    import re
+    assert re.search(r"\d+\.\d", out), f"Expected a decimal number in output, got: {out!r}"
+
+
 def test_menu_shoe_selector_handles_missing_manager_and_unknown_session(monkeypatch, capsys):
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
     monkeypatch.setattr(menu_system, "_header", lambda title="": None)
