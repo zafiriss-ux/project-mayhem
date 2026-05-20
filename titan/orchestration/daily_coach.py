@@ -1576,6 +1576,7 @@ class DailyCoach:
                 self.tsb.add_daily_load(date_str, float(load))
             _daily_coach_event("load_engines_refreshed", sessions=len(loads))
         except Exception as e:
+            _log.exception("load_engines refresh failed: %s", e)
             _daily_coach_event(
                 "load_engines_refresh_failed",
                 error_class=type(e).__name__,
@@ -1664,6 +1665,7 @@ class DailyCoach:
             confidence["load"] = bool(loads)
             _daily_coach_event("training_load_hydrated", sessions=len(loads))
         except Exception as e:
+            _log.exception("TSB hydration failed: %s", e)
             _daily_coach_event(
                 "tsb_hydration_failed",
                 error_class=type(e).__name__,
