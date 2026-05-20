@@ -5349,6 +5349,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 
 | ID | Finding | Priority |
 |---|---|---|
+| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified: `get_training_load_history(42)` returns 15 rows, hydration code correct, no exceptions raised. Root cause: unknown state mutation between hydration in `titan/main.py` and UI render in `menu_system.py`. Added: 2026-05-20. | HIGH |
 | TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 17) |
 | TD-04 | DailyCoach god-orchestrator | HIGH |
 | TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
