@@ -45,7 +45,7 @@ def test_parse_int_normal():
 
 
 def test_parse_int_comma_decimal():
-    assert _parse_int("21,8") == 21
+    assert _parse_int("21,8") == 22
 
 
 def test_parse_int_empty():
