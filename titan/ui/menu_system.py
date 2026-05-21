@@ -315,8 +315,13 @@ def _browser_activities(ctx: dict):
         print(f"  {'Ημερομηνία':<12} {'Τύπος':<10} {'km':>5} {'min':>6} {'HR':>5} {'Pace':>8}")
         _divider()
         for a in activities[:15]:
-            pace_s = a.get("avg_pace_sec_per_km", 0)
-            pace_str = f"{pace_s//60}:{pace_s%60:02d}" if pace_s else "N/A"
+            pace_sec = int(a.get("avg_pace_sec_per_km") or 0)
+            if pace_sec > 0:
+                mins = pace_sec // 60
+                secs = pace_sec % 60
+                pace_str = f"{mins}:{secs:02d}/km"
+            else:
+                pace_str = "N/A"
             dur_min = a.get("duration_sec", 0) // 60
             print(f"  {a.get('date',''):<12} "
                   f"{a.get('activity_type', a.get('session_type', 'run')):<10} "
@@ -605,7 +610,8 @@ def menu_weight_trend(ctx: dict):
 def menu_analytics(ctx: dict):
     _clear()
     _header("Performance Analytics")
-    activities = ctx.get("recent_activities", [])
+    db = ctx.get("db")
+    activities = db.get_recent_activities(limit=6) if db is not None else ctx.get("recent_activities", [])
     if not activities:
         print("  ℹ️  Δεν υπάρχουν δεδομένα. Κάνε Garmin sync πρώτα.")
     else:
@@ -618,7 +624,6 @@ def menu_analytics(ctx: dict):
 
         # ACWR check — read from DB so it works even without a live Garmin sync
         acwr_eng = ctx.get("acwr_engine")
-        db = ctx.get("db")
         if acwr_eng and db is not None:
             from datetime import timedelta
             today = datetime.now(UTC).date()
