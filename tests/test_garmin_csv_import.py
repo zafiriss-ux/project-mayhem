@@ -52,11 +52,18 @@ def test_parse_hr_missing():
 
 
 def test_parse_hr_decimal():
-    assert parse_hr("21,8") == 21
-    assert parse_hr("59,5") == 59
+    assert parse_hr("21,8") == 22
+    assert parse_hr("59,5") == 60
     assert parse_hr("--") == 0
     assert parse_hr("") == 0
     assert parse_hr("144") == 144
+
+
+def test_parse_hr_handles_locale_decimal():
+    assert parse_hr("21,8") == 22
+    assert parse_hr("144") == 144
+    assert parse_hr("59,5") == 60
+    assert parse_hr(None) == 0
 
 
 def test_infer_session_type_long_run():

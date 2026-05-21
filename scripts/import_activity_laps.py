@@ -65,7 +65,7 @@ def _parse_int(s: str) -> int:
     if not s or s == "--":
         return 0
     try:
-        return int(float(s.replace(",", ".")))
+        return round(float(str(s).replace(",", ".")))
     except (ValueError, AttributeError):
         return 0  # Unparseable field value (e.g. non-numeric text) — safe default
 

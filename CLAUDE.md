@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2870 tests all green
+**Historical snapshot:** 2873 tests all green
 
 Update this number after every commit that adds or removes tests:
 
@@ -140,7 +140,7 @@ Migrations: `titan/core/database.py` (`_apply_v*_migrations` methods).
    pass the injected `db=` argument. Never call `DatabaseManager()` inside the pipeline.
 2. **Column name**: `training_load` (not `trimp`) in `training_log`.
 3. **`get_training_load_history()` default window**: 400 days (after PR #702, `CTL_DECAY_DAYS`).
-4. **`parse_hr()` locale safety**: uses `int(float(s))` for locale-formatted decimals.
+4. **`parse_hr()` locale safety**: uses `round(float(str(s).replace(",", ".")))` — handles locale decimal separators and rounds to nearest integer.
 5. **Telegram 409 error**: two bot instances running simultaneously. Kill all python
    processes and restart.
 6. **Default db_name is `titan_core.db`**: Scripts must NOT pass `db_name='titan.db'`
