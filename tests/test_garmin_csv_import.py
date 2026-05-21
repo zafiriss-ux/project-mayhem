@@ -115,3 +115,11 @@ def test_synthetic_garmin_id_unique():
 def test_synthetic_garmin_id_prefix():
     sid = _synthetic_garmin_id("2024-01-15", 16.1, 4660)
     assert sid.startswith("csv_")
+
+
+def test_parse_duration_locale_decimal():
+    # Garmin Greek locale: seconds arrive as '21,8' — must not raise
+    assert parse_duration("0:21,8") == 22       # round(21.8) = 22
+    assert parse_duration("1:04:21,8") == 3862  # 3600 + 240 + round(21.8)
+    assert parse_duration("45:30") == 2730       # plain integers still work
+    assert parse_duration("1:00:00") == 3600
