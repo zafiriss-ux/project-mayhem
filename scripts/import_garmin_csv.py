@@ -111,7 +111,7 @@ def main() -> None:
 
     db_path = os.environ.get(
         "DATABASE_PATH",
-        str(Path.home() / "Documents" / "TITAN" / "titan.db"),
+        str(Path.home() / "Documents" / "TITAN" / "titan_core.db"),
     )
 
     db = DatabaseManager(db_path)

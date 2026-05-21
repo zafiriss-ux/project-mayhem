@@ -143,3 +143,6 @@ Migrations: `titan/core/database.py` (`_apply_v*_migrations` methods).
 4. **`parse_hr()` locale safety**: uses `int(float(s))` for locale-formatted decimals.
 5. **Telegram 409 error**: two bot instances running simultaneously. Kill all python
    processes and restart.
+6. **Default db_name is `titan_core.db`**: Scripts must NOT pass `db_name='titan.db'`
+   explicitly. `titan.db` at `~/Documents/TITAN` is a stale file from a previous
+   session — do not use it.
