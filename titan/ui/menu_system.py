@@ -616,12 +616,24 @@ def menu_analytics(ctx: dict):
         print(f"    Σύνολο km:   {total_km:.1f}")
         print(f"    Μέσος HR:    {avg_hr:.0f} bpm")
 
-        # ACWR check
+        # ACWR check — time-based 7d/28d windows (Banister standard)
         acwr_eng = ctx.get("acwr_engine")
         if acwr_eng and total_runs >= 3:
-            recent_7d = sum(a.get("distance_km", 0) for a in activities[-7:])
-            chronic_avg = total_km / max(len(activities), 1)
-            acwr, status, rec = acwr_eng.calculate_acwr(recent_7d, chronic_avg)
+            from datetime import timedelta
+            today = datetime.now(UTC).date()
+            cutoff_7d = (today - timedelta(days=7)).isoformat()
+            cutoff_28d = (today - timedelta(days=28)).isoformat()
+            acute_7d = sum(
+                a.get("training_load", 0)
+                for a in activities
+                if a.get("date", "") >= cutoff_7d
+            )
+            chronic_daily_avg = sum(
+                a.get("training_load", 0)
+                for a in activities
+                if a.get("date", "") >= cutoff_28d
+            ) / 28
+            acwr, status, rec = acwr_eng.calculate_acwr(acute_7d, chronic_daily_avg)
             print(f"\n  ⚖️  ACWR: {acwr}  →  {status}")
             print(f"    {rec}")
     _divider()

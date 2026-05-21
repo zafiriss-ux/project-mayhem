@@ -150,6 +150,7 @@ def main() -> None:
                     inserted += 1
                     continue
 
+                pace_sec = int(duration / distance) if distance > 0 else None
                 db.save_session(
                     date=date_str,
                     session_type=session_type,
@@ -161,6 +162,7 @@ def main() -> None:
                     athlete_id="owner",
                     garmin_activity_id=synthetic_id,
                     notes=f"Imported from CSV: {title}",
+                    avg_pace_sec_per_km=pace_sec,
                 )
                 inserted += 1
 

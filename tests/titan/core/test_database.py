@@ -902,9 +902,9 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
 
 
 def test_schema_version_is_11():
-    """SCHEMA_VERSION must be 18 after athlete_id backfill migration (CTL/ATL fix)."""
+    """SCHEMA_VERSION must be 19 after avg_pace_sec_per_km migration."""
     from titan.core.database import SCHEMA_VERSION
-    assert SCHEMA_VERSION == 18
+    assert SCHEMA_VERSION == 19
 
 
 def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
@@ -981,7 +981,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
         assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
         version = cursor.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 18  # SCHEMA_VERSION bumped to 18 by athlete_id backfill (CTL/ATL fix)
+        assert version == 19  # SCHEMA_VERSION bumped to 19 by avg_pace_sec_per_km addition
     finally:
         db.close()
 
