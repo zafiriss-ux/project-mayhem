@@ -762,6 +762,8 @@ class DatabaseManager:
                 })
             )
 
+        self._apply_v19_pace_backfill(cursor)
+
         # Suppress unused-variable warning for _migrations (kept as documentation).
         _ = _migrations
 
@@ -1222,6 +1224,16 @@ class DatabaseManager:
         except sqlite3.OperationalError as exc:
             if "duplicate column name" not in str(exc).lower():
                 raise
+
+    def _apply_v19_pace_backfill(self, cursor) -> None:
+        """Backfill avg_pace_sec_per_km for rows with valid distance/duration but NULL pace."""
+        cursor.execute("""
+            UPDATE training_log
+            SET avg_pace_sec_per_km = ROUND(duration_sec / distance_km)
+            WHERE avg_pace_sec_per_km IS NULL
+              AND distance_km > 0.1
+              AND duration_sec > 0
+        """)
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 

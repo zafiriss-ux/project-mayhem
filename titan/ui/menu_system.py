@@ -616,26 +616,23 @@ def menu_analytics(ctx: dict):
         print(f"    Σύνολο km:   {total_km:.1f}")
         print(f"    Μέσος HR:    {avg_hr:.0f} bpm")
 
-        # ACWR check — time-based 7d/28d windows (Banister standard)
+        # ACWR check — read from DB so it works even without a live Garmin sync
         acwr_eng = ctx.get("acwr_engine")
-        if acwr_eng and total_runs >= 3:
+        db = ctx.get("db")
+        if acwr_eng and db is not None:
             from datetime import timedelta
             today = datetime.now(UTC).date()
             cutoff_7d = (today - timedelta(days=7)).isoformat()
-            cutoff_28d = (today - timedelta(days=28)).isoformat()
-            acute_7d = sum(
-                a.get("training_load", 0)
-                for a in activities
-                if a.get("date", "") >= cutoff_7d
-            )
-            chronic_daily_avg = sum(
-                a.get("training_load", 0)
-                for a in activities
-                if a.get("date", "") >= cutoff_28d
-            ) / 28
-            acwr, status, rec = acwr_eng.calculate_acwr(acute_7d, chronic_daily_avg)
-            print(f"\n  ⚖️  ACWR: {acwr}  →  {status}")
-            print(f"    {rec}")
+            load_rows = db.get_training_load_history(days=28)
+            if len(load_rows) < 14:
+                print("\n  ⚖️  ACWR: —  →  INSUFFICIENT DATA")
+                print("    Need at least 14 training days in the last 28d")
+            else:
+                acute_7d = sum(load for date, load in load_rows if date >= cutoff_7d)
+                chronic_daily_avg = sum(load for _, load in load_rows) / 28
+                acwr, status, rec = acwr_eng.calculate_acwr(acute_7d, chronic_daily_avg)
+                print(f"\n  ⚖️  ACWR: {acwr}  →  {status}")
+                print(f"    {rec}")
     _divider()
     input("  [Enter] ")
 
