@@ -37,17 +37,22 @@ def parse_distance(s: str) -> float:
     return float(s.replace(",", "."))
 
 
+def _parse_int_part(s: str) -> int:
+    """'21,8' → 22; '08' → 8 — handles Garmin locale comma decimals."""
+    return round(float(str(s).replace(",", ".")))
+
+
 def parse_duration(s: str) -> int:
-    """'01:17:40' → 4660 seconds"""
+    """'01:17:40' → 4660 seconds; handles locale decimal seconds like '21,8'."""
     if not s or s == "--":
         return 0
     parts = s.split(":")
     if len(parts) == 3:
         h, m, sec = parts
-        return int(h) * 3600 + int(m) * 60 + int(sec)
+        return _parse_int_part(h) * 3600 + _parse_int_part(m) * 60 + _parse_int_part(sec)
     if len(parts) == 2:
         m, sec = parts
-        return int(m) * 60 + int(sec)
+        return _parse_int_part(m) * 60 + _parse_int_part(sec)
     return 0
 
 
