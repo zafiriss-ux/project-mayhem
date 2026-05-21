@@ -1403,6 +1403,7 @@ class DailyCoach:
                             notes             = act.get('name', ''),
                             garmin_activity_id= act.get('activity_id'),
                             quality_flag      = activity_quality_flag,
+                            avg_pace_sec_per_km= _safe_int(act.get('avg_pace_sec_per_km')) or None,
                         )
                         _daily_coach_event(
                             "activity_persist",

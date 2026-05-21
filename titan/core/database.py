@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 18
+SCHEMA_VERSION = 19
 
 
 class DatabaseManager:
@@ -531,6 +531,11 @@ class DatabaseManager:
                 "backfill athlete_id='default'→'owner' (v8 migration DEFAULT mismatch fix)",
                 None,  # DML — see _apply_v18_migrations() below
             ),
+            19: (
+                "training_log",
+                "avg_pace_sec_per_km column for pace storage and display",
+                None,  # DDL — see _apply_v19_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -741,6 +746,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 18,
                     "rows_backfilled": "training_log athlete_id 'default'→'owner'",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
+        if current_version < 19:
+            self._apply_v19_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 19,
+                    "columns_added": "training_log.avg_pace_sec_per_km",
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
@@ -1195,6 +1212,16 @@ class DatabaseManager:
         cursor.execute(
             "UPDATE training_log SET athlete_id = 'owner' WHERE athlete_id = 'default'"
         )
+
+    def _apply_v19_migrations(self, cursor) -> None:
+        """Version 19: add avg_pace_sec_per_km to training_log."""
+        try:
+            cursor.execute(
+                "ALTER TABLE training_log ADD COLUMN avg_pace_sec_per_km REAL"
+            )
+        except sqlite3.OperationalError as exc:
+            if "duplicate column name" not in str(exc).lower():
+                raise
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 
@@ -1849,6 +1876,7 @@ class DatabaseManager:
         quality_flag: str | None = None,
         training_load: int | None = None,
         athlete_id: str = "owner",
+        avg_pace_sec_per_km: float | None = None,
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
@@ -1896,11 +1924,11 @@ class DatabaseManager:
                 INSERT OR IGNORE INTO training_log
                 (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
-                 quality_flag)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 quality_flag, avg_pace_sec_per_km)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
                   training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
-                  quality_flag))
+                  quality_flag, avg_pace_sec_per_km))
             if cursor.rowcount == 1 and shoe_id and distance_km:
                 cursor.execute("""
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
@@ -1931,7 +1959,7 @@ class DatabaseManager:
             cursor.execute(
                 """
                 SELECT date, session_type, distance_km, duration_sec,
-                       avg_hr, training_load
+                       avg_hr, training_load, avg_pace_sec_per_km
                 FROM training_log
                 WHERE athlete_id = ?
                 ORDER BY date DESC
@@ -1948,6 +1976,7 @@ class DatabaseManager:
                 "duration_sec": r[3] or 0,
                 "avg_hr": r[4] or 0,
                 "training_load": r[5] or 0,
+                "avg_pace_sec_per_km": r[6] or 0,
             }
             for r in rows
         ]

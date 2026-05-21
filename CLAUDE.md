@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2861 tests all green
+**Historical snapshot:** 2870 tests all green
 
 Update this number after every commit that adds or removes tests:
 
@@ -129,7 +129,7 @@ python3 -m pytest -q
 
 ## Schema
 
-Current SCHEMA_VERSION 18
+Current SCHEMA_VERSION 19
 
 Migrations: `titan/core/database.py` (`_apply_v*_migrations` methods).
 `athlete_id` must always be `'owner'` for single-athlete deployments.

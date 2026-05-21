@@ -100,6 +100,7 @@ TRAINING_LOG_COLUMNS = {
     "notes",
     "garmin_activity_id", # migration v1
     "quality_flag",       # migration v3
+    "avg_pace_sec_per_km",  # migration v19 — pace storage for display
 }
 
 GEAR_USAGE_COLUMNS = {
@@ -204,11 +205,11 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
 
 
 def test_schema_version_is_thirteen(test_db_conn) -> None:
-    """PRAGMA user_version must equal 18 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 18, (
-        f"Expected SCHEMA_VERSION=18 in database.py, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 19 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 19, (
+        f"Expected SCHEMA_VERSION=19 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 18, (
-        f"PRAGMA user_version must be 18 after create_tables(), got {version}"
+    assert version == 19, (
+        f"PRAGMA user_version must be 19 after create_tables(), got {version}"
     )

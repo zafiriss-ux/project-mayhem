@@ -371,10 +371,10 @@ class WeeklyPlanGenerator:
             for day in structure:
                 if day["session_type"] in ["INTERVALS", "HAMMER"]:
                     day["session_type"] = "TEMPO"
-                    day["details"] += " (downgraded from intervals due to HRV)"
+                    day["details"] = "Steady tempo run @ LT (downgraded from intervals due to HRV)"
                 elif day["session_type"] == "TEMPO":
                     day["session_type"] = "EASY"
-                    day["details"] += " (downgraded due to HRV)"
+                    day["details"] = "Easy aerobic run (downgraded due to HRV)"
 
         return structure
 
