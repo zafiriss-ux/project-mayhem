@@ -10,6 +10,7 @@ import sqlite3
 import threading
 from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
+from datetime import date as _date_cls
 from pathlib import Path
 from typing import Any
 
@@ -2122,12 +2123,13 @@ class DatabaseManager:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute("""
-                SELECT date, training_load
+                SELECT date, SUM(training_load) as training_load
                 FROM training_log
                 WHERE athlete_id = ?
-                  AND date >= date('now', '-' || ? || ' days')
                   AND training_load IS NOT NULL
                   AND training_load > 0
+                  AND date >= date('now', '-' || ? || ' days')
+                GROUP BY date
                 ORDER BY date ASC
             """, (athlete_id, lookback_days))
             rows = cursor.fetchall()
@@ -2182,12 +2184,14 @@ class DatabaseManager:
         for _date, load in chronological_loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
-        # Calculate ATL (7-day EMA, recent 7 entries)
-        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
+        # Calculate ATL (7-day EMA) using a date window, not item count,
+        # so sparse training weeks don't shift the window incorrectly.
+        _atl_cutoff = (_date_cls.today() - timedelta(days=ATL_DECAY_DAYS)).isoformat()
+        recent_loads = [(d, ld) for d, ld in chronological_loads if d >= _atl_cutoff]
         atl = 0.0
         atl_decay = 2 / (ATL_DECAY_DAYS + 1)
 
-        for load in recent_loads:
+        for _d, load in recent_loads:
             atl = (load * atl_decay) + (atl * (1 - atl_decay))
 
         # Calculate TSB
@@ -3172,11 +3176,12 @@ class PostgreSQLDatabaseManager:
         with self._conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT date, training_load
+                SELECT date, SUM(training_load) as training_load
                 FROM training_log
                 WHERE date >= %s
                   AND training_load IS NOT NULL
                   AND training_load > 0
+                GROUP BY date
                 ORDER BY date ASC
                 """,
                 (start_date,),
@@ -3195,10 +3200,11 @@ class PostgreSQLDatabaseManager:
         for _date, load in chronological_loads:
             ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
 
-        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
+        _atl_cutoff = (_date_cls.today() - timedelta(days=ATL_DECAY_DAYS)).isoformat()
+        recent_loads = [(d, ld) for d, ld in chronological_loads if d >= _atl_cutoff]
         atl = 0.0
         atl_decay = 2 / (ATL_DECAY_DAYS + 1)
-        for load in recent_loads:
+        for _d, load in recent_loads:
             atl = (load * atl_decay) + (atl * (1 - atl_decay))
 
         return round(ctl, 1), round(atl, 1), round(ctl - atl, 1)
