@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 
 
 class DatabaseManager:
@@ -541,6 +541,11 @@ class DatabaseManager:
                 "biological_sex, menstrual_tracking columns for sex-aware energy calculations",
                 None,  # DDL — see _apply_v20_migrations() below
             ),
+            21: (
+                "nutrition_preferences",
+                "Nutrition personalization preferences per athlete (ADR-0056)",
+                None,  # DDL — see _apply_v21_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -775,6 +780,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 20,
                     "columns_added": "athletes.biological_sex, athletes.menstrual_tracking",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
+        if current_version < 21:
+            self._apply_v21_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 21,
+                    "table_added": "nutrition_preferences",
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
@@ -1263,6 +1280,70 @@ class DatabaseManager:
             except sqlite3.OperationalError as exc:
                 if "duplicate column name" not in str(exc).lower():
                     raise
+
+    def _apply_v21_migrations(self, cursor) -> None:
+        """Version 21: nutrition_preferences table (ADR-0056)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS nutrition_preferences (
+                athlete_id          TEXT PRIMARY KEY,
+                training_time       TEXT NOT NULL DEFAULT 'variable',
+                fasted_training     TEXT NOT NULL DEFAULT 'easy_only',
+                dietary_style       TEXT NOT NULL DEFAULT 'standard',
+                meal_frequency      INTEGER NOT NULL DEFAULT 3,
+                biological_sex      TEXT NOT NULL DEFAULT 'male',
+                menstrual_tracking  TEXT NOT NULL DEFAULT 'no',
+                updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        """)
+
+    def get_nutrition_preferences(self, athlete_id: str = 'owner') -> dict | None:
+        """Return nutrition preferences for athlete_id, or None if not set."""
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute(
+                'SELECT * FROM nutrition_preferences WHERE athlete_id = ?',
+                (athlete_id,)
+            )
+            row = c.fetchone()
+            if not row:
+                return None
+            cols = [d[0] for d in c.description]
+            return dict(zip(cols, row, strict=True))
+
+    def save_nutrition_preferences(
+        self, athlete_id: str = 'owner', prefs: dict = None
+    ) -> None:
+        """Upsert nutrition preferences for athlete_id."""
+        if not prefs:
+            return
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute('''
+                INSERT INTO nutrition_preferences (
+                    athlete_id, training_time, fasted_training,
+                    dietary_style, meal_frequency, biological_sex,
+                    menstrual_tracking, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                ON CONFLICT(athlete_id) DO UPDATE SET
+                    training_time=excluded.training_time,
+                    fasted_training=excluded.fasted_training,
+                    dietary_style=excluded.dietary_style,
+                    meal_frequency=excluded.meal_frequency,
+                    biological_sex=excluded.biological_sex,
+                    menstrual_tracking=excluded.menstrual_tracking,
+                    updated_at=excluded.updated_at
+            ''', (
+                athlete_id,
+                prefs.get('training_time', 'variable'),
+                prefs.get('fasted_training', 'easy_only'),
+                prefs.get('dietary_style', 'standard'),
+                prefs.get('meal_frequency', 3),
+                prefs.get('biological_sex', 'male'),
+                prefs.get('menstrual_tracking', 'no'),
+            ))
+            self.conn.commit()
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 

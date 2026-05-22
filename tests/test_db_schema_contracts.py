@@ -130,6 +130,8 @@ ATHLETES_COLUMNS = {
     "is_cold_start",
     "cold_start_ends_at",
     "cold_start_sessions_count",
+    "biological_sex",      # v20
+    "menstrual_tracking",  # v20
 }
 
 MODEL_CALIBRATION_METADATA_COLUMNS = {
@@ -206,10 +208,10 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
 
 def test_schema_version_is_thirteen(test_db_conn) -> None:
     """PRAGMA user_version must equal 19 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 19, (
-        f"Expected SCHEMA_VERSION=19 in database.py, got {SCHEMA_VERSION}"
+    assert SCHEMA_VERSION == 21, (
+        f"Expected SCHEMA_VERSION=21 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 19, (
+    assert version == 21, (
         f"PRAGMA user_version must be 19 after create_tables(), got {version}"
     )
