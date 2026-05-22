@@ -206,6 +206,45 @@ def test_backup_idempotent_same_day(tmp_path):
         db.close()
 
 
+def test_apply_v20_migrations_adds_columns_to_athletes(tmp_path):
+    """Version 20 adds biological_sex and menstrual_tracking to athletes table."""
+    db = DatabaseManager(db_name="v20_test.db", db_dir=tmp_path)
+    try:
+        cursor = db.conn.cursor()
+        cursor.execute("PRAGMA table_info(athletes)")
+        columns = {row[1] for row in cursor.fetchall()}
+        assert "biological_sex" in columns
+        assert "menstrual_tracking" in columns
+    finally:
+        db.close()
+
+
+def test_apply_v20_migrations_defaults(tmp_path):
+    """biological_sex defaults to 'male' and menstrual_tracking to 'no' for seeded owner row."""
+    db = DatabaseManager(db_name="v20_defaults.db", db_dir=tmp_path)
+    try:
+        cursor = db.conn.cursor()
+        cursor.execute(
+            "SELECT biological_sex, menstrual_tracking FROM athletes WHERE athlete_id='owner'"
+        )
+        row = cursor.fetchone()
+        assert row is not None
+        assert row[0] == "male"
+        assert row[1] == "no"
+    finally:
+        db.close()
+
+
+def test_apply_v20_migrations_idempotent(tmp_path):
+    """Running _apply_v20_migrations() twice must not raise."""
+    db = DatabaseManager(db_name="v20_idempotent.db", db_dir=tmp_path)
+    try:
+        cursor = db.conn.cursor()
+        db._apply_v20_migrations(cursor)  # second call — columns already exist
+    finally:
+        db.close()
+
+
 def test_backup_prunes_old_files(tmp_path):
     """backup_database() with keep=3 must remove files beyond the 3 most recent."""
     from pathlib import Path

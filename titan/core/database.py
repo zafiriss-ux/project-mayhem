@@ -93,7 +93,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 19
+SCHEMA_VERSION = 20
 
 
 class DatabaseManager:
@@ -536,6 +536,11 @@ class DatabaseManager:
                 "avg_pace_sec_per_km column for pace storage and display",
                 None,  # DDL — see _apply_v19_migrations() below
             ),
+            20: (
+                "athletes",
+                "biological_sex, menstrual_tracking columns for sex-aware energy calculations",
+                None,  # DDL — see _apply_v20_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -758,6 +763,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 19,
                     "columns_added": "training_log.avg_pace_sec_per_km",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
+        if current_version < 20:
+            self._apply_v20_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 20,
+                    "columns_added": "athletes.biological_sex, athletes.menstrual_tracking",
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
@@ -1234,6 +1251,18 @@ class DatabaseManager:
               AND distance_km > 0.1
               AND duration_sec > 0
         """)
+
+    def _apply_v20_migrations(self, cursor) -> None:
+        """Version 20: add biological_sex and menstrual_tracking to athletes."""
+        for sql in (
+            "ALTER TABLE athletes ADD COLUMN biological_sex TEXT DEFAULT 'male'",
+            "ALTER TABLE athletes ADD COLUMN menstrual_tracking TEXT DEFAULT 'no'",
+        ):
+            try:
+                cursor.execute(sql)
+            except sqlite3.OperationalError as exc:
+                if "duplicate column name" not in str(exc).lower():
+                    raise
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1) ---
 

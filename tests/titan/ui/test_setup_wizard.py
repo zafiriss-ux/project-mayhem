@@ -14,6 +14,7 @@ def test_run_setup_wizard_requests_each_credential_once(monkeypatch):
             "123456",
             "abcdefghijklmnopqrstuvwxyz123456",
             "Athens,GR",
+            "male",
         ]
     )
 
@@ -39,12 +40,15 @@ def test_run_setup_wizard_requests_each_credential_once(monkeypatch):
 
     assert creds == captured
     assert creds["GARMIN_PASSWORD"] == "hunter2"
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
     assert prompt_counts == {
         "  Email Garmin: ": 1,
         "  Bot Token: ": 1,
         "  Chat ID (αριθμός): ": 1,
         "  API Key: ": 1,
         "  Τοποθεσία (π.χ. Athens,GR): ": 1,
+        "  Βιολογικό φύλο (male/female/prefer_not_to_say): ": 1,
     }
 
 
@@ -57,6 +61,7 @@ def test_run_setup_wizard_reprompts_invalid_email(monkeypatch):
             "123456",
             "abcdefghijklmnopqrstuvwxyz123456",
             "Athens,GR",
+            "male",
         ]
     )
 
@@ -226,3 +231,59 @@ def test_ensure_credentials_returns_false_when_setup_cancelled(monkeypatch):
     monkeypatch.setattr(setup_wizard, "run_setup_wizard", _interrupt)
 
     assert setup_wizard.ensure_credentials() is False
+
+
+def _make_answers(*extra):
+    return iter([
+        "athlete@example.com",
+        "123456789:ABCDEFGHIJKLMNOP",
+        "123456",
+        "abcdefghijklmnopqrstuvwxyz123456",
+        "Athens,GR",
+        *extra,
+    ])
+
+
+def _run_wizard_capturing(monkeypatch, answers):
+    captured = {}
+    monkeypatch.setattr(setup_wizard, "_banner", lambda: None)
+    monkeypatch.setattr(setup_wizard, "load_env_file", lambda: None)
+    monkeypatch.setattr(setup_wizard, "_save_credentials", lambda c: captured.update(c) or "env_file")
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    monkeypatch.setattr(setup_wizard.getpass, "getpass", lambda prompt: "hunter2")
+    setup_wizard.run_setup_wizard()
+    return captured
+
+
+def test_q5_female_skips_q6_when_prefer_not_to_say(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers("prefer_not_to_say"))
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "prefer_not_to_say"
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
+
+
+def test_q5_female_triggers_q6(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "yes"))
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "female"
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "yes"
+
+
+def test_q5_female_q6_no(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "no"))
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "female"
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
+
+
+def test_q5_reprompts_invalid_sex(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers("unknown_value", "male"))
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"
+
+
+def test_q6_reprompts_invalid_tracking(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "maybe", "yes"))
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "yes"
+
+
+def test_q5_empty_input_defaults_to_male(monkeypatch):
+    creds = _run_wizard_capturing(monkeypatch, _make_answers(""))
+    assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"
+    assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
