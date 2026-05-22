@@ -262,6 +262,9 @@ def test_shutdown_joins_routine_thread_before_db_close(monkeypatch):
         def close(self):
             call_order.append("db.close")
 
+        def get_training_load_history(self, days=42):
+            return []
+
     class _RoutineThread:
         def is_alive(self):
             return True
@@ -298,6 +301,9 @@ def test_shutdown_avoids_sqlite_programming_error_with_concurrent_routine(monkey
 
         def close(self):
             self.closed = True
+
+        def get_training_load_history(self, days=42):
+            return []
 
         def routine_write(self):
             if self.closed:
@@ -340,6 +346,9 @@ def test_shutdown_join_timeout_emits_worker_shutdown_timeout(monkeypatch, caplog
         def close(self):
             return None
 
+        def get_training_load_history(self, days=42):
+            return []
+
     class _RoutineThread:
         def __init__(self):
             self.join_timeout = None
@@ -381,6 +390,9 @@ def test_shutdown_completes_with_bounded_wait_and_no_real_sleep(monkeypatch):
     class _Db:
         def close(self):
             return None
+
+        def get_training_load_history(self, days=42):
+            return []
 
     class _RoutineThread:
         def __init__(self):

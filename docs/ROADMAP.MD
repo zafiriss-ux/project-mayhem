@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–16 CLOSED; Phases 9, 10, 17 OPEN — see below)
+## Phase History (Phases 0–8, 11–17 CLOSED; Phases 9, 10, 18 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -31,7 +31,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 14 | Production Hardening | CLOSED 2026-05-09 | C-W12 CI restoration, T5-101 token encryption, T5-100 Garmin fallback, T5-111 audit log, T5-112 CSRF, T5-113 pip-audit pin |
 | Phase 15 | Multi-Device & Scale | CLOSED 2026-05-15 | Opus audit (11 findings), JWT startup validation, datetime.now(UTC) migration, auth rate-limit, process supervisor; P15-D22 deferred |
 | Phase 16 | Operational Hardening | CLOSED 2026-05-15 | TD-09/13/17/19 (XS) resolved, TD-10 partial, CodeQL #1/#2 resolved; TD-04/06/08/11/12 deferred |
-| Phase 17 | Infrastructure & Scale | OPEN 2026-05-15 | TD-06 Dockerfile, TD-12 runbooks, TD-11 metrics export, TD-04 DailyCoach split, TD-08 schema SSoT |
+| Phase 17 | Infrastructure & Scale | CLOSED 2026-05-22 | TD-06 Dockerfile, TD-12 runbooks; TD-CTL-01 and TD-NUTRITION-01 registered; TD-04/08/11 carry to Phase 18 |
+| Phase 18 | Observability & Debt Clearance | OPEN 2026-05-22 | TD-CTL-01, TD-04 (ADR-0057 required), TD-08, TD-11, TD-NUTRITION-01 |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -190,16 +191,32 @@ See `TECHNICAL_DEBT.md` for register.
 
 ---
 
-## Phase 17 — Infrastructure & Scale (OPEN, 2026-05-15)
+## Phase 17 — Infrastructure & Scale (CLOSED, 2026-05-22)
 
 Entry gate: Phase 16 close audit PASS (2026-05-15). Scope (priority order):
-1. TD-06: Dockerfile + docker-compose (reproducible deploys, biggest operational gap after CI)
-2. TD-12: Author 3 missing runbooks referenced in docs/SLO.md
-3. TD-11: OpenTelemetry metrics export (6 SLOs that are currently unmeasured)
-4. TD-04: DailyCoach split (ADR required before implementation)
-5. TD-08: Schema single source of truth
-FMEA: F17-01 No Docker → env drift (HIGH), F17-02 Runbooks missing → incident response gap (MED),
-F17-03 SLOs unmeasured → silent violations (HIGH), F17-04 DailyCoach monolith → regression risk (MED).
+1. ✅ TD-06: Dockerfile + docker-compose — RESOLVED 2026-05-15
+2. ✅ TD-12: Author 3 missing runbooks — RESOLVED 2026-05-15
+3. TD-11: OpenTelemetry metrics export — deferred to Phase 18
+4. TD-04: DailyCoach split (ADR required) — deferred to Phase 18
+5. TD-08: Schema single source of truth — deferred to Phase 18
+
+New debt registered: TD-CTL-01 (TSBEngine root cause unknown), TD-NUTRITION-01 (carb display with low_carb active).
+
+**Closed:** 2026-05-22 — phase close audit PASS.
+See `TECHNICAL_DEBT.md` for full register.
+
+---
+
+## Phase 18 — Observability & Debt Clearance (OPEN, 2026-05-22)
+
+Entry gate: Phase 17 close audit PASS (2026-05-22). Scope (priority order):
+1. TD-CTL-01: TSBEngine `daily_loads` empty at UI render — root cause unknown (HIGH). ADR-0057 recommended before invasive refactor.
+2. TD-04: DailyCoach god-orchestrator split — ADR-0057 required (HIGH).
+3. TD-08: Schema single source of truth (MED).
+4. TD-11: OpenTelemetry metrics export — 6 SLOs unmeasured (HIGH).
+5. TD-NUTRITION-01: Carb display inconsistency when `low_carb` active (LOW).
+
+FMEA: F18-01 TSBEngine hydration → CTL/ATL/TSB silently zero (HIGH), F18-02 DailyCoach monolith split without ADR gate → regression risk (MED), F18-03 SLOs unmeasured → silent violations (HIGH), F18-04 NutritionOptimizer carb display → athlete mislead (LOW).
 See `TECHNICAL_DEBT.md` for register.
 
 ---
@@ -267,4 +284,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-15 (Phase 16 CLOSED 2026-05-15; Phase 17 OPEN 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-22 (Phase 17 CLOSED 2026-05-22; Phase 18 OPEN 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)

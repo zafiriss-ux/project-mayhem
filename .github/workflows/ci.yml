@@ -96,12 +96,12 @@ jobs:
 
       - name: Pylint (advisory)
         run: |
+          pip install pylint==3.3.7 --quiet
           pylint titan/ \
             --disable=C,R,W0611,W0401 \
             --fail-under=7.0 \
             --output-format=text \
-            2>&1 | tail -20
-        continue-on-error: true
+            2>&1 | tail -20 || true
 
       - name: Import architecture check
         run: lint-imports
@@ -114,7 +114,6 @@ jobs:
             --min-confidence 80 \
             --exclude "titan/api/" \
             2>&1 | head -30 || true
-        continue-on-error: true
 
   determinism:
     name: Determinism Guard
