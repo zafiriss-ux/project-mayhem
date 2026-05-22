@@ -161,6 +161,28 @@ def run_setup_wizard() -> dict:
         print("  ⚠️  Μη έγκυρη τοποθεσία. Χρησιμοποίησε μορφή City,CC (π.χ. Athens,GR).")
 
 
+    # ── Athlete profile (Q5/Q6) ──────────────────────────────────────────
+    print("\n━━━  ΠΡΟΦΙΛ ΑΘΛΗΤΗ  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    print("  Q5: Βιολογικό φύλο; (για σωστό υπολογισμό ενεργειακών αναγκών)")
+    _valid_sex = {"male", "female", "prefer_not_to_say"}
+    while True:
+        sex = input("  Βιολογικό φύλο (male/female/prefer_not_to_say): ").strip().lower() or "male"
+        if sex in _valid_sex:
+            creds["ATHLETE_BIOLOGICAL_SEX"] = sex
+            break
+        print("  ⚠️  Επιλογή: male, female, ή prefer_not_to_say.")
+
+    if sex == "female":
+        print("  Q6: Θέλεις να παρακολουθείς τον κύκλο για βελτιστοποίηση διατροφής;")
+        while True:
+            tracking = input("  Παρακολούθηση κύκλου (yes/no): ").strip().lower() or "no"
+            if tracking in {"yes", "no"}:
+                creds["ATHLETE_MENSTRUAL_TRACKING"] = tracking
+                break
+            print("  ⚠️  Επιλογή: yes ή no.")
+    else:
+        creds["ATHLETE_MENSTRUAL_TRACKING"] = "no"
+
     # ── Save ─────────────────────────────────────────────────────────────
     backend = _save_credentials(creds)
     load_env_file()
