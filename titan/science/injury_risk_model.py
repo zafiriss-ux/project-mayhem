@@ -24,7 +24,7 @@ class InjuryRiskAssessment:
     risk_score: float
     risk_band: str
     explainability: ExplainableOutput | None = None
-    model_name: str = "RF_GB_ENSEMBLE_BASELINE"
+    model_name: str = "HEURISTIC_RISK_PROXY_v1"
     mode: str = "ADVISORY"
     recall_target: float = 0.80
     evidence_label: str = "HEURISTIC"

@@ -33,9 +33,8 @@ from titan.api.auth import (
 )
 from titan.api.dependencies import (
     get_auth_store,
-    get_current_user,
-    require_athlete_access,
     require_coach,
+    require_coach_athlete_access,
 )
 from titan.api.models import AuthUser, LoginRequest, LoginResponse, TokenPayload
 from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
@@ -365,9 +364,10 @@ def create_app(
     @app.get("/athletes/{athlete_id}/dashboard")
     def athlete_dashboard(
         athlete_id: str,
-        current_user: AuthUser = Depends(get_current_user),
+        current_user: AuthUser = Depends(require_coach_athlete_access),
     ) -> dict[str, str]:
-        require_athlete_access(current_user, athlete_id)
+        if current_user.role != "COACH" and current_user.athlete_id != athlete_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Athlete isolation violation")
         return {"athlete_id": athlete_id, "viewer": current_user.id}
 
     @app.post("/coach/notes")

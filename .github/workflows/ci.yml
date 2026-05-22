@@ -198,7 +198,7 @@ jobs:
           cache: pip
 
       - name: Install runtime + dev dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt -c constraints.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Audit unpinned dependencies in requirements files
         run: |

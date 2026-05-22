@@ -226,7 +226,7 @@ class OperatorConsoleService:
         summary = {
             "samples": len(overrides),
             "override_ratio_window_days": days,
-            "override_ratio": self.db.get_override_ratio(days=days),
+            "override_ratio": self.db.get_override_ratio(days=days) or 0.0,
         }
         if overrides:
             summary["latest_override_date"] = overrides[-1]["date"]

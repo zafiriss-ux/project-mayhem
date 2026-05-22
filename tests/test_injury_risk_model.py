@@ -52,6 +52,6 @@ def test_assessment_dict_contract_is_stable():
         'explainability',
     }
     assert payload['explainability']['plain_text_reason']
-    assert payload['model_name'] == 'RF_GB_ENSEMBLE_BASELINE'
+    assert payload['model_name'] == 'HEURISTIC_RISK_PROXY_v1'
     assert payload['mode'] == 'ADVISORY'
     assert payload['recall_target'] == 0.80

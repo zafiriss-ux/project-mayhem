@@ -19,7 +19,7 @@ class ShadowLoadPrediction:
 
     predicted_load_7d: float
     trend: str
-    model_name: str = "LSTM_SHADOW_BASELINE"
+    model_name: str = "EWMA_LOAD_PROXY_v1"
     mode: str = "SHADOW"
     evidence_label: str = "HEURISTIC"
 
