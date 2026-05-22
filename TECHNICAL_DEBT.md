@@ -5391,3 +5391,41 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-15 | No load/perf tests | MED — deferred |
 | TD-16 | No DB corruption recovery test | MED — deferred |
 | TD-NUTRITION-01 | Carb display inconsistency when `low_carb` dietary style active: "Carbs: 375-525g (224.0 g)" — range shows generic band instead of `dietary_style`-adjusted target. Added: 2026-05-22. | OPEN — carries to Phase 18 (LOW) |
+
+---
+
+## Opus Audit 2026-05-22 — Phase 18 Open Findings
+
+> Source: Opus architectural audit 2026-05-22 (pre-Phase 18 entry gate review).
+> Items marked FIXED were resolved in the same pass (branch `claude/tender-curie-dGPEi`).
+> Items marked OPEN carry to Phase 18 backlog.
+
+### Resolved in this pass (Opus audit 2026-05-22)
+
+| ID | Title | Severity | Status |
+|---|---|---|---|
+| TD-B7 | numpy removed — was unused dep (Opus audit B7, 2026-05-22) | LOW | ✅ RESOLVED 2026-05-22 — removed numpy==2.4.4 from requirements.txt; 0 import usages confirmed |
+
+### Open Findings — Phase 18
+
+| ID | Title | Severity | Source | Status |
+|---|---|---|---|---|
+| TD-NEW-01 | Override ratio cold-start dead code: `get_override_ratio` returned `round(overrides/days)` even when governance_outcomes table empty — misleading non-None result masking cold-start | HIGH | Opus audit 2026-05-22 (B1) | ✅ FIXED — added governance_outcomes count guard; returns None on cold-start |
+| TD-NEW-02 | RBAC bypass in athlete dashboard route: `/athletes/{id}/dashboard` called `require_athlete_access` as plain function without `request`, causing `db=None` → coach assignment check silently skipped | HIGH | Opus audit 2026-05-22 (B2) | ✅ FIXED — route now uses `Depends(require_coach_athlete_access)` |
+| TD-NEW-03 | PostgreSQL backend enabled without production readiness: `get_database_manager(backend='postgres')` silently constructed PostgreSQLDatabaseManager despite ADR-0044 parity not complete | HIGH | Opus audit 2026-05-22 (B3) | ✅ FIXED — raises NotImplementedError with ADR-0044 citation |
+| TD-NEW-04 | Docker ENTRYPOINT points to TUI: container launches interactive menu instead of API server; FastAPI not reachable from container | HIGH | Opus audit 2026-05-22 (B4) | OPEN — ADR-0057 stub created; architect decision pending |
+| TD-NEW-05 | constraints.txt empty but referenced in CI: `pip install -c constraints.txt` on empty file adds no value and risks pip version mismatches | LOW | Opus audit 2026-05-22 (B5) | ✅ FIXED — deleted constraints.txt; removed `-c constraints.txt` from ci.yml |
+| TD-NEW-06 | Misleading ML model labels: `LSTM_SHADOW_BASELINE` and `RF_GB_ENSEMBLE_BASELINE` imply deep-learning models but code is pure EWMA/heuristic — misleads audit consumers | MED | Opus audit 2026-05-22 (B6) | ✅ FIXED — renamed to `EWMA_LOAD_PROXY_v1` and `HEURISTIC_RISK_PROXY_v1` |
+| TD-NEW-07 | Unused numpy dependency: numpy==2.4.4 listed in requirements.txt with 0 import sites in titan/ | LOW | Opus audit 2026-05-22 (B7) | ✅ FIXED — removed from requirements.txt |
+| TD-NEW-08 | Dockerfile HEALTHCHECK references stale db name: `DatabaseManager('/data/titan.db')` instead of `titan_core.db` — healthcheck always fails in production | MED | Opus audit 2026-05-22 (B8) | ✅ FIXED — updated to `titan_core.db` |
+| TD-NEW-09 | CodeQL SARIF upload disabled: `upload: never` in codeql.yml means security findings never reach GitHub Security tab | MED | Opus audit 2026-05-22 (B9) | ✅ FIXED — changed to `upload: always` |
+| TD-NEW-10 | DailyCoach god-orchestrator (carries from Phase 17): 12-step pipeline in single class violates ADR-0018 kernel boundary | HIGH | Opus audit 2026-05-22 | OPEN — requires ADR-0018 phased decomposition |
+| TD-NEW-11 | No metrics/observability export: no Prometheus or structured metrics endpoint; SLO compliance unverifiable externally | HIGH | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-12 | SQLite concurrent read coverage incomplete: only 4 of N read methods protected by RLock (partial from TD-02) | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-13 | Schema definition split across database.py and alembic migrations: two sources of truth for table structure risk drift | MED | Opus audit 2026-05-22 | OPEN — ADR-0044 resolution scope |
+| TD-NEW-14 | Persistence ABC interface drift: abstract method signatures in persistence.py don't match DatabaseManager signatures (e.g. get_override_ratio athlete_id param) | MED | Opus audit 2026-05-22 | OPEN — Phase 18 hygiene |
+| TD-NEW-15 | No load/performance tests: no benchmarks for DailyCoach pipeline, DB reads under concurrent load, or API throughput | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-16 | No DB corruption recovery test: PRAGMA integrity_check path untested; backup restore untested end-to-end | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-17 | TSBEngine daily_loads empty at UI render (carries TD-CTL-01): state mutation between pipeline hydration and menu render unresolved | HIGH | Opus audit 2026-05-22 | OPEN — Phase 18 priority |
+| TD-NEW-18 | PostgreSQL migrations (alembic) untested: psycopg2-binary and sqlalchemy in requirements but no CI path exercises the postgres migration path | MED | Opus audit 2026-05-22 | OPEN — deferred until ADR-0044 |
+| TD-NEW-19 | Nutrition carb display inconsistency (carries TD-NUTRITION-01): low_carb dietary style shows generic band instead of adjusted target in menu | LOW | Opus audit 2026-05-22 | OPEN — Phase 18 backlog |

@@ -22,7 +22,7 @@ VOLUME /data
 
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
     CMD python3 -c \
-    "from titan.core.database import DatabaseManager; DatabaseManager('/data/titan.db')" \
+    "from titan.core.database import DatabaseManager; DatabaseManager('/data/titan_core.db')" \
     || exit 1
 
 ENTRYPOINT ["python3", "-m", "titan"]

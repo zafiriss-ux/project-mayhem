@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2893 tests all green
+**Historical snapshot:** 2899 tests all green
 
 Update this number after every commit that adds or removes tests:
 
@@ -114,6 +114,7 @@ system_check.py  Pre-flight validation
 - `0054` — Coach-Athlete RBAC Scoping
 - `0055` — Garmin Fallback Adapter Interface
 - `0056` — Nutrition Personalization Layer
+- `0057` — Docker API Deployment
 
 ## CI Gates
 

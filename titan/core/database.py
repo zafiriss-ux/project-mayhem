@@ -2540,16 +2540,25 @@ class DatabaseManager:
             )
             self.conn.commit()
 
-    def get_override_ratio(self, days: int = 14) -> float:
+    def get_override_ratio(self, athlete_id: str = "owner", days: int = 14) -> float | None:
         """
         Calculate the fraction of days in the last N days with an override.
 
         Returns:
+            None on cold-start (no governance_outcomes history).
             Float 0.0–1.0 (1.0 = overrode every day in the window).
         """
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM governance_outcomes WHERE athlete_id = ?",
+                (athlete_id,),
+            )
+            count_row = cursor.fetchone()
+            count = count_row[0] if count_row else 0
+            if count == 0:
+                return None  # cold-start: no outcome history
             cursor.execute(
                 """SELECT COUNT(*) FROM override_log
                    WHERE date >= date('now', '-' || ? || ' days')""",
@@ -3296,10 +3305,11 @@ def get_database_manager(
     if selected_backend == "sqlite":
         return DatabaseManager(db_name=db_name, db_dir=db_dir)
     if selected_backend == "postgres":
-        dsn = postgres_dsn or os.environ.get("TITAN_POSTGRES_DSN")
-        if not dsn:
-            raise ValueError("TITAN_POSTGRES_DSN must be set for PostgreSQL backend")
-        return PostgreSQLDatabaseManager(dsn=dsn)
+        raise NotImplementedError(
+            "PostgreSQLDatabaseManager is not production-ready. "
+            "TITAN_DB_BACKEND=postgres is disabled until ADR-0044 full parity is implemented. "
+            "See TECHNICAL_DEBT.md T5-08."
+        )
     raise ValueError(f"Unsupported TITAN_DB_BACKEND: {selected_backend}")
 
 

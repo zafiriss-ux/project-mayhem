@@ -71,6 +71,7 @@
 | [0054](0054-coach-athlete-rbac.md) | Coach-Athlete RBAC Scoping: coach_athlete_assignments table, get_assigned_athletes enforcement contract; application-level only (PostgreSQL RLS deferred Phase 9) | Architecture / Auth | ✅ Accepted (2026-05-03) — T5-110 Implemented |
 | [0055](0055-garmin-fallback-adapters.md) | Garmin Fallback Adapter Interface: BiometricSourceAdapter protocol, ManualEntryAdapter fallback, BiometricRouter arbitration (Garmin preferred <48h; manual_entry fallback ≥48h) | Architecture / Integrations | ✅ Accepted (2026-05-09) — T5-100 Implemented |
 | [0056](0056-nutrition-personalization.md) | Nutrition Personalization Layer: NutritionPreferences dataclass, nutrition_preferences table (SCHEMA_VERSION 21), sex-aware calorie/protein/hydration adjustments, meal schedule builder | Architecture / Features | ✅ Accepted (2026-05-22) |
+| [0057](0057-docker-api-deployment.md) | Docker API Deployment: FastAPI not reachable from container; TUI ENTRYPOINT; two-container vs single-container options | Architecture / Deployment | 🔲 Proposed (2026-05-22) |
 
 ---
 

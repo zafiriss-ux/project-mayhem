@@ -246,6 +246,17 @@ def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)
 
+    # Seed one governance_outcomes row so get_override_ratio skips cold-start guard.
+    db.conn.execute(
+        "INSERT INTO governance_outcomes "
+        "(date, athlete_id, session_planned, session_post_governance, locks_applied_json, "
+        "governance_clean, phase, vlg_color, apl_priority_vector_json, "
+        "lock_thresholds_active_json, acwr, tsb_value, readiness_score, glycogen_debt) "
+        "VALUES ('2026-01-01', 'owner', 'z2', 'z2', '[]', 1, 'base', 'green', '[]', '{}', "
+        "0.8, 5.0, 80.0, 0.0)"
+    )
+    db.conn.commit()
+
     # Use relative dates so this test stays valid regardless of when it runs.
     date_1 = (date.today() - timedelta(days=5)).isoformat()
     date_2 = (date.today() - timedelta(days=3)).isoformat()

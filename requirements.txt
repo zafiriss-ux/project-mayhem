@@ -3,7 +3,6 @@
 # Last Updated: 2026-05-14
 
 # Core Runtime Dependencies
-numpy==2.4.4            # Data processing
 
 # API Integrations
 garminconnect==0.3.2    # upgraded from 0.2.13: drops broken withings-sync dep (T5-78)
