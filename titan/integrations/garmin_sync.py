@@ -375,11 +375,6 @@ class GarminSync:
                     # server.  A single lightweight call here ensures we catch expired
                     # tokens before any sync attempt, preventing the silent 0/0/0 failure.
                     client.connectapi("userprofile-service/socialProfile")
-                    self.client = client
-                    self.is_connected = True
-                    self.last_connect_error = None
-                    _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
-                    _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
                 except Exception as token_err:
                     _token_failure_class = _classify_failure(token_err)
                     if _token_failure_class == GARMIN_RATE_LIMIT:
@@ -442,6 +437,13 @@ class GarminSync:
                     # Delete the stale token so the next startup attempts a fresh login.
                     with contextlib.suppress(Exception):
                         token_path.unlink(missing_ok=True)
+                else:
+                    self.client = client
+                    self.is_connected = True
+                    self.last_connect_error = None
+                    _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
+                    _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
+                    return True
 
             # Full login — token missing or expired.
             # Retry up to 3 times with exponential backoff on GARMIN_RATE_LIMIT (429) only.

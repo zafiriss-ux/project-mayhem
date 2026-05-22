@@ -107,7 +107,8 @@ Tier 1–4 items; T5-06-A is Tier 5 and did not block Phase 8 entry. Phase 8 is 
 T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13 (commit: b6bea2a). SQLite schema migration in place; Alembic migration remains tracked as T5-08-B D5.
 Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0022 for gate record.
 Phase 16 CLOSED — phase_close_audit.sh 16 exit 0; 2774 tests passing; SCRATCHPAD IDLE (2026-05-15).
-Phase 17 OPEN — Phase 16 close audit PASS 2026-05-15.
+Phase 17 CLOSED — phase_close_audit.sh 17 exit 0; 2887 tests passing; TD-CTL-01 and TD-NUTRITION-01 registered (2026-05-22).
+Phase 18 OPEN — Phase 17 close audit PASS 2026-05-22.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -4162,7 +4163,7 @@ Deferred to Phase 17:
 
 ---
 
-## Phase 17 — Infrastructure & Scale (OPEN, 2026-05-15)
+## Phase 17 — Infrastructure & Scale (CLOSED, 2026-05-22)
 
 **Entry gate:**
 - Phase 16 close audit: PASS ✅
@@ -4173,6 +4174,35 @@ Deferred to Phase 17:
 3. TD-11: OpenTelemetry metrics export (6 SLOs that are currently unmeasured)
 4. TD-04: DailyCoach split (ADR required before implementation)
 5. TD-08: Schema single source of truth
+
+**Closed:** 2026-05-22 — phase close audit PASS; TD-CTL-01 root cause unresolved (carries to Phase 18); TD-NUTRITION-01 registered.
+
+---
+
+## Phase 18 — Observability & Debt Clearance (OPEN, 2026-05-22)
+
+**Entry gate:**
+- Phase 17 close audit: PASS ✅
+
+**Scope (priority order):**
+1. TD-CTL-01: TSBEngine `daily_loads` empty at UI render — root cause still unknown (HIGH). Requires instrumented trace of state between `titan/main.py` hydration and `menu_system.py` render. ADR-0057 recommended before invasive refactor.
+2. TD-04: DailyCoach god-orchestrator split — ADR-0057 required before implementation (HIGH).
+3. TD-08: Schema in two places — single source of truth (MED).
+4. TD-11: OpenTelemetry metrics export — 6 SLOs currently unmeasured (HIGH).
+5. TD-NUTRITION-01: Carb display inconsistency when `low_carb` dietary style active — "Carbs: 375-525g (224.0 g)" shows generic range instead of adjusted target. Range should reflect `dietary_style` adjustment (LOW).
+
+---
+
+## FMEA: Phase 18 — Observability & Debt Clearance
+
+**Phase:** 18 | **Date:** 2026-05-22 | **Author:** Architect
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F18-01 | TSBEngine hydration | CTL/ATL/TSB silently zero at UI render | HIGH | TD-CTL-01 |
+| F18-02 | DailyCoach monolith | Regression risk on split without ADR gate | MED | TD-04 + ADR-0057 |
+| F18-03 | SLOs unmeasured | Silent SLO violations in prod | HIGH | TD-11 |
+| F18-04 | NutritionOptimizer | Carb display misleads athlete when low_carb active | LOW | TD-NUTRITION-01 |
 
 ---
 
@@ -5345,18 +5375,19 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-19 | Gitleaks allowlist too broad | ✅ RESOLVED 2026-05-15 — converted from path-based (`paths = [...]`) to regex-based patterns covering only known test fixture shapes |
 | TD-10 | 172 print() calls | ✅ RESOLVED (partial) 2026-05-15 |
 
-### Open — Phase 17
+### Closed — Phase 17 (2026-05-22)
 
-| ID | Finding | Priority |
+| ID | Finding | Status |
 |---|---|---|
-| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified: `get_training_load_history(42)` returns 15 rows, hydration code correct, no exceptions raised. Root cause: unknown state mutation between hydration in `titan/main.py` and UI render in `menu_system.py`. Added: 2026-05-20. | HIGH |
+| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified: `get_training_load_history(42)` returns 15 rows, hydration code correct, no exceptions raised. Root cause: unknown state mutation between hydration in `titan/main.py` and UI render in `menu_system.py`. Added: 2026-05-20. | OPEN — carries to Phase 18 (HIGH) |
 | TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 17) |
-| TD-04 | DailyCoach god-orchestrator | HIGH |
+| TD-04 | DailyCoach god-orchestrator | OPEN — carries to Phase 18 (ADR-0057 required) |
 | TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
-| TD-07 | CodeQL upload disabled | MED |
-| TD-08 | Schema in two places | MED |
-| TD-11 | No metrics export | HIGH |
+| TD-07 | CodeQL upload disabled | MED — deferred |
+| TD-08 | Schema in two places | OPEN — carries to Phase 18 (MED) |
+| TD-11 | No metrics export | OPEN — carries to Phase 18 (HIGH) |
 | TD-12 | Runbooks missing | ✅ RESOLVED 2026-05-15 — 3 SLO-referenced runbooks authored: garmin-sync-failure.md, governance-hard-stop-unexpected.md, database-recovery.md (all with Symptoms / Diagnosis / Recovery / Escalation sections) |
-| TD-14 | Persistence ABC unused | LOW |
-| TD-15 | No load/perf tests | MED |
-| TD-16 | No DB corruption recovery test | MED |
+| TD-14 | Persistence ABC unused | LOW — deferred |
+| TD-15 | No load/perf tests | MED — deferred |
+| TD-16 | No DB corruption recovery test | MED — deferred |
+| TD-NUTRITION-01 | Carb display inconsistency when `low_carb` dietary style active: "Carbs: 375-525g (224.0 g)" — range shows generic band instead of `dietary_style`-adjusted target. Added: 2026-05-22. | OPEN — carries to Phase 18 (LOW) |

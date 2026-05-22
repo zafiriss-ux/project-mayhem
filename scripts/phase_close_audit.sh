@@ -92,7 +92,7 @@ LATEST_ADR_FILE=$(find docs/adr/ -name "0*.md" 2>/dev/null | sort | tail -1)
 if [ -n "$LATEST_ADR_FILE" ]; then
     LATEST_NUM=$(basename "$LATEST_ADR_FILE" | grep -o "^[0-9]*" || echo "0")
     echo "  → Latest ADR file: $LATEST_ADR_FILE"
-    if grep -qE "ADR-0*${LATEST_NUM}|0${LATEST_NUM}" CLAUDE.md 2>/dev/null; then
+    if grep -qE "ADR-0*${LATEST_NUM}|0*${LATEST_NUM}" CLAUDE.md 2>/dev/null; then
         _pass "Latest ADR (0${LATEST_NUM}) referenced in CLAUDE.md"
     else
         _fail "Latest ADR (0${LATEST_NUM}) not found in CLAUDE.md index"

@@ -55,7 +55,7 @@ system_check.py  Pre-flight validation
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Development workflow roadmap; Phase 17 OPEN (ACTIVE, 2026-05-15) |
+| `docs/ROADMAP.MD` | Development workflow roadmap; Phase 18 OPEN (ACTIVE, 2026-05-22) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants (single source of truth) |
 | `titan/core/database.py` | DatabaseManager — SQLite backend, migrations |
