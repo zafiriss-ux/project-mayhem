@@ -188,11 +188,34 @@ def menu_nutrition(ctx: dict):
     today_session = ctx.get("today_session", {"session_type": "EASY", "duration_min": 60})
     tomorrow_session = ctx.get("tomorrow_session")
 
+    from titan.features.nutrition_optimizer import NutritionPreferences
+    db = ctx.get("db")
+    nutrition_prefs_dict = db.get_nutrition_preferences("owner") if db else None
+    if nutrition_prefs_dict:
+        prefs = NutritionPreferences(
+            training_time=nutrition_prefs_dict.get('training_time', 'variable'),
+            fasted_training=nutrition_prefs_dict.get('fasted_training', 'easy_only'),
+            dietary_style=nutrition_prefs_dict.get('dietary_style', 'standard'),
+            meal_frequency=nutrition_prefs_dict.get('meal_frequency', 3),
+            biological_sex=nutrition_prefs_dict.get('biological_sex', 'male'),
+            menstrual_tracking=nutrition_prefs_dict.get('menstrual_tracking', 'no'),
+        )
+    else:
+        prefs = None
+
+    opt_time_str = ctx.get("optimal_time_str", "07:00")
+    try:
+        opt_h = int(opt_time_str.split(":")[0])
+    except (ValueError, AttributeError):
+        opt_h = 7
+
     plan = nutrition.calculate_daily_nutrition(
         weight_kg=weight,
         today_session=today_session,
         tomorrow_session=tomorrow_session,
         training_phase=ctx.get("phase", "BUILD"),
+        prefs=prefs,
+        optimal_time_hour=opt_h,
     )
 
     session_type = today_session.get("session_type", "EASY")
@@ -228,17 +251,22 @@ def menu_nutrition(ctx: dict):
     eve_time  = dtime(19, 30)
 
     print("  🍽  ΠΡΟΓΡΑΜΜΑ ΓΕΥΜΑΤΩΝ:")
-    print(f"    ⏰ {pre_time.strftime('%H:%M')}  ΠΡΟ-ΠΡΟΠΟΝΗΤΙΚΟ")
-    print(f"       {pre}")
-    print("    ⏰ Κατά τη διάρκεια:")
-    print(f"       {dur}")
-    print(f"    ⏰ {post_time.strftime('%H:%M')}  ΜΕΤΑ-ΠΡΟΠΟΝΗΤΙΚΟ")
-    print(f"       {post}")
-    print(f"    ⏰ {eve_time.strftime('%H:%M')}  ΒΡΑΔΙΝΟ")
-    if tomorrow_session and tomorrow_session.get("session_type") in ["INTERVALS","TEMPO","HAMMER"]:
-        print(f"       🔋 Αύριο: {tomorrow_session['session_type']} → Φόρτωσε carbs βράδυ!")
+    if plan.get("meal_schedule"):
+        for meal in plan["meal_schedule"]:
+            print(f"    ⏰ {meal['time']}  {meal['label']}")
+            print(f"       {meal['description']}")
     else:
-        print("       Ισορροπημένο γεύμα – lean protein + λαχανικά + σύνθετοι carbs")
+        print(f"    ⏰ {pre_time.strftime('%H:%M')}  ΠΡΟ-ΠΡΟΠΟΝΗΤΙΚΟ")
+        print(f"       {pre}")
+        print("    ⏰ Κατά τη διάρκεια:")
+        print(f"       {dur}")
+        print(f"    ⏰ {post_time.strftime('%H:%M')}  ΜΕΤΑ-ΠΡΟΠΟΝΗΤΙΚΟ")
+        print(f"       {post}")
+        print(f"    ⏰ {eve_time.strftime('%H:%M')}  ΒΡΑΔΙΝΟ")
+        if tomorrow_session and tomorrow_session.get("session_type") in ["INTERVALS","TEMPO","HAMMER"]:
+            print(f"       🔋 Αύριο: {tomorrow_session['session_type']} → Φόρτωσε carbs βράδυ!")
+        else:
+            print("       Ισορροπημένο γεύμα – lean protein + λαχανικά + σύνθετοι carbs")
 
     _divider()
     print("  ⚠️  ΕΙΔΙΚΕΣ ΣΗΜΕΙΩΣΕΙΣ:")
@@ -786,6 +814,80 @@ def _edit_athlete_profile(ctx: dict) -> None:
     input("  [Enter] ")
 
 
+def _edit_nutrition_prefs(ctx: dict):
+    _clear()
+    _header("Ρυθμίσεις Διατροφής")
+    db = ctx.get("db")
+    existing = db.get_nutrition_preferences("owner") if db else {}
+    prefs = existing or {}
+
+    def _cur(key, default):
+        return prefs.get(key, default)
+
+    print("\n  Q1. Τι ώρα προπονείσαι;")
+    print("    1. Πρωί (6-9)       [morning]")
+    print("    2. Μεσημέρι (11-14)  [midday]")
+    print("    3. Βράδυ (17-20)    [evening]")
+    print("    4. Μεταβλητό        [variable]")
+    print(f"  (τρέχον: {_cur('training_time', 'variable')})")
+    _map1 = {'1': 'morning', '2': 'midday', '3': 'evening', '4': 'variable'}
+    training_time = _map1.get(input("  Επιλογή (Enter=κράτησε): ").strip(), _cur('training_time', 'variable'))
+
+    print("\n  Q2. Τρέχεις νηστικός;")
+    print("    1. Πάντα      [always]")
+    print("    2. Ποτέ       [never]")
+    print("    3. Μόνο EASY  [easy_only]")
+    print(f"  (τρέχον: {_cur('fasted_training', 'easy_only')})")
+    _map2 = {'1': 'always', '2': 'never', '3': 'easy_only'}
+    fasted_training = _map2.get(input("  Επιλογή (Enter=κράτησε): ").strip(), _cur('fasted_training', 'easy_only'))
+
+    print("\n  Q3. Διατροφικό στυλ;")
+    print("    1. Τυπικό         [standard]")
+    print("    2. Μεσογειακό     [mediterranean]")
+    print("    3. Χαμηλοί carbs  [low_carb]")
+    print("    4. Χορτοφαγικό    [vegetarian]")
+    print(f"  (τρέχον: {_cur('dietary_style', 'standard')})")
+    _map3 = {'1': 'standard', '2': 'mediterranean', '3': 'low_carb', '4': 'vegetarian'}
+    dietary_style = _map3.get(input("  Επιλογή (Enter=κράτησε): ").strip(), _cur('dietary_style', 'standard'))
+
+    print("\n  Q4. Γεύματα/μέρα;")
+    print("    1. 3 γεύματα")
+    print("    2. 5 γεύματα (+ σνακ)")
+    print(f"  (τρέχον: {_cur('meal_frequency', 3)})")
+    _map4 = {'1': 3, '2': 5}
+    meal_frequency = _map4.get(input("  Επιλογή (Enter=κράτησε): ").strip(), _cur('meal_frequency', 3))
+
+    print("\n  Q5. Βιολογικό φύλο; (για ενεργειακούς υπολογισμούς)")
+    print("    1. Άνδρας")
+    print("    2. Γυναίκα")
+    print("    3. Προτιμώ να μην απαντήσω")
+    print(f"  (τρέχον: {_cur('biological_sex', 'male')})")
+    _map5 = {'1': 'male', '2': 'female', '3': 'prefer_not_to_say'}
+    biological_sex = _map5.get(input("  Επιλογή (Enter=κράτησε): ").strip(), _cur('biological_sex', 'male'))
+
+    menstrual_tracking = _cur('menstrual_tracking', 'no')
+    if biological_sex == 'female':
+        print("\n  Q6. Παρακολούθηση κύκλου;")
+        print("    1. Ναι")
+        print("    2. Όχι")
+        print(f"  (τρέχον: {menstrual_tracking})")
+        _map6 = {'1': 'yes', '2': 'no'}
+        menstrual_tracking = _map6.get(input("  Επιλογή (Enter=κράτησε): ").strip(), menstrual_tracking)
+
+    new_prefs = {
+        'training_time': training_time,
+        'fasted_training': fasted_training,
+        'dietary_style': dietary_style,
+        'meal_frequency': meal_frequency,
+        'biological_sex': biological_sex,
+        'menstrual_tracking': menstrual_tracking,
+    }
+    if db:
+        db.save_nutrition_preferences("owner", new_prefs)
+    print("\n  ✅ Ρυθμίσεις αποθηκεύτηκαν!")
+    input("  [Enter] ")
+
+
 def menu_settings(ctx: dict):
     while True:
         _clear()
@@ -801,10 +903,13 @@ def menu_settings(ctx: dict):
         print(f"  Στόχος:       {profile.get('current_goal', 'N/A')}")
         _divider()
         print("  1. ✏️  Edit athlete profile")
+        print("  2. 🍽  Ρυθμίσεις Διατροφής")
         print("  0. ← Πίσω")
         _divider()
         choice = input("  Επιλογή: ").strip()
         if choice == "1":
             _edit_athlete_profile(ctx)
+        elif choice == "2":
+            _edit_nutrition_prefs(ctx)
         else:
             break
