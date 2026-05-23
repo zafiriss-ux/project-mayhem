@@ -23,13 +23,14 @@ ENV TITAN_DB_BACKEND=sqlite
 # ── api ──────────────────────────────────────────────────────────────────────
 FROM base AS api
 
+RUN mkdir -p /home/appuser/Documents/TITAN && chmod 777 /home/appuser/Documents/TITAN
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "titan.api.main:create_app", \
-     "--host", "0.0.0.0", "--port", "8000", "--factory"]
+CMD ["python", "-c", "from pathlib import Path; from titan.core.database import DatabaseManager; from titan.api.main import create_app; import uvicorn; db = DatabaseManager(db_dir=Path('/data')); app = create_app(db=db); uvicorn.run(app, host='0.0.0.0', port=8000)"]
 
 # ── worker ───────────────────────────────────────────────────────────────────
 FROM base AS worker
