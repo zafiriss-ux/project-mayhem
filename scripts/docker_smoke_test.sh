@@ -5,6 +5,16 @@
 
 set -euo pipefail
 
+# Ensure .env exists before any grep checks
+touch .env
+
+# Auto-generate JWT keys if missing
+if ! grep -q "TITAN_JWT_PRIVATE_KEY" \
+    .env 2>/dev/null; then
+  echo "[$(date +%H:%M:%S)] Generating JWT keys..."
+  bash scripts/generate_jwt_keys.sh
+fi
+
 COMPOSE="docker compose"
 API_URL="http://localhost:8000"
 TIMEOUT=60
