@@ -1,28 +1,25 @@
-FROM python:3.11-slim AS builder
-WORKDIR /build
-COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
-
-FROM python:3.11-slim
+# ── base ─────────────────────────────────────────────────────────────────────
+FROM python:3.11-slim AS base
 LABEL org.opencontainers.image.title="TITAN OS"
 LABEL org.opencontainers.image.description="Athletic Training Intelligence System"
-
-RUN useradd -m -u 1000 titan
-USER titan
 WORKDIR /app
-
-COPY --from=builder /root/.local /home/titan/.local
-ENV PATH=/home/titan/.local/bin:$PATH
-
-COPY --chown=titan:titan titan/ ./titan/
-COPY --chown=titan:titan requirements.txt ./
-
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
 ENV TITAN_DATA_DIR=/data
-VOLUME /data
+ENV TITAN_DB_BACKEND=sqlite
 
-HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
-    CMD python3 -c \
-    "from titan.core.database import DatabaseManager; DatabaseManager('/data/titan_core.db')" \
-    || exit 1
+# ── api ──────────────────────────────────────────────────────────────────────
+FROM base AS api
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+CMD ["uvicorn", "titan.api.main:create_app", \
+     "--host", "0.0.0.0", "--port", "8000", \
+     "--factory"]
 
-ENTRYPOINT ["python3", "-m", "titan"]
+# ── worker ───────────────────────────────────────────────────────────────────
+FROM base AS worker
+CMD ["python", "-m", "titan.worker"]

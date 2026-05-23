@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2904 tests all green
+**Historical snapshot:** 2907 tests all green
 
 Update this number after every commit that adds or removes tests:
 
@@ -44,6 +44,7 @@ titan/
   api/           FastAPI routes, auth, models
   config/        Thresholds, constants
   features/      Nutrition optimizer, equipment manager
+  worker/        Background effect runner (Garmin sync, Telegram, morning routine scheduler)
 launcher/        Entry point, validator, errors, paths
 scripts/         import_garmin_csv.py, import_activity_laps.py
 system_check.py  Pre-flight validation
@@ -115,6 +116,17 @@ system_check.py  Pre-flight validation
 - `0055` — Garmin Fallback Adapter Interface
 - `0056` — Nutrition Personalization Layer
 - `0057` — Docker API Deployment
+
+## Docker Deployment
+
+Two-container architecture per ADR-0057. See `docs/runbooks/docker-deploy.md`.
+
+```bash
+docker compose up --build -d
+```
+
+Services: `titan-api` (uvicorn, port 8000) + `titan-worker` (background daemon).
+Shared volume `titan-data` → `/data/titan_core.db`.
 
 ## CI Gates
 
