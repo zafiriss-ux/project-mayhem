@@ -41,6 +41,42 @@ git pull
 docker compose up --build -d
 ```
 
+## Validation
+
+### Automated smoke test (requires Docker)
+
+```bash
+bash scripts/docker_smoke_test.sh
+```
+
+Expected: `ALL SMOKE TESTS PASSED`
+
+### Manual validation checklist
+
+After `docker compose up -d`:
+
+- [ ] `curl http://localhost:8000/health` → `{"status":"ok"}`
+- [ ] `curl http://localhost:8000/readyz` → `{"ready":true,...}`
+- [ ] `docker compose exec titan-worker ls /data/worker.lock` → file exists
+- [ ] `docker compose exec titan-api ls /data/titan_core.db` → file exists (NOT `titan.db`)
+- [ ] `docker compose stop titan-worker && curl http://localhost:8000/health` → still 200 (API independent)
+- [ ] `docker compose start titan-worker` → worker recovers
+
+### Telegram (manual, needs credentials)
+
+- Set `TELEGRAM_BOT_TOKEN` in `.env`
+- `docker compose up -d titan-worker`
+- Send `/start` to bot — verify response within 30s
+
+### Morning routine (manual)
+
+```bash
+docker compose exec titan-worker python3 -c "
+from titan.orchestration.daily_coach import DailyCoach
+print('DailyCoach OK')
+"
+```
+
 ## Troubleshooting
 
 **API not responding**
