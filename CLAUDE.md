@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2903 tests all green
+**Historical snapshot:** 2904 tests all green
 
 Update this number after every commit that adds or removes tests:
 
