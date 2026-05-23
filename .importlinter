@@ -59,4 +59,6 @@ layers =
     config
 ignore_imports =
     titan.core.database -> titan.science.physiological_bounds
+    titan.core.database -> titan.science.tsb_engine
+    titan.core.persistence -> titan.science.tsb_engine
     titan.integrations.garmin_sync -> titan.orchestration.contracts

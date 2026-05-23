@@ -236,7 +236,9 @@ def create_app(
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):  # noqa: ANN001
+        from titan.observability.metrics import get_metrics
         validate_jwt_keys_at_startup()
+        get_metrics().counter("api_startup")
         yield
 
     app = FastAPI(title="TITAN OS API", version="8B", lifespan=lifespan)

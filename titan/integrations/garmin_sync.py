@@ -941,6 +941,8 @@ class GarminSync:
             self._consecutive_failures = 0
             self._last_successful_sync_at = datetime.now(UTC).isoformat()
             payload["data_age_hours"] = 0.0
+            from titan.observability.metrics import get_metrics
+            get_metrics().counter("garmin_sync_success", labels={"athlete": "owner"})
         else:
             # Sync completed without data — count as a failure for C3 tracking.
             self._consecutive_failures += 1

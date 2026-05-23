@@ -108,7 +108,8 @@ T5-07 Layer 1 & 2 (model age tracking + drift detection) ✅ RESOLVED 2026-03-13
 Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0022 for gate record.
 Phase 16 CLOSED — phase_close_audit.sh 16 exit 0; 2774 tests passing; SCRATCHPAD IDLE (2026-05-15).
 Phase 17 CLOSED — phase_close_audit.sh 17 exit 0; 2887 tests passing; TD-CTL-01 and TD-NUTRITION-01 registered (2026-05-22).
-Phase 18 OPEN — Phase 17 close audit PASS 2026-05-22.
+Phase 18 CLOSED — phase_close_audit.sh 18 exit 0; 2924 tests passing; TD-11 RESOLVED; TD-08 DEFERRED Phase 19 (2026-05-23).
+Phase 19 OPEN — Phase 18 close audit PASS 2026-05-23.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -4179,17 +4180,21 @@ Deferred to Phase 17:
 
 ---
 
-## Phase 18 — Observability & Debt Clearance (OPEN, 2026-05-22)
+## Phase 18 — Observability & Debt Clearance (CLOSED, 2026-05-23)
 
 **Entry gate:**
 - Phase 17 close audit: PASS ✅
 
-**Scope (priority order):**
-1. TD-CTL-01: TSBEngine `daily_loads` empty at UI render — root cause still unknown (HIGH). Requires instrumented trace of state between `titan/main.py` hydration and `menu_system.py` render. ADR-0057 recommended before invasive refactor.
-2. TD-04: DailyCoach god-orchestrator split — ADR-0057 required before implementation (HIGH).
-3. TD-08: Schema in two places — single source of truth (MED).
-4. TD-11: OpenTelemetry metrics export — 6 SLOs currently unmeasured (HIGH).
-5. TD-NUTRITION-01: Carb display inconsistency when `low_carb` dietary style active — "Carbs: 375-525g (224.0 g)" shows generic range instead of adjusted target. Range should reflect `dietary_style` adjustment (LOW).
+**Close gate:**
+- phase_close_audit.sh 18 exit 0 ✅ (2026-05-23)
+- 2924 tests passing ✅
+
+**Scope outcomes:**
+1. TD-CTL-01: ✅ RESOLVED 2026-05-22 — per-day aggregation fix (PR #719).
+2. TD-04: DailyCoach god-orchestrator split — DEFERRED Phase 19 (ADR-0058 required).
+3. TD-08: Schema in two places — DEFERRED Phase 19 (500+ lines scope; Phase 19 work).
+4. TD-11: ✅ RESOLVED 2026-05-23 — MetricsCollector stdlib JSON sink; 3 sites wired.
+5. TD-NUTRITION-01: ✅ RESOLVED 2026-05-23 — carbs_range ±15% of adjusted target (PR #720).
 
 ---
 
@@ -4203,6 +4208,31 @@ Deferred to Phase 17:
 | F18-02 | DailyCoach monolith | Regression risk on split without ADR gate | MED | TD-04 + ADR-0057 |
 | F18-03 | SLOs unmeasured | Silent SLO violations in prod | HIGH | TD-11 |
 | F18-04 | NutritionOptimizer | Carb display misleads athlete when low_carb active | LOW | TD-NUTRITION-01 |
+
+---
+
+## Phase 19 — Structured Debt & Scale (OPEN, 2026-05-23)
+
+**Entry gate:**
+- Phase 18 close audit: PASS ✅ (2026-05-23)
+
+**Scope (priority order):**
+1. TD-04: DailyCoach god-orchestrator split — ADR-0058 required (HIGH).
+2. TD-08 / TD-NEW-13: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py; align alembic migrations (MED).
+3. TD-NEW-15: Load/performance tests — benchmarks for DailyCoach pipeline, DB reads under concurrent load, API throughput (MED).
+4. TD-NEW-11 OTel Phase 2: plug-in OpenTelemetry exporter via ADR into MetricsCollector (MED).
+5. ADR-0044: PostgreSQL full parity gate.
+6. ADR-0058: DailyCoach split design and implementation.
+
+## FMEA: Phase 19 — Structured Debt & Scale
+
+**Phase:** 19 | **Date:** 2026-05-23 | **Author:** Architect
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F19-01 | DailyCoach monolith | Split without ADR gate causes orchestration regression | HIGH | TD-04 + ADR-0058 |
+| F19-02 | Schema extract | Broken migration if schema.py diverges from alembic | MED | TD-08 + review gate |
+| F19-03 | OTel wiring | External dep introduced without ADR causes env breakage | MED | ADR gate required |
 
 ---
 
@@ -5384,8 +5414,8 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-04 | DailyCoach god-orchestrator | OPEN — carries to Phase 18 (ADR-0057 required) |
 | TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
 | TD-07 | CodeQL upload disabled | MED — deferred |
-| TD-08 | Schema in two places | OPEN — carries to Phase 18 (MED) |
-| TD-11 | No metrics export | OPEN — carries to Phase 18 (HIGH) |
+| TD-08 | Schema in two places | DEFERRED to Phase 19 — 500+ lines of CREATE TABLE SQL span create_tables() and v1–v21 migrations; extraction without alembic support is Phase 19 scope (MED) |
+| TD-11 | No metrics export | ✅ RESOLVED 2026-05-23 — MetricsCollector in titan/observability/metrics.py; 3 sites wired (ctl_recompute_ms histogram, garmin_sync_success counter, api_startup counter); Phase 19: plug-in OTel exporter |
 | TD-12 | Runbooks missing | ✅ RESOLVED 2026-05-15 — 3 SLO-referenced runbooks authored: garmin-sync-failure.md, governance-hard-stop-unexpected.md, database-recovery.md (all with Symptoms / Diagnosis / Recovery / Escalation sections) |
 | TD-14 | Persistence ABC unused | LOW — deferred |
 | TD-15 | No load/perf tests | MED — deferred |
@@ -5420,9 +5450,9 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-NEW-08 | Dockerfile HEALTHCHECK references stale db name: `DatabaseManager('/data/titan.db')` instead of `titan_core.db` — healthcheck always fails in production | MED | Opus audit 2026-05-22 (B8) | ✅ FIXED — updated to `titan_core.db` |
 | TD-NEW-09 | CodeQL SARIF upload disabled: `upload: never` in codeql.yml means security findings never reach GitHub Security tab | MED | Opus audit 2026-05-22 (B9) | ✅ FIXED — changed to `upload: always` |
 | TD-NEW-10 | DailyCoach god-orchestrator (carries from Phase 17): 12-step pipeline in single class violates ADR-0018 kernel boundary | HIGH | Opus audit 2026-05-22 | OPEN — requires ADR-0018 phased decomposition |
-| TD-NEW-11 | No metrics/observability export: no Prometheus or structured metrics endpoint; SLO compliance unverifiable externally | HIGH | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-11 | No metrics/observability export: no Prometheus or structured metrics endpoint; SLO compliance unverifiable externally | HIGH | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-23 — MetricsCollector (stdlib JSON logging); OTel exporter deferred Phase 19 |
 | TD-NEW-12 | SQLite concurrent read coverage incomplete: only 4 of N read methods protected by RLock (partial from TD-02) | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
-| TD-NEW-13 | Schema definition split across database.py and alembic migrations: two sources of truth for table structure risk drift | MED | Opus audit 2026-05-22 | OPEN — ADR-0044 resolution scope |
+| TD-NEW-13 | Schema definition split across database.py and alembic migrations: two sources of truth for table structure risk drift | MED | Opus audit 2026-05-22 | DEFERRED Phase 19 — aligns with TD-08; 500+ lines extraction scope; ADR-0044 resolution track |
 | TD-NEW-14 | Persistence ABC interface drift: abstract method signatures in persistence.py don't match DatabaseManager signatures (e.g. get_override_ratio athlete_id param) | MED | Opus audit 2026-05-22 | OPEN — Phase 18 hygiene |
 | TD-NEW-15 | No load/performance tests: no benchmarks for DailyCoach pipeline, DB reads under concurrent load, or API throughput | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
 | TD-NEW-16 | No DB corruption recovery test: PRAGMA integrity_check path untested; backup restore untested end-to-end | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
