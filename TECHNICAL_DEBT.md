@@ -4093,12 +4093,12 @@ Close criteria met:
 | P15-H6 | No HTTPS/TLS story for FastAPI | HIGH | Nginx/Caddy reference |
 | P15-H9 | `DegradedModeTracker`: one alert then silence | MED | Continuous alerting signal |
 | P15-D4 | SQLite SPOF — no automated backup | HIGH | Litestream / `sqlite3 .backup` |
-| P15-D6 | No Dockerfile / process supervisor | MED | Containerise |
+| P15-D6 | No Dockerfile / process supervisor | MED | ✅ RESOLVED 2026-05-23 — ADR-0057 multi-stage Dockerfile + docker-compose.yml |
 | P15-D8 | No load/performance tests | MED | k6 / locust |
 | P15-D13 | Process-doc bloat (`AGENTS.md` 113 KB) | MED | Section caps / archival |
 | P15-D14 | No metrics export | MED | Prometheus / OTel |
 | P15-D15 | No distributed tracing | MED | OTel auto-instrument |
-| P15-D16 | No Dockerfile | MED | One-day task |
+| P15-D16 | No Dockerfile | MED | ✅ RESOLVED 2026-05-23 — ADR-0057 (see P15-D6) |
 | P15-D17 | Backup is `cp` cron — no restore drill | HIGH | Litestream |
 | P15-D22 | Telegram legacy `parse_mode="Markdown"` — full message audit needed | MED | See entry above |
 | P15-D23 | No load tests | LOW | k6 against `/health` |
