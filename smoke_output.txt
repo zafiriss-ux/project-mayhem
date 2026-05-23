@@ -1,0 +1,23 @@
+[20:29:02] Building containers...
+ Image project-mayhem-titan-worker Building 
+ Image project-mayhem-titan-api Building 
+ Image project-mayhem-titan-api Built 
+ Image project-mayhem-titan-worker Built 
+[20:29:06] Starting services...
+ Network project-mayhem_default Creating 
+ Network project-mayhem_default Created 
+ Volume project-mayhem_titan-data Creating 
+ Volume project-mayhem_titan-data Created 
+ Container project-mayhem-titan-api-1 Creating 
+ Container project-mayhem-titan-api-1 Created 
+ Container project-mayhem-titan-worker-1 Creating 
+ Container project-mayhem-titan-worker-1 Created 
+ Container project-mayhem-titan-api-1 Starting 
+ Container project-mayhem-titan-api-1 Started 
+ Container project-mayhem-titan-api-1 Waiting 
+ Container project-mayhem-titan-api-1 Healthy 
+ Container project-mayhem-titan-worker-1 Starting 
+ Container project-mayhem-titan-worker-1 Started 
+[20:29:38] Waiting for API (timeout 60s)...
+[20:29:38] ✅ /health OK
+[20:29:38] FAIL: /readyz returned not-ready: {}
