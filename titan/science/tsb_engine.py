@@ -1,8 +1,61 @@
 """TSB (Training Stress Balance) Engine - Performance Management"""
 
+from __future__ import annotations
+
+from datetime import date, timedelta
+
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 
 MODULE_VERSION = "1.0.0"
+
+
+def compute_ctl_atl_tsb(
+    daily_loads: list[tuple[str, float]],
+    ctl_decay_days: int = 42,
+    atl_decay_days: int = 7,
+    reference_date: date | None = None,
+) -> tuple[float, float, float]:
+    """
+    Canonical Banister EMA kernel.
+
+    Args:
+        daily_loads: List of (date_str, load) tuples, sorted ASC by date.
+            Each tuple is ONE day's total load (pre-aggregated by caller).
+        ctl_decay_days: EMA time constant for fitness (default 42).
+        atl_decay_days: EMA time constant for fatigue (default 7).
+        reference_date: Cutoff for ATL window. Defaults to today.
+
+    Returns:
+        (ctl, atl, tsb) rounded to 1dp.
+
+    Invariants enforced:
+        - Empty stream → (0.0, 0.0, 0.0)
+        - Loads must be pre-aggregated per day
+        - ATL uses date window, not item count
+    """
+    if not daily_loads:
+        return 0.0, 0.0, 0.0
+
+    ref = reference_date or date.today()
+    atl_cutoff = (ref - timedelta(days=atl_decay_days)).isoformat()
+
+    ctl_k = 2.0 / (ctl_decay_days + 1)
+    atl_k = 2.0 / (atl_decay_days + 1)
+
+    ctl = 0.0
+    atl = 0.0
+
+    for date_str, load in daily_loads:
+        ctl = load * ctl_k + ctl * (1 - ctl_k)
+        if date_str >= atl_cutoff:
+            atl = load * atl_k + atl * (1 - atl_k)
+
+    tsb = ctl - atl
+    return (
+        round(ctl, 1),
+        round(atl, 1),
+        round(tsb, 1),
+    )
 
 class TSBEngine:
     """Training Stress Balance: CTL - ATL = Form"""

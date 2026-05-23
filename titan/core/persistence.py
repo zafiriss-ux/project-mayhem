@@ -847,20 +847,15 @@ class PostgreSQLAdapter(PersistenceAdapter):
         return [(str(row[0]), float(row[1] or 0)) for row in rows]
 
     def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
+        from titan.science.tsb_engine import compute_ctl_atl_tsb
         loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
-        if not loads:
-            return (0.0, 0.0, 0.0)
+        # get_training_load_history returns DESC; kernel expects ASC
         chronological_loads = list(reversed(loads))
-        ctl = 0.0
-        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
-        for _date, load in chronological_loads:
-            ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
-        recent_loads = [load for _d, load in chronological_loads][-ATL_DECAY_DAYS:]
-        atl = 0.0
-        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
-        for load in recent_loads:
-            atl = (load * atl_decay) + (atl * (1 - atl_decay))
-        return (round(ctl, 2), round(atl, 2), round(ctl - atl, 2))
+        return compute_ctl_atl_tsb(
+            daily_loads=chronological_loads,
+            ctl_decay_days=CTL_DECAY_DAYS,
+            atl_decay_days=ATL_DECAY_DAYS,
+        )
 
     def add_shoe(
         self, name: str, shoe_type: str = "DAILY", max_km: int = 800

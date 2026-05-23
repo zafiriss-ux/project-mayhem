@@ -10,7 +10,6 @@ import sqlite3
 import threading
 from contextlib import contextmanager, suppress
 from datetime import UTC, datetime, timedelta
-from datetime import date as _date_cls
 from pathlib import Path
 from typing import Any
 
@@ -2168,45 +2167,24 @@ class DatabaseManager:
             - Coggan (2003) - Training Stress Score/Balance
             - Busso (2003) - Variable dose-response model
         """
+        from titan.science.tsb_engine import compute_ctl_atl_tsb  # deferred: avoids circular import
         loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
-
-        if not loads:
-            return 0.0, 0.0, 0.0
-
-        # Training history query returns oldest-first (ASC). EMA is applied
-        # in that same chronological order so fitness/fatigue evolve correctly.
-        chronological_loads = loads
-
-        # Calculate CTL (42-day EMA)
-        ctl = 0.0
-        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
-
-        for _date, load in chronological_loads:
-            ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
-
-        # Calculate ATL (7-day EMA) using a date window, not item count,
-        # so sparse training weeks don't shift the window incorrectly.
-        _atl_cutoff = (_date_cls.today() - timedelta(days=ATL_DECAY_DAYS)).isoformat()
-        recent_loads = [(d, ld) for d, ld in chronological_loads if d >= _atl_cutoff]
-        atl = 0.0
-        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
-
-        for _d, load in recent_loads:
-            atl = (load * atl_decay) + (atl * (1 - atl_decay))
-
-        # Calculate TSB
-        tsb = ctl - atl
+        ctl, atl, tsb = compute_ctl_atl_tsb(
+            daily_loads=loads,
+            ctl_decay_days=CTL_DECAY_DAYS,
+            atl_decay_days=ATL_DECAY_DAYS,
+        )
 
         from titan.science.physiological_bounds import (
             validate_single,  # deferred: avoids circular import
         )
-        ctl_out = validate_single("ctl", round(ctl, 1), "ctl_atl_tsb")
-        atl_out = validate_single("atl", round(atl, 1), "ctl_atl_tsb")
+        ctl_out = validate_single("ctl", ctl, "ctl_atl_tsb")
+        atl_out = validate_single("atl", atl, "ctl_atl_tsb")
         # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
         return (
             ctl_out if ctl_out is not None else 0.0,
             atl_out if atl_out is not None else 0.0,
-            round(tsb, 1),
+            tsb,
         )
 
     # --- GEAR MANAGEMENT ---
@@ -3190,24 +3168,13 @@ class PostgreSQLDatabaseManager:
         return [(str(row[0]), float(row[1])) for row in rows]
 
     def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
+        from titan.science.tsb_engine import compute_ctl_atl_tsb
         loads = self.get_training_load_history(CTL_DECAY_DAYS)
-        if not loads:
-            return 0.0, 0.0, 0.0
-
-        chronological_loads = loads
-        ctl = 0.0
-        ctl_decay = 2 / (CTL_DECAY_DAYS + 1)
-        for _date, load in chronological_loads:
-            ctl = (load * ctl_decay) + (ctl * (1 - ctl_decay))
-
-        _atl_cutoff = (_date_cls.today() - timedelta(days=ATL_DECAY_DAYS)).isoformat()
-        recent_loads = [(d, ld) for d, ld in chronological_loads if d >= _atl_cutoff]
-        atl = 0.0
-        atl_decay = 2 / (ATL_DECAY_DAYS + 1)
-        for _d, load in recent_loads:
-            atl = (load * atl_decay) + (atl * (1 - atl_decay))
-
-        return round(ctl, 1), round(atl, 1), round(ctl - atl, 1)
+        return compute_ctl_atl_tsb(
+            daily_loads=loads,
+            ctl_decay_days=CTL_DECAY_DAYS,
+            atl_decay_days=ATL_DECAY_DAYS,
+        )
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
         with self._conn.cursor() as cursor:
