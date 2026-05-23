@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 
 ## Test Count Snapshot
 
-**Historical snapshot:** 2907 tests all green
+**Historical snapshot:** 2911 tests all green
 
 Update this number after every commit that adds or removes tests:
 
@@ -46,7 +46,7 @@ titan/
   features/      Nutrition optimizer, equipment manager
   worker/        Background effect runner (Garmin sync, Telegram, morning routine scheduler)
 launcher/        Entry point, validator, errors, paths
-scripts/         import_garmin_csv.py, import_activity_laps.py
+scripts/         import_garmin_csv.py, import_activity_laps.py, docker_smoke_test.sh
 system_check.py  Pre-flight validation
 ```
 
@@ -127,6 +127,14 @@ docker compose up --build -d
 
 Services: `titan-api` (uvicorn, port 8000) + `titan-worker` (background daemon).
 Shared volume `titan-data` → `/data/titan_core.db`.
+
+Validation runbook: `docs/runbooks/docker-deploy.md`. Automated smoke test (requires Docker daemon):
+
+```bash
+bash scripts/docker_smoke_test.sh
+```
+
+Readiness probe: `GET /readyz` → 200 when DB is live and schema is valid.
 
 ## CI Gates
 

@@ -46,7 +46,7 @@ _log = logging.getLogger(__name__)
 CSRF_COOKIE_NAME = "titan_csrf"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-_CSRF_EXEMPT_PATHS = {"/health", "/auth/login"}
+_CSRF_EXEMPT_PATHS = {"/health", "/readyz", "/auth/login"}
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -244,6 +244,14 @@ def create_app(
     app.state.audit_store = audit_store or CoachAuditStore()
     app.state.db = db
 
+    if db is not None:
+        _db_path = str(getattr(db, "db_path", ""))
+        if _db_path != ":memory:":
+            assert "titan_core.db" in _db_path, (
+                f"Wrong DB: {_db_path}. "
+                "Must use titan_core.db — titan.db is stale."
+            )
+
     app.add_middleware(CSRFMiddleware)
 
     rate_limiter = AuthenticatedRateLimiter()
@@ -263,6 +271,43 @@ def create_app(
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/readyz")
+    async def readyz(request: Request) -> JSONResponse:
+        checks: dict[str, object] = {}
+        ok = True
+
+        try:
+            _db = request.app.state.db
+            if _db is None:
+                checks["db_error"] = "no db attached"
+                ok = False
+            else:
+                db_path = str(getattr(_db, "db_path", ""))
+                checks["db_file"] = "titan_core.db" in db_path
+                if not checks["db_file"]:
+                    ok = False
+
+                result = _db.conn.execute(
+                    "SELECT COUNT(*) FROM sqlite_master"
+                ).fetchone()
+                checks["db_reachable"] = result is not None
+                if not checks["db_reachable"]:
+                    ok = False
+
+                sv = _db.conn.execute("PRAGMA user_version").fetchone()
+                checks["schema_version"] = sv is not None and sv[0] > 0
+                if not checks["schema_version"]:
+                    ok = False
+
+        except Exception as e:  # noqa: BLE001
+            checks["db_error"] = str(e)
+            ok = False
+
+        return JSONResponse(
+            status_code=200 if ok else 503,
+            content={"ready": ok, "checks": checks},
+        )
 
     @app.get("/api/csrf-token")
     def get_csrf_token(response: Response) -> dict[str, str]:
