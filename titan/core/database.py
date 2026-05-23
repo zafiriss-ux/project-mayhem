@@ -8,6 +8,7 @@ import os
 import re
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager, suppress
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -2174,13 +2175,18 @@ class DatabaseManager:
             - Coggan (2003) - Training Stress Score/Balance
             - Busso (2003) - Variable dose-response model
         """
+        from titan.observability.metrics import get_metrics
         from titan.science.tsb_engine import compute_ctl_atl_tsb  # deferred: avoids circular import
+        t0 = time.monotonic()
         loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
         ctl, atl, tsb = compute_ctl_atl_tsb(
             daily_loads=loads,
             ctl_decay_days=CTL_DECAY_DAYS,
             atl_decay_days=ATL_DECAY_DAYS,
         )
+        elapsed_ms = (time.monotonic() - t0) * 1000
+        get_metrics().histogram("ctl_recompute_ms", elapsed_ms, {"athlete": athlete_id})
+        get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
 
         from titan.science.physiological_bounds import (
             validate_single,  # deferred: avoids circular import

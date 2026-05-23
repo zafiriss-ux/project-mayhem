@@ -14,7 +14,7 @@ python3 -m pytest --no-cov -q
 python3 -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 2920 tests all green
+**Historical snapshot:** 2924 tests all green
 
 Update after every commit adding/removing tests:
 
@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (63 modules, excl. __init__/__main__), ceiling 73.
+Main package (64 modules, excl. __init__/__main__), ceiling 73.
 
 | Package | Responsibility |
 |---------|----------------|
@@ -41,6 +41,7 @@ Main package (63 modules, excl. __init__/__main__), ceiling 73.
 | `worker/` | Background runner |
 | `launcher/` | Entry, validator |
 | `scripts/` | CSV import |
+| `observability/` | Structured metrics (MetricsCollector) |
 | `system_check.py` | Pre-flight |
 
 ## Key Files for Reference
@@ -49,7 +50,7 @@ Main package (63 modules, excl. __init__/__main__), ceiling 73.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 18 OPEN (ACTIVE, 2026-05-22) |
+| `docs/ROADMAP.MD` | Phase 19 OPEN (ACTIVE, 2026-05-23) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -130,6 +131,15 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 ## Schema
 
 SCHEMA_VERSION 21, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete).
+
+## Phase 19 Open Items (ACTIVE)
+
+- TD-04: DailyCoach god-orchestrator split — ADR-0058 required before implementation
+- TD-08 / TD-NEW-13: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (Phase 19 scope, 500+ lines)
+- TD-NEW-15: Load/performance tests — DailyCoach pipeline, DB reads under concurrent load, API throughput
+- OTel Phase 2: plug-in OpenTelemetry exporter into MetricsCollector via ADR
+- ADR-0044: PostgreSQL full parity gate
+- ADR-0058: DailyCoach split design
 
 ## Pitfalls
 
