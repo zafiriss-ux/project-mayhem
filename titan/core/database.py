@@ -9,7 +9,7 @@ import re
 import sqlite3
 import threading
 from contextlib import contextmanager, suppress
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -2145,6 +2145,13 @@ class DatabaseManager:
                 validated.append((date_str, clean))
         return validated
 
+    def is_db_reachable(self) -> bool:
+        """Probe that the DB connection is live (schema-introspection query)."""
+        with self._lock:
+            self._ensure_open_locked()
+            result = self.conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
+        return result is not None
+
     def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
         """
         Calculate Training Stress Balance from database history.
@@ -2185,6 +2192,20 @@ class DatabaseManager:
             ctl_out if ctl_out is not None else 0.0,
             atl_out if atl_out is not None else 0.0,
             tsb,
+        )
+
+    def replay_tsb(
+        self,
+        athlete_id: str,
+        as_of_date: date,
+    ) -> tuple[float, float, float]:
+        from titan.science.tsb_engine import (
+            replay_tsb as _replay,  # deferred: avoids circular import
+        )
+        return _replay(
+            db=self,
+            athlete_id=athlete_id,
+            as_of_date=as_of_date,
         )
 
     # --- GEAR MANAGEMENT ---

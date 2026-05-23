@@ -3,11 +3,11 @@
 TITAN OS — Complete Docker Smoke Test Suite
 Tests: API health, readiness, database, persistence, worker, and resilience
 """
+import os
 import subprocess
 import sys
 import time
-import os
-from pathlib import Path
+
 
 def run_cmd(cmd, shell=False):
     """Run shell command and return output"""
@@ -50,6 +50,7 @@ def test_api_health():
             return True
         time.sleep(2)
     fail(f"/health did not respond in {timeout}s")
+    return None
 
 def test_api_readyz():
     """Test 2: API /readyz endpoint"""
@@ -72,14 +73,14 @@ def test_db_file():
     )
     if code != 0:
         fail("titan_core.db not found in volume")
-    
+
     code, out, err = run_cmd(
         "docker exec project-mayhem-titan-api-1 test ! -f /data/titan.db",
         shell=True
     )
     if code != 0:
         fail("stale titan.db exists in volume")
-    
+
     log("✅ DB file: titan_core.db only", "PASS")
     return True
 
@@ -99,7 +100,7 @@ def test_worker_lock():
 def test_persistence():
     """Test 5: Database persistence across restart"""
     log("Test 5/8: Testing database persistence...")
-    
+
     # Write marker
     code, out, err = run_cmd(
         "docker cp check_persistence.py project-mayhem-titan-api-1:/app/ 2>/dev/null; "
@@ -113,11 +114,11 @@ def test_persistence():
     )
     if code != 0 or 'marker_written' not in out:
         log(f"Warning: Marker write failed, but continuing: {out}", "WARN")
-    
+
     # Restart API
     code, out, err = compose_cmd("restart titan-api")
     time.sleep(5)
-    
+
     # Wait for health
     start = time.time()
     while time.time() - start < 30:
@@ -130,7 +131,7 @@ def test_persistence():
         time.sleep(1)
     else:
         fail("API did not recover after restart")
-    
+
     # Verify marker
     code, out, err = run_cmd(
         "docker exec project-mayhem-titan-api-1 python3 -c \"import sys; sys.path.insert(0, '.'); "
@@ -143,27 +144,27 @@ def test_persistence():
     )
     if 'marker_found_1' not in out:
         log(f"Persistence check: {out}", "WARN")
-    
+
     log("✅ Persistence after restart: OK", "PASS")
     return True
 
 def test_worker_resilience():
     """Test 6: API survives worker failure"""
     log("Test 6/8: Testing worker failure resilience...")
-    
+
     code, out, err = compose_cmd("stop titan-worker")
     time.sleep(2)
-    
+
     code, out, err = run_cmd(
         "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",
         shell=True
     )
     if code != 0 or '"status":"ok"' not in out:
         fail("API crashed after worker stop")
-    
+
     code, out, err = compose_cmd("start titan-worker")
     time.sleep(3)
-    
+
     log("✅ API survives worker failure", "PASS")
     return True
 
@@ -197,22 +198,22 @@ def test_readyz_checks():
         if checks_ok:
             log(f"✅ All readyz checks pass: {out}", "PASS")
             return True
-        else:
-            fail(f"Readyz checks failed: {out}")
+        fail(f"Readyz checks failed: {out}")
     fail(f"Readyz call failed: {err}")
+    return None
 
 def main():
     os.chdir("C:\\Users\\zafir\\Desktop\\mayhem\\project-mayhem")
-    
+
     log("=" * 60)
     log("TITAN OS — COMPLETE DOCKER SMOKE TEST SUITE")
     log("=" * 60)
-    
+
     # Ensure compose is up
     log("Starting services...", "INFO")
     code, out, err = compose_cmd("up -d")
     time.sleep(3)
-    
+
     tests = [
         test_api_health,
         test_api_readyz,
@@ -223,10 +224,10 @@ def main():
         test_volume_mount,
         test_readyz_checks,
     ]
-    
+
     passed = 0
     failed = 0
-    
+
     for test in tests:
         try:
             if test():
@@ -234,12 +235,12 @@ def main():
         except Exception as e:
             log(f"Error in {test.__name__}: {e}", "ERROR")
             failed += 1
-    
+
     log("=" * 60)
     log("SMOKE TEST SUITE COMPLETE")
     log("=" * 60)
     log(f"Results: {passed} passed, {failed} failed out of {len(tests)} tests", "INFO")
-    
+
     if failed == 0:
         log("✅ ALL SMOKE TESTS PASSED", "PASS")
         print("\n" + "=" * 60)
@@ -257,9 +258,8 @@ def main():
         print("  • All readyz health details (db_file, db_reachable, schema_version)")
         print("=" * 60)
         return 0
-    else:
-        log(f"❌ {failed} test(s) failed", "FAIL")
-        return 1
+    log(f"❌ {failed} test(s) failed", "FAIL")
+    return 1
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import TYPE_CHECKING
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
+
+if TYPE_CHECKING:
+    from titan.core.database import DatabaseManager
 
 MODULE_VERSION = "1.0.0"
 
@@ -56,6 +60,39 @@ def compute_ctl_atl_tsb(
         round(atl, 1),
         round(tsb, 1),
     )
+
+
+def replay_tsb(
+    db: DatabaseManager,
+    athlete_id: str,
+    as_of_date: date,
+    ctl_decay_days: int = CTL_DECAY_DAYS,
+    atl_decay_days: int = ATL_DECAY_DAYS,
+) -> tuple[float, float, float]:
+    """
+    Deterministic replay: compute CTL/ATL/TSB as it would have been on
+    `as_of_date` using only activity data up to that date.
+
+    Pure function of (activity_stream, date). Used for audit, drift
+    detection, and regression testing.
+
+    Returns (ctl, atl, tsb).
+    """
+    loads = db.get_training_load_history(
+        athlete_id=athlete_id,
+        days=ctl_decay_days * 5,  # 5τ warmup window
+    )
+    loads_up_to = [
+        (d, load) for d, load in loads
+        if d <= as_of_date.isoformat()
+    ]
+    return compute_ctl_atl_tsb(
+        daily_loads=loads_up_to,
+        ctl_decay_days=ctl_decay_days,
+        atl_decay_days=atl_decay_days,
+        reference_date=as_of_date,
+    )
+
 
 class TSBEngine:
     """Training Stress Balance: CTL - ATL = Form"""

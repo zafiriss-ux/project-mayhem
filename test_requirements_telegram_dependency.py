@@ -8,6 +8,7 @@ RUNTIME_DEPENDENCIES = {
     "alembic==1.18.4",
     "psycopg2-binary==2.9.12",
     "fastapi==0.136.1",
+    "uvicorn==0.34.3",
     "pyjwt[crypto]==2.12.1",
     "bcrypt==5.0.0",
     "cryptography==48.0.0",
