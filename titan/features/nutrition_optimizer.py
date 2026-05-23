@@ -259,7 +259,7 @@ class NutritionOptimizer:
             "total_calories": round(tdee, 0),
             "calories": round(tdee, 0),
             "carbs_g": round(carb_g, 0),
-            "carbs_range": f"{int(weight_kg * carb_low)}-{int(weight_kg * carb_high)}g",
+            "carbs_range": f"{round(round(carb_g) * 0.85)}-{round(round(carb_g) * 1.15)}g",
             "protein_g": round(protein_g, 0),
             "fat_g": round(fat_g, 0),
             "hydration_ml": hydration_ml,

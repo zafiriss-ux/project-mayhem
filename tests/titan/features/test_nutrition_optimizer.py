@@ -1,4 +1,4 @@
-from titan.features.nutrition_optimizer import NutritionOptimizer
+from titan.features.nutrition_optimizer import NutritionOptimizer, NutritionPreferences
 
 
 class _StubGlycogenModel:
@@ -106,7 +106,7 @@ def test_calculate_daily_nutrition_happy_path_returns_expected_contract_keys():
 
     assert plan["total_calories"] == 2814.0
     assert plan["carbs_g"] == 490.0
-    assert plan["carbs_range"] == "420-560g"
+    assert plan["carbs_range"] == "416-564g"
     assert plan["protein_g"] == 126.0
     assert plan["fat_g"] == 40
     assert plan["hydration_ml"] == 3000
@@ -137,7 +137,7 @@ def test_calculate_daily_nutrition_extreme_macro_target_boundary_for_race_day():
     )
 
     assert plan["carbs_g"] == 1320.0
-    assert plan["carbs_range"] == "1200-1440g"
+    assert plan["carbs_range"] == "1122-1518g"
     assert plan["hydration_ml"] == 4700
     assert plan["fat_g"] == 40
 
@@ -156,4 +156,29 @@ def test_calculate_daily_nutrition_hydration_scales_with_session_intensity():
 
     assert easy["hydration_ml"] == 2800
     assert hammer["hydration_ml"] == 3000
-    assert hammer["hydration_ml"] > easy["hydration_ml"]
+
+
+def test_carb_range_reflects_dietary_style():
+    optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
+
+    low_carb_prefs = NutritionPreferences(dietary_style="low_carb")
+    low_carb_plan = optimizer.calculate_daily_nutrition(
+        weight_kg=75,
+        today_session={"session_type": "EASY", "duration_min": 45},
+        prefs=low_carb_prefs,
+    )
+    # low_carb EASY: carb_g = tdee * 0.35 / 4 ≈ 224g — well below the Burke range of 375-525g
+    lc_target = low_carb_plan["carbs_g"]
+    lc_min, lc_max = (int(x.rstrip("g")) for x in low_carb_plan["carbs_range"].split("-"))
+    assert lc_min == round(lc_target * 0.85)
+    assert lc_max == round(lc_target * 1.15)
+    assert lc_max < 375  # must not bleed into the old Burke range
+
+    standard_plan = optimizer.calculate_daily_nutrition(
+        weight_kg=75,
+        today_session={"session_type": "EASY", "duration_min": 45},
+    )
+    st_target = standard_plan["carbs_g"]
+    st_min, st_max = (int(x.rstrip("g")) for x in standard_plan["carbs_range"].split("-"))
+    assert st_min == round(st_target * 0.85)
+    assert st_max == round(st_target * 1.15)

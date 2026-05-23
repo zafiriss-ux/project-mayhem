@@ -5379,7 +5379,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 
 | ID | Finding | Status |
 |---|---|---|
-| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified: `get_training_load_history(42)` returns 15 rows, hydration code correct, no exceptions raised. Root cause: unknown state mutation between hydration in `titan/main.py` and UI render in `menu_system.py`. Added: 2026-05-20. | OPEN — carries to Phase 18 (HIGH) |
+| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified: `get_training_load_history(42)` returns 15 rows, hydration code correct, no exceptions raised. Root cause: `get_training_load_history()` was returning per-activity rows without GROUP BY date — multiple rows per day caused silent deduplication/ordering failures downstream. Per-day aggregation (SUM + GROUP BY) fixed in PR #719. The multiple hydration/ordering fixes (#698–#712) were chasing symptoms. Added: 2026-05-20. | ✅ RESOLVED 2026-05-22 |
 | TD-02 | SQLite unprotected reads | ✅ RESOLVED (partial — 4 key read methods locked; full coverage deferred Phase 17) |
 | TD-04 | DailyCoach god-orchestrator | OPEN — carries to Phase 18 (ADR-0057 required) |
 | TD-06 | No deployable artifact | ✅ RESOLVED 2026-05-15 — Dockerfile (two-stage, non-root), docker-compose.yml, .dockerignore, docs/DOCKER_SETUP.md; 5 existence tests in tests/test_td06_dockerfile.py |
@@ -5390,7 +5390,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-14 | Persistence ABC unused | LOW — deferred |
 | TD-15 | No load/perf tests | MED — deferred |
 | TD-16 | No DB corruption recovery test | MED — deferred |
-| TD-NUTRITION-01 | Carb display inconsistency when `low_carb` dietary style active: "Carbs: 375-525g (224.0 g)" — range shows generic band instead of `dietary_style`-adjusted target. Added: 2026-05-22. | OPEN — carries to Phase 18 (LOW) |
+| TD-NUTRITION-01 | Carb display inconsistency when `low_carb` dietary style active: "Carbs: 375-525g (224.0 g)" — range shows generic band instead of `dietary_style`-adjusted target. Added: 2026-05-22. | ✅ RESOLVED 2026-05-23 — `carbs_range` now computed as ±15% of actual `carbs_g` (PR #720). Range is always consistent with the dietary-style-adjusted target regardless of Burke defaults. |
 
 ---
 
