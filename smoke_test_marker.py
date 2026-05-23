@@ -1,8 +1,11 @@
-import sys, os
+import os
+import sys
+
 sys.path.insert(0, '.')
 os.environ['TITAN_DATA_DIR'] = '/data'
-from titan.core.database import DatabaseManager
 from pathlib import Path
+
+from titan.core.database import DatabaseManager
 
 db = DatabaseManager(db_dir=Path('/data'))
 result = db.conn.execute(

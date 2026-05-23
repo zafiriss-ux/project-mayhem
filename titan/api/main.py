@@ -288,10 +288,7 @@ def create_app(
                 if not checks["db_file"]:
                     ok = False
 
-                result = _db.conn.execute(
-                    "SELECT COUNT(*) FROM sqlite_master"
-                ).fetchone()
-                checks["db_reachable"] = result is not None
+                checks["db_reachable"] = _db.is_db_reachable()
                 if not checks["db_reachable"]:
                     ok = False
 
