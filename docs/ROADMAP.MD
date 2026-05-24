@@ -35,7 +35,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 18 | Observability & Debt Clearance | CLOSED 2026-05-23 | TD-CTL-01 ✅, TD-11 ✅, TD-NUTRITION-01 ✅; TD-04/TD-08 deferred Phase 19 |
 | Phase 19 | Structured Debt & Scale | CLOSED 2026-05-24 | TD-NEW-15 ✅ load tests, TD-04 ✅ ADR-0058 Phase A; TD-08/TD-NEW-18 DEFERRED Phase 20 |
 | Phase 20 | Schema & EffectBus | CLOSED 2026-05-24 | FMEA G12 SATISFIED; hygiene & backup hardening; TD-08/TD-NEW-18/TD-04B deferred Phase 21 |
-| Phase 21 | Governance Consolidation | OPEN 2026-05-24 | TD-08 schema extract (XL), TD-04 Phase B EffectBus, TD-NEW-18 alembic CI, pydantic-settings, pytest markers |
+| Phase 21 | Governance Consolidation | CLOSED 2026-05-24 | TECHNICAL_DEBT.md archived <1500 LOC; SCRATCHPAD.md archived; TD-08/TD-NEW-18/TD-04B/T5-15 DEFERRED Phase 22 |
+| Phase 22 | Schema Extract & Observability | OPEN 2026-05-24 | TD-08 schema extract, TD-04B EffectBus, TD-NEW-18 Alembic CI, P15-ARCH5 pydantic-settings, T5-15 markers, TD-OBS metrics sink |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -253,14 +254,25 @@ Hygiene & backup hardening delivered (F20-01–F20-04 all mitigated).
 
 ---
 
-## Phase 21 — Governance Consolidation (OPEN, 2026-05-24)
+## Phase 21 — Governance Consolidation (CLOSED, 2026-05-24)
 
-Entry gate: Phase 20 close audit PASS (2026-05-24). Scope (priority order):
+Entry gate: Phase 20 close audit PASS (2026-05-24). Scope: documentation archival and governance consolidation.
+
+**CLOSED 2026-05-24**: phase_close_audit.sh 21 exit 0; 2959 tests passing; governance consolidation complete.
+TECHNICAL_DEBT.md archived to <1500 LOC; SCRATCHPAD.md archived to 916 LOC.
+Scope items deferred to Phase 22: TD-08, TD-04 Phase B, TD-NEW-18, P15-ARCH5, T5-15.
+
+---
+
+## Phase 22 — Schema Extract & Observability (OPEN, 2026-05-24)
+
+Entry gate: Phase 21 close audit PASS (2026-05-24). Scope (priority order):
 1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL).
 2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B).
 3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track).
 4. P15-ARCH5: pydantic-settings migration.
 5. T5-15: Pytest marker taxonomy (unit/integration/governance).
+6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector.
 
 ---
 
@@ -327,4 +339,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-24 (Phase 20 CLOSED 2026-05-24; Phase 21 OPEN 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-24 (Phase 21 CLOSED 2026-05-24; Phase 22 OPEN 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
