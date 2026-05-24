@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from time import monotonic
 from unittest.mock import patch
 
 import pytest
@@ -83,38 +82,26 @@ def test_lockout_clears_on_successful_login(client: TestClient, store: AuthStore
 
 
 def test_lockout_expires_after_duration(store: AuthStore) -> None:
-    base = monotonic()
+    base = 1_000_000.0
 
-    with patch("titan.api.auth.monotonic") as mock_mono:
-        mock_mono.return_value = base
+    with patch("time.time", return_value=base):
         for _ in range(LOCKOUT_MAX_ATTEMPTS):
             store.record_failed_attempt("coach")
-
         assert store.is_locked_out("coach")
 
-        mock_mono.return_value = base + LOCKOUT_DURATION_SECONDS + 1.0
+    with patch("time.time", return_value=base + LOCKOUT_DURATION_SECONDS + 1.0):
         assert not store.is_locked_out("coach")
 
 
 def test_failed_attempts_outside_window_dont_count(store: AuthStore) -> None:
-    base = monotonic()
-
-    with patch("titan.api.auth.monotonic") as mock_mono:
-        mock_mono.return_value = base
-        for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
-            store.record_failed_attempt("coach")
-
-        # Advance past the rolling window
-        mock_mono.return_value = base + LOCKOUT_WINDOW_SECONDS + 1.0
-        # Old attempts are now outside the window; need a full new burst to lock
-        for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
-            store.record_failed_attempt("coach")
-
-        assert not store.is_locked_out("coach")
-
-        # One more to hit the threshold within the new window
+    # TD-SEC-02: lockout is now counter-based (SQLite) rather than sliding-window.
+    # N-1 attempts must not lock; the Nth attempt must trigger lockout regardless of timing.
+    for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
         store.record_failed_attempt("coach")
-        assert store.is_locked_out("coach")
+    assert not store.is_locked_out("coach")
+
+    store.record_failed_attempt("coach")
+    assert store.is_locked_out("coach")
 
 
 def test_locked_account_returns_423_not_401(client: TestClient) -> None:
@@ -127,15 +114,14 @@ def test_locked_account_returns_423_not_401(client: TestClient) -> None:
 
 
 def test_successful_login_after_lockout_expiry(store: AuthStore, rsa_keys: None) -> None:
-    base = monotonic()
+    base = 1_000_000.0
 
-    with patch("titan.api.auth.monotonic") as mock_mono:
-        mock_mono.return_value = base
+    with patch("time.time", return_value=base):
         for _ in range(LOCKOUT_MAX_ATTEMPTS):
             store.record_failed_attempt("coach")
         assert store.is_locked_out("coach")
 
-        mock_mono.return_value = base + LOCKOUT_DURATION_SECONDS + 1.0
+    with patch("time.time", return_value=base + LOCKOUT_DURATION_SECONDS + 1.0):
         assert not store.is_locked_out("coach")
 
     app = create_app(auth_store=store)

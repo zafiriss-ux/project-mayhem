@@ -6,7 +6,7 @@ RUNTIME_DEPENDENCIES = {
     "pyTelegramBotAPI==4.33.0",
     "sqlalchemy==2.0.49",
     "alembic==1.18.4",
-    "psycopg2-binary==2.9.12",
+    # psycopg2-binary removed from active requirements (TD-DEP-01) — see requirements.txt
     "fastapi==0.136.1",
     "uvicorn==0.34.3",
     "pyjwt[crypto]==2.12.1",

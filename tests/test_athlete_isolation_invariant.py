@@ -18,7 +18,10 @@ _EXEMPT_SHORTCUT_MODULES: frozenset[Path] = frozenset()
 _SHORTCUT_TAG = "ADR-0040-SINGLE-ATHLETE-SHORTCUT"
 _SQL_DML_PREFIXES: tuple[str, ...] = ("SELECT", "UPDATE", "DELETE", "INSERT")
 _SQL_SHAPE_TOKENS: tuple[str, ...] = (" FROM ", " INTO ", " SET ", " VALUES ", " WHERE ")
-_SCHEMA_TABLES_ALLOWED_WITHOUT_ATHLETE_ID: frozenset[str] = frozenset({"sync_metadata"})
+_SCHEMA_TABLES_ALLOWED_WITHOUT_ATHLETE_ID: frozenset[str] = frozenset({
+    "sync_metadata",
+    "login_lockout",  # system-level auth table — not per-athlete (TD-SEC-02)
+})
 
 
 def _parse(path: Path) -> ast.Module:
