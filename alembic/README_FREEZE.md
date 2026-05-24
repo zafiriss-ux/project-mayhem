@@ -1,4 +1,4 @@
-# Alembic — Phase 8A Only
+# Alembic — FREEZE (Phase 8A Only)
 
 This Alembic tree targets the PostgreSQL migration
 (ADR-0044, Phase 8A). It is NOT wired to the

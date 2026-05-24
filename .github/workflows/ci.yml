@@ -611,6 +611,48 @@ jobs:
       - name: Athlete isolation invariant
         run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
 
+  alembic-integrity:
+    name: Alembic Migration Integrity
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          pip install alembic sqlalchemy \
+            --quiet \
+            --break-system-packages
+      - name: Verify migration chain
+        run: |
+          python3 -c "
+  from alembic.config import Config
+  from alembic.script import ScriptDirectory
+  cfg = Config('alembic.ini')
+  sd = ScriptDirectory.from_config(cfg)
+  # Assert no branch points
+  heads = sd.get_heads()
+  assert len(heads) == 1, (
+      f'Multiple alembic heads: {heads}. '
+      'Run alembic merge before merging PR.'
+  )
+  # Assert all revisions reachable
+  revs = list(sd.walk_revisions())
+  print(f'Migration chain OK: '
+        f'{len(revs)} revisions, '
+        f'head={heads[0][:8]}')
+          "
+      - name: Assert freeze notice intact
+        run: |
+          grep -q "FREEZE" \
+            alembic/README_FREEZE.md || {
+            echo "FAIL: Freeze notice \
+  removed from alembic/README_FREEZE.md"
+            exit 1
+          }
+
   alembic-freeze-guard:
     name: Alembic freeze guard (SQLite collision prevention)
     runs-on: ubuntu-latest
