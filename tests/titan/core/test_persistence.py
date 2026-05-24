@@ -50,6 +50,8 @@ _REQUIRED_ABSTRACT_METHODS = frozenset(
         "record_sync_outcome",
         "get_last_sync_outcome",
         "get_last_garmin_sync_timestamp",
+        "is_db_reachable",
+        "replay_tsb",
         "backup_database",
         "transaction",
         "close",
