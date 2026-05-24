@@ -110,7 +110,8 @@ Phase 16 CLOSED — phase_close_audit.sh 16 exit 0; 2774 tests passing; SCRATCHP
 Phase 17 CLOSED — phase_close_audit.sh 17 exit 0; 2887 tests passing; TD-CTL-01 and TD-NUTRITION-01 registered (2026-05-22).
 Phase 18 CLOSED — phase_close_audit.sh 18 exit 0; 2924 tests passing; TD-11 RESOLVED; TD-08 DEFERRED Phase 19 (2026-05-23).
 Phase 19 CLOSED — phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-15 RESOLVED; TD-04 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20 (2026-05-24).
-Phase 20 OPEN — Phase 19 close audit PASS 2026-05-24.
+Phase 20 CLOSED — phase_close_audit.sh 20 exit 0; 2955 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 21; TD-NEW-18 DEFERRED Phase 21 (2026-05-24).
+Phase 21 OPEN — governance consolidation 2026-05-24.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -5495,7 +5496,33 @@ TD-04 RESOLVED; TD-NEW-10 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED 
 | F19-03 | OTel dep without ADR gate | LOW | MED | DEFERRED — OTel Phase 2 deferred pending ADR | ⚠️ DEFERRED |
 | F19-04 | Load test SLO false negative: in-process DB test misses production latency profile | LOW | MED | Scripts runner (load_test_runner.sh) available for Docker-based validation | ✅ ACCEPTABLE |
 
-## Phase 20 Scope (OPEN, 2026-05-24)
+## Phase 20 Scope (CLOSED, 2026-05-24)
+
+Closed 2026-05-24 — phase_close_audit.sh 20 exit 0; 2955 tests passing.
+Deferred to Phase 21: TD-08, TD-NEW-18, TD-04 Phase B, P15-ARCH5, T5-15.
+
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — DEFERRED Phase 21
+2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 21
+3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track) — DEFERRED Phase 21
+4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 21
+5. T5-15: Pytest marker taxonomy (unit/integration/governance) — DEFERRED Phase 21
+
+## FMEA: Phase 20 — Hygiene & Backup
+
+**Architect:** Claude | **Date:** 2026-05-24 | **Status:** G12 SATISFIED
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F20-01 | Backup script | Permission denied on /data/backups | MED | chown titan:titan in Dockerfile ✅ |
+| F20-02 | Worker backup | DB locked during backup | LOW | SQLite online backup API is lock-safe ✅ |
+| F20-03 | Naive datetime | Clock skew in metrics | LOW | timezone.utc enforced ✅ |
+| F20-04 | Postgres adapter | Called accidentally | LOW | NotImplementedError gate ✅ |
+
+**G12 gate:** SATISFIED.
+
+## Phase 21 Scope (OPEN, 2026-05-24)
+
+Entry gate: Phase 20 close audit PASS (2026-05-24). Scope: governance consolidation.
 
 1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL)
 2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B)

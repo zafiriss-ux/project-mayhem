@@ -50,7 +50,7 @@ Main package (65 modules, excl. __init__/__main__), ceiling 73.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 20 OPEN (ACTIVE, 2026-05-24) |
+| `docs/ROADMAP.MD` | Phase 21 OPEN (ACTIVE, 2026-05-24) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -138,7 +138,12 @@ SCHEMA_VERSION 21, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete)
 phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-15 RESOLVED; TD-04 RESOLVED;
 TD-NEW-10 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20.
 
-## Phase 20 Open Items (ACTIVE)
+## Phase 20 CLOSED (2026-05-24)
+
+phase_close_audit.sh 20 exit 0; 2955 tests passing; FMEA G12 SATISFIED;
+TD-08 DEFERRED Phase 21; TD-NEW-18 DEFERRED Phase 21; TD-04 Phase B DEFERRED Phase 21.
+
+## Phase 21 Open Items (ACTIVE)
 
 1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL)
 2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B)
