@@ -23,7 +23,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 _log = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class FileChannel(NotificationChannel):
     def send(self, message: str) -> bool:
         try:
             self._output_dir.mkdir(parents=True, exist_ok=True)
-            date_str = datetime.utcnow().strftime("%Y-%m-%d")
+            date_str = datetime.now(UTC).strftime("%Y-%m-%d")
             dest = self._output_dir / f"daily_briefing_{date_str}.txt"
             dest.write_text(message, encoding="utf-8")
             _gw_event("file_channel_written", path=str(dest), date=date_str)

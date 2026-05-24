@@ -60,6 +60,25 @@ jobs:
 
           python -m ruff check "${BLOCKING_TARGETS[@]}"
 
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    needs: [ruff-phase-a]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run semgrep rules
+        run: |
+          pip install semgrep \
+            --quiet \
+            --break-system-packages
+          semgrep --config \
+            .semgrep/titan_rules.yaml \
+            titan/ \
+            --error \
+            --quiet
+
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -182,6 +201,7 @@ jobs:
           echo "No .env files found in tracked files — OK"
 
       - name: Run system check (module health)
+        # Informational: diagnoses import/threading problems; pytest suite is the real gate.
         run: python system_check.py || true
 
   dependency-drift-audit:

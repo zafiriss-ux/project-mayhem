@@ -39,3 +39,23 @@ def test_worker_run_forever_not_stub() -> None:
     assert src.count("time.sleep") <= 1, (
         "C-1: worker looks like a stub"
     )
+
+
+def test_metrics_no_utcnow() -> None:
+    src = Path("titan/observability/metrics.py").read_text()
+    assert "utcnow" not in src, (
+        "TR-10: metrics.py must use datetime.now(timezone.utc)"
+    )
+
+
+def test_dockerfile_non_root() -> None:
+    src = Path("Dockerfile").read_text()
+    assert "USER titan" in src, (
+        "TR-18: Dockerfile must run as non-root user"
+    )
+
+
+def test_semgrep_config_exists() -> None:
+    assert Path(".semgrep/titan_rules.yaml").exists(), (
+        "TR-17: semgrep config must exist"
+    )

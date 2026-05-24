@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 class MetricsCollector:
@@ -58,7 +58,7 @@ class MetricsCollector:
             "name": name,
             "value": value,
             "labels": labels or {},
-            "ts": datetime.utcnow().isoformat() + "Z",
+            "ts": datetime.now(UTC).isoformat(),
         }
         self._logger.info(json.dumps(record))
 
