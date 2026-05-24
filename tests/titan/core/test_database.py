@@ -707,6 +707,14 @@ def test_get_database_manager_respects_backend_environment(monkeypatch, tmp_path
         get_database_manager(db_name="unused.db", db_dir=tmp_path)
 
 
+def test_postgres_backend_raises():
+    # TR-13 (Opus 2026-05-24): postgres adapter explicitly unmaintained until ADR-0044 parity
+    from titan.core.database import get_database_manager
+
+    with pytest.raises(NotImplementedError):
+        get_database_manager(backend="postgres")
+
+
 def test_postgres_backend_matches_sqlite_ctl_atl_and_history(tmp_path, monkeypatch):
     from titan.core import database as db_module
 

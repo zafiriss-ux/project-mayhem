@@ -243,7 +243,7 @@ class OutcomeTracker:
         )
 
         decision = GovernanceDecision(
-            date=date or datetime.now().replace(tzinfo=UTC).strftime("%Y-%m-%d"),
+            date=date or datetime.now(UTC).strftime("%Y-%m-%d"),
             session_planned=str(session_planned),
             session_post_governance=str(session_post_governance),
             locks_applied=list(locks_applied),
@@ -809,5 +809,5 @@ class OutcomeTracker:
             "false_negative_rate": false_negative_rate,
             "circuit_breaker_active": False,
             "thresholds_evaluated": list(base_values.keys()),
-            "timestamp": datetime.now().replace(tzinfo=UTC).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }

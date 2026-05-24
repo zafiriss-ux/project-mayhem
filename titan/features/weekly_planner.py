@@ -10,7 +10,7 @@ Generates intelligent weekly plans based on:
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from titan.core.structured_events import make_event_emitter
 from titan.science.acwr_engine import ACWREngine
@@ -66,7 +66,7 @@ class WeeklyPlanGenerator:
                 "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km),
             }
 
-        today_name = datetime.now().strftime("%A")  # 'Monday', 'Tuesday', …
+        today_name = datetime.now(UTC).strftime("%A")
         for session in self.last_plan.get("daily_sessions", []):
             if session.get("day") == today_name:
                 result = dict(session)
@@ -207,7 +207,7 @@ class WeeklyPlanGenerator:
 
         # Package the plan
         plan = {
-            "week_start": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "week_start": (datetime.now(UTC) + timedelta(days=1)).strftime("%Y-%m-%d"),
             "phase": phase,
             "total_km": sum(d["distance_km"] for d in structure),
             "quality_count": sum(

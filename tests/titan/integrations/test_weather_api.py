@@ -283,7 +283,7 @@ def test_find_optimal_training_windows_respects_fractional_duration(monkeypatch)
 
     class _FixedDateTime:
         @staticmethod
-        def now():
+        def now(tz=None):
             return base
 
         @staticmethod
@@ -338,7 +338,7 @@ def test_create_synthetic_fallback_uses_location_profile(monkeypatch):
 
     class _FixedDateTime:
         @staticmethod
-        def now():
+        def now(tz=None):
             return datetime(2026, 1, 10, 6, 0, 0)
 
     monkeypatch.setattr(weather_api, "datetime", _FixedDateTime)

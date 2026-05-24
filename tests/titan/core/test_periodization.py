@@ -16,7 +16,7 @@ class _FrozenDateTime:
     frozen_now = datetime(2026, 1, 1, 12, 0, 0)
 
     @classmethod
-    def now(cls):
+    def now(cls, tz=None):
         return cls.frozen_now
 
     @classmethod
