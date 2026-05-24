@@ -21,6 +21,7 @@ Architectural Boundary:
 """
 
 import contextlib
+import dataclasses
 import json
 import logging
 import sqlite3
@@ -59,8 +60,10 @@ from titan.orchestration.contracts import (
     PlannedEffect,
     TodaySessionPlan,
 )
+from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
+from titan.science.biomechanics import BiomechanicsEngine
 from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
 from titan.science.data_trust import (
@@ -69,10 +72,12 @@ from titan.science.data_trust import (
     evaluate_garmin_trust,
     evaluate_weather_trust,
 )
+from titan.science.durability_engine import DurabilityEngine
 from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
+from titan.science.lactate_logic import LactateLogic
 from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.volume_load_gauge import VolumeLoadGauge
 
@@ -328,9 +333,6 @@ class DailyCoach:
             garmin_sync.athlete_max_hr = athlete_max_hr
         self.weather        = weather_api
         self.telegram       = telegram_bot
-        self.hrv            = hrv_engine
-        self.tsb            = tsb_engine
-        self.readiness      = readiness_engine
         self.optimal_time   = optimal_time_calc
         self.nutrition      = nutrition_optimizer
         self.weekly_planner = weekly_planner
@@ -344,14 +346,22 @@ class DailyCoach:
                 "Never instantiate DatabaseManager() inside the pipeline."
             )
         self.db = db
-        # v5.7: Closed-Loop science engines
-        self.autonomic  = autonomic_engine or AutonomicFusionEngine()
-        self.cs_tracker = cs_tracker       or CriticalSpeedTracker()
+        # v5.7: Closed-Loop science engines — ADR-0058 Phase A: held in EngineRegistry
+        self.engines = EngineRegistry(
+            tsb=tsb_engine,
+            hrv=hrv_engine,
+            readiness=readiness_engine,
+            autonomic=autonomic_engine or AutonomicFusionEngine(),
+            biomechanics=BiomechanicsEngine(),
+            durability=DurabilityEngine(),
+            fatigue=fatigue_engine or FatigueEngine(),
+            lactate=LactateLogic(),
+            cs_tracker=cs_tracker or CriticalSpeedTracker(),
+            apl=apl or AdaptivePriorityLock(),
+        )
         self.glycogen   = glycogen_accum   or GlycogenDebtAccumulator()
         self.governance = governance       or GovernanceEngine()
-        self.fatigue    = fatigue_engine    or FatigueEngine()
         # v5.7.1: APL governance infrastructure
-        self.apl            = apl             or AdaptivePriorityLock()
         self.vlg            = volume_load_gauge or VolumeLoadGauge()
         self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
         self.athlete_max_hr = athlete_max_hr
@@ -376,6 +386,147 @@ class DailyCoach:
                 metrics=metrics_under_review,
                 count=len(metrics_under_review),
             )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # BACKWARD-COMPAT ENGINE PROPERTIES (ADR-0058 Phase A)
+    # Getters check instance __dict__ first (for DailyCoach.__new__ test
+    # factories), then fall back to self.engines.*.
+    # Setters: if engines exists, rebuild via dataclasses.replace(); if not
+    # (factory-constructed without __init__), store directly in __dict__.
+    # These properties will be removed in a future cleanup phase.
+    # ═══════════════════════════════════════════════════════════════════════
+
+    @property
+    def tsb(self):
+        if 'tsb' in self.__dict__:
+            return self.__dict__['tsb']
+        return self.engines.tsb
+
+    @tsb.setter
+    def tsb(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, tsb=value)
+        else:
+            self.__dict__['tsb'] = value
+
+    @property
+    def hrv(self):
+        if 'hrv' in self.__dict__:
+            return self.__dict__['hrv']
+        return self.engines.hrv
+
+    @hrv.setter
+    def hrv(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, hrv=value)
+        else:
+            self.__dict__['hrv'] = value
+
+    @property
+    def readiness(self):
+        if 'readiness' in self.__dict__:
+            return self.__dict__['readiness']
+        return self.engines.readiness
+
+    @readiness.setter
+    def readiness(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, readiness=value)
+        else:
+            self.__dict__['readiness'] = value
+
+    @property
+    def autonomic(self):
+        if 'autonomic' in self.__dict__:
+            return self.__dict__['autonomic']
+        return self.engines.autonomic
+
+    @autonomic.setter
+    def autonomic(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, autonomic=value)
+        else:
+            self.__dict__['autonomic'] = value
+
+    @property
+    def cs_tracker(self):
+        if 'cs_tracker' in self.__dict__:
+            return self.__dict__['cs_tracker']
+        return self.engines.cs_tracker
+
+    @cs_tracker.setter
+    def cs_tracker(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, cs_tracker=value)
+        else:
+            self.__dict__['cs_tracker'] = value
+
+    @property
+    def fatigue(self):
+        if 'fatigue' in self.__dict__:
+            return self.__dict__['fatigue']
+        return self.engines.fatigue
+
+    @fatigue.setter
+    def fatigue(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, fatigue=value)
+        else:
+            self.__dict__['fatigue'] = value
+
+    @property
+    def apl(self):
+        if 'apl' in self.__dict__:
+            return self.__dict__['apl']
+        return self.engines.apl
+
+    @apl.setter
+    def apl(self, value):
+        if 'engines' in self.__dict__:
+            self.engines = dataclasses.replace(self.engines, apl=value)
+        else:
+            self.__dict__['apl'] = value
+
+    # _engine-suffix aliases for external callers that use those names
+    @property
+    def tsb_engine(self):
+        return self.engines.tsb
+
+    @property
+    def hrv_engine(self):
+        return self.engines.hrv
+
+    @property
+    def readiness_engine(self):
+        return self.engines.readiness
+
+    @property
+    def autonomic_engine(self):
+        return self.engines.autonomic
+
+    @property
+    def biomechanics_engine(self):
+        return self.engines.biomechanics
+
+    @property
+    def durability_engine(self):
+        return self.engines.durability
+
+    @property
+    def fatigue_engine(self):
+        return self.engines.fatigue
+
+    @property
+    def lactate_engine(self):
+        return self.engines.lactate
+
+    @property
+    def cs_tracker_engine(self):
+        return self.engines.cs_tracker
+
+    @property
+    def apl_engine(self):
+        return self.engines.apl
 
     # ═══════════════════════════════════════════════════════════════════════
     # PUBLIC ENTRY POINT

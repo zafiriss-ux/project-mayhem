@@ -105,6 +105,7 @@ launcher/main.py
 | `titan/orchestration/coaching_pipeline.py` | Coaching pipeline helpers |
 | `titan/orchestration/coaching_scheduler.py` | Scheduling for daily coaching routine |
 | `titan/orchestration/contracts.py` | Typed contracts: `TitanContext`, `TitanContextContract`, `DecisionResult`, `PlannedEffect` |
+| `titan/orchestration/engine_registry.py` | `EngineRegistry` — single construction site for all per-athlete science engines (ADR-0058) |
 
 ### Layer 5 — Integrations, UI & API
 

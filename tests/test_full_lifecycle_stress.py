@@ -239,7 +239,9 @@ def _setup_main_for_shutdown_tests(monkeypatch, daily_coach, db, main_menu_calla
         "CriticalSpeedEngine",
         "RCPEngine",
     ):
-        monkeypatch.setattr(titan_main, cls_name, _Stub)
+        # ADR-0058: registry engines are no longer imported directly into main.py;
+        # raising=False silently skips any that are no longer in the namespace.
+        monkeypatch.setattr(titan_main, cls_name, _Stub, raising=False)
 
     monkeypatch.setattr(titan_main, "WeeklyPlanGenerator", lambda *args, **kwargs: _Stub())
     monkeypatch.setattr(titan_main, "OptimalTimeCalculator", lambda *args, **kwargs: _Stub())

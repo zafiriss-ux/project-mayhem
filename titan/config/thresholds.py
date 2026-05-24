@@ -221,4 +221,4 @@ MIN_FAT_G: int = 40          # minimum daily fat intake in grams (dietary guidel
 FAT_KCAL_PER_GRAM: int = 9   # caloric density of fat (Atwater factor)
 
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
-MODULE_COUNT_CEILING: int = 72  # T4-27-C: raised 71→72; biometric_router.py added in T5-100 (ADR-0055, 2026-05-09)
+MODULE_COUNT_CEILING: int = 73  # T4-27-C: raised 72→73; engine_registry.py added ADR-0058 (2026-05-24)

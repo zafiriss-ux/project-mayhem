@@ -131,8 +131,7 @@ class CriticalSpeedTracker:
     - Apply thermal degradation for heat conditions
     - Track calibration confidence for governance
 
-    Workflow:
-        tracker = CriticalSpeedTracker()
+    Workflow (ADR-0058: obtain tracker via EngineRegistry.from_db()):
         cs, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(perfs)
         tracker.update(date, cs, d_prime)
         cs_safe = tracker.apply_thermal(temp_c=28)
