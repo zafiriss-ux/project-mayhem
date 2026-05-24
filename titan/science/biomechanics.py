@@ -1,7 +1,6 @@
 """Biomechanics Analysis - Cadence, Stride, Form"""
 
 
-
 MODULE_VERSION = "1.0.0"
 
 class BiomechanicsAnalysis:
@@ -93,3 +92,6 @@ class BiomechanicsAnalysis:
         """
         score, _, _ = BiomechanicsAnalysis.analyze_form(cadence, vert_osc, gct)
         return score / 100.0
+
+
+BiomechanicsEngine = BiomechanicsAnalysis

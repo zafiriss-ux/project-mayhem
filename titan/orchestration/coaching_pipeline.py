@@ -10,6 +10,7 @@ from titan.science.threshold_adapter import ThresholdAdapter
 
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
+    from titan.orchestration.engine_registry import EngineRegistry
 
 
 @runtime_checkable
@@ -54,6 +55,8 @@ class AthleteCoachingContext:
     db: DatabaseManager | None = None
     cold_start_active: bool = False
     cold_start_conservative_factor: float = 1.0
+    # ADR-0058 Phase A: engine registry for per-athlete engine access
+    engines: EngineRegistry | None = None
 
 
 def coaching_pipeline(context: AthleteCoachingContext) -> bool:

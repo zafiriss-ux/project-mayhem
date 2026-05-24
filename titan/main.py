@@ -38,23 +38,17 @@ from titan.orchestration.contracts import TitanContext, TitanContextContract
 
 # ── Orchestration ────────────────────────────────────────────────────────────
 from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.acwr_engine import ACWREngine
 from titan.science.adaptive_memory import AdaptiveMemory
-from titan.science.biomechanics import BiomechanicsAnalysis
 from titan.science.critical_speed import CriticalSpeedEngine
 from titan.science.drift_engine import DriftEngine
-from titan.science.durability_engine import DurabilityEngine
 from titan.science.efficiency_engine import EfficiencyEngine
-from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenModel
 
 # ── Science engines ──────────────────────────────────────────────────────────
-from titan.science.hrv_engine import HRVGuidedEngine
-from titan.science.lactate_logic import LactateLogic
 from titan.science.rcp_engine import RCPEngine
-from titan.science.readiness_engine import ReadinessEngine
 from titan.science.trimp_engine import TRIMPEngine
-from titan.science.tsb_engine import TSBEngine
 
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
@@ -199,8 +193,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             return "✅ Εβδομαδιαίο πλάνο στάλθηκε!"
 
     def cb_stats():
-        hrv: HRVGuidedEngine = ctx["hrv_engine"]
-        tsb: TSBEngine = ctx["tsb_engine"]
+        hrv = ctx["hrv_engine"]
+        tsb = ctx["tsb_engine"]
         try:
             hrv_s = hrv.get_hrv_summary()
             tsb_val, tsb_status = tsb.calculate_tsb()
@@ -216,8 +210,8 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             return f"❌ Σφάλμα: {e}"
 
     def cb_recovery():
-        hrv: HRVGuidedEngine = ctx["hrv_engine"]
-        readiness: ReadinessEngine = ctx["readiness_engine"]
+        hrv = ctx["hrv_engine"]
+        readiness = ctx["readiness_engine"]
         try:
             hrv_s = hrv.get_hrv_summary()
             latest = hrv_s.get("latest_hrv", 0)
@@ -417,34 +411,37 @@ def main():
         },
     )
 
-    # ── Step 3: Science engines ──────────────────────────────────────────────
-    hrv_engine       = HRVGuidedEngine()
-    tsb_engine       = TSBEngine()
-    acwr_engine      = ACWREngine()
-    readiness_engine = ReadinessEngine()
-    glycogen_model   = GlycogenModel()
-    drift_engine     = DriftEngine()
-    lactate_logic    = LactateLogic()
-    trimp_engine     = TRIMPEngine()
-    fatigue_engine   = FatigueEngine()
-    adaptive_memory  = AdaptiveMemory()
-    biomechanics     = BiomechanicsAnalysis()
-    efficiency_eng   = EfficiencyEngine()
-    durability_eng   = DurabilityEngine()
-    critical_speed   = CriticalSpeedEngine()
-    rcp_engine       = RCPEngine()
-
-    # ── Step 4: Feature modules ──────────────────────────────────────────────
-    weekly_planner    = WeeklyPlanGenerator(hrv_engine, tsb_engine, acwr_engine)
-    optimal_time_calc = OptimalTimeCalculator(weather)
-    nutrition_optimizer = NutritionOptimizer(glycogen_model)
-
-    # ── Step 4b: Persistent database ─────────────────────────────────────────
+    # ── Step 3: Persistent database (moved before engines for EngineRegistry) ──
     db = DatabaseManager()
     log.info(
         "database_initialized",
         extra={"database": "titan_core.db"},
     )
+
+    # ── Step 4: Science engines ──────────────────────────────────────────────
+    # ADR-0058: EngineRegistry is the single construction site for registry engines.
+    _engine_reg  = EngineRegistry.from_db(db)
+    hrv_engine   = _engine_reg.hrv
+    tsb_engine   = _engine_reg.tsb
+    readiness_engine = _engine_reg.readiness
+    lactate_logic    = _engine_reg.lactate
+    fatigue_engine   = _engine_reg.fatigue
+    biomechanics     = _engine_reg.biomechanics
+    durability_eng   = _engine_reg.durability
+    # Non-registry engines constructed directly here (composition root)
+    acwr_engine      = ACWREngine()
+    glycogen_model   = GlycogenModel()
+    drift_engine     = DriftEngine()
+    trimp_engine     = TRIMPEngine()
+    adaptive_memory  = AdaptiveMemory()
+    efficiency_eng   = EfficiencyEngine()
+    critical_speed   = CriticalSpeedEngine()
+    rcp_engine       = RCPEngine()
+
+    # ── Step 4b: Feature modules ─────────────────────────────────────────────
+    weekly_planner    = WeeklyPlanGenerator(hrv_engine, tsb_engine, acwr_engine)
+    optimal_time_calc = OptimalTimeCalculator(weather)
+    nutrition_optimizer = NutritionOptimizer(glycogen_model)
 
     # ── Step 5: Athlete profile (built before DailyCoach so max_hr is available) ──
     athlete_profile = UniversalAthleteProfile.from_env()

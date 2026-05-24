@@ -14,7 +14,7 @@ python3 -m pytest --no-cov -q
 python3 -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 2932 tests all green
+**Historical snapshot:** 2754 tests all green
 
 Update after every commit adding/removing tests:
 
@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (64 modules, excl. __init__/__main__), ceiling 73.
+Main package (65 modules, excl. __init__/__main__), ceiling 73.
 
 | Package | Responsibility |
 |---------|----------------|
@@ -110,6 +110,7 @@ Main package (64 modules, excl. __init__/__main__), ceiling 73.
 - `0055` — Garmin Fallback
 - `0056` — Nutrition Layer
 - `0057` — Docker Deployment
+- `0058` — DailyCoach Decomposition (Phase A: EngineRegistry)
 
 ## Docker
 

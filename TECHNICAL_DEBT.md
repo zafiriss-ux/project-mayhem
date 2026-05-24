@@ -4195,6 +4195,7 @@ Deferred to Phase 17:
 3. TD-08: Schema in two places — DEFERRED Phase 19 (500+ lines scope; Phase 19 work).
 4. TD-11: ✅ RESOLVED 2026-05-23 — MetricsCollector stdlib JSON sink; 3 sites wired.
 5. TD-NUTRITION-01: ✅ RESOLVED 2026-05-23 — carbs_range ±15% of adjusted target (PR #720).
+6. TD-04: ✅ RESOLVED 2026-05-24 — ADR-0058 Phase A: EngineRegistry extracted; DailyCoach.engines holds all science engines. Phase B (EffectBus) + Phase C (daemon) deferred to Phase 20.
 
 ---
 
@@ -4217,12 +4218,12 @@ Deferred to Phase 17:
 - Phase 18 close audit: PASS ✅ (2026-05-23)
 
 **Scope (priority order):**
-1. TD-04: DailyCoach god-orchestrator split — ADR-0058 required (HIGH).
+1. TD-04: DailyCoach god-orchestrator split — ✅ RESOLVED 2026-05-24 (ADR-0058 Phase A: EngineRegistry).
 2. TD-08 / TD-NEW-13: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py; align alembic migrations (MED).
 3. TD-NEW-15: Load/performance tests — benchmarks for DailyCoach pipeline, DB reads under concurrent load, API throughput (MED).
 4. TD-NEW-11 OTel Phase 2: plug-in OpenTelemetry exporter via ADR into MetricsCollector (MED).
 5. ADR-0044: PostgreSQL full parity gate.
-6. ADR-0058: DailyCoach split design and implementation.
+6. ADR-0058: ✅ RESOLVED 2026-05-24 — Phase A implemented; Phase B (EffectBus) + Phase C (daemon) → Phase 20.
 
 ## FMEA: Phase 19 — Structured Debt & Scale
 
@@ -5449,7 +5450,7 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-NEW-07 | Unused numpy dependency: numpy==2.4.4 listed in requirements.txt with 0 import sites in titan/ | LOW | Opus audit 2026-05-22 (B7) | ✅ FIXED — removed from requirements.txt |
 | TD-NEW-08 | Dockerfile HEALTHCHECK references stale db name: `DatabaseManager('/data/titan.db')` instead of `titan_core.db` — healthcheck always fails in production | MED | Opus audit 2026-05-22 (B8) | ✅ FIXED — updated to `titan_core.db` |
 | TD-NEW-09 | CodeQL SARIF upload disabled: `upload: never` in codeql.yml means security findings never reach GitHub Security tab | MED | Opus audit 2026-05-22 (B9) | ✅ FIXED — changed to `upload: always` |
-| TD-NEW-10 | DailyCoach god-orchestrator (carries from Phase 17): 12-step pipeline in single class violates ADR-0018 kernel boundary | HIGH | Opus audit 2026-05-22 | OPEN — requires ADR-0018 phased decomposition |
+| TD-NEW-10 | DailyCoach god-orchestrator (carries from Phase 17): 12-step pipeline in single class violates ADR-0018 kernel boundary | HIGH | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — ADR-0058 Phase A: EngineRegistry extracted; Phase B (EffectBus) + Phase C (daemon) deferred Phase 20 |
 | TD-NEW-11 | No metrics/observability export: no Prometheus or structured metrics endpoint; SLO compliance unverifiable externally | HIGH | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-23 — MetricsCollector (stdlib JSON logging); OTel exporter deferred Phase 19 |
 | TD-NEW-12 | SQLite concurrent read coverage incomplete: only 4 of N read methods protected by RLock (partial from TD-02) | MED | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — all get_/fetch_/load_ methods wrapped with RLock; concurrent read/write test + lock fitness function added |
 | TD-NEW-13 | Schema definition split across database.py and alembic migrations: two sources of truth for table structure risk drift | MED | Opus audit 2026-05-22 | DEFERRED Phase 19 — aligns with TD-08; 500+ lines extraction scope; ADR-0044 resolution track |
