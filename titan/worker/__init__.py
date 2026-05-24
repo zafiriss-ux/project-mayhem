@@ -12,6 +12,10 @@ import os
 import sys
 from io import IOBase
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from titan.core.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +44,14 @@ def acquire_worker_lock() -> IOBase | None:
     return fh
 
 
+def _run_backup(db: DatabaseManager) -> None:
+    """Daily hot backup via DatabaseManager.backup_database() (keep=7 days)."""
+    log = logging.getLogger("titan.worker.backup")
+    backed_up = db.backup_database(keep=7)
+    if backed_up:
+        log.info("backup_complete", extra={"path": str(backed_up)})
+
+
 def run_forever(db_path: str) -> None:
     """ADR-0057 worker entrypoint. Runs DailyCoach morning routine on 24h schedule."""
     import threading
@@ -55,6 +67,7 @@ def run_forever(db_path: str) -> None:
     log.info("worker_started", extra={"db": db_path})
 
     while True:
+        _run_backup(db)
         try:
             coach = DailyCoach(db=db)
             coach.run_morning_routine()
