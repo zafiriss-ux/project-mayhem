@@ -94,7 +94,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 21
+SCHEMA_VERSION = 22
 
 
 class DatabaseManager:
@@ -547,6 +547,11 @@ class DatabaseManager:
                 "Nutrition personalization preferences per athlete (ADR-0056)",
                 None,  # DDL — see _apply_v21_migrations() below
             ),
+            22: (
+                "login_lockout",
+                "SQLite-backed auth lockout table (TD-SEC-02)",
+                None,  # DDL — see _apply_v22_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -793,6 +798,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 21,
                     "table_added": "nutrition_preferences",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
+        if current_version < 22:
+            self._apply_v22_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 22,
+                    "table_added": "login_lockout",
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
@@ -1296,6 +1313,89 @@ class DatabaseManager:
                 updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
             )
         """)
+
+    def _apply_v22_migrations(self, cursor) -> None:
+        """Version 22: login_lockout table for SQLite-backed auth lockout (TD-SEC-02)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS login_lockout (
+                username        TEXT PRIMARY KEY,
+                failed_count    INTEGER NOT NULL DEFAULT 0,
+                locked_until_ts REAL,
+                last_attempt_ts REAL
+            )
+        """)
+
+    def record_failed_login(
+        self, username: str, lockout_duration_seconds: float, max_attempts: int
+    ) -> bool:
+        """Increment failed login count for username; lock account when threshold reached.
+
+        Returns True if the account is now locked out.
+        """
+        import time
+        now = time.time()
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute(
+                """
+                INSERT INTO login_lockout (username, failed_count, last_attempt_ts)
+                VALUES (?, 1, ?)
+                ON CONFLICT(username) DO UPDATE SET
+                    failed_count = failed_count + 1,
+                    last_attempt_ts = excluded.last_attempt_ts
+                """,
+                (username, now),
+            )
+            c.execute(
+                "SELECT failed_count FROM login_lockout WHERE username = ?",
+                (username,),
+            )
+            row = c.fetchone()
+            failed_count = row[0] if row else 1
+            if failed_count >= max_attempts:
+                c.execute(
+                    "UPDATE login_lockout SET locked_until_ts = ? WHERE username = ?",
+                    (now + lockout_duration_seconds, username),
+                )
+            self.conn.commit()
+            return failed_count >= max_attempts
+
+    def is_login_locked_out(self, username: str) -> bool:
+        """Return True if the account has an active lockout that has not yet expired."""
+        import time
+        now = time.time()
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute(
+                "SELECT locked_until_ts FROM login_lockout WHERE username = ?",
+                (username,),
+            )
+            row = c.fetchone()
+            if not row or row[0] is None:
+                return False
+            if now >= row[0]:
+                c.execute(
+                    "UPDATE login_lockout SET locked_until_ts = NULL, failed_count = 0 "
+                    "WHERE username = ?",
+                    (username,),
+                )
+                self.conn.commit()
+                return False
+            return True
+
+    def clear_login_lockout(self, username: str) -> None:
+        """Reset failed login count and lockout timestamp for username."""
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute(
+                "UPDATE login_lockout SET failed_count = 0, locked_until_ts = NULL "
+                "WHERE username = ?",
+                (username,),
+            )
+            self.conn.commit()
 
     def get_nutrition_preferences(self, athlete_id: str = 'owner') -> dict | None:
         """Return nutrition preferences for athlete_id, or None if not set."""

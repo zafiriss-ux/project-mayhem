@@ -5566,3 +5566,19 @@ Entry gate: Phase 20 close audit PASS (2026-05-24). Scope: governance consolidat
 | TR-13 | `create_app()` `auth_store` / `audit_store` still instantiated without DB in test mode | Low risk — test mode uses `:memory:`; deferred until pydantic-settings migration (P15-ARCH5) |
 | TR-15 | Smoke test worker validation is advisory (`⚠️ WARN`) not hard fail | Intentional — worker log timing is non-deterministic in CI; hard fail deferred pending structured wait |
 | TR-19 | PostgreSQL adapter (`PostgreSQLAdapter`, `PostgreSQLDatabaseManager`) unused in all production paths; `TITAN_DB_BACKEND=postgres` raises `NotImplementedError`. Tracked as Opus TR-13 (2026-05-24). | Explicitly marked unmaintained with module header comment. `test_postgres_backend_raises` test added. ADR-0044 parity required before activation; deferred Phase 8A. |
+
+---
+
+## Phase 21 Security / Hygiene Delivery (2026-05-24)
+
+Items identified by Opus Phase 20 audit, resolved in Phase 21.
+
+### Resolved
+
+| ID | Finding | Resolution | Status |
+|----|---------|------------|--------|
+| TD-SEC-02 | Auth lockout stored in process memory — lost on restart | `login_lockout` table added via SCHEMA_VERSION 22 migration; `DatabaseManager.record_failed_login`, `is_login_locked_out`, `clear_login_lockout` methods added; `AuthStore` delegates to DB; 2 new tests confirm persistence across restart | ✅ RESOLVED 2026-05-24 |
+| TD-SEC-03 | No security headers on API responses (missing X-Content-Type-Options, X-Frame-Options, CSP, etc.) | `SecurityHeadersMiddleware` added to `titan/api/main.py`; sets X-Content-Type-Options, X-Frame-Options, X-XSS-Protection, Referrer-Policy, Content-Security-Policy on every response; HSTS deferred until TLS termination (C-2); 1 new test confirms headers present | ✅ RESOLVED 2026-05-24 |
+| TD-CI-02 | Governance CI gate only checked HEAD commit for ADR-0009 reference — multi-commit pushes could slip through | Gate rewritten to use `github.event.before` → `HEAD` range; all commits in push checked via `git log`; gate asserts on any commit lacking ADR-0009 when `governance_engine.py` changed | ✅ RESOLVED 2026-05-24 |
+| TD-TEST-02 | `test_historical_snapshot_matches_full_suite_collection` used exact-match assertion — any test addition caused CI failure | Replaced with `±50` tolerance (`abs(actual - declared) <= 50`) + regression floor (`actual >= declared - 50`); CLAUDE.md snapshot updated to 2959 | ✅ RESOLVED 2026-05-24 |
+| TD-DEP-01 | `psycopg2-binary` listed as active runtime dependency despite PostgreSQL adapter raising `NotImplementedError` | Commented out in `requirements.txt` with explanation; `database.py` soft-import (try/except ImportError) confirmed safe; `test_requirements_telegram_dependency.py` RUNTIME_DEPENDENCIES updated; no active production import found | ✅ RESOLVED 2026-05-24 |

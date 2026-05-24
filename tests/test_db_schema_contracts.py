@@ -208,10 +208,10 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
 
 def test_schema_version_is_thirteen(test_db_conn) -> None:
     """PRAGMA user_version must equal 19 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 21, (
-        f"Expected SCHEMA_VERSION=21 in database.py, got {SCHEMA_VERSION}"
+    assert SCHEMA_VERSION == 22, (
+        f"Expected SCHEMA_VERSION=22 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 21, (
-        f"PRAGMA user_version must be 19 after create_tables(), got {version}"
+    assert version == 22, (
+        f"PRAGMA user_version must be 22 after create_tables(), got {version}"
     )

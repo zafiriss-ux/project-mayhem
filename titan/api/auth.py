@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 from threading import Lock
-from time import monotonic
 from typing import TYPE_CHECKING
 
 import bcrypt
@@ -50,8 +48,6 @@ class AuthStore:
             from titan.core.database import DatabaseManager
             db = DatabaseManager(db_name=":memory:")
         self._db = db
-        self._failed_attempts: dict[str, deque[float]] = defaultdict(deque)
-        self._lockout_until: dict[str, float] = {}
         self._lock: Lock = Lock()
 
     def upsert_user(
@@ -80,31 +76,13 @@ class AuthStore:
         )
 
     def record_failed_attempt(self, username: str) -> None:
-        with self._lock:
-            now = monotonic()
-            bucket = self._failed_attempts[username]
-            cutoff = now - LOCKOUT_WINDOW_SECONDS
-            while bucket and bucket[0] <= cutoff:
-                bucket.popleft()
-            bucket.append(now)
-            if len(bucket) >= LOCKOUT_MAX_ATTEMPTS:
-                self._lockout_until[username] = now + LOCKOUT_DURATION_SECONDS
+        self._db.record_failed_login(username, LOCKOUT_DURATION_SECONDS, LOCKOUT_MAX_ATTEMPTS)
 
     def is_locked_out(self, username: str) -> bool:
-        with self._lock:
-            until = self._lockout_until.get(username)
-            if until is None:
-                return False
-            if monotonic() >= until:
-                del self._lockout_until[username]
-                self._failed_attempts.pop(username, None)
-                return False
-            return True
+        return self._db.is_login_locked_out(username)
 
     def clear_failed_attempts(self, username: str) -> None:
-        with self._lock:
-            self._failed_attempts.pop(username, None)
-            self._lockout_until.pop(username, None)
+        self._db.clear_login_lockout(username)
 
     def get_user(self, user_id: str) -> AuthUser | None:
         row = self._db.get_auth_user_by_id(user_id)

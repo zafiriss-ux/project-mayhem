@@ -24,5 +24,7 @@ def test_ci_enforces_adr_reference_when_governance_engine_changes() -> None:
     content = workflow.read_text(encoding='utf-8')
 
     assert 'Enforce governance_engine architecture lock' in content
-    assert "grep -qx 'titan/science/governance_engine.py'" in content
+    # TD-CI-02: gate now checks all commits in the push via github.event.before
+    assert 'governance_engine' in content
     assert "grep -q 'ADR-0009'" in content
+    assert 'github.event.before' in content

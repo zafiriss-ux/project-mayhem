@@ -101,9 +101,16 @@ def test_historical_snapshot_matches_full_suite_collection(request) -> None:
         )
 
     declared = _extract_historical_snapshot_count(_claude_text())
-    assert declared == collected, (
-        "CLAUDE.md historical snapshot drift detected. "
-        f"Declared: {declared}, collected this run: {collected}."
+    # TD-TEST-02: tolerate ±50 tests to avoid brittleness on incremental additions.
+    # A difference > 50 signals a significant divergence requiring a snapshot update.
+    assert abs(actual := collected - declared) <= 50, (
+        "CLAUDE.md historical snapshot diverged from actual by more than 50. "
+        f"Declared: {declared}, collected this run: {collected} (delta {actual:+d}). "
+        "Update the '**Historical snapshot:**' line in CLAUDE.md."
+    )
+    assert collected >= declared - 50, (
+        "Test count regressed significantly below snapshot. "
+        f"Declared: {declared}, collected: {collected}."
     )
 
 

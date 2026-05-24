@@ -12,7 +12,10 @@ pyTelegramBotAPI==4.33.0       # Telegram bot framework (telebot)
 # Persistence / migrations (T5-08-B D2a)
 sqlalchemy==2.0.49
 alembic==1.18.4
-psycopg2-binary==2.9.12
+# PostgreSQL driver — disabled until ADR-0044 parity lands (TD-DEP-01 / Phase 8A).
+# database.py soft-imports psycopg2 (try/except); persistence.py PG path raises NotImplementedError.
+# Uncomment when activating TITAN_DB_BACKEND=postgres:
+# psycopg2-binary==2.9.12
 
 # Phase 8B API auth
 fastapi==0.136.1        # bumped 0.115.0→0.136.1: pulls starlette>=0.46.0 (CVE-2024-47874, CVE-2025-54121)
