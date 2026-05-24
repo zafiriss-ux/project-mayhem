@@ -20,10 +20,20 @@ COPY . .
 ENV TITAN_DATA_DIR=/data
 ENV TITAN_DB_BACKEND=sqlite
 
+# Create non-root user and writable data volume
+RUN groupadd -r titan && \
+    useradd -r -g titan --home /app titan && \
+    chown -R titan:titan /app && \
+    mkdir -p /data && \
+    chown titan:titan /data
+
 # ── api ──────────────────────────────────────────────────────────────────────
 FROM base AS api
 
-RUN mkdir -p /home/appuser/Documents/TITAN && chmod 777 /home/appuser/Documents/TITAN
+# titan home is /app; FileChannel writes to /app/Documents/TITAN
+RUN mkdir -p /app/Documents/TITAN && chown -R titan:titan /app/Documents/TITAN
+
+USER titan
 
 EXPOSE 8000
 
@@ -34,4 +44,7 @@ CMD ["python", "-c", "from pathlib import Path; from titan.core.database import 
 
 # ── worker ───────────────────────────────────────────────────────────────────
 FROM base AS worker
+
+USER titan
+
 CMD ["python", "-m", "titan.worker"]
