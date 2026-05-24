@@ -18,10 +18,10 @@
 
 ## Database Location
 
-Default path: `titan.db` in the working directory (or `DATABASE_PATH` env override).
+Default path: `titan_core.db` in the data directory (or `DATABASE_PATH` env override).
 
 ```bash
-echo $DATABASE_PATH  # if set; otherwise assume ./titan.db
+echo $DATABASE_PATH  # if set; otherwise assume ./titan_core.db
 ```
 
 ---
@@ -32,7 +32,7 @@ echo $DATABASE_PATH  # if set; otherwise assume ./titan.db
 |-----------|----------|--------|
 | Single failed write, DB still accessible | Low | Restart; check lock contention |
 | `database disk image is malformed` error | High | Stop immediately; assess corruption scope |
-| `titan.db` file missing | High | Restore from backup or reinitialise |
+| `titan_core.db` file missing | High | Restore from backup or reinitialise |
 | All write operations failing for > 5 min | P1 | Follow full recovery procedure |
 
 ---
@@ -49,7 +49,7 @@ pkill -f "python main.py" || pkill -f "python -m titan"
 ### 2 — Check database integrity
 
 ```bash
-sqlite3 titan.db "PRAGMA integrity_check;"
+sqlite3 titan_core.db "PRAGMA integrity_check;"
 # Expected output: "ok"
 # If output contains errors: proceed to Step 3 (recovery)
 ```
@@ -57,10 +57,10 @@ sqlite3 titan.db "PRAGMA integrity_check;"
 ### 3 — Check if WAL file is present and needs recovery
 
 ```bash
-ls -la titan.db-wal titan.db-shm 2>/dev/null
+ls -la titan_core.db-wal titan_core.db-shm 2>/dev/null
 # If WAL file exists and is non-empty, SQLite may recover automatically on next open
-sqlite3 titan.db "PRAGMA wal_checkpoint(TRUNCATE);"
-sqlite3 titan.db "PRAGMA integrity_check;"
+sqlite3 titan_core.db "PRAGMA wal_checkpoint(TRUNCATE);"
+sqlite3 titan_core.db "PRAGMA integrity_check;"
 ```
 
 ---
@@ -78,13 +78,13 @@ sqlite3 titan.db "PRAGMA integrity_check;"
 ```bash
 # Stop TITAN OS (Step 1 above)
 # Locate backup
-ls ~/Documents/TITAN/backups/titan.db.*
+ls ~/Documents/TITAN/backups/titan_core.db.*
 
 # Restore most recent backup
-cp ~/Documents/TITAN/backups/titan.db.YYYYMMDD titan.db
+cp ~/Documents/TITAN/backups/titan_core.db.YYYYMMDD titan_core.db
 
 # Verify integrity of restored backup
-sqlite3 titan.db "PRAGMA integrity_check;"
+sqlite3 titan_core.db "PRAGMA integrity_check;"
 
 # Restart
 python main.py
@@ -97,16 +97,16 @@ Re-sync Garmin data to repopulate `daily_metrics` and `training_log` for the gap
 
 ```bash
 # Attempt SQLite dump-and-restore (recovers uncorrupted pages)
-sqlite3 titan.db ".dump" > titan_dump.sql 2>&1
+sqlite3 titan_core.db ".dump" > titan_dump.sql 2>&1
 
 # Review dump for error markers
 grep -i "error\|corrupt\|malformed" titan_dump.sql
 
 # Recreate DB from dump (omit corrupt rows)
-mv titan.db titan.db.corrupt
+mv titan_core.db titan_core.db.corrupt
 sqlite3 titan_new.db < titan_dump.sql
 sqlite3 titan_new.db "PRAGMA integrity_check;"
-mv titan_new.db titan.db
+mv titan_new.db titan_core.db
 ```
 
 Rows from corrupt pages will be missing. Inspect the output and note which tables and
@@ -118,7 +118,7 @@ re-sync. Loss of `governance_outcomes` is permanent (calibration history will re
 ```bash
 # Reinitialise the database (tables recreated from schema on first startup)
 python main.py
-# TITAN OS will create a fresh titan.db with empty tables
+# TITAN OS will create a fresh titan_core.db with empty tables
 # All historical data is lost; re-sync Garmin to populate training_log and daily_metrics
 ```
 
@@ -130,8 +130,8 @@ TITAN OS does not yet have an automated backup daemon. Recommended manual setup:
 
 ```bash
 # Add to crontab (runs daily at 03:00)
-0 3 * * * cp /path/to/titan.db ~/Documents/TITAN/backups/titan.db.$(date +%Y%m%d) && \
-  find ~/Documents/TITAN/backups/ -name "titan.db.*" -mtime +30 -delete
+0 3 * * * cp /path/to/titan_core.db ~/Documents/TITAN/backups/titan_core.db.$(date +%Y%m%d) && \
+  find ~/Documents/TITAN/backups/ -name "titan_core.db.*" -mtime +30 -delete
 ```
 
 ---

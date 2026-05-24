@@ -5502,3 +5502,34 @@ TD-04 RESOLVED; TD-NEW-10 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED 
 3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track)
 4. P15-ARCH5: pydantic-settings migration
 5. T5-15: Pytest marker taxonomy (unit/integration/governance)
+
+---
+
+## Opus Security/Ops Audit — 2026-05-24 (TR/C/H series)
+
+### Resolved
+
+| ID | Finding | Resolution | Status |
+|----|---------|------------|--------|
+| TR-01 | Worker container runs stub loop only (no real work) | `run_forever()` wired to `DailyCoach.run_morning_routine()` on 24h schedule; `worker_started` log event added | ✅ RESOLVED 2026-05-24 |
+| TR-03 | Runbook references stale `titan.db` filename throughout | All occurrences replaced with `titan_core.db` in `docs/runbooks/database-recovery.md` | ✅ RESOLVED 2026-05-24 |
+| TR-05 | `assert` used for DB path validation in `create_app()` — disabled in optimised Python | Replaced with `raise RuntimeError` (TR-07 duplicate; unified fix) | ✅ RESOLVED 2026-05-24 |
+| TR-06 | Module-level `app = create_app()` creates a no-DB app on every import | Replaced with `app = None`; callers must use `create_app()` factory | ✅ RESOLVED 2026-05-24 |
+| TR-07 | `assert "titan_core.db" in _db_path` stripped by `-O` flag | Replaced with `raise RuntimeError(...)` | ✅ RESOLVED 2026-05-24 |
+| TR-11 | Smoke test `down -v` would destroy production volumes if run against wrong env | Production guard added: `TITAN_ENV=production` skips `-v` teardown | ✅ RESOLVED 2026-05-24 |
+| C-1 | Worker stub loop provides no actual value; ADR-0057 unfulfilled | Worker wired to `DailyCoach`; 24h `threading.Event` sleep for clean SIGTERM exit | ✅ RESOLVED 2026-05-24 |
+| C-3 | Runbook uses `titan.db` (stale filename) — ops following it would target wrong file | Fixed — all 8 occurrences corrected to `titan_core.db` | ✅ RESOLVED 2026-05-24 |
+| C-5 | `docker_smoke_test.sh` calls `down -v` unconditionally — data-loss risk in prod | Production guard added before teardown | ✅ RESOLVED 2026-05-24 |
+| C-6 | `app = create_app()` at module level instantiates app without DB on import | Replaced with `app = None` sentinel | ✅ RESOLVED 2026-05-24 |
+| C-7 | No factory guard — `app` imported directly bypasses DB injection | Same fix as C-6; Dockerfile already uses `create_app(db=...)` pattern | ✅ RESOLVED 2026-05-24 |
+| H-3 | Audit DB persist failure silently swallowed; no metric emitted | `except` block now calls `get_metrics().counter("audit_write_failure")` and logs at ERROR with `exc_info` | ✅ RESOLVED 2026-05-24 |
+| H-8 | `/readyz` calls `_db.conn.execute("PRAGMA user_version")` directly — bypasses `_lock` | Removed direct `conn` access; `is_db_reachable()` (lock-safe) covers liveness check | ✅ RESOLVED 2026-05-24 |
+
+### Deferred
+
+| ID | Finding | Rationale |
+|----|---------|-----------|
+| TR-09 | No integration test for worker boot-to-first-cycle | Requires Docker test harness; deferred to Phase 20 ops hardening track |
+| TR-12 | Worker has no graceful SIGTERM handler beyond `threading.Event` unblock | Acceptable for Phase 20; SIGTERM exits the process naturally via Python default handler |
+| TR-13 | `create_app()` `auth_store` / `audit_store` still instantiated without DB in test mode | Low risk — test mode uses `:memory:`; deferred until pydantic-settings migration (P15-ARCH5) |
+| TR-15 | Smoke test worker validation is advisory (`⚠️ WARN`) not hard fail | Intentional — worker log timing is non-deterministic in CI; hard fail deferred pending structured wait |

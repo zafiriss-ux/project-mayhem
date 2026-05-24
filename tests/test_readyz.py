@@ -85,5 +85,5 @@ def test_titan_core_db_name_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
     from titan.api.main import create_app
 
     stale_db = SimpleNamespace(db_path=Path("/data/titan.db"))
-    with pytest.raises(AssertionError, match="Must use titan_core.db"):
+    with pytest.raises(RuntimeError, match="Must use titan_core.db"):
         create_app(db=stale_db)

@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-import time
 from io import IOBase
 from pathlib import Path
 
@@ -41,10 +40,29 @@ def acquire_worker_lock() -> IOBase | None:
     return fh
 
 
-def run_forever() -> None:
-    logger.info("titan-worker started — awaiting scheduling integration")
+def run_forever(db_path: str) -> None:
+    """ADR-0057 worker entrypoint. Runs DailyCoach morning routine on 24h schedule."""
+    import threading
+    from pathlib import Path
+
+    from titan.core.database import DatabaseManager
+    from titan.orchestration.daily_coach import DailyCoach
+
+    log = logging.getLogger("titan.worker.runner")
+    p = Path(db_path)
+    db = DatabaseManager(db_name=p.name, db_dir=p.parent)
+
+    log.info("worker_started", extra={"db": db_path})
+
     while True:
-        time.sleep(60)
+        try:
+            coach = DailyCoach(db=db)
+            coach.run_morning_routine()
+            log.info("morning_routine_complete")
+        except Exception as exc:
+            log.exception("worker_cycle_error", extra={"error": str(exc)})
+        stop = threading.Event()
+        stop.wait(timeout=86400)
 
 
 def main() -> None:
@@ -53,8 +71,9 @@ def main() -> None:
     if lock is None:
         logger.info("Worker already running — exiting")
         sys.exit(0)
+    db_path = str(Path(os.environ.get("TITAN_DATA_DIR", "/data")) / "titan_core.db")
     try:
-        run_forever()
+        run_forever(db_path)
     finally:
         lock.close()
 

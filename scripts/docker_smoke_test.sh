@@ -53,11 +53,18 @@ $COMPOSE exec -T titan-api bash -c \
     fail "stale titan.db exists in volume"
 log "✅ DB file: titan_core.db only"
 
-# ── 5. Worker lock file ───────────────────────────────────────────────────────
+# ── 5. Worker lock file + startup event ──────────────────────────────────────
 sleep 5  # give worker time to acquire lock
 $COMPOSE exec -T titan-worker test -f /data/worker.lock || \
     fail "worker.lock not found — worker not running"
 log "✅ worker.lock present"
+
+WORKER_LOG=$($COMPOSE logs titan-worker 2>&1 | grep "worker_started" || true)
+if [ -z "$WORKER_LOG" ]; then
+    log "⚠️  WARN: worker_started event not found in logs — worker may be stub"
+else
+    log "✅ worker_started confirmed"
+fi
 
 # ── 6. Persistence test ───────────────────────────────────────────────────────
 log "Testing volume persistence..."
@@ -110,7 +117,13 @@ sleep 3
 
 # ── 8. Teardown ───────────────────────────────────────────────────────────────
 log "Tearing down..."
-$COMPOSE down -v  # -v removes volume
+# Safety: never nuke volumes in production
+if [ "${TITAN_ENV:-}" = "production" ]; then
+    log "⚠️  PROD env detected — skipping volume teardown"
+    $COMPOSE down
+else
+    $COMPOSE down -v  # -v removes volume
+fi
 
 log ""
 log "══════════════════════════════════"

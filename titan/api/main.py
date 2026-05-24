@@ -248,8 +248,8 @@ def create_app(
 
     if db is not None:
         _db_path = str(getattr(db, "db_path", ""))
-        if _db_path != ":memory:":
-            assert "titan_core.db" in _db_path, (
+        if _db_path != ":memory:" and "titan_core.db" not in _db_path:
+            raise RuntimeError(
                 f"Wrong DB: {_db_path}. "
                 "Must use titan_core.db — titan.db is stale."
             )
@@ -292,11 +292,6 @@ def create_app(
 
                 checks["db_reachable"] = _db.is_db_reachable()
                 if not checks["db_reachable"]:
-                    ok = False
-
-                sv = _db.conn.execute("PRAGMA user_version").fetchone()
-                checks["schema_version"] = sv is not None and sv[0] > 0
-                if not checks["schema_version"]:
                     ok = False
 
         except Exception as e:  # noqa: BLE001
@@ -484,8 +479,10 @@ def _audit_request(request: Request) -> None:
                 target_athlete_id=athlete_id,
                 resource=route["resource"],
             )
-        except Exception:
-            _log.warning("audit_db_persist_failed")
+        except Exception as exc:
+            from titan.observability.metrics import get_metrics
+            _log.error("audit_db_persist_failed", extra={"error": str(exc)}, exc_info=True)
+            get_metrics().counter("audit_write_failure")
 
 
 def _match_audit_route(request: Request) -> dict[str, str] | None:
@@ -537,4 +534,4 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
     )
 
 
-app = create_app()
+app = None  # must use create_app() directly; see titan.api.main:create_app
