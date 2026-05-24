@@ -4470,7 +4470,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-79 | ✅ RESOLVED 2026-04-19 (commit: 0d54612) — 6 mirrored test files created; full_module_audit.sh 0 FAILs; snapshot updated to 2546 | 2026-04-19 |
 | T5-80 | ✅ RESOLVED 2026-04-19 (commit: 590639e) — ADR-0040 annotations retired (ADR-0033-L3-D-RESOLVED); silent except:pass replaced with _log.debug() in persistence.py + data_sanity.py | 2026-04-19 |
 | T5-81 | 🟡 OPEN — del athlete_id sentinel pattern in persistence.py:992,1070; LOW priority | — |
-| T5-82 | 🟡 OPEN — naive datetime.now() in 7 non-governance modules (29 locations); LOW priority | — |
+| T5-82 | ✅ RESOLVED 2026-05-24 — 32 naive datetime.now() calls fixed across 8 modules; semgrep 0 findings | 2026-05-24 |
 | T5-83 | 🟡 OPEN — slow tests with real network calls (810s, 102s, 10s sleep); MEDIUM priority | — |
 | T5-84 | ✅ IMPLEMENTED 2026-04-27 — `scripts/mutation_test_governance.sh`; `setup.cfg [mutmut]`; `mutmut==3.5.0` in requirements.txt; targeted H1-H5 gates only | 2026-04-27 |
 | T5-85 | 🟡 OPEN — Phase 10 (stateful Hypothesis property-based testing) | — |
@@ -4778,21 +4778,21 @@ avoid deletion. Add inline comment documenting intent.
 
 ---
 
-### T5-82 · naive datetime.now() in 7 non-governance modules 🟡 OPEN
+### T5-82 · naive datetime.now() in 7 non-governance modules ✅ RESOLVED
 
-**Status:** OPEN — Phase 9 debt. Source: OBS-042-CI (2026-04-05).
+**Status:** RESOLVED 2026-05-24. Source: OBS-042-CI (2026-04-05). Fixed: Opus TR-13 pass.
 **Severity:** LOW (non-governance-critical modules only)
 **Location:** `titan/integrations/telegram_bot.py`, `titan/ui/menu_system.py`,
 `titan/integrations/weather_api.py`, `titan/science/critical_speed.py`,
-`titan/science/outcome_tracker.py`, `titan/core/periodization.py`, `titan/core/athlete.py`
-**Description:** 29 naive `datetime.now()` calls across 7 non-governance modules. All
-pre-existing. G-CI-02 scope was reduced to governance-critical modules only (5 files) — these
-7 modules are outside that scope. Governance-critical modules are CLEAN. HR-01
-(timezone-aware datetimes) enforcement for new code remains active.
-**Fix direction:** Replace `datetime.now()` with `datetime.now(timezone.utc)` in each location.
-Low-risk mechanical change.
-**Priority:** LOW — no governance impact. Batch fix in one maintenance pass.
-**Phase:** 9 maintenance.
+`titan/science/outcome_tracker.py`, `titan/core/periodization.py`, `titan/core/athlete.py`,
+`titan/features/weekly_planner.py`
+**Description:** 32 naive `datetime.now()` calls across 8 non-governance modules replaced with
+`datetime.now(timezone.utc)`. Additionally fixed `datetime.now().replace(tzinfo=UTC)` patterns
+in the same pass. Semgrep `titan-naive-datetime-now` rule now covers full `titan/` tree with 0
+findings. The `.replace(tzinfo=UTC)` anti-pattern dropped from 32 occurrences to 0.
+**Resolution:** All occurrences replaced. Semgrep rule exclusions removed. `from datetime import
+timezone` added to each touched file. `critical_speed.py` fromisoformat side made UTC-aware
+to match.
 
 ---
 
@@ -5538,3 +5538,4 @@ TD-04 RESOLVED; TD-NEW-10 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED 
 | TR-12 | Worker has no graceful SIGTERM handler beyond `threading.Event` unblock | Acceptable for Phase 20; SIGTERM exits the process naturally via Python default handler |
 | TR-13 | `create_app()` `auth_store` / `audit_store` still instantiated without DB in test mode | Low risk — test mode uses `:memory:`; deferred until pydantic-settings migration (P15-ARCH5) |
 | TR-15 | Smoke test worker validation is advisory (`⚠️ WARN`) not hard fail | Intentional — worker log timing is non-deterministic in CI; hard fail deferred pending structured wait |
+| TR-19 | PostgreSQL adapter (`PostgreSQLAdapter`, `PostgreSQLDatabaseManager`) unused in all production paths; `TITAN_DB_BACKEND=postgres` raises `NotImplementedError`. Tracked as Opus TR-13 (2026-05-24). | Explicitly marked unmaintained with module header comment. `test_postgres_backend_raises` test added. ADR-0044 parity required before activation; deferred Phase 8A. |

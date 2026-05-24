@@ -658,6 +658,10 @@ class SQLiteAdapter(PersistenceAdapter):
         self._manager.close()
 
 
+# ADR-0044: PostgreSQL adapter is NOT wired to production.
+# TITAN_DB_BACKEND=postgres raises NotImplementedError (get_database_manager in database.py).
+# This code is preserved for Phase 8A when ADR-0044 parity is complete. Do not call in
+# production paths. Opus TR-13 2026-05-24.
 class PostgreSQLAdapter(PersistenceAdapter):
     """PostgreSQL persistence adapter backed by ``PostgreSQLDatabaseManager``."""
 

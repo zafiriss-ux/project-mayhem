@@ -16,7 +16,7 @@ Scientific Basis:
 - Jones, A.M. & Doust, J.H. (1997). J Sports Sci, 15(6), 643-648. (thermal)
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from titan.config.thresholds import ESI_MODERATE_MIN
 
@@ -207,8 +207,8 @@ class CriticalSpeedTracker:
         n = len(self.cs_raw_history)
         n_score = min(n / 5.0, 1.0) * 0.5
         try:
-            latest = max(datetime.fromisoformat(d) for d, _ in self.cs_raw_history)
-            days_since = (datetime.now() - latest).days  # both naive: fromisoformat → naive
+            latest = max(datetime.fromisoformat(d).replace(tzinfo=UTC) for d, _ in self.cs_raw_history)
+            days_since = (datetime.now(UTC) - latest).days
             recency_score = max(0.0, 1.0 - days_since / 42.0) * 0.5
         except Exception:
             recency_score = 0.0

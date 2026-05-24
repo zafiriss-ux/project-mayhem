@@ -62,8 +62,7 @@ rules:
     pattern: datetime.now()
     message: >
       Naive datetime.now() detected (INV-02 / HR-01).
-      Use datetime.now(timezone.utc) instead.
-      Governance-critical modules: mandatory. Others: T5-82 scheduled fix.
+      Use datetime.now(timezone.utc) instead. T5-82 RESOLVED 2026-05-24; 0 findings expected.
     languages: [python]
     severity: WARNING
     paths:

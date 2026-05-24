@@ -154,7 +154,7 @@ def test_get_today_session_estimates_duration_for_missing_duration(monkeypatch):
 
     class _FakeDateTime:
         @staticmethod
-        def now():
+        def now(tz=None):
             return _FakeNow()
 
     monkeypatch.setattr("titan.features.weekly_planner.datetime", _FakeDateTime)

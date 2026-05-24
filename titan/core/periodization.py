@@ -57,12 +57,12 @@ class PeriodizationManager:
             >>> pm.add_goal(21.1, "1:30:00", "2026-04-26")
         """
         goal = {
-            "goal_id": f"GOAL_{datetime.now().replace(tzinfo=UTC).strftime('%Y%m%d%H%M%S')}",
+            "goal_id": f"GOAL_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
             "distance_km": distance_km,
             "target_time": target_time_str,
             "race_date": datetime.strptime(race_date_str, "%Y-%m-%d"),
             "status": "ACTIVE",
-            "created": datetime.now().replace(tzinfo=UTC)
+            "created": datetime.now(UTC)
         }
 
         self.goals.append(goal)
@@ -101,7 +101,7 @@ class PeriodizationManager:
             - Build phase: 4-6 weeks progressive overload
             - Base phase: 8+ weeks foundation building
         """
-        today = datetime.now().replace(tzinfo=UTC)
+        today = datetime.now(UTC)
         # race_date arrives as naive from strptime; compare dates only to avoid mixed-tz TypeError
         days_to_race = (race_date.date() - today.date()).days
 
@@ -143,7 +143,7 @@ class PeriodizationManager:
         # Mark as completed
         goal["status"] = "COMPLETED"
         goal["actual_time"] = actual_time_str
-        goal["completion_date"] = datetime.now().replace(tzinfo=UTC)
+        goal["completion_date"] = datetime.now(UTC)
 
         # Move to completed list
         self.completed_goals.append(goal)

@@ -80,6 +80,9 @@ jobs:
             --quiet
 
   test:
+    # PostgreSQL CI matrix absent by design:
+    # TITAN_DB_BACKEND=postgres raises NotImplementedError until ADR-0044
+    # full parity (Phase 8A). See Opus TR-13 + TECHNICAL_DEBT.md.
     name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
