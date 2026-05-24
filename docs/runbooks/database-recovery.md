@@ -1,9 +1,56 @@
 # Runbook — Database Recovery
 
-**Version:** 1.0
-**Date:** 2026-03-29
+**Version:** 1.1
+**Date:** 2026-05-24
 **Owner:** Engineering
 **Trigger:** SQLite corruption, accidental deletion, DailyCoach degraded-conservative mode, or failed write detected in logs
+
+---
+
+## Backup Location
+
+Automated daily backups run at each worker startup and every 24 h thereafter:
+
+- **Container:** `/data/backups/titan_YYYY-MM-DD.db`
+- **Local default:** `~/Documents/TITAN/backups/titan_YYYY-MM-DD.db`
+- **Retention:** 7 days (configurable via `keep=` in `DatabaseManager.backup_database`)
+
+Manual on-demand backup:
+
+```bash
+bash scripts/backup.sh [data_dir]
+# Default data_dir: ~/Documents/TITAN
+# Creates: <data_dir>/backups/titan_core.db.YYYYMMDD
+```
+
+---
+
+## Recovery Procedure
+
+### From automated backup
+
+```bash
+# List available backups
+ls ~/Documents/TITAN/backups/
+
+# Stop the system
+docker compose stop titan-api titan-worker
+
+# Restore (replace YYYY-MM-DD with the target date)
+cp ~/Documents/TITAN/backups/titan_YYYY-MM-DD.db \
+   ~/Documents/TITAN/titan_core.db
+
+# Verify integrity
+python3 -c "
+import sqlite3
+c = sqlite3.connect('$HOME/Documents/TITAN/titan_core.db')
+print(c.execute('PRAGMA integrity_check').fetchone())
+c.close()
+"
+
+# Restart
+docker compose start titan-api titan-worker
+```
 
 ---
 
@@ -124,14 +171,14 @@ python main.py
 
 ---
 
-## Backup Procedure (Manual — Recommended Daily)
+## Backup Procedure
 
-TITAN OS does not yet have an automated backup daemon. Recommended manual setup:
+Automated: `titan-worker` calls `DatabaseManager.backup_database(keep=7)` at each cycle start (every 24 h). No cron setup required in Docker deployments.
+
+Manual on-demand:
 
 ```bash
-# Add to crontab (runs daily at 03:00)
-0 3 * * * cp /path/to/titan_core.db ~/Documents/TITAN/backups/titan_core.db.$(date +%Y%m%d) && \
-  find ~/Documents/TITAN/backups/ -name "titan_core.db.*" -mtime +30 -delete
+bash scripts/backup.sh [data_dir]
 ```
 
 ---
