@@ -1866,6 +1866,22 @@ class DatabaseManager:
             with suppress(OSError):
                 old.unlink()
 
+    def check_integrity(self) -> bool:
+        """Runs PRAGMA integrity_check. Returns True if OK, False otherwise."""
+        with self._lock:
+            self._ensure_open_locked()
+            cursor = self.conn.cursor()
+            cursor.execute("PRAGMA integrity_check")
+            result = cursor.fetchone()
+            ok = result is not None and result[0] == "ok"
+            if not ok:
+                _database_event(
+                    "db_integrity_check_failed",
+                    level=logging.ERROR,
+                    result=result,
+                )
+            return ok
+
     # --- DAILY METRICS ---
 
     @contextmanager
@@ -2175,30 +2191,33 @@ class DatabaseManager:
             - Coggan (2003) - Training Stress Score/Balance
             - Busso (2003) - Variable dose-response model
         """
-        from titan.observability.metrics import get_metrics
-        from titan.science.tsb_engine import compute_ctl_atl_tsb  # deferred: avoids circular import
-        t0 = time.monotonic()
-        loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
-        ctl, atl, tsb = compute_ctl_atl_tsb(
-            daily_loads=loads,
-            ctl_decay_days=CTL_DECAY_DAYS,
-            atl_decay_days=ATL_DECAY_DAYS,
-        )
-        elapsed_ms = (time.monotonic() - t0) * 1000
-        get_metrics().histogram("ctl_recompute_ms", elapsed_ms, {"athlete": athlete_id})
-        get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
+        with self._lock:
+            from titan.observability.metrics import get_metrics
+            from titan.science.tsb_engine import (
+                compute_ctl_atl_tsb,  # deferred: avoids circular import
+            )
+            t0 = time.monotonic()
+            loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
+            ctl, atl, tsb = compute_ctl_atl_tsb(
+                daily_loads=loads,
+                ctl_decay_days=CTL_DECAY_DAYS,
+                atl_decay_days=ATL_DECAY_DAYS,
+            )
+            elapsed_ms = (time.monotonic() - t0) * 1000
+            get_metrics().histogram("ctl_recompute_ms", elapsed_ms, {"athlete": athlete_id})
+            get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
 
-        from titan.science.physiological_bounds import (
-            validate_single,  # deferred: avoids circular import
-        )
-        ctl_out = validate_single("ctl", ctl, "ctl_atl_tsb")
-        atl_out = validate_single("atl", atl, "ctl_atl_tsb")
-        # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
-        return (
-            ctl_out if ctl_out is not None else 0.0,
-            atl_out if atl_out is not None else 0.0,
-            tsb,
-        )
+            from titan.science.physiological_bounds import (
+                validate_single,  # deferred: avoids circular import
+            )
+            ctl_out = validate_single("ctl", ctl, "ctl_atl_tsb")
+            atl_out = validate_single("atl", atl, "ctl_atl_tsb")
+            # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
+            return (
+                ctl_out if ctl_out is not None else 0.0,
+                atl_out if atl_out is not None else 0.0,
+                tsb,
+            )
 
     def replay_tsb(
         self,
@@ -2816,12 +2835,12 @@ class DatabaseManager:
 
     def get_recent_hrv_mean(self, days: int = 30) -> float | None:
         """Return rolling mean HRV over recent days, or None when unavailable."""
-        hrv_history = self.get_hrv_history(days=days)
-        if not hrv_history:
-            return None
-
-        values = [entry[1] for entry in hrv_history]
-        return round(sum(values) / len(values), 2)
+        with self._lock:
+            hrv_history = self.get_hrv_history(days=days)
+            if not hrv_history:
+                return None
+            values = [entry[1] for entry in hrv_history]
+            return round(sum(values) / len(values), 2)
 
     def upsert_model_calibration_metadata(
         self,

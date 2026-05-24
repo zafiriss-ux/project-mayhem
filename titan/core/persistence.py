@@ -25,7 +25,7 @@ import os
 import subprocess
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -165,6 +165,7 @@ class PersistenceAdapter(ABC):
         mood: int | None = None,
         notes: str | None = None,
         quality_flag: str | None = None,
+        data_source: str = "garmin_api",
     ) -> None:
         """Persist a morning check-in row (upsert: overwrite if key exists)."""
 
@@ -203,6 +204,10 @@ class PersistenceAdapter(ABC):
         notes: str | None = None,
         garmin_activity_id: str | None = None,
         quality_flag: str | None = None,
+        training_load: int | None = None,
+        athlete_id: str = "owner",
+        avg_pace_sec_per_km: float | None = None,
+        temperature: float | None = None,
     ) -> None:
         """Persist a training session row (INSERT OR IGNORE on duplicate)."""
 
@@ -248,11 +253,9 @@ class PersistenceAdapter(ABC):
     def save_personal_best(
         self,
         distance_km: float,
-        time_seconds: int,
+        time_sec: int,
         date: str,
-        *,
         race_name: str | None = None,
-        notes: str | None = None,
     ) -> None:
         """Persist a personal-best row."""
 
@@ -288,12 +291,12 @@ class PersistenceAdapter(ABC):
     def log_cs_performance(
         self,
         date: str,
-        critical_speed: float,
-        w_prime: float,
-        *,
-        notes: str | None = None,
+        distance_m: float,
+        time_sec: float,
+        surface: str = "ROAD",
+        wind_adjusted: bool = False,
     ) -> None:
-        """Persist a critical-speed test result."""
+        """Persist a critical-speed calibration performance."""
 
     @abstractmethod
     def get_cs_performances(
@@ -309,25 +312,26 @@ class PersistenceAdapter(ABC):
     def log_override(
         self,
         date: str,
-        original_recommendation: str,
-        override_reason: str,
-        *,
-        athlete_id: str = "default",
+        prescribed: str,
+        actual: str,
+        reason: str = "",
     ) -> None:
-        """Record a manual coaching override."""
+        """Record a session override (athlete deviated from prescribed session)."""
 
     @abstractmethod
     def record_override_signal(
         self,
-        date: str,
-        signal: str,
         *,
-        athlete_id: str = "default",
+        decision_id: str,
+        athlete_id: str,
+        override_source: str,
+        override_reason: str,
+        created_at: str,
     ) -> None:
-        """Record a raw override signal for ratio tracking."""
+        """Persist structured override signal entries (ADR-0042)."""
 
     @abstractmethod
-    def get_override_ratio(self, days: int = 14) -> float:
+    def get_override_ratio(self, athlete_id: str = "owner", days: int = 14) -> float | None:
         """Return the fraction of sessions with overrides in the last *days* days."""
 
     @abstractmethod
@@ -346,10 +350,15 @@ class PersistenceAdapter(ABC):
     def update_governance_outcome(
         self,
         date: str,
-        outcome: dict[str, Any],
-        *,
-        athlete_id: str = "default",
-    ) -> None:
+        rpe: int | None = None,
+        completed: bool | None = None,
+        actual_session_type: str | None = None,
+        notes: str | None = None,
+        decision_was_followed: bool | None = None,
+        override_outcome_exclusion: bool | None = None,
+        outcome_independence_ok: bool | None = None,
+        algorithm_version_snapshot: dict | None = None,
+    ) -> bool:
         """Update an existing governance decision row with its post-session outcome."""
 
     @abstractmethod
@@ -369,11 +378,11 @@ class PersistenceAdapter(ABC):
     @abstractmethod
     def record_sync_outcome(
         self,
-        source: str,
-        success: bool,
         *,
-        error_msg: str | None = None,
-        records_synced: int = 0,
+        source: str,
+        attempted_at: datetime,
+        success: bool,
+        error_class: str | None = None,
     ) -> None:
         """Record the result of an external-data sync (Garmin, weather, …)."""
 
@@ -384,6 +393,22 @@ class PersistenceAdapter(ABC):
     @abstractmethod
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         """Return the datetime of the most recent successful Garmin sync, or None."""
+
+    # ------------------------------------------------------------------ #
+    # DB health / replay                                                   #
+    # ------------------------------------------------------------------ #
+
+    @abstractmethod
+    def is_db_reachable(self) -> bool:
+        """Probe that the DB connection is live."""
+
+    @abstractmethod
+    def replay_tsb(
+        self,
+        athlete_id: str,
+        as_of_date: date,
+    ) -> tuple[float, float, float]:
+        """Replay TSB computation as of a historical date."""
 
     # ------------------------------------------------------------------ #
     # Backup / lifecycle                                                   #
@@ -476,18 +501,15 @@ class SQLiteAdapter(PersistenceAdapter):
     def save_personal_best(
         self,
         distance_km: float,
-        time_seconds: int,
+        time_sec: int,
         date: str,
-        *,
         race_name: str | None = None,
-        notes: str | None = None,
     ) -> None:
         self._manager.save_personal_best(
             distance_km=distance_km,
-            time_seconds=time_seconds,
+            time_sec=time_sec,
             date=date,
             race_name=race_name,
-            notes=notes,
         )
 
     def get_pr(
@@ -507,16 +529,17 @@ class SQLiteAdapter(PersistenceAdapter):
     def log_cs_performance(
         self,
         date: str,
-        critical_speed: float,
-        w_prime: float,
-        *,
-        notes: str | None = None,
+        distance_m: float,
+        time_sec: float,
+        surface: str = "ROAD",
+        wind_adjusted: bool = False,
     ) -> None:
         self._manager.log_cs_performance(
             date=date,
-            critical_speed=critical_speed,
-            w_prime=w_prime,
-            notes=notes,
+            distance_m=distance_m,
+            time_sec=time_sec,
+            surface=surface,
+            wind_adjusted=wind_adjusted,
         )
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
@@ -525,33 +548,36 @@ class SQLiteAdapter(PersistenceAdapter):
     def log_override(
         self,
         date: str,
-        original_recommendation: str,
-        override_reason: str,
-        *,
-        athlete_id: str = "default",
+        prescribed: str,
+        actual: str,
+        reason: str = "",
     ) -> None:
         self._manager.log_override(
             date=date,
-            original_recommendation=original_recommendation,
-            override_reason=override_reason,
-            athlete_id=athlete_id,
+            prescribed=prescribed,
+            actual=actual,
+            reason=reason,
         )
 
     def record_override_signal(
         self,
-        date: str,
-        signal: str,
         *,
-        athlete_id: str = "default",
+        decision_id: str,
+        athlete_id: str,
+        override_source: str,
+        override_reason: str,
+        created_at: str,
     ) -> None:
         self._manager.record_override_signal(
-            date=date,
-            signal=signal,
+            decision_id=decision_id,
             athlete_id=athlete_id,
+            override_source=override_source,
+            override_reason=override_reason,
+            created_at=created_at,
         )
 
-    def get_override_ratio(self, days: int = 14) -> float:
-        return self._manager.get_override_ratio(days=days)
+    def get_override_ratio(self, athlete_id: str = "owner", days: int = 14) -> float | None:
+        return self._manager.get_override_ratio(athlete_id=athlete_id, days=days)
 
     def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
         return self._manager.get_override_log(limit=limit)
@@ -562,14 +588,25 @@ class SQLiteAdapter(PersistenceAdapter):
     def update_governance_outcome(
         self,
         date: str,
-        outcome: dict[str, Any],
-        *,
-        athlete_id: str = "default",
-    ) -> None:
-        self._manager.update_governance_outcome(
+        rpe: int | None = None,
+        completed: bool | None = None,
+        actual_session_type: str | None = None,
+        notes: str | None = None,
+        decision_was_followed: bool | None = None,
+        override_outcome_exclusion: bool | None = None,
+        outcome_independence_ok: bool | None = None,
+        algorithm_version_snapshot: dict | None = None,
+    ) -> bool:
+        return self._manager.update_governance_outcome(
             date=date,
-            outcome=outcome,
-            athlete_id=athlete_id,
+            rpe=rpe,
+            completed=completed,
+            actual_session_type=actual_session_type,
+            notes=notes,
+            decision_was_followed=decision_was_followed,
+            override_outcome_exclusion=override_outcome_exclusion,
+            outcome_independence_ok=outcome_independence_ok,
+            algorithm_version_snapshot=algorithm_version_snapshot,
         )
 
     def get_governance_decisions(
@@ -582,17 +619,17 @@ class SQLiteAdapter(PersistenceAdapter):
 
     def record_sync_outcome(
         self,
-        source: str,
-        success: bool,
         *,
-        error_msg: str | None = None,
-        records_synced: int = 0,
+        source: str,
+        attempted_at: datetime,
+        success: bool,
+        error_class: str | None = None,
     ) -> None:
         self._manager.record_sync_outcome(
             source=source,
+            attempted_at=attempted_at,
             success=success,
-            error_msg=error_msg,
-            records_synced=records_synced,
+            error_class=error_class,
         )
 
     def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
@@ -600,6 +637,16 @@ class SQLiteAdapter(PersistenceAdapter):
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         return self._manager.get_last_garmin_sync_timestamp()
+
+    def is_db_reachable(self) -> bool:
+        return self._manager.is_db_reachable()
+
+    def replay_tsb(
+        self,
+        athlete_id: str,
+        as_of_date: date,
+    ) -> tuple[float, float, float]:
+        return self._manager.replay_tsb(athlete_id=athlete_id, as_of_date=as_of_date)
 
     def backup_database(self, backup_dir: Any = None, keep: int = 30) -> Any:
         return self._manager.backup_database(backup_dir=backup_dir, keep=keep)
@@ -916,18 +963,16 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def save_personal_best(
         self,
         distance_km: float,
-        time_seconds: int,
+        time_sec: int,
         date: str,
-        *,
         race_name: str | None = None,
-        notes: str | None = None,
     ) -> None:
-        pace = time_seconds / distance_km if distance_km > 0 else None
+        pace = time_sec / distance_km if distance_km > 0 else None
         with self._engine.begin() as conn:
             conn.execute(
                 insert(self._personal_bests).values(
                     distance_km=distance_km,
-                    time_sec=time_seconds,
+                    time_sec=time_sec,
                     pace_sec_per_km=pace,
                     date=date,
                     race_name=race_name,
@@ -974,12 +1019,12 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def log_cs_performance(
         self,
         date: str,
-        critical_speed: float,
-        w_prime: float,
-        *,
-        notes: str | None = None,
+        distance_m: float,
+        time_sec: float,
+        surface: str = "ROAD",
+        wind_adjusted: bool = False,
     ) -> None:
-        del date, critical_speed, w_prime, notes
+        del date, distance_m, time_sec, surface, wind_adjusted
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
         del limit
@@ -988,35 +1033,36 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def log_override(
         self,
         date: str,
-        original_recommendation: str,
-        override_reason: str,
-        *,
-        athlete_id: str = "default",
+        prescribed: str,
+        actual: str,
+        reason: str = "",
     ) -> None:
-        del original_recommendation  # not used downstream; athlete_id: ABC interface param only
+        del prescribed  # not stored in governance_outcomes
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)
                 .where(self._governance_outcomes.c.date == date)
-                .values(outcome_notes=override_reason, decision_was_followed=0)
+                .values(outcome_notes=reason or actual, decision_was_followed=0)
             )
 
     def record_override_signal(
         self,
-        date: str,
-        signal: str,
         *,
-        athlete_id: str = "default",
+        decision_id: str,
+        athlete_id: str,
+        override_source: str,
+        override_reason: str,
+        created_at: str,
     ) -> None:
-        _athlete_id = athlete_id  # noqa: F841 — parameter required by interface contract
+        del decision_id, athlete_id, override_source, created_at  # not stored in PostgreSQL stub
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)
-                .where(self._governance_outcomes.c.date == date)
-                .values(outcome_notes=signal)
+                .where(self._governance_outcomes.c.outcome_notes.is_(None))
+                .values(outcome_notes=override_reason)
             )
 
-    def get_override_ratio(self, days: int = 14) -> float:
+    def get_override_ratio(self, athlete_id: str = "owner", days: int = 14) -> float | None:
         start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
         with self._engine.connect() as conn:
             total = conn.execute(
@@ -1082,25 +1128,31 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def update_governance_outcome(
         self,
         date: str,
-        outcome: dict[str, Any],
-        *,
-        athlete_id: str = "default",
-    ) -> None:
-        _athlete_id = athlete_id  # noqa: F841 — parameter required by interface contract
+        rpe: int | None = None,
+        completed: bool | None = None,
+        actual_session_type: str | None = None,
+        notes: str | None = None,
+        decision_was_followed: bool | None = None,
+        override_outcome_exclusion: bool | None = None,
+        outcome_independence_ok: bool | None = None,
+        algorithm_version_snapshot: dict | None = None,
+    ) -> bool:
+        del algorithm_version_snapshot  # not stored in this PostgreSQL implementation
         with self._engine.begin() as conn:
-            conn.execute(
+            result = conn.execute(
                 update(self._governance_outcomes)
                 .where(self._governance_outcomes.c.date == date)
                 .values(
-                    outcome_rpe=outcome.get("outcome_rpe"),
-                    outcome_completed=outcome.get("outcome_completed"),
-                    outcome_session_type_actual=outcome.get("outcome_session_type_actual"),
-                    outcome_notes=outcome.get("outcome_notes"),
-                    decision_was_followed=int(bool(outcome.get("decision_was_followed", True))),
-                    override_outcome_exclusion=int(bool(outcome.get("override_outcome_exclusion", False))),
-                    outcome_independence_ok=int(bool(outcome.get("outcome_independence_ok", True))),
+                    outcome_rpe=rpe,
+                    outcome_completed=int(completed) if completed is not None else None,
+                    outcome_session_type_actual=actual_session_type,
+                    outcome_notes=notes,
+                    decision_was_followed=int(bool(decision_was_followed)) if decision_was_followed is not None else 1,
+                    override_outcome_exclusion=int(bool(override_outcome_exclusion)) if override_outcome_exclusion is not None else 0,
+                    outcome_independence_ok=int(bool(outcome_independence_ok)) if outcome_independence_ok is not None else 1,
                 )
             )
+        return result.rowcount > 0
 
     def get_governance_decisions(
         self, limit: int = 1000, athlete_id: str = "owner"
@@ -1161,13 +1213,13 @@ class PostgreSQLAdapter(PersistenceAdapter):
 
     def record_sync_outcome(
         self,
-        source: str,
-        success: bool,
         *,
-        error_msg: str | None = None,
-        records_synced: int = 0,
+        source: str,
+        attempted_at: datetime,
+        success: bool,
+        error_class: str | None = None,
     ) -> None:
-        del source, success, error_msg, records_synced
+        del source, attempted_at, success, error_class
 
     def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
         del source
@@ -1211,6 +1263,16 @@ class PostgreSQLAdapter(PersistenceAdapter):
         backups = sorted(backup_dir.glob("titan_????-??-??.dump"))
         for old in backups[:-keep] if len(backups) > keep else []:
             old.unlink(missing_ok=True)
+
+    def is_db_reachable(self) -> bool:
+        raise NotImplementedError("is_db_reachable not yet implemented for PostgreSQL")
+
+    def replay_tsb(
+        self,
+        athlete_id: str,
+        as_of_date: date,
+    ) -> tuple[float, float, float]:
+        raise NotImplementedError("replay_tsb not yet implemented for PostgreSQL")
 
     def transaction(self) -> AbstractContextManager:
         return self._engine.begin()
