@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–17 CLOSED; Phases 9, 10, 18 OPEN — see below)
+## Phase History (Phases 0–8, 11–19 CLOSED; Phases 9, 10, 20 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -33,7 +33,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 16 | Operational Hardening | CLOSED 2026-05-15 | TD-09/13/17/19 (XS) resolved, TD-10 partial, CodeQL #1/#2 resolved; TD-04/06/08/11/12 deferred |
 | Phase 17 | Infrastructure & Scale | CLOSED 2026-05-22 | TD-06 Dockerfile, TD-12 runbooks; TD-CTL-01 and TD-NUTRITION-01 registered; TD-04/08/11 carry to Phase 18 |
 | Phase 18 | Observability & Debt Clearance | CLOSED 2026-05-23 | TD-CTL-01 ✅, TD-11 ✅, TD-NUTRITION-01 ✅; TD-04/TD-08 deferred Phase 19 |
-| Phase 19 | Structured Debt & Scale | OPEN 2026-05-23 | TD-04 (ADR-0058 required), TD-08 schema extract, TD-NEW-15 load tests, OTel Phase 2, ADR-0044 PostgreSQL parity |
+| Phase 19 | Structured Debt & Scale | CLOSED 2026-05-24 | TD-NEW-15 ✅ load tests, TD-04 ✅ ADR-0058 Phase A; TD-08/TD-NEW-18 DEFERRED Phase 20 |
+| Phase 20 | Schema & EffectBus | OPEN 2026-05-24 | TD-08 schema extract (XL), TD-04 Phase B EffectBus, TD-NEW-18 alembic CI, pydantic-settings, pytest markers |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -225,18 +226,31 @@ See `TECHNICAL_DEBT.md` for register.
 
 ---
 
-## Phase 19 — Structured Debt & Scale (OPEN, 2026-05-23)
+## Phase 19 — Structured Debt & Scale (CLOSED, 2026-05-24)
 
-Entry gate: Phase 18 close audit PASS (2026-05-23). Scope (priority order):
-1. TD-04: DailyCoach god-orchestrator split — ADR-0058 required (HIGH).
-2. TD-08 / TD-NEW-13: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (MED).
-3. TD-NEW-15: Load/performance tests — DailyCoach pipeline, DB reads, API throughput (MED).
-4. OTel Phase 2: plug-in OpenTelemetry exporter into MetricsCollector via ADR (MED).
-5. ADR-0044: PostgreSQL full parity gate.
-6. ADR-0058: DailyCoach split design.
+**CLOSED 2026-05-24**: phase_close_audit.sh 19 exit 0; 2942 tests passing, 6 skipped;
+TD-NEW-15 RESOLVED (load tests); TD-04/TD-NEW-10 RESOLVED (ADR-0058 Phase A);
+TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20.
 
-FMEA: F19-01 DailyCoach split regression risk (HIGH), F19-02 schema extract migration risk (MED), F19-03 OTel dep without ADR gate (MED).
-See `TECHNICAL_DEBT.md` for register.
+Entry gate: Phase 18 close audit PASS (2026-05-23). Scope delivered:
+1. TD-04: DailyCoach god-orchestrator split — ADR-0058 Phase A EngineRegistry ✅ RESOLVED.
+2. TD-NEW-15: Load/performance tests — scripts/load_test.py, tests/test_td_new_15_load.py ✅ RESOLVED.
+3. TD-08 / TD-NEW-13: Schema single source of truth — DEFERRED Phase 20 (XL scope).
+4. TD-NEW-18: Alembic CI path — DEFERRED Phase 20 (ADR-0044 resolution track).
+
+FMEA: F19-01 MITIGATED, F19-02 DEFERRED, F19-03 DEFERRED, F19-04 ACCEPTABLE.
+See `TECHNICAL_DEBT.md` for full register.
+
+---
+
+## Phase 20 — Schema & EffectBus (OPEN, 2026-05-24)
+
+Entry gate: Phase 19 close audit PASS (2026-05-24). Scope (priority order):
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL).
+2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B).
+3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track).
+4. P15-ARCH5: pydantic-settings migration.
+5. T5-15: Pytest marker taxonomy (unit/integration/governance).
 
 ---
 
@@ -303,4 +317,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-23 (Phase 18 CLOSED 2026-05-23; Phase 19 OPEN 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-24 (Phase 19 CLOSED 2026-05-24; Phase 20 OPEN 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)

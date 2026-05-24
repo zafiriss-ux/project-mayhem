@@ -109,7 +109,8 @@ Phase 9 OPEN — all G1–G12 cleared 2026-04-20. See AGENTS.md §16.2 and ADR-0
 Phase 16 CLOSED — phase_close_audit.sh 16 exit 0; 2774 tests passing; SCRATCHPAD IDLE (2026-05-15).
 Phase 17 CLOSED — phase_close_audit.sh 17 exit 0; 2887 tests passing; TD-CTL-01 and TD-NUTRITION-01 registered (2026-05-22).
 Phase 18 CLOSED — phase_close_audit.sh 18 exit 0; 2924 tests passing; TD-11 RESOLVED; TD-08 DEFERRED Phase 19 (2026-05-23).
-Phase 19 OPEN — Phase 18 close audit PASS 2026-05-23.
+Phase 19 CLOSED — phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-15 RESOLVED; TD-04 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20 (2026-05-24).
+Phase 20 OPEN — Phase 19 close audit PASS 2026-05-24.
 
 **Phase 8C execution sequence (CLOSED — 2026-04-04):**
 ```
@@ -5455,10 +5456,49 @@ The following items were identified in the token-encryption / debt-fixes audit p
 | TD-NEW-12 | SQLite concurrent read coverage incomplete: only 4 of N read methods protected by RLock (partial from TD-02) | MED | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — all get_/fetch_/load_ methods wrapped with RLock; concurrent read/write test + lock fitness function added |
 | TD-NEW-13 | Schema definition split across database.py and alembic migrations: two sources of truth for table structure risk drift | MED | Opus audit 2026-05-22 | DEFERRED Phase 19 — aligns with TD-08; 500+ lines extraction scope; ADR-0044 resolution track |
 | TD-NEW-14 | Persistence ABC interface drift: abstract method signatures in persistence.py don't match DatabaseManager signatures (e.g. get_override_ratio athlete_id param) | MED | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — all 9 ABC/DM drifts fixed; replay_tsb + is_db_reachable added to ABC; signature drift fitness function added |
-| TD-NEW-15 | No load/performance tests: no benchmarks for DailyCoach pipeline, DB reads under concurrent load, or API throughput | MED | Opus audit 2026-05-22 | OPEN — Phase 18 scope |
+| TD-NEW-15 | No load/performance tests: no benchmarks for DailyCoach pipeline, DB reads under concurrent load, or API throughput | MED | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — scripts/load_test.py (stdlib-only runner); scripts/load_test_runner.sh; 5 pytest tests in tests/test_td_new_15_load.py; DB concurrent stress 0 errors; DailyCoach hydration p95 < 500ms |
 | TD-NEW-16 | No DB corruption recovery test: PRAGMA integrity_check path untested; backup restore untested end-to-end | MED | Opus audit 2026-05-22 | ✅ RESOLVED 2026-05-24 — check_integrity() added to DatabaseManager; 4 corruption/backup tests added |
 | TD-NEW-17 | TSBEngine daily_loads empty at UI render (carries TD-CTL-01): state mutation between pipeline hydration and menu render unresolved | HIGH | Opus audit 2026-05-22 | OPEN — Phase 18 priority |
 | TD-NEW-18 | PostgreSQL migrations (alembic) untested: psycopg2-binary and sqlalchemy in requirements but no CI path exercises the postgres migration path | MED | Opus audit 2026-05-22 | OPEN — deferred until ADR-0044 |
 | TD-NEW-19 | Nutrition carb display inconsistency (carries TD-NUTRITION-01): low_carb dietary style shows generic band instead of adjusted target in menu | LOW | Opus audit 2026-05-22 | OPEN — Phase 18 backlog |
 | TD-CTL-02 | Four separate EMA implementations across codebase: `DatabaseManager.get_ctl_atl_tsb`, `PostgreSQLDatabaseManager.get_ctl_atl_tsb`, `TSBEngine`, and any future adapters all duplicate the Banister EMA loop. Should be consolidated into a single `compute_banister_ema(loads, decay_days)` utility (Opus §5.2). | MED | Opus §5.2 audit 2026-05-22 | ✅ RESOLVED 2026-05-23 — 4 EMA implementations consolidated into `compute_ctl_atl_tsb()` in `titan/science/tsb_engine.py`; all 3 DB backends delegate to it; fitness function in `tests/test_ema_kernel.py` enforces single canonical site |
 | TD-CTL-03 | No replay harness for CTL/ATL/TSB: there is no test that replays a known historical load sequence and asserts exact CTL/ATL values at specific dates. Without a replay harness, algorithmic regressions (e.g. decay constant drift, date-window bugs) cannot be caught deterministically (Opus §5.2). | MED | Opus §5.2 audit 2026-05-22 | ✅ RESOLVED 2026-05-23 — `replay_tsb()` implemented in `titan/science/tsb_engine.py`; `DatabaseManager.replay_tsb()` delegates to it; 4 harness tests in `tests/test_replay_harness.py` |
+
+---
+
+## Phase 19 — Structured Debt & Scale (CLOSED, 2026-05-24)
+
+**Phase 19 CLOSED — phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-15 RESOLVED;
+TD-04 RESOLVED; TD-NEW-10 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20.**
+
+### Resolved in this pass (Phase 19, 2026-05-24)
+
+| ID | Finding | Status |
+|---|---|---|
+| TD-NEW-15 | Load/performance tests: scripts/load_test.py (stdlib-only), scripts/load_test_runner.sh, tests/test_td_new_15_load.py (5 tests); DB concurrent stress 0 errors; DailyCoach hydration p95 < 500ms | ✅ RESOLVED 2026-05-24 |
+| TD-04 | DailyCoach god-orchestrator split: ADR-0058 Phase A EngineRegistry extracted | ✅ RESOLVED 2026-05-24 (see TD-NEW-10) |
+| TD-NEW-10 | DailyCoach god-orchestrator: ADR-0058 Phase A EngineRegistry; Phase B (EffectBus) + Phase C (daemon) deferred Phase 20 | ✅ RESOLVED 2026-05-24 |
+
+### Deferred to Phase 20
+
+| ID | Finding | Rationale |
+|---|---|---|
+| TD-08 / TD-NEW-13 | Schema single source of truth: 500+ lines extraction; requires ADR-0044 PostgreSQL parity path before alembic alignment is safe | DEFERRED Phase 20 — XL scope; ADR-0044 resolution track |
+| TD-NEW-18 | PostgreSQL migrations (alembic) untested: no CI path exercises postgres migration | DEFERRED Phase 20 — blocked on ADR-0044 |
+
+### FMEA: Phase 19
+
+| ID | Failure mode | Likelihood | Impact | Mitigation | Status |
+|---|---|---|---|---|---|
+| F19-01 | DailyCoach split regression: EngineRegistry refactor causes orchestration regression | MED | HIGH | ADR-0058 gate + fitness function + full test suite | ✅ MITIGATED — ADR-0058 Phase A validated; regression tests green |
+| F19-02 | Schema extract migration risk: schema.py diverges from alembic causing migration failure | LOW | HIGH | DEFERRED — extraction deferred Phase 20 until ADR-0044 resolved | ⚠️ DEFERRED |
+| F19-03 | OTel dep without ADR gate | LOW | MED | DEFERRED — OTel Phase 2 deferred pending ADR | ⚠️ DEFERRED |
+| F19-04 | Load test SLO false negative: in-process DB test misses production latency profile | LOW | MED | Scripts runner (load_test_runner.sh) available for Docker-based validation | ✅ ACCEPTABLE |
+
+## Phase 20 Scope (OPEN, 2026-05-24)
+
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL)
+2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B)
+3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track)
+4. P15-ARCH5: pydantic-settings migration
+5. T5-15: Pytest marker taxonomy (unit/integration/governance)
