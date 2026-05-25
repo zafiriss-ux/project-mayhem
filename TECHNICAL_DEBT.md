@@ -30,7 +30,8 @@ Phase 18 CLOSED — phase_close_audit.sh 18 exit 0; 2924 tests passing; TD-11 RE
 Phase 19 CLOSED — phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-15 RESOLVED; TD-04 RESOLVED; TD-08 DEFERRED Phase 20; TD-NEW-18 DEFERRED Phase 20 (2026-05-24).
 Phase 20 CLOSED — phase_close_audit.sh 20 exit 0; 2955 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 21; TD-NEW-18 DEFERRED Phase 21 (2026-05-24).
 Phase 21 CLOSED — phase_close_audit.sh 21 exit 0; 2959 tests passing; governance consolidation complete; TECHNICAL_DEBT.md archived to <1500 LOC; SCRATCHPAD.md archived; TD-08 DEFERRED Phase 22; TD-NEW-18 DEFERRED Phase 22; TD-04B DEFERRED Phase 22; T5-15 DEFERRED Phase 22 (2026-05-24).
-Phase 22 OPEN — schema extraction, EffectBus, Alembic CI, pydantic-settings, marker taxonomy 2026-05-24.
+Phase 22 CLOSED — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 23; TD-04B DEFERRED Phase 23; T5-15 Phase B DEFERRED Phase 23; P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23 (2026-05-25).
+Phase 23 OPEN — Schema extract (TD-08), EffectBus Phase B (TD-04B), retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), alembic runner topology (TD-CI-SELFHOSTED) 2026-05-25.
 
 ---
 
@@ -1488,15 +1489,15 @@ Items identified by Opus Phase 20 audit, resolved in Phase 21.
 
 ---
 
-## Phase 22 Scope (OPEN, 2026-05-24)
+## Phase 22 Scope (CLOSED, 2026-05-25)
 
-Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, EffectBus, Alembic CI, pydantic-settings, marker taxonomy.
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — DEFERRED Phase 22
-2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 22
+Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, EffectBus, Alembic CI, pydantic-settings, marker taxonomy, observability sink.
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — DEFERRED Phase 23
+2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 23
 3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track) — ✅ RESOLVED 2026-05-24 (chain integrity CI-gated; PG activation deferred to ADR-0044)
-4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 22
-5. T5-15: Pytest marker taxonomy (unit/integration/governance) — 🟡 PARTIAL 2026-05-25: Phase A complete (12 priority files marked: test_opus_critical_fixes, test_opus_critical_fixes_2, test_readyz, test_backup, test_alembic_ci, test_observability, test_td_new_15_load, test_adr0058_fitness, test_replay_harness, test_tsb_properties, test_ema_kernel, test_docker_deploy). Phase B (100+ remaining files) OPEN — separate pass.
-6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector — 🟡 PARTIAL RESOLVED 2026-05-25 (Prometheus /metrics endpoint added via prometheus-client; 5 instruments dual-emit JSON log + Prometheus; OTel exporter deferred Phase 23)
+4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 23
+5. T5-15: Pytest marker taxonomy (unit/integration/governance) — 🟡 PARTIAL: Phase A complete (12 priority files marked). Phase B (100+ remaining files) DEFERRED Phase 23.
+6. TD-OBS: Metrics time-series sink — 🟡 PARTIAL: Prometheus /metrics endpoint added; 5 instruments dual-emit JSON log + Prometheus. OTel exporter DEFERRED Phase 23.
 7. TD-PYPROJECT-DEPS: pyproject.toml had empty dependencies = [] — ✅ RESOLVED 2026-05-25 (populated with 12 runtime deps from requirements.txt; dev-only packages excluded)
 8. TD-UV-LOCK-UNUSED: uv.lock (592 lines) committed but unused in CI (pip install -r is the path) — ✅ RESOLVED 2026-05-25 (git rm uv.lock; .gitignore updated; CI install step annotated)
 9. TD-BACKUP-VERIFY: No automated backup integrity verification — ✅ RESOLVED 2026-05-25 (scripts/verify_backup.py added; backup-verify CI job added; runbook updated with verification section; 3 tests in test_backup_verification.py)
@@ -1523,3 +1524,31 @@ Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, Ef
 | ID | Finding | Rationale |
 |----|---------|-----------|
 | TD-CI-SELFHOSTED | `alembic-integrity` CI job runs on `self-hosted` runner — topology unknown, cannot blindly switch to `ubuntu-latest` | `continue-on-error: true` added 2026-05-25 — advisory until runner inventory is audited. OPEN, not fixed. |
+
+---
+
+## FMEA: Phase 22 — Security/Observability
+
+**Architect:** Claude | **Date:** 2026-05-25 | **Status:** G12 SATISFIED
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F22-01 | Auth lockout | DB write fails → lockout lost | MED | SQLite RLock + retry ✅ |
+| F22-02 | /metrics endpoint | Prometheus registry collision across tests | LOW | Module-level instruments ✅ |
+| F22-03 | Worker schedule | Clock skew shifts 07:00 window | LOW | UTC alignment documented ✅ |
+| F22-04 | RBAC check | Assignment table empty → all access denied | LOW | ('system','owner') seed ✅ |
+| F22-05 | Engine mutex | RLock deadlock if hydrate called twice | LOW | Lock() not RLock(), single call site ✅ |
+
+**G12 gate:** SATISFIED.
+
+---
+
+## Phase 23 Scope (OPEN, 2026-05-25)
+
+Entry gate: Phase 22 close audit PASS (2026-05-25). Scope: schema extraction, EffectBus Phase B, retroactive pytest markers, pydantic-settings, alembic runner topology.
+
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — requires dedicated Opus pre-audit of migration path
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment
+3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
+4. P15-ARCH5: pydantic-settings migration
+5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs; `continue-on-error: true` advisory until resolved

@@ -50,7 +50,7 @@ Main package (65 modules, excl. __init__/__main__), ceiling 73.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 22 OPEN (ACTIVE, 2026-05-24) |
+| `docs/ROADMAP.MD` | Phase 23 OPEN (ACTIVE, 2026-05-25) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -149,14 +149,19 @@ phase_close_audit.sh 21 exit 0; 2959 tests passing; governance consolidation com
 TECHNICAL_DEBT.md archived to <1500 LOC; SCRATCHPAD.md archived to 916 LOC;
 TD-08 DEFERRED Phase 22; TD-NEW-18 DEFERRED Phase 22; TD-04B DEFERRED Phase 22; T5-15 DEFERRED Phase 22.
 
-## Phase 22 Open Items (ACTIVE)
+## Phase 22 CLOSED (2026-05-25)
 
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL)
-2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B)
-3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track)
+phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED;
+TD-08 DEFERRED Phase 23; TD-04B DEFERRED Phase 23; T5-15 Phase B DEFERRED Phase 23;
+P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23.
+
+## Phase 23 OPEN (ACTIVE, 2026-05-25)
+
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — requires Opus pre-audit
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment
+3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
 4. P15-ARCH5: pydantic-settings migration
-5. T5-15: Pytest marker taxonomy (unit/integration/governance)
-6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector
+5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs
 
 ## Pitfalls
 

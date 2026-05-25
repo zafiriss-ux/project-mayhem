@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–20 CLOSED; Phases 9, 10, 21 OPEN — see below)
+## Phase History (Phases 0–8, 11–22 CLOSED; Phases 9, 10 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -36,7 +36,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 19 | Structured Debt & Scale | CLOSED 2026-05-24 | TD-NEW-15 ✅ load tests, TD-04 ✅ ADR-0058 Phase A; TD-08/TD-NEW-18 DEFERRED Phase 20 |
 | Phase 20 | Schema & EffectBus | CLOSED 2026-05-24 | FMEA G12 SATISFIED; hygiene & backup hardening; TD-08/TD-NEW-18/TD-04B deferred Phase 21 |
 | Phase 21 | Governance Consolidation | CLOSED 2026-05-24 | TECHNICAL_DEBT.md archived <1500 LOC; SCRATCHPAD.md archived; TD-08/TD-NEW-18/TD-04B/T5-15 DEFERRED Phase 22 |
-| Phase 22 | Schema Extract & Observability | OPEN 2026-05-24 | TD-08 schema extract, TD-04B EffectBus, TD-NEW-18 Alembic CI, P15-ARCH5 pydantic-settings, T5-15 markers, TD-OBS metrics sink |
+| Phase 22 | Schema Extract & Observability | CLOSED 2026-05-25 | FMEA G12 SATISFIED; TD-NEW-18 ✅; TD-BACKUP-VERIFY ✅; TD-08/TD-04B/T5-15B/P15-ARCH5 DEFERRED Phase 23 |
+| Phase 23 | Schema & EffectBus Phase B | OPEN 2026-05-25 | TD-08 schema extract, TD-04B EffectBus, T5-15B markers, P15-ARCH5 pydantic-settings, TD-CI-SELFHOSTED runner topology |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -264,15 +265,30 @@ Scope items deferred to Phase 22: TD-08, TD-04 Phase B, TD-NEW-18, P15-ARCH5, T5
 
 ---
 
-## Phase 22 — Schema Extract & Observability (OPEN, 2026-05-24)
+## Phase 22 — Schema Extract & Observability (CLOSED, 2026-05-25)
 
 Entry gate: Phase 21 close audit PASS (2026-05-24). Scope (priority order):
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL).
-2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B).
-3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track).
+1. TD-08: Schema single source of truth — DEFERRED Phase 23.
+2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 23.
+3. TD-NEW-18: Alembic CI path — ✅ RESOLVED 2026-05-24 (chain integrity CI-gated).
+4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 23.
+5. T5-15: Pytest marker taxonomy — Phase A ✅; Phase B DEFERRED Phase 23.
+6. TD-OBS: Metrics time-series sink — Prometheus endpoint ✅; OTel exporter DEFERRED Phase 23.
+7. TD-BACKUP-VERIFY: Backup integrity verification — ✅ RESOLVED 2026-05-25.
+8. TD-PYPROJECT-DEPS / TD-UV-LOCK-UNUSED — ✅ RESOLVED 2026-05-25.
+
+**Closed:** 2026-05-25 — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED.
+
+---
+
+## Phase 23 — Schema & EffectBus Phase B (OPEN, 2026-05-25)
+
+Entry gate: Phase 22 close audit PASS (2026-05-25). Scope (priority order):
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL); requires Opus pre-audit of migration path.
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment.
+3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical).
 4. P15-ARCH5: pydantic-settings migration.
-5. T5-15: Pytest marker taxonomy (unit/integration/governance).
-6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector.
+5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs.
 
 ---
 
