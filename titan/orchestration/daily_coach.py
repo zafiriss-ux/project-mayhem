@@ -827,6 +827,7 @@ class DailyCoach:
             garmin_report_payload=garmin_report_payload,
             startup_hydration_confidence=startup_hydration_confidence,
             startup_confidence_applies=startup_confidence_applies,
+            engines=getattr(self, "engines", None),
         )
 
         # ── Delegated pipeline/effect execution ───────────────────────────────
@@ -863,7 +864,8 @@ class DailyCoach:
     ) -> DecisionResult:
         """Pure decision pipeline: steps 7–11 + coaching payload assembly.
 
-        Invariant: no db.save_*, no telegram.*, no self.db.transaction().
+        Invariant: Read-only db access permitted.
+        No db.save_*, no telegram.*, no self.db.transaction() for writes.
         All inputs are pre-computed signals from run_morning_routine() steps 1–6.
         """
 
@@ -1746,6 +1748,11 @@ class DailyCoach:
 
         Called automatically at end of __init__.
         """
+        with self._routine_mutex:
+            return self._hydrate_engines_from_db_locked()
+
+    def _hydrate_engines_from_db_locked(self) -> dict[str, bool]:
+        """Inner body of _hydrate_engines_from_db, called under _routine_mutex."""
         _daily_coach_event("hydration_started")
         confidence = {
             "hrv": False,

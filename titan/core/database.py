@@ -615,6 +615,10 @@ class DatabaseManager:
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
+        # ADR-0058-NOTE: v6 (override_signals) is intentionally invoked outside
+        # _migrations dict because the dict skips key 6 (historical numbering gap).
+        # Do NOT add key 6 to the dict without verifying idempotency.
+        # See Opus audit 2026-05-25, finding #8.
         if current_version < 6:
             self._apply_v6_migrations(cursor)
             _log.info(
@@ -1279,6 +1283,16 @@ class DatabaseManager:
 
     def _apply_v19_pace_backfill(self, cursor) -> None:
         """Backfill avg_pace_sec_per_km for rows with valid distance/duration but NULL pace."""
+        # Guard: skip the UPDATE entirely when nothing needs backfilling — makes
+        # every subsequent startup essentially free after the initial migration.
+        cursor.execute(
+            "SELECT COUNT(*) FROM training_log "
+            "WHERE avg_pace_sec_per_km IS NULL "
+            "AND distance_km > 0 "
+            "AND duration_sec > 0"
+        )
+        if cursor.fetchone()[0] == 0:
+            return
         cursor.execute("""
             UPDATE training_log
             SET avg_pace_sec_per_km = ROUND(duration_sec / distance_km)

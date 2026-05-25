@@ -1357,6 +1357,7 @@ def test_run_morning_routine_telegram_exception_raises_delivery_error_event(monk
 def _make_hydration_coach(db):
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = db
+    coach._routine_mutex = threading.Lock()
     coach.hrv = SimpleNamespace(hrv_log=[], add_hrv_measurement=lambda *_: None, check_baseline_drift=lambda **k: False)
     coach.nutrition = SimpleNamespace(add_weight_entry=lambda *_: None)
     coach.tsb = SimpleNamespace(daily_loads=[], add_daily_load=lambda *_: None)
