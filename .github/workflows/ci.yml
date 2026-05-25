@@ -614,6 +614,8 @@ jobs:
   alembic-integrity:
     name: Alembic Migration Integrity
     runs-on: self-hosted
+    # TODO: switch to ubuntu-latest when self-hosted runner is retired
+    # TD-CI-SELFHOSTED (Opus 2026-05-24)
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python

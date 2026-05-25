@@ -103,6 +103,7 @@ class GovernanceEngine:
     def __init__(
         self,
         threshold_adapter: ThresholdAdapter | None = None,
+        db: Any | None = None,
     ) -> None:
         """Initialise GovernanceEngine.
 
@@ -110,8 +111,11 @@ class GovernanceEngine:
             threshold_adapter: Optional per-athlete ThresholdAdapter injected by
                 the coaching pipeline (ADR-0052). When None, all gate thresholds
                 use unmodified constants from thresholds.py.
+            db: Optional DatabaseManager for methods that need direct DB access
+                (e.g. apply_override_lockdown). When None, those methods are no-ops.
         """
         self._threshold_adapter = threshold_adapter
+        self._db = db
 
     def _get_soft_threshold(self, threshold_name: str, base_value: float) -> float:
         """Return the (possibly adapted) threshold value for soft gates.
@@ -214,6 +218,37 @@ class GovernanceEngine:
                 "disabled": ["RACE_SIMULATION", "TTE_PREDICTION"],
             }
         return {"locked": False, "confidence": confidence}
+
+    def apply_override_lockdown(self, context: dict) -> None:
+        """Evaluate override lockdown and mutate context with fail-closed None handling.
+
+        Sets context["override_locked"] = True on cold start (ratio is None) or
+        when ratio exceeds OVERRIDE_LOCKDOWN_THRESHOLD. Uses self._db set at construction.
+        """
+        session_plan = context.get("session_plan", {})
+        db = self._db
+        if db is None:
+            return
+        try:
+            ratio = db.get_override_ratio(days=14)
+        except Exception:
+            session_plan["lock_applied"] = True
+            context["override_locked"] = True
+            return
+        if ratio is None:
+            # Cold start — no calibration data.
+            # Fail closed: treat as if lockdown threshold exceeded.
+            _gate_event(
+                "OVERRIDE_LOCKDOWN",
+                "COLD_START_LOCKDOWN",
+                reason="no_calibration_data",
+            )
+            session_plan["lock_applied"] = True
+            context["override_locked"] = True
+            return
+        if float(ratio) > self.OVERRIDE_LOCKDOWN_THRESHOLD:
+            session_plan["lock_applied"] = True
+            context["override_locked"] = True
 
     @staticmethod
     def _to_dict_maybe(value: Any) -> dict:

@@ -1497,3 +1497,26 @@ Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, Ef
 4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 22
 5. T5-15: Pytest marker taxonomy (unit/integration/governance) — DEFERRED Phase 22
 6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector — NEW Phase 22
+
+---
+
+## Phase 22 Critical-Fix Delivery (Opus TD-HEALTHCHECK pass, 2026-05-24)
+
+### Resolved
+
+| ID | Finding | Resolution | Status |
+|----|---------|------------|--------|
+| TD-HEALTHCHECK | HEALTHCHECK in Dockerfile and docker-compose.yml pointed to `/health` instead of the live `/readyz` endpoint | Changed both targets to `/readyz` | ✅ RESOLVED 2026-05-24 |
+| H3 | Dockerfile CMD was an unreviewed inline python -c string — no composition root, no audit trail | Created `scripts/run_api.py` (reviewable entrypoint); Dockerfile CMD updated to `["python", "scripts/run_api.py"]` | ✅ RESOLVED 2026-05-24 |
+| TD-WORKER-SCHED | Worker loop used raw `stop.wait(86400)` — fired at arbitrary offset from boot, not aligned to 07:00 UTC | Replaced with `_seconds_until_next_run(7, 0)` helper; loop sleeps exactly until 07:00 UTC each cycle | ✅ RESOLVED 2026-05-24 |
+| TD-WORKER-LIFECYCLE | Worker had no SIGTERM handler — Docker stop sent SIGTERM with no graceful exit path | Added `_handle_sigterm` + module-level `_shutdown` event; `run_forever` accepts `shutdown_event` and returns cleanly on signal; `main()` logs `worker_stopped` in `finally` | ✅ RESOLVED 2026-05-24 |
+| TD-RBAC-COACH | `require_coach_athlete_access` queried assignment table only when `db` was non-None — could silently allow access if db unavailable | Confirmed existing guard is correct; fitness test added to lock the behaviour | ✅ RESOLVED 2026-05-24 |
+| TD-OVERRIDE-FAIL-OPEN | `GovernanceEngine` had no method exposing the None-ratio fail-closed path as a testable, context-mutating operation | Added `apply_override_lockdown(ctx)` method and `db` param to `__init__`; None ratio sets `context["override_locked"] = True` (fail closed); existing `check_override_lockdown` cold-start path unchanged | ✅ RESOLVED 2026-05-24 |
+| TD-DEPLOY-DRIFT | No `docs/DEPLOYMENT_GUIDE.md` existed; risk of ops teams using local-dev steps for production deployments | Created file with canonical Docker banner at top; references `docs/runbooks/docker-deploy.md`; documents `titan_core.db` (not `titan.db`) | ✅ RESOLVED 2026-05-24 |
+| H2 | `.env.example` contained stale `WEATHER_API_KEY`, wrong `DATABASE_PATH` (`titan.db`), and a `LOG_DIR` entry no longer used | Removed `WEATHER_API_KEY` and `LOG_DIR`; updated `DATABASE_PATH` to `titan_core.db` with Docker/local comments | ✅ RESOLVED 2026-05-24 |
+
+### Open
+
+| ID | Finding | Rationale |
+|----|---------|-----------|
+| TD-CI-SELFHOSTED | `alembic-integrity` CI job runs on `self-hosted` runner — topology unknown, cannot blindly switch to `ubuntu-latest` | Comment added to `ci.yml`; switching requires runner inventory audit. Tracked as open item. |

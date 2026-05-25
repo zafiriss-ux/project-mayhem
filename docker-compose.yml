@@ -16,7 +16,7 @@ services:
       - TITAN_DATA_DIR=/data
       - TITAN_DB_BACKEND=sqlite
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
       interval: 30s
       timeout: 5s
       retries: 3
