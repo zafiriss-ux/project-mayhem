@@ -32,6 +32,7 @@ def test_worker_schedule_aligned():
 
 
 @pytest.mark.integration
+@pytest.mark.governance
 def test_override_lockdown_fail_closed():
     from unittest.mock import patch
 

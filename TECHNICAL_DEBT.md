@@ -1495,8 +1495,11 @@ Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, Ef
 2. TD-04 Phase B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 22
 3. TD-NEW-18: Alembic CI path — PostgreSQL migration CI gate (ADR-0044 resolution track) — ✅ RESOLVED 2026-05-24 (chain integrity CI-gated; PG activation deferred to ADR-0044)
 4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 22
-5. T5-15: Pytest marker taxonomy (unit/integration/governance) — 🟡 PARTIAL 2026-05-25 (markers registered in pyproject.toml; applied to new test files; retroactive pass across all 118 files pending — constitutes T5-15 proper)
+5. T5-15: Pytest marker taxonomy (unit/integration/governance) — 🟡 PARTIAL 2026-05-25: Phase A complete (12 priority files marked: test_opus_critical_fixes, test_opus_critical_fixes_2, test_readyz, test_backup, test_alembic_ci, test_observability, test_td_new_15_load, test_adr0058_fitness, test_replay_harness, test_tsb_properties, test_ema_kernel, test_docker_deploy). Phase B (100+ remaining files) OPEN — separate pass.
 6. TD-OBS: Metrics time-series sink — structured observability backend for MetricsCollector — 🟡 PARTIAL RESOLVED 2026-05-25 (Prometheus /metrics endpoint added via prometheus-client; 5 instruments dual-emit JSON log + Prometheus; OTel exporter deferred Phase 23)
+7. TD-PYPROJECT-DEPS: pyproject.toml had empty dependencies = [] — ✅ RESOLVED 2026-05-25 (populated with 12 runtime deps from requirements.txt; dev-only packages excluded)
+8. TD-UV-LOCK-UNUSED: uv.lock (592 lines) committed but unused in CI (pip install -r is the path) — ✅ RESOLVED 2026-05-25 (git rm uv.lock; .gitignore updated; CI install step annotated)
+9. TD-BACKUP-VERIFY: No automated backup integrity verification — ✅ RESOLVED 2026-05-25 (scripts/verify_backup.py added; backup-verify CI job added; runbook updated with verification section; 3 tests in test_backup_verification.py)
 
 ---
 

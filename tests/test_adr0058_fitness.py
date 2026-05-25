@@ -56,6 +56,7 @@ class _DummyDB:
         return False
 
 
+@pytest.mark.unit
 def test_engine_registry_is_frozen():
     """EngineRegistry must be frozen — field reassignment raises."""
     registry = EngineRegistry(
@@ -74,6 +75,7 @@ def test_engine_registry_is_frozen():
         registry.tsb = None  # type: ignore[misc]
 
 
+@pytest.mark.unit
 def test_from_db_factory_returns_registry():
     """EngineRegistry.from_db() produces a fully-typed registry."""
     registry = EngineRegistry.from_db(db=_DummyDB())
@@ -84,6 +86,7 @@ def test_from_db_factory_returns_registry():
     assert isinstance(registry.apl, AdaptivePriorityLock)
 
 
+@pytest.mark.unit
 def test_daily_coach_has_engines_attribute():
     """DailyCoach must expose self.engines: EngineRegistry after ADR-0058 Phase A."""
     from titan.orchestration.daily_coach import DailyCoach
@@ -107,6 +110,8 @@ def test_daily_coach_has_engines_attribute():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_engine_registry_single_construction_site():
     """Fitness function: no engine class may be instantiated outside
     EngineRegistry.from_db() and titan/main.py (composition root).
@@ -143,6 +148,7 @@ def test_engine_registry_single_construction_site():
     )
 
 
+@pytest.mark.unit
 def test_athlete_coaching_context_has_engines():
     """AthleteCoachingContext must have an 'engines' field (ADR-0058)."""
     from titan.orchestration.coaching_pipeline import AthleteCoachingContext

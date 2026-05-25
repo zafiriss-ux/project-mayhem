@@ -183,6 +183,22 @@ bash scripts/backup.sh [data_dir]
 
 ---
 
+## Backup Verification
+
+Before restoring, verify the backup file is not corrupt:
+
+```bash
+# Verify latest backup integrity
+python3 scripts/verify_backup.py ~/Documents/TITAN
+# Exit 0 = OK
+# Exit 1 = corrupt — restore an earlier backup
+```
+
+The script prints the backup path and file size on success.
+If it fails, try the next most-recent file in `~/Documents/TITAN/backups/`.
+
+---
+
 ## Post-Recovery Checklist
 
 - [ ] `PRAGMA integrity_check` returns `ok`
