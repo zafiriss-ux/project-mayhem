@@ -16,6 +16,7 @@ RUNTIME_DEPENDENCIES = {
     "schemathesis==4.18.5",
     "mutmut==3.5.0",
     "pip-audit==2.10.0",
+    "prometheus-client==0.21.0",  # TD-OBS: Prometheus scrape endpoint
 }
 
 DEV_DEPENDENCIES = {

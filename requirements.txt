@@ -35,5 +35,10 @@ schemathesis==4.18.5
 # NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API
 mutmut==3.5.0
 
+# Metrics scrape endpoint (TD-OBS)
+# Allows SLO measurement without external collector — /metrics
+# scrapes from any Prometheus/Grafana.
+prometheus-client==0.21.0
+
 # Dependency CVE audit (D5)
 pip-audit==2.10.0

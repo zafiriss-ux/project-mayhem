@@ -17,6 +17,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
+from prometheus_client import make_asgi_app as _prom_asgi
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from titan.api.auth import (
@@ -46,7 +47,7 @@ _log = logging.getLogger(__name__)
 CSRF_COOKIE_NAME = "titan_csrf"
 CSRF_HEADER_NAME = "X-CSRF-Token"
 CSRF_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
-_CSRF_EXEMPT_PATHS = {"/health", "/readyz", "/auth/login"}
+_CSRF_EXEMPT_PATHS = {"/health", "/readyz", "/auth/login", "/metrics", "/api/csrf-token"}
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
@@ -437,6 +438,10 @@ def create_app(
     @app.delete("/coach/athlete-data")
     def delete_athlete_data(athlete_id: str, _: AuthUser = Depends(require_coach)) -> dict[str, str]:
         return {"status": "deleted", "athlete_id": athlete_id}
+
+    # Mount Prometheus scrape endpoint — no auth; internal scrape only.
+    # Bind to localhost in prod via compose network policy.
+    app.mount("/metrics", _prom_asgi())
 
     return app
 

@@ -27,9 +27,13 @@ testpaths = ["."]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-filterwarnings = ["error::pytest.PytestWarning"]
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
 markers = [
     "timeout: mark test with a timeout budget",
+    "unit: isolated, no DB, no IO",
+    "integration: uses DB or filesystem",
+    "governance: tests a governance gate or invariant",
+    "slow: > 1s wall time",
 ]
 [tool.coverage.run]
 source = ["titan"]

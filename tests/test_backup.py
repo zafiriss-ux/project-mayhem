@@ -6,6 +6,8 @@ import subprocess
 import time
 from pathlib import Path
 
+import pytest
+
 
 def _make_db(path: Path) -> None:
     conn = sqlite3.connect(str(path))
@@ -15,6 +17,7 @@ def _make_db(path: Path) -> None:
     conn.close()
 
 
+@pytest.mark.integration
 def test_backup_script_creates_file(tmp_path):
     db_path = tmp_path / "titan_core.db"
     _make_db(db_path)
@@ -32,6 +35,7 @@ def test_backup_script_creates_file(tmp_path):
     assert backups[0].stat().st_size > 0
 
 
+@pytest.mark.integration
 def test_backup_is_readable_sqlite(tmp_path):
     db_path = tmp_path / "titan_core.db"
     _make_db(db_path)
@@ -48,6 +52,7 @@ def test_backup_is_readable_sqlite(tmp_path):
     assert result[0] == "ok"
 
 
+@pytest.mark.integration
 def test_backup_pruning_keeps_7(tmp_path):
     backup_dir = tmp_path / "backups"
     backup_dir.mkdir()
@@ -71,6 +76,7 @@ def test_backup_pruning_keeps_7(tmp_path):
     assert len(backups) <= 8
 
 
+@pytest.mark.unit
 def test_worker_run_forever_calls_backup():
     src = Path("titan/worker/__init__.py").read_text()
     assert "_run_backup" in src or "backup" in src.lower(), (
