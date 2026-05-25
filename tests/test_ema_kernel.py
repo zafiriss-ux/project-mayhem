@@ -5,7 +5,10 @@ import pathlib
 import re
 from datetime import date
 
+import pytest
 
+
+@pytest.mark.unit
 def test_single_kernel_site() -> None:
     """No inline EMA loops outside compute_ctl_atl_tsb."""
     # ctl_decay\s*= catches the old inline variable assignment (ctl_decay = 2/...)
@@ -24,6 +27,7 @@ def test_single_kernel_site() -> None:
     )
 
 
+@pytest.mark.unit
 def test_all_backends_agree() -> None:
     """SQLite, PostgreSQLAdapter return same values for identical input."""
     from titan.science.tsb_engine import compute_ctl_atl_tsb
@@ -41,12 +45,14 @@ def test_all_backends_agree() -> None:
     assert tsb == round(ctl - atl, 1)
 
 
+@pytest.mark.unit
 def test_compute_ctl_atl_tsb_empty() -> None:
     from titan.science.tsb_engine import compute_ctl_atl_tsb
 
     assert compute_ctl_atl_tsb([]) == (0.0, 0.0, 0.0)
 
 
+@pytest.mark.unit
 def test_compute_ctl_atl_tsb_deterministic() -> None:
     from titan.science.tsb_engine import compute_ctl_atl_tsb
 
@@ -56,6 +62,7 @@ def test_compute_ctl_atl_tsb_deterministic() -> None:
     assert r1 == r2
 
 
+@pytest.mark.unit
 def test_production_values_unchanged() -> None:
     """Regression guard: known input must produce known output."""
     pass  # Implement with fixture data

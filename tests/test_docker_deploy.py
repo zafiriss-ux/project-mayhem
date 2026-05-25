@@ -31,6 +31,7 @@ def _generate_jwt_env(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.mark.integration
 def test_worker_lock_prevents_duplicate(tmp_path: pytest.TempPathFactory) -> None:
     import titan.worker as worker_mod
 
@@ -49,6 +50,7 @@ def test_worker_lock_prevents_duplicate(tmp_path: pytest.TempPathFactory) -> Non
         fh3.close()
 
 
+@pytest.mark.integration
 def test_health_endpoint_returns_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
@@ -61,6 +63,7 @@ def test_health_endpoint_returns_ok(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.json()["status"] == "ok"
 
 
+@pytest.mark.unit
 def test_api_has_no_worker_write_imports() -> None:
     """CI fitness function: API namespace must not import worker write paths."""
     import titan.api.main  # noqa: F401

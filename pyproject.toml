@@ -6,7 +6,20 @@ build-backend = "setuptools.build_meta"
 name = "project-mayhem"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "garminconnect==0.3.2",
+    "requests==2.34.2",
+    "pyTelegramBotAPI==4.33.0",
+    "sqlalchemy==2.0.49",
+    "alembic==1.18.4",
+    "fastapi==0.136.1",
+    "pyjwt[crypto]==2.12.1",
+    "bcrypt==5.0.0",
+    "cryptography==48.0.0",
+    "prometheus-client==0.21.0",
+    "uvicorn",
+    "import-linter==2.11",
+]
 
 [project.optional-dependencies]
 dev = [

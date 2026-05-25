@@ -33,6 +33,7 @@ def _today_minus(days: int) -> str:
 # [C1] Two sessions same day must equal one session with their combined load
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_two_sessions_same_day_equals_sum(tmp_path):
     """2×50 TSS on day D must produce the same CTL as 1×100 TSS on day D."""
     day = _today_minus(1)
@@ -66,6 +67,7 @@ def test_two_sessions_same_day_equals_sum(tmp_path):
 # [C2] ATL must use a date window, not item count
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_atl_uses_date_window_not_count(tmp_path):
     """Activities older than ATL_DECAY_DAYS must not influence ATL."""
     from titan.config.thresholds import ATL_DECAY_DAYS
@@ -94,6 +96,7 @@ def test_atl_uses_date_window_not_count(tmp_path):
 # [C3] Empty training log → zeros, no exception
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_empty_stream_returns_zeros(tmp_path):
     """get_ctl_atl_tsb on an empty DB must return (0.0, 0.0, 0.0) without raising."""
     db = _make_db(tmp_path)
@@ -107,6 +110,7 @@ def test_empty_stream_returns_zeros(tmp_path):
 # [C4] CTL increases after inserting a high-TSS day
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_ctl_increases_with_load(tmp_path):
     """Adding a high-TSS day on top of a 30-day baseline must raise CTL."""
     db = _make_db(tmp_path)

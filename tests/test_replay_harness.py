@@ -32,6 +32,7 @@ def _days_ahead(n: int) -> str:
     return (date.today() + timedelta(days=n)).isoformat()
 
 
+@pytest.mark.integration
 def test_replay_is_deterministic(tmp_path):
     """Two calls with same athlete_id and as_of_date return identical (ctl, atl, tsb)."""
     db = _make_db(tmp_path)
@@ -42,6 +43,7 @@ def test_replay_is_deterministic(tmp_path):
     assert db.replay_tsb("owner", today) == db.replay_tsb("owner", today)
 
 
+@pytest.mark.integration
 def test_replay_excludes_future_data(tmp_path):
     """Activity on D+10 must not affect replay at D."""
     today = date.today()
@@ -59,6 +61,7 @@ def test_replay_excludes_future_data(tmp_path):
     assert ctl_with_future == pytest.approx(ctl_clean, abs=0.1)
 
 
+@pytest.mark.integration
 def test_replay_matches_current_for_today(tmp_path):
     """replay_tsb(today) must match get_ctl_atl_tsb() within rounding tolerance."""
     db = _make_db(tmp_path)
@@ -74,6 +77,7 @@ def test_replay_matches_current_for_today(tmp_path):
     assert replay_tsb_val == pytest.approx(current_tsb, abs=0.1)
 
 
+@pytest.mark.integration
 def test_replay_empty_returns_zeros(tmp_path):
     """Empty DB → replay returns (0.0, 0.0, 0.0) for any date."""
     db = _make_db(tmp_path)

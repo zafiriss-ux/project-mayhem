@@ -13,11 +13,14 @@ from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import pytest
+
 from scripts.load_test import LoadTestResult, LoadTestRunner, check_health_slo
 from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
 
 
+@pytest.mark.unit
 def test_load_test_result_dataclass():
     result = LoadTestResult(
         endpoint="/health",
@@ -41,6 +44,7 @@ def test_load_test_result_dataclass():
     assert result.error_rate_percent == 0.5
 
 
+@pytest.mark.integration
 def test_scenario_db_under_load():
     db = DatabaseManager(":memory:")
     today = date(2026, 1, 30)
@@ -64,6 +68,7 @@ def test_scenario_db_under_load():
     assert result.error_rate_percent < 1.0
 
 
+@pytest.mark.unit
 def test_load_test_slo_validation():
     result = LoadTestResult(
         endpoint="/health",
@@ -79,6 +84,7 @@ def test_load_test_slo_validation():
     assert check_health_slo(result) is True
 
 
+@pytest.mark.unit
 def test_load_test_slo_violation_detected():
     result = LoadTestResult(
         endpoint="/health",
@@ -94,6 +100,7 @@ def test_load_test_slo_violation_detected():
     assert check_health_slo(result) is False
 
 
+@pytest.mark.integration
 def test_dailycoach_pipeline_latency():
     """Benchmark coaching pipeline hydration end-to-end (no HTTP).
 

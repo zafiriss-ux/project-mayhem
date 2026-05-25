@@ -37,6 +37,7 @@ def _generate_jwt_env(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.mark.integration
 def test_readyz_returns_200_when_healthy(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -54,6 +55,7 @@ def test_readyz_returns_200_when_healthy(
     assert body["checks"]["db_file"] is True
 
 
+@pytest.mark.integration
 def test_readyz_returns_503_when_db_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     _generate_jwt_env(monkeypatch)
     from titan.api.main import create_app
@@ -71,6 +73,7 @@ def test_readyz_returns_503_when_db_fails(monkeypatch: pytest.MonkeyPatch) -> No
     assert body["ready"] is False
 
 
+@pytest.mark.integration
 def test_health_and_readyz_both_exist(monkeypatch: pytest.MonkeyPatch) -> None:
     _generate_jwt_env(monkeypatch)
     from titan.api.main import create_app
@@ -80,6 +83,7 @@ def test_health_and_readyz_both_exist(monkeypatch: pytest.MonkeyPatch) -> None:
     assert client.get("/readyz").status_code in (200, 503)
 
 
+@pytest.mark.unit
 def test_titan_core_db_name_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
     _generate_jwt_env(monkeypatch)
     from titan.api.main import create_app
