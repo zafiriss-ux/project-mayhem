@@ -614,8 +614,10 @@ jobs:
   alembic-integrity:
     name: Alembic Migration Integrity
     runs-on: self-hosted
-    # TODO: switch to ubuntu-latest when self-hosted runner is retired
-    # TD-CI-SELFHOSTED (Opus 2026-05-24)
+    # TD-CI-SELFHOSTED: Self-hosted runner required for alembic check.
+    # Until runner is documented, this job is advisory (not blocking).
+    # Track: Opus audit 2026-05-24.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python

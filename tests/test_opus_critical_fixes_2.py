@@ -1,7 +1,10 @@
 """Fitness tests for Opus critical fixes (pass type: critical-fix, 2026-05-24)."""
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.unit
 def test_healthcheck_uses_readyz():
     for path in ["Dockerfile", "docker-compose.yml"]:
         txt = Path(path).read_text()
@@ -10,12 +13,14 @@ def test_healthcheck_uses_readyz():
         )
 
 
+@pytest.mark.unit
 def test_worker_has_sigterm_handler():
     src = Path("titan/worker/__init__.py").read_text()
     assert "SIGTERM" in src, "Worker must handle SIGTERM"
     assert "shutdown" in src.lower(), "Worker must support graceful shutdown"
 
 
+@pytest.mark.unit
 def test_worker_schedule_aligned():
     src = Path("titan/worker/__init__.py").read_text()
     assert "86400" not in src, (
@@ -26,6 +31,7 @@ def test_worker_schedule_aligned():
     )
 
 
+@pytest.mark.integration
 def test_override_lockdown_fail_closed():
     from unittest.mock import patch
 
@@ -42,6 +48,7 @@ def test_override_lockdown_fail_closed():
         )
 
 
+@pytest.mark.unit
 def test_rbac_coach_checks_assignments():
     src = Path("titan/api/dependencies.py").read_text()
     assert "coach_athlete_assignments" in src or "get_assigned_athletes" in src, (
@@ -49,6 +56,7 @@ def test_rbac_coach_checks_assignments():
     )
 
 
+@pytest.mark.unit
 def test_run_api_script_exists():
     assert Path("scripts/run_api.py").exists(), (
         "Reviewable API entrypoint must exist"

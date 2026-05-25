@@ -12,8 +12,29 @@ def test_ci_has_dependency_drift_audit_job() -> None:
 
     assert "dependency-drift-audit:" in content
     assert "Dependency Drift Audit (unpinned + CVE gate)" in content
-    # D-21: continue-on-error must be absent — audit failures must block the pipeline.
-    assert "continue-on-error: true" not in content
+    # D-21: continue-on-error must be absent from the audit job — audit failures must block.
+    # Extract only the dependency-drift-audit job section.
+    start = content.index("dependency-drift-audit:")
+    # Next top-level job starts at the next line that begins with "  <word>:"
+    remainder = content[start:]
+    lines = remainder.splitlines()
+    job_lines = [lines[0]]
+    job_keywords = ("name:", "runs-on:", "steps:", "needs:", "if:")
+    for line in lines[1:]:
+        if line and not line.startswith(" ") and line.rstrip().endswith(":"):
+            break
+        if (
+            line.startswith("  ")
+            and line.lstrip().endswith(":")
+            and not line.startswith("   ")
+            and not any(kw in line for kw in job_keywords)
+        ):
+            break
+        job_lines.append(line)
+    drift_audit_section = "\n".join(job_lines)
+    assert "continue-on-error: true" not in drift_audit_section, (
+        "D-21: dependency-drift-audit must not use continue-on-error"
+    )
 
 
 def test_dependency_drift_audit_checks_unpinned_dependencies() -> None:

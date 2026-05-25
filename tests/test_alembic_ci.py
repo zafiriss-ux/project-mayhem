@@ -1,6 +1,9 @@
 """Alembic migration chain integrity tests — TD-NEW-18 CI gate."""
 
+import pytest
 
+
+@pytest.mark.integration
 def test_alembic_single_head():
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -11,6 +14,7 @@ def test_alembic_single_head():
     assert len(heads) == 1, f"Multiple heads: {heads}"
 
 
+@pytest.mark.integration
 def test_alembic_revision_chain_intact():
     from alembic.config import Config
     from alembic.script import ScriptDirectory
@@ -25,6 +29,7 @@ def test_alembic_revision_chain_intact():
     )
 
 
+@pytest.mark.integration
 def test_alembic_freeze_notice_intact():
     from pathlib import Path
 
@@ -34,6 +39,7 @@ def test_alembic_freeze_notice_intact():
     )
 
 
+@pytest.mark.integration
 def test_alembic_versions_dir_exists():
     from pathlib import Path
 

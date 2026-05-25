@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
 
+
+@pytest.mark.integration
 def test_login_lockout_persists_restart(tmp_path) -> None:
     """Lockout written to a file DB must survive a new DatabaseManager instance."""
     from titan.core.database import DatabaseManager
@@ -18,6 +21,7 @@ def test_login_lockout_persists_restart(tmp_path) -> None:
     assert db2.is_login_locked_out("testuser"), "Lockout must survive restart"
 
 
+@pytest.mark.integration
 def test_clear_lockout_works() -> None:
     """clear_login_lockout resets the account so it is no longer locked."""
     from titan.core.database import DatabaseManager
@@ -30,6 +34,7 @@ def test_clear_lockout_works() -> None:
     assert not db.is_login_locked_out("u")
 
 
+@pytest.mark.integration
 def test_security_headers_present() -> None:
     """All required security headers must appear on every API response."""
     from fastapi.testclient import TestClient
@@ -43,6 +48,7 @@ def test_security_headers_present() -> None:
     assert "Content-Security-Policy" in r.headers
 
 
+@pytest.mark.integration
 def test_schema_version_incremented() -> None:
     """PRAGMA user_version must equal SCHEMA_VERSION == 22 after migration."""
     from titan.core.database import DatabaseManager
