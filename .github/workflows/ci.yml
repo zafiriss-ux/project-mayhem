@@ -616,10 +616,7 @@ jobs:
   alembic-integrity:
     name: Alembic Migration Integrity
     runs-on: self-hosted
-    # TD-CI-SELFHOSTED: Self-hosted runner required for alembic check.
-    # Until runner is documented, this job is advisory (not blocking).
-    # Track: Opus audit 2026-05-24.
-    continue-on-error: true
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
