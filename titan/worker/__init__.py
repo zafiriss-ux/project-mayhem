@@ -87,11 +87,52 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     while True:
         _run_backup(db)
         try:
-            coach = DailyCoach(db=db)
+            from titan.integrations.garmin_sync import GarminSync
+            from titan.integrations.weather_api import WeatherAPI
+            from titan.integrations.telegram_bot import TitanTelegramBot
+            from titan.features.optimal_time_calculator import OptimalTimeCalculator
+            from titan.features.nutrition_optimizer import NutritionOptimizer
+            from titan.features.weekly_planner import WeeklyPlanGenerator
+            from titan.science.tsb_engine import TSBEngine
+            from titan.science.hrv_engine import HRVGuidedEngine
+            from titan.science.readiness_engine import ReadinessEngine
+
+            athlete_max_hr = int(
+                os.environ.get("ATHLETE_MAX_HR", "160")
+            )
+            garmin = GarminSync(
+                athlete_max_hr=athlete_max_hr
+            )
+            weather = WeatherAPI()
+            telegram = TitanTelegramBot(db=db)
+            tsb = TSBEngine()
+            hrv = HRVGuidedEngine()
+            readiness = ReadinessEngine()
+            optimal = OptimalTimeCalculator()
+            nutrition = NutritionOptimizer(db=db)
+            planner = WeeklyPlanGenerator(db=db)
+
+            coach = DailyCoach(
+                garmin_sync=garmin,
+                weather_api=weather,
+                telegram_bot=telegram,
+                hrv_engine=hrv,
+                tsb_engine=tsb,
+                readiness_engine=readiness,
+                optimal_time_calc=optimal,
+                nutrition_optimizer=nutrition,
+                weekly_planner=planner,
+                db=db,
+            )
             coach.run_morning_routine()
             log.info("morning_routine_complete")
         except Exception as exc:
-            log.exception("worker_cycle_error", extra={"error": str(exc)})
+            log.exception(
+                "worker_cycle_error",
+                extra={"error": str(exc)},
+            )
+            from titan.observability.metrics import get_metrics
+            get_metrics().counter("worker_cycle_error")
         # Sleep until 07:00 UTC next day.
         # Timezone alignment is out of scope — worker uses UTC 07:00 throughout.
         wait_s = _seconds_until_next_run(7, 0)
