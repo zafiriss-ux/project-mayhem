@@ -98,7 +98,13 @@ def _encrypt_token(data: str) -> bytes:
 
 
 def _decrypt_token(data: bytes) -> str:
-    """Decrypt token bytes. Falls back to plaintext decode in dev if key not set."""
+    """Decrypt token bytes. Falls back to plaintext decode in dev if key not set.
+
+    When a key is configured and decryption fails, emits a structured
+    TOKEN_DECRYPT_FAIL event and raises ValueError. Callers must treat
+    this as an invalid token and trigger re-login — plaintext fallthrough
+    is never permitted when a key is set (T5-101 / ADR-0050).
+    """
     from cryptography.fernet import Fernet
 
     key = _get_token_encryption_key()
@@ -111,9 +117,14 @@ def _decrypt_token(data: bytes) -> str:
         )
     try:
         return Fernet(key).decrypt(data).decode()
-    except Exception:
-        _log.warning("Token decryption failed — attempting plaintext read")
-        return data.decode()
+    except Exception as exc:
+        _garmin_event(
+            "token_decrypt_failed",
+            severity=EventSeverity.WARNING,
+            failure_class="TOKEN_DECRYPT_FAIL",
+            error_class=type(exc).__name__,
+        )
+        raise ValueError("Garmin token decryption failed — token invalid") from exc
 
 
 def _garmin_event(
