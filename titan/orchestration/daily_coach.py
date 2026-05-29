@@ -487,6 +487,16 @@ class DailyCoach:
         else:
             self.__dict__['apl'] = value
 
+    @property
+    def intensity_governor(self):
+        if 'intensity_governor' not in self.__dict__:
+            self.__dict__['intensity_governor'] = IntensityGovernor()
+        return self.__dict__['intensity_governor']
+
+    @intensity_governor.setter
+    def intensity_governor(self, value):
+        self.__dict__['intensity_governor'] = value
+
     # _engine-suffix aliases for external callers that use those names
     @property
     def tsb_engine(self):
@@ -920,7 +930,7 @@ class DailyCoach:
         )
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
-        ig = IntensityGovernor()
+        ig = self.intensity_governor
 
         # ── Step 8: Today's planned session (from weekly plan) ───────────────
         esi_level, esi_pace_adjustment_sec_per_km = _compute_esi(
