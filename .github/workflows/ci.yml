@@ -630,29 +630,27 @@ jobs:
             --break-system-packages
       - name: Verify migration chain
         run: |
-          python3 -c "
-  from alembic.config import Config
-  from alembic.script import ScriptDirectory
-  cfg = Config('alembic.ini')
-  sd = ScriptDirectory.from_config(cfg)
-  # Assert no branch points
-  heads = sd.get_heads()
-  assert len(heads) == 1, (
-      f'Multiple alembic heads: {heads}. '
-      'Run alembic merge before merging PR.'
-  )
-  # Assert all revisions reachable
-  revs = list(sd.walk_revisions())
-  print(f'Migration chain OK: '
-        f'{len(revs)} revisions, '
-        f'head={heads[0][:8]}')
-          "
+          python3 - <<'PYEOF'
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+          cfg = Config('alembic.ini')
+          sd = ScriptDirectory.from_config(cfg)
+          heads = sd.get_heads()
+          assert len(heads) == 1, (
+              f'Multiple alembic heads: {heads}. '
+              'Run alembic merge before merging PR.'
+          )
+          revs = list(sd.walk_revisions())
+          print(f'Migration chain OK: '
+                f'{len(revs)} revisions, '
+                f'head={heads[0][:8]}')
+          PYEOF
       - name: Assert freeze notice intact
         run: |
           grep -q "FREEZE" \
             alembic/README_FREEZE.md || {
             echo "FAIL: Freeze notice \
-  removed from alembic/README_FREEZE.md"
+          removed from alembic/README_FREEZE.md"
             exit 1
           }
 
