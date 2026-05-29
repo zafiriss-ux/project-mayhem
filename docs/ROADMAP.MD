@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–22 CLOSED; Phases 9, 10 OPEN — see below)
+## Phase History (Phases 0–8, 11–23 CLOSED; Phases 9, 10, 24 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -37,7 +37,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 20 | Schema & EffectBus | CLOSED 2026-05-24 | FMEA G12 SATISFIED; hygiene & backup hardening; TD-08/TD-NEW-18/TD-04B deferred Phase 21 |
 | Phase 21 | Governance Consolidation | CLOSED 2026-05-24 | TECHNICAL_DEBT.md archived <1500 LOC; SCRATCHPAD.md archived; TD-08/TD-NEW-18/TD-04B/T5-15 DEFERRED Phase 22 |
 | Phase 22 | Schema Extract & Observability | CLOSED 2026-05-25 | FMEA G12 SATISFIED; TD-NEW-18 ✅; TD-BACKUP-VERIFY ✅; TD-08/TD-04B/T5-15B/P15-ARCH5 DEFERRED Phase 23 |
-| Phase 23 | Schema & EffectBus Phase B | OPEN 2026-05-25 | TD-08 schema extract, TD-04B EffectBus, T5-15B markers, P15-ARCH5 pydantic-settings, TD-CI-SELFHOSTED runner topology |
+| Phase 23 | Schema & EffectBus Phase B | CLOSED 2026-05-29 | ADR-0058 construction-site violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24 |
+| Phase 24 | Schema & EffectBus Phase C | OPEN 2026-05-29 | TD-08 schema extract, TD-04B EffectBus, T5-15B markers, P15-ARCH5 pydantic-settings, TD-CI-SELFHOSTED runner topology |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -281,9 +282,22 @@ Entry gate: Phase 21 close audit PASS (2026-05-24). Scope (priority order):
 
 ---
 
-## Phase 23 — Schema & EffectBus Phase B (OPEN, 2026-05-25)
+## Phase 23 — Schema & EffectBus Phase B (CLOSED, 2026-05-29)
 
 Entry gate: Phase 22 close audit PASS (2026-05-25). Scope (priority order):
+1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL); requires Opus pre-audit of migration path. DEFERRED Phase 24.
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment. DEFERRED Phase 24.
+3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical). DEFERRED Phase 24.
+4. P15-ARCH5: pydantic-settings migration. DEFERRED Phase 24.
+5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs. DEFERRED Phase 24.
+
+**CLOSED 2026-05-29**: phase_close_audit.sh 23 exit 0; 2981 tests collected, 2974 passed, 7 skipped; ADR-0058 construction-site violation caught and fixed (worker engine construction routed through EngineRegistry); all governance invariants satisfied.
+
+---
+
+## Phase 24 — Schema & EffectBus Phase C (OPEN, 2026-05-29)
+
+Entry gate: Phase 23 close audit PASS (2026-05-29). Scope (priority order):
 1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL); requires Opus pre-audit of migration path.
 2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment.
 3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical).
@@ -355,4 +369,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-25 (Phase 23 OPEN 2026-05-25; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-05-29 (Phase 24 OPEN 2026-05-29; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
