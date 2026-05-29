@@ -93,9 +93,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
             from titan.integrations.garmin_sync import GarminSync
             from titan.integrations.telegram_bot import TitanTelegramBot
             from titan.integrations.weather_api import WeatherAPI
-            from titan.science.hrv_engine import HRVGuidedEngine
-            from titan.science.readiness_engine import ReadinessEngine
-            from titan.science.tsb_engine import TSBEngine
+            from titan.orchestration.engine_registry import EngineRegistry
 
             athlete_max_hr = int(
                 os.environ.get("ATHLETE_MAX_HR", "160")
@@ -105,9 +103,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
             )
             weather = WeatherAPI()
             telegram = TitanTelegramBot(db=db)
-            tsb = TSBEngine()
-            hrv = HRVGuidedEngine()
-            readiness = ReadinessEngine()
+            engines = EngineRegistry.from_db(db=db)
             optimal = OptimalTimeCalculator()
             nutrition = NutritionOptimizer(db=db)
             planner = WeeklyPlanGenerator(db=db)
@@ -116,9 +112,9 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
                 garmin_sync=garmin,
                 weather_api=weather,
                 telegram_bot=telegram,
-                hrv_engine=hrv,
-                tsb_engine=tsb,
-                readiness_engine=readiness,
+                hrv_engine=engines.hrv,
+                tsb_engine=engines.tsb,
+                readiness_engine=engines.readiness,
                 optimal_time_calc=optimal,
                 nutrition_optimizer=nutrition,
                 weekly_planner=planner,
