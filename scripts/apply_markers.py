@@ -130,6 +130,7 @@ def process_file(path: Path, dry_run: bool = False) -> int:
 
     if needs_pytest_import:
         # Insert after the last import block
+        last_import = -1
         for i, line in enumerate(new_lines):
             if line.startswith("import ") or line.startswith("from "):
                 last_import = i
