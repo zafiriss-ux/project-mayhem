@@ -112,9 +112,11 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
                 garmin_sync=garmin,
                 weather_api=weather,
                 telegram_bot=telegram,
-                hrv_engine=engines.hrv,
-                tsb_engine=engines.tsb,
-                readiness_engine=engines.readiness,
+                # B2c (Phase 24 / ADR-0058): pass complete registry so
+                # DailyCoach.__init__ takes the pure-consumer path.
+                # Individual hrv_engine/tsb_engine/readiness_engine params
+                # are omitted — registry owns all 10 engine instances.
+                engines=engines,
                 optimal_time_calc=optimal,
                 nutrition_optimizer=nutrition,
                 weekly_planner=planner,
