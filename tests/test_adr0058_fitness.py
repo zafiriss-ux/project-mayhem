@@ -109,7 +109,7 @@ def test_daily_coach_has_engines_attribute():
 
 @pytest.mark.unit
 @pytest.mark.governance
-def test_engine_registry_single_construction_site():
+def test_engine_registry_single_construction_site():  # noqa: ANN201
     """Fitness function: no engine class may be instantiated outside
     EngineRegistry.from_db() and titan/main.py (composition root).
     Exceptions: test files (outside titan/).
@@ -130,9 +130,9 @@ def test_engine_registry_single_construction_site():
     for path in pathlib.Path("titan").rglob("*.py"):
         if "engine_registry" in path.name:
             continue  # canonical construction site
-        if "daily_coach" in path.name:
-            continue  # builds EngineRegistry from injected params
-        if "main" in path.name:
+        if path == pathlib.Path("titan/orchestration/daily_coach.py"):
+            continue  # constructs 7 engines directly in __init__
+        if path == pathlib.Path("titan/main.py"):
             continue  # composition root — extracts vars from EngineRegistry
         src = path.read_text()
         for cls in engine_classes:
