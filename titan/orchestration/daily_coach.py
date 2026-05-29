@@ -322,6 +322,13 @@ class DailyCoach:
         apl:              AdaptivePriorityLock | None  = None,
         volume_load_gauge: VolumeLoadGauge | None      = None,
         outcome_tracker:  OutcomeTracker | None        = None,
+        # B2c (Phase 24 / ADR-0058): accept a complete EngineRegistry so
+        # DailyCoach becomes a pure consumer — no engine construction inside
+        # __init__ when engines= is supplied (production path).
+        # Individual engine params (autonomic_engine, cs_tracker, fatigue_engine,
+        # apl) are honoured only in the fallback construction path retained for
+        # test backward-compatibility. Remove fallback in Phase 25.
+        engines: "EngineRegistry | None" = None,
         # Athlete physiological HRmax — used as zone-boundary ceiling in TRIMP
         # calculation.  Source from AthleteProfile.max_hr (never session peak HR).
         athlete_max_hr: int = 0,
