@@ -615,7 +615,7 @@ jobs:
 
   alembic-integrity:
     name: Alembic Migration Integrity
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     continue-on-error: false
     steps:
       - uses: actions/checkout@v4
