@@ -31,7 +31,8 @@ Phase 19 CLOSED — phase_close_audit.sh 19 exit 0; 2942 tests passing; TD-NEW-1
 Phase 20 CLOSED — phase_close_audit.sh 20 exit 0; 2955 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 21; TD-NEW-18 DEFERRED Phase 21 (2026-05-24).
 Phase 21 CLOSED — phase_close_audit.sh 21 exit 0; 2959 tests passing; governance consolidation complete; TECHNICAL_DEBT.md archived to <1500 LOC; SCRATCHPAD.md archived; TD-08 DEFERRED Phase 22; TD-NEW-18 DEFERRED Phase 22; TD-04B DEFERRED Phase 22; T5-15 DEFERRED Phase 22 (2026-05-24).
 Phase 22 CLOSED — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 23; TD-04B DEFERRED Phase 23; T5-15 Phase B DEFERRED Phase 23; P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23 (2026-05-25).
-Phase 23 OPEN — Schema extract (TD-08), EffectBus Phase B (TD-04B), retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), alembic runner topology (TD-CI-SELFHOSTED) 2026-05-25.
+Phase 23 CLOSED — phase_close_audit.sh 23 exit 0; 2974 tests passing; ADR-0058 construction-site violation caught and fixed; TD-08 DEFERRED Phase 24; TD-04B DEFERRED Phase 24; T5-15 Phase B DEFERRED Phase 24; P15-ARCH5 DEFERRED Phase 24; TD-CI-SELFHOSTED DEFERRED Phase 24 (2026-05-29).
+Phase 24 OPEN — Schema extract (TD-08), EffectBus Phase B (TD-04B), retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), alembic runner topology (TD-CI-SELFHOSTED) 2026-05-29.
 
 ---
 
@@ -1543,9 +1544,23 @@ Entry gate: Phase 21 close audit PASS (2026-05-24). Scope: schema extraction, Ef
 
 ---
 
-## Phase 23 Scope (OPEN, 2026-05-25)
+## Phase 23 Scope (CLOSED, 2026-05-29)
 
 Entry gate: Phase 22 close audit PASS (2026-05-25). Scope: schema extraction, EffectBus Phase B, retroactive pytest markers, pydantic-settings, alembic runner topology.
+
+1. TD-08: Schema single source of truth — DEFERRED Phase 24
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — DEFERRED Phase 24
+3. T5-15 Phase B: Retroactive pytest markers — DEFERRED Phase 24
+4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 24
+5. TD-CI-SELFHOSTED: Alembic runner topology — DEFERRED Phase 24
+
+**CLOSED 2026-05-29**: phase_close_audit.sh 23 exit 0; 2974 tests passing; 7 skipped; ADR-0058 construction-site violation (worker engine construction bypassing EngineRegistry) caught and fixed; all governance invariants satisfied.
+
+---
+
+## Phase 24 Scope (OPEN, 2026-05-29)
+
+Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, EffectBus Phase B, retroactive pytest markers, pydantic-settings, alembic runner topology.
 
 1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — requires dedicated Opus pre-audit of migration path
 2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment
