@@ -297,12 +297,148 @@ Entry gate: Phase 22 close audit PASS (2026-05-25). Scope (priority order):
 
 ## Phase 24 — Schema & EffectBus Phase C (OPEN, 2026-05-29)
 
-Entry gate: Phase 23 close audit PASS (2026-05-29). Scope (priority order):
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL); requires Opus pre-audit of migration path.
-2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment.
-3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical).
-4. P15-ARCH5: pydantic-settings migration.
-5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs.
+Entry gate: Phase 23 close audit PASS (2026-05-29).
+
+**Architecture north star (Phase 24 → Phase 28):** cohort-level coaching generation
+over per-athlete governance calibration, with H1–H5 hard stops as the
+technology-invariant constraint surface and TD-04B EffectBus as the real-time
+event foundation for any inference regime.
+
+### Phase 24 Blocker-Clear Sequence (prerequisite for XL work)
+
+| ID | Severity | Size | Status | Description |
+|----|----------|------|--------|-------------|
+| B1 | CRITICAL | M | ✅ DONE | Schema fitness function — `tests/test_schema_equivalence.py`; all 19 tables covered; TD-08 regression net established |
+| B2a | HIGH | S | ✅ DONE | `EngineRegistry.from_db` param hygiene — `db`/`athlete_id` TODO-Phase9 markers; misleading docstring corrected |
+| B2b | HIGH | S | ✅ DONE | ADR-0058 fitness test — exemptions pinned to exact paths; over-broad `"main"` substring match removed |
+| B3 | HIGH | S | ✅ DONE | `_decrypt_token` hardened — structured `TOKEN_DECRYPT_FAIL` event + `ValueError` on decrypt failure; plaintext fallthrough eliminated (T5-101 / ADR-0050) |
+| B2c | HIGH | M | IN PROGRESS | DailyCoach engine migration — 7 direct constructions moved to `EngineRegistry.from_db`; DailyCoach becomes pure consumer |
+
+### Phase 24 Primary Scope (post-blocker-clear, priority order)
+
+1. **TD-08** (XL): Schema single source of truth — SQLAlchemy Core declarative descriptor in `titan/core/schema.py`; `create_database()` renders from descriptor; `alembic/env.py` `target_metadata` wired (S1 strategy). Fitness net: `tests/test_schema_equivalence.py` validates every intermediate commit. Requires Opus post-implementation spot-check before Phase 25 entry.
+2. **TD-04B** (XL): EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius; requires ADR-0058 amendment; depends on B2c completion. EffectBus is the real-time event bus the Phase 28 inference layer requires for hard-stop enforcement.
+3. **S3** (S): Auth observability bounded unit — structured auth-failure events (F5.1), lockout-restart survival test (F5.2), TTL boundary invariant (F5.3), audit-token-decode event (F1.2). Fold into debt-clear window between B2c and TD-08.
+4. **S4** (XS): Move `alembic-integrity` CI gate from `runs-on: self-hosted` to `runs-on: ubuntu-latest`. One-line YAML change; fold into any in-flight PR.
+5. **T5-15 Phase B** (M): Retroactive pytest markers across 100+ remaining files.
+6. **P15-ARCH5** (M): pydantic-settings migration.
+7. **TD-CI-SELFHOSTED** (S): Alembic runner topology documentation or runner confirmed.
+
+---
+
+## Phase 25 — Schema Descriptor & EffectBus Implementation (PLANNED)
+
+**Entry gate:** Phase 24 close audit PASS; B2c RESOLVED; TD-08 and TD-04B scoped and
+Opus-reviewed.
+
+**Goal:** Execute the two XL items deferred since Phase 18. TD-08 produces the single
+schema authority that eliminates the five-authority divergence (F3.1–F3.5). TD-04B
+produces the EffectBus event backbone. Both close in the same phase — they are
+structurally coupled: EffectBus emits schema-typed events; schema changes must
+propagate through the bus.
+
+**Key deliverables:**
+1. `titan/core/schema.py` — SQLAlchemy Core declarative descriptor for all 19 tables.
+2. `create_database()` renders from descriptor; ladder stays forward-only.
+3. `alembic/env.py` `target_metadata` wired — autogenerate drift detection enabled (closes F3.5).
+4. `consent_log` reconciled to SQLite ladder (closes F3.4).
+5. EffectBus extracted from `DailyCoach`; all side effects dispatched as typed events.
+6. CI convergence fitness: fresh render == ladder replay == descriptor projection.
+
+**Constraint:** `tests/test_schema_equivalence.py` (B1) must pass at every
+intermediate commit throughout the XL refactor.
+
+---
+
+## Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation (PLANNED)
+
+**Entry gate:** Phase 25 close audit PASS; `EngineRegistry.from_db` wired with real
+DB hydration (TODO-Phase9 markers resolved); Phase 9 corpus gate met (≥ 3 athlete
+profiles × ≥ 90 paired decisions).
+
+**Goal:** Wire the fully-implemented, fully-tested `CoachingScheduler` (F4.1 —
+functional but unwired since Phase 19) as the production multi-athlete runtime,
+replacing the single-athlete `run_forever` worker loop. Complete Phase 9 per-athlete
+engine isolation by wiring `db` and `athlete_id` into `EngineRegistry.from_db`.
+
+**Key deliverables:**
+1. ADR governing CoachingScheduler activation (closes F4.1 governance gap).
+2. `EngineRegistry.from_db(db, athlete_id)` performs real DB hydration: TSB load
+   history, HRV baseline, CS performances, APL threshold offsets.
+3. `CoachingScheduler` registered as primary runtime; `run_forever` retained as
+   single-athlete fallback behind a feature flag.
+4. Per-athlete engine isolation: each pipeline call receives a freshly hydrated,
+   athlete-scoped `EngineRegistry`.
+5. Phase 9 auto-threshold calibration: MODERATE → STRONG without manual intervention
+   when confidence bounds are met; every change recorded in `threshold_changelog`.
+
+---
+
+## Phase 27 — Cohort Analytics & Population Intelligence (PLANNED)
+
+**Entry gate:** Phase 26 close audit PASS; ≥ 3 athlete profiles active with
+per-athlete-isolated `EngineRegistry`; ADR-0052 offset calibration producing
+per-athlete threshold deltas in production.
+
+**Goal:** Aggregate per-athlete calibration signal into cohort-level patterns.
+The system identifies which threshold adjustments generalise across profiles and
+which are individual-specific. This is the foundation for population-level coaching
+intelligence without requiring externally labelled training data.
+
+**Key deliverables:**
+1. Cohort calibration analytics: cross-athlete threshold delta distributions;
+   population heuristics vs. individual outliers classified.
+2. `CohortProfile` — aggregated signal surface for evidence promotion:
+   HEURISTIC → MODERATE when ≥ 3 athletes independently confirm the same delta.
+3. Proactive load modulation: predictive volume reduction before metrics breach
+   safety bands; advisory mode first (≥ 3 correct predictions required before
+   auto-apply). ADR-0014 promotion controls apply.
+4. Multi-modal biometric ingestion: lab VO₂max, lactate curve, HRV4Training exports;
+   weighted by provenance (lab > wearable > self-reported).
+5. Rollback gate: revert calibrated threshold if `completion_rate` degrades or
+   injury events increase within a 30-day observation window.
+
+**Hard constraint:** H1–H5 write guard (ADR-0052) is enforced at the DB layer.
+Cohort-level signal cannot loosen hard stops regardless of population consensus.
+
+---
+
+## Phase 28 — Inference Layer & H1–H5 Constraint Enforcement (PLANNED)
+
+**Entry gate:** Phase 27 close audit PASS; `CohortProfile` producing stable population
+priors; EffectBus (TD-04B) operational; Phase 10 corpus gate confirmed (≥ 3 profiles
+× ≥ 90 paired decisions).
+
+**Goal:** Introduce the LLM Coach Query Layer (Phase 10 scope) and any generation-model
+coaching components, with H1–H5 as the hard constraint surface over all inference
+outputs. No inference output can override a hard stop; the governance engine is the
+final arbiter at every decision point regardless of inference confidence.
+
+**Architecture principle:** static inference saturates at cohort scale; the pivot is
+cohort-level generation with per-athlete governance calibration (ADR-0052 offsets)
+tuning the constraint surface without loosening it. The EffectBus is the real-time
+enforcement channel — every inference-generated effect is validated against the
+current governance state before dispatch.
+
+**Strategic option compatibility:**
+- S1 (SQLAlchemy descriptor): inference models query typed schema objects; descriptor
+  survives model architecture changes. ✅
+- S2 (CoachingScheduler): multi-athlete runtime is inference-model-agnostic; scheduler
+  dispatches to governance regardless of coaching source. ✅
+- S3 (auth telemetry): LLM query endpoints share the same auth surface and telemetry
+  pipeline. ✅
+- S4 (CI gate): infrastructure change; no inference coupling. ✅
+
+**Key deliverables:**
+1. LLM Coach Query Layer with kill-switch identical to ML safety (ADR-0014 pattern).
+2. Governance engine as hard constraint over all inference outputs — H1–H5 cannot
+   be overridden by any model, prompt, or external signal.
+3. Inference audit trail: every LLM-generated recommendation logged with governance
+   outcome (followed / overridden / blocked by hard stop).
+4. `CohortProfile` deltas surfaced as context to the inference layer; per-athlete
+   offsets applied post-generation.
+5. Technology-shift gate: Phase 28 entry requires Phase 9 corpus confirmed in
+   production and EffectBus operational.
 
 ---
 
