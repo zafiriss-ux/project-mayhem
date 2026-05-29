@@ -65,4 +65,17 @@ def test_compute_ctl_atl_tsb_deterministic() -> None:
 @pytest.mark.unit
 def test_production_values_unchanged() -> None:
     """Regression guard: known input must produce known output."""
-    pass  # Implement with fixture data
+    from datetime import date
+    from titan.science.tsb_engine import compute_ctl_atl_tsb
+
+    loads = [
+        ("2026-01-01", 50.0),
+        ("2026-01-03", 60.0),
+        ("2026-01-05", 45.0),
+    ]
+    result = compute_ctl_atl_tsb(
+        loads, reference_date=date(2026, 1, 10)
+    )
+    # Snapshot of canonical EMA behavior.
+    # Update intentionally if decay constants change.
+    assert result == (6.9, 22.5, -15.6)
