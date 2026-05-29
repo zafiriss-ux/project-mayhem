@@ -7,6 +7,8 @@ from datetime import date
 
 import pytest
 
+from titan.science.tsb_engine import compute_ctl_atl_tsb
+
 
 @pytest.mark.unit
 def test_single_kernel_site() -> None:
@@ -65,9 +67,6 @@ def test_compute_ctl_atl_tsb_deterministic() -> None:
 @pytest.mark.unit
 def test_production_values_unchanged() -> None:
     """Regression guard: known input must produce known output."""
-    from datetime import date
-    from titan.science.tsb_engine import compute_ctl_atl_tsb
-
     loads = [
         ("2026-01-01", 50.0),
         ("2026-01-03", 60.0),
