@@ -34,9 +34,6 @@ class _DummyDB:
     def get_weight_history(self, **_kw):
         return []
 
-    def get_training_load_history(self, **_kw):
-        return []
-
     def get_hrr_history(self, **_kw):
         return []
 
