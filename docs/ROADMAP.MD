@@ -312,7 +312,7 @@ event foundation for any inference regime.
 | B2a | HIGH | S | ✅ DONE | `EngineRegistry.from_db` param hygiene — `db`/`athlete_id` TODO-Phase9 markers; misleading docstring corrected |
 | B2b | HIGH | S | ✅ DONE | ADR-0058 fitness test — exemptions pinned to exact paths; over-broad `"main"` substring match removed |
 | B3 | HIGH | S | ✅ DONE | `_decrypt_token` hardened — structured `TOKEN_DECRYPT_FAIL` event + `ValueError` on decrypt failure; plaintext fallthrough eliminated (T5-101 / ADR-0050) |
-| B2c | HIGH | M | IN PROGRESS | DailyCoach engine migration — 7 direct constructions moved to `EngineRegistry.from_db`; DailyCoach becomes pure consumer |
+| B2c | HIGH | M | ✅ DONE | DailyCoach engine migration — `engines=` param added; worker passes full registry; DailyCoach is pure consumer in production; fallback path retained for test compat (Phase 25: remove) |
 
 ### Phase 24 Primary Scope (post-blocker-clear, priority order)
 
