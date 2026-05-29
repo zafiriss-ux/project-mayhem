@@ -1127,12 +1127,18 @@ def test_token_decrypt_plaintext_when_key_missing(monkeypatch):
     assert result == "test_data"
 
 
-def test_token_decrypt_fallback_on_corrupt(monkeypatch):
+def test_token_decrypt_raises_on_corrupt(monkeypatch):
     key = Fernet.generate_key()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
-    # Non-Fernet bytes → decryption fails → fallback to plaintext decode
-    result = _decrypt_token(b"plaintext_fallback")
-    assert result == "plaintext_fallback"
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    import pytest
+    with pytest.raises(ValueError, match="token invalid"):
+        _decrypt_token(b"plaintext_fallback")
+    assert any(
+        e[0] == "token_decrypt_failed" and e[1].get("failure_class") == "TOKEN_DECRYPT_FAIL"
+        for e in events
+    )
 
 
 def test_get_token_encryption_key_returns_none_when_unset(monkeypatch):
