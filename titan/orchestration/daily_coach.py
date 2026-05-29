@@ -354,18 +354,26 @@ class DailyCoach:
             )
         self.db = db
         # v5.7: Closed-Loop science engines — ADR-0058 Phase A: held in EngineRegistry
-        self.engines = EngineRegistry(
-            tsb=tsb_engine,
-            hrv=hrv_engine,
-            readiness=readiness_engine,
-            autonomic=autonomic_engine or AutonomicFusionEngine(),
-            biomechanics=BiomechanicsEngine(),
-            durability=DurabilityEngine(),
-            fatigue=fatigue_engine or FatigueEngine(),
-            lactate=LactateLogic(),
-            cs_tracker=cs_tracker or CriticalSpeedTracker(),
-            apl=apl or AdaptivePriorityLock(),
-        )
+        # B2c (Phase 24): production path injects a complete EngineRegistry via
+        # engines=EngineRegistry.from_db(db=db). Individual engine params are the
+        # backward-compat fallback for test factories only — remove in Phase 25.
+        if engines is not None:
+            # Production path: pure consumer — no engine construction here.
+            self.engines = engines
+        else:
+            # Fallback path: retained for test backward-compatibility (Phase 25: remove).
+            self.engines = EngineRegistry(
+                tsb=tsb_engine,
+                hrv=hrv_engine,
+                readiness=readiness_engine,
+                autonomic=autonomic_engine or AutonomicFusionEngine(),
+                biomechanics=BiomechanicsEngine(),
+                durability=DurabilityEngine(),
+                fatigue=fatigue_engine or FatigueEngine(),
+                lactate=LactateLogic(),
+                cs_tracker=cs_tracker or CriticalSpeedTracker(),
+                apl=apl or AdaptivePriorityLock(),
+            )
         self.glycogen   = glycogen_accum   or GlycogenDebtAccumulator()
         self.governance = governance       or GovernanceEngine()
         # v5.7.1: APL governance infrastructure
