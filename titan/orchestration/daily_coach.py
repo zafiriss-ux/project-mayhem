@@ -862,7 +862,10 @@ class DailyCoach:
         startup_hydration_confidence: dict,
         startup_confidence_applies: bool,
     ) -> DecisionResult:
-        """Pure decision pipeline: steps 7–11 + coaching payload assembly.
+        """Deprecated compatibility shim — delegates to coaching_pipeline().
+
+        Production path: run_morning_routine → coaching_pipeline().
+        This method exists only for test call-sites; do not add logic here.
 
         Invariant: Read-only db access permitted.
         No db.save_*, no telegram.*, no self.db.transaction() for writes.
