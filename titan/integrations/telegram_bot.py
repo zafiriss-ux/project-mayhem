@@ -592,7 +592,7 @@ class TitanTelegramBot:
                 self.bot.send_message(int(self.chat_id), text, parse_mode=parse_mode)
                 self.message_history.append(
                     {
-                        "ts": datetime.now().replace(tzinfo=UTC).isoformat(),
+                        "ts": datetime.now(UTC).isoformat(),
                         "message_length": len(text),
                         "delivery_mode": "telegram_api",
                     }
