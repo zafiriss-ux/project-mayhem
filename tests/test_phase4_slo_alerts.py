@@ -119,7 +119,7 @@ def test_telegram_scheduler_logs_callback_error_and_drift(caplog, monkeypatch):
 
     class _Datetime:
         @staticmethod
-        def now():
+        def now(tz=None):
             return _Now()
 
     times = iter([100.0, 200.0])
