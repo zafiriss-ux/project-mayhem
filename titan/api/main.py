@@ -166,6 +166,19 @@ class AuthenticatedRateLimiter:
         try:
             payload = decode_token(token, expected_type="access")
         except AuthError:
+            # S3 / F1.2: emit structured event — token decode failure is
+            # observable in the telemetry pipeline (failure_class, not silent).
+            logging.getLogger("titan.api").info(
+                json.dumps(
+                    {
+                        "flow": "api",
+                        "action": "auth_token_decode_failed",
+                        "failure_class": "TOKEN_DECODE_FAIL",
+                        "severity": "WARNING",
+                    },
+                    default=str,
+                )
+            )
             return None
 
         store = request.app.state.auth_store
