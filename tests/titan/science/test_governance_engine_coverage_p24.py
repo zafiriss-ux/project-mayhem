@@ -22,11 +22,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from titan.config.thresholds import VO2_ACWR_MAX
 from titan.science.governance_engine import GovernanceEngine
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers
