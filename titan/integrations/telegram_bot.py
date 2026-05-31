@@ -931,7 +931,7 @@ class TitanTelegramBot:
                         drift_seconds=round(drift_seconds, 3),
                     )
 
-            now = datetime.now()  # strftime-only; no tz math needed; mock compatibility
+            now = datetime.now(UTC)  # strftime-only; UTC-aware is safe for strftime
             cur_time = now.strftime("%H:%M")
             cur_day = now.strftime("%A")
             with self._tasks_lock:
