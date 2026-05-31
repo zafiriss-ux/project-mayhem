@@ -663,7 +663,7 @@ class TitanTelegramBot:
     def send_daily_coaching(self, data: dict) -> bool:
         text = (
             f"🌅 *GOOD MORNING!*\n"
-            f"{datetime.now().replace(tzinfo=UTC).strftime('%A, %B %d, %Y')}\n\n"
+            f"{datetime.now(UTC).strftime('%A, %B %d, %Y')}\n\n"
             f"🏃 *Today:* {data.get('session_type', 'REST')} – {data.get('duration', 'N/A')}\n\n"
             f"⏰ *Optimal Run Time:* {data.get('optimal_time', 'N/A')}\n"
             f"  └ Dew point: {data.get('dew_point', 'N/A')}°C  |  {data.get('conditions', '')}\n\n"
