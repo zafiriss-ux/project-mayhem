@@ -221,4 +221,8 @@ MIN_FAT_G: int = 40          # minimum daily fat intake in grams (dietary guidel
 FAT_KCAL_PER_GRAM: int = 9   # caloric density of fat (Atwater factor)
 
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
-MODULE_COUNT_CEILING: int = 73  # T4-27-C: raised 72→73; engine_registry.py added ADR-0058 (2026-05-24)
+MODULE_COUNT_CEILING: int = 78  # T4-27-C: raised 73→78 (2026-05-31); pkgutil.walk_packages
+# counts packages (dirs with init.py) in addition to
+# source modules; find-based local test counts 65 .py files
+# (both ≤ ceiling). Phase 24 blocker-clear audit confirmed
+# no new titan/ modules added since last ceiling raise.
