@@ -217,6 +217,28 @@ class TestAuthStorePersistence:
         assert store2.is_refresh_token_active("jti-1") is False
         store2._db.close()
 
+    def test_lockout_survives_db_close_and_reopen(self, tmp_path: Path) -> None:
+        """S3 / F5.2: A locked-out account must remain locked after DB reopen.
+
+        Verifies that login lockout state is persisted to disk and restored
+        when a new AuthStore is created from the same on-disk DB — i.e. a
+        container restart cannot reset lockout state.
+        """
+        store1 = _make_store(tmp_path)
+        store1.upsert_user("u1", "alice", hash_password("p"), "COACH", None)
+        # Exhaust the allowed attempts to trigger lockout.
+        for _ in range(5):
+            store1.record_failed_attempt("alice")
+        assert store1.is_locked_out("alice"), "precondition: account must be locked"
+        store1._db.close()
+
+        store2 = _make_store(tmp_path)
+        assert store2.is_locked_out("alice"), (
+            "Lockout state lost after DB reopen — container restart bypasses "
+            "brute-force protection (F5.2 / S3)"
+        )
+        store2._db.close()
+
 
 # ---------------------------------------------------------------------------
 # Backward compatibility
