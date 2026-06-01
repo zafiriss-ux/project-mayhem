@@ -9,13 +9,12 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from titan.core.schema import metadata as target_metadata  # TD-08 Step 3
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name, disable_existing_loggers=False)
-
-target_metadata = None
 
 
 def run_migrations_offline() -> None:
