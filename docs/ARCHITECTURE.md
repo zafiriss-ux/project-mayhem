@@ -60,6 +60,7 @@ launcher/main.py
 | `titan/core/periodization.py` | Periodization phase state |
 | `titan/core/equipment.py` | Equipment inventory model |
 | `titan/core/structured_events.py` | Structured event logging helpers |
+| `titan/core/schema.py` | SQLAlchemy Core MetaData descriptor — single authoritative source for all 19 table definitions (TD-08) |
 
 ### Layer 3 — Science Engines
 
