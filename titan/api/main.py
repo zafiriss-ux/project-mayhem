@@ -401,9 +401,17 @@ def create_app(
         try:
             payload = decode_token(refresh_token, expected_type="refresh")
         except AuthError as exc:
+            logging.getLogger("titan.api").info(json.dumps({
+                "flow": "api", "action": "auth_token_rejected",
+                "failure_class": "REFRESH_TOKEN_INVALID", "severity": "WARNING",
+            }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from exc
 
         if payload.jti is None or not store.is_refresh_token_active(payload.jti):
+            logging.getLogger("titan.api").info(json.dumps({
+                "flow": "api", "action": "auth_token_rejected",
+                "failure_class": "REFRESH_TOKEN_REVOKED", "severity": "WARNING",
+            }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
 
         user = store.get_user(payload.sub)
