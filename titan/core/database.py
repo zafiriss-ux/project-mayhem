@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
+from titan.core.schema import get_table as _get_schema_table
 
 try:
     import psycopg2
@@ -22,6 +23,45 @@ except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.structured_events import EventSeverity, structured_event_payload
+
+# TD-08: ordered list of tables whose DDL create_database() renders from the
+# canonical descriptor (titan/core/schema.py). Migration-managed tables
+# (auth_users, auth_tokens, model_calibration_metadata, consent_log,
+# degraded_mode_state, login_lockout, alembic_version) are excluded — they
+# are created by the migration ladder or Alembic, not by create_database().
+_BASE_TABLE_NAMES: tuple[str, ...] = (
+    "daily_metrics",
+    "training_log",
+    "gear_usage",
+    "personal_bests",
+    "cs_performances",
+    "override_log",
+    "override_signals",
+    "governance_outcomes",
+    "athlete_threshold_offsets",
+    "athletes",
+    "coach_athlete_assignments",
+    "coach_audit_log",
+)
+
+
+def _render_table_ddl(table_name: str) -> str:
+    """Render CREATE TABLE IF NOT EXISTS DDL from the canonical schema descriptor.
+
+    TD-08 / S1: makes create_database() derive all base table DDL from
+    titan/core/schema.py rather than maintaining raw SQL strings inline.
+    SQLAlchemy is imported lazily so database.py startup cost is unchanged.
+    """
+    from sqlalchemy.dialects import sqlite as _sqlite_dialect
+    from sqlalchemy.schema import CreateTable
+
+    table = _get_schema_table(table_name)
+    return str(
+        CreateTable(table, if_not_exists=True).compile(
+            dialect=_sqlite_dialect.dialect()
+        )
+    )
+
 
 _log = logging.getLogger(__name__)
 
