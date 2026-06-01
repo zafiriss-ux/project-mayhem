@@ -317,7 +317,7 @@ def test_scheduler_worker_continues_when_stop_event_not_set(monkeypatch):
         {"name": "n", "time": "07:00", "days": ["Monday"], "callback": lambda: calls.append("run")}
     ]
 
-    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: _Now())}))
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda tz=None: _Now())}))
     monkeypatch.setattr(telegram_bot.time, "time", lambda: 100.0)
 
     wait_calls = {"count": 0}
@@ -497,7 +497,7 @@ def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeyp
                 return "Monday"
             raise AssertionError("unexpected format")
 
-    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: _Now())}))
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda tz=None: _Now())}))
     monkeypatch.setattr(telegram_bot.time, "time", lambda: 100.0)
 
     wait_calls = {"count": 0}
@@ -555,7 +555,7 @@ def test_scheduler_worker_emits_drift_and_callback_error(monkeypatch):
             raise AssertionError("unexpected format")
 
     now_values = iter([_Now(0), _Now(0)])
-    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda: next(now_values))}))
+    monkeypatch.setattr(telegram_bot, "datetime", type("_D", (), {"now": staticmethod(lambda tz=None: next(now_values))}))
     time_values = iter([100.0, 170.0])
 
     def _time_now():
