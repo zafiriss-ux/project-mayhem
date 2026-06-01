@@ -76,8 +76,8 @@ metadata = MetaData(naming_convention=convention)
 t_daily_metrics = Table(
     "daily_metrics",
     metadata,
-    Column("id", BigInteger, primary_key=True, autoincrement=True),
-    Column("athlete_id", String, nullable=False, server_default="default"),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("athlete_id", String, nullable=False, server_default="owner"),
     Column("date", String, nullable=False),
     Column("weight_kg", Float),
     Column("hrv_rmssd", Float),
@@ -101,8 +101,8 @@ t_daily_metrics = Table(
 t_training_log = Table(
     "training_log",
     metadata,
-    Column("id", BigInteger, primary_key=True, autoincrement=True),
-    Column("athlete_id", String, nullable=False, server_default="default"),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("athlete_id", String, nullable=False, server_default="owner"),
     Column("date", String, nullable=False),
     Column("session_type", String),
     Column("distance_km", Float),
@@ -129,7 +129,7 @@ t_training_log = Table(
 t_gear_usage = Table(
     "gear_usage",
     metadata,
-    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("shoe_name", String, nullable=False),
     Column("total_km", Float, server_default="0"),
     Column("last_used", String),
@@ -137,7 +137,6 @@ t_gear_usage = Table(
     Column("status", String, server_default="ACTIVE"),
     Column("shoe_type", String),
     Column("max_km_limit", Float, server_default="800"),
-    Column("athlete_id", String, nullable=False, server_default="default"),
 )
 
 # ---------------------------------------------------------------------------
@@ -148,13 +147,12 @@ t_gear_usage = Table(
 t_personal_bests = Table(
     "personal_bests",
     metadata,
-    Column("id", BigInteger, primary_key=True, autoincrement=True),
+    Column("id", Integer, primary_key=True, autoincrement=True),
     Column("distance_km", Float, nullable=False),
     Column("time_sec", Integer, nullable=False),
     Column("pace_sec_per_km", Float),
     Column("date", String, nullable=False),
     Column("race_name", String),
-    Column("athlete_id", String, nullable=False, server_default="default"),
 )
 
 # ---------------------------------------------------------------------------
@@ -165,8 +163,8 @@ t_personal_bests = Table(
 t_governance_outcomes = Table(
     "governance_outcomes",
     metadata,
-    Column("id", BigInteger, primary_key=True, autoincrement=True),
-    Column("athlete_id", String, nullable=False, server_default="default"),
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("athlete_id", String, nullable=False, server_default="owner"),
     Column("date", String, nullable=False),
     Column("session_planned", String, nullable=False),
     Column("session_post_governance", String, nullable=False),
@@ -225,8 +223,8 @@ t_athletes = Table(
     Column("is_cold_start", Integer, nullable=False, server_default="1"),
     Column("cold_start_ends_at", String),
     Column("cold_start_sessions_count", Integer, nullable=False, server_default="0"),
-    Column("biological_sex", String),       # v20 — nutrition prefs T5-117
-    Column("menstrual_tracking", Integer),  # v20 — nutrition prefs T5-117
+    Column("biological_sex", String, server_default="male"),    # v20 — nutrition prefs T5-117
+    Column("menstrual_tracking", String, server_default="no"),  # v20 — nutrition prefs T5-117
 )
 
 # ---------------------------------------------------------------------------
