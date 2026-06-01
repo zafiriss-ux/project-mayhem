@@ -269,165 +269,11 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
 
-        # Table 1: Daily Metrics (Morning Check-in)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS daily_metrics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'owner',
-                date TEXT NOT NULL UNIQUE,
-                weight_kg REAL,
-                hrv_rmssd REAL,
-                resting_hr INTEGER,
-                sleep_hours REAL,
-                sleep_quality INTEGER,
-                soreness INTEGER,
-                fatigue_level INTEGER,
-                mood INTEGER,
-                notes TEXT,
-                data_source TEXT NOT NULL DEFAULT 'garmin_api'
-            )
-        """)
+        # TD-08 Step 2: DDL rendered from canonical descriptor (titan/core/schema.py).
+        # Ordering respects FK dependencies: gear_usage before training_log.
+        for _tname in _BASE_TABLE_NAMES:
+            cursor.execute(_render_table_ddl(_tname))
 
-        # Table 2: Training Log (Complete History)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS training_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'owner',
-                date TEXT NOT NULL,
-                session_type TEXT,
-                distance_km REAL,
-                duration_sec INTEGER,
-                avg_hr INTEGER,
-                max_hr INTEGER,
-                rpe INTEGER,
-                training_load INTEGER,
-                shoe_id INTEGER,
-                surface TEXT,
-                temperature_c REAL,
-                zone_distribution TEXT,
-                notes TEXT,
-                FOREIGN KEY (shoe_id) REFERENCES gear_usage(id)
-            )
-        """)
-
-        # Table 3: Gear Usage (Shoe Tracking)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS gear_usage (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                shoe_name TEXT NOT NULL,
-                total_km REAL DEFAULT 0,
-                last_used TEXT,
-                compression_recovery_hours INTEGER DEFAULT 24,
-                status TEXT DEFAULT 'ACTIVE',
-                shoe_type TEXT,
-                max_km_limit REAL DEFAULT 800
-            )
-        """)
-
-        # Table 4: Personal Bests
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS personal_bests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                distance_km REAL NOT NULL,
-                time_sec INTEGER NOT NULL,
-                pace_sec_per_km REAL,
-                date TEXT NOT NULL,
-                race_name TEXT
-            )
-        """)
-
-        # Table 5: CS Calibration Performances (Critical Speed / D' model)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cs_performances (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                distance_m REAL NOT NULL,
-                time_sec REAL NOT NULL,
-                surface TEXT DEFAULT 'ROAD',
-                wind_adjusted INTEGER DEFAULT 0
-            )
-        """)
-
-        # Table 6: Override Audit Log (governance — discipline engine)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS override_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                prescribed_type TEXT,
-                actual_type TEXT,
-                reason TEXT
-            )
-        """)
-
-        # Table 7: Override signals (ADR-0042 first-class override invariant)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS override_signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                decision_id TEXT NOT NULL,
-                athlete_id TEXT NOT NULL,
-                override_source TEXT NOT NULL,
-                override_reason TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            )
-        """)
-
-        # Table 8: Governance outcomes (decision snapshot + post-session outcome)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS governance_outcomes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL DEFAULT 'owner',
-                date TEXT NOT NULL,
-                session_planned TEXT NOT NULL,
-                session_post_governance TEXT NOT NULL,
-                locks_applied_json TEXT NOT NULL,
-                governance_clean INTEGER NOT NULL,
-                phase TEXT NOT NULL,
-                vlg_color TEXT NOT NULL,
-                apl_priority_vector_json TEXT NOT NULL,
-                lock_thresholds_active_json TEXT NOT NULL,
-                acwr REAL NOT NULL,
-                tsb_value REAL NOT NULL,
-                readiness_score REAL NOT NULL,
-                glycogen_debt REAL NOT NULL,
-                afi_value REAL,
-                outcome_rpe INTEGER,
-                outcome_completed INTEGER,
-                outcome_session_type_actual TEXT,
-                outcome_notes TEXT,
-                decision_was_followed INTEGER NOT NULL DEFAULT 1,
-                override_outcome_exclusion INTEGER NOT NULL DEFAULT 0,
-                outcome_independence_ok INTEGER NOT NULL DEFAULT 1,
-                algorithm_version_snapshot TEXT
-            )
-        """)
-
-        # Table 9: Per-athlete threshold offsets (ADR-0052 Stage 1)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS athlete_threshold_offsets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                athlete_id TEXT NOT NULL,
-                threshold_key TEXT NOT NULL,
-                delta_value REAL NOT NULL,
-                updated_at TEXT NOT NULL,
-                source TEXT NOT NULL
-                    CHECK (source IN ('manual', 'calibration')),
-                confidence REAL NOT NULL
-                    CHECK (confidence >= 0.0 AND confidence <= 1.0),
-                UNIQUE (athlete_id, threshold_key)
-            )
-        """)
-
-        # Table 10: Canonical athletes table (ADR-0033 Layer 3 — T5-07-L3-A)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS athletes (
-                athlete_id                TEXT PRIMARY KEY,
-                display_name              TEXT NOT NULL,
-                created_at                TEXT NOT NULL,
-                is_cold_start             INTEGER NOT NULL DEFAULT 1,
-                cold_start_ends_at        TEXT,
-                cold_start_sessions_count INTEGER NOT NULL DEFAULT 0
-            )
-        """)
         # Seed owner row for single-athlete installations (is_cold_start=0: owner
         # bypasses cold-start per ADR-0033 L3-C).
         cursor.execute("""
@@ -439,34 +285,11 @@ class DatabaseManager:
                  datetime('now'), 30)
         """)
 
-        # Table 11: Coach-athlete RBAC scoping (ADR-0054 / T5-110)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS coach_athlete_assignments (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                coach_id    TEXT NOT NULL,
-                athlete_id  TEXT NOT NULL,
-                assigned_at TEXT NOT NULL,
-                UNIQUE(coach_id, athlete_id)
-            )
-        """)
         # Seed system coach → owner assignment so single-athlete mode works out of the box.
         cursor.execute("""
             INSERT OR IGNORE INTO coach_athlete_assignments
                 (coach_id, athlete_id, assigned_at)
             VALUES ('system', 'owner', datetime('now'))
-        """)
-
-        # Table 12: Coach audit log — persistent coach action history (T5-111)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS coach_audit_log (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                coach_id     TEXT NOT NULL,
-                athlete_id   TEXT NOT NULL,
-                action_type  TEXT NOT NULL,
-                resource     TEXT NOT NULL DEFAULT '',
-                action_detail TEXT,
-                performed_at TEXT NOT NULL DEFAULT (datetime('now'))
-            )
         """)
 
         self.conn.commit()
