@@ -303,6 +303,77 @@ def fresh_db_schema() -> dict[str, list[str]]:
 
 
 # ---------------------------------------------------------------------------
+# Test 0 — TD-08 Step 4: descriptor-vs-fresh-DB convergence
+#
+# Asserts that every table the SQLAlchemy descriptor defines (excluding
+# Alembic-managed and descriptor-only tables) is present in a fresh
+# DatabaseManager and has exactly the columns the descriptor declares.
+#
+# This test does NOT depend on the AUTHORITATIVE_COLUMNS fixture — it
+# derives expected state directly from titan/core/schema.py.  A descriptor
+# edit that forgets to update AUTHORITATIVE_COLUMNS will still be caught here.
+# ---------------------------------------------------------------------------
+
+
+def test_descriptor_tables_present_in_fresh_db(
+    fresh_db_schema: dict[str, list[str]],
+) -> None:
+    """TD-08 Step 4: every descriptor table (minus exclusions) exists in fresh DB.
+
+    Failure means either:
+      - A table was added to schema.py but not to create_database() / the ladder.
+      - A table was removed from create_database() / the ladder but kept in schema.py.
+    """
+    from titan.core.schema import table_names
+
+    descriptor_tables = table_names() - _DESCRIPTOR_ONLY_TABLES
+    actual_tables = frozenset(fresh_db_schema)
+
+    missing_from_db = descriptor_tables - actual_tables - ALEMBIC_ONLY_TABLES
+    assert not missing_from_db, (
+        "Tables defined in schema.py but absent from fresh DatabaseManager "
+        f"(create_database/ladder regression): {sorted(missing_from_db)}"
+    )
+
+
+def test_descriptor_columns_match_fresh_db(
+    fresh_db_schema: dict[str, list[str]],
+) -> None:
+    """TD-08 Step 4: for every descriptor table present in the fresh DB,
+    column names match exactly.
+
+    Failure means the descriptor and create_database() have diverged — a
+    column was added to one but not the other.
+    """
+    from titan.core.schema import get_table, table_names
+
+    descriptor_tables = table_names() - _DESCRIPTOR_ONLY_TABLES
+    checked = 0
+    mismatches: list[str] = []
+
+    for tname in sorted(descriptor_tables):
+        if tname not in fresh_db_schema:
+            # Covered by test_descriptor_tables_present_in_fresh_db above.
+            continue
+        descriptor_cols = frozenset(c.name for c in get_table(tname).columns)
+        fresh_cols = frozenset(fresh_db_schema[tname])
+        missing = descriptor_cols - fresh_cols
+        unexpected = fresh_cols - descriptor_cols
+        if missing or unexpected:
+            mismatches.append(
+                f"{tname}: descriptor_extra={sorted(missing)} "
+                f"fresh_extra={sorted(unexpected)}"
+            )
+        checked += 1
+
+    assert not mismatches, (
+        "Column mismatch between schema.py descriptor and fresh DatabaseManager:\n"
+        + "\n".join(mismatches)
+    )
+    assert checked > 0, "No tables were checked — descriptor exclusion list too broad"
+
+
+# ---------------------------------------------------------------------------
 # Test 1 — table set
 # ---------------------------------------------------------------------------
 

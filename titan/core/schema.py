@@ -89,6 +89,10 @@ t_daily_metrics = Table(
     Column("mood", Integer),
     Column("notes", Text),
     Column("data_source", String, nullable=False, server_default="garmin_api"),
+    Column("hrr_60", Integer),      # v1 — HRR markers
+    Column("hrr_120", Integer),     # v1 — HRR markers
+    Column("glycogen_debt", Float), # v1 — glycogen tracking
+    Column("quality_flag", Text),   # v3 — data-sanity gate (ADR-0026)
     UniqueConstraint("date", name="uq_daily_metrics_date"),
 )
 
@@ -240,7 +244,6 @@ t_auth_users = Table(
     Column("password_hash", String, nullable=False),
     Column("role", String, nullable=False),
     Column("athlete_id", String),
-    Column("created_at", DateTime, nullable=False),
     Column("is_active", Boolean, nullable=False, server_default="1"),
     UniqueConstraint("username"),
 )
@@ -255,6 +258,7 @@ t_auth_tokens = Table(
     metadata,
     Column("id", String, primary_key=True),
     Column("user_id", String, ForeignKey("auth_users.id"), nullable=False),
+    Column("athlete_id", String),
     Column("issued_at", DateTime, nullable=False),
     Column("expires_at", DateTime, nullable=False),
     Column("revoked", Boolean, nullable=False, server_default="0"),
@@ -382,7 +386,7 @@ t_degraded_mode_state = Table(
     metadata,
     Column("failure_type", String, primary_key=True),
     Column("degraded_since", String, nullable=False),
-    Column("last_updated", String, nullable=False),
+    Column("athlete_id", String, nullable=False, server_default="default"),
 )
 
 # Table 19 — login_lockout (auth brute-force protection / T5-70)
@@ -391,9 +395,9 @@ t_login_lockout = Table(
     "login_lockout",
     metadata,
     Column("username", String, primary_key=True),
-    Column("failed_attempts", Integer, nullable=False, server_default="0"),
-    Column("last_failed_at", String),
-    Column("locked_until", String),
+    Column("failed_count", Integer, nullable=False, server_default="0"),
+    Column("locked_until_ts", Float),
+    Column("last_attempt_ts", Float),
 )
 
 # ---------------------------------------------------------------------------
