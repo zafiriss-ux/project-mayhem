@@ -675,7 +675,7 @@ jobs:
 
   backup-verify:
     name: Backup Integrity Verification
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Create test DB + backup
