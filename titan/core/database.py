@@ -17,6 +17,13 @@ from typing import Any
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.schema import get_table as _get_schema_table
 
+try:
+    import psycopg2
+except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
+    psycopg2 = None
+from titan.core.athlete import UniversalAthleteProfile
+from titan.core.structured_events import EventSeverity, structured_event_payload
+
 # TD-08: ordered list of tables whose DDL create_database() renders from the
 # canonical descriptor (titan/core/schema.py). Migration-managed tables
 # (auth_users, auth_tokens, model_calibration_metadata, consent_log,
@@ -55,12 +62,6 @@ def _render_table_ddl(table_name: str) -> str:
         )
     )
 
-try:
-    import psycopg2
-except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
-    psycopg2 = None
-from titan.core.athlete import UniversalAthleteProfile
-from titan.core.structured_events import EventSeverity, structured_event_payload
 
 _log = logging.getLogger(__name__)
 
