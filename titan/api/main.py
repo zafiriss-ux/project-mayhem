@@ -358,6 +358,10 @@ def create_app(
             )
 
         if store.is_locked_out(payload.username):
+            logging.getLogger("titan.api").info(json.dumps({
+                "flow": "api", "action": "auth_login_failed",
+                "failure_class": "ACCOUNT_LOCKED", "severity": "WARNING",
+            }, default=str))
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
                 detail="Account temporarily locked",
@@ -366,6 +370,10 @@ def create_app(
         user = store.verify_credentials(payload.username, payload.password)
         if user is None:
             store.record_failed_attempt(payload.username)
+            logging.getLogger("titan.api").info(json.dumps({
+                "flow": "api", "action": "auth_login_failed",
+                "failure_class": "BAD_CREDENTIALS", "severity": "WARNING",
+            }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
         store.clear_failed_attempts(payload.username)
