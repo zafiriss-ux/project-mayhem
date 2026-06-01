@@ -7,10 +7,10 @@ ladder CREATE TABLE statements, PostgreSQL adapter, Alembic env.py
 target_metadata) must eventually derive from or validate against this
 descriptor.
 
-CURRENT STATE (Phase 24 / TD-08 Step 1 of 5):
+CURRENT STATE (Phase 24 / TD-08 Step 3 of 5):
   Descriptor authored. create_database() still uses its own DDL strings
-  (Step 2 will render from this MetaData). alembic/env.py still has
-  target_metadata=None (Step 4 will wire it).
+  (Step 2 will render from this MetaData). alembic/env.py target_metadata
+  now wired to this MetaData (Step 3 done).
 
 USAGE:
     from titan.core.schema import metadata, get_table
