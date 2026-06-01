@@ -256,7 +256,17 @@ EXPECTED_TABLES: frozenset[str] = frozenset(AUTHORITATIVE_COLUMNS)
 
 # Tables present in the live DB but not in the SQLite ladder.
 # Listed for traceability; not asserted as missing in fresh-DB tests.
+
 ALEMBIC_ONLY_TABLES: frozenset[str] = frozenset({"consent_log"})
+
+# Tables in the descriptor that are never created by create_database() or the
+# SQLite ladder — Alembic-managed or migration-only tables excluded from the
+# convergence check.  The convergence test only checks tables that both the
+# descriptor and the fresh DB are expected to contain.
+_DESCRIPTOR_ONLY_TABLES: frozenset[str] = frozenset({
+    "consent_log",        # F3.4 — Alembic-only; TD-08 Step 5 adds to ladder
+    "alembic_version",    # Written by Alembic, not create_database()
+})
 
 # ---------------------------------------------------------------------------
 # Shared fixture
