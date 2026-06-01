@@ -316,13 +316,15 @@ event foundation for any inference regime.
 
 ### Phase 24 Primary Scope (post-blocker-clear, priority order)
 
-1. **TD-08** (XL): Schema single source of truth — SQLAlchemy Core declarative descriptor in `titan/core/schema.py`; `create_database()` renders from descriptor; `alembic/env.py` `target_metadata` wired (S1 strategy). Fitness net: `tests/test_schema_equivalence.py` validates every intermediate commit. Requires Opus post-implementation spot-check before Phase 25 entry.
-2. **TD-04B** (XL): EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius; requires ADR-0058 amendment; depends on B2c completion. EffectBus is the real-time event bus the Phase 28 inference layer requires for hard-stop enforcement.
-3. **S3** (S): Auth observability bounded unit — structured auth-failure events (F5.1), lockout-restart survival test (F5.2), TTL boundary invariant (F5.3), audit-token-decode event (F1.2). Fold into debt-clear window between B2c and TD-08.
-4. **S4** (XS): Move `alembic-integrity` CI gate from `runs-on: self-hosted` to `runs-on: ubuntu-latest`. One-line YAML change; fold into any in-flight PR.
-5. **T5-15 Phase B** (M): Retroactive pytest markers across 100+ remaining files.
-6. **P15-ARCH5** (M): pydantic-settings migration.
-7. **TD-CI-SELFHOSTED** (S): Alembic runner topology documentation or runner confirmed.
+| # | Item | Size | Status | Notes |
+|---|------|------|--------|-------|
+| 1 | **TD-08** | XL | IN PROGRESS | SQLAlchemy Core descriptor in `titan/core/schema.py`; `create_database()` renders from descriptor; `alembic/env.py` `target_metadata` wired; fitness net: `tests/test_schema_equivalence.py` on every commit; Opus post-implementation spot-check before Phase 25 |
+| 2 | **TD-04B** | XL | PENDING TD-08 | EffectBus extraction (ADR-0058 Phase B); 27-file blast radius; ADR-0058 amendment required; gates Phase 28 inference layer |
+| 3 | **S3** | S | ✅ DONE | Auth observability: TOKEN_DECODE_FAIL, ACCOUNT_LOCKED, BAD_CREDENTIALS, REFRESH_TOKEN_INVALID, REFRESH_TOKEN_REVOKED events; lockout-restart survival test; TTL boundary invariant (F1.2, F5.1–F5.3) |
+| 4 | **S4** | XS | ✅ DONE | `alembic-integrity` + `backup-verify` gates moved to `ubuntu-latest`; CodeQL dual-run conflict resolved (push/PR triggers disabled); all self-hosted gate blockers cleared |
+| 5 | **T5-15 Phase B** | M | DEFERRED | Retroactive pytest markers across 100+ remaining files |
+| 6 | **P15-ARCH5** | M | DEFERRED | pydantic-settings migration |
+| 7 | **TD-CI-SELFHOSTED** | S | ✅ DONE | Both self-hosted gates moved to ubuntu-latest; CodeQL separated from default setup |
 
 ---
 
