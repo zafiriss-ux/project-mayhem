@@ -244,6 +244,25 @@ class TestAuthStorePersistence:
 # Backward compatibility
 # ---------------------------------------------------------------------------
 
+class TestAuthStoreTTLInvariant:
+    """S3 / F5.3: Token TTL boundary — access must expire before refresh."""
+
+    def test_access_token_ttl_shorter_than_refresh_token_ttl(self) -> None:
+        """ACCESS_TOKEN_TTL < REFRESH_TOKEN_TTL must always hold.
+
+        If this invariant is violated, token rotation breaks: a client
+        could hold a valid refresh token but receive an access token that
+        outlives it, defeating revocation.
+        """
+        from titan.api.auth import ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL
+
+        assert ACCESS_TOKEN_TTL < REFRESH_TOKEN_TTL, (
+            f"ACCESS_TOKEN_TTL ({ACCESS_TOKEN_TTL}) must be strictly less than "
+            f"REFRESH_TOKEN_TTL ({REFRESH_TOKEN_TTL}). "
+            "Inverting this breaks token rotation and revocation guarantees."
+        )
+
+
 class TestAuthStoreBackwardCompat:
     def test_authstore_no_args_creates_in_memory_db(self) -> None:
         """AuthStore() without arguments must still work (in-memory SQLite)."""
