@@ -223,8 +223,8 @@ t_athletes = Table(
     Column("is_cold_start", Integer, nullable=False, server_default="1"),
     Column("cold_start_ends_at", String),
     Column("cold_start_sessions_count", Integer, nullable=False, server_default="0"),
-    Column("biological_sex", String),       # v20 — nutrition prefs T5-117
-    Column("menstrual_tracking", Integer),  # v20 — nutrition prefs T5-117
+    Column("biological_sex", String, server_default="male"),    # v20 — nutrition prefs T5-117
+    Column("menstrual_tracking", String, server_default="no"),  # v20 — nutrition prefs T5-117
 )
 
 # ---------------------------------------------------------------------------
