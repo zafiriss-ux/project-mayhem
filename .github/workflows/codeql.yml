@@ -1,9 +1,10 @@
 ﻿name: CodeQL
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # push and pull_request triggers disabled — GitHub default CodeQL setup is
+  # active on this repo and conflicts with advanced configuration at SARIF
+  # upload time ("cannot be processed when the default setup is enabled").
+  # Weekly scheduled scan retained for security coverage.
+  # To re-enable: disable default setup in repo Settings → Code security.
   schedule:
     - cron: '0 3 * * 1'
 
