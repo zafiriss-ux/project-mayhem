@@ -1567,3 +1567,19 @@ Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, Ef
 3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
 4. P15-ARCH5: pydantic-settings migration
 5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs; `continue-on-error: true` advisory until resolved
+
+---
+
+## FMEA: Phase 24 — Schema & EffectBus Phase C
+
+**Architect:** Claude | **Date:** 2026-06-02 | **Status:** G12 SATISFIED
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F24-01 | titan/core/schema.py extraction (TD-08) | Migration mis-ordering drops column on legacy DB | HIGH | Opus pre-audit completed; schema.py canonical ✅ RESOLVED 2026-06-02 |
+| F24-02 | TitanEffectBus (TD-04B) | 27-file blast radius breaks existing pipeline subscribers | HIGH | Delegation shim preserves API; 4 CI fitness gates green ✅ RESOLVED 2026-06-02 |
+| F24-03 | pytest marker backfill (T5-15B) | Missing markers skip tests silently | LOW | Mechanical; CI catches uncollected tests — DEFERRED Phase 25 |
+| F24-04 | pydantic-settings migration (P15-ARCH5) | Config loading breaks on env-var rename | MED | Additive alias approach planned — DEFERRED Phase 25 |
+| F24-05 | Alembic runner (TD-CI-SELFHOSTED) | Self-hosted runner absent → Alembic gate never runs | LOW | `continue-on-error: true` advisory in place — DEFERRED Phase 25 |
+
+**G12 gate:** SATISFIED.
