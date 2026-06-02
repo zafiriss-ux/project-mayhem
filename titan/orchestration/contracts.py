@@ -4,6 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import NotRequired, Protocol, TypedDict, runtime_checkable
 
+# ---------------------------------------------------------------------------
+# PlannedEffect canonical discriminant constants (ADR-0058 Phase B)
+#
+# These are the EXHAUSTIVE set of effect_type values.  Any new effect type
+# MUST be added here and to ADR-0058 before use.  The TitanEffectBus handler
+# registry is keyed on these constants.
+# ---------------------------------------------------------------------------
+EFFECT_RECORD_OUTCOME: str = "record_outcome"  # write decision to OutcomeTracker (DB)
+EFFECT_SEND_TELEGRAM: str = "send_telegram"    # deliver coaching briefing via Telegram
+
 
 class HRVSyncMetrics(TypedDict):
     days_back: int
