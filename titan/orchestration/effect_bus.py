@@ -17,14 +17,11 @@ contracts.EFFECT_SEND_TELEGRAM
 """
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from titan.orchestration.contracts import DecisionResult, PlannedEffect
-
-_log = logging.getLogger(__name__)
 
 # Type alias — a handler receives the PlannedEffect and the full
 # DecisionResult and returns None.  Any exception propagates to dispatch().
