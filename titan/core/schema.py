@@ -323,6 +323,41 @@ t_alembic_version = Table(
 )
 
 # ---------------------------------------------------------------------------
+# Table 20 — sync_metadata
+# Covers: _apply_v4_migrations() (T1-20 Garmin sync outcome ledger)
+# Ref: T1-20, ADR-0030
+# NOTE: ladder-created (v4); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_sync_metadata = Table(
+    "sync_metadata",
+    metadata,
+    Column("source", String, primary_key=True),
+    Column("last_attempt_ts", String),
+    Column("last_success_ts", String),
+    Column("last_sync_ok", Integer, nullable=False, server_default="0"),
+    Column("last_error_class", String),
+)
+
+# ---------------------------------------------------------------------------
+# Table 21 — nutrition_preferences
+# Covers: _apply_v21_migrations() (ADR-0056 per-athlete nutrition prefs)
+# Ref: ADR-0056, T5-117
+# NOTE: ladder-created (v21); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_nutrition_preferences = Table(
+    "nutrition_preferences",
+    metadata,
+    Column("athlete_id", String, primary_key=True),
+    Column("training_time", String, nullable=False, server_default="variable"),
+    Column("fasted_training", String, nullable=False, server_default="easy_only"),
+    Column("dietary_style", String, nullable=False, server_default="standard"),
+    Column("meal_frequency", Integer, nullable=False, server_default="3"),
+    Column("biological_sex", String, nullable=False, server_default="male"),
+    Column("menstrual_tracking", String, nullable=False, server_default="no"),
+    Column("updated_at", String, nullable=False),
+)
+
+# ---------------------------------------------------------------------------
 # Tables present in create_database() but absent from the live titan_core.db
 # table list (sqlite_master check 2026-05-29). Retained in the descriptor
 # because they exist in the DDL; will be reconciled in TD-08 Step 5.
