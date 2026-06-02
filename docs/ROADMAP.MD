@@ -318,8 +318,8 @@ event foundation for any inference regime.
 
 | # | Item | Size | Status | Notes |
 |---|------|------|--------|-------|
-| 1 | **TD-08** | XL | IN PROGRESS | SQLAlchemy Core descriptor in `titan/core/schema.py`; `create_database()` renders from descriptor; `alembic/env.py` `target_metadata` wired; fitness net: `tests/test_schema_equivalence.py` on every commit; Opus post-implementation spot-check before Phase 25 |
-| 2 | **TD-04B** | XL | PENDING TD-08 | EffectBus extraction (ADR-0058 Phase B); 27-file blast radius; ADR-0058 amendment required; gates Phase 28 inference layer |
+| 1 | **TD-08** | XL | ✅ DONE | SCHEMA_VERSION 23; 21-table SQLAlchemy Core descriptor; bidirectional convergence fitness; consent_log reconciled; F3.1–F3.5 closed. Opus-verified 2026-06-02. Tracked residual debt: TD-08-R1 (PG adapter DDL divergence — V7-01), TD-08-R2 (test_db_schema_contracts.py third column authority — V7-02), TD-08-R3 (v8/v13 frozen snapshot annotations — V7-03) |
+| 2 | **TD-04B** | XL | IN PROGRESS | EffectBus extraction (ADR-0058 Phase B); 27-file blast radius; ADR-0058 amendment required; gates Phase 28 inference layer |
 | 3 | **S3** | S | ✅ DONE | Auth observability: TOKEN_DECODE_FAIL, ACCOUNT_LOCKED, BAD_CREDENTIALS, REFRESH_TOKEN_INVALID, REFRESH_TOKEN_REVOKED events; lockout-restart survival test; TTL boundary invariant (F1.2, F5.1–F5.3) |
 | 4 | **S4** | XS | ✅ DONE | `alembic-integrity` + `backup-verify` gates moved to `ubuntu-latest`; CodeQL dual-run conflict resolved (push/PR triggers disabled); all self-hosted gate blockers cleared |
 | 5 | **T5-15 Phase B** | M | DEFERRED | Retroactive pytest markers across 100+ remaining files |
