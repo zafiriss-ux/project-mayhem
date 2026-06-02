@@ -107,6 +107,7 @@ launcher/main.py
 | `titan/orchestration/coaching_scheduler.py` | Scheduling for daily coaching routine |
 | `titan/orchestration/contracts.py` | Typed contracts: `TitanContext`, `TitanContextContract`, `DecisionResult`, `PlannedEffect` |
 | `titan/orchestration/engine_registry.py` | `EngineRegistry` — single construction site for all per-athlete science engines (ADR-0058) |
+| `titan/orchestration/effect_bus.py` | `TitanEffectBus` — registry-based PlannedEffect dispatcher; no if/elif branches (ADR-0058 Phase B) |
 
 ### Layer 5 — Integrations, UI & API
 
