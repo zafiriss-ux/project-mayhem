@@ -384,6 +384,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.outcome_tracker = MagicMock()
         from titan.orchestration.daily_coach import DegradedModeTracker
         coach._degraded_tracker = DegradedModeTracker()
+        coach._effect_bus = coach._build_effect_bus()
         return coach
 
     def test_soreness_defaults_to_5_when_none(self):

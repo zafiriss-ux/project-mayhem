@@ -35,6 +35,8 @@ from titan.core.structured_events import EventSeverity, structured_event_payload
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from titan.orchestration.effect_bus import TitanEffectBus  # noqa: F401
+
 from titan.config.evidence_registry import get_metrics_under_review
 from titan.config.thresholds import (
     CTL_DECAY_DAYS,
@@ -384,6 +386,7 @@ class DailyCoach:
         self._routine_started_monotonic: float | None = None
         self._routine_mutex = threading.Lock()
         self._degraded_tracker = DegradedModeTracker(db=self.db)
+        self._effect_bus = self._build_effect_bus()
         self._startup_hydration_confidence: dict[str, bool] = {
             "hrv": False,
             "weight": False,
@@ -1260,82 +1263,100 @@ class DailyCoach:
 
     # ═══════════════════════════════════════════════════════════════════════
     # EFFECT RUNNER (step 9c + step 12: outcome recording + Telegram delivery)
+    # ADR-0058 Phase B: handler logic extracted into factory methods;
+    # _effect_runner delegates to TitanEffectBus.
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _effect_runner(self, result: DecisionResult) -> bool:
-        """Execute planned side-effects from the decision pipeline.
+    def _make_record_outcome_handler(self):
+        """Build the record_outcome handler bound to this coach's outcome_tracker."""
+        outcome_tracker = self.outcome_tracker
 
-        Order: degraded-mode alert check → outcome recording → Telegram delivery.
-        Returns True if Telegram delivery succeeded.
-        """
-        trace = result.decision_trace
+        def _handle(effect, result):
+            trace = result.decision_trace
+            outcome_tracker.record_decision(
+                session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
+                session_post_governance=str(trace.get("session_post_governance", "EASY")),
+                locks_applied=list(trace.get("locks_applied", [])),
+                governance_clean=bool(trace.get("governance_clean", True)),
+                phase=str(trace.get("phase", "BASE")),
+                vlg_color=str(trace.get("vlg_color", "GREEN")),
+                apl_result=dict(trace.get("apl_result", {})),
+                acwr=_safe_float(trace.get("acwr"), 0.0),
+                tsb_value=float(trace.get("tsb", 0.0)),
+                readiness_score=float(trace.get("readiness_score", 50.0)),
+                glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
+                afi_value=float(trace.get("afi_value", 0.0)),
+            )
 
-        # ── Degraded mode duration tracking (T2-13 + ADR-0050) ───────────────
-        self._degraded_tracker.update(
-            flags={
-                "persistence_degraded": bool(trace.get("persistence_degraded", False)),
-                "data_confidence_low": bool(trace.get("data_confidence_low", False)),
-                "garmin_data_stale": bool(trace.get("garmin_data_stale", False)),
-                # ADR-0050: Garmin API degraded when consecutive failure threshold crossed.
-                "garmin_api_degraded": bool(getattr(self.garmin, "is_api_degraded", False)),
+        return _handle
+
+    def _make_send_telegram_handler(self):
+        """Build the send_telegram handler bound to this coach's telegram instance."""
+        telegram = self.telegram
+
+        def _handle(effect, result):
+            _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
+            try:
+                delivery_ok = telegram.send_daily_coaching(result.coaching_payload)
+            except Exception as exc:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=12,
+                    step_name="send_telegram",
+                    outcome="FAILED",
+                    failure_class=DELIVERY_ERROR,
+                    error_class=type(exc).__name__,
+                    error_message=str(exc),
+                )
+                raise
+            if not delivery_ok:
+                _daily_coach_event(
+                    "step_event",
+                    step_number=12,
+                    step_name="send_telegram",
+                    outcome="FAILED",
+                    failure_class=DELIVERY_ERROR,
+                    error_class="DELIVERY_ERROR",
+                    error_message="Telegram delivery returned falsey result",
+                )
+                return False
+            _daily_coach_event(
+                "step_event",
+                step_number=12,
+                step_name="send_telegram",
+                outcome="SUCCESS",
+                failure_class=None,
+            )
+            return True
+
+        return _handle
+
+    def _build_effect_bus(self) -> "TitanEffectBus":
+        """Construct TitanEffectBus wired to this coach's subsystems (ADR-0058 Phase B)."""
+        from titan.orchestration.contracts import (
+            EFFECT_RECORD_OUTCOME,
+            EFFECT_SEND_TELEGRAM,
+        )
+        from titan.orchestration.effect_bus import TitanEffectBus
+
+        return TitanEffectBus(
+            handlers={
+                EFFECT_RECORD_OUTCOME: self._make_record_outcome_handler(),
+                EFFECT_SEND_TELEGRAM: self._make_send_telegram_handler(),
             },
-            alert_fn=lambda msg: self.telegram.send_alert(msg),
+            before_dispatch=TitanEffectBus.make_degraded_hook(
+                tracker=self._degraded_tracker,
+                garmin=self.garmin,
+                telegram=self.telegram,
+            ),
         )
 
-        # ── Dispatch planned effects in order ─────────────────────────────────
-        success = True
-        for effect in result.planned_effects:
-            if effect.effect_type == "record_outcome":
-                self.outcome_tracker.record_decision(
-                    session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
-                    session_post_governance=str(trace.get("session_post_governance", "EASY")),
-                    locks_applied=list(trace.get("locks_applied", [])),
-                    governance_clean=bool(trace.get("governance_clean", True)),
-                    phase=str(trace.get("phase", "BASE")),
-                    vlg_color=str(trace.get("vlg_color", "GREEN")),
-                    apl_result=dict(trace.get("apl_result", {})),
-                    acwr=_safe_float(trace.get("acwr"), 0.0),
-                    tsb_value=float(trace.get("tsb", 0.0)),
-                    readiness_score=float(trace.get("readiness_score", 50.0)),
-                    glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
-                    afi_value=float(trace.get("afi_value", 0.0)),
-                )
-
-            elif effect.effect_type == "send_telegram":
-                _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
-                try:
-                    delivery_ok = self.telegram.send_daily_coaching(result.coaching_payload)
-                except Exception as exc:
-                    _daily_coach_event(
-                        "step_event",
-                        step_number=12,
-                        step_name="send_telegram",
-                        outcome="FAILED",
-                        failure_class=DELIVERY_ERROR,
-                        error_class=type(exc).__name__,
-                        error_message=str(exc),
-                    )
-                    raise
-                if not delivery_ok:
-                    _daily_coach_event(
-                        "step_event",
-                        step_number=12,
-                        step_name="send_telegram",
-                        outcome="FAILED",
-                        failure_class=DELIVERY_ERROR,
-                        error_class="DELIVERY_ERROR",
-                        error_message="Telegram delivery returned falsey result",
-                    )
-                    success = False
-                else:
-                    _daily_coach_event(
-                        "step_event",
-                        step_number=12,
-                        step_name="send_telegram",
-                        outcome="SUCCESS",
-                        failure_class=None,
-                    )
-
+    def _effect_runner(self, result: DecisionResult) -> bool:
+        """ADR-0058 Phase B delegation shim — all dispatch via TitanEffectBus."""
+        if not hasattr(self, "_effect_bus"):
+            # Lazy-init for test factories that use DailyCoach.__new__ directly.
+            self._effect_bus = self._build_effect_bus()
+        success = self._effect_bus.dispatch(result)
         if not success:
             _daily_coach_event(
                 "slo_alert",
