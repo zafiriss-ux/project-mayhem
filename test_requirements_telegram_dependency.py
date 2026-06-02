@@ -9,7 +9,7 @@ RUNTIME_DEPENDENCIES = {
     # psycopg2-binary removed from active requirements (TD-DEP-01) — see requirements.txt
     "fastapi==0.136.1",
     "uvicorn==0.34.3",
-    "pyjwt[crypto]==2.12.1",
+    "pyjwt[crypto]==2.13.0",
     "bcrypt==5.0.0",
     "cryptography==48.0.0",
     "import-linter==2.11",

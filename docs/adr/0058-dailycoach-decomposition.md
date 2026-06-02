@@ -69,13 +69,166 @@ Benefits immediately:
 * Tests can construct minimal registries with only the engines they need
 * Future: per-athlete registry instantiated per-call (Phase 9 multi-athlete)
 
-### Phase B — Effect Isolation (future, Phase 20)
+### Phase B — Effect Isolation (Phase 24, this amendment)
 
-Split `_effect_runner()` into a separate `TitanEffectBus` class that receives
-a `DailyCoachingPayload` and dispatches to registered handlers (Telegram,
-persistence, metrics). Handlers are registered at startup, not hardcoded.
+Extract `_effect_runner()` from `DailyCoach` into a standalone
+`TitanEffectBus` class in `titan/orchestration/effect_bus.py`.
+The bus receives a `DecisionResult` and dispatches each `PlannedEffect`
+to a registered handler. Handlers are registered at construction time,
+not hardcoded in the dispatch loop.
 
-Not implemented in this ADR. Stub only.
+#### Motivation
+
+`_effect_runner()` currently:
+
+1. Runs a degraded-mode lifecycle check unconditionally (not a PlannedEffect).
+2. Iterates `result.planned_effects` and branches on `effect_type` strings.
+3. Is coupled to `DailyCoach` instance state (`self.outcome_tracker`,
+   `self.telegram`, `self.garmin`, `self._degraded_tracker`).
+
+This coupling prevents independent testing of effect dispatch, makes adding
+new effects (Slack, email, webhooks) require modifying DailyCoach, and
+blocks the Phase 28 inference layer from injecting synthetic effects.
+
+#### TitanEffectBus Interface
+
+```python
+# titan/orchestration/effect_bus.py
+from __future__ import annotations
+from typing import Callable, TYPE_CHECKING
+if TYPE_CHECKING:
+    from titan.orchestration.contracts import DecisionResult, PlannedEffect
+
+EffectHandler = Callable[["PlannedEffect", "DecisionResult"], None]
+
+class TitanEffectBus:
+    """Dispatches PlannedEffects to registered handlers (ADR-0058 Phase B).
+
+    Handlers are registered at construction time by the composition root
+    (titan/main.py or titan/worker/__init__.py). The bus is stateless with
+    respect to the decision — it holds no coaching state itself.
+
+    Lifecycle hook:
+      before_dispatch(result) is called once before the effect loop.
+      Used for degraded-mode tracker update (T2-13 / ADR-0050).
+      Defaults to no-op; injected by composition root.
+    """
+    def __init__(
+        self,
+        handlers: dict[str, EffectHandler],
+        before_dispatch: Callable[["DecisionResult"], None] | None = None,
+    ) -> None: ...
+
+    def dispatch(self, result: "DecisionResult") -> bool:
+        """Execute all planned effects in order. Returns True if all succeed."""
+        ...
+
+    def register(self, effect_type: str, handler: EffectHandler) -> None:
+        """Register or replace a handler for the given effect_type."""
+        ...
+```
+
+#### Canonical effect_type Values
+
+The following are the exhaustive discriminant values for `PlannedEffect.effect_type`.
+They are defined as module-level string constants in `contracts.py`:
+
+```python
+EFFECT_RECORD_OUTCOME = "record_outcome"
+EFFECT_SEND_TELEGRAM  = "send_telegram"
+```
+
+Any new effect type MUST be added here and to this ADR before use.
+
+#### Degraded-Mode Lifecycle Hook
+
+The degraded-mode tracker update currently runs unconditionally at the top of
+`_effect_runner()` before the effect loop. In Phase B it becomes the
+`before_dispatch` hook injected at construction:
+
+```python
+def _make_degraded_hook(tracker, garmin, telegram):
+    def hook(result: DecisionResult) -> None:
+        trace = result.decision_trace
+        tracker.update(
+            flags={
+                "persistence_degraded": bool(trace.get("persistence_degraded")),
+                "data_confidence_low": bool(trace.get("data_confidence_low")),
+                "garmin_data_stale": bool(trace.get("garmin_data_stale")),
+                "garmin_api_degraded": bool(getattr(garmin, "is_api_degraded", False)),
+            },
+            alert_fn=lambda msg: telegram.send_alert(msg),
+        )
+    return hook
+```
+
+#### DailyCoach._effect_runner After Phase B
+
+`DailyCoach._effect_runner` becomes a one-line delegation shim:
+
+```python
+def _effect_runner(self, result: DecisionResult) -> bool:
+    return self._effect_bus.dispatch(result)
+```
+
+`self._effect_bus: TitanEffectBus` is constructed in `DailyCoach.__init__`
+and wired with the two canonical handlers and the degraded-mode hook.
+The shim is retained for backward compatibility with the `CoachCallables`
+protocol; it will be removed when Phase C extracts the protocol.
+
+#### Implementation Scope (Phase B only — 6 files)
+
+| File | Change |
+|------|--------|
+| `titan/orchestration/effect_bus.py` | NEW — TitanEffectBus class |
+| `titan/orchestration/contracts.py` | Add EFFECT_RECORD_OUTCOME, EFFECT_SEND_TELEGRAM constants |
+| `titan/orchestration/daily_coach.py` | Wire self._effect_bus; _effect_runner becomes delegation shim |
+| `titan/orchestration/coaching_pipeline.py` | No change required (CoachCallables protocol unchanged) |
+| `tests/test_adr0058_fitness.py` | Phase B fitness gate (see below) |
+| `docs/adr/0058-dailycoach-decomposition.md` | This amendment |
+
+Explicitly OUT OF SCOPE for Phase B:
+- Daemon lifecycle extraction (Phase C)
+- CoachingScheduler activation (Phase 26)
+- Per-athlete EffectBus isolation (Phase 9)
+- Handler persistence / replay (Phase 28)
+
+#### Phase B Fitness Functions
+
+```python
+# tests/test_adr0058_fitness.py (additions)
+
+def test_effect_bus_module_exists():
+    """titan/orchestration/effect_bus.py must exist and be importable."""
+
+def test_effect_runner_is_delegation_shim():
+    """DailyCoach._effect_runner must delegate to self._effect_bus.dispatch()
+    and contain no direct outcome_tracker or telegram calls."""
+
+def test_effect_bus_handlers_are_registered_not_hardcoded():
+    """TitanEffectBus.dispatch must not contain if/elif effect_type branches —
+    all dispatch must go through the handler registry."""
+
+def test_effect_type_constants_defined_in_contracts():
+    """EFFECT_RECORD_OUTCOME and EFFECT_SEND_TELEGRAM must be importable
+    from titan.orchestration.contracts."""
+```
+
+#### Consequences
+
+**Positive:**
+- New effects (Slack, webhook, metrics flush) require zero changes to DailyCoach.
+- TitanEffectBus is independently testable with mock handlers.
+- Phase 28 inference layer can inject synthetic effects without touching DailyCoach.
+- `_effect_runner` shrinks to 1 line; DailyCoach LOC reduced ~65 lines.
+
+**Negative:**
+- One new module (effect_bus.py) — module budget: update MODULE_COUNT_CEILING.
+- Construction root (worker/__init__.py, main.py) must wire the bus.
+
+**Invariant preserved:**
+- `CoachCallables` protocol (`_decision_pipeline`, `_effect_runner`) is
+  unchanged — no blast radius to coaching_pipeline.py callers.
 
 ### Phase C — Daemon Extraction (future, Phase 20+)
 
