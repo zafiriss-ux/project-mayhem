@@ -28,7 +28,7 @@ from titan.core.structured_events import EventSeverity, structured_event_payload
 # canonical descriptor (titan/core/schema.py). Migration-managed tables
 # (auth_users, auth_tokens, model_calibration_metadata, consent_log,
 # degraded_mode_state, login_lockout, alembic_version) are excluded — they
-# are created by the migration ladder or Alembic, not by create_database().
+# are created by the migration ladder (v10–v23) or Alembic, not by create_database().
 _BASE_TABLE_NAMES: tuple[str, ...] = (
     "daily_metrics",
     "training_log",
@@ -134,7 +134,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 
 class DatabaseManager:
@@ -415,6 +415,11 @@ class DatabaseManager:
                 "SQLite-backed auth lockout table (TD-SEC-02)",
                 None,  # DDL — see _apply_v22_migrations() below
             ),
+            23: (
+                "consent_log",
+                "GDPR consent audit table — SQLite reconciliation of Alembic d9 (TD-08 Step 5 / F3.4)",
+                None,  # DDL — see _apply_v23_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -677,6 +682,18 @@ class DatabaseManager:
                     "action": "db_schema_migration",
                     "version": 22,
                     "table_added": "login_lockout",
+                    "timestamp": datetime.now(UTC).isoformat() + "Z",
+                })
+            )
+
+        if current_version < 23:
+            self._apply_v23_migrations(cursor)
+            _log.info(
+                json.dumps({
+                    "flow": "database",
+                    "action": "db_schema_migration",
+                    "version": 23,
+                    "table_added": "consent_log",
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
@@ -1199,6 +1216,18 @@ class DatabaseManager:
                 failed_count    INTEGER NOT NULL DEFAULT 0,
                 locked_until_ts REAL,
                 last_attempt_ts REAL
+            )
+        """)
+
+    def _apply_v23_migrations(self, cursor) -> None:
+        """Version 23: consent_log table — SQLite reconciliation of Alembic d9 (TD-08 Step 5 / F3.4)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS consent_log (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id   TEXT NOT NULL DEFAULT 'default',
+                consent_type TEXT NOT NULL,
+                granted_at   TEXT NOT NULL,
+                revoked_at   TEXT
             )
         """)
 
