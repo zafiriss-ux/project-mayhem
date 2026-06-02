@@ -38,7 +38,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 21 | Governance Consolidation | CLOSED 2026-05-24 | TECHNICAL_DEBT.md archived <1500 LOC; SCRATCHPAD.md archived; TD-08/TD-NEW-18/TD-04B/T5-15 DEFERRED Phase 22 |
 | Phase 22 | Schema Extract & Observability | CLOSED 2026-05-25 | FMEA G12 SATISFIED; TD-NEW-18 ✅; TD-BACKUP-VERIFY ✅; TD-08/TD-04B/T5-15B/P15-ARCH5 DEFERRED Phase 23 |
 | Phase 23 | Schema & EffectBus Phase B | CLOSED 2026-05-29 | ADR-0058 construction-site violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24 |
-| Phase 24 | Schema & EffectBus Phase C | OPEN 2026-05-29 | TD-08 ✅ RESOLVED 2026-06-02 (SCHEMA_VERSION 23, SQLAlchemy Core descriptor, convergence fitness net, consent_log reconciled); TD-04B EffectBus IN PROGRESS; T5-15B/P15-ARCH5 DEFERRED |
+| Phase 24 | Schema & EffectBus Phase C | OPEN 2026-05-29 | TD-08 ✅ RESOLVED 2026-06-02 (Opus-verified: SCHEMA_VERSION 23, 21-table descriptor, bidirectional convergence fitness, consent_log reconciled, F3.1–F3.5 closed); TD-04B EffectBus IN PROGRESS; T5-15B/P15-ARCH5 DEFERRED |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
