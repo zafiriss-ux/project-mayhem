@@ -31,9 +31,7 @@ GOVERNANCE: Any schema change MUST:
   5. Reference the governing ADR or TD item in a comment here.
 
 KNOWN GAPS (tracked, not yet resolved):
-  consent_log — Alembic-only table (F3.4); will be added to SQLite ladder
-  in TD-08 Step 5 (consent_log reconciliation). Included here so the
-  descriptor is complete.
+  None — consent_log reconciled into the SQLite ladder (v23 migration, TD-08 Step 5 / F3.4, 2026-06-02).
 
 References: TD-08, ADR-0044, F3.1–F3.5 (Opus pre-Phase-24 audit 2026-05-29).
 """

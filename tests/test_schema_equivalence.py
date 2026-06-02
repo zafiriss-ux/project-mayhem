@@ -28,9 +28,7 @@ HOW TO UPDATE THIS FIXTURE
         "
 
 KNOWN GAPS (recorded, not enforced here)
-    consent_log — present in live DB after Alembic repair but absent from
-    the SQLite ladder (F3.4, Opus pre-Phase-24 audit 2026-05-29).
-    Tracked in TD-08 scope.
+    None — consent_log added to SQLite ladder in v23 (TD-08 Step 5 / F3.4, 2026-06-02).
 
 Reference: F3.1 (Opus pre-Phase-24 audit 2026-05-29).
 TD-08 prerequisite · ADR-0044 · Phase-24 blocker B1.
@@ -46,14 +44,11 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 22, 2026-05-29
+# Authoritative column snapshot — SCHEMA_VERSION 23, 2026-06-02
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
 #   ALTER TABLE ladder additions appear after, in migration order.
-#
-# Tables known to be in the live DB but absent from the SQLite ladder:
-#   consent_log (Alembic-only — see module docstring)
 # ---------------------------------------------------------------------------
 AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
     "athlete_threshold_offsets": [
@@ -105,6 +100,13 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "resource",
         "action_detail",
         "performed_at",
+    ],
+    "consent_log": [
+        "id",
+        "athlete_id",
+        "consent_type",
+        "granted_at",
+        "revoked_at",
     ],
     "cs_performances": [
         "id",
@@ -256,15 +258,15 @@ EXPECTED_TABLES: frozenset[str] = frozenset(AUTHORITATIVE_COLUMNS)
 
 # Tables present in the live DB but not in the SQLite ladder.
 # Listed for traceability; not asserted as missing in fresh-DB tests.
+# consent_log was reconciled into the SQLite ladder in v23 (TD-08 Step 5).
 
-ALEMBIC_ONLY_TABLES: frozenset[str] = frozenset({"consent_log"})
+ALEMBIC_ONLY_TABLES: frozenset[str] = frozenset()
 
 # Tables in the descriptor that are never created by create_database() or the
 # SQLite ladder — Alembic-managed or migration-only tables excluded from the
 # convergence check.  The convergence test only checks tables that both the
 # descriptor and the fresh DB are expected to contain.
 _DESCRIPTOR_ONLY_TABLES: frozenset[str] = frozenset({
-    "consent_log",        # F3.4 — Alembic-only; TD-08 Step 5 adds to ladder
     "alembic_version",    # Written by Alembic, not create_database()
 })
 
