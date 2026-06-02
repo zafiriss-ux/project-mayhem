@@ -338,6 +338,39 @@ def test_descriptor_tables_present_in_fresh_db(
     )
 
 
+def test_fresh_db_tables_all_declared_in_descriptor(
+    fresh_db_schema: dict[str, list[str]],
+) -> None:
+    """TD-08 Step 4 / V4 reverse-direction: every table in a fresh DB must
+    be declared in the canonical schema descriptor (titan/core/schema.py).
+
+    Failure means a table was added to create_database() or the migration
+    ladder WITHOUT updating the descriptor — exactly the defect class
+    Opus V4 identified as silently passing CI before this test existed.
+
+    Tables excluded from the check:
+      ALEMBIC_ONLY_TABLES — Alembic-managed tables not created by the ladder.
+      alembic_version     — Written by Alembic, not create_database(); always
+                            excluded regardless of ALEMBIC_ONLY_TABLES content.
+    """
+    from titan.core.schema import table_names
+
+    descriptor_tables = table_names()
+    actual_tables = frozenset(fresh_db_schema)
+
+    # Tables that are legitimately in the fresh DB but not in the descriptor.
+    excluded = ALEMBIC_ONLY_TABLES | {"alembic_version"}
+    undeclared = actual_tables - descriptor_tables - excluded
+
+    assert not undeclared, (
+        "Tables present in fresh DatabaseManager but absent from "
+        "titan/core/schema.py (descriptor must be the single source of truth). "
+        f"Undeclared tables: {sorted(undeclared)}\n"
+        "Add Table() definitions to titan/core/schema.py and update "
+        "AUTHORITATIVE_COLUMNS in this file."
+    )
+
+
 def test_descriptor_columns_match_fresh_db(
     fresh_db_schema: dict[str, list[str]],
 ) -> None:
