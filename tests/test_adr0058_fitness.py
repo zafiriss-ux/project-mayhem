@@ -91,10 +91,9 @@ def test_effect_runner_is_delegation_shim() -> None:
 
     effect_runner_body: list[ast.stmt] = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.name == "_effect_runner":
-                effect_runner_body = node.body
-                break
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "_effect_runner":
+            effect_runner_body = node.body
+            break
 
     assert effect_runner_body, "_effect_runner method not found in DailyCoach"
 
@@ -133,10 +132,9 @@ def test_effect_bus_handlers_are_registered_not_hardcoded() -> None:
 
     dispatch_body: list[ast.stmt] = []
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if node.name == "dispatch":
-                dispatch_body = node.body
-                break
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "dispatch":
+            dispatch_body = node.body
+            break
 
     assert dispatch_body, "dispatch() method not found in TitanEffectBus"
 
