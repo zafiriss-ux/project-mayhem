@@ -53,6 +53,106 @@ class _DummyDB:
         return False
 
 
+# ---------------------------------------------------------------------------
+# ADR-0058 Phase B fitness gates (TD-04B / Phase 24)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_effect_bus_module_exists() -> None:
+    """Phase B: titan/orchestration/effect_bus.py must exist and be importable."""
+    from titan.orchestration.effect_bus import (  # noqa: F401
+        EffectDispatchError,
+        EffectHandler,
+        TitanEffectBus,
+    )
+
+
+@pytest.mark.unit
+def test_effect_type_constants_defined_in_contracts() -> None:
+    """Phase B: EFFECT_RECORD_OUTCOME and EFFECT_SEND_TELEGRAM must be importable from titan.orchestration.contracts."""
+    from titan.orchestration.contracts import (
+        EFFECT_RECORD_OUTCOME,
+        EFFECT_SEND_TELEGRAM,
+    )
+
+    assert EFFECT_RECORD_OUTCOME == "record_outcome"
+    assert EFFECT_SEND_TELEGRAM == "send_telegram"
+
+
+@pytest.mark.unit
+def test_effect_runner_is_delegation_shim() -> None:
+    """Phase B: DailyCoach._effect_runner must delegate to self._effect_bus.dispatch() and contain no direct outcome_tracker or telegram calls."""
+    import ast
+    import pathlib
+
+    source = pathlib.Path("titan/orchestration/daily_coach.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    effect_runner_body: list[ast.stmt] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "_effect_runner":
+            effect_runner_body = node.body
+            break
+
+    assert effect_runner_body, "_effect_runner method not found in DailyCoach"
+
+    body_source_lines: list[str] = []
+    for stmt in effect_runner_body:
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
+            continue  # skip docstring
+        body_source_lines.append(ast.unparse(stmt))
+
+    body_joined = "\n".join(body_source_lines)
+
+    assert "_effect_bus.dispatch" in body_joined, (
+        "_effect_runner must delegate to self._effect_bus.dispatch(result). "
+        f"Actual body: {body_joined!r}"
+    )
+
+    assert "outcome_tracker.record_decision" not in body_joined, (
+        "_effect_runner must not call outcome_tracker.record_decision directly — "
+        "that logic must live in the registered handler."
+    )
+
+    assert "telegram.send_daily_coaching" not in body_joined, (
+        "_effect_runner must not call telegram.send_daily_coaching directly — "
+        "that logic must live in the registered handler."
+    )
+
+
+@pytest.mark.unit
+def test_effect_bus_handlers_are_registered_not_hardcoded() -> None:
+    """Phase B: TitanEffectBus.dispatch must not contain if/elif effect_type branches — all dispatch must go through the handler registry."""
+    import ast
+    import pathlib
+
+    source = pathlib.Path("titan/orchestration/effect_bus.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+
+    dispatch_body: list[ast.stmt] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "dispatch":
+            dispatch_body = node.body
+            break
+
+    assert dispatch_body, "dispatch() method not found in TitanEffectBus"
+
+    for node in ast.walk(ast.Module(body=dispatch_body, type_ignores=[])):
+        if isinstance(node, ast.If):
+            test_src = ast.unparse(node.test)
+            assert "effect_type" not in test_src, (
+                "TitanEffectBus.dispatch() must not branch on effect_type directly. "
+                f"Found conditional: {test_src!r}. "
+                "All dispatch must go through self._handlers registry."
+            )
+
+
+# ---------------------------------------------------------------------------
+# ADR-0058 Phase A fitness gates (existing)
+# ---------------------------------------------------------------------------
+
+
 @pytest.mark.unit
 def test_engine_registry_is_frozen():
     """EngineRegistry must be frozen — field reassignment raises."""
