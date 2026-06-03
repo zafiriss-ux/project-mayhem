@@ -879,6 +879,15 @@ class DatabaseManager:
         # All rows have garmin_activity_id and at least one row exists.
         # Recreate table with NOT NULL + athlete_id column.
         # SQLite does not support ALTER COLUMN — use the standard rename approach.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # FROZEN HISTORICAL SNAPSHOT — DO NOT MODIFY OR SYNC TO DESCRIPTOR
+        # This column list is intentionally frozen at the v8-era schema state.
+        # It must NOT include columns added in later migrations (e.g.
+        # avg_pace_sec_per_km added in v19, quality_flag in v3).
+        # Adding post-v8 columns here would insert NULL values for rows that
+        # existed before those columns were added — silent data corruption.
+        # Ref: TD-08-R3 (Opus pre-Phase-25 audit 2026-06-03), V7-03.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         cursor.execute("""
             CREATE TABLE training_log_v8_new (
                 id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1059,6 +1068,12 @@ class DatabaseManager:
             return  # already dropped or never added
 
         # Recreate without calibrated_for (safe for all SQLite versions).
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # FROZEN HISTORICAL SNAPSHOT — DO NOT MODIFY OR SYNC TO DESCRIPTOR
+        # This column list is intentionally frozen at the v13-era schema state.
+        # It must NOT include columns added in later migrations.
+        # Ref: TD-08-R3 (Opus pre-Phase-25 audit 2026-06-03), V7-03.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         cursor.execute("""
             CREATE TABLE model_calibration_metadata_v13 (
                 model_name      TEXT NOT NULL,
