@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–23 CLOSED; Phases 9, 10, 24 OPEN — see below)
+## Phase History (Phases 0–8, 11–24 CLOSED; Phases 9, 10, 25 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -38,7 +38,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 21 | Governance Consolidation | CLOSED 2026-05-24 | TECHNICAL_DEBT.md archived <1500 LOC; SCRATCHPAD.md archived; TD-08/TD-NEW-18/TD-04B/T5-15 DEFERRED Phase 22 |
 | Phase 22 | Schema Extract & Observability | CLOSED 2026-05-25 | FMEA G12 SATISFIED; TD-NEW-18 ✅; TD-BACKUP-VERIFY ✅; TD-08/TD-04B/T5-15B/P15-ARCH5 DEFERRED Phase 23 |
 | Phase 23 | Schema & EffectBus Phase B | CLOSED 2026-05-29 | ADR-0058 construction-site violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24 |
-| Phase 24 | Schema & EffectBus Phase C | OPEN 2026-05-29 | TD-08 ✅ RESOLVED 2026-06-02 (Opus-verified); TD-04B ✅ RESOLVED 2026-06-02 (TitanEffectBus live, delegation shim, 4 CI fitness gates, ADR-0058 Phase B complete); T5-15B/P15-ARCH5 DEFERRED |
+| Phase 24 | Schema & EffectBus Phase C | CLOSED 2026-06-03 | TD-08 ✅ RESOLVED (Opus-verified); TD-04B ✅ RESOLVED (TitanEffectBus live, delegation shim, 4 CI fitness gates, ADR-0058 Phase B complete); T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 25 |
+| Phase 25 | Schema Descriptor & EffectBus Impl | OPEN 2026-06-03 | T5-15B, P15-ARCH5, TD-CI-SELFHOSTED; B2c fallback removal; schema descriptor final convergence |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -295,7 +296,7 @@ Entry gate: Phase 22 close audit PASS (2026-05-25). Scope (priority order):
 
 ---
 
-## Phase 24 — Schema & EffectBus Phase C (OPEN, 2026-05-29)
+## Phase 24 — Schema & EffectBus Phase C (CLOSED, 2026-06-03)
 
 Entry gate: Phase 23 close audit PASS (2026-05-29).
 
@@ -326,12 +327,13 @@ event foundation for any inference regime.
 | 6 | **P15-ARCH5** | M | DEFERRED | pydantic-settings migration |
 | 7 | **TD-CI-SELFHOSTED** | S | ✅ DONE | Both self-hosted gates moved to ubuntu-latest; CodeQL separated from default setup |
 
+**CLOSED 2026-06-03**: phase_close_audit.sh 24 exit 0; 3021 tests passing, 7 skipped; FMEA G12 SATISFIED; TD-08 RESOLVED (schema.py canonical, SCHEMA_VERSION 23, Opus-verified); TD-04B RESOLVED (TitanEffectBus live, delegation shim, 4 CI fitness gates, ADR-0058 Phase B complete); S3 auth telemetry ✅; S4 CI gate consolidation ✅; TD-CI-SELFHOSTED ✅; T5-15B/P15-ARCH5 DEFERRED Phase 25.
+
 ---
 
-## Phase 25 — Schema Descriptor & EffectBus Implementation (PLANNED)
+## Phase 25 — Schema Descriptor & EffectBus Implementation (OPEN, 2026-06-03)
 
-**Entry gate:** Phase 24 close audit PASS; B2c RESOLVED; TD-08 and TD-04B scoped and
-Opus-reviewed.
+**Entry gate:** Phase 24 close audit PASS ✅ (2026-06-03).
 
 **Goal:** Execute the two XL items deferred since Phase 18. TD-08 produces the single
 schema authority that eliminates the five-authority divergence (F3.1–F3.5). TD-04B
@@ -507,4 +509,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-05-29 (Phase 24 OPEN 2026-05-29; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-06-03 (Phase 25 OPEN 2026-06-03; Phase 24 CLOSED 2026-06-03; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)

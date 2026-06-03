@@ -50,7 +50,7 @@ Main package (67 modules, excl. __init__/__main__), ceiling 74.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 24 OPEN (ACTIVE, 2026-05-29) |
+| `docs/ROADMAP.MD` | Phase 25 OPEN (ACTIVE, 2026-06-03) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -160,13 +160,17 @@ P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23.
 phase_close_audit.sh 23 exit 0; 2974 tests passing; 7 skipped; ADR-0058 construction-site
 violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24.
 
-## Phase 24 OPEN (ACTIVE, 2026-05-29)
+## Phase 24 CLOSED (2026-06-03)
 
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — requires Opus pre-audit
-2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment
-3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
-4. P15-ARCH5: pydantic-settings migration
-5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs
+phase_close_audit.sh 24 exit 0; 3021 tests passing; 7 skipped; FMEA G12 SATISFIED;
+TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B);
+TD-CI-SELFHOSTED RESOLVED; T5-15B/P15-ARCH5 DEFERRED Phase 25.
+
+## Phase 25 OPEN (ACTIVE, 2026-06-03)
+
+1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
+2. P15-ARCH5: pydantic-settings migration
+3. B2c fallback removal (DailyCoach test-compat path)
 
 ## Pitfalls
 

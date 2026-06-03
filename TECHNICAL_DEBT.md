@@ -32,7 +32,8 @@ Phase 20 CLOSED — phase_close_audit.sh 20 exit 0; 2955 tests passing; FMEA G12
 Phase 21 CLOSED — phase_close_audit.sh 21 exit 0; 2959 tests passing; governance consolidation complete; TECHNICAL_DEBT.md archived to <1500 LOC; SCRATCHPAD.md archived; TD-08 DEFERRED Phase 22; TD-NEW-18 DEFERRED Phase 22; TD-04B DEFERRED Phase 22; T5-15 DEFERRED Phase 22 (2026-05-24).
 Phase 22 CLOSED — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 23; TD-04B DEFERRED Phase 23; T5-15 Phase B DEFERRED Phase 23; P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23 (2026-05-25).
 Phase 23 CLOSED — phase_close_audit.sh 23 exit 0; 2974 tests passing; ADR-0058 construction-site violation caught and fixed; TD-08 DEFERRED Phase 24; TD-04B DEFERRED Phase 24; T5-15 Phase B DEFERRED Phase 24; P15-ARCH5 DEFERRED Phase 24; TD-CI-SELFHOSTED DEFERRED Phase 24 (2026-05-29).
-Phase 24 OPEN — Schema extract (TD-08), EffectBus Phase B (TD-04B), retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), alembic runner topology (TD-CI-SELFHOSTED) 2026-05-29.
+Phase 24 CLOSED — phase_close_audit.sh 24 exit 0; 3021 tests passing; FMEA G12 SATISFIED; TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B complete); TD-CI-SELFHOSTED RESOLVED; T5-15B DEFERRED Phase 25; P15-ARCH5 DEFERRED Phase 25 (2026-06-03).
+Phase 25 OPEN — Retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), B2c fallback removal, schema descriptor final convergence 2026-06-03.
 
 ---
 
@@ -1558,21 +1559,33 @@ Entry gate: Phase 22 close audit PASS (2026-05-25). Scope: schema extraction, Ef
 
 ---
 
-## Phase 24 Scope (OPEN, 2026-05-29)
+## Phase 24 Scope (CLOSED, 2026-06-03)
 
 Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, EffectBus Phase B, retroactive pytest markers, pydantic-settings, alembic runner topology.
 
-1. TD-08: Schema single source of truth — extract CREATE TABLE into titan/core/schema.py (XL) — requires dedicated Opus pre-audit of migration path
-2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — 27-file blast radius, needs ADR amendment
-3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
-4. P15-ARCH5: pydantic-settings migration
-5. TD-CI-SELFHOSTED: Alembic runner topology — pending runner inventory docs; `continue-on-error: true` advisory until resolved
+1. TD-08: Schema single source of truth — ✅ RESOLVED 2026-06-02 (Opus-verified; schema.py canonical, SCHEMA_VERSION 23)
+2. TD-04B: EffectBus extraction (ADR-0058 Phase B) — ✅ RESOLVED 2026-06-02 (TitanEffectBus live, delegation shim, 4 CI fitness gates)
+3. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical) — DEFERRED Phase 25
+4. P15-ARCH5: pydantic-settings migration — DEFERRED Phase 25
+5. TD-CI-SELFHOSTED: Alembic runner topology — ✅ RESOLVED (both gates moved to ubuntu-latest)
+
+**CLOSED 2026-06-03**: phase_close_audit.sh 24 exit 0; 3021 tests passing, 7 skipped; FMEA G12 SATISFIED; all governance invariants satisfied.
 
 ---
 
-## FMEA: Phase 24 — Schema & EffectBus Phase C
+## Phase 25 Scope (OPEN, 2026-06-03)
 
-**Architect:** Claude | **Date:** 2026-06-02 | **Status:** G12 SATISFIED
+Entry gate: Phase 24 close audit PASS (2026-06-03). Scope: retroactive pytest markers, pydantic-settings migration, B2c fallback removal.
+
+1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
+2. P15-ARCH5: pydantic-settings migration
+3. B2c fallback: Remove DailyCoach test-compat fallback path (Phase 24 deferred)
+
+---
+
+## FMEA: Phase 24 — Schema & EffectBus Phase C (CLOSED)
+
+**Architect:** Claude | **Date:** 2026-06-02 | **Closed:** 2026-06-03 | **Status:** G12 SATISFIED
 
 | ID | Component | Failure Mode | Sev | Mit |
 |---|---|---|---|---|
