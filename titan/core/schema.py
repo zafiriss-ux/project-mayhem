@@ -7,10 +7,16 @@ ladder CREATE TABLE statements, PostgreSQL adapter, Alembic env.py
 target_metadata) must eventually derive from or validate against this
 descriptor.
 
-CURRENT STATE (Phase 24 / TD-08 Step 3 of 5):
-  Descriptor authored. create_database() still uses its own DDL strings
-  (Step 2 will render from this MetaData). alembic/env.py target_metadata
-  now wired to this MetaData (Step 3 done).
+CURRENT STATE (Phase 24 / TD-08 — all 5 steps complete, 2026-06-02):
+  Step 1 ✅  Descriptor authored (this file).
+  Step 2 ✅  create_database() renders all base-table DDL from this MetaData
+             via _render_table_ddl() / _BASE_TABLE_NAMES.
+  Step 3 ✅  alembic/env.py imports target_metadata from this module;
+             autogenerate drift detection is now functional.
+  Step 4 ✅  Bidirectional convergence fitness net active
+             (tests/test_schema_equivalence.py — both directions).
+  Step 5 ✅  consent_log added to SQLite ladder (v23 migration) and
+             ALEMBIC_ONLY_TABLES cleared.
 
 USAGE:
     from titan.core.schema import metadata, get_table
@@ -297,8 +303,7 @@ t_model_calibration_metadata = Table(
 
 # ---------------------------------------------------------------------------
 # Table 12 — consent_log
-# Covers: Alembic d9 migration ONLY (F3.4 — absent from SQLite ladder).
-# TD-08 Step 5 will add this to the SQLite migration ladder.
+# Covers: SQLite ladder (v23 migration, TD-08 Step 5 / F3.4, 2026-06-02) and Alembic d9.
 # Ref: ADR-0044 Phase 8A (GDPR), F3.4
 # ---------------------------------------------------------------------------
 t_consent_log = Table(
