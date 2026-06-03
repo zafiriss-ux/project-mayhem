@@ -2,7 +2,7 @@
 DB schema contract tests — ADR-0033 Layer 3 + ADR-0052 + Phase 9 entry gate.
 Any migration that changes a column set MUST update this file in the same PR.
 
-Column sets verified against: DatabaseManager (SCHEMA_VERSION=14).
+Column sets verified against: DatabaseManager (SCHEMA_VERSION=23).
 Run to re-verify: python -c "
     import tempfile; from pathlib import Path
     from titan.core.database import DatabaseManager
@@ -23,7 +23,7 @@ import pytest
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 # ── Column contract sets (source-of-truth for schema regression) ─────────────
-# These include all columns added by migrations up to SCHEMA_VERSION=14.
+# These include all columns added by migrations up to SCHEMA_VERSION=23.
 
 GOVERNANCE_OUTCOMES_COLUMNS = {
     "id",
@@ -206,8 +206,8 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
     )
 
 
-def test_schema_version_is_twentythree(test_db_conn) -> None:
-    """PRAGMA user_version must equal 19 (SCHEMA_VERSION) after create_tables()."""
+def test_schema_version_is_twentythree(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23 stale chain)
+    """PRAGMA user_version must equal 23 (SCHEMA_VERSION) after create_tables()."""
     assert SCHEMA_VERSION == 23, (
         f"Expected SCHEMA_VERSION=23 in database.py, got {SCHEMA_VERSION}"
     )
