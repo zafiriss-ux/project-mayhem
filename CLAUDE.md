@@ -14,7 +14,7 @@ python3 -m pytest --no-cov -q
 python3 -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3028 tests all green
+**Historical snapshot:** 3021 tests all green
 
 Update after every commit adding/removing tests:
 
@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (67 modules, excl. __init__/__main__), ceiling 74.
+Main package (67 modules, excl. __init__/__main__), ceiling 78.
 
 | Package | Responsibility |
 |---------|----------------|
