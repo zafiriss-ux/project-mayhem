@@ -1575,6 +1575,25 @@ Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, Ef
 
 ## Phase 25 Scope (OPEN, 2026-06-03)
 
+### TD-08 Residual Debt (registered from Opus pre-Phase-25 audit 2026-06-03)
+
+| ID | Severity | Description | Blocking |
+|----|----------|-------------|---------|
+| TD-08-R1 | LOW | PostgreSQLDatabaseManager.create_tables() still maintains independent raw DDL for training_log and governance_outcomes — not derived from titan/core/schema.py. PG training_log missing athlete_id and avg_pace_sec_per_km (latent INV-03 violation if PG backend activated). Ref: V7-01, ADR-0044, INV-03. | No — PG backend gated |
+| TD-08-R2 | LOW | tests/test_db_schema_contracts.py is a third independent column authority (8 hardcoded column sets). Function rename done (Phase 25 advisory pass). Stale annotations corrected. Remaining: fold assertions into descriptor-derived path long-term. Ref: V7-02. | No |
+| TD-08-R3 | LOW | v8/v13 rebuild snapshots in database.py annotated as frozen (Phase 25 advisory pass). No further action until schema descriptor final convergence. Ref: V7-03. | No — DONE |
+
+### P15-ARCH5 Architectural Decision Record
+
+**TITAN_DATA_DIR canonical default: `/data`** (decided 2026-06-03 by architect)
+- Production default: `/data` (Docker path — authoritative)
+- Dev override: set `TITAN_DATA_DIR=~/Documents/TITAN` in local environment
+- Rationale: run_api.py:14 and worker/__init__.py:25 already use `/data`; garmin_sync.py:52 used `~/Documents/TITAN` as a local fallback only
+- garmin_sync.py:52 must be updated to respect TITAN_DATA_DIR
+- Settings model must expose: TITAN_DATA_DIR, GARMIN_EMAIL, GARMIN_PASSWORD, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TITAN_JWT_PRIVATE_KEY, TITAN_JWT_PUBLIC_KEY, TITAN_DB_BACKEND, TITAN_POSTGRES_DSN (conditional), ATHLETE_MAX_HR, GARMIN_SYNC_TIMEOUT_S, WEATHER_LOCATION, TITAN_ML_KILL_SWITCH, TITAN_ENV, TITAN_LOG_PATH, TITAN_ENABLE_API
+- TITAN_POSTGRES_DSN: required only when TITAN_DB_BACKEND=postgres — use @model_validator
+- Implementation deferred until CI minutes restore (P15-ARCH5 touches 36 os.getenv sites across 12 files; silent regression risk without full test run)
+
 Entry gate: Phase 24 close audit PASS (2026-06-03). Scope: retroactive pytest markers, pydantic-settings migration, B2c fallback removal.
 
 1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
