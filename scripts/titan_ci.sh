@@ -34,25 +34,25 @@ echo "Date: $(date '+%Y-%m-%d')"
 echo "Repo: $REPO_ROOT"
 
 # ── G1: Ruff Phase A (full repo, blocking) ────────────────────────────────────
-run_gate "G1 Ruff Phase A" python -m ruff check .
+run_gate "G1 Ruff Phase A" ruff check .
 
 # ── G2: Strict pytest (full suite) ───────────────────────────────────────────
-run_gate "G2 Strict pytest" python -m pytest --tb=short -q --strict-markers \
+run_gate "G2 Strict pytest" pytest --tb=short -q --strict-markers \
     --ignore=tests/test_backup.py \
     --ignore=tests/test_backup_verification.py \
     --ignore=tests/test_complexity_budget.py
 
 # ── G3: Schema equivalence (TD-08 fitness net) ───────────────────────────────
-run_gate "G3 Schema equivalence" python -m pytest tests/test_schema_equivalence.py -q --no-cov
+run_gate "G3 Schema equivalence" pytest tests/test_schema_equivalence.py -q --no-cov
 
 # ── G4: Governance invariants (AST) ──────────────────────────────────────────
-run_gate "G4 Governance invariants" python -m pytest tests/test_architectural_invariants.py -q --no-cov
+run_gate "G4 Governance invariants" pytest tests/test_architectural_invariants.py -q --no-cov
 
 # ── G5: ADR-0058 fitness gates ────────────────────────────────────────────────
-run_gate "G5 ADR-0058 fitness" python -m pytest tests/test_adr0058_fitness.py -q --no-cov
+run_gate "G5 ADR-0058 fitness" pytest tests/test_adr0058_fitness.py -q --no-cov
 
 # ── G6: Schema contract tests ────────────────────────────────────────────────
-run_gate "G6 Schema contracts" python -m pytest tests/test_db_schema_contracts.py tests/titan/core/ -q --no-cov
+run_gate "G6 Schema contracts" pytest tests/test_db_schema_contracts.py tests/titan/core/ -q --no-cov
 
 # ── SUMMARY ───────────────────────────────────────────────────────────────────
 echo ""
