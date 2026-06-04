@@ -22,8 +22,8 @@ MODULE_VERSION = "1.0.0"
 # ── Hard-stop gate names — NEVER adapted (H1–H5 per AGENTS.md §8.1) ──────────
 # Imported from the canonical frozenset in thresholds.py (ADR-0052).
 # H1 (injury_flag) is boolean — excluded by type. H2–H5 are numeric gates.
-from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS as HARD_STOP_GATE_NAMES  # noqa: E402
-from titan.config.thresholds import (  # noqa: E402
+from titan.config.thresholds import (  # noqa: E402, I001
+    HARD_STOP_THRESHOLD_KEYS as HARD_STOP_GATE_NAMES,
     THRESHOLD_ADAPTER_DAMPING_PCT,
     THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT,
     THRESHOLD_ADAPTER_FALSE_NEG_WINDOW_DAYS,
