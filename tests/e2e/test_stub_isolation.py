@@ -1,9 +1,12 @@
 """Regression: StubSimpleEngine and StubAutonomic must not share mutable state."""
 from __future__ import annotations
 
+import pytest
+
 from tests.e2e.conftest import StubAutonomic, StubSimpleEngine
 
 
+@pytest.mark.integration
 def test_stub_simple_engine_hrv_log_not_shared_between_instances():
     a = StubSimpleEngine()
     b = StubSimpleEngine()
@@ -11,6 +14,7 @@ def test_stub_simple_engine_hrv_log_not_shared_between_instances():
     assert b.hrv_log == [], "hrv_log must be per-instance, not class-level"
 
 
+@pytest.mark.integration
 def test_stub_autonomic_hrr_log_not_shared_between_instances():
     a = StubAutonomic()
     b = StubAutonomic()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from tests.e2e.conftest import (
     StubAPL,
     StubAutonomic,
@@ -66,6 +68,7 @@ def _build_production_daily_coach(db: DatabaseManager, fixed_today: str) -> Dail
     )
 
 
+@pytest.mark.integration
 def test_shutdown_safety_invariants_hung_worker_timeout_and_db_close_order(tmp_path, monkeypatch):
     db = DatabaseManager(db_name="e2e_shutdown_safety.db", db_dir=tmp_path)
     coach = _build_production_daily_coach(db=db, fixed_today="2026-03-04")
@@ -151,6 +154,7 @@ def test_shutdown_safety_invariants_hung_worker_timeout_and_db_close_order(tmp_p
     assert telegram._poll_thread.join_calls == [5]
 
 
+@pytest.mark.integration
 def test_shutdown_safety_no_hung_worker_no_timeout_event(tmp_path, monkeypatch):
     db = DatabaseManager(db_name="e2e_shutdown_safety_no_hang.db", db_dir=tmp_path)
     _build_production_daily_coach(db=db, fixed_today="2026-03-04")
