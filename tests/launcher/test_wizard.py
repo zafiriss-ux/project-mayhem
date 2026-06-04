@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from launcher import wizard
 
 
@@ -9,6 +11,7 @@ def _set_env_path(monkeypatch, tmp_path: Path) -> Path:
     return env_path
 
 
+@pytest.mark.integration
 def test_ensure_config_rejects_empty_existing_env(monkeypatch, tmp_path: Path) -> None:
     env_path = _set_env_path(monkeypatch, tmp_path)
     env_path.write_text("", encoding="utf-8")
