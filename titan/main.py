@@ -467,6 +467,7 @@ def main():
         nutrition_optimizer=nutrition_optimizer,
         weekly_planner=weekly_planner,
         db=db,
+        engines=_engine_reg,
         athlete_max_hr=athlete_profile.max_hr or 0,
     )
 
