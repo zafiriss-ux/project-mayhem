@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from tests.e2e.conftest import (
     StubAPL,
     StubAutonomic,
@@ -23,6 +25,7 @@ from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
 
 
+@pytest.mark.integration
 def test_idempotency_replay_garmin_day_persisted_twice(tmp_path):
     fixed_today = "2026-03-04"
     db = DatabaseManager(db_name="e2e_idempotency_replay.db", db_dir=tmp_path)

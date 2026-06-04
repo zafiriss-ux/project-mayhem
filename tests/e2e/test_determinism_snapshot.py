@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 
+import pytest
+
 from tests.e2e.conftest import (
     StubAPL,
     StubAutonomic,
@@ -74,6 +76,7 @@ def _run_once(tmp_path, fixed_today: str, run_idx: int):
         db.close()
 
 
+@pytest.mark.integration
 def test_determinism_snapshot_same_inputs_same_output(tmp_path):
     fixed_today = "2026-03-04"
     runs = [_run_once(tmp_path, fixed_today=fixed_today, run_idx=i) for i in range(10)]

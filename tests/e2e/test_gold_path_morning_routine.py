@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from titan.orchestration import daily_coach
 
 
+@pytest.mark.integration
 def test_gold_path_morning_routine_system_invariants(monkeypatch, morning_routine_setup):
     events: list[dict] = []
     monkeypatch.setattr(

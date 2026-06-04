@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from titan.orchestration import daily_coach
 
 
@@ -7,6 +9,7 @@ class PersistFailure(Exception):
     """Deterministic sentinel error for persistence failure simulation."""
 
 
+@pytest.mark.integration
 def test_persistence_failure_degraded_mode_invariant(monkeypatch, morning_routine_setup):
     events: list[dict] = []
     monkeypatch.setattr(
