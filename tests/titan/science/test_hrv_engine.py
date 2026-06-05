@@ -12,6 +12,7 @@ def _build_engine_with_history(values: list[float], baseline_days: int = 7) -> H
     return engine
 
 
+@pytest.mark.unit
 def test_empty_state_returns_safe_defaults_without_crashing() -> None:
     engine = HRVGuidedEngine()
 
@@ -32,6 +33,7 @@ def test_empty_state_returns_safe_defaults_without_crashing() -> None:
     )
 
 
+@pytest.mark.unit
 def test_identical_inputs_produce_identical_outputs() -> None:
     values = [45.0, 47.0, 46.0, 44.0, 48.0, 46.0, 45.0, 47.0]
     engine_a = _build_engine_with_history(values)
@@ -45,6 +47,7 @@ def test_identical_inputs_produce_identical_outputs() -> None:
     )
 
 
+@pytest.mark.unit
 def test_numeric_outputs_are_finite_and_deviation_is_bounded() -> None:
     engine = _build_engine_with_history([40.0, 42.0, 39.0, 41.0, 43.0, 40.0, 42.0])
 
@@ -58,6 +61,7 @@ def test_numeric_outputs_are_finite_and_deviation_is_bounded() -> None:
     assert -1.0 <= deviation <= 1.0
 
 
+@pytest.mark.unit
 def test_summary_and_recommendation_stay_within_current_expected_ranges() -> None:
     engine = _build_engine_with_history([42.0, 44.0, 46.0, 48.0, 50.0, 52.0, 54.0])
 
@@ -81,6 +85,7 @@ def test_summary_and_recommendation_stay_within_current_expected_ranges() -> Non
     assert drift.drift_detected is True
 
 
+@pytest.mark.unit
 def test_low_and_high_hrv_follow_existing_downgrade_and_proceed_behavior() -> None:
     values = [50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0]
     engine = _build_engine_with_history(values)
@@ -94,6 +99,7 @@ def test_low_and_high_hrv_follow_existing_downgrade_and_proceed_behavior() -> No
     assert high_confidence == "HIGH"
 
 
+@pytest.mark.unit
 def test_minimal_data_points_behavior_is_stable() -> None:
     engine = HRVGuidedEngine()
     engine.add_hrv_measurement("2026-01-01", 50.0)
@@ -108,14 +114,14 @@ def test_minimal_data_points_behavior_is_stable() -> None:
     assert engine.calculate_rmssd_from_rr_intervals([1000.0, 1020.0]) == 20.0
 
 
+@pytest.mark.unit
 def test_calculate_baseline_returns_safe_outcome_when_days_is_zero() -> None:
     engine = _build_engine_with_history([40.0, 41.0, 42.0])
 
     assert engine.calculate_baseline(days=0) == (None, None)
 
 
-
-
+@pytest.mark.unit
 def test_calculate_baseline_days_zero_short_circuits_invalid_measurements() -> None:
     engine = HRVGuidedEngine()
     engine.add_hrv_measurement("2026-01-01", "not-a-float")  # type: ignore[arg-type]
@@ -123,12 +129,14 @@ def test_calculate_baseline_days_zero_short_circuits_invalid_measurements() -> N
     assert engine.calculate_baseline(days=0) == (None, None)
 
 
+@pytest.mark.unit
 def test_calculate_baseline_returns_safe_outcome_when_days_is_negative() -> None:
     engine = _build_engine_with_history([40.0, 41.0, 42.0])
 
     assert engine.calculate_baseline(days=-1) == (None, None)
 
 
+@pytest.mark.unit
 def test_slightly_low_hrv_keeps_easy_session_with_medium_confidence() -> None:
     engine = _build_engine_with_history([50.0, 50.0, 50.0, 50.0, 50.0, 50.0, 40.0])
 
@@ -139,6 +147,7 @@ def test_slightly_low_hrv_keeps_easy_session_with_medium_confidence() -> None:
     assert confidence == "MEDIUM"
 
 
+@pytest.mark.unit
 def test_get_latest_hrv_returns_rounded_value_or_zero_when_empty() -> None:
     empty_engine = HRVGuidedEngine()
     populated_engine = _build_engine_with_history([40.0, 40.06])
@@ -147,6 +156,7 @@ def test_get_latest_hrv_returns_rounded_value_or_zero_when_empty() -> None:
     assert populated_engine.get_latest_hrv() == 40.1
 
 
+@pytest.mark.unit
 def test_ln_rmssd_deviation_returns_zero_when_no_positive_values_or_empty_windows() -> None:
     non_positive = _build_engine_with_history([0.0, -1.0, 0.0])
     with_data = _build_engine_with_history([40.0, 41.0, 42.0])
@@ -164,6 +174,7 @@ def test_ln_rmssd_deviation_returns_zero_when_no_positive_values_or_empty_window
         )
 
 
+@pytest.mark.unit
 def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
     improving = _build_engine_with_history([50.0] * 7 + [60.0] * 7)
     declining = _build_engine_with_history([60.0] * 7 + [50.0] * 7)
@@ -174,6 +185,7 @@ def test_trend_analysis_reports_improving_declining_and_stable_paths() -> None:
     assert stable.get_trend_analysis() == "➡️ STABLE: HRV change 4.0%"
 
 
+@pytest.mark.unit
 def test_trend_analysis_reports_stable_when_previous_week_average_is_zero() -> None:
     engine = _build_engine_with_history([0.0] * 7 + [10.0] * 7)
 

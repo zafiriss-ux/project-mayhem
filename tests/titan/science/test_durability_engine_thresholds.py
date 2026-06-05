@@ -1,3 +1,5 @@
+import pytest
+
 from titan.config.thresholds import (
     DURABILITY_INDEX_COMPETITIVE_MIN,
     DURABILITY_INDEX_DEVELOPING_MIN,
@@ -13,6 +15,7 @@ from titan.config.thresholds import (
 from titan.science.durability_engine import DurabilityEngine
 
 
+@pytest.mark.unit
 def test_assess_pace_durability_covers_good_and_moderate_thresholds() -> None:
     # 12 km run → first_third=[300]*4
     km_splits_good = [300.0] * 8 + [312.0] * 4  # +4.0% decay (>=2 and <5)
@@ -34,6 +37,7 @@ def test_assess_pace_durability_covers_good_and_moderate_thresholds() -> None:
     assert recommendation_moderate == "Work on aerobic base & long runs"
 
 
+@pytest.mark.unit
 def test_durability_training_protocol_uses_93_boundary_path() -> None:
     # Exactly 93 should skip <93 branch and enter <96 branch
     protocols = DurabilityEngine.durability_training_protocol(current_di=93.0)
@@ -45,6 +49,7 @@ def test_durability_training_protocol_uses_93_boundary_path() -> None:
     ]
 
 
+@pytest.mark.unit
 def test_durability_training_protocol_covers_below_93_branch() -> None:
     protocols = DurabilityEngine.durability_training_protocol(current_di=92.9)
 
@@ -56,6 +61,7 @@ def test_durability_training_protocol_covers_below_93_branch() -> None:
     ]
 
 
+@pytest.mark.unit
 def test_assess_pace_durability_returns_invalid_for_zero_first_third_average() -> None:
     km_splits = [0.0] * 4 + [300.0] * 8
 
@@ -64,6 +70,7 @@ def test_assess_pace_durability_returns_invalid_for_zero_first_third_average() -
     assert result == (None, "Invalid pace data for durability assessment", None)
 
 
+@pytest.mark.unit
 def test_assess_pace_durability_returns_invalid_for_negative_first_third_average() -> None:
     km_splits = [-10.0] * 4 + [300.0] * 8
 
@@ -72,6 +79,7 @@ def test_assess_pace_durability_returns_invalid_for_negative_first_third_average
     assert result == (None, "Invalid pace data for durability assessment", None)
 
 
+@pytest.mark.unit
 def test_calculate_durability_index_uses_threshold_constants() -> None:
     di_world_class = DurabilityEngine.calculate_durability_index(
         fresh_performance=100.0,
@@ -96,6 +104,7 @@ def test_calculate_durability_index_uses_threshold_constants() -> None:
     assert di_developing == (85.0, "→ MODERATE durability (85-90%)", "DEVELOPING")
 
 
+@pytest.mark.unit
 def test_assess_pace_durability_uses_threshold_constants_for_good_and_moderate() -> None:
     km_splits_good = [300.0] * 8 + [
         300.0 * (1 + DURABILITY_PACE_DECAY_GOOD_MAX / 100.0)
@@ -119,6 +128,7 @@ def test_assess_pace_durability_uses_threshold_constants_for_good_and_moderate()
     )
 
 
+@pytest.mark.unit
 def test_durability_training_protocol_uses_threshold_constants() -> None:
     base_build = DurabilityEngine.durability_training_protocol(
         current_di=(DURABILITY_PROTOCOL_BASE_BUILD_MAX - 0.1)
@@ -135,6 +145,7 @@ def test_durability_training_protocol_uses_threshold_constants() -> None:
     assert strong[0] == "✓ Durability strong - maintain current approach"
 
 
+@pytest.mark.unit
 def test_assess_pace_durability_excellent_boundary_uses_threshold_constant() -> None:
     km_splits_excellent = [300.0] * 8 + [
         300.0 * (1 + DURABILITY_PACE_DECAY_EXCELLENT_MAX / 100.0)

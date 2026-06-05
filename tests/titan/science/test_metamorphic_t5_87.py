@@ -41,6 +41,7 @@ def _hrv_engine(readings: list[float], baseline_days: int = 7) -> HRVGuidedEngin
 # ─── ACWR MRs ────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_mr01_acwr_monotone_in_acute_load() -> None:
     """MR-01: Increasing acute load with fixed chronic raises ACWR."""
     chronic = 10.0
@@ -52,6 +53,7 @@ def test_mr01_acwr_monotone_in_acute_load() -> None:
     assert acwr_low < acwr_mid < acwr_high
 
 
+@pytest.mark.unit
 def test_mr02_acwr_monotone_decreasing_in_chronic_load() -> None:
     """MR-02: Increasing chronic load with fixed acute lowers ACWR."""
     acute = 70.0
@@ -65,6 +67,7 @@ def test_mr02_acwr_monotone_decreasing_in_chronic_load() -> None:
     assert acwr_hi_chronic < acwr_mid_chronic < acwr_lo_chronic
 
 
+@pytest.mark.unit
 def test_mr03_acwr_scale_invariance() -> None:
     """MR-03: Scaling both acute and chronic by the same positive factor leaves ACWR unchanged.
 
@@ -79,6 +82,7 @@ def test_mr03_acwr_scale_invariance() -> None:
         assert scaled_acwr == base_acwr, f"Scale factor {k}: expected {base_acwr}, got {scaled_acwr}"
 
 
+@pytest.mark.unit
 def test_mr04_acwr_injury_risk_score_non_decreasing() -> None:
     """MR-04: Higher ACWR must yield an equal or higher injury risk score.
 
@@ -97,6 +101,7 @@ def test_mr04_acwr_injury_risk_score_non_decreasing() -> None:
 # ─── TSB MRs ─────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_mr05_rest_day_increases_tsb() -> None:
     """MR-05: Appending a zero-load rest day after a training block increases TSB.
 
@@ -116,6 +121,7 @@ def test_mr05_rest_day_increases_tsb() -> None:
     )
 
 
+@pytest.mark.unit
 def test_mr06_non_negative_loads_produce_non_negative_ctl() -> None:
     """MR-06: All loads ≥ 0 → CTL ≥ 0 (EMA of non-negative values stays non-negative)."""
     for load_set in (
@@ -128,6 +134,7 @@ def test_mr06_non_negative_loads_produce_non_negative_ctl() -> None:
         assert ctl is not None and ctl >= 0.0, f"CTL={ctl} for loads {load_set}"
 
 
+@pytest.mark.unit
 def test_mr07_constant_load_converges_to_steady_state() -> None:
     """MR-07: After many days of constant load L, CTL ≈ ATL ≈ L and TSB ≈ 0.
 
@@ -150,6 +157,7 @@ def test_mr07_constant_load_converges_to_steady_state() -> None:
 # ─── HRV MRs ─────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_mr08_identical_rr_intervals_yield_zero_rmssd() -> None:
     """MR-08: All successive differences are zero → rMSSD = 0.
 
@@ -161,6 +169,7 @@ def test_mr08_identical_rr_intervals_yield_zero_rmssd() -> None:
         assert result == 0.0, f"Expected 0 rMSSD for constant interval {interval}, got {result}"
 
 
+@pytest.mark.unit
 def test_mr09_date_deduplication_keeps_latest_value() -> None:
     """MR-09: Adding a second measurement for the same date must overwrite the first.
 
@@ -178,6 +187,7 @@ def test_mr09_date_deduplication_keeps_latest_value() -> None:
     assert values["2026-01-15"] == 65.0, "Latest value not kept after dedup"
 
 
+@pytest.mark.unit
 def test_mr10_above_baseline_hrv_preserves_planned_session() -> None:
     """MR-10: today_hrv ≥ baseline → the planned session is recommended unchanged.
 
@@ -200,6 +210,7 @@ def test_mr10_above_baseline_hrv_preserves_planned_session() -> None:
 # ─── TRIMP MRs ───────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_mr11_edwards_trimp_linear_in_duration() -> None:
     """MR-11: Edwards TRIMP is linear in duration for the same HR zone.
 
@@ -215,6 +226,7 @@ def test_mr11_edwards_trimp_linear_in_duration() -> None:
         )
 
 
+@pytest.mark.unit
 def test_mr12_higher_hr_zone_yields_higher_edwards_trimp() -> None:
     """MR-12: A higher HR zone multiplier produces strictly greater TRIMP per unit time.
 
@@ -238,6 +250,7 @@ def test_mr12_higher_hr_zone_yields_higher_edwards_trimp() -> None:
         )
 
 
+@pytest.mark.unit
 def test_mr13_banister_trimp_monotone_in_average_hr() -> None:
     """MR-13: Banister TRIMP is strictly increasing in avg_hr (same duration, resting, max).
 

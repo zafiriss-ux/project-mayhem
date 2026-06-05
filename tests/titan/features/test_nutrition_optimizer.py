@@ -1,3 +1,5 @@
+import pytest
+
 from titan.features.nutrition_optimizer import NutritionOptimizer, NutritionPreferences
 
 
@@ -5,6 +7,7 @@ class _StubGlycogenModel:
     pass
 
 
+@pytest.mark.unit
 def test_analyze_weight_trend_happy_path_calculates_change_metrics():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
     optimizer.add_weight_entry("2026-03-01", 70.0)
@@ -23,6 +26,7 @@ def test_analyze_weight_trend_happy_path_calculates_change_metrics():
     assert trend["change_pct"] == 1.0
 
 
+@pytest.mark.unit
 def test_analyze_weight_trend_returns_safe_outcome_when_first_weight_is_zero():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
     optimizer.add_weight_entry("2026-03-01", 0.0)
@@ -44,6 +48,7 @@ def test_analyze_weight_trend_returns_safe_outcome_when_first_weight_is_zero():
     }
 
 
+@pytest.mark.unit
 def test_analyze_weight_trend_returns_safe_outcome_when_first_weight_is_negative():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
     optimizer.add_weight_entry("2026-03-01", -1.0)
@@ -65,6 +70,7 @@ def test_analyze_weight_trend_returns_safe_outcome_when_first_weight_is_negative
     }
 
 
+@pytest.mark.unit
 def test_add_weight_entry_happy_path_appends_weight_history():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -73,6 +79,7 @@ def test_add_weight_entry_happy_path_appends_weight_history():
     assert optimizer.weight_history == [("2026-03-08", 70.2)]
 
 
+@pytest.mark.unit
 def test_add_weight_entry_duplicate_date_boundary_keeps_both_entries():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -85,6 +92,7 @@ def test_add_weight_entry_duplicate_date_boundary_keeps_both_entries():
     ]
 
 
+@pytest.mark.unit
 def test_add_weight_entry_empty_input_boundary_accepts_empty_date():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -93,6 +101,7 @@ def test_add_weight_entry_empty_input_boundary_accepts_empty_date():
     assert optimizer.weight_history == [("", 0.0)]
 
 
+@pytest.mark.unit
 def test_calculate_daily_nutrition_happy_path_returns_expected_contract_keys():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
     for day in range(1, 8):
@@ -114,6 +123,7 @@ def test_calculate_daily_nutrition_happy_path_returns_expected_contract_keys():
     assert "⚡ High glycogen demand - ensure adequate carbs" in plan["special_notes"]
 
 
+@pytest.mark.unit
 def test_calculate_daily_nutrition_zero_weight_boundary_returns_safe_macro_floor():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -128,6 +138,7 @@ def test_calculate_daily_nutrition_zero_weight_boundary_returns_safe_macro_floor
     assert plan["hydration_ml"] == 0
 
 
+@pytest.mark.unit
 def test_calculate_daily_nutrition_extreme_macro_target_boundary_for_race_day():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -142,6 +153,7 @@ def test_calculate_daily_nutrition_extreme_macro_target_boundary_for_race_day():
     assert plan["fat_g"] == 40
 
 
+@pytest.mark.unit
 def test_calculate_daily_nutrition_hydration_scales_with_session_intensity():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 
@@ -158,6 +170,7 @@ def test_calculate_daily_nutrition_hydration_scales_with_session_intensity():
     assert hammer["hydration_ml"] == 3000
 
 
+@pytest.mark.unit
 def test_carb_range_reflects_dietary_style():
     optimizer = NutritionOptimizer(glycogen_model=_StubGlycogenModel())
 

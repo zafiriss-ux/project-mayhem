@@ -1,12 +1,16 @@
+import pytest
+
 from titan.science.lactate_logic import LactateLogic
 
 
+@pytest.mark.unit
 def test_estimate_lt1_happy_path_in_lt1_zone():
     result = LactateLogic.estimate_lt1(hr_percent_max=70.0, drift_percent=2.5)
 
     assert result["is_lt1"] is True
 
 
+@pytest.mark.unit
 def test_estimate_lt1_uses_threshold_source_of_truth(monkeypatch):
     import titan.science.lactate_logic as lactate_logic
 
@@ -20,12 +24,14 @@ def test_estimate_lt1_uses_threshold_source_of_truth(monkeypatch):
     assert drift_boundary["is_lt1"] is False
 
 
+@pytest.mark.unit
 def test_estimate_lt2_happy_path_in_threshold_zone():
     result = LactateLogic.estimate_lt2(hr_stable=True, rpe=6.5)
 
     assert result["is_lt2"] is True
 
 
+@pytest.mark.unit
 def test_estimate_lt2_uses_threshold_source_of_truth(monkeypatch):
     import titan.science.lactate_logic as lactate_logic
 

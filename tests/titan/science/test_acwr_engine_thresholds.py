@@ -1,7 +1,10 @@
+import pytest
+
 from titan.config import thresholds
 from titan.science.acwr_engine import ACWREngine
 
 
+@pytest.mark.unit
 def test_calculate_acwr_detraining_risk_branch_between_05_and_08() -> None:
     value, status, recommendation = ACWREngine.calculate_acwr(
         acute_7d=42.0,
@@ -13,6 +16,7 @@ def test_calculate_acwr_detraining_risk_branch_between_05_and_08() -> None:
     assert recommendation == "Consider volume increase"
 
 
+@pytest.mark.unit
 def test_calculate_acwr_moderate_risk_branch_between_13_and_15() -> None:
     value, status, recommendation = ACWREngine.calculate_acwr(
         acute_7d=98.0,
@@ -24,6 +28,7 @@ def test_calculate_acwr_moderate_risk_branch_between_13_and_15() -> None:
     assert recommendation == "Monitor fatigue"
 
 
+@pytest.mark.unit
 def test_calculate_acwr_uses_threshold_boundaries_from_thresholds_module() -> None:
     chronic = 10.0
 
@@ -40,6 +45,7 @@ def test_calculate_acwr_uses_threshold_boundaries_from_thresholds_module() -> No
     assert ACWREngine.calculate_acwr(moderate_boundary, chronic)[1] == "⚠️ MODERATE RISK"
 
 
+@pytest.mark.unit
 def test_injury_risk_score_uses_high_risk_threshold_from_thresholds_module() -> None:
     score, label = ACWREngine.injury_risk_score(thresholds.ACWR_HIGH_RISK_MAX)
 

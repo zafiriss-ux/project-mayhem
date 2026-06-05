@@ -1,3 +1,5 @@
+import pytest
+
 from titan.features.weekly_planner import WeeklyPlanGenerator
 
 
@@ -34,6 +36,7 @@ def _planner(tsb_value=-5.0, tsb_status="BALANCED", baseline=60, latest_hrv=57):
     )
 
 
+@pytest.mark.unit
 def test_analyze_past_week_happy_path_returns_good_readiness():
     planner = _planner(tsb_value=-4)
 
@@ -50,6 +53,7 @@ def test_analyze_past_week_happy_path_returns_good_readiness():
     assert analysis["readiness"] == "GOOD"
 
 
+@pytest.mark.unit
 def test_analyze_past_week_empty_sessions_returns_unknown_readiness():
     planner = _planner()
 
@@ -59,6 +63,7 @@ def test_analyze_past_week_empty_sessions_returns_unknown_readiness():
     assert analysis["readiness"] == "UNKNOWN"
 
 
+@pytest.mark.unit
 def test_analyze_past_week_compromised_when_drift_and_tsb_are_bad():
     planner = _planner(tsb_value=-25)
 
@@ -74,6 +79,7 @@ def test_analyze_past_week_compromised_when_drift_and_tsb_are_bad():
     assert analysis["readiness"] == "COMPROMISED"
 
 
+@pytest.mark.unit
 def test_generate_weekly_plan_unknown_phase_falls_back_to_build(monkeypatch):
     planner = _planner(tsb_value=-3, tsb_status="FRESH")
     monkeypatch.setattr(planner, "_apply_hrv_adjustments", lambda structure, summary: structure)
@@ -90,6 +96,7 @@ def test_generate_weekly_plan_unknown_phase_falls_back_to_build(monkeypatch):
     assert plan["quality_count"] == 2
 
 
+@pytest.mark.unit
 def test_generate_weekly_plan_base_phase_with_weather_uses_base_structure():
     planner = _planner()
 
@@ -104,6 +111,7 @@ def test_generate_weekly_plan_base_phase_with_weather_uses_base_structure():
     assert plan["daily_sessions"][0]["optimal_time"] == "6:00 (best conditions)"
 
 
+@pytest.mark.unit
 def test_generate_weekly_plan_peak_phase_uses_peak_defaults():
     planner = _planner()
 
@@ -113,6 +121,7 @@ def test_generate_weekly_plan_peak_phase_uses_peak_defaults():
     assert plan["daily_sessions"][3]["distance_km"] == 12
 
 
+@pytest.mark.unit
 def test_generate_weekly_plan_taper_phase_keeps_race_day_and_message():
     planner = _planner()
 
@@ -122,6 +131,7 @@ def test_generate_weekly_plan_taper_phase_keeps_race_day_and_message():
     assert plan["motivation"].startswith("Trust the taper")
 
 
+@pytest.mark.unit
 def test_get_today_session_without_plan_returns_easy_default():
     planner = _planner()
 
@@ -131,6 +141,7 @@ def test_get_today_session_without_plan_returns_easy_default():
     assert session["target_hr_zone"] == "Z2"
 
 
+@pytest.mark.unit
 def test_get_today_session_when_today_missing_returns_rest_fallback():
     planner = _planner()
     planner.last_plan = {
@@ -145,6 +156,7 @@ def test_get_today_session_when_today_missing_returns_rest_fallback():
     assert session["duration_min"] == 0
 
 
+@pytest.mark.unit
 def test_get_today_session_estimates_duration_for_missing_duration(monkeypatch):
     planner = _planner()
 
@@ -172,6 +184,7 @@ def test_get_today_session_estimates_duration_for_missing_duration(monkeypatch):
 
 # ── T5-58: null HRV guard in _apply_hrv_adjustments ──────────────────────────
 
+@pytest.mark.unit
 def test_apply_hrv_adjustments_does_not_raise_when_baseline_is_none() -> None:
     """T5-58: TypeError guard — baseline=None must not raise."""
     planner = _planner()
@@ -182,6 +195,7 @@ def test_apply_hrv_adjustments_does_not_raise_when_baseline_is_none() -> None:
     assert result[0]["session_type"] == "INTERVALS"
 
 
+@pytest.mark.unit
 def test_apply_hrv_adjustments_does_not_raise_when_latest_hrv_is_none() -> None:
     """T5-58: TypeError guard — latest_hrv=None must not raise."""
     planner = _planner()
@@ -192,6 +206,7 @@ def test_apply_hrv_adjustments_does_not_raise_when_latest_hrv_is_none() -> None:
     assert result[0]["session_type"] == "INTERVALS"
 
 
+@pytest.mark.unit
 def test_apply_hrv_adjustments_does_not_downgrade_when_both_hrv_are_none() -> None:
     """T5-58: when both HRV values are None, structure is unchanged."""
     planner = _planner()
@@ -208,6 +223,7 @@ def test_apply_hrv_adjustments_does_not_downgrade_when_both_hrv_are_none() -> No
 
 # ── existing tests ────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
 def test_apply_hrv_adjustments_downgrades_intervals_and_tempo_when_suppressed():
     planner = _planner()
     structure = [
@@ -223,6 +239,7 @@ def test_apply_hrv_adjustments_downgrades_intervals_and_tempo_when_suppressed():
     assert adjusted[1]["session_type"] == "EASY"
 
 
+@pytest.mark.unit
 def test_apply_weather_adjustments_only_sets_optimal_time_when_hour_truthy():
     planner = _planner()
     structure = [{"day": "Monday"}, {"day": "Tuesday"}, {"day": "Wednesday"}]
@@ -235,6 +252,7 @@ def test_apply_weather_adjustments_only_sets_optimal_time_when_hour_truthy():
     assert "optimal_time" not in adjusted[2]
 
 
+@pytest.mark.unit
 def test_get_motivational_message_unknown_phase_uses_default_message():
     planner = _planner()
 
@@ -246,6 +264,7 @@ def test_get_motivational_message_unknown_phase_uses_default_message():
 # ── T5-57: should_replan() mid-week trigger ───────────────────────────────────
 
 
+@pytest.mark.unit
 def test_should_replan_returns_false_when_all_conditions_nominal():
     """T5-57: no triggers → should_replan returns False."""
     planner = _planner(baseline=60, latest_hrv=58)
@@ -261,6 +280,7 @@ def test_should_replan_returns_false_when_all_conditions_nominal():
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_returns_true_when_hrv_drops_more_than_10ms_below_baseline():
     """T5-57: HRV drop > 10ms below engine baseline triggers replan."""
     planner = _planner(baseline=65, latest_hrv=65)
@@ -277,6 +297,7 @@ def test_should_replan_returns_true_when_hrv_drops_more_than_10ms_below_baseline
     assert result is True
 
 
+@pytest.mark.unit
 def test_should_replan_returns_false_when_hrv_drop_exactly_10ms_below_baseline():
     """T5-57: HRV drop == 10ms (not strictly greater) → no trigger."""
     planner = _planner(baseline=65, latest_hrv=65)
@@ -292,6 +313,7 @@ def test_should_replan_returns_false_when_hrv_drop_exactly_10ms_below_baseline()
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_returns_true_when_hard_stop_governance_event_present():
     """T5-57: HARD_STOP_SAFETY_GATES governance event in last 24h triggers replan."""
     planner = _planner()
@@ -307,6 +329,7 @@ def test_should_replan_returns_true_when_hard_stop_governance_event_present():
     assert result is True
 
 
+@pytest.mark.unit
 def test_should_replan_ignores_hard_stop_event_older_than_24h():
     """T5-57: governance HARD_STOP older than 24h does not trigger replan."""
     planner = _planner()
@@ -322,6 +345,7 @@ def test_should_replan_ignores_hard_stop_event_older_than_24h():
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_ignores_non_hard_stop_governance_events():
     """T5-57: governance events that are not HARD_STOP type do not trigger replan."""
     planner = _planner()
@@ -337,6 +361,7 @@ def test_should_replan_ignores_non_hard_stop_governance_events():
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_returns_true_when_illness_flag_set():
     """T5-57: illness_flag=True triggers replan."""
     planner = _planner()
@@ -352,6 +377,7 @@ def test_should_replan_returns_true_when_illness_flag_set():
     assert result is True
 
 
+@pytest.mark.unit
 def test_should_replan_returns_true_on_multiple_conditions():
     """T5-57: multiple triggers simultaneously → still True (OR semantics)."""
     planner = _planner(baseline=65, latest_hrv=65)
@@ -367,6 +393,7 @@ def test_should_replan_returns_true_on_multiple_conditions():
     assert result is True
 
 
+@pytest.mark.unit
 def test_should_replan_tolerates_missing_hrv_latest_ms():
     """T5-57: garmin_data missing hrv_latest_ms → HRV condition not triggered."""
     planner = _planner(baseline=65, latest_hrv=65)
@@ -381,6 +408,7 @@ def test_should_replan_tolerates_missing_hrv_latest_ms():
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_tolerates_missing_governance_events():
     """T5-57: garmin_data missing governance_events key → no error, no trigger."""
     planner = _planner()
@@ -395,6 +423,7 @@ def test_should_replan_tolerates_missing_governance_events():
     assert result is False
 
 
+@pytest.mark.unit
 def test_should_replan_triggers_generate_weekly_plan_and_updates_last_plan(monkeypatch):
     """T5-57: when should_replan() returns True, calling it with athlete data re-evaluates plan."""
     planner = _planner(baseline=65, latest_hrv=65)

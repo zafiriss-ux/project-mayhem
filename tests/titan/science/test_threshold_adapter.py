@@ -58,6 +58,7 @@ def _loaded_adapter(
 # ---------------------------------------------------------------------------
 
 class TestGetThresholdHardStopGates:
+    @pytest.mark.unit
     def test_hard_stop_hrv_delta_bypassed(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "HARD_STOP_HRV_DELTA", "delta_value": 0.15}]
@@ -66,6 +67,7 @@ class TestGetThresholdHardStopGates:
         result = adapter.get_threshold("HARD_STOP_HRV_DELTA", 15.0)
         assert result == 15.0
 
+    @pytest.mark.unit
     def test_hard_stop_rhr_delta_bypassed(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "HARD_STOP_RHR_DELTA", "delta_value": 0.20}]
@@ -73,6 +75,7 @@ class TestGetThresholdHardStopGates:
         result = adapter.get_threshold("HARD_STOP_RHR_DELTA", 8.0)
         assert result == 8.0
 
+    @pytest.mark.unit
     def test_hard_stop_tsb_floor_bypassed(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "HARD_STOP_TSB_FLOOR", "delta_value": 0.10}]
@@ -80,6 +83,7 @@ class TestGetThresholdHardStopGates:
         result = adapter.get_threshold("HARD_STOP_TSB_FLOOR", -50.0)
         assert result == -50.0
 
+    @pytest.mark.unit
     def test_subjective_fatigue_extreme_bypassed(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "SUBJECTIVE_FATIGUE_EXTREME", "delta_value": 0.10}]
@@ -93,6 +97,7 @@ class TestGetThresholdHardStopGates:
 # ---------------------------------------------------------------------------
 
 class TestGetThresholdAppliesDelta:
+    @pytest.mark.unit
     def test_positive_delta_increases_threshold(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": 0.10}]
@@ -100,6 +105,7 @@ class TestGetThresholdAppliesDelta:
         result = adapter.get_threshold("VO2_READINESS_MIN", 65.0)
         assert math.isclose(result, 65.0 * 1.10, rel_tol=1e-9)
 
+    @pytest.mark.unit
     def test_negative_delta_decreases_threshold(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": -0.10}]
@@ -107,6 +113,7 @@ class TestGetThresholdAppliesDelta:
         result = adapter.get_threshold("VO2_READINESS_MIN", 65.0)
         assert math.isclose(result, 65.0 * 0.90, rel_tol=1e-9)
 
+    @pytest.mark.unit
     def test_zero_delta_returns_base_unchanged(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": 0.0}]
@@ -114,6 +121,7 @@ class TestGetThresholdAppliesDelta:
         result = adapter.get_threshold("VO2_READINESS_MIN", 65.0)
         assert result == 65.0
 
+    @pytest.mark.unit
     def test_unknown_threshold_returns_base(self):
         adapter, _ = _loaded_adapter()
         result = adapter.get_threshold("SOME_UNKNOWN_THRESHOLD", 42.0)
@@ -125,12 +133,14 @@ class TestGetThresholdAppliesDelta:
 # ---------------------------------------------------------------------------
 
 class TestGetThresholdRaisesIfNotLoaded:
+    @pytest.mark.unit
     def test_raises_runtime_error_before_load(self):
         db = _make_db()
         adapter = ThresholdAdapter(athlete_id="athlete_01", db=db)
         with pytest.raises(RuntimeError, match="load\\(\\)"):
             adapter.get_threshold("VO2_READINESS_MIN", 65.0)
 
+    @pytest.mark.unit
     def test_no_error_after_load(self):
         adapter, _ = _loaded_adapter()
         # Should not raise
@@ -143,18 +153,21 @@ class TestGetThresholdRaisesIfNotLoaded:
 # ---------------------------------------------------------------------------
 
 class TestProposeAdaptationRefusedHardStop:
+    @pytest.mark.unit
     def test_hard_stop_hrv_returns_false(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("HARD_STOP_HRV_DELTA", +1.0, 15.0)
         assert result is False
         db.save_threshold_offset.assert_not_called()
 
+    @pytest.mark.unit
     def test_hard_stop_rhr_returns_false(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("HARD_STOP_RHR_DELTA", -1.0, 8.0)
         assert result is False
         db.save_threshold_offset.assert_not_called()
 
+    @pytest.mark.unit
     def test_hard_stop_tsb_floor_returns_false(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("HARD_STOP_TSB_FLOOR", +1.0, -50.0)
@@ -167,6 +180,7 @@ class TestProposeAdaptationRefusedHardStop:
 # ---------------------------------------------------------------------------
 
 class TestProposeAdaptationAppliesDamping:
+    @pytest.mark.unit
     def test_positive_direction_adds_damping_pct(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("VO2_READINESS_MIN", +1.0, 65.0)
@@ -178,6 +192,7 @@ class TestProposeAdaptationAppliesDamping:
             rel_tol=1e-9,
         )
 
+    @pytest.mark.unit
     def test_negative_direction_subtracts_damping_pct(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("VO2_READINESS_MIN", -1.0, 65.0)
@@ -188,6 +203,7 @@ class TestProposeAdaptationAppliesDamping:
             rel_tol=1e-9,
         )
 
+    @pytest.mark.unit
     def test_db_save_called_on_successful_adaptation(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         adapter.propose_adaptation("VO2_READINESS_MIN", +1.0, 65.0)
@@ -202,6 +218,7 @@ class TestProposeAdaptationAppliesDamping:
 # ---------------------------------------------------------------------------
 
 class TestProposeAdaptationCeilingEnforced:
+    @pytest.mark.unit
     def test_ceiling_clamps_at_max_delta_pct(self):
         # Start near ceiling (0.19), push positive — should clamp at 0.20
         start_delta = THRESHOLD_ADAPTER_MAX_DELTA_PCT - THRESHOLD_ADAPTER_DAMPING_PCT * 0.5
@@ -218,6 +235,7 @@ class TestProposeAdaptationCeilingEnforced:
             rel_tol=1e-9,
         )
 
+    @pytest.mark.unit
     def test_already_at_ceiling_returns_false(self):
         adapter, db = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN",
@@ -229,6 +247,7 @@ class TestProposeAdaptationCeilingEnforced:
         assert result is False
         db.save_threshold_offset.assert_not_called()
 
+    @pytest.mark.unit
     def test_negative_ceiling_clamps_at_minus_max_delta_pct(self):
         start_delta = -(THRESHOLD_ADAPTER_MAX_DELTA_PCT - THRESHOLD_ADAPTER_DAMPING_PCT * 0.5)
         adapter, db = _loaded_adapter(
@@ -250,17 +269,20 @@ class TestProposeAdaptationCeilingEnforced:
 # ---------------------------------------------------------------------------
 
 class TestCircuitBreakerDisabledDuringColdStart:
+    @pytest.mark.unit
     def test_cold_start_returns_false_regardless_of_rate(self):
         # Even with a sky-high false-neg rate, cold-start bypasses the breaker
         adapter, db = _loaded_adapter(is_cold_start=True, false_neg_rate=0.99)
         assert adapter.is_circuit_breaker_active() is False
         db.get_false_negative_rate.assert_not_called()
 
+    @pytest.mark.unit
     def test_non_cold_start_checks_false_neg_rate(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         adapter.is_circuit_breaker_active()
         db.get_false_negative_rate.assert_called_once()
 
+    @pytest.mark.unit
     def test_non_cold_start_high_rate_activates_breaker(self):
         from titan.config.thresholds import THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT
         adapter, _ = _loaded_adapter(
@@ -269,6 +291,7 @@ class TestCircuitBreakerDisabledDuringColdStart:
         )
         assert adapter.is_circuit_breaker_active() is True
 
+    @pytest.mark.unit
     def test_non_cold_start_below_rate_limit_no_breaker(self):
         from titan.config.thresholds import THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT
         adapter, _ = _loaded_adapter(
@@ -283,6 +306,7 @@ class TestCircuitBreakerDisabledDuringColdStart:
 # ---------------------------------------------------------------------------
 
 class TestNonFiniteBaseValueReturnedUnchanged:
+    @pytest.mark.unit
     def test_nan_returned_unchanged(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": 0.10}]
@@ -290,6 +314,7 @@ class TestNonFiniteBaseValueReturnedUnchanged:
         result = adapter.get_threshold("VO2_READINESS_MIN", float("nan"))
         assert math.isnan(result)
 
+    @pytest.mark.unit
     def test_inf_returned_unchanged(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": 0.10}]
@@ -297,6 +322,7 @@ class TestNonFiniteBaseValueReturnedUnchanged:
         result = adapter.get_threshold("VO2_READINESS_MIN", float("inf"))
         assert math.isinf(result)
 
+    @pytest.mark.unit
     def test_neg_inf_returned_unchanged(self):
         adapter, _ = _loaded_adapter(
             offsets=[{"threshold_key": "VO2_READINESS_MIN", "delta_value": 0.10}]
@@ -310,6 +336,7 @@ class TestNonFiniteBaseValueReturnedUnchanged:
 # ---------------------------------------------------------------------------
 
 class TestRoundTripPersistence:
+    @pytest.mark.unit
     def test_offset_persists_across_instances(self):
         """propose_adaptation() → new ThresholdAdapter.load() → offset survives."""
         stored: dict[str, float] = {}
@@ -348,31 +375,39 @@ class TestRoundTripPersistence:
 # ---------------------------------------------------------------------------
 
 class TestModuleConstantsAndHelpers:
+    @pytest.mark.unit
     def test_module_version(self):
         assert MODULE_VERSION == "1.0.0"
 
+    @pytest.mark.unit
     def test_hard_stop_gate_names_is_nonempty_frozenset(self):
         assert isinstance(HARD_STOP_GATE_NAMES, frozenset)
         assert len(HARD_STOP_GATE_NAMES) > 0
 
+    @pytest.mark.unit
     def test_hard_stop_gate_names_matches_thresholds_frozenset(self):
         assert HARD_STOP_GATE_NAMES == HARD_STOP_THRESHOLD_KEYS
 
+    @pytest.mark.unit
     def test_is_hard_stop_gate_true_for_hard_stop(self):
         assert ThresholdAdapter.is_hard_stop_gate("HARD_STOP_HRV_DELTA") is True
 
+    @pytest.mark.unit
     def test_is_hard_stop_gate_false_for_soft_gate(self):
         assert ThresholdAdapter.is_hard_stop_gate("VO2_READINESS_MIN") is False
 
+    @pytest.mark.unit
     def test_loaded_property_false_before_load(self):
         db = _make_db()
         adapter = ThresholdAdapter(athlete_id="x", db=db)
         assert adapter.loaded is False
 
+    @pytest.mark.unit
     def test_loaded_property_true_after_load(self):
         adapter, _ = _loaded_adapter()
         assert adapter.loaded is True
 
+    @pytest.mark.unit
     def test_athlete_id_property(self):
         db = _make_db()
         adapter = ThresholdAdapter(athlete_id="my_athlete", db=db)
@@ -384,23 +419,27 @@ class TestModuleConstantsAndHelpers:
 # ---------------------------------------------------------------------------
 
 class TestGovernanceEngineInjection:
+    @pytest.mark.unit
     def test_governance_engine_accepts_no_adapter(self):
         from titan.science.governance_engine import GovernanceEngine
         engine = GovernanceEngine()
         assert engine._threshold_adapter is None
 
+    @pytest.mark.unit
     def test_governance_engine_accepts_adapter(self):
         from titan.science.governance_engine import GovernanceEngine
         adapter, _ = _loaded_adapter()
         engine = GovernanceEngine(threshold_adapter=adapter)
         assert engine._threshold_adapter is adapter
 
+    @pytest.mark.unit
     def test_get_soft_threshold_no_adapter_returns_base(self):
         from titan.science.governance_engine import GovernanceEngine
         engine = GovernanceEngine()
         result = engine._get_soft_threshold("VO2_READINESS_MIN", 65.0)
         assert result == 65.0
 
+    @pytest.mark.unit
     def test_get_soft_threshold_with_adapter_applies_delta(self):
         from titan.science.governance_engine import GovernanceEngine
         adapter, _ = _loaded_adapter(
@@ -416,6 +455,7 @@ class TestGovernanceEngineInjection:
 # ---------------------------------------------------------------------------
 
 class TestCircuitBreakerBlocksAdaptation:
+    @pytest.mark.unit
     def test_active_breaker_returns_false(self):
         from titan.config.thresholds import THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT
         adapter, db = _loaded_adapter(
@@ -426,12 +466,14 @@ class TestCircuitBreakerBlocksAdaptation:
         assert result is False
         db.save_threshold_offset.assert_not_called()
 
+    @pytest.mark.unit
     def test_zero_direction_returns_false(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("VO2_READINESS_MIN", 0.0, 65.0)
         assert result is False
         db.save_threshold_offset.assert_not_called()
 
+    @pytest.mark.unit
     def test_nan_direction_returns_false(self):
         adapter, db = _loaded_adapter(is_cold_start=False, false_neg_rate=0.0)
         result = adapter.propose_adaptation("VO2_READINESS_MIN", float("nan"), 65.0)

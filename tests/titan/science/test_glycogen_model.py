@@ -1,8 +1,11 @@
 import math
 
+import pytest
+
 from titan.science.glycogen_model import GlycogenDebtAccumulator, GlycogenEngine, GlycogenModel
 
 
+@pytest.mark.unit
 def test_empty_state_and_missing_like_inputs_are_safe() -> None:
     accumulator = GlycogenDebtAccumulator()
 
@@ -13,6 +16,7 @@ def test_empty_state_and_missing_like_inputs_are_safe() -> None:
     assert accumulator.electrolyte_guard(dew_point_c=18.0, duration_min=60.0, session_type="EASY") is None
 
 
+@pytest.mark.unit
 def test_identical_inputs_produce_identical_outputs() -> None:
     kwargs = {
         "date": "2026-03-04",
@@ -38,6 +42,7 @@ def test_identical_inputs_produce_identical_outputs() -> None:
     assert first.status == second.status
 
 
+@pytest.mark.unit
 def test_numeric_outputs_are_finite_for_extreme_inputs() -> None:
     accumulator = GlycogenDebtAccumulator()
 
@@ -59,6 +64,7 @@ def test_numeric_outputs_are_finite_for_extreme_inputs() -> None:
     assert math.isfinite(guard["fluid_ml_per_hr"])
 
 
+@pytest.mark.unit
 def test_debt_state_stays_within_existing_bounds() -> None:
     accumulator = GlycogenDebtAccumulator()
 
@@ -76,6 +82,7 @@ def test_debt_state_stays_within_existing_bounds() -> None:
     assert 0.0 <= accumulator.daily_debt <= accumulator.MAX_DEBT
 
 
+@pytest.mark.unit
 def test_norwegian_protocol_trigger_threshold_and_bounds() -> None:
     accumulator = GlycogenDebtAccumulator()
 
@@ -107,6 +114,7 @@ def test_norwegian_protocol_trigger_threshold_and_bounds() -> None:
     assert 0.0 <= protocol["debt_score"] <= accumulator.MAX_DEBT
 
 
+@pytest.mark.unit
 def test_electrolyte_guard_threshold_behavior_is_stable() -> None:
     not_triggered = GlycogenDebtAccumulator.get_electrolyte_guard_status(
         dew_point_c=18.0,
@@ -126,6 +134,7 @@ def test_electrolyte_guard_threshold_behavior_is_stable() -> None:
     assert triggered["fluid_ml_per_hr"] > 0
 
 
+@pytest.mark.unit
 def test_estimate_glycogen_depletion_covers_intensity_bands() -> None:
     high = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=90.0)
     moderate_high = GlycogenModel.estimate_glycogen_depletion(duration_min=60.0, intensity_pct_vo2max=80.0)
@@ -142,6 +151,7 @@ def test_estimate_glycogen_depletion_covers_intensity_bands() -> None:
     assert easy["depletion_rate"] == 0.8
 
 
+@pytest.mark.unit
 def test_daily_carb_recommendation_handles_named_and_default_loads() -> None:
     very_high = GlycogenModel.daily_carb_recommendation(weight_kg=70.0, training_load="VERY_HIGH")
     defaulted = GlycogenModel.daily_carb_recommendation(weight_kg=70.0, training_load="UNKNOWN")
@@ -156,6 +166,7 @@ def test_daily_carb_recommendation_handles_named_and_default_loads() -> None:
     assert defaulted["context"] == "Moderate"
 
 
+@pytest.mark.unit
 def test_glycogen_flag_paths_for_low_carb_quality_and_ok() -> None:
     low_carb = GlycogenEngine.glycogen_flag(low_carb_day=True, back_to_back_quality=False, weight=70.0)
     quality = GlycogenEngine.glycogen_flag(low_carb_day=False, back_to_back_quality=True, weight=70.0)
@@ -166,6 +177,7 @@ def test_glycogen_flag_paths_for_low_carb_quality_and_ok() -> None:
     assert ok == (True, None, ["GLYCOGEN OK: Normal fueling rules"])
 
 
+@pytest.mark.unit
 def test_status_reports_moderate_band() -> None:
     accumulator = GlycogenDebtAccumulator()
     accumulator.daily_debt = 5.0

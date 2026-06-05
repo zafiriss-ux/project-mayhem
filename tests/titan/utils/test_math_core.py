@@ -1,14 +1,18 @@
 """Behavior invariants for titan.utils.math_core."""
 
+import pytest
+
 from titan.utils.math_core import MathCore
 
 
+@pytest.mark.unit
 def test_format_pace_returns_na_for_non_positive_inputs() -> None:
     """Invariant: non-positive pace is clamped to N/A."""
     assert MathCore.format_pace(0) == "N/A"
     assert MathCore.format_pace(-5) == "N/A"
 
 
+@pytest.mark.unit
 def test_weight_function_from_profile_uses_default_target_when_none() -> None:
     """Invariant: None target_weight falls back to 75.0 for threshold evaluation."""
     status = MathCore.weight_function_from_profile(
@@ -21,6 +25,7 @@ def test_weight_function_from_profile_uses_default_target_when_none() -> None:
     assert status == "AGGRESSIVE_CORRECTION"
 
 
+@pytest.mark.unit
 def test_weight_function_from_profile_emergency_mode_between_thresholds() -> None:
     """Invariant: weight below target but above critical threshold maps to EMERGENCY_MODE."""
     status = MathCore.weight_function_from_profile(
@@ -34,6 +39,7 @@ def test_weight_function_from_profile_emergency_mode_between_thresholds() -> Non
     assert status == "EMERGENCY_MODE"
 
 
+@pytest.mark.unit
 def test_weight_function_from_profile_night_drop_alert_overrides_safe_zone() -> None:
     """Invariant: night drop above threshold triggers NIGHT_DROP_ALERT."""
     status = MathCore.weight_function_from_profile(
@@ -46,6 +52,7 @@ def test_weight_function_from_profile_night_drop_alert_overrides_safe_zone() -> 
     assert status == "NIGHT_DROP_ALERT"
 
 
+@pytest.mark.unit
 def test_weight_function_from_profile_epoc_override_when_drop_is_safe() -> None:
     """Invariant: EPOC > 350 triggers EPOC_OVERRIDE when higher-priority checks are clear."""
     status = MathCore.weight_function_from_profile(
@@ -58,6 +65,7 @@ def test_weight_function_from_profile_epoc_override_when_drop_is_safe() -> None:
     assert status == "EPOC_OVERRIDE"
 
 
+@pytest.mark.unit
 def test_weight_function_from_profile_safe_drop_rule_at_upper_boundary() -> None:
     """Invariant: weight at target + 0.5 remains clamped to SAFE_DROP_RULE."""
     status = MathCore.weight_function_from_profile(

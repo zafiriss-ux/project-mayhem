@@ -1,3 +1,5 @@
+import pytest
+
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
 
 
@@ -25,6 +27,7 @@ class StubWeatherAPI:
         ]
 
 
+@pytest.mark.unit
 def test_calculate_optimal_time_live_weather_includes_window():
     calculator = OptimalTimeCalculator(StubWeatherAPI(data_quality="live", weather_confidence="LIVE"))
 
@@ -36,6 +39,7 @@ def test_calculate_optimal_time_live_weather_includes_window():
     assert result["quality"] == "🟩 EXCELLENT"
 
 
+@pytest.mark.unit
 def test_calculate_optimal_time_synthetic_weather_returns_safe_window():
     calculator = OptimalTimeCalculator(
         StubWeatherAPI(data_quality="synthetic", weather_confidence="SYNTHETIC")
@@ -51,6 +55,7 @@ def test_calculate_optimal_time_synthetic_weather_returns_safe_window():
     assert "dew_point" not in result
 
 
+@pytest.mark.unit
 def test_calculate_optimal_time_defaults_to_synthetic_confidence_when_quality_is_synthetic():
     calculator = OptimalTimeCalculator(StubWeatherAPI(data_quality="synthetic"))
 

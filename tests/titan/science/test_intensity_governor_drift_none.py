@@ -8,9 +8,12 @@ When drift_pct is None, IntensityGovernor must:
   - not inject a false GREEN contribution
 """
 
+import pytest
+
 from titan.science.intensity_governor import IntensityGovernor
 
 
+@pytest.mark.unit
 def test_drift_pct_none_excluded_from_audit() -> None:
     """drift_pct=None must not appear in audit — unknown ≠ 0.0."""
     governor = IntensityGovernor()
@@ -25,6 +28,7 @@ def test_drift_pct_none_excluded_from_audit() -> None:
     assert "drift" not in result.audit
 
 
+@pytest.mark.unit
 def test_drift_pct_none_does_not_mask_red_signal() -> None:
     """A RED glycogen signal must still fire when drift is unknown."""
     from titan.config.thresholds import INTENSITY_GOVERNOR_GLYCOGEN_RED
@@ -41,6 +45,7 @@ def test_drift_pct_none_does_not_mask_red_signal() -> None:
     assert result.color == "RED"
 
 
+@pytest.mark.unit
 def test_drift_pct_none_green_result_when_other_signals_green() -> None:
     """All GREEN signals + drift=None should produce a GREEN gate."""
     governor = IntensityGovernor()
@@ -55,6 +60,7 @@ def test_drift_pct_none_green_result_when_other_signals_green() -> None:
     assert result.color == "GREEN"
 
 
+@pytest.mark.unit
 def test_drift_pct_absent_key_excluded_from_audit() -> None:
     """When drift_pct key is entirely absent, drift stays out of audit (unchanged behaviour)."""
     governor = IntensityGovernor()

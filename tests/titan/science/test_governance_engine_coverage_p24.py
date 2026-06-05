@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from titan.config.thresholds import VO2_ACWR_MAX
 from titan.science.governance_engine import GovernanceEngine
 
@@ -64,6 +66,7 @@ def _base_context(**overrides) -> dict:
 class TestOverrideLockdownEdgePaths:
     """Tests for the three non-happy-path branches in apply_override_lockdown."""
 
+    @pytest.mark.unit
     def test_db_none_early_return_does_not_set_locked(self) -> None:
         """Line 231: self._db is None → early return; override_locked not set."""
         ge = GovernanceEngine()
@@ -71,6 +74,7 @@ class TestOverrideLockdownEdgePaths:
         ge.apply_override_lockdown(ctx)
         assert not ctx.get("override_locked", False)
 
+    @pytest.mark.unit
     def test_db_exception_fail_closed_locks_session(self) -> None:
         """Lines 234-237: get_override_ratio raises → fail-closed, lock applied."""
         mock_db = MagicMock()
@@ -81,6 +85,7 @@ class TestOverrideLockdownEdgePaths:
         assert ctx.get("override_locked") is True
         assert ctx["session_plan"].get("lock_applied") is True
 
+    @pytest.mark.unit
     def test_ratio_none_cold_start_lockdown_emitted(self) -> None:
         """Lines 238-248: ratio=None (cold-start) → COLD_START_LOCKDOWN, locked."""
         mock_db = MagicMock()
@@ -99,6 +104,7 @@ class TestOverrideLockdownEdgePaths:
 class TestTwoOf4SleepTypeError:
     """Non-numeric sleep_score triggers ValueError fallback → I2_sleep fires."""
 
+    @pytest.mark.unit
     def test_non_numeric_sleep_score_defaults_to_below_60(self) -> None:
         """Lines 290-292: float('not_a_number') raises ValueError → sleep_score=40 → I2."""
         ge = GovernanceEngine()
@@ -115,24 +121,28 @@ class TestTwoOf4SleepTypeError:
 class TestClassifyHrvStressContextEdgePaths:
     """Edge paths in the H2/H3 stress-source classifier."""
 
+    @pytest.mark.unit
     def test_non_finite_hrv_does_not_crash(self) -> None:
         """Lines 322-324: NaN HRV → NAN_REJECTED gate event; returns str."""
         ctx = _base_context(baseline_hrv=float("nan"), today_hrv=50.0)
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert isinstance(result, str)
 
+    @pytest.mark.unit
     def test_inf_hrv_does_not_crash(self) -> None:
         """Lines 322-324: Inf HRV → NAN_REJECTED gate event; returns str."""
         ctx = _base_context(baseline_hrv=float("inf"), today_hrv=50.0)
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert isinstance(result, str)
 
+    @pytest.mark.unit
     def test_non_finite_rhr_does_not_crash(self) -> None:
         """Lines 333-335: Inf RHR → NAN_REJECTED gate event; returns str."""
         ctx = _base_context(baseline_rhr=float("inf"), today_rhr=50)
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert isinstance(result, str)
 
+    @pytest.mark.unit
     def test_acwr_absent_returns_unknown_acwr(self) -> None:
         """Lines 343-344: acwr key absent from context → UNKNOWN_ACWR."""
         ctx = _base_context()
@@ -140,18 +150,21 @@ class TestClassifyHrvStressContextEdgePaths:
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert result == "UNKNOWN_ACWR"
 
+    @pytest.mark.unit
     def test_acwr_none_returns_unknown_acwr(self) -> None:
         """Lines 343-344: acwr=None → UNKNOWN_ACWR."""
         ctx = _base_context(acwr=None)
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert result == "UNKNOWN_ACWR"
 
+    @pytest.mark.unit
     def test_non_finite_acwr_returns_unknown_acwr(self) -> None:
         """Lines 349-351: float('nan') ACWR → NAN_REJECTED + UNKNOWN_ACWR."""
         ctx = _base_context(acwr=float("nan"))
         result = GovernanceEngine.classify_hrv_stress_context(ctx)
         assert result == "UNKNOWN_ACWR"
 
+    @pytest.mark.unit
     def test_high_acwr_returns_training_explained(self) -> None:
         """Lines 353-354: acwr > VO2_ACWR_MAX → TRAINING_EXPLAINED."""
         ctx = _base_context(acwr=float(VO2_ACWR_MAX) + 0.5)
@@ -166,6 +179,7 @@ class TestClassifyHrvStressContextEdgePaths:
 class TestH6NonNumericAge:
     """Non-numeric age triggers the debug-log except branch, not a crash."""
 
+    @pytest.mark.unit
     def test_string_age_skips_h6_gate_without_crash(self) -> None:
         """Lines 656-660: garmin_data_age_hours='bad' → debug log, empty reasons."""
         ge = GovernanceEngine()
@@ -183,6 +197,7 @@ class TestH6NonNumericAge:
 class TestFuelingGateLongRunPhase4:
     """LONG_RUN ≥90 min without fueling → phase-4 LOCK to PROGRESSIVE."""
 
+    @pytest.mark.unit
     def test_long_run_90min_no_fueling_locks_to_progressive(self) -> None:
         """Lines 1023-1042: LONG_RUN 90 min → LOCK, session becomes PROGRESSIVE."""
         ge = GovernanceEngine()
@@ -195,6 +210,7 @@ class TestFuelingGateLongRunPhase4:
         assert result["phase"] == 4
         assert sp["session_type"] == "PROGRESSIVE"
 
+    @pytest.mark.unit
     def test_long_run_120min_no_fueling_also_locked(self) -> None:
         """Lines 1023-1042: LONG_RUN 120 min → same phase-4 lock."""
         ge = GovernanceEngine()
@@ -206,6 +222,7 @@ class TestFuelingGateLongRunPhase4:
         assert result["action"] == "LOCK"
         assert result["phase"] == 4
 
+    @pytest.mark.unit
     def test_long_run_89min_does_not_trigger_phase4_lock(self) -> None:
         """Boundary: LONG_RUN 89 min < 90 → phase-4 lock does NOT fire."""
         ge = GovernanceEngine()
@@ -224,6 +241,7 @@ class TestFuelingGateLongRunPhase4:
 class TestParasympatheticGuardApplied:
     """PARASYMPATHETIC_GUARD triggered → session forced to EASY, max_zone=2."""
 
+    @pytest.mark.unit
     def test_triggered_para_guard_forces_easy_session(self) -> None:
         """Lines 1347-1357: para_guard.triggered=True → EASY + PARASYMPATHETIC_GUARD lock."""
         ge = GovernanceEngine()
@@ -250,6 +268,7 @@ class TestParasympatheticGuardApplied:
 class TestGetGovernanceReportDbNone:
     """db=None → override_lockdown falls back to {"locked": False}."""
 
+    @pytest.mark.unit
     def test_db_none_override_lockdown_fallback(self) -> None:
         """Line 1458: db=None → {"locked": False} in override_lockdown key."""
         ge = GovernanceEngine()

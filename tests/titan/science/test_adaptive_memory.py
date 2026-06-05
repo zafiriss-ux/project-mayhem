@@ -3,13 +3,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import pytest
+
 from titan.science.adaptive_memory import AdaptiveMemory
 
 
+@pytest.mark.unit
 def test_module_imports_without_error() -> None:
     import titan.science.adaptive_memory  # noqa: F401
 
 
+@pytest.mark.unit
 def test_adaptive_memory_instantiation_defaults() -> None:
     mem = AdaptiveMemory()
     assert mem.supercomp_status == "BASELINE"
@@ -17,18 +21,21 @@ def test_adaptive_memory_instantiation_defaults() -> None:
     assert mem.session_history == []
 
 
+@pytest.mark.unit
 def test_check_monotony_high_variance_healthy() -> None:
     mem = AdaptiveMemory()
     result = mem.check_monotony(load_7d=100.0, std_dev_load=80.0)
     assert "VARIATION" in result or "HEALTHY" in result or "WATCH" in result
 
 
+@pytest.mark.unit
 def test_supercompensation_window_peak_at_60h() -> None:
     mem = AdaptiveMemory()
     result = mem.supercompensation_window(last_hard_session_hours=60.0)
     assert "PEAK" in result or "SUPER" in result
 
 
+@pytest.mark.unit
 def test_mechanical_load_risk_no_flags_returns_ok() -> None:
     mem = AdaptiveMemory()
     result = mem.mechanical_load_risk(
