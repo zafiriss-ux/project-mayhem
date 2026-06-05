@@ -2,17 +2,16 @@
 """
 API entrypoint — reviewable composition root. Replaces inline Dockerfile CMD.
 """
-import os
 from pathlib import Path
 
 import uvicorn
 
 from titan.api.auth import AuthStore
 from titan.api.main import create_app
+from titan.config.settings import get_settings
 from titan.core.database import DatabaseManager
 
-DATA_DIR = os.environ.get("TITAN_DATA_DIR", "/data")
-db = DatabaseManager("titan_core.db", db_dir=Path(DATA_DIR))
+db = DatabaseManager("titan_core.db", db_dir=Path(get_settings().TITAN_DATA_DIR))
 auth_store = AuthStore(db=db)
 app = create_app(db=db, auth_store=auth_store)
 
