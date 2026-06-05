@@ -2,6 +2,7 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -72,6 +73,7 @@ def _build_postgres_adapter_test_engine(tmp_path) -> tuple[Engine, PostgreSQLAda
     return engine, adapter
 
 
+@pytest.mark.integration
 def test_postgres_adapter_thread_safety_under_mixed_read_write_load(tmp_path) -> None:
     _engine, adapter = _build_postgres_adapter_test_engine(tmp_path)
     exceptions: list[Exception] = []
@@ -123,6 +125,7 @@ def test_postgres_adapter_thread_safety_under_mixed_read_write_load(tmp_path) ->
         adapter.close()
 
 
+@pytest.mark.integration
 def test_postgres_adapter_concurrent_upserts_on_same_date_are_stable(tmp_path) -> None:
     _engine, adapter = _build_postgres_adapter_test_engine(tmp_path)
     exceptions: list[Exception] = []

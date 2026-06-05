@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic.config import Config
 
 from alembic import command
@@ -27,6 +28,7 @@ def _column_metadata(db_path: Path, table_name: str) -> list[tuple]:
         return connection.execute(f"PRAGMA table_info({table_name})").fetchall()
 
 
+@pytest.mark.integration
 def test_t5_13_migration_upgrade_creates_coach_audit_log_with_expected_contract(tmp_path: Path) -> None:
     db_path = tmp_path / "t5_13_upgrade.db"
     config = _make_config(db_path)
@@ -51,6 +53,7 @@ def test_t5_13_migration_upgrade_creates_coach_audit_log_with_expected_contract(
     assert columns["performed_at"][3] == 1
 
 
+@pytest.mark.integration
 def test_t5_13_migration_downgrade_removes_coach_audit_log(tmp_path: Path) -> None:
     db_path = tmp_path / "t5_13_downgrade.db"
     config = _make_config(db_path)

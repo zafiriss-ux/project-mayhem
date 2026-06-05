@@ -33,6 +33,7 @@ def _build_context(*, coach, athlete_id: str = "athlete-1") -> AthleteCoachingCo
     )
 
 
+@pytest.mark.unit
 def test_coaching_pipeline_happy_path_returns_effect_runner_result():
     calls = []
 
@@ -52,6 +53,7 @@ def test_coaching_pipeline_happy_path_returns_effect_runner_result():
     assert calls[0]["soreness"] == 5
 
 
+@pytest.mark.unit
 def test_coaching_pipeline_state_isolation_oracle_sequential_calls_are_independent():
     decision_calls = []
 
@@ -88,6 +90,7 @@ def test_coaching_pipeline_state_isolation_oracle_sequential_calls_are_independe
     assert decision_calls[1]["garmin_data"]["athlete_id"] == "athlete-low"
 
 
+@pytest.mark.unit
 def test_coaching_pipeline_propagates_decision_pipeline_errors():
     coach = SimpleNamespace(
         _decision_pipeline=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),

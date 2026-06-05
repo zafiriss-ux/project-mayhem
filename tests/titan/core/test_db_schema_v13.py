@@ -29,6 +29,7 @@ def db(tmp_path: Path) -> DatabaseManager:
 # ── Test 1 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_athletes_table_seeded_with_owner(db: DatabaseManager) -> None:
     """After create_tables(), athletes must contain exactly one owner row
     with is_cold_start=0 and cold_start_sessions_count=30 (ADR-0033 L3-C)."""
@@ -48,6 +49,7 @@ def test_athletes_table_seeded_with_owner(db: DatabaseManager) -> None:
 # ── Test 2 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_governance_outcomes_has_athlete_id_column(db: DatabaseManager) -> None:
     """governance_outcomes must contain athlete_id column (T5-74)."""
     cols = {
@@ -62,6 +64,7 @@ def test_governance_outcomes_has_athlete_id_column(db: DatabaseManager) -> None:
 # ── Test 3 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_save_governance_decision_persists_athlete_id(
     db: DatabaseManager,
 ) -> None:
@@ -83,6 +86,7 @@ def test_save_governance_decision_persists_athlete_id(
     )
 
 
+@pytest.mark.integration
 def test_save_governance_decision_defaults_to_owner_when_key_absent(
     db: DatabaseManager,
 ) -> None:
@@ -106,6 +110,7 @@ def test_save_governance_decision_defaults_to_owner_when_key_absent(
 # ── Test 4 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_model_calibration_metadata_calibrated_for_absent(
     db: DatabaseManager,
 ) -> None:
@@ -128,6 +133,7 @@ def test_model_calibration_metadata_calibrated_for_absent(
 # ── Test 5 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_schema_version_is_thirteen(db: DatabaseManager) -> None:
     """PRAGMA user_version must equal 21 (SCHEMA_VERSION) after create_tables()."""
     assert SCHEMA_VERSION == 23, (
@@ -142,6 +148,7 @@ def test_schema_version_is_thirteen(db: DatabaseManager) -> None:
 # ── Test 6 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_v13_migration_idempotent_on_existing_db(tmp_path: Path) -> None:
     """create_tables() is idempotent: calling it twice on the same DB must not
     raise and must preserve the athletes owner row (CREATE ... IF NOT EXISTS +
@@ -163,6 +170,7 @@ def test_v13_migration_idempotent_on_existing_db(tmp_path: Path) -> None:
         db2.close()
 
 
+@pytest.mark.integration
 def test_v13_migration_upgrades_pre_v13_database(tmp_path: Path) -> None:
     """Opening a DB with user_version=12 must trigger the v13 migration and
     result in the athletes table + backfill of governance_outcomes.athlete_id."""

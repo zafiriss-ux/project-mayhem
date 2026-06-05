@@ -2,9 +2,12 @@ import json
 import os
 import stat
 
+import pytest
+
 from titan.ui import setup_wizard
 
 
+@pytest.mark.unit
 def test_run_setup_wizard_requests_each_credential_once(monkeypatch):
     prompt_counts: dict[str, int] = {}
     answers = iter(
@@ -52,6 +55,7 @@ def test_run_setup_wizard_requests_each_credential_once(monkeypatch):
     }
 
 
+@pytest.mark.unit
 def test_run_setup_wizard_reprompts_invalid_email(monkeypatch):
     answers = iter(
         [
@@ -76,6 +80,7 @@ def test_run_setup_wizard_reprompts_invalid_email(monkeypatch):
     assert creds["GARMIN_EMAIL"] == "athlete@example.com"
 
 
+@pytest.mark.unit
 def test_save_env_writes_expected_entries(tmp_path, monkeypatch):
     env_path = tmp_path / ".env"
     fake_file = tmp_path / "titan" / "ui" / "setup_wizard.py"
@@ -107,6 +112,7 @@ def test_save_env_writes_expected_entries(tmp_path, monkeypatch):
         assert mode == stat.S_IRUSR | stat.S_IWUSR
 
 
+@pytest.mark.unit
 def test_save_credentials_defaults_to_env_backend(monkeypatch):
     monkeypatch.delenv(setup_wizard.KEYRING_ENV_FLAG, raising=False)
 
@@ -133,6 +139,7 @@ def test_save_credentials_defaults_to_env_backend(monkeypatch):
     assert messages[-1]["backend"] == "env_file_partial"
 
 
+@pytest.mark.unit
 def test_save_credentials_uses_keyring_when_enabled(monkeypatch):
     monkeypatch.setenv(setup_wizard.KEYRING_ENV_FLAG, "1")
 
@@ -172,6 +179,7 @@ def test_save_credentials_uses_keyring_when_enabled(monkeypatch):
     assert saved_env["TELEGRAM_CHAT_ID"] == "123"
 
 
+@pytest.mark.unit
 def test_save_credentials_falls_back_to_env_when_keyring_import_fails(monkeypatch):
     monkeypatch.setenv(setup_wizard.KEYRING_ENV_FLAG, "1")
 
@@ -197,6 +205,7 @@ def test_save_credentials_falls_back_to_env_when_keyring_import_fails(monkeypatc
     assert saved_env == creds
 
 
+@pytest.mark.unit
 def test_load_env_file_preserves_existing_environment_values(tmp_path, monkeypatch):
     env_path = tmp_path / ".env"
     env_path.write_text(
@@ -218,6 +227,7 @@ def test_load_env_file_preserves_existing_environment_values(tmp_path, monkeypat
     assert os.getenv("TELEGRAM_BOT_TOKEN") == "file-token"
 
 
+@pytest.mark.unit
 def test_ensure_credentials_returns_false_when_setup_cancelled(monkeypatch):
     monkeypatch.setattr(setup_wizard, "load_env_file", lambda: None)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
@@ -255,34 +265,40 @@ def _run_wizard_capturing(monkeypatch, answers):
     return captured
 
 
+@pytest.mark.unit
 def test_q5_female_skips_q6_when_prefer_not_to_say(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers("prefer_not_to_say"))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "prefer_not_to_say"
     assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
 
 
+@pytest.mark.unit
 def test_q5_female_triggers_q6(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "yes"))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "female"
     assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "yes"
 
 
+@pytest.mark.unit
 def test_q5_female_q6_no(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "no"))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "female"
     assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
 
 
+@pytest.mark.unit
 def test_q5_reprompts_invalid_sex(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers("unknown_value", "male"))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"
 
 
+@pytest.mark.unit
 def test_q6_reprompts_invalid_tracking(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers("female", "maybe", "yes"))
     assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "yes"
 
 
+@pytest.mark.unit
 def test_q5_empty_input_defaults_to_male(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers(""))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"

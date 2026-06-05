@@ -32,6 +32,7 @@ def db(tmp_path: Path) -> DatabaseManager:
 # ── Test 1 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_is_athlete_cold_start_returns_true_for_new_athlete(db: DatabaseManager) -> None:
     """Athlete seeded with is_cold_start=1 → is_athlete_cold_start() returns True."""
     db.conn.execute(
@@ -46,6 +47,7 @@ def test_is_athlete_cold_start_returns_true_for_new_athlete(db: DatabaseManager)
 # ── Test 2 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_is_athlete_cold_start_returns_false_for_graduated(db: DatabaseManager) -> None:
     """Owner athlete seeded with is_cold_start=0 → returns False."""
     assert db.is_athlete_cold_start("owner") is False
@@ -54,6 +56,7 @@ def test_is_athlete_cold_start_returns_false_for_graduated(db: DatabaseManager) 
 # ── Test 3 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_is_athlete_cold_start_fail_closed_for_unknown(db: DatabaseManager) -> None:
     """Unknown athlete not in athletes table → returns True (fail-closed, INV-05)."""
     assert db.is_athlete_cold_start("nobody") is True
@@ -62,6 +65,7 @@ def test_is_athlete_cold_start_fail_closed_for_unknown(db: DatabaseManager) -> N
 # ── Test 4 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_cold_start_exit_requires_both_conditions(db: DatabaseManager) -> None:
     """Exit requires sessions >= 30 AND outcomes >= CALIBRATION_MIN_OUTCOME_COUNT.
     Only sessions met → no exit; is_cold_start remains 1."""
@@ -84,6 +88,7 @@ def test_cold_start_exit_requires_both_conditions(db: DatabaseManager) -> None:
 # ── Test 5 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_cold_start_exit_sets_is_cold_start_zero(db: DatabaseManager) -> None:
     """When both conditions met → is_cold_start=0 and cold_start_ends_at populated atomically."""
     db.conn.execute(
@@ -120,6 +125,7 @@ def test_cold_start_exit_sets_is_cold_start_zero(db: DatabaseManager) -> None:
 # ── Test 6 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_owner_athlete_not_in_cold_start(db: DatabaseManager) -> None:
     """Owner athlete seeded with is_cold_start=0 bypasses cold-start (ADR-0033 L3-C)."""
     assert db.is_athlete_cold_start("owner") is False
@@ -129,6 +135,7 @@ def test_owner_athlete_not_in_cold_start(db: DatabaseManager) -> None:
 # ── Test 7 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_increment_cold_start_sessions_increments(db: DatabaseManager) -> None:
     """increment_cold_start_sessions() increments counter for a cold-start athlete."""
     db.conn.execute(
@@ -150,6 +157,7 @@ def test_increment_cold_start_sessions_increments(db: DatabaseManager) -> None:
 # ── Test 8 ────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_increment_noop_for_graduated_athlete(db: DatabaseManager) -> None:
     """increment_cold_start_sessions() is no-op for graduated athlete (is_cold_start=0)."""
     before = db.conn.execute(

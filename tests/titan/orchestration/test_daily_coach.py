@@ -156,6 +156,7 @@ class MinimalCoachFactory:
         return coach
 
 
+@pytest.mark.unit
 def test_run_morning_routine_happy_path_emits_step_success(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -172,6 +173,7 @@ def test_run_morning_routine_happy_path_emits_step_success(monkeypatch):
     )
 
 
+@pytest.mark.unit
 def test_run_morning_routine_sync_failure_emits_data_missing(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -190,6 +192,7 @@ def test_run_morning_routine_sync_failure_emits_data_missing(monkeypatch):
     )
 
 
+@pytest.mark.unit
 def test_run_morning_routine_calls_apl_resolve_with_normalized_phase_and_cs_confidence():
     coach = MinimalCoachFactory.build(telegram_success=True)
     vlg_state = SimpleNamespace(color="GREEN")
@@ -240,6 +243,7 @@ def test_run_morning_routine_calls_apl_resolve_with_normalized_phase_and_cs_conf
     assert captured_kwargs["cs_confidence"] == pytest.approx(0.37)
 
 
+@pytest.mark.unit
 def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing():
     coach = MinimalCoachFactory.build(telegram_success=True)
     captured_kwargs = {}
@@ -272,6 +276,7 @@ def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing()
     assert isinstance(captured_kwargs["cs_confidence"], float)
 
 
+@pytest.mark.unit
 def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
     coach = DailyCoach.__new__(DailyCoach)
     coach.run_morning_routine = lambda: True
@@ -307,6 +312,7 @@ def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
     assert coach._routine_started_monotonic == 123.45
 
 
+@pytest.mark.unit
 def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
     events = []
     coach = DailyCoach.__new__(DailyCoach)
@@ -331,6 +337,7 @@ def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
     assert events[0]["trigger_source"] == "telegram_poll"
 
 
+@pytest.mark.unit
 def test_daily_coach_no_overlap_guard():
     coach = DailyCoach.__new__(DailyCoach)
     coach._routine_mutex = threading.Lock()
@@ -362,6 +369,7 @@ def test_daily_coach_no_overlap_guard():
     assert not coach._routine_thread.is_alive()
 
 
+@pytest.mark.unit
 def test_daily_coach_routine_thread_shutdown(tmp_path):
     coach = DailyCoach.__new__(DailyCoach)
     coach._routine_mutex = threading.Lock()
@@ -429,6 +437,7 @@ def _count_rows(db: DatabaseManager, table: str, day: str) -> int:
     return int(cursor.fetchone()[0])
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_success_commits_activities_and_metrics_atomically(tmp_path):
     db = DatabaseManager(db_name="atomic_success.db", db_dir=tmp_path)
     coach = _build_atomic_persist_coach(db)
@@ -444,6 +453,7 @@ def test_persist_garmin_data_success_commits_activities_and_metrics_atomically(t
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_invalid_physiological_values_are_surfaced_and_sanitized(
     tmp_path,
     monkeypatch,
@@ -489,6 +499,7 @@ def test_persist_garmin_data_invalid_physiological_values_are_surfaced_and_sanit
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
     from titan.orchestration.daily_coach import PersistenceFailure
 
@@ -517,6 +528,7 @@ def test_persist_garmin_data_failure_mid_loop_rolls_back_entire_day(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(tmp_path):
     from titan.orchestration.daily_coach import PersistenceFailure
 
@@ -538,6 +550,7 @@ def test_persist_garmin_data_failure_during_daily_metric_rolls_back_activities(t
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_duplicate_activity_ids_in_same_payload_are_rejected(tmp_path, monkeypatch):
     events = []
     monkeypatch.setattr(
@@ -567,6 +580,7 @@ def test_persist_garmin_data_duplicate_activity_ids_in_same_payload_are_rejected
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
     db = DatabaseManager(db_name="garmin_idempotent_sync.db", db_dir=tmp_path)
     coach = _build_atomic_persist_coach(db)
@@ -589,6 +603,7 @@ def test_persist_garmin_data_duplicate_sync_is_idempotent(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_f29_flattened_sleep_keys_are_parsed(tmp_path):
     """F-29: _persist_garmin_data must read sync_sleep() flattened keys
     (sleep_score, total_sleep_hours) and return correct values."""
@@ -609,6 +624,7 @@ def test_persist_garmin_data_f29_flattened_sleep_keys_are_parsed(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_sync_sleep_output_sleep_score_extracted_correctly(tmp_path):
     """T5-60: _persist_garmin_data must extract sleep_score from the exact shape
     that sync_sleep() produces — not fall back to the optimistic 75 default."""
@@ -638,6 +654,7 @@ def test_persist_garmin_data_sync_sleep_output_sleep_score_extracted_correctly(t
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_sync_sleep_output_rhr_is_absent(tmp_path):
     """T5-60: sync_sleep() does not include a restingHeartRate key.
     _persist_garmin_data must return today_rhr == 0 (→ None after validation)
@@ -670,6 +687,7 @@ def test_persist_garmin_data_sync_sleep_output_rhr_is_absent(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_missing_sleep_data_defaults_are_conservative(tmp_path):
     """T5-60 regression: when sleep data is entirely absent the default
     sleep_score must be conservative (< 70, i.e. negative sleep_delta),
@@ -696,6 +714,7 @@ def test_persist_garmin_data_missing_sleep_data_defaults_are_conservative(tmp_pa
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_f32_multi_day_hrv_all_persisted(tmp_path):
     """F-32: _persist_garmin_data must persist HRV for every date returned by
     sync_hrv(), not only today."""
@@ -738,6 +757,7 @@ def test_persist_garmin_data_f32_multi_day_hrv_all_persisted(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_f32_seven_day_hrv_all_persisted(tmp_path):
     """F-32 / T5-61: 7-day HRV sync result must produce exactly 7 rows in daily_metrics."""
     db = DatabaseManager(db_name="f32_seven_day_hrv.db", db_dir=tmp_path)
@@ -765,6 +785,7 @@ def test_persist_garmin_data_f32_seven_day_hrv_all_persisted(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_f32_historical_entry_not_overwritten(tmp_path):
     """T5-61: Historical HRV entries use INSERT OR IGNORE — manually entered data must
     not be overwritten by a Garmin sync backfill."""
@@ -799,6 +820,7 @@ def test_persist_garmin_data_f32_historical_entry_not_overwritten(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_f32_today_entry_persisted_normally(tmp_path):
     """T5-61 regression: today's entry must still be persisted via INSERT OR REPLACE
     (today uses save_daily_metric, not save_daily_metric_if_missing)."""
@@ -821,6 +843,7 @@ def test_persist_garmin_data_f32_today_entry_persisted_normally(tmp_path):
         db.close()
 
 
+@pytest.mark.unit
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)
@@ -828,6 +851,7 @@ def test_get_baseline_rhr_happy_path_returns_average():
     assert coach._get_baseline_rhr(days=7) == 51.3
 
 
+@pytest.mark.unit
 def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -849,6 +873,7 @@ def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
     ]
 
 
+@pytest.mark.unit
 def test_run_morning_routine_uses_degraded_mode_when_baseline_missing(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -876,6 +901,7 @@ def test_run_morning_routine_uses_degraded_mode_when_baseline_missing(monkeypatc
     assert any(event["action"] == "baseline_rhr_degraded_mode" for event in events)
 
 
+@pytest.mark.unit
 def test_run_morning_routine_h3_comparison_uses_valid_baseline(monkeypatch):
     coach = MinimalCoachFactory.build(telegram_success=True)
     baseline_args: dict[str, float] = {}
@@ -899,6 +925,7 @@ def test_run_morning_routine_h3_comparison_uses_valid_baseline(monkeypatch):
     assert governance_baseline["baseline_rhr"] == 47.2
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_supports_dict_access_and_serialization():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = object()
@@ -956,6 +983,7 @@ def test_build_daily_coach_context_supports_dict_access_and_serialization():
 
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_serializes_like_dict_payload():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = object()
@@ -992,6 +1020,7 @@ def test_build_daily_coach_context_serializes_like_dict_payload():
     assert serialized["planned_duration_min"] == 45
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_preserves_nullable_days_since_last_vo2():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = object()
@@ -1023,6 +1052,7 @@ def test_build_daily_coach_context_preserves_nullable_days_since_last_vo2():
     assert context["days_since_last_vo2"] is None
 
 
+@pytest.mark.unit
 def test_run_morning_routine_omits_weather_recommendation_when_synthetic():
     captured_payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1044,6 +1074,7 @@ def test_run_morning_routine_omits_weather_recommendation_when_synthetic():
     assert captured_payload["special_note"] == "⚠️ Weather data unavailable — optimal time window omitted"
 
 
+@pytest.mark.unit
 def test_run_morning_routine_keeps_weather_recommendation_when_live():
     captured_payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1067,6 +1098,7 @@ def test_run_morning_routine_keeps_weather_recommendation_when_live():
 
 
 
+@pytest.mark.unit
 def test_run_morning_routine_fresh_garmin_data_keeps_planned_session_type():
     captured = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1087,6 +1119,7 @@ def test_run_morning_routine_fresh_garmin_data_keeps_planned_session_type():
     assert captured["garmin_data_stale"] is False
 
 
+@pytest.mark.unit
 def test_run_morning_routine_stale_garmin_data_forces_easy_and_sets_context_flag(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1115,6 +1148,7 @@ def test_run_morning_routine_stale_garmin_data_forces_easy_and_sets_context_flag
     assert captured["garmin_data_stale"] is True
     assert any(event["action"] == "garmin_data_stale" for event in events)
 
+@pytest.mark.unit
 def test_run_morning_routine_boundary_empty_inputs_no_crash():
     coach = MinimalCoachFactory.build(telegram_success=True)
     coach.garmin = SimpleNamespace(
@@ -1131,6 +1165,7 @@ def test_run_morning_routine_boundary_empty_inputs_no_crash():
     assert coach.run_morning_routine() is True
 
 
+@pytest.mark.unit
 def test_run_morning_routine_partial_sleep_payload_uses_safe_defaults():
     payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1157,6 +1192,7 @@ def test_run_morning_routine_partial_sleep_payload_uses_safe_defaults():
     assert payload["sleep_hours"] == 7.5
 
 
+@pytest.mark.unit
 def test_run_morning_routine_same_inputs_produce_deterministic_payloads():
     payloads = []
 
@@ -1172,6 +1208,7 @@ def test_run_morning_routine_same_inputs_produce_deterministic_payloads():
     assert payloads[0] == payloads[1]
 
 
+@pytest.mark.unit
 def test_run_morning_routine_weekly_planner_exception_bubbles_with_engine_failure_event(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1193,6 +1230,7 @@ def test_run_morning_routine_weekly_planner_exception_bubbles_with_engine_failur
     )
 
 
+@pytest.mark.unit
 def test_run_morning_routine_telegram_falsey_result_returns_false_and_emits_delivery_alert(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1212,6 +1250,7 @@ def test_run_morning_routine_telegram_falsey_result_returns_false_and_emits_deli
     )
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("step_number", "error", "expected"),
     [
@@ -1225,6 +1264,7 @@ def test_failure_class_for_step_maps_error_taxonomy(step_number, error, expected
     assert daily_coach._failure_class_for_step(step_number, error) == expected
 
 
+@pytest.mark.unit
 def test_ensure_vo2_eligibility_contract_normalizes_non_list_fields():
     session_plan = {
         "vo2_eligibility": {
@@ -1239,6 +1279,7 @@ def test_ensure_vo2_eligibility_contract_normalizes_non_list_fields():
     assert session_plan["vo2_eligibility"]["detailed_failed_conditions"] == []
 
 
+@pytest.mark.unit
 def test_get_recent_trimp_prefers_trimp_and_falls_back_to_training_load():
     coach = DailyCoach.__new__(DailyCoach)
 
@@ -1252,6 +1293,7 @@ def test_get_recent_trimp_prefers_trimp_and_falls_back_to_training_load():
     assert total == 135.5
 
 
+@pytest.mark.unit
 def test_feed_load_engines_rehydrates_tsb_in_oldest_first_order(monkeypatch):
     events = []
     added = []
@@ -1275,6 +1317,7 @@ def test_feed_load_engines_rehydrates_tsb_in_oldest_first_order(monkeypatch):
     assert any(action == "load_engines_refreshed" and fields["sessions"] == 2 for action, fields in events)
 
 
+@pytest.mark.unit
 def test_run_morning_routine_handles_hrr_locks_weight_and_missing_nutrition(monkeypatch):
     events = []
     payload = {}
@@ -1333,6 +1376,7 @@ def test_run_morning_routine_handles_hrr_locks_weight_and_missing_nutrition(monk
     assert any(event["action"] == "slo_alert" and event["slo_key"] == "nutrition_plan_missing" for event in events)
 
 
+@pytest.mark.unit
 def test_run_morning_routine_telegram_exception_raises_delivery_error_event(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1395,6 +1439,7 @@ class _HydrationFailureDB:
         raise RuntimeError("hydrate_failure")
 
 
+@pytest.mark.unit
 def test_hydrate_engines_from_db_emits_failure_events_for_each_branch(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1414,6 +1459,7 @@ def test_hydrate_engines_from_db_emits_failure_events_for_each_branch(monkeypatc
         assert any(event["action"] == action for event in events)
 
 
+@pytest.mark.unit
 def test_hydrate_engines_from_db_updates_cs_tracker_when_two_performances_exist(monkeypatch):
     events = []
     cs_updates = []
@@ -1443,6 +1489,7 @@ def test_hydrate_engines_from_db_updates_cs_tracker_when_two_performances_exist(
     assert any(event["action"] == "cs_hydrated" and event["performances"] == 2 for event in events)
 
 
+@pytest.mark.unit
 def test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning(monkeypatch):
     events = []
     warning_messages = []
@@ -1459,6 +1506,7 @@ def test_hydrate_engines_from_db_cold_start_emits_low_confidence_warning(monkeyp
     assert any("startup_low_confidence" in message for message in warning_messages)
 
 
+@pytest.mark.unit
 def test_hydrate_engines_from_db_partial_hydration_no_low_confidence_warning(monkeypatch):
     events = []
     warning_messages = []
@@ -1482,6 +1530,7 @@ def test_hydrate_engines_from_db_partial_hydration_no_low_confidence_warning(mon
     assert warning_messages == []
 
 
+@pytest.mark.unit
 def test_daily_coach_init_emits_metrics_under_review_event(monkeypatch):
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
@@ -1517,6 +1566,7 @@ def test_daily_coach_init_emits_metrics_under_review_event(monkeypatch):
     )
 
 
+@pytest.mark.unit
 def test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning(monkeypatch):
     warning_messages = []
     monkeypatch.setattr(daily_coach._log, "warning", lambda message: warning_messages.append(message))
@@ -1537,6 +1587,7 @@ def test_hydrate_engines_from_db_full_hydration_no_low_confidence_warning(monkey
     assert warning_messages == []
 
 
+@pytest.mark.unit
 def test_run_morning_routine_passes_data_confidence_low_only_on_first_routine(monkeypatch):
     coach = MinimalCoachFactory.build(telegram_success=True)
     coach._startup_hydration_confidence = {"hrv": False, "weight": False, "load": False, "hrr": False, "cs": False}
@@ -1571,6 +1622,7 @@ class _FailingTransactionDB(DummyDB):
         yield  # required for generator protocol
 
 
+@pytest.mark.unit
 def test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults(monkeypatch):
     """When the DB transaction rolls back, PersistenceFailure is raised with default values
     and a PERSIST_ERROR step event is emitted (not SUCCESS)."""
@@ -1600,6 +1652,7 @@ def test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults(m
     assert persist_failed_events, "daily_metrics_persist_failed event must be emitted"
 
 
+@pytest.mark.unit
 def test_run_morning_routine_persistence_failure_sets_degraded_flag(monkeypatch):
     """When step 2 raises PersistenceFailure, persistence_degraded=True must reach
     the governance context and the routine must complete successfully."""
@@ -1628,6 +1681,7 @@ def test_run_morning_routine_persistence_failure_sets_degraded_flag(monkeypatch)
     assert degraded_events, "persistence_degraded_mode event must be emitted"
 
 
+@pytest.mark.unit
 def test_governance_engine_persistence_degraded_caps_intensity_at_easy():
     """GovernanceEngine must cap session intensity at EASY when persistence_degraded=True."""
     from titan.science.governance_engine import GovernanceEngine
@@ -1667,6 +1721,7 @@ def test_governance_engine_persistence_degraded_caps_intensity_at_easy():
     assert "PERSISTENCE_DEGRADED_CEILING" in result.get("governance_locks_applied", [])
 
 
+@pytest.mark.unit
 def test_run_morning_routine_persistence_failure_sends_telegram_alert(monkeypatch):
     """When step 2 raises PersistenceFailure, a Telegram alert must be sent."""
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: None)
@@ -1688,6 +1743,7 @@ def test_run_morning_routine_persistence_failure_sends_telegram_alert(monkeypatc
 # ── T2-13: DegradedModeTracker ───────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_degraded_tracker_sets_timestamp_on_first_failure():
     """When a flag becomes True for the first time, degraded_since is set."""
     tracker = DegradedModeTracker()
@@ -1697,6 +1753,7 @@ def test_degraded_tracker_sets_timestamp_on_first_failure():
     assert result["persistence_degraded"] is not None
 
 
+@pytest.mark.unit
 def test_degraded_tracker_clears_on_recovery():
     """When a flag returns to False, degraded_since for that key is cleared."""
     tracker = DegradedModeTracker()
@@ -1706,6 +1763,7 @@ def test_degraded_tracker_clears_on_recovery():
     assert "persistence_degraded" not in result
 
 
+@pytest.mark.unit
 def test_degraded_tracker_fires_alert_after_24h():
     """When degraded_since is older than 24h, send_alert must be called."""
     tracker = DegradedModeTracker()
@@ -1723,6 +1781,7 @@ def test_degraded_tracker_fires_alert_after_24h():
     assert "25h" in alerts[0] or "h" in alerts[0]
 
 
+@pytest.mark.unit
 def test_run_morning_routine_surfaces_hrv_stress_context_in_telegram_payload():
     payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1746,6 +1805,7 @@ def test_run_morning_routine_surfaces_hrv_stress_context_in_telegram_payload():
     assert payload["hrv_stress_context"] == "ILLNESS_PATTERN"
 
 
+@pytest.mark.unit
 def test_run_morning_routine_propagates_data_trust_to_payload_and_context():
     captured_payload = {}
     captured_context = {}
@@ -1778,6 +1838,7 @@ def test_run_morning_routine_propagates_data_trust_to_payload_and_context():
     assert captured_payload["data_trust"]["overall"] == "TRUSTED"
 
 
+@pytest.mark.unit
 def test_run_morning_routine_adds_suspect_data_trust_caveat():
     captured_payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1800,6 +1861,7 @@ def test_run_morning_routine_adds_suspect_data_trust_caveat():
     assert "suspect" in captured_payload["special_note"].lower()
 
 
+@pytest.mark.unit
 def test_run_morning_routine_forwards_decision_rationale_into_telegram_payload():
     payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -1873,6 +1935,7 @@ def _pipeline_kwargs(coach):
     }
 
 
+@pytest.mark.unit
 def test_decision_pipeline_returns_decision_result():
     from titan.orchestration.contracts import DecisionResult
 
@@ -1887,6 +1950,7 @@ def test_decision_pipeline_returns_decision_result():
     assert isinstance(result.snapshot_at, str)
 
 
+@pytest.mark.unit
 def test_decision_pipeline_no_db_writes():
     write_calls = []
 
@@ -1901,6 +1965,7 @@ def test_decision_pipeline_no_db_writes():
     assert write_calls == [], f"Pipeline made unexpected DB write(s): {write_calls}"
 
 
+@pytest.mark.unit
 def test_decision_pipeline_no_telegram_calls():
     telegram_calls = []
 
@@ -1915,6 +1980,7 @@ def test_decision_pipeline_no_telegram_calls():
     assert telegram_calls == [], f"Pipeline made unexpected Telegram call(s): {telegram_calls}"
 
 
+@pytest.mark.unit
 def test_decision_pipeline_decision_trace_has_required_fields():
     required_keys = {
         "hrv", "tsb", "acwr", "lock_codes_active",
@@ -1929,6 +1995,7 @@ def test_decision_pipeline_decision_trace_has_required_fields():
     assert not missing, f"decision_trace missing required keys: {missing}"
 
 
+@pytest.mark.unit
 def test_effect_runner_dispatches_record_outcome():
     from titan.orchestration.contracts import DecisionResult, PlannedEffect
 
@@ -1970,6 +2037,7 @@ def test_effect_runner_dispatches_record_outcome():
     assert recorded[0]["governance_clean"] is True
 
 
+@pytest.mark.unit
 def test_effect_runner_dispatches_send_telegram():
     from titan.orchestration.contracts import DecisionResult, PlannedEffect
 
@@ -2016,6 +2084,7 @@ def test_effect_runner_dispatches_send_telegram():
     assert delivered[0]["session_type"] == "EASY"
 
 
+@pytest.mark.unit
 def test_effect_runner_effects_execute_in_order():
     from titan.orchestration.contracts import DecisionResult, PlannedEffect
 
@@ -2065,6 +2134,7 @@ def test_effect_runner_effects_execute_in_order():
     assert execution_order == ["record_outcome", "send_telegram"]
 
 
+@pytest.mark.unit
 def test_run_morning_routine_delegates_pipeline_then_runner(monkeypatch):
     """run_morning_routine() must call _decision_pipeline() then _effect_runner()."""
     from titan.orchestration.contracts import DecisionResult, PlannedEffect
@@ -2113,6 +2183,7 @@ def test_run_morning_routine_delegates_pipeline_then_runner(monkeypatch):
 # Fix 2: sync returns 0/0/0/0 → sync_ok=False, recorded as failed sync
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
 def test_sync_ok_false_when_all_empty_lists_returned(monkeypatch):
     """When sync_all returns 0/0/0/0 (no timeout), sync_ok must be False and success=False recorded."""
     events = []
@@ -2155,6 +2226,7 @@ def test_sync_ok_false_when_all_empty_lists_returned(monkeypatch):
 # T5-62 Part B — garmin_sync_empty event + regression guard
 # ---------------------------------------------------------------------------
 
+@pytest.mark.unit
 def test_sync_empty_emits_garmin_sync_empty_warning_event(monkeypatch):
     """B1: 0/0/0/0 sync with no timeout → 'garmin_sync_empty' WARNING event emitted."""
     events = []
@@ -2188,6 +2260,7 @@ def test_sync_empty_emits_garmin_sync_empty_warning_event(monkeypatch):
     )
 
 
+@pytest.mark.unit
 def test_sync_with_data_does_not_emit_garmin_sync_empty_event(monkeypatch):
     """B2: Regression guard — sync with data must NOT emit 'garmin_sync_empty' event."""
     events = []
@@ -2220,6 +2293,7 @@ def test_sync_with_data_does_not_emit_garmin_sync_empty_event(monkeypatch):
 class TestT5_51_AcwrNullPropagation:
     """T5-51: Missing ACWR must propagate as None, not silently default to 1.0 (sweet-spot)."""
 
+    @pytest.mark.unit
     def test_vlg_receives_none_when_acwr_absent_from_garmin(self):
         """When garmin_data has no 'acwr' key, VLG.resolve must receive acwr=None (not 1.0)."""
         from types import SimpleNamespace
@@ -2246,6 +2320,7 @@ class TestT5_51_AcwrNullPropagation:
         coach.run_morning_routine()
         assert captured.get("acwr") is None  # must be None, NOT 1.0
 
+    @pytest.mark.unit
     def test_record_decision_acwr_not_sweet_spot_when_absent(self):
         """When garmin_data has no 'acwr', record_decision must NOT receive acwr=1.0."""
         from types import SimpleNamespace
@@ -2269,6 +2344,7 @@ class TestT5_51_AcwrNullPropagation:
         coach.run_morning_routine()
         assert captured.get("acwr") != 1.0  # must NOT be the sweet-spot
 
+    @pytest.mark.unit
     def test_daily_coach_context_contract_accepts_none_acwr(self):
         """DailyCoachContextContract must accept acwr=None without error."""
         from titan.orchestration.contracts import DailyCoachContextContract
@@ -2302,6 +2378,7 @@ class TestT5_51_AcwrNullPropagation:
 # ── T5-44: athlete_max_hr threading through DailyCoach → sync_all ────────────
 
 
+@pytest.mark.unit
 def test_daily_coach_passes_athlete_max_hr_to_garmin_sync_instance(monkeypatch):
     """DailyCoach.__init__(athlete_max_hr=185) must inject the value into
     garmin_sync.athlete_max_hr so that _sync_operation forwards it to
@@ -2338,6 +2415,7 @@ def test_daily_coach_passes_athlete_max_hr_to_garmin_sync_instance(monkeypatch):
     assert fake_garmin.athlete_max_hr == 185
 
 
+@pytest.mark.unit
 def test_daily_coach_athlete_max_hr_defaults_to_zero():
     """When athlete_max_hr is not supplied, DailyCoach stores 0 (safe default)."""
     coach = DailyCoach(
@@ -2360,6 +2438,7 @@ def test_daily_coach_athlete_max_hr_defaults_to_zero():
 # CS_CONFIDENCE_LOCK must fire when cs_tracker has no confidence attribute.
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
 def test_run_morning_routine_absent_cs_confidence_passes_zero_to_apl():
     """T5-64: cs_tracker without confidence attr → APL called with cs_confidence=0.0, not 1.0."""
     coach = MinimalCoachFactory.build(telegram_success=True)
@@ -2385,6 +2464,7 @@ def test_run_morning_routine_absent_cs_confidence_passes_zero_to_apl():
     )
 
 
+@pytest.mark.unit
 def test_cs_confidence_lock_fires_when_cs_tracker_confidence_absent():
     """T5-64: governance CS_CONFIDENCE_LOCK must fire when cs_confidence defaults to 0.0."""
     from titan.science.governance_engine import GovernanceEngine
@@ -2430,6 +2510,7 @@ def _make_base_context_kwargs() -> dict:
     }
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_persistence_degraded_sets_data_confidence_low():
     """T5-71: persistence_degraded=True must force data_confidence_low=True in the payload."""
     coach = DailyCoach.__new__(DailyCoach)
@@ -2448,6 +2529,7 @@ def test_build_daily_coach_context_persistence_degraded_sets_data_confidence_low
     )
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_persistence_degraded_overrides_explicit_false():
     """T5-71: persistence_degraded=True overrides an explicit data_confidence_low=False."""
     coach = DailyCoach.__new__(DailyCoach)
@@ -2466,6 +2548,7 @@ def test_build_daily_coach_context_persistence_degraded_overrides_explicit_false
     )
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_no_persistence_degraded_leaves_data_confidence_low_unset():
     """T5-71: Without persistence_degraded, data_confidence_low must not be injected."""
     coach = DailyCoach.__new__(DailyCoach)
@@ -2480,6 +2563,7 @@ def test_build_daily_coach_context_no_persistence_degraded_leaves_data_confidenc
     )
 
 
+@pytest.mark.unit
 def test_build_daily_coach_context_persistence_degraded_false_does_not_set_data_confidence_low():
     """T5-71: persistence_degraded=False must not force data_confidence_low=True."""
     coach = DailyCoach.__new__(DailyCoach)
@@ -2502,6 +2586,7 @@ def test_build_daily_coach_context_persistence_degraded_false_does_not_set_data_
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_step8_planned_session_engine_exception_falls_to_conservative_mode(monkeypatch):
     """Step 8: TypeError('unexpected keyword argument') from get_today_session()
     triggers the ESI-less fallback call; routine completes and step 8 emits SUCCESS."""
@@ -2535,6 +2620,7 @@ def test_step8_planned_session_engine_exception_falls_to_conservative_mode(monke
     ), "Step 8 must emit SUCCESS after the ESI-TypeError fallback"
 
 
+@pytest.mark.unit
 def test_step8_planned_session_missing_athlete_profile_returns_safe_default(monkeypatch):
     """Step 8: when get_today_session() returns {} (no athlete profile configured),
     the routine completes using .get() safe defaults and step 8 emits SUCCESS."""
@@ -2558,6 +2644,7 @@ def test_step8_planned_session_missing_athlete_profile_returns_safe_default(monk
     ), "Step 8 must succeed even when the session dict is empty (safe .get() defaults apply)"
 
 
+@pytest.mark.unit
 def test_step10_optimal_time_weather_unavailable_uses_fallback_window(monkeypatch):
     """Step 10: TypeError('unexpected keyword argument') from calculate_optimal_time()
     triggers the ESI-less fallback call; routine completes and step 10 emits SUCCESS."""
@@ -2596,6 +2683,7 @@ def test_step10_optimal_time_weather_unavailable_uses_fallback_window(monkeypatc
     ), "Step 10 must emit SUCCESS after the ESI-TypeError fallback"
 
 
+@pytest.mark.unit
 def test_step10_optimal_time_dew_point_above_threshold_pushes_session_window():
     """Step 10: garmin data with temperature_c=28, dew_point=22 produces ESI EXTREME
     (score=39 >= ESI_EXTREME_MIN=28); telegram payload carries esi_level='EXTREME'
@@ -2654,6 +2742,7 @@ def test_step10_optimal_time_dew_point_above_threshold_pushes_session_window():
 # never from a freshly created DatabaseManager() with a default path.
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
 def test_daily_coach_uses_injected_db(tmp_path, monkeypatch):
     """TSBEngine must be loaded from the injected db, not a default-path DatabaseManager."""
     from titan.science.tsb_engine import TSBEngine
@@ -2716,6 +2805,7 @@ def test_daily_coach_uses_injected_db(tmp_path, monkeypatch):
     db.close()
 
 
+@pytest.mark.unit
 def test_tsb_loads_in_asc_order(monkeypatch):
     from titan.science.tsb_engine import TSBEngine
 

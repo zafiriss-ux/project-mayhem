@@ -1,8 +1,11 @@
 import threading
 
+import pytest
+
 from titan.orchestration.coaching_scheduler import CoachingScheduler
 
 
+@pytest.mark.unit
 def test_register_athlete_happy_path_stores_callback_and_lock():
     scheduler = CoachingScheduler(interval_seconds=0.01)
 
@@ -12,6 +15,7 @@ def test_register_athlete_happy_path_stores_callback_and_lock():
     assert "athlete-1" in scheduler._athlete_locks
 
 
+@pytest.mark.unit
 def test_register_athlete_duplicate_raises_value_error():
     scheduler = CoachingScheduler(interval_seconds=0.01)
     scheduler.register_athlete("athlete-1", lambda: None)
@@ -26,6 +30,7 @@ def test_register_athlete_duplicate_raises_value_error():
     assert raised is True
 
 
+@pytest.mark.unit
 def test_start_and_stop_lifecycle_runs_callbacks():
     scheduler = CoachingScheduler(interval_seconds=0.01)
     called = threading.Event()
@@ -39,6 +44,7 @@ def test_start_and_stop_lifecycle_runs_callbacks():
     scheduler.stop()
 
 
+@pytest.mark.unit
 def test_stop_without_start_is_noop():
     scheduler = CoachingScheduler(interval_seconds=0.01)
 
@@ -47,6 +53,7 @@ def test_stop_without_start_is_noop():
     assert scheduler._thread is None
 
 
+@pytest.mark.unit
 def test_per_athlete_overlap_lock_skips_overlapping_cycle():
     scheduler = CoachingScheduler(interval_seconds=0.01)
     calls = {"count": 0}
@@ -65,6 +72,7 @@ def test_per_athlete_overlap_lock_skips_overlapping_cycle():
     assert calls["count"] == 0
 
 
+@pytest.mark.unit
 def test_start_when_already_running_does_not_spawn_new_thread():
     scheduler = CoachingScheduler(interval_seconds=0.05)
     scheduler.register_athlete("athlete-1", lambda: None)

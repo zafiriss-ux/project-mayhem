@@ -1,6 +1,9 @@
+import pytest
+
 from titan.core.equipment import EquipmentManager
 
 
+@pytest.mark.integration
 def test_check_gear_unknown_shoe_returns_blocked_unknown_message() -> None:
     manager = EquipmentManager()
 
@@ -10,6 +13,7 @@ def test_check_gear_unknown_shoe_returns_blocked_unknown_message() -> None:
     assert message == "Unknown Shoe"
 
 
+@pytest.mark.integration
 def test_check_gear_blocks_fast_session_in_recovery_shoe() -> None:
     manager = EquipmentManager()
 
@@ -19,6 +23,7 @@ def test_check_gear_blocks_fast_session_in_recovery_shoe() -> None:
     assert message == "BLOCK: Cannot run Fast in Recovery shoes."
 
 
+@pytest.mark.integration
 def test_check_gear_returns_rotation_and_surface_risk_flags() -> None:
     manager = EquipmentManager()
 
@@ -28,6 +33,7 @@ def test_check_gear_returns_rotation_and_surface_risk_flags() -> None:
     assert message == "SURFACE RISK: High impact intervals on concrete."
 
 
+@pytest.mark.integration
 def test_check_gear_easy_run_in_race_shoe_warns_waste() -> None:
     manager = EquipmentManager()
 
@@ -37,6 +43,7 @@ def test_check_gear_easy_run_in_race_shoe_warns_waste() -> None:
     assert message == "WASTE: Using Super Shoes for easy run."
 
 
+@pytest.mark.integration
 def test_check_gear_expired_shoe_flags_injury_risk_but_allows() -> None:
     manager = EquipmentManager()
 
@@ -46,6 +53,7 @@ def test_check_gear_expired_shoe_flags_injury_risk_but_allows() -> None:
     assert "SHOE EXPIRED (950km). Risk of injury." in message
 
 
+@pytest.mark.integration
 def test_add_shoe_creates_new_entry_with_defaults() -> None:
     manager = EquipmentManager()
 
@@ -59,6 +67,7 @@ def test_add_shoe_creates_new_entry_with_defaults() -> None:
     }
 
 
+@pytest.mark.integration
 def test_update_mileage_updates_existing_shoe_and_returns_true() -> None:
     manager = EquipmentManager()
 
@@ -68,6 +77,7 @@ def test_update_mileage_updates_existing_shoe_and_returns_true() -> None:
     assert manager.shoes["1"]["km"] == 455.5
 
 
+@pytest.mark.integration
 def test_update_mileage_returns_false_for_missing_shoe() -> None:
     manager = EquipmentManager()
 
@@ -76,6 +86,7 @@ def test_update_mileage_returns_false_for_missing_shoe() -> None:
     assert updated is False
 
 
+@pytest.mark.integration
 def test_get_shoe_status_boundary_at_exact_max_km_is_retiring() -> None:
     manager = EquipmentManager()
     manager.add_shoe("11", "Borderline", max_km=100)
@@ -89,6 +100,7 @@ def test_get_shoe_status_boundary_at_exact_max_km_is_retiring() -> None:
     assert status["status"] == "RETIRING"
 
 
+@pytest.mark.integration
 def test_get_shoe_status_zero_max_km_reports_zero_health() -> None:
     manager = EquipmentManager()
     manager.add_shoe("12", "No Lifespan", max_km=0)
@@ -101,12 +113,14 @@ def test_get_shoe_status_zero_max_km_reports_zero_health() -> None:
     assert status["status"] == "GOOD"
 
 
+@pytest.mark.integration
 def test_get_shoe_status_returns_none_for_missing_shoe() -> None:
     manager = EquipmentManager()
 
     assert manager.get_shoe_status("missing") is None
 
 
+@pytest.mark.integration
 def test_list_all_shoes_returns_status_for_each_entry() -> None:
     manager = EquipmentManager()
 
@@ -118,6 +132,7 @@ def test_list_all_shoes_returns_status_for_each_entry() -> None:
     assert all_shoes["3"]["status"] == "EXPIRED"
 
 
+@pytest.mark.integration
 def test_safety_no_crash_with_empty_inventory() -> None:
     manager = EquipmentManager()
     manager.shoes = {}

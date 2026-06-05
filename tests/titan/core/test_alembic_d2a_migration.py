@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic.config import Config
 
 from alembic import command
@@ -32,6 +33,7 @@ def _table_names(db_path: Path) -> set[str]:
     return {name for (name,) in rows}
 
 
+@pytest.mark.integration
 def test_d2a_upgrade_creates_expected_five_tables(tmp_path: Path) -> None:
     db_path = tmp_path / "d2a_upgrade.db"
     config = _make_config(db_path)
@@ -42,6 +44,7 @@ def test_d2a_upgrade_creates_expected_five_tables(tmp_path: Path) -> None:
     assert _EXPECTED_TABLES.issubset(table_names)
 
 
+@pytest.mark.integration
 def test_d2a_round_trip_downgrade_then_upgrade_is_clean(tmp_path: Path) -> None:
     db_path = tmp_path / "d2a_roundtrip.db"
     config = _make_config(db_path)

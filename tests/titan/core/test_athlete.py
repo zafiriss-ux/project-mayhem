@@ -1,9 +1,12 @@
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytest
+
 from titan.core.athlete import UniversalAthleteProfile
 
 
+@pytest.mark.integration
 def test_default_profile_construction_is_safe(athlete_profile_factory):
     profile = athlete_profile_factory()
 
@@ -15,6 +18,7 @@ def test_default_profile_construction_is_safe(athlete_profile_factory):
     assert profile.weight_kg == 75.0
 
 
+@pytest.mark.integration
 def test_set_demographics_zero_weight_keeps_existing_weight_thresholds(athlete_profile_factory):
     profile = athlete_profile_factory()
 
@@ -29,6 +33,7 @@ def test_set_demographics_zero_weight_keeps_existing_weight_thresholds(athlete_p
     assert profile.weight_panic == 74.5
 
 
+@pytest.mark.integration
 def test_set_demographics_negative_weight_updates_thresholds_as_implemented(athlete_profile_factory):
     profile = athlete_profile_factory()
 
@@ -39,6 +44,7 @@ def test_set_demographics_negative_weight_updates_thresholds_as_implemented(athl
     assert profile.weight_panic == -71.5
 
 
+@pytest.mark.integration
 def test_set_hr_data_derives_max_and_threshold_from_age_when_missing(athlete_profile_factory):
     profile = athlete_profile_factory()
     profile.age = 40
@@ -50,6 +56,7 @@ def test_set_hr_data_derives_max_and_threshold_from_age_when_missing(athlete_pro
     assert profile.threshold_hr == 158
 
 
+@pytest.mark.integration
 def test_set_hr_data_zero_max_hr_falls_back_to_age_formula(athlete_profile_factory):
     profile = athlete_profile_factory()
     profile.age = 41
@@ -60,6 +67,7 @@ def test_set_hr_data_zero_max_hr_falls_back_to_age_formula(athlete_profile_facto
     assert profile.threshold_hr == 157
 
 
+@pytest.mark.integration
 def test_time_conversion_helpers_handle_normal_and_invalid_inputs():
     assert UniversalAthleteProfile.str_to_sec("12:34") == 754
     assert UniversalAthleteProfile.str_to_sec("1:02:03") == 3723
@@ -67,6 +75,7 @@ def test_time_conversion_helpers_handle_normal_and_invalid_inputs():
     assert UniversalAthleteProfile.sec_to_str(754) == "12:34"
 
 
+@pytest.mark.integration
 def test_from_dict_is_deterministic_for_identical_inputs():
     data = {
         "athlete_id": "ATH_FIXED",
@@ -93,6 +102,7 @@ def test_from_dict_is_deterministic_for_identical_inputs():
     assert profile_a.to_dict() == profile_b.to_dict()
 
 
+@pytest.mark.integration
 def test_to_dict_and_from_dict_round_trip_preserves_weight_guardrails(athlete_profile_factory):
     profile = athlete_profile_factory()
     profile.weight_floor = 63.1
@@ -106,6 +116,7 @@ def test_to_dict_and_from_dict_round_trip_preserves_weight_guardrails(athlete_pr
     assert round_tripped.weight_panic == 62.4
 
 
+@pytest.mark.integration
 def test_to_dict_and_from_dict_round_trip_preserves_critical_speed_fields(athlete_profile_factory):
     profile = athlete_profile_factory()
     profile.critical_speed_m_per_s = 4.35
@@ -117,6 +128,7 @@ def test_to_dict_and_from_dict_round_trip_preserves_critical_speed_fields(athlet
     assert round_tripped.d_prime_m == 312.5
 
 
+@pytest.mark.integration
 def test_to_dict_includes_weight_guardrail_fields(athlete_profile_factory):
     profile = athlete_profile_factory()
 
@@ -126,6 +138,7 @@ def test_to_dict_includes_weight_guardrail_fields(athlete_profile_factory):
     assert "weight_panic" in data
 
 
+@pytest.mark.integration
 def test_from_dict_missing_weight_guardrail_fields_keeps_constructor_defaults():
     profile = UniversalAthleteProfile.from_dict({"name": "Runner"})
 
@@ -134,6 +147,7 @@ def test_from_dict_missing_weight_guardrail_fields_keeps_constructor_defaults():
     assert profile.weight_panic == 74.5
 
 
+@pytest.mark.integration
 def test_from_dict_missing_critical_speed_fields_keeps_constructor_defaults():
     profile = UniversalAthleteProfile.from_dict({"name": "Runner"})
 
@@ -141,6 +155,7 @@ def test_from_dict_missing_critical_speed_fields_keeps_constructor_defaults():
     assert profile.d_prime_m == 250.0
 
 
+@pytest.mark.integration
 def test_generated_athlete_ids_are_unique_when_created_in_same_second(monkeypatch):
     fixed_now = datetime(2026, 3, 14, 9, 30, 0)
 
@@ -157,6 +172,7 @@ def test_generated_athlete_ids_are_unique_when_created_in_same_second(monkeypatc
     assert profile_a.athlete_id != profile_b.athlete_id
 
 
+@pytest.mark.integration
 def test_generated_athlete_ids_include_timestamp_prefix_and_unique_suffix(monkeypatch):
     fixed_now = datetime(2026, 3, 14, 9, 30, 0)
 
@@ -176,6 +192,7 @@ def test_generated_athlete_ids_include_timestamp_prefix_and_unique_suffix(monkey
     assert profile_a.athlete_id.split("_", maxsplit=2)[2] != profile_b.athlete_id.split("_", maxsplit=2)[2]
 
 
+@pytest.mark.integration
 def test_generated_athlete_ids_remain_unique_when_timestamp_and_uuid_seed_collide(monkeypatch):
     fixed_now = datetime(2026, 3, 14, 9, 30, 0)
 

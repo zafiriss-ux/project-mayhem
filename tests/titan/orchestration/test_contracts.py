@@ -2,6 +2,8 @@ import json
 from dataclasses import FrozenInstanceError
 from typing import get_type_hints
 
+import pytest
+
 from titan.orchestration.contracts import (
     BiomechanicsEngineProtocol,
     DailyCoachContextContract,
@@ -17,6 +19,7 @@ from titan.orchestration.contracts import (
 from titan.science.biomechanics import BiomechanicsAnalysis
 
 
+@pytest.mark.unit
 def test_daily_coaching_payload_contract_happy_path_typed_fields():
     payload: DailyCoachingPayload = {
         "session_type": "EASY",
@@ -57,6 +60,7 @@ def test_daily_coaching_payload_contract_happy_path_typed_fields():
     assert payload["intensity_gate_result"] == {"color": "GREEN"}
 
 
+@pytest.mark.unit
 def test_daily_coaching_payload_contract_boundary_nullable_and_na_fields():
     payload: DailyCoachingPayload = {
         "session_type": "REST",
@@ -97,6 +101,7 @@ def test_daily_coaching_payload_contract_boundary_nullable_and_na_fields():
     assert payload["vo2_eligibility"] is None
 
 
+@pytest.mark.unit
 def test_today_session_plan_contract_annotation_happy_path_mapping_fields():
     hints = get_type_hints(TodaySessionPlan, include_extras=True)
 
@@ -104,6 +109,7 @@ def test_today_session_plan_contract_annotation_happy_path_mapping_fields():
     assert "typing.NotRequired[collections.abc.Mapping[str, object]]" in str(hints["fueling_gate"])
 
 
+@pytest.mark.unit
 def test_today_session_plan_contract_annotation_boundary_allows_missing_optional_fields():
     payload: TodaySessionPlan = {"session_type": "EASY", "duration_min": 45}
 
@@ -111,6 +117,7 @@ def test_today_session_plan_contract_annotation_boundary_allows_missing_optional
     assert payload["duration_min"] == 45
 
 
+@pytest.mark.unit
 def test_garmin_sync_result_contract_to_payload_happy_path():
     activities = [{"date": "2026-03-04"}]
     weight = [{"weight_kg": 70.2}]
@@ -133,6 +140,7 @@ def test_garmin_sync_result_contract_to_payload_happy_path():
     assert json.loads(json.dumps(payload))["hrv_sync_metrics"]["synced_days"] == 1
 
 
+@pytest.mark.unit
 def test_garmin_sync_result_contract_to_payload_boundary_empty_collections():
     payload = GarminSyncResultContract(
         activities=[],
@@ -146,6 +154,7 @@ def test_garmin_sync_result_contract_to_payload_boundary_empty_collections():
     assert payload["hrv_sync_metrics"]["days_back"] == 0
 
 
+@pytest.mark.unit
 def test_daily_coach_context_contract_to_payload_happy_path():
     db_handle = object()
     cs_tracker = object()
@@ -182,6 +191,7 @@ def test_daily_coach_context_contract_to_payload_happy_path():
     assert payload["lock_thresholds"]["acwr"] == 1.25
 
 
+@pytest.mark.unit
 def test_daily_coach_context_contract_to_payload_boundary_nullable_vo2_field():
     payload = DailyCoachContextContract(
         db=object(),
@@ -211,18 +221,21 @@ def test_daily_coach_context_contract_to_payload_boundary_nullable_vo2_field():
     assert payload["days_since_last_vo2"] is None
 
 
+@pytest.mark.unit
 def test_hrv_sync_metrics_contract_to_payload_happy_path():
     payload = HRVSyncMetricsContract(days_back=7, synced_days=6, skipped_days=1).to_payload()
 
     assert payload == {"days_back": 7, "synced_days": 6, "skipped_days": 1}
 
 
+@pytest.mark.unit
 def test_hrv_sync_metrics_contract_to_payload_boundary_zero_values():
     payload = HRVSyncMetricsContract(days_back=0, synced_days=0, skipped_days=0).to_payload()
 
     assert json.loads(json.dumps(payload)) == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
 
 
+@pytest.mark.unit
 def test_titan_context_contract_to_payload_happy_path():
     garmin_client = object()
     db_handle = object()
@@ -331,6 +344,7 @@ def _minimal_decision_result(**overrides) -> DecisionResult:
     return DecisionResult(**kwargs)
 
 
+@pytest.mark.unit
 def test_planned_effect_is_frozen():
     effect = PlannedEffect(effect_type="send_telegram", payload={"msg": "hi"})
     try:
@@ -340,6 +354,7 @@ def test_planned_effect_is_frozen():
         pass
 
 
+@pytest.mark.unit
 def test_decision_result_is_frozen():
     result = _minimal_decision_result()
     try:
@@ -349,6 +364,7 @@ def test_decision_result_is_frozen():
         pass
 
 
+@pytest.mark.unit
 def test_decision_result_planned_effects_is_tuple():
     effect = PlannedEffect(effect_type="send_telegram", payload={})
     result = _minimal_decision_result(planned_effects=(effect,))
@@ -356,6 +372,7 @@ def test_decision_result_planned_effects_is_tuple():
     assert result.planned_effects[0].effect_type == "send_telegram"
 
 
+@pytest.mark.unit
 def test_planned_effect_discriminants():
     for discriminant in ("record_outcome", "send_telegram"):
         effect = PlannedEffect(effect_type=discriminant, payload={})
@@ -365,6 +382,7 @@ def test_planned_effect_discriminants():
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_titan_context_contract_to_payload_boundary_nullable_weekly_plan():
     payload = TitanContextContract(
         garmin=object(),
@@ -408,6 +426,7 @@ def test_titan_context_contract_to_payload_boundary_nullable_weekly_plan():
     assert payload["last_weekly_plan"] is None
 
 
+@pytest.mark.unit
 def test_titan_context_contract_annotation_uses_biomechanics_engine_protocol():
     typed_dict_hints = get_type_hints(TitanContext, include_extras=True)
     dataclass_hints = get_type_hints(TitanContextContract, include_extras=True)
@@ -416,9 +435,11 @@ def test_titan_context_contract_annotation_uses_biomechanics_engine_protocol():
     assert dataclass_hints["biomechanics"] is BiomechanicsEngineProtocol
 
 
+@pytest.mark.unit
 def test_biomechanics_engine_protocol_structural_subtype_expectation():
     assert isinstance(BiomechanicsAnalysis(), BiomechanicsEngineProtocol)
 
 
+@pytest.mark.unit
 def test_biomechanics_engine_protocol_boundary_has_no_speculative_members():
     assert sorted(BiomechanicsEngineProtocol.__dict__.get("__annotations__", {})) == []

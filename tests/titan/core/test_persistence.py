@@ -59,21 +59,25 @@ _REQUIRED_ABSTRACT_METHODS = frozenset(
 )
 
 
+@pytest.mark.integration
 def test_persistence_adapter_is_importable() -> None:
     assert PersistenceAdapter is not None
 
 
+@pytest.mark.integration
 def test_persistence_adapter_cannot_be_instantiated() -> None:
     with pytest.raises(TypeError):
         PersistenceAdapter()  # type: ignore[abstract]
 
 
+@pytest.mark.integration
 def test_persistence_adapter_exposes_required_abstract_methods() -> None:
     """All expected methods must be declared abstract on the base class."""
     missing = _REQUIRED_ABSTRACT_METHODS - PersistenceAdapter.__abstractmethods__
     assert not missing, f"Methods not declared abstract: {sorted(missing)}"
 
 
+@pytest.mark.integration
 def test_no_extra_undocumented_abstract_methods() -> None:
     """No abstract method may be added without updating _REQUIRED_ABSTRACT_METHODS."""
     extra = PersistenceAdapter.__abstractmethods__ - _REQUIRED_ABSTRACT_METHODS
@@ -83,6 +87,7 @@ def test_no_extra_undocumented_abstract_methods() -> None:
     )
 
 
+@pytest.mark.integration
 def test_partial_subclass_cannot_be_instantiated() -> None:
     """A subclass that only overrides one method must still raise TypeError."""
 
@@ -94,6 +99,7 @@ def test_partial_subclass_cannot_be_instantiated() -> None:
         _Partial()  # type: ignore[abstract]
 
 
+@pytest.mark.integration
 def test_complete_concrete_subclass_can_be_instantiated() -> None:
     """A subclass that implements every abstract method is instantiable."""
 
@@ -111,12 +117,14 @@ def test_complete_concrete_subclass_can_be_instantiated() -> None:
     assert isinstance(adapter, PersistenceAdapter)
 
 
+@pytest.mark.integration
 def test_persistence_adapter_is_abstract_base_class() -> None:
     from abc import ABC
 
     assert issubclass(PersistenceAdapter, ABC)
 
 
+@pytest.mark.integration
 def test_sqlite_adapter_is_persistence_adapter(tmp_path) -> None:
     adapter = SQLiteAdapter(db_name="adapter.db", db_dir=tmp_path)
     try:
@@ -125,6 +133,7 @@ def test_sqlite_adapter_is_persistence_adapter(tmp_path) -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_sqlite_adapter_preserves_daily_metric_behavior(tmp_path) -> None:
     adapter = SQLiteAdapter(db_name="adapter.db", db_dir=tmp_path)
     try:
@@ -138,6 +147,7 @@ def test_sqlite_adapter_preserves_daily_metric_behavior(tmp_path) -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_sqlite_adapter_boundary_unknown_sync_source_returns_none(tmp_path) -> None:
     adapter = SQLiteAdapter(db_name="adapter.db", db_dir=tmp_path)
     try:
@@ -241,6 +251,7 @@ def _build_test_engine() -> tuple:
     return engine, adapter
 
 
+@pytest.mark.integration
 def test_postgres_adapter_happy_path_core_queries() -> None:
     _engine, adapter = _build_test_engine()
     today = datetime.now(UTC).date().isoformat()
@@ -287,6 +298,7 @@ def test_postgres_adapter_happy_path_core_queries() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_postgres_adapter_boundary_returns_safe_defaults() -> None:
     _engine, adapter = _build_test_engine()
     try:
@@ -300,6 +312,7 @@ def test_postgres_adapter_boundary_returns_safe_defaults() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_postgres_adapter_backup_runs_pg_dump(tmp_path) -> None:
     _engine, adapter = _build_test_engine()
     calls: list[list[str]] = []
@@ -325,6 +338,7 @@ def test_postgres_adapter_backup_runs_pg_dump(tmp_path) -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_postgres_adapter_backup_failure_raises_runtime_error(tmp_path) -> None:
     _engine, adapter = _build_test_engine()
 
@@ -343,6 +357,7 @@ def test_postgres_adapter_backup_failure_raises_runtime_error(tmp_path) -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_sqlite_and_postgres_backup_paths_remain_backend_specific(tmp_path) -> None:
     sqlite_adapter = SQLiteAdapter(db_name="adapter.db", db_dir=tmp_path)
     _engine, postgres_adapter = _build_test_engine()
@@ -403,6 +418,7 @@ class _FakeAthleteContextAdapter:
         self.closed = True
 
 
+@pytest.mark.integration
 def test_get_athlete_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
     monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
@@ -419,6 +435,7 @@ def test_get_athlete_context_happy_path(monkeypatch: pytest.MonkeyPatch) -> None
     assert fake.closed is True
 
 
+@pytest.mark.integration
 def test_get_athlete_context_boundary_invalid_days(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
     monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
@@ -429,6 +446,7 @@ def test_get_athlete_context_boundary_invalid_days(monkeypatch: pytest.MonkeyPat
     assert fake.closed is False
 
 
+@pytest.mark.integration
 def test_get_athlete_context_omits_governance_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
     monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
@@ -440,6 +458,7 @@ def test_get_athlete_context_omits_governance_when_flag_false(monkeypatch: pytes
     assert "biometrics" in result
 
 
+@pytest.mark.integration
 def test_get_athlete_context_omits_training_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
     monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
@@ -451,6 +470,7 @@ def test_get_athlete_context_omits_training_when_flag_false(monkeypatch: pytest.
     assert "biometrics" in result
 
 
+@pytest.mark.integration
 def test_get_athlete_context_omits_biometrics_when_flag_false(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeAthleteContextAdapter()
     monkeypatch.setattr("titan.core.persistence.get_persistence_adapter", lambda: fake)
@@ -462,6 +482,7 @@ def test_get_athlete_context_omits_biometrics_when_flag_false(monkeypatch: pytes
     assert "training" in result
 
 
+@pytest.mark.integration
 def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TITAN_DB_BACKEND", "sqlite")
 
@@ -622,6 +643,7 @@ def _build_two_athlete_engine() -> tuple:
     return engine, adapter
 
 
+@pytest.mark.integration
 def test_get_baseline_rhr_isolated_by_athlete_id() -> None:
     """get_baseline_rhr() returns data for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()
@@ -635,6 +657,7 @@ def test_get_baseline_rhr_isolated_by_athlete_id() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_get_hrv_history_isolated_by_athlete_id() -> None:
     """get_hrv_history() returns data for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()
@@ -650,6 +673,7 @@ def test_get_hrv_history_isolated_by_athlete_id() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_get_weight_history_isolated_by_athlete_id() -> None:
     """get_weight_history() returns data for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()
@@ -665,6 +689,7 @@ def test_get_weight_history_isolated_by_athlete_id() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_get_training_load_history_isolated_by_athlete_id() -> None:
     """get_training_load_history() returns data for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()
@@ -680,6 +705,7 @@ def test_get_training_load_history_isolated_by_athlete_id() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_get_ctl_atl_tsb_isolated_by_athlete_id() -> None:
     """get_ctl_atl_tsb() returns computed values for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()
@@ -694,6 +720,7 @@ def test_get_ctl_atl_tsb_isolated_by_athlete_id() -> None:
         adapter.close()
 
 
+@pytest.mark.integration
 def test_get_governance_decisions_isolated_by_athlete_id() -> None:
     """get_governance_decisions() returns data for the specified athlete only."""
     _engine, adapter = _build_two_athlete_engine()

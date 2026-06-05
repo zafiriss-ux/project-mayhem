@@ -43,6 +43,7 @@ def _read_degraded_since(db: DatabaseManager, failure_type: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 class TestDegradedModePersistence:
+    @pytest.mark.unit
     def test_new_degradation_is_persisted(self, tmp_path: Path) -> None:
         """When a new degradation flag is set, the row must appear in the DB."""
         db = _make_db(tmp_path)
@@ -53,6 +54,7 @@ class TestDegradedModePersistence:
         assert _table_row_count(db, "GARMIN_SYNC") == 1
         db.close()
 
+    @pytest.mark.unit
     def test_cleared_degradation_is_removed_from_db(self, tmp_path: Path) -> None:
         """When a flag clears, the corresponding DB row must be deleted."""
         db = _make_db(tmp_path)
@@ -65,6 +67,7 @@ class TestDegradedModePersistence:
         assert _table_row_count(db, "GARMIN_SYNC") == 0
         db.close()
 
+    @pytest.mark.unit
     def test_restart_simulation_timer_preserved(self, tmp_path: Path) -> None:
         """Degradation timer must survive a process restart (DB open → close → reopen)."""
         original_ts = datetime(2026, 4, 3, 8, 0, 0, tzinfo=UTC)
@@ -87,6 +90,7 @@ class TestDegradedModePersistence:
         )
         db2.close()
 
+    @pytest.mark.unit
     def test_degraded_mode_restored_event_emitted_on_hydration(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -122,6 +126,7 @@ class TestDegradedModePersistence:
         assert "GARMIN_SYNC" in payload["failure_types"]
         db.close()
 
+    @pytest.mark.unit
     def test_no_restored_event_when_db_empty(
         self, tmp_path: Path, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -136,6 +141,7 @@ class TestDegradedModePersistence:
         assert not any("degraded_mode_restored" in m for m in messages)
         db.close()
 
+    @pytest.mark.unit
     def test_tracker_without_db_behaves_as_before(self) -> None:
         """DegradedModeTracker(db=None) must have identical in-memory behaviour."""
         tracker = DegradedModeTracker()  # no db arg — original usage
@@ -147,6 +153,7 @@ class TestDegradedModePersistence:
         tracker.update({"GARMIN_SYNC": False}, alert_fn=alerts.append)
         assert "GARMIN_SYNC" not in tracker._degraded_since
 
+    @pytest.mark.unit
     def test_degraded_mode_state_table_created_by_migration(self, tmp_path: Path) -> None:
         """Migration v9 must create the degraded_mode_state table."""
         db = _make_db(tmp_path)
@@ -156,6 +163,7 @@ class TestDegradedModePersistence:
         assert result is not None, "degraded_mode_state table was not created by migration"
         db.close()
 
+    @pytest.mark.unit
     def test_schema_version_is_current(self, tmp_path: Path) -> None:
         """After all migrations, PRAGMA user_version must equal SCHEMA_VERSION."""
         from titan.core.database import SCHEMA_VERSION
@@ -165,6 +173,7 @@ class TestDegradedModePersistence:
         assert version == SCHEMA_VERSION
         db.close()
 
+    @pytest.mark.unit
     def test_persist_state_tolerates_db_error_gracefully(self, tmp_path: Path) -> None:
         """_persist_state must not raise when the DB call fails; logs WARNING."""
         import logging

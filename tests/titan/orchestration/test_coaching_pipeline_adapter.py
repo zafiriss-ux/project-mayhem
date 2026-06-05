@@ -8,6 +8,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from titan.orchestration.coaching_pipeline import (
     AthleteCoachingContext,
     coaching_pipeline,
@@ -121,6 +123,7 @@ def _build_no_db_context() -> AthleteCoachingContext:
 
 class TestThresholdAdapterInjection:
 
+    @pytest.mark.unit
     def test_adapter_not_instantiated_during_cold_start(self):
         """
         During cold-start, ThresholdAdapter must NOT be instantiated.
@@ -138,6 +141,7 @@ class TestThresholdAdapterInjection:
             coaching_pipeline(ctx)
             mock_adapter_cls.assert_not_called()
 
+    @pytest.mark.unit
     def test_adapter_instantiated_for_graduated_athlete(self):
         """
         For a graduated athlete (is_cold_start=False), ThresholdAdapter
@@ -158,6 +162,7 @@ class TestThresholdAdapterInjection:
             coaching_pipeline(ctx)
             mock_adapter.load.assert_called_once()
 
+    @pytest.mark.unit
     def test_adapter_none_when_no_db(self):
         """
         When ctx.db is None, ThresholdAdapter must NOT be instantiated.
@@ -171,6 +176,7 @@ class TestThresholdAdapterInjection:
             coaching_pipeline(ctx)
             mock_adapter_cls.assert_not_called()
 
+    @pytest.mark.unit
     def test_governance_engine_receives_adapter(self):
         """
         GovernanceEngine must be constructed with the ThresholdAdapter
@@ -201,6 +207,7 @@ class TestThresholdAdapterInjection:
                 "GovernanceEngine must receive the ThresholdAdapter instance"
             )
 
+    @pytest.mark.unit
     def test_propose_adaptation_never_called(self):
         """
         Stage 3 wires adapter for read-only threshold lookup.
