@@ -1,3 +1,5 @@
+import pytest
+
 from titan.config.evidence_registry import METRIC_LIFECYCLE, METRIC_LIFECYCLE_STATES
 
 EXPECTED_FIELDS = {
@@ -9,6 +11,7 @@ EXPECTED_FIELDS = {
 }
 
 
+@pytest.mark.unit
 def test_metric_lifecycle_registry_schema_and_state_values() -> None:
     assert METRIC_LIFECYCLE
 
@@ -21,6 +24,7 @@ def test_metric_lifecycle_registry_schema_and_state_values() -> None:
         assert isinstance(metadata["evidence_registry_entry"], bool), metric_name
 
 
+@pytest.mark.unit
 def test_under_review_metrics_have_no_governance_gate_or_evidence_entry() -> None:
     for metric_name, metadata in METRIC_LIFECYCLE.items():
         if metadata["state"] != "Under Review":

@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+import pytest
+
 ARCH_FILE = Path(__file__).parent.parent / "docs" / "ARCHITECTURE.md"
 TITAN_DIR = Path(__file__).parent.parent / "titan"
 
@@ -17,11 +19,13 @@ def _collect_module_stems():
     return stems
 
 
+@pytest.mark.unit
 def test_architecture_md_exists_and_nonempty():
     assert ARCH_FILE.exists(), f"docs/ARCHITECTURE.md not found at {ARCH_FILE}"
     assert len(ARCH_FILE.read_text()) > 1000, "docs/ARCHITECTURE.md is too short (< 1000 chars)"
 
 
+@pytest.mark.unit
 def test_all_titan_modules_in_architecture_md():
     arch_text = ARCH_FILE.read_text()
     missing = [stem for stem in _collect_module_stems() if stem not in arch_text]

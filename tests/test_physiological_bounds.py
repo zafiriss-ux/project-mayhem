@@ -27,6 +27,7 @@ from titan.science.physiological_bounds import (
 # ─── validate_and_clamp: happy path ──────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_in_bounds_values_unchanged():
     data = {
         "hrv_ms": 55.0,
@@ -42,6 +43,7 @@ def test_in_bounds_values_unchanged():
         assert result[field] == value
 
 
+@pytest.mark.integration
 def test_unknown_fields_pass_through():
     data = {"unknown_field": 999.9, "hrv_ms": 60.0}
     result, violations = validate_and_clamp(data, "test")
@@ -49,6 +51,7 @@ def test_unknown_fields_pass_through():
     assert violations == []
 
 
+@pytest.mark.integration
 def test_none_values_pass_through():
     data = {"hrv_ms": None, "rhr_bpm": None}
     result, violations = validate_and_clamp(data, "test")
@@ -60,6 +63,7 @@ def test_none_values_pass_through():
 # ─── hrv_ms = 0: always nulled ───────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_hrv_zero_always_nulled():
     result, violations = validate_and_clamp({"hrv_ms": 0.0}, "test")
     assert result["hrv_ms"] is None
@@ -68,6 +72,7 @@ def test_hrv_zero_always_nulled():
     assert violations[0].field == "hrv_ms"
 
 
+@pytest.mark.integration
 def test_hrv_near_zero_but_not_zero_is_clamped_or_valid():
     # 0.05 is below lo=0.1 but within 1× span (299.9) so should clamp
     result, violations = validate_and_clamp({"hrv_ms": 0.05}, "test")
@@ -78,6 +83,7 @@ def test_hrv_near_zero_but_not_zero_is_clamped_or_valid():
 # ─── clamping: within 2× span ────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_value_slightly_above_hi_clamped():
     hi = BOUNDS["rhr_bpm"][1]  # 120.0
     result, violations = validate_and_clamp({"rhr_bpm": 125.0}, "test")
@@ -85,6 +91,7 @@ def test_value_slightly_above_hi_clamped():
     assert violations[0].action == "clamped"
 
 
+@pytest.mark.integration
 def test_value_slightly_below_lo_clamped():
     lo = BOUNDS["rhr_bpm"][0]  # 25.0
     result, violations = validate_and_clamp({"rhr_bpm": 22.0}, "test")
@@ -92,6 +99,7 @@ def test_value_slightly_below_lo_clamped():
     assert violations[0].action == "clamped"
 
 
+@pytest.mark.integration
 def test_glycogen_debt_negative_clamped_to_zero():
     lo = BOUNDS["glycogen_debt"][0]  # 0.0
     result, violations = validate_and_clamp({"glycogen_debt": -1.0}, "test")
@@ -102,6 +110,7 @@ def test_glycogen_debt_negative_clamped_to_zero():
 # ─── nulling: beyond 2× span ─────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_rhr_artefact_nulled():
     # 200 bpm: (200-120)=80 excess; span=95 → 80 <= 95 → clamped, not nulled
     # But 300 bpm: (300-120)=180 excess; span=95 → 180 > 95 → nulled
@@ -110,6 +119,7 @@ def test_rhr_artefact_nulled():
     assert violations[0].action == "nulled"
 
 
+@pytest.mark.integration
 def test_hrv_extreme_artefact_nulled():
     # hrv_ms = 800: (800-300)=500 excess; span=299.9 → 500 > 299.9 → nulled
     result, violations = validate_and_clamp({"hrv_ms": 800.0}, "test")
@@ -117,6 +127,7 @@ def test_hrv_extreme_artefact_nulled():
     assert violations[0].action == "nulled"
 
 
+@pytest.mark.integration
 def test_temperature_extreme_nulled():
     # -100°C: (-40 - -100)=60 excess; span=95 → 60 <= 95 → clamped
     result_clamp, v_clamp = validate_and_clamp({"temperature_c": -100.0}, "test")
@@ -130,19 +141,23 @@ def test_temperature_extreme_nulled():
 # ─── validate_single convenience wrapper ─────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_validate_single_valid():
     assert validate_single("hrv_ms", 55.0, "test") == 55.0
 
 
+@pytest.mark.integration
 def test_validate_single_none_passthrough():
     assert validate_single("hrv_ms", None, "test") is None
 
 
+@pytest.mark.integration
 def test_validate_single_clamped():
     result = validate_single("rhr_bpm", 125.0, "test")
     assert result == BOUNDS["rhr_bpm"][1]
 
 
+@pytest.mark.integration
 def test_validate_single_nulled():
     result = validate_single("rhr_bpm", 300.0, "test")
     assert result is None
@@ -151,6 +166,7 @@ def test_validate_single_nulled():
 # ─── BoundsViolation dataclass ────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_bounds_violation_fields():
     _, violations = validate_and_clamp({"hrv_ms": 0.0}, "ctx")
     v = violations[0]
@@ -165,6 +181,7 @@ def test_bounds_violation_fields():
 # ─── multiple fields in one call ─────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_mixed_valid_and_invalid_fields():
     data = {
         "hrv_ms": 55.0,        # valid
@@ -183,6 +200,7 @@ def test_mixed_valid_and_invalid_fields():
 # ─── BOUNDS dict completeness ─────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_bounds_covers_required_fields():
     required = {
         "hrv_ms",
@@ -200,6 +218,7 @@ def test_bounds_covers_required_fields():
     assert required.issubset(set(BOUNDS.keys()))
 
 
+@pytest.mark.integration
 def test_bounds_lo_lt_hi_for_all_fields():
     for field, (lo, hi) in BOUNDS.items():
         assert lo < hi, f"BOUNDS[{field!r}]: lo ({lo}) must be < hi ({hi})"
@@ -208,6 +227,7 @@ def test_bounds_lo_lt_hi_for_all_fields():
 # ─── Database integration: get_hrv_history filters artefacts ─────────────────
 
 
+@pytest.mark.integration
 def test_get_hrv_history_filters_artefact_values(tmp_path):
     """Sensor-artefact HRV values are excluded from get_hrv_history() output."""
     from titan.core.database import DatabaseManager
@@ -227,6 +247,7 @@ def test_get_hrv_history_filters_artefact_values(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_hrv_history_clamps_mild_outlier(tmp_path):
     """Mildly out-of-bounds HRV is clamped and returned (not excluded)."""
     from titan.core.database import DatabaseManager
@@ -246,6 +267,7 @@ def test_get_hrv_history_clamps_mild_outlier(tmp_path):
 # ─── Database integration: get_baseline_rhr validates output ─────────────────
 
 
+@pytest.mark.integration
 def test_get_baseline_rhr_clamps_high_value(tmp_path):
     """Mildly elevated RHR is clamped to the bound ceiling."""
     import datetime
@@ -267,6 +289,7 @@ def test_get_baseline_rhr_clamps_high_value(tmp_path):
 # ─── Database integration: get_ctl_atl_tsb returns safe values ───────────────
 
 
+@pytest.mark.integration
 def test_get_ctl_atl_tsb_zero_load_returns_zeros(tmp_path):
     """New athlete with no training history: CTL=0, ATL=0, TSB=0 (no NaN/Inf)."""
     from titan.core.database import DatabaseManager
@@ -285,6 +308,7 @@ def test_get_ctl_atl_tsb_zero_load_returns_zeros(tmp_path):
 
 
 
+@pytest.mark.integration
 def test_get_ctl_atl_tsb_matches_explicit_decay_constants(tmp_path):
     """Happy path: DB CTL/ATL uses centralized decay constants by default."""
     from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
@@ -322,6 +346,7 @@ def test_get_ctl_atl_tsb_matches_explicit_decay_constants(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_ctl_atl_tsb_changes_when_canonical_decay_constants_change(tmp_path, monkeypatch):
     """Boundary path: changing canonical constants shifts DB CTL/ATL output."""
     from titan.core.database import DatabaseManager
@@ -352,6 +377,7 @@ def test_get_ctl_atl_tsb_changes_when_canonical_decay_constants_change(tmp_path,
 
     db.close()
 
+@pytest.mark.integration
 def test_get_ctl_atl_tsb_with_normal_load(tmp_path):
     """Normal training history: CTL and ATL within BOUNDS."""
     from titan.core.database import DatabaseManager
@@ -374,6 +400,7 @@ def test_get_ctl_atl_tsb_with_normal_load(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_weight_history_filters_extreme_artefact_values(tmp_path):
     """Extreme weight artefacts are nulled and removed from DB read path output."""
     from titan.core.database import DatabaseManager
@@ -392,6 +419,7 @@ def test_get_weight_history_filters_extreme_artefact_values(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_training_load_history_clamps_mild_outlier(tmp_path):
     """Slightly out-of-bounds training load is clamped and retained."""
     import datetime

@@ -12,6 +12,8 @@ GOVERNANCE_FILES = (
 )
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_governance_files_are_ruff_clean() -> None:
     ruff_bin = shutil.which("ruff")
     cmd = ["ruff", "check", *GOVERNANCE_FILES] if ruff_bin else [sys.executable, "-m", "ruff", "check", *GOVERNANCE_FILES]

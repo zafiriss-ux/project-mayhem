@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 PHASE_A_TARGET_FOLDERS = [
@@ -19,6 +21,8 @@ PHASE_B_BLOCKING_TARGETS = [
 ]
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_has_two_phase_ruff_gate() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
@@ -32,6 +36,8 @@ def test_ci_has_two_phase_ruff_gate() -> None:
     assert "needs: [ruff-phase-a]" in content
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_phase_a_covers_current_warning_targets() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
@@ -40,6 +46,8 @@ def test_phase_a_covers_current_warning_targets() -> None:
     assert "ruff check ." in phase_a_section
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")
@@ -50,6 +58,8 @@ def test_phase_b_includes_promoted_targets_in_blocking_gate() -> None:
         assert folder in content
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_phase_b_starts_with_only_titan_config() -> None:
     workflow = ROOT / ".github/workflows/ci.yml"
     content = workflow.read_text(encoding="utf-8")

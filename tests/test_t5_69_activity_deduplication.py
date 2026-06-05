@@ -43,6 +43,7 @@ class TestActivityDeduplication:
     # T5-69 acceptance criterion
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_duplicate_save_session_does_not_insert_duplicate_row(self, db):
         """Two save_session() calls with the same garmin_activity_id → 1 row."""
         kwargs = {
@@ -59,6 +60,7 @@ class TestActivityDeduplication:
             "Duplicate garmin_activity_id produced more than one row"
         )
 
+    @pytest.mark.integration
     def test_three_resync_calls_produce_single_row(self, db):
         """Three overlapping syncs for same activity → still exactly one row."""
         for _ in range(3):
@@ -75,6 +77,7 @@ class TestActivityDeduplication:
     # Distinct activity IDs each get their own row
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_different_activity_ids_each_produce_a_row(self, db):
         """Two different activityIds → two rows."""
         db.save_session(
@@ -99,6 +102,7 @@ class TestActivityDeduplication:
     # Sessions without activityId are not deduplicated (NULL rows allowed)
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_null_activity_id_rows_are_not_deduplicated(self, db):
         """Rows without garmin_activity_id (NULL) are never considered duplicates."""
         db.save_session(
@@ -122,6 +126,7 @@ class TestActivityDeduplication:
     # activity_id column exists in schema
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_garmin_activity_id_column_exists(self, db):
         """training_log schema has garmin_activity_id column."""
         cols = [
@@ -132,6 +137,7 @@ class TestActivityDeduplication:
             f"garmin_activity_id column missing from training_log; columns: {cols}"
         )
 
+    @pytest.mark.integration
     def test_unique_index_on_garmin_activity_id(self, db):
         """A partial UNIQUE index on garmin_activity_id must exist."""
         indices = [

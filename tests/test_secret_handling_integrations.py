@@ -1,7 +1,10 @@
+import pytest
+
 from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 
+@pytest.mark.unit
 def test_garmin_credentials_use_single_secret_container_and_are_redacted():
     sync = GarminSync(email="user@example.com", password="pw")
 
@@ -13,6 +16,7 @@ def test_garmin_credentials_use_single_secret_container_and_are_redacted():
     assert not hasattr(sync, "_password_secret")
 
 
+@pytest.mark.unit
 def test_telegram_token_uses_single_secret_container_and_is_redacted():
     bot = TitanTelegramBot(bot_token="token", chat_id="12345")
 

@@ -20,6 +20,8 @@ Gate coverage:
   Governance clean             (test 1)
 """
 
+import pytest
+
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
@@ -102,6 +104,8 @@ _GOV = GovernanceEngine()  # stateless — safe to share across tests
 class TestGovernanceGoldenCases:
 
     # 1 — Healthy athlete: quality session survives governance clean
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_01_healthy_athlete_intervals_governance_clean(self) -> None:
         """Neutral context: INTERVALS must pass all gates and report governance_clean=True."""
         plan, ctx = _make("INTERVALS")
@@ -112,6 +116,8 @@ class TestGovernanceGoldenCases:
         assert plan["governance_locks_applied"] == []
 
     # 2 — HRV collapse: H2 hard stop → REST
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_02_hrv_collapse_triggers_h2_rest(self) -> None:
         """HRV drop >= 15 ms (H2 threshold) must force REST and max_zone=1."""
         plan, ctx = _make("INTERVALS", today_hrv=60.0 - HARD_STOP_HRV_DELTA - 5.0, baseline_hrv=60.0)
@@ -123,6 +129,8 @@ class TestGovernanceGoldenCases:
         assert "H2" in gate_codes
 
     # 3 — RHR spike: H3 hard stop → REST
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_03_rhr_spike_triggers_h3_rest(self) -> None:
         """RHR rise >= 8 bpm (H3 threshold) must force REST and max_zone=1."""
         plan, ctx = _make("INTERVALS", today_rhr=50.0 + HARD_STOP_RHR_DELTA + 4, baseline_rhr=50.0)
@@ -134,6 +142,8 @@ class TestGovernanceGoldenCases:
         assert "H3" in gate_codes
 
     # 4 — TSB critical floor: H4 gate → EASY + max_zone capped at 2
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_04_tsb_critical_floor_triggers_h4_easy(self) -> None:
         """TSB <= -50 (H4 threshold) must downgrade quality session to EASY and cap max_zone=2."""
         plan, ctx = _make("INTERVALS", tsb_value=HARD_STOP_TSB_FLOOR - 5.0)
@@ -145,6 +155,8 @@ class TestGovernanceGoldenCases:
         assert "H4" in gate_codes
 
     # 5 — Injury flag: H1 gate → REST (highest-priority gate)
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_05_injury_flag_triggers_h1_rest(self) -> None:
         """Active injury_flag=True must trigger H1 gate and force REST unconditionally."""
         plan, ctx = _make("INTERVALS", injury_flag=True)
@@ -156,6 +168,8 @@ class TestGovernanceGoldenCases:
         assert "H1" in gate_codes
 
     # 6 — Extreme fatigue: H5 gate → EASY
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_06_extreme_fatigue_triggers_h5_downgrade(self) -> None:
         """Subjective fatigue >= 8 (H5 threshold) must downgrade session and cap max_zone=2."""
         plan, ctx = _make("INTERVALS", subjective_fatigue_score=SUBJECTIVE_FATIGUE_EXTREME + 1)
@@ -167,6 +181,8 @@ class TestGovernanceGoldenCases:
         assert "H5" in gate_codes
 
     # 7 — High ACWR: V1 VO2 eligibility failure → HAMMER ineligible
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_07_high_acwr_blocks_vo2_hammer(self) -> None:
         """ACWR > 1.30 (V1 condition) must fail VO2 eligibility gate for HAMMER."""
         plan, ctx = _make("HAMMER", acwr=VO2_ACWR_MAX + 0.25)
@@ -177,6 +193,8 @@ class TestGovernanceGoldenCases:
         assert "V1" in vo2.get("failed_conditions", [])
 
     # 8 — Low readiness: V2 VO2 eligibility failure → HAMMER ineligible
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_08_low_readiness_blocks_vo2_hammer(self) -> None:
         """readiness_score < 65 (V2 condition) must fail VO2 eligibility gate for HAMMER."""
         plan, ctx = _make("HAMMER", readiness_score=VO2_READINESS_MIN - 10.0)
@@ -187,6 +205,8 @@ class TestGovernanceGoldenCases:
         assert "V2" in vo2.get("failed_conditions", [])
 
     # 9 — Override lockdown: quality sessions blocked → EASY
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_09_override_lockdown_blocks_quality_session(self) -> None:
         """Override ratio > 80 % must lock INTERVALS and downgrade to EASY."""
         plan, ctx = _make("INTERVALS", db=_LockedDB())
@@ -196,6 +216,8 @@ class TestGovernanceGoldenCases:
         assert plan["session_type"] == "EASY"
 
     # 10 — Low CS confidence: CS lock applied → prediction disabled
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_10_low_cs_confidence_sets_calibration_required(self) -> None:
         """CS confidence < 0.70 must set cs_prediction_disabled and required_calibration."""
         plan, ctx = _make("INTERVALS", cs_tracker=_LowCSTracker())
@@ -206,6 +228,8 @@ class TestGovernanceGoldenCases:
         assert "CS_CONFIDENCE_LOCK" in plan["governance_locks_applied"]
 
     # 11 — 2-of-4 downgrade: INTERVALS → TEMPO
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_11_two_of_four_indicators_downgrade_intervals_to_tempo(self) -> None:
         """HRV soft (I1) + low sleep (I2) must downgrade INTERVALS → TEMPO via 2-of-4 gate."""
         plan, ctx = _make(
@@ -224,6 +248,8 @@ class TestGovernanceGoldenCases:
         assert "READINESS_2OF4_DOWNGRADE" in plan["governance_locks_applied"]
 
     # 12 — Fueling gate lock: HAMMER without fueling → TEMPO
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_12_fueling_gate_lock_downgrades_hammer_without_fueling(self) -> None:
         """HAMMER session without confirmed fueling must be locked to TEMPO."""
         plan, ctx = _make("HAMMER", fueling_confirmed=False)

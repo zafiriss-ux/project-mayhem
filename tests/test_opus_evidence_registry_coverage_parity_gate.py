@@ -56,6 +56,8 @@ def _assert_evidence_registry_coverage_parity(
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_gate_evidence_registry_coverage_parity() -> None:
     """CI gate: every threshold constant must have EVIDENCE_REGISTRY coverage."""
 
@@ -70,6 +72,8 @@ def test_ci_gate_evidence_registry_coverage_parity() -> None:
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_meta_evidence_registry_coverage_parity_gate_rejects_known_bad_input() -> None:
     """Validating meta-test: gate fails when one threshold constant is not registered."""
 

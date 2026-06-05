@@ -70,6 +70,7 @@ def _fetch_training_load_history(db_path: str, days: int = 60, athlete_id: str =
 # [D] CTL/ATL from training_log
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_tsb_uses_training_log_when_no_garmin(tmp_path):
     """CTL/ATL must be non-None when training_log has 60 rows of load data."""
     db_path = _make_db(tmp_path)
@@ -99,6 +100,7 @@ def test_tsb_uses_training_log_when_no_garmin(tmp_path):
     assert atl > 0.0, "ATL must be positive with positive training loads"
 
 
+@pytest.mark.integration
 def test_tsb_ctl_atl_none_when_no_data():
     """TSBEngine returns None CTL/ATL when no loads have been added."""
     tsb = TSBEngine()
@@ -109,6 +111,7 @@ def test_tsb_ctl_atl_none_when_no_data():
     assert status == "INSUFFICIENT DATA"
 
 
+@pytest.mark.integration
 def test_tsb_source_is_training_log_not_garmin_activities(tmp_path):
     """Confirm the query targets training_log; garmin_activities does not exist."""
     db_path = _make_db(tmp_path)
@@ -123,6 +126,7 @@ def test_tsb_source_is_training_log_not_garmin_activities(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_tsb_prefers_garmin_row_via_training_log(tmp_path):
     """When multiple training_log rows share a date (manual + Garmin), both are summed
     — this verifies no silent data loss.  The caller (DailyCoach) must deduplicate
@@ -155,6 +159,7 @@ def test_tsb_prefers_garmin_row_via_training_log(tmp_path):
     assert sum(target_loads) == pytest.approx(90.0)
 
 
+@pytest.mark.integration
 def test_tsb_calculation_correctness_known_inputs():
     """EMA correctness: single load value → CTL == ATL == that value (seed condition)."""
     tsb = TSBEngine()

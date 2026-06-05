@@ -7,6 +7,7 @@ import pytest
 import main as launcher
 
 
+@pytest.mark.unit
 def test_run_launcher_happy_path_calls_titan_main(monkeypatch):
     called = {"count": 0}
 
@@ -23,6 +24,7 @@ def test_run_launcher_happy_path_calls_titan_main(monkeypatch):
     assert called["count"] == 1
 
 
+@pytest.mark.unit
 def test_run_launcher_failure_logs_structured_startup_event(monkeypatch, caplog):
     fake_mod = types.ModuleType("titan.main")
 

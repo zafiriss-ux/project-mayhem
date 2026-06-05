@@ -21,6 +21,7 @@ from titan.integrations.garmin_sync import _decrypt_token, _encrypt_token
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_token_encrypted_when_key_present(tmp_path, monkeypatch):
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key)
@@ -43,6 +44,7 @@ def test_token_encrypted_when_key_present(tmp_path, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_token_decrypted_on_load(monkeypatch):
     key = Fernet.generate_key().decode()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key)
@@ -61,6 +63,7 @@ def test_token_decrypted_on_load(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_token_stored_plaintext_without_key(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -84,6 +87,7 @@ def test_token_stored_plaintext_without_key(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_legacy_token_path_warning(tmp_path, monkeypatch, caplog):
     # Redirect DATA_DIR to a temp dir that has NO token file.
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path / "data"))

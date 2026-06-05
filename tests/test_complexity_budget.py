@@ -7,9 +7,12 @@ from __future__ import annotations
 
 import subprocess
 
+import pytest
+
 from titan.config.thresholds import MODULE_COUNT_CEILING
 
 
+@pytest.mark.integration
 def test_module_count_within_budget() -> None:
     result = subprocess.run(
         [
@@ -36,6 +39,7 @@ def test_module_count_within_budget() -> None:
     )
 
 
+@pytest.mark.integration
 def test_module_ceiling_constant_is_positive_integer() -> None:
     """Smoke guard: the ceiling must be a positive integer (import sanity)."""
     assert isinstance(MODULE_COUNT_CEILING, int)

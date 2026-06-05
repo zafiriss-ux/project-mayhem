@@ -1,6 +1,9 @@
+import pytest
+
 from titan.science.injury_risk_model import InjuryRiskEnsembleModel
 
 
+@pytest.mark.unit
 def test_injury_risk_returns_explainable_output():
     assessment = InjuryRiskEnsembleModel().assess_injury_risk(
         {
@@ -22,6 +25,7 @@ def test_injury_risk_returns_explainable_output():
     assert explainability.confidence_range[0] <= assessment.risk_score <= explainability.confidence_range[1]
 
 
+@pytest.mark.unit
 def test_injury_risk_stale_data_discarded():
     assessment = InjuryRiskEnsembleModel().assess_injury_risk(
         {
@@ -37,6 +41,7 @@ def test_injury_risk_stale_data_discarded():
     assert InjuryRiskEnsembleModel.should_discard_advisory(assessment) is True
 
 
+@pytest.mark.unit
 def test_plain_text_reason_nonempty():
     model = InjuryRiskEnsembleModel()
     assessments = [

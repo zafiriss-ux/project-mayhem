@@ -33,6 +33,7 @@ class _DuplicateColumnCursor:
         return (0,)
 
 
+@pytest.mark.integration
 def test_run_migrations_suppresses_only_duplicate_column_error(tmp_path):
     db = DatabaseManager(db_name="migration_test.db", db_dir=tmp_path)
     cursor = db.conn.cursor()
@@ -43,6 +44,7 @@ def test_run_migrations_suppresses_only_duplicate_column_error(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_apply_v1_migrations_reraises_non_duplicate_operational_error(tmp_path):
     """_apply_v1_migrations must re-raise non-duplicate-column OperationalErrors."""
     db = DatabaseManager(db_name="v1_error.db", db_dir=tmp_path)
@@ -53,6 +55,7 @@ def test_apply_v1_migrations_reraises_non_duplicate_operational_error(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_apply_v1_migrations_suppresses_duplicate_column_operational_error(tmp_path):
     """_apply_v1_migrations must suppress duplicate-column OperationalErrors."""
     db = DatabaseManager(db_name="v1_dup.db", db_dir=tmp_path)
@@ -62,6 +65,7 @@ def test_apply_v1_migrations_suppresses_duplicate_column_operational_error(tmp_p
         db.close()
 
 
+@pytest.mark.integration
 def test_run_migrations_emits_structured_log_on_column_add(tmp_path, caplog):
     """Structured migration log events must be emitted (JSON format) on first init."""
     import json as _json
@@ -85,6 +89,7 @@ def test_run_migrations_emits_structured_log_on_column_add(tmp_path, caplog):
     db.close()
 
 
+@pytest.mark.integration
 def test_database_manager_init_logs_structured_warning_when_best_effort_logging_fails(
     tmp_path,
     monkeypatch,
@@ -109,6 +114,7 @@ def test_database_manager_init_logs_structured_warning_when_best_effort_logging_
     db.close()
 
 
+@pytest.mark.integration
 def test_database_manager_init_logs_data_dir_fallback_when_launcher_missing(
     tmp_path,
     caplog,
@@ -133,6 +139,7 @@ def test_database_manager_init_logs_data_dir_fallback_when_launcher_missing(
     db.close()
 
 
+@pytest.mark.integration
 def test_database_manager_init_reraises_non_launcher_module_not_found(tmp_path):
     real_import = __import__
 
@@ -150,6 +157,7 @@ def test_database_manager_init_reraises_non_launcher_module_not_found(tmp_path):
 
 # ── T1-16: PRAGMA user_version schema tracking ──────────────────────────────
 
+@pytest.mark.integration
 def test_schema_migration_sets_user_version_to_schema_version_on_fresh_db(tmp_path):
     """A fresh DB must have user_version == SCHEMA_VERSION after init."""
     db = DatabaseManager(db_name="version_fresh.db", db_dir=tmp_path)
@@ -161,6 +169,7 @@ def test_schema_migration_sets_user_version_to_schema_version_on_fresh_db(tmp_pa
         db.close()
 
 
+@pytest.mark.integration
 def test_schema_migration_idempotent_on_second_call(tmp_path):
     """Calling _run_migrations() a second time must not raise and must leave
     user_version unchanged."""
@@ -177,6 +186,7 @@ def test_schema_migration_idempotent_on_second_call(tmp_path):
 
 # ── T1-17: Daily SQLite hot backup ──────────────────────────────────────────
 
+@pytest.mark.integration
 def test_backup_creates_file_in_backup_dir(tmp_path):
     """backup_database() must create a dated backup file in the backup dir."""
     db = DatabaseManager(db_name="backup_create.db", db_dir=tmp_path)
@@ -191,6 +201,7 @@ def test_backup_creates_file_in_backup_dir(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_backup_idempotent_same_day(tmp_path):
     """Calling backup_database() twice on the same day must create one file and
     return None on the second call (no-op)."""
@@ -206,6 +217,7 @@ def test_backup_idempotent_same_day(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_apply_v20_migrations_adds_columns_to_athletes(tmp_path):
     """Version 20 adds biological_sex and menstrual_tracking to athletes table."""
     db = DatabaseManager(db_name="v20_test.db", db_dir=tmp_path)
@@ -219,6 +231,7 @@ def test_apply_v20_migrations_adds_columns_to_athletes(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_apply_v20_migrations_defaults(tmp_path):
     """biological_sex defaults to 'male' and menstrual_tracking to 'no' for seeded owner row."""
     db = DatabaseManager(db_name="v20_defaults.db", db_dir=tmp_path)
@@ -235,6 +248,7 @@ def test_apply_v20_migrations_defaults(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_apply_v20_migrations_idempotent(tmp_path):
     """Running _apply_v20_migrations() twice must not raise."""
     db = DatabaseManager(db_name="v20_idempotent.db", db_dir=tmp_path)
@@ -245,6 +259,7 @@ def test_apply_v20_migrations_idempotent(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_backup_prunes_old_files(tmp_path):
     """backup_database() with keep=3 must remove files beyond the 3 most recent."""
     from pathlib import Path

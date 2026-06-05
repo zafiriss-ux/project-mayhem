@@ -27,50 +27,61 @@ from scripts.import_activity_laps import (
 # Unit tests — parsing helpers
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_parse_float_comma_decimal():
     assert _parse_float("0,94") == pytest.approx(0.94)
 
 
+@pytest.mark.integration
 def test_parse_float_dot_decimal():
     assert _parse_float("1.05") == pytest.approx(1.05)
 
 
+@pytest.mark.integration
 def test_parse_float_empty():
     assert _parse_float("") == 0.0
     assert _parse_float("--") == 0.0
 
 
+@pytest.mark.integration
 def test_parse_int_normal():
     assert _parse_int("144") == 144
 
 
+@pytest.mark.integration
 def test_parse_int_comma_decimal():
     assert _parse_int("21,8") == 22
 
 
+@pytest.mark.integration
 def test_parse_int_empty():
     assert _parse_int("") == 0
     assert _parse_int("--") == 0
 
 
+@pytest.mark.integration
 def test_parse_lap_time_mm_ss():
     assert _parse_lap_time("1:13") == 73
 
 
+@pytest.mark.integration
 def test_parse_lap_time_mm_ss_decimal():
     # Decimal part of seconds is dropped
     assert _parse_lap_time("1:13,6") == 73
 
 
+@pytest.mark.integration
 def test_parse_lap_time_empty():
     assert _parse_lap_time("") == 0
     assert _parse_lap_time("--") == 0
 
 
+@pytest.mark.integration
 def test_parse_pace_mm_ss():
     assert _parse_pace("6:08") == 368
 
 
+@pytest.mark.integration
 def test_parse_pace_empty():
     assert _parse_pace("") == 0
     assert _parse_pace("--") == 0
@@ -80,6 +91,7 @@ def test_parse_pace_empty():
 # Unit tests — cardiac drift
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_cardiac_drift_calculation():
     """Expected drift: (131.5 - 120) / 120 * 100 ≈ 9.58 %"""
     laps = [{"avg_hr": h} for h in [120, 120, 120, 125, 130, 130, 132, 132, 132, 132]]
@@ -87,6 +99,7 @@ def test_cardiac_drift_calculation():
     assert 9.0 < drift < 11.0
 
 
+@pytest.mark.integration
 def test_cardiac_drift_positive_for_rising_hr():
     """Drift should be positive when HR rises across the activity."""
     laps = [
@@ -105,17 +118,20 @@ def test_cardiac_drift_positive_for_rising_hr():
     assert drift > 0.0
 
 
+@pytest.mark.integration
 def test_cardiac_drift_skips_zero_hr_laps():
     laps = [{"avg_hr": h} for h in [120, 120, 0, 130, 130, 130, 145, 145, 145, 145]]
     drift = compute_cardiac_drift(laps)
     assert drift > 0.0
 
 
+@pytest.mark.integration
 def test_cardiac_drift_insufficient_laps_returns_zero():
     laps = [{"avg_hr": h} for h in [120, 130, 140]]
     assert compute_cardiac_drift(laps) == 0.0
 
 
+@pytest.mark.integration
 def test_cardiac_drift_all_zero_hr_returns_zero():
     laps = [{"avg_hr": 0} for _ in range(10)]
     assert compute_cardiac_drift(laps) == 0.0
@@ -168,6 +184,7 @@ def _make_lap_csv(tmp_path: Path, num_laps: int = 10) -> Path:
     return csv_path
 
 
+@pytest.mark.integration
 def test_import_activity_laps_dry_run(tmp_path, capsys):
     """Dry-run must print summary without touching any database."""
     csv_path = _make_lap_csv(tmp_path, num_laps=10)
@@ -179,6 +196,7 @@ def test_import_activity_laps_dry_run(tmp_path, capsys):
     assert "Laps parsed" in captured.out
 
 
+@pytest.mark.integration
 def test_import_activity_laps_writes_to_db(tmp_path):
     """Full run inserts rows into activity_laps and updates training_log."""
     csv_path = _make_lap_csv(tmp_path, num_laps=10)
@@ -233,16 +251,19 @@ def _make_activities_csv(tmp_path: Path, activity_id: str, date_str: str) -> Pat
     return acts_path
 
 
+@pytest.mark.integration
 def test_extract_numeric_id_standard_filename():
     """activity_22896346850 → '22896346850'"""
     p = Path("activity_22896346850.csv")
     assert _extract_numeric_id(p) == "22896346850"
 
 
+@pytest.mark.integration
 def test_extract_numeric_id_no_digits():
     assert _extract_numeric_id(Path("nodigits.csv")) is None
 
 
+@pytest.mark.integration
 def test_lookup_date_from_activities_csv(tmp_path):
     """lookup_date returns the YYYY-MM-DD portion of the matching row."""
     acts = _make_activities_csv(tmp_path, "22896346850", "2026-05-10")
@@ -253,6 +274,7 @@ def test_lookup_date_from_activities_csv(tmp_path):
     assert result == "2026-05-10"
 
 
+@pytest.mark.integration
 def test_lookup_date_id_not_found_raises(tmp_path):
     """SystemExit when activity ID is absent from Activities.csv."""
     acts = _make_activities_csv(tmp_path, "99999", "2026-01-01")
@@ -263,6 +285,7 @@ def test_lookup_date_id_not_found_raises(tmp_path):
         lookup_date(lap_csv, acts)
 
 
+@pytest.mark.integration
 def test_lookup_date_missing_activities_csv_raises(tmp_path):
     """SystemExit when Activities.csv path does not exist."""
     lap_csv = tmp_path / "activity_22896346850.csv"
@@ -272,6 +295,7 @@ def test_lookup_date_missing_activities_csv_raises(tmp_path):
         lookup_date(lap_csv, tmp_path / "nonexistent.csv")
 
 
+@pytest.mark.integration
 def test_date_required_when_no_activities_csv(tmp_path, capsys):
     """Running without --date and without --activities-csv exits with error."""
     csv_path = _make_lap_csv(tmp_path, num_laps=10)
@@ -281,6 +305,7 @@ def test_date_required_when_no_activities_csv(tmp_path, capsys):
     assert "activities-csv" in captured.out or "date" in captured.out
 
 
+@pytest.mark.integration
 def test_date_from_activities_csv_dry_run(tmp_path, capsys):
     """--activities-csv resolves the date so --date is not required."""
     csv_path = _make_lap_csv(tmp_path, num_laps=10)
@@ -301,6 +326,7 @@ def test_date_from_activities_csv_dry_run(tmp_path, capsys):
 # [B] Batch / folder mode
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_folder_mode_dry_run(tmp_path, capsys):
     """--folder processes all activity_*.csv files and prints a batch summary."""
     # Create two lap CSVs and a matching Activities.csv
@@ -329,6 +355,7 @@ def test_folder_mode_dry_run(tmp_path, capsys):
     assert "activity_22222" in captured.out
 
 
+@pytest.mark.integration
 def test_folder_mode_no_csv_files(tmp_path, capsys):
     """Empty folder returns exit code 1 with a descriptive message."""
     result = main(["--folder", str(tmp_path), "--date", "2026-05-10"])
@@ -337,6 +364,7 @@ def test_folder_mode_no_csv_files(tmp_path, capsys):
     assert "No activity_*.csv" in captured.out
 
 
+@pytest.mark.integration
 def test_folder_mode_no_date_no_activities_csv(tmp_path, capsys):
     """Batch mode without date resolution exits with per-file error and code 1."""
     csv_path = tmp_path / "activity_99999.csv"

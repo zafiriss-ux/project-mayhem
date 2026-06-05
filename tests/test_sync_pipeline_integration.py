@@ -10,6 +10,8 @@ normalization contract uphold their documented TypedDict and dataclass shapes.
   S3 — NormalizedBiometricSample fields satisfy documented type invariants
 """
 
+import pytest
+
 from titan.integrations.garmin_sync import NormalizedBiometricSample
 from titan.orchestration.contracts import GarminSyncResultContract, HRVSyncMetricsContract
 
@@ -20,6 +22,7 @@ _HRV_METRICS_REQUIRED_KEYS = {"days_back", "synced_days", "skipped_days"}
 class TestSyncPipelineContracts:
 
     # S1 — GarminSyncResultContract → GarminSyncResult TypedDict
+    @pytest.mark.unit
     def test_s1_garmin_sync_result_contract_produces_required_keys(self) -> None:
         """to_payload() must include all mandatory GarminSyncResult TypedDict keys."""
         hrv_metrics = {"days_back": 7, "synced_days": 5, "skipped_days": 2}
@@ -45,6 +48,7 @@ class TestSyncPipelineContracts:
         assert payload.get("data_age_hours") == 1.5
 
     # S2 — HRVSyncMetricsContract → HRVSyncMetrics TypedDict
+    @pytest.mark.unit
     def test_s2_hrv_sync_metrics_contract_produces_required_keys(self) -> None:
         """to_payload() must include days_back, synced_days, skipped_days with correct values."""
         contract = HRVSyncMetricsContract(days_back=7, synced_days=5, skipped_days=2)
@@ -60,6 +64,7 @@ class TestSyncPipelineContracts:
         assert payload["synced_days"] + payload["skipped_days"] <= payload["days_back"]
 
     # S3 — NormalizedBiometricSample field-type invariants
+    @pytest.mark.unit
     def test_s3_normalized_biometric_sample_field_types(self) -> None:
         """NormalizedBiometricSample must accept numeric values and None for optional fields."""
         full_sample = NormalizedBiometricSample(

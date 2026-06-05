@@ -1,6 +1,9 @@
+import pytest
+
 from titan.science.injury_risk_model import InjuryRiskAssessment, InjuryRiskEnsembleModel
 
 
+@pytest.mark.unit
 def test_low_risk_profile_returns_low_band():
     model = InjuryRiskEnsembleModel()
     assessment = model.assess_risk(
@@ -19,6 +22,7 @@ def test_low_risk_profile_returns_low_band():
     assert assessment.mode == 'ADVISORY'
 
 
+@pytest.mark.unit
 def test_high_risk_profile_returns_high_band():
     model = InjuryRiskEnsembleModel()
     assessment = model.assess_risk(
@@ -36,6 +40,7 @@ def test_high_risk_profile_returns_high_band():
     assert assessment.risk_score >= 0.67
 
 
+@pytest.mark.unit
 def test_assessment_dict_contract_is_stable():
     model = InjuryRiskEnsembleModel()
     assessment = model.assess_risk({})

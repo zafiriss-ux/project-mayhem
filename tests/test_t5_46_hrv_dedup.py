@@ -5,12 +5,15 @@ Tests that add_hrv_measurement deduplicates by date, keeping the most recent
 entry per date, so overlapping Garmin syncs do not inflate the baseline log.
 """
 
+import pytest
+
 from titan.science.hrv_engine import HRVGuidedEngine
 
 
 class TestHRVDeduplication:
     """Tests for HRV deduplication behaviour on overlapping syncs."""
 
+    @pytest.mark.unit
     def test_duplicate_date_keeps_only_one_entry(self):
         """Adding the same date twice should result in only one entry."""
         engine = HRVGuidedEngine()
@@ -22,6 +25,7 @@ class TestHRVDeduplication:
             "Duplicate date entries inflate the baseline log — expected exactly 1 entry"
         )
 
+    @pytest.mark.unit
     def test_duplicate_date_keeps_most_recent_value(self):
         """When a date is added twice, the most recent value (last write) is kept."""
         engine = HRVGuidedEngine()
@@ -31,6 +35,7 @@ class TestHRVDeduplication:
         entry = next((rmssd for date, rmssd in engine.hrv_log if date == "2024-01-01"), None)
         assert entry == 70.0, f"Expected most recent value 70.0, got {entry}"
 
+    @pytest.mark.unit
     def test_different_dates_all_retained(self):
         """Entries for distinct dates must all be preserved."""
         engine = HRVGuidedEngine()
@@ -42,6 +47,7 @@ class TestHRVDeduplication:
             f"Expected 3 distinct-date entries, got {len(engine.hrv_log)}"
         )
 
+    @pytest.mark.unit
     def test_multiple_overlapping_syncs_for_same_date(self):
         """Multiple overlapping syncs for the same date should still yield one entry."""
         engine = HRVGuidedEngine()
@@ -54,6 +60,7 @@ class TestHRVDeduplication:
         entry = next(rmssd for date, rmssd in engine.hrv_log if date == "2024-01-01")
         assert entry == 70.0, f"Expected most recent value 70.0, got {entry}"
 
+    @pytest.mark.unit
     def test_mixed_dates_with_duplicates(self):
         """Mix of new and duplicate dates: each date appears exactly once, latest value kept."""
         engine = HRVGuidedEngine()

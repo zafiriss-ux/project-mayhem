@@ -2,6 +2,8 @@ import logging
 import threading
 import time
 
+import pytest
+
 from titan.integrations import garmin_sync
 from titan.integrations.garmin_sync import (
     GARMIN_API_UNAVAILABLE,
@@ -54,6 +56,7 @@ def _connected_sync(client):
     return sync
 
 
+@pytest.mark.integration
 def test_sync_activities_happy_path(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -84,6 +87,7 @@ def test_sync_activities_happy_path(monkeypatch):
     assert all(action != GARMIN_PAYLOAD_MALFORMED for action, _ in events)
 
 
+@pytest.mark.integration
 def test_sync_activities_error_emits_failure_class_event(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -99,6 +103,7 @@ def test_sync_activities_error_emits_failure_class_event(monkeypatch):
     assert fields["failure_class"] == GARMIN_RATE_LIMIT
 
 
+@pytest.mark.integration
 def test_sync_weight_happy_path(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -122,6 +127,7 @@ def test_sync_weight_happy_path(monkeypatch):
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
 
 
+@pytest.mark.integration
 def test_sync_weight_error_emits_failure_class_event(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -138,6 +144,7 @@ def test_sync_weight_error_emits_failure_class_event(monkeypatch):
     assert fields["subsystem"] == "sync_weight"
 
 
+@pytest.mark.integration
 def test_sync_weight_empty_all_day_summaries_does_not_raise(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -161,6 +168,7 @@ def test_sync_weight_empty_all_day_summaries_does_not_raise(monkeypatch):
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 0, "days_back": 7, "detail": "Synced 0 weight entries"}) in events
 
 
+@pytest.mark.integration
 def test_sync_weight_new_format(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -181,6 +189,7 @@ def test_sync_weight_new_format(monkeypatch):
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
 
 
+@pytest.mark.integration
 def test_sync_weight_legacy_format_fallback(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -204,6 +213,7 @@ def test_sync_weight_legacy_format_fallback(monkeypatch):
     assert ("weight_synced", {"subsystem": "sync_weight", "count": 1, "days_back": 7, "detail": "Synced 1 weight entries"}) in events
 
 
+@pytest.mark.integration
 def test_sync_weight_unknown_format_emits_warning(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -217,6 +227,7 @@ def test_sync_weight_unknown_format_emits_warning(monkeypatch):
     assert "weight_sync_format_unknown" in emitted_actions, f"Warning not emitted; events: {emitted_actions}"
 
 
+@pytest.mark.integration
 def test_sync_weight_lbs_conversion(monkeypatch):
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: None)
 
@@ -237,6 +248,7 @@ def test_sync_weight_lbs_conversion(monkeypatch):
     assert abs(result[0]["weight_kg"] - 75.39) < 0.01
 
 
+@pytest.mark.integration
 def test_sync_sleep_happy_path(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -270,6 +282,7 @@ def test_sync_sleep_happy_path(monkeypatch):
     assert ("sleep_synced", {"subsystem": "sync_sleep", "count": 1, "days_back": 1, "detail": "Synced 1 sleep sessions"}) in events
 
 
+@pytest.mark.integration
 def test_sync_sleep_error_emits_failure_class_event(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -286,6 +299,7 @@ def test_sync_sleep_error_emits_failure_class_event(monkeypatch):
     assert fields["subsystem"] == "sync_sleep"
 
 
+@pytest.mark.integration
 def test_sync_sleep_skipped_day_logs_and_emits_structured_event(monkeypatch, caplog):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -321,6 +335,7 @@ def test_sync_sleep_skipped_day_logs_and_emits_structured_event(monkeypatch, cap
     assert "bad sleep payload" in caplog.text
 
 
+@pytest.mark.integration
 def test_sync_hrv_happy_path_updates_metrics_and_returns_data(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -343,6 +358,7 @@ def test_sync_hrv_happy_path_updates_metrics_and_returns_data(monkeypatch):
     assert ("hrv_sync_metrics", {"days_back": 2, "synced_days": 2, "skipped_days": 0}) in events
 
 
+@pytest.mark.integration
 def test_sync_hrv_skipped_day_logs_and_emits_structured_event(monkeypatch, caplog):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -374,6 +390,7 @@ def test_sync_hrv_skipped_day_logs_and_emits_structured_event(monkeypatch, caplo
     assert "bad hrv payload" in caplog.text
 
 
+@pytest.mark.integration
 def test_sync_hrv_top_level_exception_emits_api_unavailable(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -393,6 +410,7 @@ def test_sync_hrv_top_level_exception_emits_api_unavailable(monkeypatch):
     assert fields["subsystem"] == "sync_hrv"
 
 
+@pytest.mark.integration
 def test_resolve_sync_timeout_seconds_invalid_env_falls_back_to_default(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -414,6 +432,7 @@ def test_resolve_sync_timeout_seconds_invalid_env_falls_back_to_default(monkeypa
     ]
 
 
+@pytest.mark.integration
 def test_resolve_sync_timeout_seconds_negative_env_falls_back_to_default(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -435,6 +454,7 @@ def test_resolve_sync_timeout_seconds_negative_env_falls_back_to_default(monkeyp
     ]
 
 
+@pytest.mark.integration
 def test_connect_happy_path_sets_connected(monkeypatch):
     class _Garmin:
         def __init__(self, _email, _password):
@@ -456,6 +476,7 @@ def test_connect_happy_path_sets_connected(monkeypatch):
     assert sync.is_connected is True
 
 
+@pytest.mark.integration
 def test_connect_auth_failure_logs_startup_failure(caplog, monkeypatch):
     class _Garmin:
         def __init__(self, _email, _password):
@@ -482,6 +503,7 @@ def test_connect_auth_failure_logs_startup_failure(caplog, monkeypatch):
     assert record.detail == "auth denied"
 
 
+@pytest.mark.integration
 def test_connect_uses_redacted_secret_container_without_duplicate_aliases():
     sync = GarminSync(email="runner@example.com", password="s3cr3t")
 
@@ -493,6 +515,7 @@ def test_connect_uses_redacted_secret_container_without_duplicate_aliases():
     assert not hasattr(sync, "_password_secret")
 
 
+@pytest.mark.integration
 def test_connect_missing_credentials_fails_safely(monkeypatch):
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
     monkeypatch.delenv("GARMIN_PASSWORD", raising=False)
@@ -502,6 +525,7 @@ def test_connect_missing_credentials_fails_safely(monkeypatch):
     assert sync.is_connected is False
 
 
+@pytest.mark.integration
 def test_connect_saves_token_after_login(monkeypatch, tmp_path):
     """Successful login persists garth token to disk."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -529,6 +553,7 @@ def test_connect_saves_token_after_login(monkeypatch, tmp_path):
     assert token_file.read_text(encoding="utf-8") == "garth_token_data"
 
 
+@pytest.mark.integration
 def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
     """Existing valid token is loaded from disk; login() is not called."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -563,6 +588,7 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
     assert login_called == []
 
 
+@pytest.mark.integration
 def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch, tmp_path):
     """Expired/invalid token causes garth.loads() to fail; falls back to full login and saves new token."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -597,6 +623,7 @@ def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch
     assert token_file.read_text(encoding="utf-8") == "new_token"
 
 
+@pytest.mark.integration
 def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp_path):
     """Token loads from disk successfully but server rejects it (api ping fails).
 
@@ -642,6 +669,7 @@ def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp
     assert token_file.read_text(encoding="utf-8") == "fresh_token"
 
 
+@pytest.mark.integration
 def test_invalidate_session_resets_state_and_deletes_token(monkeypatch, tmp_path):
     """_invalidate_session() sets is_connected=False, clears client, deletes token."""
     token_file = tmp_path / ".garth_token"
@@ -663,6 +691,7 @@ def test_invalidate_session_resets_state_and_deletes_token(monkeypatch, tmp_path
     assert any(action == "session_invalidated" for action, _ in events)
 
 
+@pytest.mark.integration
 def test_sync_activities_auth_fail_invalidates_session(monkeypatch):
     """GARMIN_AUTH_FAIL during activities sync resets is_connected for re-auth."""
     events = []
@@ -678,6 +707,7 @@ def test_sync_activities_auth_fail_invalidates_session(monkeypatch):
     assert invalidated == [True]
 
 
+@pytest.mark.integration
 def test_sync_weight_auth_fail_invalidates_session(monkeypatch):
     """GARMIN_AUTH_FAIL during weight sync resets is_connected for re-auth."""
     events = []
@@ -693,6 +723,7 @@ def test_sync_weight_auth_fail_invalidates_session(monkeypatch):
     assert invalidated == [True]
 
 
+@pytest.mark.integration
 def test_sync_sleep_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
     """GARMIN_AUTH_FAIL on a sleep day invalidates session and stops iterating further days."""
     events = []
@@ -711,6 +742,7 @@ def test_sync_sleep_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
     assert len(sync.client.requested_sleep_dates) == 1
 
 
+@pytest.mark.integration
 def test_sync_hrv_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
     """GARMIN_AUTH_FAIL on an HRV day invalidates session and stops iterating further days."""
     events = []
@@ -727,6 +759,7 @@ def test_sync_hrv_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
     assert len(sync.client.requested_hrv_dates) == 1
 
 
+@pytest.mark.integration
 def test_connect_token_save_failure_does_not_break_connect(monkeypatch, tmp_path):
     """If saving the token fails, connect() still returns True."""
     token_file = tmp_path / "readonly_dir" / ".garth_token"  # parent dir does not exist yet
@@ -753,6 +786,7 @@ def test_connect_token_save_failure_does_not_break_connect(monkeypatch, tmp_path
     assert sync.is_connected is True
 
 
+@pytest.mark.integration
 def test_bg_worker_continues_until_stop_event_is_set(monkeypatch):
     sync = GarminSync(email="u", password="p")
     ticks = []
@@ -769,6 +803,7 @@ def test_bg_worker_continues_until_stop_event_is_set(monkeypatch):
     assert len(ticks) == 2
 
 
+@pytest.mark.integration
 def test_stop_background_sync_sets_event_and_joins_thread():
     sync = GarminSync(email="u", password="p")
     started = threading.Event()
@@ -789,6 +824,7 @@ def test_stop_background_sync_sets_event_and_joins_thread():
 
 # ── last_connect_error ────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_last_connect_error_set_on_missing_credentials(monkeypatch):
     """connect() must set last_connect_error when credentials are absent."""
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
@@ -799,6 +835,7 @@ def test_last_connect_error_set_on_missing_credentials(monkeypatch):
     assert "missing" in sync.last_connect_error.lower()
 
 
+@pytest.mark.integration
 def test_last_connect_error_cleared_on_successful_token_load(monkeypatch, tmp_path):
     """connect() must clear last_connect_error when token loads successfully."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -842,6 +879,7 @@ def test_last_connect_error_cleared_on_successful_token_load(monkeypatch, tmp_pa
     assert sync.last_connect_error is None
 
 
+@pytest.mark.integration
 def test_last_connect_error_set_on_login_failure(monkeypatch, tmp_path):
     """connect() must store the exception message when login raises."""
     import sys

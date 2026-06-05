@@ -7,6 +7,7 @@ from titan.core import database
 from titan.core.database import AthleteDatabase
 
 
+@pytest.mark.integration
 def test_load_all_skips_non_object_json(tmp_path):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -17,6 +18,7 @@ def test_load_all_skips_non_object_json(tmp_path):
     assert db.athletes == {}
 
 
+@pytest.mark.integration
 def test_load_all_skips_invalid_profile_schema(tmp_path):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -33,6 +35,7 @@ def test_load_all_skips_invalid_profile_schema(tmp_path):
     assert db.athletes == {}
 
 
+@pytest.mark.integration
 def test_load_all_logs_detailed_corruption_reason_for_invalid_field(tmp_path, caplog):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -55,6 +58,7 @@ def test_load_all_logs_detailed_corruption_reason_for_invalid_field(tmp_path, ca
     assert payload["field_hint"] == "age"
 
 
+@pytest.mark.integration
 def test_load_all_accepts_valid_profile_schema(tmp_path):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -76,6 +80,7 @@ def test_load_all_accepts_valid_profile_schema(tmp_path):
 
 
 
+@pytest.mark.integration
 def test_load_all_skips_missing_athlete_id(tmp_path):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -86,6 +91,7 @@ def test_load_all_skips_missing_athlete_id(tmp_path):
     assert db.athletes == {}
 
 
+@pytest.mark.integration
 def test_load_all_logs_detailed_corruption_reason_for_missing_required_field(tmp_path, caplog):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -102,6 +108,7 @@ def test_load_all_logs_detailed_corruption_reason_for_missing_required_field(tmp
     assert payload["field_hint"] == "athlete_id"
 
 
+@pytest.mark.integration
 def test_load_all_skips_malformed_json_with_structured_warning(tmp_path, caplog):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -119,6 +126,7 @@ def test_load_all_skips_malformed_json_with_structured_warning(tmp_path, caplog)
     assert payload["field_hint"].startswith("json_pos_")
 
 
+@pytest.mark.integration
 def test_load_all_accepts_missing_name_uses_default(tmp_path):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -135,6 +143,7 @@ def test_load_all_accepts_missing_name_uses_default(tmp_path):
     assert db.athletes["ATH_20200101010102"].name == "Default Athlete"
 
 
+@pytest.mark.integration
 def test_load_all_reraises_unexpected_errors(tmp_path, monkeypatch):
     db_dir = tmp_path / "athletes"
     db_dir.mkdir()
@@ -154,6 +163,7 @@ def test_load_all_reraises_unexpected_errors(tmp_path, monkeypatch):
         AthleteDatabase(db_path=str(db_dir))
 
 
+@pytest.mark.integration
 def test_athlete_database_init_logs_base_directory_fallback_when_file_missing(
     tmp_path,
     monkeypatch,
@@ -172,6 +182,7 @@ def test_athlete_database_init_logs_base_directory_fallback_when_file_missing(
     assert payloads, "Expected athlete_db_base_directory_fallback structured warning"
 
 
+@pytest.mark.integration
 def test_athlete_database_init_uses_module_directory_when_file_present(tmp_path, caplog):
     caplog.set_level(logging.WARNING, logger="titan.core.database")
     AthleteDatabase(db_path=str(tmp_path / "athletes"))

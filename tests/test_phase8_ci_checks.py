@@ -23,6 +23,8 @@ from __future__ import annotations
 import pathlib
 import re
 
+import pytest
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 TECH_DEBT = REPO_ROOT / "TECHNICAL_DEBT.md"
 ROADMAP = REPO_ROOT / "docs" / "ROADMAP.MD"
@@ -69,6 +71,8 @@ def _extract_status(body: str) -> str:
 # Check 1 — every 🔴 T5-xx item has a Workflow Path field
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_open_phase8_items_have_workflow_path() -> None:
     """Every T5-xx item with 🔴 in its heading must contain **Workflow Path."""
     text = TECH_DEBT.read_text(encoding="utf-8")
@@ -92,6 +96,8 @@ def test_open_phase8_items_have_workflow_path() -> None:
 # Check 2 — Phase 8A must be RESOLVED before Phase 8B is RESOLVED
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_phase8_gate_ordering_invariant() -> None:
     """No Phase 8B item may be ✅ RESOLVED while any Phase 8A prerequisite is 🔴 OPEN.
 
@@ -128,6 +134,8 @@ def test_phase8_gate_ordering_invariant() -> None:
 # Check 3 — ROADMAP.MD declares the canonical open phase as OPEN
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_roadmap_md_declares_canonical_open_phase_as_open() -> None:
     """ROADMAP.MD section header for the canonical open phase must say (OPEN, ...)."""
     tech_debt = TECH_DEBT.read_text(encoding="utf-8")

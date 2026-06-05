@@ -41,6 +41,7 @@ def _past_date_str(days: int = 1) -> str:
 # ─── check_activity: happy path ──────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_clean_activity_no_violations():
     checker = DataSanityChecker()
     row = {
@@ -54,6 +55,7 @@ def test_clean_activity_no_violations():
     assert violations == []
 
 
+@pytest.mark.integration
 def test_activity_missing_hr_fields_no_violation():
     """Partial activity records (no HR data) should not trigger violations."""
     checker = DataSanityChecker()
@@ -62,6 +64,7 @@ def test_activity_missing_hr_fields_no_violation():
     assert violations == []
 
 
+@pytest.mark.integration
 def test_activity_zero_distance_zero_duration_no_violation():
     """Both zero is not a cross-field inconsistency — it's just an empty record."""
     checker = DataSanityChecker()
@@ -73,6 +76,7 @@ def test_activity_zero_distance_zero_duration_no_violation():
 # ─── check_activity: max_hr < avg_hr ─────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_max_hr_less_than_avg_hr_rejected():
     checker = DataSanityChecker()
     row = {
@@ -89,6 +93,7 @@ def test_max_hr_less_than_avg_hr_rejected():
     assert violations[0].field == "max_hr"
 
 
+@pytest.mark.integration
 def test_max_hr_equal_to_avg_hr_is_valid():
     checker = DataSanityChecker()
     row = {"date": _past_date_str(), "avg_hr": 155, "max_hr": 155}
@@ -96,6 +101,7 @@ def test_max_hr_equal_to_avg_hr_is_valid():
     assert violations == []
 
 
+@pytest.mark.integration
 def test_max_hr_zero_avg_hr_zero_not_rejected():
     """Zero HR fields are treated as missing — no cross-field rule fires."""
     checker = DataSanityChecker()
@@ -107,6 +113,7 @@ def test_max_hr_zero_avg_hr_zero_not_rejected():
 # ─── check_activity: nonzero distance + zero duration ────────────────────────
 
 
+@pytest.mark.integration
 def test_nonzero_distance_zero_duration_rejected():
     checker = DataSanityChecker()
     row = {"date": _past_date_str(), "distance_km": 10.0, "duration_sec": 0}
@@ -115,6 +122,7 @@ def test_nonzero_distance_zero_duration_rejected():
     assert all(v.severity == "reject" for v in violations if v.rule == "nonzero_distance_zero_duration")
 
 
+@pytest.mark.integration
 def test_zero_distance_nonzero_duration_valid():
     """Indoor sessions (e.g. treadmill) may have 0 distance — that's fine."""
     checker = DataSanityChecker()
@@ -126,6 +134,7 @@ def test_zero_distance_nonzero_duration_valid():
 # ─── check_activity: future timestamp ────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_activity_future_timestamp_rejected():
     checker = DataSanityChecker()
     row = {"date": _future_date_str(hours=2), "distance_km": 5.0, "duration_sec": 1800}
@@ -135,6 +144,7 @@ def test_activity_future_timestamp_rejected():
     assert future_violations[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_activity_within_drift_margin_not_rejected():
     """Timestamps within 1 hour of now are within the clock-drift margin."""
     checker = DataSanityChecker()
@@ -146,6 +156,7 @@ def test_activity_within_drift_margin_not_rejected():
     assert future_violations == []
 
 
+@pytest.mark.integration
 def test_activity_past_timestamp_not_rejected():
     checker = DataSanityChecker()
     row = {"date": "2026-01-01", "distance_km": 5.0, "duration_sec": 1800}
@@ -153,6 +164,7 @@ def test_activity_past_timestamp_not_rejected():
     assert violations == []
 
 
+@pytest.mark.integration
 def test_activity_unparseable_timestamp_warns():
     checker = DataSanityChecker()
     row = {"date": "not-a-date", "distance_km": 5.0, "duration_sec": 1800}
@@ -165,6 +177,7 @@ def test_activity_unparseable_timestamp_warns():
 # ─── check_daily_metrics ─────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_duplicate_activity_id_in_payload_rejected():
     checker = DataSanityChecker()
     seen_ids: set[str] = set()
@@ -184,6 +197,7 @@ def test_duplicate_activity_id_in_payload_rejected():
     assert duplicate[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_hrv_future_timestamp_rejected():
     checker = DataSanityChecker()
     future = (datetime.now(tz=UTC) + timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M:%S")
@@ -194,6 +208,7 @@ def test_hrv_future_timestamp_rejected():
     assert violations[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_hrv_unparseable_timestamp_warns():
     checker = DataSanityChecker()
     violations = checker.check_hrv({"rmssd": 42.0, "date": "bad-timestamp"})
@@ -203,6 +218,7 @@ def test_hrv_unparseable_timestamp_warns():
     assert violations[0].severity == "warn"
 
 
+@pytest.mark.integration
 def test_daily_metrics_null_date_rejected():
     checker = DataSanityChecker()
     violations = checker.check_daily_metrics({"date": None, "hrv_rmssd": 55.0})
@@ -211,6 +227,7 @@ def test_daily_metrics_null_date_rejected():
     assert violations[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_daily_metrics_empty_string_date_rejected():
     checker = DataSanityChecker()
     violations = checker.check_daily_metrics({"date": "", "hrv_rmssd": 55.0})
@@ -218,6 +235,7 @@ def test_daily_metrics_empty_string_date_rejected():
     assert violations[0].rule == "date_null_or_empty"
 
 
+@pytest.mark.integration
 def test_daily_metrics_valid_date_no_violations():
     checker = DataSanityChecker()
     violations = checker.check_daily_metrics({"date": "2026-01-15"})
@@ -227,6 +245,7 @@ def test_daily_metrics_valid_date_no_violations():
 # ─── check_hrv ───────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_hrv_zero_rejected():
     checker = DataSanityChecker()
     violations = checker.check_hrv({"rmssd": 0.0})
@@ -235,6 +254,7 @@ def test_hrv_zero_rejected():
     assert violations[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_hrv_zero_via_hrv_ms_key():
     checker = DataSanityChecker()
     violations = checker.check_hrv({"hrv_ms": 0.0})
@@ -242,16 +262,19 @@ def test_hrv_zero_via_hrv_ms_key():
     assert violations[0].severity == "reject"
 
 
+@pytest.mark.integration
 def test_hrv_valid_value_no_violation():
     checker = DataSanityChecker()
     assert checker.check_hrv({"rmssd": 55.0}) == []
 
 
+@pytest.mark.integration
 def test_hrv_none_value_no_violation():
     checker = DataSanityChecker()
     assert checker.check_hrv({"rmssd": None}) == []
 
 
+@pytest.mark.integration
 def test_hrv_missing_field_no_violation():
     checker = DataSanityChecker()
     assert checker.check_hrv({}) == []
@@ -260,6 +283,7 @@ def test_hrv_missing_field_no_violation():
 # ─── SanityViolation dataclass ───────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_sanity_violation_fields():
     v = SanityViolation(
         record_type="activity",
@@ -277,30 +301,36 @@ def test_sanity_violation_fields():
 # ─── has_rejects / has_warns helpers ─────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_has_rejects_true():
     v = SanityViolation("activity", "max_hr", "r", "v", "reject")
     assert has_rejects([v]) is True
 
 
+@pytest.mark.integration
 def test_has_rejects_false_when_only_warns():
     v = SanityViolation("activity", "date", "r", "v", "warn")
     assert has_rejects([v]) is False
 
 
+@pytest.mark.integration
 def test_has_warns_true():
     v = SanityViolation("activity", "date", "r", "v", "warn")
     assert has_warns([v]) is True
 
 
+@pytest.mark.integration
 def test_has_warns_false_when_only_rejects():
     v = SanityViolation("activity", "max_hr", "r", "v", "reject")
     assert has_warns([v]) is False
 
 
+@pytest.mark.integration
 def test_has_rejects_empty_list():
     assert has_rejects([]) is False
 
 
+@pytest.mark.integration
 def test_has_warns_empty_list():
     assert has_warns([]) is False
 
@@ -308,6 +338,7 @@ def test_has_warns_empty_list():
 # ─── Multiple rules can fire on same record ───────────────────────────────────
 
 
+@pytest.mark.integration
 def test_multiple_violations_on_one_record():
     checker = DataSanityChecker()
     row = {
@@ -327,6 +358,7 @@ def test_multiple_violations_on_one_record():
 # ─── Database integration: get_last_garmin_sync_timestamp ────────────────────
 
 
+@pytest.mark.integration
 def test_get_last_garmin_sync_timestamp_no_data(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -336,6 +368,7 @@ def test_get_last_garmin_sync_timestamp_no_data(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_last_garmin_sync_timestamp_returns_latest(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -352,6 +385,7 @@ def test_get_last_garmin_sync_timestamp_returns_latest(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_last_garmin_sync_timestamp_uses_training_log(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -364,6 +398,7 @@ def test_get_last_garmin_sync_timestamp_uses_training_log(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_last_garmin_sync_timestamp_picks_later_of_two_tables(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -380,6 +415,7 @@ def test_get_last_garmin_sync_timestamp_picks_later_of_two_tables(tmp_path):
 # ─── Schema migration v3: quality_flag column ────────────────────────────────
 
 
+@pytest.mark.integration
 def test_quality_flag_column_exists_after_migration(tmp_path):
     """After creating a new DB, quality_flag column should be present."""
     from titan.core.database import DatabaseManager
@@ -400,6 +436,7 @@ def test_quality_flag_column_exists_after_migration(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_save_session_with_quality_flag(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -419,6 +456,7 @@ def test_save_session_with_quality_flag(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_save_session_quality_flag_none_by_default(tmp_path):
     from titan.core.database import DatabaseManager
 
@@ -437,6 +475,7 @@ def test_save_session_quality_flag_none_by_default(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_save_daily_metric_with_quality_flag(tmp_path):
     from titan.core.database import DatabaseManager
 

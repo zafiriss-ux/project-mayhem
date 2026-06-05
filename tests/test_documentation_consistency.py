@@ -7,6 +7,8 @@ import pathlib
 import pkgutil
 import re
 
+import pytest
+
 import titan
 from titan.config.evidence_registry import EVIDENCE_REGISTRY
 from titan.config.thresholds import CANONICAL_LOCK_CODES
@@ -126,6 +128,7 @@ def _extract_tracking_table_statuses(tech_debt_text: str) -> dict[str, str]:
     return statuses
 
 
+@pytest.mark.unit
 def test_governance_lock_codes_match_canonical_list() -> None:
     emitted = _collect_governance_lock_codes()
 
@@ -143,6 +146,7 @@ def test_governance_lock_codes_match_canonical_list() -> None:
     )
 
 
+@pytest.mark.unit
 def test_threshold_constants_have_evidence_registry_entries() -> None:
     threshold_names = _collect_threshold_constant_names()
     excluded = {"CANONICAL_LOCK_CODES"}
@@ -156,6 +160,7 @@ def test_threshold_constants_have_evidence_registry_entries() -> None:
     )
 
 
+@pytest.mark.unit
 def test_adr_index_matches_adr_files() -> None:
     adr_files = {
         path.stem.split("-")[0]
@@ -170,6 +175,7 @@ def test_adr_index_matches_adr_files() -> None:
     )
 
 
+@pytest.mark.unit
 def test_technical_debt_tracking_table_matches_heading_status() -> None:
     text = TECH_DEBT.read_text(encoding="utf-8")
     heading_status = _extract_heading_statuses(text)
@@ -192,6 +198,7 @@ def test_technical_debt_tracking_table_matches_heading_status() -> None:
     )
 
 
+@pytest.mark.unit
 def test_module_count_within_budget() -> None:
     """Module count must not exceed 78 (Phase 8 ceiling; +2 for T5-16-B coaching_pipeline.py + coaching_scheduler.py structural extraction — Architect approved 2026-03-17; +1 for T5-12 Pass 2a biometric_source.py ADR-0050 D4 boundary contract — Architect approved 2026-04-10; +1 for HD-09 threshold_adapter.py ADR-0052 Stage 2 — Architect approved 2026-04-12; +1 for T5-100 biometric_router.py ADR-0055 Garmin fallback — Architect approved 2026-05-09; +1 for ADR-0057 titan.worker effect-runner — Architect approved 2026-05-23; +2 for titan.observability package + titan.observability.metrics — Phase 18 TD-11 metrics sink — Architect approved 2026-05-23; +1 for ADR-0058 engine_registry.py — Architect approved 2026-05-24; +1 for TD-08 schema.py SQLAlchemy Core descriptor — Architect approved 2026-06-01; +1 for ADR-0058 Phase B effect_bus.py — Architect approved 2026-06-02)."""
     modules = [

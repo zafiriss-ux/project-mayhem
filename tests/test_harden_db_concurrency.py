@@ -22,12 +22,14 @@ from titan.integrations.weather_api import WeatherAPI
 
 
 class TestGetBaselineRhr:
+    @pytest.mark.integration
     def test_returns_none_when_no_data(self, tmp_path):
         db = DatabaseManager(db_name="t106_rhr.db", db_dir=tmp_path)
         result = db.get_baseline_rhr(days=7)
         db.close()
         assert result is None
 
+    @pytest.mark.integration
     def test_returns_average_of_rhr_rows(self, tmp_path):
         import datetime
 
@@ -49,6 +51,7 @@ class TestGetBaselineRhr:
 
         assert result == 60.0
 
+    @pytest.mark.integration
     def test_ignores_zero_rhr_rows(self, tmp_path):
         import datetime
 
@@ -70,6 +73,7 @@ class TestGetBaselineRhr:
 
         assert result == 60.0
 
+    @pytest.mark.integration
     def test_baseline_rhr_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_closed.db", db_dir=tmp_path)
         db.close()
@@ -78,12 +82,14 @@ class TestGetBaselineRhr:
 
 
 class TestGetHrvHistory:
+    @pytest.mark.integration
     def test_hrv_history_empty(self, tmp_path):
         db = DatabaseManager(db_name="t106_hrv.db", db_dir=tmp_path)
         result = db.get_hrv_history(days=14)
         db.close()
         assert result == []
 
+    @pytest.mark.integration
     def test_returns_hrv_rows_newest_first(self, tmp_path):
         db = DatabaseManager(db_name="t106_hrv2.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
@@ -103,6 +109,7 @@ class TestGetHrvHistory:
         assert result[0][0] == "2026-03-02"
         assert result[1][0] == "2026-03-01"
 
+    @pytest.mark.integration
     def test_hrv_history_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_hrv_closed.db", db_dir=tmp_path)
         db.close()
@@ -111,12 +118,14 @@ class TestGetHrvHistory:
 
 
 class TestGetWeightHistory:
+    @pytest.mark.integration
     def test_weight_history_empty(self, tmp_path):
         db = DatabaseManager(db_name="t106_wt.db", db_dir=tmp_path)
         result = db.get_weight_history(days=30)
         db.close()
         assert result == []
 
+    @pytest.mark.integration
     def test_returns_weight_rows_newest_first(self, tmp_path):
         db = DatabaseManager(db_name="t106_wt2.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
@@ -134,6 +143,7 @@ class TestGetWeightHistory:
         assert len(result) == 2
         assert result[0][0] == "2026-03-02"
 
+    @pytest.mark.integration
     def test_weight_history_raises_on_closed_db(self, tmp_path):
         db = DatabaseManager(db_name="t106_wt_closed.db", db_dir=tmp_path)
         db.close()
@@ -146,6 +156,7 @@ class TestGetWeightHistory:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_daily_coach_get_baseline_rhr_uses_db_method(tmp_path):
     """_get_baseline_rhr() must delegate to db.get_baseline_rhr(), not self.db.conn."""
     import datetime
@@ -167,6 +178,7 @@ def test_daily_coach_get_baseline_rhr_uses_db_method(tmp_path):
     assert result == 58.0
 
 
+@pytest.mark.integration
 def test_daily_coach_get_baseline_rhr_returns_none_on_db_error(tmp_path):
     """_get_baseline_rhr() must return None when db raises sqlite3.Error."""
     from titan.orchestration.daily_coach import DailyCoach
@@ -181,6 +193,7 @@ def test_daily_coach_get_baseline_rhr_returns_none_on_db_error(tmp_path):
     assert result is None
 
 
+@pytest.mark.integration
 def test_daily_coach_hydrate_uses_db_methods(tmp_path):
     """_hydrate_engines_from_db() must not access self.db.conn.cursor() directly."""
     from titan.orchestration import daily_coach as dc_module
@@ -205,6 +218,7 @@ def test_daily_coach_hydrate_uses_db_methods(tmp_path):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_baseline_rhr_degraded_triggers_telegram_alert(tmp_path, caplog):
     from titan.orchestration.daily_coach import DailyCoach
 
@@ -238,6 +252,7 @@ def test_baseline_rhr_degraded_triggers_telegram_alert(tmp_path, caplog):
     db.close()
 
 
+@pytest.mark.integration
 def test_baseline_rhr_degraded_alert_failure_emits_event(tmp_path, caplog):
     from titan.orchestration.daily_coach import DailyCoach, _daily_coach_event
 
@@ -272,6 +287,7 @@ def test_baseline_rhr_degraded_alert_failure_emits_event(tmp_path, caplog):
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_weather_api_get_current_conditions_logs_event_not_print(caplog):
     """get_current_conditions() fallback must emit a structured event, not print()."""
     caplog.set_level(logging.WARNING, logger="titan.integrations.weather_api")
@@ -285,6 +301,7 @@ def test_weather_api_get_current_conditions_logs_event_not_print(caplog):
     assert any("weather_degraded_mode_active" in r.getMessage() for r in caplog.records)
 
 
+@pytest.mark.integration
 def test_weather_api_get_hourly_forecast_logs_event_not_print(caplog):
     """get_hourly_forecast() fallback must emit a structured event, not print()."""
     caplog.set_level(logging.WARNING, logger="titan.integrations.weather_api")
@@ -302,6 +319,7 @@ def test_weather_api_get_hourly_forecast_logs_event_not_print(caplog):
     assert any("weather_degraded_mode_active" in r.getMessage() for r in caplog.records)
 
 
+@pytest.mark.integration
 def test_weather_api_background_worker_logs_error_event_not_print(caplog):
     """Background worker error must emit a structured event, not print()."""
     caplog.set_level(logging.ERROR, logger="titan.integrations.weather_api")
@@ -329,6 +347,7 @@ def test_weather_api_background_worker_logs_error_event_not_print(caplog):
     assert any("weather_background_update_error" in r.getMessage() for r in caplog.records)
 
 
+@pytest.mark.integration
 def test_weather_api_has_no_print_calls():
     """Verify weather_api.py contains no operational print() calls."""
     source = inspect.getsource(weather_module)

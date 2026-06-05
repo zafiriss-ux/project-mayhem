@@ -1,7 +1,10 @@
+import pytest
+
 from titan.integrations.garmin_sync import GarminSync
 from titan.orchestration.daily_coach import DailyCoach
 
 
+@pytest.mark.unit
 def test_garmin_sync_all_contract_shape():
     sync = GarminSync(email="x", password="y")
     sync.sync_activities = lambda days_back=7, **kw: []
@@ -15,6 +18,7 @@ def test_garmin_sync_all_contract_shape():
     assert set(payload["hrv_sync_metrics"].keys()) == {"days_back", "synced_days", "skipped_days"}
 
 
+@pytest.mark.unit
 def test_daily_coach_context_contract_shape():
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = object()

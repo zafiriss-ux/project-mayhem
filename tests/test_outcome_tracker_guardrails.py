@@ -1,6 +1,8 @@
 import json
 import logging
 
+import pytest
+
 from titan.core.database import DatabaseManager
 from titan.science.outcome_tracker import OutcomeTracker
 
@@ -29,6 +31,8 @@ def _seed_decision(tracker: OutcomeTracker, date: str = "2026-03-01") -> None:
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_guardrails_happy_path_marks_independent_and_reusable():
     tracker = OutcomeTracker()
     _seed_decision(tracker, date="2026-03-01")
@@ -48,6 +52,8 @@ def test_guardrails_happy_path_marks_independent_and_reusable():
     assert summary["n_excluded_outcomes"] == 0
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_guardrails_boundary_marks_non_independent_and_excludes(caplog):
     tracker = OutcomeTracker()
     _seed_decision(tracker, date="2026-03-01")
@@ -76,6 +82,8 @@ def test_guardrails_boundary_marks_non_independent_and_excludes(caplog):
     assert events[0]["override_outcome_exclusion"] is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_guardrail_metadata_persistence_roundtrip(tmp_path):
     db = DatabaseManager(db_name="test.db", db_dir=tmp_path)
     tracker = OutcomeTracker(db=db)

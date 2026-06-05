@@ -1,3 +1,5 @@
+import pytest
+
 from titan.science.governance_engine import GovernanceEngine
 
 
@@ -21,6 +23,8 @@ def _base_context(**overrides):
     return context
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_non_training_illness_pattern_forces_rest_with_traceable_context():
     gov = GovernanceEngine()
     plan = {"session_type": "INTERVALS", "max_zone": 5, "duration_min": 45}
@@ -33,6 +37,8 @@ def test_non_training_illness_pattern_forces_rest_with_traceable_context():
     assert any(r["gate"] == "H2_H3_NON_TRAINING_STRESS" for r in result["hard_stop_reasons"])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_non_training_unexplained_moderate_stays_conservative_without_illness_escalation():
     gov = GovernanceEngine()
     plan = {"session_type": "TEMPO", "max_zone": 4, "duration_min": 45}
@@ -47,6 +53,8 @@ def test_non_training_unexplained_moderate_stays_conservative_without_illness_es
     assert not any(r["gate"] == "H2_H3_NON_TRAINING_STRESS" for r in result["hard_stop_reasons"])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_non_training_training_explained_context_preserves_existing_hard_stop_behavior():
     gov = GovernanceEngine()
     plan = {"session_type": "HAMMER", "max_zone": 5, "duration_min": 45}

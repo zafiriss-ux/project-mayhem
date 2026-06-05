@@ -39,6 +39,8 @@ def _make_engine():
 class TestMissingSleepScoreConservativeDefault:
     """When sleep_score is absent, default must be 40 so I2_sleep fires."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_missing_sleep_score_fires_i2(self):
         """Absence of sleep_score should yield I2_sleep indicator (40 < 60)."""
         engine = _make_engine()
@@ -51,6 +53,8 @@ class TestMissingSleepScoreConservativeDefault:
             f"I2_sleep must fire when sleep_score is absent; indicators={indicators}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_present_high_sleep_score_does_not_fire_i2(self):
         """A present high sleep_score (>= 60) must NOT fire I2_sleep."""
         engine = _make_engine()
@@ -62,6 +66,8 @@ class TestMissingSleepScoreConservativeDefault:
             f"I2_sleep must not fire when sleep_score=80; indicators={indicators}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_present_low_sleep_score_fires_i2(self):
         """A present low sleep_score (< 60) must fire I2_sleep."""
         engine = _make_engine()
@@ -81,6 +87,8 @@ class TestMissingSleepScoreConservativeDefault:
 class TestMissingReadinessScoreConservativeDefault:
     """When readiness_score is absent, default must be 40 so I3_readiness fires."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_missing_readiness_score_fires_i3(self):
         """Absence of readiness_score should yield I3_readiness indicator (40 < 50)."""
         engine = _make_engine()
@@ -93,6 +101,8 @@ class TestMissingReadinessScoreConservativeDefault:
             f"I3_readiness must fire when readiness_score is absent; indicators={indicators}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_present_high_readiness_score_does_not_fire_i3(self):
         """A present high readiness_score (>= 50) must NOT fire I3_readiness."""
         engine = _make_engine()
@@ -104,6 +114,8 @@ class TestMissingReadinessScoreConservativeDefault:
             f"I3_readiness must not fire when readiness_score=70; indicators={indicators}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_present_low_readiness_score_fires_i3(self):
         """A present low readiness_score (< 50) must fire I3_readiness."""
         engine = _make_engine()
@@ -123,6 +135,8 @@ class TestMissingReadinessScoreConservativeDefault:
 class TestBothMissingConservativeDefaults:
     """When both sleep_score and readiness_score are absent, both I2 and I3 fire."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_both_missing_fires_both_indicators(self):
         engine = _make_engine()
         ctx = _base_context()
@@ -135,6 +149,8 @@ class TestBothMissingConservativeDefaults:
         assert "I3_readiness" in indicators, f"I3_readiness must fire; indicators={indicators}"
         assert count >= 2, f"count must be >= 2; got {count}"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_both_present_and_healthy_fires_neither(self):
         """Both present with healthy values: neither I2 nor I3 should fire."""
         engine = _make_engine()

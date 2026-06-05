@@ -130,6 +130,7 @@ def _build_pg_test_engine():
 class TestV8MigrationSkipsWhenNullsExist:
     """v8 must not apply NOT NULL when any row has NULL garmin_activity_id."""
 
+    @pytest.mark.integration
     def test_null_row_causes_skip(self, tmp_path):
         """Row with NULL garmin_activity_id → constraint NOT applied."""
         db = _make_db(tmp_path, add_null_row=True)
@@ -149,6 +150,7 @@ class TestV8MigrationSkipsWhenNullsExist:
         )
         db.close()
 
+    @pytest.mark.integration
     def test_empty_table_skips_constraint(self, tmp_path):
         """Empty table has no rows to migrate → constraint not applied (no rows to verify)."""
         db = DatabaseManager(str(tmp_path / "empty.db"))
@@ -171,6 +173,7 @@ class TestV8MigrationSkipsWhenNullsExist:
 class TestV8MigrationAppliesWhenAllRowsMigrated:
     """v8 recreates table with NOT NULL when zero NULL garmin_activity_id rows."""
 
+    @pytest.mark.integration
     def test_all_rows_migrated_applies_not_null(self, tmp_path):
         """All rows have garmin_activity_id → table recreated with NOT NULL."""
         db = _make_db(tmp_path, prepopulate_garmin_id=True)
@@ -205,6 +208,7 @@ class TestV8MigrationAppliesWhenAllRowsMigrated:
 class TestPostgreSQLAdapterSaveSession:
     """PostgreSQLAdapter.save_session() must write garmin_activity_id."""
 
+    @pytest.mark.integration
     def test_garmin_activity_id_persisted(self):
         """save_session() with garmin_activity_id writes the value to the DB."""
         engine = _build_pg_test_engine()
@@ -225,6 +229,7 @@ class TestPostgreSQLAdapterSaveSession:
         finally:
             adapter.close()
 
+    @pytest.mark.integration
     def test_duplicate_garmin_activity_id_is_silent_noop(self):
         """Two save_session() calls with the same garmin_activity_id → one row."""
         engine = _build_pg_test_engine()
@@ -256,6 +261,7 @@ class TestPostgreSQLAdapterSaveSession:
         finally:
             adapter.close()
 
+    @pytest.mark.integration
     def test_null_garmin_activity_id_inserts_row(self):
         """save_session() without garmin_activity_id still inserts a row."""
         engine = _build_pg_test_engine()

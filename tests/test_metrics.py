@@ -18,6 +18,7 @@ def _reset_singleton() -> None:
     _m._collector = None
 
 
+@pytest.mark.integration
 def test_counter_emits_json_log(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO, logger="titan.metrics"):
         MetricsCollector().counter("test_c")
@@ -27,6 +28,7 @@ def test_counter_emits_json_log(caplog: pytest.LogCaptureFixture) -> None:
     assert payload["name"] == "test_c"
 
 
+@pytest.mark.integration
 def test_gauge_emits_correct_value(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO, logger="titan.metrics"):
         MetricsCollector().gauge("tsb", -3.2)
@@ -35,12 +37,14 @@ def test_gauge_emits_correct_value(caplog: pytest.LogCaptureFixture) -> None:
     assert payload["metric_type"] == "gauge"
 
 
+@pytest.mark.integration
 def test_get_metrics_returns_singleton() -> None:
     m1 = get_metrics()
     m2 = get_metrics()
     assert m1 is m2
 
 
+@pytest.mark.integration
 def test_ctl_recompute_emits_histogram(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,

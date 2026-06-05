@@ -29,6 +29,8 @@ def _make_engine_with_hrv(values: list[float]) -> HRVGuidedEngine:
 # ── INV-06: drift_detected field reflects correct state ──────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_hrv_calibration_drift_no_drift():
     """No drift when current ≈ baseline (delta < threshold)."""
     state = HRVGuidedEngine.describe_calibration_drift(
@@ -41,6 +43,8 @@ def test_hrv_calibration_drift_no_drift():
     assert state.abs_delta_ms == pytest.approx(2.0, abs=0.01)
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_hrv_calibration_drift_detected_above_threshold():
     """Drift detected when |current - baseline| > threshold."""
     state = HRVGuidedEngine.describe_calibration_drift(
@@ -53,6 +57,8 @@ def test_hrv_calibration_drift_detected_above_threshold():
     assert state.abs_delta_ms == pytest.approx(9.0, abs=0.01)
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_hrv_calibration_drift_exactly_at_threshold():
     """At exactly threshold: drift NOT detected (strict >)."""
     state = HRVGuidedEngine.describe_calibration_drift(
@@ -63,6 +69,8 @@ def test_hrv_calibration_drift_exactly_at_threshold():
     assert not state.drift_detected
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_hrv_calibration_drift_positive_improvement():
     """Upward HRV drift (improvement) is also detected if |delta| > threshold."""
     state = HRVGuidedEngine.describe_calibration_drift(
@@ -77,6 +85,8 @@ def test_hrv_calibration_drift_positive_improvement():
 # ── FS-02: 7-day gradual -3ms/day decline triggers drift by day 5 ────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gradual_hrv_decline_triggers_drift_by_cumulative_delta():
     """FS-02: Seven consecutive -3ms/day readings produce a 14-day delta > 8ms.
 
@@ -113,6 +123,8 @@ def test_gradual_hrv_decline_triggers_drift_by_cumulative_delta():
     assert state.abs_delta_ms > 8.0
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_slow_decline_below_threshold_does_not_trigger_drift():
     """A slow decline of -1ms/day over 7 days (total -4ms) does not trigger drift."""
     stable = [60.0] * 7
@@ -135,6 +147,8 @@ def test_slow_decline_below_threshold_does_not_trigger_drift():
 # ── INV-06: invalid threshold raises ─────────────────────────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_describe_calibration_drift_raises_on_zero_threshold():
     """drift_threshold_ms=0 must raise ValueError (invalid configuration)."""
     with pytest.raises(ValueError, match="drift_threshold_ms must be > 0"):
@@ -145,6 +159,8 @@ def test_describe_calibration_drift_raises_on_zero_threshold():
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_describe_calibration_drift_raises_on_negative_threshold():
     """drift_threshold_ms < 0 must raise ValueError."""
     with pytest.raises(ValueError, match="drift_threshold_ms must be > 0"):
@@ -158,6 +174,8 @@ def test_describe_calibration_drift_raises_on_negative_threshold():
 # ── Baseline calculation sanity (rolling mean correctness) ───────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_calculate_baseline_returns_none_when_insufficient_data():
     """calculate_baseline returns (None, None) when log has fewer than days entries."""
     engine = HRVGuidedEngine()
@@ -166,6 +184,8 @@ def test_calculate_baseline_returns_none_when_insufficient_data():
     assert result == (None, None)
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_calculate_baseline_correct_mean_and_std():
     """calculate_baseline returns correct mean and sample std dev."""
     engine = _make_engine_with_hrv([50.0, 54.0, 58.0, 62.0, 66.0, 70.0, 74.0])
@@ -185,6 +205,8 @@ def _make_engine_with_hrv_window(window_days: int, values: list[float]) -> HRVGu
     return engine
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_7day_decline_detected():
     """FS-02 / spec test: 7-day -3ms/day decline triggers drift with window_days=7.
 
@@ -199,6 +221,8 @@ def test_check_baseline_drift_7day_decline_detected():
     assert engine.check_baseline_drift(window_days=7) is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_stable_baseline_no_alarm():
     """Stable HRV log produces no drift alarm."""
     stable = [60.0] * 14  # 14 entries for window_days=7
@@ -207,6 +231,8 @@ def test_check_baseline_drift_stable_baseline_no_alarm():
     assert engine.check_baseline_drift(window_days=7) is False
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_insufficient_data_returns_false():
     """Fewer than window_days * 2 entries → no alarm (spec: < 28 for default 14)."""
     engine = HRVGuidedEngine()
@@ -217,6 +243,8 @@ def test_check_baseline_drift_insufficient_data_returns_false():
     assert engine.check_baseline_drift(window_days=14) is False
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_exactly_threshold_not_triggered():
     """Delta exactly equal to HRV_DRIFT_THRESHOLD_MS (8.0) must NOT trigger (strict >)."""
     # anchor mean = 60.0, recent mean = 52.0, |delta| = 8.0 — NOT > threshold
@@ -227,6 +255,8 @@ def test_check_baseline_drift_exactly_threshold_not_triggered():
     assert engine.check_baseline_drift(window_days=7) is False
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_one_ms_above_threshold_triggers():
     """Delta of 8.01ms (> 8.0 threshold) must trigger."""
     anchor = [60.0] * 7
@@ -236,6 +266,8 @@ def test_check_baseline_drift_one_ms_above_threshold_triggers():
     assert engine.check_baseline_drift(window_days=7) is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_upward_drift_also_detected():
     """Positive drift (improvement) of > 8ms is also flagged by the detector."""
     anchor = [50.0] * 7
@@ -245,6 +277,8 @@ def test_check_baseline_drift_upward_drift_also_detected():
     assert engine.check_baseline_drift(window_days=7) is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_default_window_28_entries_required():
     """Default window_days=14 requires exactly 28 entries minimum."""
     # 28 entries: stable anchor 14 + declining recent 14 with delta = 9ms (> 8ms)
@@ -257,6 +291,8 @@ def test_check_baseline_drift_default_window_28_entries_required():
     assert engine.check_baseline_drift() is True  # default window_days=14
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_check_baseline_drift_data_confidence_low_flag():
     """drift detected + daily_coach hydration → confidence dict has hrv_baseline_drift=False.
 

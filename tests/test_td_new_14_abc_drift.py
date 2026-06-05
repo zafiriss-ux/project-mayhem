@@ -9,6 +9,8 @@ from titan.core.database import DatabaseManager
 from titan.core.persistence import PersistenceAdapter, SQLiteAdapter
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_persistence_adapter_signatures_match():
     """Fitness function — prevents future drift between ABC and DatabaseManager."""
     dm_methods = dict(inspect.getmembers(DatabaseManager, predicate=inspect.isfunction))
@@ -30,6 +32,8 @@ def test_persistence_adapter_signatures_match():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_sqlite_adapter_implements_all_methods(tmp_path):
     """SQLiteAdapter must have no unimplemented abstract methods."""
     adapter = SQLiteAdapter(db_name="drift_check.db", db_dir=tmp_path)

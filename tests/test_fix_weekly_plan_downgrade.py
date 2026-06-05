@@ -37,6 +37,7 @@ def _make_planner_with_low_hrv() -> WeeklyPlanGenerator:
     return WeeklyPlanGenerator(hrv_engine, tsb_engine, acwr_engine)
 
 
+@pytest.mark.integration
 def test_downgraded_session_has_correct_description():
     """INTERVALS→TEMPO and TEMPO→EASY descriptions must reflect the NEW type, not the original."""
     planner = _make_planner_with_low_hrv()
@@ -71,6 +72,7 @@ def test_downgraded_session_has_correct_description():
             )
 
 
+@pytest.mark.integration
 def test_downgraded_intervals_become_tempo_with_tempo_description():
     """A BUILD week INTERVALS session must become TEMPO with a tempo-appropriate description."""
     planner = _make_planner_with_low_hrv()
@@ -86,6 +88,7 @@ def test_downgraded_intervals_become_tempo_with_tempo_description():
     assert "6x1km" not in tuesday["details"].lower()
 
 
+@pytest.mark.integration
 def test_downgraded_tempo_becomes_easy_with_easy_description():
     """A BUILD week TEMPO session must become EASY with an easy-appropriate description."""
     planner = _make_planner_with_low_hrv()
@@ -105,6 +108,7 @@ def test_downgraded_tempo_becomes_easy_with_easy_description():
 # [B] ACWR uses time-based 7d/28d windows
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_acwr_uses_time_window(tmp_path):
     """
     Insert 20 activities spread over 30 days.
@@ -174,6 +178,7 @@ def test_acwr_uses_time_window(tmp_path):
     assert old_in_28d == 0, "Old (35-39d ago) activities must not appear in 28d window"
 
 
+@pytest.mark.integration
 def test_acwr_count_vs_time_differ_when_activity_density_uneven(tmp_path):
     """
     With 5 activities in last 7 days but 20 activities total, count-based [-7:] would
@@ -217,6 +222,7 @@ def test_acwr_count_vs_time_differ_when_activity_density_uneven(tmp_path):
 # [C] avg_pace_sec_per_km calculated from duration + distance
 # ─────────────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_pace_calculated_from_duration_distance(tmp_path):
     """
     Insert activity with distance=10km, duration=3000sec (50min).
@@ -239,6 +245,7 @@ def test_pace_calculated_from_duration_distance(tmp_path):
     assert pace == 300, f"Expected pace=300 sec/km (5:00/km), got {pace}"
 
 
+@pytest.mark.integration
 def test_pace_stored_and_retrieved_correctly(tmp_path):
     """avg_pace_sec_per_km round-trips through DB correctly."""
     db = _make_db(tmp_path)
@@ -259,6 +266,7 @@ def test_pace_stored_and_retrieved_correctly(tmp_path):
     assert activities[0]["avg_pace_sec_per_km"] == pace
 
 
+@pytest.mark.integration
 def test_pace_display_format():
     """Verify the display formula: pace_sec → min:sec string."""
     pace_sec = 300
@@ -274,6 +282,7 @@ def test_pace_display_format():
     assert display == "4:28/km"
 
 
+@pytest.mark.integration
 def test_import_garmin_csv_computes_pace():
     """import_garmin_csv.py pace formula: duration_sec / distance_km."""
     from scripts.import_garmin_csv import parse_distance, parse_duration

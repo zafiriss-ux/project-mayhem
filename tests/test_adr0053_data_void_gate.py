@@ -35,6 +35,8 @@ def make_context(**overrides) -> dict:
     return ctx
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_fires_when_data_age_exceeds_threshold():
     """AT-H6-01: age > threshold → DATA_VOID_CONSERVATIVE lock + zone cap."""
     ctx = make_context(garmin_data_age_hours=DATA_VOID_THRESHOLD_HOURS + 1.0)
@@ -43,6 +45,8 @@ def test_h6_fires_when_data_age_exceeds_threshold():
     assert result["max_zone"] <= DATA_VOID_ZONE_CAP
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_does_not_fire_within_threshold():
     """AT-H6-02: age <= threshold → gate silent."""
     ctx = make_context(garmin_data_age_hours=DATA_VOID_THRESHOLD_HOURS - 24.0)
@@ -50,6 +54,8 @@ def test_h6_does_not_fire_within_threshold():
     assert "DATA_VOID_CONSERVATIVE" not in result["governance_locks_applied"]
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_does_not_fire_when_age_missing():
     """AT-H6-03: garmin_data_age_hours absent → gate silent."""
     ctx = make_context()
@@ -57,6 +63,8 @@ def test_h6_does_not_fire_when_age_missing():
     assert "DATA_VOID_CONSERVATIVE" not in result["governance_locks_applied"]
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_does_not_fire_on_nan_age():
     """AT-H6-04: NaN age must not trigger gate (INV-01 guard)."""
     ctx = make_context(garmin_data_age_hours=float("nan"))
@@ -64,6 +72,8 @@ def test_h6_does_not_fire_on_nan_age():
     assert "DATA_VOID_CONSERVATIVE" not in result["governance_locks_applied"]
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_cap_does_not_exceed_zone2():
     """AT-H6-05: zone-5 session under data void is capped at DATA_VOID_ZONE_CAP."""
     ctx = make_context(garmin_data_age_hours=72.0)
@@ -73,6 +83,8 @@ def test_h6_cap_does_not_exceed_zone2():
     assert result["max_zone"] <= 2
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_fires_from_real_context_payload():
     """AT-H6-06: H6 fires when context_payload mirrors DailyCoach wiring (line 861).
 
@@ -86,6 +98,8 @@ def test_h6_fires_from_real_context_payload():
     assert result["max_zone"] <= DATA_VOID_ZONE_CAP
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h6_does_not_fire_when_age_fresh():
     """AT-H6-07: H6 silent when garmin_data_age_hours is within threshold."""
     context = make_context(garmin_data_age_hours=12.0)

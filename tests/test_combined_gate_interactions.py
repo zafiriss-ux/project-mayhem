@@ -64,6 +64,8 @@ class _HighRatioDb:
         return 0.90  # > GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD (0.80)
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h1_and_h2_both_fire_simultaneously():
     """Combined lockdown and H2 gate interaction: OVERRIDE_LOCKDOWN ratio exceeded
     and H2_HRV_DELTA fire simultaneously — verifies hard-stop REST takes precedence
@@ -93,6 +95,8 @@ def test_h1_and_h2_both_fire_simultaneously():
 
 # ── H3_RHR_SPIKE × H2_HRV_DELTA ────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_and_h2_combined_fire():
     """H3 and H2 combined gate interaction: RHR spike and HRV collapse fire together
     (combined rhr and hrv hard-stop, h3 interaction with h2).
@@ -121,6 +125,8 @@ def test_h3_and_h2_combined_fire():
 
 # ── H4_ACWR × INTENSITY_GATE ────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h4_combined_with_intensity_gate():
     """H4 combined ACWR interaction with intensity gate RED: TSB floor and intensity
     gate fire together — both constraints applied simultaneously (h4 interaction).
@@ -153,6 +159,8 @@ def test_h4_combined_with_intensity_gate():
 
 # ── H5_CONSECUTIVE × FUELING_GATE ──────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h5_combined_with_fueling_gate():
     """H5 consecutive hard-stop combined interaction with fueling gate: extreme
     consecutive fatigue fires alongside fueling gate flag — both locks recorded
@@ -185,6 +193,8 @@ def test_h5_combined_with_fueling_gate():
 
 # ── 2OF4_GATE × NaN/None input (Gate Coverage Matrix col c) ────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_2of4_gate_with_none_sleep_score():
     """2-of-4 gate with None sleep_score — DATA_MISSING_CONSERVATIVE.
 

@@ -45,6 +45,8 @@ def _ruff_bucket_count() -> int:
     )
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_t4_01_safe_autofix_buckets_are_zero_for_active_code() -> None:
     findings = _ruff_bucket_count()
     assert findings == 0, (

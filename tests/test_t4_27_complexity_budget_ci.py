@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github/workflows/ci.yml"
 
@@ -8,6 +10,8 @@ def _workflow_content() -> str:
     return WORKFLOW.read_text(encoding="utf-8")
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_has_complexity_budget_job() -> None:
     content = _workflow_content()
 
@@ -16,6 +20,8 @@ def test_ci_has_complexity_budget_job() -> None:
     assert "Enforce titan module count ceiling" in content
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_complexity_budget_job_enforces_real_titan_module_count_with_ceiling() -> None:
     content = _workflow_content()
 

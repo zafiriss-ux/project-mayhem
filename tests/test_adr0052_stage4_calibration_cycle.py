@@ -64,6 +64,7 @@ def _calibration_available_summary(
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_insufficient_diversity():
     db = _make_db()
     tracker = _make_tracker(db)
@@ -85,6 +86,7 @@ def test_calibration_cycle_insufficient_diversity():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_circuit_breaker_active():
     db = _make_db(is_cold_start=False, false_neg_rate=0.99)
     tracker = _make_tracker(db)
@@ -106,6 +108,7 @@ def test_calibration_cycle_circuit_breaker_active():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_accumulating():
     db = _make_db()
     tracker = _make_tracker(db)
@@ -132,6 +135,7 @@ def test_calibration_cycle_accumulating():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_false_positive_triggers_loosening():
     db = _make_db()
     tracker = _make_tracker(db)
@@ -159,6 +163,7 @@ def test_calibration_cycle_false_positive_triggers_loosening():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_false_negative_triggers_tightening():
     db = _make_db()
     tracker = _make_tracker(db)
@@ -185,6 +190,7 @@ def test_calibration_cycle_false_negative_triggers_tightening():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_hard_stop_gates_excluded():
     db = _make_db()
     tracker = _make_tracker(db)
@@ -217,6 +223,7 @@ def test_calibration_cycle_hard_stop_gates_excluded():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 def test_calibration_cycle_complete_return_structure():
     db = _make_db()
     tracker = _make_tracker(db)

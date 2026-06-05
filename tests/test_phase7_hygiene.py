@@ -44,21 +44,25 @@ from titan.science.ml_safety import enforce_ml_kill_switch, is_ml_kill_switch_en
 class TestLoadPredictionMissingBranches:
     """Hit the two uncovered lines in load_prediction_shadow.py."""
 
+    @pytest.mark.unit
     def test_invalid_alpha_zero_raises_value_error(self):
         """line 36: raise ValueError when alpha == 0 (boundary excluded)."""
         with pytest.raises(ValueError, match="alpha must be in"):
             LoadPredictionShadowModel(alpha=0.0)
 
+    @pytest.mark.unit
     def test_invalid_alpha_negative_raises_value_error(self):
         """line 36: raise ValueError when alpha < 0."""
         with pytest.raises(ValueError, match="alpha must be in"):
             LoadPredictionShadowModel(alpha=-0.1)
 
+    @pytest.mark.unit
     def test_invalid_alpha_above_one_raises_value_error(self):
         """line 36: raise ValueError when alpha > 1."""
         with pytest.raises(ValueError, match="alpha must be in"):
             LoadPredictionShadowModel(alpha=1.1)
 
+    @pytest.mark.unit
     def test_stable_seven_value_series_produces_flat_trend(self):
         """line 73: trend = 'FLAT' when prediction falls within ±8 % of baseline.
 
@@ -72,6 +76,7 @@ class TestLoadPredictionMissingBranches:
         assert pred.predicted_load_7d > 0.0
         assert pred.mode == 'SHADOW'
 
+    @pytest.mark.unit
     def test_exactly_one_value_returns_non_zero_prediction(self):
         """Single-element list: no EWMA iterations, trend branch still evaluated."""
         model = LoadPredictionShadowModel()
@@ -88,6 +93,7 @@ class TestLoadPredictionMissingBranches:
 class TestInjuryRiskMediumBand:
     """Cover the elif score >= 0.34 branch (band = 'MEDIUM')."""
 
+    @pytest.mark.unit
     def test_moderate_risk_profile_returns_medium_band(self):
         """Features calibrated so combined score falls in [0.34, 0.67).
 
@@ -108,6 +114,7 @@ class TestInjuryRiskMediumBand:
         assert assessment.risk_band == 'MEDIUM'
         assert 0.34 <= assessment.risk_score < 0.67
 
+    @pytest.mark.unit
     def test_medium_risk_dict_contains_correct_mode(self):
         """as_dict() on a MEDIUM result still reports ADVISORY mode."""
         model = InjuryRiskEnsembleModel()
@@ -125,21 +132,25 @@ class TestInjuryRiskMediumBand:
 class TestPhase7PublicAPI:
     """Verify all Phase 7 symbols are accessible from the titan.science namespace."""
 
+    @pytest.mark.unit
     def test_load_prediction_symbols_in_science_namespace(self):
         import titan.science as ts
         assert hasattr(ts, 'LoadPredictionShadowModel')
         assert hasattr(ts, 'ShadowLoadPrediction')
 
+    @pytest.mark.unit
     def test_injury_risk_symbols_in_science_namespace(self):
         import titan.science as ts
         assert hasattr(ts, 'InjuryRiskEnsembleModel')
         assert hasattr(ts, 'InjuryRiskAssessment')
 
+    @pytest.mark.unit
     def test_periodization_symbols_in_science_namespace(self):
         import titan.science as ts
         assert hasattr(ts, 'AutomatedPeriodizationEngine')
         assert hasattr(ts, 'PeriodizationSuggestion')
 
+    @pytest.mark.unit
     def test_ml_safety_module_importable(self):
         from titan.science import ml_safety  # noqa: F401 — import-only smoke check
         assert callable(ml_safety.is_ml_kill_switch_enabled)
@@ -149,18 +160,22 @@ class TestPhase7PublicAPI:
 class TestPhase7EvidenceLabels:
     """Every ML payload dataclass must carry an evidence_label field = 'HEURISTIC'."""
 
+    @pytest.mark.unit
     def test_shadow_load_prediction_carries_heuristic_label(self):
         pred = LoadPredictionShadowModel().predict_7d_load([70, 75, 80])
         assert pred.evidence_label == 'HEURISTIC'
 
+    @pytest.mark.unit
     def test_injury_risk_assessment_carries_heuristic_label(self):
         assessment = InjuryRiskEnsembleModel().assess_risk({})
         assert assessment.evidence_label == 'HEURISTIC'
 
+    @pytest.mark.unit
     def test_periodization_suggestion_carries_heuristic_label(self):
         suggestion = AutomatedPeriodizationEngine().suggest({})
         assert suggestion.evidence_label == 'HEURISTIC'
 
+    @pytest.mark.unit
     def test_evidence_label_surfaced_in_dict_contract(self):
         """Evidence label must survive serialisation through as_dict()."""
         model = LoadPredictionShadowModel()
@@ -171,14 +186,17 @@ class TestPhase7EvidenceLabels:
 class TestPhase7ModeStrings:
     """Each ML engine must advertise the correct phase-gate mode string."""
 
+    @pytest.mark.unit
     def test_load_prediction_mode_is_shadow(self):
         pred = LoadPredictionShadowModel().predict_7d_load([50])
         assert pred.mode == 'SHADOW'
 
+    @pytest.mark.unit
     def test_injury_risk_mode_is_advisory(self):
         assessment = InjuryRiskEnsembleModel().assess_risk({})
         assert assessment.mode == 'ADVISORY'
 
+    @pytest.mark.unit
     def test_periodization_mode_is_suggest_only(self):
         suggestion = AutomatedPeriodizationEngine().suggest({})
         assert suggestion.mode == 'SUGGEST_ONLY'
@@ -187,23 +205,28 @@ class TestPhase7ModeStrings:
 class TestPhase7KillSwitchIntegration:
     """Kill-switch is default-ON; non-athlete-facing paths are always available."""
 
+    @pytest.mark.unit
     def test_kill_switch_default_on_when_env_absent(self, monkeypatch):
         monkeypatch.delenv('TITAN_ML_KILL_SWITCH', raising=False)
         assert is_ml_kill_switch_enabled() is True
 
+    @pytest.mark.unit
     def test_kill_switch_disabled_by_env_zero(self, monkeypatch):
         monkeypatch.setenv('TITAN_ML_KILL_SWITCH', '0')
         assert is_ml_kill_switch_enabled() is False
 
+    @pytest.mark.unit
     def test_enforce_blocks_athlete_facing_when_switch_on(self, monkeypatch):
         monkeypatch.setenv('TITAN_ML_KILL_SWITCH', '1')
         with pytest.raises(RuntimeError, match="ML kill-switch active"):
             enforce_ml_kill_switch('test_path', athlete_facing=True)
 
+    @pytest.mark.unit
     def test_enforce_is_noop_for_non_athlete_facing(self, monkeypatch):
         monkeypatch.setenv('TITAN_ML_KILL_SWITCH', '1')
         enforce_ml_kill_switch('test_path', athlete_facing=False)  # must not raise
 
+    @pytest.mark.unit
     def test_all_engines_shadow_accessible_with_kill_switch_on(self, monkeypatch):
         monkeypatch.setenv('TITAN_ML_KILL_SWITCH', '1')
         load_pred = LoadPredictionShadowModel().predict_7d_load([50, 60])
@@ -218,6 +241,7 @@ class TestPhase7KillSwitchIntegration:
 class TestPhase7DictContractStability:
     """All three model.as_dict() outputs must expose the full canonical key set."""
 
+    @pytest.mark.unit
     def test_load_prediction_dict_keys(self):
         model = LoadPredictionShadowModel()
         payload = model.as_dict(model.predict_7d_load([50, 60]))
@@ -229,6 +253,7 @@ class TestPhase7DictContractStability:
             'evidence_label',
         }
 
+    @pytest.mark.unit
     def test_injury_risk_dict_keys(self):
         model = InjuryRiskEnsembleModel()
         payload = model.as_dict(model.assess_risk({}))
@@ -242,6 +267,7 @@ class TestPhase7DictContractStability:
             'explainability',
         }
 
+    @pytest.mark.unit
     def test_periodization_dict_keys(self):
         engine = AutomatedPeriodizationEngine()
         payload = engine.as_dict(engine.suggest({}))
@@ -263,6 +289,7 @@ class TestPhase7DictContractStability:
 class TestPeriodizationStabilizeBranch:
     """Cover the STABILIZE branch (readiness/fatigue both moderate, within BUILD gate)."""
 
+    @pytest.mark.unit
     def test_moderate_state_produces_stabilize(self):
         """Neither BUILD nor RECOVERY conditions met → STABILIZE with zero adjustments."""
         engine = AutomatedPeriodizationEngine()
@@ -277,6 +304,7 @@ class TestPeriodizationStabilizeBranch:
         assert suggestion.volume_adjustment_pct == 0.0
         assert suggestion.intensity_adjustment_pct == 0.0
 
+    @pytest.mark.unit
     def test_confidence_scales_with_readiness_fatigue_spread(self):
         """Wider readiness–fatigue spread → higher confidence."""
         engine = AutomatedPeriodizationEngine()
@@ -293,16 +321,19 @@ class TestPeriodizationStabilizeBranch:
 class TestPayloadImmutability:
     """Payload dataclasses are frozen; mutation must raise FrozenInstanceError."""
 
+    @pytest.mark.unit
     def test_shadow_load_prediction_is_frozen(self):
         pred = LoadPredictionShadowModel().predict_7d_load([60])
         with pytest.raises(FrozenInstanceError):
             pred.trend = 'MUTATED'  # type: ignore[misc]
 
+    @pytest.mark.unit
     def test_injury_risk_assessment_is_frozen(self):
         assessment = InjuryRiskEnsembleModel().assess_risk({})
         with pytest.raises(FrozenInstanceError):
             assessment.risk_band = 'MUTATED'  # type: ignore[misc]
 
+    @pytest.mark.unit
     def test_periodization_suggestion_is_frozen(self):
         suggestion = AutomatedPeriodizationEngine().suggest({})
         with pytest.raises(FrozenInstanceError):

@@ -70,6 +70,8 @@ def _assert_category_a_literal_regression_presence(
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_gate_category_a_literal_regression_presence_check() -> None:
     """CI gate: denylist Category A literals must not be reintroduced inline."""
 
@@ -84,6 +86,8 @@ def test_ci_gate_category_a_literal_regression_presence_check() -> None:
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_meta_category_a_literal_regression_presence_gate_rejects_known_bad_input() -> None:
     """Validating meta-test: gate fails when a denied literal is reintroduced."""
 

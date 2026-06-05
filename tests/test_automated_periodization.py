@@ -1,9 +1,12 @@
+import pytest
+
 from titan.science.automated_periodization import (
     AutomatedPeriodizationEngine,
     PeriodizationSuggestion,
 )
 
 
+@pytest.mark.unit
 def test_high_readiness_low_fatigue_suggests_build():
     engine = AutomatedPeriodizationEngine()
     suggestion = engine.suggest(
@@ -21,6 +24,7 @@ def test_high_readiness_low_fatigue_suggests_build():
     assert suggestion.mode == 'SUGGEST_ONLY'
 
 
+@pytest.mark.unit
 def test_low_readiness_or_high_fatigue_suggests_recovery():
     engine = AutomatedPeriodizationEngine()
     suggestion = engine.suggest(
@@ -37,6 +41,7 @@ def test_low_readiness_or_high_fatigue_suggests_recovery():
     assert suggestion.intensity_adjustment_pct < 0
 
 
+@pytest.mark.unit
 def test_high_monotony_blocks_build_and_caps_load():
     engine = AutomatedPeriodizationEngine()
     suggestion = engine.suggest(
@@ -53,6 +58,7 @@ def test_high_monotony_blocks_build_and_caps_load():
     assert suggestion.intensity_adjustment_pct <= -0.05
 
 
+@pytest.mark.unit
 def test_dict_contract_is_stable():
     engine = AutomatedPeriodizationEngine()
     payload = engine.as_dict(engine.suggest({}))

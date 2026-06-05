@@ -34,6 +34,8 @@ from titan.integrations.garmin_sync import GarminSync, _activity_utc_date
 
 class TestActivityUtcDate:
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_early_morning_utc_plus3_crosses_to_previous_day(self):
         """01:30 local in UTC+3 = 22:30 UTC previous day → previous UTC date."""
         result = _activity_utc_date("2026-04-04T01:30:00+03:00")
@@ -41,6 +43,8 @@ class TestActivityUtcDate:
             f"Expected '2026-04-03' (UTC date), got '{result}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_late_evening_utc_plus3_stays_same_day(self):
         """23:59 local in UTC+3 = 20:59 UTC same day → same UTC date (no regression)."""
         result = _activity_utc_date("2026-04-03T23:59:00+03:00")
@@ -48,25 +52,35 @@ class TestActivityUtcDate:
             f"Expected '2026-04-03' (same UTC date), got '{result}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_naive_timestamp_no_tz_unchanged(self):
         """Naive ISO string (no tz) falls back to [:10] — no behaviour change."""
         result = _activity_utc_date("2026-04-03T07:00:00")
         assert result == "2026-04-03"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_naive_space_separated_unchanged(self):
         """Space-separated naive timestamp — common Garmin format."""
         result = _activity_utc_date("2026-04-03 07:00:00")
         assert result == "2026-04-03"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_empty_string_returns_empty(self):
         result = _activity_utc_date("")
         assert result == ""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_unparseable_falls_back_to_truncation(self):
         """Unparseable value falls back to [:10] without raising."""
         result = _activity_utc_date("not-a-date-string")
         assert result == "not-a-date"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_utc_minus3_midnight_crossing(self):
         """23:30 local in UTC-3 = 02:30 next day UTC → next UTC date."""
         result = _activity_utc_date("2026-04-03T23:30:00-03:00")
@@ -74,6 +88,8 @@ class TestActivityUtcDate:
             f"Expected '2026-04-04' (next UTC day), got '{result}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_utc_zero_offset_unchanged(self):
         """UTC+0 offset: local date equals UTC date."""
         result = _activity_utc_date("2026-04-03T15:00:00+00:00")
@@ -92,6 +108,8 @@ class TestSyncActivitiesUtcDate:
         sync.client = MagicMock()
         return sync
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_activity_with_tz_offset_yields_utc_date(self, monkeypatch):
         """sync_activities records use UTC date when startTimeLocal carries tz offset.
 
@@ -122,6 +140,8 @@ class TestSyncActivitiesUtcDate:
             f"Expected UTC date '2026-04-03', got '{activities[0]['date']}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_activity_naive_timestamp_unchanged(self, monkeypatch):
         """Naive startTimeLocal (no tz) keeps the same date as before the fix."""
         sync = self._make_connected_sync()

@@ -80,6 +80,8 @@ class TestBE01OverrideLaundering:
          → GovernanceEngine.check_override_lockdown returns locked=True
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_rate_above_25_pct_emits_trust_drift_warning(self) -> None:
         """
         BE-01-A: 9 overrides in 30 decisions (30%) > 0.25 threshold
@@ -109,6 +111,8 @@ class TestBE01OverrideLaundering:
         )
         assert metrics["trust_signal"] == "DRIFT_WARNING"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_rate_below_25_pct_no_warning(self) -> None:
         """
         BE-01-A-neg: 6 overrides in 30 decisions (20%) ≤ 0.25 threshold
@@ -129,6 +133,8 @@ class TestBE01OverrideLaundering:
         assert metrics["operator_trust_drift_warning"] is False
         assert metrics["trust_signal"] == "STABLE"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_rate_above_80_pct_disables_quality_sessions(self) -> None:
         """
         BE-01-B: get_override_ratio returning > 0.80
@@ -153,6 +159,8 @@ class TestBE01OverrideLaundering:
                 f"Quality session '{quality}' must be disabled under override lockdown"
             )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_rate_exactly_at_lockdown_threshold_not_locked(self) -> None:
         """
         BE-01-B-boundary: ratio == GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD is NOT locked
@@ -183,6 +191,8 @@ class TestBE02ReadinessGaming:
     it does not back-propagate into the governance pipeline as a hard stop.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_readiness_outcome_divergence_recorded_without_block(self) -> None:
         """
         BE-02: Five EXCELLENT readiness days, day 5 RPE=9.
@@ -239,6 +249,8 @@ class TestBE02ReadinessGaming:
             "readiness-outcome divergence is detection-only at this phase"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_divergence_data_does_not_escalate_to_hard_stop(self) -> None:
         """
         BE-02-guard: Five days of readiness=95 + RPE=9 outcomes must not add
@@ -293,6 +305,8 @@ class TestBE03GreenMeansGo:
     per ADR-0038.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_four_consecutive_green_days_no_auto_block(self) -> None:
         """
         BE-03: Run governance four times with clean healthy context.
@@ -318,6 +332,8 @@ class TestBE03GreenMeansGo:
                 f"got locks={r.get('governance_locks_applied')}"
             )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_green_streak_does_not_add_quality_session_streak_lock(self) -> None:
         """
         BE-03: Four clean INTERVALS days must not inject any advisory lock code.
@@ -339,6 +355,8 @@ class TestBE03GreenMeansGo:
             f"Day 4 of GREEN streak must have no governance locks, got: {day4_locks}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_governance_does_not_auto_block_on_streak_without_explicit_threshold(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:

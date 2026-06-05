@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from titan.main import _register_telegram_callbacks
 
 
@@ -31,6 +33,7 @@ def _build_ctx(summary):
     }
 
 
+@pytest.mark.unit
 def test_registers_calibration_command():
     telegram = MagicMock()
     telegram.register_command = MagicMock()
@@ -41,6 +44,7 @@ def test_registers_calibration_command():
     assert "calibration" in registered
 
 
+@pytest.mark.unit
 def test_calibration_callback_formats_accumulating_summary():
     telegram = MagicMock()
     callbacks = {}
@@ -67,6 +71,7 @@ def test_calibration_callback_formats_accumulating_summary():
     assert "Need 18 more paired outcomes." in response
 
 
+@pytest.mark.unit
 def test_calibration_callback_formats_lock_correlation_section():
     telegram = MagicMock()
     callbacks = {}
@@ -94,6 +99,7 @@ def test_calibration_callback_formats_lock_correlation_section():
     assert "Δcompletion -12.5pp" in response
 
 
+@pytest.mark.unit
 def test_calibration_callback_formats_heuristic_promotion_candidates():
     telegram = MagicMock()
     callbacks = {}
@@ -128,6 +134,7 @@ def test_calibration_callback_formats_heuristic_promotion_candidates():
     assert "VO2_ELIGIBILITY_GATE" in response
 
 
+@pytest.mark.unit
 def test_calibration_callback_formats_moderate_promotion_candidates():
     telegram = MagicMock()
     callbacks = {}

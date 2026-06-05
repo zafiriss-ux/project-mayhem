@@ -27,6 +27,7 @@ class TestHRVBaselineSampleSD:
             engine.add_hrv_measurement(f"2026-01-{i + 1:02d}", v)
         return engine
 
+    @pytest.mark.unit
     def test_sample_sd_three_values(self) -> None:
         """For [60, 70, 80] sample SD == 10.0, population SD ≈ 8.165."""
         engine = self._engine_with_values([60.0, 70.0, 80.0], days=3)
@@ -39,6 +40,7 @@ class TestHRVBaselineSampleSD:
             f"If ~8.165, population SD (N) is being used instead."
         )
 
+    @pytest.mark.unit
     def test_sample_sd_two_values(self) -> None:
         """For [60, 80] sample SD == sqrt((400)/1) = 20.0."""
         engine = self._engine_with_values([60.0, 80.0], days=2)
@@ -48,6 +50,7 @@ class TestHRVBaselineSampleSD:
         # mean = 70, deviations^2: 100 + 100 = 200; sample variance = 200/1 = 200; SD = sqrt(200)
         assert std_dev == pytest.approx(math.sqrt(200))
 
+    @pytest.mark.unit
     def test_single_value_returns_zero_sd(self) -> None:
         """Edge case: N=1 must not raise ZeroDivisionError; SD should be 0.0."""
         engine = HRVGuidedEngine(baseline_days=1)
@@ -61,6 +64,7 @@ class TestHRVBaselineSampleSD:
             f"Single-value SD should be 0.0, got {std_dev}"
         )
 
+    @pytest.mark.unit
     def test_population_sd_not_returned(self) -> None:
         """Explicit anti-regression: population SD value must NOT be returned."""
         engine = self._engine_with_values([60.0, 70.0, 80.0], days=3)

@@ -39,42 +39,60 @@ from titan.science.outcome_tracker import OutcomeTracker, _classify_lock_cause
 class TestClassifyLockCause:
     """Cover every branch in _classify_lock_cause."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_no_locks_returns_clean(self):
         assert _classify_lock_cause([], 1.0, 80.0) == "CLEAN"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_valid_data_with_lock_returns_training_logic(self):
         assert _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 1.0, 75.0) == "TRAINING_LOGIC"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_acwr_zero_with_lock_returns_data_problem(self):
         """acwr <= 0.0 → line 89: data_signals.append('acwr_out_of_range')."""
         result = _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 0.0, 80.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_acwr_negative_with_lock_returns_data_problem(self):
         """acwr < 0.0 — also hits line 89."""
         result = _classify_lock_cause(["VO2_ELIGIBILITY_GATE"], -0.1, 80.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_acwr_above_3_with_lock_returns_data_problem(self):
         """acwr > 3.0 → line 89: acwr_out_of_range branch."""
         result = _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 3.1, 80.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_readiness_zero_with_lock_returns_data_problem(self):
         """readiness_score <= 0.0 → line 91: readiness_zero branch."""
         result = _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 1.0, 0.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_readiness_negative_with_lock_returns_data_problem(self):
         """readiness_score < 0.0 — also hits line 91."""
         result = _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 1.0, -5.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_cs_confidence_lock_returns_data_problem(self):
         """CS_CONFIDENCE_LOCK always classified as DATA_PROBLEM (line 95-96)."""
         result = _classify_lock_cause(["CS_CONFIDENCE_LOCK"], 1.0, 80.0)
         assert result == "DATA_PROBLEM"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_acwr_and_readiness_both_bad_returns_data_problem(self):
         """Both lines 89 and 91 hit simultaneously."""
         result = _classify_lock_cause(["HARD_STOP_SAFETY_GATES"], 0.0, 0.0)
@@ -88,6 +106,8 @@ class TestClassifyLockCause:
 class TestOutcomeTrackerHydrationFailure:
     """Cover the DB exception handler in _hydrate_from_db (lines 130-132)."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_hydration_db_failure_does_not_raise(self):
         """get_governance_decisions() raises → warning logged, tracker stays empty."""
 
@@ -99,6 +119,8 @@ class TestOutcomeTrackerHydrationFailure:
         # Must not raise; in-memory state starts empty
         assert tracker._decisions == []
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_hydration_db_failure_leaves_tracker_functional(self):
         """After hydration failure the tracker still accepts new decisions."""
 
@@ -133,6 +155,8 @@ class TestOutcomeTrackerHydrationFailure:
 class TestIntensityGovernorNumericConversionFailure:
     """Cover lines 67-68: except (TypeError, ValueError): numeric = 0.0."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_non_numeric_signal_does_not_crash(self):
         """Passing a non-castable string for evaluated keys triggers lines 67-68.
         Keys checked by evaluate_numeric: drift_pct, glycogen_debt, acwr, readiness_score."""
@@ -146,6 +170,8 @@ class TestIntensityGovernorNumericConversionFailure:
         # Must return a valid GateResult regardless of bad input; all default to 0.0
         assert result.color in {"GREEN", "YELLOW", "RED"}
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_none_numeric_signal_falls_back_gracefully(self):
         """None passed as a signal value also triggers the float() TypeError path."""
         governor = IntensityGovernor()
@@ -165,6 +191,8 @@ class TestGovernanceEngineContractViolationLog:
     structurally invalid dict (validate_vo2_eligibility returns a non-None
     violation string)."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_malformed_vo2_result_logs_error_and_does_not_crash(self, monkeypatch):
         """Monkeypatch _check_vo2_eligibility to return a dict that fails the
         contract (missing required fields) → line 475 executes."""
@@ -198,26 +226,36 @@ class TestGovernanceEngineContractViolationLog:
 class TestPhase4DeliverableSmoke:
     """Verify every Phase 4 module is importable and instantiates cleanly."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_outcome_tracker_importable(self):
         from titan.science.outcome_tracker import OutcomeTracker
         t = OutcomeTracker()
         assert t is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_governance_engine_importable(self):
         from titan.science.governance_engine import GovernanceEngine
         g = GovernanceEngine()
         assert g is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_governor_importable(self):
         from titan.science.intensity_governor import IntensityGovernor
         ig = IntensityGovernor()
         assert ig is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_volume_load_gauge_importable(self):
         from titan.science.volume_load_gauge import VolumeLoadGauge
         vlg = VolumeLoadGauge()
         assert vlg is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_governance_contracts_importable(self):
         from titan.science.governance_contracts import (
             assert_vo2_eligibility_contract,
@@ -226,27 +264,37 @@ class TestPhase4DeliverableSmoke:
         assert callable(assert_vo2_eligibility_contract)
         assert callable(validate_vo2_eligibility)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_e2e_regression_suite_exists(self):
         """Verify the E2E regression test module is importable."""
         import importlib
         mod = importlib.import_module("tests.test_e2e_regression_suite")
         assert mod is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_slo_alerts_test_module_exists(self):
         import importlib
         mod = importlib.import_module("tests.test_phase4_slo_alerts")
         assert mod is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_calibration_command_test_module_exists(self):
         import importlib
         mod = importlib.import_module("tests.test_telegram_calibration_command")
         assert mod is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_observability_flows_test_module_exists(self):
         import importlib
         mod = importlib.import_module("tests.test_phase4_observability_flows")
         assert mod is not None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_outcome_tracker_persistence_test_module_exists(self):
         import importlib
         mod = importlib.import_module("tests.test_outcome_tracker_persistence")

@@ -1,9 +1,12 @@
+import pytest
+
 from titan.science.load_prediction_shadow import (
     LoadPredictionShadowModel,
     ShadowLoadPrediction,
 )
 
 
+@pytest.mark.unit
 def test_empty_input_returns_flat_zero_prediction():
     model = LoadPredictionShadowModel()
     pred = model.predict_7d_load([])
@@ -14,6 +17,7 @@ def test_empty_input_returns_flat_zero_prediction():
     assert pred.mode == 'SHADOW'
 
 
+@pytest.mark.unit
 def test_positive_growth_series_trends_up():
     model = LoadPredictionShadowModel(alpha=0.5)
     pred = model.predict_7d_load([100, 120, 140, 160, 180])
@@ -22,6 +26,7 @@ def test_positive_growth_series_trends_up():
     assert pred.trend == 'UP'
 
 
+@pytest.mark.unit
 def test_descending_series_trends_down():
     model = LoadPredictionShadowModel(alpha=0.5)
     pred = model.predict_7d_load([300, 200, 100, 50, 20])
@@ -29,6 +34,7 @@ def test_descending_series_trends_down():
     assert pred.trend == 'DOWN'
 
 
+@pytest.mark.unit
 def test_as_dict_has_stable_contract_keys():
     model = LoadPredictionShadowModel()
     pred = model.predict_7d_load([50, 50, 50, 50])
@@ -44,6 +50,7 @@ def test_as_dict_has_stable_contract_keys():
     assert payload['mode'] == 'SHADOW'
 
 
+@pytest.mark.unit
 def test_prediction_carries_default_heuristic_evidence_label():
     model = LoadPredictionShadowModel()
     pred = model.predict_7d_load([80, 85, 90])

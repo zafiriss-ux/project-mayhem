@@ -31,12 +31,16 @@ def _noop_alert(msg: str) -> None:
 # ── Basic contract ────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_starts_empty():
     """Tracker initialises with no degraded state."""
     tracker = _make_tracker()
     assert tracker.get_degraded_since() == {}
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_records_onset_on_first_degraded_flag():
     """First call with is_degraded=True records the onset timestamp."""
     tracker = _make_tracker()
@@ -46,6 +50,8 @@ def test_tracker_records_onset_on_first_degraded_flag():
     assert since["garmin"] is not None
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_clears_on_recovery():
     """Recovery (is_degraded=False) removes the failure type from state."""
     tracker = _make_tracker()
@@ -54,6 +60,8 @@ def test_tracker_clears_on_recovery():
     assert "garmin" not in tracker.get_degraded_since()
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_onset_timestamp_is_stable_across_updates():
     """Onset timestamp must not change while the failure type stays degraded."""
     tracker = _make_tracker()
@@ -64,6 +72,8 @@ def test_tracker_onset_timestamp_is_stable_across_updates():
     assert first_ts == second_ts
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_fires_alert_after_threshold():
     """Alert callable fires when failure has been active >= 24 h."""
     tracker = _make_tracker()
@@ -76,6 +86,8 @@ def test_tracker_fires_alert_after_threshold():
     assert "garmin" in call_msg
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_does_not_fire_alert_before_threshold():
     """Alert callable must NOT fire when failure has been active < 24 h."""
     tracker = _make_tracker()
@@ -85,6 +97,8 @@ def test_tracker_does_not_fire_alert_before_threshold():
     alert_fn.assert_not_called()
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_resets_timer_after_alert():
     """After alerting, onset is reset to now to avoid alert storms."""
     tracker = _make_tracker()
@@ -100,6 +114,8 @@ def test_tracker_resets_timer_after_alert():
 # ── UTC enforcement (HR-01) ───────────────────────────────────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_stored_timestamps_are_utc_aware():
     """DegradedModeTracker must store UTC-aware datetime objects (HR-01)."""
     tracker = _make_tracker()
@@ -112,6 +128,8 @@ def test_tracker_stored_timestamps_are_utc_aware():
         assert ts.utcoffset().total_seconds() == 0
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_get_degraded_since_returns_iso_string():
     """get_degraded_since() returns ISO-8601 strings (not raw datetime objects)."""
     tracker = _make_tracker()
@@ -127,6 +145,8 @@ def test_tracker_get_degraded_since_returns_iso_string():
 # ── HD-06: In-memory restart limitation (documented gap) ─────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_loses_state_on_restart_simulation():
     """HD-06 KNOWN LIMITATION: DegradedModeTracker resets on process restart.
 
@@ -146,6 +166,8 @@ def test_tracker_loses_state_on_restart_simulation():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_tracker_multiple_failure_types_tracked_independently():
     """Multiple concurrent failure types are each tracked with their own onset."""
     tracker = _make_tracker()

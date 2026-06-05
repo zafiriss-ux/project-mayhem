@@ -7,6 +7,8 @@ override confirmations from network retries or multi-tap.
 
 import time
 
+import pytest
+
 from titan.integrations.telegram_bot import (
     _PENDING_OVERRIDES,
     _consume_override_nonce,
@@ -14,12 +16,14 @@ from titan.integrations.telegram_bot import (
 )
 
 
+@pytest.mark.unit
 def test_nonce_valid_first_use():
     nonce = _create_override_nonce("dec-1")
     result = _consume_override_nonce(nonce)
     assert result == "dec-1"
 
 
+@pytest.mark.unit
 def test_nonce_invalid_second_use():
     nonce = _create_override_nonce("dec-1")
     _consume_override_nonce(nonce)  # first use
@@ -27,6 +31,7 @@ def test_nonce_invalid_second_use():
     assert result is None  # replay blocked
 
 
+@pytest.mark.unit
 def test_nonce_expired():
     nonce = _create_override_nonce("dec-1")
     # Manually expire it
@@ -35,11 +40,13 @@ def test_nonce_expired():
     assert result is None
 
 
+@pytest.mark.unit
 def test_nonce_invalid_unknown():
     result = _consume_override_nonce("not-a-real-nonce")
     assert result is None
 
 
+@pytest.mark.unit
 def test_different_decisions_different_nonces():
     n1 = _create_override_nonce("dec-1")
     n2 = _create_override_nonce("dec-2")

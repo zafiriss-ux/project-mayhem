@@ -24,6 +24,8 @@ def _seed_rows(db: DatabaseManager, n: int) -> None:
         )
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_concurrent_read_write_no_corruption(tmp_path):
     db = DatabaseManager(db_name="td12_rw.db", db_dir=tmp_path)
     errors: list[Exception] = []
@@ -59,6 +61,8 @@ def test_concurrent_read_write_no_corruption(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_all_read_methods_use_lock():
     """Fitness function — CI-blocking: every get_/fetch_/load_ must hold the lock."""
     src = pathlib.Path("titan/core/database.py").read_text()

@@ -24,6 +24,7 @@ def _make_optimizer() -> NutritionOptimizer:
 class TestHydrationIsWeightBased:
     """Hydration must use weight-based formula, not the old dew-point-only formula."""
 
+    @pytest.mark.unit
     def test_hydration_scales_with_weight(self):
         """Heavier athlete gets more hydration."""
         optimizer = _make_optimizer()
@@ -31,6 +32,7 @@ class TestHydrationIsWeightBased:
         heavy = optimizer._calculate_hydration(weight_kg=90.0, session_type="EASY")
         assert heavy > light, "Heavier athlete must have higher daily hydration target"
 
+    @pytest.mark.unit
     def test_hydration_scales_with_session_intensity(self):
         """Long run adds more hydration than easy run for same weight."""
         optimizer = _make_optimizer()
@@ -38,6 +40,7 @@ class TestHydrationIsWeightBased:
         long_run = optimizer._calculate_hydration(weight_kg=75.0, session_type="LONG_RUN")
         assert long_run > easy, "LONG_RUN must require more hydration than EASY"
 
+    @pytest.mark.unit
     def test_hydration_not_old_1000ml_bug(self):
         """Regression guard: daily hydration must be well above 1000 ml for a 75 kg athlete."""
         optimizer = _make_optimizer()
@@ -47,6 +50,7 @@ class TestHydrationIsWeightBased:
             "the old dew-point formula produced ~1000 ml which is not a daily target"
         )
 
+    @pytest.mark.unit
     def test_calculate_daily_nutrition_returns_weight_based_hydration(self):
         """calculate_daily_nutrition must forward weight_kg to the hydration calculation."""
         optimizer = _make_optimizer()
