@@ -58,6 +58,7 @@ def client(rsa_keys: None, store: AuthStore) -> TestClient:
 # Account lockout tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_lockout_after_max_failed_attempts(client: TestClient) -> None:
     for _ in range(LOCKOUT_MAX_ATTEMPTS):
         r = client.post("/auth/login", json={"username": "coach", "password": "wrong"})
@@ -67,6 +68,7 @@ def test_lockout_after_max_failed_attempts(client: TestClient) -> None:
     assert locked.status_code == 423
 
 
+@pytest.mark.integration
 def test_lockout_clears_on_successful_login(client: TestClient, store: AuthStore) -> None:
     for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
         client.post("/auth/login", json={"username": "coach", "password": "wrong"})
@@ -81,6 +83,7 @@ def test_lockout_clears_on_successful_login(client: TestClient, store: AuthStore
     assert not store.is_locked_out("coach")
 
 
+@pytest.mark.integration
 def test_lockout_expires_after_duration(store: AuthStore) -> None:
     base = 1_000_000.0
 
@@ -93,6 +96,7 @@ def test_lockout_expires_after_duration(store: AuthStore) -> None:
         assert not store.is_locked_out("coach")
 
 
+@pytest.mark.integration
 def test_failed_attempts_outside_window_dont_count(store: AuthStore) -> None:
     # TD-SEC-02: lockout is now counter-based (SQLite) rather than sliding-window.
     # N-1 attempts must not lock; the Nth attempt must trigger lockout regardless of timing.
@@ -104,6 +108,7 @@ def test_failed_attempts_outside_window_dont_count(store: AuthStore) -> None:
     assert store.is_locked_out("coach")
 
 
+@pytest.mark.integration
 def test_locked_account_returns_423_not_401(client: TestClient) -> None:
     for _ in range(LOCKOUT_MAX_ATTEMPTS):
         client.post("/auth/login", json={"username": "coach", "password": "wrong"})
@@ -113,6 +118,7 @@ def test_locked_account_returns_423_not_401(client: TestClient) -> None:
     assert r.json()["detail"] == "Account temporarily locked"
 
 
+@pytest.mark.integration
 def test_successful_login_after_lockout_expiry(store: AuthStore, rsa_keys: None) -> None:
     base = 1_000_000.0
 
@@ -134,6 +140,7 @@ def test_successful_login_after_lockout_expiry(store: AuthStore, rsa_keys: None)
 # IP rate limiter tests
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_ip_rate_limit_blocks_after_threshold(client: TestClient) -> None:
     # Use a unique username per attempt to avoid triggering account lockout
     # (LOCKOUT_MAX_ATTEMPTS=5 < LOGIN_RATE_LIMIT_ATTEMPTS=10).
@@ -146,6 +153,7 @@ def test_ip_rate_limit_blocks_after_threshold(client: TestClient) -> None:
     assert blocked.status_code == 429
 
 
+@pytest.mark.integration
 def test_ip_rate_limit_different_ips_independent() -> None:
     # TestClient cannot set request.client.host via base_url; test the unit directly.
     limiter = LoginRateLimiter()

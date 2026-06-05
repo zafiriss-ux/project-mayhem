@@ -1,6 +1,9 @@
+import pytest
+
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 
+@pytest.mark.integration
 def test_send_daily_coaching_includes_rationale_lines(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=None)
     captured = {}
@@ -30,6 +33,7 @@ def test_send_daily_coaching_includes_rationale_lines(monkeypatch):
     assert "Actionable guidance" in captured["text"]
 
 
+@pytest.mark.integration
 def test_send_daily_coaching_omits_rationale_when_missing(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=None)
     captured = {}

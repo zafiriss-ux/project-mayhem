@@ -40,6 +40,7 @@ class _StructuredTelegramBot:
         return True
 
 
+@pytest.mark.integration
 def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
     """TelegramChannel must adapt string messages to coaching payload dicts."""
     bot = _StructuredTelegramBot()
@@ -53,6 +54,7 @@ def test_telegram_channel_wraps_string_payload_for_daily_coaching_contract():
     assert bot.calls[0]["special_note"] == "Morning briefing"
 
 
+@pytest.mark.integration
 def test_telegram_channel_handles_empty_string_without_contract_shape_failure():
     """Empty string payloads should still preserve dict contract for downstream."""
     bot = _StructuredTelegramBot()
@@ -65,6 +67,7 @@ def test_telegram_channel_handles_empty_string_without_contract_shape_failure():
     assert bot.calls[0]["special_note"] == ""
 
 
+@pytest.mark.integration
 def test_gateway_uses_primary_channel_on_success(tmp_path):
     """When Telegram succeeds, the file channel must not be written."""
     bot = _OkTelegramBot()
@@ -106,6 +109,7 @@ class _FalseTelegramBot:
         return False
 
 
+@pytest.mark.integration
 def test_gateway_falls_back_when_telegram_returns_false_without_exception(tmp_path):
     telegram = TelegramChannel(_FalseTelegramBot())
     file_ch = FileChannel(output_dir=tmp_path)
@@ -121,6 +125,7 @@ def test_gateway_falls_back_when_telegram_returns_false_without_exception(tmp_pa
     assert len(files) == 1
     assert files[0].read_text(encoding="utf-8") == "Morning briefing — fallback"
 
+@pytest.mark.integration
 def test_gateway_falls_back_to_file_on_telegram_failure(tmp_path):
     """When Telegram fails, the gateway must write to the file channel."""
     failing_bot = _FailTelegramBot()
@@ -139,6 +144,7 @@ def test_gateway_falls_back_to_file_on_telegram_failure(tmp_path):
     assert files[0].read_text(encoding="utf-8") == "Morning briefing — fallback"
 
 
+@pytest.mark.integration
 def test_gateway_logs_delivery_chain_result(tmp_path, caplog):
     """A structured log event with channel name and outcome must be emitted
     regardless of which channel succeeded."""

@@ -70,6 +70,7 @@ def client(app_fixture) -> TestClient:
     return TestClient(app_fixture, base_url="https://testserver")
 
 
+@pytest.mark.integration
 def test_openapi_schema_is_valid(app_fixture) -> None:
     schema_dict = app_fixture.openapi()
     assert "openapi" in schema_dict
@@ -82,12 +83,14 @@ def test_openapi_schema_is_valid(app_fixture) -> None:
     assert schemathesis.__version__  # confirms library is functional
 
 
+@pytest.mark.integration
 def test_health_contract(client: TestClient) -> None:
     r = client.get("/health")
     assert r.status_code == 200
     assert r.json() == {"status": "ok"}
 
 
+@pytest.mark.integration
 def test_login_rejects_missing_fields(client: TestClient) -> None:
     cases = [
         {},
@@ -103,6 +106,7 @@ def test_login_rejects_missing_fields(client: TestClient) -> None:
         )
 
 
+@pytest.mark.integration
 def test_protected_endpoints_reject_no_auth(client: TestClient) -> None:
     fresh = TestClient(client.app, base_url="https://testserver")
     csrf_token = fresh.get("/api/csrf-token").json()["csrf_token"]
@@ -120,6 +124,7 @@ def test_protected_endpoints_reject_no_auth(client: TestClient) -> None:
         assert r.status_code == 401, f"{method} {path} → expected 401, got {r.status_code}"
 
 
+@pytest.mark.integration
 def test_login_response_conforms_to_schema(client: TestClient) -> None:
     r = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
     assert r.status_code == 200

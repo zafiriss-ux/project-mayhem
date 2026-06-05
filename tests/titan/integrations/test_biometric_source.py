@@ -1,6 +1,8 @@
 """Mirrored test for titan/integrations/biometric_source.py — T5-79."""
 from __future__ import annotations
 
+import pytest
+
 from titan.integrations.biometric_source import (
     BiometricSourceSyncResult,
     NormalizedBiometricSample,
@@ -8,10 +10,12 @@ from titan.integrations.biometric_source import (
 )
 
 
+@pytest.mark.integration
 def test_module_imports_without_error() -> None:
     import titan.integrations.biometric_source  # noqa: F401
 
 
+@pytest.mark.integration
 def test_source_capabilities_instantiation() -> None:
     caps = SourceCapabilities(
         source_name="Garmin",
@@ -23,6 +27,7 @@ def test_source_capabilities_instantiation() -> None:
     assert caps.source_name == "Garmin"
 
 
+@pytest.mark.integration
 def test_normalized_biometric_sample_none_fields_allowed() -> None:
     sample = NormalizedBiometricSample(
         source_name="Garmin",
@@ -35,6 +40,7 @@ def test_normalized_biometric_sample_none_fields_allowed() -> None:
     assert sample.hrv_rmssd is None
 
 
+@pytest.mark.integration
 def test_biometric_source_sync_result_defaults() -> None:
     result = BiometricSourceSyncResult()
     assert result.sync_status == "ok"
@@ -42,6 +48,7 @@ def test_biometric_source_sync_result_defaults() -> None:
     assert result.failure_class is None
 
 
+@pytest.mark.integration
 def test_normalized_sample_all_fields_populated() -> None:
     sample = NormalizedBiometricSample(
         source_name="Polar",
@@ -57,6 +64,7 @@ def test_normalized_sample_all_fields_populated() -> None:
     assert sample.sampled_at == "2026-04-20T07:00:00Z"
 
 
+@pytest.mark.integration
 def test_sync_result_failed_status_carries_failure_class() -> None:
     result = BiometricSourceSyncResult(
         sync_status="failed",
@@ -66,12 +74,14 @@ def test_sync_result_failed_status_carries_failure_class() -> None:
     assert result.failure_class == "auth_error"
 
 
+@pytest.mark.integration
 def test_sync_result_degraded_status() -> None:
     result = BiometricSourceSyncResult(sync_status="degraded")
     assert result.sync_status == "degraded"
     assert result.failure_class is None
 
 
+@pytest.mark.integration
 def test_sync_result_samples_list_populated() -> None:
     sample = NormalizedBiometricSample(
         source_name="Whoop",
@@ -86,6 +96,7 @@ def test_sync_result_samples_list_populated() -> None:
     assert result.samples[0].source_name == "Whoop"
 
 
+@pytest.mark.integration
 def test_source_capabilities_all_false_allowed() -> None:
     caps = SourceCapabilities(
         source_name="Unknown",

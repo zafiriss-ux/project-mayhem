@@ -40,17 +40,20 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app, base_url="https://testserver")
 
 
+@pytest.mark.integration
 def test_get_requests_pass_without_csrf(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
 
 
+@pytest.mark.integration
 def test_post_without_csrf_returns_403(client: TestClient) -> None:
     response = client.post("/auth/refresh")
     assert response.status_code == 403
     assert response.json()["detail"] == "CSRF token missing or invalid"
 
 
+@pytest.mark.integration
 def test_post_with_valid_csrf_passes_middleware(client: TestClient) -> None:
     csrf_response = client.get("/api/csrf-token")
     assert csrf_response.status_code == 200
@@ -65,6 +68,7 @@ def test_post_with_valid_csrf_passes_middleware(client: TestClient) -> None:
     assert response.status_code != 403
 
 
+@pytest.mark.integration
 def test_post_with_mismatched_csrf_returns_403(client: TestClient) -> None:
     response = client.post(
         "/auth/refresh",
@@ -75,6 +79,7 @@ def test_post_with_mismatched_csrf_returns_403(client: TestClient) -> None:
     assert response.json()["detail"] == "CSRF token missing or invalid"
 
 
+@pytest.mark.integration
 def test_login_endpoint_exempt_from_csrf(client: TestClient) -> None:
     response = client.post(
         "/auth/login",

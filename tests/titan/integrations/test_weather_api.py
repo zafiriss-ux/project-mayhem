@@ -2,10 +2,13 @@ import json
 from datetime import datetime
 from unittest.mock import MagicMock
 
+import pytest
+
 import titan.integrations.weather_api as weather_api
 from titan.integrations.weather_api import WeatherAPI
 
 
+@pytest.mark.integration
 def test_urllib_response_status_and_json_paths():
     response = weather_api._UrllibResponse(body=b'{"ok": true}', status_code=200)
     response.raise_for_status()
@@ -22,6 +25,7 @@ def test_urllib_response_status_and_json_paths():
         raise AssertionError("Expected RuntimeError for 4xx status")
 
 
+@pytest.mark.integration
 def test_http_get_uses_requests_when_available(monkeypatch):
     sentinel = object()
     get_mock = MagicMock(return_value=sentinel)
@@ -39,6 +43,7 @@ def test_http_get_uses_requests_when_available(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_http_get_uses_urllib_fallback_and_verify_toggle(monkeypatch):
     class _FakeUrlopenResponse:
         status = 206
@@ -75,12 +80,14 @@ def test_http_get_uses_urllib_fallback_and_verify_toggle(monkeypatch):
     assert unverified_response.json() == {"path": "urllib"}
 
 
+@pytest.mark.integration
 def test_parse_location_without_country_returns_empty_country():
     api = WeatherAPI(location="Athens")
 
     assert api._parse_location() == ("Athens", "")
 
 
+@pytest.mark.integration
 def test_resolve_coordinates_raises_when_no_results(monkeypatch):
     api = WeatherAPI(location="Unknown")
 
@@ -103,6 +110,7 @@ def test_resolve_coordinates_raises_when_no_results(monkeypatch):
         raise AssertionError("Expected ValueError when geocoding has no results")
 
 
+@pytest.mark.integration
 def test_start_background_updates_returns_early_if_thread_alive(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     events = []
@@ -118,6 +126,7 @@ def test_start_background_updates_returns_early_if_thread_alive(monkeypatch):
     assert events == []
 
 
+@pytest.mark.integration
 def test_background_worker_emits_error_event_when_fetch_fails(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     events = []
@@ -145,6 +154,7 @@ def test_background_worker_emits_error_event_when_fetch_fails(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_background_worker_continues_until_stop_event_set(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     calls = {"count": 0}
@@ -174,6 +184,7 @@ def test_background_worker_continues_until_stop_event_set(monkeypatch):
     assert wait_calls["timeouts"] == [3600, 3600]
 
 
+@pytest.mark.integration
 def test_background_worker_exits_immediately_when_stop_event_set(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     api._stop_event.set()
@@ -189,6 +200,7 @@ def test_background_worker_exits_immediately_when_stop_event_set(monkeypatch):
     get_hourly.assert_not_called()
 
 
+@pytest.mark.integration
 def test_stop_background_updates_sets_event_and_joins_thread():
     api = WeatherAPI(location="Athens,GR")
     api._update_thread = MagicMock()
@@ -199,6 +211,7 @@ def test_stop_background_updates_sets_event_and_joins_thread():
     api._update_thread.join.assert_called_once_with(timeout=5)
 
 
+@pytest.mark.integration
 def test_stop_background_updates_emits_shutdown_timeout_when_thread_stays_alive(monkeypatch):
     events = []
     monkeypatch.setattr(weather_api, "_weather_event", lambda action, **fields: events.append((action, fields)))
@@ -218,6 +231,7 @@ def test_stop_background_updates_emits_shutdown_timeout_when_thread_stays_alive(
         for action, fields in events
     )
 
+@pytest.mark.integration
 def test_get_current_conditions_live_marks_data_quality(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
@@ -228,6 +242,7 @@ def test_get_current_conditions_live_marks_data_quality(monkeypatch):
     assert payload["weather_confidence"] == "LIVE"
 
 
+@pytest.mark.integration
 def test_get_current_conditions_cache_marks_data_quality(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
@@ -239,6 +254,7 @@ def test_get_current_conditions_cache_marks_data_quality(monkeypatch):
     assert cached_payload["data_quality"] == "cached"
 
 
+@pytest.mark.integration
 def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplog):
     api = WeatherAPI(location="Athens,GR")
 
@@ -268,11 +284,13 @@ def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplo
     assert degraded_events[0]["detail"] == "api_down"
     assert fallback_events[0]["location"] == "Athens,GR"
 
+@pytest.mark.integration
 def test_calculate_dew_point_clamps_humidity_boundaries():
     assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=0) == -37.8
     assert WeatherAPI.calculate_dew_point(temp_c=20, humidity=150) == 20.0
 
 
+@pytest.mark.integration
 def test_find_optimal_training_windows_respects_fractional_duration(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     base = datetime(2026, 1, 1, 5, 0, 0)
@@ -299,6 +317,7 @@ def test_find_optimal_training_windows_respects_fractional_duration(monkeypatch)
     assert all(window["quality"] == "🟩 EXCELLENT" for window in windows)
 
 
+@pytest.mark.integration
 def test_find_optimal_training_windows_non_positive_duration_returns_empty(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     called = {"value": False}
@@ -313,6 +332,7 @@ def test_find_optimal_training_windows_non_positive_duration_returns_empty(monke
     assert called["value"] is False
 
 
+@pytest.mark.integration
 def test_get_current_conditions_live_includes_trusted_data_trust(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: ({"temp_c": 19}, [{"hour": 6}]))
@@ -323,6 +343,7 @@ def test_get_current_conditions_live_includes_trusted_data_trust(monkeypatch):
     assert payload["data_trust"]["trust_level"] == "TRUSTED"
 
 
+@pytest.mark.integration
 def test_get_current_conditions_fallback_includes_suspect_data_trust(monkeypatch):
     api = WeatherAPI(location="Athens,GR")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("offline")))
@@ -333,6 +354,7 @@ def test_get_current_conditions_fallback_includes_suspect_data_trust(monkeypatch
     assert "weather_synthetic_fallback" in payload["data_trust"]["reasons"]
 
 
+@pytest.mark.integration
 def test_create_synthetic_fallback_uses_location_profile(monkeypatch):
     api = WeatherAPI(location="Helsinki,FI")
 
@@ -350,6 +372,7 @@ def test_create_synthetic_fallback_uses_location_profile(monkeypatch):
     assert payload["weather_confidence"] == "SYNTHETIC"
 
 
+@pytest.mark.integration
 def test_get_hourly_forecast_synthetic_sets_weather_confidence(monkeypatch):
     api = WeatherAPI(location="Sydney,AU")
     monkeypatch.setattr(api, "_fetch_open_meteo", lambda: (_ for _ in ()).throw(RuntimeError("offline")))
@@ -361,6 +384,7 @@ def test_get_hourly_forecast_synthetic_sets_weather_confidence(monkeypatch):
     assert all(item["weather_confidence"] == "SYNTHETIC" for item in forecast)
 
 
+@pytest.mark.integration
 def test_classify_heat_stress_uses_threshold_source_of_truth(monkeypatch):
     monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_EXTREME_MIN_C", 25.0)
     monkeypatch.setattr(weather_api, "WEATHER_DEW_POINT_OPPRESSIVE_MIN_C", 22.0)
@@ -376,6 +400,7 @@ def test_classify_heat_stress_uses_threshold_source_of_truth(monkeypatch):
     assert boundary_status == "🟥 OPPRESSIVE"
 
 
+@pytest.mark.integration
 def test_classify_heat_stress_boundary_below_pleasant_is_dry_cold():
     status, recommendation = WeatherAPI.classify_heat_stress(8.0)
 

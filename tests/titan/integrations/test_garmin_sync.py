@@ -4,6 +4,7 @@ import threading
 import time
 from unittest.mock import MagicMock
 
+import pytest
 from cryptography.fernet import Fernet
 
 from titan.integrations import garmin_sync
@@ -15,6 +16,7 @@ from titan.integrations.garmin_sync import (
 )
 
 
+@pytest.mark.integration
 def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
     sync = GarminSync(email="e", password="p")
     sync_calls = {"count": 0}
@@ -43,6 +45,7 @@ def test_bg_worker_exits_when_stop_event_is_set(monkeypatch):
     assert observed["timeout"] == 3600.0
 
 
+@pytest.mark.integration
 def test_bg_worker_returns_immediately_when_stop_event_already_set(monkeypatch):
     sync = GarminSync(email="e", password="p")
     sync._stop_event.set()
@@ -59,6 +62,7 @@ def test_bg_worker_returns_immediately_when_stop_event_already_set(monkeypatch):
     assert sync_all_calls["count"] == 0
 
 
+@pytest.mark.integration
 def test_stop_background_sync_sets_event_and_joins_thread():
     sync = GarminSync(email="e", password="p")
     sync._sync_thread = MagicMock()
@@ -70,6 +74,7 @@ def test_stop_background_sync_sets_event_and_joins_thread():
     sync._sync_thread.join.assert_called_once_with(timeout=5)
 
 
+@pytest.mark.integration
 def test_stop_background_sync_hung_thread_emits_error_timeout_event(caplog):
     sync = GarminSync(email="e", password="p")
     never_set = threading.Event()
@@ -100,6 +105,7 @@ def test_stop_background_sync_hung_thread_emits_error_timeout_event(caplog):
     assert caplog.records[-1].levelno == logging.ERROR
 
 
+@pytest.mark.integration
 def test_sync_all_payload_supports_dict_access_and_json_serialization():
     sync = GarminSync(email="e", password="p")
     sync.sync_activities = lambda days_back=7, **kw: [{"date": "2026-03-04"}]
@@ -118,6 +124,7 @@ def test_sync_all_payload_supports_dict_access_and_json_serialization():
     assert serialized["weight"][0]["weight"] == 70.2
 
 
+@pytest.mark.integration
 def test_sync_all_payload_coerces_hrv_metrics_to_ints():
     sync = GarminSync(email="e", password="p")
     sync.sync_activities = lambda days_back=7, **kw: []
@@ -131,12 +138,14 @@ def test_sync_all_payload_coerces_hrv_metrics_to_ints():
     assert payload["hrv_sync_metrics"] == {"days_back": 7, "synced_days": 2, "skipped_days": 0}
 
 
+@pytest.mark.integration
 def test_last_hrv_sync_metrics_initializes_with_expected_contract_fields():
     sync = GarminSync(email="e", password="p")
 
     assert sync.last_hrv_sync_metrics == {"days_back": 0, "synced_days": 0, "skipped_days": 0}
 
 
+@pytest.mark.integration
 def test_sync_hrv_disconnected_returns_empty_and_contract_metrics():
     sync = GarminSync(email="e", password="p")
     sync._ensure_connected = lambda: False
@@ -147,6 +156,7 @@ def test_sync_hrv_disconnected_returns_empty_and_contract_metrics():
     assert sync.last_hrv_sync_metrics == {"days_back": 5, "synced_days": 0, "skipped_days": 0}
 
 
+@pytest.mark.integration
 def test_sync_all_timeout_returns_timeout_cancelled_status(monkeypatch):
     sync = GarminSync(email="e", password="p")
 
@@ -169,6 +179,7 @@ def test_sync_all_timeout_returns_timeout_cancelled_status(monkeypatch):
     assert payload["activities"] == []
 
 
+@pytest.mark.integration
 def test_sync_all_timeout_emits_cancel_event_and_attempts_future_cancel(monkeypatch):
     sync = GarminSync(email="e", password="p")
     events = []
@@ -209,6 +220,7 @@ def test_sync_all_timeout_emits_cancel_event_and_attempts_future_cancel(monkeypa
     assert fields["operation_name"] == "sync_all"
 
 
+@pytest.mark.integration
 def test_sync_all_payload_includes_data_trust_contract():
     sync = GarminSync(email="e", password="p")
     sync.sync_activities = lambda days_back=7, **kw: []
@@ -223,6 +235,7 @@ def test_sync_all_payload_includes_data_trust_contract():
     assert payload["data_trust"]["trust_level"] == "TRUSTED"
 
 
+@pytest.mark.integration
 def test_sync_all_timeout_payload_marks_data_trust_invalid(monkeypatch):
     sync = GarminSync(email="e", password="p")
 
@@ -252,6 +265,7 @@ def test_sync_all_timeout_payload_marks_data_trust_invalid(monkeypatch):
     assert "sync_timeout_cancelled" in payload["data_trust"]["reasons"]
 
 
+@pytest.mark.integration
 def test_sync_all_invalid_timeout_env_falls_back_to_default(monkeypatch):
     sync = GarminSync(email="e", password="p")
     observed_timeout: dict[str, int] = {}
@@ -286,6 +300,7 @@ def test_sync_all_invalid_timeout_env_falls_back_to_default(monkeypatch):
     assert observed_timeout["value"] == 90
 
 
+@pytest.mark.integration
 def test_sync_all_negative_timeout_env_falls_back_to_default(monkeypatch):
     sync = GarminSync(email="e", password="p")
     observed_timeout: dict[str, int] = {}
@@ -320,6 +335,7 @@ def test_sync_all_negative_timeout_env_falls_back_to_default(monkeypatch):
     assert observed_timeout["value"] == 90
 
 
+@pytest.mark.integration
 def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
     sync = GarminSync(email="e", password="p")
     sync._ensure_connected = lambda: True
@@ -339,6 +355,7 @@ def test_sync_weight_empty_all_day_summaries_are_skipped_without_index_error():
     assert payload == [{"date": "2026-03-10", "weight_kg": 70.2}]
 
 
+@pytest.mark.integration
 def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
     """sync_activities() must populate estimated_training_load > 0 when avg_hr
     and athlete_max_hr are valid."""
@@ -367,6 +384,7 @@ def test_sync_activities_produces_estimated_training_load_for_valid_hr_data():
     assert act["estimated_training_load"] > 0
 
 
+@pytest.mark.integration
 def test_sync_activities_estimated_training_load_zero_when_no_hr_data():
     """sync_activities() sets estimated_training_load=0 when HR data is absent."""
     sync = GarminSync(email="e", password="p")
@@ -392,6 +410,7 @@ def test_sync_activities_estimated_training_load_zero_when_no_hr_data():
     assert activities[0]["estimated_training_load"] == 0.0
 
 
+@pytest.mark.integration
 def test_connect_retries_on_429_and_succeeds(monkeypatch, tmp_path):
     """connect() retries on 429, emits retry events, and succeeds on a later attempt."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -438,6 +457,7 @@ def test_connect_retries_on_429_and_succeeds(monkeypatch, tmp_path):
     assert retry_events[1][1]["wait_s"] == 120
 
 
+@pytest.mark.integration
 def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
     """connect() fails after exhausting all 3 retries on persistent 429 errors."""
     import sys
@@ -481,6 +501,7 @@ def test_connect_stops_after_max_retries_on_429(monkeypatch, tmp_path):
     assert any(a == "connect_failed" for a, _ in events)
 
 
+@pytest.mark.integration
 def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypatch, tmp_path):
     """429 on ping + secondary call succeeds → token assumed valid: is_connected=True, no re-login."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -527,6 +548,7 @@ def test_connect_token_ping_rate_limited_assumes_valid_and_returns_true(monkeypa
 
 
 
+@pytest.mark.integration
 def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_path):
     """When connectapi() raises an auth error, token is deleted and fresh login is attempted."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -576,6 +598,7 @@ def test_connect_token_ping_auth_fail_falls_through_to_login(monkeypatch, tmp_pa
 #         token deleted, re-login attempted
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypatch, tmp_path):
     """429 on verification ping + auth error on secondary data call → _invalidate_session called,
     token deleted, connect() returns False (no re-login in a rate-limited window)."""
@@ -637,6 +660,7 @@ def test_connect_token_ping_429_secondary_auth_fail_invalidates_session(monkeypa
     assert not token_file.exists(), "Token file must be deleted after secondary auth failure"
 
 
+@pytest.mark.integration
 def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tmp_path):
     """429 on ping + 429 on secondary call → keep current assume-valid behavior."""
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -686,6 +710,7 @@ def test_connect_token_ping_429_secondary_also_429_assumes_valid(monkeypatch, tm
 # Fix 3: auth exception in sync_activities → _invalidate_session() called
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_sync_activities_auth_exception_invalidates_session(monkeypatch):
     """Auth exception in sync_activities outer except block → _invalidate_session() called."""
     sync = GarminSync(email="u", password="p")
@@ -714,6 +739,7 @@ def test_sync_activities_auth_exception_invalidates_session(monkeypatch):
     assert invalidated["called"], "_invalidate_session must be called on auth exception"
 
 
+@pytest.mark.integration
 def test_sync_sleep_outer_auth_exception_invalidates_session(monkeypatch):
     """Auth exception escaping sync_sleep outer try → _invalidate_session() called."""
     sync = GarminSync(email="u", password="p")
@@ -744,6 +770,7 @@ def test_sync_sleep_outer_auth_exception_invalidates_session(monkeypatch):
     assert invalidated["called"], "_invalidate_session must be called on auth exception in sync_sleep"
 
 
+@pytest.mark.integration
 def test_instance_counter_increments(monkeypatch):
     """Each GarminSync() increments the class-level instance counter."""
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *a, **kw: None)
@@ -759,6 +786,7 @@ def test_instance_counter_increments(monkeypatch):
     assert after_two == before + 2
 
 
+@pytest.mark.integration
 def test_instance_counter_logs_warning_on_duplicate(monkeypatch, caplog):
     """Second+ GarminSync instance logs a warning about duplicate."""
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *a, **kw: None)
@@ -786,6 +814,7 @@ def _find_degraded_event(records):
 
 
 # C1 — authentication failure in _connect_impl()
+@pytest.mark.integration
 def test_garmin_api_degraded_emitted_on_auth_fail_in_connect(monkeypatch, caplog):
     """C1: garmin_api_degraded CRITICAL is emitted when _connect_impl() fails with auth error.
 
@@ -823,6 +852,7 @@ def test_garmin_api_degraded_emitted_on_auth_fail_in_connect(monkeypatch, caplog
 
 
 # C1 — full connect() path emits garmin_api_degraded on auth failure
+@pytest.mark.integration
 def test_connect_emits_garmin_api_degraded_on_auth_failure(monkeypatch, caplog):
     """C1: connect() propagates garmin_api_degraded when login raises an auth error."""
     import sys
@@ -849,6 +879,7 @@ def test_connect_emits_garmin_api_degraded_on_auth_failure(monkeypatch, caplog):
 
 
 # C2 — timeout in sync_all()
+@pytest.mark.integration
 def test_garmin_api_degraded_emitted_on_timeout(monkeypatch, caplog):
     """C2: garmin_api_degraded CRITICAL is emitted when sync_all() times out."""
     import titan.integrations.garmin_sync as _gs
@@ -880,6 +911,7 @@ def test_garmin_api_degraded_emitted_on_timeout(monkeypatch, caplog):
 
 
 # C3 — consecutive failure threshold crossed
+@pytest.mark.integration
 def test_garmin_api_degraded_emitted_on_consecutive_failure_threshold(monkeypatch, caplog):
     """C3: garmin_api_degraded is emitted when consecutive empty syncs reach threshold."""
     import titan.integrations.garmin_sync as _gs
@@ -922,6 +954,7 @@ def test_garmin_api_degraded_emitted_on_consecutive_failure_threshold(monkeypatc
 
 
 # C4 — trust resolves to INVALID before threshold
+@pytest.mark.integration
 def test_garmin_api_degraded_emitted_on_trust_invalid(monkeypatch, caplog):
     """C4: garmin_api_degraded is emitted when trust resolves INVALID before threshold crossed."""
     import titan.integrations.garmin_sync as _gs
@@ -961,6 +994,7 @@ def test_garmin_api_degraded_emitted_on_trust_invalid(monkeypatch, caplog):
 
 
 # is_api_degraded property
+@pytest.mark.integration
 def test_is_api_degraded_property():
     """is_api_degraded returns True only when threshold is reached."""
     from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
@@ -976,6 +1010,7 @@ def test_is_api_degraded_property():
 
 
 # Reset on success
+@pytest.mark.integration
 def test_consecutive_failures_reset_on_successful_sync(monkeypatch):
     """_consecutive_failures resets to 0 on a sync that returns records."""
     import titan.integrations.garmin_sync as _gs
@@ -1025,6 +1060,7 @@ def _make_activity_payload(avg_hr: int = 145, max_hr: int = 175) -> dict:
     }
 
 
+@pytest.mark.integration
 def test_sync_activities_uses_athlete_max_hr_not_session_peak_for_trimp():
     """sync_activities() must pass athlete_max_hr to TRIMPEngine, not session peak HR.
 
@@ -1049,6 +1085,7 @@ def test_sync_activities_uses_athlete_max_hr_not_session_peak_for_trimp():
     assert act["estimated_training_load"] == 120.0
 
 
+@pytest.mark.integration
 def test_sync_activities_athlete_max_hr_zero_yields_zero_load():
     """When athlete_max_hr is not supplied (defaults to 0), TRIMP cannot be
     calculated and estimated_training_load must be 0.0."""
@@ -1065,6 +1102,7 @@ def test_sync_activities_athlete_max_hr_zero_yields_zero_load():
     assert activities[0]["estimated_training_load"] == 0.0
 
 
+@pytest.mark.integration
 def test_sync_activities_session_max_hr_preserved_in_activity_record():
     """session_max_hr from Garmin payload must remain in the activity dict
     under the 'max_hr' key for diagnostic purposes, regardless of athlete_max_hr."""
@@ -1082,6 +1120,7 @@ def test_sync_activities_session_max_hr_preserved_in_activity_record():
     assert activities[0]["max_hr"] == 172
 
 
+@pytest.mark.integration
 def test_sync_activities_session_peak_above_athlete_max_hr_does_not_crash():
     """Noisy HR data can produce session_max_hr > athlete_max_hr.
     sync_activities() must not crash and must clamp to zone 5."""
@@ -1105,6 +1144,7 @@ def test_sync_activities_session_peak_above_athlete_max_hr_does_not_crash():
 # T5-101: Garth token Fernet encryption helpers
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_token_encrypted_when_key_set(monkeypatch):
     key = Fernet.generate_key()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
@@ -1113,6 +1153,7 @@ def test_token_encrypted_when_key_set(monkeypatch):
     assert _decrypt_token(encrypted) == "test_data"
 
 
+@pytest.mark.integration
 def test_token_plaintext_when_key_missing(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -1120,6 +1161,7 @@ def test_token_plaintext_when_key_missing(monkeypatch):
     assert result == b"test_data"
 
 
+@pytest.mark.integration
 def test_token_decrypt_plaintext_when_key_missing(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
     monkeypatch.setenv("TITAN_ENV", "dev")
@@ -1127,6 +1169,7 @@ def test_token_decrypt_plaintext_when_key_missing(monkeypatch):
     assert result == "test_data"
 
 
+@pytest.mark.integration
 def test_token_decrypt_raises_on_corrupt(monkeypatch):
     key = Fernet.generate_key()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
@@ -1141,16 +1184,19 @@ def test_token_decrypt_raises_on_corrupt(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_get_token_encryption_key_returns_none_when_unset(monkeypatch):
     monkeypatch.delenv("TITAN_GARTH_TOKEN_KEY", raising=False)
     assert _get_token_encryption_key() is None
 
 
+@pytest.mark.integration
 def test_get_token_encryption_key_returns_none_on_invalid_base64(monkeypatch):
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", "not-valid-base64!!!")
     assert _get_token_encryption_key() is None
 
 
+@pytest.mark.integration
 def test_get_token_encryption_key_returns_bytes_on_valid_key(monkeypatch):
     key = Fernet.generate_key()
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
