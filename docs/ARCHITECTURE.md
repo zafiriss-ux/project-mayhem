@@ -46,6 +46,7 @@ launcher/main.py
 | `launcher/logger.py` | Launcher-level logging init |
 | `titan/config/thresholds.py` | Single source of truth for all safety threshold constants |
 | `titan/config/evidence_registry.py` | Evidence citations for governance decisions |
+| `titan/config/settings.py` | Centralised env-var config via pydantic-settings (P15-ARCH5) |
 | `titan/utils/constants.py` | Shared numeric constants |
 | `titan/utils/math_core.py` | Low-level math helpers |
 | `titan/utils/secrets.py` | Credential loading / encryption helpers |

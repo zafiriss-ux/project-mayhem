@@ -24,6 +24,9 @@ pyjwt[crypto]==2.13.0
 bcrypt==5.0.0
 cryptography==48.0.0   # explicit dep for Fernet token encryption (T5-101)
 
+# Config management (P15-ARCH5)
+pydantic-settings==2.9.1
+
 
 # Architectural dependency linting (T5-93)
 import-linter==2.11
