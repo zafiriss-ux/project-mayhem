@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from titan.config.settings import get_settings
 from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.integrations.biometric_source import (
@@ -47,12 +48,7 @@ _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit 
 _TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"
 
 # Token is stored alongside titan.db in the data directory, not at the project root.
-_DATA_DIR = Path(
-    os.environ.get(
-        "TITAN_DATA_DIR",
-        str(Path.home() / "Documents" / "TITAN"),
-    )
-)
+_DATA_DIR = Path(get_settings().TITAN_DATA_DIR)
 _GARTH_TOKEN_PATH = _DATA_DIR / _GARTH_TOKEN_FILENAME
 
 
@@ -77,7 +73,7 @@ def _get_token_encryption_key() -> bytes | None:
 
 def _is_dev_environment() -> bool:
     """Return True when TITAN_ENV is explicitly set to dev or test."""
-    return os.environ.get("TITAN_ENV", "").lower() in ("dev", "test")
+    return get_settings().TITAN_ENV.lower() in ("dev", "test")
 
 
 def _encrypt_token(data: str) -> bytes:
@@ -243,19 +239,7 @@ def _activity_utc_date(start_time_local: str) -> str:
 
 
 def _resolve_sync_timeout_seconds() -> int:
-    timeout_raw = os.getenv("GARMIN_SYNC_TIMEOUT_S", str(_DEFAULT_SYNC_TIMEOUT_S))
-    try:
-        timeout_s = int(timeout_raw)
-    except ValueError:
-        _garmin_event(
-            "invalid_sync_timeout",
-            subsystem="sync_all",
-            configured_timeout=timeout_raw,
-            fallback_timeout_s=_DEFAULT_SYNC_TIMEOUT_S,
-            detail="GARMIN_SYNC_TIMEOUT_S is not an integer; using default timeout.",
-        )
-        return _DEFAULT_SYNC_TIMEOUT_S
-
+    timeout_s = get_settings().GARMIN_SYNC_TIMEOUT_S
     if timeout_s < 0:
         _garmin_event(
             "negative_sync_timeout",
@@ -265,7 +249,6 @@ def _resolve_sync_timeout_seconds() -> int:
             detail="GARMIN_SYNC_TIMEOUT_S is negative; using default timeout.",
         )
         return _DEFAULT_SYNC_TIMEOUT_S
-
     return timeout_s
 
 
@@ -298,8 +281,8 @@ class GarminSync:
                     "detail": "Multiple GarminSync instances detected — expected exactly 1 in production",
                 },
             )
-        self.email = SecretStr(_value=email or os.getenv("GARMIN_EMAIL", ""))
-        self.password = SecretStr(_value=password or os.getenv("GARMIN_PASSWORD", ""))
+        self.email = SecretStr(_value=email or get_settings().GARMIN_EMAIL.get_secret_value())
+        self.password = SecretStr(_value=password or get_settings().GARMIN_PASSWORD.get_secret_value())
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None

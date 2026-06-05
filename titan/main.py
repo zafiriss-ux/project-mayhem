@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ── Credentials (must happen before anything reads env vars) ────────────────
 # ── Core (database) ───────────────────────────────────────────────────────────
+from titan.config.settings import get_settings
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.database import DatabaseManager
 from titan.features.nutrition_optimizer import NutritionOptimizer
@@ -63,7 +64,7 @@ LOG_BACKUP_COUNT = 5
 def _configure_rotating_logging() -> None:
     """Attach a rotating file handler to the TITAN logger tree."""
     root = logging.getLogger()
-    log_path = os.getenv("TITAN_LOG_PATH", "titan.log")
+    log_path = get_settings().TITAN_LOG_PATH
     if any(isinstance(h, RotatingFileHandler) and h.baseFilename.endswith(log_path) for h in root.handlers):
         return
     handler = RotatingFileHandler(log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)

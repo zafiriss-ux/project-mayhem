@@ -4,8 +4,9 @@ The kill-switch is intentionally default-ON so any future athlete-facing
 activation path must explicitly disable it in controlled environments.
 """
 
-import os
 from dataclasses import dataclass
+
+from titan.config.settings import get_settings
 
 MODULE_VERSION = "1.0.0"
 
@@ -32,7 +33,7 @@ def is_ml_kill_switch_enabled() -> bool:
     from *_KILL_SWITCH_DISABLED_VALUES* turns it off.  Unknown or typo values
     leave the kill-switch ON (conservative fail-safe).
     """
-    value = os.getenv("TITAN_ML_KILL_SWITCH", "1").strip().lower()
+    value = get_settings().TITAN_ML_KILL_SWITCH.strip().lower()
     return value not in _KILL_SWITCH_DISABLED_VALUES
 
 

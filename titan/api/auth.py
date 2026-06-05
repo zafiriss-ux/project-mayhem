@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from datetime import UTC, datetime, timedelta
 from threading import Lock
@@ -13,6 +12,7 @@ import jwt
 from jwt import InvalidTokenError
 
 from titan.api.models import AuthUser, TokenPayload
+from titan.config.settings import get_settings
 
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
@@ -137,14 +137,14 @@ def _utc_now() -> datetime:
 
 
 def _jwt_private_key() -> str:
-    key = os.getenv("TITAN_JWT_PRIVATE_KEY")
+    key = get_settings().TITAN_JWT_PRIVATE_KEY.get_secret_value() if get_settings().TITAN_JWT_PRIVATE_KEY else None
     if not key:
         raise AuthError("TITAN_JWT_PRIVATE_KEY is not configured")
     return key
 
 
 def _jwt_public_key() -> str:
-    key = os.getenv("TITAN_JWT_PUBLIC_KEY")
+    key = get_settings().TITAN_JWT_PUBLIC_KEY or None
     if not key:
         raise AuthError("TITAN_JWT_PUBLIC_KEY is not configured")
     return key
