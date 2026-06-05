@@ -165,6 +165,7 @@ def _patch_main_dependencies(monkeypatch):
     return dummy_garmin, dummy_weather, dummy_telegram, dummy_db, dummy_daily_coach, dummy_weekly_planner
 
 
+@pytest.mark.unit
 def test_parse_env_number_happy_path(monkeypatch):
     monkeypatch.setenv("ATHLETE_AGE", "36")
 
@@ -173,6 +174,7 @@ def test_parse_env_number_happy_path(monkeypatch):
     assert value == 36
 
 
+@pytest.mark.unit
 def test_parse_env_number_invalid_value_logs_and_exits(monkeypatch, caplog):
     monkeypatch.setenv("ATHLETE_WEIGHT", "not-a-number")
 
@@ -185,6 +187,7 @@ def test_parse_env_number_invalid_value_logs_and_exits(monkeypatch, caplog):
     assert "ATHLETE_WEIGHT='not-a-number'" in record.detail
 
 
+@pytest.mark.unit
 def test_main_credentials_failure_logs_structured_startup_event(monkeypatch, caplog):
     monkeypatch.setattr(titan_main, "_print_banner", lambda: None)
     monkeypatch.setattr(titan_main, "ensure_credentials", lambda: False)
@@ -198,6 +201,7 @@ def test_main_credentials_failure_logs_structured_startup_event(monkeypatch, cap
     assert record.detail == "ensure_credentials() returned False"
 
 
+@pytest.mark.unit
 def test_main_keyboard_interrupt_logs_shutdown_and_cleans_up(monkeypatch, caplog):
     garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: (_ for _ in ()).throw(KeyboardInterrupt))
@@ -214,6 +218,7 @@ def test_main_keyboard_interrupt_logs_shutdown_and_cleans_up(monkeypatch, caplog
     assert db.closed is True
 
 
+@pytest.mark.unit
 def test_main_normal_exit_runs_clean_shutdown_without_shutdown_log(monkeypatch, caplog):
     garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
@@ -228,6 +233,7 @@ def test_main_normal_exit_runs_clean_shutdown_without_shutdown_log(monkeypatch, 
     assert db.closed is True
 
 
+@pytest.mark.unit
 def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch):
     _garmin, _weather, telegram, _db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
 
@@ -262,6 +268,7 @@ def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch
     assert {"today", "week", "stats", "recovery", "nutrition", "sync", "activities", "drift", "shoes", "calibration"}.issubset(telegram.commands)
 
 
+@pytest.mark.unit
 def test_main_smoke_uses_profile_defaults_when_env_missing(monkeypatch):
     _garmin, _weather, _telegram, _db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     captured_ctx = {}
@@ -283,6 +290,7 @@ def test_main_smoke_uses_profile_defaults_when_env_missing(monkeypatch):
     }
 
 
+@pytest.mark.unit
 def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
     _patch_main_dependencies(monkeypatch)
     called = {"menu": 0}
@@ -295,6 +303,7 @@ def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
     assert called["menu"] == 0
 
 
+@pytest.mark.unit
 def test_main_schedules_expected_background_tasks(monkeypatch):
     _garmin, _weather, telegram, _db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
@@ -313,6 +322,7 @@ def test_main_schedules_expected_background_tasks(monkeypatch):
     assert weekly_task["days"] == ["Sunday"]
 
 
+@pytest.mark.unit
 def test_main_weekly_task_callback_sends_generated_plan(monkeypatch):
     _garmin, _weather, telegram, _db, _daily_coach, weekly_planner = _patch_main_dependencies(monkeypatch)
     captured = {}
@@ -331,6 +341,7 @@ def test_main_weekly_task_callback_sends_generated_plan(monkeypatch):
     assert telegram.sent_weekly_plans == [{"status": "ok"}]
 
 
+@pytest.mark.unit
 def test_main_runtime_error_still_executes_shutdown_cleanup(monkeypatch):
     garmin, weather, telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _ctx: (_ for _ in ()).throw(RuntimeError("boom")))
@@ -344,6 +355,7 @@ def test_main_runtime_error_still_executes_shutdown_cleanup(monkeypatch):
     assert db.closed is True
 
 
+@pytest.mark.integration
 def test_main_has_no_print_calls_for_operational_output_guard():
     source = Path("titan/main.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
@@ -356,6 +368,7 @@ def test_main_has_no_print_calls_for_operational_output_guard():
     assert _print_call_function_names(print_calls) == ["_print_banner"]
 
 
+@pytest.mark.unit
 def test_main_emits_operational_startup_and_shutdown_events(monkeypatch, caplog):
     _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
@@ -483,6 +496,7 @@ def _make_callback_context(summary):
     }
 
 
+@pytest.mark.unit
 def test_register_telegram_callbacks_success_paths_cover_command_wiring():
     summary = {
         "status": "CALIBRATED",
@@ -543,6 +557,7 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring():
     assert "HEURISTIC→MODERATE" in telegram.commands["calibration"]()
 
 
+@pytest.mark.unit
 def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messages():
     class _RaisingCoach:
         def __init__(self):
@@ -611,6 +626,7 @@ def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messa
     assert telegram.commands["calibration"]().startswith("❌")
 
 
+@pytest.mark.unit
 def test_register_telegram_callbacks_calibration_no_outcomes_and_shoe_missing_manager():
     summary = {"status": "NO_OUTCOMES_YET", "n_decisions": 5, "note": "Need outcomes"}
     telegram = _CallbackTelegram()
@@ -625,6 +641,7 @@ def test_register_telegram_callbacks_calibration_no_outcomes_and_shoe_missing_ma
     assert telegram.commands["shoes"]() == "⏳ Equipment manager not configured."
 
 
+@pytest.mark.unit
 def test_main_shutdown_logs_worker_timeout_before_database_close(monkeypatch, caplog):
     garmin, weather, telegram, db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     close_order = []
@@ -658,6 +675,7 @@ def test_main_shutdown_logs_worker_timeout_before_database_close(monkeypatch, ca
     assert telegram.stop_calls == 1
 
 
+@pytest.mark.unit
 def test_parse_env_number_type_error_uses_same_validation_exit_path(monkeypatch, caplog):
     monkeypatch.setenv("ATHLETE_AGE", "bad")
 
@@ -669,6 +687,7 @@ def test_parse_env_number_type_error_uses_same_validation_exit_path(monkeypatch,
     assert "ATHLETE_AGE='bad'" in record.detail
 
 
+@pytest.mark.integration
 def test_configure_rotating_logging_adds_handler(tmp_path, monkeypatch):
     log_path = tmp_path / "titan.log"
     monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
@@ -688,6 +707,7 @@ def test_configure_rotating_logging_adds_handler(tmp_path, monkeypatch):
         root.handlers = original_handlers
 
 
+@pytest.mark.integration
 def test_configure_rotating_logging_does_not_duplicate_handler(tmp_path, monkeypatch):
     log_path = tmp_path / "titan.log"
     monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
