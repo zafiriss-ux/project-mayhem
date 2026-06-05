@@ -5,7 +5,7 @@
 set -euo pipefail
 
 install_runtime_dependencies() {
-  if pip install -r requirements.txt -c constraints.txt --quiet; then
+  if pip install -r requirements.txt --quiet; then
     return 0
   fi
 
@@ -20,7 +20,7 @@ install_runtime_dependencies() {
   echo "Retrying runtime dependency install against public PyPI..."
   PIP_INDEX_URL="https://pypi.org/simple" \
   PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org" \
-    pip install -r requirements.txt -c constraints.txt --quiet
+    pip install -r requirements.txt --quiet
 }
 
 # ── Python 3.11 activation via pyenv (if available) ──────────────────────────
