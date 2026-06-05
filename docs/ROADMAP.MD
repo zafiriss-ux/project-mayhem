@@ -323,7 +323,7 @@ event foundation for any inference regime.
 | 2 | **TD-04B** | XL | IN PROGRESS | EffectBus extraction (ADR-0058 Phase B); 27-file blast radius; ADR-0058 amendment required; gates Phase 28 inference layer |
 | 3 | **S3** | S | ✅ DONE | Auth observability: TOKEN_DECODE_FAIL, ACCOUNT_LOCKED, BAD_CREDENTIALS, REFRESH_TOKEN_INVALID, REFRESH_TOKEN_REVOKED events; lockout-restart survival test; TTL boundary invariant (F1.2, F5.1–F5.3) |
 | 4 | **S4** | XS | ✅ DONE | `alembic-integrity` + `backup-verify` gates moved to `ubuntu-latest`; CodeQL dual-run conflict resolved (push/PR triggers disabled); all self-hosted gate blockers cleared |
-| 5 | **T5-15 Phase B** | M | DEFERRED | Retroactive pytest markers across 100+ remaining files |
+| 5 | **T5-15 Phase B** | M | ✅ DONE | Retroactive pytest markers — all 199 files marked (unit/integration/governance taxonomy); 6 directory batches + root-level pass; 3021 tests green |
 | 6 | **P15-ARCH5** | M | DEFERRED | pydantic-settings migration |
 | 7 | **TD-CI-SELFHOSTED** | S | ✅ DONE | Both self-hosted gates moved to ubuntu-latest; CodeQL separated from default setup |
 
