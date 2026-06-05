@@ -24,6 +24,7 @@ class _FrozenDateTime:
         return datetime.strptime(value, fmt)
 
 
+@pytest.mark.integration
 def test_calculate_phase_boundaries(monkeypatch):
     import titan.core.periodization as periodization_module
 
@@ -41,6 +42,7 @@ def test_calculate_phase_boundaries(monkeypatch):
     assert manager.calculate_phase(now + timedelta(days=71)) == "BASE"
 
 
+@pytest.mark.integration
 def test_calculate_phase_is_deterministic_for_same_input(monkeypatch):
     import titan.core.periodization as periodization_module
 
@@ -51,6 +53,7 @@ def test_calculate_phase_is_deterministic_for_same_input(monkeypatch):
     assert manager.calculate_phase(race_date) == manager.calculate_phase(race_date)
 
 
+@pytest.mark.integration
 def test_add_goal_sets_current_goal_and_updates_athlete(monkeypatch):
     import titan.core.periodization as periodization_module
 
@@ -70,6 +73,7 @@ def test_add_goal_sets_current_goal_and_updates_athlete(monkeypatch):
     assert athlete.target_time == "1:30:00"
 
 
+@pytest.mark.integration
 def test_add_goal_invalid_date_raises_value_error(monkeypatch):
     import titan.core.periodization as periodization_module
 
@@ -80,6 +84,7 @@ def test_add_goal_invalid_date_raises_value_error(monkeypatch):
         manager.add_goal(5.0, "0:20:00", "invalid-date")
 
 
+@pytest.mark.integration
 def test_complete_goal_returns_none_for_missing_or_none_goal_id():
     manager = PeriodizationManager(_AthleteProfileStub())
 
@@ -87,6 +92,7 @@ def test_complete_goal_returns_none_for_missing_or_none_goal_id():
     assert manager.complete_goal(None, "0:45:00") is None
 
 
+@pytest.mark.integration
 def test_complete_goal_marks_completed_and_creates_suggestions(monkeypatch):
     import titan.core.periodization as periodization_module
 

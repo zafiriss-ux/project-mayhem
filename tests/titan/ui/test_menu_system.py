@@ -5,6 +5,7 @@ import pytest
 from titan.ui import menu_system
 
 
+@pytest.mark.unit
 def test_main_menu_dispatches_selected_action_then_exits(monkeypatch):
     calls: list[str] = []
     answers = iter(["1", "0"])
@@ -23,6 +24,7 @@ def test_main_menu_dispatches_selected_action_then_exits(monkeypatch):
     assert exc.value.code == 0
 
 
+@pytest.mark.unit
 def test_main_menu_reprompts_for_unknown_choice(monkeypatch, capsys):
     answers = iter(["99", "", "0"])
 
@@ -38,6 +40,7 @@ def test_main_menu_reprompts_for_unknown_choice(monkeypatch, capsys):
     assert "Άγνωστη επιλογή" in capsys.readouterr().out
 
 
+@pytest.mark.unit
 def test_menu_data_browser_dispatches_each_supported_option(monkeypatch):
     answers = iter(["1", "2", "3", "4", "5", "6", "0"])
     calls: list[str] = []
@@ -58,6 +61,7 @@ def test_menu_data_browser_dispatches_each_supported_option(monkeypatch):
     assert calls == ["activities", "drift", "hrv", "sleep", "weight", "tsb"]
 
 
+@pytest.mark.unit
 def test_browser_activities_handles_empty_and_populated_data(monkeypatch, capsys):
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
     monkeypatch.setattr(menu_system, "_header", lambda title="": None)
@@ -87,6 +91,7 @@ def test_browser_activities_handles_empty_and_populated_data(monkeypatch, capsys
     assert "5:05" in data_output
 
 
+@pytest.mark.unit
 def test_browser_drift_uses_first_second_half_hr_and_fallback(monkeypatch, capsys):
     class _FakeDriftEngine:
         @staticmethod
@@ -117,6 +122,7 @@ def test_browser_drift_uses_first_second_half_hr_and_fallback(monkeypatch, capsy
     assert "2026-01-11" in output and "6.2%" in output
 
 
+@pytest.mark.unit
 def test_browser_tsb_without_engine_shows_warning(monkeypatch, capsys):
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
     monkeypatch.setattr(menu_system, "_header", lambda title="": None)
@@ -128,6 +134,7 @@ def test_browser_tsb_without_engine_shows_warning(monkeypatch, capsys):
     assert "TSB engine not available" in capsys.readouterr().out
 
 
+@pytest.mark.unit
 def test_browser_tsb_shows_ctl_after_hydration(monkeypatch, capsys):
     """_browser_tsb must display numeric CTL/ATL/TSB when daily_loads is populated.
 
@@ -159,6 +166,7 @@ def test_browser_tsb_shows_ctl_after_hydration(monkeypatch, capsys):
     assert re.search(r"\d+\.\d", out), f"Expected a decimal number in output, got: {out!r}"
 
 
+@pytest.mark.unit
 def test_menu_shoe_selector_handles_missing_manager_and_unknown_session(monkeypatch, capsys):
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
     monkeypatch.setattr(menu_system, "_header", lambda title="": None)
@@ -181,6 +189,7 @@ def test_menu_shoe_selector_handles_missing_manager_and_unknown_session(monkeypa
 
 # ── T2-12: UI silent exception handler fixes ─────────────────────────────────
 
+@pytest.mark.unit
 def test_menu_system_optimal_time_parse_fallback_emits_warning(monkeypatch, capsys, caplog):
     """When the optimal_time_str is malformed, a warning must be logged and a
     user-facing fallback hint printed (not silent)."""
@@ -221,6 +230,7 @@ def test_menu_system_optimal_time_parse_fallback_emits_warning(monkeypatch, caps
     assert any("optimal_time_parse_fallback" in r.message for r in caplog.records)
 
 
+@pytest.mark.unit
 def test_menu_system_shoe_display_handles_malformed_data_gracefully(monkeypatch, capsys, caplog):
     """When shoe data is malformed, a warning must be logged and a fallback
     message printed (not silent pass)."""

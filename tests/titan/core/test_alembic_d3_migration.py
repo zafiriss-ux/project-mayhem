@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic.config import Config
 
 from alembic import command
@@ -37,6 +38,7 @@ def _athlete_column_row(db_path: Path, table_name: str) -> tuple | None:
     return None
 
 
+@pytest.mark.integration
 def test_d3_upgrade_adds_athlete_id_column_to_all_five_tables(tmp_path: Path) -> None:
     db_path = tmp_path / "d3_upgrade.db"
     config = _make_config(db_path)
@@ -50,6 +52,7 @@ def test_d3_upgrade_adds_athlete_id_column_to_all_five_tables(tmp_path: Path) ->
         assert athlete_column[4] == "'default'"
 
 
+@pytest.mark.integration
 def test_d3_downgrade_removes_athlete_id_columns(tmp_path: Path) -> None:
     db_path = tmp_path / "d3_downgrade.db"
     config = _make_config(db_path)

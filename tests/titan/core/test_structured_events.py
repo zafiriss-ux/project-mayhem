@@ -11,6 +11,7 @@ from titan.core.structured_events import (
 )
 
 
+@pytest.mark.integration
 def test_structured_event_payload_happy_path_info_default():
     payload = structured_event_payload("garmin_sync", "activities_synced", count=3)
 
@@ -22,6 +23,7 @@ def test_structured_event_payload_happy_path_info_default():
     }
 
 
+@pytest.mark.integration
 def test_severity_value_normalizes_string_input_boundary():
     assert severity_value("WARNING") == "warning"
     assert severity_value(EventSeverity.CRITICAL) == "critical"
@@ -30,6 +32,7 @@ def test_severity_value_normalizes_string_input_boundary():
 # ── make_event_emitter ────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_make_event_emitter_emits_correct_flow_and_action(caplog):
     logger = logging.getLogger("test_emitter_flow")
     emitter = make_event_emitter("mysubsystem", logger)
@@ -45,6 +48,7 @@ def test_make_event_emitter_emits_correct_flow_and_action(caplog):
     assert payload["severity"] == "info"
 
 
+@pytest.mark.integration
 def test_make_event_emitter_respects_custom_severity(caplog):
     logger = logging.getLogger("test_emitter_severity")
     emitter = make_event_emitter("nutrition", logger)
@@ -57,6 +61,7 @@ def test_make_event_emitter_respects_custom_severity(caplog):
     assert payload["reason"] == "no_data"
 
 
+@pytest.mark.integration
 def test_make_event_emitter_uses_bound_logger_not_root(caplog):
     """Emitter must log through its bound logger, not a shared global."""
     logger_a = logging.getLogger("subsystem_a")
@@ -73,6 +78,7 @@ def test_make_event_emitter_uses_bound_logger_not_root(caplog):
     assert "subsystem_b" not in names
 
 
+@pytest.mark.integration
 def test_make_event_emitter_dunder_name_reflects_subsystem():
     logger = logging.getLogger("test_name")
     emitter = make_event_emitter("readiness", logger)
@@ -81,6 +87,7 @@ def test_make_event_emitter_dunder_name_reflects_subsystem():
     assert emitter.__qualname__ == "_readiness_event"
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize("subsystem", ["nutrition", "weekly_planner", "readiness"])
 def test_make_event_emitter_parametric_subsystem_roundtrip(subsystem, caplog):
     """Factory must bind subsystem correctly across known migrated modules."""

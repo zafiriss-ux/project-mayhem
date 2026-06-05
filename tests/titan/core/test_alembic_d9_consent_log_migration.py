@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic.config import Config
 
 from alembic import command
@@ -27,6 +28,7 @@ def _table_exists(db_path: Path, table_name: str) -> bool:
         return connection.execute(query, (table_name,)).fetchone() is not None
 
 
+@pytest.mark.integration
 def test_d9_upgrade_creates_consent_log_with_expected_contract(tmp_path: Path) -> None:
     db_path = tmp_path / "d9_upgrade.db"
     config = _make_config(db_path)
@@ -53,6 +55,7 @@ def test_d9_upgrade_creates_consent_log_with_expected_contract(tmp_path: Path) -
     assert pk_columns == ["id"]
 
 
+@pytest.mark.integration
 def test_d9_downgrade_removes_consent_log_table(tmp_path: Path) -> None:
     db_path = tmp_path / "d9_downgrade.db"
     config = _make_config(db_path)

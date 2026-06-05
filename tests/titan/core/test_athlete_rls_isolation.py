@@ -6,6 +6,8 @@ import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 MIGRATION_PATH = Path("alembic/versions/20260313_04_d4_add_athlete_rls_policies.py")
 
 
@@ -32,6 +34,7 @@ def _load_migration_module():
     return module
 
 
+@pytest.mark.integration
 def test_upgrade_enables_rls_and_creates_policy_for_all_d4_tables() -> None:
     migration = _load_migration_module()
     fake_op = _FakeOp("postgresql")
@@ -59,6 +62,7 @@ def test_upgrade_enables_rls_and_creates_policy_for_all_d4_tables() -> None:
 
 
 
+@pytest.mark.integration
 def test_downgrade_drops_policy_and_disables_rls_for_all_d4_tables() -> None:
     migration = _load_migration_module()
     fake_op = _FakeOp("postgresql")
@@ -78,6 +82,7 @@ def test_downgrade_drops_policy_and_disables_rls_for_all_d4_tables() -> None:
         assert f"DROP POLICY IF EXISTS titan_athlete_isolation ON {table_name}" in fake_op.executed
         assert f"ALTER TABLE {table_name} DISABLE ROW LEVEL SECURITY" in fake_op.executed
 
+@pytest.mark.integration
 def test_upgrade_and_downgrade_are_noop_for_sqlite_path() -> None:
     migration = _load_migration_module()
     fake_op = _FakeOp("sqlite")

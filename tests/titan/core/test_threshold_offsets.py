@@ -43,6 +43,7 @@ def _all_rows(conn: sqlite3.Connection, table: str) -> list[dict]:
 
 # ── Test 1 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_athlete_threshold_offsets_table_created(tmp_path: Path) -> None:
     """create_tables() must create athlete_threshold_offsets in sqlite_master."""
     db = DatabaseManager(db_name="schema_test.db", db_dir=tmp_path)
@@ -55,6 +56,7 @@ def test_athlete_threshold_offsets_table_created(tmp_path: Path) -> None:
 
 # ── Test 2 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_save_threshold_offset_roundtrip(tmp_path: Path) -> None:
     """All fields are stored and can be retrieved exactly."""
     db = DatabaseManager(db_name="roundtrip.db", db_dir=tmp_path)
@@ -83,6 +85,7 @@ def test_save_threshold_offset_roundtrip(tmp_path: Path) -> None:
 
 # ── Test 3 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_save_threshold_offset_upsert(tmp_path: Path) -> None:
     """Second write on same (athlete_id, threshold_key) replaces first — 1 row, new value."""
     db = DatabaseManager(db_name="upsert.db", db_dir=tmp_path)
@@ -117,6 +120,7 @@ def test_save_threshold_offset_upsert(tmp_path: Path) -> None:
 
 # ── Test 4 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 @pytest.mark.parametrize("hard_stop_key", sorted(HARD_STOP_THRESHOLD_KEYS))
 def test_save_threshold_offset_rejects_hard_stop_keys(tmp_path: Path, hard_stop_key: str) -> None:
     """Every key in HARD_STOP_THRESHOLD_KEYS must raise ValueError (ADR-0052)."""
@@ -137,6 +141,7 @@ def test_save_threshold_offset_rejects_hard_stop_keys(tmp_path: Path, hard_stop_
 
 # ── Test 5 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_save_threshold_offset_rejects_invalid_source(tmp_path: Path) -> None:
     """source='invalid' must be rejected by the DB CHECK constraint."""
     db = DatabaseManager(db_name="bad_source.db", db_dir=tmp_path)
@@ -156,6 +161,7 @@ def test_save_threshold_offset_rejects_invalid_source(tmp_path: Path) -> None:
 
 # ── Test 6 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_save_threshold_offset_rejects_confidence_out_of_range(tmp_path: Path) -> None:
     """confidence=1.5 must be rejected by the DB CHECK constraint (> 1.0)."""
     db = DatabaseManager(db_name="bad_confidence.db", db_dir=tmp_path)
@@ -175,6 +181,7 @@ def test_save_threshold_offset_rejects_confidence_out_of_range(tmp_path: Path) -
 
 # ── Test 7 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
     """Alembic upgrade to head creates athlete_threshold_offsets; downgrade one step removes it."""
     from alembic.config import Config
@@ -202,6 +209,7 @@ def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
 
 # ── Test 8 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_schema_version_incremented(tmp_path: Path) -> None:
     """Fresh DB must carry SCHEMA_VERSION == 21 in PRAGMA user_version."""
     assert SCHEMA_VERSION == 23, (

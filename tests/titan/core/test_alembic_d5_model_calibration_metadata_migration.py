@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
 from alembic.config import Config
 
 from alembic import command
@@ -27,6 +28,7 @@ def _table_exists(db_path: Path, table_name: str) -> bool:
         return connection.execute(query, (table_name,)).fetchone() is not None
 
 
+@pytest.mark.integration
 def test_d5_upgrade_creates_model_calibration_metadata_with_expected_contract(
     tmp_path: Path,
 ) -> None:
@@ -56,6 +58,7 @@ def test_d5_upgrade_creates_model_calibration_metadata_with_expected_contract(
     assert pk_columns == ["model_name", "athlete_id"]
 
 
+@pytest.mark.integration
 def test_d5_downgrade_removes_model_calibration_metadata_table(tmp_path: Path) -> None:
     db_path = tmp_path / "d5_downgrade.db"
     config = _make_config(db_path)

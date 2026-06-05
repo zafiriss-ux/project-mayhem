@@ -46,6 +46,7 @@ def _assert_write_method_uses_locked_guard(db, write_call):
     conn.commit.assert_called_once()
 
 
+@pytest.mark.integration
 def test_get_active_shoes_returns_rows_when_database_open(tmp_path):
     db = DatabaseManager(db_name="happy_path.db", db_dir=tmp_path)
 
@@ -59,6 +60,7 @@ def test_get_active_shoes_returns_rows_when_database_open(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_active_shoes_raises_controlled_error_when_close_wins_lock_race(tmp_path):
     db = DatabaseManager(db_name="close_race.db", db_dir=tmp_path)
 
@@ -90,6 +92,7 @@ def test_get_active_shoes_raises_controlled_error_when_close_wins_lock_race(tmp_
     assert "closed" in str(result).lower()
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "read_method",
     [
@@ -112,6 +115,7 @@ def test_read_methods_fail_fast_after_close(tmp_path, read_method):
         read_method(db)
 
 
+@pytest.mark.integration
 def test_save_daily_metric_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="save_daily_metric_guard.db", db_dir=tmp_path)
 
@@ -121,6 +125,7 @@ def test_save_daily_metric_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_save_session_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="save_session_guard.db", db_dir=tmp_path)
 
@@ -136,6 +141,7 @@ def test_save_session_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_save_session_ignores_duplicate_garmin_activity_id(tmp_path):
     db = DatabaseManager(db_name="garmin_duplicate_ignore.db", db_dir=tmp_path)
 
@@ -164,6 +170,7 @@ def test_save_session_ignores_duplicate_garmin_activity_id(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_save_session_allows_multiple_manual_rows_with_null_garmin_activity_id(tmp_path):
     db = DatabaseManager(db_name="manual_null_garmin_id.db", db_dir=tmp_path)
 
@@ -192,6 +199,7 @@ def test_save_session_allows_multiple_manual_rows_with_null_garmin_activity_id(t
         db.close()
 
 
+@pytest.mark.integration
 def test_save_hrr_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="save_hrr_guard.db", db_dir=tmp_path)
 
@@ -201,6 +209,7 @@ def test_save_hrr_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_update_shoe_mileage_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="update_shoe_guard.db", db_dir=tmp_path)
 
@@ -210,6 +219,7 @@ def test_update_shoe_mileage_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_add_shoe_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="add_shoe_guard.db", db_dir=tmp_path)
 
@@ -219,6 +229,7 @@ def test_add_shoe_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 def test_save_personal_best_cursor_inside_lock(tmp_path):
     db = DatabaseManager(db_name="save_pb_guard.db", db_dir=tmp_path)
 
@@ -233,6 +244,7 @@ def test_save_personal_best_cursor_inside_lock(tmp_path):
     )
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     ("name", "write_call"),
     [
@@ -293,6 +305,7 @@ def test_governance_and_science_write_methods_cursor_inside_lock(tmp_path, name,
     _assert_write_method_uses_locked_guard(db, lambda: write_call(db))
 
 
+@pytest.mark.integration
 def test_memory_db_with_db_dir_does_not_raise(tmp_path):
     """DatabaseManager(db_name=':memory:', db_dir=<path>) must not construct an invalid path."""
     db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
@@ -308,6 +321,7 @@ def test_memory_db_with_db_dir_does_not_raise(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_write_after_close_raises(tmp_path):
     db = DatabaseManager(db_name=":memory:", db_dir=tmp_path)
     db.close()
@@ -322,6 +336,7 @@ def test_write_after_close_raises(tmp_path):
         )
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "write_call",
     [
@@ -345,6 +360,7 @@ def test_in_scope_write_methods_fail_fast_after_close(tmp_path, write_call):
         write_call(db)
 
 
+@pytest.mark.integration
 @pytest.mark.parametrize(
     "write_call",
     [
@@ -394,6 +410,7 @@ def test_in_scope_write_methods_no_cursor_on_close_race(tmp_path, write_call):
     conn.cursor.assert_not_called()
 
 
+@pytest.mark.integration
 def test_concurrent_writes_no_race(tmp_path):
     db = DatabaseManager(db_name="concurrent_writes.db", db_dir=tmp_path)
     errors: queue.Queue[Exception] = queue.Queue()
@@ -438,6 +455,7 @@ class _CommitSpyConnection:
         return self._conn.commit()
 
 
+@pytest.mark.integration
 def test_standalone_write_methods_commit_and_persist(tmp_path):
     db = DatabaseManager(db_name="standalone_commit_methods.db", db_dir=tmp_path)
     db.conn = _CommitSpyConnection(db.conn)
@@ -495,6 +513,7 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_transaction_defers_commit_until_exit_and_nested_calls_single_commit(tmp_path):
     db = DatabaseManager(db_name="transaction_defer_commit.db", db_dir=tmp_path)
     db.conn = _CommitSpyConnection(db.conn)
@@ -523,6 +542,7 @@ def test_transaction_defers_commit_until_exit_and_nested_calls_single_commit(tmp
     db.close()
 
 
+@pytest.mark.integration
 def test_transaction_rollback_restores_state(tmp_path):
     db = DatabaseManager(db_name="transaction_rollback.db", db_dir=tmp_path)
 
@@ -546,6 +566,7 @@ def test_transaction_rollback_restores_state(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_record_override_signal_persists_row(tmp_path):
     db = DatabaseManager(db_name="override_signal.db", db_dir=tmp_path)
 
@@ -567,6 +588,7 @@ def test_record_override_signal_persists_row(tmp_path):
     assert row == ("decision-1", "ATH_1", "telegram_bot", "Athlete felt stable")
 
 
+@pytest.mark.integration
 def test_record_override_signal_fails_fast_after_close(tmp_path):
     db = DatabaseManager(db_name="override_signal_closed.db", db_dir=tmp_path)
     db.close()
@@ -680,6 +702,7 @@ def _seed_governance_row(db):
     )
 
 
+@pytest.mark.integration
 def test_get_database_manager_defaults_to_sqlite(tmp_path):
     from titan.core.database import get_database_manager
 
@@ -689,6 +712,7 @@ def test_get_database_manager_defaults_to_sqlite(tmp_path):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_database_manager_postgres_requires_dsn():
     # B3 (Opus 2026-05-22): postgres backend disabled until ADR-0044 parity
     from titan.core.database import get_database_manager
@@ -697,6 +721,7 @@ def test_get_database_manager_postgres_requires_dsn():
         get_database_manager(backend="postgres", postgres_dsn=None)
 
 
+@pytest.mark.integration
 def test_get_database_manager_respects_backend_environment(monkeypatch, tmp_path):
     # B3 (Opus 2026-05-22): TITAN_DB_BACKEND=postgres now raises NotImplementedError
     from titan.core.database import get_database_manager
@@ -707,6 +732,7 @@ def test_get_database_manager_respects_backend_environment(monkeypatch, tmp_path
         get_database_manager(db_name="unused.db", db_dir=tmp_path)
 
 
+@pytest.mark.integration
 def test_postgres_backend_raises():
     # TR-13 (Opus 2026-05-24): postgres adapter explicitly unmaintained until ADR-0044 parity
     from titan.core.database import get_database_manager
@@ -715,6 +741,7 @@ def test_postgres_backend_raises():
         get_database_manager(backend="postgres")
 
 
+@pytest.mark.integration
 def test_postgres_backend_matches_sqlite_ctl_atl_and_history(tmp_path, monkeypatch):
     from titan.core import database as db_module
 
@@ -733,6 +760,7 @@ def test_postgres_backend_matches_sqlite_ctl_atl_and_history(tmp_path, monkeypat
     postgres_db.close()
 
 
+@pytest.mark.integration
 def test_postgres_backend_matches_sqlite_governance_persistence(tmp_path, monkeypatch):
     from titan.core import database as db_module
 
@@ -756,6 +784,7 @@ def test_postgres_backend_matches_sqlite_governance_persistence(tmp_path, monkey
     postgres_db.close()
 
 
+@pytest.mark.integration
 def test_save_session_direct_training_load_overrides_rpe_calculation(tmp_path):
     """save_session(training_load=N) stores N directly, bypassing RPE computation."""
     db = DatabaseManager(db_name="direct_tl.db", db_dir=tmp_path)
@@ -775,6 +804,7 @@ def test_save_session_direct_training_load_overrides_rpe_calculation(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_save_session_rpe_used_when_training_load_not_provided(tmp_path):
     """When training_load is not passed, sRPE formula is used as before."""
     db = DatabaseManager(db_name="sRPE_tl.db", db_dir=tmp_path)
@@ -797,6 +827,7 @@ def test_save_session_rpe_used_when_training_load_not_provided(tmp_path):
 # T5-71 — HD-08: WARNING event when rowcount=0 in save_hrr / update_glycogen_debt
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_save_hrr_emits_warning_when_no_row_updated(tmp_path, caplog):
     """save_hrr() must emit a WARNING structured event when the UPDATE matches 0 rows."""
     import json
@@ -818,6 +849,7 @@ def test_save_hrr_emits_warning_when_no_row_updated(tmp_path, caplog):
         db.close()
 
 
+@pytest.mark.integration
 def test_save_hrr_no_warning_when_row_updated(tmp_path, caplog):
     """save_hrr() must NOT emit a WARNING when the UPDATE matches an existing row."""
     import logging
@@ -845,6 +877,7 @@ def test_save_hrr_no_warning_when_row_updated(tmp_path, caplog):
         db.close()
 
 
+@pytest.mark.integration
 def test_update_glycogen_debt_emits_warning_when_no_row_updated(tmp_path, caplog):
     """update_glycogen_debt() must emit a WARNING structured event when the UPDATE matches 0 rows."""
     import json
@@ -866,6 +899,7 @@ def test_update_glycogen_debt_emits_warning_when_no_row_updated(tmp_path, caplog
         db.close()
 
 
+@pytest.mark.integration
 def test_update_glycogen_debt_no_warning_when_row_updated(tmp_path, caplog):
     """update_glycogen_debt() must NOT emit a WARNING when the UPDATE matches an existing row."""
     import logging
@@ -896,6 +930,7 @@ def test_update_glycogen_debt_no_warning_when_row_updated(tmp_path, caplog):
 # T5-74 — governance_outcomes athlete_id schema + INSERT
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
     """governance_outcomes CREATE TABLE must include athlete_id (Fix A)."""
     db = DatabaseManager(db_name="gov_schema.db", db_dir=tmp_path)
@@ -907,12 +942,14 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_schema_version_is_11():
     """SCHEMA_VERSION must be 20 after biological_sex/menstrual_tracking migration."""
     from titan.core.database import SCHEMA_VERSION
     assert SCHEMA_VERSION == 23
 
 
+@pytest.mark.integration
 def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
     """save_governance_decision() must write athlete_profile_id to athlete_id column (Fix B)."""
     db = DatabaseManager(db_name="gov_athlete_id.db", db_dir=tmp_path)
@@ -933,6 +970,7 @@ def test_save_governance_decision_persists_athlete_profile_id(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_save_governance_decision_defaults_athlete_id_when_missing(tmp_path):
     """save_governance_decision() must default athlete_id to 'owner' when key absent (v13)."""
     db = DatabaseManager(db_name="gov_default_athlete.db", db_dir=tmp_path)
@@ -952,6 +990,7 @@ def test_save_governance_decision_defaults_athlete_id_when_missing(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path):
     """v11 migration must add athlete_id to governance_outcomes in pre-existing databases."""
     import sqlite3
@@ -992,6 +1031,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         db.close()
 
 
+@pytest.mark.integration
 def test_postgres_save_governance_decision_uses_athlete_profile_id(tmp_path, monkeypatch):
     """PostgreSQL save_governance_decision() must write athlete_profile_id to athlete_id column (Fix C)."""
     from titan.core import database as db_module
@@ -1017,6 +1057,7 @@ def test_postgres_save_governance_decision_uses_athlete_profile_id(tmp_path, mon
         db.close()
 
 
+@pytest.mark.integration
 def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_path, monkeypatch):
     """PostgreSQL save_governance_decision() must default athlete_id to 'owner' when key absent (v13)."""
     from titan.core import database as db_module
@@ -1041,6 +1082,7 @@ def test_postgres_save_governance_decision_defaults_athlete_id_when_missing(tmp_
         db.close()
 
 
+@pytest.mark.integration
 def test_postgres_save_session_sql_has_on_conflict_do_nothing():
     """T5-73: PostgreSQL save_session INSERT must contain ON CONFLICT (garmin_activity_id) DO NOTHING.
 
