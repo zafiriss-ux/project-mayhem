@@ -411,32 +411,22 @@ def test_sync_hrv_top_level_exception_emits_api_unavailable(monkeypatch):
 
 
 @pytest.mark.integration
-def test_resolve_sync_timeout_seconds_invalid_env_falls_back_to_default(monkeypatch):
+def test_resolve_sync_timeout_seconds_custom_value_from_settings(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
-    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "not-an-int")
+    monkeypatch.setattr(garmin_sync, "get_settings", lambda: type("S", (), {"GARMIN_SYNC_TIMEOUT_S": 120})())
 
     timeout_s = garmin_sync._resolve_sync_timeout_seconds()
 
-    assert timeout_s == garmin_sync._DEFAULT_SYNC_TIMEOUT_S
-    assert events == [
-        (
-            "invalid_sync_timeout",
-            {
-                "subsystem": "sync_all",
-                "configured_timeout": "not-an-int",
-                "fallback_timeout_s": garmin_sync._DEFAULT_SYNC_TIMEOUT_S,
-                "detail": "GARMIN_SYNC_TIMEOUT_S is not an integer; using default timeout.",
-            },
-        )
-    ]
+    assert timeout_s == 120
+    assert events == []
 
 
 @pytest.mark.integration
 def test_resolve_sync_timeout_seconds_negative_env_falls_back_to_default(monkeypatch):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
-    monkeypatch.setenv("GARMIN_SYNC_TIMEOUT_S", "-5")
+    monkeypatch.setattr(garmin_sync, "get_settings", lambda: type("S", (), {"GARMIN_SYNC_TIMEOUT_S": -5})())
 
     timeout_s = garmin_sync._resolve_sync_timeout_seconds()
 
@@ -526,8 +516,11 @@ def test_connect_missing_credentials_fails_safely(monkeypatch):
 
 
 @pytest.mark.integration
-def test_connect_saves_token_after_login(monkeypatch, tmp_path):
+def test_connect_saves_token_after_login(monkeypatch, tmp_path, request):
     """Successful login persists garth token to disk."""
+    from titan.config.settings import get_settings
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
 
@@ -554,8 +547,11 @@ def test_connect_saves_token_after_login(monkeypatch, tmp_path):
 
 
 @pytest.mark.integration
-def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
+def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path, request):
     """Existing valid token is loaded from disk; login() is not called."""
+    from titan.config.settings import get_settings
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("stored_token", encoding="utf-8")
@@ -589,8 +585,11 @@ def test_connect_loads_saved_token_skips_login(monkeypatch, tmp_path):
 
 
 @pytest.mark.integration
-def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch, tmp_path):
+def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch, tmp_path, request):
     """Expired/invalid token causes garth.loads() to fail; falls back to full login and saves new token."""
+    from titan.config.settings import get_settings
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("expired_token", encoding="utf-8")
@@ -624,7 +623,7 @@ def test_connect_expired_token_garth_loads_fails_falls_back_to_login(monkeypatch
 
 
 @pytest.mark.integration
-def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp_path):
+def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp_path, request):
     """Token loads from disk successfully but server rejects it (api ping fails).
 
     This covers the root-cause of the 0/0/0 silent-failure bug: garth.loads()
@@ -632,6 +631,9 @@ def test_connect_stale_token_api_ping_fails_falls_back_to_login(monkeypatch, tmp
     first API call.  The verification ping in connect() catches this before any
     sync attempt and falls through to a full login.
     """
+    from titan.config.settings import get_settings
+    get_settings.cache_clear()
+    request.addfinalizer(get_settings.cache_clear)
     monkeypatch.setenv("TITAN_ENV", "dev")
     token_file = tmp_path / ".garth_token"
     token_file.write_text("stale_but_parseable_token", encoding="utf-8")

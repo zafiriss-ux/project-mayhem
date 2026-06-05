@@ -6,7 +6,6 @@ Uses pyTelegramBotAPI for real polling (not mock).
 
 import json
 import logging
-import os
 import re
 import secrets as _secrets_mod
 import threading
@@ -17,6 +16,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import uuid4
 
+from titan.config.settings import get_settings
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.override_signal import OverrideSignal, record_override_signal
 from titan.utils.secrets import SecretStr
@@ -119,8 +119,8 @@ class TitanTelegramBot:
 
     def __init__(self, bot_token: str = None, chat_id=None, db=None):
         self.db = db
-        self.bot_token = SecretStr(_value=bot_token or os.getenv("TELEGRAM_BOT_TOKEN", ""))
-        raw_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
+        self.bot_token = SecretStr(_value=bot_token or get_settings().TELEGRAM_BOT_TOKEN.get_secret_value())
+        raw_id = chat_id or get_settings().TELEGRAM_CHAT_ID
         try:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):
@@ -128,7 +128,7 @@ class TitanTelegramBot:
 
         # Trusted inbound chat ID for per-handler authorisation.
         # None = unconfigured (allow all with a warning); str = strict match.
-        _raw_trusted = chat_id or os.getenv("TELEGRAM_CHAT_ID") or None
+        _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
         self._trusted_chat_id: str | None = str(_raw_trusted) if _raw_trusted else None
 
         self.bot = None
