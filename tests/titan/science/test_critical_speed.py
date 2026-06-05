@@ -2,20 +2,25 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
+import pytest
+
 from titan.science.critical_speed import CriticalSpeedEngine, CriticalSpeedTracker
 
 
+@pytest.mark.unit
 def test_estimate_cs_and_dprime_returns_none_with_insufficient_or_invalid_points() -> None:
     assert CriticalSpeedEngine.estimate_cs_and_dprime([(3000.0, 0.0)]) == (None, None)
     assert CriticalSpeedEngine.estimate_cs_and_dprime([(3000.0, -10.0), (5000.0, 0.0)]) == (None, None)
 
 
+@pytest.mark.unit
 def test_estimate_cs_and_dprime_returns_none_when_regression_denominator_is_zero() -> None:
     cs, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime([(3000.0, 600.0), (5000.0, 600.0)])
 
     assert (cs, d_prime) == (None, None)
 
 
+@pytest.mark.unit
 def test_estimate_cs_and_dprime_fits_linear_distance_time_model() -> None:
     performances = [(2500.0, 600.0), (3300.0, 800.0), (4100.0, 1000.0)]
 
@@ -25,6 +30,7 @@ def test_estimate_cs_and_dprime_fits_linear_distance_time_model() -> None:
     assert d_prime == 100.0
 
 
+@pytest.mark.unit
 def test_time_to_exhaustion_handles_invalid_or_sustainable_inputs() -> None:
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(None, 120.0, 240.0) is None
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, None, 240.0) is None
@@ -32,17 +38,20 @@ def test_time_to_exhaustion_handles_invalid_or_sustainable_inputs() -> None:
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 120.0, 250.0) is None
 
 
+@pytest.mark.unit
 def test_time_to_exhaustion_returns_none_when_d_prime_is_zero_or_negative() -> None:
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 0.0, 200.0) is None
     assert CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, -50.0, 200.0) is None
 
 
+@pytest.mark.unit
 def test_time_to_exhaustion_returns_formula_result_for_unsustainable_pace() -> None:
     tte = CriticalSpeedEngine.time_to_exhaustion_at_pace(4.0, 120.0, 200.0)
 
     assert tte == 120.0
 
 
+@pytest.mark.unit
 def test_tracker_update_applies_ewma_and_sets_speed_archetype() -> None:
     tracker = CriticalSpeedTracker()
 
@@ -53,6 +62,7 @@ def test_tracker_update_applies_ewma_and_sets_speed_archetype() -> None:
     assert tracker.archetype == "SPEED"
 
 
+@pytest.mark.unit
 def test_tracker_archetype_guard_falls_back_to_hybrid_when_d_prime_missing_or_zero() -> None:
     tracker = CriticalSpeedTracker()
 
@@ -63,6 +73,7 @@ def test_tracker_archetype_guard_falls_back_to_hybrid_when_d_prime_missing_or_ze
     assert tracker.archetype == "HYBRID"
 
 
+@pytest.mark.unit
 def test_tracker_archetype_classifies_endurance_and_hybrid_ratio_bands() -> None:
     tracker = CriticalSpeedTracker()
 
@@ -76,6 +87,7 @@ def test_tracker_archetype_classifies_endurance_and_hybrid_ratio_bands() -> None
     assert tracker.archetype == "HYBRID"
 
 
+@pytest.mark.unit
 def test_tau_multiplier_matches_archetype() -> None:
     tracker = CriticalSpeedTracker()
 
@@ -89,6 +101,7 @@ def test_tau_multiplier_matches_archetype() -> None:
     assert tracker.tau_w_prime_multiplier == 1.0
 
 
+@pytest.mark.unit
 def test_confidence_uses_recency_and_sample_count_with_invalid_date_fallback() -> None:
     tracker = CriticalSpeedTracker()
     recent_day = (datetime.now() - timedelta(days=1)).date().isoformat()
@@ -101,6 +114,7 @@ def test_confidence_uses_recency_and_sample_count_with_invalid_date_fallback() -
     assert tracker.confidence == 0.2
 
 
+@pytest.mark.unit
 def test_apply_thermal_returns_none_without_cs_and_applies_rounding_and_floor() -> None:
     tracker = CriticalSpeedTracker()
 
@@ -112,6 +126,7 @@ def test_apply_thermal_returns_none_without_cs_and_applies_rounding_and_floor() 
     assert tracker.apply_thermal(80.0) == 4.25
 
 
+@pytest.mark.unit
 def test_gap_correct_pace_respects_uphill_downhill_adjustment_and_floor() -> None:
     assert CriticalSpeedTracker.gap_correct_pace(300.0, 2.0) == 280.0
     assert CriticalSpeedTracker.gap_correct_pace(300.0, -2.0) == 310.0
@@ -121,6 +136,7 @@ def test_gap_correct_pace_respects_uphill_downhill_adjustment_and_floor() -> Non
 # ── T5-55: ESI-aware thermal degradation ─────────────────────────────────────
 
 
+@pytest.mark.unit
 def test_apply_thermal_with_dew_point_none_falls_back_to_dry_bulb() -> None:
     """T5-55: dew_point_c=None must reproduce the original dry-bulb behaviour."""
     tracker = CriticalSpeedTracker()
@@ -131,6 +147,7 @@ def test_apply_thermal_with_dew_point_none_falls_back_to_dry_bulb() -> None:
     assert tracker.apply_thermal(80.0, dew_point_c=None) == 4.25
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_below_moderate_threshold_no_degradation() -> None:
     """T5-55: ESI < ESI_MODERATE_MIN (16) → factor = 1.0, no degradation."""
     tracker = CriticalSpeedTracker()
@@ -142,6 +159,7 @@ def test_apply_thermal_esi_below_moderate_threshold_no_degradation() -> None:
     assert result == 4.0
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_at_moderate_threshold_no_degradation() -> None:
     """T5-55: ESI == ESI_MODERATE_MIN (16) → no degradation (boundary)."""
     tracker = CriticalSpeedTracker()
@@ -153,6 +171,7 @@ def test_apply_thermal_esi_at_moderate_threshold_no_degradation() -> None:
     assert result == 4.0
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_above_moderate_threshold_degrades_cs() -> None:
     """T5-55: ESI > 16 → CS is reduced; higher ESI → greater reduction."""
     tracker = CriticalSpeedTracker()
@@ -167,6 +186,7 @@ def test_apply_thermal_esi_above_moderate_threshold_degrades_cs() -> None:
     assert result_high == round(4.0 * 0.95, 3)
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_extreme_is_floored_at_85_pct() -> None:
     """T5-55: ESI high enough to reach the 85% floor."""
     tracker = CriticalSpeedTracker()
@@ -179,6 +199,7 @@ def test_apply_thermal_esi_extreme_is_floored_at_85_pct() -> None:
     assert result == round(4.0 * 0.85, 3)
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_returns_none_without_cs_smoothed() -> None:
     """T5-55: returns None when cs_smoothed is None, even with dew_point_c provided."""
     tracker = CriticalSpeedTracker()
@@ -186,6 +207,7 @@ def test_apply_thermal_esi_returns_none_without_cs_smoothed() -> None:
     assert tracker.apply_thermal(30.0, dew_point_c=18.0) is None
 
 
+@pytest.mark.unit
 def test_apply_thermal_esi_higher_than_dry_bulb_for_same_temperature() -> None:
     """T5-55: with dew_point_c provided, humidity increases effective stress vs dry-bulb."""
     tracker = CriticalSpeedTracker()

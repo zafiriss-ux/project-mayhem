@@ -14,8 +14,7 @@ def _build_engine_with_history(loads: list[float]) -> TSBEngine:
     return engine
 
 
-
-
+@pytest.mark.unit
 def test_default_ctl_atl_decay_uses_canonical_threshold_constants() -> None:
     engine = _build_engine_with_history([80.0, 100.0, 120.0, 60.0, 90.0])
 
@@ -23,6 +22,7 @@ def test_default_ctl_atl_decay_uses_canonical_threshold_constants() -> None:
     assert engine.calculate_atl() == engine.calculate_atl(decay=thresholds.ATL_DECAY_DAYS)
 
 
+@pytest.mark.unit
 def test_changing_canonical_decay_constants_changes_default_ema_results(monkeypatch: pytest.MonkeyPatch) -> None:
     engine = _build_engine_with_history([120.0, 80.0, 160.0, 40.0, 200.0, 20.0])
 
@@ -40,6 +40,7 @@ def test_changing_canonical_decay_constants_changes_default_ema_results(monkeypa
     assert shifted_ctl != baseline_ctl
     assert shifted_atl != baseline_atl
 
+@pytest.mark.unit
 def test_empty_history_returns_safe_defaults_without_crashing() -> None:
     engine = TSBEngine()
 
@@ -50,6 +51,7 @@ def test_empty_history_returns_safe_defaults_without_crashing() -> None:
     assert engine.get_latest_tsb() == 0.0
 
 
+@pytest.mark.unit
 def test_numeric_outputs_are_always_finite() -> None:
     engine = _build_engine_with_history([100.0, 250.0, 75.0, 410.0, 90.0, 320.0, 180.0])
 
@@ -62,6 +64,7 @@ def test_numeric_outputs_are_always_finite() -> None:
     assert tsb is not None and math.isfinite(tsb)
 
 
+@pytest.mark.unit
 def test_ctl_atl_tsb_stay_within_plausible_bounds_for_non_negative_loads() -> None:
     loads = [0.0, 40.0, 65.0, 120.0, 90.0, 150.0, 200.0, 170.0, 80.0, 60.0]
     engine = _build_engine_with_history(loads)
@@ -75,6 +78,7 @@ def test_ctl_atl_tsb_stay_within_plausible_bounds_for_non_negative_loads() -> No
     assert tsb is not None and -max(loads) <= tsb <= max(loads)
 
 
+@pytest.mark.unit
 def test_identical_input_series_produce_identical_outputs() -> None:
     loads = [35.0, 55.0, 70.0, 45.0, 90.0, 30.0, 75.0, 65.0]
     engine_a = _build_engine_with_history(loads)
@@ -86,6 +90,7 @@ def test_identical_input_series_produce_identical_outputs() -> None:
     assert engine_a.get_tsb_status() == engine_b.get_tsb_status()
 
 
+@pytest.mark.unit
 def test_very_high_and_very_low_load_sequences_remain_finite_and_stable() -> None:
     high_load_engine = _build_engine_with_history([100.0] * 30 + [5000.0] * 5)
     low_load_engine = _build_engine_with_history([0.0] * 35)
@@ -99,6 +104,7 @@ def test_very_high_and_very_low_load_sequences_remain_finite_and_stable() -> Non
     assert low_tsb == 0.0
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("ctl", "atl", "expected_status"),
     [
@@ -125,6 +131,7 @@ def test_calculate_tsb_status_bands_match_current_threshold_mapping(
     assert status == expected_status
 
 
+@pytest.mark.unit
 def test_predict_race_day_tsb_returns_none_for_invalid_inputs() -> None:
     engine = TSBEngine()
 
@@ -132,6 +139,7 @@ def test_predict_race_day_tsb_returns_none_for_invalid_inputs() -> None:
     assert engine.predict_race_day_tsb(days=3, loads=[10.0, 20.0]) is None
 
 
+@pytest.mark.unit
 def test_predict_race_day_tsb_uses_current_internal_ctl_atl_state() -> None:
     engine = TSBEngine()
     engine.ctl = 50.0
@@ -149,6 +157,7 @@ def test_predict_race_day_tsb_uses_current_internal_ctl_atl_state() -> None:
     assert predicted == expected
 
 
+@pytest.mark.unit
 def test_predict_race_day_tsb_with_zero_days_returns_current_form_delta() -> None:
     engine = TSBEngine()
     engine.ctl = 37.26

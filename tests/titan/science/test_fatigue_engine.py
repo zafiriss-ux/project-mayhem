@@ -1,6 +1,9 @@
+import pytest
+
 from titan.science.fatigue_engine import FatigueEngine
 
 
+@pytest.mark.unit
 def test_classify_fatigue_uses_configured_soreness_threshold(monkeypatch) -> None:
     monkeypatch.setattr(
         'titan.science.fatigue_engine.FATIGUE_SORENESS_PERIPHERAL_MIN',
@@ -18,6 +21,7 @@ def test_classify_fatigue_uses_configured_soreness_threshold(monkeypatch) -> Non
     assert fatigue_types == ['PERIPHERAL']
 
 
+@pytest.mark.unit
 def test_classify_fatigue_below_configured_soreness_threshold_returns_low(monkeypatch) -> None:
     monkeypatch.setattr(
         'titan.science.fatigue_engine.FATIGUE_SORENESS_PERIPHERAL_MIN',

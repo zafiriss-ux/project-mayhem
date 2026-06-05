@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from titan import main as titan_main
 from titan.science.drift_engine import DriftEngine
 
@@ -91,6 +93,7 @@ def _make_ctx_with_real_drift_engine() -> dict[str, object]:
     }
 
 
+@pytest.mark.unit
 def test_register_telegram_callbacks_drift_command_accepts_real_drift_engine_instance():
     telegram = _TelegramHarness()
     titan_main._register_telegram_callbacks(telegram, _make_ctx_with_real_drift_engine())
@@ -101,6 +104,7 @@ def test_register_telegram_callbacks_drift_command_accepts_real_drift_engine_ins
     assert "Assessment:" in result
 
 
+@pytest.mark.unit
 def test_analyze_cardiac_drift_returns_expected_payload_for_split_halves():
     engine = DriftEngine()
 
@@ -111,6 +115,7 @@ def test_analyze_cardiac_drift_returns_expected_payload_for_split_halves():
     assert payload["lt_zone"] == "ABOVE_LT"
 
 
+@pytest.mark.unit
 def test_analyze_cardiac_drift_handles_insufficient_or_invalid_hr_data():
     engine = DriftEngine()
 
@@ -119,5 +124,6 @@ def test_analyze_cardiac_drift_handles_insufficient_or_invalid_hr_data():
     assert payload == {"drift_percent": 0.0, "assessment": "INSUFFICIENT_DATA", "lt_zone": "UNKNOWN"}
 
 
+@pytest.mark.unit
 def test_compute_drift_zero_first_half_returns_zero_guard_value():
     assert DriftEngine.compute_drift(0.0, 150.0) == 0.0

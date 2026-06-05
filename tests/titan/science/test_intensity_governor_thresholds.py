@@ -1,3 +1,5 @@
+import pytest
+
 from titan.config.thresholds import (
     INTENSITY_GOVERNOR_ACWR_RED,
     INTENSITY_GOVERNOR_ACWR_YELLOW,
@@ -11,6 +13,7 @@ from titan.config.thresholds import (
 from titan.science.intensity_governor import IntensityGovernor
 
 
+@pytest.mark.unit
 def test_evaluate_uses_threshold_constants_in_audit_payload() -> None:
     governor = IntensityGovernor()
 
@@ -42,6 +45,7 @@ def test_evaluate_uses_threshold_constants_in_audit_payload() -> None:
     assert result.audit["readiness"]["threshold_red"] == INTENSITY_GOVERNOR_READINESS_RED
 
 
+@pytest.mark.unit
 def test_evaluate_applies_boundary_behaviour_from_threshold_constants() -> None:
     governor = IntensityGovernor()
 

@@ -1,8 +1,11 @@
 """Tests for RCP engine edge conditions."""
 
+import pytest
+
 from titan.science.rcp_engine import RCPEngine
 
 
+@pytest.mark.unit
 def test_estimate_rcp_from_progressive_test_detects_inflection_happy_path() -> None:
     """RCP is detected when HR:pace efficiency inflects sharply."""
     pace_segments = [360.0, 330.0, 300.0, 285.0, 270.0]
@@ -21,6 +24,7 @@ def test_estimate_rcp_from_progressive_test_detects_inflection_happy_path() -> N
     assert explanation == "RCP detected at segment 3: Sharp efficiency drop"
 
 
+@pytest.mark.unit
 def test_estimate_rcp_from_progressive_test_rejects_zero_or_negative_pace() -> None:
     """Non-positive pace values should return the safe non-computable outcome."""
     pace_segments = [360.0, 0.0, -15.0, 285.0]
@@ -36,6 +40,7 @@ def test_estimate_rcp_from_progressive_test_rejects_zero_or_negative_pace() -> N
     assert result == (None, None, None, "Invalid pace segments for RCP detection")
 
 
+@pytest.mark.unit
 def test_estimate_rcp_from_progressive_test_rejects_exact_zero_pace() -> None:
     """A zero pace segment must trigger the safe invalid-path return."""
     pace_segments = [360.0, 330.0, 0.0, 285.0]

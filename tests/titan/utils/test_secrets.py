@@ -1,14 +1,18 @@
 """Privacy and safety tests for secret string handling."""
 
+import pytest
+
 from titan.utils.secrets import SecretStr
 
 
+@pytest.mark.unit
 def test_get_secret_value_returns_raw_secret() -> None:
     secret = SecretStr("ultra-sensitive-token")
 
     assert secret.get_secret_value() == "ultra-sensitive-token"
 
 
+@pytest.mark.unit
 def test_repr_and_str_mask_non_empty_secret() -> None:
     raw = "ultra-sensitive-token"
     secret = SecretStr(raw)
@@ -19,6 +23,7 @@ def test_repr_and_str_mask_non_empty_secret() -> None:
     assert raw not in str(secret)
 
 
+@pytest.mark.unit
 def test_empty_secret_representation_is_safe() -> None:
     secret = SecretStr("")
 
@@ -28,6 +33,7 @@ def test_empty_secret_representation_is_safe() -> None:
     assert "********" not in str(secret)
 
 
+@pytest.mark.unit
 def test_secret_bool_matches_current_behavior() -> None:
     assert bool(SecretStr("non-empty")) is True
     assert bool(SecretStr("")) is False

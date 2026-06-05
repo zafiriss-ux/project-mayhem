@@ -1,3 +1,5 @@
+import pytest
+
 from titan.config.thresholds import GOVERNANCE_CS_CONFIDENCE_THRESHOLD
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.volume_load_gauge import VLGState
@@ -7,6 +9,7 @@ def _vlg_state(color: str = "GREEN", score: int = 0) -> VLGState:
     return VLGState(color=color, score=score, components={}, rationale=[])
 
 
+@pytest.mark.unit
 def test_default_cs_confidence_threshold_uses_canonical_constant_source():
     import titan.science.adaptive_priority_lock as apl_module
 
@@ -16,6 +19,7 @@ def test_default_cs_confidence_threshold_uses_canonical_constant_source():
     )
 
 
+@pytest.mark.unit
 def test_resolve_peak_phase_override_keeps_inline_cs_confidence_literal():
     result = AdaptivePriorityLock().resolve(
         vlg_state=_vlg_state(),

@@ -13,6 +13,7 @@ class _DB:
         self.calls.append(kwargs)
 
 
+@pytest.mark.unit
 def test_record_override_signal_persists_valid_payload():
     db = _DB()
     signal = OverrideSignal.create(
@@ -28,6 +29,7 @@ def test_record_override_signal_persists_valid_payload():
     assert db.calls[0]["athlete_id"] == "ATH_1"
 
 
+@pytest.mark.unit
 def test_record_override_signal_rejects_empty_reason():
     db = _DB()
     signal = OverrideSignal.create(

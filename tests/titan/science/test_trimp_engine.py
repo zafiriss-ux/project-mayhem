@@ -15,6 +15,7 @@ from titan.science.trimp_engine import TRIMPEngine
 class TestEdwardsTRIMPZoneBoundaries:
     """Zone classification must use athlete_max_hr as the physiological ceiling."""
 
+    @pytest.mark.unit
     def test_zone1_uses_athlete_max_hr(self):
         # avg_hr=110, athlete_max_hr=190 → 110/190*100 ≈ 57.9% → zone 1 (×1)
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -23,6 +24,7 @@ class TestEdwardsTRIMPZoneBoundaries:
         assert zone == 1
         assert trimp == 60.0
 
+    @pytest.mark.unit
     def test_zone2_uses_athlete_max_hr(self):
         # avg_hr=123, athlete_max_hr=190 → 64.7% → zone 2 (×2)
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -31,6 +33,7 @@ class TestEdwardsTRIMPZoneBoundaries:
         assert zone == 2
         assert trimp == 120.0
 
+    @pytest.mark.unit
     def test_zone3_uses_athlete_max_hr(self):
         # avg_hr=143, athlete_max_hr=190 → 75.3% → zone 3 (×3)
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -39,6 +42,7 @@ class TestEdwardsTRIMPZoneBoundaries:
         assert zone == 3
         assert trimp == 180.0
 
+    @pytest.mark.unit
     def test_zone4_uses_athlete_max_hr(self):
         # avg_hr=160, athlete_max_hr=190 → 84.2% → zone 4 (×4)
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -47,6 +51,7 @@ class TestEdwardsTRIMPZoneBoundaries:
         assert zone == 4
         assert trimp == 240.0
 
+    @pytest.mark.unit
     def test_zone5_uses_athlete_max_hr(self):
         # avg_hr=180, athlete_max_hr=190 → 94.7% → zone 5 (×5)
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -55,6 +60,7 @@ class TestEdwardsTRIMPZoneBoundaries:
         assert zone == 5
         assert trimp == 300.0
 
+    @pytest.mark.unit
     def test_zone_differs_when_session_peak_below_athlete_max_hr(self):
         """The bug this task fixes: using session_peak_hr instead of
         athlete_max_hr inflates the %HRmax and overestimates the zone.
@@ -77,6 +83,7 @@ class TestEdwardsTRIMPZoneBoundaries:
 class TestEdwardsTRIMPBoundaryConditions:
     """Edge and boundary conditions for athlete_max_hr."""
 
+    @pytest.mark.unit
     def test_session_peak_above_athlete_max_hr_does_not_crash(self):
         # Session peak can exceed athlete_max_hr in noisy HR data; must not crash.
         # avg_hr=195, athlete_max_hr=190 → 102.6% → zone 5 (×5, capped by >= 90%)
@@ -86,6 +93,7 @@ class TestEdwardsTRIMPBoundaryConditions:
         assert zone == 5
         assert trimp == 150.0
 
+    @pytest.mark.unit
     def test_session_peak_above_athlete_max_hr_does_not_produce_zone_above_5(self):
         # Even extreme outlier avg_hr values must stay within zone 5.
         _, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -93,6 +101,7 @@ class TestEdwardsTRIMPBoundaryConditions:
         )
         assert zone == 5
 
+    @pytest.mark.unit
     def test_athlete_max_hr_zero_returns_none(self):
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
             duration_min=60, avg_hr=150, athlete_max_hr=0
@@ -100,6 +109,7 @@ class TestEdwardsTRIMPBoundaryConditions:
         assert trimp is None
         assert zone == 0
 
+    @pytest.mark.unit
     def test_athlete_max_hr_below_100_returns_none(self):
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
             duration_min=60, avg_hr=80, athlete_max_hr=90
@@ -107,6 +117,7 @@ class TestEdwardsTRIMPBoundaryConditions:
         assert trimp is None
         assert zone == 0
 
+    @pytest.mark.unit
     def test_athlete_max_hr_exactly_100_is_valid(self):
         # 100 bpm is the minimum physiologically accepted value.
         trimp, zone = TRIMPEngine.calculate_edwards_trimp(
@@ -115,6 +126,7 @@ class TestEdwardsTRIMPBoundaryConditions:
         assert trimp is not None
         assert zone >= 1
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "avg_hr,athlete_max_hr,expected_zone",
         [
@@ -136,6 +148,7 @@ class TestEdwardsTRIMPBoundaryConditions:
 class TestEdwardsTRIMPImpulseMagnitude:
     """TRIMP impulse must equal duration_min × zone_multiplier."""
 
+    @pytest.mark.unit
     @pytest.mark.parametrize(
         "duration_min,avg_hr,athlete_max_hr,expected_zone,expected_trimp",
         [

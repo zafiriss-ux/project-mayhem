@@ -1,7 +1,10 @@
+import pytest
+
 from titan.science.readiness_engine import ReadinessEngine
 
 # ── T5-53: null HRV guard ─────────────────────────────────────────────────────
 
+@pytest.mark.unit
 def test_analyze_readiness_does_not_raise_when_today_hrv_is_none() -> None:
     """T5-53: TypeError guard — today_hrv=None must not raise."""
     result = ReadinessEngine.analyze_readiness(
@@ -16,6 +19,7 @@ def test_analyze_readiness_does_not_raise_when_today_hrv_is_none() -> None:
     assert result["hrv_delta_pts"] is None
 
 
+@pytest.mark.unit
 def test_analyze_readiness_does_not_raise_when_baseline_hrv_is_none() -> None:
     """T5-53: TypeError guard — baseline_hrv=None must not raise."""
     result = ReadinessEngine.analyze_readiness(
@@ -30,6 +34,7 @@ def test_analyze_readiness_does_not_raise_when_baseline_hrv_is_none() -> None:
     assert result["hrv_delta_pts"] is None
 
 
+@pytest.mark.unit
 def test_analyze_readiness_skips_hrv_component_when_both_hrv_are_none() -> None:
     """T5-53: when both HRV values are None, score is computed from other components only."""
     result = ReadinessEngine.analyze_readiness(
@@ -47,6 +52,7 @@ def test_analyze_readiness_skips_hrv_component_when_both_hrv_are_none() -> None:
 
 # ── existing threshold tests ──────────────────────────────────────────────────
 
+@pytest.mark.unit
 def test_analyze_readiness_covers_hrv_minus10_sleep_fair_and_soreness_moderate() -> None:
     # hrv_diff=-6 (between -8 and -5), sleep=65 (60-69), soreness=6 (>5)
     result = ReadinessEngine.analyze_readiness(
@@ -63,6 +69,7 @@ def test_analyze_readiness_covers_hrv_minus10_sleep_fair_and_soreness_moderate()
     assert result["status"] == "👍 GOOD"
 
 
+@pytest.mark.unit
 def test_analyze_readiness_soreness_exactly_five_has_no_soreness_deduction() -> None:
     # Boundary check: soreness == 5 should not trigger >5 deduction branch
     result = ReadinessEngine.analyze_readiness(
