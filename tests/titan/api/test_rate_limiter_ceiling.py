@@ -29,6 +29,7 @@ def _inject_key(limiter: AuthenticatedRateLimiter, key: tuple, ts: float) -> Non
 # ---------------------------------------------------------------------------
 
 class TestRateLimiterLRUCeiling:
+    @pytest.mark.integration
     def test_key_count_bounded_after_exceeding_ceiling(self) -> None:
         """Inserting 10_001 keys must leave len(requests) <= RATE_LIMITER_MAX_KEYS."""
         limiter = _make_limiter()
@@ -50,6 +51,7 @@ class TestRateLimiterLRUCeiling:
 
         assert len(limiter._requests) <= RATE_LIMITER_MAX_KEYS
 
+    @pytest.mark.integration
     def test_eviction_removes_least_recently_used_keys(self) -> None:
         """Eviction must remove the key with the oldest last-access timestamp."""
         limiter = _make_limiter()
@@ -74,6 +76,7 @@ class TestRateLimiterLRUCeiling:
         assert oldest_key not in limiter._requests
         assert newer_key in limiter._requests
 
+    @pytest.mark.integration
     def test_eviction_event_emitted_as_warning(self, caplog: pytest.LogCaptureFixture) -> None:
         """_evict_lru_keys must emit a limiter_eviction WARNING log event."""
         limiter = _make_limiter()
@@ -94,6 +97,7 @@ class TestRateLimiterLRUCeiling:
         assert payload["action"] == "limiter_eviction"
         assert payload["keys_evicted"] >= 2
 
+    @pytest.mark.integration
     def test_existing_rate_limit_behavior_unchanged(self) -> None:
         """Existing keys and their counters must not be affected during normal operation."""
         limiter = _make_limiter()
@@ -111,6 +115,7 @@ class TestRateLimiterLRUCeiling:
 
         assert len(limiter._requests[key]) == 3
 
+    @pytest.mark.integration
     def test_evict_lru_is_noop_when_under_ceiling(self) -> None:
         """No eviction and no log emission when key count is at or below ceiling."""
         limiter = _make_limiter()
@@ -123,6 +128,7 @@ class TestRateLimiterLRUCeiling:
         limiter._evict_lru_keys()
         assert len(limiter._requests) == 5
 
+    @pytest.mark.integration
     def test_multiple_excess_keys_all_evicted(self) -> None:
         """If 50 keys are over ceiling, all 50 must be evicted in one call."""
         limiter = _make_limiter()

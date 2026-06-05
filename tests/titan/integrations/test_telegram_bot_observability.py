@@ -3,6 +3,8 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 import titan.integrations.telegram_bot as telegram_bot
 from titan.integrations.telegram_bot import TitanTelegramBot, _create_override_nonce
 
@@ -43,6 +45,7 @@ class _FakeTeleBot:
         self.sent_messages.append((chat_id, text, parse_mode, reply_markup))
 
 
+@pytest.mark.integration
 def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -58,6 +61,7 @@ def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_send_message_without_chat_id_returns_false_and_emits_missing_chat_id_events(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -75,6 +79,7 @@ def test_send_message_without_chat_id_returns_false_and_emits_missing_chat_id_ev
     )
 
 
+@pytest.mark.integration
 def test_send_message_telegram_api_success_records_history(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot.bot = MagicMock()
@@ -85,6 +90,7 @@ def test_send_message_telegram_api_success_records_history(monkeypatch):
     assert bot.message_history[-1]["delivery_mode"] == "telegram_api"
 
 
+@pytest.mark.integration
 def test_send_message_telegram_api_error_returns_false(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -104,6 +110,7 @@ def test_send_message_telegram_api_error_returns_false(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_send_message_fallback_logs_metadata_without_message_content(monkeypatch, caplog):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -129,6 +136,7 @@ def test_send_message_fallback_logs_metadata_without_message_content(monkeypatch
     assert "SECRET123" not in str(fallback_event)
 
 
+@pytest.mark.integration
 def test_start_bot_without_polling_backend_emits_poll_fail_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -145,6 +153,7 @@ def test_start_bot_without_polling_backend_emits_poll_fail_event(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_stop_bot_stop_polling_exception_emits_poll_fail_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -165,6 +174,7 @@ def test_stop_bot_stop_polling_exception_emits_poll_fail_event(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_init_happy_path_builds_bot(monkeypatch):
     class _DummyTeleBot:
         def __init__(self, token, parse_mode=None):
@@ -185,6 +195,7 @@ def test_init_happy_path_builds_bot(monkeypatch):
     assert bot.bot is not None
 
 
+@pytest.mark.integration
 def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
     class _FailingTeleBot:
         def __init__(self, token, parse_mode=None):
@@ -203,6 +214,7 @@ def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
     assert record.detail == "invalid token"
 
 
+@pytest.mark.integration
 def test_init_uses_redacted_secret_container_without_duplicate_aliases():
     bot = TitanTelegramBot(bot_token="token-1", chat_id=123)
 
@@ -212,6 +224,7 @@ def test_init_uses_redacted_secret_container_without_duplicate_aliases():
     assert not hasattr(bot, "_bot_token_secret")
 
 
+@pytest.mark.integration
 def test_init_missing_token_fails_safely(monkeypatch):
     monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
     bot = TitanTelegramBot(bot_token="", chat_id=123)
@@ -219,12 +232,14 @@ def test_init_missing_token_fails_safely(monkeypatch):
     assert bot.bot is None
 
 
+@pytest.mark.integration
 def test_register_handlers_no_bot_is_noop():
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot.bot = None
     bot._register_handlers()
 
 
+@pytest.mark.integration
 def test_command_handlers_route_to_callbacks_and_fallbacks():
     fake_bot = _FakeTeleBot()
     bot = TitanTelegramBot(bot_token="", chat_id=321)  # trusted = 321
@@ -291,6 +306,7 @@ def test_command_handlers_route_to_callbacks_and_fallbacks():
     assert "Available Commands" in fake_bot.replies[-1][1]
 
 
+@pytest.mark.integration
 def test_register_command_overwrites_existing_callback():
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot.register_command("today", lambda: "A")
@@ -299,6 +315,7 @@ def test_register_command_overwrites_existing_callback():
     assert bot.cmd_callbacks["today"]() == "B"
 
 
+@pytest.mark.integration
 def test_scheduler_worker_continues_when_stop_event_not_set(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     calls = []
@@ -335,6 +352,7 @@ def test_scheduler_worker_continues_when_stop_event_not_set(monkeypatch):
     assert len(calls) >= 2
 
 
+@pytest.mark.integration
 def test_stop_bot_sets_event_and_joins_threads():
     bot = TitanTelegramBot(bot_token="", chat_id=123)
 
@@ -350,6 +368,7 @@ def test_stop_bot_sets_event_and_joins_threads():
     bot._poll_thread.join.assert_called_once_with(timeout=5)
 
 
+@pytest.mark.integration
 def test_start_bot_when_already_running_returns_without_spawning_threads(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot.is_running = True
@@ -361,6 +380,7 @@ def test_start_bot_when_already_running_returns_without_spawning_threads(monkeyp
     thread_ctor.assert_not_called()
 
 
+@pytest.mark.integration
 def test_start_bot_with_polling_backend_starts_both_threads(monkeypatch):
     created_threads = []
 
@@ -386,6 +406,7 @@ def test_start_bot_with_polling_backend_starts_both_threads(monkeypatch):
     assert all(t.started for t in created_threads)
 
 
+@pytest.mark.integration
 def test_stop_bot_emits_shutdown_timeout_for_scheduler_thread(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -406,6 +427,7 @@ def test_stop_bot_emits_shutdown_timeout_for_scheduler_thread(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_stop_bot_emits_shutdown_timeout_for_poll_thread(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -426,6 +448,7 @@ def test_stop_bot_emits_shutdown_timeout_for_poll_thread(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_poll_worker_reports_poll_fail_and_waits_before_retry(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -453,6 +476,7 @@ def test_poll_worker_reports_poll_fail_and_waits_before_retry(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_poll_worker_ignores_exception_once_stop_event_is_set(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -469,6 +493,7 @@ def test_poll_worker_ignores_exception_once_stop_event_is_set(monkeypatch):
 
     assert events == []
 
+@pytest.mark.integration
 def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     errors: list[Exception] = []
@@ -538,6 +563,7 @@ def test_scheduler_worker_allows_concurrent_append_without_runtime_error(monkeyp
     assert not errors
 
 
+@pytest.mark.integration
 def test_scheduler_worker_emits_drift_and_callback_error(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -596,6 +622,7 @@ def test_scheduler_worker_emits_drift_and_callback_error(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_schedule_task_emits_scheduler_task_added_event(monkeypatch):
     events = []
     monkeypatch.setattr(telegram_bot, "_telegram_event", lambda action, **fields: events.append((action, fields)))
@@ -612,6 +639,7 @@ def test_schedule_task_emits_scheduler_task_added_event(monkeypatch):
     )
 
 
+@pytest.mark.integration
 def test_send_weekly_plan_formats_and_delegates_to_send_message(monkeypatch):
     captured = {"text": None}
     bot = TitanTelegramBot(bot_token="", chat_id=123)
@@ -650,6 +678,7 @@ def test_send_weekly_plan_formats_and_delegates_to_send_message(monkeypatch):
     assert "Best time: 06:00" in captured["text"]
 
 
+@pytest.mark.integration
 def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
     captured = {"text": None}
     bot = TitanTelegramBot(bot_token="", chat_id=123)
@@ -666,11 +695,13 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
     assert result is True
     assert captured["text"].startswith("⚠️ *Title*")
 
+@pytest.mark.integration
 def test_telegram_bot_has_no_print_calls():
     source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
     assert "print(" not in source
 
 
+@pytest.mark.integration
 def test_send_structured_alert_happy_path_first_critical_delivery(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     calls = []
@@ -680,6 +711,7 @@ def test_send_structured_alert_happy_path_first_critical_delivery(monkeypatch):
     assert calls == [("CRITICAL", "stale data", "critical")]
 
 
+@pytest.mark.integration
 def test_send_structured_alert_boundary_deduplicates_within_window(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     calls = []
@@ -690,6 +722,7 @@ def test_send_structured_alert_boundary_deduplicates_within_window(monkeypatch):
     assert calls == [("CRITICAL", "stale data", "critical")]
 
 
+@pytest.mark.integration
 def test_send_structured_alert_sends_summary_after_persist_window(monkeypatch):
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     calls = []
@@ -706,6 +739,7 @@ def test_send_structured_alert_sends_summary_after_persist_window(monkeypatch):
 
 
 
+@pytest.mark.integration
 def test_send_governance_decision_falls_back_when_polling_backend_missing():
     bot = TitanTelegramBot(bot_token="", chat_id=123)
 
@@ -718,6 +752,7 @@ def test_send_governance_decision_falls_back_when_polling_backend_missing():
     assert bot._pending_override_prompts[123]["decision_id"] == "d-1"
 
 
+@pytest.mark.integration
 def test_process_override_callback_and_reason_records_signal(monkeypatch):
     class _DB:
         def __init__(self):
@@ -742,6 +777,7 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
     assert db.rows[0]["decision_id"] == "d-2"
 
 
+@pytest.mark.integration
 def test_process_override_reason_rejects_empty_reason():
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot._pending_override_prompts[123] = {
@@ -755,6 +791,7 @@ def test_process_override_reason_rejects_empty_reason():
     assert bot.process_override_reason(123, "   ") == "⚠️ Override reason is required."
 
 
+@pytest.mark.integration
 def test_start_bot_removes_webhook_before_polling(monkeypatch):
     """start_bot() calls remove_webhook() to prevent Telegram 409 Conflict."""
     monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
@@ -770,6 +807,7 @@ def test_start_bot_removes_webhook_before_polling(monkeypatch):
     fake_bot.remove_webhook.assert_called_once()
 
 
+@pytest.mark.integration
 def test_start_bot_handles_webhook_removal_failure(monkeypatch):
     """start_bot() survives remove_webhook() failure and still starts polling."""
     monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
@@ -789,6 +827,7 @@ def test_start_bot_handles_webhook_removal_failure(monkeypatch):
     assert bot.is_running
 
 
+@pytest.mark.integration
 def test_start_bot_prevents_double_polling(monkeypatch):
     """Calling start_bot() twice does not start a second polling thread."""
     monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
@@ -809,6 +848,7 @@ def test_start_bot_prevents_double_polling(monkeypatch):
     assert thread_starts["count"] == first_count, "Second start_bot() must not spawn extra threads"
 
 
+@pytest.mark.integration
 def test_rate_limit_reply_message_sent():
     """Second command within cooldown window gets a 'please wait' reply (M5)."""
     from titan.integrations.telegram_bot import _cmd_rate

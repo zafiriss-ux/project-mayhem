@@ -56,6 +56,7 @@ def _login_coach(client: TestClient) -> None:
     assert r.status_code == 200
 
 
+@pytest.mark.integration
 def test_authenticated_post_creates_audit_row(
     coach_client: tuple[TestClient, CoachAuditStore],
 ) -> None:
@@ -70,6 +71,7 @@ def test_authenticated_post_creates_audit_row(
     assert any(row.coach_id == "coach-1" for row in audit_store.rows)
 
 
+@pytest.mark.integration
 def test_unauthenticated_request_no_audit_row(
     coach_client: tuple[TestClient, CoachAuditStore],
 ) -> None:
@@ -82,6 +84,7 @@ def test_unauthenticated_request_no_audit_row(
     assert audit_store.rows == []
 
 
+@pytest.mark.integration
 def test_jwt_startup_validation_raises_without_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TITAN_JWT_PRIVATE_KEY", raising=False)
     monkeypatch.delenv("TITAN_JWT_PUBLIC_KEY", raising=False)

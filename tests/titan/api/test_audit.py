@@ -58,6 +58,7 @@ def _login_coach(client: TestClient) -> None:
     assert response.status_code == 200
 
 
+@pytest.mark.integration
 def test_audit_middleware_writes_rows_for_all_required_action_types(client: tuple[TestClient, CoachAuditStore]) -> None:
     test_client, audit_store = client
     _login_coach(test_client)
@@ -80,6 +81,7 @@ def test_audit_middleware_writes_rows_for_all_required_action_types(client: tupl
     ]
 
 
+@pytest.mark.integration
 def test_audit_records_coach_and_athlete_identity(client: tuple[TestClient, CoachAuditStore]) -> None:
     test_client, audit_store = client
     _login_coach(test_client)
@@ -92,6 +94,7 @@ def test_audit_records_coach_and_athlete_identity(client: tuple[TestClient, Coac
     assert row.athlete_id == "athlete-xyz"
 
 
+@pytest.mark.integration
 def test_audit_path_is_non_bypassable_for_covered_health_data_endpoints(
     client: tuple[TestClient, CoachAuditStore],
 ) -> None:
@@ -118,6 +121,7 @@ def test_audit_path_is_non_bypassable_for_covered_health_data_endpoints(
         assert len(audit_store.rows) == before + 1
 
 
+@pytest.mark.integration
 def test_audit_does_not_log_non_coach_requests(client: tuple[TestClient, CoachAuditStore]) -> None:
     test_client, audit_store = client
     response = test_client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})

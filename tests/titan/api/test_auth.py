@@ -63,6 +63,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     return TestClient(app, base_url="https://testserver")
 
 
+@pytest.mark.integration
 def test_happy_path_login_and_authenticated_access(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
     assert login.status_code == 200
@@ -72,6 +73,7 @@ def test_happy_path_login_and_authenticated_access(client: TestClient) -> None:
     assert dashboard.json()["athlete_id"] == "athlete-2"
 
 
+@pytest.mark.integration
 def test_token_expiry_rejects_expired_access_token(client: TestClient) -> None:
     user = AuthUser(id="athlete-1", username="athlete", role="ATHLETE", athlete_id="athlete-1")
     expired_token, _ = create_access_token(user, now=datetime.now(UTC) - timedelta(minutes=20))
@@ -81,6 +83,7 @@ def test_token_expiry_rejects_expired_access_token(client: TestClient) -> None:
     assert response.status_code == 401
 
 
+@pytest.mark.integration
 def test_role_violation_blocks_athlete_from_coach_endpoint(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
     assert login.status_code == 200
@@ -89,6 +92,7 @@ def test_role_violation_blocks_athlete_from_coach_endpoint(client: TestClient) -
     assert response.status_code == 403
 
 
+@pytest.mark.integration
 def test_isolation_violation_blocks_athlete_cross_access(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
     assert login.status_code == 200
@@ -97,6 +101,7 @@ def test_isolation_violation_blocks_athlete_cross_access(client: TestClient) -> 
     assert response.status_code == 403
 
 
+@pytest.mark.integration
 def test_refresh_token_rotation_invalidates_old_token(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
     assert login.status_code == 200
@@ -111,18 +116,21 @@ def test_refresh_token_rotation_invalidates_old_token(client: TestClient) -> Non
     assert replay.status_code == 401
 
 
+@pytest.mark.integration
 def test_health_endpoint_remains_public(client: TestClient) -> None:
     client.cookies.clear()
     response = client.get("/health")
     assert response.status_code == 200
 
 
+@pytest.mark.integration
 def test_non_health_endpoint_rejects_unauthenticated_access(client: TestClient) -> None:
     client.cookies.clear()
     response = client.get("/athletes/athlete-1/dashboard")
     assert response.status_code == 401
 
 
+@pytest.mark.integration
 def test_coach_rate_limit_enforced_with_429(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
     assert login.status_code == 200
@@ -135,6 +143,7 @@ def test_coach_rate_limit_enforced_with_429(client: TestClient) -> None:
     assert limited.status_code == 429
 
 
+@pytest.mark.integration
 def test_athlete_rate_limit_enforced_with_429(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
     assert login.status_code == 200
@@ -147,6 +156,7 @@ def test_athlete_rate_limit_enforced_with_429(client: TestClient) -> None:
     assert limited.status_code == 429
 
 
+@pytest.mark.integration
 def test_rate_limit_keyed_to_authenticated_identity_not_only_path(client: TestClient) -> None:
     client.app.state.auth_store.upsert_user(
         user_id="coach-2",
@@ -171,6 +181,7 @@ def test_rate_limit_keyed_to_authenticated_identity_not_only_path(client: TestCl
     assert second_user_response.status_code == 200
 
 
+@pytest.mark.integration
 def test_health_endpoint_remains_public_after_rate_limit_exceeded(client: TestClient) -> None:
     login = client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
     assert login.status_code == 200
@@ -189,6 +200,7 @@ def test_health_endpoint_remains_public_after_rate_limit_exceeded(client: TestCl
 
 # ── T5-102: validate_jwt_keys_at_startup ──────────────────────────────────────
 
+@pytest.mark.integration
 def test_validate_jwt_keys_at_startup_passes_when_both_keys_set(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_pem = private_key.private_bytes(
@@ -205,6 +217,7 @@ def test_validate_jwt_keys_at_startup_passes_when_both_keys_set(monkeypatch: pyt
     validate_jwt_keys_at_startup()  # must not raise
 
 
+@pytest.mark.integration
 def test_validate_jwt_keys_at_startup_raises_on_missing_private_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TITAN_JWT_PRIVATE_KEY", raising=False)
     monkeypatch.delenv("TITAN_JWT_PUBLIC_KEY", raising=False)
@@ -212,6 +225,7 @@ def test_validate_jwt_keys_at_startup_raises_on_missing_private_key(monkeypatch:
         validate_jwt_keys_at_startup()
 
 
+@pytest.mark.integration
 def test_validate_jwt_keys_at_startup_raises_on_missing_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_pem = private_key.private_bytes(
@@ -227,6 +241,7 @@ def test_validate_jwt_keys_at_startup_raises_on_missing_public_key(monkeypatch: 
 
 # ── P15-SEC8: /auth/refresh rate limit ────────────────────────────────────────
 
+@pytest.mark.integration
 def test_refresh_rate_limit_blocks_after_5(client: TestClient) -> None:
     headers = _csrf_headers(client)
     for _ in range(5):
@@ -238,6 +253,7 @@ def test_refresh_rate_limit_blocks_after_5(client: TestClient) -> None:
 
 # ── P15-OPS1: systemd unit file ───────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_systemd_unit_exists() -> None:
     from pathlib import Path
     assert Path("docs/titan.service").exists()

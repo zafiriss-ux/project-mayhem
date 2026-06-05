@@ -40,6 +40,7 @@ def _past(minutes: int = 60) -> datetime:
 # ---------------------------------------------------------------------------
 
 class TestAuthStoreUserCrud:
+    @pytest.mark.integration
     def test_upsert_and_get_user_round_trip(self) -> None:
         """create_user (upsert_user) + get_user must round-trip cleanly."""
         store = _make_store()
@@ -53,10 +54,12 @@ class TestAuthStoreUserCrud:
         assert user.athlete_id is None
         assert user.is_active is True
 
+    @pytest.mark.integration
     def test_get_user_unknown_id_returns_none(self) -> None:
         store = _make_store()
         assert store.get_user("no-such-id") is None
 
+    @pytest.mark.integration
     def test_upsert_user_updates_existing_row(self) -> None:
         """Re-inserting with the same user_id must overwrite the row."""
         store = _make_store()
@@ -69,6 +72,7 @@ class TestAuthStoreUserCrud:
         assert user.role == "ATHLETE"
         assert user.athlete_id == "a1"
 
+    @pytest.mark.integration
     def test_verify_credentials_success(self) -> None:
         store = _make_store()
         pw = "correct-horse"
@@ -78,15 +82,18 @@ class TestAuthStoreUserCrud:
         assert result is not None
         assert result.id == "u1"
 
+    @pytest.mark.integration
     def test_verify_credentials_wrong_password_returns_none(self) -> None:
         store = _make_store()
         store.upsert_user("u1", "bob", hash_password("right-password"), "ATHLETE", "a1")
         assert store.verify_credentials("bob", "wrong-password") is None
 
+    @pytest.mark.integration
     def test_verify_credentials_unknown_username_returns_none(self) -> None:
         store = _make_store()
         assert store.verify_credentials("nobody", "pass") is None
 
+    @pytest.mark.integration
     def test_inactive_user_is_returned_by_get_user(self) -> None:
         """get_user returns the record regardless of is_active; callers decide."""
         store = _make_store()
@@ -101,6 +108,7 @@ class TestAuthStoreUserCrud:
 # ---------------------------------------------------------------------------
 
 class TestAuthStoreTokenLifecycle:
+    @pytest.mark.integration
     def test_store_token_and_verify_active(self) -> None:
         """store_token (add_refresh_token) + is_refresh_token_active round-trip."""
         store = _make_store()
@@ -112,6 +120,7 @@ class TestAuthStoreTokenLifecycle:
 
         assert store.is_refresh_token_active("jti-1") is True
 
+    @pytest.mark.integration
     def test_revoke_token_deactivates_it(self) -> None:
         store = _make_store()
         store.upsert_user("u1", "alice", hash_password("p"), "COACH", None)
@@ -121,21 +130,25 @@ class TestAuthStoreTokenLifecycle:
         store.revoke_refresh_token("jti-1")
         assert store.is_refresh_token_active("jti-1") is False
 
+    @pytest.mark.integration
     def test_expired_token_is_not_active(self) -> None:
         store = _make_store()
         store.upsert_user("u1", "alice", hash_password("p"), "COACH", None)
         store.add_refresh_token("jti-1", "u1", _past(minutes=5), _past(minutes=10))
         assert store.is_refresh_token_active("jti-1") is False
 
+    @pytest.mark.integration
     def test_unknown_jti_is_not_active(self) -> None:
         store = _make_store()
         assert store.is_refresh_token_active("no-such-jti") is False
 
+    @pytest.mark.integration
     def test_revoke_unknown_jti_is_noop(self) -> None:
         """Revoking a non-existent token must not raise."""
         store = _make_store()
         store.revoke_refresh_token("ghost-jti")  # must not raise
 
+    @pytest.mark.integration
     def test_cleanup_expired_removes_expired_tokens(self) -> None:
         store = _make_store()
         store.upsert_user("u1", "alice", hash_password("p"), "COACH", None)
@@ -155,6 +168,7 @@ class TestAuthStoreTokenLifecycle:
 # ---------------------------------------------------------------------------
 
 class TestAuthStoreTokenTrim:
+    @pytest.mark.integration
     def test_trim_revokes_oldest_when_ceiling_exceeded(self) -> None:
         """Adding MAX+1 tokens must revoke the oldest one."""
         store = _make_store()
@@ -182,6 +196,7 @@ class TestAuthStoreTokenTrim:
 # ---------------------------------------------------------------------------
 
 class TestAuthStorePersistence:
+    @pytest.mark.integration
     def test_user_survives_db_close_and_reopen(self, tmp_path: Path) -> None:
         """Users must be readable from a freshly opened DB (real on-disk persistence)."""
         store1 = _make_store(tmp_path)
@@ -194,6 +209,7 @@ class TestAuthStorePersistence:
         assert user.username == "alice"
         store2._db.close()
 
+    @pytest.mark.integration
     def test_token_survives_db_close_and_reopen(self, tmp_path: Path) -> None:
         """Active tokens must be readable from a freshly opened DB."""
         store1 = _make_store(tmp_path)
@@ -205,6 +221,7 @@ class TestAuthStorePersistence:
         assert store2.is_refresh_token_active("jti-1") is True
         store2._db.close()
 
+    @pytest.mark.integration
     def test_revocation_survives_db_close_and_reopen(self, tmp_path: Path) -> None:
         """A revoked token must remain revoked after DB reopen."""
         store1 = _make_store(tmp_path)
@@ -217,6 +234,7 @@ class TestAuthStorePersistence:
         assert store2.is_refresh_token_active("jti-1") is False
         store2._db.close()
 
+    @pytest.mark.integration
     def test_lockout_survives_db_close_and_reopen(self, tmp_path: Path) -> None:
         """S3 / F5.2: A locked-out account must remain locked after DB reopen.
 
@@ -247,6 +265,7 @@ class TestAuthStorePersistence:
 class TestAuthStoreTTLInvariant:
     """S3 / F5.3: Token TTL boundary — access must expire before refresh."""
 
+    @pytest.mark.integration
     def test_access_token_ttl_shorter_than_refresh_token_ttl(self) -> None:
         """ACCESS_TOKEN_TTL < REFRESH_TOKEN_TTL must always hold.
 
@@ -264,12 +283,14 @@ class TestAuthStoreTTLInvariant:
 
 
 class TestAuthStoreBackwardCompat:
+    @pytest.mark.integration
     def test_authstore_no_args_creates_in_memory_db(self) -> None:
         """AuthStore() without arguments must still work (in-memory SQLite)."""
         store = AuthStore()
         store.upsert_user("u1", "alice", hash_password("p"), "COACH", None)
         assert store.get_user("u1") is not None
 
+    @pytest.mark.integration
     def test_schema_version_is_twelve(self, tmp_path: Path) -> None:
         """After migration v20 (biological_sex/menstrual_tracking addition), PRAGMA user_version must equal 20."""
         db = DatabaseManager(db_name="test_auth.db", db_dir=tmp_path)

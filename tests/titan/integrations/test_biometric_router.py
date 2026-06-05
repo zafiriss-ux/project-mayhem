@@ -18,6 +18,7 @@ class _FakeDB:
 
 # ── Test 1: Router uses Garmin when data is fresh ───────────────────────────
 
+@pytest.mark.integration
 def test_router_uses_garmin_when_fresh():
     db = _FakeDB(None)
     manual = ManualEntryAdapter(db)
@@ -31,6 +32,7 @@ def test_router_uses_garmin_when_fresh():
 
 # ── Test 2: Router switches to manual when Garmin is stale ──────────────────
 
+@pytest.mark.integration
 def test_router_switches_to_manual_when_stale():
     manual_row = {
         "date": "2026-05-09",
@@ -51,6 +53,7 @@ def test_router_switches_to_manual_when_stale():
 
 # ── Test 3: Router returns None when manual entry is empty ───────────────────
 
+@pytest.mark.integration
 def test_router_returns_none_when_manual_empty():
     db = _FakeDB(None)
     manual = ManualEntryAdapter(db)
@@ -63,6 +66,7 @@ def test_router_returns_none_when_manual_empty():
 
 # ── Test 4: ManualEntryAdapter only reads manual_entry rows ─────────────────
 
+@pytest.mark.integration
 def test_manual_adapter_reads_only_manual_source():
     garmin_row = {
         "date": "2026-05-09",
@@ -83,6 +87,7 @@ def test_manual_adapter_reads_only_manual_source():
 
 # ── Test 5: ManualEntryAdapter reads manual_entry rows correctly ─────────────
 
+@pytest.mark.integration
 def test_manual_adapter_reads_manual_entry():
     manual_row = {
         "date": "2026-05-09",
@@ -103,6 +108,7 @@ def test_manual_adapter_reads_manual_entry():
 
 # ── Test 6: Router active_source label reflects arbitration ─────────────────
 
+@pytest.mark.integration
 def test_router_active_source_label():
     db_empty = _FakeDB(None)
     manual_fresh = ManualEntryAdapter(db_empty)
