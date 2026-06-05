@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import datetime as _dt
 import logging
-import os
 import signal as _signal
 import sys
 import threading
@@ -20,9 +19,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
+from titan.config.settings import get_settings
+
 logger = logging.getLogger(__name__)
 
-LOCK_FILE = Path(os.environ.get("TITAN_DATA_DIR", "/data")) / "worker.lock"
+LOCK_FILE = Path(get_settings().TITAN_DATA_DIR) / "worker.lock"
 
 _shutdown = threading.Event()
 
@@ -95,9 +96,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
             from titan.integrations.weather_api import WeatherAPI
             from titan.orchestration.engine_registry import EngineRegistry
 
-            athlete_max_hr = int(
-                os.environ.get("ATHLETE_MAX_HR", "160")
-            )
+            athlete_max_hr = int(str(get_settings().ATHLETE_MAX_HR))
             garmin = GarminSync(
                 athlete_max_hr=athlete_max_hr
             )
@@ -147,7 +146,7 @@ def main() -> None:
     if lock is None:
         logger.info("Worker already running — exiting")
         sys.exit(0)
-    db_path = str(Path(os.environ.get("TITAN_DATA_DIR", "/data")) / "titan_core.db")
+    db_path = str(Path(get_settings().TITAN_DATA_DIR) / "titan_core.db")
     try:
         run_forever(db_path, shutdown_event=_shutdown)
     finally:
