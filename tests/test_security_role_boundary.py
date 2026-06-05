@@ -57,6 +57,7 @@ def jwt_env(monkeypatch: pytest.MonkeyPatch) -> None:
 class TestSecurityRoleBoundary:
 
     # R1 — COACH role claim
+    @pytest.mark.unit
     def test_r1_coach_access_token_carries_coach_role(self, jwt_env: None) -> None:
         """Access token for COACH must decode to role='COACH' with no athlete_id binding."""
         user = AuthUser(
@@ -74,6 +75,7 @@ class TestSecurityRoleBoundary:
         assert payload.sub == "u-coach-01"
 
     # R2 — ATHLETE role binds athlete_id
+    @pytest.mark.unit
     def test_r2_athlete_access_token_binds_athlete_id(self, jwt_env: None) -> None:
         """Access token for ATHLETE must encode the athlete_id claim."""
         athlete_id = "ath-7b9c2f"
@@ -91,6 +93,7 @@ class TestSecurityRoleBoundary:
         assert payload.sub == "u-ath-01"
 
     # R3 — Token-type mismatch raises AuthError
+    @pytest.mark.unit
     def test_r3_access_token_decoded_as_refresh_raises_auth_error(
         self, jwt_env: None
     ) -> None:

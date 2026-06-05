@@ -38,6 +38,7 @@ class TestSaveDailyMetricUpsert:
     # T5-66 acceptance criterion
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_garmin_resync_does_not_zero_mood_and_soreness(self, db):
         """Re-syncing Garmin data must preserve manually entered mood/soreness."""
         # Step 1: athlete manually enters subjective data (no Garmin fields)
@@ -64,6 +65,7 @@ class TestSaveDailyMetricUpsert:
         assert row.get("fatigue_level") == 3, f"fatigue_level zeroed: {row}"
         assert row.get("notes") == "felt good", f"notes zeroed: {row}"
 
+    @pytest.mark.integration
     def test_garmin_resync_does_not_zero_notes(self, db):
         """Notes must also survive Garmin re-sync."""
         db.save_daily_metric(date="2026-01-16", mood=5, notes="rest day")
@@ -76,6 +78,7 @@ class TestSaveDailyMetricUpsert:
     # Garmin columns are correctly overwritten on re-sync
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_garmin_fields_overwritten_on_resync(self, db):
         """Garmin-sourced fields are updated when new data arrives."""
         db.save_daily_metric(date="2026-01-17", hrv=50.0, rhr=50, sleep_hours=6.0)
@@ -89,6 +92,7 @@ class TestSaveDailyMetricUpsert:
     # First insert sets all fields correctly
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_first_insert_sets_all_fields(self, db):
         """Initial insert stores both Garmin and subjective fields."""
         db.save_daily_metric(
@@ -108,6 +112,7 @@ class TestSaveDailyMetricUpsert:
     # Null incoming Garmin fields do not wipe existing Garmin data
     # ------------------------------------------------------------------
 
+    @pytest.mark.integration
     def test_none_incoming_garmin_field_does_not_overwrite_existing(self, db):
         """Passing hrv=None on second call should not overwrite the stored HRV."""
         db.save_daily_metric(date="2026-01-19", hrv=60.0)

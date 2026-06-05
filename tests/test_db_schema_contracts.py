@@ -164,30 +164,37 @@ def test_db_conn(tmp_path):
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.integration
 def test_governance_outcomes_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "governance_outcomes") == GOVERNANCE_OUTCOMES_COLUMNS
 
 
+@pytest.mark.integration
 def test_athlete_threshold_offsets_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "athlete_threshold_offsets") == ATHLETE_THRESHOLD_OFFSETS_COLUMNS
 
 
+@pytest.mark.integration
 def test_daily_metrics_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "daily_metrics") == DAILY_METRICS_COLUMNS
 
 
+@pytest.mark.integration
 def test_training_log_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "training_log") == TRAINING_LOG_COLUMNS
 
 
+@pytest.mark.integration
 def test_gear_usage_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "gear_usage") == GEAR_USAGE_COLUMNS
 
 
+@pytest.mark.integration
 def test_personal_bests_schema(test_db_conn) -> None:
     assert get_columns(test_db_conn, "personal_bests") == PERSONAL_BESTS_COLUMNS
 
 
+@pytest.mark.integration
 def test_athletes_schema(test_db_conn) -> None:
     """athletes canonical table must match ATHLETES_COLUMNS contract (T5-07-L3-A)."""
     assert get_columns(test_db_conn, "athletes") == ATHLETES_COLUMNS, (
@@ -195,6 +202,7 @@ def test_athletes_schema(test_db_conn) -> None:
     )
 
 
+@pytest.mark.integration
 def test_model_calibration_metadata_schema(test_db_conn) -> None:
     """model_calibration_metadata must NOT contain calibrated_for after v13 (T5-07-L3-A)."""
     cols = get_columns(test_db_conn, "model_calibration_metadata")
@@ -206,6 +214,7 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
     )
 
 
+@pytest.mark.integration
 def test_schema_version_is_twentythree(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23 stale chain)
     """PRAGMA user_version must equal 23 (SCHEMA_VERSION) after create_tables()."""
     assert SCHEMA_VERSION == 23, (

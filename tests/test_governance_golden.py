@@ -92,6 +92,8 @@ def _to_serializable(obj: object) -> object:
 # ── Test ───────────────────────────────────────────────────────────────────────
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_governance_output_matches_golden(
     governance_engine_no_adapter: GovernanceEngine,
     canonical_governance_inputs: tuple[dict, dict],

@@ -1,6 +1,10 @@
 from pathlib import Path
 
+import pytest
 
+
+@pytest.mark.unit
+@pytest.mark.governance
 def test_adr_0014_records_t5_04_promotion_controls():
     text = Path("docs/adr/0014-phase7-ml-scaffold-shadow-advisory-mode.md").read_text(
         encoding="utf-8"
@@ -14,6 +18,8 @@ def test_adr_0014_records_t5_04_promotion_controls():
     assert "TITAN_ML_KILL_SWITCH=0" in text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_roadmap_tracks_t5_04_gate_policy():
     text = Path("docs/ROADMAP.MD").read_text(encoding="utf-8")
 
@@ -23,6 +29,8 @@ def test_roadmap_tracks_t5_04_gate_policy():
     assert "Operator Console calibration review shows promotion readiness checklist" in text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_readme_deployment_env_documents_kill_switch_disable():
     text = Path("README.md").read_text(encoding="utf-8")
 

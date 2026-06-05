@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -7,6 +9,8 @@ def _workflow_content() -> str:
     return (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_has_dependency_drift_audit_job() -> None:
     content = _workflow_content()
 
@@ -37,6 +41,8 @@ def test_ci_has_dependency_drift_audit_job() -> None:
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_dependency_drift_audit_checks_unpinned_dependencies() -> None:
     content = _workflow_content()
 
@@ -48,6 +54,8 @@ def test_dependency_drift_audit_checks_unpinned_dependencies() -> None:
     assert "raise SystemExit(1)" in content
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_dependency_drift_audit_cve_only_gate() -> None:
     """Drift audit must use pip-audit CVE gate, not stale-version check (patch treadmill fix)."""
     content = _workflow_content()

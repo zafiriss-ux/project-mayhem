@@ -19,6 +19,8 @@ import types
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 ROOT = pathlib.Path(__file__).parent.parent
 
 
@@ -50,16 +52,19 @@ class TestVersionConsistency(unittest.TestCase):
                         return p.rstrip("—").strip()
         return None
 
+    @pytest.mark.integration
     def test_readme_declares_v580(self):
         ver = self._readme_version()
         self.assertIsNotNone(ver, "README.md must have a version line starting with '# TITAN OS'")
         self.assertEqual(ver, "v5.8.0", f"README version should be v5.8.0, got {ver!r}")
 
+    @pytest.mark.integration
     def test_requirements_declares_v580(self):
         ver = self._requirements_version()
         self.assertIsNotNone(ver, "requirements.txt must have a version comment on line 1")
         self.assertEqual(ver, "v5.8.0", f"requirements.txt version should be v5.8.0, got {ver!r}")
 
+    @pytest.mark.integration
     def test_readme_and_requirements_versions_match(self):
         self.assertEqual(
             self._readme_version(),
@@ -67,6 +72,7 @@ class TestVersionConsistency(unittest.TestCase):
             "README.md and requirements.txt must declare the same version",
         )
 
+    @pytest.mark.integration
     def test_readme_no_openweathermap_api_url(self):
         """Ensure README doesn't direct users to obsolete OpenWeatherMap endpoint."""
         text = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -96,6 +102,7 @@ class TestWeatherFallbackFlag(unittest.TestCase):
         api._coords = None
         return api
 
+    @pytest.mark.integration
     def test_current_conditions_fallback_has_is_fallback_true(self):
         api = self._make_api()
         with patch.object(api, "_fetch_open_meteo", side_effect=ConnectionError("network down")):
@@ -103,6 +110,7 @@ class TestWeatherFallbackFlag(unittest.TestCase):
         self.assertIn("is_fallback", result, "Fallback current conditions must include 'is_fallback'")
         self.assertTrue(result["is_fallback"])
 
+    @pytest.mark.integration
     def test_current_conditions_fallback_has_required_fields(self):
         api = self._make_api()
         with patch.object(api, "_fetch_open_meteo", side_effect=ConnectionError("network down")):
@@ -110,6 +118,7 @@ class TestWeatherFallbackFlag(unittest.TestCase):
         for field in ("temp_c", "humidity", "wind_speed", "dew_point", "conditions"):
             self.assertIn(field, result, f"Fallback must include '{field}'")
 
+    @pytest.mark.integration
     def test_hourly_forecast_fallback_has_is_fallback_true(self):
         api = self._make_api()
         with patch.object(api, "_fetch_open_meteo", side_effect=ConnectionError("network down")):
@@ -122,12 +131,14 @@ class TestWeatherFallbackFlag(unittest.TestCase):
             )
             self.assertTrue(entry["is_fallback"])
 
+    @pytest.mark.integration
     def test_hourly_forecast_fallback_length_matches_request(self):
         api = self._make_api()
         with patch.object(api, "_fetch_open_meteo", side_effect=ConnectionError("network down")):
             forecast = api.get_hourly_forecast(hours=12)
         self.assertEqual(len(forecast), 12)
 
+    @pytest.mark.integration
     def test_hourly_forecast_fallback_has_required_fields(self):
         api = self._make_api()
         with patch.object(api, "_fetch_open_meteo", side_effect=ConnectionError("network down")):
@@ -135,6 +146,7 @@ class TestWeatherFallbackFlag(unittest.TestCase):
         for field in ("timestamp", "hour", "temp_c", "humidity", "dew_point", "wind_speed"):
             self.assertIn(field, forecast[0], f"Fallback forecast entry must include '{field}'")
 
+    @pytest.mark.integration
     def test_successful_fetch_does_not_set_is_fallback(self):
         """Real (non-fallback) data must NOT have is_fallback."""
         api = self._make_api()
@@ -187,6 +199,7 @@ class TestWeatherFallbackLogging(unittest.TestCase):
             logger.removeHandler(handler)
         return records
 
+    @pytest.mark.integration
     def test_current_conditions_fallback_emits_warning_log(self):
         api = self._make_api()
         records = []
@@ -211,6 +224,7 @@ class TestWeatherFallbackLogging(unittest.TestCase):
         self.assertEqual(payload.get("error_class"), "RuntimeError")
         self.assertIn("detail", payload)
 
+    @pytest.mark.integration
     def test_hourly_forecast_fallback_emits_warning_log(self):
         api = self._make_api()
         records = []
@@ -234,6 +248,7 @@ class TestWeatherFallbackLogging(unittest.TestCase):
         self.assertEqual(payload.get("action"), "weather_degraded_mode_active")
         self.assertEqual(payload.get("source"), "get_hourly_forecast")
 
+    @pytest.mark.integration
     def test_fallback_log_includes_error_reason(self):
         api = self._make_api()
         records = []
@@ -269,6 +284,7 @@ class TestDailyCoachNoConsoleInput(unittest.TestCase):
         except (TypeError, OSError):
             return ""
 
+    @pytest.mark.integration
     def test_run_morning_routine_has_no_input_call(self):
         from titan.orchestration.daily_coach import DailyCoach
         src = self._source_of(DailyCoach.run_morning_routine)
@@ -286,6 +302,7 @@ class TestDailyCoachNoConsoleInput(unittest.TestCase):
             f"run_morning_routine must not call input(); found {len(matches)} call(s)",
         )
 
+    @pytest.mark.integration
     def test_run_morning_routine_docstring_mentions_no_console_io(self):
         from titan.orchestration.daily_coach import DailyCoach
         doc = DailyCoach.run_morning_routine.__doc__ or ""
@@ -387,6 +404,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach._effect_bus = coach._build_effect_bus()
         return coach
 
+    @pytest.mark.integration
     def test_soreness_defaults_to_5_when_none(self):
         """When soreness=None, routine must NOT block and must use 5."""
         coach = self._make_coach()
@@ -402,6 +420,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.run_morning_routine(soreness=None, subjective_fatigue_score=None)
         self.assertEqual(captured.get("soreness"), 5)
 
+    @pytest.mark.integration
     def test_soreness_explicit_value_passed_through(self):
         coach = self._make_coach()
         captured = {}
@@ -414,6 +433,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.run_morning_routine(soreness=3, subjective_fatigue_score=3)
         self.assertEqual(captured.get("soreness"), 3)
 
+    @pytest.mark.integration
     def test_soreness_clamped_above_10(self):
         coach = self._make_coach()
         captured = {}
@@ -426,6 +446,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.run_morning_routine(soreness=99, subjective_fatigue_score=99)
         self.assertLessEqual(captured.get("soreness"), 10)
 
+    @pytest.mark.integration
     def test_soreness_clamped_below_0(self):
         coach = self._make_coach()
         captured = {}
@@ -438,6 +459,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.run_morning_routine(soreness=-5, subjective_fatigue_score=0)
         self.assertGreaterEqual(captured.get("soreness"), 0)
 
+    @pytest.mark.integration
     def test_subjective_fatigue_defaults_to_soreness(self):
         """When subjective_fatigue_score=None, it should equal soreness."""
         coach = self._make_coach()
@@ -451,6 +473,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.run_morning_routine(soreness=7, subjective_fatigue_score=None)
         self.assertEqual(captured.get("soreness"), 7)
 
+    @pytest.mark.integration
     def test_no_console_input_blocked(self):
         """run_morning_routine must complete without needing stdin."""
         import io
@@ -474,16 +497,19 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
 class TestWeatherApiProviderContract(unittest.TestCase):
     """Verify the weather module uses Open-Meteo endpoints exclusively."""
 
+    @pytest.mark.integration
     def test_open_meteo_geocoding_endpoint_used(self):
         import titan.integrations.weather_api as wmod
         src = inspect.getsource(wmod)
         self.assertIn("geocoding-api.open-meteo.com", src)
 
+    @pytest.mark.integration
     def test_open_meteo_forecast_endpoint_used(self):
         import titan.integrations.weather_api as wmod
         src = inspect.getsource(wmod)
         self.assertIn("api.open-meteo.com/v1/forecast", src)
 
+    @pytest.mark.integration
     def test_openweathermap_not_used(self):
         import titan.integrations.weather_api as wmod
         src = inspect.getsource(wmod)
@@ -492,6 +518,7 @@ class TestWeatherApiProviderContract(unittest.TestCase):
             "weather_api.py must not call api.openweathermap.org",
         )
 
+    @pytest.mark.integration
     def test_api_key_not_required_for_fetch(self):
         """_fetch_open_meteo must not pass an api_key to requests.get."""
         try:

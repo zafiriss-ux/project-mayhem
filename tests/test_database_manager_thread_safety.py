@@ -3,12 +3,15 @@ import threading
 import time
 from datetime import date, timedelta
 
+import pytest
+
 from titan.core.database import DatabaseManager
 
 THREAD_COUNT = 5
 ITERATIONS_PER_THREAD = 20
 
 
+@pytest.mark.integration
 def test_database_manager_thread_safety_under_mixed_read_write_load(tmp_path):
     db = DatabaseManager(db_name="thread_safety.db", db_dir=tmp_path)
     exceptions: list[Exception] = []

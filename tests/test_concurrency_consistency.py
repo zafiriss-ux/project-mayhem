@@ -35,6 +35,7 @@ class TestDegradedTrackerSurvivesRestart:
     alert logic (FS-07 covers that layer).
     """
 
+    @pytest.mark.integration
     def test_persisted_degraded_since_hydrated_on_reinstantiation(
         self, db_manager_factory: Any
     ) -> None:
@@ -61,6 +62,7 @@ class TestDegradedTrackerSurvivesRestart:
             f"Restored timestamp must match persisted value within 2s; delta={delta:.2f}s"
         )
 
+    @pytest.mark.integration
     def test_multiple_failure_types_all_hydrated(
         self, db_manager_factory: Any
     ) -> None:
@@ -82,6 +84,7 @@ class TestDegradedTrackerSurvivesRestart:
                 f"Failure type '{ft}' must be hydrated from DB after restart"
             )
 
+    @pytest.mark.integration
     def test_no_db_tracker_starts_empty(self) -> None:
         """
         CC-01-C: DegradedModeTracker(db=None) must start with empty _degraded_since.
@@ -91,6 +94,7 @@ class TestDegradedTrackerSurvivesRestart:
             "No-DB tracker must start with empty _degraded_since dict"
         )
 
+    @pytest.mark.integration
     def test_tracker_update_persists_new_failure(
         self, db_manager_factory: Any
     ) -> None:
@@ -113,6 +117,7 @@ class TestDegradedTrackerSurvivesRestart:
             "Newly degraded failure type must be persisted to DB immediately"
         )
 
+    @pytest.mark.integration
     def test_tracker_update_removes_resolved_failure_from_db(
         self, db_manager_factory: Any
     ) -> None:
@@ -165,6 +170,7 @@ class TestRateLimiterCeilingUnderLoad:
         """Bypass auth and inject a key directly (mirrors existing test pattern)."""
         limiter._requests[key].append(ts)
 
+    @pytest.mark.integration
     def test_key_count_never_exceeds_ceiling_after_eviction(self) -> None:
         """
         CC-02-A: Inject RATE_LIMITER_MAX_KEYS + 100 unique keys then evict.
@@ -186,6 +192,7 @@ class TestRateLimiterCeilingUnderLoad:
             f"got {len(limiter._requests)}"
         )
 
+    @pytest.mark.integration
     def test_eviction_event_emitted_at_ceiling(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -211,6 +218,7 @@ class TestRateLimiterCeilingUnderLoad:
         )
         assert payload.get("keys_evicted", 0) >= 5
 
+    @pytest.mark.integration
     def test_no_memory_error_or_unhandled_exception_at_ceiling(self) -> None:
         """
         CC-02-C: RATE_LIMITER_MAX_KEYS + 100 injections must not raise any exception.
@@ -226,6 +234,7 @@ class TestRateLimiterCeilingUnderLoad:
 
         assert len(limiter._requests) <= RATE_LIMITER_MAX_KEYS
 
+    @pytest.mark.integration
     def test_existing_keys_not_corrupted_during_eviction(self) -> None:
         """
         CC-02-D: Keys that should survive eviction retain their request history.
@@ -266,6 +275,7 @@ class TestConcurrentAthleteWritesNoCollision:
     accessed from multiple threads (Garmin sync, scheduler, DailyCoach).
     """
 
+    @pytest.mark.integration
     def test_two_threads_write_different_dates_no_collision(
         self, db_manager_factory: Any
     ) -> None:
@@ -323,6 +333,7 @@ class TestConcurrentAthleteWritesNoCollision:
             "Date B HRV value must not be contaminated by date A's write"
         )
 
+    @pytest.mark.integration
     def test_concurrent_writes_same_date_last_write_wins(
         self, db_manager_factory: Any
     ) -> None:
@@ -370,6 +381,7 @@ class TestConcurrentAthleteWritesNoCollision:
             f"HRV value must be one of the two written values, got {hrv_rows['2026-03-01']}"
         )
 
+    @pytest.mark.integration
     def test_high_concurrency_no_db_operational_error(
         self, db_manager_factory: Any
     ) -> None:
@@ -471,6 +483,7 @@ class TestCoachingPipelineConcurrentIsolation:
             startup_confidence_applies=False,
         )
 
+    @pytest.mark.integration
     def test_concurrent_coaching_pipeline_no_cross_contamination(self) -> None:
         """
         CC-04-A: Two threads calling coaching_pipeline() simultaneously with

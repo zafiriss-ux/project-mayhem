@@ -18,6 +18,7 @@ LONG_RUN_SESSION = {"session_type": "LONG_RUN", "duration_min": 120, "distance_k
 INTERVALS_SESSION = {"session_type": "INTERVALS", "duration_min": 60}
 
 
+@pytest.mark.integration
 def test_default_prefs_none_unchanged():
     opt = _make_opt()
     result = opt.calculate_daily_nutrition(
@@ -31,6 +32,7 @@ def test_default_prefs_none_unchanged():
     assert result.get("meal_schedule") == []
 
 
+@pytest.mark.integration
 def test_female_base_calories_reduced():
     opt = _make_opt()
     male_plan = opt.calculate_daily_nutrition(
@@ -47,6 +49,7 @@ def test_female_base_calories_reduced():
     assert abs(ratio - 0.87) < 0.01, f"Expected ~0.87, got {ratio:.4f}"
 
 
+@pytest.mark.integration
 def test_female_luteal_adds_200kcal():
     opt = _make_opt()
     follicular = opt.calculate_daily_nutrition(
@@ -63,6 +66,7 @@ def test_female_luteal_adds_200kcal():
     assert abs(diff - 200) < 1, f"Expected 200 kcal diff, got {diff}"
 
 
+@pytest.mark.integration
 def test_low_carb_ignored_on_long_run():
     opt = _make_opt()
     standard = opt.calculate_daily_nutrition(
@@ -81,6 +85,7 @@ def test_low_carb_ignored_on_long_run():
     assert any("Υδατάνθρακες" in n for n in low_carb["special_notes"])
 
 
+@pytest.mark.integration
 def test_low_carb_applied_on_easy():
     opt = _make_opt()
     plan = opt.calculate_daily_nutrition(
@@ -92,6 +97,7 @@ def test_low_carb_applied_on_easy():
     assert abs(carb_pct - 0.35) < 0.02, f"Expected ~35% carbs, got {carb_pct:.2%}"
 
 
+@pytest.mark.integration
 def test_fasted_easy_no_preworkout_meal():
     opt = _make_opt()
     plan = opt.calculate_daily_nutrition(
@@ -105,6 +111,7 @@ def test_fasted_easy_no_preworkout_meal():
     )
 
 
+@pytest.mark.integration
 def test_fasted_never_has_preworkout():
     opt = _make_opt()
     plan = opt.calculate_daily_nutrition(
@@ -118,6 +125,7 @@ def test_fasted_never_has_preworkout():
     )
 
 
+@pytest.mark.integration
 def test_evening_training_schedule():
     opt = _make_opt()
     plan = opt.calculate_daily_nutrition(
@@ -131,6 +139,7 @@ def test_evening_training_schedule():
     assert any('19:' in t for t in times), f"Expected post-workout ~19:xx, got: {times}"
 
 
+@pytest.mark.integration
 def test_nutrition_prefs_db_roundtrip(tmp_path):
     from titan.core.database import DatabaseManager
     db = DatabaseManager(db_dir=tmp_path)
@@ -149,6 +158,7 @@ def test_nutrition_prefs_db_roundtrip(tmp_path):
         assert result[key] == value, f"Mismatch on {key}: expected {value}, got {result[key]}"
 
 
+@pytest.mark.integration
 def test_vegetarian_note_in_output():
     opt = _make_opt()
     plan = opt.calculate_daily_nutrition(

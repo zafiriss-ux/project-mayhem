@@ -2,7 +2,10 @@ import os
 import subprocess
 import sys
 
+import pytest
 
+
+@pytest.mark.integration
 def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
     env = os.environ.copy()
     env.update(

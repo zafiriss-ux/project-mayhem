@@ -18,6 +18,7 @@ import pytest
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestOverrideRatioColdStart:
+    @pytest.mark.integration
     def test_override_ratio_returns_none_for_cold_start_athlete(self, tmp_path: Path) -> None:
         """Fresh DB with 0 governance_outcomes → get_override_ratio returns None."""
         from titan.core.database import DatabaseManager
@@ -29,6 +30,7 @@ class TestOverrideRatioColdStart:
         finally:
             db.close()
 
+    @pytest.mark.integration
     def test_override_ratio_returns_float_when_outcomes_exist(self, tmp_path: Path) -> None:
         """DB with governance_outcomes → get_override_ratio returns a float."""
         from titan.core.database import DatabaseManager
@@ -67,6 +69,7 @@ def _import_dependencies():
 
 
 class TestCoachDashboardRBAC:
+    @pytest.mark.integration
     def test_coach_cannot_access_unassigned_athlete_dashboard(self) -> None:
         """require_coach_athlete_access rejects COACH not assigned to requested athlete."""
         from fastapi import HTTPException
@@ -90,6 +93,7 @@ class TestCoachDashboardRBAC:
         assert exc_info.value.status_code == 403
         assert "athlete-X" in exc_info.value.detail
 
+    @pytest.mark.integration
     def test_coach_can_access_assigned_athlete_dashboard(self) -> None:
         """require_coach_athlete_access passes COACH assigned to the requested athlete."""
         deps = _import_dependencies()
@@ -113,6 +117,7 @@ class TestCoachDashboardRBAC:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestPostgresBackendDisabled:
+    @pytest.mark.integration
     def test_get_database_manager_postgres_raises(self) -> None:
         """TITAN_DB_BACKEND=postgres must raise NotImplementedError (ADR-0044 not complete)."""
         from titan.core.database import get_database_manager
@@ -120,6 +125,7 @@ class TestPostgresBackendDisabled:
         with pytest.raises(NotImplementedError, match="ADR-0044"):
             get_database_manager(backend="postgres")
 
+    @pytest.mark.integration
     def test_get_database_manager_env_postgres_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """TITAN_DB_BACKEND env var set to postgres must raise NotImplementedError."""
         monkeypatch.setenv("TITAN_DB_BACKEND", "postgres")

@@ -54,12 +54,16 @@ def _assert_mirrored_test_file_path_contract(
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_gate_mirrored_test_file_path_contract() -> None:
     """CI gate: in-scope source modules must have mirrored tests/titan/test_<module>.py paths."""
 
     _assert_mirrored_test_file_path_contract(Path("."), _PATTERN_3_SOURCE_MODULES)
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_meta_mirrored_test_file_path_contract_gate_rejects_known_bad_input(tmp_path: Path) -> None:
     """Validating meta-test: gate fails when a mirrored test path is missing."""
 

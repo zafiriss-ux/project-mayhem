@@ -14,6 +14,7 @@ def db(tmp_path):
     return DatabaseManager(db_name="audit_test.db", db_dir=tmp_path)
 
 
+@pytest.mark.integration
 def test_coach_action_persists_to_db(db):
     db.log_coach_action("coach1", "VIEW", "athlete_a")
     rows = db.get_coach_audit_log("coach1")
@@ -23,6 +24,7 @@ def test_coach_action_persists_to_db(db):
     assert rows[0]["athlete_id"] == "athlete_a"
 
 
+@pytest.mark.integration
 def test_audit_log_survives_reconnect(db, tmp_path):
     db.log_coach_action("coach1", "OVERRIDE", "athlete_b", action_detail="test detail")
     db.close()
@@ -35,6 +37,7 @@ def test_audit_log_survives_reconnect(db, tmp_path):
     db2.close()
 
 
+@pytest.mark.integration
 def test_audit_log_filtered_by_coach(db):
     db.log_coach_action("coach1", "VIEW", "athlete_a")
     db.log_coach_action("coach2", "EDIT", "athlete_b")
@@ -48,5 +51,6 @@ def test_audit_log_filtered_by_coach(db):
     assert len(rows_coach2) >= 1
 
 
+@pytest.mark.integration
 def test_audit_log_table_exists(db):
     assert "coach_audit_log" in db.get_table_names()

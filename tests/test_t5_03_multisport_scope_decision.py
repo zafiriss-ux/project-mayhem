@@ -2,17 +2,23 @@
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ADR_0016_PATH = REPO_ROOT / "docs" / "adr" / "0016-phase8-multisport-scope-and-adapter-gate.md"
 ROADMAP_PATH = REPO_ROOT / "docs" / "ROADMAP.MD"
 DEBT_PATH = REPO_ROOT / "TECHNICAL_DEBT.md"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_adr_0016_exists_and_is_non_empty():
     assert ADR_0016_PATH.exists(), "Missing ADR-0016 file"
     assert ADR_0016_PATH.stat().st_size > 0, "ADR-0016 is empty"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_adr_0016_locks_phase8_multisport_and_adapter_gate():
     adr_text = ADR_0016_PATH.read_text(encoding="utf-8")
 
@@ -22,6 +28,8 @@ def test_adr_0016_locks_phase8_multisport_and_adapter_gate():
     assert "No multi-sport implementation work may begin" in adr_text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_roadmap_references_t5_03_and_adr_0016():
     roadmap_text = ROADMAP_PATH.read_text(encoding="utf-8")
 
@@ -30,6 +38,8 @@ def test_roadmap_references_t5_03_and_adr_0016():
     assert "running-only" in roadmap_text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_technical_debt_t5_03_is_marked_decided():
     debt_text = DEBT_PATH.read_text(encoding="utf-8")
 

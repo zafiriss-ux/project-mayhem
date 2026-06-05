@@ -1,3 +1,5 @@
+import pytest
+
 from titan.features.optimal_time_calculator import OptimalTimeCalculator
 from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.orchestration.daily_coach import _compute_esi
@@ -17,6 +19,7 @@ class _DummyWeather:
         return {"data_quality": "synthetic", "weather_confidence": "SYNTHETIC"}
 
 
+@pytest.mark.unit
 def test_compute_esi_extreme_returns_highest_adjustment() -> None:
     level, pace_adjust = _compute_esi(temperature_c=30.0, dew_point_c=20.0)
 
@@ -24,6 +27,7 @@ def test_compute_esi_extreme_returns_highest_adjustment() -> None:
     assert pace_adjust == 25
 
 
+@pytest.mark.unit
 def test_compute_esi_boundary_low_returns_no_adjustment() -> None:
     level, pace_adjust = _compute_esi(temperature_c=10.0, dew_point_c=8.0)
 
@@ -31,6 +35,7 @@ def test_compute_esi_boundary_low_returns_no_adjustment() -> None:
     assert pace_adjust == 0
 
 
+@pytest.mark.unit
 def test_weekly_planner_accepts_esi_context() -> None:
     planner = WeeklyPlanGenerator(_DummyEngine(), _DummyEngine(), _DummyEngine())
 
@@ -40,6 +45,7 @@ def test_weekly_planner_accepts_esi_context() -> None:
     assert session["esi_pace_adjustment_sec_per_km"] == 15
 
 
+@pytest.mark.unit
 def test_optimal_time_accepts_esi_context() -> None:
     calc = OptimalTimeCalculator(_DummyWeather())
 
@@ -53,6 +59,7 @@ def test_optimal_time_accepts_esi_context() -> None:
     assert result["esi_pace_adjustment_sec_per_km"] == 8
 
 
+@pytest.mark.unit
 def test_governance_blocks_vo2_when_esi_extreme() -> None:
     gov = GovernanceEngine()
     session_plan = {"session_type": "HAMMER", "zone": 5}
@@ -73,6 +80,7 @@ def test_governance_blocks_vo2_when_esi_extreme() -> None:
     assert session_plan["session_type"] == "TEMPO"
 
 
+@pytest.mark.unit
 def test_governance_allows_vo2_when_esi_not_extreme() -> None:
     gov = GovernanceEngine()
     session_plan = {"session_type": "HAMMER", "zone": 5}

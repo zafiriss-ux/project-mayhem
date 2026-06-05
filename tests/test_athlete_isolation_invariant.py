@@ -9,6 +9,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 _TITAN_ROOT = Path(__file__).resolve().parents[1] / "titan"
 _DATABASE_FILE = _TITAN_ROOT / "core" / "database.py"
 
@@ -49,6 +51,7 @@ def _sql_literals(path: Path) -> list[tuple[int, str]]:
     return sql_literals
 
 
+@pytest.mark.unit
 def test_exempt_modules_are_explicitly_annotated() -> None:
     missing_annotations: list[str] = []
 
@@ -63,6 +66,7 @@ def test_exempt_modules_are_explicitly_annotated() -> None:
     )
 
 
+@pytest.mark.unit
 def test_non_database_modules_do_not_add_sql_without_athlete_filter() -> None:
     """Outside titan/core/database.py, SQL-like literals must mention athlete_id."""
     violations: list[str] = []
@@ -83,6 +87,7 @@ def test_non_database_modules_do_not_add_sql_without_athlete_filter() -> None:
     )
 
 
+@pytest.mark.unit
 def test_outcome_tracker_query_methods_accept_athlete_id() -> None:
     """
     G-CI-07 extension: every public query method on OutcomeTracker must accept
@@ -120,6 +125,7 @@ def test_outcome_tracker_query_methods_accept_athlete_id() -> None:
     assert not violations, "\n".join(violations)
 
 
+@pytest.mark.unit
 def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_global() -> None:
     """New CREATE TABLE statements in migrations must include athlete_id by default."""
     tree = _parse(_DATABASE_FILE)

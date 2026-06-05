@@ -34,6 +34,7 @@ def tmp_db(tmp_path):
 # Core fix: save_session stores training_load under athlete_id='owner'
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_save_session_trimp_stored_nonzero(tmp_db):
     """save_session with training_load=50 must appear in get_training_load_history."""
     tmp_db.save_session(
@@ -53,6 +54,7 @@ def test_save_session_trimp_stored_nonzero(tmp_db):
     )
 
 
+@pytest.mark.integration
 def test_save_session_athlete_id_defaults_to_owner(tmp_db):
     """Rows saved without explicit athlete_id must be stored as 'owner'."""
     target_date = _recent(2)
@@ -74,6 +76,7 @@ def test_save_session_athlete_id_defaults_to_owner(tmp_db):
     )
 
 
+@pytest.mark.integration
 def test_save_session_explicit_athlete_id(tmp_db):
     """Explicit athlete_id is written verbatim."""
     target_date = _recent(3)
@@ -93,6 +96,7 @@ def test_save_session_explicit_athlete_id(tmp_db):
     assert rows and rows[0][0] == "athlete_42"
 
 
+@pytest.mark.integration
 def test_get_training_load_history_respects_athlete_id(tmp_db):
     """History is isolated per athlete_id — cross-athlete rows are invisible."""
     tmp_db.save_session(
@@ -117,6 +121,7 @@ def test_get_training_load_history_respects_athlete_id(tmp_db):
 # v18 backfill migration (unit-level: call _apply_v18_migrations directly)
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_v18_migration_backfills_default_athlete_id(tmp_db):
     """_apply_v18_migrations must UPDATE athlete_id='default'→'owner'.
 
@@ -158,6 +163,7 @@ def test_v18_migration_backfills_default_athlete_id(tmp_db):
 # Import script integration: compute_trimp_simple + save_session round-trip
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_import_csv_produces_nonzero_trimp(tmp_db):
     """import_garmin_csv helper functions produce nonzero TRIMP stored in DB.
 
@@ -203,6 +209,7 @@ def test_import_csv_produces_nonzero_trimp(tmp_db):
 # NULL training_load regression — must not throw TypeError / must return data
 # ---------------------------------------------------------------------------
 
+@pytest.mark.integration
 def test_get_training_load_history_returns_data(tmp_db):
     """get_training_load_history returns valid rows even when NULL rows exist.
 
@@ -245,6 +252,7 @@ def test_get_training_load_history_returns_data(tmp_db):
     )
 
 
+@pytest.mark.integration
 def test_tsb_calculates_with_training_log_data(tmp_db):
     """TSBEngine produces a non-None CTL when training_log has valid rows.
 
@@ -297,6 +305,7 @@ def _date_str(days_ago: int) -> str:
     return (date.today() - timedelta(days=days_ago)).isoformat()
 
 
+@pytest.mark.integration
 def test_get_training_load_history_returns_188(tmp_db):
     """get_training_load_history(400) returns all 188 rows with training_load > 0.
 
@@ -324,6 +333,7 @@ def test_get_training_load_history_returns_188(tmp_db):
     )
 
 
+@pytest.mark.integration
 def test_get_training_load_history_date_window(tmp_db):
     """Date window filter returns only rows within the requested window.
 

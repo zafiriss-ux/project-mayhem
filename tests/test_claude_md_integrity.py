@@ -22,6 +22,7 @@ def _tech_debt_text() -> str:
     return TECH_DEBT.read_text(encoding="utf-8")
 
 
+@pytest.mark.unit
 def test_adr_count_in_claude_md_matches_files() -> None:
     claude = _claude_text()
     adr_files = {
@@ -37,6 +38,7 @@ def test_adr_count_in_claude_md_matches_files() -> None:
     )
 
 
+@pytest.mark.unit
 def test_module_count_in_claude_md_matches_filesystem() -> None:
     claude = _claude_text()
     match = re.search(
@@ -60,6 +62,7 @@ def test_module_count_in_claude_md_matches_filesystem() -> None:
     )
 
 
+@pytest.mark.unit
 def test_open_tier_items_not_misrepresented() -> None:
     claude = _claude_text()
     tech_debt = _tech_debt_text()
@@ -92,6 +95,7 @@ def _extract_key_file_paths(claude_text: str) -> list[str]:
     return re.findall(r"\| `([^`]+)` \|", section)
 
 
+@pytest.mark.unit
 def test_historical_snapshot_matches_full_suite_collection(request) -> None:
     """Fail when CLAUDE.md test snapshot drifts from actual repository test count."""
     collected = request.session.testscollected
@@ -114,6 +118,7 @@ def test_historical_snapshot_matches_full_suite_collection(request) -> None:
     )
 
 
+@pytest.mark.unit
 def test_key_files_section_points_to_existing_paths() -> None:
     """Fail when CLAUDE.md references files that no longer exist in-repo."""
     paths = _extract_key_file_paths(_claude_text())
@@ -125,6 +130,7 @@ def test_key_files_section_points_to_existing_paths() -> None:
     )
 
 
+@pytest.mark.unit
 def test_claude_md_schema_version_matches_code() -> None:
     """CLAUDE.md SCHEMA_VERSION must match titan/core/database.py SCHEMA_VERSION."""
     import importlib
@@ -138,6 +144,7 @@ def test_claude_md_schema_version_matches_code() -> None:
     )
 
 
+@pytest.mark.unit
 def test_phase_state_label_consistent_between_tech_debt_and_claude_md() -> None:
     """Phase state in CLAUDE.md ROADMAP row must match TECHNICAL_DEBT.md canonical declaration.
 

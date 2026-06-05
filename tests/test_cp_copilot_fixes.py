@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 os.environ.setdefault("GARMIN_EMAIL", "test@example.com")
 os.environ.setdefault("GARMIN_PASSWORD", "test")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "")
@@ -37,6 +39,7 @@ def _make_bot() -> TitanTelegramBot:
 # ── CP-01: nonce logic per-action ─────────────────────────────────────────────
 
 class TestNoncePerAction:
+    @pytest.mark.unit
     def test_nonce_accept_valid(self):
         bot = _make_bot()
         bot.send_message = MagicMock(return_value=True)
@@ -44,6 +47,7 @@ class TestNoncePerAction:
         result = bot.process_override_callback(12345, f"override:accept:{nonce}")
         assert result == "✅ Decision accepted."
 
+    @pytest.mark.unit
     def test_nonce_accept_replay(self):
         bot = _make_bot()
         nonce = _create_override_nonce("dec-002")
@@ -51,6 +55,7 @@ class TestNoncePerAction:
         result = bot.process_override_callback(12345, f"override:accept:{nonce}")
         assert "expired" in result or "already been used" in result
 
+    @pytest.mark.unit
     def test_nonce_request_valid(self):
         bot = _make_bot()
         nonce = _create_override_nonce("dec-003")
@@ -58,6 +63,7 @@ class TestNoncePerAction:
         result = bot.process_override_callback(12345, f"override:request:{nonce}")
         assert "reason" in result.lower() or "override" in result.lower()
 
+    @pytest.mark.unit
     def test_nonce_request_replay(self):
         bot = _make_bot()
         nonce = _create_override_nonce("dec-004")
@@ -65,6 +71,7 @@ class TestNoncePerAction:
         result = bot.process_override_callback(12345, f"override:request:{nonce}")
         assert "expired" in result or "already been used" in result
 
+    @pytest.mark.unit
     def test_nonce_accept_no_nonce(self):
         bot = _make_bot()
         result = bot.process_override_callback(12345, "override:accept")
@@ -74,6 +81,7 @@ class TestNoncePerAction:
 # ── CP-02: is_configured missing GARMIN_PASSWORD ─────────────────────────────
 
 class TestIsConfigured:
+    @pytest.mark.unit
     def test_is_configured_missing_password(self, tmp_path):
         env_file = tmp_path / ".env"
         env_file.write_text("GARMIN_EMAIL=test@example.com\nTELEGRAM_BOT_TOKEN=12345678:ABC\n")
@@ -92,11 +100,13 @@ class TestIsConfigured:
 # ── CP-04: fat constants in thresholds ────────────────────────────────────────
 
 class TestFatConstants:
+    @pytest.mark.unit
     def test_fat_constants_in_thresholds(self):
         from titan.config.thresholds import FAT_KCAL_PER_GRAM, MIN_FAT_G
         assert MIN_FAT_G == 40
         assert FAT_KCAL_PER_GRAM == 9
 
+    @pytest.mark.unit
     def test_nutrition_uses_constants(self):
         from titan.config.thresholds import FAT_KCAL_PER_GRAM, MIN_FAT_G
         for fat_kcal in [0, 180, 360, 900]:
@@ -108,6 +118,7 @@ class TestFatConstants:
 # ── CP-05: send_alert invalid level ───────────────────────────────────────────
 
 class TestSendAlertLevel:
+    @pytest.mark.unit
     def test_send_alert_invalid_level_does_not_raise(self):
         bot = _make_bot()
         bot.send_message = MagicMock(return_value=True)
@@ -116,6 +127,7 @@ class TestSendAlertLevel:
         call_args = bot.send_message.call_args[0][0]
         assert "⚠️" in call_args
 
+    @pytest.mark.unit
     def test_send_alert_valid_levels(self):
         bot = _make_bot()
         bot.send_message = MagicMock(return_value=True)

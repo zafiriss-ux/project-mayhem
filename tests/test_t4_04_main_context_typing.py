@@ -1,11 +1,15 @@
 import ast
 from pathlib import Path
 
+import pytest
+
 
 def _load_module(path: str) -> ast.Module:
     return ast.parse(Path(path).read_text())
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_t4_04_typed_context_contract_exists_in_contracts_module():
     module = _load_module("titan/orchestration/contracts.py")
 
@@ -35,6 +39,8 @@ def test_t4_04_typed_context_contract_exists_in_contracts_module():
     assert "TitanContextContract" in dataclass_classes
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_t4_04_main_uses_titan_context_contract_constructor():
     module = _load_module("titan/main.py")
 

@@ -9,6 +9,7 @@ from titan.core.athlete import UniversalAthleteProfile
 
 
 class TestFromEnvUsesEnvVars:
+    @pytest.mark.unit
     def test_from_env_uses_env_vars(self, monkeypatch):
         monkeypatch.setenv("ATHLETE_MAX_HR", "160")
         monkeypatch.setenv("ATHLETE_AGE", "47")
@@ -18,6 +19,7 @@ class TestFromEnvUsesEnvVars:
 
 
 class TestFromEnvSafeDefaults:
+    @pytest.mark.unit
     def test_from_env_safe_defaults_when_vars_absent(self, monkeypatch):
         for var in (
             "ATHLETE_NAME", "ATHLETE_AGE", "ATHLETE_WEIGHT",
@@ -32,6 +34,7 @@ class TestFromEnvSafeDefaults:
 
 
 class TestFromEnvTrainingPhase:
+    @pytest.mark.unit
     def test_from_env_training_phase(self, monkeypatch):
         monkeypatch.setenv("TRAINING_PHASE", "PEAK")
         profile = UniversalAthleteProfile.from_env()
@@ -39,6 +42,7 @@ class TestFromEnvTrainingPhase:
 
 
 class TestProfileToDictRoundTrip:
+    @pytest.mark.unit
     def test_profile_to_dict_round_trip(self, monkeypatch):
         monkeypatch.delenv("ATHLETE_MAX_HR", raising=False)
         profile = UniversalAthleteProfile.from_env()
@@ -47,6 +51,7 @@ class TestProfileToDictRoundTrip:
 
 
 class TestNoDuplicateProfileDictInTitanContext:
+    @pytest.mark.unit
     def test_no_duplicate_profile_dict_in_titan_context(self):
         import typing
 

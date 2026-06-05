@@ -1,6 +1,8 @@
 import json
 import logging
 
+import pytest
+
 from titan.science.outcome_tracker import OutcomeTracker
 
 
@@ -11,6 +13,7 @@ def _apl_result():
     }
 
 
+@pytest.mark.integration
 def test_outcome_tracker_persists_decision_and_restores(db_manager_factory):
     db = db_manager_factory(db_name='test.db')
 
@@ -45,6 +48,7 @@ def test_outcome_tracker_persists_decision_and_restores(db_manager_factory):
     db.close()
 
 
+@pytest.mark.integration
 def test_outcome_tracker_persists_post_session_outcome(db_manager_factory):
     db = db_manager_factory(db_name='test.db')
 
@@ -89,6 +93,7 @@ def test_outcome_tracker_persists_post_session_outcome(db_manager_factory):
     db.close()
 
 
+@pytest.mark.integration
 def test_get_governance_decisions_safe_json_fallback_and_warning(db_manager_factory, caplog):
     db = db_manager_factory(db_name='test.db')
 
@@ -145,6 +150,7 @@ def test_get_governance_decisions_safe_json_fallback_and_warning(db_manager_fact
     db.close()
 
 
+@pytest.mark.integration
 def test_get_governance_decisions_parses_valid_json_columns(db_manager_factory):
     db = db_manager_factory(db_name='test.db')
 
@@ -174,6 +180,7 @@ def test_get_governance_decisions_parses_valid_json_columns(db_manager_factory):
     assert decisions[0]['lock_thresholds_active'] == {'acwr_ceiling': 1.2}
 
 
+@pytest.mark.integration
 def test_parse_iso_date_returns_none_on_invalid_input():
     from titan.science.outcome_tracker import _parse_iso_date
 
@@ -181,6 +188,7 @@ def test_parse_iso_date_returns_none_on_invalid_input():
     assert _parse_iso_date("") is None
 
 
+@pytest.mark.integration
 def test_outcome_is_independent_returns_false_on_invalid_dates():
     from titan.science.outcome_tracker import _outcome_is_independent
 
@@ -188,6 +196,7 @@ def test_outcome_is_independent_returns_false_on_invalid_dates():
     assert _outcome_is_independent("2026-01-01", "also-bad") is False
 
 
+@pytest.mark.integration
 def test_governance_decision_normalises_sentinel_athlete_id():
     from titan.science.outcome_tracker import GovernanceDecision
 

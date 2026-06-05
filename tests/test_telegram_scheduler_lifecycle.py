@@ -1,8 +1,11 @@
 import threading
 
+import pytest
+
 from titan.integrations.telegram_bot import TitanTelegramBot
 
 
+@pytest.mark.unit
 def test_telegram_scheduler_worker_lifecycle(monkeypatch):
     bot = TitanTelegramBot(bot_token="dummy-token", chat_id="123")
     execution_count = {"count": 0}

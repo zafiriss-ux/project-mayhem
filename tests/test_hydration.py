@@ -7,6 +7,8 @@ rounded to nearest 100 ml. Regression guard against the old ~1000 ml bug.
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from titan.features.nutrition_optimizer import NutritionOptimizer
 
 
@@ -17,6 +19,7 @@ def _make_optimizer() -> NutritionOptimizer:
 
 
 class TestHydrationValues:
+    @pytest.mark.unit
     def test_hydration_baseline_75kg_easy(self):
         """75 kg + EASY: 75*35=2625 base + 300 adj = 2925 → rounded to 2900."""
         optimizer = _make_optimizer()
@@ -25,6 +28,7 @@ class TestHydrationValues:
             f"Expected 2900–3000 ml for 75 kg EASY, got {hydration}"
         )
 
+    @pytest.mark.unit
     def test_hydration_baseline_75kg_long_run(self):
         """75 kg + LONG_RUN: 75*35=2625 base + 800 adj = 3425 → rounded to 3400."""
         optimizer = _make_optimizer()
@@ -33,6 +37,7 @@ class TestHydrationValues:
             f"Expected 3300–3500 ml for 75 kg LONG_RUN, got {hydration}"
         )
 
+    @pytest.mark.unit
     def test_hydration_not_1000ml(self):
         """Regression: any realistic input must produce > 1500 ml (not the old 1000 ml bug)."""
         optimizer = _make_optimizer()

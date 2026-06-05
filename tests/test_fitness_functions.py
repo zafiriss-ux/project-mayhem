@@ -8,9 +8,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 # ── Item 1 — Hard-stop gate exclusion from ThresholdAdapter ───────────────────
 
 
+@pytest.mark.unit
 def test_get_soft_threshold_never_called_on_hard_stop_gates() -> None:
     """
     AST fitness: _get_soft_threshold() in governance_engine.py must never
@@ -47,6 +50,7 @@ def test_get_soft_threshold_never_called_on_hard_stop_gates() -> None:
 # ── Item 2 — OutcomeTracker queries always scoped to athlete_id ───────────────
 
 
+@pytest.mark.unit
 def test_outcome_tracker_queries_always_scoped_to_athlete() -> None:
     """
     Every SQL string in outcome_tracker.py that references
@@ -68,6 +72,7 @@ def test_outcome_tracker_queries_always_scoped_to_athlete() -> None:
 # ── Item 3 — coaching_pipeline.py must not import DailyCoach directly ─────────
 
 
+@pytest.mark.unit
 def test_coaching_pipeline_no_direct_dailycoach_import() -> None:
     """
     coaching_pipeline.py must not import DailyCoach directly.

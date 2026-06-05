@@ -27,6 +27,7 @@ def _make_afe_with_hrr_history(hrr_values: list[int]) -> AutonomicFusionEngine:
 
 class TestParasympatheticGuardTrigger:
 
+    @pytest.mark.unit
     def test_guard_triggered_when_hrv_elevated_and_hrr_impaired(self):
         """HRV +15% above baseline AND low HRR (z < -1.5) → triggered."""
         # Build history with consistent HRR to establish a baseline
@@ -40,6 +41,7 @@ class TestParasympatheticGuardTrigger:
         assert 4 in guard["disabled_zones"]
         assert 5 in guard["disabled_zones"]
 
+    @pytest.mark.unit
     def test_guard_not_triggered_when_hrv_below_threshold(self):
         """HRV only +5% above baseline (below 10% threshold) → not triggered."""
         afe = _make_afe_with_hrr_history([55, 56, 57])
@@ -49,6 +51,7 @@ class TestParasympatheticGuardTrigger:
         )
         assert guard["triggered"] is False
 
+    @pytest.mark.unit
     def test_guard_not_triggered_when_hrr_is_nominal(self):
         """HRV elevated but HRR is normal → not triggered."""
         afe = _make_afe_with_hrr_history([55, 56, 57])
@@ -58,6 +61,7 @@ class TestParasympatheticGuardTrigger:
         )
         assert guard["triggered"] is False
 
+    @pytest.mark.unit
     def test_guard_not_triggered_without_enough_hrr_history(self):
         """With fewer than 3 HRR measurements, impaired HRR cannot be determined."""
         afe = _make_afe_with_hrr_history([55, 56])  # only 2 entries
@@ -67,6 +71,7 @@ class TestParasympatheticGuardTrigger:
         )
         assert guard["triggered"] is False
 
+    @pytest.mark.unit
     def test_guard_not_triggered_when_hrr_none(self):
         """hrr_60_today=None means no HRR measurement today → guard cannot fire."""
         afe = _make_afe_with_hrr_history([55, 56, 57])
@@ -76,6 +81,7 @@ class TestParasympatheticGuardTrigger:
         )
         assert guard["triggered"] is False
 
+    @pytest.mark.unit
     def test_guard_triggered_readiness_clamp_is_25(self):
         """When triggered, readiness is clamped to 25 (hard limit)."""
         afe = _make_afe_with_hrr_history([60, 61, 62])
@@ -86,6 +92,7 @@ class TestParasympatheticGuardTrigger:
         assert guard["triggered"] is True
         assert guard["readiness_clamp"] == 25
 
+    @pytest.mark.unit
     def test_not_triggered_readiness_clamp_is_100(self):
         """When not triggered, readiness clamp remains at 100."""
         afe = AutonomicFusionEngine()
@@ -97,6 +104,7 @@ class TestParasympatheticGuardTrigger:
 class TestGetReadinessConstraintsPropagatesGuard:
     """Verify that get_readiness_constraints() surfaces the guard result."""
 
+    @pytest.mark.unit
     def test_guard_propagated_to_constraints_when_triggered(self):
         afe = _make_afe_with_hrr_history([55, 56, 57])
         constraints = afe.get_readiness_constraints(
@@ -108,6 +116,7 @@ class TestGetReadinessConstraintsPropagatesGuard:
         assert constraints["readiness_clamp"] == 25
         assert 5 in constraints["disabled_zones"]
 
+    @pytest.mark.unit
     def test_guard_not_triggered_leaves_constraints_open(self):
         afe = AutonomicFusionEngine()
         constraints = afe.get_readiness_constraints(

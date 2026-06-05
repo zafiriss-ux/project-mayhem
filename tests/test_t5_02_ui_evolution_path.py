@@ -2,12 +2,16 @@
 
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ADR_0013_PATH = REPO_ROOT / "docs" / "adr" / "0013-operator-console-technology-path.md"
 TECH_PATH_SPEC = REPO_ROOT / "docs" / "specs" / "operator_console_technology_path.md"
 ROADMAP_PATH = REPO_ROOT / "docs" / "ROADMAP.MD"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_adr_0013_documents_three_phase_ui_path():
     adr_text = ADR_0013_PATH.read_text(encoding="utf-8")
 
@@ -16,6 +20,8 @@ def test_adr_0013_documents_three_phase_ui_path():
     assert "Phase C (React + FastAPI production stack)" in adr_text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_adr_0013_defers_phase_a_until_hardening_is_complete():
     adr_text = ADR_0013_PATH.read_text(encoding="utf-8")
 
@@ -24,6 +30,8 @@ def test_adr_0013_defers_phase_a_until_hardening_is_complete():
     assert "Data integrity and observability remain" in adr_text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_operator_console_technology_spec_matches_t5_02_scope():
     spec_text = TECH_PATH_SPEC.read_text(encoding="utf-8")
 
@@ -33,6 +41,8 @@ def test_operator_console_technology_spec_matches_t5_02_scope():
     assert "Reuses `OperatorConsoleService` payloads directly." in spec_text
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_roadmap_tracks_t5_02_and_hardening_constraint():
     roadmap_text = ROADMAP_PATH.read_text(encoding="utf-8")
 

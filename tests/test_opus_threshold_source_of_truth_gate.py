@@ -43,12 +43,16 @@ def _assert_no_inline_threshold_literals(module_source: str, module_label: str) 
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_ci_gate_threshold_source_of_truth_enforcement() -> None:
     """CI gate: governance gate code must not inline governed threshold values."""
     source = Path("titan/science/governance_engine.py").read_text(encoding="utf-8")
     _assert_no_inline_threshold_literals(source, "titan/science/governance_engine.py")
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_meta_threshold_source_of_truth_gate_rejects_known_bad_input() -> None:
     """Validating meta-test: gate fails on known-bad inline threshold literal."""
     bad_source = """

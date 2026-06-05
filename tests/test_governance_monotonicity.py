@@ -85,6 +85,8 @@ class TestGovernanceMonotonicity:
         drop=st.floats(min_value=0.0, max_value=30.0, allow_nan=False, allow_infinity=False),
         extra=st.floats(min_value=0.0, max_value=20.0, allow_nan=False, allow_infinity=False),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m1_hrv_larger_drop_not_less_restrictive(self, drop: float, extra: float) -> None:
         """Larger HRV drop must not produce a less-restrictive max_zone."""
@@ -109,6 +111,8 @@ class TestGovernanceMonotonicity:
         rise=st.floats(min_value=0.0, max_value=20.0, allow_nan=False, allow_infinity=False),
         extra=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m2_rhr_larger_rise_not_less_restrictive(self, rise: float, extra: float) -> None:
         """Larger RHR spike must not produce a less-restrictive max_zone."""
@@ -135,6 +139,8 @@ class TestGovernanceMonotonicity:
         tsb=st.floats(min_value=-80.0, max_value=30.0, allow_nan=False, allow_infinity=False),
         extra=st.floats(min_value=0.0, max_value=30.0, allow_nan=False, allow_infinity=False),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m3_lower_tsb_not_less_restrictive(self, tsb: float, extra: float) -> None:
         """Lower (more negative) TSB must not produce a less-restrictive max_zone."""
@@ -156,6 +162,8 @@ class TestGovernanceMonotonicity:
         score=st.integers(min_value=0, max_value=9),
         extra=st.integers(min_value=0, max_value=2),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m4_higher_fatigue_not_less_restrictive(self, score: int, extra: int) -> None:
         """Higher subjective fatigue must not produce a less-restrictive max_zone."""
@@ -178,6 +186,8 @@ class TestGovernanceMonotonicity:
         ratio_a=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
         extra=st.floats(min_value=0.0, max_value=0.5, allow_nan=False, allow_infinity=False),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m5_higher_override_ratio_lockdown_monotonic(
         self, ratio_a: float, extra: float
@@ -199,6 +209,8 @@ class TestGovernanceMonotonicity:
         acwr=st.floats(min_value=1.31, max_value=2.5, allow_nan=False, allow_infinity=False),
         extra=st.floats(min_value=0.0, max_value=0.5, allow_nan=False, allow_infinity=False),
     )
+    @pytest.mark.unit
+    @pytest.mark.governance
     @settings(max_examples=50)
     def test_m6_acwr_above_max_vo2_ineligibility_monotonic(
         self, acwr: float, extra: float

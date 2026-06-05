@@ -2,6 +2,8 @@ import json
 import logging
 from unittest.mock import MagicMock
 
+import pytest
+
 from titan.features.nutrition_optimizer import NutritionOptimizer
 from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.science.acwr_engine import ACWREngine
@@ -21,6 +23,7 @@ def _json_messages(caplog):
     return messages
 
 
+@pytest.mark.unit
 def test_readiness_emits_structured_event(caplog):
     caplog.set_level(logging.INFO)
 
@@ -41,6 +44,7 @@ def test_readiness_emits_structured_event(caplog):
     assert readiness[0]["components"]["hrv"] == 20
 
 
+@pytest.mark.unit
 def test_weekly_planner_emits_generation_events(caplog):
     caplog.set_level(logging.INFO)
 
@@ -67,6 +71,7 @@ def test_weekly_planner_emits_generation_events(caplog):
     assert generated[0]["weekly_km"] == plan["total_km"]
 
 
+@pytest.mark.unit
 def test_nutrition_emits_weight_and_plan_events(caplog):
     caplog.set_level(logging.INFO)
 

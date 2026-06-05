@@ -33,6 +33,7 @@ def _fetch_row(db, date: str) -> dict | None:
 
 # ── Test 1 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_hrv_only(bot, db, monkeypatch):
     fixed_date = "2026-05-03"
     monkeypatch.setattr(
@@ -50,6 +51,7 @@ def test_manual_entry_hrv_only(bot, db, monkeypatch):
 
 # ── Test 2 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_full_payload(bot, db, monkeypatch):
     fixed_date = "2026-05-03"
     monkeypatch.setattr(
@@ -70,6 +72,7 @@ def test_manual_entry_full_payload(bot, db, monkeypatch):
 
 # ── Test 3 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_garmin_sync_preserves_manual_source(db, tmp_path):
     """Garmin re-sync (garmin_api) must NOT overwrite a manual_entry data_source."""
     date = "2026-05-03"
@@ -89,6 +92,7 @@ def test_manual_entry_garmin_sync_preserves_manual_source(db, tmp_path):
 
 # ── Test 4 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_invalid_hrv_out_of_range(bot, db, monkeypatch):
     fixed_date = "2026-05-03"
     monkeypatch.setattr(
@@ -103,6 +107,7 @@ def test_manual_entry_invalid_hrv_out_of_range(bot, db, monkeypatch):
 
 # ── Test 5 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_invalid_fatigue_out_of_range(bot, db, monkeypatch):
     fixed_date = "2026-05-03"
     monkeypatch.setattr(
@@ -117,6 +122,7 @@ def test_manual_entry_invalid_fatigue_out_of_range(bot, db, monkeypatch):
 
 # ── Test 6 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_malformed_input(bot):
     reply = bot.handle_manual_entry_text("notakey=5")
     assert "Usage:" in reply
@@ -124,6 +130,7 @@ def test_manual_entry_malformed_input(bot):
 
 # ── Test 7 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_manual_entry_empty_command(bot):
     reply = bot.handle_manual_entry_text("")
     assert "Usage:" in reply
@@ -131,6 +138,7 @@ def test_manual_entry_empty_command(bot):
 
 # ── Test 8 ────────────────────────────────────────────────────────────────────
 
+@pytest.mark.integration
 def test_data_source_column_exists_in_schema(tmp_path):
     db = DatabaseManager(db_name="test_schema_check.db", db_dir=tmp_path)
     cursor = db.conn.cursor()

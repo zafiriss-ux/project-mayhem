@@ -1,4 +1,6 @@
 
+import pytest
+
 
 def _session(session_type: str = "INTERVALS") -> dict:
     return {"session_type": session_type, "max_zone": 5, "zone": 5, "duration_min": 60}
@@ -21,6 +23,8 @@ def _base_context() -> dict:
     }
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_governance_rationale_hard_stop_contains_primary_reason_and_gate(governance_engine_factory):
     engine = governance_engine_factory()
     context = _base_context() | {"injury_flag": True}
@@ -35,6 +39,8 @@ def test_governance_rationale_hard_stop_contains_primary_reason_and_gate(governa
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_governance_rationale_approved_contains_h1_h5_with_margin_values(governance_engine_factory):
     engine = governance_engine_factory()
 
@@ -47,6 +53,8 @@ def test_governance_rationale_approved_contains_h1_h5_with_margin_values(governa
     assert findings["H3"]["margin"] is not None
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_override_metrics_calculation_uses_30_day_rate_and_trend():
     decisions = []
     for i in range(30):

@@ -6,6 +6,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 
+@pytest.mark.integration
 def test_integrity_check_method_exists():
     db = DatabaseManager(":memory:")
     assert hasattr(db, "check_integrity")
@@ -13,6 +14,7 @@ def test_integrity_check_method_exists():
     db.close()
 
 
+@pytest.mark.integration
 def test_integrity_check_passes_healthy_db(tmp_path):
     db = DatabaseManager(db_name="healthy.db", db_dir=tmp_path)
     try:
@@ -21,6 +23,7 @@ def test_integrity_check_passes_healthy_db(tmp_path):
         db.close()
 
 
+@pytest.mark.integration
 def test_integrity_check_detects_corruption(tmp_path):
     path = tmp_path / "corrupt.db"
     db = DatabaseManager(db_name="corrupt.db", db_dir=tmp_path)
@@ -48,6 +51,7 @@ def test_integrity_check_detects_corruption(tmp_path):
         pass  # corruption detected at open — acceptable per spec
 
 
+@pytest.mark.integration
 def test_backup_and_restore_roundtrip(tmp_path):
     db = DatabaseManager(db_name="source.db", db_dir=tmp_path)
     db.save_session(

@@ -17,6 +17,8 @@ import pathlib
 import re
 import tokenize
 
+import pytest
+
 # ── paths ──────────────────────────────────────────────────────────────────────
 
 _TITAN_ROOT = pathlib.Path(__file__).parent.parent / "titan"
@@ -33,6 +35,7 @@ def _parse(path: pathlib.Path) -> ast.Module:
 # ── Invariant 1: No silent exception swallow in titan/ (excluding ui/) ─────────
 
 
+@pytest.mark.unit
 def test_no_silent_exception_swallow_in_production_code():
     """'except Exception: pass' or 'except Exception:\\n    pass' must not exist
     in any titan/ module outside titan/ui/ (ui handlers are separately tested
@@ -60,6 +63,7 @@ def test_no_silent_exception_swallow_in_production_code():
 # ── Invariant 2: GovernanceEngine uses no inline numeric literals for thresholds
 
 
+@pytest.mark.unit
 def test_governance_engine_uses_no_inline_threshold_literals():
     """Threshold values must be imported from titan.config.thresholds, never
     hard-coded as numeric literals inside governance_engine.py."""
@@ -121,6 +125,7 @@ _CANONICAL_LOCK_CODES: frozenset[str] = frozenset(
 )
 
 
+@pytest.mark.unit
 def test_all_governance_lock_codes_are_canonical():
     """Every string appended to applied_locks inside governance_engine.py must
     be present in the canonical lock-code set (CLAUDE.md + this file).
@@ -169,6 +174,7 @@ _NAIVE_DATETIME_NOW = re.compile(
 )
 
 
+@pytest.mark.unit
 def test_governance_path_no_naive_datetime_now():
     """No production code in the governance/sync path may call datetime.now()
     without a timezone argument.  Use datetime.now(UTC) per HR-01.
@@ -193,6 +199,7 @@ def test_governance_path_no_naive_datetime_now():
 # ── Invariant 4: DatabaseManager doesn't bypass the threading lock ─────────────
 
 
+@pytest.mark.unit
 def test_database_manager_raw_conn_access_only_inside_lock_context():
     """self.conn must not be accessed outside of 'with self._lock:' blocks.
     This is checked structurally: any method that accesses self.conn must also
@@ -264,6 +271,7 @@ def test_database_manager_raw_conn_access_only_inside_lock_context():
 # ── T5-75-A: _decision_pipeline() has exactly one production call site ─────────
 
 
+@pytest.mark.unit
 def test_decision_pipeline_has_single_production_call_site() -> None:
     """_decision_pipeline() must have exactly one call site in titan/ production code.
 
@@ -313,6 +321,7 @@ def _collect_called_attr_names(node: ast.AST) -> set[str]:
     return names
 
 
+@pytest.mark.unit
 def test_all_gate_methods_called_from_apply_constraints() -> None:
     """Every _gate_ / _check_ class method on GovernanceEngine must appear as a
     call inside apply_constraints().

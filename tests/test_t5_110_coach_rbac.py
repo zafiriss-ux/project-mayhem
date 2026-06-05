@@ -18,6 +18,8 @@ def db(tmp_path):
     manager.close()
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_coach_athlete_assignments_table_exists(db):
     """coach_athlete_assignments table must be present after DB init."""
     tables = [
@@ -29,18 +31,24 @@ def test_coach_athlete_assignments_table_exists(db):
     assert "coach_athlete_assignments" in tables
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_owner_seeded_at_migration(db):
     """Fresh DB must have system→owner assignment row."""
     assigned = db.get_assigned_athletes("system")
     assert "owner" in assigned
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_assign_athlete_to_coach(db):
     """assign_athlete_to_coach must make the athlete visible to that coach."""
     db.assign_athlete_to_coach("coach1", "athlete_a")
     assert db.get_assigned_athletes("coach1") == ["athlete_a"]
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_coach_cannot_access_unassigned_athlete(db):
     """A coach assigned only to athlete_a must not see athlete_b."""
     db.assign_athlete_to_coach("coach1", "athlete_a")
@@ -49,6 +57,8 @@ def test_coach_cannot_access_unassigned_athlete(db):
     assert "athlete_b" not in assigned
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_system_coach_returns_all_athletes(db):
     """'system' coach must return all athletes regardless of assignment rows."""
     db.conn.execute(
@@ -72,6 +82,8 @@ def test_system_coach_returns_all_athletes(db):
     assert "athlete_y" in all_athletes
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_duplicate_assignment_is_idempotent(db):
     """Assigning the same (coach, athlete) pair twice must not raise and must yield one row."""
     db.assign_athlete_to_coach("coach1", "athlete_a")

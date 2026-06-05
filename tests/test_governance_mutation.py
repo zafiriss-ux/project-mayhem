@@ -11,6 +11,8 @@ protection. Any change to governance gate logic that breaks a boundary case will
 fail here before reaching review.
 """
 
+import pytest
+
 from titan.config.thresholds import (
     HARD_STOP_HRV_DELTA,
     HARD_STOP_RHR_DELTA,
@@ -69,6 +71,8 @@ def _engine() -> GovernanceEngine:
 
 # ── H2: HRV Collapse ─────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h2_fires_at_threshold():
     """H2 fires when today_hrv drop == HARD_STOP_HRV_DELTA (inclusive)."""
     ctx = _base_context(
@@ -80,6 +84,8 @@ def test_h2_fires_at_threshold():
     assert any(r.get("gate") == "H2" for r in result.get("hard_stop_reasons", []))
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h2_does_not_fire_below_threshold():
     """H2 must NOT fire when today_hrv drop is 1ms below HARD_STOP_HRV_DELTA."""
     ctx = _base_context(
@@ -92,6 +98,8 @@ def test_h2_does_not_fire_below_threshold():
 
 # ── H3: RHR Spike ────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_fires_at_threshold():
     """H3 fires when today_rhr rise == HARD_STOP_RHR_DELTA (inclusive)."""
     ctx = _base_context(
@@ -103,6 +111,8 @@ def test_h3_fires_at_threshold():
     assert any(r.get("gate") == "H3" for r in result.get("hard_stop_reasons", []))
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_does_not_fire_below_threshold():
     """H3 must NOT fire when today_rhr rise is 1bpm below HARD_STOP_RHR_DELTA."""
     ctx = _base_context(
@@ -115,6 +125,8 @@ def test_h3_does_not_fire_below_threshold():
 
 # ── H4: TSB Floor ────────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h4_fires_at_threshold():
     """H4 fires when tsb_value == HARD_STOP_TSB_FLOOR (inclusive)."""
     ctx = _base_context(tsb_value=HARD_STOP_TSB_FLOOR)
@@ -124,6 +136,8 @@ def test_h4_fires_at_threshold():
     assert any(r.get("gate") == "H4" for r in result.get("hard_stop_reasons", []))
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h4_does_not_fire_above_threshold():
     """H4 must NOT fire when tsb_value is 1 unit above HARD_STOP_TSB_FLOOR."""
     ctx = _base_context(tsb_value=HARD_STOP_TSB_FLOOR + 1.0)
@@ -134,6 +148,8 @@ def test_h4_does_not_fire_above_threshold():
 
 # ── H5: Extreme Subjective Fatigue ────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h5_fires_at_threshold():
     """H5 fires when subjective_fatigue_score == SUBJECTIVE_FATIGUE_EXTREME."""
     ctx = _base_context(subjective_fatigue_score=SUBJECTIVE_FATIGUE_EXTREME)
@@ -143,6 +159,8 @@ def test_h5_fires_at_threshold():
     assert any(r.get("gate") == "H5" for r in result.get("hard_stop_reasons", []))
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h5_does_not_fire_below_threshold():
     """H5 must NOT fire when subjective_fatigue_score is 1 below SUBJECTIVE_FATIGUE_EXTREME."""
     ctx = _base_context(subjective_fatigue_score=SUBJECTIVE_FATIGUE_EXTREME - 1)
@@ -152,6 +170,8 @@ def test_h5_does_not_fire_below_threshold():
 
 # ── PERSISTENCE_DEGRADED_CEILING ─────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_persistence_degraded_ceiling_applies():
     """persistence_degraded=True must cap session at EASY and add lock code."""
     ctx = _base_context(persistence_degraded=True)
@@ -161,6 +181,8 @@ def test_persistence_degraded_ceiling_applies():
     assert "PERSISTENCE_DEGRADED_CEILING" in result.get("governance_locks_applied", [])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_persistence_degraded_ceiling_does_not_fire_when_false():
     """persistence_degraded=False must NOT add PERSISTENCE_DEGRADED_CEILING."""
     ctx = _base_context(persistence_degraded=False)
@@ -170,6 +192,8 @@ def test_persistence_degraded_ceiling_does_not_fire_when_false():
 
 # ── data_confidence_low ceiling ───────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_data_confidence_low_ceiling_applies():
     """data_confidence_low=True must cap session at EASY and add lock code."""
     ctx = _base_context(data_confidence_low=True)
@@ -184,6 +208,8 @@ def test_data_confidence_low_ceiling_applies():
 # the gate must not silently pass NaN comparisons (float("nan") <= x is False).
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h2_nan_hrv_does_not_fire_silently():
     """H2: NaN today_hrv must NOT silently pass (gate rejected, not triggered)."""
     ctx = _base_context(today_hrv=float("nan"), baseline_hrv=50.0)
@@ -198,6 +224,8 @@ def test_h2_nan_hrv_does_not_fire_silently():
     assert "H2" not in hard_stop_gates, "H2 must not fire on NaN HRV (INV-01)"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_nan_rhr_does_not_fire_silently():
     """H3: NaN today_rhr must NOT silently pass (gate rejected, not triggered)."""
     ctx = _base_context(today_rhr=float("nan"), baseline_rhr=50.0)
@@ -207,6 +235,8 @@ def test_h3_nan_rhr_does_not_fire_silently():
     assert "H3" not in hard_stop_gates, "H3 must not fire on NaN RHR (INV-01)"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h4_nan_tsb_does_not_fire_silently():
     """H4: NaN tsb_value must NOT silently bypass the floor gate."""
     # If NaN tsb silently returned False for <= HARD_STOP_TSB_FLOOR, the gate
@@ -220,6 +250,8 @@ def test_h4_nan_tsb_does_not_fire_silently():
     assert "H4" not in hard_stop_gates, "H4 must not fire on NaN TSB (INV-01)"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_nan_acwr_blocks_vo2_session():
     """VO2 eligibility gate: NaN ACWR must mark V1 invalid and block VO2.
 
@@ -239,6 +271,8 @@ def test_vo2_nan_acwr_blocks_vo2_session():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_nan_readiness_blocks_vo2_session():
     """VO2 eligibility gate: NaN readiness must mark V2 invalid and block VO2."""
     ctx = _base_context(readiness_score=float("nan"))
@@ -253,6 +287,8 @@ def test_vo2_nan_readiness_blocks_vo2_session():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_nan_glycogen_debt_blocks_vo2_session():
     """VO2 eligibility gate: NaN glycogen_debt must mark V3 invalid and block VO2."""
     ctx = _base_context(glycogen_debt=float("nan"))
@@ -269,6 +305,8 @@ def test_vo2_nan_glycogen_debt_blocks_vo2_session():
 
 # ── NaN boundary tests: H5, FUELING_GATE, INTENSITY_GATE (T5-72b / ADR-0009) ─
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h5_nan_fatigue_does_not_fire_silently():
     """H5: NaN subjective_fatigue_score must NOT silently trigger the gate (INV-01)."""
     ctx = _base_context(subjective_fatigue_score=float("nan"))
@@ -280,6 +318,8 @@ def test_h5_nan_fatigue_does_not_fire_silently():
 
 # ── ADR-0051: None input → conservative fail (data_confidence_low) ───────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h2_none_hrv_sets_data_confidence_low():
     """H2: None today_hrv must set data_confidence_low (ADR-0051 conservative fail)."""
     ctx = _base_context(today_hrv=None, baseline_hrv=50.0)
@@ -287,6 +327,8 @@ def test_h2_none_hrv_sets_data_confidence_low():
     assert ctx.get("data_confidence_low") is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_none_rhr_sets_data_confidence_low():
     """H3: None today_rhr must set data_confidence_low (ADR-0051 conservative fail)."""
     ctx = _base_context(today_rhr=None, baseline_rhr=52.0)
@@ -294,6 +336,8 @@ def test_h3_none_rhr_sets_data_confidence_low():
     assert ctx.get("data_confidence_low") is True
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_fueling_gate_nan_duration_does_not_lock():
     """FUELING_GATE: NaN duration_min must be rejected without applying a lock (INV-01)."""
     ctx = _base_context(fueling_confirmed=False)
@@ -307,6 +351,8 @@ def test_fueling_gate_nan_duration_does_not_lock():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_intensity_gate_nan_volume_modifier_defaults_to_one():
     """INTENSITY_GATE: NaN volume_modifier must be rejected and default to 1.0 (INV-01)."""
     ctx = _base_context(
@@ -322,6 +368,8 @@ def test_intensity_gate_nan_volume_modifier_defaults_to_one():
 
 # ── VO2 eligibility ESI EXTREME boundary (T5-14 / ADR-0034) ────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_esi_extreme_boundary_on_blocks_vo2_session():
     """Boundary-ON: esi_level=EXTREME must fail V4 and downgrade VO2 work."""
     ctx = _base_context(
@@ -343,6 +391,8 @@ def test_vo2_esi_extreme_boundary_on_blocks_vo2_session():
     assert "V4" in vo2.get("failed_conditions", [])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_esi_extreme_boundary_off_does_not_block_vo2_session():
     """Boundary-OFF: non-EXTREME ESI must not trigger VO2 V4 failure by itself."""
     ctx = _base_context(
@@ -365,6 +415,8 @@ def test_vo2_esi_extreme_boundary_off_does_not_block_vo2_session():
 
 # ── No-gate clean path ────────────────────────────────────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_governance_clean_when_no_gate_fires():
     """When no gate condition is met, governance_clean must be True and session
     type must be unchanged."""
@@ -379,6 +431,8 @@ def test_governance_clean_when_no_gate_fires():
 # Conservative = no crash, no silent false-positive trigger, safe fallback value.
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gate_event_nan_input_conservative():
     """_gate_event: NaN field values must not raise (INV-01: safe audit logging)."""
     # _gate_event is a pure logging helper; NaN fields must not cause exceptions
@@ -386,6 +440,8 @@ def test_gate_event_nan_input_conservative():
     # assert: pipeline must not raise on NaN audit fields
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_override_lockdown_nan_input_conservative():
     """check_override_lockdown: corrupted/NaN ratio triggers fail-safe → locked (INV-01).
 
@@ -406,6 +462,8 @@ def test_override_lockdown_nan_input_conservative():
     assert result["max_zone"] == 2
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_cs_confidence_lock_nan_input_conservative():
     """check_cs_confidence_lock: NaN confidence must not silently allow race sim (INV-01).
 
@@ -423,6 +481,8 @@ def test_cs_confidence_lock_nan_input_conservative():
     assert "locked" in result, "result must always contain 'locked' key"
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_hard_stops_nan_input_conservative():
     """_check_hard_stops: NaN in all hard-stop fields must NOT trigger any H-gate (INV-01).
 
@@ -446,6 +506,8 @@ def test_hard_stops_nan_input_conservative():
         )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_vo2_eligibility_nan_input_conservative():
     """_check_vo2_eligibility: NaN in VO2 eligibility fields must lock the gate (INV-01).
 
@@ -466,6 +528,8 @@ def test_vo2_eligibility_nan_input_conservative():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_fueling_gate_nan_input_conservative():
     """_check_fueling_gate: NaN duration_min must NOT apply FUELING_GATE_LOCK (INV-01).
 
@@ -482,6 +546,8 @@ def test_fueling_gate_nan_input_conservative():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_guidance_for_gate_nan_input_conservative():
     """_guidance_for_gate: unknown/NaN gate name must return safe default string (INV-01).
 
@@ -498,6 +564,8 @@ def test_guidance_for_gate_nan_input_conservative():
 
 # ── T5-72: H2/H3 missing-data conservative ceiling ───────────────────────────
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h2_none_hrv_applies_easy_ceiling_not_fail_open():
     """T5-72: H2 gate with None HRV must apply EASY ceiling, not fail-open.
 
@@ -517,6 +585,8 @@ def test_h2_none_hrv_applies_easy_ceiling_not_fail_open():
     )
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_h3_none_rhr_applies_easy_ceiling_not_fail_open():
     """T5-72: H3 gate with None RHR must apply EASY ceiling, not fail-open.
 
@@ -543,6 +613,8 @@ def test_h3_none_rhr_applies_easy_ceiling_not_fail_open():
 # satisfy the G-CI-05 naming contract without duplicating assertion logic.
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gate_check_hard_stops_nan_conservative():
     """G-CI-05 alias: _check_hard_stops NaN coverage (see test_hard_stops_nan_input_conservative)."""
     ctx = _base_context(
@@ -560,6 +632,8 @@ def test_gate_check_hard_stops_nan_conservative():
         assert gate not in hard_stop_gates
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gate_check_vo2_eligibility_nan_conservative():
     """G-CI-05 alias: _check_vo2_eligibility NaN coverage (see test_vo2_eligibility_nan_input_conservative)."""
     ctx = _base_context(
@@ -574,6 +648,8 @@ def test_gate_check_vo2_eligibility_nan_conservative():
     assert "VO2_ELIGIBILITY_GATE" in result.get("governance_locks_applied", [])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gate_check_fueling_nan_conservative():
     """G-CI-05 alias: _check_fueling_gate NaN coverage (see test_fueling_gate_nan_input_conservative)."""
     ctx = _base_context(fueling_confirmed=False)
@@ -583,6 +659,8 @@ def test_gate_check_fueling_nan_conservative():
     assert "FUELING_GATE_LOCK" not in result.get("governance_locks_applied", [])
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_gate_guidance_for_nan_conservative():
     """G-CI-05 alias: _guidance_for_gate NaN coverage (see test_guidance_for_gate_nan_input_conservative)."""
     result = GovernanceEngine._guidance_for_gate(str(float("nan")))

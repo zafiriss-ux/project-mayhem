@@ -11,6 +11,8 @@ T5-07-L3-B implementation (2026-04-17).
 
 from __future__ import annotations
 
+import pytest
+
 from titan.science.outcome_tracker import GovernanceDecision, OutcomeTracker
 
 
@@ -51,6 +53,8 @@ def _make_decision(
 class TestRecordDecisionAthleteIsolation:
     """record_decision() stores athlete_profile_id explicitly."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_decision_stores_correct_athlete_id(self) -> None:
         tracker = OutcomeTracker()
         _make_decision(tracker, athlete_profile_id="athlete_a")
@@ -58,6 +62,8 @@ class TestRecordDecisionAthleteIsolation:
         assert len(decisions) == 1
         assert decisions[0].athlete_profile_id == "athlete_a"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_athlete_b_decisions_not_visible_to_athlete_a(self) -> None:
         tracker = OutcomeTracker()
         _make_decision(tracker, athlete_profile_id="athlete_a", date="2026-04-01")
@@ -73,12 +79,16 @@ class TestRecordDecisionAthleteIsolation:
 class TestRecordOutcomeAthleteIsolation:
     """record_outcome() independence window check is scoped per-athlete."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_outcome_matches_correct_athlete(self) -> None:
         tracker = OutcomeTracker()
         _make_decision(tracker, athlete_profile_id="athlete_a", date="2026-04-05")
         result = tracker.record_outcome(date="2026-04-05", rpe=6, completed=True, athlete_id="athlete_a")
         assert result is True
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_outcome_does_not_match_wrong_athlete(self) -> None:
         """record_outcome() with athlete_b must not find athlete_a's decision."""
         tracker = OutcomeTracker()
@@ -110,6 +120,8 @@ class TestCalibrationDiversityGateIsolation:
                 athlete_id=athlete_id,
             )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_athlete_b_not_satisfied_by_athlete_a_records(self) -> None:
         """30 records for athlete_a must not satisfy the gate for athlete_b."""
         tracker = OutcomeTracker()
@@ -120,6 +132,8 @@ class TestCalibrationDiversityGateIsolation:
             "athlete_a has records — cross-athlete pooling is forbidden (INV-04)"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_diversity_gate_passes_when_own_records_sufficient(self) -> None:
         """An athlete with 30 diverse records satisfies the gate for themselves."""
         tracker = OutcomeTracker()
@@ -127,12 +141,16 @@ class TestCalibrationDiversityGateIsolation:
         result_a = tracker.check_calibration_diversity(athlete_id="athlete_a")
         assert result_a is True
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_diversity_gate_fails_below_minimum_count(self) -> None:
         """Fewer than 30 reusable records must fail the gate."""
         tracker = OutcomeTracker()
         self._seed_athlete(tracker, "athlete_a", 10, ["EASY", "TEMPO", "LONG"])
         assert tracker.check_calibration_diversity(athlete_id="athlete_a") is False
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_diversity_gate_fails_on_single_session_type_dominance(self) -> None:
         """If one session type > 60% the gate must fail even with ≥ 30 records."""
         tracker = OutcomeTracker()
@@ -144,6 +162,8 @@ class TestCalibrationDiversityGateIsolation:
 class TestGetCalibrationAnalyticsIsolation:
     """get_calibration_analytics() must return only the requested athlete's records."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_analytics_for_athlete_a_excludes_athlete_b(self) -> None:
         tracker = OutcomeTracker()
         _make_decision(tracker, athlete_profile_id="athlete_a", date="2026-04-10")
@@ -156,6 +176,8 @@ class TestGetCalibrationAnalyticsIsolation:
             "athlete_b's decision appeared in athlete_a's calibration analytics — INV-04 violation"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_analytics_returns_empty_for_unknown_athlete(self) -> None:
         tracker = OutcomeTracker()
         _make_decision(tracker, athlete_profile_id="athlete_a", date="2026-04-10")

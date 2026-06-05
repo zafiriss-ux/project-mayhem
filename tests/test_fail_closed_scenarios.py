@@ -68,6 +68,8 @@ class TestFS01NaNAcwrGovernanceBlock:
       the STARTUP_DATA_CONFIDENCE_CEILING → EASY + max_zone ≤ 2
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_nan_acwr_does_not_pass_vo2_gate(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -102,6 +104,8 @@ class TestFS01NaNAcwrGovernanceBlock:
             "Expected NAN_REJECTED log entry from governance gate when acwr=nan"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_nan_acwr_with_data_confidence_low_forces_easy_zone2(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -127,6 +131,8 @@ class TestFS01NaNAcwrGovernanceBlock:
             "STARTUP_DATA_CONFIDENCE_CEILING lock must be present in governance_locks_applied"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_nan_acwr_governance_result_is_not_permissive(self) -> None:
         """FS-01-C: NaN ACWR must never produce governance_clean=True for a quality session."""
         engine = GovernanceEngine()
@@ -165,6 +171,8 @@ class TestFS02HRVDeclineWarning:
     from the anchor window mean.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_seven_day_hrv_decline_detected_by_drift_check(self) -> None:
         """
         FS-02: HRV series [60, 57, 54, 51, 48, 45, 42] (−3 ms/day).
@@ -186,6 +194,8 @@ class TestFS02HRVDeclineWarning:
             f"series: {hrv_series}, window=3"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_static_describe_calibration_drift_detects_decline(self) -> None:
         """
         FS-02: describe_calibration_drift with baseline=60, current=50.
@@ -203,6 +213,8 @@ class TestFS02HRVDeclineWarning:
         assert state.abs_delta_ms > HRV_DRIFT_THRESHOLD_MS
         assert state.delta_ms == pytest.approx(-10.0, abs=0.01)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_stable_hrv_series_does_not_trigger_drift(self) -> None:
         """FS-02-neg: Stable HRV ±1 ms must not trigger drift detection."""
         engine = HRVGuidedEngine()
@@ -213,6 +225,8 @@ class TestFS02HRVDeclineWarning:
         drift = engine.check_baseline_drift(window_days=3)
         assert drift is False, "Stable HRV (variation ≈ 0.5 ms) must not trigger drift warning"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_insufficient_data_returns_false(self) -> None:
         """FS-02-guard: Fewer than window_days*2 entries → False (insufficient data)."""
         engine = HRVGuidedEngine()
@@ -223,6 +237,8 @@ class TestFS02HRVDeclineWarning:
         drift = engine.check_baseline_drift(window_days=3)
         assert drift is False, "Insufficient data must return False, not raise"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_declining_series_data_confidence_implied_by_drift(self) -> None:
         """
         FS-02: When drift is detected, describe_calibration_drift must set
@@ -252,6 +268,8 @@ class TestFS06TimezoneUTCDate:
     Key case: 23:59 local in UTC+3 = 20:59 UTC = still the same calendar day.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_late_evening_utc_plus3_stored_as_correct_utc_date(self) -> None:
         """
         FS-06: startTimeLocal = "2026-04-03T23:59:00+03:00"
@@ -263,6 +281,8 @@ class TestFS06TimezoneUTCDate:
             f"23:59 UTC+3 = 20:59 UTC = still Apr 3."
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_midnight_crossing_stored_as_utc_next_day(self) -> None:
         """
         UTC+3 activity at 22:30 local = 19:30 UTC → Apr 3 still.
@@ -275,6 +295,8 @@ class TestFS06TimezoneUTCDate:
             f"01:00 UTC+3 = 22:00 UTC April 2 — expected '2026-04-02', got '{result}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_utc_naive_string_uses_truncation_fallback(self) -> None:
         """
         FS-06-fallback: Strings without timezone info use [:10] truncation
@@ -286,11 +308,15 @@ class TestFS06TimezoneUTCDate:
             f"Naive timestamp must use local date truncation, got '{result}'"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_empty_string_returns_empty(self) -> None:
         """FS-06-guard: Empty input returns empty string without raising."""
         result = _activity_utc_date("")
         assert result == ""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_utc_plus0_preserves_date(self) -> None:
         """UTC+0 activity: no offset → date unchanged."""
         result = _activity_utc_date("2026-04-03T12:00:00+00:00")
@@ -310,6 +336,8 @@ class TestFS07RestartDegradedTimerRestored:
     never fire the alert.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_degraded_since_restored_from_db_on_restart(
         self, db_manager_factory: Any
     ) -> None:
@@ -343,6 +371,8 @@ class TestFS07RestartDegradedTimerRestored:
             f"Restored timestamp differs by {delta_seconds:.1f}s from persisted value"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_clean_failure_type_not_in_degraded_since_after_restart(
         self, db_manager_factory: Any
     ) -> None:
@@ -360,6 +390,8 @@ class TestFS07RestartDegradedTimerRestored:
             "Resolved failure type must not appear in _degraded_since after restart"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_24h_slo_escalation_timer_continues_after_restart(
         self, db_manager_factory: Any
     ) -> None:
@@ -401,6 +433,8 @@ class TestFS08StaleFreshMixedState:
     - max_zone → ≤ 2
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_confidence_low_forces_easy_ceiling(self) -> None:
         """
         FS-08: Context with data_confidence_low=True and quality session.
@@ -422,6 +456,8 @@ class TestFS08StaleFreshMixedState:
             "STARTUP_DATA_CONFIDENCE_CEILING lock must appear in governance_locks_applied"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_confidence_low_logged_as_easy_ceiling_event(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
@@ -449,6 +485,8 @@ class TestFS08StaleFreshMixedState:
             "Expected EASY_CEILING governance gate event when data_confidence_low=True"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_confidence_low_does_not_downgrade_already_easy(self) -> None:
         """
         FS-08-idempotent: If session is already EASY, data_confidence_low must
@@ -465,6 +503,8 @@ class TestFS08StaleFreshMixedState:
         )
         assert result.get("max_zone", 5) <= 2
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_confidence_low_respects_fallback_conservative_ceiling(self) -> None:
         """
         FS-08-ceiling: Even HAMMER + data_confidence_low → EASY + max_zone ≤ 2.
@@ -524,6 +564,8 @@ class TestFS09SIGTERMMidPipelineNoOrphanedGovernanceTrace:
     may survive the exception.
     """
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_exception_at_save_leaves_zero_rows(
         self, db_manager_factory: Any
     ) -> None:
@@ -564,6 +606,8 @@ class TestFS09SIGTERMMidPipelineNoOrphanedGovernanceTrace:
             f"found {len(rows)}: {rows}"
         )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_every_row_has_required_fields_after_exception(
         self, db_manager_factory: Any
     ) -> None:
@@ -611,6 +655,8 @@ class TestFS09SIGTERMMidPipelineNoOrphanedGovernanceTrace:
             assert row.get("session_planned"), f"Surviving row missing 'session_planned': {row}"
             assert "governance_clean" in row, f"Surviving row missing 'governance_clean': {row}"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_db_remains_usable_after_mid_pipeline_exception(
         self, db_manager_factory: Any
     ) -> None:

@@ -1,5 +1,7 @@
 """E2E-style gold-path regression tests for planning workflows."""
 
+import pytest
+
 from titan.features.weekly_planner import WeeklyPlanGenerator
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
@@ -16,6 +18,7 @@ def _planner(*, hrv_baseline: float, hrv_latest: float, tsb_value: float, tsb_st
     return WeeklyPlanGenerator(hrv_engine=hrv, tsb_engine=tsb, acwr_engine=acwr)
 
 
+@pytest.mark.unit
 def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation(athlete_profile_factory):
     athlete = athlete_profile_factory(
         name='New Athlete',
@@ -32,6 +35,7 @@ def test_gold_path_new_athlete_onboarding_to_weekly_plan_generation(athlete_prof
     assert plan['total_km'] > 0
 
 
+@pytest.mark.unit
 def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs(athlete_profile_factory):
     athlete = athlete_profile_factory(
         name='New Athlete Snapshot',
@@ -58,6 +62,7 @@ def test_gold_path_new_athlete_snapshot_is_stable_for_same_inputs(athlete_profil
     assert snap1 == snap2
 
 
+@pytest.mark.unit
 def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs(athlete_profile_factory):
     athlete = athlete_profile_factory(name='Determinism Check')
     planner = _planner(hrv_baseline=50.0, hrv_latest=50.0, tsb_value=-5.0, tsb_status='NEUTRAL')
@@ -79,6 +84,7 @@ def test_gold_path_weekly_plan_snapshot_is_deterministic_for_same_inputs(athlete
     assert snap1 == snap2
 
 
+@pytest.mark.unit
 def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppressed(athlete_profile_factory):
     athlete = athlete_profile_factory(name='Recovery Adaptation')
     planner = _planner(hrv_baseline=52.0, hrv_latest=38.0, tsb_value=-18.0, tsb_status='FATIGUED')
@@ -91,6 +97,7 @@ def test_gold_path_recovery_adaptation_downgrades_intensity_when_hrv_is_suppress
     assert details.count('downgraded') >= 1
 
 
+@pytest.mark.unit
 def test_gold_path_recovery_adaptation_snapshot_is_stable_for_same_inputs(athlete_profile_factory):
     athlete = athlete_profile_factory(name='Recovery Snapshot')
     planner = _planner(hrv_baseline=52.0, hrv_latest=38.0, tsb_value=-18.0, tsb_status='FATIGUED')
@@ -110,6 +117,7 @@ def test_gold_path_recovery_adaptation_snapshot_is_stable_for_same_inputs(athlet
     assert snap1 == snap2
 
 
+@pytest.mark.unit
 def test_smoke_today_session_fallback_without_generated_plan():
     planner = _planner(hrv_baseline=50.0, hrv_latest=50.0, tsb_value=0.0, tsb_status='FRESH')
 

@@ -22,6 +22,8 @@ def _get_blocking_targets() -> list[str]:
     return [line.strip() for line in blocking_section.splitlines() if line.strip()]
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_ruff_blocking_gate_includes_promoted_targets() -> None:
     targets = _get_blocking_targets()
     assert targets == [
@@ -29,6 +31,8 @@ def test_ruff_blocking_gate_includes_promoted_targets() -> None:
     ], f"Unexpected blocking targets: {targets}"
 
 
+@pytest.mark.integration
+@pytest.mark.governance
 def test_blocking_targets_are_ruff_clean() -> None:
     if importlib.util.find_spec("ruff") is None:
         pytest.skip("ruff is not installed in this environment")

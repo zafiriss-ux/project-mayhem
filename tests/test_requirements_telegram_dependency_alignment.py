@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 
 def _dependency_lines(path: str) -> list[str]:
     dependencies: list[str] = []
@@ -13,6 +15,8 @@ def _dependency_lines(path: str) -> list[str]:
     return dependencies
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_requirements_use_pytelegrambotapi_for_telebot():
     requirements = _dependency_lines("requirements.txt")
     telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
@@ -21,6 +25,8 @@ def test_requirements_use_pytelegrambotapi_for_telebot():
     assert "import telebot" in telegram_module
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_requirements_do_not_include_python_telegram_bot_package():
     requirements = _dependency_lines("requirements.txt")
 

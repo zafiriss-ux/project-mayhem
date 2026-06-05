@@ -43,6 +43,7 @@ def _capture_events(monkeypatch):
 
 class TestSyncSleepSuccessEventGating:
 
+    @pytest.mark.unit
     def test_sleep_synced_not_emitted_on_outer_exception(self, monkeypatch):
         """sleep_synced must not fire when the outer try raises.
 
@@ -61,6 +62,7 @@ class TestSyncSleepSuccessEventGating:
             f"'sleep_synced' emitted after outer exception; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_sleep_synced_emitted_on_success(self, monkeypatch):
         """sleep_synced fires when the sync completes without outer exception."""
         sync = _make_connected_sync()
@@ -80,6 +82,7 @@ class TestSyncSleepSuccessEventGating:
             f"'sleep_synced' not emitted on success; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_sleep_synced_not_emitted_but_failed_event_is(self, monkeypatch):
         """On outer exception, sync_sleep_failed is emitted, sleep_synced is not."""
         sync = _make_connected_sync()
@@ -102,6 +105,7 @@ class TestSyncSleepSuccessEventGating:
 
 class TestSyncHrvSuccessEventGating:
 
+    @pytest.mark.unit
     def test_hrv_synced_not_emitted_on_outer_exception(self, monkeypatch):
         """hrv_synced must not fire when the outer try raises.
 
@@ -120,6 +124,7 @@ class TestSyncHrvSuccessEventGating:
             f"'hrv_synced' emitted after outer exception; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_hrv_synced_emitted_on_success(self, monkeypatch):
         """hrv_synced fires when sync completes cleanly."""
         sync = _make_connected_sync()
@@ -137,6 +142,7 @@ class TestSyncHrvSuccessEventGating:
             f"'hrv_synced' not emitted on success; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_hrv_synced_not_emitted_but_failed_event_is(self, monkeypatch):
         """On outer exception, sync_hrv_failed is emitted, hrv_synced is not."""
         sync = _make_connected_sync()
@@ -159,6 +165,7 @@ class TestSyncHrvSuccessEventGating:
 
 class TestSyncActivitiesSuccessEventGating:
 
+    @pytest.mark.unit
     def test_activities_synced_not_emitted_on_outer_exception(self, monkeypatch):
         """activities_synced must not fire when the outer try raises.
 
@@ -177,6 +184,7 @@ class TestSyncActivitiesSuccessEventGating:
             f"'activities_synced' emitted after outer exception; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_activities_synced_emitted_on_success(self, monkeypatch):
         """activities_synced fires when the sync completes without outer exception."""
         sync = _make_connected_sync()
@@ -201,6 +209,7 @@ class TestSyncActivitiesSuccessEventGating:
             f"'activities_synced' not emitted on success; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_activities_synced_not_emitted_but_failed_event_is(self, monkeypatch):
         """On outer exception, sync_activities_failed is emitted, activities_synced is not."""
         sync = _make_connected_sync()
@@ -223,6 +232,7 @@ class TestSyncActivitiesSuccessEventGating:
 
 class TestSyncWeightSuccessEventGating:
 
+    @pytest.mark.unit
     def test_weight_synced_not_emitted_on_outer_exception(self, monkeypatch):
         """weight_synced must not fire when the outer try raises.
 
@@ -241,6 +251,7 @@ class TestSyncWeightSuccessEventGating:
             f"'weight_synced' emitted after outer exception; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_weight_synced_emitted_on_success(self, monkeypatch):
         """weight_synced fires when the sync completes without outer exception."""
         sync = _make_connected_sync()
@@ -260,6 +271,7 @@ class TestSyncWeightSuccessEventGating:
             f"'weight_synced' not emitted on success; events: {emitted}"
         )
 
+    @pytest.mark.unit
     def test_weight_synced_not_emitted_but_failed_event_is(self, monkeypatch):
         """On outer exception, sync_weight_failed is emitted, weight_synced is not."""
         sync = _make_connected_sync()

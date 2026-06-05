@@ -11,6 +11,7 @@ def _make_db(tmp_path: Path) -> DatabaseManager:
     return DatabaseManager(db_name="test_operator_console.db", db_dir=tmp_path)
 
 
+@pytest.mark.integration
 def test_readiness_dashboard_empty_returns_null_summary(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)
@@ -23,6 +24,7 @@ def test_readiness_dashboard_empty_returns_null_summary(tmp_path):
     assert payload["summary"]["latest_vlg_color"] is None
 
 
+@pytest.mark.integration
 def test_readiness_dashboard_aggregates_timeline_and_distribution(tmp_path):
     db = _make_db(tmp_path)
     db.save_governance_decision(
@@ -73,6 +75,7 @@ def test_readiness_dashboard_aggregates_timeline_and_distribution(tmp_path):
     assert payload["summary"]["vlg_distribution"] == {"YELLOW": 1, "GREEN": 1}
 
 
+@pytest.mark.integration
 def test_session_explorer_includes_governance_trail_and_annotations(tmp_path):
     db = _make_db(tmp_path)
     db.save_governance_decision(
@@ -117,6 +120,7 @@ def test_session_explorer_includes_governance_trail_and_annotations(tmp_path):
     assert session["gate_findings"] == [{"gate": "HARD_STOP_TSB_FLOOR", "status": "TRIGGERED"}]
 
 
+@pytest.mark.integration
 def test_add_manual_annotation_updates_latest_decision_note(tmp_path):
     db = _make_db(tmp_path)
     db.save_governance_decision(
@@ -145,6 +149,7 @@ def test_add_manual_annotation_updates_latest_decision_note(tmp_path):
     assert payload["sessions"][0]["manual_annotation"] == "Operator overrode due to travel day."
 
 
+@pytest.mark.integration
 def test_calibration_review_empty_without_outcomes(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)
@@ -161,6 +166,7 @@ def test_calibration_review_empty_without_outcomes(tmp_path):
     assert payload["ml_promotion_readiness"]["engines"][0]["engine"] == "LoadPredictionShadowModel"
 
 
+@pytest.mark.integration
 def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
     db = _make_db(tmp_path)
     for day in range(1, 17):
@@ -219,6 +225,7 @@ def test_calibration_review_surfaces_phase_lock_rates_and_candidates(tmp_path):
     ]
 
 
+@pytest.mark.integration
 def test_manual_override_workflow_empty_payload(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)
@@ -242,6 +249,7 @@ def test_manual_override_workflow_empty_payload(tmp_path):
     }
 
 
+@pytest.mark.integration
 def test_record_manual_override_surfaces_in_workflow_audit_trail(tmp_path):
     db = _make_db(tmp_path)
     service = OperatorConsoleService(db)

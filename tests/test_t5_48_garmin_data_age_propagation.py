@@ -77,6 +77,8 @@ def _capture_gate_events(caplog, gov: GovernanceEngine, session: dict, context: 
 # ---------------------------------------------------------------------------
 
 class TestGarminSyncResultDataAgeHours:
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_age_hours_present_when_set(self):
         result = GarminSyncResultContract(
             activities=[], weight=[], sleep=[], hrv=[],
@@ -85,6 +87,8 @@ class TestGarminSyncResultDataAgeHours:
         ).to_payload()
         assert result["data_age_hours"] == pytest.approx(1.5)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_age_hours_zero_for_fresh_sync(self):
         result = GarminSyncResultContract(
             activities=[], weight=[], sleep=[], hrv=[],
@@ -93,6 +97,8 @@ class TestGarminSyncResultDataAgeHours:
         ).to_payload()
         assert result["data_age_hours"] == pytest.approx(0.0)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_age_hours_absent_when_none(self):
         result = GarminSyncResultContract(
             activities=[], weight=[], sleep=[], hrv=[],
@@ -100,6 +106,8 @@ class TestGarminSyncResultDataAgeHours:
         ).to_payload()
         assert "data_age_hours" not in result
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_data_age_hours_float_inf_survives(self):
         result = GarminSyncResultContract(
             activities=[], weight=[], sleep=[], hrv=[],
@@ -114,14 +122,20 @@ class TestGarminSyncResultDataAgeHours:
 # ---------------------------------------------------------------------------
 
 class TestGovernanceContextFields:
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_context_contains_garmin_data_age_hours(self):
         ctx = _minimal_context(garmin_data_age_hours=2.5, garmin_data_trust_level="TRUSTED")
         assert ctx["garmin_data_age_hours"] == pytest.approx(2.5)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_context_contains_garmin_data_trust_level(self):
         ctx = _minimal_context(garmin_data_age_hours=30.0, garmin_data_trust_level="INVALID")
         assert ctx["garmin_data_trust_level"] == "INVALID"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_context_trust_level_values(self):
         for level in ("TRUSTED", "SUSPECT", "INVALID"):
             ctx = _minimal_context(garmin_data_age_hours=1.0, garmin_data_trust_level=level)
@@ -133,6 +147,8 @@ class TestGovernanceContextFields:
 # ---------------------------------------------------------------------------
 
 class TestGateEventPayloads:
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_apply_constraints_complete_event_carries_age_fields(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context(garmin_data_age_hours=4.0, garmin_data_trust_level="SUSPECT")
@@ -143,6 +159,8 @@ class TestGateEventPayloads:
         assert complete["garmin_data_age_hours"] == pytest.approx(4.0)
         assert complete["garmin_data_trust_level"] == "SUSPECT"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_h1_gate_event_carries_age_fields(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context(
@@ -157,6 +175,8 @@ class TestGateEventPayloads:
         assert h1["garmin_data_age_hours"] == pytest.approx(10.0)
         assert h1["garmin_data_trust_level"] == "INVALID"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_h2_gate_event_carries_age_fields(self, caplog):
         gov = GovernanceEngine()
         # HRV collapse: today_hrv <= baseline_hrv - 15
@@ -173,6 +193,8 @@ class TestGateEventPayloads:
         assert h2["garmin_data_age_hours"] == pytest.approx(7.0)
         assert h2["garmin_data_trust_level"] == "SUSPECT"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_h4_gate_event_carries_age_fields(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context(
@@ -187,6 +209,8 @@ class TestGateEventPayloads:
         assert h4["garmin_data_age_hours"] == pytest.approx(3.0)
         assert h4["garmin_data_trust_level"] == "TRUSTED"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_vo2_eligibility_gate_event_carries_age_fields(self, caplog):
         gov = GovernanceEngine()
         # VO2 eligibility fails: acwr too high
@@ -210,6 +234,8 @@ class TestGateEventPayloads:
 # ---------------------------------------------------------------------------
 
 class TestMissingFieldsDefensiveBehavior:
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_no_crash_when_both_fields_absent(self, caplog):
         gov = GovernanceEngine()
         # Context without garmin_data_age_hours or garmin_data_trust_level
@@ -221,12 +247,16 @@ class TestMissingFieldsDefensiveBehavior:
         assert result is not None
         assert "session_type" in result
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_no_crash_when_age_is_none(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context(garmin_data_age_hours=None, garmin_data_trust_level="UNKNOWN")
         result = gov.apply_constraints(_minimal_session(), ctx)
         assert "session_type" in result
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_complete_event_age_is_none_when_absent(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context()
@@ -237,6 +267,8 @@ class TestMissingFieldsDefensiveBehavior:
         # When field is absent from context, value should be None (not raise)
         assert complete.get("garmin_data_age_hours") is None
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_complete_event_trust_is_unknown_when_absent(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context()
@@ -246,6 +278,8 @@ class TestMissingFieldsDefensiveBehavior:
         assert complete is not None
         assert complete.get("garmin_data_trust_level") == "UNKNOWN"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_no_crash_when_age_is_inf(self, caplog):
         gov = GovernanceEngine()
         ctx = _minimal_context(garmin_data_age_hours=float("inf"), garmin_data_trust_level="INVALID")

@@ -60,45 +60,63 @@ gov = GovernanceEngine()
 class TestContractTypeGuardViolations:
     """Cover every isinstance() raise inside assert_vo2_eligibility_contract."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_eligible_not_bool_raises(self):
         with pytest.raises(ContractViolation, match="eligible.*bool"):
             assert_vo2_eligibility_contract(_ineligible_base(eligible="yes"))
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_failed_conditions_not_list_raises(self):
         with pytest.raises(ContractViolation, match="failed_conditions.*list"):
             assert_vo2_eligibility_contract(_ineligible_base(failed_conditions="V1"))
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_original_session_not_str_raises(self):
         with pytest.raises(ContractViolation, match="original_session.*str"):
             assert_vo2_eligibility_contract(_ineligible_base(original_session=123))
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_downgraded_to_wrong_type_raises(self):
         """downgraded_to that is neither None nor str triggers line 61."""
         with pytest.raises(ContractViolation, match="downgraded_to.*str or None"):
             assert_vo2_eligibility_contract(_ineligible_base(downgraded_to=42))
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_detailed_failed_conditions_not_list_raises(self):
         with pytest.raises(ContractViolation, match="detailed_failed_conditions.*list"):
             assert_vo2_eligibility_contract(
                 _ineligible_base(detailed_failed_conditions="bad")
             )
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_reason_not_str_raises(self):
         with pytest.raises(ContractViolation, match="reason.*str"):
             assert_vo2_eligibility_contract(_ineligible_base(reason=999))
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_ineligible_with_downgraded_to_none_raises(self):
         """eligible=False but downgraded_to=None → structural invariant line 82."""
         r = _ineligible_base(downgraded_to=None)
         with pytest.raises(ContractViolation, match="eligible=False but downgraded_to is None"):
             assert_vo2_eligibility_contract(r)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_detail_entry_not_dict_raises(self):
         """detailed_failed_conditions[i] is a string, not a dict → line 92."""
         r = _ineligible_base(detailed_failed_conditions=["not-a-dict"])
         with pytest.raises(ContractViolation, match="must be dict"):
             assert_vo2_eligibility_contract(r)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_detail_missing_operator_field_raises(self):
         """'operator' is absent from a detail entry → lines 97–98."""
         r = _ineligible_base(
@@ -109,6 +127,8 @@ class TestContractTypeGuardViolations:
         with pytest.raises(ContractViolation, match="missing required field"):
             assert_vo2_eligibility_contract(r)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_detail_with_unknown_code_raises(self):
         """detail['code'] not in {V1..V5} → line 101."""
         r = _ineligible_base(
@@ -120,6 +140,8 @@ class TestContractTypeGuardViolations:
         with pytest.raises(ContractViolation):
             assert_vo2_eligibility_contract(r)
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_detail_codes_disagree_with_failed_conditions_raises(self):
         """detail_codes != failed_conditions → line 108."""
         r = _ineligible_base(
@@ -143,6 +165,8 @@ class TestGovernanceEngineExceptionPaths:
     """Cover TypeError/ValueError fallback branches in _evaluate_2of4_indicators
     and _check_hard_stops."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_hrv_conversion_exception_does_not_crash(self):
         """today_hrv/baseline_hrv/hrv_std_dev all present but non-numeric
         → lines 111-112 in _evaluate_2of4_indicators."""
@@ -155,6 +179,8 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.apply_constraints(plan, ctx)
         assert "session_type" in result  # engine survived
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_sleep_score_conversion_exception_does_not_crash(self):
         """sleep_score='nan_str' → lines 120-121 in _evaluate_2of4_indicators."""
         plan = {"session_type": "EASY", "duration_min": 45}
@@ -162,6 +188,8 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.apply_constraints(plan, ctx)
         assert "session_type" in result
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_subjective_fatigue_exception_in_2of4_and_hard_stop(self):
         """subjective_fatigue_score non-castable → TypeError except in _evaluate_2of4
         and int() except in _check_hard_stops (H5 gate): both fall back to 0."""
@@ -173,6 +201,8 @@ class TestGovernanceEngineExceptionPaths:
         # Falls back to 0 → no H5 gate fires
         assert result.get("session_type") == "INTERVALS"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_db_failure_is_fail_safe_and_alerted(self, caplog):
         """Generic DB read failures must lock conservatively and emit structured alert."""
 
@@ -201,6 +231,8 @@ class TestGovernanceEngineExceptionPaths:
         assert event["error_message"] == "db unavailable"
         assert event["component"] == "check_override_lockdown"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_happy_path_reads_ratio(self):
         class _HealthyDB:
             def get_override_ratio(self, days=14):
@@ -210,6 +242,8 @@ class TestGovernanceEngineExceptionPaths:
         assert result["locked"] is False
         assert result["ratio"] == 0.25
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_schema_mismatch_classification(self):
         class _SchemaMismatchDB:
             def get_override_ratio(self, days=14):
@@ -219,6 +253,8 @@ class TestGovernanceEngineExceptionPaths:
         assert result["locked"] is True
         assert result["error_code"] == "SCHEMA_MISMATCH"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_computation_error_classification(self):
         class _BadRatioDB:
             def get_override_ratio(self, days=14):
@@ -229,6 +265,8 @@ class TestGovernanceEngineExceptionPaths:
         assert result["error_code"] == "COMPUTATION_ERROR"
 
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_uses_thresholds_constant_boundary(self):
         class _BoundaryDB:
             def get_override_ratio(self, days=14):
@@ -237,6 +275,8 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.check_override_lockdown(_BoundaryDB())
         assert result["locked"] is False
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_override_lockdown_locks_above_thresholds_constant(self):
         class _AboveBoundaryDB:
             def get_override_ratio(self, days=14):
@@ -245,6 +285,8 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.check_override_lockdown(_AboveBoundaryDB())
         assert result["locked"] is True
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_cs_confidence_lock_uses_thresholds_constant_boundary(self):
         class _Tracker:
             confidence = GOVERNANCE_CS_CONFIDENCE_THRESHOLD
@@ -252,6 +294,8 @@ class TestGovernanceEngineExceptionPaths:
         result = gov.check_cs_confidence_lock(_Tracker())
         assert result["locked"] is False
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_cs_confidence_lock_triggers_below_thresholds_constant(self):
         class _Tracker:
             confidence = GOVERNANCE_CS_CONFIDENCE_THRESHOLD - 0.01
@@ -267,6 +311,8 @@ class TestGovernanceEngineExceptionPaths:
 class TestToDictMaybe:
     """Cover the two uncovered branches of _to_dict_maybe."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_gate_result_as_dict_is_returned_directly(self):
         """intensity_gate_result is already a dict → line 87 (return value)."""
         plan = {"session_type": "EASY", "duration_min": 45}
@@ -281,6 +327,8 @@ class TestToDictMaybe:
         result = gov.apply_constraints(plan, {"intensity_gate_result": gate_dict})
         assert result["intensity_gate_result"] == gate_dict  # passthrough
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_gate_result_as_arbitrary_object(self):
         """intensity_gate_result is not dict/None/dataclass → line 92 fallback."""
 
@@ -297,6 +345,8 @@ class TestToDictMaybe:
         assert result["intensity_gate_result"]["color"] == "GREEN"
         assert result["intensity_gate_result"]["max_zone"] == 4
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_gate_red_color_appends_intensity_gate_red_lock(self):
         """color='RED' → lines 444-445: INTENSITY_GATE_RED added to locks."""
         plan = {"session_type": "HAMMER", "duration_min": 45}
@@ -311,6 +361,8 @@ class TestToDictMaybe:
         result = gov.apply_constraints(plan, {"intensity_gate_result": gate})
         assert "INTENSITY_GATE_RED" in result["governance_locks_applied"]
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_gate_yellow_color_appends_intensity_gate_yellow_lock(self):
         """color='YELLOW' → line 447: INTENSITY_GATE_YELLOW added to locks."""
         plan = {"session_type": "EASY", "duration_min": 45}
@@ -325,6 +377,8 @@ class TestToDictMaybe:
         result = gov.apply_constraints(plan, {"intensity_gate_result": gate})
         assert "INTENSITY_GATE_YELLOW" in result["governance_locks_applied"]
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intensity_gate_session_override_is_applied(self):
         """session_override is set → line 443: session_type overwritten."""
         plan = {"session_type": "HAMMER", "duration_min": 45}
@@ -347,6 +401,8 @@ class TestToDictMaybe:
 class TestFuelingGateUncoveredBranches:
     """Cover the two fueling gate branches that weren't reached by existing tests."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_tempo_90min_without_fueling_locks_to_easy(self):
         """TEMPO ≥ 90 min, fueling_confirmed=False → LOCK phase 2 (lines 375-385)."""
         plan = {"session_type": "TEMPO", "duration_min": 90}
@@ -358,6 +414,8 @@ class TestFuelingGateUncoveredBranches:
         assert result["session_type"] == "EASY"
         assert "FUELING_GATE_LOCK" in result["governance_locks_applied"]
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_intervals_90min_without_fueling_locks_to_easy(self):
         """INTERVALS ≥ 90 min, fueling_confirmed=False → LOCK phase 2."""
         plan = {"session_type": "INTERVALS", "duration_min": 95}
@@ -365,6 +423,8 @@ class TestFuelingGateUncoveredBranches:
         assert result.get("fueling_gate", {}).get("action") == "LOCK"
         assert result["session_type"] == "EASY"
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_easy_75min_without_fueling_flags_session_unchanged(self):
         """EASY 60-89 min, fueling_confirmed=False → FLAG phase 1 (lines 411-418)."""
         plan = {"session_type": "EASY", "duration_min": 75}
@@ -375,6 +435,8 @@ class TestFuelingGateUncoveredBranches:
         assert fg.get("session_unchanged") is True
         assert result["session_type"] == "EASY"  # session NOT changed
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_progressive_65min_without_fueling_flags_session_unchanged(self):
         """PROGRESSIVE 60-89 min, fueling_confirmed=False → FLAG phase 1."""
         plan = {"session_type": "PROGRESSIVE", "duration_min": 65}
@@ -392,6 +454,8 @@ class TestAPLMatrixFallback:
     """When the phase×load_band key is absent from _PHASE_LOAD_MATRIX,
     the fallback branch (lines 237-239) must produce a valid result."""
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_unknown_phase_load_combination_uses_fallback(self, monkeypatch):
         """Patch _PHASE_LOAD_MATRIX to be empty → key lookup always misses."""
         import titan.science.adaptive_priority_lock as apl_mod
@@ -412,6 +476,8 @@ class TestAPLMatrixFallback:
         assert pv.get("CS_CONFIDENCE_LOCK") == 3
         assert "Fallback default" in result["apl_rationale"].get("OVERRIDE_LOCKDOWN", "")
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_unknown_phase_string_normalises_to_base(self):
         """An unrecognised phase string is normalised to BASE (warning logged)."""
         apl = AdaptivePriorityLock()
@@ -427,6 +493,8 @@ class TestAPLMatrixFallback:
         assert pv["PARASYMPATHETIC_GUARD"] == 1
         assert len(pv) == 3
 
+    @pytest.mark.unit
+    @pytest.mark.governance
     def test_cs_confidence_below_050_tightens_threshold(self):
         """cs_confidence < 0.50 must raise cs_min_confidence to ≥ 0.85."""
         apl = AdaptivePriorityLock()

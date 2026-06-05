@@ -1,9 +1,12 @@
 import threading
 import time
 
+import pytest
+
 from titan.integrations.garmin_sync import GarminSync
 
 
+@pytest.mark.integration
 def test_background_worker_lifecycle_start_stop_join_and_idempotent_start(monkeypatch):
     sync = GarminSync(email="dummy@example.com", password="dummy-password")
     iteration_event = threading.Event()
@@ -52,6 +55,7 @@ def test_background_worker_lifecycle_start_stop_join_and_idempotent_start(monkey
     assert worker_exceptions == []
 
 
+@pytest.mark.integration
 def test_start_background_sync_creates_thread_with_dummy_credentials(monkeypatch):
     sync = GarminSync(email="dummy@example.com", password="dummy-password")
     iteration_event = threading.Event()

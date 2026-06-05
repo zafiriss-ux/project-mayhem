@@ -1,6 +1,8 @@
 import ast
 from pathlib import Path
 
+import pytest
+
 
 def _parsed_imports(path: str):
     module = ast.parse(Path(path).read_text())
@@ -11,6 +13,8 @@ def _parsed_imports(path: str):
     return imports
 
 
+@pytest.mark.unit
+@pytest.mark.governance
 def test_t4_02_confirmed_unused_imports_removed():
     telegram_imports = _parsed_imports("titan/integrations/telegram_bot.py")
     assert ("telebot", ["types"]) not in telegram_imports
