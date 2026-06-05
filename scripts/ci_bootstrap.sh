@@ -1,55 +1,47 @@
 #!/usr/bin/env bash
 # =============================================================================
-# TITAN OS — Local CI Bootstrap
-# One-time setup for the uv-managed pytest environment on Ubuntu/Linux.
-# Run this once after a clean clone or Ubuntu install before scripts/titan_ci.sh
+# TITAN OS — Local CI Bootstrap (ADR-0059: python -m pytest model)
+# Creates a .venv and pip-installs all runtime + dev dependencies.
+# Run once after a clean clone or Ubuntu install before scripts/titan_ci.sh.
 #
 # Prerequisites:
-#   uv installed (https://docs.astral.sh/uv/getting-started/installation/)
-#   ruff installed (uv tool install ruff, or pip install ruff)
+#   python3 (3.11+), pip
 #
 # Usage:
 #   bash scripts/ci_bootstrap.sh
-#   bash scripts/titan_ci.sh   # verify green
+#   source .venv/bin/activate
+#   bash scripts/titan_ci.sh
 # =============================================================================
+
 set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
 
 echo "═══ TITAN OS CI Bootstrap ═══"
 echo "Date: $(date '+%Y-%m-%d')"
+echo "Repo: $REPO_ROOT"
 echo ""
 
-echo "Installing uv-managed pytest environment with all required dependencies..."
+# ── Create or reuse .venv ─────────────────────────────────────────────────────
+if [[ ! -d .venv ]]; then
+    echo "Creating .venv with python3..."
+    python3 -m venv .venv
+else
+    echo ".venv already exists — reusing."
+fi
 
-uv tool install "pytest==9.0.3" \
-  --with "freezegun==1.5.5" \
-  --with "hypothesis==6.152.7" \
-  --with "pytest-timeout==2.4.0" \
-  --with "garminconnect==0.3.2" \
-  --with "requests==2.34.2" \
-  --with "sqlalchemy==2.0.49" \
-  --with "alembic==1.18.4" \
-  --with "fastapi==0.136.1" \
-  --with "uvicorn==0.34.3" \
-  --with "pyjwt[crypto]==2.13.0" \
-  --with "bcrypt==5.0.0" \
-  --with "cryptography==48.0.0" \
-  --with "prometheus-client==0.21.0" \
-  --with "httpx==0.28.1" \
-  --with "schemathesis==4.18.5" \
-  --with "pytest-cov==7.1.0" \
-  --with "pytelegrambotapi==4.33.0" \
-  --with "mutmut==3.5.0" \
-  --with "pip-audit==2.10.0" \
-  --with "import-linter==2.11" \
-  --with "pydantic-settings==2.9.1" \
-  --force -q
+# ── Install all dependencies ──────────────────────────────────────────────────
+echo "Installing runtime + dev dependencies..."
+.venv/bin/pip install --quiet --upgrade pip
+.venv/bin/pip install --quiet -r requirements.txt
+.venv/bin/pip install --quiet -r requirements-dev.txt
 
 echo ""
-echo "Installing ruff (if not already present)..."
-uv tool install "ruff==0.15.13" --force -q 2>/dev/null || pip install "ruff==0.15.13" --quiet
-
+echo "Bootstrap complete."
 echo ""
-echo "Bootstrap complete. Verify with:"
+echo "Activate environment and verify:"
+echo "  source .venv/bin/activate"
 echo "  bash scripts/titan_ci.sh"
 echo ""
 echo "  ✅ Environment ready"
