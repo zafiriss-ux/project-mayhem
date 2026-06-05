@@ -17,6 +17,7 @@ RUNTIME_DEPENDENCIES = {
     "mutmut==3.5.0",
     "pip-audit==2.10.0",
     "prometheus-client==0.21.0",  # TD-OBS: Prometheus scrape endpoint
+    "pydantic-settings==2.9.1",  # P15-ARCH5: centralised env-var config
 }
 
 DEV_DEPENDENCIES = {

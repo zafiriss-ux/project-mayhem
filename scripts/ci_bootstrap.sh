@@ -41,6 +41,7 @@ uv tool install "pytest==9.0.3" \
   --with "mutmut==3.5.0" \
   --with "pip-audit==2.10.0" \
   --with "import-linter==2.11" \
+  --with "pydantic-settings==2.9.1" \
   --force -q
 
 echo ""
