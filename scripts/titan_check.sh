@@ -29,7 +29,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # ── Gate 1: Lint ─────────────────────────────────────────
 echo ""
 echo "▶ Gate 1 — Lint (ruff check .)"
-if ruff check . 2>&1; then
+if python -m ruff check . 2>&1; then
     gate1_result="$PASS"
 else
     gate1_result="$FAIL"
