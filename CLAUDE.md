@@ -10,8 +10,8 @@ python launcher/main.py
 ## Tests
 
 ```bash
-python3 -m pytest --no-cov -q
-python3 -m pytest --no-cov -q -k "name"
+python -m pytest --no-cov -q
+python -m pytest --no-cov -q -k "name"
 ```
 
 **Historical snapshot:** 3021 tests all green
@@ -19,7 +19,7 @@ python3 -m pytest --no-cov -q -k "name"
 Update after every commit adding/removing tests:
 
 ```bash
-python3 -m pytest --collect-only -q 2>&1 | tail -3
+python -m pytest --collect-only -q 2>&1 | tail -3
 ```
 
 Failure to update causes snapshot failures.
@@ -111,6 +111,7 @@ Main package (68 modules, excl. __init__/__main__), ceiling 79.
 - `0056` — Nutrition Layer
 - `0057` — Docker Deployment
 - `0058` — DailyCoach Decomposition (Phase A: EngineRegistry)
+- `0059` — Unified pytest Execution Model
 
 ## Docker
 
@@ -125,7 +126,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## CI Gates
 
-**Blocking:** `ruff check .` and `python3 -m pytest -q`.
+**Blocking:** `python -m ruff check .` and `python -m pytest -q`.
 
 **Advisory:** pylint >=7.0, vulture >=80%.
 

@@ -73,6 +73,7 @@
 | [0056](0056-nutrition-personalization.md) | Nutrition Personalization Layer: NutritionPreferences dataclass, nutrition_preferences table (SCHEMA_VERSION 21), sex-aware calorie/protein/hydration adjustments, meal schedule builder | Architecture / Features | ✅ Accepted (2026-05-22) |
 | [0057](0057-docker-api-deployment.md) | Docker API Deployment: FastAPI not reachable from container; TUI ENTRYPOINT; two-container vs single-container options | Architecture / Deployment | 🔲 Proposed (2026-05-22) |
 | [0058](0058-dailycoach-decomposition.md) | DailyCoach God-Orchestrator Decomposition: EngineRegistry Phase A; EffectBus Phase B stub; daemon extraction Phase C stub | Architecture / Orchestration | ✅ Accepted (2026-05-24) |
+| [0059](0059-pytest-execution-model.md) | Unified pytest Execution Model: `python -m pytest` as single canonical invocation across all CI artifacts | Architecture / CI | ✅ Accepted (2026-06-04) |
 
 ---
 
