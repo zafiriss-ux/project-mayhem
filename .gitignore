@@ -192,7 +192,13 @@ athletes/
 
 # Claude Code
 #  Internal session data, worktrees, and tool results created by Claude Code CLI.
-.claude/
+#  Ignore everything under .claude/ EXCEPT shared, version-controlled project
+#  config: settings.json and the hooks/ directory (e.g. the SessionStart CI
+#  bootstrap, ADR-0059 / CI_SURFACE_AUDIT_2026-06-06). settings.local.json and
+#  session data remain ignored.
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
 # Garmin session token (plaintext and encrypted)
 .garth_token
 .garth_token.enc

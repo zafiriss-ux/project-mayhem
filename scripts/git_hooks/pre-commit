@@ -26,11 +26,11 @@ echo "════════════════════════�
 # ── Gate 1: Ruff lint ─────────────────────────────────────────────────────────
 echo ""
 echo -e "${YELLOW}[Gate 1]${NC} Ruff lint — zero findings required..."
-if ruff check .; then
+if python -m ruff check .; then
     echo -e "${GREEN}✓ Gate 1 PASSED${NC}"
 else
     echo -e "${RED}✗ Gate 1 FAILED — fix lint errors before committing${NC}"
-    echo "  Run: ruff check . --fix"
+    echo "  Run: python -m ruff check . --fix"
     exit 1
 fi
 

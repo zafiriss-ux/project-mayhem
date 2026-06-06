@@ -78,17 +78,21 @@ bash scripts/titan_ci.sh            # uses python -m pytest internally
 
 **Implementation checklist:**
 
-- [ ] `scripts/ci_bootstrap.sh` — replace `uv tool install pytest --with …` with
-      `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt -r requirements-dev.txt`
-- [ ] `scripts/titan_ci.sh` — replace bare `pytest` with `python -m pytest`
-      and bare `ruff` with `python -m ruff`
-- [ ] `CLAUDE.md` — update `python3 -m pytest` → `python -m pytest`
-- [ ] `scripts/titan_check.sh` — update bare invocations
-- [ ] AGENTS.md — no change required (already uses `python -m pytest`)
+- [x] `scripts/ci_bootstrap.sh` — replace `uv tool install pytest --with …` with
+      `python3 -m venv .venv && pip install -r requirements.txt -r requirements-dev.txt` *(#830)*
+- [x] `scripts/titan_ci.sh` — replace bare `pytest` with `python -m pytest`
+      and bare `ruff` with `python -m ruff` *(#830; interpreter resolution + preflight
+      added in CI_SURFACE_AUDIT_2026-06-06 follow-up)*
+- [x] `CLAUDE.md` — update `python3 -m pytest` → `python -m pytest` *(#831)*
+- [x] `scripts/titan_check.sh` — update bare invocations *(#831; interpreter resolution
+      added in CI_SURFACE_AUDIT_2026-06-06 follow-up)*
+- [x] AGENTS.md — no change required (already uses `python -m pytest`)
+- [x] `scripts/git_hooks/pre-commit`, `.pre-commit-config.yaml` — bare `ruff` →
+      `python -m ruff` *(CI_SURFACE_AUDIT_2026-06-06 follow-up; was missed in #830/#831)*
 
 **Orphan cleanup (safe, concurrent):**
-- [ ] Delete root `setup_env.sh` — legacy Codex-era artifact, unreferenced
-      by any active CI path (F5, Opus CI audit 2026-06-04)
+- [x] Delete root `setup_env.sh` — legacy Codex-era artifact, unreferenced
+      by any active CI path (F5, Opus CI audit 2026-06-04) *(removed; verified absent 2026-06-06)*
 
 ---
 

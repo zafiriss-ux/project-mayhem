@@ -23,6 +23,20 @@ echo "Date: $(date '+%Y-%m-%d')"
 echo "Repo: $REPO_ROOT"
 echo ""
 
+# ── Python version guard (documented prerequisite: 3.11+) ─────────────────────
+# Enforce the prereq stated in this script's header so a stale/old python3 fails
+# loudly here instead of producing a subtly-wrong .venv that breaks gates later.
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "ERROR: python3 not found on PATH. Install Python 3.11+ first." >&2
+    exit 1
+fi
+if [[ "$(python3 -c 'import sys; print(1 if sys.version_info[:2] >= (3, 11) else 0)')" != "1" ]]; then
+    echo "ERROR: TITAN OS requires Python 3.11+. Found: $(python3 --version 2>&1)" >&2
+    exit 1
+fi
+echo "Python $(python3 --version 2>&1) — OK"
+echo ""
+
 # ── Create or reuse .venv ─────────────────────────────────────────────────────
 if [[ ! -d .venv ]]; then
     echo "Creating .venv with python3..."

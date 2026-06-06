@@ -12,6 +12,25 @@
 
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
+# ── Interpreter resolution (ADR-0059; mirrors scripts/titan_ci.sh) ────────────
+# Resolve the interpreter that owns the dependency closure so this gate runner
+# works whether run from an activated venv, against a repo-local .venv, or the
+# system interpreter — without requiring a manual `source .venv/bin/activate`.
+if [[ -n "${VIRTUAL_ENV:-}" && -x "${VIRTUAL_ENV}/bin/python" ]]; then
+    PY="${VIRTUAL_ENV}/bin/python"
+elif [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
+    PY="${REPO_ROOT}/.venv/bin/python"
+else
+    PY="$(command -v python3 || command -v python || true)"
+fi
+if [[ -z "${PY}" ]]; then
+    echo "ERROR: No Python interpreter found. Run scripts/ci_bootstrap.sh first." >&2
+    exit 1
+fi
+
 PASS="✅ PASS"
 FAIL="❌ FAIL"
 
@@ -29,7 +48,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 # ── Gate 1: Lint ─────────────────────────────────────────
 echo ""
 echo "▶ Gate 1 — Lint (ruff check .)"
-if python -m ruff check . 2>&1; then
+if "$PY" -m ruff check . 2>&1; then
     gate1_result="$PASS"
 else
     gate1_result="$FAIL"
@@ -39,7 +58,7 @@ fi
 # ── Gate 2: Strict test run ───────────────────────────────
 echo ""
 echo "▶ Gate 2 — Strict test run (pytest -q -W error::pytest.PytestWarning)"
-gate2_output=$(python -m pytest -q -W error::pytest.PytestWarning 2>&1) || true
+gate2_output=$("$PY" -m pytest -q -W error::pytest.PytestWarning 2>&1) || true
 echo "$gate2_output"
 # Extract pass count from last meaningful line
 gate2_count=$(echo "$gate2_output" | grep -Eo '^[0-9]+ passed' | grep -Eo '^[0-9]+' || echo "0")
@@ -56,7 +75,7 @@ fi
 # ── Gate 3: Full test run ────────────────────────────────
 echo ""
 echo "▶ Gate 3 — Full test run (pytest -q)"
-gate3_output=$(python -m pytest -q 2>&1) || true
+gate3_output=$("$PY" -m pytest -q 2>&1) || true
 echo "$gate3_output"
 gate3_count=$(echo "$gate3_output" | grep -Eo '^[0-9]+ passed' | grep -Eo '^[0-9]+' || echo "0")
 if echo "$gate3_output" | grep -qE '(FAILED|ERROR)'; then
