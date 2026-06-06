@@ -6,7 +6,7 @@ repos:
     hooks:
       - id: ruff
         name: ruff lint
-        entry: ruff check .
+        entry: python -m ruff check .
         language: system
         types: [python]
         pass_filenames: false
