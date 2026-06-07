@@ -92,12 +92,11 @@ def test_legacy_token_path_warning(tmp_path, monkeypatch, caplog):
     # Redirect DATA_DIR to a temp dir that has NO token file.
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path / "data"))
 
-    # Reload the module-level _DATA_DIR / _GARTH_TOKEN_PATH constants so the
-    # monkeypatched env var takes effect for this test.
+    # _DATA_DIR / _GARTH_TOKEN_PATH are lazy functions (P26-05 / A1-F3) so tests
+    # patch _get_garth_token_path() directly rather than frozen module constants.
     new_data_dir = tmp_path / "data"
     new_token_path = new_data_dir / gs_module._GARTH_TOKEN_FILENAME
-    monkeypatch.setattr(gs_module, "_DATA_DIR", new_data_dir)
-    monkeypatch.setattr(gs_module, "_GARTH_TOKEN_PATH", new_token_path)
+    monkeypatch.setattr(gs_module, "_get_garth_token_path", lambda: new_token_path)
 
     # Create a legacy token at the project root (parent of the package tree).
     project_root = Path(gs_module.__file__).parent.parent.parent

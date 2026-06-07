@@ -259,14 +259,23 @@ class TestRegisterTelegramCallbacks:
         from titan.features.optimal_time_calculator import OptimalTimeCalculator
         from titan.features.weekly_planner import WeeklyPlanGenerator
         from titan.orchestration.daily_coach import DailyCoach
+        from titan.orchestration.engine_registry import EngineRegistry
         from titan.science.acwr_engine import ACWREngine
+        from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+        from titan.science.autonomic_engine import AutonomicFusionEngine
+        from titan.science.biomechanics import BiomechanicsEngine
+        from titan.science.critical_speed import CriticalSpeedTracker
+        from titan.science.durability_engine import DurabilityEngine
+        from titan.science.fatigue_engine import FatigueEngine
         from titan.science.glycogen_model import GlycogenModel
         from titan.science.hrv_engine import HRVGuidedEngine
+        from titan.science.lactate_logic import LactateLogic
         from titan.science.tsb_engine import TSBEngine
 
         db = DatabaseManager(str(tmp_path / "cb_test.db"))
         hrv = HRVGuidedEngine()
         tsb = TSBEngine()
+        readiness = MagicMock()
         opt = OptimalTimeCalculator(MagicMock(
             get_hourly_forecast=MagicMock(return_value=[]),
         ))
@@ -280,17 +289,31 @@ class TestRegisterTelegramCallbacks:
         telegram_mock = MagicMock()
         telegram_mock.send_daily_coaching.return_value = True
 
+        engines = EngineRegistry(
+            tsb=tsb,
+            hrv=hrv,
+            readiness=readiness,
+            autonomic=AutonomicFusionEngine(),
+            biomechanics=BiomechanicsEngine(),
+            durability=DurabilityEngine(),
+            fatigue=FatigueEngine(),
+            lactate=LactateLogic(),
+            cs_tracker=CriticalSpeedTracker(),
+            apl=AdaptivePriorityLock(),
+        )
+
         coach = DailyCoach(
             garmin_sync=garmin_mock,
             weather_api=MagicMock(),
             telegram_bot=telegram_mock,
             hrv_engine=hrv,
             tsb_engine=tsb,
-            readiness_engine=MagicMock(),
+            readiness_engine=readiness,
             optimal_time_calc=opt,
             nutrition_optimizer=nut,
             weekly_planner=planner,
             db=db,
+            engines=engines,
         )
 
         return {

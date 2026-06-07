@@ -10,6 +10,7 @@ import pytest
 from titan.core.database import DatabaseManager
 from titan.orchestration import daily_coach
 from titan.orchestration.daily_coach import DailyCoach, DegradedModeTracker
+from titan.orchestration.engine_registry import EngineRegistry
 
 
 class DummyDB:
@@ -80,6 +81,15 @@ class DummyDB:
 
     def get_athlete_threshold_offsets(self, athlete_id: str) -> list:
         return []
+
+
+def _placeholder_engine_registry(**overrides):
+    """Build an EngineRegistry of SimpleNamespace placeholders for init-only tests."""
+    fields = ("tsb", "hrv", "readiness", "autonomic", "biomechanics",
+              "durability", "fatigue", "lactate", "cs_tracker", "apl")
+    kwargs = {name: SimpleNamespace() for name in fields}
+    kwargs.update(overrides)
+    return EngineRegistry(**kwargs)
 
 
 class MinimalCoachFactory:
@@ -1548,12 +1558,9 @@ def test_daily_coach_init_emits_metrics_under_review_event(monkeypatch):
         nutrition_optimizer=SimpleNamespace(),
         weekly_planner=SimpleNamespace(),
         db=DummyDB(),
-        autonomic_engine=SimpleNamespace(),
-        cs_tracker=SimpleNamespace(),
+        engines=_placeholder_engine_registry(),
         glycogen_accum=SimpleNamespace(),
         governance=SimpleNamespace(),
-        fatigue_engine=SimpleNamespace(),
-        apl=SimpleNamespace(),
         volume_load_gauge=SimpleNamespace(),
         outcome_tracker=SimpleNamespace(),
     )
@@ -2407,6 +2414,7 @@ def test_daily_coach_passes_athlete_max_hr_to_garmin_sync_instance(monkeypatch):
         nutrition_optimizer=SimpleNamespace(),
         weekly_planner=SimpleNamespace(),
         db=DummyDB(),
+        engines=_placeholder_engine_registry(),
         athlete_max_hr=185,
     )
 
@@ -2429,6 +2437,7 @@ def test_daily_coach_athlete_max_hr_defaults_to_zero():
         nutrition_optimizer=SimpleNamespace(),
         weekly_planner=SimpleNamespace(),
         db=DummyDB(),
+        engines=_placeholder_engine_registry(),
     )
     assert coach.athlete_max_hr == 0
 
@@ -2788,12 +2797,9 @@ def test_daily_coach_uses_injected_db(tmp_path, monkeypatch):
         nutrition_optimizer=stub,
         weekly_planner=stub,
         db=db,
-        autonomic_engine=stub,
-        cs_tracker=cs,
+        engines=_placeholder_engine_registry(tsb=tsb, hrv=stub, readiness=stub, autonomic=stub, fatigue=stub, apl=stub, cs_tracker=cs),
         glycogen_accum=stub,
         governance=stub,
-        fatigue_engine=stub,
-        apl=stub,
         volume_load_gauge=stub,
         outcome_tracker=ot,
     )

@@ -1121,6 +1121,26 @@ class TestDailyCoachHelpers:
 
         db = DatabaseManager(db_name=str(tmp_path / "coach_test.db"))
 
+        from titan.orchestration.engine_registry import EngineRegistry
+        from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+        from titan.science.autonomic_engine import AutonomicFusionEngine
+        from titan.science.biomechanics import BiomechanicsEngine
+        from titan.science.critical_speed import CriticalSpeedTracker
+        from titan.science.lactate_logic import LactateLogic
+
+        engines = EngineRegistry(
+            tsb=tsb_engine,
+            hrv=hrv_engine,
+            readiness=readiness_engine,
+            autonomic=AutonomicFusionEngine(),
+            biomechanics=BiomechanicsEngine(),
+            durability=DurabilityEngine(),
+            fatigue=FatigueEngine(),
+            lactate=LactateLogic(),
+            cs_tracker=CriticalSpeedTracker(),
+            apl=AdaptivePriorityLock(),
+        )
+
         coach = DailyCoach(
             garmin_sync=garmin,
             weather_api=weather_api,
@@ -1132,6 +1152,7 @@ class TestDailyCoachHelpers:
             nutrition_optimizer=nutrition_optimizer,
             weekly_planner=weekly_planner,
             db=db,
+            engines=engines,
         )
         return coach, db
 

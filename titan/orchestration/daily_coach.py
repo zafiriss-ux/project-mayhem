@@ -65,7 +65,6 @@ from titan.orchestration.contracts import (
 from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
-from titan.science.biomechanics import BiomechanicsEngine
 from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
 from titan.science.data_trust import (
@@ -74,12 +73,10 @@ from titan.science.data_trust import (
     evaluate_garmin_trust,
     evaluate_weather_trust,
 )
-from titan.science.durability_engine import DurabilityEngine
 from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
-from titan.science.lactate_logic import LactateLogic
 from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.volume_load_gauge import VolumeLoadGauge
 
@@ -361,20 +358,14 @@ class DailyCoach:
         # backward-compat fallback for test factories only — remove in Phase 25.
         if engines is not None:
             # Production path: pure consumer — no engine construction here.
+            # P26-07 / A3-F4: fallback path removed; engines= is now required
+            # from all production composition roots (worker/__init__.py, titan/main.py).
             self.engines = engines
         else:
-            # Fallback path: retained for test backward-compatibility (Phase 25: remove).
-            self.engines = EngineRegistry(
-                tsb=tsb_engine,
-                hrv=hrv_engine,
-                readiness=readiness_engine,
-                autonomic=autonomic_engine or AutonomicFusionEngine(),
-                biomechanics=BiomechanicsEngine(),
-                durability=DurabilityEngine(),
-                fatigue=fatigue_engine or FatigueEngine(),
-                lactate=LactateLogic(),
-                cs_tracker=cs_tracker or CriticalSpeedTracker(),
-                apl=apl or AdaptivePriorityLock(),
+            raise TypeError(
+                "DailyCoach requires an explicit engines= argument (EngineRegistry). "
+                "Pass EngineRegistry.from_db(db=db) from the composition root. "
+                "Test factories using DailyCoach.__new__ bypass __init__ and are unaffected."
             )
         self.glycogen   = glycogen_accum   or GlycogenDebtAccumulator()
         self.governance = governance       or GovernanceEngine()
