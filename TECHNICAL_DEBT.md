@@ -1617,7 +1617,7 @@ Entry gate: Phase 25 close audit PASS (2026-06-06). Scope: CoachingScheduler act
 
 | Item | Description | Status | Opus ref |
 |------|-------------|--------|----------|
-| P26-01 | ATHLETE_MAX_HR default divergence — source HRmax per-athlete, retire global env default | OPEN | A1-F2 |
+| P26-01 | ATHLETE_MAX_HR per-athlete resolution | DEFERRED — Phase 9 prerequisite. Requires adding max_hr column to athletes table (schema change, SCHEMA_VERSION bump). Current divergence (TitanSettings default=160 vs UniversalAthleteProfile default=191) is non-critical in single-athlete mode; both produce valid TRIMP zone ceilings. Fix during Phase 9 per-athlete profile schema work (athletes table → max_hr, age, weight). | A1-F2 (Opus pre-Phase-26 audit 2026-06-07), ADR-0016 |
 | P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | OPEN | A3-F3 |
 | P26-03 | CoachingScheduler activation — wire into worker composition root | OPEN | A3-F1 |
 | P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | OPEN | A3-F2 |
