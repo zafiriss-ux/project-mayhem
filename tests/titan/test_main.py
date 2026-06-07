@@ -107,7 +107,10 @@ class _DummyDatabase:
     def close(self):
         self.closed = True
 
-    def get_training_load_history(self, days=42):
+    def get_training_load_history(self, days=42, athlete_id="owner"):
+        return []
+
+    def get_hrv_history(self, days=14, athlete_id="owner"):
         return []
 
 
