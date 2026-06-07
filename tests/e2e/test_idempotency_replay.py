@@ -3,10 +3,6 @@ from __future__ import annotations
 import pytest
 
 from tests.e2e.conftest import (
-    StubAPL,
-    StubAutonomic,
-    StubCS,
-    StubFatigue,
     StubGarminSync,
     StubGlycogen,
     StubGovernance,
@@ -20,6 +16,7 @@ from tests.e2e.conftest import (
     StubVLG,
     StubWeather,
     StubWeeklyPlanner,
+    stub_engine_registry,
 )
 from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
@@ -41,12 +38,9 @@ def test_idempotency_replay_garmin_day_persisted_twice(tmp_path):
         nutrition_optimizer=StubNutrition(),
         weekly_planner=StubWeeklyPlanner(),
         db=db,
-        autonomic_engine=StubAutonomic(),
-        cs_tracker=StubCS(),
+        engines=stub_engine_registry(),
         glycogen_accum=StubGlycogen(),
         governance=StubGovernance(),
-        fatigue_engine=StubFatigue(),
-        apl=StubAPL(),
         volume_load_gauge=StubVLG(),
         outcome_tracker=StubOutcomeTracker(),
     )

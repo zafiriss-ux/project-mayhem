@@ -63,9 +63,17 @@ def _make_coach(tmp_path):
     from titan.features.nutrition_optimizer import NutritionOptimizer
     from titan.features.weekly_planner import WeeklyPlanGenerator
     from titan.orchestration.daily_coach import DailyCoach
+    from titan.orchestration.engine_registry import EngineRegistry
     from titan.science.acwr_engine import ACWREngine
+    from titan.science.adaptive_priority_lock import AdaptivePriorityLock
+    from titan.science.autonomic_engine import AutonomicFusionEngine
+    from titan.science.biomechanics import BiomechanicsEngine
+    from titan.science.critical_speed import CriticalSpeedTracker
+    from titan.science.durability_engine import DurabilityEngine
+    from titan.science.fatigue_engine import FatigueEngine
     from titan.science.glycogen_model import GlycogenModel
     from titan.science.hrv_engine import HRVGuidedEngine
+    from titan.science.lactate_logic import LactateLogic
     from titan.science.readiness_engine import ReadinessEngine
     from titan.science.tsb_engine import TSBEngine
 
@@ -97,6 +105,19 @@ def _make_coach(tmp_path):
     acwr_eng = ACWREngine()
     planner  = WeeklyPlanGenerator(hrv_eng, tsb_eng, acwr_eng)
 
+    engines = EngineRegistry(
+        tsb=tsb_eng,
+        hrv=hrv_eng,
+        readiness=readiness,
+        autonomic=AutonomicFusionEngine(),
+        biomechanics=BiomechanicsEngine(),
+        durability=DurabilityEngine(),
+        fatigue=FatigueEngine(),
+        lactate=LactateLogic(),
+        cs_tracker=CriticalSpeedTracker(),
+        apl=AdaptivePriorityLock(),
+    )
+
     coach = DailyCoach(
         garmin_sync        = garmin_mock,
         weather_api        = weather_mock,
@@ -108,6 +129,7 @@ def _make_coach(tmp_path):
         nutrition_optimizer= nutrition,
         weekly_planner     = planner,
         db                 = db,
+        engines            = engines,
     )
 
     return coach, {

@@ -18,6 +18,7 @@ import pytest
 from scripts.load_test import LoadTestResult, LoadTestRunner, check_health_slo
 from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.engine_registry import EngineRegistry
 
 
 @pytest.mark.unit
@@ -117,6 +118,18 @@ def test_dailycoach_pipeline_latency():
         optimal_time_calc=SimpleNamespace(),
         nutrition_optimizer=SimpleNamespace(),
         weekly_planner=SimpleNamespace(),
+        engines=EngineRegistry(
+            tsb=SimpleNamespace(),
+            hrv=SimpleNamespace(),
+            readiness=SimpleNamespace(),
+            autonomic=SimpleNamespace(),
+            biomechanics=SimpleNamespace(),
+            durability=SimpleNamespace(),
+            fatigue=SimpleNamespace(),
+            lactate=SimpleNamespace(),
+            cs_tracker=SimpleNamespace(),
+            apl=SimpleNamespace(),
+        ),
         db=db,
     )
     latencies = []

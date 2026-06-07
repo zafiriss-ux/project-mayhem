@@ -6,6 +6,10 @@ import pytest
 
 from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.engine_registry import EngineRegistry
+from titan.science.biomechanics import BiomechanicsEngine
+from titan.science.durability_engine import DurabilityEngine
+from titan.science.lactate_logic import LactateLogic
 
 
 class StubGarminSync:
@@ -200,11 +204,29 @@ class StubOutcomeTracker:
         self.decisions.append(kwargs)
 
 
+def stub_engine_registry() -> EngineRegistry:
+    """Build an EngineRegistry of e2e stubs, mirroring the removed DailyCoach fallback."""
+    return EngineRegistry(
+        tsb=StubTSB(),
+        hrv=StubSimpleEngine(),
+        readiness=StubReadiness(),
+        autonomic=StubAutonomic(),
+        biomechanics=BiomechanicsEngine(),
+        durability=DurabilityEngine(),
+        fatigue=StubFatigue(),
+        lactate=LactateLogic(),
+        cs_tracker=StubCS(),
+        apl=StubAPL(),
+    )
+
+
 @pytest.fixture
 def morning_routine_setup(tmp_path):
     today = datetime.now().strftime("%Y-%m-%d")
     db = DatabaseManager(db_name="e2e_gold_path.db", db_dir=tmp_path)
     telegram = StubTelegram()
+
+    engines = stub_engine_registry()
 
     coach = DailyCoach(
         garmin_sync=StubGarminSync(today=today),
@@ -217,12 +239,9 @@ def morning_routine_setup(tmp_path):
         nutrition_optimizer=StubNutrition(),
         weekly_planner=StubWeeklyPlanner(),
         db=db,
-        autonomic_engine=StubAutonomic(),
-        cs_tracker=StubCS(),
+        engines=engines,
         glycogen_accum=StubGlycogen(),
         governance=StubGovernance(),
-        fatigue_engine=StubFatigue(),
-        apl=StubAPL(),
         volume_load_gauge=StubVLG(),
         outcome_tracker=StubOutcomeTracker(),
     )

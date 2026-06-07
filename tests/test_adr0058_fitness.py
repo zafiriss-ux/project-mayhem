@@ -200,6 +200,7 @@ def test_daily_coach_has_engines_attribute():
         nutrition_optimizer=SimpleNamespace(add_weight_entry=lambda *a, **kw: None),
         weekly_planner=SimpleNamespace(),
         db=db,
+        engines=EngineRegistry.from_db(db=db),
     )
     assert hasattr(coach, "engines"), "DailyCoach must have 'engines' attribute"
     assert isinstance(coach.engines, EngineRegistry), (

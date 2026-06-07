@@ -367,6 +367,10 @@ def test_weather_api_has_no_print_calls():
 def _make_minimal_coach(db, telegram=None):
     """Construct a DailyCoach with all external dependencies mocked out."""
     from titan.orchestration.daily_coach import DailyCoach
+    from titan.orchestration.engine_registry import EngineRegistry
+    from titan.science.biomechanics import BiomechanicsEngine
+    from titan.science.durability_engine import DurabilityEngine
+    from titan.science.lactate_logic import LactateLogic
 
     telegram = telegram or MagicMock()
     telegram.send_alert = telegram.send_alert if hasattr(telegram, "send_alert") else MagicMock(return_value=True)
@@ -404,6 +408,19 @@ def _make_minimal_coach(db, telegram=None):
     vlg = MagicMock()
     outcome_tracker = MagicMock()
 
+    engines = EngineRegistry(
+        tsb=tsb,
+        hrv=hrv,
+        readiness=readiness,
+        autonomic=autonomic,
+        biomechanics=BiomechanicsEngine(),
+        durability=DurabilityEngine(),
+        fatigue=fatigue_engine,
+        lactate=LactateLogic(),
+        cs_tracker=cs_tracker,
+        apl=apl,
+    )
+
     return DailyCoach(
         garmin_sync=garmin,
         weather_api=weather,
@@ -415,12 +432,9 @@ def _make_minimal_coach(db, telegram=None):
         nutrition_optimizer=nutrition,
         weekly_planner=weekly_planner,
         db=db,
-        autonomic_engine=autonomic,
-        cs_tracker=cs_tracker,
+        engines=engines,
         glycogen_accum=glycogen,
         governance=governance,
-        fatigue_engine=fatigue_engine,
-        apl=apl,
         volume_load_gauge=vlg,
         outcome_tracker=outcome_tracker,
     )

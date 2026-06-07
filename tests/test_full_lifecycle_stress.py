@@ -15,13 +15,17 @@ from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
 from titan.integrations.weather_api import WeatherAPI
 from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
+from titan.science.biomechanics import BiomechanicsEngine
 from titan.science.critical_speed import CriticalSpeedEngine
+from titan.science.durability_engine import DurabilityEngine
 from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenEngine
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.lactate_logic import LactateLogic
 from titan.science.outcome_tracker import OutcomeTracker
 from titan.science.readiness_engine import ReadinessEngine
 from titan.science.tsb_engine import TSBEngine
@@ -71,6 +75,19 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
     volume_load_gauge = MagicMock(spec=VolumeLoadGauge)
     outcome_tracker = MagicMock(spec=OutcomeTracker)
 
+    engines = EngineRegistry(
+        tsb=tsb,
+        hrv=hrv,
+        readiness=readiness,
+        autonomic=autonomic,
+        biomechanics=BiomechanicsEngine(),
+        durability=DurabilityEngine(),
+        fatigue=fatigue_engine,
+        lactate=LactateLogic(),
+        cs_tracker=cs_tracker,
+        apl=apl,
+    )
+
     coach = DailyCoach(
         garmin_sync=garmin,
         weather_api=weather,
@@ -82,12 +99,9 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
         nutrition_optimizer=nutrition,
         weekly_planner=weekly_planner,
         db=db,
-        autonomic_engine=autonomic,
-        cs_tracker=cs_tracker,
+        engines=engines,
         glycogen_accum=glycogen,
         governance=governance,
-        fatigue_engine=fatigue_engine,
-        apl=apl,
         volume_load_gauge=volume_load_gauge,
         outcome_tracker=outcome_tracker,
     )
