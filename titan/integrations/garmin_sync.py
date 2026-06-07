@@ -239,7 +239,20 @@ def _activity_utc_date(start_time_local: str) -> str:
 
 
 def _resolve_sync_timeout_seconds() -> int:
-    timeout_s = get_settings().GARMIN_SYNC_TIMEOUT_S
+    try:
+        timeout_s = get_settings().GARMIN_SYNC_TIMEOUT_S
+    except ValueError:
+        # A non-numeric GARMIN_SYNC_TIMEOUT_S makes TitanSettings construction raise a
+        # pydantic ValidationError (a ValueError subclass) on the typed int field. Restore
+        # the pre-P15-ARCH5 per-field resilience: fall back to the default timeout rather
+        # than letting one malformed env var crash sync_all.
+        _garmin_event(
+            "invalid_sync_timeout",
+            subsystem="sync_all",
+            fallback_timeout_s=_DEFAULT_SYNC_TIMEOUT_S,
+            detail="GARMIN_SYNC_TIMEOUT_S is not an integer; using default timeout.",
+        )
+        return _DEFAULT_SYNC_TIMEOUT_S
     if timeout_s < 0:
         _garmin_event(
             "negative_sync_timeout",
