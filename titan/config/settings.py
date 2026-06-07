@@ -23,6 +23,7 @@ class TitanSettings(BaseSettings):
     TITAN_ENV: str = ""
     TITAN_LOG_PATH: str = "titan.log"
     TITAN_ENABLE_API: str = ""
+    TITAN_MULTI_ATHLETE: str = ""
 
     @model_validator(mode="after")
     def _postgres_dsn_required(self) -> "TitanSettings":

@@ -91,6 +91,10 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
 
     log.info("worker_started", extra={"db": db_path})
 
+    if get_settings().TITAN_MULTI_ATHLETE == "1":
+        _run_with_scheduler(db, _stop)
+        return
+
     while True:
         _run_backup(db)
         try:
@@ -143,6 +147,73 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
         if _stop.wait(timeout=wait_s):
             log.info("worker_graceful_exit")
             return
+
+
+def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> None:
+    """Multi-athlete coaching loop via CoachingScheduler (ADR-0046 / P26-03).
+
+    Activated when TITAN_MULTI_ATHLETE=1. Registers the owner athlete
+    and any additional athletes from the athletes table, then runs the
+    scheduler until the stop event fires.
+    """
+    from collections.abc import Callable
+
+    from titan.features.nutrition_optimizer import NutritionOptimizer
+    from titan.features.optimal_time_calculator import OptimalTimeCalculator
+    from titan.features.weekly_planner import WeeklyPlanGenerator
+    from titan.integrations.garmin_sync import GarminSync
+    from titan.integrations.telegram_bot import TitanTelegramBot
+    from titan.integrations.weather_api import WeatherAPI
+    from titan.orchestration.coaching_scheduler import CoachingScheduler
+    from titan.orchestration.daily_coach import DailyCoach
+    from titan.orchestration.engine_registry import EngineRegistry
+
+    log = logging.getLogger("titan.worker.scheduler")
+
+    # Run interval: 60s check loop; coaching fires once per athlete per day
+    # at 07:00 UTC (controlled by the callback, not the scheduler interval).
+    scheduler = CoachingScheduler(interval_seconds=60.0)
+
+    # Register owner athlete (always present).
+    athlete_max_hr = int(str(get_settings().ATHLETE_MAX_HR))
+
+    def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
+        def _callback() -> None:
+            try:
+                garmin = GarminSync(athlete_max_hr=athlete_max_hr)
+                weather = WeatherAPI()
+                telegram = TitanTelegramBot(db=db)
+                engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
+                optimal = OptimalTimeCalculator()
+                nutrition = NutritionOptimizer(db=db)
+                planner = WeeklyPlanGenerator(db=db)
+                coach = DailyCoach(
+                    garmin_sync=garmin,
+                    weather_api=weather,
+                    telegram_bot=telegram,
+                    engines=engines,
+                    optimal_time_calc=optimal,
+                    nutrition_optimizer=nutrition,
+                    weekly_planner=planner,
+                    db=db,
+                )
+                coach.run_morning_routine()
+            except Exception as exc:
+                log.exception(
+                    "scheduler_athlete_cycle_error",
+                    extra={"athlete_id": athlete_id, "error": str(exc)},
+                )
+        return _callback
+
+    scheduler.register_athlete("owner", _make_athlete_callback("owner"))
+
+    scheduler.start()
+    log.info("coaching_scheduler_started", extra={"athletes": list(scheduler._athlete_callbacks)})
+
+    # Block until stop event fires (SIGTERM / main() shutdown).
+    stop_event.wait()
+    scheduler.stop()
+    log.info("coaching_scheduler_stopped")
 
 
 def main() -> None:
