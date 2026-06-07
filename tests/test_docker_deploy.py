@@ -36,7 +36,7 @@ def test_worker_lock_prevents_duplicate(tmp_path: pytest.TempPathFactory) -> Non
     import titan.worker as worker_mod
 
     lock_path = tmp_path / "worker.lock"
-    with patch.object(worker_mod, "LOCK_FILE", lock_path):
+    with patch.object(worker_mod, "_get_lock_file", lambda: lock_path):
         fh1 = worker_mod.acquire_worker_lock()
         assert fh1 is not None, "First lock acquisition should succeed"
 

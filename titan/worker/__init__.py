@@ -23,7 +23,13 @@ from titan.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
-LOCK_FILE = Path(get_settings().TITAN_DATA_DIR) / "worker.lock"
+def _get_lock_file() -> Path:
+    """Return the worker lock file path — lazy so tests can monkeypatch TITAN_DATA_DIR.
+
+    P26-05 / A1-F3: was a module-level constant that froze TITAN_DATA_DIR at
+    first import, bypassing the P15-ARCH5 autouse cache_clear fixture.
+    """
+    return Path(get_settings().TITAN_DATA_DIR) / "worker.lock"
 
 _shutdown = threading.Event()
 
@@ -36,7 +42,7 @@ def _handle_sigterm(signum, frame):  # noqa: ANN001
 
 def acquire_worker_lock() -> IOBase | None:
     """Return an open file handle holding an exclusive lock, or None if already locked."""
-    fh = open(LOCK_FILE, "w")  # noqa: SIM115
+    fh = open(_get_lock_file(), "w")  # noqa: SIM115
     try:
         import fcntl
 
