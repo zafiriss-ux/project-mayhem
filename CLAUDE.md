@@ -170,7 +170,7 @@ TD-CI-SELFHOSTED RESOLVED; T5-15B/P15-ARCH5 DEFERRED Phase 25.
 ## Phase 25 CLOSED (2026-06-06)
 
 phase_close_audit.sh 25 exit 0; 3022 tests passing; 7 skipped; FMEA G12 SATISFIED;
-T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed.
+T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed from production paths; test-only shim retained pending Phase 26 cleanup (A3-F4).
 
 ## Phase 26 OPEN (ACTIVE, 2026-06-06)
 
