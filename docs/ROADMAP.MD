@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–25 CLOSED; Phases 9, 10, 26 OPEN — see below)
+## Phase History (Phases 0–8, 11–26 CLOSED; Phases 9, 10, 27 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -40,7 +40,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 23 | Schema & EffectBus Phase B | CLOSED 2026-05-29 | ADR-0058 construction-site violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24 |
 | Phase 24 | Schema & EffectBus Phase C | CLOSED 2026-06-03 | TD-08 ✅ RESOLVED (Opus-verified); TD-04B ✅ RESOLVED (TitanEffectBus live, delegation shim, 4 CI fitness gates, ADR-0058 Phase B complete); T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 25 |
 | Phase 25 | Schema Descriptor & EffectBus Impl | CLOSED 2026-06-06 | T5-15B ✅, P15-ARCH5 ✅, ADR-0059 ✅; B2c fallback removed; schema descriptor final convergence |
-| Phase 26 | CoachingScheduler Activation & Per-Athlete Isolation | OPEN 2026-06-06 | CoachingScheduler activation; per-athlete engine isolation; Phase 9 corpus gate prerequisite |
+| Phase 26 | CoachingScheduler Activation & Per-Athlete Isolation | CLOSED 2026-06-07 | FMEA G12 SATISFIED; P26-02/03/04/05/06/07 ✅ RESOLVED; P26-01 DEFERRED Phase 9; P26-08 DEFERRED pending ADR |
+| Phase 27 | Cohort Analytics & Population Intelligence | OPEN 2026-06-07 | Cohort calibration analytics; `CohortProfile` population-level signal; proactive load modulation (advisory) |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -357,7 +358,11 @@ intermediate commit throughout the XL refactor.
 
 ---
 
-## Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation (OPEN, 2026-06-06)
+## Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation (CLOSED, 2026-06-07)
+
+**CLOSED 2026-06-07:** phase_close_audit.sh 26 exit 0; 3025 tests passing, 6 skipped
+(3031 collected); FMEA G12 SATISFIED; P26-02/03/04/05/06/07 RESOLVED; P26-01 DEFERRED
+Phase 9; P26-08 DEFERRED pending ADR.
 
 **Entry gate:** Phase 25 close audit PASS ✅ (2026-06-06); `EngineRegistry.from_db` wired with real
 DB hydration (TODO-Phase9 markers resolved); Phase 9 corpus gate met (≥ 3 athlete
@@ -383,20 +388,20 @@ engine isolation by wiring `db` and `athlete_id` into `EngineRegistry.from_db`.
 
 | Item | Description | Status | Opus ref |
 |------|-------------|--------|----------|
-| P26-01 | ATHLETE_MAX_HR default divergence — source HRmax per-athlete, retire global env default | OPEN | A1-F2 |
-| P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | OPEN | A3-F3 |
-| P26-03 | CoachingScheduler activation — wire into worker composition root | OPEN | A3-F1 |
-| P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | OPEN | A3-F2 |
-| P26-05 | Module-level get_settings() constants — make lazy in garmin_sync.py:51 and worker/__init__.py:26 | OPEN | A1-F3 |
-| P26-06 | postgres_dsn_required validator test | OPEN | A2-F2 |
-| P26-07 | B2c fallback — reconcile CLAUDE.md close-note vs code | OPEN | A3-F4 |
-| P26-08 | AGENTS.md constraints.txt ADR addendum | DEFERRED | A3-F6 |
+| P26-01 | ATHLETE_MAX_HR default divergence — source HRmax per-athlete, retire global env default | DEFERRED Phase 9 (athletes-table `max_hr` column, schema bump) | A1-F2 |
+| P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | ✅ RESOLVED 2026-06-07 | A3-F3 |
+| P26-03 | CoachingScheduler activation — wire into worker composition root | ✅ RESOLVED 2026-06-07 (`TITAN_MULTI_ATHLETE` flag; `run_forever` fallback retained) | A3-F1 |
+| P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | ✅ RESOLVED 2026-06-07 (TSB + HRV hydration, athlete-scoped; CS/APL → TODO-P26-04b/c carried to Phase 9) | A3-F2 |
+| P26-05 | Module-level get_settings() constants — make lazy in garmin_sync.py:51 and worker/__init__.py:26 | ✅ RESOLVED 2026-06-07 | A1-F3 |
+| P26-06 | postgres_dsn_required validator test | ✅ RESOLVED 2026-06-07 | A2-F2 |
+| P26-07 | B2c fallback — reconcile CLAUDE.md close-note vs code | ✅ RESOLVED 2026-06-07 | A3-F4 |
+| P26-08 | AGENTS.md constraints.txt ADR addendum | DEFERRED pending ADR | A3-F6 |
 
 ---
 
-## Phase 27 — Cohort Analytics & Population Intelligence (PLANNED)
+## Phase 27 — Cohort Analytics & Population Intelligence (OPEN, 2026-06-07)
 
-**Entry gate:** Phase 26 close audit PASS; ≥ 3 athlete profiles active with
+**Entry gate:** Phase 26 close audit PASS ✅ (2026-06-07); ≥ 3 athlete profiles active with
 per-athlete-isolated `EngineRegistry`; ADR-0052 offset calibration producing
 per-athlete threshold deltas in production.
 
@@ -525,4 +530,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-06-06 (Phase 26 OPEN 2026-06-06; Phase 25 CLOSED 2026-06-06; Phase 24 CLOSED 2026-06-03; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-06-07 (Phase 27 OPEN 2026-06-07; Phase 26 CLOSED 2026-06-07; Phase 25 CLOSED 2026-06-06; Phase 24 CLOSED 2026-06-03; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
