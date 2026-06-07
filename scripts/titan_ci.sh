@@ -29,7 +29,13 @@ if [[ -z "${PY}" ]]; then
 fi
 
 # ── Dependency preflight: actionable remediation, not a cryptic ImportError ────
-if ! "${PY}" -c "import pytest, freezegun, sqlalchemy, fastapi" >/dev/null 2>&1 \
+# The import set is the closure the gates actually require, not a token sample:
+# pytest_cov is hard-required by `--no-cov` in G3–G6 (the flag is registered only
+# when the plugin is installed; otherwise pytest exits 4 mid-gate), and hypothesis
+# is imported at collection time by the G2 full-suite sweep. Probing them here turns
+# a partial closure into the bootstrap remediation below instead of a cryptic late
+# failure.
+if ! "${PY}" -c "import pytest, pytest_cov, freezegun, hypothesis, sqlalchemy, fastapi" >/dev/null 2>&1 \
    || ! "${PY}" -m ruff --version >/dev/null 2>&1; then
     echo "❌ CI dependency closure missing for interpreter: ${PY}" >&2
     echo "   Bootstrap first:  bash scripts/ci_bootstrap.sh   (creates .venv, installs all deps)" >&2
@@ -65,6 +71,16 @@ echo "Interpreter: $PY"
 run_gate "G1 Ruff Phase A" "$PY" -m ruff check .
 
 # ── G2: Strict pytest (full suite) ───────────────────────────────────────────
+# Scope note: this script is the §9C *local pre-commit* gate — a curated subset of
+# the remote .github/workflows/ci.yml (which additionally runs semgrep, pylint,
+# vulture, lint-imports, the CVE/drift gates, the G-CI invariants, and a 3.11+3.12
+# matrix). A green run here is necessary but not sufficient for GitHub-green; the
+# remote workflow remains the authoritative merge gate.
+# The three --ignore'd files are @pytest.mark.integration tests that shell out
+# (subprocess → find / bash scripts/backup.sh / python3 scripts/verify_backup.py).
+# They pass on Linux/CI but are fragile on the documented Windows dev box, so they
+# are excluded here for cross-platform determinism; GitHub's ubuntu `test` job
+# runs them with no ignores.
 run_gate "G2 Strict pytest" "$PY" -m pytest --tb=short -q --strict-markers \
     --ignore=tests/test_backup.py \
     --ignore=tests/test_backup_verification.py \

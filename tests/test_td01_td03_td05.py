@@ -350,18 +350,25 @@ class TestGarminTokenProdRequirement:
 
     def test_is_dev_environment_detection(self, monkeypatch):
         """_is_dev_environment correctly identifies dev/test vs prod."""
+        from titan.config.settings import get_settings
         from titan.integrations.garmin_sync import _is_dev_environment
 
+        # get_settings() is lru_cache'd (P15-ARCH5); clear it after each env change so the
+        # next read reflects the new TITAN_ENV (matches the tests/test_garmin_sync.py idiom).
         monkeypatch.setenv("TITAN_ENV", "dev")
+        get_settings.cache_clear()
         assert _is_dev_environment() is True
 
         monkeypatch.setenv("TITAN_ENV", "test")
+        get_settings.cache_clear()
         assert _is_dev_environment() is True
 
         monkeypatch.setenv("TITAN_ENV", "prod")
+        get_settings.cache_clear()
         assert _is_dev_environment() is False
 
         monkeypatch.delenv("TITAN_ENV", raising=False)
+        get_settings.cache_clear()
         assert _is_dev_environment() is False
 
 
