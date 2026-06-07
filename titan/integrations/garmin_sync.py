@@ -47,9 +47,18 @@ _GARTH_TOKEN_FILENAME = ".garth_token"
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
 _TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"
 
-# Token is stored alongside titan.db in the data directory, not at the project root.
-_DATA_DIR = Path(get_settings().TITAN_DATA_DIR)
-_GARTH_TOKEN_PATH = _DATA_DIR / _GARTH_TOKEN_FILENAME
+def _get_data_dir() -> Path:
+    """Return TITAN_DATA_DIR as a Path — lazy so tests can monkeypatch TITAN_DATA_DIR.
+
+    P26-05 / A1-F3: was a module-level constant that froze at first import,
+    bypassing the P15-ARCH5 autouse cache_clear fixture.
+    """
+    return Path(get_settings().TITAN_DATA_DIR)
+
+
+def _get_garth_token_path() -> Path:
+    """Return the Garth token file path — lazy for the same reason as _get_data_dir."""
+    return _get_data_dir() / _GARTH_TOKEN_FILENAME
 
 
 def _get_token_encryption_key() -> bytes | None:
@@ -343,14 +352,15 @@ class GarminSync:
         A startup warning is emitted if a legacy project-root token exists but
         the canonical data-dir path does not, prompting the operator to migrate.
         """
+        token_path = _get_garth_token_path()
         legacy_path = Path(__file__).parent.parent.parent / _GARTH_TOKEN_FILENAME
-        if legacy_path.exists() and not _GARTH_TOKEN_PATH.exists():
+        if legacy_path.exists() and not token_path.exists():
             _log.warning(
                 "Legacy Garth token found at project root — "
                 "move to %s for production use.",
-                _GARTH_TOKEN_PATH,
+                token_path,
             )
-        return _GARTH_TOKEN_PATH
+        return token_path
 
     def connect(self) -> bool:
         if not self.email or not self.password:
