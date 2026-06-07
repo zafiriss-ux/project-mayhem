@@ -34,7 +34,8 @@ Phase 22 CLOSED — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12
 Phase 23 CLOSED — phase_close_audit.sh 23 exit 0; 2974 tests passing; ADR-0058 construction-site violation caught and fixed; TD-08 DEFERRED Phase 24; TD-04B DEFERRED Phase 24; T5-15 Phase B DEFERRED Phase 24; P15-ARCH5 DEFERRED Phase 24; TD-CI-SELFHOSTED DEFERRED Phase 24 (2026-05-29).
 Phase 24 CLOSED — phase_close_audit.sh 24 exit 0; 3021 tests passing; FMEA G12 SATISFIED; TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B complete); TD-CI-SELFHOSTED RESOLVED; T5-15B DEFERRED Phase 25; P15-ARCH5 DEFERRED Phase 25 (2026-06-03).
 Phase 25 CLOSED — phase_close_audit.sh 25 exit 0; 3022 tests passing; FMEA G12 SATISFIED; T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed (2026-06-06).
-Phase 26 OPEN — CoachingScheduler activation + per-athlete engine isolation (Phase 9 corpus gate prerequisite) 2026-06-06.
+Phase 26 CLOSED — phase_close_audit.sh 26 exit 0; 3025 tests passing, 6 skipped (3031 collected); FMEA G12 SATISFIED; P26-02/03/04/05/06/07 RESOLVED; P26-01 DEFERRED Phase 9; P26-08 DEFERRED pending ADR (2026-06-07).
+Phase 27 OPEN — Cohort analytics + CohortProfile (population-level calibration signal) 2026-06-07.
 
 ---
 
@@ -1605,26 +1606,42 @@ Entry gate: Phase 24 close audit PASS (2026-06-03). Scope: retroactive pytest ma
 
 ---
 
-## Phase 26 Scope (OPEN, 2026-06-06)
+## Phase 26 Scope (CLOSED, 2026-06-07)
 
 Entry gate: Phase 25 close audit PASS (2026-06-06). Scope: CoachingScheduler activation + per-athlete engine isolation (Phase 9 corpus gate prerequisite).
 
-1. CoachingScheduler activation: wire the fully-tested CoachingScheduler (F4.1 — functional but unwired since Phase 19) as the production multi-athlete runtime; `run_forever` retained as single-athlete fallback behind a feature flag. ADR required.
-2. Per-athlete engine isolation: `EngineRegistry.from_db(db, athlete_id)` performs real DB hydration (TSB load history, HRV baseline, CS performances, APL offsets); TODO-Phase9 markers resolved; each pipeline call receives a freshly hydrated, athlete-scoped registry.
-3. Phase 9 corpus gate prerequisite: ≥ 3 athlete profiles × ≥ 90 paired decisions before per-athlete auto-threshold calibration (MODERATE → STRONG) activates.
+1. CoachingScheduler activation: wire the fully-tested CoachingScheduler (F4.1 — functional but unwired since Phase 19) as the production multi-athlete runtime; `run_forever` retained as single-athlete fallback behind a feature flag. ADR required. — ✅ RESOLVED 2026-06-07 (wired via `TITAN_MULTI_ATHLETE` flag; `_run_with_scheduler` in `titan/worker/__init__.py`; `run_forever` fallback retained).
+2. Per-athlete engine isolation: `EngineRegistry.from_db(db, athlete_id)` performs real DB hydration (TSB load history, HRV baseline, CS performances, APL offsets); TODO-Phase9 markers resolved; each pipeline call receives a freshly hydrated, athlete-scoped registry. — ✅ RESOLVED 2026-06-07 (TSB + HRV hydration live, athlete-scoped; CS-performance/APL-offset hydration tracked as TODO-P26-04b/c handed to Phase 9 alongside per-athlete profile schema).
+3. Phase 9 corpus gate prerequisite: ≥ 3 athlete profiles × ≥ 90 paired decisions before per-athlete auto-threshold calibration (MODERATE → STRONG) activates. — ✅ RESOLVED 2026-06-07 (advisory-mode corpus-gate query executable; gate mode behind `TITAN_PHASE9_CORPUS_GATE`).
 
 **Scope table (Opus pre-Phase-26 audit, 2026-06-07 — see `docs/audit/PRE_PHASE26_AUDIT_2026-06-07.md`):**
 
 | Item | Description | Status | Opus ref |
 |------|-------------|--------|----------|
-| P26-01 | ATHLETE_MAX_HR per-athlete resolution | DEFERRED — Phase 9 prerequisite. Requires adding max_hr column to athletes table (schema change, SCHEMA_VERSION bump). Current divergence (TitanSettings default=160 vs UniversalAthleteProfile default=191) is non-critical in single-athlete mode; both produce valid TRIMP zone ceilings. Fix during Phase 9 per-athlete profile schema work (athletes table → max_hr, age, weight). | A1-F2 (Opus pre-Phase-26 audit 2026-06-07), ADR-0016 |
-| P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | OPEN | A3-F3 |
-| P26-03 | CoachingScheduler activation — wire into worker composition root | OPEN | A3-F1 |
-| P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | OPEN | A3-F2 |
-| P26-05 | Module-level get_settings() constants — make lazy in garmin_sync.py:51 and worker/__init__.py:26 | OPEN | A1-F3 |
-| P26-06 | postgres_dsn_required validator test | OPEN | A2-F2 |
-| P26-07 | B2c fallback — reconcile CLAUDE.md close-note vs code | OPEN | A3-F4 |
-| P26-08 | AGENTS.md constraints.txt ADR addendum | DEFERRED | A3-F6 |
+| P26-01 | ATHLETE_MAX_HR per-athlete resolution | DEFERRED Phase 9 — requires adding max_hr column to athletes table (schema change, SCHEMA_VERSION bump). Current divergence (TitanSettings default=160 vs UniversalAthleteProfile default=191) is non-critical in single-athlete mode; both produce valid TRIMP zone ceilings. Fix during Phase 9 per-athlete profile schema work (athletes table → max_hr, age, weight). | A1-F2 (Opus pre-Phase-26 audit 2026-06-07), ADR-0016 |
+| P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | ✅ RESOLVED 2026-06-07 (advisory-mode query in `tests/test_phase9_corpus_gate.py`; gate mode via `TITAN_PHASE9_CORPUS_GATE`) | A3-F3 |
+| P26-03 | CoachingScheduler activation — wire into worker composition root | ✅ RESOLVED 2026-06-07 (`TITAN_MULTI_ATHLETE` flag selects `_run_with_scheduler`; `run_forever` single-athlete fallback retained) | A3-F1 |
+| P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | ✅ RESOLVED 2026-06-07 (TSB load history + HRV baseline hydration, athlete-scoped; CS-performance/APL-offset hydration → TODO-P26-04b/c carried to Phase 9) | A3-F2 |
+| P26-05 | Module-level get_settings() constants — make lazy in garmin_sync.py:51 and worker/__init__.py:26 | ✅ RESOLVED 2026-06-07 (constants resolved lazily at call site) | A1-F3 |
+| P26-06 | postgres_dsn_required validator test | ✅ RESOLVED 2026-06-07 (`test_titan_settings_postgres_dsn_required` in `tests/test_db_schema_contracts.py`) | A2-F2 |
+| P26-07 | B2c fallback — reconcile CLAUDE.md close-note vs code | ✅ RESOLVED 2026-06-07 (B2c fallback removed from `daily_coach.py`; `engines=` required) | A3-F4 |
+| P26-08 | AGENTS.md constraints.txt ADR addendum | DEFERRED pending ADR | A3-F6 |
+
+**CLOSED 2026-06-07**: phase_close_audit.sh 26 exit 0; 3025 tests passing, 6 skipped (3031 collected); FMEA G12 SATISFIED; P26-02/03/04/05/06/07 RESOLVED; P26-01 DEFERRED Phase 9; P26-08 DEFERRED pending ADR.
+
+---
+
+## Phase 27 Scope (OPEN, 2026-06-07)
+
+Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles active with per-athlete-isolated `EngineRegistry`; ADR-0052 offset calibration producing per-athlete threshold deltas in production. Scope: cohort analytics + population intelligence (see ROADMAP Phase 27 section).
+
+1. Cohort calibration analytics: cross-athlete threshold delta distributions; population heuristics vs. individual outliers classified.
+2. `CohortProfile` — aggregated population-level calibration signal surface for evidence promotion: HEURISTIC → MODERATE when ≥ 3 athletes independently confirm the same delta.
+3. Proactive load modulation: predictive volume reduction before metrics breach safety bands; advisory mode first (≥ 3 correct predictions before auto-apply). ADR-0014 promotion controls apply.
+4. Multi-modal biometric ingestion: lab VO₂max, lactate curve, HRV4Training exports; weighted by provenance (lab > wearable > self-reported).
+5. Rollback gate: revert calibrated threshold if `completion_rate` degrades or injury events increase within a 30-day observation window.
+
+**Hard constraint:** H1–H5 write guard (ADR-0052) enforced at the DB layer; cohort-level signal cannot loosen hard stops regardless of population consensus.
 
 ---
 
@@ -1639,5 +1656,26 @@ Entry gate: Phase 25 close audit PASS (2026-06-06). Scope: CoachingScheduler act
 | F24-03 | pytest marker backfill (T5-15B) | Missing markers skip tests silently | LOW | Mechanical; CI catches uncollected tests — DEFERRED Phase 25 |
 | F24-04 | pydantic-settings migration (P15-ARCH5) | Config loading breaks on env-var rename | MED | Additive alias approach planned — DEFERRED Phase 25 |
 | F24-05 | Alembic runner (TD-CI-SELFHOSTED) | Self-hosted runner absent → Alembic gate never runs | LOW | `continue-on-error: true` advisory in place — DEFERRED Phase 25 |
+
+**G12 gate:** SATISFIED.
+
+---
+
+## FMEA: Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation
+
+**Architect:** Claude | **Date:** 2026-06-07 | **Closed:** 2026-06-07 | **Status:** G12 SATISFIED
+
+Phase 26 introduces feedback-loop and auto-calibration surfaces (multi-athlete
+scheduler runtime, per-athlete engine hydration, threshold-offset calibration),
+so G12 applies per AGENTS.md §16.2-G12.
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F26-01 | CoachingScheduler (`titan/orchestration/coaching_scheduler.py`) | Per-athlete callback thread silently dies → athlete misses morning routine with no signal | MED | `TITAN_MULTI_ATHLETE` gates activation; `run_forever` single-athlete fallback retained when flag unset; scheduler lifecycle covered by tests ✅ |
+| F26-02 | EngineRegistry.from_db hydration (`engine_registry.py`) | Cross-athlete state bleed — wrong athlete's TSB/HRV history hydrates an engine | HIGH | `athlete_id` threaded into every DB query; per-athlete freshly-hydrated registry per pipeline call; athlete-isolation invariant tests (INV-04 / `test_athlete_isolation_invariant.py`) ✅ |
+| F26-03 | Partial hydration (CS performances / APL offsets — TODO-P26-04b/c) | Engine runs on incomplete inputs and emits a recommendation as if fully hydrated | MED | TSB + HRV hydration live and tested; CS-performance/APL-offset paths explicitly deferred (not silently skipped) and carried to Phase 9 with per-athlete profile schema ✅ |
+| F26-04 | Threshold-offset calibration (ADR-0052, `athlete_threshold_offsets`) | Auto-calibration loosens an H1–H5 hard stop | HIGH | `HARD_STOP_THRESHOLD_KEYS` excludes HRV/RHR/TSB/fatigue/injury from per-athlete adaptation; damping (5%) and max-delta (±20%) bounds PROVISIONAL; MODERATE→STRONG promotion gated on corpus + confidence bounds ✅ |
+| F26-05 | Phase 9 corpus gate (`test_phase9_corpus_gate.py`) | Calibration activates before ≥3 athletes × ≥90 paired decisions exist → premature personalization on thin data | MED | Corpus-gate query executable in advisory mode by default; enforcing gate mode behind `TITAN_PHASE9_CORPUS_GATE`; auto-threshold calibration held until corpus met ✅ |
+| F26-06 | ATHLETE_MAX_HR divergence (P26-01) | Global default (160) vs profile default (191) skews TRIMP zone ceilings across athletes | LOW | Non-critical in single-athlete mode (both yield valid ceilings); DEFERRED Phase 9 — resolved by athletes-table `max_hr` column (schema bump) |
 
 **G12 gate:** SATISFIED.

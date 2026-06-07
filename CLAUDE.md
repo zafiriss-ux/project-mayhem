@@ -50,7 +50,7 @@ Main package (68 modules, excl. __init__/__main__), ceiling 79.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 26 OPEN (ACTIVE, 2026-06-06) |
+| `docs/ROADMAP.MD` | Phase 27 OPEN (ACTIVE, 2026-06-07) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -172,11 +172,17 @@ TD-CI-SELFHOSTED RESOLVED; T5-15B/P15-ARCH5 DEFERRED Phase 25.
 phase_close_audit.sh 25 exit 0; 3022 tests passing; 7 skipped; FMEA G12 SATISFIED;
 T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed from production paths; test-only shim retained pending Phase 26 cleanup (A3-F4).
 
-## Phase 26 OPEN (ACTIVE, 2026-06-06)
+## Phase 26 CLOSED (2026-06-07)
 
-1. CoachingScheduler activation (F4.1 — unwired since Phase 19) as production multi-athlete runtime
-2. Per-athlete engine isolation: EngineRegistry.from_db(db, athlete_id) real DB hydration (TODO-Phase9 markers resolved)
-3. Phase 9 corpus gate prerequisite (≥ 3 athlete profiles × ≥ 90 paired decisions)
+phase_close_audit.sh 26 exit 0; 3025 tests passing; 6 skipped (3031 collected); FMEA G12 SATISFIED;
+P26-02/03/04/05/06/07 RESOLVED (CoachingScheduler wired via `TITAN_MULTI_ATHLETE`; EngineRegistry.from_db TSB+HRV hydration, athlete-scoped; corpus gate query; postgres DSN validator; lazy settings; B2c removed);
+P26-01 DEFERRED Phase 9 (ATHLETE_MAX_HR per-athlete schema); P26-08 DEFERRED pending ADR.
+
+## Phase 27 OPEN (ACTIVE, 2026-06-07)
+
+1. Cohort calibration analytics: cross-athlete threshold delta distributions; population heuristics vs. individual outliers
+2. `CohortProfile` — aggregated population-level calibration signal (HEURISTIC → MODERATE when ≥ 3 athletes confirm same delta)
+3. Proactive load modulation (advisory first); H1–H5 write guard remains DB-enforced (ADR-0052)
 
 ## Pitfalls
 
