@@ -33,7 +33,8 @@ Phase 21 CLOSED — phase_close_audit.sh 21 exit 0; 2959 tests passing; governan
 Phase 22 CLOSED — phase_close_audit.sh 22 exit 0; 2975 tests passing; FMEA G12 SATISFIED; TD-08 DEFERRED Phase 23; TD-04B DEFERRED Phase 23; T5-15 Phase B DEFERRED Phase 23; P15-ARCH5 DEFERRED Phase 23; TD-CI-SELFHOSTED DEFERRED Phase 23 (2026-05-25).
 Phase 23 CLOSED — phase_close_audit.sh 23 exit 0; 2974 tests passing; ADR-0058 construction-site violation caught and fixed; TD-08 DEFERRED Phase 24; TD-04B DEFERRED Phase 24; T5-15 Phase B DEFERRED Phase 24; P15-ARCH5 DEFERRED Phase 24; TD-CI-SELFHOSTED DEFERRED Phase 24 (2026-05-29).
 Phase 24 CLOSED — phase_close_audit.sh 24 exit 0; 3021 tests passing; FMEA G12 SATISFIED; TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B complete); TD-CI-SELFHOSTED RESOLVED; T5-15B DEFERRED Phase 25; P15-ARCH5 DEFERRED Phase 25 (2026-06-03).
-Phase 25 OPEN — Retroactive pytest markers (T5-15B), pydantic-settings (P15-ARCH5), B2c fallback removal, schema descriptor final convergence 2026-06-03.
+Phase 25 CLOSED — phase_close_audit.sh 25 exit 0; 3022 tests passing; FMEA G12 SATISFIED; T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed (2026-06-06).
+Phase 26 OPEN — CoachingScheduler activation + per-athlete engine isolation (Phase 9 corpus gate prerequisite) 2026-06-06.
 
 ---
 
@@ -1573,7 +1574,7 @@ Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, Ef
 
 ---
 
-## Phase 25 Scope (OPEN, 2026-06-03)
+## Phase 25 Scope (CLOSED, 2026-06-06)
 
 ### TD-08 Residual Debt (registered from Opus pre-Phase-25 audit 2026-06-03)
 
@@ -1596,9 +1597,21 @@ Entry gate: Phase 23 close audit PASS (2026-05-29). Scope: schema extraction, Ef
 
 Entry gate: Phase 24 close audit PASS (2026-06-03). Scope: retroactive pytest markers, pydantic-settings migration, B2c fallback removal.
 
-1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
-2. P15-ARCH5: pydantic-settings migration
-3. B2c fallback: Remove DailyCoach test-compat fallback path (Phase 24 deferred)
+1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical) — ✅ RESOLVED 2026-06-06
+2. P15-ARCH5: pydantic-settings migration — ✅ RESOLVED 2026-06-06
+3. B2c fallback: Remove DailyCoach test-compat fallback path (Phase 24 deferred) — ✅ RESOLVED 2026-06-06
+
+**CLOSED 2026-06-06**: phase_close_audit.sh 25 exit 0; 3022 tests passing; FMEA G12 SATISFIED; T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED.
+
+---
+
+## Phase 26 Scope (OPEN, 2026-06-06)
+
+Entry gate: Phase 25 close audit PASS (2026-06-06). Scope: CoachingScheduler activation + per-athlete engine isolation (Phase 9 corpus gate prerequisite).
+
+1. CoachingScheduler activation: wire the fully-tested CoachingScheduler (F4.1 — functional but unwired since Phase 19) as the production multi-athlete runtime; `run_forever` retained as single-athlete fallback behind a feature flag. ADR required.
+2. Per-athlete engine isolation: `EngineRegistry.from_db(db, athlete_id)` performs real DB hydration (TSB load history, HRV baseline, CS performances, APL offsets); TODO-Phase9 markers resolved; each pipeline call receives a freshly hydrated, athlete-scoped registry.
+3. Phase 9 corpus gate prerequisite: ≥ 3 athlete profiles × ≥ 90 paired decisions before per-athlete auto-threshold calibration (MODERATE → STRONG) activates.
 
 ---
 

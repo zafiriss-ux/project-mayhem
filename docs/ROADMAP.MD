@@ -5,7 +5,7 @@ Stability first. Architecture before features. No uncontrolled iteration.
 
 ---
 
-## Phase History (Phases 0–8, 11–24 CLOSED; Phases 9, 10, 25 OPEN — see below)
+## Phase History (Phases 0–8, 11–25 CLOSED; Phases 9, 10, 26 OPEN — see below)
 
 | Phase | Goal | Closed | Key output |
 |-------|------|--------|------------|
@@ -39,7 +39,8 @@ Stability first. Architecture before features. No uncontrolled iteration.
 | Phase 22 | Schema Extract & Observability | CLOSED 2026-05-25 | FMEA G12 SATISFIED; TD-NEW-18 ✅; TD-BACKUP-VERIFY ✅; TD-08/TD-04B/T5-15B/P15-ARCH5 DEFERRED Phase 23 |
 | Phase 23 | Schema & EffectBus Phase B | CLOSED 2026-05-29 | ADR-0058 construction-site violation caught and fixed; TD-08/TD-04B/T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 24 |
 | Phase 24 | Schema & EffectBus Phase C | CLOSED 2026-06-03 | TD-08 ✅ RESOLVED (Opus-verified); TD-04B ✅ RESOLVED (TitanEffectBus live, delegation shim, 4 CI fitness gates, ADR-0058 Phase B complete); T5-15B/P15-ARCH5/TD-CI-SELFHOSTED DEFERRED Phase 25 |
-| Phase 25 | Schema Descriptor & EffectBus Impl | OPEN 2026-06-03 | T5-15B, P15-ARCH5, TD-CI-SELFHOSTED; B2c fallback removal; schema descriptor final convergence |
+| Phase 25 | Schema Descriptor & EffectBus Impl | CLOSED 2026-06-06 | T5-15B ✅, P15-ARCH5 ✅, ADR-0059 ✅; B2c fallback removed; schema descriptor final convergence |
+| Phase 26 | CoachingScheduler Activation & Per-Athlete Isolation | OPEN 2026-06-06 | CoachingScheduler activation; per-athlete engine isolation; Phase 9 corpus gate prerequisite |
 
 Full detail for Phases 7.5–7.8: see `archive/roadmap_phases_0_7_8.md`.
 
@@ -331,7 +332,7 @@ event foundation for any inference regime.
 
 ---
 
-## Phase 25 — Schema Descriptor & EffectBus Implementation (OPEN, 2026-06-03)
+## Phase 25 — Schema Descriptor & EffectBus Implementation (CLOSED, 2026-06-06)
 
 **Entry gate:** Phase 24 close audit PASS ✅ (2026-06-03).
 
@@ -352,11 +353,13 @@ propagate through the bus.
 **Constraint:** `tests/test_schema_equivalence.py` (B1) must pass at every
 intermediate commit throughout the XL refactor.
 
+**CLOSED 2026-06-06**: phase_close_audit.sh 25 exit 0; 3022 tests passing; FMEA G12 SATISFIED; T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED.
+
 ---
 
-## Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation (PLANNED)
+## Phase 26 — CoachingScheduler Activation & Per-Athlete Isolation (OPEN, 2026-06-06)
 
-**Entry gate:** Phase 25 close audit PASS; `EngineRegistry.from_db` wired with real
+**Entry gate:** Phase 25 close audit PASS ✅ (2026-06-06); `EngineRegistry.from_db` wired with real
 DB hydration (TODO-Phase9 markers resolved); Phase 9 corpus gate met (≥ 3 athlete
 profiles × ≥ 90 paired decisions).
 
@@ -509,4 +512,4 @@ this roadmap governs *process and phase gates*; `FUTURE_UPGRADES.md` governs
 ---
 
 This roadmap governs TITAN OS evolution.
-Last updated: 2026-06-03 (Phase 25 OPEN 2026-06-03; Phase 24 CLOSED 2026-06-03; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)
+Last updated: 2026-06-06 (Phase 26 OPEN 2026-06-06; Phase 25 CLOSED 2026-06-06; Phase 24 CLOSED 2026-06-03; Phase 23 CLOSED 2026-05-29; Phase 22 CLOSED 2026-05-25; Phase 21 CLOSED 2026-05-24; Phase 20 CLOSED 2026-05-24; Phase 19 CLOSED 2026-05-24; Phase 18 CLOSED 2026-05-23; Phase 17 CLOSED 2026-05-22; Phase 16 CLOSED 2026-05-15; Phase 15 CLOSED 2026-05-15; Phase 8 CLOSED 2026-04-04 — 8A/8B/8C all complete; Phase 9 OPEN 2026-04-20; Phase 11 CLOSED 2026-04-27; Phase 12 CLOSED 2026-04-27; Phase 13 CLOSED 2026-05-08; Phase 14 CLOSED 2026-05-09; Phase 10 deferred pending corpus gate)

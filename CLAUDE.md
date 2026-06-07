@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3021 tests all green
+**Historical snapshot:** 3022 tests all green
 
 Update after every commit adding/removing tests:
 
@@ -50,7 +50,7 @@ Main package (68 modules, excl. __init__/__main__), ceiling 79.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 25 OPEN (ACTIVE, 2026-06-03) |
+| `docs/ROADMAP.MD` | Phase 26 OPEN (ACTIVE, 2026-06-06) |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -167,11 +167,16 @@ phase_close_audit.sh 24 exit 0; 3021 tests passing; 7 skipped; FMEA G12 SATISFIE
 TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B);
 TD-CI-SELFHOSTED RESOLVED; T5-15B/P15-ARCH5 DEFERRED Phase 25.
 
-## Phase 25 OPEN (ACTIVE, 2026-06-03)
+## Phase 25 CLOSED (2026-06-06)
 
-1. T5-15 Phase B: Retroactive pytest markers (100+ remaining files, mechanical)
-2. P15-ARCH5: pydantic-settings migration
-3. B2c fallback removal (DailyCoach test-compat path)
+phase_close_audit.sh 25 exit 0; 3022 tests passing; 7 skipped; FMEA G12 SATISFIED;
+T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed.
+
+## Phase 26 OPEN (ACTIVE, 2026-06-06)
+
+1. CoachingScheduler activation (F4.1 — unwired since Phase 19) as production multi-athlete runtime
+2. Per-athlete engine isolation: EngineRegistry.from_db(db, athlete_id) real DB hydration (TODO-Phase9 markers resolved)
+3. Phase 9 corpus gate prerequisite (≥ 3 athlete profiles × ≥ 90 paired decisions)
 
 ## Pitfalls
 
