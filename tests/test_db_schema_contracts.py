@@ -214,6 +214,29 @@ def test_model_calibration_metadata_schema(test_db_conn) -> None:
     )
 
 
+def test_titan_settings_postgres_dsn_required() -> None:
+    """TitanSettings._postgres_dsn_required must reject postgres backend without a DSN (P26-06)."""
+    from pydantic import ValidationError
+
+    from titan.config.settings import TitanSettings, get_settings
+
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(ValidationError, match="TITAN_POSTGRES_DSN"):
+            TitanSettings(TITAN_DB_BACKEND="postgres", TITAN_POSTGRES_DSN=None)
+
+        settings = TitanSettings(
+            TITAN_DB_BACKEND="postgres",
+            TITAN_POSTGRES_DSN="postgresql://user:pass@localhost/titan",
+        )
+        assert settings.TITAN_DB_BACKEND == "postgres"
+
+        sqlite_settings = TitanSettings(TITAN_DB_BACKEND="sqlite")
+        assert sqlite_settings.TITAN_DB_BACKEND == "sqlite"
+    finally:
+        get_settings.cache_clear()
+
+
 @pytest.mark.integration
 def test_schema_version_is_twentythree(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23 stale chain)
     """PRAGMA user_version must equal 23 (SCHEMA_VERSION) after create_tables()."""
