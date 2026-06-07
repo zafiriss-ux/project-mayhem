@@ -379,6 +379,19 @@ engine isolation by wiring `db` and `athlete_id` into `EngineRegistry.from_db`.
 5. Phase 9 auto-threshold calibration: MODERATE → STRONG without manual intervention
    when confidence bounds are met; every change recorded in `threshold_changelog`.
 
+**Scope table (Opus pre-Phase-26 audit, 2026-06-07 — see `docs/audit/PRE_PHASE26_AUDIT_2026-06-07.md`):**
+
+| Item | Description | Status | Opus ref |
+|------|-------------|--------|----------|
+| P26-01 | ATHLETE_MAX_HR default divergence — source HRmax per-athlete, retire global env default | OPEN | A1-F2 |
+| P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | OPEN | A3-F3 |
+| P26-03 | CoachingScheduler activation — wire into worker composition root | OPEN | A3-F1 |
+| P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | OPEN | A3-F2 |
+| P26-05 | Module-level get_settings() constants — make lazy in garmin_sync.py:51 and worker/__init__.py:26 | OPEN | A1-F3 |
+| P26-06 | postgres_dsn_required validator test | OPEN | A2-F2 |
+| P26-07 | B2c fallback — reconcile CLAUDE.md close-note vs code | OPEN | A3-F4 |
+| P26-08 | AGENTS.md constraints.txt ADR addendum | DEFERRED | A3-F6 |
+
 ---
 
 ## Phase 27 — Cohort Analytics & Population Intelligence (PLANNED)
