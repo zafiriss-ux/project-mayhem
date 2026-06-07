@@ -278,7 +278,10 @@ def test_shutdown_joins_routine_thread_before_db_close(monkeypatch):
         def close(self):
             call_order.append("db.close")
 
-        def get_training_load_history(self, days=42):
+        def get_training_load_history(self, days=42, athlete_id="owner"):
+            return []
+
+        def get_hrv_history(self, days=14, athlete_id="owner"):
             return []
 
     class _RoutineThread:
@@ -318,7 +321,10 @@ def test_shutdown_avoids_sqlite_programming_error_with_concurrent_routine(monkey
         def close(self):
             self.closed = True
 
-        def get_training_load_history(self, days=42):
+        def get_training_load_history(self, days=42, athlete_id="owner"):
+            return []
+
+        def get_hrv_history(self, days=14, athlete_id="owner"):
             return []
 
         def routine_write(self):
@@ -362,7 +368,10 @@ def test_shutdown_join_timeout_emits_worker_shutdown_timeout(monkeypatch, caplog
         def close(self):
             return None
 
-        def get_training_load_history(self, days=42):
+        def get_training_load_history(self, days=42, athlete_id="owner"):
+            return []
+
+        def get_hrv_history(self, days=14, athlete_id="owner"):
             return []
 
     class _RoutineThread:
@@ -407,7 +416,10 @@ def test_shutdown_completes_with_bounded_wait_and_no_real_sleep(monkeypatch):
         def close(self):
             return None
 
-        def get_training_load_history(self, days=42):
+        def get_training_load_history(self, days=42, athlete_id="owner"):
+            return []
+
+        def get_hrv_history(self, days=14, athlete_id="owner"):
             return []
 
     class _RoutineThread:

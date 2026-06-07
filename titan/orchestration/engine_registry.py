@@ -48,36 +48,38 @@ class EngineRegistry:
     ) -> EngineRegistry:
         """Single authoritative construction site for all per-athlete engines.
 
-        CURRENT STATE (Phase 24 / ADR-0058 Phase A):
-          All engines are constructed stateless. ``db`` and ``athlete_id``
-          are accepted for forward-compatibility but are NOT YET WIRED.
-          Post-construction DB hydration is performed by
-          DailyCoach._hydrate_engines_from_db() in the coaching pipeline.
-
-        TODO-Phase9: wire ``db`` and ``athlete_id`` here so each athlete's
-          engine state (TSB load history, HRV baseline, CS performances,
-          APL offsets) is loaded at construction time, eliminating the
-          separate hydration call and enabling true per-athlete isolation.
-          Tracked: TD-08 (schema descriptor prerequisite) → Phase 9 scope.
-
-        TODO-B2c: DailyCoach.__init__ still constructs 7 engines directly
-          (F2.1, Opus pre-Phase-24 audit 2026-05-29). Those will be removed
-          in Phase 24 blocker B2c so from_db becomes the sole construction
-          site for all 10 engine classes.
+        Phase 26 / ADR-0058 Phase B: DB hydration wired for TSB and HRV.
+        CS performances and APL offsets deferred (TODO-P26-04b/c).
         """
-        # TODO-Phase9: replace bare constructors with DB-hydrated equivalents.
-        # Example for TSBEngine:
-        #   loads = db.get_training_load_history(athlete_id=athlete_id, days=90)
-        #   tsb = TSBEngine(); [tsb.add_load(d, v) for d, v in loads]
+        loads = db.get_training_load_history(athlete_id=athlete_id, days=90)
+        tsb = TSBEngine()
+        for date_str, load in loads:
+            tsb.add_daily_load(date_str, float(load))
+
+        hrv_rows = db.get_hrv_history(days=30, athlete_id=athlete_id)
+        hrv = HRVGuidedEngine()
+        for date_str, rmssd in reversed(hrv_rows):
+            hrv.add_hrv_measurement(date_str, rmssd)
+
+        readiness = ReadinessEngine()
+
+        # TODO-P26-04b: hydrate from db.get_cs_performances() once it accepts
+        # athlete_id (cs_performances table is not yet athlete-scoped).
+        cs_tracker = CriticalSpeedTracker()
+
+        # TODO-P26-04c: APL threshold offsets are loaded by ThresholdAdapter
+        # separately; wire that into from_db once it is athlete-aware.
+        apl = AdaptivePriorityLock()
+
         return cls(
-            tsb=TSBEngine(),
-            hrv=HRVGuidedEngine(),
-            readiness=ReadinessEngine(),
+            tsb=tsb,
+            hrv=hrv,
+            readiness=readiness,
             autonomic=AutonomicFusionEngine(),
             biomechanics=BiomechanicsEngine(),
             durability=DurabilityEngine(),
             fatigue=FatigueEngine(),
             lactate=LactateLogic(),
-            cs_tracker=CriticalSpeedTracker(),
-            apl=AdaptivePriorityLock(),
+            cs_tracker=cs_tracker,
+            apl=apl,
         )

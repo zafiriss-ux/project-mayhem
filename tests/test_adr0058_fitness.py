@@ -46,7 +46,7 @@ class _DummyDB:
     def get_all_degraded_mode_states(self):
         return []
 
-    def get_training_load_history(self, days=42):
+    def get_training_load_history(self, days=42, athlete_id="owner"):
         return []
 
     def is_athlete_cold_start(self, athlete_id):
