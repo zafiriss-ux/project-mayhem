@@ -311,6 +311,7 @@ class DailyCoach:
         nutrition_optimizer,
         weekly_planner,
         db: DatabaseManager | None = None,
+        athlete_id: str = "owner",
         # v5.7 Closed-Loop engines (optional — auto-instantiated if None)
         autonomic_engine: AutonomicFusionEngine | None = None,
         cs_tracker:       CriticalSpeedTracker | None  = None,
@@ -352,6 +353,7 @@ class DailyCoach:
                 "Never instantiate DatabaseManager() inside the pipeline."
             )
         self.db = db
+        self.athlete_id = athlete_id
         # v5.7: Closed-Loop science engines — ADR-0058 Phase A: held in EngineRegistry
         # B2c (Phase 24): production path injects a complete EngineRegistry via
         # engines=EngineRegistry.from_db(db=db). Individual engine params are the
@@ -371,7 +373,9 @@ class DailyCoach:
         self.governance = governance       or GovernanceEngine()
         # v5.7.1: APL governance infrastructure
         self.vlg            = volume_load_gauge or VolumeLoadGauge()
-        self.outcome_tracker = outcome_tracker or OutcomeTracker(db=self.db)
+        self.outcome_tracker = outcome_tracker or OutcomeTracker(
+            db=self.db, athlete_id=self.athlete_id
+        )
         self.athlete_max_hr = athlete_max_hr
         self._routine_thread: threading.Thread | None = None
         self._routine_started_monotonic: float | None = None
@@ -1703,7 +1707,7 @@ class DailyCoach:
         Returns None if unavailable.
         """
         try:
-            return self.db.get_baseline_rhr(days=days)
+            return self.db.get_baseline_rhr(days=days, athlete_id=getattr(self, "athlete_id", "owner"))
         except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
             _daily_coach_event(
                 "baseline_rhr_unavailable",
@@ -1764,7 +1768,9 @@ class DailyCoach:
         Uses training_load from DB so CTL/ATL are always current.
         """
         try:
-            loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
+            loads = self.db.get_training_load_history(
+                days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+            )
             self.tsb.daily_loads.clear()
             for date_str, load in loads:
                 self.tsb.add_daily_load(date_str, float(load))
@@ -1807,7 +1813,9 @@ class DailyCoach:
         _HRV_HISTORY_DAYS = 28
         _DRIFT_WINDOW_DAYS = 14
         try:
-            rows = self.db.get_hrv_history(days=_HRV_HISTORY_DAYS)
+            rows = self.db.get_hrv_history(
+                days=_HRV_HISTORY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+            )
             self.hrv.hrv_log.clear()
             for date_str, rmssd in reversed(rows):
                 self.hrv.add_hrv_measurement(date_str, rmssd)
@@ -1843,7 +1851,7 @@ class DailyCoach:
 
         # 2. Weight history (last 30 days, oldest first)
         try:
-            rows = self.db.get_weight_history(days=30)
+            rows = self.db.get_weight_history(days=30, athlete_id=getattr(self, "athlete_id", "owner"))
             for date_str, weight in reversed(rows):
                 self.nutrition.add_weight_entry(date_str, weight)
             confidence["weight"] = bool(rows)
@@ -1857,7 +1865,9 @@ class DailyCoach:
 
         # 3. Training load history → TSB engine (42-day window for CTL)
         try:
-            loads = self.db.get_training_load_history(days=CTL_DECAY_DAYS)
+            loads = self.db.get_training_load_history(
+                days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+            )
             self.tsb.daily_loads.clear()
             for date_str, load in loads:
                 self.tsb.add_daily_load(date_str, float(load))
@@ -1873,7 +1883,7 @@ class DailyCoach:
 
         # 4. HRR history → Autonomic engine (28-day rolling baseline)
         try:
-            hrr_rows = self.db.get_hrr_history(days=28)
+            hrr_rows = self.db.get_hrr_history(days=28, athlete_id=getattr(self, "athlete_id", "owner"))
             for date_str, hrr_60, hrr_120 in reversed(hrr_rows):
                 self.autonomic.add_hrr(date_str, hrr_60, hrr_120 or 0)
             confidence["hrr"] = bool(hrr_rows)

@@ -46,19 +46,19 @@ class DummyDB:
     def update_glycogen_debt(self, *args, **kwargs):
         return None
 
-    def get_baseline_rhr(self, days: int = 7):
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner"):
         return None
 
-    def get_hrv_history(self, days: int = 14):
+    def get_hrv_history(self, days: int = 14, athlete_id: str = "owner"):
         return []
 
-    def get_weight_history(self, days: int = 30):
+    def get_weight_history(self, days: int = 30, athlete_id: str = "owner"):
         return []
 
-    def get_training_load_history(self, days: int = 42):
+    def get_training_load_history(self, days: int = 42, athlete_id: str = "owner"):
         return []
 
-    def get_hrr_history(self, days: int = 28):
+    def get_hrr_history(self, days: int = 28, athlete_id: str = "owner"):
         return []
 
     def get_cs_performances(self, limit: int = 10):
@@ -856,7 +856,7 @@ def test_persist_garmin_data_f32_today_entry_persisted_normally(tmp_path):
 @pytest.mark.unit
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
-    coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7: 51.3)
+    coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7, athlete_id="owner": 51.3)
 
     assert coach._get_baseline_rhr(days=7) == 51.3
 
@@ -868,7 +868,7 @@ def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
 
     coach = DailyCoach.__new__(DailyCoach)
 
-    def _raise_value_error(days=7):
+    def _raise_value_error(days=7, athlete_id="owner"):
         raise ValueError("broken_row")
 
     coach.db = SimpleNamespace(get_baseline_rhr=_raise_value_error)
@@ -1309,7 +1309,7 @@ def test_feed_load_engines_rehydrates_tsb_in_oldest_first_order(monkeypatch):
     added = []
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = SimpleNamespace(
-        get_training_load_history=lambda days=42: [
+        get_training_load_history=lambda days=42, athlete_id="owner": [
             ("2026-03-03", 70.0),
             ("2026-03-04", 80.0),
         ]
@@ -1428,16 +1428,16 @@ class _HydrationDB:
         self._hrr = hrr if hrr is not None else []
         self._cs = cs if cs is not None else []
 
-    def get_hrv_history(self, days=14):
+    def get_hrv_history(self, days=14, athlete_id="owner"):
         return self._hrv
 
-    def get_weight_history(self, days=30):
+    def get_weight_history(self, days=30, athlete_id="owner"):
         return self._weight
 
-    def get_training_load_history(self, days=42):
+    def get_training_load_history(self, days=42, athlete_id="owner"):
         return self._load
 
-    def get_hrr_history(self, days=28):
+    def get_hrr_history(self, days=28, athlete_id="owner"):
         return self._hrr
 
     def get_cs_performances(self, limit=10):
