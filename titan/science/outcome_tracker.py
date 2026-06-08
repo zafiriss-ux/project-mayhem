@@ -362,6 +362,7 @@ class OutcomeTracker:
                         override_outcome_exclusion=decision.override_outcome_exclusion,
                         outcome_independence_ok=decision.outcome_independence_ok,
                         algorithm_version_snapshot=decision.algorithm_version_snapshot,
+                        athlete_id=athlete_id,
                     )
                 return True
 

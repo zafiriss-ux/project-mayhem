@@ -276,7 +276,7 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_hrr_history(
-        self, days: int = 28
+        self, days: int = 28, athlete_id: str = "owner"
     ) -> list[tuple[str, int, int]]:
         """Return [(date_iso, hrr_60, hrr_120), ...] ordered newest-first."""
 
@@ -359,6 +359,7 @@ class PersistenceAdapter(ABC):
         override_outcome_exclusion: bool | None = None,
         outcome_independence_ok: bool | None = None,
         algorithm_version_snapshot: dict | None = None,
+        athlete_id: str = "owner",
     ) -> bool:
         """Update an existing governance decision row with its post-session outcome."""
 
@@ -521,8 +522,10 @@ class SQLiteAdapter(PersistenceAdapter):
     def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
         self._manager.save_hrr(date=date, hrr_60=hrr_60, hrr_120=hrr_120)
 
-    def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
-        return self._manager.get_hrr_history(days=days)
+    def get_hrr_history(
+        self, days: int = 28, athlete_id: str = "owner"
+    ) -> list[tuple[str, int, int]]:
+        return self._manager.get_hrr_history(days=days, athlete_id=athlete_id)
 
     def update_glycogen_debt(self, date: str, debt_score: float) -> None:
         self._manager.update_glycogen_debt(date=date, debt_score=debt_score)
@@ -597,6 +600,7 @@ class SQLiteAdapter(PersistenceAdapter):
         override_outcome_exclusion: bool | None = None,
         outcome_independence_ok: bool | None = None,
         algorithm_version_snapshot: dict | None = None,
+        athlete_id: str = "owner",
     ) -> bool:
         return self._manager.update_governance_outcome(
             date=date,
@@ -608,6 +612,7 @@ class SQLiteAdapter(PersistenceAdapter):
             override_outcome_exclusion=override_outcome_exclusion,
             outcome_independence_ok=outcome_independence_ok,
             algorithm_version_snapshot=algorithm_version_snapshot,
+            athlete_id=athlete_id,
         )
 
     def get_governance_decisions(
@@ -1010,7 +1015,10 @@ class PostgreSQLAdapter(PersistenceAdapter):
                 .values(notes=f"HRR60={hrr_60};HRR120={hrr_120}")
             )
 
-    def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
+    def get_hrr_history(
+        self, days: int = 28, athlete_id: str = "owner"
+    ) -> list[tuple[str, int, int]]:
+        del athlete_id
         return []
 
     def update_glycogen_debt(self, date: str, debt_score: float) -> None:
@@ -1141,12 +1149,18 @@ class PostgreSQLAdapter(PersistenceAdapter):
         override_outcome_exclusion: bool | None = None,
         outcome_independence_ok: bool | None = None,
         algorithm_version_snapshot: dict | None = None,
+        athlete_id: str = "owner",
     ) -> bool:
         del algorithm_version_snapshot  # not stored in this PostgreSQL implementation
         with self._engine.begin() as conn:
             result = conn.execute(
                 update(self._governance_outcomes)
-                .where(self._governance_outcomes.c.date == date)
+                .where(
+                    and_(
+                        self._governance_outcomes.c.athlete_id == athlete_id,
+                        self._governance_outcomes.c.date == date,
+                    )
+                )
                 .values(
                     outcome_rpe=rpe,
                     outcome_completed=int(completed) if completed is not None else None,

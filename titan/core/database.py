@@ -2536,7 +2536,9 @@ class DatabaseManager:
                     hrr_120=hrr_120,
                 )
 
-    def get_hrr_history(self, days: int = 28) -> list[tuple[str, int, int]]:
+    def get_hrr_history(
+        self, days: int = 28, athlete_id: str = "owner"
+    ) -> list[tuple[str, int, int]]:
         """
         Get HRR history for the last N days.
 
@@ -2548,10 +2550,11 @@ class DatabaseManager:
             cursor = self.conn.cursor()
             cursor.execute(
                 """SELECT date, hrr_60, hrr_120 FROM daily_metrics
-                   WHERE hrr_60 IS NOT NULL AND hrr_60 > 0
+                   WHERE athlete_id = ?
+                   AND hrr_60 IS NOT NULL AND hrr_60 > 0
                    AND date >= date('now', '-' || ? || ' days')
                    ORDER BY date DESC""",
-                (days,),
+                (athlete_id, days),
             )
             return cursor.fetchall()
 
@@ -2784,8 +2787,9 @@ class DatabaseManager:
         override_outcome_exclusion: bool | None = None,
         outcome_independence_ok: bool | None = None,
         algorithm_version_snapshot: dict[str, str] | None = None,
+        athlete_id: str = "owner",
     ) -> bool:
-        """Update latest governance decision for date with post-session outcome."""
+        """Update latest governance decision for athlete_id/date with post-session outcome."""
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
@@ -2801,7 +2805,7 @@ class DatabaseManager:
                        algorithm_version_snapshot = COALESCE(?, algorithm_version_snapshot)
                    WHERE id = (
                        SELECT id FROM governance_outcomes
-                       WHERE date = ?
+                       WHERE athlete_id = ? AND date = ?
                        ORDER BY id DESC
                        LIMIT 1
                    )""",
@@ -2816,6 +2820,7 @@ class DatabaseManager:
                     json.dumps(algorithm_version_snapshot, default=str)
                     if algorithm_version_snapshot is not None
                     else None,
+                    athlete_id,
                     date,
                 ),
             )
