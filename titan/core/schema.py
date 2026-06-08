@@ -97,7 +97,7 @@ t_daily_metrics = Table(
     Column("hrr_120", Integer),     # v1 — HRR markers
     Column("glycogen_debt", Float), # v1 — glycogen tracking
     Column("quality_flag", Text),   # v3 — data-sanity gate (ADR-0026)
-    UniqueConstraint("date", name="uq_daily_metrics_date"),
+    UniqueConstraint("athlete_id", "date", name="uq_daily_metrics_athlete_date"),
 )
 
 # ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ t_training_log = Table(
 
 # ---------------------------------------------------------------------------
 # Table 3 — gear_usage
-# Covers: create_database() base + v20 (athlete_id)
+# Covers: create_database() base + v24 (athlete_id, P27-B1)
 # Ref: ADR-0019
 # ---------------------------------------------------------------------------
 t_gear_usage = Table(
@@ -145,11 +145,12 @@ t_gear_usage = Table(
     Column("status", String, server_default="ACTIVE"),
     Column("shoe_type", String),
     Column("max_km_limit", Float, server_default="800"),
+    Column("athlete_id", String, nullable=False, server_default="owner"),
 )
 
 # ---------------------------------------------------------------------------
 # Table 4 — personal_bests
-# Covers: create_database() base + v20 (athlete_id)
+# Covers: create_database() base + v24 (athlete_id, P27-B1)
 # Ref: ADR-0019
 # ---------------------------------------------------------------------------
 t_personal_bests = Table(
@@ -161,6 +162,7 @@ t_personal_bests = Table(
     Column("pace_sec_per_km", Float),
     Column("date", String, nullable=False),
     Column("race_name", String),
+    Column("athlete_id", String, nullable=False, server_default="owner"),
 )
 
 # ---------------------------------------------------------------------------

@@ -149,6 +149,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "status",
         "shoe_type",
         "max_km_limit",
+        "athlete_id",
     ],
     "governance_outcomes": [
         "id",
@@ -222,6 +223,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "pace_sec_per_km",
         "date",
         "race_name",
+        "athlete_id",
     ],
     "sync_metadata": [
         "source",
