@@ -195,8 +195,9 @@ class OutcomeTracker:
     It emits structured JSON log lines at INFO level for every event.
     """
 
-    def __init__(self, db: DatabaseManager | None = None) -> None:
+    def __init__(self, db: DatabaseManager | None = None, athlete_id: str = "owner") -> None:
         self._db = db
+        self._athlete_id = athlete_id
         self._decisions: list[GovernanceDecision] = []
         if self._db is not None:
             self._hydrate_from_db()
@@ -204,7 +205,7 @@ class OutcomeTracker:
     def _hydrate_from_db(self) -> None:
         """Restore in-memory tracker state from persisted governance outcomes."""
         try:
-            persisted = self._db.get_governance_decisions()
+            persisted = self._db.get_governance_decisions(athlete_id=self._athlete_id)
         except Exception as exc:
             _log.warning("OutcomeTracker DB hydration failed: %s", exc)
             return

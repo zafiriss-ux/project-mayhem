@@ -210,6 +210,7 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
                     nutrition_optimizer=nutrition,
                     weekly_planner=planner,
                     db=db,
+                    athlete_id=athlete_id,
                 )
                 coach.run_morning_routine()
             except Exception as exc:
