@@ -1651,7 +1651,7 @@ Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles activ
 | P27-B2 | MED-HIGH | update_governance_outcome unscoped write; get_hrr_history unscoped read | Isolation integrity | OPEN |
 | P27-B3 | HIGH | DailyCoach hardcodes 'owner' in _hydrate_engines_from_db, _feed_load_engines, OutcomeTracker construction — nullifies EngineRegistry.from_db(athlete_id) | Per-athlete isolation | OPEN |
 | P27-B4 | HIGH | Behavioral two-athlete isolation fitness function missing; FMEA F26-02 mitigation is false assurance — static AST lint exempts database.py | Governance integrity | OPEN |
-| P27-B5 | HIGH | CoachingScheduler callback has no 07:00/daily cadence gate — fires every 60s, risks Garmin ban and corpus poisoning | Scheduler safety | OPEN |
+| P27-B5 | HIGH | CoachingScheduler callback has no 07:00/daily cadence gate — fires every 60s, risks Garmin ban and corpus poisoning | Scheduler safety | RESOLVED — per-athlete `last_run_dates` gate added to `_make_athlete_callback` (skips before 07:00 UTC and after first run each calendar day, mirroring `_seconds_until_next_run(7, 0)`) |
 | P27-B6 | MED | Per-athlete calibration cycle inert: FP/FN keys never emitted; OutcomeTracker DB hydration owner-only | Cohort signal | OPEN |
 
 ---

@@ -170,8 +170,16 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
 
     log = logging.getLogger("titan.worker.scheduler")
 
-    # Run interval: 60s check loop; coaching fires once per athlete per day
-    # at 07:00 UTC (controlled by the callback, not the scheduler interval).
+    # Per-athlete last-run date tracker — prevents firing more than once per
+    # day. Once a callback fires at or after 07:00 UTC it is skipped for the
+    # rest of that calendar day regardless of outcome, mirroring the
+    # single-athlete while-True loop's _seconds_until_next_run(7, 0) gate.
+    # P27-B5: CoachingScheduler itself only enforces per-athlete overlap
+    # locks — the daily cadence gate must live in the callback.
+    last_run_dates: dict[str, str] = {}
+
+    # Run interval: 60s poll; coaching fires once per athlete per day at
+    # 07:00 UTC. The daily gate is enforced inside each callback.
     scheduler = CoachingScheduler(interval_seconds=60.0)
 
     # Register owner athlete (always present).
@@ -179,6 +187,14 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
 
     def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
         def _callback() -> None:
+            _now = _dt.datetime.now(_dt.UTC)
+            _today = _now.strftime("%Y-%m-%d")
+            if _now.hour < 7 or last_run_dates.get(athlete_id) == _today:
+                return  # before 07:00 UTC or already ran today for this athlete
+            # Mark as run before execution so a mid-routine crash does not
+            # trigger a retry storm — same semantics as the single-athlete
+            # loop which sleeps until 07:00 next day regardless of outcome.
+            last_run_dates[athlete_id] = _today
             try:
                 garmin = GarminSync(athlete_max_hr=athlete_max_hr)
                 weather = WeatherAPI()
