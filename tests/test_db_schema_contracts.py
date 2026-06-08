@@ -2,7 +2,7 @@
 DB schema contract tests — ADR-0033 Layer 3 + ADR-0052 + Phase 9 entry gate.
 Any migration that changes a column set MUST update this file in the same PR.
 
-Column sets verified against: DatabaseManager (SCHEMA_VERSION=23).
+Column sets verified against: DatabaseManager (SCHEMA_VERSION=24).
 Run to re-verify: python -c "
     import tempfile; from pathlib import Path
     from titan.core.database import DatabaseManager
@@ -23,7 +23,7 @@ import pytest
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 # ── Column contract sets (source-of-truth for schema regression) ─────────────
-# These include all columns added by migrations up to SCHEMA_VERSION=23.
+# These include all columns added by migrations up to SCHEMA_VERSION=24.
 
 GOVERNANCE_OUTCOMES_COLUMNS = {
     "id",
@@ -112,6 +112,7 @@ GEAR_USAGE_COLUMNS = {
     "status",
     "shoe_type",
     "max_km_limit",
+    "athlete_id",  # migration v24 — multi-athlete schema isolation (P27-B1 / ADR-0033)
 }
 
 PERSONAL_BESTS_COLUMNS = {
@@ -121,6 +122,7 @@ PERSONAL_BESTS_COLUMNS = {
     "pace_sec_per_km",
     "date",
     "race_name",
+    "athlete_id",  # migration v24 — multi-athlete schema isolation (P27-B1 / ADR-0033)
 }
 
 ATHLETES_COLUMNS = {
@@ -238,12 +240,12 @@ def test_titan_settings_postgres_dsn_required() -> None:
 
 
 @pytest.mark.integration
-def test_schema_version_is_twentythree(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23 stale chain)
-    """PRAGMA user_version must equal 23 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 23, (
-        f"Expected SCHEMA_VERSION=23 in database.py, got {SCHEMA_VERSION}"
+def test_schema_version_is_twentyfour(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23→v24 stale chain)
+    """PRAGMA user_version must equal 24 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 24, (
+        f"Expected SCHEMA_VERSION=24 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 23, (
-        f"PRAGMA user_version must be 23 after create_tables(), got {version}"
+    assert version == 24, (
+        f"PRAGMA user_version must be 24 after create_tables(), got {version}"
     )

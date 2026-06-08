@@ -134,7 +134,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 
 class DatabaseManager:
@@ -420,6 +420,12 @@ class DatabaseManager:
                 "GDPR consent audit table — SQLite reconciliation of Alembic d9 (TD-08 Step 5 / F3.4)",
                 None,  # DDL — see _apply_v23_migrations() below
             ),
+            24: (
+                "daily_metrics / personal_bests / gear_usage",
+                "multi-athlete schema isolation: daily_metrics unique(athlete_id,date) "
+                "rebuild; personal_bests + gear_usage athlete_id columns (P27-B1 / ADR-0033)",
+                None,  # DDL — see _apply_v24_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -697,6 +703,15 @@ class DatabaseManager:
                     "timestamp": datetime.now(UTC).isoformat() + "Z",
                 })
             )
+
+        if current_version < 24:
+            self._apply_v24_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 24,
+                "changes": "daily_metrics unique(athlete_id,date); personal_bests+gear_usage athlete_id",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
 
         self._apply_v19_pace_backfill(cursor)
 
@@ -1245,6 +1260,75 @@ class DatabaseManager:
                 revoked_at   TEXT
             )
         """)
+
+    def _apply_v24_migrations(self, cursor) -> None:
+        """Version 24: multi-athlete schema isolation (P27-B1 / ADR-0033).
+
+        Three changes:
+        (a) daily_metrics: unique key (date) → (athlete_id, date)
+            Requires table-rebuild (SQLite cannot ALTER CONSTRAINT).
+            FROZEN HISTORICAL SNAPSHOT: the column list in the rebuild is
+            intentionally frozen at v24-era state. DO NOT sync to descriptor.
+            Ref: P27-B1, TD-08-R3 pattern, Opus pre-Phase-27 audit A3-02.
+        (b) personal_bests: add athlete_id column (DEFAULT 'owner')
+        (c) gear_usage: add athlete_id column (DEFAULT 'owner')
+        """
+        # (a) daily_metrics rebuild: drop (date) unique, add (athlete_id, date) unique
+        #
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # FROZEN HISTORICAL SNAPSHOT — DO NOT MODIFY OR SYNC TO DESCRIPTOR
+        # Column list frozen at v24 state. Adding post-v24 columns here
+        # would corrupt migration replay. Ref: P27-B1, TD-08-R3 pattern.
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS daily_metrics_v24_new (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                athlete_id      TEXT NOT NULL DEFAULT 'owner',
+                date            TEXT NOT NULL,
+                weight_kg       REAL,
+                hrv_rmssd       REAL,
+                resting_hr      INTEGER,
+                sleep_hours     REAL,
+                sleep_quality   INTEGER,
+                soreness        INTEGER,
+                fatigue_level   INTEGER,
+                mood            INTEGER,
+                notes           TEXT,
+                data_source     TEXT NOT NULL DEFAULT 'garmin_api',
+                hrr_60          INTEGER,
+                hrr_120         INTEGER,
+                glycogen_debt   REAL,
+                quality_flag    TEXT,
+                UNIQUE (athlete_id, date)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO daily_metrics_v24_new
+            SELECT id, athlete_id, date, weight_kg, hrv_rmssd, resting_hr,
+                   sleep_hours, sleep_quality, soreness, fatigue_level, mood,
+                   notes, data_source, hrr_60, hrr_120, glycogen_debt, quality_flag
+            FROM daily_metrics
+        """)
+        cursor.execute("DROP TABLE daily_metrics")
+        cursor.execute("ALTER TABLE daily_metrics_v24_new RENAME TO daily_metrics")
+
+        # (b) personal_bests: add athlete_id
+        try:
+            cursor.execute(
+                "ALTER TABLE personal_bests ADD COLUMN athlete_id TEXT NOT NULL DEFAULT 'owner'"
+            )
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                raise
+
+        # (c) gear_usage: add athlete_id
+        try:
+            cursor.execute(
+                "ALTER TABLE gear_usage ADD COLUMN athlete_id TEXT NOT NULL DEFAULT 'owner'"
+            )
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                raise
 
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
@@ -1944,6 +2028,7 @@ class DatabaseManager:
         notes: str | None = None,
         quality_flag: str | None = None,
         data_source: str = "garmin_api",
+        athlete_id: str = "owner",
     ) -> None:
         """
         Save morning check-in data.
@@ -1960,6 +2045,7 @@ class DatabaseManager:
             mood: Mood score (0-5 scale)
             notes: Optional text notes
             data_source: Provenance tag — 'garmin_api' or 'manual_entry'
+            athlete_id: Athlete scope for the row (multi-athlete isolation)
         """
         with self._lock:
             self._ensure_open_locked()
@@ -1975,10 +2061,11 @@ class DatabaseManager:
             # manual provenance.
             cursor.execute("""
                 INSERT INTO daily_metrics
-                (date, weight_kg, hrv_rmssd, resting_hr, sleep_hours, sleep_quality,
-                 soreness, fatigue_level, mood, notes, quality_flag, data_source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(date) DO UPDATE SET
+                (athlete_id, date, weight_kg, hrv_rmssd, resting_hr, sleep_hours,
+                 sleep_quality, soreness, fatigue_level, mood, notes, quality_flag,
+                 data_source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(athlete_id, date) DO UPDATE SET
                     weight_kg    = CASE WHEN excluded.weight_kg    IS NOT NULL THEN excluded.weight_kg    ELSE weight_kg    END,
                     hrv_rmssd    = CASE WHEN excluded.hrv_rmssd    IS NOT NULL THEN excluded.hrv_rmssd    ELSE hrv_rmssd    END,
                     resting_hr   = CASE WHEN excluded.resting_hr   IS NOT NULL THEN excluded.resting_hr   ELSE resting_hr   END,
@@ -1986,7 +2073,7 @@ class DatabaseManager:
                     sleep_quality= CASE WHEN excluded.sleep_quality IS NOT NULL THEN excluded.sleep_quality ELSE sleep_quality END,
                     quality_flag = CASE WHEN excluded.quality_flag IS NOT NULL THEN excluded.quality_flag ELSE quality_flag END,
                     data_source  = CASE WHEN data_source = 'manual_entry' THEN data_source ELSE excluded.data_source END
-            """, (date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag, data_source))
+            """, (athlete_id, date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag, data_source))
             if self._transaction_depth == 0:
                 self.conn.commit()
 

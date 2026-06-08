@@ -166,6 +166,7 @@ class PersistenceAdapter(ABC):
         notes: str | None = None,
         quality_flag: str | None = None,
         data_source: str = "garmin_api",
+        athlete_id: str = "owner",
     ) -> None:
         """Persist a morning check-in row (upsert: overwrite if key exists)."""
 
