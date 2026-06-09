@@ -1540,18 +1540,72 @@ class DatabaseManager:
     def get_athlete_threshold_offsets(self, athlete_id: str) -> list[dict]:
         """Return all threshold offset rows for an athlete.
 
-        Returns a list of dicts with keys 'threshold_key' and 'delta_value'.
+        Returns a list of dicts with keys 'threshold_key', 'delta_value',
+        'source', and 'updated_at'.
         Returns an empty list if the athlete has no recorded offsets.
-        Used by ThresholdAdapter.load() (ADR-0052 Stage 2).
+        Used by ThresholdAdapter.load() and CalibrationRollbackGate (ADR-0052 Stage 2).
         """
         with self._lock:
             self._ensure_open_locked()
             rows = self.conn.cursor().execute(
-                "SELECT threshold_key, delta_value "
+                "SELECT threshold_key, delta_value, source, updated_at "
                 "FROM athlete_threshold_offsets WHERE athlete_id = ?",
                 (athlete_id,),
             ).fetchall()
-        return [{"threshold_key": r[0], "delta_value": r[1]} for r in rows]
+        return [
+            {"threshold_key": r[0], "delta_value": r[1], "source": r[2], "updated_at": r[3]}
+            for r in rows
+        ]
+
+    def delete_threshold_offset(self, athlete_id: str, threshold_key: str) -> int:
+        """Delete a calibration-sourced threshold offset row (P27-04 rollback gate).
+
+        The source='calibration' guard in the DELETE is the hard safety: a manual
+        offset can never be deleted by this path even if called with a manual key.
+
+        Returns the number of rows deleted (0 or 1).
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            c = self.conn.cursor()
+            c.execute(
+                "DELETE FROM athlete_threshold_offsets "
+                "WHERE athlete_id = ? AND threshold_key = ? AND source = 'calibration'",
+                (athlete_id, threshold_key),
+            )
+            if self._transaction_depth == 0:
+                self.conn.commit()
+            return c.rowcount
+
+    def get_completion_rate(
+        self, athlete_id: str, start_date: str, end_date: str
+    ) -> tuple[float | None, int]:
+        """Return (completion_rate, sample_count) for athlete_id in [start_date, end_date].
+
+        completion_rate = COUNT(outcome_completed=1) / COUNT(outcome_completed IS NOT NULL)
+        over governance_outcomes in the inclusive date range.
+
+        Returns (None, 0) when there are no qualifying rows (prevents division by zero).
+        Used by CalibrationRollbackGate (P27-04).
+        """
+        with self._lock:
+            self._ensure_open_locked()
+            row = self.conn.cursor().execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE outcome_completed = 1) AS completed_count,
+                    COUNT(*) FILTER (WHERE outcome_completed IS NOT NULL) AS total_count
+                FROM governance_outcomes
+                WHERE athlete_id = ? AND date >= ? AND date <= ?
+                """,
+                (athlete_id, start_date, end_date),
+            ).fetchone()
+        if row is None:
+            return None, 0
+        completed_count, total_count = row
+        if (total_count or 0) == 0:
+            return None, 0
+        return completed_count / total_count, total_count
 
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
         """Return True if the athlete is in the cold-start bootstrapping period.

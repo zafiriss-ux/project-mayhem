@@ -177,6 +177,14 @@ THRESHOLD_ADAPTER_MAX_DELTA_PCT: float = 0.20      # |δT| ceiling: ±20% of bas
 THRESHOLD_ADAPTER_FALSE_NEG_WINDOW_DAYS: int = 30  # circuit breaker look-back window
 THRESHOLD_ADAPTER_FALSE_NEG_RATE_LIMIT: float = 0.20  # 20% false-neg rate → breaker active
 
+# ── P27-04 — Calibration rollback gate ───────────────────────────────────────
+# Minimum completion-rate drop (in percentage points) over the 30-day pre/post
+# calibration window that triggers a rollback recommendation.
+# Aligned with THRESHOLD_ADAPTER_DAMPING_PCT (5%) × 2 cycles of evidence-registry
+# promotion magnitude — 10pp is the smallest observable regression that a single
+# adaptation cycle could not explain by noise alone.
+ROLLBACK_DEGRADATION_THRESHOLD_PP: float = 10.0
+
 # ── ADR-0033 Layer 3 L3-C — Cold-start conservative bias ─────────────────────
 COLD_START_SOFT_GATE_CONSERVATIVE_FACTOR: float = 0.80  # 20% shift toward conservative
 COLD_START_HARD_STOP_FACTOR: float = 1.00               # Hard-stop gates (H1–H5) unchanged
@@ -221,7 +229,7 @@ MIN_FAT_G: int = 40          # minimum daily fat intake in grams (dietary guidel
 FAT_KCAL_PER_GRAM: int = 9   # caloric density of fat (Atwater factor)
 
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
-MODULE_COUNT_CEILING: int = 78  # T4-27-C: raised 73→78 (2026-05-31); pkgutil.walk_packages
+MODULE_COUNT_CEILING: int = 79  # T4-27-C: raised 73→79 (2026-06-09); pkgutil.walk_packages
 # counts packages (dirs with init.py) in addition to
 # source modules; find-based local test counts 65 .py files
 # (both ≤ ceiling). Phase 24 blocker-clear audit confirmed
