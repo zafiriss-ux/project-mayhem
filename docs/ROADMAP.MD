@@ -405,6 +405,10 @@ engine isolation by wiring `db` and `athlete_id` into `EngineRegistry.from_db`.
 per-athlete-isolated `EngineRegistry`; ADR-0052 offset calibration producing
 per-athlete threshold deltas in production.
 
+**Opus audit gate:** ✅ SATISFIED 2026-06-09 — Opus second re-audit GO;
+B1-B7 all RESOLVED; Phase 27 primary deliverables OPEN
+(see `docs/audit/PRE_PHASE27_REAUDIT2_2026-06-09.md`).
+
 **Goal:** Aggregate per-athlete calibration signal into cohort-level patterns.
 The system identifies which threshold adjustments generalise across profiles and
 which are individual-specific. This is the foundation for population-level coaching

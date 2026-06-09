@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3034 tests all green
+**Historical snapshot:** 3034 tests all green (3028 passed, 6 skipped — 2026-06-09)
 
 Update after every commit adding/removing tests:
 
@@ -50,7 +50,7 @@ Main package (68 modules, excl. __init__/__main__), ceiling 79.
 |------|---------|
 | `AGENTS.md` | Governance rules (DO NOT EDIT without ADR) |
 | `TECHNICAL_DEBT.md` | Open debt items |
-| `docs/ROADMAP.MD` | Phase 27 OPEN (ACTIVE, 2026-06-07) |
+| `docs/ROADMAP.MD` | Phase 27 OPEN (ACTIVE, 2026-06-07) — GO 2026-06-09 |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, migrations |
@@ -178,7 +178,7 @@ phase_close_audit.sh 26 exit 0; 3025 tests passing; 6 skipped (3031 collected); 
 P26-02/03/04/05/06/07 RESOLVED (CoachingScheduler wired via `TITAN_MULTI_ATHLETE`; EngineRegistry.from_db TSB+HRV hydration, athlete-scoped; corpus gate query; postgres DSN validator; lazy settings; B2c removed);
 P26-01 DEFERRED Phase 9 (ATHLETE_MAX_HR per-athlete schema); P26-08 DEFERRED pending ADR.
 
-## Phase 27 OPEN (ACTIVE, 2026-06-07)
+## Phase 27 OPEN (ACTIVE, 2026-06-07) — ✅ GO VERDICT 2026-06-09 (Opus second re-audit; B1-B7 all RESOLVED)
 
 1. Cohort calibration analytics: cross-athlete threshold delta distributions; population heuristics vs. individual outliers
 2. `CohortProfile` — aggregated population-level calibration signal (HEURISTIC → MODERATE when ≥ 3 athletes confirm same delta)
