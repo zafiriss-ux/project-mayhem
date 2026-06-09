@@ -92,6 +92,7 @@ launcher/main.py
 | `titan/science/load_prediction_shadow.py` | Shadow ML load prediction |
 | `titan/science/data_trust.py` | Data quality trust scoring |
 | `titan/science/data_sanity.py` | Input data sanity layer (ADR-0026) |
+| `titan/science/rollback_gate.py` | Completion-rate calibration rollback gate (P27-04) |
 | `titan/science/threshold_adapter.py` | Population-specific threshold adaptation |
 | `titan/science/outcome_tracker.py` | Governance outcome recording |
 | `titan/science/override_signal.py` | Human override signal handling |
