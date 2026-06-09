@@ -441,6 +441,25 @@ t_login_lockout = Table(
 )
 
 # ---------------------------------------------------------------------------
+# Table 22 — cohort_calibration_signals
+# Covers: _apply_v25_migrations() (P27-01 cohort calibration scaffolding)
+# Ref: Phase 27, CohortProfile (future writer), promotion query (future reader)
+# NOTE: ladder-created (v25); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_cohort_calibration_signals = Table(
+    "cohort_calibration_signals",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("threshold_key", String, nullable=False),
+    Column("athlete_id", String, nullable=False),
+    Column("proposed_delta", Float, nullable=False),
+    Column("sample_size", Integer, nullable=False),
+    Column("completion_delta_pp", Float),
+    Column("computed_at", String, nullable=False),
+    UniqueConstraint("threshold_key", "athlete_id", name="uq_cohort_calibration_signals_threshold_key"),
+)
+
+# ---------------------------------------------------------------------------
 # Registry — lookup by table name
 # ---------------------------------------------------------------------------
 _TABLE_REGISTRY: dict[str, Table] = {t.name: t for t in metadata.sorted_tables}

@@ -134,7 +134,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 
 class DatabaseManager:
@@ -426,6 +426,11 @@ class DatabaseManager:
                 "rebuild; personal_bests + gear_usage athlete_id columns (P27-B1 / ADR-0033)",
                 None,  # DDL — see _apply_v24_migrations() below
             ),
+            25: (
+                "cohort_calibration_signals",
+                "cohort calibration signal table for CohortProfile scaffolding (P27-01)",
+                None,  # DDL — see _apply_v25_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -710,6 +715,15 @@ class DatabaseManager:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 24,
                 "changes": "daily_metrics unique(athlete_id,date); personal_bests+gear_usage athlete_id",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 25:
+            self._apply_v25_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 25,
+                "table_created": "cohort_calibration_signals (P27-01)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1329,6 +1343,21 @@ class DatabaseManager:
         except Exception as e:
             if "duplicate column" not in str(e).lower():
                 raise
+
+    def _apply_v25_migrations(self, cursor) -> None:
+        """Version 25: cohort_calibration_signals table (P27-01 scaffolding)."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cohort_calibration_signals (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                threshold_key        TEXT NOT NULL,
+                athlete_id           TEXT NOT NULL,
+                proposed_delta       REAL NOT NULL,
+                sample_size          INTEGER NOT NULL,
+                completion_delta_pp  REAL,
+                computed_at          TEXT NOT NULL,
+                UNIQUE (threshold_key, athlete_id)
+            )
+        """)
 
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
