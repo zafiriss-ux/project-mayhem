@@ -44,7 +44,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 23, 2026-06-02
+# Authoritative column snapshot — SCHEMA_VERSION 25, 2026-06-09
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
@@ -59,6 +59,15 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "updated_at",
         "source",
         "confidence",
+    ],
+    "cohort_calibration_signals": [
+        "id",
+        "threshold_key",
+        "athlete_id",
+        "proposed_delta",
+        "sample_size",
+        "completion_delta_pp",
+        "computed_at",
     ],
     "athletes": [
         "athlete_id",
