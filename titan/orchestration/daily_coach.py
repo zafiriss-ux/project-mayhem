@@ -727,7 +727,7 @@ class DailyCoach:
                     hrr120 = _safe_int(entry.get('hrr_120', 0))
                     if hrr60:
                         self.autonomic.add_hrr(entry['date'], hrr60, hrr120)
-                        self.db.save_hrr(entry['date'], hrr60, hrr120)
+                        self.db.save_hrr(entry['date'], hrr60, hrr120, athlete_id=getattr(self, "athlete_id", "owner"))
 
         _run_step(3, "feed_hrv_hrr", _step3_feed_hrv_hrr)
 
@@ -784,7 +784,7 @@ class DailyCoach:
             sleep_hours       = today_sleep_hours,
             carb_availability = 'MODERATE',
         )
-        _run_step(6, "update_glycogen", lambda: self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt))
+        _run_step(6, "update_glycogen", lambda: self.db.update_glycogen_debt(today_str, self.glycogen.daily_debt, athlete_id=getattr(self, "athlete_id", "owner")))
 
         # ── Pre-pipeline: baseline RHR (DB read; alert fires here if unavailable) ──
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
@@ -826,7 +826,7 @@ class DailyCoach:
 
         # ── Decision Pipeline (steps 7–11, pure: no DB writes, no Telegram) ──
         context = AthleteCoachingContext(
-            athlete_id="default",
+            athlete_id=getattr(self, "athlete_id", "owner"),
             coach=self,
             db=self.db,
             garmin_data=garmin_data,
@@ -1265,6 +1265,7 @@ class DailyCoach:
     def _make_record_outcome_handler(self):
         """Build the record_outcome handler bound to this coach's outcome_tracker."""
         outcome_tracker = self.outcome_tracker
+        athlete_profile_id = getattr(self, "athlete_id", "owner")
 
         def _handle(effect, result):
             trace = result.decision_trace
@@ -1281,6 +1282,7 @@ class DailyCoach:
                 readiness_score=float(trace.get("readiness_score", 50.0)),
                 glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
                 afi_value=float(trace.get("afi_value", 0.0)),
+                athlete_profile_id=athlete_profile_id,
             )
 
         return _handle
@@ -1601,6 +1603,7 @@ class DailyCoach:
                             garmin_activity_id= act.get('activity_id'),
                             quality_flag      = activity_quality_flag,
                             avg_pace_sec_per_km= _safe_int(act.get('avg_pace_sec_per_km')) or None,
+                            athlete_id        = getattr(self, "athlete_id", "owner"),
                         )
                         _daily_coach_event(
                             "activity_persist",
@@ -1653,6 +1656,7 @@ class DailyCoach:
                     sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
                     sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
                     quality_flag = daily_quality_flag,
+                    athlete_id   = getattr(self, "athlete_id", "owner"),
                 )
 
                 # F-32: persist HRV for all historical days returned by sync_hrv()
@@ -1664,7 +1668,8 @@ class DailyCoach:
                     )
                     if not has_rejects(past_hrv_sanity):
                         self.db.save_daily_metric_if_missing(
-                            date=past_hrv['date'], hrv=past_hrv['rmssd']
+                            date=past_hrv['date'], hrv=past_hrv['rmssd'],
+                            athlete_id=getattr(self, "athlete_id", "owner"),
                         )
 
             if activities:

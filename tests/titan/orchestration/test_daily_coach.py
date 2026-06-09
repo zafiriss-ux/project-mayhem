@@ -1354,7 +1354,7 @@ def test_run_morning_routine_handles_hrr_locks_weight_and_missing_nutrition(monk
         apply_48h_buffer=lambda v: v,
         get_readiness_constraints=lambda *a, **k: {"afi_modifier": 0, "readiness_clamp": 100},
     )
-    coach.db.save_hrr = lambda date, hrr_60, hrr_120: save_hrr_calls.append((date, hrr_60, hrr_120))
+    coach.db.save_hrr = lambda date, hrr_60, hrr_120, **kw: save_hrr_calls.append((date, hrr_60, hrr_120))
     coach.governance = SimpleNamespace(
         apply_constraints=lambda session_plan, context: {
             **session_plan,

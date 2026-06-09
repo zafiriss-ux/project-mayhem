@@ -138,3 +138,69 @@ def test_daily_metrics_two_athletes_same_date() -> None:
         assert rows[1] == ("athlete_b", 72.0)
 
         db.close()
+
+
+@pytest.mark.integration
+def test_morning_routine_writes_to_correct_athlete() -> None:
+    """P27-B7: DailyCoach._persist_garmin_data must scope all writes to
+    self.athlete_id. Two coaches with different athlete_ids writing on the
+    same date must not cross-contaminate each other's rows.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db = DatabaseManager("iso_write_test.db", db_dir=Path(tmpdir))
+
+        for aid in ("athlete_a", "athlete_b"):
+            db.conn.execute(
+                "INSERT OR IGNORE INTO athletes "
+                "(athlete_id, display_name, created_at, is_cold_start) "
+                "VALUES (?, ?, datetime('now'), 0)",
+                (aid, aid.replace("_", " ").title()),
+            )
+        db.conn.commit()
+
+        coach_a = _make_coach(db, "athlete_a")
+        coach_b = _make_coach(db, "athlete_b")
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+
+        garmin_data_a = {
+            "activities": [],
+            "sleep": [{"sleep_score": 80, "total_sleep_hours": 8.0, "rhr": 48}],
+            "hrv": [{"date": today, "rmssd": 60.0}],
+            "weight": [],
+            "hrr": [],
+        }
+        garmin_data_b = {
+            "activities": [],
+            "sleep": [{"sleep_score": 55, "total_sleep_hours": 6.0, "rhr": 65}],
+            "hrv": [{"date": today, "rmssd": 35.0}],
+            "weight": [],
+            "hrr": [],
+        }
+
+        coach_a._persist_garmin_data(garmin_data_a, today)
+        coach_b._persist_garmin_data(garmin_data_b, today)
+
+        rows = db.conn.execute(
+            "SELECT athlete_id, hrv_rmssd, resting_hr, sleep_hours, sleep_quality "
+            "FROM daily_metrics WHERE date = ? ORDER BY athlete_id",
+            (today,),
+        ).fetchall()
+
+        assert len(rows) == 2, (
+            f"Expected 2 rows (one per athlete), got {len(rows)}: {rows}. "
+            "DailyCoach may be writing to the wrong athlete or colliding on date."
+        )
+        row_a = next((r for r in rows if r[0] == "athlete_a"), None)
+        row_b = next((r for r in rows if r[0] == "athlete_b"), None)
+
+        assert row_a is not None, "athlete_a row missing from daily_metrics"
+        assert row_b is not None, "athlete_b row missing from daily_metrics"
+
+        # Verify values landed in the correct athlete's row
+        assert row_a[1] == 60.0, f"athlete_a HRV should be 60.0, got {row_a[1]}"
+        assert row_b[1] == 35.0, f"athlete_b HRV should be 35.0, got {row_b[1]}"
+        assert row_a[2] == 48, f"athlete_a RHR should be 48, got {row_a[2]}"
+        assert row_b[2] == 65, f"athlete_b RHR should be 65, got {row_b[2]}"
+
+        db.close()

@@ -1653,7 +1653,7 @@ Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles activ
 | P27-B4 | HIGH | Behavioral two-athlete isolation fitness function missing; FMEA F26-02 mitigation is false assurance — static AST lint exempts database.py | Governance integrity | RESOLVED 2026-06-09 (PR #851) — behavioral isolation fitness |
 | P27-B5 | HIGH | CoachingScheduler callback has no 07:00/daily cadence gate — fires every 60s, risks Garmin ban and corpus poisoning | Scheduler safety | RESOLVED 2026-06-09 (PR #847) — scheduler 07:00 gate |
 | P27-B6 | MED | Per-athlete calibration cycle inert: FP/FN keys never emitted; OutcomeTracker DB hydration owner-only | Cohort signal | RESOLVED 2026-06-09 (PR #852) — FP/FN keys + tracker scoping |
-| P27-B7 | HIGH | DailyCoach orchestration write path is owner/default-hardcoded: AthleteCoachingContext(athlete_id="default"), _persist_garmin_data (save_session/save_daily_metric/save_daily_metric_if_missing omit athlete_id), save_hrr/update_glycogen_debt use unscoped WHERE date=?, record_decision tags 'owner'. Also: permanent "default" cold-start renders ThresholdAdapter inert. Active on athlete #2. | Per-athlete corpus production | OPEN |
+| P27-B7 | HIGH | DailyCoach orchestration write path is owner/default-hardcoded: AthleteCoachingContext(athlete_id="default"), _persist_garmin_data (save_session/save_daily_metric/save_daily_metric_if_missing omit athlete_id), save_hrr/update_glycogen_debt use unscoped WHERE date=?, record_decision tags 'owner'. Also: permanent "default" cold-start renders ThresholdAdapter inert. Active on athlete #2. | Per-athlete corpus production | RESOLVED 2026-06-09 — athlete_id threaded through all write paths; save_hrr/update_glycogen_debt/save_daily_metric_if_missing scoped by athlete_id; AthleteCoachingContext fixed; record_decision passes athlete_profile_id; behavioral isolation test added |
 
 ---
 
@@ -1689,5 +1689,25 @@ so G12 applies per AGENTS.md §16.2-G12.
 | F26-04 | Threshold-offset calibration (ADR-0052, `athlete_threshold_offsets`) | Auto-calibration loosens an H1–H5 hard stop | HIGH | `HARD_STOP_THRESHOLD_KEYS` excludes HRV/RHR/TSB/fatigue/injury from per-athlete adaptation; damping (5%) and max-delta (±20%) bounds PROVISIONAL; MODERATE→STRONG promotion gated on corpus + confidence bounds ✅ |
 | F26-05 | Phase 9 corpus gate (`test_phase9_corpus_gate.py`) | Calibration activates before ≥3 athletes × ≥90 paired decisions exist → premature personalization on thin data | MED | Corpus-gate query executable in advisory mode by default; enforcing gate mode behind `TITAN_PHASE9_CORPUS_GATE`; auto-threshold calibration held until corpus met ✅ |
 | F26-06 | ATHLETE_MAX_HR divergence (P26-01) | Global default (160) vs profile default (191) skews TRIMP zone ceilings across athletes | LOW | Non-critical in single-athlete mode (both yield valid ceilings); DEFERRED Phase 9 — resolved by athletes-table `max_hr` column (schema bump) |
+
+**G12 gate:** SATISFIED.
+
+---
+
+## FMEA: Phase 27 — Write-Path Athlete Isolation (P27-B7)
+
+**Architect:** Claude | **Date:** 2026-06-09 | **Status:** RESOLVED
+
+DailyCoach write paths touched by the morning routine must tag all rows with the
+correct `athlete_id`. Failure silently mis-attributes biometric data to the wrong
+athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
+
+| ID | Component | Failure Mode | Sev | Mit |
+|---|---|---|---|---|
+| F27-01 | `DailyCoach._persist_garmin_data` | `save_session` / `save_daily_metric` / `save_daily_metric_if_missing` omit `athlete_id` → all writes land on `'owner'` regardless of which athlete the coach manages | HIGH | All three calls now pass `athlete_id=getattr(self, "athlete_id", "owner")`; `save_daily_metric_if_missing` updated to include `athlete_id` in INSERT ✅ RESOLVED 2026-06-09 |
+| F27-02 | `DailyCoach.run_morning_routine` step 3 (`save_hrr`) | `save_hrr` WHERE clause was `WHERE date=?` — updates first matching row, could overwrite a different athlete's HRR | HIGH | `save_hrr` now accepts `athlete_id` and scopes `WHERE athlete_id=? AND date=?`; call site passes `self.athlete_id` ✅ RESOLVED 2026-06-09 |
+| F27-03 | `DailyCoach.run_morning_routine` step 6 (`update_glycogen_debt`) | Same unscoped WHERE as F27-02 for glycogen debt | HIGH | `update_glycogen_debt` now scoped by `athlete_id` ✅ RESOLVED 2026-06-09 |
+| F27-04 | `AthleteCoachingContext` construction | `athlete_id="default"` hardcoded — pipeline context tags decisions to wrong athlete | MED | Changed to `athlete_id=getattr(self, "athlete_id", "owner")` ✅ RESOLVED 2026-06-09 |
+| F27-05 | `_make_record_outcome_handler` → `record_decision` | `athlete_profile_id` not passed → governance decisions persisted as `'owner'` for all athletes | MED | Handler closure now captures `athlete_profile_id` from `self.athlete_id` and passes it to `record_decision` ✅ RESOLVED 2026-06-09 |
 
 **G12 gate:** SATISFIED.
