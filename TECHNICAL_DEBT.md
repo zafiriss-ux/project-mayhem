@@ -1647,12 +1647,12 @@ Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles activ
 
 | ID | Severity | Description | Blocks | Status |
 |----|----------|-------------|--------|--------|
-| P27-B1 | HIGH | daily_metrics unique key must be (athlete_id, date) not date-alone; writer must set athlete_id. personal_bests and gear_usage need athlete_id column + descriptor correction. SCHEMA_VERSION 24 required. | Multi-athlete store | OPEN |
-| P27-B2 | MED-HIGH | update_governance_outcome unscoped write; get_hrr_history unscoped read | Isolation integrity | OPEN |
-| P27-B3 | HIGH | DailyCoach hardcodes 'owner' in _hydrate_engines_from_db, _feed_load_engines, OutcomeTracker construction — nullifies EngineRegistry.from_db(athlete_id) | Per-athlete isolation | OPEN |
-| P27-B4 | HIGH | Behavioral two-athlete isolation fitness function missing; FMEA F26-02 mitigation is false assurance — static AST lint exempts database.py | Governance integrity | OPEN |
-| P27-B5 | HIGH | CoachingScheduler callback has no 07:00/daily cadence gate — fires every 60s, risks Garmin ban and corpus poisoning | Scheduler safety | OPEN |
-| P27-B6 | MED | Per-athlete calibration cycle inert: FP/FN keys never emitted; OutcomeTracker DB hydration owner-only | Cohort signal | OPEN |
+| P27-B1 | HIGH | daily_metrics unique key must be (athlete_id, date) not date-alone; writer must set athlete_id. personal_bests and gear_usage need athlete_id column + descriptor correction. SCHEMA_VERSION 24 required. | Multi-athlete store | RESOLVED 2026-06-09 (PR #848) — SCHEMA_VERSION 24 |
+| P27-B2 | MED-HIGH | update_governance_outcome unscoped write; get_hrr_history unscoped read | Isolation integrity | RESOLVED 2026-06-09 (PR #849) — write/read scoping |
+| P27-B3 | HIGH | DailyCoach hardcodes 'owner' in _hydrate_engines_from_db, _feed_load_engines, OutcomeTracker construction — nullifies EngineRegistry.from_db(athlete_id) | Per-athlete isolation | RESOLVED 2026-06-09 (PR #850) — DailyCoach athlete_id |
+| P27-B4 | HIGH | Behavioral two-athlete isolation fitness function missing; FMEA F26-02 mitigation is false assurance — static AST lint exempts database.py | Governance integrity | RESOLVED 2026-06-09 (PR #851) — behavioral isolation fitness |
+| P27-B5 | HIGH | CoachingScheduler callback has no 07:00/daily cadence gate — fires every 60s, risks Garmin ban and corpus poisoning | Scheduler safety | RESOLVED 2026-06-09 (PR #847) — scheduler 07:00 gate |
+| P27-B6 | MED | Per-athlete calibration cycle inert: FP/FN keys never emitted; OutcomeTracker DB hydration owner-only | Cohort signal | RESOLVED 2026-06-09 (PR #852) — FP/FN keys + tracker scoping |
 
 ---
 
@@ -1683,7 +1683,7 @@ so G12 applies per AGENTS.md §16.2-G12.
 | ID | Component | Failure Mode | Sev | Mit |
 |---|---|---|---|---|
 | F26-01 | CoachingScheduler (`titan/orchestration/coaching_scheduler.py`) | Per-athlete callback thread silently dies → athlete misses morning routine with no signal | MED | `TITAN_MULTI_ATHLETE` gates activation; `run_forever` single-athlete fallback retained when flag unset; scheduler lifecycle covered by tests ✅ |
-| F26-02 | EngineRegistry.from_db hydration (`engine_registry.py`) | Cross-athlete state bleed — wrong athlete's TSB/HRV history hydrates an engine | HIGH | **CORRECTED by Opus pre-Phase-27 audit 2026-06-08** — the claimed mitigation is false assurance: `DailyCoach._hydrate_engines_from_db`/`_feed_load_engines` re-hydrate from `'owner'` regardless of `athlete_id`, nullifying `EngineRegistry.from_db(athlete_id)`, and `test_athlete_isolation_invariant.py` is a static AST/SQL-string lint that exempts `database.py` and never exercises the hydration path behaviorally. Behavioral isolation test required (P27-B4). ⚠️ OPEN |
+| F26-02 | EngineRegistry.from_db hydration (`engine_registry.py`) | Cross-athlete state bleed — wrong athlete's TSB/HRV history hydrates an engine | HIGH | **CORRECTED by Opus pre-Phase-27 audit 2026-06-08** — the claimed mitigation is false assurance: `DailyCoach._hydrate_engines_from_db`/`_feed_load_engines` re-hydrate from `'owner'` regardless of `athlete_id`, nullifying `EngineRegistry.from_db(athlete_id)`, and `test_athlete_isolation_invariant.py` is a static AST/SQL-string lint that exempts `database.py` and never exercises the hydration path behaviorally. Behavioral isolation test required (P27-B4). Behavioral isolation test added (P27-B4, PR #851); contamination path closed (P27-B3, PR #850); FMEA mitigation claim corrected 2026-06-09 ✅ |
 | F26-03 | Partial hydration (CS performances / APL offsets — TODO-P26-04b/c) | Engine runs on incomplete inputs and emits a recommendation as if fully hydrated | MED | TSB + HRV hydration live and tested; CS-performance/APL-offset paths explicitly deferred (not silently skipped) and carried to Phase 9 with per-athlete profile schema ✅ |
 | F26-04 | Threshold-offset calibration (ADR-0052, `athlete_threshold_offsets`) | Auto-calibration loosens an H1–H5 hard stop | HIGH | `HARD_STOP_THRESHOLD_KEYS` excludes HRV/RHR/TSB/fatigue/injury from per-athlete adaptation; damping (5%) and max-delta (±20%) bounds PROVISIONAL; MODERATE→STRONG promotion gated on corpus + confidence bounds ✅ |
 | F26-05 | Phase 9 corpus gate (`test_phase9_corpus_gate.py`) | Calibration activates before ≥3 athletes × ≥90 paired decisions exist → premature personalization on thin data | MED | Corpus-gate query executable in advisory mode by default; enforcing gate mode behind `TITAN_PHASE9_CORPUS_GATE`; auto-threshold calibration held until corpus met ✅ |
