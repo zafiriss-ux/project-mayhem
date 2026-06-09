@@ -35,7 +35,7 @@ Phase 23 CLOSED — phase_close_audit.sh 23 exit 0; 2974 tests passing; ADR-0058
 Phase 24 CLOSED — phase_close_audit.sh 24 exit 0; 3021 tests passing; FMEA G12 SATISFIED; TD-08 RESOLVED (Opus-verified); TD-04B RESOLVED (TitanEffectBus live, ADR-0058 Phase B complete); TD-CI-SELFHOSTED RESOLVED; T5-15B DEFERRED Phase 25; P15-ARCH5 DEFERRED Phase 25 (2026-06-03).
 Phase 25 CLOSED — phase_close_audit.sh 25 exit 0; 3022 tests passing; FMEA G12 SATISFIED; T5-15B RESOLVED; P15-ARCH5 RESOLVED; ADR-0059 RESOLVED; B2c fallback removed (2026-06-06).
 Phase 26 CLOSED — phase_close_audit.sh 26 exit 0; 3025 tests passing, 6 skipped (3031 collected); FMEA G12 SATISFIED; P26-02/03/04/05/06/07 RESOLVED; P26-01 DEFERRED Phase 9; P26-08 DEFERRED pending ADR (2026-06-07).
-Phase 27 OPEN — Cohort analytics + CohortProfile (population-level calibration signal) 2026-06-07; P27-01 RESOLVED 2026-06-09 (cohort_calibration_signals schema).
+Phase 27 OPEN — Cohort analytics + CohortProfile (population-level calibration signal) 2026-06-07; P27-01 RESOLVED 2026-06-09 (cohort_calibration_signals schema); P27-04 RESOLVED 2026-06-09 (PR #860) — completion-rate calibration rollback gate, advisory default, v1.
 
 ---
 
@@ -1655,6 +1655,7 @@ Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles activ
 | P27-B6 | MED | Per-athlete calibration cycle inert: FP/FN keys never emitted; OutcomeTracker DB hydration owner-only | Cohort signal | RESOLVED 2026-06-09 (PR #852) — FP/FN keys + tracker scoping |
 | P27-B7 | HIGH | DailyCoach orchestration write path is owner/default-hardcoded: AthleteCoachingContext(athlete_id="default"), _persist_garmin_data (save_session/save_daily_metric/save_daily_metric_if_missing omit athlete_id), save_hrr/update_glycogen_debt use unscoped WHERE date=?, record_decision tags 'owner'. Also: permanent "default" cold-start renders ThresholdAdapter inert. Active on athlete #2. | Per-athlete corpus production | RESOLVED 2026-06-09 (PR #855/#856) — write path closed; save_hrr/update_glycogen_debt/save_daily_metric_if_missing athlete-scoped; AthleteCoachingContext fixed; record_decision passes athlete_profile_id; behavioral write test added; FMEA F27-01..F27-05 registered; GO verdict issued |
 | P27-01 | MED | cohort_calibration_signals table absent; no schema surface for CohortProfile aggregation or population-heuristic promotion | Cohort analytics | RESOLVED 2026-06-09 (PR #858) — cohort_calibration_signals table, SCHEMA_VERSION 25, schema-only scaffolding; producer/reader deferred until athlete #2 (multi-athlete cohort) |
+| P27-04 | MED | No rollback gate to revert a calibrated threshold if completion_rate degrades within the 30-day observation window | Calibration safety | RESOLVED 2026-06-09 (PR #860) — completion-rate calibration rollback gate, advisory default, v1 (completion-rate only; injury-event trigger deferred — no injury column yet, A2-04). Not yet wired into run_morning_routine. |
 
 ---
 
