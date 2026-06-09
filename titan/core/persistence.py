@@ -271,7 +271,7 @@ class PersistenceAdapter(ABC):
     # ------------------------------------------------------------------ #
 
     @abstractmethod
-    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
+    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
         """Persist a heart-rate-recovery measurement."""
 
     @abstractmethod
@@ -285,7 +285,7 @@ class PersistenceAdapter(ABC):
     # ------------------------------------------------------------------ #
 
     @abstractmethod
-    def update_glycogen_debt(self, date: str, debt_score: float) -> None:
+    def update_glycogen_debt(self, date: str, debt_score: float, athlete_id: str = "owner") -> None:
         """Write or update the glycogen debt score for *date*."""
 
     @abstractmethod
@@ -519,16 +519,16 @@ class SQLiteAdapter(PersistenceAdapter):
     ) -> tuple[int, str, str | None] | None:
         return self._manager.get_pr(distance_km=distance_km)
 
-    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
-        self._manager.save_hrr(date=date, hrr_60=hrr_60, hrr_120=hrr_120)
+    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
+        self._manager.save_hrr(date=date, hrr_60=hrr_60, hrr_120=hrr_120, athlete_id=athlete_id)
 
     def get_hrr_history(
         self, days: int = 28, athlete_id: str = "owner"
     ) -> list[tuple[str, int, int]]:
         return self._manager.get_hrr_history(days=days, athlete_id=athlete_id)
 
-    def update_glycogen_debt(self, date: str, debt_score: float) -> None:
-        self._manager.update_glycogen_debt(date=date, debt_score=debt_score)
+    def update_glycogen_debt(self, date: str, debt_score: float, athlete_id: str = "owner") -> None:
+        self._manager.update_glycogen_debt(date=date, debt_score=debt_score, athlete_id=athlete_id)
 
     def log_cs_performance(
         self,
@@ -1007,7 +1007,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
             return None
         return (int(row[0]), str(row[1]), row[2])
 
-    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
+    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
+        del athlete_id
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._daily_metrics)
@@ -1021,7 +1022,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
         del athlete_id
         return []
 
-    def update_glycogen_debt(self, date: str, debt_score: float) -> None:
+    def update_glycogen_debt(self, date: str, debt_score: float, athlete_id: str = "owner") -> None:
+        del athlete_id
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)

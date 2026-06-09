@@ -2077,25 +2077,28 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
-    def save_daily_metric_if_missing(self, date: str, hrv: float | None = None) -> None:
+    def save_daily_metric_if_missing(
+        self, date: str, hrv: float | None = None, athlete_id: str = "owner"
+    ) -> None:
         """Persist HRV for a historical date only if no row exists yet.
 
         Uses INSERT OR IGNORE so that manually entered data for past dates is
         never overwritten by backfill from Garmin sync.
 
         Args:
-            date: Date in ISO format (YYYY-MM-DD)
-            hrv: HRV RMSSD in ms
+            date:       Date in ISO format (YYYY-MM-DD)
+            hrv:        HRV RMSSD in ms
+            athlete_id: Athlete scope for row-level isolation (ADR-0033)
         """
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute(
                 """
-                INSERT OR IGNORE INTO daily_metrics (date, hrv_rmssd, data_source)
-                VALUES (?, ?, 'garmin_api')
+                INSERT OR IGNORE INTO daily_metrics (athlete_id, date, hrv_rmssd, data_source)
+                VALUES (?, ?, ?, 'garmin_api')
                 """,
-                (date, hrv),
+                (athlete_id, date, hrv),
             )
             if self._transaction_depth == 0:
                 self.conn.commit()
@@ -2509,22 +2512,23 @@ class DatabaseManager:
 
     # --- HRR (Heart Rate Recovery) ---
 
-    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0) -> None:
+    def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
         """
         Save Heart Rate Recovery values for a date.
         Updates existing daily_metrics row (call after save_daily_metric).
 
         Args:
-            date:    Date in ISO format (YYYY-MM-DD)
-            hrr_60:  BPM recovered at 60 seconds post-effort
-            hrr_120: BPM recovered at 120 seconds post-effort
+            date:       Date in ISO format (YYYY-MM-DD)
+            hrr_60:     BPM recovered at 60 seconds post-effort
+            hrr_120:    BPM recovered at 120 seconds post-effort
+            athlete_id: Athlete scope for row-level isolation (ADR-0033)
         """
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute(
-                "UPDATE daily_metrics SET hrr_60 = ?, hrr_120 = ? WHERE date = ?",
-                (hrr_60, hrr_120, date),
+                "UPDATE daily_metrics SET hrr_60 = ?, hrr_120 = ? WHERE athlete_id = ? AND date = ?",
+                (hrr_60, hrr_120, athlete_id, date),
             )
             self.conn.commit()
             if cursor.rowcount == 0:
@@ -2534,6 +2538,7 @@ class DatabaseManager:
                     date=date,
                     hrr_60=hrr_60,
                     hrr_120=hrr_120,
+                    athlete_id=athlete_id,
                 )
 
     def get_hrr_history(
@@ -2560,17 +2565,22 @@ class DatabaseManager:
 
     # --- GLYCOGEN DEBT ---
 
-    def update_glycogen_debt(self, date: str, debt_score: float) -> None:
+    def update_glycogen_debt(self, date: str, debt_score: float, athlete_id: str = "owner") -> None:
         """
         Persist today's glycogen debt score (0–10) to daily_metrics.
         Updates existing row for the date.
+
+        Args:
+            date:       Date in ISO format (YYYY-MM-DD)
+            debt_score: Glycogen debt value (0–10)
+            athlete_id: Athlete scope for row-level isolation (ADR-0033)
         """
         with self._lock:
             self._ensure_open_locked()
             cursor = self.conn.cursor()
             cursor.execute(
-                "UPDATE daily_metrics SET glycogen_debt = ? WHERE date = ?",
-                (round(debt_score, 2), date),
+                "UPDATE daily_metrics SET glycogen_debt = ? WHERE athlete_id = ? AND date = ?",
+                (round(debt_score, 2), athlete_id, date),
             )
             self.conn.commit()
             if cursor.rowcount == 0:
@@ -2579,6 +2589,7 @@ class DatabaseManager:
                     level=logging.WARNING,
                     date=date,
                     debt_score=debt_score,
+                    athlete_id=athlete_id,
                 )
 
     # --- CS CALIBRATION PERFORMANCES ---
