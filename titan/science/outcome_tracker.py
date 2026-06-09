@@ -522,6 +522,31 @@ class OutcomeTracker:
         completion_rate = round(n_completed / n_reusable, 3) if n_reusable else None
         athlete_override_rate = round(n_deviated / n_reusable, 3) if n_reusable else None
 
+        n_lock_fired = sum(
+            1 for d in athlete_decisions
+            if d.locks_applied and d.outcome_completed is not None
+        )
+        n_fp = sum(
+            1 for d in athlete_decisions
+            if d.locks_applied
+            and d.outcome_completed is not None
+            and bool(d.outcome_completed)
+            and not bool(d.decision_was_followed)
+        )
+        false_positive_rate = round(n_fp / n_lock_fired, 3) if n_lock_fired >= 5 else 0.0
+
+        n_no_lock = sum(
+            1 for d in athlete_decisions
+            if not d.locks_applied and d.outcome_completed is not None
+        )
+        n_fn = sum(
+            1 for d in athlete_decisions
+            if not d.locks_applied
+            and d.outcome_completed is not None
+            and not bool(d.outcome_completed)
+        )
+        false_negative_rate = round(n_fn / n_no_lock, 3) if n_no_lock >= 5 else 0.0
+
         calibration_ready = n_reusable >= max(30, thresholds.CALIBRATION_MIN_OUTCOME_COUNT)
         lock_outcome_correlation = self.get_lock_outcome_correlation(athlete_id=athlete_id)
 
@@ -533,6 +558,8 @@ class OutcomeTracker:
             "n_excluded_outcomes": n_with_outcome - n_reusable,
             "governance_lock_rate": lock_rate,
             "completion_rate": completion_rate,
+            "false_positive_rate": false_positive_rate,
+            "false_negative_rate": false_negative_rate,
             "athlete_override_rate": athlete_override_rate,
             "avg_rpe_when_completed": avg_rpe,
             "lock_rate_by_phase": self.get_lock_rate_by_phase(athlete_id=athlete_id),
