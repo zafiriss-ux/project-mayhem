@@ -91,11 +91,19 @@ def test_coaching_pipeline_state_isolation_oracle_sequential_calls_are_independe
 
 
 @pytest.mark.unit
-def test_coaching_pipeline_propagates_decision_pipeline_errors():
+def test_coaching_pipeline_decision_pipeline_exception_fails_closed():
+    """INV-12: a _decision_pipeline exception must not propagate — it is caught,
+    alerted via telegram, and the run returns False (no prescription)."""
+    alerts = []
+    effect_runner_calls = []
     coach = SimpleNamespace(
         _decision_pipeline=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
-        _effect_runner=lambda payload: payload,
+        _effect_runner=lambda payload: effect_runner_calls.append(payload),
+        telegram=SimpleNamespace(send_alert=lambda *a, **k: alerts.append((a, k))),
     )
 
-    with pytest.raises(RuntimeError, match="boom"):
-        coaching_pipeline(_build_context(coach=coach))
+    result = coaching_pipeline(_build_context(coach=coach))
+
+    assert result is False
+    assert len(alerts) == 1
+    assert not effect_runner_calls

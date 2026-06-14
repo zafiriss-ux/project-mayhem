@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import dataclasses
+import json
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -12,6 +14,8 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
     from titan.orchestration.engine_registry import EngineRegistry
 
+_log = logging.getLogger(__name__)
+
 
 @runtime_checkable
 class CoachCallables(Protocol):
@@ -22,6 +26,7 @@ class CoachCallables(Protocol):
     Do NOT add speculative methods — follow T5-24 precedent.
     """
 
+    telegram: Any
     def _decision_pipeline(self, **kwargs: Any) -> DecisionResult: ...
     def _effect_runner(self, result: DecisionResult) -> bool: ...
 
@@ -98,29 +103,58 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
     # Stage 4 will wire this engine into the decision pipeline call.
     _ = GovernanceEngine(threshold_adapter=_threshold_adapter)
 
-    decision_result: DecisionResult = context.coach._decision_pipeline(
-        garmin_data=context.garmin_data,
-        soreness=context.soreness,
-        subjective_fatigue_score=context.subjective_fatigue_score,
-        today_rhr=context.today_rhr,
-        today_sleep_score=context.today_sleep_score,
-        today_sleep_hours=context.today_sleep_hours,
-        baseline_rhr_for_comparison=context.baseline_rhr_for_comparison,
-        persistence_degraded=context.persistence_degraded,
-        garmin_data_stale=context.garmin_data_stale,
-        latest_hrv=context.latest_hrv,
-        baseline_hrv=context.baseline_hrv,
-        hrv_summary=context.hrv_summary,
-        afi_final=context.afi_final,
-        afi_constraints=context.afi_constraints,
-        tsb_value=context.tsb_value,
-        tsb_status=context.tsb_status,
-        cs_thermal=context.cs_thermal,
-        garmin_trust=context.garmin_trust,
-        garmin_report_payload=context.garmin_report_payload,
-        startup_hydration_confidence=context.startup_hydration_confidence,
-        startup_confidence_applies=context.startup_confidence_applies,
-    )
+    try:
+        decision_result: DecisionResult = context.coach._decision_pipeline(
+            garmin_data=context.garmin_data,
+            soreness=context.soreness,
+            subjective_fatigue_score=context.subjective_fatigue_score,
+            today_rhr=context.today_rhr,
+            today_sleep_score=context.today_sleep_score,
+            today_sleep_hours=context.today_sleep_hours,
+            baseline_rhr_for_comparison=context.baseline_rhr_for_comparison,
+            persistence_degraded=context.persistence_degraded,
+            garmin_data_stale=context.garmin_data_stale,
+            latest_hrv=context.latest_hrv,
+            baseline_hrv=context.baseline_hrv,
+            hrv_summary=context.hrv_summary,
+            afi_final=context.afi_final,
+            afi_constraints=context.afi_constraints,
+            tsb_value=context.tsb_value,
+            tsb_status=context.tsb_status,
+            cs_thermal=context.cs_thermal,
+            garmin_trust=context.garmin_trust,
+            garmin_report_payload=context.garmin_report_payload,
+            startup_hydration_confidence=context.startup_hydration_confidence,
+            startup_confidence_applies=context.startup_confidence_applies,
+        )
+    except Exception as exc:
+        # INV-12 boundary guard: decision pipeline failed — fail closed + loud.
+        _log.critical(json.dumps({
+            "flow": "coaching_pipeline",
+            "action": "decision_pipeline_exception_fail_closed",
+            "athlete_id": _athlete_id,
+            "error_class": type(exc).__name__,
+            "error_message": str(exc),
+            "invariant": "INV-12",
+            "outcome": "DECISION_PIPELINE_FAILED",
+        }, default=str))
+        try:
+            context.coach.telegram.send_alert(
+                "⚠️ TITAN system error — today's training decision could not be "
+                "computed (governance pipeline exception). No prescription was "
+                "generated. Default to an EASY session or rest; do not do quality "
+                "work today. The system will retry next cycle."
+            )
+        except Exception as alert_exc:
+            _log.critical(json.dumps({
+                "flow": "coaching_pipeline",
+                "action": "fail_safe_alert_failed",
+                "athlete_id": _athlete_id,
+                "error_class": type(alert_exc).__name__,
+                "error_message": str(alert_exc),
+                "invariant": "INV-12",
+            }, default=str))
+        return False
 
     if context.db is not None and _was_cold_start:
         context.db.increment_cold_start_sessions(_athlete_id)

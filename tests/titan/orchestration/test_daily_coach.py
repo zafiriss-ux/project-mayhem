@@ -1219,7 +1219,10 @@ def test_run_morning_routine_same_inputs_produce_deterministic_payloads():
 
 
 @pytest.mark.unit
-def test_run_morning_routine_weekly_planner_exception_bubbles_with_engine_failure_event(monkeypatch):
+def test_run_morning_routine_weekly_planner_exception_fails_closed_with_engine_failure_event(monkeypatch):
+    """INV-12: a step-8 engine exception is recorded as FAILED/ENGINE_ERROR, then
+    caught by coaching_pipeline's boundary guard — run_morning_routine returns
+    False (no prescription) instead of letting the exception bubble up."""
     events = []
     monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
 
@@ -1228,8 +1231,7 @@ def test_run_morning_routine_weekly_planner_exception_bubbles_with_engine_failur
         get_today_session=lambda: (_ for _ in ()).throw(RuntimeError("planner_offline"))
     )
 
-    with pytest.raises(RuntimeError, match="planner_offline"):
-        coach.run_morning_routine()
+    assert coach.run_morning_routine() is False
 
     assert any(
         event["action"] == "step_event"

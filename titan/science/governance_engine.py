@@ -1230,223 +1230,248 @@ class GovernanceEngine:
         )
 
     def apply_constraints(self, session_plan: dict, context: dict) -> dict:
-        _garmin_age = context.get("garmin_data_age_hours")
-        _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
-        db = context.get("db")
-        cs_tracker = context.get("cs_tracker")
-        afi_constr = context.get("afi_constraints", {})
-        applied_locks: list[str] = []
+        try:
+            _garmin_age = context.get("garmin_data_age_hours")
+            _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
+            db = context.get("db")
+            cs_tracker = context.get("cs_tracker")
+            afi_constr = context.get("afi_constraints", {})
+            applied_locks: list[str] = []
 
-        # APL injections — adaptive thresholds and gate priority vector.
-        # If APL was not invoked upstream, these default to {} and all gate
-        # checks fall back to their static class-level constants (no behaviour change).
-        lock_thresholds = context.get("lock_thresholds", {})
-        priority_vector = context.get("priority_vector", {})
+            # APL injections — adaptive thresholds and gate priority vector.
+            # If APL was not invoked upstream, these default to {} and all gate
+            # checks fall back to their static class-level constants (no behaviour change).
+            lock_thresholds = context.get("lock_thresholds", {})
+            priority_vector = context.get("priority_vector", {})
 
-        intensity_gate = self._to_dict_maybe(context.get("intensity_gate_result"))
-        if intensity_gate:
-            session_plan["intensity_gate_result"] = intensity_gate
-            color = str(intensity_gate.get("color", "GREEN")).upper()
-            session_plan["max_zone"] = min(
-                int(session_plan.get("max_zone", 5) or 5),
-                int(intensity_gate.get("max_zone", 5) or 5),
-            )
-            _vol_mod = float(intensity_gate.get("volume_modifier", INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE) or INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE)
-            if not math.isfinite(_vol_mod):
+            intensity_gate = self._to_dict_maybe(context.get("intensity_gate_result"))
+            if intensity_gate:
+                session_plan["intensity_gate_result"] = intensity_gate
+                color = str(intensity_gate.get("color", "GREEN")).upper()
+                session_plan["max_zone"] = min(
+                    int(session_plan.get("max_zone", 5) or 5),
+                    int(intensity_gate.get("max_zone", 5) or 5),
+                )
+                _vol_mod = float(intensity_gate.get("volume_modifier", INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE) or INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE)
+                if not math.isfinite(_vol_mod):
+                    _gate_event(
+                        "INTENSITY_GATE", "NAN_REJECTED",
+                        reason="non-finite volume_modifier rejected (INV-01)",
+                        garmin_data_age_hours=_garmin_age,
+                        garmin_data_trust_level=_garmin_trust,
+                    )
+                    _vol_mod = 1.0
+                session_plan["volume_modifier"] = _vol_mod
+                override = intensity_gate.get("session_override")
+                if override:
+                    session_plan["session_type"] = override
+                if color == "RED":
+                    applied_locks.append("INTENSITY_GATE_RED")
+                elif color == "YELLOW":
+                    applied_locks.append("INTENSITY_GATE_YELLOW")
+
+            count_2of4, indicators = self._evaluate_2of4_indicators(context)
+            if count_2of4 >= 2:
+                original = str(session_plan.get("session_type", "EASY")).upper()
+                downgraded = self._DOWNGRADE_MAP_2OF4.get(original, "EASY")
+                session_plan["session_type"] = downgraded
+                session_plan["downgrade_2of4"] = {
+                    "downgrade_2of4": True,
+                    "count": count_2of4,
+                    "indicators_triggered": indicators,
+                    "original_session": original,
+                    "downgraded_to": downgraded,
+                }
+                applied_locks.append("READINESS_2OF4_DOWNGRADE")
                 _gate_event(
-                    "INTENSITY_GATE", "NAN_REJECTED",
-                    reason="non-finite volume_modifier rejected (INV-01)",
+                    "2OF4",
+                    "DOWNGRADE",
+                    cause="TRAINING_LOGIC",
+                    count=count_2of4,
+                    indicators=indicators,
+                    original=original,
+                    downgraded_to=downgraded,
                     garmin_data_age_hours=_garmin_age,
                     garmin_data_trust_level=_garmin_trust,
                 )
-                _vol_mod = 1.0
-            session_plan["volume_modifier"] = _vol_mod
-            override = intensity_gate.get("session_override")
-            if override:
-                session_plan["session_type"] = override
-            if color == "RED":
-                applied_locks.append("INTENSITY_GATE_RED")
-            elif color == "YELLOW":
-                applied_locks.append("INTENSITY_GATE_YELLOW")
 
-        count_2of4, indicators = self._evaluate_2of4_indicators(context)
-        if count_2of4 >= 2:
-            original = str(session_plan.get("session_type", "EASY")).upper()
-            downgraded = self._DOWNGRADE_MAP_2OF4.get(original, "EASY")
-            session_plan["session_type"] = downgraded
-            session_plan["downgrade_2of4"] = {
-                "downgrade_2of4": True,
-                "count": count_2of4,
-                "indicators_triggered": indicators,
-                "original_session": original,
-                "downgraded_to": downgraded,
+            hard_stop_reasons = self._check_hard_stops(session_plan, context)
+            if hard_stop_reasons:
+                session_plan["hard_stop_reasons"] = hard_stop_reasons
+                applied_locks.append("HARD_STOP_SAFETY_GATES")
+            # ADR-0051: conservative missing-data lock codes signalled by _check_hard_stops.
+            if context.get("_h2_data_missing"):
+                applied_locks.append("DATA_MISSING_CONSERVATIVE_H2")
+            if context.get("_h3_data_missing"):
+                applied_locks.append("DATA_MISSING_CONSERVATIVE_H3")
+            if context.get("_h4_data_missing"):
+                applied_locks.append("DATA_MISSING_CONSERVATIVE_H4")
+            if context.get("_h5_data_missing"):
+                applied_locks.append("DATA_MISSING_CONSERVATIVE_H5")
+
+            vo2_result = self._check_vo2_eligibility(session_plan, context)
+            if vo2_result is not None:
+                violation = validate_vo2_eligibility(vo2_result)
+                if violation:
+                    _log.error(
+                        json.dumps(
+                            {"governance_contract_violation": "vo2_eligibility", "detail": violation},
+                            default=str,
+                        )
+                    )
+                session_plan["vo2_eligibility"] = vo2_result
+                if not vo2_result.get("eligible", False):
+                    applied_locks.append("VO2_ELIGIBILITY_GATE")
+
+            fueling_result = self._check_fueling_gate(session_plan, context)
+            if fueling_result is not None:
+                session_plan["fueling_gate"] = fueling_result
+                if fueling_result.get("action") == "LOCK":
+                    applied_locks.append("FUELING_GATE_LOCK")
+                else:
+                    applied_locks.append("FUELING_GATE_FLAG")
+
+            # H6 data-void cap (ADR-0053)
+            if context.get("_h6_data_void"):
+                if session_plan.get("max_zone", 5) > DATA_VOID_ZONE_CAP:
+                    session_plan["max_zone"] = DATA_VOID_ZONE_CAP
+                applied_locks.append("DATA_VOID_CONSERVATIVE")
+
+            para_guard = afi_constr.get("parasympathetic_guard", {})
+
+            gate_order = {
+                "PARASYMPATHETIC_GUARD": int(priority_vector.get("PARASYMPATHETIC_GUARD", 1) or 1),
+                "OVERRIDE_LOCKDOWN": int(priority_vector.get("OVERRIDE_LOCKDOWN", 2) or 2),
+                "CS_CONFIDENCE_LOCK": int(priority_vector.get("CS_CONFIDENCE_LOCK", 3) or 3),
             }
-            applied_locks.append("READINESS_2OF4_DOWNGRADE")
-            _gate_event(
-                "2OF4",
-                "DOWNGRADE",
-                cause="TRAINING_LOGIC",
-                count=count_2of4,
-                indicators=indicators,
-                original=original,
-                downgraded_to=downgraded,
-                garmin_data_age_hours=_garmin_age,
-                garmin_data_trust_level=_garmin_trust,
-            )
 
-        hard_stop_reasons = self._check_hard_stops(session_plan, context)
-        if hard_stop_reasons:
-            session_plan["hard_stop_reasons"] = hard_stop_reasons
-            applied_locks.append("HARD_STOP_SAFETY_GATES")
-        # ADR-0051: conservative missing-data lock codes signalled by _check_hard_stops.
-        if context.get("_h2_data_missing"):
-            applied_locks.append("DATA_MISSING_CONSERVATIVE_H2")
-        if context.get("_h3_data_missing"):
-            applied_locks.append("DATA_MISSING_CONSERVATIVE_H3")
-        if context.get("_h4_data_missing"):
-            applied_locks.append("DATA_MISSING_CONSERVATIVE_H4")
-        if context.get("_h5_data_missing"):
-            applied_locks.append("DATA_MISSING_CONSERVATIVE_H5")
+            for gate_name, _rank in sorted(gate_order.items(), key=lambda x: x[1]):
+                if gate_name == "PARASYMPATHETIC_GUARD":
+                    if para_guard.get("triggered"):
+                        session_plan["session_type"] = "EASY"
+                        session_plan["max_zone"] = 2
+                        session_plan["governance_override"] = para_guard["reason"]
+                        applied_locks.append("PARASYMPATHETIC_GUARD")
+                        _gate_event(
+                            "PARASYMPATHETIC_GUARD", "EASY", reason=para_guard.get("reason"),
+                            garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+                        )
+                    continue
 
-        vo2_result = self._check_vo2_eligibility(session_plan, context)
-        if vo2_result is not None:
-            violation = validate_vo2_eligibility(vo2_result)
-            if violation:
-                _log.error(
-                    json.dumps(
-                        {"governance_contract_violation": "vo2_eligibility", "detail": violation},
-                        default=str,
-                    )
+                if gate_name == "OVERRIDE_LOCKDOWN":
+                    if not db:
+                        continue
+                    override_threshold = lock_thresholds.get("override_ratio_ceiling") or None
+                    lock = self.check_override_lockdown(db, threshold=override_threshold)
+                    if lock["locked"] and session_plan.get("session_type") in lock["disabled_sessions"]:
+                        session_plan["session_type"] = "EASY"
+                        session_plan["max_zone"] = lock["max_zone"]
+                        session_plan["governance_override"] = lock["reason"]
+                        applied_locks.append("OVERRIDE_LOCKDOWN")
+                        _gate_event(
+                            "OVERRIDE_LOCKDOWN",
+                            "ZONE_2_ONLY",
+                            cause="TRAINING_LOGIC",
+                            ratio=lock.get("ratio"),
+                            apl_threshold_override=override_threshold,
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust,
+                        )
+                    continue
+
+                if gate_name == "CS_CONFIDENCE_LOCK":
+                    if not cs_tracker:
+                        continue
+                    cs_threshold = lock_thresholds.get("cs_min_confidence") or None
+                    cs_lock = self.check_cs_confidence_lock(cs_tracker, threshold=cs_threshold)
+                    if cs_lock["locked"]:
+                        session_plan["cs_prediction_disabled"] = True
+                        session_plan["required_calibration"] = True
+                        session_plan["cs_lock_reason"] = cs_lock["reason"]
+                        applied_locks.append("CS_CONFIDENCE_LOCK")
+                        _gate_event(
+                            "CS_CONFIDENCE_LOCK",
+                            "CALIBRATION_REQUIRED",
+                            cause="DATA_PROBLEM",
+                            confidence=cs_lock.get("confidence"),
+                            apl_threshold_override=cs_threshold,
+                            garmin_data_age_hours=_garmin_age,
+                            garmin_data_trust_level=_garmin_trust,
+                        )
+
+            if bool(context.get("data_confidence_low", False)):
+                current_session = str(session_plan.get("session_type", "EASY")).upper()
+                if current_session not in {"REST", "EASY"}:
+                    session_plan["session_type"] = "EASY"
+                session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
+                applied_locks.append("STARTUP_DATA_CONFIDENCE_CEILING")
+                _gate_event(
+                    "STARTUP_DATA_CONFIDENCE",
+                    "EASY_CEILING",
+                    cause="DATA_PROBLEM",
+                    original_session=current_session,
+                    downgraded_to=session_plan.get("session_type", "EASY"),
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
                 )
-            session_plan["vo2_eligibility"] = vo2_result
-            if not vo2_result.get("eligible", False):
-                applied_locks.append("VO2_ELIGIBILITY_GATE")
 
-        fueling_result = self._check_fueling_gate(session_plan, context)
-        if fueling_result is not None:
-            session_plan["fueling_gate"] = fueling_result
-            if fueling_result.get("action") == "LOCK":
-                applied_locks.append("FUELING_GATE_LOCK")
-            else:
-                applied_locks.append("FUELING_GATE_FLAG")
-
-        # H6 data-void cap (ADR-0053)
-        if context.get("_h6_data_void"):
-            if session_plan.get("max_zone", 5) > DATA_VOID_ZONE_CAP:
-                session_plan["max_zone"] = DATA_VOID_ZONE_CAP
-            applied_locks.append("DATA_VOID_CONSERVATIVE")
-
-        para_guard = afi_constr.get("parasympathetic_guard", {})
-
-        gate_order = {
-            "PARASYMPATHETIC_GUARD": int(priority_vector.get("PARASYMPATHETIC_GUARD", 1) or 1),
-            "OVERRIDE_LOCKDOWN": int(priority_vector.get("OVERRIDE_LOCKDOWN", 2) or 2),
-            "CS_CONFIDENCE_LOCK": int(priority_vector.get("CS_CONFIDENCE_LOCK", 3) or 3),
-        }
-
-        for gate_name, _rank in sorted(gate_order.items(), key=lambda x: x[1]):
-            if gate_name == "PARASYMPATHETIC_GUARD":
-                if para_guard.get("triggered"):
+            if bool(context.get("persistence_degraded", False)):
+                current_session = str(session_plan.get("session_type", "EASY")).upper()
+                if current_session not in {"REST", "EASY"}:
                     session_plan["session_type"] = "EASY"
-                    session_plan["max_zone"] = 2
-                    session_plan["governance_override"] = para_guard["reason"]
-                    applied_locks.append("PARASYMPATHETIC_GUARD")
-                    _gate_event(
-                        "PARASYMPATHETIC_GUARD", "EASY", reason=para_guard.get("reason"),
-                        garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
-                    )
-                continue
+                session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
+                applied_locks.append("PERSISTENCE_DEGRADED_CEILING")
+                _gate_event(
+                    "PERSISTENCE_DEGRADED",
+                    "EASY_CEILING",
+                    cause="DATA_PROBLEM",
+                    original_session=current_session,
+                    downgraded_to=session_plan.get("session_type", "EASY"),
+                    garmin_data_age_hours=_garmin_age,
+                    garmin_data_trust_level=_garmin_trust,
+                )
 
-            if gate_name == "OVERRIDE_LOCKDOWN":
-                if not db:
-                    continue
-                override_threshold = lock_thresholds.get("override_ratio_ceiling") or None
-                lock = self.check_override_lockdown(db, threshold=override_threshold)
-                if lock["locked"] and session_plan.get("session_type") in lock["disabled_sessions"]:
-                    session_plan["session_type"] = "EASY"
-                    session_plan["max_zone"] = lock["max_zone"]
-                    session_plan["governance_override"] = lock["reason"]
-                    applied_locks.append("OVERRIDE_LOCKDOWN")
-                    _gate_event(
-                        "OVERRIDE_LOCKDOWN",
-                        "ZONE_2_ONLY",
-                        cause="TRAINING_LOGIC",
-                        ratio=lock.get("ratio"),
-                        apl_threshold_override=override_threshold,
-                        garmin_data_age_hours=_garmin_age,
-                        garmin_data_trust_level=_garmin_trust,
-                    )
-                continue
+            session_plan["governance_locks_applied"] = applied_locks
+            session_plan["governance_clean"] = len(applied_locks) == 0
+            decision_rationale = self._build_decision_rationale(context, session_plan, applied_locks)
+            session_plan["decision_rationale"] = asdict(decision_rationale)
 
-            if gate_name == "CS_CONFIDENCE_LOCK":
-                if not cs_tracker:
-                    continue
-                cs_threshold = lock_thresholds.get("cs_min_confidence") or None
-                cs_lock = self.check_cs_confidence_lock(cs_tracker, threshold=cs_threshold)
-                if cs_lock["locked"]:
-                    session_plan["cs_prediction_disabled"] = True
-                    session_plan["required_calibration"] = True
-                    session_plan["cs_lock_reason"] = cs_lock["reason"]
-                    applied_locks.append("CS_CONFIDENCE_LOCK")
-                    _gate_event(
-                        "CS_CONFIDENCE_LOCK",
-                        "CALIBRATION_REQUIRED",
-                        cause="DATA_PROBLEM",
-                        confidence=cs_lock.get("confidence"),
-                        apl_threshold_override=cs_threshold,
-                        garmin_data_age_hours=_garmin_age,
-                        garmin_data_trust_level=_garmin_trust,
-                    )
-
-        if bool(context.get("data_confidence_low", False)):
-            current_session = str(session_plan.get("session_type", "EASY")).upper()
-            if current_session not in {"REST", "EASY"}:
-                session_plan["session_type"] = "EASY"
-            session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
-            applied_locks.append("STARTUP_DATA_CONFIDENCE_CEILING")
             _gate_event(
-                "STARTUP_DATA_CONFIDENCE",
-                "EASY_CEILING",
-                cause="DATA_PROBLEM",
-                original_session=current_session,
-                downgraded_to=session_plan.get("session_type", "EASY"),
+                "APPLY_CONSTRAINTS",
+                "COMPLETE",
+                final_session=session_plan.get("session_type"),
+                locks_applied=applied_locks,
+                governance_clean=session_plan["governance_clean"],
+                priority_vector=priority_vector or None,
+                apl_active=bool(priority_vector),
                 garmin_data_age_hours=_garmin_age,
                 garmin_data_trust_level=_garmin_trust,
             )
-
-        if bool(context.get("persistence_degraded", False)):
-            current_session = str(session_plan.get("session_type", "EASY")).upper()
-            if current_session not in {"REST", "EASY"}:
-                session_plan["session_type"] = "EASY"
-            session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5) or 5), 2)
-            applied_locks.append("PERSISTENCE_DEGRADED_CEILING")
+        except Exception as exc:
+            _log.critical(json.dumps({
+                "flow": "governance",
+                "action": "apply_constraints_exception_fail_closed",
+                "error_class": type(exc).__name__,
+                "error_message": str(exc),
+                "invariant": "INV-12",
+                "outcome": "FORCED_EASY_ZONE_2",
+            }, default=str))
             _gate_event(
-                "PERSISTENCE_DEGRADED",
-                "EASY_CEILING",
-                cause="DATA_PROBLEM",
-                original_session=current_session,
-                downgraded_to=session_plan.get("session_type", "EASY"),
-                garmin_data_age_hours=_garmin_age,
-                garmin_data_trust_level=_garmin_trust,
+                "GOVERNANCE_EXCEPTION", "FAIL_CLOSED", cause="SYSTEM_ERROR",
+                error_class=type(exc).__name__, error_message=str(exc),
+                invariant="INV-12",
+                reason="apply_constraints raised — forcing EASY/zone-2 (fail-closed)",
             )
-
-        session_plan["governance_locks_applied"] = applied_locks
-        session_plan["governance_clean"] = len(applied_locks) == 0
-        decision_rationale = self._build_decision_rationale(context, session_plan, applied_locks)
-        session_plan["decision_rationale"] = asdict(decision_rationale)
-
-        _gate_event(
-            "APPLY_CONSTRAINTS",
-            "COMPLETE",
-            final_session=session_plan.get("session_type"),
-            locks_applied=applied_locks,
-            governance_clean=session_plan["governance_clean"],
-            priority_vector=priority_vector or None,
-            apl_active=bool(priority_vector),
-            garmin_data_age_hours=_garmin_age,
-            garmin_data_trust_level=_garmin_trust,
-        )
-        return session_plan
+            session_plan["session_type"] = "EASY"
+            session_plan["max_zone"] = 2
+            session_plan["governance_exception_fail_closed"] = True
+            # use the SAME key the normal path writes locks into:
+            locks_key = "governance_locks_applied"
+            session_plan.setdefault(locks_key, [])
+            session_plan[locks_key].append("GOVERNANCE_EXCEPTION_FAIL_CLOSED")
+            return session_plan
+        else:
+            return session_plan
 
     def get_governance_report(
         self,
