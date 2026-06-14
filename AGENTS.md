@@ -403,6 +403,7 @@ Any PR creating a code path that bypasses an invariant is a GATE VIOLATION. Full
 | INV-08 | Sync success only when no exception **and fresh data landed**; any attempt ending without fresh data — including retry/backoff/429 exhaustion — registers as a sync failure for degradation tracking and increments `garmin_sync_failure_total` [K:PRA-13, E-4] | extend sync tests (T-PRA-26) |
 | INV-09 | `INSERT OR REPLACE` forbidden on multi-source tables | pre-existing |
 | INV-10 | Rate-limiter key count bounded by `RATE_LIMITER_MAX_KEYS` | pre-existing |
+| INV-12 | Safety-path exception handlers fail closed: governance exception → forced EASY/zone-2 + logged CRITICAL; decision-pipeline exception → caught at the coaching_pipeline boundary, fail-safe alert, no silent death (§8.5) [B-4, SA:m-1/m-2] | `tests/test_fail_closed_exception_paths.py` |
 
 **New-code gate (any new governance/safety/auth path):** (a) fail-closed exception test (INV-12);
 (b) assignment-scoping verification if per-athlete coach access (INV-11); (c) ADR reference in the
@@ -1338,7 +1339,7 @@ over-claims.
 | B-1 / SA:C-1 | Coach RBAC role-only on overrides/export/delete | CRIT | INVARIANT-SPECIFIED:§8.4 + TRACKED:T-PRA-01 | INV-11 |
 | B-2 | `PRAGMA foreign_keys` never enabled | CRIT | INVARIANT-SPECIFIED:§8.7 + TRACKED:T-PRA-04 (safe rollout mandatory) | INV-14 |
 | B-3 | Worker replay on crash; flock without stale-lock recovery | CRIT | INVARIANT-SPECIFIED:§8.6/§8.14 + TRACKED:T-PRA-03, T-PRA-22 | INV-15, INV-23(4) |
-| B-4 | `apply_constraints` fails open on exception | CRIT | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-07 | INV-12 |
+| B-4 | `apply_constraints` fail-open + decision-pipeline silent-death on exception | CRIT | INVARIANT:§8.5 (verified PR #865) | INV-12 |
 | B-5 / SA:M-1 | Telegram fail-open trust; volatile nonces | CRIT | INVARIANT-SPECIFIED:§8.11/§8.6 + TRACKED:T-PRA-02, T-PRA-03 | INV-16, INV-17 |
 | B-6 | Same-volume backups; restore untested; toy verify DB | CRIT | TRACKED:T-PRA-08 (phase-close-gated) | DR-01..04 |
 | B-7 | No versioned artifacts / rollback | CRIT | TRACKED:T-PRA-09 (RE-01 now CI-testable) | RE-01..04 |
@@ -1382,7 +1383,7 @@ non-`independent` Phase-13 implementation — §4 tier ordering applies with no 
 | T-PRA-04 | B-2, B-9 | INV-14 safe rollout (reconcile incl. `degraded_mode_state` + `persistence.py` `"owner"` defaults + `data_source` CHECK; verify; gated enable) + `test_db_integrity.py` | **1** |
 | T-PRA-05 | SA:m-4, E-2 | INV-19: transport ADR addendum + collectors + `test_worker_observability.py` | 2 |
 | T-PRA-06 | SA:M-2 | Multi-athlete scheduler registration from `athletes` table; docstring corrected | **1** |
-| T-PRA-07 | B-4 | INV-12 fail-closed `apply_constraints` (+REST forcing event) | **1** |
+| T-PRA-07 | B-4 | INV-12 fail-closed `apply_constraints` portion RESOLVED (PR #865, 2026-06-12); remainder open: REST forcing event | **1** |
 | T-PRA-08 | B-6 | DR-01..04: off-volume backup, retention, `integrity_check`, real-backup verify, restore drill, `RUNBOOK_DR.md` | **1** |
 | T-PRA-09 | B-7 | RE-01..04 + `test_release_engineering.py` (version-from-metadata CI test) | 2 |
 | T-PRA-10 | SA chain | INV-21 `test_degradation_alert_chain.py` end-to-end | 2 |
