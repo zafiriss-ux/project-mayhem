@@ -1383,7 +1383,7 @@ non-`independent` Phase-13 implementation — §4 tier ordering applies with no 
 | T-PRA-04 | B-2, B-9 | INV-14 safe rollout (reconcile incl. `degraded_mode_state` + `persistence.py` `"owner"` defaults + `data_source` CHECK; verify; gated enable) + `test_db_integrity.py` | **1** |
 | T-PRA-05 | SA:m-4, E-2 | INV-19: transport ADR addendum + collectors + `test_worker_observability.py` | 2 |
 | T-PRA-06 | SA:M-2 | Multi-athlete scheduler registration from `athletes` table; docstring corrected | **1** |
-| T-PRA-07 | B-4 | INV-12 fail-closed `apply_constraints` portion RESOLVED (PR #865, 2026-06-12); remainder open: REST forcing event | **1** |
+| T-PRA-07 | B-4 | INV-12 fail-closed governance guard — RESOLVED 2026-06-12 (PR #865): apply_constraints inner wrapper + coaching_pipeline boundary guard, both forcing EASY/zone-2. REST-forcing sub-scope deliberately superseded — EASY/zone-2 is the existing fail-safe value and avoids a step-10/11 divide-by-zero that literal REST would risk. | RESOLVED |
 | T-PRA-08 | B-6 | DR-01..04: off-volume backup, retention, `integrity_check`, real-backup verify, restore drill, `RUNBOOK_DR.md` | **1** |
 | T-PRA-09 | B-7 | RE-01..04 + `test_release_engineering.py` (version-from-metadata CI test) | 2 |
 | T-PRA-10 | SA chain | INV-21 `test_degradation_alert_chain.py` end-to-end | 2 |
