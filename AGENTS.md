@@ -1,143 +1,152 @@
 # AGENTS.md — TITAN OS Engineering Contract
 
-> This file governs every AI agent and human engineer working on this codebase.
-> Rules are non-negotiable. Deviations are bugs in the engineering process, not acceptable trade-offs.
+> Governs every AI agent and human engineer on this codebase. Rules are non-negotiable.
+> Deviations are bugs in the engineering process, not acceptable trade-offs.
+
+**Revision:** 2026-06-12 r5 (Pass 1–3 governance-ladder consolidation)
+**Governing contract:** TITAN Operating Contract v7.9 (document revision r3)
+
+**Contract relationship.** v7.9 constrains LLM patch behavior. This document is the canonical
+home of everything v7.9 §13 SCOPE BOUNDARY delegates: operational invariants, runtime contracts,
+infrastructure, release/DR, observability, and engineering enforcement. Conflict resolution
+follows the single total order in v7.9 §1.3 (safety-invariant/clearance → contract; patch-level
+LLM behavior → contract; runtime/infrastructure/code-quality → this document; residual → the
+stricter constraint). This document wins over all derived views and summaries. Later sections
+amend earlier ones; §31 is an index of reconciliations, not a competing text. Cross-document
+citations are always document-qualified ("v7.9 §1.2" / "AGENTS §1.2") — both documents carry
+low-numbered subsections and an unqualified number is ambiguous (v7.9 §1.3; lint L7).
+
+**Lane naming (binding).** The implementation lane defined by §HARD GATE + §2 + §17 **is the
+"Sonnet Code lane" referenced by v7.9 §9C.** "Codex", "Implementation Engineer", "Claude Code
+(implementer)", and "Sonnet Code" name the same role in this document.
+
+**ID namespaces (binding).** `INV-nn` = invariant (§8.3). `RE/DR/RBP/MPC-nn` = §8.9–§8.12
+contracts. `RP-n` = Architect Reserved Powers (§1.2). `T-PRA-nn` = TECHNICAL_DEBT items from
+§30. `B-n`, `K:PRA-nn`, `C-n`, `D-n`, `E-n`, `F-n`, `G-n` = findings native to
+`docs/audit/PRODUCTION_READINESS_AUDIT_2026-06-10.md`. `SA:*` = findings native to the
+Consolidated Static Audit. **`T-PRA-nn` (debt) and `K:PRA-nn` (audit item) are unrelated
+numberings — never cross-cite them by number alone.**
 
 ---
 
 ## ⚠️ ABSOLUTE RULE — TESTS (Read First, Apply Always)
 
-> **For every task, without exception:**
-> - If a test file for the changed module does **not** exist → **create** a mirrored test file:
->   - Source: `titan/<path>/<module>.py` → Test: `tests/titan/<path>/test_<module>.py`
->   - If the project's test layout differs, follow the nearest existing test convention in `tests/`.
-> - If a test file **exists** → **update** it to cover the new or changed behaviour
->
-> There are no exceptions to this rule.
-> A task that ships without tests for its changed behaviour is **incomplete by definition**.
+**What:** Every task ships tests for its changed behaviour — no exceptions.
+- No test file for the changed module → create the mirrored file
+  (`titan/<path>/<module>.py` → `tests/titan/<path>/test_<module>.py`; follow nearest existing convention).
+- Test file exists → update it to cover the new/changed behaviour.
+- Minimum per changed public function: one happy-path test + one boundary/error-path test.
+- **Never delete tests.** A wrong test is fixed, not removed.
+- `pytest.mark.skip`/`xfail` require a documented justification **including a debt-id**.
+  Deferred-TDD placeholders MUST be `xfail(strict=True)` tied to the debt item — a bare
+  `pytest.skip("not yet implemented")` passes CI forever and is forbidden. [D-6, T-PRA-36]
 
-**Minimum test coverage per changed public function:**
-1. One happy-path test (normal input, expected output)
-2. One boundary or error-path test (edge input, exception, or guard condition)
+**Why:** A task without tests for its behaviour is incomplete by definition; silent regression is guaranteed.
 
-**After adding or updating tests:**
-- Run `python -m pytest -q -W error::pytest.PytestWarning` (strict gate — warnings are failures)
-- Run `python -m pytest -q` (canonical gate — must be 100% green, count same or higher)
-- If any test fails: stop, follow Section 6, fix root cause first
-
-**Never delete tests.** If a test is wrong, fix the test — never remove it.
+**Verify:** Gates 2–3 below; reviewer confirms mirrored test exists and count is same-or-higher.
 
 ---
 
 ## 🚫 HARD GATE — NO COMMIT / NO PR BEFORE GREEN
 
-**This gate is absolute. No exceptions. No partial credit.**
-
-A commit, push, or `make_pr` call is **forbidden** unless ALL of the following have passed in the current session:
+**This gate is absolute. It applies to every commit of every Change Type (§19) — implementation,
+records-only, policy-only, correction. The only passes with no gate are passes that create no
+commits (audit-only).**
 
 | Gate | Command | Required result |
-|------|---------|-----------------|
-| Lint | `ruff check .` | Exit code 0, zero findings |
-| Strict test | `python -m pytest -q -W error::pytest.PytestWarning` | 100% green, zero warnings treated as errors |
-| Full test | `python -m pytest -q` | 100% green, count same or higher than before |
+|---|---|---|
+| 1 Lint | `ruff check .` | Exit 0, zero findings |
+| 2 Strict | `python -m pytest -q -W error::pytest.PytestWarning` | 100% green, warnings are failures |
+| 3 Full | `python -m pytest -q` | 100% green, count same or higher |
 
-**If any gate fails:**
-1. **STOP immediately.** Do not create a commit. Do not push. Do not call `make_pr`.
-2. Invoke Section 7 (Stop-the-Line Protocol).
-3. Fix only the root cause of the first failing gate.
-4. Re-run **all three gates from scratch**.
-5. Only after all three pass: proceed to commit/push/PR.
+**Canonical CI entrypoint (binding — fulfills v7.9 §9, §9C, §12):**
+- `scripts/titan_ci.sh` runs exactly Gates 1→2→3 in order, aborts on first failure, exits with the
+  failing stage's captured exit code. It is the entrypoint named by v7.9 §9 (`VERIFY:`), §9C, §12.
+  Per v7.9 §9C, **this section is the canonical gate definition (the Sonnet Code lane).** Gate 1
+  includes `scripts/governance_lint.py` (checks L1–L9, §2.4; T-PRA-37) once it lands.
+- `scripts/titan_check.sh` MUST be identical to, or a thin `exec` wrapper of, `scripts/titan_ci.sh`.
+  Divergence in gate content is a GATE VIOLATION.
+- EXECUTION-mode responses set `VERIFY: bash scripts/titan_ci.sh`, `VERIFY_EXIT: 0`. Only an
+  orchestrator-captured execution of `scripts/titan_ci.sh` — recorded as a v7.9 §1.5 VERIFY
+  RECORD with `profile=full` — authorizes a commit; model-asserted gate results are
+  non-authoritative (v7.9 §9C).
 
-**Forbidden validation shortcuts (these are bugs, not solutions):**
-- Using `PYTEST_ADDOPTS=...` or any env override to suppress failures
-- Using `--import-mode=importlib` or other flags to bypass collection errors
-- Silencing warnings with `filterwarnings` in test code or config
-- Using `pytest.mark.skip` / `xfail` without documented justification in the PR description
-- Running a subset of tests and reporting "all pass"
-- Substituting diagnostic runs (`pytest -vv`, `--durations=20`, `pytest -x`, targeted subsets) for Gate 2 or Gate 3. Diagnostic runs identify root causes — they never constitute acceptance evidence. Gate 2 and Gate 3 are the only accepted forms of gate evidence in a deliverable report.
+**On any gate failure:** STOP (no commit/push/PR) → §7 Stop-the-Line → fix root cause of the
+first failing gate only → re-run all three from scratch → only then proceed.
 
-If an override is required for the suite to run at all, that is a **repo-level issue**. Either fix it within the current task's scope, or STOP and write a SCRATCHPAD OBS entry (§15) before continuing. Do NOT add it directly to `TECHNICAL_DEBT.md`.
+**Forbidden validation shortcuts (bugs, not solutions):**
+- Env overrides (`PYTEST_ADDOPTS`, `--import-mode=importlib`, etc.) to suppress/bypass failures
+- Silencing warnings via `filterwarnings` in test code or config
+- skip/xfail without debt-id justification (see ABSOLUTE RULE)
+- Reporting subset/targeted/diagnostic runs (`pytest -x`, `-vv`, `--durations`, `-k`,
+  `--profile scoped`) as gate evidence — Gates 2 and 3 at `profile=full` are the only accepted
+  acceptance evidence (§2.3)
+- If an override is needed for the suite to run at all: repo-level issue → fix in scope or STOP
+  and write a SCRATCHPAD OBS (§15). Never add it directly to `TECHNICAL_DEBT.md`.
+
+**Verify:** pre-commit hook (§2.1) executes the gate mechanically; PR Scope Declaration (§3.3)
+records gate status; orchestrator captures the `titan_ci.sh` record (§2.4).
 
 ---
 
 ## 1. Role Boundaries
 
-| Role | Responsibility |
-|------|---------------|
-| **Architect** (Claude operating in an architectural session — see §3.6) | System design, ADR authorship, tier ordering, scope approval |
-| **Owner** (project owner directing work) | Work priorities, strategic direction, task assignment — not automatic Architect authority |
-| **Implementation Engineer (Codex / agent)** | Execution of scoped tasks only — no design decisions, no ADR authorship |
-| **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit hash recording, OPEN↔RESOLVED integrity |
-
-Agents execute. They do not design.
-
-**Operating responsibility split (written clarification of existing roles — non-negotiable):**
-
 | Role | Owns exclusively |
-|------|-----------------|
-| **Codex** | Implementation, tests, mandatory gates (ruff + pytest), local-scoped result reporting |
-| **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit hash recording, OPEN↔RESOLVED integrity |
-| **Architect** | Process rules, task sequencing, escalation decisions, governance interpretation |
+|---|---|
+| **Architect** (Claude in an architectural session — §3.6) | System design and the Architect Reserved Powers (§1.2) |
+| **Owner** (project owner) | Work priorities, strategic direction, task assignment — **not** automatic Architect authority |
+| **Implementation Engineer** (Codex / Sonnet Code / Claude Code implementer) | Execution of scoped tasks, tests, mandatory gates, local-scoped result reporting — no design decisions, no ADR authorship |
+| **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit-hash recording, OPEN↔RESOLVED integrity |
 
-Codex does not write closure wording or record commit hashes in canonical documents — those are Records Steward territory. The Records Steward does not make sequencing or governance interpretation decisions — those are Architect territory. These boundaries are not guidelines; violating them is a process violation.
+Agents execute; they do not design. An agent never exercises a §1.2 Reserved Power on its own
+judgment; an Owner instruction requesting one without an architectural session → the agent stops,
+writes a SCRATCHPAD OBS (§15), and awaits the Architect role being exercised. When a redesign
+seems needed: SCRATCHPAD OBS — do not implement, do not draft an ADR (§13).
 
-**Codex implementation reporting — explicit scope:**
+**Codex implementation reports — allowed:** files changed; tests added/updated; gate results;
+branch, local commit hash, PR link; blockers/stop reasons.
+**Forbidden:** RESOLVED/DONE/CLOSED or any closure language; canonical status claims; commit-hash
+recording instructions for canonical documents. (Closure mechanics: §12.1.)
 
-Allowed in a Codex implementation report:
-- Files changed
-- Tests added or updated
-- Gate results (ruff / pytest strict / pytest full)
-- Branch name, local commit hash, PR link
-- Blockers or stop reasons
-
-Forbidden in a Codex implementation report:
-- RESOLVED wording
-- Canonical status claims (DONE, CLOSED, or equivalent)
-- Commit hash recording instructions in canonical documents
-- Any language implying the task is closed
-
-**Owner authority vs Architect authority:** The project owner directs work and sets priorities.
-However, owner instructions do not automatically carry Architect-level authority. The Architect
-role is exercised by Claude operating in an architectural session with the project owner (§3.6).
-ADR authorship, governance gate logic changes, schema topology decisions, and tier ordering
-changes require the Architect role — not merely an owner instruction. An owner instruction
-requesting any of these without an explicit architectural session means the agent must stop,
-write a SCRATCHPAD OBS entry (§15), and await the Architect role being exercised.
-
-The foundational principles governing all roles (Owner Proposal Guardrail, Engineering Ctrl-Z,
-Architect Constrained by Invariants, Rules Decide) are stated in standalone form in
-`GOVERNANCE_PRINCIPLES.md`. That document is extracted from this contract — on any conflict,
-this document (`AGENTS.md`) wins.
-
-An agent **must not**:
-- Author or amend an ADR (Architecture Decision Record)
-- Redesign, restructure, or re-architect any system component
-- Add new abstraction layers or introduce new module boundaries
-- Change tier ordering or phase sequencing
-- Make database schema topology decisions beyond what the task explicitly specifies
-- Alter governance gate logic without an ADR reference and architect approval
-
-When you believe a redesign or architectural decision is needed: write a SCRATCHPAD OBS entry
-(§15). Do NOT implement it. Do NOT draft an ADR. Do NOT add it directly to `TECHNICAL_DEBT.md`
-without an architect DEC. See §13 for the full protocol.
+Foundational principles (Owner Proposal Guardrail, Engineering Ctrl-Z, Architect Constrained by
+Invariants, Rules Decide) live in `GOVERNANCE_PRINCIPLES.md` (derived from this contract;
+AGENTS.md wins on conflict).
 
 ### 1.1 Subsystem Ownership — Owner-of-Record
 
-Each major subsystem has an Owner-of-Record responsible for its technical integrity:
+| Subsystem | Path | Owner-of-Record |
+|---|---|---|
+| Config / thresholds | `titan/config/` | Architect |
+| Science engines | `titan/science/` | Architect |
+| Core infrastructure | `titan/core/` | Architect |
+| Integrations | `titan/integrations/` | Codex (under Architect brief) |
+| Features | `titan/features/` | Codex (under Architect brief) |
+| Orchestration / UI | `titan/orchestration/`, `titan/ui/` | Architect |
 
-| Subsystem | Path | Owner-of-Record | Scope |
-|-----------|------|-----------------|-------|
-| Config / thresholds | `titan/config/` | **Architect** | All safety constants, evidence registry, lock code set |
-| Science engines | `titan/science/` | **Architect** | Engine contracts, governance gate logic, ML scaffold |
-| Core infrastructure | `titan/core/` | **Architect** | DB schema, persistence adapter, athlete profile contract |
-| Integrations | `titan/integrations/` | **Codex** (under Architect brief) | Garmin sync, weather API, Telegram bot |
-| Features | `titan/features/` | **Codex** (under Architect brief) | Weekly planner, optimal time, nutrition optimizer |
-| Orchestration / UI | `titan/orchestration/`, `titan/ui/` | **Architect** | DailyCoach pipeline, OperatorConsole, menu system |
+**Duty:** the Owner-of-Record must be consulted before any change that crosses a subsystem
+boundary, adds an inter-subsystem dependency, or modifies a public contract; consultation is
+recorded in the task entry. Architect-owned subsystems: every change needs a task entry with
+binary acceptance criteria. Codex-owned: Architect brief required; Codex may propose scope.
 
-**Owner-of-Record duties:** The Owner-of-Record must be consulted (or is) before any change that
-crosses a subsystem boundary, adds a new dependency between subsystems, or modifies a public contract.
-For Architect-owned subsystems, every change requires a task entry with binary acceptance criteria.
-For Codex-owned subsystems, changes require an architect brief but Codex may propose scope.
+### 1.2 Architect Reserved Powers (canonical — all other sections reference this)
+
+Exclusively the Architect (Claude in an architectural session, §3.6); never an agent on its own
+judgment:
+
+  RP-1  ADR authorship / amendment / acceptance
+  RP-2  Governance gate logic (`governance_engine.py` gates, gate ordering)
+  RP-3  Schema topology (new/removed tables, normalization, FK-graph or query-pattern-altering
+        indexes); the §13.3 additive-column carve-out is the only agent-permitted schema change
+  RP-4  Tier / phase sequencing and phase open/close
+  RP-5  New module boundaries, packages, or abstraction layers
+  RP-6  DEC decisions and new TECHNICAL_DEBT registration
+  RP-7  AGENTS.md and TITAN Operating Contract content (§3.6; contract per v7.9 §1.4)
+  RP-8  Module-ceiling VALUES (§16.11; agents may apply the mechanical test-constant edit only
+        after the Architect confirms the value)
+  RP-9  Any clearance verdict constrained by v7.9 §14
+  RP-10 Scope approval, escalation decisions, governance interpretation
+
+Choosing between design alternatives on agent judgment is reserved (it reduces to RP-1/RP-5).
 
 ---
 
@@ -145,514 +154,537 @@ For Codex-owned subsystems, changes require an architect brief but Codex may pro
 
 ### 2.0 Environment Setup — Mandatory (Run First, Every Session)
 
-Before any other action — before reading code, running tests, running lint, or making any change — run:
-
-```bash
-scripts/setup_env.sh
-```
-
-This step is **unconditionally mandatory**. It must execute successfully before proceeding.
-
-**If the setup script fails:**
-1. **Stop immediately.** Do not attempt any task steps.
-2. Report the failure verbatim (exit code + last output lines).
-3. Do not attempt ad-hoc dependency installation unless explicitly instructed by the architect.
-
-**Environment repair** is permitted only when both conditions hold:
-1. `scripts/setup_env.sh` completed successfully, AND
-2. a required dependency is still missing in the runtime environment.
-
-If repair is permitted:
-- Fix the environment only (dependency resolution, version pinning).
-- Do not modify application code or tests.
-- Re-run all three Mandatory Gates after repair before continuing.
+Run `scripts/setup_env.sh` before any other action. On failure: STOP, report exit code + last
+output lines verbatim; no ad-hoc dependency installation unless the Architect instructs it.
+Environment repair is permitted only when setup succeeded AND a dependency is still missing —
+fix environment only (no app/test code), then re-run all three gates.
+**Elevated-risk tasks** (CI-heavy, multi-module integration, Architect-flagged): confirm setup
+success → verify critical imports → run one clean-state full gate before implementing; a failing
+clean-state run is an environment issue — stop and report, do not implement. (Sole home of this
+rule; ex-§25.)
 
 ### SESSION_START (mandatory — before any code change)
 
-Run the three steps below and record outputs in your first response:
-
 ```bash
-# Step 1 — Scratchpad gate (unchanged)
+# Step 1 — Scratchpad gate: exit 1 = BLOCKING queue non-empty → stop, await Architect
 scripts/check_scratchpad.sh
-# Exit 1 = BLOCKING queue non-empty; stop and await architect before continuing.
-
-# Step 2 — Gate confirmation
+# Step 2 — Gate confirmation (all three gates green before work begins)
 scripts/titan_check.sh
-# Confirms all three mandatory gates are green before work begins.
-
-# Step 3 — System state summary (print all four lines)
-grep -c "OPEN\|PARTIALLY RESOLVED" TECHNICAL_DEBT.md          # open tier items
-python -m pytest --collect-only -q 2>&1 | tail -1             # current test count
-ruff check . --statistics 2>&1 | tail -5                      # lint status
-grep "^STATUS:\|^Phase" SCRATCHPAD.md | head -3               # current phase + scratchpad status
+# Step 3 — System state summary (print all five lines)
+grep -cE '🔴 OPEN|PARTIALLY RESOLVED' TECHNICAL_DEBT.md        # open debt items (status markers only)
+python -m pytest --collect-only -q 2>&1 | tail -1              # current test count
+ruff check . --statistics 2>&1 | tail -5                       # lint status
+grep -E '^STATUS:|^Phase' SCRATCHPAD.md | head -3              # phase + scratchpad status
+awk '/## Tracking Table/,0' TECHNICAL_DEBT.md | grep -c 'RESOLVED 2026' # debt-clear context (§12.5)
 ```
 
-Do not begin implementation until you have confirmed:
-- Scratchpad gate is clear (Step 1)
-- All three mandatory gates green (Step 2)
-- System state printed: open items, test count, lint status, phase/status (Step 3)
+Do not implement until: scratchpad clear, gates green, state printed. Skipping this is a
+PROCESS VIOLATION. This block is the frozen source for `scripts/session_start.sh` (T-PRA-35);
+until that script lands, run these commands exactly.
 
-Failure to run these checks before implementation is a PROCESS VIOLATION.
-
-> **Migration note:** Steps S1–S5 from earlier protocol versions are replaced by the above
-> three-step form. The gate logic is unchanged; only the delivery mechanism changes.
-
----
-
-Every task follows this sequence exactly. No step may be skipped.
-
-```
-0.  Run scripts/setup_env.sh (Section 2.0) — mandatory before anything else
-0.5 Run scripts/check_scratchpad.sh — exit 1 = BLOCKING queue non-empty; stop and await architect
-1.  Read task description completely (Section 3.5 scope declaration before any code)
-2.  Write code / tests
-3.  Run Gate 1: ruff check .
-4.  Run Gate 2: python -m pytest -q -W error::pytest.PytestWarning
-5.  Run Gate 3: python -m pytest -q
-6.  ✅ All three gates GREEN → proceed to step 7
-    ❌ Any gate fails → STOP (Section 7), fix root cause, restart from step 3
-7.  Create commit (message format: T<tier>-<id>: <short title>)
-8.  Push (if push-enabled environment)
-9.  Open PR (if push-enabled environment)
-```
-
-**Steps 7–9 are only reachable after step 6 is confirmed GREEN.**
+**Sequence for every task:** setup_env → scratchpad gate → read task fully (§3.5) → code+tests →
+Gate 1 → Gate 2 → Gate 3 → all green → commit (`T<tier>-<id>: <short title>`) → push → PR.
+Any gate failure → STOP (§7), fix root cause, restart from Gate 1. Steps after the gates are
+unreachable until all three pass.
 
 ### 2.1 Pre-Commit Enforcement
 
-A git pre-commit hook must be present at `.git/hooks/pre-commit` that runs
-`scripts/titan_check.sh` before any commit is accepted. If `titan_check.sh`
-exits 1, the commit is blocked.
+`.git/hooks/pre-commit` must run `scripts/titan_check.sh`; exit 1 blocks the commit. Source lives
+in `scripts/pre-commit-hook` (`#!/bin/bash` + `exec scripts/titan_check.sh`). Re-link after every
+clone: `cp scripts/pre-commit-hook .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`.
 
-**Setup (run once after cloning):**
+### 2.2 Deliverable & Git Rules
 
-```bash
-cp scripts/pre-commit-hook .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
+- Run all three gates before any commit / `make_pr`.
+- Branches: `claude/*` only. **Never push to `main`/`master`. Never force-push or rewrite remote history.**
+- One issue = one PR (bundling: §26.1). Every PR includes a Scope Declaration (§3.3).
+- Push available → push branch, open exactly one PR (base=main), paste the PR link.
+- Push unavailable → stop after local commit; report branch + hash; Owner pushes/opens PR.
+  Diff-only fallback: deliver `git diff`, label `[DIFF ONLY — push not available]`, no commits.
 
-The hook source lives in `scripts/pre-commit-hook` (tracked by git) and contains:
+### 2.3 Targeted Runs Are Diagnostic Only
 
-```bash
-#!/bin/bash
-exec scripts/titan_check.sh
-```
+During implementation, targeted runs (`pytest tests/...py -q`, `ruff check path/`, and
+`scripts/titan_ci.sh --profile scoped` — changed-scope selection, T-PRA-38) are permitted for
+iteration speed. They never substitute for Gates 1–3 and never appear as acceptance evidence in
+a delivery report. Acceptance, commit authorization, and FIXED dispositions require
+`profile=full` evidence (v7.9 §1.5). Full gates are mandatory before every commit/PR and after
+every fix cycle. Note: the repo enforces a global coverage threshold — a subset run failing only
+on coverage is a diagnostic artifact, not a regression; acceptance always uses Gate 3.
 
-`.git/hooks/` is not tracked by git. Re-link after every fresh clone using the
-setup instruction above.
+### 2.4 Orchestrator & Evidence Obligations
 
-### 2.2 Deliverable format (push-enabled environments)
+The orchestrator (the human or harness driving a contract-governed session) is a governed
+component. Its obligations:
 
-Run all three Mandatory Gates (Section HARD GATE) before doing anything below.
-Do NOT create a commit unless all three gates pass.
-Do NOT call `make_pr` unless all three gates pass.
+1. **Evidence emission.** Every captured `scripts/titan_ci.sh` execution is recorded into
+   context as a v7.9 §1.5 VERIFY RECORD, including `profile` and the environment fingerprint
+   from `scripts/env_fingerprint.sh` (python version + venv hash + host id; T-PRA-38). The LLM
+   never composes records (v7.9 §12).
+2. **Clearance completeness.** A session in which a clearance verdict may issue over scope S
+   includes the current §30 register (or its excerpt covering S). The register is the
+   completeness manifest; without it the LLM treats clearance as unavailable and restates
+   findings (v7.9 §14).
+3. **Governance ledger.** Append one JSONL line per patch attempt, REJECT, escalation, retry,
+   mode use, and disposition to `docs/governance/ledger.jsonl` (fields: ts, session, mode,
+   patch-id, reject-code|null, escalate-code|null, disposition-type|null). Consumed by the
+   §16.11 / §21 / §22 reviews and lint summaries (T-PRA-39).
 
-You MAY create commits and push, but ONLY to branches matching `claude/*`.
-
-You MUST NOT push to `main` or `master` — this is a hard rule, not a guideline.
-
-You MUST NOT force push or rewrite history on any remote branch.
-
-If push is available in the runtime environment:
-- Push the branch.
-- Open exactly one PR (base=main, compare=claude/<branch>).
-- Paste the PR link in your response.
-
-If push is NOT available in the runtime environment:
-- Stop after the commit is created.
-- Report the branch name and commit hash.
-- The repository owner will perform the push and open the PR.
-
-Commit message format: `T<tier>-<id>: <short title>` — example: `T2-08: Add startup observability`
-
-### 2.2b Deliverable format (non-push environments — fallback only)
-
-Run all three Mandatory Gates before delivering.
-
-Provide a single unified patch: `git diff` or `git diff --staged`.
-
-Do NOT create commits. Do NOT push. Do NOT open PRs.
-
-Label response clearly: `[DIFF ONLY — push not available]`
-
-### 2.4 Optional fast iteration rule (targeted tests during implementation)
-
-During implementation, the agent **may** run targeted tests for the changed module(s) to speed up local iteration:
-
-```bash
-python -m pytest tests/path/to/test_changed_module.py -q
-```
-
-**This does NOT replace the mandatory final validation gates.**
-
-Before any commit, push, or PR, the agent **must** still run all three gates in order:
-```bash
-ruff check .
-python -m pytest -q -W error::pytest.PytestWarning
-python -m pytest -q
-```
-
-Targeted runs during implementation are diagnostic only. Reporting "targeted tests pass" as the deliverable is a violation of §HARD GATE.
-
-### 2.3 Git workflow (push-enabled environments)
-- Never push directly to `main` or `master`
-- All work branches must use prefix `claude/`
-- Create branch if missing: `git checkout -b claude/<task-id-short>`
-- Push with: `git push -u origin claude/<branch-name>`
-- One issue = one PR. Do not bundle unrelated fixes.
-- Every PR description MUST include a Scope Declaration (see Section 3.3)
+A session lacking (1) or (2) still proceeds for ordinary work; it cannot mint commits or
+clearance verdicts — fail-closed on evidence, not on progress.
 
 ---
 
 ## 3. Scope Control
 
-### 3.1 Allowed
-- Modify only the files directly named in the task
-- Update additional files **only** when strictly required for correct integration (imports, interfaces, tests, wiring, configuration)
-
-### 3.2 Not allowed
-- Refactoring unrelated code
-- Style or formatting changes outside the task
-- Architectural redesign
-- Adding comments, docstrings, or type annotations to code you did not explicitly change
-- Allowed only within the exact function/section you modified, when needed to reflect changed behaviour.
+**3.1 Allowed:** modify only files named in the task; touch additional files only when strictly
+required for correct integration (imports, interfaces, tests, wiring, config).
+**3.2 Not allowed:** refactoring unrelated code; style/formatting outside the task; architectural
+redesign; comments/docstrings/type annotations outside the exact code you changed.
 
 ### 3.3 Scope Declaration (mandatory in every PR description)
-
-Every PR MUST include this block — no exceptions:
 
 ```
 ## Scope
 **Task:** T<tier>-<id> — <title>
 **Files changed:** <list>
-**Files NOT changed:** governance_engine.py, [any other locked files]
+**Files NOT changed:** governance_engine.py, [other locked files]
 **Tests added/modified:** <list or "none — existing coverage sufficient">
-**ADR reference:** ADR-XXXX (required if governance_engine.py was touched)
+**ADR reference:** ADR-XXXX (required if governance_engine.py touched)
 **Gates passed:** ruff ✅ | pytest strict ✅ | pytest full ✅
 ```
 
-A PR without a Scope Declaration and confirmed gate status will not be reviewed.
+A PR without this block and confirmed gate status is not reviewed.
 
-### 3.5 Before writing a single line of code
-1. List every file that must change.
-2. For each file, write one sentence explaining **why** it must change.
-3. If a file appears necessary but isn't named in the task, explain the dependency before touching it.
+### 3.4 Out-of-Scope Findings — Canonical Routing (single statement)
+
+Discover an issue outside scope → **do not fix it.** Write a SCRATCHPAD OBS (§15), set
+`STATUS: REVIEW_REQUESTED`, continue the scoped task only. The one routing path everywhere in
+this document: **SCRATCHPAD OBS → Architect DEC → `TECHNICAL_DEBT.md` entry.** Agents never add
+debt entries directly. (Other sections reference this rule; none redefines it.)
+
+**3.5 Before writing a line of code:** list every file that must change + one sentence why; if a
+needed file isn't named in the task, explain the dependency before touching it.
 
 ### 3.6 Documentation Edit Policy — Hard Restriction
 
-Documentation files are **architect-owned**. Agents may not edit them freely.
+Documentation is **Architect-owned** (`CLAUDE.md`, `AGENTS.md`, the TITAN Operating Contract,
+`README.md`, everything under `docs/`). The only permitted agent edits:
 
-**Role definition:** The architect is Claude (the AI operating in architectural sessions with the project owner). Codex is the implementation agent. Only the architect creates, restructures, or rewrites documentation. Codex may make only the narrow permitted edits listed below.
-
-**Covered files:** `CLAUDE.md`, `AGENTS.md`, `README.md`, any file under `docs/`
-
-**The only permitted documentation edits are:**
-
-| Permitted update | Trigger | Section |
+| Permitted edit | Trigger | Ref |
 |---|---|---|
-| Test count snapshot in `CLAUDE.md` | Tests added/removed in current task | §12.3 |
-| ADR index table row in `CLAUDE.md` | Integrating a new architect-authored ADR | §12.4 |
-| Debt entry body in `TECHNICAL_DEBT.md` | Task closure (mark RESOLVED) | §12.1 |
-| New OBS entry in `SCRATCHPAD.md` | Out-of-scope finding discovered | §12.2 / §15 |
-| Clarification append to existing OBS entry in `SCRATCHPAD.md` | Claude has set `CLARIFICATION_NEEDED`; Codex appends requested context to the existing OBS (no new OBS created) | `SCRATCHPAD.md §CLARIFICATION flow` |
-| Tracking table row in `TECHNICAL_DEBT.md` | Either of the two debt rows above | §12.1 / §12.2 |
+| Test-count snapshot in `CLAUDE.md` (via updater script) | Tests added/removed | §12.3 |
+| ADR index row in `CLAUDE.md` | Integrating a new Architect-authored ADR | §12.4 |
+| Debt entry body / tracking row in `TECHNICAL_DEBT.md` | Task closure (Records Steward) | §12.1 |
+| New OBS / clarification append in `SCRATCHPAD.md` | Out-of-scope finding / `CLARIFICATION_NEEDED` | §15 |
 
-**Everything else is prohibited:**
-- Do not reword, restructure, or "improve" existing documentation.
-- Do not add sections, paragraphs, or notes beyond what the task explicitly requires.
-- Do not update `CLAUDE.md` for minor wording corrections or to reflect your interpretation of the system.
-- Do not edit `AGENTS.md` at all — it is maintained exclusively by the architect.
-
-If you believe a documentation update is needed beyond the table above, write a SCRATCHPAD OBS
-entry (§12.2 / §15) and stop. Do NOT add it directly to `TECHNICAL_DEBT.md`.
-
-### 3.4 Out of Scope Findings
-If you discover another issue while working: **do not fix it.** Write a SCRATCHPAD OBS entry
-(§15). Do NOT add it directly to `TECHNICAL_DEBT.md` without an architect DEC. Continue only
-with the original scoped task.
-
-The canonical routing path is: SCRATCHPAD OBS → architect DEC → `TECHNICAL_DEBT.md` entry.
-See `SCRATCHPAD.md §Canonical Routing Rule` for the single authoritative statement.
-
-**Principle: Minimal change, maximum stability.**
+Everything else is Architect-only per §1.2 (RP-7 covers this document and the operating
+contract). A `policy-only` pass (§19) that touches `AGENTS.md` is executed by the Architect, or
+applies verbatim Architect-authored text with the authorizing instruction quoted in the PR —
+Codex never originates AGENTS.md content. Need a doc change beyond the table → SCRATCHPAD OBS
+and stop.
 
 ---
 
 ## 4. Tier Ordering — Mandatory
 
-Technical debt work follows strict tier ordering from `TECHNICAL_DEBT.md`:
-
 ```
 TIER 1 (Data Integrity) → TIER 2 (Observability) → TIER 3 (Deps) → TIER 4 (Maintainability) → TIER 5 (Future)
 ```
 
-**Do NOT start Tier N+1 work while any Tier N item is OPEN.**
+Do NOT start Tier N+1 while any Tier N item is OPEN. **The only exemption is an item explicitly
+marked `independent` in `TECHNICAL_DEBT.md`** — there is no other carve-out, including for phase
+work. On receiving a higher-tier task while a lower tier is open, respond exactly:
+`⛔ TIER ORDERING VIOLATION: T[N]-[XX] is still OPEN. I must complete that first.`
 
-If you receive a task from a higher tier while a lower tier is open, respond:
-> `⛔ TIER ORDERING VIOLATION: T[N]-[XX] is still OPEN. I must complete that first.`
-
-Exception: items explicitly marked `independent` in `TECHNICAL_DEBT.md`.
-
-### 4.1 T4-01 Ruff burn-down — fixed subsystem sequence
-
-```
-1. titan/config/
-2. titan/science/governance_*.py
-3. titan/core/
-4. titan/integrations/
-5. titan/orchestration/ + titan/features/
-6. titan/ui/
-```
-
-Do not skip ahead. Do not quick-fix across subsystems simultaneously.
-
-Acceptance gate per subsystem (binary — PASS or FAIL):
-```bash
-ruff check <subsystem_path>   # must return exit code 0, zero findings
-python -m pytest -q           # must be 100% green, same count or higher
-```
-
-If either check is not 100%, the answer is exactly:
-> `NOT 100% — Missing: [list the specific failing check]`
-
----
+**4.1 T4-01 ruff burn-down order:** `titan/config/` → `titan/science/governance_*.py` →
+`titan/core/` → `titan/integrations/` → `titan/orchestration/ + titan/features/` → `titan/ui/`.
+No skipping, no cross-subsystem quick fixes. Per-subsystem acceptance: `ruff check <path>` exit 0
+AND full suite green; otherwise answer exactly `NOT 100% — Missing: [failing check]`.
 
 ## 5. Definition of Done — Binary
 
-A task is either:
-- ✅ **DONE** — all acceptance criteria pass, 100%, no caveats
-- ❌ **NOT DONE** — at least one criterion fails
-
-There is no "mostly done", "should be fine", or "looks good". **Binary only.**
-
----
+✅ DONE = all acceptance criteria pass, 100%, no caveats. ❌ NOT DONE = anything else.
+No "mostly done", no "should be fine".
 
 ## 6. Test Failure Protocol
 
-### 6.1 Before delivering any change
-1. Run `python -m pytest -q -W error::pytest.PytestWarning` (strict — warnings are failures)
-2. Run `python -m pytest -q` (canonical — zero failures, zero new errors)
+Before delivering: run Gate 2, then Gate 3; confirm count same-or-higher (renames documented in
+the PR). On any failure, classify and act — fix root cause, not symptom, not silence:
 
-**Note on coverage:**
-- The repo enforces a global coverage threshold.
-- Running a single test or small subset may FAIL solely due to coverage (even if all tests passed).
-- Treat "coverage threshold not reached" on a subset run as a diagnostic artifact, NOT a code regression.
-- Acceptance gates always require the canonical full suite (Gate 3).
+| Class | Symptom | First action (evidence required) | Fix target |
+|---|---|---|---|
+| 🔴 RED | Assertion / runtime error | `python -m pytest -x` → first failing nodeid + traceback | Code regression → fix code; test bug → fix test (only if objectively wrong); never modify a correct test |
+| 🟡 YELLOW | Warnings / flaky / lint | Identify exact warning + origin | Fix call site (deprecations) / stabilise env cause; never silence globally — strict gate treats warnings as failures |
+| 🟣 PURPLE | Import/collection error | `bash scripts/ci_bootstrap.sh`; `python -c "import <module>"` | Dependency resolution only — no app/test code edits |
+| 🟠 ORANGE | Hang / no progress, no failure yet | `pytest -vv` (last nodeid) + `--durations=20`; reproduce the specific test with `-vv -s` | Only a deterministically hanging test gets a minimal root-cause fix |
 
-3. Confirm test count is same or higher than before your change
-   - Exception: if tests were renamed/moved but coverage is preserved, document it in the PR description.
-4. If any test fails: follow the protocol below before doing anything else
-
-### 6.2 🔴 RED — Assertion / runtime error
-
-Respond **verbatim** before doing anything:
-
-```
-A test is failing.
-1) Run the suite and identify the FIRST failing test (deterministically):
-   python -m pytest -x
-2) Do NOT modify the test unless it is objectively incorrect.
-3) Determine whether the failure is:
-   A) Code regression
-   B) Test bug
-   C) Environment/dependency issue
-4) Fix ONLY the minimal root cause.
-5) Re-run the full suite.
-6) If any other tests fail, stop and report.
-7) Do not refactor unrelated code.
-8) Do not introduce new behaviour.
-```
-
-### 6.3 🟡 YELLOW — Warnings / flaky / lint-related
-
-Respond **verbatim** before doing anything:
-
-```
-The test suite has warnings or unstable behaviour.
-1) Identify the exact warning source.
-2) If it is deprecation-related, fix the call site.
-3) If it is environment-specific, stabilise it.
-4) Do NOT silence warnings globally.
-5) Keep changes minimal and scoped.
-6) Re-run full suite and confirm clean output.
-```
-
-Note: Under the strict gate (`-W error::pytest.PytestWarning`), warnings are failures. Fix the warning source — do not suppress it.
-
-### 6.4 🟣 PURPLE — Dependency / import error (collection failure)
-
-Respond **verbatim** before doing anything:
-
-```
-A test fails during collection (import error).
-1) Confirm full dependency installation:
-   pip install -r requirements.txt -c constraints.txt
-2) Verify the missing module: python -c "import <module>"
-3) Fix dependency resolution only. Do not write code or edit test files.
-4) Do not modify application logic.
-5) Re-run full suite.
-```
-
-### 6.6 🟠 ORANGE — Hang / slow test (no failure, progress unclear)
-
-**Symptoms:**
-- pytest shows no new output for an extended period
-- user reports "it's stuck" but no failing test exists
-
-Respond **verbatim** before doing anything:
-
-```
-The suite appears slow or hung (no failing test yet).
-1) Do NOT assume failure. Do NOT start fixing code.
-2) Identify the exact running / last completed test:
-   python -m pytest -vv
-3) Identify the slowest tests:
-   python -m pytest --durations=20
-4) If a specific test is suspected, run only that test with output:
-   python -m pytest -vv -s <file>::<test_name>
-5) Only if the same test deterministically hangs: fix the minimal root cause,
-   then re-run the full suite.
-```
-
-**Important:**
-- A perceived hang is NOT RED/YELLOW/PURPLE until a failing nodeid or import error is proven.
-- Do not loop. Every re-run must add new information (nodeid or durations output).
-
-### 6.5 Category → action (exhaustive)
-
-| Category | Action |
-|---|---|
-| Code regression | Fix the code |
-| Test bug | Fix the test |
-| Env / deps | Fix the environment |
-
-Nothing else. **Fix root cause. Not symptom. Not workaround. Not silence.**
-
-**Banned responses when tests fail:**
-- Random refactor of surrounding code
-- Mass changes across files
-- `pytest.mark.skip` / `xfail` without documented justification
-- Silencing warnings globally
-- Using env overrides (`PYTEST_ADDOPTS`, `--import-mode`, etc.) to bypass failures
-
----
+After any fix: re-run the full suite; if other tests fail, stop and report. Do not refactor
+unrelated code or introduce new behaviour. A perceived hang is not RED until a failing nodeid or
+import error is proven; never loop a command without new evidence.
+**Banned responses:** random refactors; mass multi-file changes; undocumented skip/xfail; global
+warning suppression; env overrides to force green.
 
 ## 7. Stop-the-Line Protocol
 
-If any acceptance criterion fails mid-task:
-1. **Stop immediately.** Do not continue to other files or subsystems.
-2. Report what failed and the root cause.
-3. Fix only the specific failing criterion.
-4. Re-run the acceptance gate from scratch.
-5. Only then continue.
-
-**Anti-loop rule:**
-- Do NOT repeat the same command/run without returning new evidence.
-- Every stop-the-line report MUST include:
-  - the exact failing test nodeid + traceback (RED), OR
-  - the exact warning text + origin (YELLOW), OR
-  - the missing module/import error line (PURPLE), OR
-  - the last printed test nodeid + durations output (ORANGE).
-- A response that says "tests failing" / "stuck" without the above evidence is NOT ACCEPTABLE.
+Any acceptance criterion fails mid-task → STOP immediately; report what failed + root cause; fix
+only that criterion; re-run the gate from scratch; only then continue. Every stop-the-line report
+carries the class evidence from the §6 table (nodeid+traceback / warning+origin / import line /
+last-nodeid+durations). "Tests failing" / "stuck" without evidence is NOT ACCEPTABLE. Never
+re-run the same command without returning new evidence.
 
 ---
 
 ## 8. Architecture Constraints (Do Not Break)
 
-| Pattern | Location | Why it must not change |
+| Pattern | Location | Why |
 |---|---|---|
-| Governance gate ordering | `governance_engine.py` → Step 9 of `DailyCoach` | Non-bypassable safety; altering order corrupts coaching decisions |
-| CTL/ATL chronological rebuild | `garmin_sync.py` + `database.py` | Oldest-first EMA; reversing gives wrong fitness values |
-| SQLite WAL + busy_timeout + write lock | `database.py` | Thread-safety across 3 daemon threads |
-| Idempotent versioned migrations | `database.py _run_migrations()` + `PRAGMA user_version` | Version-gated; each `_apply_vN_migrations()` runs exactly once; breaking idempotency causes schema corruption |
-| Thresholds from `thresholds.py` only | All science modules | Single source of truth; hardcoding duplicates diverge silently on recalibration — enforced by T4-19 |
-| ML kill-switch default-ON | All Phase 7 engines | Correct failure mode; never remove or invert |
-| Evidence labels on ML payloads | Phase 7 engines | Provenance discipline; do not remove |
-| `PersistenceFailure` propagation | `daily_coach.py _persist_garmin_data()` | DB rollback must surface as degraded mode; silent fail-open corrupts governance inputs (ADR-0020) |
-| Notifications via `NotificationGateway` | All notification paths | Telegram must have file fallback; direct bot calls bypass the fallback chain (T3-09) |
-| `DegradedModeTracker` registration | `daily_coach.py run_morning_routine()` | New degraded-mode conditions must be registered to fire the 24h SLO alert (T2-13) |
+| Governance gate ordering | `governance_engine.py` → Step 9 of `DailyCoach` | Non-bypassable safety; reorder corrupts decisions |
+| CTL/ATL chronological rebuild | `garmin_sync.py` + `database.py` | Oldest-first EMA; reversal gives wrong fitness |
+| SQLite WAL + busy_timeout + write lock | `database.py` | Intra-process thread safety (cross-container: §8.12) |
+| Idempotent versioned migrations | `database.py _run_migrations()` + `PRAGMA user_version` | Each `_apply_vN` runs exactly once; breaking idempotency corrupts schema |
+| Thresholds from `thresholds.py` only | All science modules | Single source of truth (T4-19 enforced) |
+| ML kill-switch default-ON; evidence labels on ML payloads | Phase 7 engines | Correct failure mode + provenance; never invert/remove |
+| `PersistenceFailure` propagation | `daily_coach.py _persist_garmin_data()` | DB rollback must surface as degraded mode (ADR-0020) |
+| Notifications via `NotificationGateway` only | All notification + alert paths | Telegram→file fallback chain; direct bot calls forbidden (T3-09) |
+| `DegradedModeTracker` registration | `run_morning_routine()` | New degraded conditions must fire the 24h SLO alert (T2-13) |
+| Hard-stop key rejection is dual-layered from ONE frozenset | `ThresholdAdapter` + `DatabaseManager.save_threshold_offset` | Both reject H1–H5 from the same `frozenset`; introducing a second key source lets the layers diverge (verified-clean property — keep it) [SA] |
 
-**`titan/science/governance_engine.py` is architecture-locked.** See ADR-0009 and §16.1.
-Do not modify it without an ADR reference in your commit message and explicit architect approval.
-
-The lock is **machine-enforced**: `tests/test_governance_mutation.py` (T4-18) verifies boundary-ON
-and boundary-OFF for every gate; `tests/test_architectural_invariants.py` (T4-19) verifies that
-no inline threshold literals are added and that all lock codes remain canonical. Both test files
-will fail immediately if gate logic is silently altered. Adding a new gate requires:
-1. An ADR (reference in commit message)
-2. Boundary tests in `test_governance_mutation.py`
-3. Lock code added to `_CANONICAL_LOCK_CODES` in `test_architectural_invariants.py` and the table in CLAUDE.md
+**`titan/science/governance_engine.py` is architecture-locked** (ADR-0009, §16.1) and
+machine-enforced: `tests/test_governance_mutation.py` (T4-18, boundary-ON/OFF per gate) and
+`tests/test_architectural_invariants.py` (T4-19, no inline thresholds, canonical lock codes).
+Adding a gate requires: ADR reference in the commit + boundary tests + lock code added to
+`CANONICAL_LOCK_CODES` (thresholds.py), `_CANONICAL_LOCK_CODES` (test), and the CLAUDE.md table.
 
 ### §8.1 Execution Priority Order (non-negotiable)
 
-When multiple mechanisms conflict, resolution priority is strictly ordered (highest wins):
+`LAYER 5 (Hard-Stops H1–H5) > LAYER 4 (Invariants INV-01→INV-25) > LAYER 3 (Governance gates)
+> LAYER 2 (Fallback/degraded) > LAYER 1 (Normal output)`. Higher layer always wins; no exception
+path may bypass a higher layer.
 
-```
-LAYER 5 (Hard-Stops H1–H5)
-  > LAYER 4 (Invariants INV-01 → INV-10)
-  > LAYER 3 (Governance gates)
-  > LAYER 2 (Fallback / degraded mode)
-  > LAYER 1 (Normal output)
-```
+### §8.2 Severity → Mandatory Runtime Response and Enforcement Class
 
-Higher layer **always** wins. No exception path may bypass a higher layer.
-
-Source: TITAN_HARDENING_FRAMEWORK_v1.md §12.
-
----
-
-### §8.2 Severity → Mandatory Runtime Response
-
-| Severity | Detection | Response | CI behaviour |
+| Severity | Detection | Runtime response | Enforcement class |
 |---|---|---|---|
-| CRITICAL | Invariant check Layer 4/5 | BLOCK + HARD-STOP + Telegram CRITICAL | Hard-fail CI gate — PR cannot merge |
-| HIGH | Pre-decision sanity gate | DEGRADE to EASY + ESCALATE WARNING | Hard-fail CI gate |
-| MEDIUM | Runtime pipeline | FALLBACK conservative | Soft-fail — architect ack required |
-| LOW | Periodic audit | LOG-ONLY | No CI gate |
+| CRITICAL | Invariant check L4/L5 | BLOCK + HARD-STOP + Telegram CRITICAL | **CI gate** — invariant test fails the commit gate |
+| HIGH | Pre-decision sanity gate | DEGRADE to EASY + WARNING escalation | **CI gate** |
+| MEDIUM | Runtime pipeline | FALLBACK conservative | **Review-blocking** — Architect ack recorded in the PR before merge |
+| LOW | Periodic audit | LOG-ONLY | **Log-only** |
 
-This table is **binding**. Any code that produces a CRITICAL-class violation without a BLOCK
-response is a process violation equivalent to a failed mandatory gate.
+Enforcement classes are exactly three plus log-only: **CI gate** (Gates 1–3 via `titan_ci.sh`),
+**review-blocking** (PR cannot merge without the named review evidence), **phase-close gate**
+(recorded result required at phase close, §16.3 check 5). Do not label review/phase-close
+obligations "HARD GATE" — that term names the CI commit gate only.
 
-Source: TITAN_HARDENING_FRAMEWORK_v1.md §17.
+**Violation-severity vocabulary** (maps every "X violation" phrase to a class and the §7
+consequence; lint L6 rejects undefined phrases):
 
----
+| Term | Class | Consequence |
+|---|---|---|
+| GATE VIOLATION | CI-gate | Blocks the commit; §7 Stop-the-Line |
+| REVIEW VIOLATION | review-blocking | Blocks merge until the named review evidence is recorded |
+| PHASE-CLOSE VIOLATION | phase-close | Phase is NOT COMPLETE (§16.3) |
+| PROCESS VIOLATION | procedural | Breach of a non-gated procedural rule; resolved + recorded with a §20 mini-postmortem when it recurs or touched a canonical document |
 
-### §8.3 Invariant Enforcement (non-bypassable)
+### §8.3 Invariant Register (non-bypassable)
 
-The following invariants are structurally non-bypassable. Any PR that creates a code path
-bypassing them is a **HARD GATE failure**:
+Any PR creating a code path that bypasses an invariant is a GATE VIOLATION. Full definitions:
+§8.4–§8.14 as referenced. Verification = the named Category-A test unless marked otherwise.
 
-| ID | Rule |
-|---|---|
-| INV-01 | `math.isfinite()` before every governance gate float comparison. |
-| INV-02 | All `datetime` in governance + sync path must be UTC-aware. |
-| INV-03 | `athlete_id` present in every per-athlete DB write. |
-| INV-04 | **Per-athlete calibration isolation** — All `OutcomeTracker` reads are scoped to a single `athlete_id`; no cross-athlete query reaches the calibration path (ADR-0033 Layer 3, 2026-04-12). **Enforcement state: ENFORCED** — `tests/test_athlete_calibration_isolation.py` (T5-07-L3-B, 2026-04-17). |
-| INV-05 | No governance gate defaults an absent field to an optimistic value (ADR-0051). |
-| INV-06 | HRV drift check on startup; emit WARNING + set `data_confidence_low=True` if \|delta\| > `HRV_DRIFT_THRESHOLD_MS`. |
-| INV-07 | Activity dedup by `garmin_activity_id` (`INSERT OR IGNORE`). |
-| INV-08 | Sync success event **only** when no exception raised (boolean flag pattern). |
-| INV-09 | `INSERT OR REPLACE` forbidden on multi-source tables. |
-| INV-10 | Rate-limiter key count bounded by `RATE_LIMITER_MAX_KEYS`. |
+| ID | Rule (summary) | Verification |
+|---|---|---|
+| INV-01 | `math.isfinite()` before every governance-gate float comparison | pre-existing T4-19 suite |
+| INV-02 | All governance/sync `datetime` UTC-aware | pre-existing |
+| INV-03 | `athlete_id` present in every per-athlete DB write | pre-existing |
+| INV-04 | Per-athlete calibration isolation (ADR-0033 L3) | `tests/test_athlete_calibration_isolation.py` (T5-07-L3-B) |
+| INV-05 | No governance gate defaults an absent field optimistically (ADR-0051) | pre-existing |
+| INV-06 | HRV drift check on startup → WARNING + `data_confidence_low=True` past threshold | pre-existing |
+| INV-07 | Activity dedup by `garmin_activity_id` (`INSERT OR IGNORE`) | pre-existing |
+| INV-08 | Sync success only when no exception **and fresh data landed**; any attempt ending without fresh data — including retry/backoff/429 exhaustion — registers as a sync failure for degradation tracking and increments `garmin_sync_failure_total` [K:PRA-13, E-4] | extend sync tests (T-PRA-26) |
+| INV-09 | `INSERT OR REPLACE` forbidden on multi-source tables | pre-existing |
+| INV-10 | Rate-limiter key count bounded by `RATE_LIMITER_MAX_KEYS` | pre-existing |
 
-**Test coverage:**
+**New-code gate (any new governance/safety/auth path):** (a) fail-closed exception test (INV-12);
+(b) assignment-scoping verification if per-athlete coach access (INV-11); (c) ADR reference in the
+commit if authorization topology changes.
 
-- INV-02, INV-03, INV-09 — `tests/test_architectural_invariants.py`
-- INV-01 — `test_governance_mutation.py` NaN boundary tests
-- INV-06 — `test_baseline_drift_detection.py`
-- INV-07 — `test_t5_69_activity_deduplication.py`
-- INV-08 — `test_t5_67_sync_success_event_gating.py`
-- INV-10 — `test_rate_limiter_ceiling.py`
-- INV-04 — `tests/test_athlete_calibration_isolation.py`
-- INV-05 — `tests/test_missing_data_policy.py`
+### §8.4 Authorization Routing — INV-11
 
-**New gate requirement:** Any new gate added to `governance_engine.py` MUST have:
+**What:** Every FastAPI route under `/coach/*` whose handler accepts `athlete_id` (path, query, or
+body) uses `Depends(require_coach_athlete_access)`. `require_coach` is legal only on routes that
+touch no per-athlete data. Exceptions require an Architect-approved ADR addendum. **Stub routes
+are not exempt** — the live dependency on a stub is the authorization model the implementation
+inherits (the exact B-1 failure).
+**Why:** ADR-0054 — a coach may act only on assigned athletes; role-only checks let any coach
+export/override/delete any athlete [B-1, SA:C-1].
+**Verify:** `tests/test_authorization_routing.py` imports the app and asserts, for every `/coach/*`
+route with `athlete_id`: assignment-scoped dependency present, role-only dependency never sole
+authorization. Category A; must fail on known-bad input (T5-38 meta-test).
+**v7.9 §13 backstop:** a patch replacing the scoped dependency with `require_coach` is a
+safety-invariant violation → `ESCALATE: CONSTRAINT_CONFLICT` naming ADR-0054/INV-11 (§13 governs).
+**Tracked improvement:** centralizing the per-route dependency choice into one policy layer
+(so a developer cannot pick the weak check) is an ADR candidate noted in T-PRA-01.
 
-(a) `math.isfinite()` guard (INV-01)
-(b) NaN boundary test in `test_governance_mutation.py` (HR-04)
-(c) ADR reference in commit message (ADR-0009)
+### §8.5 Fail-Closed Exception Contract — INV-12 / INV-13 / INV-24
 
-Source: TITAN_HARDENING_FRAMEWORK_v1.md §7 + §11.
+**Safety-path function:** anything that applies/evaluates a governance constraint, computes or
+reads degradation state, computes data-staleness or sync-age inputs to degradation
+(`hours_since_last_sync`) [SA:m-2], makes a session-intensity decision, or applies a threshold
+adaptation.
+
+**INV-12 — exceptions fail closed.** A safety-path function that raises MUST produce the MORE
+restrictive outcome: about to ALLOW → DENY/REST/LOCK; computing degradation → preserve prior
+degraded state; applying a constraint → apply the most conservative one; reading prior state →
+treat absence as most conservative. Handlers MUST log the exception (CRITICAL or WARNING) and
+never return an optimistic value — **even when the substituted sentinel is conservative
+(e.g., `inf` sync-age), silent substitution is a violation: log it.** Silent
+`except Exception: return` in a safety path is a GATE VIOLATION equivalent to a gate bypass.
+An exception inside `apply_constraints()` / hard-stop evaluation forces `session_type = REST`
+with a structured event [B-4]. **Safety-relevant methods are invoked directly, never via
+`getattr(obj, "name", None)` optional dispatch** — a renamed method must fail loudly, not no-op
+forever [C-6]. Enforced by a semgrep/AST rule plus removal of the existing instance (T-PRA-26
+conformance sweep) — the repo already runs semgrep, so this is a rule addition, not new
+infrastructure.
+
+**INV-13 — hydration semantics (binding disambiguation).**
+`DailyCoach._hydrate_from_db()`: on read **failure** → log CRITICAL, preserve any in-memory state;
+with no prior state → forced `DEGRADED`. A **successful** read returning no degradation rows →
+HEALTHY (cold start is not stress). The forced-conservative state MUST clear on the next
+successful read (never sticky — emit structured events on enter/clear); a startup DB blip must
+not pin the athlete to EASY.
+
+**INV-24 — computed trust is enforced.** When the data-trust arbitration yields
+`overall_trust = INVALID` (or below the configured threshold), the coaching decision MUST clamp
+to REST/EASY through the same mechanism as staleness. A verdict that is computed, logged, and
+ignored is forbidden [B-14]. Verify: `tests/test_data_trust_enforcement.py` injects an INVALID
+verdict and asserts the clamp.
+
+**Verify (INV-12/13):** `tests/test_fail_closed_exception_paths.py` injects exceptions into each
+safety-path function and asserts the restrictive outcome + emitted log/event.
+
+### §8.6 Worker State Durability & Crash Safety — INV-15 / INV-17
+
+**Why:** the worker can die at any time (`restart: unless-stopped` guarantees the restart);
+in-memory idempotency/authorization state replays the morning routine and clears replay
+protection — poisoning `governance_outcomes`, the calibration data source [B-3, B-5].
+
+**Authority:** creating `worker_routine_executions` and `telegram_override_nonces` is a
+**schema-topology change** — Architect-gated (RP-3; §13.3 + §14.2 + ADR), introduced via §13.4
+Stage-1 mechanics. The "additive column" permission never covers new tables.
+
+**INV-15 binding semantics:** durable table `worker_routine_executions`, PRIMARY KEY
+`(athlete_id, execution_date, routine_type)` (athlete_id per §16.10 A40-4), with
+`started_at`/`completed_at` markers. Before any routine: `INSERT`; unique-constraint hit → skip
+(idempotent). On completion: `UPDATE completed_at`. On startup: reconstruct today's state from
+this table — never from a dict. **Full DDL is owned by the authorizing ADR (T-PRA-03
+deliverable); this section binds keys and semantics only** — schema topology is ADR territory
+per §13.3, and a second DDL copy here is a guaranteed drift pair.
+
+**INV-17 binding semantics:** durable table `telegram_override_nonces` keyed on `nonce`,
+carrying `command_type`, `athlete_id`, `issued_at`, `consumed_at`, `expires_at`. Expiry and
+replay checks (`expires_at < now()`, `consumed_at IS NOT NULL`) are **in-query**, not application
+logic (no TOCTOU). Nonces bind to the decision/command they authorize [F-3]. Startup may prune
+expired nonces; unconsumed unexpired nonces remain valid. DDL: authorizing ADR (T-PRA-03).
+
+**Verify:** `tests/test_worker_state_durability.py` simulates restart (fresh instance, no carried
+memory) and asserts dedup + nonce behavior; `governance_outcomes` is never double-written on
+restart (couples to §16.7).
+
+### §8.7 Database Integrity — INV-14 / INV-18 / INV-25
+
+**INV-14 — FK enforcement with mandatory safe rollout.** Every `DatabaseManager`
+connection executes `PRAGMA foreign_keys = ON` immediately after open, before any operation, on
+every connection; `_run_migrations` asserts FK is active before applying migrations. **Blind
+enablement is forbidden** — the production DB carries known drift (`'default'`/`'owner'` across
+v7–v18; `degraded_mode_state` never backfilled — the v18 backfill covered `training_log` only
+[B-9]). Ordered, separately-PR'd sequence (each Tier 1):
+1. **Reconcile** (Stage-2 migration): normalize `athlete_id` to `TITAN_DEFAULT_ATHLETE_ID` across
+   **all per-athlete tables explicitly including `degraded_mode_state`**, repair/delete orphans,
+   add the `data_source` CHECK constraint [I-13]. No pragma change yet.
+2. **Verify clean:** the migration ends with `PRAGMA foreign_key_check;` asserted to return
+   **zero rows**, plus a zero-rows query for any non-canonical `athlete_id`. Non-empty → abort.
+3. **Enable** (Stage 3): connection factory issues the pragma only when
+   `PRAGMA user_version >= FK_ENABLE_VERSION` (older environments not bricked).
+4. The pragma is a no-op inside a transaction — issue it on a fresh connection before `BEGIN`.
+Enabling without a recorded green step-2 check is a GATE VIOLATION (the INV-14 test fails the gate).
+**Verify:** `tests/test_db_integrity.py::test_foreign_keys_enforced` uses a known-bad FK
+relationship from the real schema (not synthetic) and expects `IntegrityError`.
+
+**INV-18 — canonical athlete-id.** New code references `TITAN_DEFAULT_ATHLETE_ID`
+(`titan/config/settings.py`). Literals `'default'`/`'owner'` are banned in new code except:
+migration files (`migrations/versions/*` history) and fixtures testing the migration-era drift —
+plus the two §16.10-sanctioned forms (column `DEFAULT 'default'`, signature
+`athlete_id: str = "default"`). Verify: AST check in `test_architectural_invariants.py`.
+
+**INV-25 — schema-version forward guard [B-8].** At startup/connect:
+`if user_version > SCHEMA_VERSION: raise` (process exits non-zero). Without this, a rolled-back
+binary silently miswrites a newer schema — the rollback path (RE-03, §13.4 downgrade) is
+incomplete without it. Verify: T-PRA-04 extension opens a DB stamped `SCHEMA_VERSION + 1` and
+asserts refusal.
+
+### §8.8 Worker Observability — INV-19 / INV-21
+
+**The gap (stated to evidence, no over-claim):** `titan-api` exposes `/metrics` [F-13 correction];
+**no scrape/alerting stack exists yet**, and `titan-worker` — where the morning routine, Garmin
+sync, and governance run — exposes nothing. SLO.md targets are currently measured by nothing
+[E-2, E-3, SA:m-4].
+
+**Canonical metrics contract (single source — all names final, all registered per INV-19a):**
+
+| Metric | Type | Incremented / set |
+|---|---|---|
+| `worker_cycle_error_total` | Counter | Unhandled exception in worker daemon loop |
+| `coaching_routine_executed_total{athlete_id}` | Counter | Morning routine completes |
+| `garmin_sync_success_total` | Counter | Sync lands fresh data without exception (INV-08) |
+| `garmin_sync_failure_total{error_type}` | Counter | Any failed/exhausted sync attempt incl. 429 exhaustion (INV-08) |
+| `degraded_mode_active` | Gauge | 1 while any athlete degraded |
+| `governance_outcome_written_total` | Counter | Each `governance_outcomes` write |
+| `worker_thread_died_total{thread}` | Counter | Watchdog detects supervised thread death (INV-23) |
+| `audit_write_failure_total{surface}` | Counter | Failed durable audit write, api or worker (INV-22) |
+| `backup_failure_total` | Counter | Failed backup run (DR-02) |
+
+**INV-19a (CI):** the worker registers every collector above at import time —
+`tests/test_worker_observability.py` asserts each name in the `MetricsCollector` registry; pure
+unit, no live Prometheus. **INV-19b (phase-close):** with the Architect-selected transport in
+force (own `/metrics` endpoint, Pushgateway, or API-scraped shared file — selection recorded as a
+GATING ADR addendum before T-PRA-05 starts), all metrics are queryable while the worker runs;
+recorded at phase close per §16.3 check 5, absence = phase NOT COMPLETE. The transport is the
+only free choice; observability of the named metrics is not.
+
+**Alert routing chokepoint [E-3, T-PRA-31]:** every alert-class condition (including `slo_alert`
+events) is emitted as a structured event with `severity` and delivered through
+`NotificationGateway` per §16.6 — JSON log lines that nothing routes do not satisfy any alerting
+requirement.
+
+**INV-21 — chain verified end-to-end:** Garmin failure → `DegradedModeTracker` → CRITICAL alert →
+`NotificationGateway` Telegram attempt → file fallback. Test
+`tests/test_degradation_alert_chain.py` (Category B, mocks allowed, full chain incl. fallback
+mandatory). Note the chain's entry condition is INV-08: if retry exhaustion never registers as
+failure, the chain never starts — that is the audited first-incident path [M-1 chain].
+
+### §8.9 Release Engineering — RE-01..06
+
+Enforcement class: phase-close gate (§16.3 check 5) unless a CI test is named. Why: no versioned
+artifacts = no answer to "what is running?" and no rollback [B-7]; unscanned supply chain ships
+vulnerabilities for up to a week [B-12].
+
+- **RE-01** Version sourced from `pyproject.toml` at runtime
+  (`importlib.metadata.version("titan-os")`); no hardcoded `"0.1.0"` literals.
+  **Verify (CI):** `tests/test_release_engineering.py` asserts runtime version == package
+  metadata and no version literal in `titan/` (T-PRA-09).
+- **RE-02** Every production deployment originates from a git tag `v<MAJOR>.<MINOR>.<PATCH>`;
+  untagged commits are never deployed. (`git tag -a v<x> -m "Release v<x>" <hash> && git push origin v<x>`)
+- **RE-03** `docs/RUNBOOK_ROLLBACK.md` exists and defines: prior-tag identification; image/tag
+  rollback; success verification command; data rollback strategy (Alembic downgrade, §13.4
+  downgrade routine, or backup restore — state which). **Tested at each phase boundary against
+  staging; result recorded** (§16.3). An untested runbook is not a rollback path.
+- **RE-04** Production compose references registry-pinned image tags
+  (`image: registry…/titan-api:vX.Y.Z`), never `build: .`.
+- **RE-05** Scan cadence: CodeQL runs on PR/push (not weekly-only); gitleaks scans the full pushed
+  range (not `HEAD~1..HEAD`) [B-12, F-11]. **Verify (CI-config check):** workflow files assert the
+  triggers (T-PRA-27).
+- **RE-06** Release artifacts ship with SBOM + image scan (e.g., Trivy); dependency pins are
+  parity-checked between `pyproject.toml` and `requirements.txt`; every `pip-audit` CVE ignore
+  carries an expiry date — permanent ignores are forbidden [F-12] (T-PRA-27).
+
+### §8.10 Disaster Recovery — DR-01..04
+
+Why: backups on the DB volume + untested restores = total loss on one disk failure — the
+highest-value fix per unit cost in the audit [B-6, M-4].
+
+- **DR-01** Backups written off-volume: separate Docker volume, S3-compatible store, or remote
+  filesystem on separate hardware. Same-volume backup is a PHASE-CLOSE VIOLATION (DR-01 is
+  verified at §16.3 check 5).
+- **DR-02** Retention via `.env`: `BACKUP_RETENTION_DAILY_DAYS=7`, `BACKUP_RETENTION_WEEKLY_COUNT=4`.
+  Every backup run executes `PRAGMA integrity_check` on the produced artifact [I-7]; success logs
+  INFO with size, failure logs CRITICAL + increments `backup_failure_total`. The verify job runs
+  against the **latest real backup**, never a toy fixture DB [B-6].
+- **DR-03** Restore verification at every phase close: copy latest backup → open → run
+  `python -m pytest tests/ -k db_integrity -v` → confirm `PRAGMA user_version` matches source →
+  record the result. A phase close without a restore result is NOT COMPLETE. An untested backup
+  is not a backup.
+- **DR-04** `docs/RUNBOOK_DR.md` declares RPO, RTO, responsible party, escalation path,
+  verification command. Single-athlete minimums (Architect-set defaults — revise via ADR; the
+  audit evidence establishes only that they must exist): RPO ≤ 24h, RTO ≤ 4h; if the current
+  procedure cannot meet them, the gap is a Tier-1 debt entry.
+
+### §8.11 Request Boundary Protection — RBP-01..05
+
+- **RBP-01** Maximum request body size enforced in middleware before body parsing → HTTP 413.
+  Default `API_MAX_BODY_SIZE_BYTES = 1_048_576` (`.env`-configurable). Enforce via Content-Length
+  pre-check **plus** a streamed-read cap (chunked requests without Content-Length are still
+  bounded). Why: unauthenticated memory exhaustion + bcrypt over unbounded passwords [B-13].
+  **Verify:** `tests/test_request_boundary.py` (T-PRA-11) sends oversized → asserts 413.
+- **RBP-02 (= INV-16 behavioral form).** Unconfigured trust = lockout, never open access:
+  `_is_trusted()` returns `False` and logs CRITICAL (`titan.telegram.no_trusted_chat_configured`)
+  whenever no trusted chat id is configured; strict equality otherwise. Implementation shape
+  lives in the fix PR and `tests/test_telegram_auth.py`, not here.
+- **RBP-03** Rate-limiter eviction is LRU under `RATE_LIMITER_MAX_KEYS` — arbitrary eviction lets
+  anonymous flooding displace known actors' state [B-13].
+- **RBP-04** Required key material — JWT keys, and `TITAN_GARTH_TOKEN_KEY` whenever Garmin
+  token storage is enabled — is validated at app construction/import and startup **fails** on
+  invalid/absent keys; never deferred to the lifespan hook, never silently optional
+  [F-4, F-10] (T-PRA-28).
+- **RBP-05** Uniform authentication failure responses (no 423-vs-401 account-existence oracle);
+  lockout keyed on hybrid IP+username; CSRF cookie set `HttpOnly` (the body copy serves clients)
+  [F-5, F-7] (T-PRA-28).
+
+### §8.12 Multi-Process Consistency — MPC-01 / MPC-02 / INV-20
+
+**MPC-01** The `DatabaseManager` `RLock` is **intra-process only**; `titan-api` and `titan-worker`
+are separate processes sharing one SQLite file — cross-container safety rests solely on WAL +
+`busy_timeout` (`DB_BUSY_TIMEOUT_MS` in `thresholds.py`, recommended 5000; never hardcoded).
+Any comment/doc attributing cross-container safety to the RLock violates v7.9 §12 (capability
+over-claim) [B-10].
+
+**MPC-02 — single-replica deployment invariant.** Until ADR-0044 (PostgreSQL) executes, the
+supported topology is exactly **one API replica + one worker**: rate-limiter state, degradation
+counters, scheduler state, and nonce caches are process-local by design, and a second replica
+silently breaks all four [G-2]. A compose-topology assertion (no `deploy.replicas` > 1; exactly
+one worker service) makes this mechanically checkable — in T-PRA-14's scope, so the rule
+satisfies §21(b) rather than standing as prose. Horizontal scale-out is gated on ADR-0044, whose
+**execution date is an open Architect scheduling decision** recorded in `TECHNICAL_DEBT.md`
+(T-PRA-14) — the audit verdict: it "needs a date, not just acceptance" [C-1, G-1].
+
+**INV-20** `busy_timeout` expiry (`SQLITE_BUSY` / "database is locked") is caught at the
+`DatabaseManager` write boundary and re-raised as `PersistenceFailure` (ADR-0020) — never
+swallowed or merely logged — so cross-container collisions surface as degraded mode, not silent
+data loss.
+
+### §8.13 Transactional Auditability — INV-22
+
+**What:** Every authorized state-changing surface — `/coach/overrides`, `/coach/export`,
+`/coach/athlete-data` (delete), any future authorized mutation, **and Telegram-initiated state
+changes (`/sync`, `/manual_entry`, `/override`)** — writes its audit record (1) **durably** and
+(2) **ordered before the externally visible effect**. Audit-write failure → the action fails
+closed (HTTP 5xx / command rejected, no mutation) and emits `audit_write_failure_total` at
+CRITICAL. Best-effort post-response auditing is forbidden.
+**Why:** the most authorization-sensitive actions are exactly the B-1 routes; an override whose
+audit record can vanish makes ADR-0042's "first-class audit" fiction and disputes unresolvable
+[B-11, F-8].
+**Verify:** `tests/test_audit_durability.py` (T-PRA-21) injects an audit-store failure on a
+mutating route and asserts: no state change, failure status, metric emitted.
+
+### §8.14 Worker Liveness & Watchdog — INV-23
+
+1. **Compose healthcheck:** `docker-compose.yml` defines `healthcheck:` for `titan-worker`,
+   driven by a heartbeat the worker writes (DB row or file) each cycle. **Heartbeat absence
+   beyond 2× the cycle interval is itself the unhealthy condition** (the worker's silence is the
+   alert) — orchestrator restarts/alerts [E-2].
+2. **Thread watchdog:** every long-lived daemon thread (Telegram poller, `CoachingScheduler`
+   loop) is supervised; on death → CRITICAL structured event + `worker_thread_died_total{thread}`,
+   then restart the thread or exit non-zero so the healthcheck takes over. Silent thread death is
+   forbidden [B-15].
+3. **Callback isolation:** scheduler per-athlete callbacks are wrapped — a raising callback is
+   logged + metered and the loop continues for other athletes [SA:m-3].
+4. **Singleton-lock recovery:** the `flock` single-instance lock has stale-lock/PID recovery — a
+   dead holder's lock never permanently wedges the worker [B-3].
+5. **Resource limits & log rotation:** `titan-worker` SHOULD declare memory/CPU limits and rotate
+   container logs; observed state is **recorded in the phase-close entry** (§16.3 check 5).
+
+**Verify:** `tests/test_worker_liveness.py` (T-PRA-22) asserts watchdog registration per declared
+daemon thread and that simulated thread death produces the event + metric. Compose `healthcheck:`
+presence and the limits/rotation observation are §16.3 check-5 phase-close items.
 
 ---
 
@@ -660,1528 +692,766 @@ Source: TITAN_HARDENING_FRAMEWORK_v1.md §7 + §11.
 
 | File | Purpose |
 |---|---|
-| `CLAUDE.md` | Full project overview, architecture, all engineering rules |
+| `CLAUDE.md` | Project overview / orientation (not authoritative for live state — §18) |
 | `TECHNICAL_DEBT.md` | Tiered debt register — consult before every task |
-| `titan/config/thresholds.py` | Single source of truth for all safety constants |
+| `titan/config/thresholds.py` | Single source of truth for safety constants + `CANONICAL_LOCK_CODES` |
 | `titan/config/evidence_registry.py` | Parameter provenance (STRONG / MODERATE / HEURISTIC) |
-| `titan/science/governance_engine.py` | 7-gate safety system — **architecture-locked** |
-| `titan/orchestration/daily_coach.py` | 12-step morning routine — orchestration entry point; `DegradedModeTracker`, `PersistenceFailure` sentinel |
-| `titan/ui/operator_console.py` | OperatorConsoleService (dashboard, session explorer, override) |
-| `titan/science/ml_safety.py` | ML kill-switch (`TITAN_ML_KILL_SWITCH` env) |
-| `titan/integrations/notification_gateway.py` | `NotificationGateway` — ordered fallback chain (Telegram → File) |
-| `tests/test_governance_mutation.py` | Boundary-ON/OFF tests per governance gate (T4-18 / §16.1) |
-| `tests/test_architectural_invariants.py` | AST-enforced structural constraints (T4-19) |
-| `.github/pull_request_template.md` | PR checklist with 3-gate status + architecture guard items (T4-20) |
-| `docs/adr/` | Architecture Decision Records (0006–0052, ~34 architectural ADRs) |
-| `docs/ROADMAP.MD` | Phase history (Phases 0–7 CLOSED; Phase 7.8 Hardening CLOSED 2026-03-06) |
-| `pyproject.toml` | pytest + ruff + mypy config |
+| `titan/science/governance_engine.py` | 7-gate safety system — **architecture-locked** (ADR-0009, §16.1) |
+| `titan/orchestration/daily_coach.py` | Morning-routine orchestration; `DegradedModeTracker`; `PersistenceFailure` |
+| `titan/integrations/notification_gateway.py` | Ordered alert fallback chain (Telegram → file) — sole alert path |
+| `titan/integrations/telegram_bot.py` | `_is_trusted()` fail-closed (INV-16 / RBP-02) |
+| `titan/api/dependencies.py` | `require_coach` vs `require_coach_athlete_access` (INV-11) |
+| `titan/api/main.py` | App factory — `/coach/*` routes use assignment-scoped deps; audit middleware (INV-22) |
+| `titan/core/database.py` | `DatabaseManager` — FK rollout (INV-14), version guard (INV-25), busy_timeout (INV-20), RLock boundary (§8.12) |
+| `titan/worker/__init__.py` | Worker daemon — DB-persisted dedup (INV-15), heartbeat/watchdog (INV-23) |
+| `scripts/titan_ci.sh`, `scripts/governance_lint.py`, `scripts/env_fingerprint.sh` | Canonical gate; governance-document sensors L1–L9 (T-PRA-37); environment fingerprint for v7.9 §1.5 records (T-PRA-38) |
+| `docs/governance/ledger.jsonl` | Governance telemetry (§2.4; T-PRA-39) |
+| `tests/test_governance_mutation.py` / `tests/test_architectural_invariants.py` | Gate-boundary + structural invariant enforcement (T4-18/T4-19) |
+| `tests/test_authorization_routing.py`, `tests/test_fail_closed_exception_paths.py`, `tests/test_worker_state_durability.py`, `tests/test_db_integrity.py`, `tests/test_worker_observability.py`, `tests/test_degradation_alert_chain.py`, `tests/test_audit_durability.py`, `tests/test_worker_liveness.py`, `tests/test_data_trust_enforcement.py`, `tests/test_request_boundary.py`, `tests/test_release_engineering.py` | INV-11..25 / RBP / RE Category-A enforcement (T-PRA series) |
+| `docs/RUNBOOK_ROLLBACK.md`, `docs/RUNBOOK_DR.md` | RE-03 / DR-04 — must exist, must be exercised |
+| `docs/audit/PRODUCTION_READINESS_AUDIT_2026-06-10.md` | Evidence record for §30 dispositions |
+| `docs/adr/` (0006–0059+), `docs/ROADMAP.MD`, `pyproject.toml` | ADRs; phase history; pytest/ruff config + canonical VERSION (RE-01) |
 
----
+## 10. Common Mistakes — Rule Index
 
-## 10. Common Mistakes — Do Not Repeat
+One line each; the cited rule is the law, this table is a lookup aid.
 
-| Mistake | Consequence |
+| Mistake | Rule |
 |---|---|
-| Shipping a change without creating or updating tests | Silent regression guarantee |
-| Creating a commit or PR before gates are green | Broken baseline delivered; next engineer inherits the failure |
-| Fixing multiple subsystems in one pass | Partial work delivered as "done"; debt reaccumulates |
-| Skipping `ruff check` / `pytest` binary gate | Incomplete fix shipped |
-| Using env overrides to bypass test failures | Root cause hidden; regression guaranteed to recur |
-| Broad `except Exception: pass` left in place | Silent data loss in governance inputs — flagged by T4-19 invariant test |
-| Hardcoding thresholds instead of importing from `thresholds.py` | Values diverge on recalibration — flagged by T4-19 invariant test |
-| Modifying `governance_engine.py` without ADR | Silent safety regression (ADR-0009 / §16.1) |
-| Adding a gate without boundary tests in `test_governance_mutation.py` | Boundary regressions undetectable (T4-18 / §16.1) |
-| Adding a lock code not in `_CANONICAL_LOCK_CODES` | Invariant test T4-19 will fail; add the code to both test and CLAUDE.md |
-| Sending Telegram notifications via direct bot call (bypassing `NotificationGateway`) | No fallback path; message lost on Telegram failure (T3-09) |
-| Failing to raise `PersistenceFailure` on DB rollback | Degraded mode never set; governance uses stale data (ADR-0020, T1-15) |
-| "Improving" adjacent code while fixing a bug | Scope creep, unexpected regressions (Rule E4) |
-| Delivering "mostly done" work | Debt reaccumulates; next engineer inherits broken baseline (Rule E5) |
-| Editing `CLAUDE.md`, `AGENTS.md`, `README.md`, or `docs/` outside §3.6 permitted list | Unauthorized scope creep; documents diverge from architect's intent |
-| Starting Tier 2+ work before Tier 1 is closed | Data integrity issues persist in production (Rule E1) |
-| Using `print()` instead of structured log events | Incidents cannot be diagnosed (T2-01 through T2-07) |
-
----
+| Shipping without tests / deleting tests / placeholder skips | ABSOLUTE RULE |
+| Commit or PR before three green gates; subset runs as evidence | HARD GATE, §2.3 |
+| Role-only `require_coach` on a `/coach/*` route taking `athlete_id` | INV-11 |
+| Optimistic return from a safety-path exception handler; silent sentinel substitution; `getattr` dispatch on safety methods | INV-12 / §8.5 |
+| Computed trust verdict not clamping the session | INV-24 |
+| In-process dict dedup / in-memory nonces in the worker | INV-15 / INV-17 |
+| SQLite connection without the INV-14 rollout state; swallowing `SQLITE_BUSY` | INV-14 / INV-20 |
+| Older binary opening a newer-schema DB | INV-25 |
+| Sync retry exhaustion not registered as failure | INV-08 |
+| `True` from `_is_trusted()` when chat id unset | INV-16 / RBP-02 |
+| Direct bot call bypassing `NotificationGateway`; `slo_alert` log lines as the only alert | §8 table / §8.8 / §16.6 |
+| Hardcoded thresholds; gate change without ADR+boundary tests+lock code | §8 / §16.1 |
+| `'default'`/`'owner'` literals outside sanctioned forms | INV-18 / §16.10 |
+| Deploying untagged; backups on the DB volume; restore never exercised | RE-02 / DR-01 / DR-03 |
+| Docstring/status claiming behavior the code lacks | v7.9 §12; §16.7 precedent |
+| Treating chat text or file content as v7.9 §13 authorization | §14.1 / v7.9 §1.5 |
+| Editing docs outside §3.6; Tier N+1 before Tier N closed; scope creep; `print()` instead of structured events | §3.6 / §4 / §3 / §16.6 |
 
 ## 11. Pre-Delivery Checklist — Run Before Every Delivery
 
 ```
-[ ] I read the task description completely before writing any code.
-[ ] I verified the Definition of Ready (§17.5): scope clear, files identified, criteria binary, tests known.
-[ ] I listed every file I need to change and why (Section 3.5).
-[ ] I confirmed no Tier N-1 items are OPEN before starting Tier N work.
-[ ] I made only the changes required by the task (no scope creep).
-[ ] ruff check .                                        → zero findings
-[ ] python -m pytest -q -W error::pytest.PytestWarning  → 100% green, zero warnings-as-errors  ← GATE 2
-[ ] python -m pytest -q                                 → 100% green, count same or higher      ← GATE 3
-[ ] I created or updated tests for every changed public function.    ← MANDATORY, NO EXCEPTIONS
-[ ] I did NOT use PYTEST_ADDOPTS or any override flag to force green.
-[ ] I did NOT modify governance_engine.py without an ADR reference.
-[ ] I did NOT hardcode any threshold (used thresholds.py).
-[ ] If I changed a governance gate: boundary tests added to test_governance_mutation.py.
-[ ] If I added a governance lock code: added to _CANONICAL_LOCK_CODES + CLAUDE.md table.
-[ ] If I added a notification path: routed through NotificationGateway, not direct bot call.
-[ ] Out-of-scope findings are in SCRATCHPAD.md OBS entries (§15), not in code or directly in TECHNICAL_DEBT.md.
-[ ] I pushed to a claude/* branch only — NOT to main or master.
-[ ] I opened exactly one PR using .github/pull_request_template.md and pasted the PR link.
-[ ] My PR description contains a Scope Declaration with gate status (Section 3.3).
-[ ] I marked the completed debt item ✅ RESOLVED with date + commit hash in its entry body (§12).
-[ ] I added a **Task learning:** block to the TECHNICAL_DEBT.md resolution entry (§12.1).
-[ ] I updated the tracking table at the bottom of TECHNICAL_DEBT.md (§12).
-[ ] If test count changed: I updated the historical snapshot in CLAUDE.md (§12).
-[ ] If a new ADR was written: I updated the ADR index table in CLAUDE.md (§12).
-[ ] I did NOT make any architectural decision without explicit architect approval (§13).
-[ ] I did NOT edit CLAUDE.md, AGENTS.md, README.md, or docs/ beyond what §3.6 and §12 explicitly permit.
-[ ] I ran scripts/check_scratchpad.sh at Step 0.5 and it returned exit 0.
-[ ] If any trigger condition (T-SCRATCHPAD-1 through T-SCRATCHPAD-5) was met during this task, I wrote an OBS entry in the correct queue (BLOCKING or NON-BLOCKING) and set STATUS: REVIEW_REQUESTED.
-[ ] I did NOT write proposed solutions in OBS entries — only engineering observations (facts, file:line refs, architectural question).
-[ ] I ran `ls <every file I claim to have created>` and confirmed each path exists. I did not rely on my own prior output as proof of existence.
+[ ] Task read fully; DoR verified (§17.5); every changed file listed with reason (§3.5)
+[ ] No lower-tier OPEN items skipped (§4); no scope creep
+[ ] Gate 1 ruff → 0 findings | Gate 2 strict → 100% | Gate 3 full → 100%, count same-or-higher
+[ ] Tests created/updated for every changed public function (ABSOLUTE RULE)
+[ ] No env overrides / suppression / undocumented skip-xfail used to reach green
+[ ] governance_engine.py untouched OR ADR ref + boundary tests + lock-code triple update (§16.1)
+[ ] Notifications/alerts via NotificationGateway only
+[ ] Out-of-scope findings routed per §3.4 (OBS written, STATUS set; no solutions in OBS)
+[ ] /coach/* route touched → assignment-scoped dependency confirmed (INV-11)
+[ ] Safety-path touched → fail-closed handlers confirmed (INV-12); trust clamp intact (INV-24)
+[ ] Worker/dedup touched → DB-persisted state confirmed (INV-15/17)
+[ ] New SQLite connection path → INV-14 rollout state respected; SQLITE_BUSY → PersistenceFailure (INV-20)
+[ ] Deployable artifact → git tag exists (RE-02)
+[ ] Pushed to claude/* only; exactly one PR with Scope Declaration + gate status (§3.3)
+[ ] ls-verified every file I claim to have created (paths exist; own prior output is not proof)
+[ ] Closure language absent from my report (Records Steward territory, §12.1)
+[ ] CLAUDE.md snapshot / ADR index updated only via §12.3–§12.4 mechanisms if triggered
 ```
 
-**All 30 boxes must be checked. A PR with any unchecked box is NOT DONE.**
-
----
-
-## 11.1 Implementation Phase Test Runs
-
-During active implementation (before any commit), targeted test runs are permitted:
-
-```bash
-pytest tests/test_specific_file.py
-pytest -k "test_name_pattern"
-ruff check path/to/file.py
-```
-
-Full gates (`scripts/titan_check.sh`) are mandatory:
-- Before every commit
-- Before every PR
-- After any gate failure + fix cycle
-
-Targeted runs during development are not a substitute for full gates. They are a development
-aid only. Reporting targeted-run results as gate evidence in a delivery report is a
-**HARD GATE violation** — see §HARD GATE for the full list of forbidden shortcuts.
+All boxes checked or the delivery is NOT DONE. (§11.1 of prior revisions is folded into §2.3.)
 
 ---
 
 ## 12. Debt Register Discipline — Mandatory on Every Task Close
 
-The debt register (`TECHNICAL_DEBT.md`) and the project overview (`CLAUDE.md`) are
-**living documents**. Every agent is responsible for keeping them current as a condition
-of task completion. Stale register entries are as harmful as stale code.
+### 12.1 On task closure
 
-### 12.1 On task closure (always)
+**Role split:** Codex delivers implementation evidence only (files, tests, gate results, branch,
+local hash, blockers) — never RESOLVED/DONE/CLOSED language. The **Records Steward** performs all
+canonical closure after **remote verification** (push completed, commit confirmed on remote):
+1. Debt entry: heading `🔴 OPEN` → `✅ RESOLVED <date>`; `**Status:**` line gains date + short
+   hash; `**Problem:**` → `**Original state (pre-fix):**` (past tense); add `**Resolution:**`
+   and a required `**Task learning:**` block (1–3 sentences of non-obvious insight, or
+   `No new engineering insight — routine implementation.`).
+2. Tracking table row → `✅ RESOLVED` + date. Both updates required; one without the other is incomplete.
 
-**Role split at closure (non-negotiable):** Codex delivers implementation evidence only. The Records Steward performs all canonical closure actions. RESOLVED marking, commit hash recording, and tracking table update are Records-Steward-only actions — Codex must not perform them.
+**Verify-first invariant:** no hash is recorded in any canonical document before remote
+verification succeeds. If verification fails: report branch + local hash, stop; an unverified
+candidate hash is never reused.
 
-**Codex closure deliverable (Codex-only):** When all three mandatory gates are green, Codex reports: files changed, tests added/updated, gate results (ruff / pytest strict / pytest full), branch name, local commit hash, and any blockers or stop reasons. Codex does not write RESOLVED, DONE, CLOSED, or any equivalent closure language.
+**Heavy tasks** (≥4 production modules, OR ≥2 of {orchestration, governance, output} surfaces,
+OR implementation+canonical-record risk in one pass, OR Architect-flagged): before Steward
+handoff Codex confirms (1) implementation exists at the claimed location, (2) all three gates
+green in the current run, (3) remote state verified. Any unconfirmed → evidence-only delivery,
+closure deferred. Non-push environments: always evidence-only; closure deferred to the Steward.
 
-**Canonical closure actions (Records Steward-only):**
+### 12.2 On out-of-scope finding
+Apply §3.4 (the single routing rule). Debt entries are created only after an Architect DEC.
 
-After remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote), the Records Steward performs:
-
-1. **Mark the debt entry** in `TECHNICAL_DEBT.md` (Records Steward action — not Codex):
-   - Change the heading status from `🔴 OPEN` to `✅ RESOLVED <YYYY-MM-DD>`
-   - Change the `**Status:**` line to: `✅ RESOLVED <YYYY-MM-DD>. Commit: <short-hash>.`
-   - Rename `**Problem:**` to `**Original state (pre-fix):**` and convert present-tense verbs to past tense.
-   - Add a `**Resolution:**` block summarising what was changed (modules, approach, test count at closure).
-   - Add a `**Task learning:**` block (required — one to three sentences) capturing what this task
-     revealed that is not obvious from the resolution itself. Focus on process, coupling, or failure-mode
-     insights that would help the next engineer avoid the same trap. If the task was completely routine
-     with no new insight, write: `Task learning: No new engineering insight — routine implementation.`
-
-2. **Update the tracking table** at the bottom of `TECHNICAL_DEBT.md` (Records Steward action — not Codex):
-   - Change the row for this item from `OPEN` to `✅ RESOLVED` and fill in the date column.
-
-Both updates are **required**. Updating one without the other is incomplete.
-
-**Verify-first invariant (non-negotiable):** No hash — closure hash, implementation hash, or any other commit reference — may be recorded in `TECHNICAL_DEBT.md` or any other canonical document before remote verification succeeds (i.e., `git push` has completed without error and the commit is confirmed present on the remote). If remote verification fails, stop and report the branch name and local commit hash. Every new implementation attempt starts fresh; a prior candidate hash that was not remotely verified must never be reused or recorded.
-
-**Heavy-task pre-close checkpoint (mandatory — not a new process phase, a pre-condition to Records Steward closure actions):**
-
-A task is **heavy** if any of the following is true:
-- It touches ≥4 production modules.
-- It crosses ≥2 of these 3 surfaces: orchestration / governance / output.
-- It includes both implementation surface and canonical-record risk in the same pass.
-- It is explicitly flagged as heavy by the architect in the task brief.
-
-For heavy tasks, Codex must explicitly confirm all three of the following before handing off to the Records Steward:
-
-1. Implementation exists at the claimed location — the file and module are present and correct.
-2. All three mandatory gates are green — current run (ruff + pytest strict + pytest full), not a cached or prior-session result.
-3. Remote state is verifiable — `git push` completed without error and the commit is confirmed present on the remote.
-
-If any of the three cannot be confirmed: Codex does not write closure language. Codex delivers branch name and local commit hash only. Canonical closure is deferred to the Records Steward after remote verification.
-
-**Non-push environment fallback:** In non-push environments, Codex does not write closure language. Codex delivers branch name and local commit hash only. Canonical closure is deferred to the Records Steward after remote verification.
-
-### 12.2 On out-of-scope finding (always)
-
-When you discover an issue outside the current task scope:
-
-1. Write a SCRATCHPAD OBS entry (§15) describing the finding. Set STATUS: REVIEW_REQUESTED.
-2. Do NOT add a `TECHNICAL_DEBT.md` entry directly — the architect creates or authorises debt
-   entries via a DEC (Decision entry in `SCRATCHPAD.md`).
-3. Do NOT fix it in the current task (§3.4 / Rule E4).
-
-**Routing invariant:** `TECHNICAL_DEBT.md` entries for out-of-scope findings are created only
-after an architect DEC. See `SCRATCHPAD.md §Canonical Routing Rule`.
-
-### 12.3 When test count changes
-
-After any task that adds or removes tests:
-
-- Update the **historical snapshot line** in `CLAUDE.md`:
-  > `**Historical snapshot:** N tests all green as of Phase X.Y / T<tier>-<id> close (<date>).`
-- Use the count from the final `python -m pytest -q` run of the current task.
+### 12.3 When test count changes — sensor, not memory
+The `CLAUDE.md` historical-snapshot line is **generated/updated by the repo updater script**
+(target: `scripts/update_claude_snapshot.py`, T-PRA-35) from the final Gate-3 run and verified by
+`tests/test_claude_md_integrity.py` (T4-22). Agents run the script; hand-typed counts are the
+audited drift source [D-1, K:PRA-16] and are forbidden once the script lands. Until then: update
+the line from the final `pytest -q` count in the same commit and expect T4-22 to verify it.
 
 ### 12.4 When a new ADR is written
+ADR authorship is Architect-only (RP-1). Integrating agent adds the ADR row to the CLAUDE.md
+Key Architectural Decisions table, matching existing row format exactly.
 
-ADR authorship is an architect privilege (see §13). When the architect writes a new ADR and
-the agent integrates it:
-
-- Add the new ADR to the **Key Architectural Decisions table** in `CLAUDE.md` with a one-line
-  description and status (e.g. `Accepted — <date>`).
-- The table entry must match the format of existing rows exactly.
-
-### 12.5 Debt-Clear Window — Mandatory Periodic Debt Reduction
-
-**Purpose:** Prevent `TECHNICAL_DEBT.md` from operating as a pure backlog parking lot.
-Periodic mandatory clearance ensures the register remains an active governance instrument,
-not a graveyard of deferred items.
-
-**Rule:** Every 5 tasks completed (counted at the tracking table), the architect MUST
-schedule at least 1 item from `TECHNICAL_DEBT.md` as the next assigned task, before any
-new feature or Phase work is assigned. The item selected must be:
-
-1. OPEN or PARTIALLY RESOLVED in the tracking table.
-2. From the lowest open Tier (T1 before T2, T2 before T3, etc.) — tier ordering (Rule E1) applies.
-3. Not blocked by an unresolved ADR or a higher-Tier prerequisite.
-
-**Counting:** The debt-clear counter resets to 0 after a debt item is resolved. The counter
-increments on every task close (§12.1), regardless of task type (feature, bug, test, process).
-
-**Enforcement signal:** At session start (§2.0 environment check), Codex MUST report the
-current debt-clear counter alongside the OPEN item count:
-
-```
-S2b. python -c "
-import subprocess, re
-result = subprocess.run(['grep', '-c', r'OPEN\|PARTIALLY RESOLVED', 'TECHNICAL_DEBT.md'],
-                       capture_output=True, text=True)
-print('Open debt items:', result.stdout.strip())
-"
-# Architect tracks the counter manually via the tracking table task-close dates.
-```
-
-**Exception:** If the only OPEN items are blocked (awaiting ADR or higher-Tier prerequisite),
-the window is suspended until at least one item becomes unblocked. The architect must note
-the suspension explicitly in the task assignment message.
-
-**Rationale:** Debt compounds silently. A register with 40 OPEN items and no closed items
-in the last 20 tasks is a governance failure — not a feature backlog. This rule enforces
-the discipline that technical debt is not optional work; it is load-bearing maintenance.
+### 12.5 Debt-Clear Window
+Every 5 task closes (counted from tracking-table close dates), the Architect schedules ≥1 debt
+item — lowest open tier, unblocked — before any new feature/phase work. Counter resets when a
+debt item resolves; it is **derived from the tracking table** (close dates since the last
+debt-item close), printed at SESSION_START (Step-3 final line) — never tracked from memory.
+If all OPEN items are blocked, the window suspends; the Architect notes the suspension in the
+task assignment. Why: a register that only grows is a governance failure, not a backlog.
 
 ---
 
 ## 13. Architecture Decision Boundary — Hard Prohibition
 
-Agents **execute tasks**. Architecture decisions belong to the architect.
+### 13.1 Prohibited without explicit Architect approval
+Exercising any §1.2 Reserved Power (RP-1..RP-10). §13.3 lists what is NOT architectural.
 
-### 13.1 Prohibited without explicit architect approval
+### 13.2 When a task requires an architectural decision
+STOP before writing code past the point. Report: the exact choice, the options (listed, none
+chosen), each option's architectural implication. Wait for explicit approval. Simultaneously
+write the §15 T-SCRATCHPAD-5 OBS. The correct response to architectural ambiguity is always
+**stop and ask**, never proceed-and-explain. (Contract-lane form: §14.1.)
 
-The following actions are **unconditionally prohibited** unless the architect has written an
-explicit instruction ("implement ADR-XXXX", "design a new module for X", "draft an ADR for Y"):
-
-| Prohibited action | Why |
-|---|---|
-| Authoring or amending an ADR | ADRs are immutable design contracts; incorrect ADRs corrupt the architecture history |
-| Adding new module boundaries or packages | Module topology is an architectural invariant |
-| Introducing a new abstraction layer | Abstractions have long-term cost; the architect must evaluate before adding |
-| Changing tier ordering or phase sequencing | Tier ordering enforces data-integrity-first discipline; agents cannot override it |
-| Modifying governance gate logic without an ADR | Safety regression (ADR-0009, §16.1) |
-| Changing DB schema topology (e.g. new tables, normalization) | Migrations are permanent; schema decisions require architectural sign-off |
-| Deciding between design alternatives on the agent's own judgement | Guessing on trade-offs leads to silent technical debt |
-
-### 13.2 What to do when an architectural decision is required
-
-If you hit a point where completing the task **requires** an architectural decision not
-covered by the task description or an existing ADR:
-
-1. **STOP immediately.** Do not write code past this point.
-2. **Report the decision point** precisely:
-   - What exact choice needs to be made
-   - What options you see (list them — do not pick one)
-   - Why each option has different architectural implications
-3. **Wait for explicit architect approval** before continuing.
-4. Do NOT infer, approximate, or "make a reasonable call" on architectural questions.
-
-> The correct response to an architectural ambiguity is always **stop and ask**, never **proceed and explain later**.
-
-### 13.3 What is NOT an architectural decision (agents may proceed)
-
-| Permitted without approval |
-|---|
-| Adding a column to an existing table via the versioned migration pattern *(see definition below)* |
-| Adding a new method to an existing class (within the class's existing responsibility) |
-| Adding tests for existing or new behaviour |
-| Adding constants to `thresholds.py` or `evidence_registry.py` |
-| Adding structured log events following the existing pattern |
-| Fixing a bug in existing logic without changing its contract |
-
-**Definition — additive column vs schema topology change:**
-- **Additive column** (permitted in §13.3): adding a nullable or default-valued column to an
-  existing table via the versioned migration pattern. The table structure, relationships, and
-  query patterns are unchanged.
-- **Schema topology change** (requires §14.2 justification): new tables, table removal,
-  normalization, denormalization, foreign-key graph changes, or index restructuring that alters
-  query patterns. These are permanent and require architectural sign-off.
-
-§13.3 does not permit schema topology changes. An agent may not use the "additive column"
-permission to justify creating a new table, renaming a table, or any other topology change.
-When in doubt: stop and ask.
+### 13.3 NOT architectural (proceed without approval)
+Additive column to an existing table via the versioned migration pattern (nullable or
+default-valued; structure/relationships/query patterns unchanged); new method within a class's
+existing responsibility; tests; constants in `thresholds.py`/`evidence_registry.py`; structured
+log events on the existing pattern; bug fixes within existing contracts. **The additive-column
+permission never covers a new table, rename, or any topology change** — when in doubt, stop and ask.
 
 ### 13.4 Staged Schema Change Protocol
+Three stages, each a separate PR, never combined:
+- **Stage 1 — Additive:** new columns (nullable or defaulted; no NOT NULL without default on
+  populated tables); new tables only under §13.3 Architect topology authority.
+- **Stage 2 — Migrative:** backfill; dual-write old+new; read old.
+- **Stage 3 — Restrictive:** drop old; switch reads; tighten constraints. Must reference the
+  merged Stage 1 + 2 PRs.
 
-All database schema changes must be executed in exactly three stages, each as a separate PR:
+**Downgrade requirement [B-8 family, K:PRA-08]:** every Stage-3 migration ships a paired, tested
+downgrade routine, or an explicit documented backup-restore reversal named in
+`docs/RUNBOOK_ROLLBACK.md`. One-way Stage-3 migrations are forbidden (they void RE-03).
+Downgrade routines are exercised at the phase boundary with RE-03 (§16.3 check 5). The runtime
+counterpart is INV-25 (§8.7): an old binary refuses a newer schema.
 
-**Stage 1 — Additive only:**
-Add new columns/tables. All new columns must be nullable or have defaults. No existing column
-may be dropped or renamed. No NOT NULL constraint on new columns without a default.
-
-**Stage 2 — Migrative:**
-Populate new columns from existing data. Update application code to write to both old and new
-structures. Read from old.
-
-**Stage 3 — Restrictive:**
-Remove old columns/tables. Switch reads to new structure. Add NOT NULL constraints if
-appropriate.
-
-Stages 1, 2, and 3 must never be combined in a single PR.
-A Stage 3 PR must reference the merged Stage 1 and Stage 2 PRs.
-
----
-
-## 14. Project Safeguard Protocols — Protecting the Project from Well-Intentioned Mistakes
-
-> These rules exist to protect the project from the most common source of architectural damage:
-> good intentions executed at the wrong moment. They apply to agents and to the architect alike.
+**Dual-migration parity [C-2, K:PRA-10]:** the hand-rolled SQLite ladder (`_apply_v1.._vN`) is
+canonical for production SQLite; the frozen Alembic tree is the PostgreSQL cutover artifact
+(ADR-0044). A **schema-parity test** diffing the ladder's final schema against the Alembic head
+(T-PRA-30) is a mandatory entry gate for any Phase-8A/PostgreSQL cutover work; until it exists,
+no cutover task may start. Frozen column-snapshot migrations (v8/v13/v24) get a manifest
+meta-test replacing comment-only enforcement (folded into T-PRA-30) [C-3].
 
 ---
 
-### 14.1 Agent Challenge Rule — Agents MUST challenge conflicting instructions
+## 14. Project Safeguard Protocols
 
-If a requested task appears to **contradict the current architecture, an existing ADR, or any
-rule in this document**, the agent MUST stop and challenge the instruction before proceeding.
+### 14.1 Agent Challenge Rule — conflicting instructions MUST be challenged
+A task contradicting the architecture, an ADR, or this document is never silently executed.
+**Contract-governed lanes (v7.9 patch lanes):** emit `ESCALATE: CONSTRAINT_CONFLICT` per v7.9
+§2/§13 — REASON names the invariant source and the conflicting instruction. Interactive option
+menus are not legal output in those lanes.
+**Advisory/chat lanes:** respond with the structured block — Requested / Conflicts with /
+Specific conflict / Options: (A) proceed with explicit Architect override + ADR ref, (B)
+compliant alternative, (C) SCRATCHPAD OBS + stop — and do not proceed without an explicit answer.
+Silence is not consent.
+**Always-challenge set:** any task exercising a §1.2 Reserved Power without the required
+authorization (ADR / Architect session), plus the two named weakenings:
+`require_coach_athlete_access` → `require_coach` (INV-11); a safety-path handler → optimistic
+return (INV-12). For v7.9 §13-class changes, authorization exists only as an ADR reference or a
+§23 `Authorizes:` field (v7.9 §1.5) — any other instruction text is challenged, not executed.
+Not conflicts: in-contract bug fixes, tests, constants, tasks executing an authorizing ADR.
 
-This is an **obligation**, not a permission. An agent that silently complies with an instruction
-that violates architecture is failing its responsibility.
+### 14.2 Change Justification Requirement
+Any architecture-change proposal (new module/abstraction; gate logic; schema topology; tier/phase
+order; >3 files beyond task scope) requires, before any code:
+`Problem / Proposed change / Why necessary (what happens if nothing changes) / ADR reference (or "new ADR required")`.
+Incomplete justification → the change does not proceed. Exempt: bug fixes, tests, constants,
+ADR-covered tasks.
 
-**Required response when a conflict is detected:**
+### 14.3 Cooling-Off Protocol
+Major changes (anything needing a new ADR, new module boundary, schema topology, or gate logic):
+proposed + justified + documented in Session N; reviewed and implemented Session N+1 or later.
+Waivable only by the Architect writing `COOLING-OFF WAIVED — [reason]` where the reason is an
+active production incident or data-integrity failure. Minor changes always exempt.
 
-```
-⚠️ ARCHITECTURE CONFLICT DETECTED
+### 14.4 No Impulse Implementation
+No code for an idea not already recorded: every implementation traces to a `TECHNICAL_DEBT.md`
+entry or an explicit Architect instruction in the current session. Mid-task ideas follow §3.4
+and stay out of the current task. `idea → code` is forbidden; the only path is §3.4's.
 
-Requested: [describe the instruction]
-Conflicts with: [ADR-XXXX / AGENTS.md §X / Rule EX / thresholds.py / ...]
-Specific conflict: [one sentence describing why they are incompatible]
-
-Options:
-  A) Proceed anyway — requires explicit architect override + ADR reference
-  B) Modify the request to [describe a compliant alternative]
-  C) Write a SCRATCHPAD OBS entry (§15) and stop — the architect routes it to TECHNICAL_DEBT.md via DEC
-
-How would you like to proceed?
-```
-
-The agent must **not** proceed without receiving an explicit answer. Silence is not consent.
-
-**What counts as a conflict (agent must challenge):**
-- A task that modifies `governance_engine.py` without an ADR reference
-- A task that adds a new module boundary, abstraction layer, or package
-- A task that starts Tier N+1 work while a Tier N item is OPEN
-- A task that hardcodes a threshold instead of using `thresholds.py`
-- A task that changes DB schema topology outside the versioned migration pattern
-- A task that changes tier ordering or phase sequencing
-- Any instruction that begins with "just quickly" or "let's just change" combined with an architectural element
-
-**What is NOT a conflict (agent proceeds normally):**
-- A task that fixes a bug within existing contracts
-- A task that adds tests
-- A task that adds constants to `thresholds.py` or `evidence_registry.py`
-- A task explicitly referencing an ADR that authorises the change
-
----
-
-### 14.2 Change Justification Requirement — Structured rationale before any architecture change
-
-Any proposal to change the architecture — whether from the agent or the architect — must include
-all three of the following before any code is written:
-
-```
-CHANGE JUSTIFICATION
-Problem        : [What is broken or insufficient with the current design?]
-Proposed change: [What specifically will change?]
-Why necessary  : [Why is the current design insufficient to solve the problem?
-                  What would happen if we did nothing?]
-ADR reference  : [ADR-XXXX — or "new ADR required" if none exists]
-```
-
-**If the justification cannot be completed in full, the change must not proceed.**
-
-This requirement applies to:
-- Any new module, package, or abstraction layer
-- Any change to governance gate logic
-- Any DB schema topology change
-- Any change to tier ordering or phase sequencing
-- Any change that affects more than 3 files beyond direct task scope
-
-It does NOT apply to:
-- Bug fixes within existing contracts
-- Adding tests
-- Adding constants
-- Executing a task that is already covered by an existing ADR
-
----
-
-### 14.3 Cooling-Off Protocol — Major changes must wait one session
-
-**Definition of "major architectural change":** any change that would require a new ADR,
-introduces a new module boundary, changes DB schema topology, or affects governance gate logic.
-
-**Protocol:**
-1. In Session N: the change is **proposed, justified (§14.2), and documented** (ADR draft or
-   `TECHNICAL_DEBT.md` entry with full justification). No code is written.
-2. In Session N+1 or later: the change is reviewed and, if still sound, **approved and implemented**.
-
-**Rationale:** 80% of architectural regressions originate from changes that seemed obviously
-correct in the moment but were not re-evaluated after reflection. A one-session pause costs
-nothing when the change is truly necessary, and catches nearly everything that is not.
-
-**Bypass condition:** The cooling-off period may be waived only when:
-- The architect explicitly states: "COOLING-OFF WAIVED — [reason]" in the session prompt, AND
-- The reason describes an active production incident or data integrity failure.
-
-Minor changes (bug fixes, test additions, constant additions) are always exempt.
-
----
-
-### 14.4 No Impulse Implementation Rule — Record before coding
-
-**No code may be written for an idea that is not already recorded as a task.**
-
-Specifically:
-- Every implementation must trace to a `TECHNICAL_DEBT.md` entry OR an explicit architect
-  instruction in the current session prompt.
-- If an idea arises mid-task ("while I'm here, I could also..."), it must be written as a
-  SCRATCHPAD OBS entry (§15) and left there. The current task continues unchanged. The
-  architect converts it to a `TECHNICAL_DEBT.md` entry via DEC if appropriate.
-- An agent must never begin implementing something "obvious" that was not scoped in the task.
-
-**The correct sequence:**
-```
-idea → SCRATCHPAD OBS entry → architect DEC → TECHNICAL_DEBT.md entry → task assigned → implementation
-```
-
-**Never:**
-```
-idea → immediate implementation
-```
-
-This rule catches what Rule E4 (no scope creep) does not: the impulse to implement a *new*
-idea rather than expanding the scope of a current one.
-
----
-
-### 14.5 Complexity Budget Rule — New abstractions require justification
-
-Before introducing any new abstraction (helper class, utility function, mixin, protocol,
-base class, decorator, or design pattern not currently present in the codebase):
-
-The agent must answer:
-1. **Is this abstraction used in three or more places right now?** If no → do not create it.
-2. **Does the abstraction make a future engineer's job easier or harder?** If unclear → do not create it.
-3. **Can the task be completed by adding to an existing module instead?** If yes → do that instead.
-
-If all three questions pass: record the abstraction proposal as a SCRATCHPAD OBS entry (§15)
-and wait for architect DEC. Do not add it directly to `TECHNICAL_DEBT.md` and do not implement
-inline. The canonical routing applies: SCRATCHPAD OBS → architect DEC → `TECHNICAL_DEBT.md` entry.
-
-This rule enforces §16.11 (Complexity Budget and Simplicity Gate) at the agent level.
+### 14.5 Complexity Budget Rule (agent-level §16.11)
+Before any new abstraction (helper class, mixin, protocol, base class, decorator, new pattern):
+used in ≥3 places now? makes the next engineer's job easier? impossible by extending an existing
+module? Any answer no/unclear → don't create it. All three yes → per §3.4, never inline
+implementation.
 
 ---
 
 ## 15. Engineering Scratchpad Protocol — Codex Obligations
 
-> **The scratchpad (`SCRATCHPAD.md`) is the structured communication channel from Codex to the
-> architect (Claude). It is NOT a to-do list, NOT a design document, and NOT a place for
-> solutions. It is a place for raw engineering findings that require an architectural decision.**
+`SCRATCHPAD.md` is the structured Codex→Architect channel: raw engineering findings needing an
+architectural decision. Not a to-do list, not a design doc, no solutions. A MODE: AUDITOR chat
+response and a Lane-A OBS are the same activity at two layers — AUDITOR is the in-chat form, the
+OBS the durable record; admitted-finding status (v7.9 §14) attaches to either. After writing an
+OBS set `STATUS: REVIEW_REQUESTED`; the in-progress subtask may finish; no new top-level task
+until the Architect clears to `IDLE`.
 
-Codex writes **Observation (OBS)** entries to `SCRATCHPAD.md` when the trigger conditions
-below are met. After writing, Codex sets the document status to `REVIEW_REQUESTED`. Codex
-**MAY** complete any current subtask already in progress at the moment of writing the OBS.
-Codex **MAY NOT** start any new top-level task until the architect clears the status to
-`IDLE`. See `SCRATCHPAD.md §Document Status` for the single authoritative in-flight work
-policy.
+**Mandatory triggers:**
 
-### 15.1 Trigger Conditions (MANDATORY — not optional)
+| Trigger | When | OBS must cover | Blocking? |
+|---|---|---|---|
+| T-SCRATCHPAD-1 Subsystem review | After each T4-01 burn-down subsystem | Violation counts/categories; 3+-file patterns; systemic signals; non-mechanical fixes | Stop before next subsystem |
+| T-SCRATCHPAD-2 Tier boundary | Before crossing Tier N → N+1 | Items closed + hashes; cross-tier coupling; re-prioritisation candidates; untracked safety risks | Stop before Tier N+1 (adds to §4, doesn't replace it) |
+| T-SCRATCHPAD-3 Pattern concentration | ≥3 out-of-scope OBS in one session sharing a module/failure mode | Related OBS ids; common failure mode; blast radius; the concrete architectural question | Current task may continue; no new top-level task |
+| T-SCRATCHPAD-4 Phase retrospective | A Phase declared CLOSED | Tier-1 root causes (one sentence each); findings added; untriaged items; signals the next phase's Tier-1 list is incomplete | Stop before next phase |
+| T-SCRATCHPAD-5 Decision point | Every §13.2 stop | file:line; options (factual, no preference); implication of each; nearest ADR; data-integrity risk of proceeding | Per §13.2 (both required) |
 
-#### T-SCRATCHPAD-1: Subsystem Engineering Review (T4-01 burn-down)
-
-**When:** After completing each subsystem in the T4-01 Ruff burn-down sequence.
-**Subsystems:** `titan/config/` → `titan/science/governance_*.py` → `titan/core/` →
-`titan/integrations/` → `titan/orchestration/ + titan/features/` → `titan/ui/`
-
-Codex MUST write an OBS entry covering:
-- How many violations were found and their categories (unused imports, bare-except, etc.)
-- Any pattern that appeared in 3+ files (e.g., repeated `except Exception: pass`)
-- Whether any violation suggests a deeper systemic issue (not just a lint problem)
-- Files where the fix required more than a mechanical change
-
-**Status change:** Set `STATUS: REVIEW_REQUESTED` after writing.
-**Codex must stop:** Do not begin the next subsystem until architect clears to `IDLE`.
-
-#### T-SCRATCHPAD-2: Tier Boundary Review
-
-**When:** Before crossing from Tier N into Tier N+1 work.
-
-Codex MUST write an OBS entry covering:
-- Count of items closed in Tier N and their commit hashes
-- Any Tier N items that revealed coupling to Tier N+1 concerns
-- Whether any OPEN items in TECHNICAL_DEBT.md should be re-prioritised based on what Tier N revealed
-- Any safety or data-integrity risk that emerged during Tier N execution that is not yet tracked
-
-**Status change:** Set `STATUS: REVIEW_REQUESTED` after writing.
-**Codex must stop:** Do not start any Tier N+1 task until architect reviews and clears.
-This is in addition to Rule E1 (tier ordering). It does not replace it.
-
-#### T-SCRATCHPAD-3: Pattern Concentration
-
-**When:** Codex writes 3 or more out-of-scope OBS entries (§3.4 / §12.2 / §15) to `SCRATCHPAD.md`
-within a single session, AND those findings share a common module, subsystem, or failure mode.
-
-Codex MUST write an OBS entry synthesising the pattern:
-- List the related OBS entry IDs (OBS-XXX references) from this session
-- Describe the common failure mode or architectural weakness they share
-- Estimate blast radius: how many modules are likely affected
-- Ask the concrete architectural question the pattern raises
-
-**Status change:** Set `STATUS: REVIEW_REQUESTED`.
-**Codex may continue** with the current task (this is non-blocking for the current subtask).
-Codex must NOT start a new top-level task until the architect clears it.
-
-#### T-SCRATCHPAD-4: Phase Retrospective
-
-**When:** When a Phase is declared CLOSED (e.g., "Phase 7.8 CLOSED") — either by the architect
-or by Codex confirming the last item in a phase sequence is resolved.
-
-Codex MUST write a retrospective OBS entry covering:
-- Every Tier 1 item closed in the phase: what the root cause was (one sentence each)
-- Every out-of-scope finding added during the phase (T-ref + one-line summary)
-- Whether any finding was added but not yet triaged by the architect
-- Any pattern in the Phase that suggests the next Phase's Tier 1 list is incomplete
-
-**Status change:** Set `STATUS: REVIEW_REQUESTED`.
-**Codex must stop:** Do not begin any item from the next Phase until architect clears.
-
-#### T-SCRATCHPAD-5: Architectural Decision Point (parallel to §13.2)
-
-**When:** Every time Codex invokes the §13.2 stop-and-report protocol (architectural decision
-required during implementation).
-
-Codex MUST simultaneously write an OBS entry with:
-- The exact code location where the decision is needed (file:line)
-- The two or more options Codex identified (factual, no preference expressed)
-- The architectural implication of each option (contract change / schema change / gate change / none)
-- Which existing ADR, if any, is closest to this decision point
-- Whether proceeding without a decision would cause a data-integrity risk
-
-**Status change:** Set `STATUS: REVIEW_REQUESTED`.
-The §13.2 stop protocol and the OBS entry are both required. Neither replaces the other.
-
----
-
-### 15.2 OBS Entry Rules
-
-1. **One OBS per trigger event.** Do not bundle multiple unrelated findings into one OBS.
-2. **Facts only.** No proposed solutions in OBS entries. No design sketches. No preferences.
-3. **Specific code references.** Every OBS must include at least one `file:line` reference.
-4. **Sequential IDs.** New OBS IDs always increment from the highest existing ID (including
-   REVIEWED entries in the archive). Never reuse an ID.
-5. **Follow the exact format** defined in `SCRATCHPAD.md`. Missing fields = incomplete OBS.
-6. **Urgency classification is mandatory:**
-   - `BLOCKING` — Codex cannot proceed without an architect decision
-   - `NON-BLOCKING` — finding is recorded for architect awareness; current task can continue
-
-### 15.3 What Codex MUST NOT Do
-
-- Do NOT write proposed solutions or design alternatives in OBS entries.
-- Do NOT write OBS entries for things already covered by an open TECHNICAL_DEBT.md entry.
-- Do NOT set status back to `IDLE` — only the architect (Claude) changes status to `IDLE` or `CLEARED`.
-- Do NOT interpret `CLEARED` as permission to skip future trigger conditions.
-- Do NOT treat the scratchpad as a substitute for `TECHNICAL_DEBT.md`. The scratchpad feeds
-  decisions; `TECHNICAL_DEBT.md` is the canonical task register.
-
-### 15.4 Pre-Delivery Checklist
-
-The three scratchpad items are incorporated directly into the §11 pre-delivery checklist
-(items 25–27). They appear there and are enforced there. No separate action needed here.
+**OBS rules:** one OBS per trigger event; facts only with ≥1 `file:line`; sequential never-reused
+IDs; exact `SCRATCHPAD.md` format; urgency `BLOCKING` or `NON-BLOCKING` mandatory.
+**Codex must not:** propose solutions/designs in OBS; duplicate open debt entries; set status to
+`IDLE`/`CLEARED` (Architect-only); treat `CLEARED` as skipping future triggers; use the
+scratchpad as a debt-register substitute.
 
 ---
 
 ## 16. Domain-Specific Engineering Contracts
 
-These contracts were distilled from process-rule ADRs (0021, 0022, 0024, 0025, 0028, 0029,
-0031, 0035, 0036, 0039, 0040) during the ADR triage of 2026-03-07. The original ADR files
-have been removed from `docs/adr/`; this section is now the canonical location for these rules.
-
----
+Distilled from process ADRs (0021/0022/0024/0025/0028/0029/0031/0035/0036/0039/0040; originals
+retired 2026-03-07) — this section is their canonical home.
 
 ### 16.1 Governance Evolution Protocol (ex-ADR-0021)
+A PR modifying `governance_engine.py` includes all three, or it is NOT DONE: (1) ADR reference;
+(2) `evidence_registry.py` diff (`_LAST_REVIEWED`, `_RATIONALE`); (3) boundary-ON and
+boundary-OFF tests in `tests/test_governance_mutation.py`. The file-head comment stating this
+triple requirement stays at `governance_engine.py:1`.
+A multi-pass governance revision (audit ladder over this document, the operating contract, or
+policy ADRs) is adopted only after (1) `governance_lint` is green on the merged text and (2) one
+fresh-context conformance read — no prior pass findings in context — emitting only STATUS: CLEAN
+or FINDING blocks over the merged documents. The ladder ends at convergence, not at pass count.
 
-Any PR that modifies `governance_engine.py` must include **all three** of the following:
-
-1. An ADR reference justifying the change (existing or new ADR).
-2. An `evidence_registry.py` diff — update the threshold's `_LAST_REVIEWED` date and `_RATIONALE`.
-3. A `tests/test_governance_mutation.py` diff — boundary-ON and boundary-OFF tests for the changed gate.
-
-All three are required. Providing only two is NOT DONE.
-
-The comment at `governance_engine.py:1` must read:
-
-```python
-# Gate parameters: see thresholds.py + evidence_registry.py.
-# To change gate logic: (1) write ADR entry, (2) update evidence_registry.py,
-# (3) update tests/test_governance_mutation.py. All three are required.
-```
-
-This is the machine-enforced replacement for the original comment-lock.
-
----
-
-### 16.2 Phase 8 Entry Gate (ex-ADR-0022)
-
-**No Phase 8 code may be written until all criteria below are TRUE (binary — all required).**
-
-| # | Gate Criterion | Verification |
-|---|---|---|
-| G1 | All `TECHNICAL_DEBT.md` Tier 1–4 items CLOSED | `grep -E "OPEN\|PARTIALLY" TECHNICAL_DEBT.md` → zero |
-| G2 | `tests/test_architectural_invariants.py` 100% green (T4-19 complete) | `python -m pytest tests/test_architectural_invariants.py -v` |
-| G3 | ADR-0018 Phase B accepted and scoped implementation plan documented | ADR-0018 status = "Phase B Accepted" |
-| G4 | ADR-0017 composition root audit: all fan-in paths documented | ADR-0017 status = "Phase B Documented" |
-| G5 | Schema version tracking active (`PRAGMA user_version`) bumped on every migration (T1-16) | `user_version > 0` |
-| G6 | Hot backup strategy operational (T1-17) | `python -m pytest tests/ -k backup -v` → green |
-| G7 | Full test suite green with count ≥ 1708 (Phase 7.9 baseline) | `python -m pytest -q` → 0 failures |
-| G8 | `docs/adr/0022-review-phase8-go.md` exists (architect sign-off document) | File exists |
-| G9 | ADR-0018 Phase B implemented: Effect Runner extracted as stateless decision function | Required for multi-athlete parallel DailyCoach execution |
-| G10 | ADR-0044 accepted and Phase 8A implementation plan documented | ADR-0044 already accepted. Also an ongoing Phase 8B prerequisite: the Phase 8A implementation plan must be current and active before any Phase 8B work begins. |
-| G11 | Phase 8 Simplicity Review conducted and output documented in `0022-review-phase8-go.md` | Even if output is "nothing to consolidate", review must have occurred |
-| G12 | FMEA PASS for feedback loops, auto-calibration, ML promotion, or LLM advisory layer | `§16.2-G12` — FMEA table present in `TECHNICAL_DEBT.md` under `## FMEA: Phase [X]` |
-
-**§16.2-G12 — FMEA PASS (Mandatory Before Phase Opening)**
-
-Applies to any Phase that introduces one or more of:
-- Feedback loops (output of one component becomes input of another in a closed loop)
-- Auto-calibration or self-modifying thresholds
-- ML model promotion from Stage 0 to any higher stage (ADR-0014)
-- LLM advisory layer (Phase 10 and beyond)
-
-Required output: completed FMEA table using `docs/templates/FMEA_TEMPLATE.md`, stored in
-`TECHNICAL_DEBT.md` under header: `## FMEA: Phase [X] — [date]`
-
-The FMEA must cover: all new components introduced in the Phase, top 3 highest-severity
-failure modes, their mitigations.
-
-Gate status: OPEN until FMEA table is present in `TECHNICAL_DEBT.md`.
-
-Phase 9 (multi-athlete calibration loops): G12 applies.
-Phase 10 (LLM advisory): G12 applies.
-
-**Enforcement:** Before any Phase 8 branch is created:
-1. The responsible engineer runs all verification commands above.
-2. Results are pasted into `docs/adr/0022-review-phase8-go.md`.
-3. The architect reviews and approves the go/no-go decision.
-
-A PR with Phase 8 code without `docs/adr/0022-review-phase8-go.md` is a **PROCESS VIOLATION**
-and must be closed without merge.
-
----
+### 16.2 Phase Entry Gate (generic) + FMEA
+**What:** No code for Phase N may be written until that phase's entry criteria — defined in
+`TECHNICAL_DEBT.md § Phase N — Entry Criteria & Scope` — are all TRUE (binary), the verification
+commands and results are pasted into the phase's go/no-go document under `docs/adr/`, and the
+Architect signs off. A PR with Phase-N code and no signed go/no-go document is a PROCESS
+VIOLATION, closed without merge. Status-grep template (correct form):
+`grep -cE '🔴 OPEN|PARTIALLY RESOLVED' TECHNICAL_DEBT.md`.
+**FMEA gate (mandatory, any phase — including Phase 13 and later):** a phase introducing feedback
+loops, auto-calibration/self-modifying thresholds, ML stage promotion (ADR-0014), or an LLM
+advisory layer is OPEN until a completed FMEA table (template `docs/templates/FMEA_TEMPLATE.md`)
+covering all new components and the top-3 severity failure modes + mitigations exists in
+`TECHNICAL_DEBT.md` under `## FMEA: Phase [N] — [date]`.
+**History:** the Phase-8-specific criteria G1–G11 (ADR-0022) were satisfied at Phase 8 close
+(2026-03-17, `docs/adr/0022-review-phase8-go.md`) and are retired from this document; G12 is the
+FMEA rule above, now phase-generic.
 
 ### 16.3 Documentation Consistency (ex-ADR-0024)
-
-**Canonical lock code location:** `CANONICAL_LOCK_CODES` is a Python `frozenset` in
-`titan/config/thresholds.py` — not in CLAUDE.md prose. When adding a new governance lock code:
-
-1. Add it to `CANONICAL_LOCK_CODES` in `thresholds.py`.
-2. Add it to `_CANONICAL_LOCK_CODES` in `tests/test_architectural_invariants.py`.
-3. The T4-21 CI check (`tests/test_documentation_consistency.py`) verifies the two sets match.
-
-**ADR index:** `docs/adr/README.md` must have exactly as many index rows as there are `.md`
-files in `docs/adr/` (excluding `README.md` itself). A mismatch fails the T4-21 CI check.
-
-**Evidence registry:** Every constant in `thresholds.py` must have a corresponding entry in
-`evidence_registry.py`. Adding a new threshold without an evidence entry fails the CI check.
-
-**CLAUDE.md anti-decay:** Any PR that modifies `CLAUDE.md` must:
-1. Be reviewed by the architect (not auto-merged).
-2. Pass `tests/test_claude_md_integrity.py` (T4-22 CI check).
-3. Include a diff showing exactly what changed and why.
-
----
+- Lock codes: add to `CANONICAL_LOCK_CODES` (`thresholds.py`) + `_CANONICAL_LOCK_CODES` (test);
+  T4-21 (`tests/test_documentation_consistency.py`) verifies the sets match.
+- ADR index: `docs/adr/README.md` row count == ADR file count (T4-21).
+- Evidence registry: every `thresholds.py` constant has an `evidence_registry.py` entry (CI).
+- CLAUDE.md changes: Architect-reviewed, pass `tests/test_claude_md_integrity.py` (T4-22), diff+reason included.
+- Governance documents (this file + the operating contract): `scripts/governance_lint.py`
+  checks L1–L9 in Gate 1 (T-PRA-37) — section labeling/monotonicity, reference integrity,
+  count consistency, revision-header ↔ changelog-head equality, RP single-sourcing, severity
+  vocabulary, qualified citations, clearance hygiene, governance-mass reporting.
+- **Phase-close audit-trail freshness (Records Steward, every phase boundary) — all six or the
+  close is NOT COMPLETE:**
+  1. CLAUDE.md test-count snapshot matches collection — **sensor: T4-22** (generator per §12.3,
+     T-PRA-35). Steward action: confirm the sensor is green, never re-derive by hand.
+  2. Every admitted finding from the governing audits has a §30 disposition, **and every ≥HIGH
+     TRACKED disposition cites a debt item that is OPEN, Tier 1/2, with a target phase ≤ the
+     next phase — or carries a fresh Architect re-disposition recorded at this close. A stale
+     TRACKED reverts its finding to undispositioned (v7.9 §14). Sensor: lint L8 (T-PRA-37).**
+  3. ADR status fields current (no stale `Proposed`) — **sensor: ADR-status linter (T-PRA-35
+     bundle)**; manual only until it lands.
+  4. README / DEPLOYMENT_GUIDE / CLAUDE.md agree on single- vs multi-athlete scope.
+  5. **Operational gate records (phase-close class):** `docs/RUNBOOK_ROLLBACK.md` +
+     `docs/RUNBOOK_DR.md` exist; recorded rollback-test result (RE-03) **including the Stage-3
+     downgrade exercise (§13.4)**; recorded restore-verification result with `integrity_check`
+     (DR-03); recorded INV-19b worker-metrics observability result; **`titan-worker`
+     `healthcheck:` present in compose** + resource-limits/log-rotation observation (INV-23).
+  6. Module-count ceiling: §16.11's stated value equals the T4-21 assertion — **sensor: T4-21
+     extension (T-PRA-35 bundle)**.
+  Checks 2/4/5 are judgment- or runtime-class and stay manual where unsensored; 1/3/6 are
+  sensor-backed — at phase close the Steward confirms green sensors instead of re-deriving facts.
 
 ### 16.4 Agent Context Continuity (ex-ADR-0025)
-
-The SESSION_START protocol (§2.0) is the primary mechanism. These rules supplement it:
-
-**S0 — Advisor-originated tasks:** If a task was sourced from an advisory AI session
-(ChatGPT, Gemini, Claude Chat), identify the recommendation explicitly and verify it does not
-contradict any open or closed ADR **before** running S1–S5.
-
-**CLAUDE.md integrity CI check (T4-22):** `tests/test_claude_md_integrity.py` asserts:
-- ADR count in CLAUDE.md matches actual files in `docs/adr/`.
-- Module count in CLAUDE.md matches actual `titan/` module count.
-- CLAUDE.md does not claim "CLOSED" for phases with open debt items.
-
----
+SESSION_START (§2.0) is primary. S0 supplement: a task sourced from an advisory AI session is
+checked against open/closed ADRs **before** SESSION_START proceeds. T4-22 asserts: CLAUDE.md ADR
+count and module count match reality; no phase claimed CLOSED with open debt items.
 
 ### 16.5 Multi-Agent Context Protocol (ex-ADR-0029)
-
-When working in a multi-agent environment (Codex + Claude Code + advisory tools):
-
-**Rule M1 — Advisor Context Gate:** Before giving any AI advisor a task touching architecture,
-provide the relevant `docs/context-snapshot.md` section and the applicable ADRs. Any recommendation
-that contradicts an existing ADR requires an explicit ADR amendment — not direct implementation.
-
-**Rule M2 — Implementation Pre-Task:** If a task originated from an advisor recommendation,
-verify it does not contradict any ADR before writing code (this is S0 in §16.4).
-
-**Rule M3 — Single Source of Truth:** Architectural decisions live exclusively in `docs/adr/`.
-ChatGPT/Gemini conversation history, Slack/Telegram messages, and GitHub issue comments are
-ephemeral. If an advisory session produces an architectural decision, capture it as an ADR
-before implementation begins.
-
-**Rule M4 — Conflict Resolution:** If two agents produce contradictory implementations:
-1. Stop both. Do not merge either PR until the conflict is resolved.
-2. The architect identifies which is consistent with the ADR register.
-3. The consistent one merges. The other is closed with an ADR reference.
-4. If neither is fully consistent, a new ADR resolves the conflict.
-
-The `docs/context-snapshot.md` file (generated by `scripts/generate_context_snapshot.py`, T4-28)
-provides a machine-generated snapshot of open debt items, latest ADRs, test baseline, and
-`CANONICAL_LOCK_CODES` for use in advisory sessions.
-
----
+M1: advisors get the relevant `docs/context-snapshot.md` section + applicable ADRs; advisor
+recommendations contradicting an ADR require an ADR amendment, never direct implementation.
+M2: advisor-originated tasks are ADR-checked pre-code (= S0). M3: architectural decisions live
+only in `docs/adr/` — chat/Slack/issue history is ephemeral; capture decisions as ADRs before
+implementation. M4: contradictory agent implementations → stop both; Architect merges the
+ADR-consistent one, closes the other with an ADR reference; if neither fits, a new ADR resolves
+it. `scripts/generate_context_snapshot.py` (T4-28) produces the snapshot.
 
 ### 16.6 Structured Log Sustainability (ex-ADR-0031)
-
-Every structured event emitted via `_emit_structured_event()` must carry a `severity` field:
-
-| Severity | Usage | Telegram delivery |
-|---|---|---|
-| `CRITICAL` | Governance hard stop; requires immediate operator action | Always |
-| `WARNING` | Soft downgrade, degraded mode, auth failure | Always |
-| `INFO` | Routine operational telemetry; no action required | Never (log file only) |
-| `DEBUG` | High-cardinality events; only at `LOG_LEVEL=DEBUG` | Never |
-
-**Alert deduplication:** The same `(event_type, lock_code)` pair is suppressed within
-`ALERT_DEDUP_WINDOW_HOURS = 20` (in `thresholds.py`). After `ALERT_PERSIST_SUMMARY_HOURS = 72`
-of continuous same condition, a summary message is re-sent.
-
-**Log rotation:** `RotatingFileHandler` with `LOG_MAX_BYTES = 10_485_760` (10 MB) and
-`LOG_BACKUP_COUNT = 5` (50 MB max). Both are overridable via `.env`.
-
-**New events:** Any new `_emit_structured_event()` call must include the `severity` parameter.
-Omitting it is a contract violation (T2-14).
-
----
+Every `_emit_structured_event()` carries `severity`: CRITICAL (hard stop; Telegram always),
+WARNING (soft downgrade/degraded/auth failure; Telegram always), INFO (telemetry; log only),
+DEBUG (high-cardinality; only at `LOG_LEVEL=DEBUG`). Omitting `severity` is a GATE VIOLATION
+(T2-14). Dedup: same `(event_type, lock_code)` suppressed within `ALERT_DEDUP_WINDOW_HOURS=20`;
+summary re-sent after `ALERT_PERSIST_SUMMARY_HOURS=72`. Rotation: `RotatingFileHandler`,
+`LOG_MAX_BYTES=10_485_760`, `LOG_BACKUP_COUNT=5` (env-overridable). **Alert-class conditions
+(including every `slo_alert`) are emitted as structured events with severity and therefore route
+through `NotificationGateway` — a JSON log line nothing consumes satisfies no alerting
+requirement** [E-3, T-PRA-31].
 
 ### 16.7 OutcomeTracker Integrity (ex-ADR-0035)
-
-The `governance_outcomes` table has four integrity guardrails. **Do not remove or bypass them.**
-Corrupted calibration data is a Tier 1 data integrity issue.
-
-1. **Independence flag:** `decision_was_followed INTEGER` (1=followed, 0=athlete overrode).
-   Override outcomes (`= 0`) are excluded from Phase 9 calibration training by default.
-   `override_outcome_exclusion INTEGER DEFAULT 0` marks rows excluded for survivorship bias.
-
-2. **Independence window:** `OutcomeTracker.record_outcome()` rejects outcomes where
-   `outcome_timestamp − decision_timestamp < OUTCOME_INDEPENDENCE_WINDOW_DAYS * 86400`.
-   `OUTCOME_INDEPENDENCE_WINDOW_DAYS = 2` is in `thresholds.py`.
-
-3. **Calibration diversity gate:** Before any Phase 9 calibration run, the dataset must contain:
-   ≥20% high-intensity decisions, ≥20% easy/recovery decisions, ≥10% HARD_STOP events.
-   If the gate fails: emit `calibration_diversity_insufficient` at WARNING and defer calibration.
-
-4. **Calibration circuit breaker:** No single calibration event may change any threshold by more
-   than `CALIBRATION_MAX_THRESHOLD_DELTA_PCT = 0.10` (10%). Minimum evidence set:
-   `CALIBRATION_MIN_OUTCOME_COUNT = 10`. Both constants are in `thresholds.py`.
-
-**ADR-0052 implementation status (2026-04-24):** Stages 1–4 complete. Stage 4 delivers `OutcomeTracker.run_calibration_cycle()` — the closed-loop path from `get_calibration_summary()` rates to `ThresholdAdapter.propose_adaptation()` calls; hard-stop gates permanently excluded. Tests: `tests/test_adr0052_stage4_calibration_cycle.py` (7 tests).
-
----
+`governance_outcomes` guardrails — never remove or bypass (corrupted calibration data is Tier 1):
+(1) independence flag `decision_was_followed` (overrides excluded from calibration by default;
+survivorship-bias marker column); (2) independence window —
+`record_outcome()` rejects outcomes younger than `OUTCOME_INDEPENDENCE_WINDOW_DAYS=2`;
+(3) calibration diversity gate (≥20% high-intensity, ≥20% easy, ≥10% HARD_STOP, else defer with
+WARNING); (4) circuit breaker — `CALIBRATION_MAX_THRESHOLD_DELTA_PCT=0.10`,
+`CALIBRATION_MIN_OUTCOME_COUNT=10` (constants in `thresholds.py`).
+**ADR-0052 status (honest, per audit):** calibration *machinery* exists (Stages 1–4); the
+adapter-bound engine is **discarded** in `coaching_pipeline.py` and `run_calibration_cycle()` is
+invoked only by tests → the closed loop is **NOT wired in production**; the system runs on
+conservative base thresholds (fail-safe). Acceptable interim state; describing it as a completed
+loop violates v7.9 §12. Wiring: TRACKED **T-PRA-18**. Coupling: INV-15 dedup is load-bearing here —
+a restart double-write corrupts the diversity-gate counts.
 
 ### 16.8 Science Model Versioning (ex-ADR-0036)
-
-Every module in `titan/science/` must declare at module level:
-
-```python
-MODULE_VERSION = "MAJOR.MINOR.PATCH"   # e.g., "1.0.0"
-```
-
-**Version increment rules:**
-
-| Change | Increment | ADR required? |
-|---|---|---|
-| Bug fix, no output change for same inputs | PATCH | No |
-| New optional parameter, backward-compatible | MINOR | No — CHANGES.md entry sufficient |
-| Same inputs produce different output | **MAJOR** | **Yes** |
-| Threshold constant change affecting gate semantics | MAJOR | Yes |
-
-**MAJOR version increment additionally requires:**
-1. New ADR: what changed, functions affected, whether existing `OutcomeTracker` data is still
-   valid for Phase 9 calibration, and if not — a migration or reset plan.
-2. `model_calibration_metadata.schema_version` updated for the affected model.
-3. Structured event `science_model_breaking_change` emitted at next DailyCoach startup.
-4. `algorithm_version_snapshot TEXT` column in `governance_outcomes` populated at decision time
-   (JSON: `{"hrv_engine": "1.0.0", "governance_engine": "2.1.0", ...}`).
-
-The CI check `tests/test_science_model_versions.py` (T4-30) asserts `MODULE_VERSION` exists
-on every science module and is a valid semver string. A module missing `MODULE_VERSION` fails CI.
-
----
+Every `titan/science/` module declares `MODULE_VERSION = "MAJOR.MINOR.PATCH"`. PATCH = bug fix,
+same outputs; MINOR = backward-compatible optional parameter (CHANGES.md entry); MAJOR = same
+inputs/different outputs or gate-semantic threshold change → **ADR required** + calibration-data
+validity statement (migration/reset plan if invalid) + `model_calibration_metadata.schema_version`
+bump + `science_model_breaking_change` event at next startup + `algorithm_version_snapshot`
+populated in `governance_outcomes` at decision time. CI: `tests/test_science_model_versions.py`
+(T4-30) asserts presence + valid semver.
 
 ### 16.9 Metric Lifecycle (ex-ADR-0039)
+States: Active (consumed by a gate/output/console — maintain in evidence registry), Under Review
+(computed, role unclear — Architect review within one phase), Deprecated (remove from
+computation, archive history, update registry; only after ≥1 full phase Under Review with
+confirmed no downstream dependency, documented in CHANGES.md). **New-metric gate (hard):**
+evidence-registry entry + explicit governance consumer + a test asserting the metric is consumed.
+Phase boundary: Architect classifies all Under Review metrics; proposes ≥1 deprecation per phase
+when count > 20.
 
-Every metric computed by a science engine has a lifecycle state:
-
-| State | Meaning | Required action |
-|---|---|---|
-| **Active** | Consumed by ≥1 governance gate, coaching output, or Operator Console payload | Continue; maintain in `evidence_registry.py` |
-| **Under Review** | Computed but governance role unclear or predictive value unvalidated | Flag in `metrics_lifecycle_report` event; architect review within one phase |
-| **Deprecated** | Confirmed redundant, superseded, or without validated governance role | Remove from computation; archive historical DB values; update evidence registry |
-
-**New metric gate (hard — no exceptions):** No new metric may be added to the computation path without:
-1. An `evidence_registry.py` entry specifying evidence quality and literature reference.
-2. An explicit governance role: which gate, coaching output, or Operator Console payload consumes it.
-3. A test asserting the metric is consumed (not just computed).
-
-A metric added without meeting all three criteria fails code review.
-
-**Phase boundary review:** At each phase boundary, the architect reviews all "Under Review" metrics
-and classifies each as Active or Deprecated. Proposes at least one Deprecation per phase if metric
-count exceeds 20.
-
-**Deprecation protocol:** A metric may only be deprecated after ≥1 full phase in "Under Review"
-state, with architect review confirming no downstream dependency, historical DB values preserved,
-and the deprecation documented in `CHANGES.md` and the evidence registry.
-
----
-
-### 16.10 Athlete Identity Invariant (ex-ADR-0040)
-
-**Effective from 2026-03-06 forward. Applies to new code only.** Existing violations are documented
-in the exemption register (module-level comment in `titan/core/database.py` and other exempt files).
-
-**Exempt modules** — status as of 2026-04-17:
-`titan/core/persistence.py` exemptions **RETIRED** (ADR-0033-L3-D-RESOLVED, 2026-04-17).
-All read methods now accept explicit `athlete_id: str = "owner"`. No remaining active
-ADR-0040-SINGLE-ATHLETE-SHORTCUT exemptions in `persistence.py`.
-
-**Rule A40-1 — No new implicit athlete queries:** New database access methods must accept
-`athlete_id: str = "default"` as a parameter. The parameter must exist in the signature.
-
-**Rule A40-2 — No new cross-athlete calibration defaults:** New science module constants
-introduced as calibration defaults must be annotated:
-```python
-HRV_REFERENCE_BASELINE_MS = 55.0   # ADR-0040: single-athlete default; Phase 9 per-athlete
-```
-
-**Rule A40-3 — No new test fixtures without athlete_id:** New test fixtures that create athlete
-data must include `athlete_id = "test_athlete_01"` (or similar).
-
-**Rule A40-4 — New schema columns require athlete_id:** Any new table or column added after
-2026-03-06 that stores per-athlete data must include `athlete_id TEXT NOT NULL DEFAULT 'default'`.
-
-**Exempt modules** must carry this comment at module level:
-```python
-# ADR-0040-SINGLE-ATHLETE-SHORTCUT: This module assumes a single active athlete.
-# Multi-athlete isolation is deferred to Phase 9 (ADR-0033 Layer 3, T5-07).
-# Do NOT introduce new structural coupling that would be harder to isolate later.
-```
-
-The CI check `tests/test_athlete_isolation_invariant.py` (T4-31) enforces Rules A40-1 to A40-4
-for non-exempt modules.
-
----
+### 16.10 Athlete Identity Invariant (ex-ADR-0040; new code from 2026-03-06)
+**Canonical value: `'default'`, exposed as `TITAN_DEFAULT_ATHLETE_ID`.**
+- A40-1: new DB access methods accept `athlete_id: str = "default"` in the signature.
+- A40-2: new cross-athlete calibration defaults annotated
+  `# ADR-0040: single-athlete default; per-athlete in the multi-athlete activation phase`.
+- A40-3: new athlete-data test fixtures set an explicit `athlete_id` (e.g. `"test_athlete_01"`).
+- A40-4: new per-athlete tables/columns include `athlete_id TEXT NOT NULL DEFAULT 'default'`.
+The literal `'default'` is permitted **only** in the A40-1 signature form and the A40-4 DDL form;
+everywhere else use the constant (INV-18). **Recorded drift:** `persistence.py` read methods were
+standardized on `athlete_id: str = "owner"` (ADR-0033-L3-D, 2026-04-17) — that value conflicts
+with the canonical `'default'` and is normalized as part of the INV-14 reconciliation migration
+(T-PRA-04 scope) [B-9]. Exempt single-athlete modules carry the module-level
+ADR-0040-SINGLE-ATHLETE-SHORTCUT comment (phase reference per §16.12 register, not a hardcoded
+phase number). CI: `tests/test_athlete_isolation_invariant.py` (T4-31).
 
 ### 16.11 Complexity Budget (ex-ADR-0028)
+The `titan/` module ceiling is enforced by
+`tests/test_documentation_consistency.py::test_module_count_within_budget`; **the asserted value
+in that test is canonical, and this section MUST state that exact number** (§16.3 check-6 sensor).
+Stated ceiling: **71** <!-- ARCHITECT: confirm equals the test constant before commit (T-PRA-12) -->.
+Audit-vs-test value reconciliation (the stale 80 in the 2026-06-10 audit) lives in T-PRA-12 — a
+debt item, not a second live value here; until reconciled the test assertion governs. Raising the
+ceiling: T4-27-C protocol — the Architect confirms the new value in the task's acceptance criteria
+**before** implementation (RP-8); the test constant updates in the same commit; retroactive
+corrections are PROCESS VIOLATIONS. ADR retirement at phase close (`Superseded by [NNNN]`, never
+deleted). Phase-boundary Simplicity Review: documented answer to "what can be merged/simplified/
+removed without losing capability" citing the current lint L9 governance-mass line; a phase that
+raises total mass states which rule was evaluated for retirement and why it stays.
 
-The total `titan/` module count (excl. `__init__`/`__main__`) must not exceed **71**. If a phase
-would push the count above 71, the architect must either retire/merge existing modules before adding
-new ones, or explicitly revise the ceiling in a new ADR update.
+### 16.12 Phase Status Register (authoritative; update on every open/close)
 
-The CI check in `tests/test_documentation_consistency.py` (T4-21/T4-27) asserts this ceiling:
-```bash
-python -c "
-import pkgutil, titan
-mods = list(pkgutil.walk_packages(titan.__path__, 'titan.'))
-real = [m for m in mods if '__' not in m.name]
-assert len(real) <= 71, f'COMPLEXITY BUDGET EXCEEDED: {len(real)} modules'
-"
-```
+| Phase | Status | Date |
+|---|---|---|
+| 0–7.9 | CLOSED | 2026-03-08 |
+| 8 | CLOSED | 2026-03-17 (ADR-0022 sign-off) |
+| 9–11 | CLOSED | 2026-04-20 |
+| 12 | CLOSED | 2026-04-27 (close audit PASS) |
+| 13 | OPEN | 2026-04-28 — entry criteria in `TECHNICAL_DEBT.md §Phase 13` |
 
-**T4-27-C module ceiling update protocol (feature additions):**
-1. If a task adds one or more new `titan/` modules as a deliberate structural choice, the implementing engineer must update the module ceiling in `tests/test_documentation_consistency.py::test_module_count_within_budget` in the same commit.
-2. Before implementation begins, the architect must confirm the new ceiling value explicitly in that task's acceptance criteria.
-3. Ad hoc ceiling corrections after the fact are a process violation.
-
-This protocol is sourced from `TECHNICAL_DEBT.md` item **T4-27-C** and is mandatory for all accepted feature additions that intentionally introduce new structural modules.
-
-**ADR retirement:** At each phase close, update any ADR marked `Implemented` that is fully
-superseded by a later ADR to `Superseded by [NNNN]`. Do not delete ADRs — the history is valuable.
-
-**Phase boundary Simplicity Review:** Before any phase begins, the architect performs a Simplicity
-Review: "Which existing modules could be merged, simplified, or removed without reducing capability?"
-Output is documented (even if the answer is "nothing to consolidate"). This review is part of the
-Phase 8 Entry Gate (G11 in §16.2).
-
----
-
-### 16.12 Phase Status Register
-
-Current phase status (authoritative record; update on every open/close):
-
-| Phase | Status | Date | Notes |
-|-------|--------|------|-------|
-| Phases 0–7.9 | CLOSED | 2026-03-08 | All items resolved |
-| Phase 8 | CLOSED | 2026-03-17 | ADR-0022 sign-off; all G1–G12 met |
-| Phase 9 | CLOSED | 2026-04-20 | See ROADMAP.MD |
-| Phase 10 | CLOSED | 2026-04-20 | See ROADMAP.MD |
-| Phase 11 | CLOSED | 2026-04-20 | See ROADMAP.MD |
-| Phase 12 | CLOSED | 2026-04-27 | Phase 12 close audit PASS |
-| Phase 13 | OPEN | 2026-04-28 | Entry criteria in TECHNICAL_DEBT.md §Phase 13 |
-
-**Phase 13 entry gate:** All criteria in `TECHNICAL_DEBT.md § Phase 13 — Entry Criteria & Scope`
-must be met before any Phase 13 implementation begins.
+Inline "Phase N" mentions in rule bodies are **historical** (the phase a rule originated in) and
+never denote the live phase; `docs/ROADMAP.MD` + this register govern live state (reconciliation
+of stale labels: T-PRA-12). **Clearance reminder:** a phase close is a CLEARANCE VERDICT under
+v7.9 §14 — closing a phase over admitted ≥HIGH findings without dispositions (the Phase-26
+TODO-shipped and Phase-27 "B1 RESOLVED" patterns [C-5, K:PRA-16]) is HARD FORBIDDEN.
 
 ---
 
-## §17 Phase 8 Per-Item Workflow Standard
+## §17 Per-Item Workflow Standard (Phase 8+)
 
-> **This section is a hard process rule, not a guideline.**
-> Every Phase 8 sprint item — without exception — must follow one of the two canonical sequences
-> below. No ad-hoc variations, no step omissions, no implicit assumptions.
+Every item follows exactly one canonical path — no ad-hoc variants, omissions, or implicit steps.
 
-### 17.1 Path Selection (architect decides before Codex starts)
+### 17.1 Path selection (Architect, before Codex starts)
+PILOT-01 applicability met AND Architect wrote `APPROVED` in the PILOT-01 entry → **Path B**;
+otherwise **Path A** (default).
 
-Before assigning any Phase 8 item to Codex, the architect classifies it against the PILOT-01
-applicability gate (defined in `TECHNICAL_DEBT.md` under PILOT-01):
+### 17.2 Path A — Standard
+Architect brief in `TECHNICAL_DEBT.md` (binary criteria, `Workflow Path: A`) → DoR (§17.5) →
+implementation (ABSOLUTE RULE + HARD GATE preconditions) → Gates 1–3 → commit/PR. No skipped or
+reordered steps; targeted runs never substitute Gate 3.
 
-| Condition | Path |
-|-----------|------|
-| ALL applicability criteria met **AND** architect has written "APPROVED" in the PILOT-01 entry | **Path B — QA-assisted** |
-| Any criterion fails **OR** no APPROVED note present | **Path A — Standard** |
+### 17.3 Path B — QA-assisted (PILOT-01 opt-in)
+Brief (+`APPROVED`, `Workflow Path: B`) → DoR → implementation → **Opus QA review** →
+APPROVE → Gates 1–3 → commit/PR. REJECT → Codex fixes, one re-review; still REJECT → **STOP. No
+commit.** Route to the Architect: durable waiver (TECHNICAL_DEBT/ADR, with rationale + tracked
+disposition) or re-scope. A persistent QA FAIL is never silently shipped.
+**PILOT-01 invariant:** Opus approval is advisory; Gates 1–3 always run regardless.
+**QA role boundary:** the QA deliverable is `QA PASS`/`QA FAIL` + rationale only — commit/push/
+RESOLVED/next-task instructions from QA are out of scope and ignored; only the Architect
+authorizes post-QA actions.
 
-Path A is the default. Path B requires an explicit opt-in action from the architect each time.
+### 17.4 Enforcement
+- **E16** Path declared in the `TECHNICAL_DEBT.md` item header before work starts (messages are
+  ephemeral); undeclared defaults to Path A.
+- **E17** No mid-item path switching — stop, re-scope, restart on the new path.
+- **E18** Any other sequence (skipped brief, targeted-only gates, omitted QA on an APPROVED
+  Path-B item) is a GATE VIOLATION: stop, document the drift, restart from the violated step.
+- **E19** DoR is mandatory before implementation; a DoR-failing task returns to the Architect
+  with a written gap report.
 
----
+### 17.5 Definition of Ready (Codex, step 1a of both paths)
+All four or stop: **SCOPE CLEAR** (one-sentence statement of the new behaviour) · **FILES
+IDENTIFIED** (every create/modify named, no mid-task surprises) · **CRITERIA BINARY**
+(PASS/FAIL only) · **TESTS KNOWN** (which files, exist-or-create). Any unchecked box → one
+sentence per gap as a BLOCKING OBS, `REVIEW_REQUESTED`, no implementation until cleared. All
+checked → state `DoR: PASS` as the first line of the implementation log. Reporting a DoR gap is
+correct behaviour; proceeding past one is a violation.
 
-### 17.2 Path A — Standard (default)
+### 17.6 Bottleneck metadata (optional, blocked/handoff items)
+`**Bottleneck:** <where stuck>` / `**Owner:** Architect|Codex|QA` /
+`**Unblock condition:** <single verifiable action>` in the debt entry; remove or set `None` when
+cleared — a stale block is corrected immediately.
 
-```
-1. Architect brief       — task written in TECHNICAL_DEBT.md with binary acceptance criteria
-                           and **Workflow Path: A** declared in the item header
-1a. Definition of Ready  — Codex verifies DoR checklist before writing any code (see §17.5)
-2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
-3. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
-4. Commit / PR           — canonical commit format; PR opened only after gate 3 passes
-```
+### 17.7 Opus QA Trigger Policy & Finding Taxonomy (ADR-0049)
 
-No step may be skipped. Steps 3–4 may not be reordered. "Targeted tests pass" is not a
-substitute for step 3 (see §HARD GATE — Forbidden validation shortcuts).
+Not triggered by default; Path A proceeds without Opus. **Triggers (Architect states one):**
+governance safety logic modified/added; a science engine feeding the 7-gate pipeline changed; a
+governance-facing threshold added/altered; explicit `APPROVED` in the PILOT-01 entry.
+**Non-triggers:** centralisation-only wiring; records/doc passes; audit-only; debt-only without
+implementation handoff; any Path A item lacking `APPROVED`.
 
----
+**Finding taxonomy (ADR-0049):** Category A = machine-checkable → belongs in CI, never re-checked
+by Opus; any Category-A finding in an Opus verdict is evidence of a CI gap → write the CI test
+(T5-37) with a paired known-bad meta-test (T5-38). Category B = judgment-required → Opus scope.
+Multi-pattern migration lanes use the Hybrid Sequential Model (ADR-0049 §7): audit pass →
+sequential one-pattern units → single final closure; no child issues or units before the audit
+pass is recorded; T5-37/38 stay OPEN until the finalized list completes.
 
-### 17.3 Path B — QA-assisted (PILOT-01 opt-in only)
-
-```
-1. Architect brief       — task written in TECHNICAL_DEBT.md; PILOT-01 APPROVED note added;
-                           **Workflow Path: B (APPROVED)** declared in the item header
-1a. Definition of Ready  — Codex verifies DoR checklist before writing any code (see §17.5)
-2. Codex implementation  — code + tests written per §ABSOLUTE RULE and HARD GATE preconditions
-3. Opus QA review        — test quality review (scope bounded in TECHNICAL_DEBT.md PILOT-01)
-     ├─ APPROVE  →  proceed to step 4
-     └─ REJECT   →  Codex fixes, one re-review; if still REJECT, proceed to step 4 anyway
-4. Mandatory gates       — ruff check . → pytest strict → pytest full (all three, all green)
-5. Commit / PR           — canonical commit format; PR opened only after gate 4 passes
-```
-
-**PILOT-01 invariant (non-negotiable):** Opus QA approval is advisory only. Step 4 is always
-required, regardless of Opus QA outcome. Opus QA approval does NOT satisfy the mandatory gates.
-
-**QA role boundary (non-negotiable):** The QA reviewer's sole deliverable is a verdict: `QA PASS` or `QA FAIL` with rationale. The QA reviewer does **not** instruct commit, push, mark-RESOLVED, or next-task actions — those decisions belong exclusively to the Architect. A QA suggestion to "commit and push" or "mark RESOLVED" is out of role scope and must be ignored. Only the Architect may authorize post-QA actions.
-
----
-
-### 17.4 Enforcement Rules
-
-- **E16 — Path declared before start:** The architect must select Path A or Path B and record
-  it in the `**Workflow Path:**` field of the TECHNICAL_DEBT.md item before Codex begins work.
-  `TECHNICAL_DEBT.md` is the sole canonical record — a path stated only in the task assignment
-  message is not valid (messages are ephemeral; debt entries are version-controlled).
-  A task without a declared path defaults to Path A.
-
-- **E17 — No mid-item path switching:** Once an item has started on Path A, it cannot switch
-  to Path B (or vice versa) mid-implementation. If the architect determines a path change is
-  needed, the item must be stopped, re-scoped, and restarted from step 1 on the new path.
-
-- **E18 — Workflow drift is a process violation:** Delivering an item via any sequence other
-  than Path A or Path B (e.g., skipping the architect brief, running gates only for targeted
-  tests, omitting the QA step on an APPROVED Path B item) is a process violation with the same
-  severity as a HARD GATE failure. Stop, document the deviation in `TECHNICAL_DEBT.md`, and
-  restart from the violated step.
-
-- **E19 — DoR gate is mandatory before implementation:** Codex must complete the Definition of
-  Ready checklist (§17.5) before writing any implementation code for a Phase 8+ item. A task
-  that fails the DoR check must be returned to the architect with a written gap report rather
-  than proceeding with incomplete information.
-
----
-
-### 17.5 Definition of Ready (DoR) — Pre-Implementation Gate
-
-**Who:** Codex (Implementation Engineer) — runs this gate after reading the architect brief,
-before writing any implementation code.
-
-**When:** Step 1a of Path A and Path B (both paths).
-
-**What:** Codex answers ALL four questions below. If any answer is NO, Codex stops and reports
-the gap to the architect before proceeding.
-
-```
-DoR CHECKLIST — required before any implementation begins
-─────────────────────────────────────────────────────────
-[ ] SCOPE CLEAR       — The task description unambiguously defines what must change.
-                        I can state in one sentence exactly what new behaviour I must produce.
-
-[ ] FILES IDENTIFIED  — I can name every file that will be created or modified.
-                        No file will be modified as a surprise mid-implementation.
-
-[ ] CRITERIA BINARY   — The acceptance criteria are testable and binary (PASS / FAIL).
-                        There is no criterion that requires subjective judgement to evaluate.
-
-[ ] TESTS KNOWN       — I know which test file(s) will cover the new behaviour,
-                        and whether they exist already or need to be created.
-```
-
-**If any box cannot be checked:** Codex writes one sentence per unchecked item describing the
-gap and appends it to the SCRATCHPAD.md as a BLOCKING OBS with status `REVIEW_REQUESTED`.
-Codex does **not** begin implementation until the architect clears the gap.
-
-**If all four boxes can be checked:** Codex states `DoR: PASS` in the implementation brief
-(first line of the implementation session log) and proceeds to step 2.
-
-A DoR gap reported via SCRATCHPAD.md is non-punitive — it is the correct behaviour. Proceeding
-past an unresolved DoR gap (and discovering the issue mid-implementation) is a process violation.
-
----
-
-### 17.6 Bottleneck / Owner / Unblock — Optional Metadata for Complex Items
-
-For items that involve multi-role handoffs or are blocked mid-execution, the architect may add
-an optional `**Bottleneck:**` block to the TECHNICAL_DEBT.md entry to make the flow state
-immediately visible. This is **not** required for routine items; it is a diagnostic tool for
-items that are blocked or at a handoff point.
-
-**Format (add to the TECHNICAL_DEBT.md entry when a bottleneck exists):**
-
-```
-**Bottleneck:** <one-sentence description of where the flow is stuck>
-**Owner:**      <role responsible for unblocking: Architect | Codex | QA>
-**Unblock condition:** <the single verifiable action that clears this bottleneck>
-```
-
-**Examples:**
-
-```
-**Bottleneck:** QA verdict pending — D1 implementation awaiting Opus QA review (Path B step 3)
-**Owner:**      QA
-**Unblock condition:** QA PASS or QA FAIL verdict written in the task entry
-
-**Bottleneck:** Gate 3 (python -m pytest -q) failing — 3 tests RED in test_persistence.py
-**Owner:**      Codex
-**Unblock condition:** Full canonical test suite 100% green with count ≥ previous baseline
-
-**Bottleneck:** ADR decision required — D2 schema topology has two options (see OBS-008)
-**Owner:**      Architect
-**Unblock condition:** Architect writes DEC-008 and designates the chosen schema topology
-```
-
-The Bottleneck block must be removed (or updated to `**Bottleneck:** None`) when the item is
-no longer blocked. A stale Bottleneck block is misleading and must be corrected immediately.
+**Opus reviews (Category B only):** tests targeted at acceptance criteria; boundary coverage per
+brief; regression-passable gaps; failure-mode-appropriate design; parametrize/property use where
+warranted. **Out of scope:** re-running Gates 1–3; architecture/ADRs; style (ruff); performance;
+migrated Category-A patterns. **Verdicts:** `QA PASS` (advance to gates) / `QA FAIL` (listed gaps;
+Codex fixes; auto re-invocation covering only the listed gaps — no new trigger needed). Persistent
+FAIL handling: §17.3.
 
 ---
 
 ## §18 Canonical Source Map
 
-The following hierarchy defines which document is authoritative for each category of
-information. When two documents conflict, the document listed as canonical for that
-category wins.
+| Category | Canonical source | Other sources |
+|---|---|---|
+| Task status, sequencing, open/closed state | `TECHNICAL_DEBT.md` | All else = snapshots |
+| Process rules, workflow, enforcement | **`AGENTS.md`** (this document) | `CLAUDE.md` rules section = index; AGENTS.md wins |
+| Architecture decisions | `docs/adr/` | CLAUDE.md ADR index = summary |
+| Backend interface contract (SQLite/PostgreSQL parity) | `docs/PARITY_MATRIX.md` | Inline notes = summaries |
+| Orientation, snapshots, module inventory | `CLAUDE.md` | Read-only; not authoritative for live state |
+| Patch-level LLM behavior | TITAN Operating Contract v7.9 — Architect-owned (RP-7); revised via the governance-authoring lane (v7.9 §1.1) and landed as a `policy-only` pass | This doc = runtime/infra invariants; v7.9 = patch behavior |
+| Audit findings + dispositions | §30 (dispositions); `docs/audit/…2026-06-10.md` + Consolidated Static Audit (evidence) | — |
+| Governance telemetry | `docs/governance/ledger.jsonl` (§2.4) | Lint L9 summaries = derived |
+| Governance principles / hardening framework | `GOVERNANCE_PRINCIPLES.md`, `TITAN_HARDENING_FRAMEWORK_v1.md` | **Derived/historical** — extracted from or superseded by this document; AGENTS.md wins |
+| Weekly Governance Log, handoff blocks, session summaries | Derived operational views | Corrected to canonical sources at next records pass |
 
-| Category | Canonical document | Role of other sources |
-|----------|-------------------|-----------------------|
-| Task status, sequencing, and open/closed state | **`TECHNICAL_DEBT.md`** | All other documents reflect snapshots; `TECHNICAL_DEBT.md` is the live register |
-| Process rules, workflow sequences, enforcement rules | **`AGENTS.md`** (this document) | `CLAUDE.md` §Engineering Rules is an index/reference; `AGENTS.md` wins on conflict |
-| Architecture decisions (ADRs) | **`docs/adr/`** | `CLAUDE.md` ADR index is a summary; the ADR file in `docs/adr/` is authoritative |
-| Backend interface contract (SQLite / PostgreSQL parity) | **`docs/PARITY_MATRIX.md`** | Inline notes in `TECHNICAL_DEBT.md` or `persistence.py` comments are summaries only |
-| Orientation, historical snapshot, module inventory | **`CLAUDE.md`** | Read-only orientation — not authoritative for live state |
-| Weekly Governance Log, Codex Handoff Blocks, session summaries | **Derived operational views** — not authoritative | These are convenience summaries; `TECHNICAL_DEBT.md` + `AGENTS.md` are the source |
-
-**Conflict resolution rule:** When a derived view (Governance Log, Handoff Block, session
-summary) contradicts the canonical source for its category, the canonical source wins and
-the derived view must be corrected at the next records pass.
-
----
+**v7.9 delegation (non-negotiable):** v7.9 §13 SCOPE BOUNDARY assigns durability, idempotency,
+FK enforcement, backups, DR, release engineering, observability, and multi-process consistency to
+AGENTS.md / TECHNICAL_DEBT. §8.4–§8.14 and §30 are the canonical fulfillment of that delegation.
+Nothing here duplicates v7.9 normatively; v7.9 pointers in this document are orientation only.
 
 ## §19 Mandatory Change-Type Field (Phase 8+)
 
-Every new Phase 8+ item in `TECHNICAL_DEBT.md` must include a **`Change Type:`** field in
-its item header. This field is required at the time the brief is written — not retrospectively.
+Every new item carries `Change Type:` in its `TECHNICAL_DEBT.md` header at brief time:
 
-**Valid values:**
+| Value | Meaning | Gate rule |
+|---|---|---|
+| `implementation` | Code/tests change | Full HARD GATE (Path A/B) |
+| `records-only` | Canonical-document updates, no production code | **Full HARD GATE** — every commit runs `titan_ci.sh` (the hook enforces it); commit prefix `records:` |
+| `policy-only` | AGENTS.md / operating-contract / process docs only — Architect-executed or verbatim Architect text (§3.6) | **Full HARD GATE** |
+| `architect-decision` | ADR/design artefacts, no Codex handoff | Gates apply iff a code artefact is produced |
+| `audit-only` | Read-only assessment; no file changes | No commits → no gates |
 
-| Value | Meaning |
-|-------|---------|
-| `implementation` | Code changes, new or modified modules, test changes |
-| `records-only` | Documentation updates, `TECHNICAL_DEBT.md` records, no production code changes |
-| `policy-only` | `AGENTS.md` or process contract changes only; no code changes |
-| `architect-decision` | ADR authorship, architectural decisions, design artefacts; no Codex implementation handoff |
-| `audit-only` | Read-only assessment, call-site audit, or triage pass; no changes to any file |
-
-**Execution semantics:**
-
-- `implementation`: Standard Path A or Path B workflow (§17.2 / §17.3). All three mandatory
-  gates required.
-- `records-only`: No production code changes permitted. Gates 1 and 3 still required; Gate 2
-  (strict) required only if test files were touched. Commit message prefix: `records:`.
-- `policy-only`: Only `AGENTS.md`, `CLAUDE.md`, or process documents may change. No code, no
-  tests. All three gates still required to confirm no unintended side-effects.
-- `architect-decision`: No Codex implementation handoff at this stage. Architect authors
-  the artefact directly or under direct architect direction. May have no gate requirement
-  (document-only output), or gates apply if the decision produces a code artefact.
-- `audit-only`: No file modifications. Report-only output. No gates required.
-
-**Backfill policy:** Only items where the architect explicitly orders backfill receive the
-`Change Type:` field retroactively. Do not backfill older items beyond those explicitly
-directed.
-
----
+One gate, every commit; there are no per-Change-Type carve-outs. Backfill of `Change Type:` on
+old items only when the Architect explicitly orders it.
 
 ## §20 Mini Drift Postmortem Rule
-
-When a process violation (workflow drift, skipped gate, scope creep, or instruction
-contradiction) is discovered and resolved, the resolving record (in `TECHNICAL_DEBT.md`,
-`AGENTS.md`, or `CHANGES.md` as appropriate) may include a mini drift postmortem in
-the following format:
-
-```
-- Drift: <one sentence describing what the process violation was>
-- Why it escaped: <one sentence explaining why the existing guard did not catch it>
-- Guard now in place: <one sentence describing the corrective rule or check added>
-```
-
-**Scope — when postmortem IS required:**
-- The same drift pattern appears for a second time (recurrence trigger).
-- The drift concerns a canonical document (`AGENTS.md`, `TECHNICAL_DEBT.md`, `docs/adr/`).
-
-**Scope — when postmortem is NOT required:**
-- A single corrective pass that fixes a derived-view drift (Weekly Governance Log,
-  Codex Handoff Block, session summary, `CLAUDE.md` snapshot). In these cases, the
-  fix itself is sufficient; a postmortem is not required unless the pattern recurs.
-
-**Purpose:** The mini postmortem is the mechanism by which process gaps are converted
-into durable guard rules. It is triggered by recurrence or canonical-document impact —
-not by every corrective pass.
-
----
+When a resolved process violation (a) recurs, or (b) touched a canonical document, the resolving
+record includes: `Drift / Why it escaped / Guard now in place` (one sentence each). Single-shot
+derived-view fixes need no postmortem. Purpose: convert process gaps into durable guards.
 
 ## §21 Governance Friction Principle
-
-Every new governance rule added to `AGENTS.md` must satisfy at least one of the
-following conditions before it is accepted:
-
-- **(a) Replacement:** The new rule explicitly replaces an existing rule (the old rule
-  is removed or superseded, and the net rule count does not increase).
-- **(b) Friction reduction:** The new rule measurably reduces manual synchronisation
-  effort or operational friction (e.g., eliminates a recurring manual check, removes an
-  ambiguity that has required ad-hoc clarification, or replaces an implicit convention
-  with an explicit one that can be verified mechanically).
-
-If a proposed rule satisfies neither (a) nor (b), it is not added. The rationale must
-be stated in the record entry that introduces the rule.
-
-**Application:** This principle applies to rules added from 2026-03-15 onwards. It does
-not trigger retroactive review of existing rules.
-
----
+A new governance rule — in this document, the operating contract, or the invariant/register
+namespaces (INV, RP, T-PRA, §30) — is accepted only if it (a) replaces an existing rule (net
+count not up) or (b) measurably reduces manual synchronisation/ambiguity with a mechanically
+verifiable form. The introducing record states which. Lint L9 reports governance mass (normative
+lines + rule count per namespace); the §16.11 Simplicity Review cites it. (Applies from
+2026-03-15; §8.4–§8.14 + §30 qualify under (b) — each converts an audited absent invariant into
+a verifiable rule.)
 
 ## §22 Friday Governance Review Output Rule
+Every Friday Governance Review appends a written entry to the `TECHNICAL_DEBT.md` Weekly
+Governance Log (template there); "State: healthy — no changes" suffices. No written entry = the
+review did not happen and may not be cited. First item each phase: the ledger's per-mode and
+per-code usage counts (§2.4) — a wire construct (mode, field, REJECT code) with zero legitimate
+use across a full phase is a retirement candidate routed per §3.4. A §23.1 bounded audit's
+summary is recorded here; the weekly entry is the lighter health check.
 
-Every Friday Governance Review must produce a written output entry. The entry must be
-appended to the `## Weekly Governance Log` section in `TECHNICAL_DEBT.md` using the
-template defined there.
+## §23 Canonical Handoff & Delivery
 
-**Minimum content:** Even if there is nothing substantive to record, a one-sentence
-"State: healthy — no changes" entry is sufficient and satisfies this rule.
-
-**Completion gate:** A Friday Governance Review that has no written output entry is not
-considered completed. It must not be referenced as a completed review in any document
-until the entry exists.
-
----
-
-## §23 Canonical Codex Handoff Template
-
-Every architect-to-Codex handoff for a Phase 8+ pass must include a structured brief using the
-canonical template below. The template is reusable across all pass types and serves as the DoR
-(Definition of Ready) contract for the pass.
-
-### Canonical Handoff Template (required fields)
+### Handoff template (required for every Architect→Codex pass; absent field = DoR FAIL — request clarification, never infer)
 
 ```
 Pass type:                <audit | records | implementation | correction-only>
-Change Type:              <policy-only | records-only | implementation | architect-decision | correction>
+Change Type:              <per §19>
 Workflow Path:            <Path A | Path B | N/A>
-Execution unit:           <exact deliverable or scope slice for this pass>
-Deliverable:              <specific output this pass must produce>
-Stop condition:           <what terminates this pass — success criteria>
-Allowed:                  <explicit list of permitted actions>
-Forbidden:                <explicit list of prohibited actions>
+Execution unit:           <exact deliverable / scope slice for this pass>
+Deliverable:              <specific output>
+Stop condition:           <success criteria terminating the pass>
+Closure rule:             <parent task stays OPEN | becomes closure-capable>      [ex-§24]
+Canonical doc update:     <which document must reflect this pass's outcome>       [ex-§24]
+Authorizes:               <exact v7.9 §13-class change licensed, or ABSENT>       [v7.9 §1.5]
+Allowed / Forbidden:      <explicit action lists>
 Expected response format: <structured summary | OBS entries | gate output | records confirmation>
 ```
 
-If any required field is absent, the pass is **DoR FAIL** — the implementer must request
-clarification before beginning. The implementer does not infer missing fields.
+### Fixed lanes (citing a lane name imports its template)
 
-### Fixed Lane Templates
+| Lane | Pass type | Deliverable | Key Forbidden |
+|---|---|---|---|
+| A audit-only | audit (read-only) | OBS entries in SCRATCHPAD.md (`REVIEW_REQUESTED`), file:line cited, no recommendations (in-chat form: v7.9 §10 AUDITOR — see §15) | Any file change outside SCRATCHPAD.md; DECs (Architect-only) |
+| B records-only | records | Specified canonical docs updated (`TECHNICAL_DEBT.md`, `CLAUDE.md`, `CHANGES.md`) | Code changes; ADR authorship; new tasks; **AGENTS.md edits (§3.6 — Architect-only)** |
+| C implementation | implementation | Working code + paired tests, three gates green | Scope creep; records closure unless Architect declares Bundled |
+| D correction-only | correction | Root-cause fix of the named defect, no new behaviour | Opportunistic improvements; scope expansion; unbundled records |
 
-The four canonical variants below are pre-approved patterns. When an architect brief cites one
-of these lane names, the corresponding template is implicitly imported.
-
-#### Lane A — audit-only
-
-```
-Pass type:                audit
-Change Type:              N/A (read-only)
-Workflow Path:            N/A
-Execution unit:           [defined in brief]
-Deliverable:              OBS entries in SCRATCHPAD.md
-Stop condition:           All observations captured; SCRATCHPAD.md STATUS: REVIEW_REQUESTED
-Allowed:                  Read files, run grep/tests for evidence gathering, write OBS entries
-Forbidden:                Any file modification outside SCRATCHPAD.md; no DECs (DECs are architect-only)
-Expected response format: Structured OBS list with file:line citations; no recommendations
-```
-
-#### Lane B — records-only
-
-```
-Pass type:                records
-Change Type:              records-only
-Workflow Path:            N/A
-Execution unit:           [defined in brief]
-Deliverable:              Updated canonical document(s) as specified
-Stop condition:           All specified documents updated; gates not required (doc-only per §19)
-Allowed:                  TECHNICAL_DEBT.md, AGENTS.md, CLAUDE.md, CHANGES.md — as specified
-Forbidden:                Code changes; new ADR authorship; new task creation; implementation scope
-Expected response format: Records confirmation listing each document updated and the specific change made
-```
-
-#### Lane C — implementation
-
-```
-Pass type:                implementation
-Change Type:              implementation
-Workflow Path:            Path A (default) or Path B (if architect declares APPROVED)
-Execution unit:           [defined in brief]
-Deliverable:              Working code + paired tests; all three gates passing
-Stop condition:           Gate 1 clean + Gate 2 clean + Gate 3 green; records pass separate (§27)
-Allowed:                  Code changes within declared scope; test authorship; targeted test runs during implementation
-Forbidden:                Scope creep; records closure within implementation pass unless architect declares Bundled
-Expected response format: Implementation summary with gate output + test count delta
-```
-
-#### Lane D — correction-only
-
-```
-Pass type:                correction-only
-Change Type:              correction
-Workflow Path:            Path A
-Execution unit:           [specific defect or drift as named in brief]
-Deliverable:              Corrected file(s) with root-cause fix; no new behaviour added
-Stop condition:           Defect resolved; gates passing; no new scope introduced
-Allowed:                  Minimal targeted fix for the named defect only
-Forbidden:                Opportunistic improvements; scope expansion; records bundling unless architect declares Bundled
-Expected response format: Correction summary: what was wrong, what was changed, gate confirmation
-```
-
-### Canonical Codex Delivery Format
-
-Every Codex implementation report must use exactly this structure.
-No free-form text outside this format. No exceptions.
-
-```
-DELIVERY REPORT — <T-id> — <YYYY-MM-DD>
-
-FILES CREATED:
-  ✅ <filepath> (<bytes> bytes)
-  ✅ <filepath> (<bytes> bytes)
-
-FILES MODIFIED:
-  ✅ <filepath>
-
-FILES VERIFIED ABSENT (scope exclusions):
-  — <filepath> NOT touched
-
-GATE OUTPUT:
-  ruff:          [exact last line of: ruff check .]
-  pytest strict: [exact last line of: pytest -q -W error::pytest.PytestWarning]
-  pytest full:   [exact last 2 lines of: pytest -q]
-
-BRANCH: claude/<name>
-COMMIT: <short-hash>
-
-ACCEPTANCE CRITERIA CHECK:
-  ✅/❌ <criterion 1 — verbatim from TECHNICAL_DEBT.md brief>
-  ✅/❌ <criterion 2 — verbatim from TECHNICAL_DEBT.md brief>
-
-SELF-ASSESSMENT: COMPLETE / INCOMPLETE
-  If INCOMPLETE: [exactly what is missing — file:line]
-```
-
-**Enforcement rules:**
-- If any FILES CREATED entry cannot be filled → SELF-ASSESSMENT: INCOMPLETE
-- If any gate is not clean → SELF-ASSESSMENT: INCOMPLETE
-- INCOMPLETE report is not accepted — Records Steward returns it without action
-- Branch must be `claude/*` — never `codex/*`
-- Free-form text outside this structure is ignored by Records Steward
-
-### §23.1 Delivery Report Template (mandatory for all pass types)
-
-Every delivery report must include all four sections below. This format replaces
-narrative (free-form) delivery reports. No additional sections are required unless
-a SCRATCHPAD OBS is raised during the pass.
+### Delivery report (single canonical format — all pass types; free-form text outside it is ignored)
 
 ```markdown
+DELIVERY REPORT — <T-id> — <YYYY-MM-DD>
+
 ## Scope Declaration
-Change type: [implementation | records | policy | audit]
-Tasks: [T5-XX, T5-YY, ...]           (comma-separated; "N/A" for non-task passes)
-ADR reference: [ADR-XXXX or N/A]
-Files changed: [list each file on a separate line]
+Change type / Tasks / ADR reference / Workflow Path
+Files created:   ✅ <path> (<bytes>)   ← each ls-verified; unverifiable ⇒ INCOMPLETE
+Files modified:  ✅ <path>
+Files verified ABSENT (scope exclusions): — <path> NOT touched
 
 ## Gate Results
-| Gate     | Command                            | Result           |
-|----------|------------------------------------|------------------|
-| G1 Lint  | ruff check .                       | ✅/❌            |
-| G2 Strict| pytest -q -W error::PytestWarning  | ✅/❌ N passed   |
-| G3 Full  | pytest -q                          | ✅/❌ N passed   |
+| G1 ruff | <exact last line> |
+| G2 strict | <exact last line> |
+| G3 full | <exact last 2 lines> |
+Branch: claude/<name>   Commit: <short-hash>
 
 ## Changes Summary
-[One sentence per task: what changed and why. Be specific — module name + behaviour delta.]
+<one sentence per task: module + behaviour delta>
+
+## Acceptance & Self-Assessment
+✅/❌ <each criterion, verbatim from the brief>
+SELF-ASSESSMENT: COMPLETE | INCOMPLETE (+ exactly what is missing, file:line)
 
 ## Task Learning
-[What was discovered during implementation that wasn't obvious from the spec.
-If nothing new: "No new findings."]
+<non-obvious discovery, or "No new findings.">
 ```
 
-**Enforcement:**
-- All four sections must be present. A report missing any section is INCOMPLETE.
-- Gate Results table must use actual command output counts, not estimates.
-- Task Learning must be a substantive sentence or "No new findings." — blank is not accepted.
+Any missing section, unverified file claim, or non-clean gate ⇒ `INCOMPLETE`; the Records Steward
+returns INCOMPLETE reports without action. Branches are `claude/*` only.
 
-### Periodic Bounded Audit Ritual
-
-A bounded audit pass is a structured, scope-limited read-only sweep of the codebase or a
-specific subsystem. It is **trigger-based, not calendar-based**.
-
-**Activation conditions (architect declares one):**
-- After a Phase boundary close
-- After a major implementation lane touching ≥4 production modules
-- When the T5 register runs low on implementation candidates
-- Architect discretion (must state reason in brief)
-
-**Canonical output path:**
-1. OBS entries captured in SCRATCHPAD.md
-2. Architect issues DECs (per SCRATCHPAD.md review protocol)
-3. Audit summary appended to the Weekly Governance Log in TECHNICAL_DEBT.md
-
-**Scope constraint:** A bounded audit pass does not produce implementation tasks directly.
-All findings route through SCRATCHPAD.md → architect DEC → TECHNICAL_DEBT.md entry. No
-implementation begins during or immediately after an audit pass without a separate architect brief.
-
----
-
-## §24 Bounded Execution Unit Rule
-
-For any aggregate or multi-step lane, the architect brief must explicitly declare:
-
-1. **Exact execution unit** for this pass (which deliverable, which sub-step, or which scope slice)
-2. **Pass type** (audit / implementation / records / closure)
-3. **Closure rule** (whether the parent task remains OPEN after this pass or becomes closure-capable)
-4. **Required canonical doc update** (which document must reflect the outcome of this pass)
-
-If any of the four declarations is absent: **DoR FAIL** — architect clarification is required before implementation begins. The implementer does not select the scope slice independently.
-
----
-
-## §25 Environment First Rule
-
-For tasks with elevated environment or dependency risk — CI-heavy lanes, multi-module integration, or any task explicitly flagged by the architect — before any implementation begins:
-
-1. Confirm `scripts/setup_env.sh` completed successfully.
-2. Verify all critical imports resolve without error.
-3. Run the full gate suite once from a clean state (Gate 1: `ruff check .`; Gate 2: `python -m pytest -q -W error::pytest.PytestWarning`; Gate 3: `python -m pytest -q`).
-
-This separates environment drift from code regression. If the clean-state gate run fails: **stop, report as environment issue, do not begin implementation**.
-
----
+### 23.1 Periodic Bounded Audit Ritual (trigger-based, not calendar-based)
+Triggers (Architect declares one): phase-boundary close; a lane touching ≥4 production modules;
+T5 register low; Architect discretion (reason stated). Output path: OBS → DECs → Weekly
+Governance Log summary. A bounded audit never produces implementation directly — findings route
+per §3.4; implementation needs a separate brief.
 
 ## §26 No Mixed-Pass Rule
-
-A single Codex pass may execute only **one** of the following pass types:
-
-- **audit** — read-only analysis, no document or code changes
-- **implementation** — code changes, with or without paired tests
-- **records** — document updates only (TECHNICAL_DEBT.md, AGENTS.md, CLAUDE.md, CHANGES.md)
-- **closure** — formal closure declaration with all required canonical doc updates
-
-Combining two pass types in a single pass is permitted **only** when the architect brief explicitly names the two pass types being combined and states the reason. The `Change Type:` field (§19) must match the declared pass type. A pass that drifts into a second type without explicit architect authorisation is a process violation equivalent in severity to scope creep.
+One pass = one pass type (audit | implementation | records | closure). Combining two requires the
+brief to name both and state why; the `Change Type:` field matches. Drifting into a second type
+unauthorized is a PROCESS VIOLATION (scope-creep class).
 
 ### §26.1 Wave Bundling Exception
-
-Tasks that share the same governing ADR may be bundled into a single implementation PR if and
-only if **ALL** of the following hold:
-
-- **(a)** All tasks are implementation-type (no policy, no records tasks in the bundle)
-- **(b)** No schema change is included (schema changes follow §13.4 staged protocol and must
-  be separate PRs)
-- **(c)** The bundle is declared explicitly in the Scope Declaration with each task ID listed
-  separately
-- **(d)** Each bundled task has a distinct test section in the PR description
-
-When in doubt: separate PRs. This exception does **not** apply to mixed pass types
-(implementation + policy, implementation + records).
-
----
+Same-ADR implementation tasks may share one PR iff: all implementation-type; no schema change
+(§13.4 stays separate); each task ID declared in the Scope Declaration; each task has a distinct
+test section. In doubt: separate PRs. Never bundles mixed pass types.
 
 ## §27 Canonical Records Separation Rule
-
-For **heavy tasks** (as defined in §12.1), the records pass is separate from the implementation pass **by default**.
-
-The architect brief must declare one of:
-- **Bundled** — records closure is permitted within the implementation pass (explicit reason required)
-- **Separated** — records pass follows as a distinct subsequent pass
-
-If neither is declared: records pass is assumed separate. A Codex implementation report for a heavy task that contains closure language — without an explicit architect bundling declaration — is a process violation.
-
----
+Heavy tasks (§12.1): records pass separate by default. The brief declares **Bundled** (reason
+required) or **Separated**; undeclared = separate. Closure language in a heavy-task
+implementation report without a Bundled declaration is a PROCESS VIOLATION.
 
 ## §28 — Architect Role Distribution (effective 2026-03-17)
-
-Claude Code acts as both engineer and architect for all routine operations.
-Claude (chat) retains architect authority only for:
-- ADR authorship and acceptance
-- New debt item registration (DEC decisions)
-- Phase open/close declarations
-- Sequencing changes that affect multiple items
-
-For all other operations — records passes, gate verification, delivery
-reports, module ceiling updates, status closures — Claude Code operates
-autonomously under existing AGENTS.md governance rules without requiring
-chat architect approval.
-
-Rationale: Live repo access eliminates the latency and PDF-snapshot
-ambiguity of the chat-based review loop for routine operations.
-
----
+Claude Code operates autonomously for routine operations — records passes (excluding AGENTS.md),
+gate verification, delivery reports, Records-Steward closure mechanics post-remote-verification —
+under existing rules. Chat-Architect-only, always: the §1.2 Reserved Powers (RP-1..RP-10); Codex
+may apply the mechanical module-ceiling test-constant edit only after the Architect confirms the
+value (RP-8). Conflicts with §13 / v7.9 §13 resolve by v7.9 §1.3 (this document's "stricter rule
+governs" is its rule 4).
 
 ## §29 — Context Window Degradation Protocol
-
-Signal indicators (any one is sufficient to trigger):
-
-(a) Agent applies a rule inconsistently with how it applied the same rule earlier in the same session
-(b) Agent references file state that no longer matches the actual file (stale mental model)
-(c) Agent produces closure language ("task complete") without showing gate output
-(d) Delivery report contradicts what gate output actually showed
-
-Required response to any signal:
-
-1. STOP immediately. Do not attempt to patch the inconsistency inline.
-2. Open a SCRATCHPAD OBS entry: "Context degradation detected. Affected rule/file: [X]. Observed inconsistency: [Y]."
-3. Request a new session with a clean handoff.
-4. Do not mark any open task as closed until the new session re-confirms the gate output.
-
-Rationale: inline correction of context degradation compounds the error. A new session is cheaper than a corrupted baseline.
+Signals (any one): inconsistent application of a rule within a session; references to stale file
+state; closure language without gate output; report contradicting gate output. Response: STOP (no
+inline patching) → SCRATCHPAD OBS ("Context degradation detected; rule/file; observed
+inconsistency") → request a new session with clean handoff → no task closed until the new session
+re-confirms gate output. A new session is cheaper than a corrupted baseline.
 
 ---
 
-## Opus QA Trigger Policy
+## §30 Production Risk Register Integration
 
-Opus QA is **not triggered by default**. Path A items proceed without Opus involvement unless the architect explicitly opts a task into Path B.
+**Purpose:** the governance bridge from the audit evidence
+(`docs/audit/PRODUCTION_READINESS_AUDIT_2026-06-10.md` [B-n, K:PRA-nn, C/D/E/F/G-n] and the
+Consolidated Static Audit [SA:*]) to enforcement. Every admitted finding has a disposition here;
+an undispositioned admitted finding is a governance violation registered immediately.
+**Admission rule:** appeared as a finding in either governing audit. The audits are the EVIDENCE
+record; §30 is the DISPOSITION record. **Namespace:** rows cite source-native IDs; `T-PRA-nn`
+debt IDs are unrelated to `K:PRA-nn` audit items (header note).
 
-### Trigger criteria (architect must state one of the following)
+**Disposition vocabulary (v7.9 §14-conformant):**
+- `INVARIANT:<§>` — rule exists here **and** the code fix is verified by an orchestrator-captured
+  v7.9 §1.5 record (`exit=0 profile=full`) for `scripts/titan_ci.sh` after the fix.
+- `INVARIANT-SPECIFIED:<§> + TRACKED:<debt-id>` — rule defined; code fix pending. Writing a rule
+  ≠ resolving a finding.
+- `TRACKED:<debt-id>` — registered for implementation; a TRACKED with no debt-id is itself a
+  violation. **For ≥HIGH findings the cited debt item MUST be Tier 1 or 2 and name a target
+  phase; otherwise TRACKED is not a legal disposition (v7.9 §14). Liveness is re-affirmed at
+  every phase close (§16.3 check 2).**
+- `WAIVED:<adr-ref>` — pre-existing Architect waiver only; the LLM never originates waivers.
+A mapped rule must actually **detect** its finding; non-detecting mappings are v7.9 §12
+over-claims.
 
-- The task modifies or adds governance safety logic.
-- The task changes a science engine that feeds the 7-gate decision pipeline.
-- The task adds or alters a threshold constant with governance-facing output.
-- The architect explicitly writes `APPROVED` in the PILOT-01 entry for the task.
+| Source finding | Summary | Sev | Disposition | Rule / Debt |
+|---|---|---|---|---|
+| B-1 / SA:C-1 | Coach RBAC role-only on overrides/export/delete | CRIT | INVARIANT-SPECIFIED:§8.4 + TRACKED:T-PRA-01 | INV-11 |
+| B-2 | `PRAGMA foreign_keys` never enabled | CRIT | INVARIANT-SPECIFIED:§8.7 + TRACKED:T-PRA-04 (safe rollout mandatory) | INV-14 |
+| B-3 | Worker replay on crash; flock without stale-lock recovery | CRIT | INVARIANT-SPECIFIED:§8.6/§8.14 + TRACKED:T-PRA-03, T-PRA-22 | INV-15, INV-23(4) |
+| B-4 | `apply_constraints` fails open on exception | CRIT | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-07 | INV-12 |
+| B-5 / SA:M-1 | Telegram fail-open trust; volatile nonces | CRIT | INVARIANT-SPECIFIED:§8.11/§8.6 + TRACKED:T-PRA-02, T-PRA-03 | INV-16, INV-17 |
+| B-6 | Same-volume backups; restore untested; toy verify DB | CRIT | TRACKED:T-PRA-08 (phase-close-gated) | DR-01..04 |
+| B-7 | No versioned artifacts / rollback | CRIT | TRACKED:T-PRA-09 (RE-01 now CI-testable) | RE-01..04 |
+| B-8 | No schema-version forward guard; forward-only migrations | HIGH | INVARIANT-SPECIFIED:§8.7 + TRACKED:T-PRA-25; §13.4 downgrade TRACKED:T-PRA-23 | INV-25, §13.4 |
+| B-9 / SA-adj | `athlete_id` drift incl. `degraded_mode_state`; v18 partial backfill | HIGH | INVARIANT-SPECIFIED:§8.7 + TRACKED:T-PRA-04 (named reconcile scope; `persistence.py` `"owner"` signatures included) | INV-14 step 1, INV-18, §16.10 |
+| B-10 / C-1, G-1/G-2 | Cross-process SQLite ceiling; RLock intra-process only; replica unsafety | HIGH | INVARIANT-SPECIFIED:§8.12 + TRACKED:T-PRA-14 + ADR-0044 **scheduling decision TRACKED** | MPC-01, MPC-02 |
+| B-11 / F-8 | Audit log best-effort, post-response | HIGH | INVARIANT-SPECIFIED:§8.13 + TRACKED:T-PRA-21 | INV-22 |
+| B-12 / F-11, F-12 / K:PRA-18 | Scan cadence (gitleaks last-commit; CodeQL weekly); SBOM/image scan/pin parity/CVE-ignore absent | HIGH | TRACKED:T-PRA-27 | RE-05, RE-06 |
+| B-13 / F-6, F-7 / K:PRA-17 | No body limits; lockout enumeration; limiter eviction | HIGH | INVARIANT-SPECIFIED:§8.11 + TRACKED:T-PRA-11, T-PRA-28 | RBP-01, RBP-03, RBP-05 |
+| B-14 / K:PRA-14 | Data-trust verdict computed, unenforced | HIGH | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-24 | INV-24 |
+| B-15 / SA:m-3 | Polling thread dies silently; no watchdog; callback not isolated | HIGH | INVARIANT-SPECIFIED:§8.14 + TRACKED:T-PRA-22 (callback isolation folded in) | INV-23 |
+| F-4 | JWT key validation deferred to lifespan | MED | INVARIANT-SPECIFIED:§8.11 + TRACKED:T-PRA-28 | RBP-04 |
+| F-5 | CSRF cookie not HttpOnly | MED | TRACKED:T-PRA-28 | RBP-05 |
+| F-10 | `TITAN_GARTH_TOKEN_KEY` optional → plaintext Garmin tokens | MED | INVARIANT-SPECIFIED:§8.11 + TRACKED:T-PRA-28 | RBP-04 |
+| SA:M-2 | Scheduler registers only `owner` under multi-athlete flag; docstring over-claims | HIGH | TRACKED:T-PRA-06 (no existing rule detects it — honest) + v7.9 §12 claim ban | v7.9 §14 index |
+| SA:m-1 | `_hydrate_from_db` silent swallow | MED | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-02 | INV-13 |
+| SA:m-2 | Sync-age collapses errors to `inf` silently | LOW | INVARIANT-SPECIFIED:§8.5 (safety-path classification) + TRACKED:T-PRA-26 | INV-12 |
+| SA:m-4 / E-2 | Worker metrics dark; **no scrape/alert stack exists** [F-13 corrected] | MED | INVARIANT-SPECIFIED:§8.8 + TRACKED:T-PRA-05 | INV-19a/b |
+| K:PRA-13 / E-4 | Garmin 429/retry exhaustion invisible to degradation tracker | MED | INVARIANT-SPECIFIED:§8.3 INV-08 ext + TRACKED:T-PRA-26 | INV-08 |
+| E-3 | `slo_alert` events routed by nothing; alert mosaic | MED | INVARIANT-SPECIFIED:§16.6/§8.8 + TRACKED:T-PRA-31 | Gateway chokepoint |
+| SA:BENIGN1/2 | Calibration loop unwired (engine discarded; write path test-only) | MED | TRACKED:T-PRA-18 (fail-safe today; §16.7 corrected) | §16.7 |
+| K:PRA-15 / C-5 | EngineRegistry CS/APL cold-start TODOs shipped; Phase 26 closed over them | MED | TRACKED:T-PRA-32 + §16.12 clearance reminder | v7.9 §14 |
+| SA:BENIGN3 | Diagnostic scripts hardcode wrong DB path | LOW | TRACKED:T-PRA-20 | — |
+| C-3 | Frozen-snapshot migrations guarded by comments only | MED | TRACKED:T-PRA-30 (manifest meta-test folded in) | §13.4 |
+| C-6 | `getattr`-optional dispatch hides dead safety features | MED | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-26 (semgrep guard + removal) | INV-12 rule |
+| C-7 | Module ceiling 80 (manual, stale) vs §16.11's 71 (claimed CI) | MED | TRACKED:T-PRA-12 (reconcile CLAUDE.md/audit to the enforced value; §16.3 check 6) | §16.11 |
+| C-2 / K:PRA-10 | Dual migration systems, no parity test | MED | INVARIANT-SPECIFIED:§13.4 + TRACKED:T-PRA-30 (pre-8A gate) | §13.4 |
+| D-2, D-4 / K:PRA-12 | Stub-only e2e; no compose/restart/concurrency test; migration chain untested on realistic data | HIGH | TRACKED:T-PRA-29, T-PRA-30 | QA contract |
+| D-6 | Skip-placeholder tests pass forever | MED | INVARIANT-SPECIFIED:ABSOLUTE RULE + TRACKED:T-PRA-36 | strict-xfail rule |
+| D-1 / K:PRA-16 / B-list 8 | Governance record drift: counts, "B1–B7 RESOLVED" over open B-1, ADR-0057 stale, B2/B5 untracked, scope-doc contradiction | HIGH | TRACKED:T-PRA-12 + §16.3 checks 1–4 + sensor automation TRACKED:T-PRA-35 | v7.9 §14, §12.3 |
+| SA:RBAC1 | Rate-limiter eviction policy unspecified | LOW | INVARIANT:§8.11 | RBP-03 |
 
-### Non-trigger cases (Opus is NOT invoked)
+**Debt items this register mandates in `TECHNICAL_DEBT.md`** (Tier-1 set opens before any
+non-`independent` Phase-13 implementation — §4 tier ordering applies with no other carve-out):
 
-- Threshold centralisation tasks (e.g., T5-17 pattern): no new logic, only import wiring.
-- Documentation-only or records-steward passes.
-- Audit-only handoffs (read-only tasks with no code changes).
-- Debt-only items with no Codex implementation handoff.
-- Any Path A item where the architect has not written `APPROVED`.
+| Debt ID | Source | Description | Tier |
+|---|---|---|---|
+| T-PRA-01 | B-1 | INV-11: scoped dependency on the 3 coach routes + `test_authorization_routing.py`; note ADR candidate for centralized policy layer | **1** |
+| T-PRA-02 | B-5, SA:m-1 | INV-16 + INV-13 fail-closed; extend telegram auth tests + `test_fail_closed_exception_paths.py` | **1** |
+| T-PRA-03 | B-3, B-5 | INV-15 + INV-17 tables (§8.6; Architect ADR + Stage-1) + `test_worker_state_durability.py` | **1** |
+| T-PRA-04 | B-2, B-9 | INV-14 safe rollout (reconcile incl. `degraded_mode_state` + `persistence.py` `"owner"` defaults + `data_source` CHECK; verify; gated enable) + `test_db_integrity.py` | **1** |
+| T-PRA-05 | SA:m-4, E-2 | INV-19: transport ADR addendum + collectors + `test_worker_observability.py` | 2 |
+| T-PRA-06 | SA:M-2 | Multi-athlete scheduler registration from `athletes` table; docstring corrected | **1** |
+| T-PRA-07 | B-4 | INV-12 fail-closed `apply_constraints` (+REST forcing event) | **1** |
+| T-PRA-08 | B-6 | DR-01..04: off-volume backup, retention, `integrity_check`, real-backup verify, restore drill, `RUNBOOK_DR.md` | **1** |
+| T-PRA-09 | B-7 | RE-01..04 + `test_release_engineering.py` (version-from-metadata CI test) | 2 |
+| T-PRA-10 | SA chain | INV-21 `test_degradation_alert_chain.py` end-to-end | 2 |
+| T-PRA-11 | B-13 | RBP-01 body-size middleware + `test_request_boundary.py` | 2 |
+| T-PRA-12 | D-1/K:PRA-16, C-7 | Records pass: snapshot fix, B2/B5 entries, ADR-0057 status (absorbs T-PRA-16), scope-doc + phase-label reconcile, module-ceiling audit-value (80) vs enforced test value reconcile, one-time grep for stale INV-20 keying (absorbs T-PRA-17) | 2 |
+| T-PRA-14 | B-10 | MPC doc+comment corrections; **ADR-0044 execution-date decision before the Architect** | 2 |
+| T-PRA-18 | SA:BENIGN1/2 | Wire ADR-0052 calibration loop (consume `_threshold_adapter`); wiring test | 2 |
+| T-PRA-20 | SA:BENIGN3 | Diagnostic-script DB path → config constant | 3 |
+| T-PRA-21 | B-11 | INV-22 durable ordered-before-effect audit + `test_audit_durability.py` | **1** |
+| T-PRA-22 | B-15, B-3, SA:m-3 | INV-23: healthcheck, heartbeat, watchdog, callback isolation, stale-lock recovery, limits/rotation + `test_worker_liveness.py` | **1** |
+| T-PRA-23 | B-8 family | §13.4 Stage-3 downgrade routines / documented reversal, phase-boundary tested | 2 |
+| T-PRA-24 | B-14 | INV-24 trust-verdict clamp + `test_data_trust_enforcement.py` | **1** |
+| T-PRA-25 | B-8 | INV-25 `user_version > SCHEMA_VERSION` startup guard + test | **1** |
+| T-PRA-26 | K:PRA-13, SA:m-2, C-6 | Sync & safety-path conformance sweep: 429/retry-exhaustion failure registration (INV-08 ext), sync-age pre-`inf` logging, getattr-dispatch removal + semgrep guard | 2 |
+| T-PRA-27 | B-12, K:PRA-18 | RE-05/06: CodeQL on PR/push, gitleaks full-range, SBOM, image scan, pin parity, dated CVE ignores | 2 |
+| T-PRA-28 | F-4/5/7/10 | RBP-04/05 bundle: JWT-at-construction, uniform auth failures, hybrid lockout, HttpOnly CSRF, token-key required | 2 |
+| T-PRA-29 | D-2 | One real e2e: compose up in CI → write → restart containers → assert persistence + `/readyz`; promote `docker_smoke_test.sh` into the gate | 2 |
+| T-PRA-30 | D-4, C-2, C-3 | Migration-chain v1→vN realistic-data test + SQLite↔Alembic schema-parity test (pre-Phase-8A gate) + frozen-migration (v8/v13/v24) column-manifest meta-test (absorbs T-PRA-33) | 2 |
+| T-PRA-31 | E-3 | Route all `slo_alert`/alert-class events through `NotificationGateway` chokepoint | 2 |
+| T-PRA-32 | K:PRA-15 | Finish EngineRegistry CS/APL hydration (TODO-P26-04b/c); correct Phase-26 record | 2 |
+| T-PRA-35 | D-1, C-7, I-22 | Governance sensor bundle: snapshot generator + T4-22 wiring, `scripts/session_start.sh`, ceiling doc-agreement assert (T4-21 ext), ADR-status linter | 3 |
+| T-PRA-36 | D-6 | Convert the 6 skip-placeholders to strict xfail bound to debt items **+ meta-test forbidding undocumented skips** (standing enforcement, not one-time cleanup) | 3 |
+| T-PRA-37 | Ladder Pass 3 | `scripts/governance_lint.py` — checks L1–L9 over this document + the operating contract, wired into `titan_ci.sh` Gate 1 (§16.3) | 2 |
+| T-PRA-38 | Ladder Pass 3 | `titan_ci.sh --profile scoped|full` + `scripts/env_fingerprint.sh`; v7.9 §1.5 record fields (§2.3, §2.4) | 2 |
+| T-PRA-39 | Ladder Pass 3 | `docs/governance/ledger.jsonl` orchestrator append + phase-close summary (§2.4, §22) | 3 |
 
-### Finding taxonomy — Category A / Category B (ADR-0049, Accepted 2026-03-15)
+**Folded/Removed IDs (retained for audit-ID stability; every fold preserves its disposition):**
+T-PRA-13 → T-PRA-03 (nonce durability) · T-PRA-15 → T-PRA-26 · T-PRA-16 → T-PRA-12 ·
+T-PRA-19 → T-PRA-22 · T-PRA-33 → T-PRA-30 · T-PRA-34 → T-PRA-26 · T-PRA-17 removed
+(speculative — replaced by a one-time verification inside T-PRA-12).
 
-Opus QA findings are classified as one of two categories:
-
-| Category | Definition |
-|---|---|
-| **A — machine-checkable** | Deterministic check: given this input, assert this property holds. No semantic judgment required. The check either passes or fails reproducibly. Belongs in CI (pytest), not in Opus QA. |
-| **B — judgment-required** | Requires understanding of the task's acceptance criteria, architectural intent, failure modes, or test design appropriateness. A test runner cannot make this call. Belongs in Opus QA. |
-
-**Migration policy (ADR-0049 §2.2):** A Category A finding that appears in any Opus QA verdict is evidence of a CI gap. The correct resolution is to write a CI test (T5-37), not to re-check the same pattern in future Opus reviews. As Category A patterns migrate to CI, Opus QA scope contracts to Category B only.
-
-**Validating test requirement (ADR-0049 §2.3):** Every CI gate created to replace a Category A Opus finding must have a paired meta-test confirming the gate fires on known-bad input (T5-38). No CI gate is written without its meta-test.
-
-**Multi-pattern migration lane rule (ADR-0049 §7):** Multi-pattern migration lanes (T5-37 / T5-38 pattern) use the **Hybrid Sequential Model**: audit pass first → sequential migration units (one pattern at a time) → single final closure. No child GitHub issues are created for individual migration units before the audit pass is complete. No migration unit begins before the audit pass is recorded. T5-37 and T5-38 remain OPEN until all migration units on the finalized list are complete.
-
-### Scope of Opus QA review (Category B — judgment-required only)
-
-Opus reviews **test quality** for the newly written or changed behaviour:
-- Are the tests correctly targeted at the acceptance criteria?
-- Do the tests cover boundary conditions specified in the task brief?
-- Are there gaps that would allow a regression to pass undetected?
-- Is the test design appropriate to prevent the specific failure modes the task addresses?
-- Are parametrize / property-based tests used where the input space warrants it?
-
-### Out of scope for Opus QA
-
-- Re-running mandatory gates (Gates 1–3 are always run by Codex, not Opus).
-- Architectural decisions or new ADR authorship.
-- Code style or formatting (covered by ruff Gate 1).
-- Performance benchmarking.
-- **Category A (machine-checkable) patterns that have been migrated to CI gates under T5-37.** Once a pattern has a CI test, Opus does not re-check it.
-
-### Verdict semantics
-
-- **QA PASS** — test coverage is adequate for the acceptance criteria; implementation may advance to Gate 3.
-- **QA FAIL** — one or more specific gaps identified; Codex must address the listed gaps and resubmit.
-
-### Cooldown rule
-
-If Opus issued **QA FAIL** for a task and Codex returns after fixing the identified gaps, **Opus is automatically re-invoked** for that task without requiring a new architect trigger. The re-invocation covers only the gaps listed in the original QA FAIL verdict.
+Opening these is the Records Steward's next action after this revision is accepted. **Tier-1 set:
+T-PRA-01, 02, 03, 04, 06, 07, 08, 21, 22, 24, 25.** Live items: 32 (7 folded/removed IDs listed
+above; lint L3 verifies these counts against the table).
 
 ---
 
-*Last updated: 2026-04-26 — T5-12 CLOSED (records-only). T5-12 Pass 2 verified complete: O1–O7 confirmed implemented (b2cdc37 era); D4 (adapters, switching, arbitration) registered as T5-100 (Phase 12). No policy or process changes. Change Type: records-only. Previous: 2026-03-17 — Architect Role Distribution pass (records + policy): §28 Architect Role Distribution added (Claude Code autonomous authority for routine operations; Claude chat retains ADR authorship, DEC decisions, phase open/close, sequencing changes). Change Type: records + policy. Previous: Friday Governance Pass records update (records-only): §23 Canonical Codex Handoff Template added (canonical handoff template, four fixed lane templates, periodic bounded audit ritual); existing §23–§26 renumbered to §24–§27 accordingly. Change Type: records-only. Previous: 2026-03-16 — Phase 8B Governance Pass (policy-only): §24 Bounded Execution Unit Rule, §25 Environment First Rule, §26 No Mixed-Pass Rule, §27 Canonical Records Separation Rule (formerly §23–§26). Change Type: policy-only. Previous: Architect Decision Execution Pass (T5-37/T5-38 Closure Model): Multi-pattern migration lane rule added to Opus QA Trigger Policy (ADR-0049 §7 Hybrid Sequential Model: audit pass → sequential migration units → single final closure; no child GitHub issues before audit pass; no mid-lane closure). Previous: T5-11 Path B Closure + Opus QA Scope Reduction Records Pass: Opus QA scope section updated with Category A / Category B finding taxonomy (ADR-0049 Accepted 2026-03-15); deterministic-to-CI migration policy added (Category A findings migrate to CI gates under T5-37; validating meta-test requirement per T5-38; ADR-0049 §2.2–2.3); Opus QA out-of-scope list updated: migrated Category A patterns explicitly excluded after T5-37 completion. Trigger policy unchanged — no additional trigger criteria added or removed. Previous: Records/Governance Update Pass: §20 Mini Drift Postmortem Rule refined (postmortem NOT required for every corrective pass — required only on recurrence or canonical-document impact; derived-view drift requires fix only); §21 Governance Friction Principle added (new rules must replace an old rule or reduce friction — otherwise not added); §22 Friday Governance Review Output Rule added (written output required; no output = review not completed). Previous: T5-25 Records Pass: §18 Canonical Source Map added (document hierarchy + conflict resolution rule); §19 Mandatory Change-Type Field added (5 valid values + execution semantics for Phase 8+ items); §20 Mini Drift Postmortem Rule added (3-field format: Drift / Why it escaped / Guard now in place). 2026-03-09 history: §12.5 Debt-Clear Window added — mandatory periodic debt reduction rule, 5-task cadence, tier-ordered selection, enforcement signal at session start. Workflow Governance Framework — §1.1 Subsystem Ownership table added; §12.1 Task Learning field added as required resolution component; §17.2/17.3 step-1a DoR gate added; §17.5 Definition of Ready checklist added; §17.6 Bottleneck/Owner/Unblock optional metadata added; E19 DoR enforcement rule added. Proposal 3 — Explicit Handoff statuses — declined: already covered by SCRATCHPAD.md STATUS + Path A/B step model. 2026-03-08 history: E16 tightened: `TECHNICAL_DEBT.md` is sole canonical path record — message-only declaration no longer valid; §17.2/17.3 step-1 now name the `**Workflow Path:**` field explicitly. Phase 8 OPEN — §17 Phase 8 Per-Item Workflow Standard added: canonical Path A (standard) and Path B (PILOT-01 QA-assisted) sequences; E16 Path declaration rule, E17 No mid-item path switching, E18 Workflow drift process violation. Phase 7.9 history: §14 Project Safeguard Protocols added: Agent Challenge Rule §14.1, Change Justification Requirement §14.2, Cooling-Off Protocol §14.3, No Impulse Implementation Rule §14.4, Complexity Budget Rule §14.5; §2.0 Environment Setup mandatory pre-task gate added; §2.4 Optional fast iteration rule added; canonical sequence in §2 updated to include Step 0; §3.6 Documentation Edit Policy added; §10 Common Mistakes + §11 Pre-Delivery Checklist updated to 24 items; §12 Debt Register Discipline, §13 Architecture Decision Boundary, §1 role boundary hardening; §15 Engineering Scratchpad Protocol added 2026-03-07; §16 Domain-Specific Engineering Contracts added 2026-03-07 — process rules from ADR-0021, 0022, 0024, 0025, 0028, 0029, 0031, 0035, 0036, 0039, 0040 distilled here; ADR triage: 7 historical ADRs retired, 11 process ADRs moved to §16, 27 architectural ADRs remain in docs/adr/). Authoritative for all agents and engineers operating on TITAN OS.*
+## §31 — Reconciliation Index
+
+The body text is the binding text; this index preserves anchors only. Detailed change keys live
+in git history.
+
+| Pass (date) | Anchor keys | Landed in |
+|---|---|---|
+| Pass-2 QA hardening (2026-06-10) | C1–C14 | §HARD GATE (C1), §8.5 (C5), §8.6/§13.3 (C4), §8.7 (C3), §8.8 (C6), §8.2 (C12), §16.7 (C11), §16.10 (C13), §17.3 (C7), §28 (C8), §30 (C2, C9/C10, C14) |
+| Pass-3 QA + consolidation (2026-06-11) | G-1..G-16 | single gate law (§19/§HARD GATE), single delivery format (§23), lane challenge split (§14.1), metrics contract (§8.8), generic phase gate (§16.2), athlete-id end-state (§16.10), enforcement classes (§8.2), tier carve-out removal (§30), policy-only constraint (§3.6) |
+| Pass-4 minimization (2026-06-11) | H-1..H-10 | §2.0 (H-1, H-4), §8.6 DDL→ADR (H-2), §8.11 (H-3), §16.3 sensors (H-5), §30 folds (H-6), §8.12 compose check (H-7), §8.10/§8.11 (H-8), invariant-ID verdicts (H-9), semgrep/meta-test enforcement (H-10) |
+| Governance ladder Pass 1–3 (2026-06-12) | AF-01..10 · AG2-01..10 · AG3-01..08 | §1.2 Reserved Powers; §2.3/§2.4 evidence + profiles; §3.6/§13.1/§14.1/§28 → §1.2 pointers; §8.2 violation vocabulary; §16.1 ladder termination; §16.3 lint + TRACKED liveness; §16.11 ceiling + mass-cited review; §16.12 → v7.9 §14; §17.7 (ex-unnumbered QA policy); §18 contract ownership row; §19 single gate law inlined; §21 scope extension; §22 ledger review; §23 `Authorizes:` field + §23.1; §30 vocabulary + T-PRA-37..39; tombstones extracted; inline pass-annotations retired; contract revised to v7.9-r3 |
+
+§24 merged into the §23 handoff template (`Closure rule`, `Canonical doc update` fields);
+§25 folded into §2.0. Anchors retired; absent declarations remain DoR FAIL.
+
+---
+
+*Changelog (newest first; full history in git):*
+- *2026-06-12 r5 — Governance ladder Pass 1–3 consolidation (policy-only): structural cleanup
+  (Pass 1), authority/clearance/severity single-sourcing (Pass 2), evidence-record +
+  orchestrator-obligation + lint/telemetry layer (Pass 3). Debt register 29 → 32 live items.
+  Governing contract: v7.9-r3.*
+- *2026-06-11 r4 — Pass-4 minimization/placement/operationalization (policy-only): H-1..H-10;
+  prose rules converted to sensors; DDL relocated to ADR layer; zero coverage loss.*
+- *2026-06-11 r3 — Pass-3 QA + consolidation (policy-only): full production-readiness audit
+  incorporated; INV-24/25, INV-08 ext, RE-05/06, RBP-04/05, MPC-02, DR amendments; T-PRA-24..36;
+  document reduced ~50% with all controls preserved.*
+- *2026-06-10 r2 — Pass-2 QA hardening: §31-C1..C14; INV-21/22/23; §13.4 downgrade; honest §30
+  vocabulary; T-PRA-17..23.*
+- *2026-06-10 r1 — Governance Alignment Reconstruction: v7.9 alignment; §8.4–§8.12; INV-11..20;
+  §30 register; T-PRA-01..16.*
+- *Earlier (2026-03 era): §28; §23–§27 lanes/rules; ADR-0049 taxonomy; §20–§22; §17 workflow;
+  §12.5; DoR/E-rules; §2.0/§3.6/§12–§16 foundations.*
+
+*Authoritative for all agents and engineers operating on TITAN OS.*
