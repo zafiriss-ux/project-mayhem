@@ -2,6 +2,8 @@
 
 **Date:** 2026-04-04
 **Status:** Accepted
+**Deferral note (2026-06-12):** Calibration wiring deferred 2026-06-12 per formal deferral
+decision. Re-entry: B-3 closed AND owner corpus gate met. Ref: TECHNICAL_DEBT.md T-PRA-18-CAL.
 **Deciders:** Architect (Claude) + Owner (Zaf)
 **Source:** HD-09 / TITAN_HARDENING_FRAMEWORK_v1.md §1.1
 **Related:** ADR-0033 (model aging + multi-athlete), ADR-0035 (OutcomeTracker integrity),

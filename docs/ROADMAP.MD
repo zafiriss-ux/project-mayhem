@@ -406,7 +406,9 @@ per-athlete-isolated `EngineRegistry`; ADR-0052 offset calibration producing
 per-athlete threshold deltas in production.
 
 **Opus audit gate:** ✅ SATISFIED 2026-06-09 — Opus second re-audit GO;
-B1-B7 all RESOLVED; Phase 27 primary deliverables OPEN
+B1–B7 blocker-clear complete 2026-06-09; B-1 coach RBAC subsequently found open
+by static audit (SA:C-1); hardening track opened 2026-06-12 (CONTRACT 7.9);
+Phase 27 primary deliverables OPEN
 (see `docs/audit/PRE_PHASE27_REAUDIT2_2026-06-09.md`).
 
 **Goal:** Aggregate per-athlete calibration signal into cohort-level patterns.
