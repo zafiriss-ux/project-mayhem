@@ -1657,6 +1657,21 @@ Entry gate: Phase 26 close audit PASS (2026-06-07); ≥ 3 athlete profiles activ
 | P27-01 | MED | cohort_calibration_signals table absent; no schema surface for CohortProfile aggregation or population-heuristic promotion | Cohort analytics | RESOLVED 2026-06-09 (PR #858) — cohort_calibration_signals table, SCHEMA_VERSION 25, schema-only scaffolding; producer/reader deferred until athlete #2 (multi-athlete cohort) |
 | P27-04 | MED | No rollback gate to revert a calibrated threshold if completion_rate degrades within the 30-day observation window | Calibration safety | RESOLVED 2026-06-09 (PR #860) — completion-rate calibration rollback gate, advisory default, v1 (completion-rate only; injury-event trigger deferred — no injury column yet, A2-04). Not yet wired into run_morning_routine. |
 
+### T-PRA-18-CAL · Calibration pipeline end-to-end wiring 🔵 DEFERRED-FORMAL
+
+**Tier:** 2.
+**Status:** DEFERRED-FORMAL (2026-06-12).
+
+**Scope:** `run_calibration_cycle` has no production caller; `GovernanceEngine(threshold_adapter=...)`
+is discarded in `coaching_pipeline.py:99` ("Stage 4 will wire this"); CS/APL hydrate cold
+(TODO-P26-04b/c).
+
+**Re-entry criteria:** Formally deferred. Re-entry requires BOTH: (a) B-3 verified closed
+(`worker_routine_executions` table, INV-15) AND (b) owner corpus gate met (≥
+`CALIBRATION_MIN_OUTCOME_COUNT` paired decisions in `governance_outcomes` for `athlete_id='owner'`).
+
+**Owner:** Architect. **Target phase:** post-B3.
+
 ---
 
 ## FMEA: Phase 24 — Schema & EffectBus Phase C (CLOSED)

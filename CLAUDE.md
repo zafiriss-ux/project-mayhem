@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3047 tests all green (3041 passed, 6 skipped — 2026-06-09)
+**Historical snapshot:** 3056 tests all green (3050 passed, 6 skipped — 2026-06-12)
 
 Update after every commit adding/removing tests:
 
@@ -178,7 +178,7 @@ phase_close_audit.sh 26 exit 0; 3025 tests passing; 6 skipped (3031 collected); 
 P26-02/03/04/05/06/07 RESOLVED (CoachingScheduler wired via `TITAN_MULTI_ATHLETE`; EngineRegistry.from_db TSB+HRV hydration, athlete-scoped; corpus gate query; postgres DSN validator; lazy settings; B2c removed);
 P26-01 DEFERRED Phase 9 (ATHLETE_MAX_HR per-athlete schema); P26-08 DEFERRED pending ADR.
 
-## Phase 27 OPEN (ACTIVE, 2026-06-07) — ✅ GO VERDICT 2026-06-09 (Opus second re-audit; B1-B7 all RESOLVED)
+## Phase 27 OPEN (ACTIVE, 2026-06-07) — B1–B7 blocker-clear complete 2026-06-09; B-1 coach RBAC subsequently found open by static audit (SA:C-1); hardening track opened 2026-06-12 (CONTRACT 7.9)
 
 1. Cohort calibration analytics: cross-athlete threshold delta distributions; population heuristics vs. individual outliers
 2. `CohortProfile` — aggregated population-level calibration signal (HEURISTIC → MODERATE when ≥ 3 athletes confirm same delta)

@@ -1,6 +1,7 @@
 # ADR-0057: Docker API Deployment
 
-**Status:** PROPOSED
+**Status:** ACCEPTED
+**Accepted:** 2026-06-07 (Phase 26 close)
 
 ## Context
 
