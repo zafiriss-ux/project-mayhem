@@ -440,8 +440,9 @@ treat absence as most conservative. Handlers MUST log the exception (CRITICAL or
 never return an optimistic value — **even when the substituted sentinel is conservative
 (e.g., `inf` sync-age), silent substitution is a violation: log it.** Silent
 `except Exception: return` in a safety path is a GATE VIOLATION equivalent to a gate bypass.
-An exception inside `apply_constraints()` / hard-stop evaluation forces `session_type = REST`
-with a structured event [B-4]. **Safety-relevant methods are invoked directly, never via
+An exception inside `apply_constraints()` / hard-stop evaluation forces `session_type = EASY`
+and `max_zone = 2` (the system's canonical conservative floor), logs CRITICAL, and appends
+`GOVERNANCE_EXCEPTION_FAIL_CLOSED` [B-4]. **Safety-relevant methods are invoked directly, never via
 `getattr(obj, "name", None)` optional dispatch** — a renamed method must fail loudly, not no-op
 forever [C-6]. Enforced by a semgrep/AST rule plus removal of the existing instance (T-PRA-26
 conformance sweep) — the repo already runs semgrep, so this is a rule addition, not new
