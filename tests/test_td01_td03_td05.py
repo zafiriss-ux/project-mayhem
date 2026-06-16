@@ -14,7 +14,12 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+from fastapi.testclient import TestClient
 
+from titan.api.auth import AuthStore, hash_password
+from titan.api.main import CSRF_HEADER_NAME, CoachAuditStore, create_app
 from titan.science.governance_engine import GovernanceEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -157,6 +162,19 @@ class TestCoachRBAC:
 
         result = self._deps.require_coach_athlete_access(req, athlete)
         assert result is athlete
+
+    def test_require_coach_athlete_access_fails_closed_when_db_none(self):
+        """COACH role, non-owner athlete_id, db is None → 403 (INV-11 fail-closed)."""
+        from fastapi import HTTPException
+
+        req = _make_request(path_params={"athlete_id": "athlete-Z"}, db=None)
+        coach = _make_auth_user("COACH", user_id="coach-1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._deps.require_coach_athlete_access(req, coach)
+
+        assert exc_info.value.status_code == 403
+        assert "unavailable" in exc_info.value.detail.lower()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -415,3 +433,85 @@ class TestSQLiteReaderLock:
             t.join(timeout=10)
 
         assert errors == [], f"Concurrent errors: {errors}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TD-01 (route-level): COACH RBAC on the three assignment-scoped endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _make_rsa_keypair() -> tuple[str, str]:
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode()
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode()
+    return private_pem, public_pem
+
+
+_ATHLETE_SCOPED_ROUTES = [
+    ("POST", "/coach/overrides?athlete_id=athlete-2", {"reason": "r"}),
+    ("GET", "/coach/export?athlete_id=athlete-2", None),
+    ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
+]
+
+
+class TestCoachRBACRoutes:
+    """Route-level integration tests for COACH RBAC on the three athlete-scoped endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def setup_client(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        private_pem, public_pem = _make_rsa_keypair()
+        monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
+        monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem)
+
+        auth_store = AuthStore()
+        auth_store.upsert_user(
+            user_id="coach-1",
+            username="coach",
+            password_hash=hash_password("coach-pass"),
+            role="COACH",
+            athlete_id=None,
+        )
+        self.app = create_app(auth_store=auth_store, audit_store=CoachAuditStore())
+        self.client = TestClient(self.app, base_url="https://testserver")
+        r = self.client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+        assert r.status_code == 200
+
+    def _csrf(self) -> dict[str, str]:
+        r = self.client.get("/api/csrf-token")
+        return {CSRF_HEADER_NAME: r.json()["csrf_token"]}
+
+    def _request(self, method: str, url: str, payload: dict | None) -> object:
+        csrf = self._csrf()
+        if method == "POST":
+            return self.client.post(url, json=payload, headers=csrf)
+        if method == "GET":
+            return self.client.get(url)
+        return self.client.delete(url, headers=csrf)
+
+    @pytest.mark.integration
+    def test_coach_not_assigned_gets_403_on_all_three_routes(self) -> None:
+        """Authenticated COACH not assigned to athlete-2 must receive 403 on each route."""
+        db = MagicMock()
+        db.get_assigned_athletes.return_value = []
+        self.app.state.db = db
+
+        for method, url, payload in _ATHLETE_SCOPED_ROUTES:
+            r = self._request(method, url, payload)
+            assert r.status_code == 403, f"{method} {url} expected 403, got {r.status_code}"
+
+    @pytest.mark.integration
+    def test_coach_assigned_gets_200_on_all_three_routes(self) -> None:
+        """Authenticated COACH assigned to athlete-2 must receive 200 on each route."""
+        db = MagicMock()
+        db.get_assigned_athletes.return_value = ["athlete-2"]
+        self.app.state.db = db
+
+        for method, url, payload in _ATHLETE_SCOPED_ROUTES:
+            r = self._request(method, url, payload)
+            assert r.status_code == 200, f"{method} {url} expected 200, got {r.status_code}"
