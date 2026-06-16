@@ -176,6 +176,48 @@ class TestCoachRBAC:
         assert exc_info.value.status_code == 403
         assert "unavailable" in exc_info.value.detail.lower()
 
+    def test_require_coach_athlete_access_owner_not_assigned_gets_403(self):
+        """INV-11: COACH not assigned to owner, athlete_id='owner' → 403."""
+        from fastapi import HTTPException
+
+        db = MagicMock()
+        db.get_assigned_athletes.return_value = []
+
+        req = _make_request(path_params={"athlete_id": "owner"}, db=db)
+        coach = _make_auth_user("COACH", user_id="coach-1")
+
+        with pytest.raises(HTTPException) as exc_info:
+            self._deps.require_coach_athlete_access(req, coach)
+
+        assert exc_info.value.status_code == 403
+
+    def test_require_coach_athlete_access_owner_assigned_passes(self):
+        """INV-11: COACH assigned to owner, athlete_id='owner' → allow."""
+        db = MagicMock()
+        db.get_assigned_athletes.return_value = ["owner"]
+
+        req = _make_request(path_params={"athlete_id": "owner"}, db=db)
+        coach = _make_auth_user("COACH", user_id="coach-1")
+
+        result = self._deps.require_coach_athlete_access(req, coach)
+        assert result is coach
+
+    def test_require_coach_athlete_access_non_coach_owner_passes(self):
+        """ATHLETE role (owner's own session) accessing owner data is unaffected by coach gate."""
+        req = _make_request(path_params={"athlete_id": "owner"})
+        owner_user = _make_auth_user("ATHLETE", user_id="owner-1", athlete_id="owner")
+
+        result = self._deps.require_coach_athlete_access(req, owner_user)
+        assert result is owner_user
+
+    def test_require_coach_athlete_access_no_athlete_id_passes_coach(self):
+        """No athlete_id in request → permissive (not an athlete-scoped route), even for COACH."""
+        req = _make_request()
+        coach = _make_auth_user("COACH", user_id="coach-1")
+
+        result = self._deps.require_coach_athlete_access(req, coach)
+        assert result is coach
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TD-03: Override lockdown — cold start default-deny
