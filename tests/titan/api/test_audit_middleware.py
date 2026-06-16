@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from unittest.mock import MagicMock
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -57,10 +58,29 @@ def _login_coach(client: TestClient) -> None:
 
 
 @pytest.mark.integration
-def test_authenticated_post_creates_audit_row(
+def test_unassigned_coach_denied_on_override_route(
     coach_client: tuple[TestClient, CoachAuditStore],
 ) -> None:
+    """Unassigned coach must receive 403 on assignment-scoped route (INV-11 fail-closed)."""
     client, audit_store = coach_client
+    _login_coach(client)
+    csrf = _csrf_headers(client)
+
+    r = client.post("/coach/overrides?athlete_id=athlete-99", json={"reason": "test"}, headers=csrf)
+    assert r.status_code == 403
+
+
+@pytest.mark.integration
+def test_assigned_coach_creates_audit_row(
+    coach_client: tuple[TestClient, CoachAuditStore],
+) -> None:
+    """Assigned coach must get 200 and an audit row is created."""
+    client, audit_store = coach_client
+
+    db = MagicMock()
+    db.get_assigned_athletes.return_value = ["athlete-99"]
+    client.app.state.db = db
+
     _login_coach(client)
     csrf = _csrf_headers(client)
 

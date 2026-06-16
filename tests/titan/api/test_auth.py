@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -60,6 +61,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     )
 
     app = create_app(auth_store=store)
+    db = MagicMock()
+    db.get_assigned_athletes.return_value = ["athlete-1", "athlete-2"]
+    app.state.db = db
     return TestClient(app, base_url="https://testserver")
 
 

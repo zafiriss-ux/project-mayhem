@@ -457,15 +457,15 @@ def create_app(
         return {"status": "created"}
 
     @app.post("/coach/overrides")
-    def submit_coach_override(athlete_id: str, _: dict[str, Any], __: AuthUser = Depends(require_coach)) -> dict[str, str]:
+    def submit_coach_override(athlete_id: str, _: dict[str, Any], __: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
         return {"status": "override_submitted", "athlete_id": athlete_id}
 
     @app.get("/coach/export")
-    def export_health_data(athlete_id: str, _: AuthUser = Depends(require_coach)) -> dict[str, str]:
+    def export_health_data(athlete_id: str, _: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
         return {"status": "export_ready", "athlete_id": athlete_id}
 
     @app.delete("/coach/athlete-data")
-    def delete_athlete_data(athlete_id: str, _: AuthUser = Depends(require_coach)) -> dict[str, str]:
+    def delete_athlete_data(athlete_id: str, _: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
         return {"status": "deleted", "athlete_id": athlete_id}
 
     # Mount Prometheus scrape endpoint — no auth; internal scrape only.

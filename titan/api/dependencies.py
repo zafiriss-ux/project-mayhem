@@ -83,11 +83,17 @@ def require_coach_athlete_access(
     if not athlete_id or athlete_id == "owner":
         return current_user
     db = getattr(request.app.state, "db", None)
-    if db is not None:
-        allowed = db.get_assigned_athletes(current_user.id)
-        if athlete_id not in allowed:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Coach not assigned to athlete {athlete_id}",
-            )
+    if db is None:
+        # Cannot verify assignment without the DB → deny (INV-11 fail-closed).
+        # An unverifiable coach-to-athlete assignment must never default-allow.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Coach assignment cannot be verified (datastore unavailable) — access denied",
+        )
+    allowed = db.get_assigned_athletes(current_user.id)
+    if athlete_id not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Coach not assigned to athlete {athlete_id}",
+        )
     return current_user

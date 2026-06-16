@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -50,6 +52,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, CoachAuditStore
 
     audit_store = CoachAuditStore()
     app = create_app(auth_store=auth_store, audit_store=audit_store)
+    db = MagicMock()
+    db.get_assigned_athletes.return_value = ["athlete-2", "athlete-xyz"]
+    app.state.db = db
     return TestClient(app, base_url="https://testserver"), audit_store
 
 
