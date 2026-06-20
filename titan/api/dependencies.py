@@ -80,7 +80,9 @@ def require_coach_athlete_access(
     if current_user.role != "COACH":
         return current_user
     athlete_id = _get_athlete_id_from_request(request)
-    if not athlete_id or athlete_id == "owner":
+    # INV-11: owner is assignment-scoped like any athlete (no role-only bypass).
+    # A path with no athlete_id at all remains permissive (not an athlete-scoped route).
+    if not athlete_id:
         return current_user
     db = getattr(request.app.state, "db", None)
     if db is None:
