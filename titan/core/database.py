@@ -235,6 +235,29 @@ class DatabaseManager:
         # Prevents "database is locked" errors during concurrent access
         cursor.execute("PRAGMA busy_timeout=5000")
 
+        # INV-14: enforce declared foreign keys. SQLite defaults FK enforcement OFF;
+        # without this, the ForeignKey constraints in schema.py are decorative.
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA foreign_keys")  # read back to confirm enabled
+
+        # INV-14 safe-rollout: a DB with pre-existing orphaned FKs must not be
+        # silently enforced into write failures. Detect, log CRITICAL, raise —
+        # never proceed with a known-violating DB.
+        fk_violations = cursor.execute("PRAGMA foreign_key_check").fetchall()
+        if fk_violations:
+            logging.getLogger('titan.database').critical(json.dumps({
+                "flow": "database", "action": "fk_integrity_violation_on_open",
+                "invariant": "INV-14",
+                "violation_count": len(fk_violations),
+                "violations": [list(map(str, row)) for row in fk_violations[:20]],
+                "outcome": "REFUSED_TO_OPEN",
+            }, default=str))
+            raise RuntimeError(
+                f"Foreign-key integrity violations detected on open "
+                f"({len(fk_violations)} rows). Refusing to enable FK enforcement "
+                f"on a violating database. Reconcile orphaned rows first."
+            )
+
         # Log PRAGMA results for debugging (frozen mode validation)
         try:
             logger = logging.getLogger('titan.database')
@@ -305,6 +328,23 @@ class DatabaseManager:
         approach with a deterministic version gate (T1-16).
         """
         current_version: int = cursor.execute("PRAGMA user_version").fetchone()[0]
+
+        # INV-25: an older binary must never silently open a newer DB.
+        # If the DB was written by a newer SCHEMA_VERSION, refuse — forward
+        # migrations are not guaranteed reversible.
+        if current_version > SCHEMA_VERSION:
+            logging.getLogger('titan.database').critical(json.dumps({
+                "flow": "database", "action": "schema_version_forward_guard",
+                "invariant": "INV-25",
+                "db_user_version": current_version,
+                "binary_schema_version": SCHEMA_VERSION,
+                "outcome": "REFUSED_TO_OPEN",
+            }, default=str))
+            raise RuntimeError(
+                f"Database user_version ({current_version}) is newer than this "
+                f"binary's SCHEMA_VERSION ({SCHEMA_VERSION}). An older binary "
+                f"cannot safely open a newer database. Upgrade the binary."
+            )
 
         # Ordered dict: version → (table, column_label, sql).
         # To add a future migration: increment SCHEMA_VERSION and add an entry.
