@@ -160,7 +160,7 @@ The container diagram will be updated when Phase 8B containers are deployed.
 
 ## Related
 
-- `ARCHITECTURE.md` — full architectural design with prose
+- `docs/ARCHITECTURE.md` — full architectural design with prose
 - ADR-0013 — Operator Console technology path (Streamlit → React + FastAPI)
 - ADR-0018 — Kernel Boundary: Decision Pipeline / Effect Runner Split
 - ADR-0046 — DailyCoach multi-athlete execution model
