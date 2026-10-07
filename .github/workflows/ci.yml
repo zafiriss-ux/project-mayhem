@@ -35,10 +35,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -56,10 +56,10 @@ jobs:
     needs: [ruff-phase-a]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -92,10 +92,10 @@ jobs:
         python-version: ${{ github.event_name == 'pull_request' && fromJSON('["3.12"]') || fromJSON('["3.12", "3.13"]') }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -163,7 +163,7 @@ jobs:
     needs: [ruff-phase-a]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -338,7 +338,7 @@ jobs:
           }
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -416,10 +416,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -492,10 +492,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
