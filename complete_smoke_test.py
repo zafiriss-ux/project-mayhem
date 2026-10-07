@@ -103,7 +103,7 @@ def test_persistence():
 
     # Write marker
     code, out, err = run_cmd(
-        "docker cp check_persistence.py project-mayhem-titan-api-1:/app/ 2>/dev/null; "
+        "docker cp scripts/diagnostics/check_persistence.py project-mayhem-titan-api-1:/app/ 2>/dev/null; "
         "docker exec project-mayhem-titan-api-1 python3 -c \"import sys; sys.path.insert(0, '.'); "
         "import os; os.environ['TITAN_DATA_DIR'] = '/data'; "
         "from titan.core.database import DatabaseManager; from pathlib import Path; "
