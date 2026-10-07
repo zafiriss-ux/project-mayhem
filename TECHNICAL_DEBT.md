@@ -1702,7 +1702,7 @@ RESOLVED disposition.
 | T-PRA-21 | B-11 | 1 | Durable ordered-before-effect audit (INV-22) | OPEN | Refactor plan task #21 |
 | T-PRA-22 | B-15, B-3, SA:m-3 | 1 | Worker liveness: healthcheck, heartbeat, watchdog, stale-lock recovery (INV-23) | OPEN | Refactor plan task #14 |
 | T-PRA-23 | B-8 family | 2 | Schema downgrade routines / documented reversal | OPEN | Not scheduled |
-| T-PRA-24 | B-14 | 1 | Data-trust verdict clamp (INV-24) | OPEN | Refactor plan task #13 |
+| T-PRA-24 | B-14 | 1 | Data-trust verdict clamp (INV-24) | FIX MERGED: PR #905 (INVALID verdict caps the session at EASY / 45 min, REST stays REST; `data_trust_clamped` in the decision trace); Architect close pending | Refactor plan task #13 |
 | T-PRA-25 | B-8 | 1 | `user_version > SCHEMA_VERSION` startup guard (INV-25) | FIX MERGED: PR #874 (startup refuses a newer DB); Architect close pending | Refactor plan task #4 |
 | T-PRA-26 | K:PRA-13, SA:m-2, C-6 | 2 | Sync & safety-path conformance sweep | OPEN | Not scheduled |
 | T-PRA-27 | B-12, K:PRA-18 | 2 | CodeQL on PR/push, gitleaks full-range, SBOM, image scan | OPEN (gitleaks on PRs and weekly CodeQL live since PR #879; CodeQL per PR needs a paid plan on a private repo, open Architect decision in PROGRESS.md) | Not scheduled |
