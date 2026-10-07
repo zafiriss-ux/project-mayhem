@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3126 tests all green (3120 passed, 6 skipped — 2026-10-07, GitHub CI)
+**Historical snapshot:** 3177 tests all green (3171 passed, 6 skipped — 2026-10-07, local titan_ci.sh)
 
 Update after every commit adding/removing tests:
 
@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (71 modules, excl. __init__/__main__), ceiling 87.
+Main package (72 modules, excl. __init__/__main__), ceiling 87.
 
 | Package | Responsibility |
 |---------|----------------|
