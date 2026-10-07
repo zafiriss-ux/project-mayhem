@@ -243,6 +243,42 @@ def _daily_coach_event(
     _log.info(json.dumps(structured_event_payload("daily_coach", action, severity=severity, **fields), default=str))
 
 
+_TRUST_CLAMP_KEEP = frozenset({"REST", "EASY"})
+
+
+def _cap_session_for_invalid_trust(
+    session: dict,
+    *,
+    trust_level: DataTrustLevel,
+    reasons: list[str],
+    stage: str,
+) -> tuple[dict, bool]:
+    """INV-24: an INVALID data-trust verdict caps the session at EASY (REST stays REST).
+
+    Uses the same EASY / 45-minute ceiling as the Garmin staleness clamp.
+    Returns the (possibly capped) session and whether a cap was applied.
+    """
+    if trust_level != DataTrustLevel.INVALID:
+        return session, False
+    planned = str(session.get("session_type", "EASY")).upper()
+    if planned in _TRUST_CLAMP_KEEP:
+        return session, False
+    _daily_coach_event(
+        "data_trust_clamp",
+        severity=EventSeverity.WARNING,
+        stage=stage,
+        session_planned=planned,
+        session_applied="EASY",
+        trust_reasons=list(reasons),
+    )
+    capped = {
+        **session,
+        "session_type": "EASY",
+        "duration_min": min(_safe_int(session.get("duration_min", 45), 45), 45),
+    }
+    return capped, True
+
+
 def _failure_class_for_step(step_number: int, error: Exception) -> str:
     """Map a step failure to the canonical daily coach failure taxonomy."""
     if step_number == 2:
@@ -1036,6 +1072,12 @@ class DailyCoach:
 
         if garmin_data_stale:
             today_session = {**today_session, "session_type": "EASY", "duration_min": min(int(today_session.get("duration_min", 45)), 45)}
+        today_session, data_trust_clamped = _cap_session_for_invalid_trust(
+            today_session,
+            trust_level=garmin_trust.trust_level,
+            reasons=list(garmin_trust.reasons),
+            stage="pre_governance",
+        )
 
         # ── Step 9b: Governance hard gates ──────────────────────────────────
         _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
@@ -1142,6 +1184,13 @@ class DailyCoach:
         weather_trust = evaluate_weather_trust(data_quality=weather_data_quality, data_age_hours=0.0)
 
         overall_trust = combine_trust_reports([garmin_trust, weather_trust])
+        today_session, _post_clamped = _cap_session_for_invalid_trust(
+            today_session,
+            trust_level=overall_trust,
+            reasons=list(garmin_trust.reasons) + list(weather_trust.reasons),
+            stage="post_weather",
+        )
+        data_trust_clamped = data_trust_clamped or _post_clamped
         weather_report_payload = {k: v for k, v in weather_trust.to_payload().items() if k != 'checked_at'}
         data_trust = {
             'overall': overall_trust.value,
@@ -1267,6 +1316,7 @@ class DailyCoach:
             "apl_result": apl_result,
             "persistence_degraded": persistence_degraded,
             "garmin_data_stale": garmin_data_stale,
+            "data_trust_clamped": data_trust_clamped,
             "data_confidence_low": _data_confidence_low,
         }
         planned_effects: tuple[PlannedEffect, ...] = (
