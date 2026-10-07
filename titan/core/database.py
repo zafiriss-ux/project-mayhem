@@ -137,6 +137,25 @@ def _derive_field_hint(error: Exception) -> str:
 SCHEMA_VERSION = 25
 
 
+def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = None) -> str | None:
+    """Return None if *path* is a sound SQLite backup, else a description of the problem.
+
+    Checks ``PRAGMA integrity_check`` and, when given, that ``PRAGMA user_version``
+    matches the source schema version (AGENTS DR-02 / DR-03).
+    """
+    conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    try:
+        result = conn.execute("PRAGMA integrity_check").fetchone()
+        if result is None or result[0] != "ok":
+            return f"integrity_check: {result[0] if result else 'no result'}"
+        version = int(conn.execute("PRAGMA user_version").fetchone()[0])
+        if expected_user_version is not None and version != expected_user_version:
+            return f"user_version {version} != expected {expected_user_version}"
+    finally:
+        conn.close()
+    return None
+
+
 class DatabaseManager:
     """
     Permanent memory system for TITAN.
@@ -2032,23 +2051,35 @@ class DatabaseManager:
 
     # --- BACKUP ---
 
-    def backup_database(self, backup_dir: Path | None = None, keep: int = 30) -> Path | None:
-        """Create a hot backup of the database using sqlite3.backup().
+    def backup_database(
+        self,
+        backup_dir: Path | None = None,
+        keep: int = 30,
+        keep_weekly: int = 0,
+    ) -> Path | None:
+        """Create a verified hot backup of the database using sqlite3.backup().
 
         Safe to call while the DB is open and active — sqlite3.backup() uses
         the SQLite online backup API which does not require exclusive access.
 
         One backup per calendar day is created. If today's backup already exists
-        the call is a no-op and returns None. Old backups beyond ``keep`` days
-        are pruned.
+        the call is a no-op and returns None. Every new artifact is verified
+        (AGENTS DR-02): ``PRAGMA integrity_check`` must return ``ok`` and its
+        ``user_version`` must match the live database. A failed artifact is
+        renamed to ``*.db.corrupt``, logged CRITICAL and counted in
+        ``backup_failure_total``. Retention keeps the ``keep`` newest daily
+        backups plus the newest backup of each of the ``keep_weekly`` most
+        recent ISO weeks outside that set.
 
         Args:
             backup_dir: Directory for backup files. Defaults to
                 ``<db_dir>/backups/``.
             keep: Number of daily backups to retain (default 30).
+            keep_weekly: Number of extra weekly backups to retain (default 0).
 
         Returns:
-            Path to the backup file created today, or None if already exists.
+            Path to the verified backup created today, or None if it already
+            existed or the backup failed.
         """
         if backup_dir is None:
             backup_dir = self.db_path.parent / "backups"
@@ -2065,34 +2096,73 @@ class DatabaseManager:
                 self._ensure_open_locked()
                 with sqlite3.connect(str(dest)) as dst_conn:
                     self.conn.backup(dst_conn)
-            _log.info(
-                json.dumps({
-                    "flow": "database",
-                    "action": "db_backup_created",
-                    "dest": str(dest),
-                    "date": date_str,
-                })
-            )
+                source_version = int(self.conn.execute("PRAGMA user_version").fetchone()[0])
+            problem = _verify_backup_artifact(dest, expected_user_version=source_version)
         except Exception as exc:
-            _log.warning(
-                json.dumps({
-                    "flow": "database",
-                    "action": "db_backup_failed",
-                    "error_class": type(exc).__name__,
-                    "error_message": str(exc),
-                })
-            )
+            problem = f"{type(exc).__name__}: {exc}"
+
+        if problem is not None:
+            self._record_backup_failure(dest, problem)
             return None
 
-        self._prune_old_backups(backup_dir, keep=keep)
+        _log.info(
+            json.dumps({
+                "flow": "database",
+                "action": "db_backup_created",
+                "dest": str(dest),
+                "date": date_str,
+                "size_bytes": dest.stat().st_size,
+                "integrity": "ok",
+            })
+        )
+        self._prune_old_backups(backup_dir, keep=keep, keep_weekly=keep_weekly)
         return dest
 
-    def _prune_old_backups(self, backup_dir: Path, keep: int) -> None:
-        """Remove oldest daily backup files beyond the ``keep`` limit."""
-        backups = sorted(backup_dir.glob("titan_????-??-??.db"))
-        for old in backups[:-keep] if len(backups) > keep else []:
+    def _record_backup_failure(self, dest: Path, problem: str) -> None:
+        """Quarantine a failed backup artifact; log CRITICAL and count the failure."""
+        if dest.exists():
             with suppress(OSError):
-                old.unlink()
+                dest.replace(dest.with_name(dest.name + ".corrupt"))
+        _log.critical(
+            json.dumps({
+                "flow": "database",
+                "action": "db_backup_failed",
+                "dest": str(dest),
+                "error_message": problem,
+            })
+        )
+        with suppress(Exception):
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("backup_failure_total")
+
+    def _prune_old_backups(self, backup_dir: Path, keep: int, keep_weekly: int = 0) -> None:
+        """Keep the ``keep`` newest daily backups plus ``keep_weekly`` older weekly ones."""
+
+        def _iso_week(path: Path) -> tuple[int, int] | None:
+            try:
+                return datetime.strptime(path.stem[len("titan_"):], "%Y-%m-%d").isocalendar()[:2]
+            except ValueError:
+                return None
+
+        backups = sorted(backup_dir.glob("titan_????-??-??.db"))
+        daily = backups[-keep:] if keep > 0 else []
+        older = backups[: len(backups) - len(daily)]
+        covered_weeks = {_iso_week(p) for p in daily}
+        weekly: list[Path] = []
+        for candidate in reversed(older):
+            if len(weekly) >= keep_weekly:
+                break
+            week = _iso_week(candidate)
+            if week is None or week in covered_weeks:
+                continue
+            covered_weeks.add(week)
+            weekly.append(candidate)
+        retained = set(daily) | set(weekly)
+        for old in backups:
+            if old not in retained:
+                with suppress(OSError):
+                    old.unlink()
 
     def check_integrity(self) -> bool:
         """Runs PRAGMA integrity_check. Returns True if OK, False otherwise."""

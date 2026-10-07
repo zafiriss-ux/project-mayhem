@@ -63,9 +63,20 @@ def acquire_worker_lock() -> IOBase | None:
 
 
 def _run_backup(db: DatabaseManager) -> None:
-    """Daily hot backup via DatabaseManager.backup_database() (keep=7 days)."""
+    """Daily verified hot backup to TITAN_BACKUP_DIR with .env retention (AGENTS DR-01/DR-02)."""
     log = logging.getLogger("titan.worker.backup")
-    backed_up = db.backup_database(keep=7)
+    settings = get_settings()
+    backup_dir = Path(settings.TITAN_BACKUP_DIR) if settings.TITAN_BACKUP_DIR else None
+    if backup_dir is None:
+        log.warning(
+            "backup_same_volume",
+            extra={"detail": "TITAN_BACKUP_DIR is not set; backups are written next to the database"},
+        )
+    backed_up = db.backup_database(
+        backup_dir=backup_dir,
+        keep=settings.BACKUP_RETENTION_DAILY_DAYS,
+        keep_weekly=settings.BACKUP_RETENTION_WEEKLY_COUNT,
+    )
     if backed_up:
         log.info("backup_complete", extra={"path": str(backed_up)})
 
