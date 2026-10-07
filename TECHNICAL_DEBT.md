@@ -1700,7 +1700,7 @@ RESOLVED disposition.
 | T-PRA-18 | SA:BENIGN1/2 | 2 | Wire ADR-0052 calibration loop (see T-PRA-18-CAL above) | DEFERRED-FORMAL | Refactor plan task #23 |
 | T-PRA-20 | SA:BENIGN3 | 3 | Diagnostic-script DB path from config | FIX MERGED: PR #895 (`scripts/diagnostics/` read `TITAN_DATA_DIR`); Architect close pending | Refactor plan task #6 |
 | T-PRA-21 | B-11 | 1 | Durable ordered-before-effect audit (INV-22) | OPEN | Refactor plan task #21 |
-| T-PRA-22 | B-15, B-3, SA:m-3 | 1 | Worker liveness: healthcheck, heartbeat, watchdog, stale-lock recovery (INV-23) | OPEN | Refactor plan task #14 |
+| T-PRA-22 | B-15, B-3, SA:m-3 | 1 | Worker liveness: healthcheck, heartbeat, watchdog, stale-lock recovery (INV-23) | FIX MERGED: PR #PRNUM (heartbeat + compose healthcheck, routine budget, CoachingScheduler watchdog + `worker_thread_died_total`, callback isolation, lock holder PID + kill-recovery test, worker log rotation); resource limits (§8.14(5), SHOULD) not set, recorded at phase close; Architect close pending | Refactor plan task #14 |
 | T-PRA-23 | B-8 family | 2 | Schema downgrade routines / documented reversal | OPEN | Not scheduled |
 | T-PRA-24 | B-14 | 1 | Data-trust verdict clamp (INV-24) | FIX MERGED: PR #905 (INVALID verdict caps the session at EASY / 45 min, REST stays REST; `data_trust_clamped` in the decision trace); Architect close pending | Refactor plan task #13 |
 | T-PRA-25 | B-8 | 1 | `user_version > SCHEMA_VERSION` startup guard (INV-25) | FIX MERGED: PR #874 (startup refuses a newer DB); Architect close pending | Refactor plan task #4 |

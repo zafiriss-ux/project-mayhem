@@ -19,7 +19,9 @@ docker compose up --build -d
 
 Named volume `titan-data` → `/data/titan_core.db` (SQLite, WAL mode).
 
-Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart.
+Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart. The file holds the PID of the running worker. The kernel releases the lock when that process dies, so a crashed worker never blocks the next start.
+
+Worker health (INV-23): the worker writes `/data/worker.heartbeat` every 60 s. `docker compose ps` shows `titan-worker` as unhealthy once the heartbeat is older than 120 s: the loop has stopped, the scheduler thread could not be restarted, or the morning routine has run past `WORKER_ROUTINE_BUDGET_S` (30 min, logged as CRITICAL `worker_routine_overrun`). Check it by hand with `docker compose exec titan-worker python scripts/worker_healthcheck.py`. Plain Docker Compose reports unhealthy but does not restart the container.
 
 ## Logs
 

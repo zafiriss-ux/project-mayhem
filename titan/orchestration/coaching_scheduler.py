@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections.abc import Callable
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 
 class CoachingScheduler:
@@ -27,6 +30,9 @@ class CoachingScheduler:
         self._thread = threading.Thread(target=self._run_loop, name="CoachingScheduler", daemon=True)
         self._thread.start()
 
+    def is_alive(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
     def stop(self) -> None:
         self._stop_event.set()
         if self._thread is not None:
@@ -44,5 +50,11 @@ class CoachingScheduler:
             return
         try:
             callback()
+        except Exception:
+            # INV-23(3): one athlete's failure must not stop the loop for the others.
+            _log.exception("scheduler_callback_failed", extra={"athlete_id": athlete_id})
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("scheduler_callback_error_total")
         finally:
             lock.release()
