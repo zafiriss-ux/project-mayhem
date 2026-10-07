@@ -44,7 +44,8 @@ jobs:
           cache: pip
 
       - name: Install Ruff
-        run: python -m pip install ruff==0.15.13
+        # Same Ruff as requirements-dev.txt, so Dependabot bumps reach CI too.
+        run: python -m pip install "$(grep -E '^ruff==' requirements-dev.txt | cut -d' ' -f1)"
 
       - name: Run Ruff Gate 1 (ruff check .)
         run: python -m ruff check .
@@ -65,7 +66,8 @@ jobs:
           cache: pip
 
       - name: Install Ruff
-        run: python -m pip install ruff==0.15.13
+        # Same Ruff as requirements-dev.txt, so Dependabot bumps reach CI too.
+        run: python -m pip install "$(grep -E '^ruff==' requirements-dev.txt | cut -d' ' -f1)"
 
       - name: Run Ruff Phase B blocking gate (clean folders only)
         run: |
