@@ -23,10 +23,12 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | Token Garmin 0600 | #883 | Το κρυπτογραφημένο token Garmin γράφεται με δικαιώματα μόνο για τον κάτοχο (0600)· 3 νέα τεστ |
 | Python 3.12 + garminconnect 0.3.5 | #890 | Ελάχιστη έκδοση Python 3.12 (Docker, launcher, scripts, CI 3.12/3.13)· garminconnect 0.3.5 κλείνει το CVE PYSEC-2026-3467· αντικαθιστά το Dependabot PR #877· τα docs ενημερώνονται στο #10 |
 | Όριο modules 80 | #891 | Το `MODULE_COUNT_CEILING` του CI γίνεται 80, όπως το κανονικό τεστ και το CLAUDE.md· απόφαση Zaf 2026-10-07 |
+| Ενημερώσεις Dependabot | #886, #888, #889, #892 | GitHub Actions v7, 18 μικρές ενημερώσεις Python, setuptools ≥84, pywin32 312· όλα με πράσινο CI |
+| #4 Foreign keys + schema guard | #874 | Η βάση ανοίγει με `foreign_keys=ON`· αρνείται να ανοίξει αν υπάρχουν ορφανές εγγραφές ή αν γράφτηκε από νεότερη έκδοση (INV-14, INV-25)· απόφαση Zaf 2026-10-07 |
 
-## Σε εξέλιξη (κύμα 0)
+## Σε εξέλιξη
 
-- #4 PR #874 (foreign keys + schema forward guard)
+- Τίποτα· το κύμα 0 ολοκληρώθηκε και το CI στο main είναι πράσινο (Python 3.12 + 3.13, CodeQL).
 
 ## Επόμενα
 
