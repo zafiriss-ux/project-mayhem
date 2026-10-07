@@ -416,6 +416,8 @@ def main():
 
     # ── Step 3: Persistent database (moved before engines for EngineRegistry) ──
     db = DatabaseManager()
+    # INV-22: /sync and /manual_entry write their audit row to this database first.
+    telegram.db = db
     log.info(
         "database_initialized",
         extra={"database": "titan_core.db"},
