@@ -13,6 +13,8 @@ import pytest
 
 _TITAN_ROOT = Path(__file__).resolve().parents[1] / "titan"
 _DATABASE_FILE = _TITAN_ROOT / "core" / "database.py"
+# Plan #18: DatabaseManager's per-domain SQL, split out of database.py (same layer).
+_REPOSITORIES_DIR = _TITAN_ROOT / "core" / "repositories"
 
 # T5-80 retired all ADR-0040 annotations — no modules carry the shortcut tag.
 _EXEMPT_SHORTCUT_MODULES: frozenset[Path] = frozenset()
@@ -68,11 +70,11 @@ def test_exempt_modules_are_explicitly_annotated() -> None:
 
 @pytest.mark.unit
 def test_non_database_modules_do_not_add_sql_without_athlete_filter() -> None:
-    """Outside titan/core/database.py, SQL-like literals must mention athlete_id."""
+    """Outside titan/core/database.py and its repositories, SQL-like literals must mention athlete_id."""
     violations: list[str] = []
 
     for py_file in sorted(_TITAN_ROOT.rglob("*.py")):
-        if py_file == _DATABASE_FILE:
+        if py_file == _DATABASE_FILE or py_file.parent == _REPOSITORIES_DIR:
             continue
 
         for lineno, sql in _sql_literals(py_file):

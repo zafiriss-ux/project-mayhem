@@ -61,6 +61,28 @@ def test_concurrent_read_write_no_corruption(tmp_path):
     db.close()
 
 
+def _repository_method(method: ast.FunctionDef) -> str | None:
+    """Source of the repository method a facade method returns, if it only delegates.
+
+    Matches `return self._<repo>.<name>(...)` (or the bare call) as the body's last
+    statement and finds `<name>` in titan/core/repositories/*.py.
+    """
+    last = method.body[-1]
+    call = last.value if isinstance(last, (ast.Return, ast.Expr)) else None
+    if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)):
+        return None
+    holder = call.func.value
+    if not (isinstance(holder, ast.Attribute) and isinstance(holder.value, ast.Name)
+            and holder.value.id == "self" and holder.attr.startswith("_")):
+        return None
+    for repo in sorted(pathlib.Path("titan/core/repositories").glob("*.py")):
+        repo_src = repo.read_text()
+        for node in ast.walk(ast.parse(repo_src)):
+            if isinstance(node, ast.FunctionDef) and node.name == call.func.attr:
+                return "\n".join(repo_src.splitlines()[node.lineno - 1 : node.end_lineno])
+    return None
+
+
 @pytest.mark.integration
 @pytest.mark.governance
 def test_all_read_methods_use_lock():
@@ -82,8 +104,13 @@ def test_all_read_methods_use_lock():
         if name.startswith("_"):
             continue
         method_src = "\n".join(lines[method.lineno - 1 : method.end_lineno])
-        if "self._lock" not in method_src:
-            violations.append(f"L{method.lineno}: {name}")
+        if "self._lock" in method_src:
+            continue
+        # Plan #18: a facade method that delegates to a repository is checked there.
+        delegate = _repository_method(method)
+        if delegate is not None and "self._db._lock" in delegate:
+            continue
+        violations.append(f"L{method.lineno}: {name}")
     assert not violations, (
         f"Read methods missing self._lock ({len(violations)}):\n  " + "\n  ".join(violations)
     )
