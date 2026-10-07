@@ -10,9 +10,19 @@ For the canonical Docker deployment, see [`docs/runbooks/docker-deploy.md`](runb
 
 ## Quick Start (Local Dev Only)
 
+Requires Python 3.12 or newer.
+
 ```bash
 pip install -r requirements.txt
 python launcher/main.py
+```
+
+For development (tests, lint, CI gates):
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest --no-cov -q
+bash scripts/titan_ci.sh
 ```
 
 ## Database
@@ -20,3 +30,161 @@ python launcher/main.py
 - Docker: `/data/titan_core.db`
 - Local: `~/Documents/TITAN/titan_core.db`
 - **NEVER** use `titan.db` — that file is stale and must not be referenced in any runbook or script.
+
+Backups and restore: [`docs/runbooks/database-recovery.md`](runbooks/database-recovery.md). The Docker worker also takes a daily backup (`<data dir>/backups/titan_core.db.YYYYMMDD`, last 7 kept).
+
+---
+
+# Οδηγός πρώτης ρύθμισης (τοπικά, στα ελληνικά)
+
+Συγχωνεύει τον παλιό `DEPLOYMENT_GUIDE.md` της ρίζας, διορθωμένο ώστε να ταιριάζει με τον κώδικα της έκδοσης 5.8.0.
+
+## 1. Εγκατάσταση
+
+```bash
+git clone https://github.com/zafiriss-ux/project-mayhem.git
+cd project-mayhem
+
+python3 -m venv venv
+source venv/bin/activate        # Linux/macOS
+# ή
+.\venv\Scripts\activate         # Windows
+
+pip install --upgrade pip
+pip install -r requirements.txt
+
+cp .env.example .env            # μετά συμπλήρωσε τα credentials (βλ. παρακάτω)
+```
+
+Πού διαβάζονται οι ρυθμίσεις:
+
+| Τρόπος εκκίνησης | Αρχείο ρυθμίσεων |
+|---|---|
+| `python launcher/main.py` | `~/Documents/TITAN/.env` (το φτιάχνει ο οδηγός του launcher) |
+| `python -m titan` ή `python main.py` | `.env` στη ρίζα του repo (ή μεταβλητές περιβάλλοντος) |
+| `docker compose up` | `.env` στη ρίζα του repo |
+
+Τα παρακάτω snippets δοκιμής διαβάζουν μόνο μεταβλητές περιβάλλοντος. Φόρτωσε πρώτα το `.env` στο shell:
+
+```bash
+set -a; source .env; set +a     # Linux/macOS
+```
+
+## 2. Garmin
+
+Στο `.env`:
+```bash
+GARMIN_EMAIL=your_email@example.com
+GARMIN_PASSWORD=your_password
+TITAN_GARTH_TOKEN_KEY=          # κλειδί Fernet, απαραίτητο σε παραγωγή
+```
+
+Δημιουργία κλειδιού για το `TITAN_GARTH_TOKEN_KEY`:
+```bash
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+Δοκιμή σύνδεσης:
+```bash
+python -c "from titan.integrations.garmin_sync import GarminSync; g = GarminSync(); print('✅ Connected' if g.connect() else '❌ Failed')"
+```
+
+Πρώτος συγχρονισμός:
+```bash
+python << 'EOF'
+from titan.integrations.garmin_sync import GarminSync
+
+garmin = GarminSync()
+if garmin.connect():
+    data = garmin.sync_all()
+    print(f"✅ Synced {len(data['activities'])} activities")
+    print(f"✅ Synced {len(data['weight'])} weight entries")
+    print(f"✅ Synced {len(data['sleep'])} sleep sessions")
+    print(f"✅ Synced {len(data['hrv'])} HRV measurements")
+EOF
+```
+
+- ⚠️ Το Garmin Connect έχει rate limits. Αν αποτύχει, περίμενε πριν ξαναδοκιμάσεις.
+- ⚠️ Μην κοινοποιήσεις το `.env`.
+
+## 3. Telegram
+
+1. Στο Telegram, μίλησε με τον `@BotFather`, στείλε `/newbot` και κράτα το **Bot Token**.
+2. Μίλησε με τον `@userinfobot` και στείλε `/start` για να πάρεις το **Chat ID** σου.
+3. Στο `.env`:
+   ```bash
+   TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
+   TELEGRAM_CHAT_ID=123456789
+   ```
+4. Δοκιμή:
+   ```bash
+   python -c "from titan.integrations.telegram_bot import TitanTelegramBot; print('✅ Sent' if TitanTelegramBot().send_message('🎯 TITAN test') else '❌ Failed')"
+   ```
+
+## 4. Καιρός
+
+Το TITAN χρησιμοποιεί το [Open-Meteo](https://open-meteo.com/): δωρεάν, χωρίς εγγραφή ή API key. Στο `.env` χρειάζεται μόνο η τοποθεσία:
+
+```bash
+WEATHER_LOCATION=Athens,GR
+```
+
+Δοκιμή:
+```bash
+python -c "from titan.integrations.weather_api import WeatherAPI; c = WeatherAPI().get_current_conditions(); print(f\"✅ {c['temp_c']}°C, dew point {c['dew_point']}°C\")"
+```
+
+## 5. Εκκίνηση
+
+```bash
+python launcher/main.py     # με έλεγχο περιβάλλοντος και οδηγό ρύθμισης
+# ή
+python -m titan             # κατευθείαν
+```
+
+Ανοίγει το interactive μενού του TITAN. Όσο τρέχει, προγραμματίζει:
+
+- πρωινή ρουτίνα κάθε μέρα στις **07:00 UTC** (μήνυμα στο Telegram),
+- εβδομαδιαίο πλάνο κάθε **Κυριακή στις 20:00 UTC**,
+- Garmin sync κάθε 6 ώρες από την εκκίνηση,
+- ενημέρωση καιρού κάθε ώρα και λήψη εντολών από το Telegram.
+
+Στο Docker, ο `titan-worker` τρέχει μόνο την πρωινή ρουτίνα και το ημερήσιο backup (βλ. [`docs/runbooks/docker-deploy.md`](runbooks/docker-deploy.md)).
+
+Logs: `titan.log` στον τρέχοντα φάκελο (ή ό,τι ορίζει το `TITAN_LOG_PATH`). Του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`.
+
+## 6. Χειροκίνητη εκτέλεση
+
+Πρωινή ρουτίνα τώρα, με τα ίδια components που χρησιμοποιεί ο worker:
+```bash
+python -c "from titan.core.database import DatabaseManager; from titan.worker import _build_daily_coach; _build_daily_coach(DatabaseManager()).run_morning_routine()"
+```
+
+## 7. Προβλήματα και λύσεις
+
+**Garmin connection failed**
+```bash
+echo $GARMIN_EMAIL              # υπάρχουν τα credentials στο περιβάλλον;
+python -c "from titan.integrations.garmin_sync import GarminSync; GarminSync().connect()"
+```
+Αν φταίνε τα rate limits, περίμενε μία ώρα. Αναλυτικά: [`docs/runbooks/garmin-sync-failure.md`](runbooks/garmin-sync-failure.md).
+
+**Δεν έρχονται μηνύματα στο Telegram**
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getMe"   # ισχύει το token;
+echo $TELEGRAM_CHAT_ID
+```
+
+**Δεν ενημερώνεται ο καιρός**
+```bash
+echo $WEATHER_LOCATION
+curl "https://geocoding-api.open-meteo.com/v1/search?name=Athens&count=1"
+```
+
+**Χαλασμένη βάση** → [`docs/runbooks/database-recovery.md`](runbooks/database-recovery.md).
+
+## 8. Συντήρηση
+
+- Ενημέρωση: `git pull`, μετά `pip install -r requirements.txt` και επανεκκίνηση.
+- Έλεγχος πριν από ενημέρωση: `python system_check.py`.
+- Backups: [`docs/runbooks/database-recovery.md`](runbooks/database-recovery.md).

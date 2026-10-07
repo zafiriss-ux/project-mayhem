@@ -5,7 +5,7 @@
 ### Prerequisites
 
 - Docker Desktop (Windows/Mac) or Docker Engine (Linux)
-- Your `.env` file configured (see `DEPLOYMENT_GUIDE.md`)
+- Your `.env` file configured (see `docs/DEPLOYMENT_GUIDE.md`)
 
 ### Start TITAN in Docker
 

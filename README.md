@@ -2,15 +2,13 @@
 
 🏃‍♂️ **Αυτόνομο Σύστημα Προπόνησης με Επιστημονική Νοημοσύνη**
 
-> **Python ≥3.11 Required** — UTF-8 mode, tomllib stdlib, enhanced error messages
+> **Απαιτείται Python ≥ 3.12.** Για παραγωγή, ο προτεινόμενος τρόπος είναι το Docker (βλ. παρακάτω).
 
 ## 🎯 Τι Κάνει το TITAN
 
-Το TITAN είναι ένα ολοκληρωμένο σύστημα προπονητικής νοημοσύνης που:
-
 ### 📊 **Αυτόματη Συλλογή Δεδομένων**
 - ✅ Συγχρονίζει με Garmin Connect (activities, βάρος, ύπνος, HRV)
-- ✅ Λαμβάνει καιρικά δεδομένα (ωριαία πρόγνωση 48 ωρών)
+- ✅ Λαμβάνει καιρικά δεδομένα από το Open-Meteo (ωριαία πρόγνωση 48 ωρών, χωρίς API key)
 - ✅ Παρακολουθεί όλες τις μετρικές προπόνησης
 
 ### 🧠 **Έξυπνη Ανάλυση**
@@ -18,9 +16,9 @@
 - ✅ Υπολογίζει HRV-guided συστάσεις ανάκαμψης
 - ✅ Παρακολουθεί Training Stress Balance (CTL/ATL/TSB)
 - ✅ Προβλέπει κίνδυνο τραυματισμού (ACWR monitoring)
+- ✅ Κάθε σύσταση περνά από governance gates (hard stops) πριν φτάσει σε σένα
 
 ### 📅 **Εβδομαδιαίο Πλάνο Προπόνησης**
-- ✅ Δημιουργεί αυτόματα εβδομαδιαίο πλάνο κάθε Κυριακή
 - ✅ Βασισμένο σε lactate threshold, drift analysis, HRV trends
 - ✅ Προσαρμόζεται στην τρέχουσα κατάσταση ανάκαμψης
 - ✅ Λαμβάνει υπόψη την πρόγνωση καιρού
@@ -28,194 +26,146 @@
 ### ⏰ **Βέλτιστη Ώρα Τρεξίματος**
 - ✅ Υπολογίζει την καλύτερη ώρα κάθε μέρα
 - ✅ Αναλύει dew point, θερμοκρασία, άνεμο
-- ✅ Προσαρμόζεται στον τύπο προπόνησης (INTERVALS vs LONG_RUN)
-- ✅ Λαμβάνει υπόψη την κόπωση (TSB status)
+- ✅ Προσαρμόζεται στον τύπο προπόνησης (INTERVALS vs LONG_RUN) και στην κόπωση (TSB)
 
 ### 🍽 **Διατροφική Βελτιστοποίηση**
 - ✅ Παρακολουθεί την τάση βάρους από Garmin
-- ✅ Υπολογίζει carbs/protein/fat βάσει φάσης προπόνησης
-- ✅ Επιστημονικά τεκμηριωμένο (Burke, Jeukendrup protocols)
+- ✅ Υπολογίζει carbs/protein/fat βάσει φάσης προπόνησης (Burke, Jeukendrup protocols)
 - ✅ Προειδοποιεί για RED-S (ενεργειακή ανεπάρκεια)
 
-### 📱 **Telegram Bot Notifications**
-- ✅ Καθημερινό μήνυμα στις 07:00 με σημερινό workout + optimal time
-- ✅ Εβδομαδιαίο πλάνο κάθε Κυριακή στις 20:00
-- ✅ Post-run ανάλυση μετά από κάθε προπόνηση
+### 📱 **Telegram**
+- ✅ Πρωινό μήνυμα στις **07:00 UTC** με το σημερινό workout και τη βέλτιστη ώρα
+- ✅ Εβδομαδιαίο πλάνο την **Κυριακή στις 20:00 UTC** (στην τοπική λειτουργία, βλ. «Τι τρέχει πού»)
 - ✅ Προειδοποιήσεις ανάκαμψης
+
+Όλες οι ώρες είναι σε UTC (07:00 UTC = 10:00 ώρα Ελλάδας το καλοκαίρι, 09:00 τον χειμώνα).
 
 ## 🏗 Αρχιτεκτονική
 
 ```
 titan/
-├── core/              # Βασική λειτουργικότητα (athlete, database, config)
-├── science/           # Επιστημονικές μηχανές (HRV, TSB, ACWR, lactate, drift)
-├── features/          # Χαρακτηριστικά (weekly planner, optimal time, nutrition)
-├── integrations/      # Εξωτερικές ενοποιήσεις (Garmin, Weather, Telegram)
-├── orchestration/     # Υψηλού επιπέδου ορχήστρωση (daily coach)
-└── main.py           # Κύριο entry point
+├── api/             # FastAPI (auth, coach/athlete routes) — container titan-api
+├── config/          # Ρυθμίσεις (settings.py) και safety thresholds
+├── core/            # Athlete profile, database, persistence, schema
+├── features/        # Weekly planner, optimal time, nutrition
+├── integrations/    # Garmin, Weather (Open-Meteo), Telegram, biometric routing
+├── observability/   # Structured metrics
+├── orchestration/   # DailyCoach, coaching pipeline, engine registry, scheduler
+├── science/         # Επιστημονικές μηχανές (HRV, TSB, ACWR, lactate, drift, governance, ...)
+├── ui/              # Μενού και setup wizard της τοπικής λειτουργίας
+├── utils/           # Βοηθητικά (math core)
+├── worker/          # Background worker — container titan-worker
+└── main.py          # Entry point της τοπικής (interactive) λειτουργίας
 ```
 
-### Πλήρης Λίστα Modules
+Αναλυτικά, με κάθε module: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-#### Core Modules (7)
-1. `core/athlete.py` - UniversalAthleteProfile
-2. `core/database.py` - DatabaseManager + SQLite
-3. `core/equipment.py` - Shoe tracking
-4. `core/periodization.py` - Training phases
+## 🚀 Εγκατάσταση
 
-#### Science Modules (15)
-1. `science/hrv_engine.py` - HRV-guided training
-2. `science/tsb_engine.py` - Training Stress Balance
-3. `science/acwr_engine.py` - Injury prevention
-4. `science/lactate_logic.py` - LT1/LT2 estimation
-5. `science/drift_engine.py` - HR drift analysis
-6. `science/glycogen_model.py` - Fuel management
-7. `science/fatigue_engine.py` - Fatigue classification
-8. `science/readiness_engine.py` - Daily readiness
-9. Plus 7 more...
+Υπάρχουν δύο τρόποι. Έτοιμο Windows `.exe` / GitHub Release δεν υπάρχει ακόμη (προγραμματίζεται).
 
-#### Feature Modules (8)
-1. `features/weekly_planner.py` - **🆕 Εβδομαδιαίο πλάνο**
-2. `features/optimal_time_calculator.py` - **🆕 Βέλτιστη ώρα**
-3. `features/nutrition_optimizer.py` - **🆕 Διατροφή**
-4. Plus 5 more...
+### Α. Docker (προτεινόμενο για 24/7 λειτουργία)
 
-#### Integration Modules (4)
-1. `integrations/garmin_sync.py` - **🆕 Live Garmin API**
-2. `integrations/weather_api.py` - **🆕 Weather + dew point**
-3. `integrations/telegram_bot.py` - **🆕 Telegram notifications**
-   _(Wearable data — heart rate, HRV, sleep, weight — flows through `garmin_sync.py`)_
-
-## 🚀 Installation
-
-### System Requirements
-
-| Requirement | Minimum | Recommended | Why |
-|------------|---------|-------------|-----|
-| **Python** | **3.11.0** | 3.12+ | UTF-8 mode (PEP 686), tomllib stdlib, better errors |
-| **OS** | Windows 10 | Windows 11 | Fully tested on Win10/11; Linux/macOS experimental |
-| **RAM** | 512 MB | 1 GB | SQLite + science engines |
-| **Disk** | 100 MB | 500 MB | Database + logs |
-
-> ⚠️ **Python 3.11+ is mandatory.** Older versions are not supported.
-
----
-
-### Option 1: One-Click Launcher (Beginners — Windows)
-
-**Download pre-built executable:**
-```
-1. Go to Releases: https://github.com/zafiriss-ux/project-mayhem/releases
-2. Download TITAN-v5.8.0-win64.zip
-3. Unzip to Desktop or Documents
-4. Double-click TITAN.exe
-5. Follow setup wizard (Garmin, Telegram credentials)
-6. Done! Check Telegram for morning briefing.
-```
-
-No Python installation needed — everything is bundled.
-
----
-
-### Option 2: Python CLI (Advanced Users)
-
-**1. Clone Repository**
 ```bash
 git clone https://github.com/zafiriss-ux/project-mayhem.git
 cd project-mayhem
+cp .env.example .env      # συμπλήρωσε τα credentials
+docker compose up --build -d
 ```
 
-**2. Verify Python Version**
-```bash
-python --version  # Must show 3.11.0 or higher
-```
+- `titan-api`: FastAPI στο `http://localhost:8000` (readiness: `GET /readyz` → 200)
+- `titan-worker`: τρέχει κάθε μέρα στις 07:00 UTC την πρωινή ρουτίνα (Garmin sync, καιρός, Telegram) και ένα ημερήσιο backup της βάσης
+- Βάση: `/data/titan_core.db` στο volume `titan-data`
 
-If you have Python <3.11, install from [python.org](https://www.python.org/downloads/).
+Λεπτομέρειες: [`docs/runbooks/docker-deploy.md`](docs/runbooks/docker-deploy.md).
 
-**3. Install Dependencies**
+### Β. Τοπικά με Python (Windows / Linux / macOS)
+
 ```bash
+git clone https://github.com/zafiriss-ux/project-mayhem.git
+cd project-mayhem
+python --version                  # πρέπει να δείχνει 3.12 ή νεότερη
 pip install -r requirements.txt
-```
-
-**4. Run Launcher**
-```bash
 python launcher/main.py
 ```
 
-The launcher will:
-- Validate environment (Python, disk, data directory)
-- Run first-time setup wizard (if `.env` missing)
-- Create database at `~/Documents/TITAN/titan_core.db`
-- Start TITAN kernel
+Ο launcher:
+- ελέγχει το περιβάλλον (Python, δίσκος, φάκελος δεδομένων),
+- τρέχει τον οδηγό πρώτης ρύθμισης αν λείπει το `.env`,
+- φτιάχνει τη βάση στο `~/Documents/TITAN/titan_core.db`,
+- ξεκινά το TITAN.
 
-**5. Alternative: Direct Kernel Mode (Power Users)**
-```bash
-python -m titan
-```
+Εναλλακτικά, χωρίς launcher: `python -m titan` (ή `python main.py`). Τότε τα credentials διαβάζονται από το `.env` στη ρίζα του repo ή από μεταβλητές περιβάλλοντος, και αν λείπουν ανοίγει ο οδηγός ρύθμισης.
 
-Skips launcher validation. Use only if you've already configured `.env`.
+Πλήρης οδηγός πρώτης ρύθμισης (Garmin, Telegram, καιρός, δοκιμές, προβλήματα): [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md).
 
----
+### Τι τρέχει πού
 
-### Configuration (.env)
+| | Docker (`titan-worker`) | Τοπικά (`python -m titan` / launcher) |
+|---|---|---|
+| Πρωινή ρουτίνα 07:00 UTC | ✅ | ✅ |
+| Εβδομαδιαίο πλάνο Κυριακή 20:00 UTC | — | ✅ |
+| Garmin sync κάθε 6 ώρες | — (sync μέσα στην πρωινή ρουτίνα) | ✅ |
+| Εντολές Telegram (polling) | — | ✅ |
+| Ημερήσιο backup βάσης | ✅ | — |
+| Interactive μενού | — | ✅ |
 
-The launcher wizard creates `.env` automatically. If configuring manually:
+### Ρυθμίσεις (.env)
 
-**Location:** `~/Documents/TITAN/.env` (Windows: `%USERPROFILE%\Documents\TITAN\.env`)
+| Πού | Πότε |
+|---|---|
+| `~/Documents/TITAN/.env` | Το γράφει και το διαβάζει ο launcher (`python launcher/main.py`) |
+| `.env` στη ρίζα του repo | Για `python -m titan` και για το Docker (`docker compose`) |
 
-> **Windows note:** TITAN cannot enforce Unix-style `0600` permissions on `.env` under Windows. Review file/folder ACLs manually if the system is shared.
+> **Windows:** το TITAN δεν μπορεί να επιβάλει δικαιώματα τύπου Unix `0600` στο `.env`. Αν ο υπολογιστής είναι κοινόχρηστος, έλεγξε τα ACL του φακέλου.
 
-**Required Keys:**
+Βασικά κλειδιά (πλήρες παράδειγμα στο [`.env.example`](.env.example)):
+
 ```bash
 # Garmin Connect
-GARMIN_USERNAME=your_email@example.com
+GARMIN_EMAIL=your_email@example.com
 GARMIN_PASSWORD=your_password
+TITAN_GARTH_TOKEN_KEY=           # κλειδί Fernet για κρυπτογράφηση του Garmin token (απαραίτητο σε παραγωγή)
 
 # Telegram Bot
-TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE  # Get from @BotFather
-TELEGRAM_CHAT_ID=123456789                   # Send /start to your bot
+TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE   # από τον @BotFather
+TELEGRAM_CHAT_ID=123456789               # από τον @userinfobot
 
-# OpenAI (Optional — for LLM coaching narratives)
-OPENAI_API_KEY=sk-...
+# Καιρός (Open-Meteo, χωρίς API key)
+WEATHER_LOCATION=Athens,GR
 
-# Weather API — Open-Meteo (no key needed; leave blank or omit)
-# WEATHER_API_KEY is ignored; Open-Meteo is free and requires no authentication.
+# Αθλητής
+ATHLETE_MAX_HR=185
+
+# Προαιρετικά (εμφανίζονται οι προεπιλογές)
+# TITAN_DATA_DIR=/data          # φάκελος βάσης στο Docker
+# TITAN_LOG_PATH=titan.log
+# TITAN_ML_KILL_SWITCH=1        # 1 = ML μοντέλα μόνο σε shadow mode (ασφαλής προεπιλογή)
 
 # Phase 7 ML promotion control
-# Default is safe/blocking (1). Set to 0 only for athlete-facing Stage 1+ deployments
-# after promotion gates and ADR evidence updates are approved.
-TITAN_ML_KILL_SWITCH=0
+# Η προεπιλογή (1) είναι η ασφαλής. Βάλε 0 μόνο για athlete-facing Stage 1+ deployment,
+# αφού εγκριθούν τα promotion gates και ενημερωθούν τα ADR evidence (ADR-0014):
+# TITAN_ML_KILL_SWITCH=0
 ```
 
----
+Όλες οι ρυθμίσεις που διαβάζει ο κώδικας: [`titan/config/settings.py`](titan/config/settings.py).
 
-### Troubleshooting
+### Troubleshooting εγκατάστασης
 
-**"Python version 3.X is not supported"**
-→ Install Python 3.11+ from [python.org](https://www.python.org/downloads/)
+**"Python version 3.X is not supported"** → Εγκατάστησε Python 3.12+ από το [python.org](https://www.python.org/downloads/).
 
-**"Cannot write to data directory"**
-→ Run as administrator or choose a different folder
+**"Cannot write to data directory"** → Διάλεξε άλλο φάκελο ή δώσε δικαιώματα εγγραφής.
 
-**"Garmin authentication failed"**
-→ Enable 2FA on Garmin Connect if required
+**"Garmin authentication failed"** → Βλ. [`docs/runbooks/garmin-sync-failure.md`](docs/runbooks/garmin-sync-failure.md).
 
-**"Database is corrupted"**
-→ Backup `~/Documents/TITAN/titan_core.db` and delete it. TITAN will create a fresh one.
+**"Database is corrupted"** → Βλ. [`docs/runbooks/database-recovery.md`](docs/runbooks/database-recovery.md).
 
-Check logs at `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log` for detailed errors.
+Logs του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`. Log του TITAN: `titan.log` (ή ό,τι ορίζει το `TITAN_LOG_PATH`).
 
 ## 📋 Χρήση
 
-### Πρώτη Εκκίνηση
-Το TITAN θα:
-1. Συνδεθεί στο Garmin και θα κάνει sync όλα τα δεδομένα
-2. Θα αρχίσει να παρακολουθεί τον καιρό
-3. Θα στείλει test μήνυμα στο Telegram
-4. Θα προγραμματίσει τα καθημερινά/εβδομαδιαία tasks
-
 ### Καθημερινή Ροή
-**Κάθε πρωί στις 07:00:**
+**Κάθε πρωί στις 07:00 UTC** (παράδειγμα μηνύματος):
 ```
 📱 Telegram Message:
 🌅 GOOD MORNING!
@@ -236,8 +186,8 @@ TEMPO - 12 km
 450g carbs, 135g protein
 ```
 
-### Εβδομαδιαία Ροή
-**Κάθε Κυριακή στις 20:00:**
+### Εβδομαδιαία Ροή (τοπική λειτουργία)
+**Κάθε Κυριακή στις 20:00 UTC** (παράδειγμα μηνύματος):
 ```
 📱 Telegram Message:
 🎯 WEEKLY TRAINING PLAN
@@ -283,34 +233,45 @@ TELEGRAM_CHAT_ID=123456789
 
 ## 📊 Βασικές Μετρικές
 
+Οι τιμές είναι αυτές του κώδικα (`titan/science/tsb_engine.py`, `titan/config/thresholds.py`, `titan/integrations/weather_api.py`).
+
 ### Training Stress Balance (TSB)
-- **+5 to +10**: 🎯 RACE FORM - Ιδανικό για αγώνα
-- **-10 to +5**: 💪 PRODUCTIVE OVERLOAD - Χτίζεις fitness
-- **< -30**: ⚠️ OVERREACH - Χρειάζεται ανάκαμψη
+- **> +25**: ⚠️ σοβαρή αποπροπόνηση (detraining)
+- **+15 έως +25**: αποπροπόνηση
+- **+5 έως +15**: 🟢 FRESH
+- **−10 έως +5**: 🎯 RACE FORM
+- **−30 έως −10**: 💪 PRODUCTIVE OVERLOAD — χτίζεις fitness
+- **−50 έως −30**: ⚠️ FUNCTIONAL OVERREACH — χρειάζεται ανάκαμψη
+- **< −50**: 🛑 OVERTRAINED
 
 ### ACWR (Injury Risk)
-- **1.0-1.3**: ✅ SWEET SPOT - Βέλτιστη προσαρμογή
-- **> 1.5**: 🛑 HIGH RISK - Κίνδυνος τραυματισμού
+- **1.0–1.3**: ✅ SWEET SPOT — βέλτιστη προσαρμογή
+- **1.3–1.5**: ⚠️ MODERATE RISK
+- **> 1.5**: 🛑 HIGH INJURY RISK
 
 ### HRV Status
 - **≥ Baseline**: ✅ Proceed with plan
-- **< Baseline - 1 SD**: ⚠️ Downgrade intensity
-- **< Baseline - 2 SD**: 🛑 Force rest
+- **< Baseline − 1 SD**: ⚠️ Downgrade intensity
+- **< Baseline − 2 SD**: 🛑 Force rest
 
 ### Dew Point Guide
-- **< 12°C**: 🟩 COMFORTABLE
-- **15-18°C**: 🟨 STICKY
-- **> 21°C**: 🔥 OPPRESSIVE - Reduce pace
+- **≤ 8°C**: 🟪 DRY / COLD
+- **8–12°C**: 🟦 PLEASANT
+- **12–15°C**: 🟩 COMFORTABLE
+- **15–18°C**: 🟨 STICKY
+- **18–21°C**: 🟧 UNCOMFORTABLE — μείωσε τον ρυθμό 10–15 sec/km
+- **21–24°C**: 🟥 OPPRESSIVE — μείωσε την ένταση 20–30%
+- **> 24°C**: 🔥 EXTREME — απόφυγε την προπόνηση
 
-## 🧵 Background Threads
+## 🧪 Για προγραμματιστές
 
-Το TITAN τρέχει 5 background threads:
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest --no-cov -q     # όλα τα τεστ (φάκελος tests/)
+bash scripts/titan_ci.sh         # το πλήρες CI τοπικά (gates G1–G6)
+```
 
-1. **Garmin Sync** - Κάθε 6 ώρες
-2. **Weather Update** - Κάθε 1 ώρα
-3. **Telegram Bot Listener** - Συνεχώς
-4. **Daily Coach** - Κάθε πρωί 07:00
-5. **Weekly Planner** - Κυριακή 20:00
+Κανόνες συνεισφοράς και governance: [`AGENTS.md`](AGENTS.md), [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). Πρόοδος του refactor: [`PROGRESS.md`](PROGRESS.md).
 
 ## 📚 Επιστημονική Τεκμηρίωση
 
@@ -321,31 +282,6 @@ TELEGRAM_CHAT_ID=123456789
 - **ACWR**: Gabbett 2016 (28,000+ athletes)
 - **Nutrition**: Burke et al. 2011, Jeukendrup 2014
 - **Lactate**: Seiler 2007, San-Millan 2017
-
-## 🔄 Μετάπτωση από v50
-
-Το TITAN v51 διατηρεί **ΟΛΕΣ** τις 54 classes του v50:
-- ✅ Όλες οι science engines μεταφέρθηκαν
-- ✅ Όλες οι λειτουργίες διατηρήθηκαν
-- ✅ Database schema συμβατό
-- ✅ Προστέθηκαν νέες δυνατότητες
-
-## 🆕 Επερχόμενες Αναβαθμίσεις
-
-### Phase 5: ML Enhancement
-- LSTM για πρόβλεψη performance
-- Injury risk ML model
-- Automated periodization
-
-### Phase 6: Web UI
-- Streamlit dashboard
-- Interactive charts
-- Training calendar
-
-### Phase 7: Mobile App
-- React Native app
-- Push notifications
-- GPS tracking
 
 ## 🐛 Troubleshooting
 
@@ -358,6 +294,7 @@ echo $GARMIN_PASSWORD
 # Δοκίμασε manual login
 python -c "from titan.integrations.garmin_sync import GarminSync; g = GarminSync(); g.connect()"
 ```
+Αναλυτικά: [`docs/runbooks/garmin-sync-failure.md`](docs/runbooks/garmin-sync-failure.md).
 
 ### Telegram Not Sending
 ```bash
@@ -380,15 +317,17 @@ curl "https://api.open-meteo.com/v1/forecast?latitude=37.98&longitude=23.73&curr
 
 ## 📖 Αναλυτικό Documentation
 
-- `ARCHITECTURE.md` - Αρχιτεκτονική σχεδίαση
-- `titan/MIGRATION_CORE_MODULES.md` - Technical migration details
-- `titan/QUICK_REFERENCE.md` - Developer quick reference
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — αρχιτεκτονική, modules, ροές δεδομένων
+- [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) — εγκατάσταση και πρώτη ρύθμιση
+- [`docs/runbooks/`](docs/runbooks/) — Docker, ανάκτηση βάσης, Garmin, governance
+- [`docs/ROADMAP.MD`](docs/ROADMAP.MD) — φάσεις και τι ακολουθεί
+- [`docs/adr/`](docs/adr/) — αρχιτεκτονικές αποφάσεις (ADR)
+- [`titan/QUICK_REFERENCE.md`](titan/QUICK_REFERENCE.md) — developer quick reference
 
-## 📄 License
+## 📄 Άδεια
 
-MIT License - Ελεύθερο για προσωπική χρήση
+Δεν υπάρχει ακόμη αρχείο άδειας (`LICENSE`) στο repo.
 
 ## 👨‍💻 Author
 
-TITAN v51.0 - Αναδομημένο σύστημα με πλήρη AI capabilities
-Developed with Claude Code
+TITAN OS v5.8.0 — Developed with Claude Code
