@@ -27,7 +27,9 @@ _PHYSIOLOGY_METHODS = (
 _GOVERNANCE_METHODS = (
     "log_override", "record_override_signal", "get_override_ratio", "get_override_log",
     "save_governance_decision", "update_governance_outcome", "get_governance_decisions",
-    "annotate_governance_outcome",
+    "annotate_governance_outcome", "save_threshold_offset", "get_athlete_threshold_offsets",
+    "delete_threshold_offset", "get_completion_rate", "is_athlete_cold_start",
+    "check_and_exit_cold_start", "increment_cold_start_sessions", "get_false_negative_rate",
 )
 _FACADES = (
     [(TrainingRepository, n) for n in _TRAINING_METHODS]
@@ -168,3 +170,21 @@ def test_override_log_and_ratio(db) -> None:
         {"date": today, "session_planned": "TEMPO", "session_post_governance": "EASY"}
     )
     assert db.get_override_ratio(days=14) == round(1 / 14, 3)
+
+
+@pytest.mark.unit
+def test_threshold_offsets_per_athlete_and_hard_stops_refused(db) -> None:
+    db.save_threshold_offset("a1", "ACWR_CEILING", 0.05, "calibration", 0.8, "2026-10-04")
+    db.save_threshold_offset("a2", "ACWR_CEILING", -0.05, "manual", 1.0, "2026-10-04")
+
+    assert [o["delta_value"] for o in db.get_athlete_threshold_offsets("a1")] == [0.05]
+    assert db.delete_threshold_offset("a1", "ACWR_CEILING") == 1
+    assert db.get_athlete_threshold_offsets("a1") == []
+    assert len(db.get_athlete_threshold_offsets("a2")) == 1
+    with pytest.raises(ValueError):
+        db.save_threshold_offset("a1", "HARD_STOP_TSB_FLOOR", 1.0, "manual", 1.0, "2026-10-04")
+
+
+@pytest.mark.unit
+def test_unknown_athlete_is_treated_as_cold_start(db) -> None:
+    assert db.is_athlete_cold_start("nobody") is True
