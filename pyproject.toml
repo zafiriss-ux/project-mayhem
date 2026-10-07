@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "project-mayhem"
-version = "0.1.0"
+dynamic = ["version"]
 requires-python = ">=3.12"
 dependencies = [
     "garminconnect==0.3.17",
@@ -35,6 +35,9 @@ dev = [
 
 [tool.setuptools]
 packages = ["titan"]
+
+[tool.setuptools.dynamic]
+version = { attr = "titan.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["."]

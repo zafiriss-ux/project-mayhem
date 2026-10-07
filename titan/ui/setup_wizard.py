@@ -14,6 +14,8 @@ import re
 import stat
 from pathlib import Path
 
+from titan import __version__
+
 SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
 ENV_PATH     = Path(__file__).parent.parent.parent / ".env"
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -48,9 +50,10 @@ def _load_keyring_module():
 
 
 def _banner():
-    print("""
+    title = f"TITAN v{__version__} – FIRST RUN SETUP WIZARD"
+    print(f"""
 ╔══════════════════════════════════════════════════════════════╗
-║          TITAN v51 – FIRST RUN SETUP WIZARD               ║
+║{title:^62}║
 ║  Εισαγωγή credentials (αποθηκεύονται τοπικά, ΟΧΙ στο git) ║
 ╚══════════════════════════════════════════════════════════════╝
 """)
@@ -213,7 +216,7 @@ def _save_keyring_credentials(creds: dict, keyring) -> None:
 
 
 def _save_env(creds: dict):
-    lines = ["# TITAN v51 – Auto-generated credentials", "# ΜΗΝ κοινοποιήσεις αυτό το αρχείο!\n"]
+    lines = [f"# TITAN v{__version__} – Auto-generated credentials", "# ΜΗΝ κοινοποιήσεις αυτό το αρχείο!\n"]
     for k, v in creds.items():
         value = str(v).replace("\n", "").replace("\r", "")
         lines.append(f"{k}={value}")

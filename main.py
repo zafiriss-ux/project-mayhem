@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TITAN v51 – root-level launcher.
+TITAN OS root-level launcher.
 
 Usage (from project root):
     python main.py

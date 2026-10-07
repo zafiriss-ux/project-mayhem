@@ -11,7 +11,7 @@ def test_main_menu_dispatches_selected_action_then_exits(monkeypatch):
     answers = iter(["1", "0"])
 
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
-    monkeypatch.setattr(menu_system, "_header", lambda title="TITAN v51": None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="TITAN": None)
     monkeypatch.setattr(menu_system, "_divider", lambda: None)
     monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
     monkeypatch.setattr(menu_system, "menu_daily_plan", lambda _ctx: calls.append("daily"))
@@ -29,7 +29,7 @@ def test_main_menu_reprompts_for_unknown_choice(monkeypatch, capsys):
     answers = iter(["99", "", "0"])
 
     monkeypatch.setattr(menu_system, "_clear", lambda: None)
-    monkeypatch.setattr(menu_system, "_header", lambda title="TITAN v51": None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="TITAN": None)
     monkeypatch.setattr(menu_system, "_divider", lambda: None)
     monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
     monkeypatch.setattr(menu_system.sys, "exit", lambda code: (_ for _ in ()).throw(SystemExit(code)))
