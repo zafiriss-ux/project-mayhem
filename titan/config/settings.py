@@ -17,6 +17,8 @@ class TitanSettings(BaseSettings):
     # than the budget stops the heartbeat.
     WORKER_HEARTBEAT_INTERVAL_S: int = 60
     WORKER_ROUTINE_BUDGET_S: int = 1800
+    # AGENTS RBP-01: request bodies above this size get HTTP 413 before parsing.
+    API_MAX_BODY_SIZE_BYTES: int = 1_048_576
     GARMIN_EMAIL: SecretStr = SecretStr("")
     GARMIN_PASSWORD: SecretStr = SecretStr("")
     TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")

@@ -38,6 +38,7 @@ from titan.api.dependencies import (
     require_coach_athlete_access,
 )
 from titan.api.models import AuthUser, LoginRequest, LoginResponse
+from titan.config.settings import get_settings
 from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
 from titan.core.structured_events import EventSeverity, structured_event_payload
 
@@ -84,6 +85,74 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # CSP: restrictive for API; HSTS omitted until TLS termination is resolved (C-2)
         response.headers["Content-Security-Policy"] = "default-src 'none'"
         return response
+
+
+class _BodyTooLarge(HTTPException):
+    def __init__(self) -> None:
+        super().__init__(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Request body too large")
+
+
+class BodySizeLimitMiddleware:
+    """RBP-01 (AGENTS §8.11): cap request bodies before they are parsed.
+
+    A declared Content-Length over the limit gets 413 before any read; a body
+    without one (chunked) is counted while it streams and stopped at the limit.
+    Pure ASGI, so it sees the raw byte stream before any other layer reads it.
+    """
+
+    def __init__(self, app: Any, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        declared = dict(scope.get("headers") or []).get(b"content-length")
+        if declared is not None:
+            if not declared.isdigit():
+                await JSONResponse(status_code=400, content={"detail": "Invalid Content-Length"})(scope, receive, send)
+                return
+            if int(declared) > self.max_bytes:
+                await self._reject(scope, receive, send)
+                return
+
+        received = 0
+        started = False
+        exceeded = False
+
+        async def limited_receive() -> Any:
+            nonlocal received, exceeded
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    exceeded = True
+                    raise _BodyTooLarge
+            return message
+
+        async def tracking_send(message: Any) -> None:
+            nonlocal started
+            # Inner layers may turn the read error into their own response
+            # (FastAPI answers 400 when a wrapped body read fails); drop it.
+            if exceeded and not started:
+                return
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, limited_receive, tracking_send)
+        except Exception:
+            if not exceeded or started:
+                raise
+        if exceeded and not started:
+            await self._reject(scope, receive, send)
+
+    async def _reject(self, scope: Any, receive: Any, send: Any) -> None:
+        _log.warning("request_body_too_large", extra={"path": scope.get("path"), "limit": self.max_bytes})
+        await JSONResponse(status_code=413, content={"detail": "Request body too large"})(scope, receive, send)
 
 
 @dataclass(frozen=True)
@@ -281,6 +350,9 @@ def create_app(
             )
 
     app.add_middleware(CSRFMiddleware)
+    # Outside CSRF and the routes, inside the security headers (so a 413 still
+    # carries them); none of the outer layers reads the body.
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=get_settings().API_MAX_BODY_SIZE_BYTES)
     app.add_middleware(SecurityHeadersMiddleware)
 
     rate_limiter = AuthenticatedRateLimiter()
