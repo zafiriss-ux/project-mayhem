@@ -35,7 +35,8 @@ _GOVERNANCE_METHODS = (
 _OPERATIONS_METHODS = (
     "get_nutrition_preferences", "save_nutrition_preferences", "get_all_degraded_mode_states",
     "upsert_degraded_mode_state", "delete_degraded_mode_state", "record_sync_outcome",
-    "get_last_sync_outcome", "get_last_garmin_sync_timestamp",
+    "get_last_sync_outcome", "get_last_garmin_sync_timestamp", "backup_database",
+    "_record_backup_failure", "_prune_old_backups", "check_integrity",
 )
 _FACADES = (
     [(TrainingRepository, n) for n in _TRAINING_METHODS]
