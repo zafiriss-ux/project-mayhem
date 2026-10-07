@@ -24,7 +24,7 @@ else
     PY="$(command -v python3 || command -v python || true)"
 fi
 if [[ -z "${PY}" ]]; then
-    echo "❌ No Python interpreter found. Install Python 3.11+ and run scripts/ci_bootstrap.sh." >&2
+    echo "❌ No Python interpreter found. Install Python 3.12+ and run scripts/ci_bootstrap.sh." >&2
     exit 1
 fi
 
@@ -73,7 +73,7 @@ run_gate "G1 Ruff Phase A" "$PY" -m ruff check .
 # ── G2: Strict pytest (full suite) ───────────────────────────────────────────
 # Scope note: this script is the §9C *local pre-commit* gate — a curated subset of
 # the remote .github/workflows/ci.yml (which additionally runs semgrep, pylint,
-# vulture, lint-imports, the CVE/drift gates, the G-CI invariants, and a 3.11+3.12
+# vulture, lint-imports, the CVE/drift gates, the G-CI invariants, and a 3.12+3.13
 # matrix). A green run here is necessary but not sufficient for GitHub-green; the
 # remote workflow remains the authoritative merge gate.
 # The three --ignore'd files are @pytest.mark.integration tests that shell out

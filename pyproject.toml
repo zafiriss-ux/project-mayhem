@@ -5,9 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "project-mayhem"
 version = "0.1.0"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
-    "garminconnect==0.3.2",
+    "garminconnect==0.3.5",
     "requests==2.34.2",
     "pyTelegramBotAPI==4.33.0",
     "sqlalchemy==2.0.49",
@@ -59,7 +59,7 @@ skip_covered = false
 
 # ── Ruff (linter + formatter) ─────────────────────────────────────────────────
 [tool.ruff]
-target-version = "py311"
+target-version = "py312"
 line-length = 100
 exclude = [".git", "__pycache__", "*.egg-info"]
 
@@ -95,7 +95,7 @@ indent-style = "space"
 
 # ── Mypy (static type checker) ────────────────────────────────────────────────
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true   # third-party stubs not always available

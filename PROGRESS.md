@@ -21,10 +21,10 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | Ενημερώσεις ασφαλείας | #881 | cryptography 50.0.2, pyjwt 2.15.1 (αντικαθιστούν τα Dependabot PR #875, #876) |
 | Ρύθμιση Dependabot | #882 | Μηνιαία ομαδοποιημένα PR για pip και GitHub Actions, με όριο αριθμού, ώστε να μην γεμίζει το repo |
 | Token Garmin 0600 | #883 | Το κρυπτογραφημένο token Garmin γράφεται με δικαιώματα μόνο για τον κάτοχο (0600)· 3 νέα τεστ |
+| Python 3.12 + garminconnect 0.3.5 | #890 | Ελάχιστη έκδοση Python 3.12 (Docker, launcher, scripts, CI 3.12/3.13)· garminconnect 0.3.5 κλείνει το CVE PYSEC-2026-3467· αντικαθιστά το Dependabot PR #877· τα docs ενημερώνονται στο #10 |
 
 ## Σε εξέλιξη (κύμα 0)
 
-- garminconnect 0.3.5 (CVE): απαιτεί Python 3.12· αντικαθιστά το Dependabot PR #877
 - #4 PR #874 (foreign keys + schema forward guard)
 
 ## Επόμενα

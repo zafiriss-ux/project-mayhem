@@ -24,7 +24,7 @@ from launcher.errors import (
 # System Requirements
 # ══════════════════════════════════════════════════════════════════════════════
 
-MIN_PYTHON_VERSION = (3, 11)
+MIN_PYTHON_VERSION = (3, 12)
 MIN_DISK_SPACE_MB = 100
 
 
@@ -49,7 +49,7 @@ def get_data_directory() -> Path:
 
 def check_python_version() -> tuple[bool, TitanError | None]:
     """
-    Validate Python version >= 3.11.
+    Validate Python version >= 3.12.
 
     Returns:
         (True, None) if OK, (False, EnvironmentError) otherwise
