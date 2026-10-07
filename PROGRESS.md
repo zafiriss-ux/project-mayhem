@@ -15,11 +15,11 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | #1 PROGRESS.md | #878 | Δημιουργία αυτού του αρχείου |
 | #2 Πράσινο main | #878 | Το `test_requirements_telegram_dependency.py` ελέγχει ονόματα πακέτων και ότι όλα είναι pinned με `==`, όχι συγκεκριμένες εκδόσεις· δεν σπάει πια σε κάθε bump του Dependabot |
 | CI χαμηλού κόστους | #879 | 24 jobs → 6 με τους ίδιους ελέγχους· push μόνο στο main· ακύρωση παλιών runs· CodeQL χωρίς upload |
+| G-CI-04 απομόνωση αθλητή | #880 | Ο `PostgreSQLAdapter` γράφει HRR/glycogen μόνο για τον σωστό αθλητή (ήταν `del athlete_id`)· 2 νέα τεστ |
 | Διόρθωση CI μετά το #879 | #884 | Ο έλεγχος συγκρούσεων εξαρτήσεων τρέχει πάλι πριν την εγκατάσταση· αλλιώς αποτύγχανε πάντα και δεν έτρεχαν οι έλεγχοι G-CI-02..07 |
 
 ## Σε εξέλιξη (κύμα 0)
 
-- G-CI-04: `del athlete_id` στον `PostgreSQLAdapter` (titan/core/persistence.py)
 - Ενημερώσεις ασφαλείας: cryptography 50.0.0, pyjwt 2.15.0, garminconnect 0.3.5 (αντικαθιστούν τα Dependabot PR #875, #876, #877)
 - #4 PR #874 (foreign keys + schema forward guard)
 
