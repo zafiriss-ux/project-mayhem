@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -46,6 +47,7 @@ _ACCESS_METHODS = (
     "_get_all_athlete_ids", "get_assigned_athletes", "assign_athlete_to_coach", "log_coach_action",
     "get_coach_audit_log",
 )
+_ROOT = Path(__file__).resolve().parents[1]
 _FACADES = (
     [(TrainingRepository, n) for n in _TRAINING_METHODS]
     + [(PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS]
@@ -284,3 +286,14 @@ def test_coach_scope_is_only_the_assigned_athletes(db) -> None:
     [entry] = db.get_coach_audit_log(coach_id="coach-1")
     assert (entry["athlete_id"], entry["resource"]) == ("a1", "plan")
     assert len(db.get_coach_audit_log()) == 2
+
+
+@pytest.mark.unit
+def test_database_scoped_gates_also_cover_the_repositories() -> None:
+    """The SQL left database.py; the gates and owners scoped to that file must follow it."""
+    ci = (_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    smoke = (_ROOT / ".github" / "workflows" / "docker-smoke.yml").read_text(encoding="utf-8")
+    owners = (_ROOT / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
+    assert "titan/core/database.py\n            titan/core/repositories/*.py\n" in ci  # G-CI-02
+    assert '"titan/core/repositories/**"' in smoke
+    assert "/titan/core/repositories/ @zafiriss-ux" in owners
