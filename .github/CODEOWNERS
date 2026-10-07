@@ -17,6 +17,7 @@
 
 # Database schema
 /titan/core/database.py @zafiriss-ux
+/titan/core/repositories/ @zafiriss-ux
 
 # Authentication
 /titan/api/auth.py @zafiriss-ux

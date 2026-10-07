@@ -209,6 +209,7 @@ jobs:
             titan/orchestration/daily_coach.py
             titan/integrations/garmin_sync.py
             titan/core/database.py
+            titan/core/repositories/*.py
           )
           if grep -n "datetime\.now()" "${SCOPE_FILES[@]}" \
              | grep -v "tz=" | grep -v "UTC" | grep -v "timezone" \
@@ -220,7 +221,8 @@ jobs:
       - name: G-CI-03 No INSERT OR REPLACE on multi-source tables
         run: |
           # Allowlist: single-source tables permitted to use INSERT OR REPLACE.
-          # auth_users and degraded_mode_state are single-writer tables (database.py only).
+          # auth_users and degraded_mode_state are single-writer tables (DatabaseManager and its
+          # repositories in titan/core/repositories/ only).
           VIOLATIONS=$(grep -rn "INSERT OR REPLACE" titan/ --include="*.py" \
             | grep -v "athlete_profile" \
             | grep -v "auth_tokens" \

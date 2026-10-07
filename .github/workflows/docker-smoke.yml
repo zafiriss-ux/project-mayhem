@@ -33,6 +33,7 @@ on:
       - "titan/worker/**"
       - "titan/config/settings.py"
       - "titan/core/database.py"
+      - "titan/core/repositories/**"
       - "titan/core/schema.py"
       - "scripts/docker_smoke_test.sh"
       - "scripts/generate_jwt_keys.sh"
