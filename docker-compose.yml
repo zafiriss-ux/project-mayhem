@@ -1,5 +1,7 @@
 volumes:
   titan-data:
+  # AGENTS DR-01: backups live on their own volume, never on titan-data.
+  titan-backups:
 
 services:
   titan-api:
@@ -31,9 +33,11 @@ services:
       - .env
     volumes:
       - titan-data:/data
+      - titan-backups:/backups
       - ./scripts:/app/scripts:ro
     environment:
       - TITAN_DATA_DIR=/data
+      - TITAN_BACKUP_DIR=/backups
       - TITAN_DB_BACKEND=sqlite
     restart: unless-stopped
     depends_on:

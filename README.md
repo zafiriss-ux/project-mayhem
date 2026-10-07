@@ -76,8 +76,9 @@ docker compose up --build -d
 - `titan-api`: FastAPI στο `http://localhost:8000` (readiness: `GET /readyz` → 200)
 - `titan-worker`: τρέχει κάθε μέρα στις 07:00 UTC την πρωινή ρουτίνα (Garmin sync, καιρός, Telegram) και ένα ημερήσιο backup της βάσης
 - Βάση: `/data/titan_core.db` στο volume `titan-data`
+- Backups: ελεγμένα ημερήσια αντίγραφα στο ξεχωριστό volume `titan-backups` (7 ημερήσια + 4 εβδομαδιαία)
 
-Λεπτομέρειες: [`docs/runbooks/docker-deploy.md`](docs/runbooks/docker-deploy.md).
+Λεπτομέρειες: [`docs/runbooks/docker-deploy.md`](docs/runbooks/docker-deploy.md). Επαναφορά και έλεγχος αντιγράφων: [`docs/RUNBOOK_DR.md`](docs/RUNBOOK_DR.md).
 
 ### Β. Τοπικά με Python (Windows / Linux / macOS)
 

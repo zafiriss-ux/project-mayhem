@@ -20,12 +20,12 @@ COPY . .
 ENV TITAN_DATA_DIR=/data
 ENV TITAN_DB_BACKEND=sqlite
 
-# Create non-root user and writable data volume
+# Create non-root user and writable data + backup volumes (backups: AGENTS DR-01)
 RUN groupadd -r titan && \
     useradd -r -g titan --home /app titan && \
     chown -R titan:titan /app && \
-    mkdir -p /data && \
-    chown titan:titan /data
+    mkdir -p /data /backups && \
+    chown titan:titan /data /backups
 
 # ── api ──────────────────────────────────────────────────────────────────────
 FROM base AS api

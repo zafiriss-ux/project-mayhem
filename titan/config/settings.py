@@ -8,6 +8,10 @@ from pydantic_settings import BaseSettings
 
 class TitanSettings(BaseSettings):
     TITAN_DATA_DIR: str = "/data"
+    # AGENTS DR-01/DR-02: backups off the DB volume, retention via .env.
+    TITAN_BACKUP_DIR: str = ""
+    BACKUP_RETENTION_DAILY_DAYS: int = 7
+    BACKUP_RETENTION_WEEKLY_COUNT: int = 4
     GARMIN_EMAIL: SecretStr = SecretStr("")
     GARMIN_PASSWORD: SecretStr = SecretStr("")
     TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")

@@ -48,6 +48,11 @@ _AUDIT_FAIL = Counter(
     "Coach audit write failures",
 )
 
+_BACKUP_FAIL = Counter(
+    "titan_backup_failure_total",
+    "Database backup runs that failed or produced an unverifiable artifact (DR-02)",
+)
+
 
 class MetricsCollector:
     def __init__(self, sink: str = "log") -> None:
@@ -65,6 +70,7 @@ class MetricsCollector:
             "garmin_sync_success": _GARMIN_SYNC,
             "api_startup": _API_STARTUP,
             "audit_write_failure": _AUDIT_FAIL,
+            "backup_failure_total": _BACKUP_FAIL,
         }
         if name in _COUNTERS:
             c = _COUNTERS[name]

@@ -418,7 +418,7 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def backup_database(
-        self, backup_dir: Any = None, keep: int = 30
+        self, backup_dir: Any = None, keep: int = 30, keep_weekly: int = 0
     ) -> Any:
         """Trigger a backend-appropriate backup and return the backup path, or None."""
 
@@ -654,8 +654,8 @@ class SQLiteAdapter(PersistenceAdapter):
     ) -> tuple[float, float, float]:
         return self._manager.replay_tsb(athlete_id=athlete_id, as_of_date=as_of_date)
 
-    def backup_database(self, backup_dir: Any = None, keep: int = 30) -> Any:
-        return self._manager.backup_database(backup_dir=backup_dir, keep=keep)
+    def backup_database(self, backup_dir: Any = None, keep: int = 30, keep_weekly: int = 0) -> Any:
+        return self._manager.backup_database(backup_dir=backup_dir, keep=keep, keep_weekly=keep_weekly)
 
     def transaction(self) -> AbstractContextManager:
         return self._manager.transaction()
@@ -1250,7 +1250,9 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         return None
 
-    def backup_database(self, backup_dir: Any = None, keep: int = 30) -> Any:
+    def backup_database(self, backup_dir: Any = None, keep: int = 30, keep_weekly: int = 0) -> Any:
+        # keep_weekly is accepted for interface parity; weekly retention is implemented
+        # for the SQLite worker path only (PostgreSQL stays behind the ADR-0044 gate).
         target_dir = Path(backup_dir) if backup_dir is not None else (Path.cwd() / "backups")
         target_dir.mkdir(parents=True, exist_ok=True)
 
