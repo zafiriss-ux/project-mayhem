@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import inspect
 import logging
+from datetime import UTC, datetime
 
 import pytest
 
 from titan.core.database import DatabaseManager
+from titan.core.repositories.governance import GovernanceRepository
 from titan.core.repositories.physiology import PhysiologyRepository
 from titan.core.repositories.training import TrainingRepository
 
@@ -22,9 +24,16 @@ _PHYSIOLOGY_METHODS = (
     "update_glycogen_debt", "get_baseline_rhr", "get_hrv_history", "get_recent_hrv_mean",
     "get_weight_history", "get_daily_metric",
 )
-_FACADES = [(TrainingRepository, n) for n in _TRAINING_METHODS] + [
-    (PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS
-]
+_GOVERNANCE_METHODS = (
+    "log_override", "record_override_signal", "get_override_ratio", "get_override_log",
+    "save_governance_decision", "update_governance_outcome", "get_governance_decisions",
+    "annotate_governance_outcome",
+)
+_FACADES = (
+    [(TrainingRepository, n) for n in _TRAINING_METHODS]
+    + [(PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS]
+    + [(GovernanceRepository, n) for n in _GOVERNANCE_METHODS]
+)
 
 
 @pytest.fixture
@@ -127,3 +136,35 @@ def test_recent_hrv_mean_reads_history_through_the_facade(db, monkeypatch) -> No
         ("2026-10-02", 60.0), ("2026-10-01", 50.0),
     ])
     assert db.get_recent_hrv_mean(days=2) == 55.0
+
+
+@pytest.mark.unit
+def test_governance_decision_and_outcome_round_trip_per_athlete(db) -> None:
+    decision = {
+        "date": "2026-10-03", "session_planned": "TEMPO", "session_post_governance": "EASY",
+        "locks_applied": ["CS_CONFIDENCE_LOCK"], "governance_clean": False, "phase": "BASE",
+    }
+    db.save_governance_decision(decision)
+    db.save_governance_decision({**decision, "athlete_profile_id": "other"})
+
+    assert db.update_governance_outcome("2026-10-03", rpe=4, completed=True) is True
+    assert db.annotate_governance_outcome("2026-10-03", "felt fine") is True
+
+    [owner] = db.get_governance_decisions()
+    assert owner["locks_applied"] == ["CS_CONFIDENCE_LOCK"]
+    assert (owner["outcome_rpe"], owner["outcome_completed"]) == (4, True)
+    [other] = db.get_governance_decisions(athlete_id="other")
+    assert other["outcome_rpe"] is None
+
+
+@pytest.mark.unit
+def test_override_log_and_ratio(db) -> None:
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    db.log_override(today, "TEMPO", "EASY", "legs heavy")
+
+    assert db.get_override_log(limit=1)[0]["reason"] == "legs heavy"
+    assert db.get_override_ratio(days=14) is None  # cold start: no governance history
+    db.save_governance_decision(
+        {"date": today, "session_planned": "TEMPO", "session_post_governance": "EASY"}
+    )
+    assert db.get_override_ratio(days=14) == round(1 / 14, 3)
