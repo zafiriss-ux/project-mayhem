@@ -48,7 +48,9 @@ hidden_imports = [
 
 # Data files to include
 datas = [
-    # None for now — all config is runtime-generated
+    # titan.__version__ reads the version from pyproject.toml (AGENTS RE-01);
+    # the bundle has no package metadata, so the file ships at the bundle root.
+    (str(root_dir / 'pyproject.toml'), '.'),
 ]
 
 a = Analysis(

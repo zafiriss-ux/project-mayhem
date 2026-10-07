@@ -62,7 +62,7 @@ titan/
 
 ## 🚀 Εγκατάσταση
 
-Υπάρχουν δύο τρόποι. Έτοιμο Windows `.exe` / GitHub Release δεν υπάρχει ακόμη (προγραμματίζεται).
+Υπάρχουν δύο τρόποι. Κάθε έκδοση με tag βγάζει GitHub Release με το Windows `TITAN-vX.Y.Z-win64.zip` και εικόνες Docker στο `ghcr.io` ([`docs/RUNBOOK_ROLLBACK.md`](docs/RUNBOOK_ROLLBACK.md)). Release δεν έχει βγει ακόμη.
 
 ### Α. Docker (προτεινόμενο για 24/7 λειτουργία)
 

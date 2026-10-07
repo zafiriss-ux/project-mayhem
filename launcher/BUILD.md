@@ -138,17 +138,15 @@ Sign the .exe with a code-signing certificate (costs ~$100/year).
 
 ### Create Release Package
 
-```bash
-# After successful build
-cd dist
-zip ../TITAN-v5.7.0-win64.zip TITAN.exe
-```
+Releases are built by `.github/workflows/release.yml` when a `vX.Y.Z` tag is
+pushed (see `docs/RUNBOOK_ROLLBACK.md`). Its Windows job runs `build.ps1`, then
+`package.ps1`, and attaches `TITAN-vX.Y.Z-win64.zip` to the GitHub Release.
 
-**Upload to GitHub Releases:**
-1. Go to https://github.com/zafiriss-ux/project-mayhem/releases
-2. Create new release: `v5.7.0`
-3. Upload `TITAN-v5.7.0-win64.zip`
-4. Add release notes (see CHANGELOG.md)
+To package by hand after a local build, pass the version from `pyproject.toml`:
+
+```powershell
+.\launcher\package.ps1 -Version 5.8.0   # writes dist\TITAN-v5.8.0-win64.zip
+```
 
 ---
 
