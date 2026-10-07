@@ -87,6 +87,11 @@ def load_env_to_os():
     This allows titan kernel to access them via os.getenv().
     """
     env_vars = load_env()
+    # Launcher wizards before 2026-10 wrote GARMIN_USERNAME, but the kernel
+    # (TitanSettings, GarminSync) reads only GARMIN_EMAIL. Map the legacy key so
+    # existing .env files keep working.
+    if not env_vars.get("GARMIN_EMAIL") and env_vars.get("GARMIN_USERNAME"):
+        env_vars["GARMIN_EMAIL"] = env_vars["GARMIN_USERNAME"]
     for key, value in env_vars.items():
         os.environ[key] = value
     if env_vars:

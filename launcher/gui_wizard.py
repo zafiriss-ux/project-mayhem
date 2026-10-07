@@ -375,7 +375,7 @@ class CredentialsFrame(ttk.Frame):
         if hasattr(self.garmin_user, 'validator') and self.garmin_user.validator and not self.garmin_user.validator(garmin_user):
             messagebox.showerror("Error", "Invalid Garmin username format.")
             return
-        config['GARMIN_USERNAME'] = garmin_user
+        config['GARMIN_EMAIL'] = garmin_user
         config['GARMIN_PASSWORD'] = garmin_pass
 
         # Telegram (required)

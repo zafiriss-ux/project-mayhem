@@ -167,7 +167,7 @@ def run_wizard() -> dict[str, str]:
 
     # 1. Garmin credentials
     print("── Garmin Connect ──────────────────────────────────────────────────\n")
-    config['GARMIN_USERNAME'] = prompt_input(
+    config['GARMIN_EMAIL'] = prompt_input(
         "Garmin username or email",
         validator=validate_garmin_username,
     )
