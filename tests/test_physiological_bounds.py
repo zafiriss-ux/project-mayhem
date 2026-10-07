@@ -16,7 +16,7 @@ import math
 
 import pytest
 
-import titan.core.database as database_module
+import titan.core.repositories.training as training_repository_module
 from titan.science.physiological_bounds import (
     BOUNDS,
     BoundsViolation,
@@ -367,8 +367,9 @@ def test_get_ctl_atl_tsb_changes_when_canonical_decay_constants_change(tmp_path,
 
     baseline_ctl, baseline_atl, _ = db.get_ctl_atl_tsb()
 
-    monkeypatch.setattr(database_module, "CTL_DECAY_DAYS", 14)
-    monkeypatch.setattr(database_module, "ATL_DECAY_DAYS", 4)
+    # Plan #18: the SQLite load-history SQL reads the constants from the repository.
+    monkeypatch.setattr(training_repository_module, "CTL_DECAY_DAYS", 14)
+    monkeypatch.setattr(training_repository_module, "ATL_DECAY_DAYS", 4)
 
     shifted_ctl, shifted_atl, _ = db.get_ctl_atl_tsb()
 
