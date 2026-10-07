@@ -256,6 +256,23 @@ class UniversalAthleteProfile:
 
     # --- SERIALIZATION METHODS ---
 
+    def to_context(self) -> dict[str, Any]:
+        """The athlete_profile entry of TitanContext (orchestration.contracts.AthleteProfile).
+
+        The one place that projects this profile onto the coaching context, so the
+        context never carries values of its own (T5-117).
+        """
+        return {
+            "name": self.name,
+            "age": self.age,
+            "weight_kg": self.weight_kg,
+            "height_cm": float(self.height_cm),
+            "max_hr": self.max_hr,
+            "threshold_hr": self.threshold_hr,
+            "phase": self.training_phase,
+            "goal": self.current_goal or "",
+        }
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert profile to dictionary for JSON serialization.

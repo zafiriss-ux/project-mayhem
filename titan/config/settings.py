@@ -25,7 +25,6 @@ class TitanSettings(BaseSettings):
     TITAN_JWT_PUBLIC_KEY: str = ""
     TITAN_DB_BACKEND: str = "sqlite"
     TITAN_POSTGRES_DSN: str | None = None
-    ATHLETE_MAX_HR: int = 160
     GARMIN_SYNC_TIMEOUT_S: int = 90
     WEATHER_LOCATION: str = "Athens,GR"
     TITAN_ML_KILL_SWITCH: str = "1"

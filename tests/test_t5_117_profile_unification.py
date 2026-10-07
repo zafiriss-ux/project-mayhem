@@ -59,3 +59,20 @@ class TestNoDuplicateProfileDictInTitanContext:
         hints = typing.get_type_hints(TitanContext)
         athlete_fields = [k for k in hints if "athlete" in k.lower()]
         assert len(athlete_fields) == 1
+
+
+class TestContextProfileDerivedFromUniversalProfile:
+    @pytest.mark.unit
+    def test_to_context_matches_the_athlete_profile_contract(self, monkeypatch):
+        import typing
+
+        from titan.orchestration.contracts import AthleteProfile
+
+        monkeypatch.setenv("ATHLETE_MAX_HR", "177")
+        monkeypatch.setenv("TRAINING_PHASE", "PEAK")
+        profile = UniversalAthleteProfile.from_env()
+        ctx = profile.to_context()
+        assert set(ctx) == set(typing.get_type_hints(AthleteProfile))
+        assert ctx["max_hr"] == 177
+        assert ctx["phase"] == "PEAK"
+

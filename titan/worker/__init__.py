@@ -159,6 +159,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     the worker loops used to pass keyword arguments these constructors do not
     accept, so each morning cycle failed with TypeError before any work ran.
     """
+    from titan.core.athlete import UniversalAthleteProfile
     from titan.features.nutrition_optimizer import NutritionOptimizer
     from titan.features.optimal_time_calculator import OptimalTimeCalculator
     from titan.features.weekly_planner import WeeklyPlanGenerator
@@ -185,12 +186,14 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         db=db,
         athlete_id=athlete_id,
         engines=engines,
-        athlete_max_hr=int(str(get_settings().ATHLETE_MAX_HR)),
+        # Same profile source as the console (titan/main.py), so TRIMP uses one max HR (T5-117).
+        athlete_max_hr=UniversalAthleteProfile.from_env().max_hr or 0,
     )
 
 
 def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> None:
     """ADR-0057 worker entrypoint. Runs DailyCoach morning routine aligned to 07:00 UTC."""
+    from titan.core.athlete import UniversalAthleteProfile
     from titan.core.database import DatabaseManager
 
     _stop = shutdown_event if shutdown_event is not None else threading.Event()
@@ -201,6 +204,9 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     log.info("worker_started", extra={"db": db_path})
 
     settings = get_settings()
+    # A malformed ATHLETE_* value stops the worker at start (from_env exits),
+    # not at the first 07:00 routine.
+    UniversalAthleteProfile.from_env()
     heartbeat = p.parent / HEARTBEAT_FILE
     interval_s = settings.WORKER_HEARTBEAT_INTERVAL_S
 

@@ -64,3 +64,33 @@ def test_run_forever_reaches_morning_routine(worker_db, tmp_path, monkeypatch):
     worker.run_forever(str(tmp_path / "titan_core.db"), shutdown_event=stop)
 
     assert calls == ["owner"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("env_max_hr", [None, "177"])
+def test_worker_uses_the_console_profile_max_hr(worker_db, monkeypatch, env_max_hr):
+    """T5-117: worker and console read max HR from one profile, with one default."""
+    from titan.core.athlete import UniversalAthleteProfile
+    from titan.worker import _build_daily_coach
+
+    if env_max_hr is None:
+        monkeypatch.delenv("ATHLETE_MAX_HR", raising=False)
+    else:
+        monkeypatch.setenv("ATHLETE_MAX_HR", env_max_hr)
+
+    coach = _build_daily_coach(worker_db)
+
+    expected = UniversalAthleteProfile.from_env().max_hr
+    assert coach.athlete_max_hr == expected
+    assert expected == (191 if env_max_hr is None else 177)
+
+
+@pytest.mark.integration
+def test_worker_refuses_to_start_on_malformed_max_hr(worker_db, tmp_path, monkeypatch):
+    from titan import worker
+
+    monkeypatch.setenv("ATHLETE_MAX_HR", "not-a-number")
+    monkeypatch.setattr(worker, "_run_backup", lambda db: pytest.fail("worker ran past start-up"))
+
+    with pytest.raises(SystemExit):
+        worker.run_forever(str(tmp_path / "titan_core.db"), shutdown_event=threading.Event())
