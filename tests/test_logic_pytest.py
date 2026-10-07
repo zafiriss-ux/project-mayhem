@@ -9,8 +9,8 @@ were previously only exercised by the standalone script (invisible to pytest
 --cov) or not at all.
 
 Run with:
-    pytest test_logic_pytest.py -v
-    pytest test_logic_pytest.py -v --cov=titan --cov-report=term-missing
+    pytest tests/test_logic_pytest.py -v
+    pytest tests/test_logic_pytest.py -v --cov=titan --cov-report=term-missing
 """
 
 import os
@@ -27,7 +27,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

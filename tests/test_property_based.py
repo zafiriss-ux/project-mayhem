@@ -12,8 +12,8 @@ validated with randomised inputs rather than hand-picked examples:
   CriticalSpeed     — thermal CS always ≤ raw CS, ≥ 85% floor
 
 Run with:
-    pytest test_property_based.py -v
-    pytest test_property_based.py --hypothesis-seed=0   # deterministic CI run
+    pytest tests/test_property_based.py -v
+    pytest tests/test_property_based.py --hypothesis-seed=0   # deterministic CI run
 """
 
 import math
@@ -34,7 +34,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ════════════════════════════════════════════════════════════════════════════

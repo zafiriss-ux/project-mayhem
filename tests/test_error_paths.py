@@ -12,7 +12,7 @@ These tests exercise the graceful-degradation paths that are never hit on
 the happy path but are critical for production resilience.
 
 Run with:
-    pytest test_error_paths.py -v
+    pytest tests/test_error_paths.py -v
 """
 
 import os
@@ -29,7 +29,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ════════════════════════════════════════════════════════════════════════════

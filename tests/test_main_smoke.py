@@ -17,7 +17,7 @@ We never call the interactive main_menu() or start background threads that
 would block the test runner.
 
 Run with:
-    pytest test_main_smoke.py -v
+    pytest tests/test_main_smoke.py -v
 """
 
 import os
@@ -35,7 +35,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ════════════════════════════════════════════════════════════════════════════

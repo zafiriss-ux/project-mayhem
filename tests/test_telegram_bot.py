@@ -6,7 +6,7 @@ Tests message formatting, command dispatch, scheduling, alert emoji mapping,
 and fallback behaviour when the telebot library is absent or the token is empty.
 
 Run with:
-    pytest test_telegram_bot.py -v
+    pytest tests/test_telegram_bot.py -v
 """
 
 import logging
@@ -25,7 +25,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from titan.integrations.telegram_bot import TitanTelegramBot
 

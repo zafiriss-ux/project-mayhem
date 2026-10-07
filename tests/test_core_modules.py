@@ -3,8 +3,8 @@
 Pytest suite for TITAN core modules.
 
 Run with:
-    pytest test_core_modules.py -v
-    pytest test_core_modules.py -q   # quiet / CI mode
+    pytest tests/test_core_modules.py -v
+    pytest tests/test_core_modules.py -q   # quiet / CI mode
 """
 
 import sys
@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 # ── path setup ──────────────────────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from titan.core import (
     AthleteDatabase,

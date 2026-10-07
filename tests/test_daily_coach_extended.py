@@ -12,7 +12,7 @@ This file adds:
   - run_morning_routine() — fully mocked happy-path smoke test
 
 Run with:
-    pytest test_daily_coach_extended.py -v
+    pytest tests/test_daily_coach_extended.py -v
 """
 
 import json
@@ -26,7 +26,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from freezegun import freeze_time
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 @pytest.fixture(autouse=True)

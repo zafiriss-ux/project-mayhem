@@ -15,7 +15,7 @@ Coverage targets (all new):
   - titan/orchestration/daily_coach.py  (DailyCoach helpers)
 
 Run with:
-    pytest test_new_modules.py -v
+    pytest tests/test_new_modules.py -v
 """
 
 import platform
@@ -27,7 +27,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from titan.config import thresholds
 from titan.core.database import DatabaseManager
