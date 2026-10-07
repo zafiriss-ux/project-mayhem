@@ -194,7 +194,7 @@ class MathCore:
             target_weight = 75.0
         if weight < (target_weight - critical_margin):
             return "AGGRESSIVE_CORRECTION"
-        if weight < target_weight:
+        if weight < (target_weight - emergency_margin):
             return "EMERGENCY_MODE"
         if night_drop > 1.2:
             return "NIGHT_DROP_ALERT"

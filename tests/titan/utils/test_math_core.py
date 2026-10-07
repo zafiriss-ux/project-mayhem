@@ -40,6 +40,15 @@ def test_weight_function_from_profile_emergency_mode_between_thresholds() -> Non
 
 
 @pytest.mark.unit
+def test_weight_function_from_profile_honours_emergency_margin() -> None:
+    """Invariant: EMERGENCY_MODE starts emergency_margin kg below target, as documented."""
+    kwargs = {"night_drop": 0.2, "epoc": 100, "target_weight": 75.0, "critical_margin": 0.5}
+
+    assert MathCore.weight_function_from_profile(weight=74.8, emergency_margin=0.1, **kwargs) == "EMERGENCY_MODE"
+    assert MathCore.weight_function_from_profile(weight=74.95, emergency_margin=0.1, **kwargs) == "SAFE_DROP_RULE"
+
+
+@pytest.mark.unit
 def test_weight_function_from_profile_night_drop_alert_overrides_safe_zone() -> None:
     """Invariant: night drop above threshold triggers NIGHT_DROP_ALERT."""
     status = MathCore.weight_function_from_profile(

@@ -191,12 +191,9 @@ class UniversalAthleteProfile:
         # Manual override for specific user
         return 2020
 
-    def calculate_tdee(self, activity_level: str = "active") -> int:
+    def calculate_tdee(self) -> int:
         """
         Calculate Total Daily Energy Expenditure.
-
-        Args:
-            activity_level: One of "sedentary", "light", "moderate", "active", "very_active"
 
         Returns:
             TDEE in kcal/day
