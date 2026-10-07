@@ -9,7 +9,26 @@ Architecture Layers:
   Integration — Garmin sync, Telegram bot, weather API
   Orchestration — Daily coach, weekly planner, optimal time calculator
 
-Version: 5.8.0 (Operator Console / Phase 6 Closed)
+The version lives only in pyproject.toml (AGENTS RE-01).
 """
 
-__version__ = "5.8.0"
+
+def _read_version() -> str:
+    """Installed package metadata first; else pyproject.toml next to the source (Docker, checkout)."""
+    from importlib import metadata
+
+    try:
+        return metadata.version("project-mayhem")
+    except metadata.PackageNotFoundError:
+        pass
+    import tomllib
+    from pathlib import Path
+
+    try:
+        with (Path(__file__).resolve().parents[1] / "pyproject.toml").open("rb") as fh:
+            return tomllib.load(fh)["project"]["version"]
+    except (OSError, KeyError, tomllib.TOMLDecodeError):
+        return "0+unknown"
+
+
+__version__ = _read_version()
