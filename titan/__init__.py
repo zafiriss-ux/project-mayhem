@@ -15,17 +15,17 @@ The version lives only in pyproject.toml (AGENTS RE-01).
 
 def _read_version() -> str:
     """Installed package metadata first; else pyproject.toml next to the source (Docker, checkout)."""
+    import tomllib
     from importlib import metadata
+    from pathlib import Path
 
     try:
         return metadata.version("project-mayhem")
     except metadata.PackageNotFoundError:
-        pass
-    import tomllib
-    from pathlib import Path
-
+        # Not installed (Docker image, source checkout): pyproject.toml is the source.
+        pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
     try:
-        with (Path(__file__).resolve().parents[1] / "pyproject.toml").open("rb") as fh:
+        with pyproject.open("rb") as fh:
             return tomllib.load(fh)["project"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return "0+unknown"
