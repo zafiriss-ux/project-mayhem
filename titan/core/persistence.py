@@ -1008,10 +1008,10 @@ class PostgreSQLAdapter(PersistenceAdapter):
         return (int(row[0]), str(row[1]), row[2])
 
     def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
-        del athlete_id
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._daily_metrics)
+                .where(self._daily_metrics.c.athlete_id == athlete_id)
                 .where(self._daily_metrics.c.date == date)
                 .values(notes=f"HRR60={hrr_60};HRR120={hrr_120}")
             )
@@ -1019,14 +1019,15 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def get_hrr_history(
         self, days: int = 28, athlete_id: str = "owner"
     ) -> list[tuple[str, int, int]]:
-        del athlete_id
+        # No HRR columns in the PostgreSQL schema yet (HRR is stored in `notes`);
+        # nothing to return for any athlete until ADR-0044 parity.
         return []
 
     def update_glycogen_debt(self, date: str, debt_score: float, athlete_id: str = "owner") -> None:
-        del athlete_id
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)
+                .where(self._governance_outcomes.c.athlete_id == athlete_id)
                 .where(self._governance_outcomes.c.date == date)
                 .values(glycogen_debt=debt_score)
             )
