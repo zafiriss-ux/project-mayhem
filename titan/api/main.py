@@ -37,7 +37,7 @@ from titan.api.dependencies import (
     require_coach,
     require_coach_athlete_access,
 )
-from titan.api.models import AuthUser, LoginRequest, LoginResponse, TokenPayload
+from titan.api.models import AuthUser, LoginRequest, LoginResponse
 from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
 from titan.core.structured_events import EventSeverity, structured_event_payload
 
@@ -291,12 +291,6 @@ def create_app(
     async def rate_limit_middleware(request: Request, call_next):
         return await rate_limiter(request, call_next)
 
-    @app.middleware("http")
-    async def coach_audit_middleware(request: Request, call_next):
-        response = await call_next(request)
-        _audit_request(request)
-        return response
-
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
@@ -446,7 +440,7 @@ def create_app(
     @app.get("/athletes/{athlete_id}/dashboard")
     def athlete_dashboard(
         athlete_id: str,
-        current_user: AuthUser = Depends(require_coach_athlete_access),
+        current_user: AuthUser = Depends(_audited(AuditActionType.VIEW_DATA, "athlete_dashboard")),
     ) -> dict[str, str]:
         if current_user.role != "COACH" and current_user.athlete_id != athlete_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Athlete isolation violation")
@@ -457,15 +451,25 @@ def create_app(
         return {"status": "created"}
 
     @app.post("/coach/overrides")
-    def submit_coach_override(athlete_id: str, _: dict[str, Any], __: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
+    def submit_coach_override(
+        athlete_id: str,
+        _: dict[str, Any],
+        __: AuthUser = Depends(_audited(AuditActionType.SUBMIT_OVERRIDE, "coach_override")),
+    ) -> dict[str, str]:
         return {"status": "override_submitted", "athlete_id": athlete_id}
 
     @app.get("/coach/export")
-    def export_health_data(athlete_id: str, _: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
+    def export_health_data(
+        athlete_id: str,
+        _: AuthUser = Depends(_audited(AuditActionType.EXPORT_DATA, "health_export")),
+    ) -> dict[str, str]:
         return {"status": "export_ready", "athlete_id": athlete_id}
 
     @app.delete("/coach/athlete-data")
-    def delete_athlete_data(athlete_id: str, _: AuthUser = Depends(require_coach_athlete_access)) -> dict[str, str]:
+    def delete_athlete_data(
+        athlete_id: str,
+        _: AuthUser = Depends(_audited(AuditActionType.DELETE_DATA, "athlete_data")),
+    ) -> dict[str, str]:
         return {"status": "deleted", "athlete_id": athlete_id}
 
     # Mount Prometheus scrape endpoint — no auth; internal scrape only.
@@ -475,74 +479,65 @@ def create_app(
     return app
 
 
-def _get_user_from_request(request: Request) -> TokenPayload | None:
-    """Decode access JWT from the request for audit DB writes only.
+def _audited(action: AuditActionType, resource: str) -> Callable[..., AuthUser]:
+    """Route dependency: authorize, then write the coach audit record before the handler runs.
 
-    Auth has already passed at this point; this reads the token a second time
-    as a belt-and-suspenders path for DB persistence when request.state.current_user
-    is unavailable. Returns a TokenPayload or None on any failure.
+    INV-22 (AGENTS §8.13, T-PRA-21): the record is durable (``coach_audit_log``)
+    and ordered before the route's effect. If it cannot be written the request
+    fails closed with 503 and the handler never runs.
     """
-    try:
-        auth = request.headers.get("Authorization", "")
-        token = auth[7:] if auth.startswith("Bearer ") else request.cookies.get(ACCESS_COOKIE_NAME)
-        if not token:
-            return None
-        return decode_token(token, "access")
-    except Exception:
-        return None
+
+    def _dependency(
+        request: Request,
+        current_user: AuthUser = Depends(require_coach_athlete_access),
+    ) -> AuthUser:
+        _audit_before_effect(request, current_user, action, resource)
+        return current_user
+
+    return _dependency
 
 
-def _audit_request(request: Request) -> None:
-    route = _match_audit_route(request)
-    if route is None:
+def _audit_before_effect(
+    request: Request, current_user: AuthUser, action: AuditActionType, resource: str
+) -> None:
+    if current_user.role != "COACH":
         return
-
-    current_user = getattr(request.state, "current_user", None)
-    if not isinstance(current_user, AuthUser) or current_user.role != "COACH":
-        return
-
     athlete_id = _resolve_athlete_id(request)
     if athlete_id is None:
         return
 
-    detail = _build_action_detail(request, route)
-    row = CoachAuditRow(
+    db = getattr(request.app.state, "db", None)
+    try:
+        if db is None:
+            raise RuntimeError("no datastore attached for the coach audit log")
+        db.log_coach_action(
+            coach_id=current_user.id,
+            action_type=action.value,
+            target_athlete_id=athlete_id,
+            resource=resource,
+        )
+    except Exception as exc:
+        from titan.observability.metrics import get_metrics
+
+        _log.critical(
+            "audit_write_failed",
+            extra={"action_type": action.value, "resource": resource, "error": str(exc)},
+            exc_info=True,
+        )
+        get_metrics().counter("audit_write_failure")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Audit log unavailable: action not performed",
+        ) from exc
+
+    request.app.state.audit_store.log_action(CoachAuditRow(
         coach_id=current_user.id,
         athlete_id=athlete_id,
-        action_type=route["action_type"],
-        resource=route["resource"],
-        action_detail=detail,
+        action_type=action.value,
+        resource=resource,
+        action_detail=_build_action_detail(request, action),
         performed_at=datetime.now(UTC),
-    )
-    request.app.state.audit_store.log_action(row)
-
-    token_payload = _get_user_from_request(request)
-    db = getattr(request.app.state, "db", None)
-    if token_payload and db is not None:
-        try:
-            db.log_coach_action(
-                coach_id=token_payload.sub,
-                action_type=route["action_type"],
-                target_athlete_id=athlete_id,
-                resource=route["resource"],
-            )
-        except Exception as exc:
-            from titan.observability.metrics import get_metrics
-            _log.error("audit_db_persist_failed", extra={"error": str(exc)}, exc_info=True)
-            get_metrics().counter("audit_write_failure")
-
-
-def _match_audit_route(request: Request) -> dict[str, str] | None:
-    method = request.method
-    if method == "GET" and request.url.path.startswith("/athletes/") and request.url.path.endswith("/dashboard"):
-        return {"action_type": AuditActionType.VIEW_DATA.value, "resource": "athlete_dashboard"}
-    if method == "POST" and request.url.path == "/coach/overrides":
-        return {"action_type": AuditActionType.SUBMIT_OVERRIDE.value, "resource": "coach_override"}
-    if method == "GET" and request.url.path == "/coach/export":
-        return {"action_type": AuditActionType.EXPORT_DATA.value, "resource": "health_export"}
-    if method == "DELETE" and request.url.path == "/coach/athlete-data":
-        return {"action_type": AuditActionType.DELETE_DATA.value, "resource": "athlete_data"}
-    return None
+    ))
 
 
 def _resolve_athlete_id(request: Request) -> str | None:
@@ -555,9 +550,9 @@ def _resolve_athlete_id(request: Request) -> str | None:
     return athlete_id if athlete_id else None
 
 
-def _build_action_detail(request: Request, route: dict[str, str]) -> dict[str, Any] | None:
+def _build_action_detail(request: Request, action: AuditActionType) -> dict[str, Any] | None:
     query = dict(request.query_params)
-    if route["action_type"] == AuditActionType.SUBMIT_OVERRIDE.value:
+    if action == AuditActionType.SUBMIT_OVERRIDE:
         return {"source": "coach_override_endpoint", "query": query}
     return {"query": query} if query else None
 
