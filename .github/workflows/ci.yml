@@ -346,11 +346,13 @@ jobs:
       - name: Verify Python version is 3.11+
         run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version}'"
 
+      - name: Verify no pinned dependency conflicts
+        # Runs before install: once installed, every line is "Requirement already",
+        # grep -v prints nothing and exits 1.
+        run: pip install -r requirements.txt --dry-run 2>&1 | grep -v "^Requirement already"
+
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Verify no pinned dependency conflicts
-        run: pip install -r requirements.txt --dry-run 2>&1 | grep -v "^Requirement already"
 
       - name: Run system check (module health)
         # Informational: diagnoses import/threading problems; pytest suite is the real gate.
