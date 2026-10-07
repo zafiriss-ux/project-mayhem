@@ -20,9 +20,9 @@ alembic==1.18.4
 # Phase 8B API auth
 fastapi==0.136.1        # bumped 0.115.0→0.136.1: pulls starlette>=0.46.0 (CVE-2024-47874, CVE-2025-54121)
 uvicorn==0.34.3         # ASGI server for titan-api container
-pyjwt[crypto]==2.13.0
+pyjwt[crypto]==2.15.1
 bcrypt==5.0.0
-cryptography==48.0.1   # explicit dep for Fernet token encryption (T5-101)
+cryptography==50.0.2   # explicit dep for Fernet token encryption (T5-101)
 
 # Config management (P15-ARCH5)
 pydantic-settings==2.9.1
