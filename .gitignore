@@ -202,3 +202,7 @@ athletes/
 # Garmin session token (plaintext and encrypted)
 .garth_token
 .garth_token.enc
+# Skipper — machine-local artifacts (hook scratch + derived index), never commit
+.claude/.skipper-*
+.skipper/*
+!.skipper/receipts/
