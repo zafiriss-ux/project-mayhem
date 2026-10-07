@@ -127,7 +127,7 @@ class TitanTelegramBot:
             self.chat_id = raw_id  # keep as str until set
 
         # Trusted inbound chat ID for per-handler authorisation.
-        # None = unconfigured (allow all with a warning); str = strict match.
+        # None = unconfigured (deny all, INV-16 / RBP-02); str = strict match.
         _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
         self._trusted_chat_id: str | None = str(_raw_trusted) if _raw_trusted else None
 
@@ -175,12 +175,13 @@ class TitanTelegramBot:
     def _is_trusted(self, chat_id: int | str) -> bool:
         """Return True if *chat_id* matches the configured trusted chat.
 
-        If no trusted chat is configured (_trusted_chat_id is None) every
-        sender is allowed — a warning is emitted so operators notice the gap.
+        Fail-closed (AGENTS INV-16 / RBP-02): if no trusted chat is configured
+        (_trusted_chat_id is None) every sender is refused and a CRITICAL is
+        logged so operators notice the gap.
         """
         if self._trusted_chat_id is None:
-            _log.warning("titan.telegram.no_trusted_chat_configured")
-            return True
+            _log.critical("titan.telegram.no_trusted_chat_configured")
+            return False
         return str(chat_id) == str(self._trusted_chat_id)
 
     # ------------------------------------------------------------------ #

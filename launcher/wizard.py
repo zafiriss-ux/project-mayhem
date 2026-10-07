@@ -181,7 +181,7 @@ def run_wizard() -> dict[str, str]:
         validator=validate_telegram_token,
     )
     config['TELEGRAM_CHAT_ID'] = prompt_input(
-        "Your Telegram chat ID (send /start to your bot to get it)",
+        "Your Telegram chat ID (send /start to @userinfobot to get it)",
         validator=validate_telegram_chat_id,
     )
 
