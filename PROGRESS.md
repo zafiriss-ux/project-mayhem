@@ -31,6 +31,7 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | #9 Αχρησιμοποίητα ονόματα | #897 | Το vulture (≥80%) δεν βρίσκει πια τίποτα εκτός από τα ορίσματα του signal handler· αφαιρέθηκαν παράμετροι και re-exports που δεν χρησιμοποιεί κανείς (μεταξύ τους 4 παλιές παράμετροι του `DailyCoach` από το fallback που καταργήθηκε στο #839)· το `emergency_margin` του `MathCore` λειτουργεί όπως γράφει το docstring, με ίδια αποτελέσματα για όλους τους σημερινούς καλούντες· 1 νέο τεστ |
 | #8 Ευθυγράμμιση dependencies | #898 | import-linter, schemathesis, mutmut, pip-audit πέρασαν από το `requirements.txt` στο `requirements-dev.txt` (το Docker image δεν τα κουβαλά πια)· το `pyproject.toml` διαβάζει τις εξαρτήσεις από τα requirements αντί για δικό του, παλιό αντίγραφο· το wheel περιέχει πλέον όλα τα subpackages του `titan`· το CI παίρνει το Ruff από το `requirements-dev.txt` (ήταν 0.15.13 έναντι 0.16.10)· 2 νέα τεστ |
 | #11 Governance record | #899 | Κάθε T-PRA γραμμή του AGENTS §30 (32 items) έχει πλέον εγγραφή στο `TECHNICAL_DEBT.md` με κατάσταση και σε ποια εργασία του πλάνου είναι προγραμματισμένη· νέο τεστ το φυλάει· τα 3 παλιά reports της ρίζας μεταφέρθηκαν στο `archive/` |
+| Διόρθωση Docker worker | #901 | Ο worker του Docker έφτιαχνε το `DailyCoach` με λάθος ορίσματα (π.χ. `GarminSync(athlete_max_hr=...)`, `WeeklyPlanGenerator(db=...)`), οπότε κάθε πρωινός κύκλος αποτύγχανε σιωπηλά και η ρουτίνα των 07:00 UTC δεν έτρεχε ποτέ· τώρα χτίζεται όπως στο `titan/main.py`· 3 νέα τεστ που αποτυγχάνουν στον παλιό κώδικα |
 
 ## Σε εξέλιξη
 

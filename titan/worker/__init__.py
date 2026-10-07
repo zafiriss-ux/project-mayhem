@@ -79,10 +79,46 @@ def _seconds_until_next_run(hour: int = 7, minute: int = 0) -> float:
     return (target - now).total_seconds()
 
 
+def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
+    """Compose a DailyCoach for one athlete, mirroring the titan/main.py composition root.
+
+    Every collaborator is built with the constructor signature it actually has;
+    the worker loops used to pass keyword arguments these constructors do not
+    accept, so each morning cycle failed with TypeError before any work ran.
+    """
+    from titan.features.nutrition_optimizer import NutritionOptimizer
+    from titan.features.optimal_time_calculator import OptimalTimeCalculator
+    from titan.features.weekly_planner import WeeklyPlanGenerator
+    from titan.integrations.garmin_sync import GarminSync
+    from titan.integrations.telegram_bot import TitanTelegramBot
+    from titan.integrations.weather_api import WeatherAPI
+    from titan.orchestration.daily_coach import DailyCoach
+    from titan.orchestration.engine_registry import EngineRegistry
+    from titan.science.acwr_engine import ACWREngine
+    from titan.science.glycogen_model import GlycogenModel
+
+    weather = WeatherAPI()
+    engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
+    return DailyCoach(
+        garmin_sync=GarminSync(),
+        weather_api=weather,
+        telegram_bot=TitanTelegramBot(db=db),
+        hrv_engine=engines.hrv,
+        tsb_engine=engines.tsb,
+        readiness_engine=engines.readiness,
+        optimal_time_calc=OptimalTimeCalculator(weather),
+        nutrition_optimizer=NutritionOptimizer(GlycogenModel()),
+        weekly_planner=WeeklyPlanGenerator(engines.hrv, engines.tsb, ACWREngine()),
+        db=db,
+        athlete_id=athlete_id,
+        engines=engines,
+        athlete_max_hr=int(str(get_settings().ATHLETE_MAX_HR)),
+    )
+
+
 def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> None:
     """ADR-0057 worker entrypoint. Runs DailyCoach morning routine aligned to 07:00 UTC."""
     from titan.core.database import DatabaseManager
-    from titan.orchestration.daily_coach import DailyCoach
 
     _stop = shutdown_event if shutdown_event is not None else threading.Event()
     log = logging.getLogger("titan.worker.runner")
@@ -98,39 +134,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     while True:
         _run_backup(db)
         try:
-            from titan.features.nutrition_optimizer import NutritionOptimizer
-            from titan.features.optimal_time_calculator import OptimalTimeCalculator
-            from titan.features.weekly_planner import WeeklyPlanGenerator
-            from titan.integrations.garmin_sync import GarminSync
-            from titan.integrations.telegram_bot import TitanTelegramBot
-            from titan.integrations.weather_api import WeatherAPI
-            from titan.orchestration.engine_registry import EngineRegistry
-
-            athlete_max_hr = int(str(get_settings().ATHLETE_MAX_HR))
-            garmin = GarminSync(
-                athlete_max_hr=athlete_max_hr
-            )
-            weather = WeatherAPI()
-            telegram = TitanTelegramBot(db=db)
-            engines = EngineRegistry.from_db(db=db)
-            optimal = OptimalTimeCalculator()
-            nutrition = NutritionOptimizer(db=db)
-            planner = WeeklyPlanGenerator(db=db)
-
-            coach = DailyCoach(
-                garmin_sync=garmin,
-                weather_api=weather,
-                telegram_bot=telegram,
-                # B2c (Phase 24 / ADR-0058): pass complete registry so
-                # DailyCoach.__init__ takes the pure-consumer path.
-                # Individual hrv_engine/tsb_engine/readiness_engine params
-                # are omitted — registry owns all 10 engine instances.
-                engines=engines,
-                optimal_time_calc=optimal,
-                nutrition_optimizer=nutrition,
-                weekly_planner=planner,
-                db=db,
-            )
+            coach = _build_daily_coach(db)
             coach.run_morning_routine()
             log.info("morning_routine_complete")
         except Exception as exc:
@@ -158,15 +162,7 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
     """
     from collections.abc import Callable
 
-    from titan.features.nutrition_optimizer import NutritionOptimizer
-    from titan.features.optimal_time_calculator import OptimalTimeCalculator
-    from titan.features.weekly_planner import WeeklyPlanGenerator
-    from titan.integrations.garmin_sync import GarminSync
-    from titan.integrations.telegram_bot import TitanTelegramBot
-    from titan.integrations.weather_api import WeatherAPI
     from titan.orchestration.coaching_scheduler import CoachingScheduler
-    from titan.orchestration.daily_coach import DailyCoach
-    from titan.orchestration.engine_registry import EngineRegistry
 
     log = logging.getLogger("titan.worker.scheduler")
 
@@ -180,9 +176,6 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
     # 07:00 UTC. The daily gate is enforced inside each callback.
     scheduler = CoachingScheduler(interval_seconds=60.0)
 
-    # Register owner athlete (always present).
-    athlete_max_hr = int(str(get_settings().ATHLETE_MAX_HR))
-
     def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
         def _callback() -> None:
             now = _dt.datetime.now(_dt.UTC)
@@ -194,24 +187,7 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
             # loop which sleeps until 07:00 next day regardless of outcome.
             last_run_dates[athlete_id] = today
             try:
-                garmin = GarminSync(athlete_max_hr=athlete_max_hr)
-                weather = WeatherAPI()
-                telegram = TitanTelegramBot(db=db)
-                engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
-                optimal = OptimalTimeCalculator()
-                nutrition = NutritionOptimizer(db=db)
-                planner = WeeklyPlanGenerator(db=db)
-                coach = DailyCoach(
-                    garmin_sync=garmin,
-                    weather_api=weather,
-                    telegram_bot=telegram,
-                    engines=engines,
-                    optimal_time_calc=optimal,
-                    nutrition_optimizer=nutrition,
-                    weekly_planner=planner,
-                    db=db,
-                    athlete_id=athlete_id,
-                )
+                coach = _build_daily_coach(db, athlete_id=athlete_id)
                 coach.run_morning_routine()
             except Exception as exc:
                 log.exception(
