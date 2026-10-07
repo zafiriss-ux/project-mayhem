@@ -237,12 +237,14 @@ class TestCriticalSpeedProperties:
         assert tracker.apply_thermal(15.0) == pytest.approx(tracker.cs_smoothed, abs=0.001)
 
     @given(
-        grade_pct=st.floats(min_value=-20.0, max_value=20.0),
+        # Only truly flat grades: generated directly instead of filtering
+        # [-20, 20] with assume(), which tripped Hypothesis' filter_too_much
+        # health check on unlucky seeds.
+        grade_pct=st.floats(min_value=-0.0099, max_value=0.0099),
         pace_sec_per_km=st.floats(min_value=150.0, max_value=600.0),
     )
     def test_gap_flat_unchanged(self, grade_pct, pace_sec_per_km):
         from titan.science.critical_speed import CriticalSpeedTracker
-        assume(abs(grade_pct) < 0.01)  # only test truly flat
         corrected = CriticalSpeedTracker.gap_correct_pace(pace_sec_per_km, grade_pct)
         assert corrected == pytest.approx(pace_sec_per_km, abs=0.1)
 
