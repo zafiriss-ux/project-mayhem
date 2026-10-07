@@ -75,13 +75,14 @@ os.environ['TITAN_DATA_DIR'] = '/data'
 from titan.core.database import DatabaseManager
 db = DatabaseManager('titan_core.db')
 db.conn.execute(
-    \"INSERT OR IGNORE INTO sync_metadata (date, activity_count, weight_count, \
-sleep_count, hrv_count, status) VALUES ('smoke_test_marker', 0, 0, 0, 0, 'smoke_test')\")
+    \"INSERT OR IGNORE INTO sync_metadata (source, last_sync_ok, last_error_class) \
+VALUES ('smoke_test_marker', 0, 'smoke_test')\")
 db.conn.commit()
 print('marker written')
 "
 
-$COMPOSE restart titan-api
+# T-PRA-29: restart both containers, not only the API.
+$COMPOSE restart
 sleep 5
 
 elapsed=0
@@ -97,12 +98,16 @@ os.environ['TITAN_DATA_DIR'] = '/data'
 from titan.core.database import DatabaseManager
 db = DatabaseManager('titan_core.db')
 row = db.conn.execute(
-    \"SELECT status FROM sync_metadata WHERE date='smoke_test_marker'\").fetchone()
+    \"SELECT last_error_class FROM sync_metadata WHERE source='smoke_test_marker'\").fetchone()
 assert row and row[0] == 'smoke_test', \
     f'Persistence FAILED — marker lost (got {row})'
 print('Persistence OK')
 "
 log "✅ Persistence after restart: OK"
+
+[ -n "$($COMPOSE ps --status running -q titan-worker)" ] || \
+    fail "worker not running after restart"
+log "✅ Worker running after restart"
 
 # ── 7. Degraded readiness simulation ─────────────────────────────────────────
 log "Simulating degraded readiness (worker stop)..."
