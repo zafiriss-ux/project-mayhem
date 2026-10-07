@@ -7,7 +7,7 @@ name: CI — Deterministic Tests & Baseline Hardening
 #   - one full pytest run per Python version (coverage gates read its data);
 #   - push runs only on main (PR branches are covered by the pull_request run);
 #   - a newer push to the same PR cancels the older run;
-#   - Python 3.12 runs on main pushes and manual runs, 3.11 on every PR.
+#   - Python 3.13 also runs on main pushes and manual runs; every PR runs 3.12.
 # Every gate from the previous layout is still enforced; only the grouping changed.
 
 on:
@@ -37,10 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
       - name: Install Ruff
@@ -58,10 +58,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
       - name: Install Ruff
@@ -89,7 +89,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ${{ github.event_name == 'pull_request' && fromJSON('["3.11"]') || fromJSON('["3.11", "3.12"]') }}
+        python-version: ${{ github.event_name == 'pull_request' && fromJSON('["3.12"]') || fromJSON('["3.12", "3.13"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -337,14 +337,14 @@ jobs:
             exit 1
           }
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
-      - name: Verify Python version is 3.11+
-        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version}'"
+      - name: Verify Python version is 3.12+
+        run: python -c "import sys; assert sys.version_info >= (3, 12), f'Python 3.12+ required, got {sys.version}'"
 
       - name: Verify no pinned dependency conflicts
         # Runs before install: once installed, every line is "Requirement already",
@@ -418,10 +418,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
       - name: Audit unpinned dependencies in requirements files
@@ -494,10 +494,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
       - name: Install dependencies

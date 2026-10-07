@@ -47,10 +47,10 @@ _section "A. Environment"
 
 PY_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
 PY_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
-if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 11 ]; then
-  _pass "Python $(python --version) ≥ 3.11"
+if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 12 ]; then
+  _pass "Python $(python --version) ≥ 3.12"
 else
-  _fail "Python $(python --version) — requires 3.11+"
+  _fail "Python $(python --version) — requires 3.12+"
 fi
 
 # Capture collection output once; use awk to count errors (always exits 0).

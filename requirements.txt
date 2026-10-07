@@ -1,11 +1,11 @@
 # TITAN OS v5.8.0 — Production Runtime Requirements
-# Build Environment: Python 3.11.9 (Windows 11 x64)
+# Build Environment: Python 3.12 (garminconnect 0.3.5 requires >=3.12)
 # Last Updated: 2026-05-14
 
 # Core Runtime Dependencies
 
 # API Integrations
-garminconnect==0.3.2    # upgraded from 0.2.13: drops broken withings-sync dep (T5-78)
+garminconnect==0.3.5    # 0.3.5 fixes CVE-2026-54447 (token file world-readable); needs Python 3.12+. Earlier: 0.2.13→0.3.2 drops withings-sync (T5-78)
 requests==2.34.2        # HTTP client (Garmin, weather, webhooks) — bumped 2.32.4→2.33.0 (GHSA-gc5v-m9x4-r6x2), 2.33.0→2.34.2 (patch)
 pyTelegramBotAPI==4.33.0       # Telegram bot framework (telebot)
 
