@@ -49,7 +49,9 @@ class EngineRegistry:
         """Single authoritative construction site for all per-athlete engines.
 
         Phase 26 / ADR-0058 Phase B: DB hydration wired for TSB and HRV.
-        CS performances and APL offsets deferred (TODO-P26-04b/c).
+        CS performances deferred (TODO-P26-04b). The APL needs no hydration:
+        it is stateless, and the per-athlete threshold offsets are loaded by
+        ThresholdAdapter in coaching_pipeline() for ``context.athlete_id``.
         """
         loads = db.get_training_load_history(athlete_id=athlete_id, days=90)
         tsb = TSBEngine()
@@ -67,8 +69,7 @@ class EngineRegistry:
         # athlete_id (cs_performances table is not yet athlete-scoped).
         cs_tracker = CriticalSpeedTracker()
 
-        # TODO-P26-04c: APL threshold offsets are loaded by ThresholdAdapter
-        # separately; wire that into from_db once it is athlete-aware.
+        # Stateless (no DB access); offsets live in ThresholdAdapter (see above).
         apl = AdaptivePriorityLock()
 
         return cls(

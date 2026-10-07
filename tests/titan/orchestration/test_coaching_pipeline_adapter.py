@@ -5,6 +5,7 @@ ADR-0052 Stage 3: ThresholdAdapter injection into coaching_pipeline().
 """
 from __future__ import annotations
 
+import dataclasses
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -161,6 +162,24 @@ class TestThresholdAdapterInjection:
         ):
             coaching_pipeline(ctx)
             mock_adapter.load.assert_called_once()
+
+    @pytest.mark.unit
+    def test_adapter_loads_the_offsets_of_the_context_athlete(self):
+        """
+        T-PRA-32 (TODO-P26-04c): threshold offsets are hydrated per athlete,
+        for ctx.athlete_id, not for the owner.
+        """
+        db = MagicMock()
+        db.is_athlete_cold_start.return_value = False
+        db.check_and_exit_cold_start.return_value = False
+        ctx = dataclasses.replace(_build_graduated_context(db), athlete_id="athlete-b")
+
+        with patch(
+            "titan.orchestration.coaching_pipeline.ThresholdAdapter",
+            return_value=MagicMock(spec=ThresholdAdapter),
+        ) as mock_adapter_cls:
+            coaching_pipeline(ctx)
+            mock_adapter_cls.assert_called_once_with(athlete_id="athlete-b", db=db)
 
     @pytest.mark.unit
     def test_adapter_none_when_no_db(self):
