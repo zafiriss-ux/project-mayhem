@@ -23,6 +23,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.repositories.governance import GovernanceRepository
+from titan.core.repositories.operations import OperationsRepository
 from titan.core.repositories.physiology import PhysiologyRepository
 from titan.core.repositories.training import TrainingRepository
 from titan.core.structured_events import EventSeverity, structured_event_payload
@@ -1495,52 +1496,13 @@ class DatabaseManager:
 
     def get_nutrition_preferences(self, athlete_id: str = 'owner') -> dict | None:
         """Return nutrition preferences for athlete_id, or None if not set."""
-        with self._lock:
-            self._ensure_open_locked()
-            c = self.conn.cursor()
-            c.execute(
-                'SELECT * FROM nutrition_preferences WHERE athlete_id = ?',
-                (athlete_id,)
-            )
-            row = c.fetchone()
-            if not row:
-                return None
-            cols = [d[0] for d in c.description]
-            return dict(zip(cols, row, strict=True))
+        return self._operations.get_nutrition_preferences(athlete_id=athlete_id)
 
     def save_nutrition_preferences(
         self, athlete_id: str = 'owner', prefs: dict = None
     ) -> None:
         """Upsert nutrition preferences for athlete_id."""
-        if not prefs:
-            return
-        with self._lock:
-            self._ensure_open_locked()
-            c = self.conn.cursor()
-            c.execute('''
-                INSERT INTO nutrition_preferences (
-                    athlete_id, training_time, fasted_training,
-                    dietary_style, meal_frequency, biological_sex,
-                    menstrual_tracking, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                ON CONFLICT(athlete_id) DO UPDATE SET
-                    training_time=excluded.training_time,
-                    fasted_training=excluded.fasted_training,
-                    dietary_style=excluded.dietary_style,
-                    meal_frequency=excluded.meal_frequency,
-                    biological_sex=excluded.biological_sex,
-                    menstrual_tracking=excluded.menstrual_tracking,
-                    updated_at=excluded.updated_at
-            ''', (
-                athlete_id,
-                prefs.get('training_time', 'variable'),
-                prefs.get('fasted_training', 'easy_only'),
-                prefs.get('dietary_style', 'standard'),
-                prefs.get('meal_frequency', 3),
-                prefs.get('biological_sex', 'male'),
-                prefs.get('menstrual_tracking', 'no'),
-            ))
-            self.conn.commit()
+        self._operations.save_nutrition_preferences(athlete_id=athlete_id, prefs=prefs)
 
     # --- Per-athlete threshold offsets (ADR-0052 Stage 1), cold start, calibration
     #     rates (titan/core/repositories/governance.py) ---
@@ -1809,40 +1771,27 @@ class DatabaseManager:
             ).fetchall()
         return [r[0] for r in rows]
 
-    # --- Degraded Mode State (HD-06) ---
+    # --- Degraded Mode State (HD-06) (titan/core/repositories/operations.py) ---
 
     def get_all_degraded_mode_states(self, athlete_id: str = "default") -> list[tuple[str, str]]:
         """Return all (failure_type, degraded_since) rows for the given athlete."""
-        with self._lock:
-            return self.conn.cursor().execute(
-                "SELECT failure_type, degraded_since "
-                "FROM degraded_mode_state WHERE athlete_id = ?",
-                (athlete_id,),
-            ).fetchall()
+        return self._operations.get_all_degraded_mode_states(athlete_id=athlete_id)
 
     def upsert_degraded_mode_state(
         self, failure_type: str, degraded_since: str, athlete_id: str = "default"
     ) -> None:
         """Insert or replace a degraded-mode row keyed by failure_type."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "INSERT OR REPLACE INTO degraded_mode_state "
-                "(failure_type, degraded_since, athlete_id) VALUES (?, ?, ?)",
-                (failure_type, degraded_since, athlete_id),
-            )
-            self.conn.commit()
+        self._operations.upsert_degraded_mode_state(
+            failure_type=failure_type, degraded_since=degraded_since, athlete_id=athlete_id
+        )
 
     def delete_degraded_mode_state(
         self, failure_type: str, athlete_id: str = "default"
     ) -> None:
         """Delete the degraded-mode row for a failure_type (degradation resolved)."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "DELETE FROM degraded_mode_state "
-                "WHERE failure_type = ? AND athlete_id = ?",
-                (failure_type, athlete_id),
-            )
-            self.conn.commit()
+        self._operations.delete_degraded_mode_state(
+            failure_type=failure_type, athlete_id=athlete_id
+        )
 
     # --- BACKUP ---
 
@@ -2115,6 +2064,10 @@ class DatabaseManager:
     def _governance(self) -> GovernanceRepository:
         return GovernanceRepository(self)
 
+    @functools.cached_property
+    def _operations(self) -> OperationsRepository:
+        return OperationsRepository(self)
+
     def update_shoe_mileage(self, shoe_id: int, distance_km: float, date: str) -> None:
         """Add a run's distance to a shoe and set its last-used date."""
         self._training.update_shoe_mileage(shoe_id, distance_km, date)
@@ -2346,95 +2299,17 @@ class DatabaseManager:
         error_class: str | None = None,
     ) -> None:
         """Persist latest sync attempt outcome for a source system."""
-        attempted_iso = attempted_at.astimezone(UTC).isoformat()
-        success_iso = attempted_iso if success else None
-
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """INSERT INTO sync_metadata (
-                        source,
-                        last_attempt_ts,
-                        last_success_ts,
-                        last_sync_ok,
-                        last_error_class
-                    ) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(source) DO UPDATE SET
-                        last_attempt_ts = excluded.last_attempt_ts,
-                        last_success_ts = CASE
-                            WHEN excluded.last_sync_ok = 1 THEN excluded.last_success_ts
-                            ELSE sync_metadata.last_success_ts
-                        END,
-                        last_sync_ok = excluded.last_sync_ok,
-                        last_error_class = excluded.last_error_class""",
-                (source, attempted_iso, success_iso, 1 if success else 0, error_class),
-            )
-            self.conn.commit()
+        self._operations.record_sync_outcome(
+            source=source, attempted_at=attempted_at, success=success, error_class=error_class
+        )
 
     def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
         """Return latest sync outcome metadata for a source."""
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """SELECT last_attempt_ts, last_success_ts, last_sync_ok, last_error_class
-                   FROM sync_metadata WHERE source = ?""",
-                (source,),
-            )
-            row = cursor.fetchone()
-
-        if not row:
-            return None
-
-        attempted_at = None
-        success_at = None
-        if row[0]:
-            with suppress(ValueError, TypeError):
-                attempted_at = datetime.fromisoformat(row[0])
-        if row[1]:
-            with suppress(ValueError, TypeError):
-                success_at = datetime.fromisoformat(row[1])
-
-        return {
-            "last_attempt_ts": attempted_at,
-            "last_success_ts": success_at,
-            "last_sync_ok": bool(row[2]),
-            "last_error_class": row[3],
-        }
+        return self._operations.get_last_sync_outcome(source=source)
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
-        """Return a datetime representing the most recent data written by Garmin sync.
-
-        Checks the latest date in both daily_metrics and training_log and returns
-        the more recent of the two, parsed as a midnight-UTC datetime.
-
-        Returns None if no data exists in either table.
-        """
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                "SELECT MAX(date) FROM daily_metrics WHERE date IS NOT NULL"
-            )
-            dm_row = cursor.fetchone()
-            cursor.execute(
-                "SELECT MAX(date) FROM training_log WHERE date IS NOT NULL"
-            )
-            tl_row = cursor.fetchone()
-
-        latest: str | None = None
-        for row in (dm_row, tl_row):
-            if row and row[0] and (latest is None or row[0] > latest):
-                latest = row[0]
-
-        if not latest:
-            return None
-
-        try:
-            return datetime.fromisoformat(latest).replace(tzinfo=UTC)
-        except (ValueError, TypeError):
-            return None
+        """Return a datetime representing the most recent data written by Garmin sync."""
+        return self._operations.get_last_garmin_sync_timestamp()
 
     def get_weight_history(self, days: int = 30, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return (date, weight_kg) rows from the last N days, newest-first."""
