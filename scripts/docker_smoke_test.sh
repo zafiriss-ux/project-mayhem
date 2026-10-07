@@ -81,7 +81,8 @@ db.conn.commit()
 print('marker written')
 "
 
-$COMPOSE restart titan-api
+# T-PRA-29: restart both containers, not only the API.
+$COMPOSE restart
 sleep 5
 
 elapsed=0
@@ -103,6 +104,10 @@ assert row and row[0] == 'smoke_test', \
 print('Persistence OK')
 "
 log "✅ Persistence after restart: OK"
+
+[ -n "$($COMPOSE ps --status running -q titan-worker)" ] || \
+    fail "worker not running after restart"
+log "✅ Worker running after restart"
 
 # ── 7. Degraded readiness simulation ─────────────────────────────────────────
 log "Simulating degraded readiness (worker stop)..."
