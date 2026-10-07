@@ -1,5 +1,5 @@
-"""Training domain SQL: shoes (gear_usage). Training log, personal bests and CS
-performances move here in the next plan #18 PRs."""
+"""Training domain SQL: shoes (gear_usage), personal bests and CS calibration
+performances. The training log moves here in the next plan #18 PR."""
 
 from __future__ import annotations
 
@@ -127,3 +127,99 @@ class TrainingRepository:
                 return False, f"Foam needs {hours_left:.1f}h recovery (compression set)"
 
         return True, "Available"
+
+    def save_personal_best(
+        self,
+        distance_km: float,
+        time_sec: int,
+        date: str,
+        race_name: str | None = None
+    ) -> None:
+        """
+        Save a personal best.
+
+        Args:
+            distance_km: Distance in kilometers
+            time_sec: Time in seconds
+            date: Date of the performance (ISO format)
+            race_name: Optional race name
+        """
+        pace_per_km = time_sec / distance_km
+
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute("""
+                INSERT INTO personal_bests
+                (distance_km, time_sec, pace_sec_per_km, date, race_name)
+                VALUES (?, ?, ?, ?, ?)
+            """, (distance_km, time_sec, pace_per_km, date, race_name))
+            self._db.conn.commit()
+
+    def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
+        """
+        Get personal best for a distance.
+
+        Args:
+            distance_km: Distance in kilometers
+
+        Returns:
+            Tuple of (time_sec, date, race_name) or None if no PR exists
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute("""
+                SELECT time_sec, date, race_name
+                FROM personal_bests
+                WHERE distance_km = ?
+                ORDER BY time_sec ASC
+                LIMIT 1
+            """, (distance_km,))
+            return cursor.fetchone()
+
+    def log_cs_performance(
+        self,
+        date: str,
+        distance_m: float,
+        time_sec: float,
+        surface: str = 'ROAD',
+        wind_adjusted: bool = False,
+    ) -> None:
+        """
+        Log a time-trial / race performance for CS/D' model calibration.
+
+        Args:
+            date:         Date in ISO format
+            distance_m:   Distance in metres (e.g. 3000, 5000, 10000)
+            time_sec:     Elapsed time in seconds
+            surface:      ROAD / TRACK / TRAIL
+            wind_adjusted: True if pace was corrected for wind
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """INSERT INTO cs_performances
+                   (date, distance_m, time_sec, surface, wind_adjusted)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (date, distance_m, time_sec, surface, int(wind_adjusted)),
+            )
+            self._db.conn.commit()
+
+    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
+        """
+        Retrieve most recent CS calibration performances.
+
+        Returns:
+            List of (date, distance_m, time_sec) tuples, ordered DESC.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """SELECT date, distance_m, time_sec FROM cs_performances
+                   ORDER BY date DESC LIMIT ?""",
+                (limit,),
+            )
+            return cursor.fetchall()
