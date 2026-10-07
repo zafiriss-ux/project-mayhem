@@ -14,6 +14,8 @@ import logging
 import sys
 from datetime import UTC, datetime
 
+from titan import __version__
+
 # ── Profile-editor constants (importable for tests) ──────────────────────────
 VALID_TRAINING_PHASES: frozenset[str] = frozenset({"BASE", "BUILD", "PEAK", "TAPER"})
 VALID_TRAINING_GOALS: frozenset[str] = frozenset({"5K", "10K", "HM", "M"})
@@ -27,7 +29,7 @@ def _clear():
     """Clear terminal safely without spawning a shell subprocess."""
     print(ANSI_CLEAR_SCREEN, end="", flush=True)
 
-def _header(title: str = "TITAN v51"):
+def _header(title: str = f"TITAN v{__version__}"):
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║  🏃  {title:<52}  ║

@@ -33,5 +33,5 @@ def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
     assert "Traceback" not in process.stderr
     assert (
         "Invalid environment variable ATHLETE_AGE" in combined_output
-        or "TITAN v51" in combined_output
+        or "TITAN v5.8.0" in combined_output
     )

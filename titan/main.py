@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TITAN v51 – AI Training Intelligence System
+TITAN OS – AI Training Intelligence System
 Main Application Entry Point
 
 Flow:
@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ── Credentials (must happen before anything reads env vars) ────────────────
 # ── Core (database) ───────────────────────────────────────────────────────────
+from titan import __version__
 from titan.config.settings import get_settings
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.database import DatabaseManager
@@ -77,9 +78,10 @@ def _configure_rotating_logging() -> None:
 # BANNER
 # ════════════════════════════════════════════════════════════════════════════
 def _print_banner():
-    print("""
+    title = f"TITAN v{__version__}"
+    print(f"""
 ╔══════════════════════════════════════════════════════════════╗
-║                       TITAN v51.0                            ║
+║{title:^62}║
 ║           AI-Powered Training Intelligence System            ║
 ║                                                              ║
 ║  🏃 Weekly Planning   |  ⏰ Optimal Timing                   ║

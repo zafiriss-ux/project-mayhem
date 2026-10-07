@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TITAN v51 - Complete System Check
+TITAN OS - Complete System Check
 Tests all modules and functionality
 """
 
@@ -201,9 +201,12 @@ def check_threading(return_results=False):
     return None
 
 def main():
-    print("""
+    from titan import __version__
+
+    title = f"TITAN v{__version__} - SYSTEM CHECK"
+    print(f"""
 ╔═══════════════════════════════════════════════════════════╗
-║              TITAN v51 - SYSTEM CHECK                    ║
+║{title:^59}║
 ╚═══════════════════════════════════════════════════════════╝
 """)
 
@@ -246,7 +249,7 @@ def main():
     if all_passed:
         print("🎉 ALL SYSTEMS OPERATIONAL")
         print("="*60)
-        print("\n✅ TITAN v51 is ready for deployment!")
+        print(f"\n✅ TITAN v{__version__} is ready for deployment!")
         return 0
     print("⚠️ SOME TESTS FAILED")
     print("="*60)
