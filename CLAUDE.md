@@ -112,6 +112,7 @@ Main package (69 modules, excl. __init__/__main__), ceiling 80.
 - `0057` — Docker Deployment
 - `0058` — DailyCoach Decomposition (Phase A: EngineRegistry)
 - `0059` — Unified pytest Execution Model
+- `0060` — Durable Worker State (Proposed)
 
 ## Docker
 
