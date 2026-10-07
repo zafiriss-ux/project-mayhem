@@ -78,7 +78,7 @@ docker compose up --build -d
 - Βάση: `/data/titan_core.db` στο volume `titan-data`
 - Backups: ελεγμένα ημερήσια αντίγραφα στο ξεχωριστό volume `titan-backups` (7 ημερήσια + 4 εβδομαδιαία)
 
-Λεπτομέρειες: [`docs/runbooks/docker-deploy.md`](docs/runbooks/docker-deploy.md). Επαναφορά και έλεγχος αντιγράφων: [`docs/RUNBOOK_DR.md`](docs/RUNBOOK_DR.md).
+Λεπτομέρειες: [`docs/runbooks/docker-deploy.md`](docs/runbooks/docker-deploy.md). Επαναφορά και έλεγχος αντιγράφων: [`docs/RUNBOOK_DR.md`](docs/RUNBOOK_DR.md). Εκδόσεις με tag, εικόνες στο `ghcr.io` και επιστροφή σε προηγούμενη έκδοση: [`docs/RUNBOOK_ROLLBACK.md`](docs/RUNBOOK_ROLLBACK.md).
 
 ### Β. Τοπικά με Python (Windows / Linux / macOS)
 

@@ -43,6 +43,8 @@ git pull
 docker compose up --build -d
 ```
 
+This builds from the checkout (development). Production runs tagged images instead: `docker compose -f docker-compose.yml -f docker-compose.release.yml up -d` with `TITAN_VERSION` set (AGENTS RE-02/RE-04). Upgrade and rollback steps: `docs/RUNBOOK_ROLLBACK.md`.
+
 ## Validation
 
 ### Automated smoke test (requires Docker)

@@ -1692,7 +1692,7 @@ RESOLVED disposition.
 | T-PRA-06 | SA:M-2 | 1 | Multi-athlete scheduler registration from `athletes` table | OPEN | Refactor plan task #20 |
 | T-PRA-07 | B-4 | 1 | Fail-closed governance guard (INV-12) | RESOLVED 2026-06-12 (PR #865) | — |
 | T-PRA-08 | B-6 | 1 | Off-volume backups, retention, integrity check, restore drill, `RUNBOOK_DR.md` | FIX MERGED: PR #906 (`titan-backups` volume, verified artifacts, 7 daily + 4 weekly retention, `scripts/restore_drill.py`, `docs/RUNBOOK_DR.md`); DR-03 drill result recorded at next phase close; Architect close pending | Refactor plan task #15 |
-| T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | OPEN (version single-sourced in PR #896) | Refactor plan task #16 |
+| T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | FIX MERGED: PR #909 (version only in `pyproject.toml`, read at runtime; `release.yml` builds `ghcr.io` images per `vX.Y.Z` tag on `main`; `docker-compose.release.yml` pins images; `docs/RUNBOOK_ROLLBACK.md`; `tests/test_release_engineering.py`); RE-03 staging drill pending the first tag; Architect close pending | Refactor plan task #16 |
 | T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | OPEN | Not scheduled |
 | T-PRA-11 | B-13 | 2 | Request body-size middleware (RBP-01) | OPEN | Refactor plan task #21 |
 | T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling 80) | OPEN (module ceiling reconciled to 80 in PR #891; T-PRA rows mirrored here) | Refactor plan task #11 |

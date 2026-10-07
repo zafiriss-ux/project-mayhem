@@ -1,0 +1,90 @@
+name: Release
+
+# AGENTS RE-02/RE-04: a release is a git tag vX.Y.Z on a commit already on main.
+# The tag must equal the version in pyproject.toml (RE-01). The job builds the
+# api and worker images, pushes them to GitHub Container Registry pinned to the
+# tag, and creates the GitHub Release.
+#
+# Cost: runs only when a v* tag is pushed (one job, a few minutes). GHCR storage
+# and transfer for this private repo come from the free plan's package quota; the
+# account's spending limit stays at $0, so going over the quota blocks pushes
+# instead of billing.
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # create the GitHub Release
+  packages: write   # push to ghcr.io
+
+jobs:
+  release:
+    name: Build and publish ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check tag format, version and branch
+        id: meta
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $tag is not vMAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          version="$(python3 -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          if [ "v${version}" != "$tag" ]; then
+            echo "::error::Tag $tag does not match pyproject.toml version $version"
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $tag points at a commit that is not on main"
+            exit 1
+          fi
+          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "image_prefix=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push titan-api
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: api
+          push: true
+          tags: ${{ steps.meta.outputs.image_prefix }}/titan-api:${{ github.ref_name }}
+          labels: org.opencontainers.image.version=${{ github.ref_name }}
+
+      - name: Build and push titan-worker
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: worker
+          push: true
+          tags: ${{ steps.meta.outputs.image_prefix }}/titan-worker:${{ github.ref_name }}
+          labels: org.opencontainers.image.version=${{ github.ref_name }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "TITAN OS ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            --verify-tag

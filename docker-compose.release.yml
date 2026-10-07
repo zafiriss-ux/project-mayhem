@@ -1,0 +1,22 @@
+# AGENTS RE-04: production runs released images pinned to a tag, never `build: .`.
+#
+#   TITAN_VERSION=v5.8.0 docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+#   TITAN_VERSION=v5.8.0 docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
+#
+# Put TITAN_VERSION in .env to keep it pinned. Rollback: docs/RUNBOOK_ROLLBACK.md.
+# Images come from .github/workflows/release.yml (ghcr.io, one per vX.Y.Z tag).
+
+services:
+  titan-api:
+    build: !reset null
+    image: ghcr.io/zafiriss-ux/titan-api:${TITAN_VERSION:?set TITAN_VERSION to a release tag, e.g. v5.8.0}
+    pull_policy: always
+
+  titan-worker:
+    build: !reset null
+    image: ghcr.io/zafiriss-ux/titan-worker:${TITAN_VERSION:?set TITAN_VERSION to a release tag, e.g. v5.8.0}
+    pull_policy: always
+    # The released image carries its own scripts/; do not mount the host's copy.
+    volumes: !override
+      - titan-data:/data
+      - titan-backups:/backups
