@@ -382,13 +382,13 @@ finally:
 │       ├── constants.py        # System constants
 │       └── math_core.py        # Math utilities
 ├── test_core_modules.py        # Test suite
-└── CORE_MIGRATION_SUMMARY.md   # Full documentation
+└── archive/CORE_MIGRATION_SUMMARY.md   # Full documentation (archived)
 ```
 
 ## Support
 
 For detailed documentation, see:
-- `CORE_MIGRATION_SUMMARY.md` - Complete migration guide
+- `archive/CORE_MIGRATION_SUMMARY.md` - Complete migration guide (archived)
 - `titan/MIGRATION_CORE_MODULES.md` - Technical details
 - `test_core_modules.py` - Working examples
 

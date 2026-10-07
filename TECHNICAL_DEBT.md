@@ -1674,6 +1674,51 @@ is discarded in `coaching_pipeline.py:99` ("Stage 4 will wire this"); CS/APL hyd
 
 ---
 
+### T-PRA register mirror (AGENTS §30) · added 2026-10-07
+
+One row per T-PRA item in the AGENTS.md §30 register, so every §30 row has a debt entry
+here (refactor plan task #11). AGENTS §30 stays the canonical register for scope and
+dispositions; this table tracks status and where the work is scheduled. "FIX MERGED" means
+the code change is on main and the item still needs the Architect's close; it is not a
+RESOLVED disposition.
+
+| ID | Source | Tier | Scope (short) | Status | Scheduled in |
+|----|--------|------|---------------|--------|--------------|
+| T-PRA-01 | B-1 | 1 | Coach-route scoped authorization (INV-11) + owner-bypass removal | OPEN | Not in the refactor plan yet; Architect to schedule |
+| T-PRA-02 | B-5, SA:m-1 | 1 | Telegram fail-closed trust + durable nonces (INV-16, INV-13) | OPEN | Refactor plan task #12 |
+| T-PRA-03 | B-3, B-5 | 1 | Worker durable state tables (INV-15, INV-17) | OPEN | Refactor plan task #14 |
+| T-PRA-04 | B-2, B-9 | 1 | FK enforcement safe rollout (INV-14) | FIX MERGED: PR #874 (`foreign_keys=ON` + `foreign_key_check` refusal at startup); Architect close pending | Refactor plan task #4 |
+| T-PRA-05 | SA:m-4, E-2 | 2 | Worker observability transport (INV-19) | OPEN | Not scheduled |
+| T-PRA-06 | SA:M-2 | 1 | Multi-athlete scheduler registration from `athletes` table | OPEN | Refactor plan task #20 |
+| T-PRA-07 | B-4 | 1 | Fail-closed governance guard (INV-12) | RESOLVED 2026-06-12 (PR #865) | — |
+| T-PRA-08 | B-6 | 1 | Off-volume backups, retention, integrity check, restore drill, `RUNBOOK_DR.md` | OPEN | Refactor plan task #15 |
+| T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | OPEN (version single-sourced in PR #896) | Refactor plan task #16 |
+| T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | OPEN | Not scheduled |
+| T-PRA-11 | B-13 | 2 | Request body-size middleware (RBP-01) | OPEN | Refactor plan task #21 |
+| T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling 80) | OPEN (module ceiling reconciled to 80 in PR #891; T-PRA rows mirrored here) | Refactor plan task #11 |
+| T-PRA-14 | B-10 | 2 | MPC doc/comment corrections; ADR-0044 execution-date decision | OPEN | Refactor plan task #25 (Architect decision) |
+| T-PRA-18 | SA:BENIGN1/2 | 2 | Wire ADR-0052 calibration loop (see T-PRA-18-CAL above) | DEFERRED-FORMAL | Refactor plan task #23 |
+| T-PRA-20 | SA:BENIGN3 | 3 | Diagnostic-script DB path from config | FIX MERGED: PR #895 (`scripts/diagnostics/` read `TITAN_DATA_DIR`); Architect close pending | Refactor plan task #6 |
+| T-PRA-21 | B-11 | 1 | Durable ordered-before-effect audit (INV-22) | OPEN | Refactor plan task #21 |
+| T-PRA-22 | B-15, B-3, SA:m-3 | 1 | Worker liveness: healthcheck, heartbeat, watchdog, stale-lock recovery (INV-23) | OPEN | Refactor plan task #14 |
+| T-PRA-23 | B-8 family | 2 | Schema downgrade routines / documented reversal | OPEN | Not scheduled |
+| T-PRA-24 | B-14 | 1 | Data-trust verdict clamp (INV-24) | OPEN | Refactor plan task #13 |
+| T-PRA-25 | B-8 | 1 | `user_version > SCHEMA_VERSION` startup guard (INV-25) | FIX MERGED: PR #874 (startup refuses a newer DB); Architect close pending | Refactor plan task #4 |
+| T-PRA-26 | K:PRA-13, SA:m-2, C-6 | 2 | Sync & safety-path conformance sweep | OPEN | Not scheduled |
+| T-PRA-27 | B-12, K:PRA-18 | 2 | CodeQL on PR/push, gitleaks full-range, SBOM, image scan | OPEN (gitleaks on PRs and weekly CodeQL live since PR #879; CodeQL per PR needs a paid plan on a private repo, open Architect decision in PROGRESS.md) | Not scheduled |
+| T-PRA-28 | F-4/5/7/10 | 2 | Auth bundle RBP-04/05 | OPEN | Not scheduled |
+| T-PRA-29 | D-2 | 2 | Compose-up persistence e2e in CI | OPEN | Refactor plan task #19 |
+| T-PRA-30 | D-4, C-2, C-3 | 2 | Migration-chain realistic-data test + schema-parity test | OPEN | Refactor plan task #19 |
+| T-PRA-31 | E-3 | 2 | Route alert-class events through `NotificationGateway` | OPEN | Not scheduled |
+| T-PRA-32 | K:PRA-15 | 2 | EngineRegistry CS/APL hydration (TODO-P26-04b/c) | OPEN | Refactor plan task #22 |
+| T-PRA-35 | D-1, C-7, I-22 | 3 | Governance sensor bundle | OPEN | Not scheduled |
+| T-PRA-36 | D-6 | 3 | Skip-placeholders to strict xfail + meta-test | OPEN | Not scheduled |
+| T-PRA-37 | Ladder Pass 3 | 2 | `scripts/governance_lint.py` wired into `titan_ci.sh` | OPEN | Not scheduled |
+| T-PRA-38 | Ladder Pass 3 | 2 | `titan_ci.sh --profile` + `scripts/env_fingerprint.sh` | OPEN | Not scheduled |
+| T-PRA-39 | Ladder Pass 3 | 3 | Governance ledger append + phase-close summary | OPEN | Not scheduled |
+
+---
+
 ## FMEA: Phase 24 — Schema & EffectBus Phase C (CLOSED)
 
 **Architect:** Claude | **Date:** 2026-06-02 | **Closed:** 2026-06-03 | **Status:** G12 SATISFIED
