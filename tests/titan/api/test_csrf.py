@@ -87,3 +87,13 @@ def test_login_endpoint_exempt_from_csrf(client: TestClient) -> None:
     )
     # Not blocked by CSRF (login is bootstrap — exempt); may return 401 for bad creds
     assert response.status_code != 403
+
+
+def test_csrf_cookie_is_httponly(client: TestClient) -> None:
+    """RBP-05: page scripts cannot read the cookie; clients use the body copy."""
+    response = client.get("/api/csrf-token")
+
+    set_cookie = response.headers["set-cookie"].lower()
+    assert set_cookie.startswith(f"{CSRF_COOKIE_NAME}=")
+    assert "httponly" in set_cookie
+    assert response.json()["csrf_token"] == client.cookies.get(CSRF_COOKIE_NAME)

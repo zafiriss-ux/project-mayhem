@@ -403,7 +403,8 @@ def create_app(
         response.set_cookie(
             key=CSRF_COOKIE_NAME,
             value=token,
-            httponly=False,
+            # RBP-05: scripts never read the cookie; clients send the body copy.
+            httponly=True,
             secure=True,
             samesite="strict",
         )
@@ -428,10 +429,9 @@ def create_app(
                 "flow": "api", "action": "auth_login_failed",
                 "failure_class": "ACCOUNT_LOCKED", "severity": "WARNING",
             }, default=str))
-            raise HTTPException(
-                status_code=status.HTTP_423_LOCKED,
-                detail="Account temporarily locked",
-            )
+            # RBP-05: same answer as a wrong password, so the response does not
+            # reveal that the account exists and is locked.
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
         user = store.verify_credentials(payload.username, payload.password)
         if user is None:

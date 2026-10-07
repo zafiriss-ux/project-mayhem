@@ -64,8 +64,9 @@ def test_lockout_after_max_failed_attempts(client: TestClient) -> None:
         r = client.post("/auth/login", json={"username": "coach", "password": "wrong"})
         assert r.status_code == 401
 
-    locked = client.post("/auth/login", json={"username": "coach", "password": "wrong"})
-    assert locked.status_code == 423
+    locked = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+    assert locked.status_code == 401
+    assert "access_token" not in locked.json()
 
 
 @pytest.mark.integration
@@ -109,13 +110,19 @@ def test_failed_attempts_outside_window_dont_count(store: AuthStore) -> None:
 
 
 @pytest.mark.integration
-def test_locked_account_returns_423_not_401(client: TestClient) -> None:
-    for _ in range(LOCKOUT_MAX_ATTEMPTS):
+def test_locked_account_answers_like_a_wrong_password(client: TestClient, store: AuthStore) -> None:
+    """RBP-05: no 423-vs-401 oracle; the lockout still refuses the right password."""
+    wrong = client.post("/auth/login", json={"username": "coach", "password": "wrong"})
+    unknown = client.post("/auth/login", json={"username": "nobody", "password": "wrong"})
+    for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
         client.post("/auth/login", json={"username": "coach", "password": "wrong"})
+    assert store.is_locked_out("coach")
 
-    r = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
-    assert r.status_code == 423
-    assert r.json()["detail"] == "Account temporarily locked"
+    locked = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+
+    assert locked.status_code == wrong.status_code == unknown.status_code == 401
+    assert locked.json() == wrong.json() == unknown.json() == {"detail": "Invalid credentials"}
+    assert "set-cookie" not in locked.headers
 
 
 @pytest.mark.integration
