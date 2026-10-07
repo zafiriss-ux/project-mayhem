@@ -1,47 +1,59 @@
+import re
 from pathlib import Path
 
+# Package names only: exact versions live in the requirements files and are
+# bumped by Dependabot. This test guards the runtime/dev/build split, so it
+# compares names; pinning (==) is asserted separately below.
 RUNTIME_DEPENDENCIES = {
-    "garminconnect==0.3.2",
-    "requests==2.34.2",
-    "pyTelegramBotAPI==4.33.0",
-    "sqlalchemy==2.0.49",
-    "alembic==1.18.4",
+    "garminconnect",
+    "requests",
+    "pytelegrambotapi",
+    "sqlalchemy",
+    "alembic",
     # psycopg2-binary removed from active requirements (TD-DEP-01) — see requirements.txt
-    "fastapi==0.136.1",
-    "uvicorn==0.34.3",
-    "pyjwt[crypto]==2.13.0",
-    "bcrypt==5.0.0",
-    "cryptography==48.0.0",
-    "import-linter==2.11",
-    "schemathesis==4.18.5",
-    "mutmut==3.5.0",
-    "pip-audit==2.10.0",
-    "prometheus-client==0.21.0",  # TD-OBS: Prometheus scrape endpoint
-    "pydantic-settings==2.9.1",  # P15-ARCH5: centralised env-var config
+    "fastapi",
+    "uvicorn",
+    "pyjwt",
+    "bcrypt",
+    "cryptography",
+    "import-linter",
+    "schemathesis",
+    "mutmut",
+    "pip-audit",
+    "prometheus-client",  # TD-OBS: Prometheus scrape endpoint
+    "pydantic-settings",  # P15-ARCH5: centralised env-var config
 }
 
 DEV_DEPENDENCIES = {
-    "pytest==9.0.3",
-    "pytest-cov==7.1.0",
-    "pytest-timeout==2.4.0",
-    "hypothesis==6.152.7",
-    "ruff==0.15.13",
-    "mypy==2.1.0",
-    "httpx==0.28.1",
-    "pre-commit==4.6.0",
-    "freezegun==1.5.5",
+    "pytest",
+    "pytest-cov",
+    "pytest-timeout",
+    "hypothesis",
+    "ruff",
+    "mypy",
+    "httpx",
+    "pre-commit",
+    "freezegun",
 }
 
 BUILD_DEPENDENCIES = {
-    "pyinstaller==6.4.0",
-    "pywin32==306; sys_platform == 'win32'",
+    "pyinstaller",
+    "pywin32",
 }
 
 REMOVED_LEGACY_DEPENDENCIES = {
-    "scikit-learn==1.4.2",
-    "pandas==2.2.1",
-    "pyyaml==6.0.1",
+    "scikit-learn",
+    "pandas",
+    "pyyaml",
 }
+
+_NAME_PATTERN = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)")
+
+
+def _package_name(requirement: str) -> str:
+    match = _NAME_PATTERN.match(requirement)
+    assert match, f"Unparseable requirement line: {requirement!r}"
+    return match.group(1).lower().replace("_", "-")
 
 
 def _read_dependency_lines(path: str) -> set[str]:
@@ -65,13 +77,17 @@ def test_telegram_dependency_matches_telebot_import():
     requirements = Path("requirements.txt").read_text(encoding="utf-8")
     telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
 
-    assert "pyTelegramBotAPI==4.33.0" in requirements
+    assert "pyTelegramBotAPI==" in requirements
     assert "python-telegram-bot" not in requirements
     assert "import telebot" in telegram_module
 
 
+def _read_dependency_names(path: str) -> set[str]:
+    return {_package_name(dependency) for dependency in _read_dependency_lines(path)}
+
+
 def test_runtime_requirements_are_runtime_only():
-    runtime_dependencies = _read_dependency_lines("requirements.txt")
+    runtime_dependencies = _read_dependency_names("requirements.txt")
 
     assert runtime_dependencies == RUNTIME_DEPENDENCIES
 
@@ -80,10 +96,16 @@ def test_runtime_requirements_are_runtime_only():
 
 
 def test_dev_and_build_requirements_are_split_correctly():
-    dev_requirements = _read_dependency_lines("requirements-dev.txt")
-    build_requirements = _read_dependency_lines("requirements-build.txt")
+    dev_requirements = _read_dependency_names("requirements-dev.txt")
+    build_requirements = _read_dependency_names("requirements-build.txt")
 
     assert dev_requirements == DEV_DEPENDENCIES
     assert build_requirements == BUILD_DEPENDENCIES
 
     assert dev_requirements.isdisjoint(build_requirements)
+
+
+def test_all_requirements_are_pinned_exactly():
+    for path in ("requirements.txt", "requirements-dev.txt", "requirements-build.txt"):
+        for dependency in _read_dependency_lines(path):
+            assert "==" in dependency, f"{path}: {dependency!r} is not pinned with =="
