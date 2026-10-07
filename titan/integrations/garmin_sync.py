@@ -21,9 +21,7 @@ from titan.config.settings import get_settings
 from titan.config.thresholds import GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.integrations.biometric_source import (
-    BiometricSourceSyncResult,  # noqa: F401 — re-exported for external consumers
     NormalizedBiometricSample,  # noqa: F401 — re-exported for external consumers
-    SourceCapabilities,  # noqa: F401 — re-exported for external consumers
 )
 from titan.orchestration.contracts import (
     GarminSyncResult,

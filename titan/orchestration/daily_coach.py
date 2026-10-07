@@ -63,9 +63,6 @@ from titan.orchestration.contracts import (
     TodaySessionPlan,
 )
 from titan.orchestration.engine_registry import EngineRegistry
-from titan.science.adaptive_priority_lock import AdaptivePriorityLock
-from titan.science.autonomic_engine import AutonomicFusionEngine
-from titan.science.critical_speed import CriticalSpeedTracker
 from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
 from titan.science.data_trust import (
     DataTrustLevel,
@@ -73,7 +70,6 @@ from titan.science.data_trust import (
     evaluate_garmin_trust,
     evaluate_weather_trust,
 )
-from titan.science.fatigue_engine import FatigueEngine
 from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
@@ -313,21 +309,15 @@ class DailyCoach:
         db: DatabaseManager | None = None,
         athlete_id: str = "owner",
         # v5.7 Closed-Loop engines (optional — auto-instantiated if None)
-        autonomic_engine: AutonomicFusionEngine | None = None,
-        cs_tracker:       CriticalSpeedTracker | None  = None,
         glycogen_accum:   GlycogenDebtAccumulator | None = None,
         governance:       GovernanceEngine | None      = None,
-        fatigue_engine:    FatigueEngine | None         = None,
         # v5.7.1: APL governance infrastructure
-        apl:              AdaptivePriorityLock | None  = None,
         volume_load_gauge: VolumeLoadGauge | None      = None,
         outcome_tracker:  OutcomeTracker | None        = None,
         # B2c (Phase 24 / ADR-0058): accept a complete EngineRegistry so
         # DailyCoach becomes a pure consumer — no engine construction inside
-        # __init__ when engines= is supplied (production path).
-        # Individual engine params (autonomic_engine, cs_tracker, fatigue_engine,
-        # apl) are honoured only in the fallback construction path retained for
-        # test backward-compatibility. Remove fallback in Phase 25.
+        # __init__. The autonomic, CS, fatigue and APL engines come only from
+        # the registry (per-engine params removed with the fallback, P26-07).
         engines: "EngineRegistry | None" = None,
         # Athlete physiological HRmax — used as zone-boundary ceiling in TRIMP
         # calculation.  Source from AthleteProfile.max_hr (never session peak HR).
