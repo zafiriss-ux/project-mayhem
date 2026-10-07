@@ -1709,7 +1709,7 @@ RESOLVED disposition.
 | T-PRA-26 | K:PRA-13, SA:m-2, C-6 | 2 | Sync & safety-path conformance sweep | OPEN | Not scheduled |
 | T-PRA-27 | B-12, K:PRA-18 | 2 | CodeQL on PR/push, gitleaks full-range, SBOM, image scan | OPEN (gitleaks on PRs and weekly CodeQL live since PR #879; CodeQL per PR needs a paid plan on a private repo, open Architect decision in PROGRESS.md) | Not scheduled |
 | T-PRA-28 | F-4/5/7/10 | 2 | Auth bundle RBP-04/05 | OPEN | Not scheduled |
-| T-PRA-29 | D-2 | 2 | Compose-up persistence e2e in CI | FIX PENDING — PR #PRNUM: `.github/workflows/docker-smoke.yml` runs `scripts/docker_smoke_test.sh` (both containers restarted, marker persists, `/readyz`, worker back); worker process kill/restart covered by `tests/e2e/test_worker_restart.py` (#914) | Refactor plan task #19 |
+| T-PRA-29 | D-2 | 2 | Compose-up persistence e2e in CI | FIX PENDING — PR #916: `.github/workflows/docker-smoke.yml` runs `scripts/docker_smoke_test.sh` (both containers restarted, marker persists, `/readyz`, worker back); worker process kill/restart covered by `tests/e2e/test_worker_restart.py` (#914) | Refactor plan task #19 |
 | T-PRA-30 | D-4, C-2, C-3 | 2 | Migration-chain realistic-data test + schema-parity test | PARTIAL — PR #912: v0→v25 on 8 weeks of real-release data + ladder-vs-fresh schema parity (`tests/e2e/test_legacy_db_upgrade.py`); 2 known drifts listed there (training_log.quality_flag affinity, governance_outcomes.athlete_id default 'default'). Open: SQLite↔Alembic parity, frozen-migration manifest | Refactor plan task #19 |
 | T-PRA-31 | E-3 | 2 | Route alert-class events through `NotificationGateway` | OPEN | Not scheduled |
 | T-PRA-32 | K:PRA-15 | 2 | EngineRegistry CS/APL hydration (TODO-P26-04b/c) | OPEN | Refactor plan task #22 |
