@@ -2,13 +2,13 @@
 # Install after runtime deps:
 #   pip install -r requirements.txt -r requirements-dev.txt
 
-pytest==9.0.3
+pytest==9.1.1
 pytest-cov==7.1.0
-hypothesis==6.152.7
-ruff==0.15.13
-mypy==2.1.0
+hypothesis==6.168.3
+ruff==0.16.10
+mypy==2.4.0
 pytest-timeout==2.4.0
 
 httpx==0.28.1
-pre-commit==4.6.0
+pre-commit==4.6.2
 freezegun==1.5.5

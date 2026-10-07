@@ -18,10 +18,10 @@ echo "→ Step 1: Pre-build checks..."
 # Check Python version
 echo "  Checking Python version..."
 PYTHON_VERSION=$(python3 --version 2>&1)
-if [[ "$PYTHON_VERSION" =~ Python\ 3\.(1[1-9]|[2-9][0-9]) ]]; then
+if [[ "$PYTHON_VERSION" =~ Python\ 3\.(1[2-9]|[2-9][0-9]) ]]; then
     echo "  ✓ $PYTHON_VERSION"
 else
-    echo "  ✗ Python 3.11+ required. Found: $PYTHON_VERSION"
+    echo "  ✗ Python 3.12+ required. Found: $PYTHON_VERSION"
     exit 1
 fi
 

@@ -21,7 +21,7 @@ def test_requirements_use_pytelegrambotapi_for_telebot():
     requirements = _dependency_lines("requirements.txt")
     telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
 
-    assert "pyTelegramBotAPI==4.33.0" in requirements
+    assert any(dependency.startswith("pyTelegramBotAPI==") for dependency in requirements)
     assert "import telebot" in telegram_module
 
 

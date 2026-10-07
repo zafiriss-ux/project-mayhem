@@ -1,5 +1,5 @@
 # TITAN Build Script — Minimal Production Version
-# Builds TITAN.exe deterministically with Python 3.11.9 + PyInstaller 6.4.0
+# Builds TITAN.exe deterministically with Python 3.12 + PyInstaller 6.4.0
 
 $ErrorActionPreference = "Stop"
 
