@@ -46,14 +46,14 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | #19β Restart του worker | #914 | Νέο e2e τεστ: ο worker τρέχει ως πραγματική διεργασία (`titan.worker.main()`, lock, backup, heartbeat) πάνω σε αρχείο SQLite με ψεύτικα Garmin/Telegram. Τον σκοτώνουμε με SIGKILL μετά την πρωινή ρουτίνα, ξεκινά ξανά στην ίδια βάση, ξανατρέχει τη ρουτίνα και σταματά καθαρά με SIGTERM. Η βάση μένει ακέραια, το backup υπάρχει και η ίδια μέρα δεν διπλογράφεται· 1 νέο τεστ |
 | #18α Repositories: αρχή | #913 | Πρώτο κομμάτι του σπασίματος του `database.py`: νέο package `titan/core/repositories/` και το `training.py` με τα SQL των παπουτσιών. Ο `DatabaseManager` μένει η ίδια πόρτα (ίδια ονόματα και ορίσματα) και απλώς τα προωθεί· καμία αλλαγή συμπεριφοράς. Όριο modules 80→87 όπως ενέκρινε ο Zaf· οι έλεγχοι για lock και απομόνωση αθλητή ελέγχουν πλέον και τα repositories· 6 νέα τεστ |
 | #18β Repository προπόνησης: PRs, CS | #915 | Τα SQL για personal bests και επιδόσεις CS πήγαν στο `TrainingRepository`· ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς· 5 νέα τεστ |
-| #18γ Repository προπόνησης: training log | #PRNUM | Τα SQL για το training log και το ιστορικό φορτίου (CTL/ATL/TSB, replay) πήγαν στο `TrainingRepository`· ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς· 2 νέα τεστ |
+| #18γ Repository προπόνησης: training log | #917 | Τα SQL για το training log και το ιστορικό φορτίου (CTL/ATL/TSB, replay) πήγαν στο `TrainingRepository`· ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς· 2 νέα τεστ |
 
 ## Σε εξέλιξη
 
 - #14: το ADR-0060 εγκρίθηκε από τον Zaf (merge του #907). Ο κώδικας για τους πίνακες ακολουθεί σε επόμενη συνεδρία (AGENTS §14.3). Το κομμάτι χωρίς πίνακες (heartbeat, watchdog, lock) έγινε στο #908.
 - #16: έγινε (#909, #910). Το πρώτο tag (πρώτο release) το βάζει ο Zaf.
 - #17: έγινε (#911). Μένει να παίρνει το DailyCoach απευθείας το αντικείμενο προφίλ αντί για dict (T5-117).
-- #18: όριο modules 87 (απόφαση Zaf 2026-10-07): package + 6 repositories (πρόσβαση, προπόνηση, φυσιολογία, governance, λειτουργία, migrations), ένα ανά PR. Πρώτο (package + παπούτσια): #913, έγινε. Δεύτερο (PRs, CS): #915, έγινε. Τρίτο (training log): #PRNUM.
+- #18: όριο modules 87 (απόφαση Zaf 2026-10-07): package + 6 repositories (πρόσβαση, προπόνηση, φυσιολογία, governance, λειτουργία, migrations), ένα ανά PR. Πρώτο (package + παπούτσια): #913, έγινε. Δεύτερο (PRs, CS): #915, έγινε. Τρίτο (training log): #917.
 - #19: αναβάθμιση παλιάς βάσης (#912), restart του worker (#914). Μένει το compose e2e στο CI (T-PRA-29).
 
 ## Επόμενα
