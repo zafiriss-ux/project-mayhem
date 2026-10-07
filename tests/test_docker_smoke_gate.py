@@ -26,6 +26,20 @@ def test_smoke_test_restarts_both_containers_and_checks_the_worker() -> None:
 
 
 @pytest.mark.unit
+def test_persistence_marker_uses_the_current_sync_metadata_columns() -> None:
+    """The second CI run failed: the marker used sync_metadata columns from before v4."""
+    from titan.core.database import DatabaseManager
+
+    script = (_ROOT / "scripts" / "docker_smoke_test.sh").read_text(encoding="utf-8")
+    assert "sync_metadata (source, last_sync_ok, last_error_class)" in script
+    assert "WHERE source='smoke_test_marker'" in script
+    db = DatabaseManager(db_name=":memory:")
+    columns = {row[1] for row in db.conn.execute("PRAGMA table_info(sync_metadata)")}
+    db.close()
+    assert {"source", "last_sync_ok", "last_error_class"} <= columns
+
+
+@pytest.mark.unit
 def test_image_can_import_titan_from_the_api_script() -> None:
     """The first CI run of the smoke test failed with ModuleNotFoundError: titan."""
     dockerfile = (_ROOT / "Dockerfile").read_text(encoding="utf-8")
