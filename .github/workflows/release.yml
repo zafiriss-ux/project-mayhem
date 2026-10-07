@@ -1,13 +1,15 @@
 name: Release
 
 # AGENTS RE-02/RE-04: a release is a git tag vX.Y.Z on a commit already on main.
-# The tag must equal the version in pyproject.toml (RE-01). The job builds the
-# api and worker images, pushes them to GitHub Container Registry pinned to the
-# tag, and creates the GitHub Release.
+# The tag must equal the version in pyproject.toml (RE-01). The workflow builds
+# the api and worker images and pushes them to GitHub Container Registry pinned
+# to the tag, builds the Windows TITAN-vX.Y.Z-win64.zip, and creates the GitHub
+# Release with the zip attached.
 #
-# Cost: runs only when a v* tag is pushed (one job, a few minutes). GHCR storage
-# and transfer for this private repo come from the free plan's package quota; the
-# account's spending limit stays at $0, so going over the quota blocks pushes
+# Cost: runs only when a v* tag is pushed. The Windows job counts double against
+# the free plan's Actions minutes (a few minutes per release). GHCR storage and
+# transfer for this private repo come from the free plan's package quota; the
+# account's spending limit stays at $0, so going over a quota blocks the run
 # instead of billing.
 
 on:
@@ -19,21 +21,21 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write   # create the GitHub Release
-  packages: write   # push to ghcr.io
+  contents: read
 
 jobs:
-  release:
-    name: Build and publish ${{ github.ref_name }}
+  check:
+    name: Check tag ${{ github.ref_name }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Check tag format, version and branch
+      - name: Tag format, version and branch
         id: meta
         run: |
           tag="${GITHUB_REF_NAME}"
@@ -51,8 +53,22 @@ jobs:
             echo "::error::Tag $tag points at a commit that is not on main"
             exit 1
           fi
-          owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
-          echo "image_prefix=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  images:
+    name: Docker images
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write   # push to ghcr.io
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Image prefix
+        id: prefix
+        run: echo "value=ghcr.io/$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v4
 
@@ -68,7 +84,7 @@ jobs:
           context: .
           target: api
           push: true
-          tags: ${{ steps.meta.outputs.image_prefix }}/titan-api:${{ github.ref_name }}
+          tags: ${{ steps.prefix.outputs.value }}/titan-api:${{ github.ref_name }}
           labels: org.opencontainers.image.version=${{ github.ref_name }}
 
       - name: Build and push titan-worker
@@ -77,14 +93,59 @@ jobs:
           context: .
           target: worker
           push: true
-          tags: ${{ steps.meta.outputs.image_prefix }}/titan-worker:${{ github.ref_name }}
+          tags: ${{ steps.prefix.outputs.value }}/titan-worker:${{ github.ref_name }}
           labels: org.opencontainers.image.version=${{ github.ref_name }}
+
+  windows:
+    name: Windows zip
+    needs: check
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: Build TITAN.exe
+        run: .\launcher\build.ps1
+
+      - name: Package
+        run: .\launcher\package.ps1 -Version "${{ needs.check.outputs.version }}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows-zip
+          path: dist/TITAN-v${{ needs.check.outputs.version }}-win64.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: GitHub Release
+    needs: [check, images, windows]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write   # create the GitHub Release
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: windows-zip
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
+            "TITAN-v${{ needs.check.outputs.version }}-win64.zip" \
             --title "TITAN OS ${GITHUB_REF_NAME}" \
             --generate-notes \
             --verify-tag

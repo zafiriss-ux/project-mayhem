@@ -1,9 +1,15 @@
 # TITAN Release Packager
-# Creates TITAN-v5.7.0-win64.zip with TITAN.exe + SHA256 + README
+# Creates TITAN-v<version>-win64.zip with TITAN.exe + SHA256 + README.
+# Usage: .\launcher\package.ps1 -Version 5.8.0   (the version in pyproject.toml)
+
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$Version
+)
 
 $ErrorActionPreference = "Stop"
 
-$version = "5.7.0"
+$version = $Version
 $packageName = "TITAN-v$version-win64"
 $outputZip = "$packageName.zip"
 

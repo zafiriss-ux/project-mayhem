@@ -12,5 +12,5 @@ The launcher never performs training computations.
 The kernel never prints setup instructions.
 """
 
-__version__ = "5.7.0"
-__kernel_version__ = "5.7.0"  # Expected titan.__version__
+# One version for launcher and kernel, from pyproject.toml (AGENTS RE-01).
+from titan import __version__  # noqa: E402, F401

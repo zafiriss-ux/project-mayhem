@@ -31,12 +31,16 @@ def test_runtime_version_equals_pyproject_and_package_metadata() -> None:
     assert installed == declared
 
 
-def test_no_version_literal_in_titan_package() -> None:
+def test_no_version_literal_in_titan_or_launcher() -> None:
     literal = re.compile(r"""__version__\s*=\s*["']""")
-    offenders = [
-        str(p.relative_to(_ROOT)) for p in (_ROOT / "titan").rglob("*.py") if literal.search(p.read_text("utf-8"))
-    ]
+    files = [*(_ROOT / "titan").rglob("*.py"), *(_ROOT / "launcher").rglob("*.py")]
+    offenders = [str(p.relative_to(_ROOT)) for p in files if literal.search(p.read_text("utf-8"))]
     assert offenders == []
+
+
+def test_windows_bundle_ships_pyproject_for_the_version() -> None:
+    spec = (_ROOT / "launcher" / "build.spec").read_text(encoding="utf-8")
+    assert "(str(root_dir / 'pyproject.toml'), '.')" in spec
 
 
 # ── RE-02 ───────────────────────────────────────────────────────────────────
@@ -49,6 +53,9 @@ def test_release_workflow_runs_on_version_tags_and_checks_them() -> None:
     assert "merge-base --is-ancestor" in wf  # tagged commit must be on main
     assert "titan-api:${{ github.ref_name }}" in wf
     assert "titan-worker:${{ github.ref_name }}" in wf
+    assert "runs-on: windows-latest" in wf
+    assert 'package.ps1 -Version "${{ needs.check.outputs.version }}"' in wf
+    assert "needs: [check, images, windows]" in wf  # the Release waits for every artifact
 
 
 # ── RE-04 ───────────────────────────────────────────────────────────────────

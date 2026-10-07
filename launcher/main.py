@@ -154,9 +154,6 @@ def main() -> int:
         frozen = path_info['frozen']
 
         print(f"TITAN OS v{__version__}")
-        print(f"Launcher: v{__version__}")
-        print("Kernel: v5.7.5")
-        print("Build date: 2026-02-19")
         print(f"Frozen mode: {'Yes (TITAN.exe)' if frozen else 'No (Python script)'}")
         print(f"Python: {sys.version.split()[0]}")
 

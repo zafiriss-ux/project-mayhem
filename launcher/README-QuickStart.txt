@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-   TITAN OS v5.7.0 — Closed-Loop Sovereign Training Intelligence
+   TITAN OS — Closed-Loop Sovereign Training Intelligence
 ═══════════════════════════════════════════════════════════════════════════════
 
   📦 Package Contents:
@@ -80,11 +80,9 @@
   ⚙️ Technical Specifications:
 
      Build Info:
-       • Python:       3.11.9 (frozen with PyInstaller 6.4.0)
-       • Platform:     Windows 11 x64
-       • Build date:   2026-02-19
-       • Kernel:       v5.7.0
-       • Launcher:     v5.7.0
+       • Version:      in the zip name (TITAN-vX.Y.Z-win64.zip) and the GitHub Release
+       • Python:       3.12 (frozen with PyInstaller, see requirements-build.txt)
+       • Platform:     Windows x64, built by .github/workflows/release.yml
 
      System Requirements:
        • Windows 10 or 11 (x64)
