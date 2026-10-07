@@ -9,7 +9,6 @@ import os
 import re
 import sqlite3
 import threading
-import time
 from contextlib import contextmanager, suppress
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -2298,7 +2297,7 @@ class DatabaseManager:
             if self._transaction_depth == 0:
                 self.conn.commit()
 
-    # --- TRAINING LOG ---
+    # --- TRAINING LOG (titan/core/repositories/training.py) ---
 
     def _ensure_open_locked(self) -> None:
         if self._closed:
@@ -2325,148 +2324,27 @@ class DatabaseManager:
         # Backward-compatible alias — will be removed in a future version
         temperature: float | None = None,
     ) -> None:
-        """
-        Save training session.
-
-        Args:
-            date:          Date in ISO format (YYYY-MM-DD)
-            session_type:  Type of session (EASY, TEMPO, INTERVALS, etc.)
-            distance_km:   Distance in kilometres
-            duration_sec:  Duration in seconds
-            avg_hr:        Average heart rate in bpm
-            max_hr:        Maximum heart rate in bpm
-            rpe:           Rate of Perceived Exertion (1-10 scale)
-            shoe_id:       ID of shoe used
-            surface:       Running surface (TRACK, ROAD, TRAIL, etc.)
-            temperature_c: Air temperature in °C  ← canonical name
-            notes:         Optional text notes
-            garmin_activity_id: Stable Garmin external activity identity
-            athlete_id:    Athlete identifier for row-level isolation (ADR-0033)
-            temperature:   Deprecated alias for temperature_c
-
-        Training Load Calculation:
-            sRPE (session RPE) = RPE × duration (minutes)
-            Based on Foster et al. (2001)
-        """
-        # Resolve deprecated alias; temperature_c takes precedence
-        if temperature_c is None and temperature is not None:
-            import warnings
-            warnings.warn(
-                "save_session(temperature=...) is deprecated; use temperature_c= instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            temperature_c = temperature
-
-        # Calculate training load: prefer explicit override, fall back to sRPE
-        computed_load = (rpe * (duration_sec / 60)) if rpe else 0
-        training_load = training_load if training_load is not None else int(computed_load)
-
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                INSERT OR IGNORE INTO training_log
-                (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                 training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
-                 quality_flag, avg_pace_sec_per_km)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (athlete_id, date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe,
-                  training_load, shoe_id, surface, temperature_c, notes, garmin_activity_id,
-                  quality_flag, avg_pace_sec_per_km))
-            if cursor.rowcount == 1 and shoe_id and distance_km:
-                cursor.execute("""
-                    UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
-                """, (distance_km, date, shoe_id))
-            if self._transaction_depth == 0:
-                self.conn.commit()
+        """Save training session."""
+        self._training.save_session(
+            date=date, session_type=session_type, distance_km=distance_km,
+            duration_sec=duration_sec, avg_hr=avg_hr, max_hr=max_hr, rpe=rpe,
+            shoe_id=shoe_id, surface=surface, temperature_c=temperature_c, notes=notes,
+            garmin_activity_id=garmin_activity_id, quality_flag=quality_flag,
+            training_load=training_load, athlete_id=athlete_id,
+            avg_pace_sec_per_km=avg_pace_sec_per_km, temperature=temperature,
+        )
 
     def get_recent_activities(
         self, limit: int = 90, athlete_id: str = "owner"
     ) -> list[dict]:
-        """Return recent training sessions from training_log for the data browser.
-
-        Reads from ``training_log`` (the canonical session store for all
-        imported and synced activities).  The result is sorted newest-first
-        so the caller can slice with ``[-N:]`` or display directly.
-
-        Args:
-            limit:      Maximum rows to return (default 90 — ~3 months).
-            athlete_id: Row-level isolation key (ADR-0033).
-
-        Returns:
-            List of dicts with keys: date, session_type, distance_km,
-            duration_sec, avg_hr, training_load.
-        """
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """
-                SELECT date, session_type, distance_km, duration_sec,
-                       avg_hr, training_load, avg_pace_sec_per_km
-                FROM training_log
-                WHERE athlete_id = ?
-                ORDER BY date DESC
-                LIMIT ?
-                """,
-                (athlete_id, limit),
-            )
-            rows = cursor.fetchall()
-        return [
-            {
-                "date": r[0],
-                "session_type": r[1],
-                "distance_km": r[2] or 0.0,
-                "duration_sec": r[3] or 0,
-                "avg_hr": r[4] or 0,
-                "training_load": r[5] or 0,
-                "avg_pace_sec_per_km": r[6] or 0,
-            }
-            for r in rows
-        ]
+        """Return recent training sessions from training_log for the data browser."""
+        return self._training.get_recent_activities(limit=limit, athlete_id=athlete_id)
 
     def get_training_load_history(
         self, days: int | None = None, athlete_id: str = "owner"
     ) -> list[tuple[str, float]]:
-        """
-        Get training load for last N days (for TSB calculation).
-
-        Args:
-            days: Number of days to retrieve (default 42 for CTL)
-            athlete_id: Athlete identifier for row-level isolation (ADR-0033-L3-D-RESOLVED).
-
-        Returns:
-            List of tuples (date, training_load)
-        """
-        lookback_days = CTL_DECAY_DAYS if days is None else days
-
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                SELECT date, SUM(training_load) as training_load
-                FROM training_log
-                WHERE athlete_id = ?
-                  AND training_load IS NOT NULL
-                  AND training_load > 0
-                  AND date >= date('now', '-' || ? || ' days')
-                GROUP BY date
-                ORDER BY date ASC
-            """, (athlete_id, lookback_days))
-            rows = cursor.fetchall()
-
-        from titan.science.physiological_bounds import (
-            validate_single,  # deferred: avoids circular import
-        )
-        validated: list[tuple[str, float]] = []
-        for date_str, training_load in rows:
-            if training_load is None:
-                continue
-            clean = validate_single("training_load", float(training_load), "training_load_history")
-            if clean is not None:
-                validated.append((date_str, clean))
-        return validated
+        """Get training load for last N days (for TSB calculation)."""
+        return self._training.get_training_load_history(days=days, athlete_id=athlete_id)
 
     def is_db_reachable(self) -> bool:
         """Probe that the DB connection is live (schema-introspection query)."""
@@ -2476,68 +2354,15 @@ class DatabaseManager:
         return result is not None
 
     def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
-        """
-        Calculate Training Stress Balance from database history.
-
-        Implements the Banister/Coggan model:
-        - CTL (Chronic Training Load): 42-day exponential moving average (Fitness)
-        - ATL (Acute Training Load): 7-day exponential moving average (Fatigue)
-        - TSB (Training Stress Balance): CTL - ATL (Form)
-
-        TSB Interpretation:
-            -10 to +5: Race ready (optimal freshness)
-            -30 or lower: Overtraining risk
-            +25 or higher: Detraining risk
-
-        Returns:
-            Tuple of (CTL, ATL, TSB)
-
-        Scientific Basis:
-            - Banister et al. (1975) - Systems model of training
-            - Coggan (2003) - Training Stress Score/Balance
-            - Busso (2003) - Variable dose-response model
-        """
-        with self._lock:
-            from titan.observability.metrics import get_metrics
-            from titan.science.tsb_engine import (
-                compute_ctl_atl_tsb,  # deferred: avoids circular import
-            )
-            t0 = time.monotonic()
-            loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
-            ctl, atl, tsb = compute_ctl_atl_tsb(
-                daily_loads=loads,
-                ctl_decay_days=CTL_DECAY_DAYS,
-                atl_decay_days=ATL_DECAY_DAYS,
-            )
-            elapsed_ms = (time.monotonic() - t0) * 1000
-            get_metrics().histogram("ctl_recompute_ms", elapsed_ms, {"athlete": athlete_id})
-            get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
-
-            from titan.science.physiological_bounds import (
-                validate_single,  # deferred: avoids circular import
-            )
-            ctl_out = validate_single("ctl", ctl, "ctl_atl_tsb")
-            atl_out = validate_single("atl", atl, "ctl_atl_tsb")
-            # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
-            return (
-                ctl_out if ctl_out is not None else 0.0,
-                atl_out if atl_out is not None else 0.0,
-                tsb,
-            )
+        """Calculate Training Stress Balance from database history."""
+        return self._training.get_ctl_atl_tsb(athlete_id=athlete_id)
 
     def replay_tsb(
         self,
         athlete_id: str,
         as_of_date: date,
     ) -> tuple[float, float, float]:
-        from titan.science.tsb_engine import (
-            replay_tsb as _replay,  # deferred: avoids circular import
-        )
-        return _replay(
-            db=self,
-            athlete_id=athlete_id,
-            as_of_date=as_of_date,
-        )
+        return self._training.replay_tsb(athlete_id=athlete_id, as_of_date=as_of_date)
 
     # --- GEAR MANAGEMENT (titan/core/repositories/training.py) ---
 

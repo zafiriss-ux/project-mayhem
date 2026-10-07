@@ -56,7 +56,7 @@ launcher/main.py
 | Module | Role |
 |---|---|
 | `titan/core/database.py` | `DatabaseManager` — SQLite backend, all migrations, SCHEMA_VERSION |
-| `titan/core/repositories/training.py` | `TrainingRepository` — training-domain SQL (shoes, personal bests, CS performances) behind the `DatabaseManager` facade (plan #18, one domain per PR) |
+| `titan/core/repositories/training.py` | `TrainingRepository` — training-domain SQL (training log and CTL/ATL/TSB load history, shoes, personal bests, CS performances) behind the `DatabaseManager` facade (plan #18, one domain per PR) |
 | `titan/core/athlete.py` | `UniversalAthleteProfile` — athlete profile loading and validation |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC and SQLite implementation |
 | `titan/core/periodization.py` | Periodization phase state |

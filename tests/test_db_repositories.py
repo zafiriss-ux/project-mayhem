@@ -12,6 +12,8 @@ from titan.core.repositories.training import TrainingRepository
 _TRAINING_METHODS = (
     "update_shoe_mileage", "add_shoe", "get_active_shoes", "check_shoe_availability",
     "save_personal_best", "get_pr", "log_cs_performance", "get_cs_performances",
+    "save_session", "get_recent_activities", "get_training_load_history", "get_ctl_atl_tsb",
+    "replay_tsb",
 )
 
 
@@ -57,3 +59,24 @@ def test_personal_bests_and_cs_performances_round_trip(db) -> None:
     assert db.get_pr(5.0) == (1140, "2026-02-14", None)
     assert db.get_cs_performances(limit=1) == [("2026-02-21", 3000.0, 640.0)]
     assert db.conn.execute("SELECT wind_adjusted FROM cs_performances WHERE surface='TRACK'").fetchone() == (1,)
+
+
+@pytest.mark.unit
+def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
+    with pytest.warns(DeprecationWarning, match="temperature_c") as record:
+        db.save_session("2026-01-05", "EASY", 8.0, 2640, rpe=3, temperature=12.0)
+    assert record[0].filename == __file__
+    assert db.conn.execute("SELECT temperature_c FROM training_log").fetchone() == (12.0,)
+
+
+@pytest.mark.unit
+def test_ctl_atl_tsb_reads_history_through_the_facade(db, monkeypatch) -> None:
+    calls: list[tuple] = []
+
+    def fake_history(days=None, athlete_id="owner"):
+        calls.append((days, athlete_id))
+        return []
+
+    monkeypatch.setattr(db, "get_training_load_history", fake_history)
+    assert db.get_ctl_atl_tsb(athlete_id="owner") == (0.0, 0.0, 0.0)
+    assert calls and calls[0][1] == "owner"

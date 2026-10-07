@@ -61,4 +61,7 @@ ignore_imports =
     titan.core.database -> titan.science.physiological_bounds
     titan.core.database -> titan.science.tsb_engine
     titan.core.persistence -> titan.science.tsb_engine
+    # Plan #18: the same deferred imports, moved with the training-log SQL.
+    titan.core.repositories.training -> titan.science.physiological_bounds
+    titan.core.repositories.training -> titan.science.tsb_engine
     titan.integrations.garmin_sync -> titan.orchestration.contracts
