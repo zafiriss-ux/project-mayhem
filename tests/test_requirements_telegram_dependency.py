@@ -16,10 +16,6 @@ RUNTIME_DEPENDENCIES = {
     "pyjwt",
     "bcrypt",
     "cryptography",
-    "import-linter",
-    "schemathesis",
-    "mutmut",
-    "pip-audit",
     "prometheus-client",  # TD-OBS: Prometheus scrape endpoint
     "pydantic-settings",  # P15-ARCH5: centralised env-var config
 }
@@ -34,6 +30,10 @@ DEV_DEPENDENCIES = {
     "httpx",
     "pre-commit",
     "freezegun",
+    "import-linter",  # T5-93 lint-imports
+    "schemathesis",  # T5-94 API contract tests
+    "mutmut",  # T5-84 mutation testing
+    "pip-audit",  # D5 CVE audit
 }
 
 BUILD_DEPENDENCIES = {
@@ -109,3 +109,20 @@ def test_all_requirements_are_pinned_exactly():
     for path in ("requirements.txt", "requirements-dev.txt", "requirements-build.txt"):
         for dependency in _read_dependency_lines(path):
             assert "==" in dependency, f"{path}: {dependency!r} is not pinned with =="
+
+
+def test_pyproject_reads_dependencies_from_requirements_files():
+    """pyproject.toml must not carry its own dependency list (task #8: one source)."""
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+
+    assert 'dependencies = { file = ["requirements.txt"] }' in pyproject
+    assert 'optional-dependencies.dev = { file = ["requirements-dev.txt"] }' in pyproject
+    assert "\ndependencies = [" not in pyproject
+
+
+def test_ci_ruff_comes_from_dev_requirements():
+    """The Ruff gate jobs must install Ruff from requirements-dev.txt, not a separate pin."""
+    ci = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    assert "grep -E '^ruff==' requirements-dev.txt" in ci
+    assert re.search(r"ruff==[0-9]", ci) is None

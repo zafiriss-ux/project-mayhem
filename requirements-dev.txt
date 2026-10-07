@@ -12,3 +12,16 @@ pytest-timeout==2.4.0
 httpx==0.28.1
 pre-commit==4.6.2
 freezegun==1.5.5
+
+# Architectural dependency linting (T5-93)
+import-linter==2.15
+
+# Contract testing (T5-94)
+schemathesis==4.29.1
+
+# Mutation testing (T5-84)
+# NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API
+mutmut==3.8.0
+
+# Dependency CVE audit (D5)
+pip-audit==2.10.1
