@@ -23,25 +23,25 @@ install_runtime_dependencies() {
     pip install -r requirements.txt --quiet
 }
 
-# ── Python 3.11 activation via pyenv (if available) ──────────────────────────
+# ── Python 3.12 activation via pyenv (if available) ──────────────────────────
 if command -v pyenv &>/dev/null; then
-  PY311=$(pyenv versions --bare 2>/dev/null | grep "^3\.11\." | sort -V | tail -1)
-  if [ -n "$PY311" ]; then
-    pyenv local "$PY311"
+  PY312=$(pyenv versions --bare 2>/dev/null | grep "^3\.12\." | sort -V | tail -1)
+  if [ -n "$PY312" ]; then
+    pyenv local "$PY312"
     hash -r
-    echo "pyenv: activated Python $PY311"
+    echo "pyenv: activated Python $PY312"
   else
-    echo "WARNING: pyenv found but no 3.11.x version installed."
-    echo "Run: pyenv install 3.11.14"
+    echo "WARNING: pyenv found but no 3.12.x version installed."
+    echo "Run: pyenv install 3.12"
   fi
 fi
 
 # ── Python version guard ──────────────────────────────────────────────────────
 PY_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
 PY_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
-if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 11 ]; }; then
-  echo "ERROR: TITAN OS requires Python 3.11+. Found: $(python --version)"
-  echo "Fix: pyenv install 3.11.14 && pyenv local 3.11.14"
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 12 ]; }; then
+  echo "ERROR: TITAN OS requires Python 3.12+. Found: $(python --version)"
+  echo "Fix: pyenv install 3.12 && pyenv local 3.12"
   exit 1
 fi
 echo "Python $(python --version) — OK"

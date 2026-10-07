@@ -2,7 +2,7 @@
 """
 PyInstaller Build Spec for TITAN.exe
 
-Builds standalone Windows executable with bundled Python 3.11+ runtime.
+Builds standalone Windows executable with bundled Python 3.12+ runtime.
 
 Build command:
     pyinstaller launcher/build.spec

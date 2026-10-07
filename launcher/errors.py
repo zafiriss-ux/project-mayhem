@@ -71,7 +71,7 @@ class EnvironmentError(TitanError):
     """Raised when system environment is incompatible."""
 
     @classmethod
-    def python_version(cls, current: str, required: str = "3.11"):
+    def python_version(cls, current: str, required: str = "3.12"):
         return cls(
             code='ENV_PYTHON_VERSION',
             message=f"Python {current} is not supported.",

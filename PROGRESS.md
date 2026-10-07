@@ -20,10 +20,12 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | Καθαρισμός .gitignore | #885 | Αφαίρεση 4 γραμμών τοπικού εργαλείου που μπήκαν κατά λάθος στο #884 |
 | Ενημερώσεις ασφαλείας | #881 | cryptography 50.0.2, pyjwt 2.15.1 (αντικαθιστούν τα Dependabot PR #875, #876) |
 | Ρύθμιση Dependabot | #882 | Μηνιαία ομαδοποιημένα PR για pip και GitHub Actions, με όριο αριθμού, ώστε να μην γεμίζει το repo |
+| Token Garmin 0600 | #883 | Το κρυπτογραφημένο token Garmin γράφεται με δικαιώματα μόνο για τον κάτοχο (0600)· 3 νέα τεστ |
+| Python 3.12 + garminconnect 0.3.5 | #890 | Ελάχιστη έκδοση Python 3.12 (Docker, launcher, scripts, CI 3.12/3.13)· garminconnect 0.3.5 κλείνει το CVE PYSEC-2026-3467· αντικαθιστά το Dependabot PR #877· τα docs ενημερώνονται στο #10 |
+| Όριο modules 80 | #891 | Το `MODULE_COUNT_CEILING` του CI γίνεται 80, όπως το κανονικό τεστ και το CLAUDE.md· απόφαση Zaf 2026-10-07 |
 
 ## Σε εξέλιξη (κύμα 0)
 
-- garminconnect 0.3.5 (CVE): απαιτεί Python 3.12· αντικαθιστά το Dependabot PR #877
 - #4 PR #874 (foreign keys + schema forward guard)
 
 ## Επόμενα
@@ -33,5 +35,4 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 
 ## Ανοιχτές αποφάσεις (Zaf)
 
-- Όριο αριθμού modules: ο μετρητής του CI βρίσκει 80, το όριο είναι 79 (`MODULE_COUNT_CEILING`, AGENTS §1.2 RP-8). Η τιμή του ορίου είναι απόφαση του Architect.
 - AGENTS RE-05 ζητά CodeQL σε κάθε PR, αλλά το code scanning δεν είναι διαθέσιμο σε ιδιωτικό repo χωρίς πληρωμένο πλάνο.

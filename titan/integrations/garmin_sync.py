@@ -61,6 +61,20 @@ def _get_garth_token_path() -> Path:
     return _get_data_dir() / _GARTH_TOKEN_FILENAME
 
 
+def _write_private_file(path: Path, data: bytes) -> None:
+    """Write ``data`` to ``path`` readable by the owner only (0o600).
+
+    The Garmin session token grants account access. A plain write_bytes()
+    honours the umask (0o644 by default), leaving the file readable by every
+    local user — the same flaw as CVE-2026-54447 in garminconnect <= 0.3.4.
+    The chmod also tightens a token file written by an earlier version.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(data)
+    os.chmod(path, 0o600)
+
+
 def _get_token_encryption_key() -> bytes | None:
     """Return Fernet-ready key bytes from env var, or None if unset/invalid.
 
@@ -492,7 +506,7 @@ class GarminSync:
             # Persist the new session token for future connections.
             try:
                 token_path.parent.mkdir(parents=True, exist_ok=True)
-                token_path.write_bytes(_encrypt_token(client.client.dumps()))
+                _write_private_file(token_path, _encrypt_token(client.client.dumps()))
                 _garmin_event("connect_token_saved", subsystem="connect", detail="Session token saved")
             except Exception as save_err:
                 _garmin_event(
