@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (70 modules, excl. __init__/__main__), ceiling 87.
+Main package (71 modules, excl. __init__/__main__), ceiling 87.
 
 | Package | Responsibility |
 |---------|----------------|

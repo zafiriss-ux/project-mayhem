@@ -44,7 +44,7 @@ ignore_imports =
 
 # Contract 5 — Canonical layer ordering
 # Pre-existing violations documented as ignore_imports (T5-93):
-#   core.database -> science.physiological_bounds (ADR-0023 lazy import workaround)
+#   core.repositories.{training,physiology} -> science.physiological_bounds (ADR-0023 lazy import workaround; moved from core.database by plan #18)
 #   integrations.garmin_sync -> orchestration.contracts (known coupling, see Contract 4)
 [importlinter:contract:layer-ordering]
 name = Canonical layer ordering
@@ -58,10 +58,10 @@ layers =
     core
     config
 ignore_imports =
-    titan.core.database -> titan.science.physiological_bounds
     titan.core.database -> titan.science.tsb_engine
     titan.core.persistence -> titan.science.tsb_engine
-    # Plan #18: the same deferred imports, moved with the training-log SQL.
+    # Plan #18: the same deferred imports, moved with the training and physiology SQL.
     titan.core.repositories.training -> titan.science.physiological_bounds
     titan.core.repositories.training -> titan.science.tsb_engine
+    titan.core.repositories.physiology -> titan.science.physiological_bounds
     titan.integrations.garmin_sync -> titan.orchestration.contracts

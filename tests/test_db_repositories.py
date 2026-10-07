@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import inspect
+import logging
 
 import pytest
 
 from titan.core.database import DatabaseManager
+from titan.core.repositories.physiology import PhysiologyRepository
 from titan.core.repositories.training import TrainingRepository
 
 _TRAINING_METHODS = (
@@ -15,6 +17,14 @@ _TRAINING_METHODS = (
     "save_session", "get_recent_activities", "get_training_load_history", "get_ctl_atl_tsb",
     "replay_tsb",
 )
+_PHYSIOLOGY_METHODS = (
+    "save_daily_metric", "save_daily_metric_if_missing", "save_hrr", "get_hrr_history",
+    "update_glycogen_debt", "get_baseline_rhr", "get_hrv_history", "get_recent_hrv_mean",
+    "get_weight_history", "get_daily_metric",
+)
+_FACADES = [(TrainingRepository, n) for n in _TRAINING_METHODS] + [
+    (PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS
+]
 
 
 @pytest.fixture
@@ -25,10 +35,10 @@ def db(tmp_path):
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("name", _TRAINING_METHODS)
-def test_training_facade_keeps_the_repository_signature(name: str) -> None:
+@pytest.mark.parametrize(("repository", "name"), _FACADES)
+def test_facade_keeps_the_repository_signature(repository: type, name: str) -> None:
     facade = inspect.signature(getattr(DatabaseManager, name), eval_str=True)
-    repo = inspect.signature(getattr(TrainingRepository, name), eval_str=True)
+    repo = inspect.signature(getattr(repository, name), eval_str=True)
     assert facade == repo
 
 
@@ -80,3 +90,40 @@ def test_ctl_atl_tsb_reads_history_through_the_facade(db, monkeypatch) -> None:
     monkeypatch.setattr(db, "get_training_load_history", fake_history)
     assert db.get_ctl_atl_tsb(athlete_id="owner") == (0.0, 0.0, 0.0)
     assert calls and calls[0][1] == "owner"
+
+
+@pytest.mark.unit
+def test_daily_metrics_round_trip_per_athlete(db) -> None:
+    db.save_daily_metric("2026-10-01", weight=70.2, hrv=62.0, rhr=48, soreness=2)
+    db.save_daily_metric("2026-10-01", hrv=40.0, athlete_id="other")
+    db.save_daily_metric("2026-10-01", hrv=64.0)  # Garmin re-sync keeps manual soreness
+    db.save_daily_metric_if_missing("2026-10-01", hrv=99.0)
+    db.save_hrr("2026-10-01", 32, 51)
+    db.update_glycogen_debt("2026-10-01", 3.456)
+
+    assert db.get_daily_metric("2026-10-01") == {
+        "date": "2026-10-01", "hrv_rmssd": 64.0, "resting_hr": 48,
+        "sleep_hours": None, "weight_kg": 70.2, "data_source": "garmin_api",
+    }
+    assert db.get_daily_metric("2026-10-01", athlete_id="other")["hrv_rmssd"] == 40.0
+    assert db.conn.execute(
+        "SELECT soreness, hrr_60, hrr_120, glycogen_debt FROM daily_metrics WHERE athlete_id='owner'"
+    ).fetchone() == (2, 32, 51, 3.46)
+
+
+@pytest.mark.unit
+def test_missing_row_warnings_still_come_from_the_database_logger(db, caplog) -> None:
+    with caplog.at_level(logging.WARNING, logger="titan.core.database"):
+        db.save_hrr("2026-10-02", 30)
+        db.update_glycogen_debt("2026-10-02", 1.0)
+    messages = [r.getMessage() for r in caplog.records if r.name == "titan.core.database"]
+    assert any("save_hrr_no_row_updated" in m for m in messages)
+    assert any("update_glycogen_debt_no_row_updated" in m for m in messages)
+
+
+@pytest.mark.unit
+def test_recent_hrv_mean_reads_history_through_the_facade(db, monkeypatch) -> None:
+    monkeypatch.setattr(db, "get_hrv_history", lambda days=14, athlete_id="owner": [
+        ("2026-10-02", 60.0), ("2026-10-01", 50.0),
+    ])
+    assert db.get_recent_hrv_mean(days=2) == 55.0
