@@ -50,14 +50,14 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | #18γ Repository προπόνησης: training log | #917 | Τα SQL για το training log και το ιστορικό φορτίου (CTL/ATL/TSB, replay) πήγαν στο `TrainingRepository`· ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς· 2 νέα τεστ |
 | #18δ Repository φυσιολογίας | #918 | Νέο `titan/core/repositories/physiology.py`: τα SQL για τις καθημερινές μετρήσεις (πρωινό check-in), HRV, παλμούς ηρεμίας, HRR, έλλειμμα γλυκογόνου και βάρος. Ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς. Τα logs προειδοποίησης βγαίνουν από τον ίδιο logger όπως πριν· 13 νέα τεστ |
 | #18ε Repository governance: overrides, αποφάσεις | #919 | Νέο `titan/core/repositories/governance.py`: τα SQL για το ημερολόγιο overrides και τις αποφάσεις governance με τα αποτελέσματά τους. Ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς· 10 νέα τεστ |
-| #18ε2 Repository governance: offsets, cold start | #PRNUM | Στο `GovernanceRepository` πήγαν και τα SQL για τα per-athlete threshold offsets (ADR-0052), το cold start και τα ποσοστά βαθμονόμησης. Ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς. Τα μεταδεδομένα βαθμονόμησης μοντέλων μένουν στο `database.py`, γιατί η προεπιλογή τους είναι το `SCHEMA_VERSION`· 10 νέα τεστ |
+| #18ε2 Repository governance: offsets, cold start | #920 | Στο `GovernanceRepository` πήγαν και τα SQL για τα per-athlete threshold offsets (ADR-0052), το cold start και τα ποσοστά βαθμονόμησης. Ο `DatabaseManager` τα προωθεί με τα ίδια ονόματα και ορίσματα, καμία αλλαγή συμπεριφοράς. Τα μεταδεδομένα βαθμονόμησης μοντέλων μένουν στο `database.py`, γιατί η προεπιλογή τους είναι το `SCHEMA_VERSION`· 10 νέα τεστ |
 
 ## Σε εξέλιξη
 
 - #14: το ADR-0060 εγκρίθηκε από τον Zaf (merge του #907). Ο κώδικας για τους πίνακες ακολουθεί σε επόμενη συνεδρία (AGENTS §14.3). Το κομμάτι χωρίς πίνακες (heartbeat, watchdog, lock) έγινε στο #908.
 - #16: έγινε (#909, #910). Το πρώτο tag (πρώτο release) το βάζει ο Zaf.
 - #17: έγινε (#911). Μένει να παίρνει το DailyCoach απευθείας το αντικείμενο προφίλ αντί για dict (T5-117).
-- #18: όριο modules 87 (απόφαση Zaf 2026-10-07): package + 6 repositories (πρόσβαση, προπόνηση, φυσιολογία, governance, λειτουργία, migrations), ένα ανά PR. Πρώτο (package + παπούτσια): #913, έγινε. Δεύτερο (PRs, CS): #915, έγινε. Τρίτο (training log): #917, έγινε. Τέταρτο (φυσιολογία): #918, έγινε. Πέμπτο (governance: overrides, αποφάσεις): #919, έγινε. Έκτο (governance: offsets, cold start): #PRNUM.
+- #18: όριο modules 87 (απόφαση Zaf 2026-10-07): package + 6 repositories (πρόσβαση, προπόνηση, φυσιολογία, governance, λειτουργία, migrations), ένα ανά PR. Πρώτο (package + παπούτσια): #913, έγινε. Δεύτερο (PRs, CS): #915, έγινε. Τρίτο (training log): #917, έγινε. Τέταρτο (φυσιολογία): #918, έγινε. Πέμπτο (governance: overrides, αποφάσεις): #919, έγινε. Έκτο (governance: offsets, cold start): #920.
 - #19: αναβάθμιση παλιάς βάσης (#912), restart του worker (#914), Docker smoke στο CI σε έλεγχο στο #916.
 
 ## Επόμενα
