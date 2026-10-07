@@ -12,7 +12,7 @@ to engines passed via a context dict and uses print()/input().  These tests:
   4. Monkeypatch os.system (clear screen) so it is a no-op in CI.
 
 Run with:
-    pytest test_menu_system.py -v
+    pytest tests/test_menu_system.py -v
 """
 
 import os
@@ -29,7 +29,7 @@ os.environ.setdefault("TELEGRAM_CHAT_ID",    "12345")
 os.environ.setdefault("WEATHER_API_KEY",     "test")
 os.environ.setdefault("WEATHER_LOCATION",    "Athens,GR")
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 # ════════════════════════════════════════════════════════════════════════════

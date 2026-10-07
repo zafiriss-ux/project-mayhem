@@ -130,7 +130,7 @@ jobs:
         run: |
           for i in 1 2 3; do
             echo "=== Run $i ==="
-            pytest tests/test_governance_integration.py test_core_modules.py::TestGovernanceVo2AndFuelingGates -q --tb=short --no-cov
+            pytest tests/test_governance_integration.py tests/test_core_modules.py::TestGovernanceVo2AndFuelingGates -q --tb=short --no-cov
           done
 
       - name: Import architecture check
