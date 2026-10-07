@@ -23,6 +23,8 @@ from titan.utils.secrets import SecretStr
 
 _log = logging.getLogger(__name__)
 
+_AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
+
 SEND_FAIL = "SEND_FAIL"
 POLL_FAIL = "POLL_FAIL"
 SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
@@ -282,12 +284,15 @@ class TitanTelegramBot:
             if not _check_rate_limit(message.chat.id, "sync"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
                 return
-            self.bot.reply_to(message, "🔄 Starting Garmin sync...")
-            if "sync" in self.cmd_callbacks:
-                result = self.cmd_callbacks["sync"]()
-                self.bot.reply_to(message, result or "✅ Sync complete.")
-            else:
+            if "sync" not in self.cmd_callbacks:
                 self.bot.reply_to(message, "⏳ Sync not available yet.")
+                return
+            if not self._audit_before_effect(self.db, message.chat.id, "TELEGRAM_SYNC", "owner"):
+                self.bot.reply_to(message, _AUDIT_UNAVAILABLE_REPLY)
+                return
+            self.bot.reply_to(message, "🔄 Starting Garmin sync...")
+            result = self.cmd_callbacks["sync"]()
+            self.bot.reply_to(message, result or "✅ Sync complete.")
 
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
@@ -348,7 +353,7 @@ class TitanTelegramBot:
             # Strip "/manual_entry" prefix to get the argument string
             parts = text.split(None, 1)
             args = parts[1] if len(parts) > 1 else ""
-            reply = self.handle_manual_entry_text(args)
+            reply = self.handle_manual_entry_text(args, chat_id=message.chat.id)
             self.bot.reply_to(message, reply)
 
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
@@ -414,7 +419,7 @@ class TitanTelegramBot:
             return {}, "usage"
         return parsed, None
 
-    def handle_manual_entry_text(self, args: str) -> str:
+    def handle_manual_entry_text(self, args: str, chat_id: int | str | None = None) -> str:
         """Process /manual_entry argument string; save to DB; return reply text."""
         usage = "Usage: /manual_entry HRV=65 RHR=52 SLEEP=7.5 FATIGUE=3 WEIGHT=75.0"
         parsed, err = self._parse_manual_entry(args)
@@ -427,6 +432,9 @@ class TitanTelegramBot:
             return "❌ Database not available."
 
         today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        detail = json.dumps({"date": today_str, **parsed}, sort_keys=True)
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_MANUAL_ENTRY", "owner", detail):
+            return _AUDIT_UNAVAILABLE_REPLY
         self.db.save_daily_metric(
             date=today_str,
             hrv=parsed.get("hrv_rmssd"),
@@ -449,6 +457,37 @@ class TitanTelegramBot:
             if col in parsed:
                 summary_parts.append(f"{label}={parsed[col]}")
         return "✅ Logged: " + ", ".join(summary_parts)
+
+    @staticmethod
+    def _audit_before_effect(
+        db, chat_id: int | str | None, action: str, athlete_id: str, detail: str = ""
+    ) -> bool:
+        """INV-22: write the audit row before a Telegram state change.
+
+        Returns False when the row could not be written; the caller then rejects
+        the command without changing anything.
+        """
+        try:
+            if db is None:
+                raise RuntimeError("no database for the audit log")
+            db.log_coach_action(
+                coach_id=f"telegram:{chat_id}",
+                action_type=action,
+                target_athlete_id=athlete_id,
+                action_detail=detail,
+                resource="telegram",
+            )
+        except Exception as exc:
+            _log.critical(
+                "audit_write_failed",
+                extra={"surface": "telegram", "action_type": action, "error": str(exc)},
+                exc_info=True,
+            )
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("audit_write_failure", labels={"surface": "telegram"})
+            return False
+        return True
 
     def register_override_callback(self, name: str, callback: Callable) -> None:
         """Register override callback dependencies (e.g., db_provider, athlete_id_provider)."""
@@ -546,6 +585,9 @@ class TitanTelegramBot:
             override_source="telegram_bot",
             override_reason=reason,
         )
+        detail = json.dumps({"decision_id": signal.decision_id, "reason": reason})
+        if not self._audit_before_effect(db, chat_id, "TELEGRAM_OVERRIDE", signal.athlete_id, detail):
+            return _AUDIT_UNAVAILABLE_REPLY
         record_override_signal(db, signal)
         self._pending_override_prompts.pop(chat_id, None)
         return "✅ Override recorded."

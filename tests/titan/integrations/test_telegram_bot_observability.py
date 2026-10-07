@@ -285,8 +285,10 @@ def test_command_handlers_route_to_callbacks_and_fallbacks():
     fake_bot.replies.clear()
     bot.cmd_callbacks.pop("sync", None)
     fake_bot.handlers["sync"](message)
-    assert fake_bot.replies[0][1] == "🔄 Starting Garmin sync..."
-    assert fake_bot.replies[1][1] == "⏳ Sync not available yet."
+    assert [r[1] for r in fake_bot.replies] == ["⏳ Sync not available yet."]
+
+    audit_rows: list[dict] = []
+    bot.db = type("_AuditDB", (), {"log_coach_action": lambda self, **kw: audit_rows.append(kw)})()
 
     _cmd_rate.clear()
     fake_bot.replies.clear()
@@ -300,6 +302,7 @@ def test_command_handlers_route_to_callbacks_and_fallbacks():
     bot.cmd_callbacks["sync"] = lambda: "SYNCED"
     fake_bot.handlers["sync"](message)
     assert fake_bot.replies[1][1] == "SYNCED"
+    assert [row["action_type"] for row in audit_rows] == ["TELEGRAM_SYNC"] * 2
 
     fake_bot.handlers["start"](message)
     assert bot.chat_id == 321
@@ -761,6 +764,9 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
         def record_override_signal(self, **kwargs):
             self.rows.append(kwargs)
 
+        def log_coach_action(self, **kwargs):
+            self.rows.append({"audit": kwargs["action_type"]})
+
     db = _DB()
     bot = TitanTelegramBot(bot_token="", chat_id=123)
     bot.register_override_callback("db_provider", lambda: db)
@@ -774,7 +780,8 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
     nonce = _create_override_nonce("d-2")
     assert "required" in bot.process_override_callback(123, f"override:request:{nonce}")
     assert bot.process_override_reason(123, "Need to adjust due to artifact") == "✅ Override recorded."
-    assert db.rows[0]["decision_id"] == "d-2"
+    assert db.rows[0] == {"audit": "TELEGRAM_OVERRIDE"}
+    assert db.rows[1]["decision_id"] == "d-2"
 
 
 @pytest.mark.integration
