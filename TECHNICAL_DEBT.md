@@ -1710,7 +1710,7 @@ RESOLVED disposition.
 | T-PRA-27 | B-12, K:PRA-18 | 2 | CodeQL on PR/push, gitleaks full-range, SBOM, image scan | OPEN (gitleaks on PRs and weekly CodeQL live since PR #879; CodeQL per PR needs a paid plan on a private repo, open Architect decision in PROGRESS.md) | Not scheduled |
 | T-PRA-28 | F-4/5/7/10 | 2 | Auth bundle RBP-04/05 | OPEN | Not scheduled |
 | T-PRA-29 | D-2 | 2 | Compose-up persistence e2e in CI | OPEN | Refactor plan task #19 |
-| T-PRA-30 | D-4, C-2, C-3 | 2 | Migration-chain realistic-data test + schema-parity test | OPEN | Refactor plan task #19 |
+| T-PRA-30 | D-4, C-2, C-3 | 2 | Migration-chain realistic-data test + schema-parity test | PARTIAL — PR #PRNUM: v0→v25 on 8 weeks of real-release data + ladder-vs-fresh schema parity (`tests/e2e/test_legacy_db_upgrade.py`); 2 known drifts listed there (training_log.quality_flag affinity, governance_outcomes.athlete_id default 'default'). Open: SQLite↔Alembic parity, frozen-migration manifest | Refactor plan task #19 |
 | T-PRA-31 | E-3 | 2 | Route alert-class events through `NotificationGateway` | OPEN | Not scheduled |
 | T-PRA-32 | K:PRA-15 | 2 | EngineRegistry CS/APL hydration (TODO-P26-04b/c) | OPEN | Refactor plan task #22 |
 | T-PRA-35 | D-1, C-7, I-22 | 3 | Governance sensor bundle | OPEN | Not scheduled |
