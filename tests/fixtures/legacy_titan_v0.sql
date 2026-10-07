@@ -1,0 +1,257 @@
+BEGIN TRANSACTION;
+CREATE TABLE cs_performances (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                distance_m REAL NOT NULL,
+                time_sec REAL NOT NULL,
+                surface TEXT DEFAULT 'ROAD',
+                wind_adjusted INTEGER DEFAULT 0
+            );
+INSERT INTO "cs_performances" VALUES(1,'2026-01-24',5000.0,1140.0,'ROAD',0);
+INSERT INTO "cs_performances" VALUES(2,'2026-02-21',3000.0,640.0,'TRACK',0);
+CREATE TABLE daily_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL UNIQUE,
+                weight_kg REAL,
+                hrv_rmssd REAL,
+                resting_hr INTEGER,
+                sleep_hours REAL,
+                sleep_quality INTEGER,
+                soreness INTEGER,
+                fatigue_level INTEGER,
+                mood INTEGER,
+                notes TEXT
+            , hrr_60 INTEGER, hrr_120 INTEGER, glycogen_debt REAL);
+INSERT INTO "daily_metrics" VALUES(1,'2026-01-05',76.4,52.0,46,7.0,70,1,1,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(2,'2026-01-06',7.63500000000000085e+01,53.0,47,7.25,74,2,2,4,NULL,33,49,0.1);
+INSERT INTO "daily_metrics" VALUES(3,'2026-01-07',7.63000000000000113e+01,54.0,48,7.5,78,3,3,4,NULL,NULL,NULL,0.2);
+INSERT INTO "daily_metrics" VALUES(4,'2026-01-08',76.25,55.0,46,7.75,82,1,4,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(5,'2026-01-09',76.2,56.0,47,7.0,86,2,1,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(6,'2026-01-10',76.15,57.0,48,7.25,70,3,2,4,NULL,32,53,0.5);
+INSERT INTO "daily_metrics" VALUES(7,'2026-01-11',7.61000000000000085e+01,58.0,46,7.5,74,1,3,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(8,'2026-01-12',7.60500000000000113e+01,52.0,47,7.75,78,2,4,4,NULL,NULL,NULL,0.1);
+INSERT INTO "daily_metrics" VALUES(9,'2026-01-13',76.0,53.0,48,7.0,82,3,1,4,NULL,35,50,0.2);
+INSERT INTO "daily_metrics" VALUES(10,'2026-01-14',75.95,54.0,46,7.25,86,1,2,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(11,'2026-01-15',75.9,55.0,47,7.5,70,2,3,4,NULL,NULL,NULL,0.4);
+INSERT INTO "daily_metrics" VALUES(12,'2026-01-16',7.58500000000000085e+01,56.0,48,7.75,74,3,4,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(13,'2026-01-17',7.58000000000000113e+01,57.0,46,7.0,78,1,1,4,NULL,34,48,0.0);
+INSERT INTO "daily_metrics" VALUES(14,'2026-01-18',75.75,58.0,47,7.25,82,2,2,4,NULL,NULL,NULL,0.1);
+INSERT INTO "daily_metrics" VALUES(15,'2026-01-19',75.7,52.0,48,7.5,86,3,3,4,NULL,NULL,NULL,0.2);
+INSERT INTO "daily_metrics" VALUES(16,'2026-01-20',75.65,53.0,46,7.75,70,1,4,4,NULL,32,51,0.3);
+INSERT INTO "daily_metrics" VALUES(17,'2026-01-21',7.56000000000000085e+01,54.0,47,7.0,74,2,1,4,NULL,NULL,NULL,0.4);
+INSERT INTO "daily_metrics" VALUES(18,'2026-01-22',7.55500000000000113e+01,55.0,48,7.25,78,3,2,4,NULL,NULL,NULL,0.5);
+INSERT INTO "daily_metrics" VALUES(19,'2026-01-23',75.5,56.0,46,7.5,82,1,3,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(20,'2026-01-24',75.45,57.0,47,7.75,86,2,4,4,NULL,36,49,0.1);
+INSERT INTO "daily_metrics" VALUES(21,'2026-01-25',75.4,58.0,48,7.0,70,3,1,4,NULL,NULL,NULL,0.2);
+INSERT INTO "daily_metrics" VALUES(22,'2026-01-26',7.53500000000000085e+01,52.0,46,7.25,74,1,2,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(23,'2026-01-27',7.53000000000000113e+01,53.0,47,7.5,78,2,3,4,NULL,34,52,0.4);
+INSERT INTO "daily_metrics" VALUES(24,'2026-01-28',75.25,54.0,48,7.75,82,3,4,4,NULL,NULL,NULL,0.5);
+INSERT INTO "daily_metrics" VALUES(25,'2026-01-29',75.2,55.0,46,7.0,86,1,1,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(26,'2026-01-30',75.15,56.0,47,7.25,70,2,2,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(27,'2026-01-31',7.51000000000000085e+01,57.0,48,7.5,74,3,3,4,NULL,33,50,0.2);
+INSERT INTO "daily_metrics" VALUES(28,'2026-02-01',7.50500000000000113e+01,58.0,46,7.75,78,1,4,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(29,'2026-02-02',75.0,52.0,47,7.0,82,2,1,4,NULL,NULL,NULL,0.4);
+INSERT INTO "daily_metrics" VALUES(30,'2026-02-03',74.95,53.0,48,7.25,86,3,2,4,NULL,36,53,0.5);
+INSERT INTO "daily_metrics" VALUES(31,'2026-02-04',74.9,54.0,46,7.5,70,1,3,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(32,'2026-02-05',7.48500000000000085e+01,55.0,47,7.75,74,2,4,4,NULL,NULL,NULL,0.1);
+INSERT INTO "daily_metrics" VALUES(33,'2026-02-06',7.48000000000000113e+01,56.0,48,7.0,78,3,1,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(34,'2026-02-07',74.75,57.0,46,7.25,82,1,2,4,NULL,35,51,0.3);
+INSERT INTO "daily_metrics" VALUES(35,'2026-02-08',74.7,58.0,47,7.5,86,2,3,4,NULL,NULL,NULL,0.4);
+INSERT INTO "daily_metrics" VALUES(36,'2026-02-09',74.65,49.0,48,7.75,70,3,4,4,NULL,NULL,NULL,0.5);
+INSERT INTO "daily_metrics" VALUES(37,'2026-02-10',7.46000000000000085e+01,50.0,46,7.0,74,1,1,4,NULL,33,48,0.0);
+INSERT INTO "daily_metrics" VALUES(38,'2026-02-11',7.45500000000000113e+01,51.0,47,7.25,78,2,2,4,NULL,NULL,NULL,0.1);
+INSERT INTO "daily_metrics" VALUES(39,'2026-02-12',74.5,52.0,48,7.5,82,3,3,4,NULL,NULL,NULL,0.2);
+INSERT INTO "daily_metrics" VALUES(40,'2026-02-13',74.45,53.0,46,7.75,86,1,4,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(41,'2026-02-14',74.4,54.0,47,7.0,70,2,1,4,NULL,32,52,0.4);
+INSERT INTO "daily_metrics" VALUES(42,'2026-02-15',7.43500000000000085e+01,55.0,48,7.25,74,3,2,4,NULL,NULL,NULL,0.5);
+INSERT INTO "daily_metrics" VALUES(43,'2026-02-16',7.43000000000000113e+01,52.0,46,7.5,78,1,3,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(44,'2026-02-17',74.25,53.0,47,7.75,82,2,4,4,NULL,35,49,0.1);
+INSERT INTO "daily_metrics" VALUES(45,'2026-02-18',74.2,54.0,48,7.0,86,3,1,4,NULL,NULL,NULL,0.2);
+INSERT INTO "daily_metrics" VALUES(46,'2026-02-19',74.15,55.0,46,7.25,70,1,2,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(47,'2026-02-20',7.41000000000000085e+01,56.0,47,7.5,74,2,3,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(48,'2026-02-21',7.40500000000000113e+01,57.0,48,7.75,78,3,4,4,NULL,34,53,0.5);
+INSERT INTO "daily_metrics" VALUES(49,'2026-02-22',74.0,58.0,46,7.0,82,1,1,4,NULL,NULL,NULL,0.0);
+INSERT INTO "daily_metrics" VALUES(50,'2026-02-23',73.95,52.0,47,7.25,86,2,2,4,NULL,NULL,NULL,0.1);
+INSERT INTO "daily_metrics" VALUES(51,'2026-02-24',73.9,53.0,48,7.5,70,3,3,4,NULL,32,50,0.2);
+INSERT INTO "daily_metrics" VALUES(52,'2026-02-25',7.38500000000000085e+01,54.0,46,7.75,74,1,4,4,NULL,NULL,NULL,0.3);
+INSERT INTO "daily_metrics" VALUES(53,'2026-02-26',7.38000000000000113e+01,55.0,47,7.0,78,2,1,4,NULL,NULL,NULL,0.4);
+INSERT INTO "daily_metrics" VALUES(54,'2026-02-27',73.75,56.0,48,7.25,82,3,2,4,NULL,NULL,NULL,NULL);
+INSERT INTO "daily_metrics" VALUES(55,'2026-02-28',73.7,57.0,46,7.5,86,1,3,4,NULL,36,48,0.0);
+INSERT INTO "daily_metrics" VALUES(56,'2026-03-01',73.65,58.0,47,7.75,70,2,4,4,NULL,NULL,NULL,0.1);
+CREATE TABLE gear_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                shoe_name TEXT NOT NULL,
+                total_km REAL DEFAULT 0,
+                last_used TEXT,
+                compression_recovery_hours INTEGER DEFAULT 24,
+                status TEXT DEFAULT 'ACTIVE',
+                shoe_type TEXT,
+                max_km_limit REAL DEFAULT 800
+            );
+INSERT INTO "gear_usage" VALUES(1,'Pegasus 40',506.2,'2026-03-01',24,'ACTIVE','DAILY',800.0);
+INSERT INTO "gear_usage" VALUES(2,'Vaporfly 3',52.8,'2026-02-26',24,'ACTIVE','RACE',400.0);
+CREATE TABLE governance_outcomes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_planned TEXT NOT NULL,
+                session_post_governance TEXT NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase TEXT NOT NULL,
+                vlg_color TEXT NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr REAL NOT NULL,
+                tsb_value REAL NOT NULL,
+                readiness_score REAL NOT NULL,
+                glycogen_debt REAL NOT NULL,
+                afi_value REAL,
+                outcome_rpe INTEGER,
+                outcome_completed INTEGER,
+                outcome_session_type_actual TEXT,
+                outcome_notes TEXT
+            );
+INSERT INTO "governance_outcomes" VALUES(1,'2026-01-05','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(2,'2026-01-06','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(3,'2026-01-07','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(4,'2026-01-08','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(5,'2026-01-10','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(6,'2026-01-11','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(7,'2026-01-12','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(8,'2026-01-13','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(9,'2026-01-14','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(10,'2026-01-15','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(11,'2026-01-17','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(12,'2026-01-18','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(13,'2026-01-19','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(14,'2026-01-20','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(15,'2026-01-21','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(16,'2026-01-22','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(17,'2026-01-24','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(18,'2026-01-25','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(19,'2026-01-26','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(20,'2026-01-27','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(21,'2026-01-28','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(22,'2026-01-29','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(23,'2026-01-31','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(24,'2026-02-01','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(25,'2026-02-02','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(26,'2026-02-03','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(27,'2026-02-04','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(28,'2026-02-05','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(29,'2026-02-07','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(30,'2026-02-08','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(31,'2026-02-09','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(32,'2026-02-10','INTERVALS','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(33,'2026-02-11','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(34,'2026-02-12','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(35,'2026-02-14','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(36,'2026-02-15','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(37,'2026-02-16','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(38,'2026-02-17','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(39,'2026-02-18','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(40,'2026-02-19','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(41,'2026-02-21','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(42,'2026-02-22','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+INSERT INTO "governance_outcomes" VALUES(43,'2026-02-23','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(44,'2026-02-24','INTERVALS','INTERVALS','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,8,1,'INTERVALS',NULL);
+INSERT INTO "governance_outcomes" VALUES(45,'2026-02-25','EASY','EASY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,3,1,'EASY',NULL);
+INSERT INTO "governance_outcomes" VALUES(46,'2026-02-26','TEMPO','TEMPO','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,7,1,'TEMPO',NULL);
+INSERT INTO "governance_outcomes" VALUES(47,'2026-02-28','LONG_RUN','LONG_RUN','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,6,1,'LONG_RUN',NULL);
+INSERT INTO "governance_outcomes" VALUES(48,'2026-03-01','RECOVERY','RECOVERY','[]',1,'BUILD','GREEN','{}','{}',1.05,-8.5,72.0,0.2,0.4,2,1,'RECOVERY',NULL);
+CREATE TABLE override_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                prescribed_type TEXT,
+                actual_type TEXT,
+                reason TEXT
+            );
+INSERT INTO "override_log" VALUES(1,'2026-02-03','EASY','INTERVALS','felt fresh');
+CREATE TABLE personal_bests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                distance_km REAL NOT NULL,
+                time_sec INTEGER NOT NULL,
+                pace_sec_per_km REAL,
+                date TEXT NOT NULL,
+                race_name TEXT
+            );
+INSERT INTO "personal_bests" VALUES(1,5.0,1140,228.0,'2026-01-24','Parkrun');
+INSERT INTO "personal_bests" VALUES(2,21.1,5460,2.58767772511848306e+02,'2026-02-28','Half marathon');
+CREATE TABLE training_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                session_type TEXT,
+                distance_km REAL,
+                duration_sec INTEGER,
+                avg_hr INTEGER,
+                max_hr INTEGER,
+                rpe INTEGER,
+                training_load INTEGER,
+                shoe_id INTEGER,
+                surface TEXT,
+                temperature_c REAL,
+                zone_distribution TEXT,
+                notes TEXT, garmin_activity_id TEXT,
+                FOREIGN KEY (shoe_id) REFERENCES gear_usage(id)
+            );
+INSERT INTO "training_log" VALUES(1,'2026-01-05','EASY',8.0,2640,138,156,3,132,1,'ROAD',8.0,NULL,NULL,'g1000');
+INSERT INTO "training_log" VALUES(2,'2026-01-06','INTERVALS',10.0,2900,158,176,8,3.86666666666666685e+02,1,'ROAD',9.0,NULL,NULL,'g1001');
+INSERT INTO "training_log" VALUES(3,'2026-01-07','EASY',8.0,2640,138,156,3,132,1,'ROAD',10.0,NULL,NULL,'g1002');
+INSERT INTO "training_log" VALUES(4,'2026-01-08','TEMPO',12.0,3300,162,180,7,385,1,'ROAD',11.0,NULL,NULL,'g1003');
+INSERT INTO "training_log" VALUES(5,'2026-01-10','LONG_RUN',22.0,7480,145,163,6,748,1,'ROAD',13.0,NULL,NULL,'g1005');
+INSERT INTO "training_log" VALUES(6,'2026-01-11','RECOVERY',5.0,1800,128,146,2,60,1,'ROAD',14.0,NULL,NULL,'g1006');
+INSERT INTO "training_log" VALUES(7,'2026-01-12','EASY',8.4,2772,138,156,3,1.38600000000000022e+02,1,'ROAD',15.0,NULL,NULL,'g1007');
+INSERT INTO "training_log" VALUES(8,'2026-01-13','INTERVALS',10.5,3045,158,176,8,406,1,'ROAD',16.0,NULL,NULL,'g1008');
+INSERT INTO "training_log" VALUES(9,'2026-01-14','EASY',8.4,2772,138,156,3,1.38600000000000022e+02,1,'ROAD',17.0,NULL,NULL,'g1009');
+INSERT INTO "training_log" VALUES(10,'2026-01-15','TEMPO',12.6,3465,162,180,7,404.25,2,'ROAD',8.0,NULL,NULL,'g1010');
+INSERT INTO "training_log" VALUES(11,'2026-01-17','LONG_RUN',23.1,7854,145,163,6,7.8540000000000009e+02,1,'ROAD',10.0,NULL,NULL,'g1012');
+INSERT INTO "training_log" VALUES(12,'2026-01-18','RECOVERY',5.25,1890,128,146,2,63,1,'ROAD',11.0,NULL,NULL,NULL);
+INSERT INTO "training_log" VALUES(13,'2026-01-19','EASY',8.8,2904,138,156,3,145.2,1,'ROAD',12.0,NULL,NULL,'g1014');
+INSERT INTO "training_log" VALUES(14,'2026-01-20','INTERVALS',11.0,3190,158,176,8,4.25333333333333314e+02,1,'ROAD',13.0,NULL,NULL,'g1015');
+INSERT INTO "training_log" VALUES(15,'2026-01-21','EASY',8.8,2904,138,156,3,145.2,1,'ROAD',14.0,NULL,NULL,'g1016');
+INSERT INTO "training_log" VALUES(16,'2026-01-22','TEMPO',13.2,3630,162,180,7,423.5,1,'ROAD',15.0,NULL,NULL,'g1017');
+INSERT INTO "training_log" VALUES(17,'2026-01-24','LONG_RUN',24.2,8228,145,163,6,822.8,1,'ROAD',17.0,NULL,NULL,'g1019');
+INSERT INTO "training_log" VALUES(18,'2026-01-25','RECOVERY',5.5,1980,128,146,2,66,1,'ROAD',8.0,NULL,NULL,'g1020');
+INSERT INTO "training_log" VALUES(19,'2026-01-26','EASY',9.2,3035,138,156,3,151.75,1,'ROAD',9.0,NULL,NULL,'g1021');
+INSERT INTO "training_log" VALUES(20,'2026-01-27','INTERVALS',11.5,3335,158,176,8,4.44666666666666685e+02,1,'ROAD',10.0,NULL,NULL,'g1022');
+INSERT INTO "training_log" VALUES(21,'2026-01-28','EASY',9.2,3035,138,156,3,151.75,1,'ROAD',11.0,NULL,NULL,'g1023');
+INSERT INTO "training_log" VALUES(22,'2026-01-29','TEMPO',13.8,3794,162,180,7,4.42633333333333325e+02,2,'ROAD',12.0,NULL,NULL,'g1024');
+INSERT INTO "training_log" VALUES(23,'2026-01-31','LONG_RUN',25.3,8601,145,163,6,8.60099999999999909e+02,1,'ROAD',14.0,NULL,NULL,'g1026');
+INSERT INTO "training_log" VALUES(24,'2026-02-01','RECOVERY',5.75,2070,128,146,2,69,1,'ROAD',15.0,NULL,NULL,NULL);
+INSERT INTO "training_log" VALUES(25,'2026-02-02','EASY',8.0,2640,138,156,3,132,1,'ROAD',16.0,NULL,NULL,'g1028');
+INSERT INTO "training_log" VALUES(26,'2026-02-03','INTERVALS',10.0,2900,158,176,8,3.86666666666666685e+02,1,'ROAD',17.0,NULL,NULL,'g1029');
+INSERT INTO "training_log" VALUES(27,'2026-02-04','EASY',8.0,2640,138,156,3,132,1,'ROAD',8.0,NULL,NULL,'g1030');
+INSERT INTO "training_log" VALUES(28,'2026-02-05','TEMPO',12.0,3300,162,180,7,385,1,'ROAD',9.0,NULL,NULL,'g1031');
+INSERT INTO "training_log" VALUES(29,'2026-02-07','LONG_RUN',22.0,7480,145,163,6,748,1,'ROAD',11.0,NULL,NULL,'g1033');
+INSERT INTO "training_log" VALUES(30,'2026-02-08','RECOVERY',5.0,1800,128,146,2,60,1,'ROAD',12.0,NULL,NULL,'g1034');
+INSERT INTO "training_log" VALUES(31,'2026-02-09','EASY',8.4,2772,138,156,3,1.38600000000000022e+02,1,'ROAD',13.0,NULL,NULL,'g1035');
+INSERT INTO "training_log" VALUES(32,'2026-02-10','INTERVALS',10.5,3045,158,176,8,406,1,'ROAD',14.0,NULL,NULL,'g1036');
+INSERT INTO "training_log" VALUES(33,'2026-02-11','EASY',8.4,2772,138,156,3,1.38600000000000022e+02,1,'ROAD',15.0,NULL,NULL,'g1037');
+INSERT INTO "training_log" VALUES(34,'2026-02-12','TEMPO',12.6,3465,162,180,7,404.25,2,'ROAD',16.0,NULL,NULL,'g1038');
+INSERT INTO "training_log" VALUES(35,'2026-02-14','LONG_RUN',23.1,7854,145,163,6,7.8540000000000009e+02,1,'ROAD',8.0,NULL,NULL,'g1040');
+INSERT INTO "training_log" VALUES(36,'2026-02-15','RECOVERY',5.25,1890,128,146,2,63,1,'ROAD',9.0,NULL,NULL,NULL);
+INSERT INTO "training_log" VALUES(37,'2026-02-16','EASY',8.8,2904,138,156,3,145.2,1,'ROAD',10.0,NULL,NULL,'g1042');
+INSERT INTO "training_log" VALUES(38,'2026-02-17','INTERVALS',11.0,3190,158,176,8,4.25333333333333314e+02,1,'ROAD',11.0,NULL,NULL,'g1043');
+INSERT INTO "training_log" VALUES(39,'2026-02-18','EASY',8.8,2904,138,156,3,145.2,1,'ROAD',12.0,NULL,NULL,'g1044');
+INSERT INTO "training_log" VALUES(40,'2026-02-19','TEMPO',13.2,3630,162,180,7,423.5,1,'ROAD',13.0,NULL,NULL,'g1045');
+INSERT INTO "training_log" VALUES(41,'2026-02-21','LONG_RUN',24.2,8228,145,163,6,822.8,1,'ROAD',15.0,NULL,NULL,'g1047');
+INSERT INTO "training_log" VALUES(42,'2026-02-22','RECOVERY',5.5,1980,128,146,2,66,1,'ROAD',16.0,NULL,NULL,'g1048');
+INSERT INTO "training_log" VALUES(43,'2026-02-23','EASY',9.2,3035,138,156,3,151.75,1,'ROAD',17.0,NULL,NULL,'g1049');
+INSERT INTO "training_log" VALUES(44,'2026-02-24','INTERVALS',11.5,3335,158,176,8,4.44666666666666685e+02,1,'ROAD',8.0,NULL,NULL,'g1050');
+INSERT INTO "training_log" VALUES(45,'2026-02-25','EASY',9.2,3035,138,156,3,151.75,1,'ROAD',9.0,NULL,NULL,'g1051');
+INSERT INTO "training_log" VALUES(46,'2026-02-26','TEMPO',13.8,3794,162,180,7,4.42633333333333325e+02,2,'ROAD',10.0,NULL,NULL,'g1052');
+INSERT INTO "training_log" VALUES(47,'2026-02-28','LONG_RUN',25.3,8601,145,163,6,8.60099999999999909e+02,1,'ROAD',12.0,NULL,NULL,'g1054');
+INSERT INTO "training_log" VALUES(48,'2026-03-01','RECOVERY',5.75,2070,128,146,2,69,1,'ROAD',13.0,NULL,NULL,NULL);
+CREATE UNIQUE INDEX idx_training_log_garmin_id
+                ON training_log(garmin_activity_id)
+                WHERE garmin_activity_id IS NOT NULL
+            ;
+DELETE FROM "sqlite_sequence";
+INSERT INTO "sqlite_sequence" VALUES('gear_usage',2);
+INSERT INTO "sqlite_sequence" VALUES('daily_metrics',56);
+INSERT INTO "sqlite_sequence" VALUES('training_log',48);
+INSERT INTO "sqlite_sequence" VALUES('governance_outcomes',48);
+INSERT INTO "sqlite_sequence" VALUES('override_log',1);
+INSERT INTO "sqlite_sequence" VALUES('cs_performances',2);
+INSERT INTO "sqlite_sequence" VALUES('personal_bests',2);
+COMMIT;
