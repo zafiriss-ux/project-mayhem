@@ -19,6 +19,8 @@ COPY . .
 
 ENV TITAN_DATA_DIR=/data
 ENV TITAN_DB_BACKEND=sqlite
+# `python scripts/run_api.py` puts /app/scripts, not /app, on sys.path.
+ENV PYTHONPATH=/app
 
 # Create non-root user and writable data + backup volumes (backups: AGENTS DR-01)
 RUN groupadd -r titan && \

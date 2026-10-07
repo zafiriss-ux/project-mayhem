@@ -23,3 +23,12 @@ def test_smoke_test_restarts_both_containers_and_checks_the_worker() -> None:
     assert "worker not running after restart" in script
     assert "/readyz" in script
     assert "Persistence FAILED" in script
+
+
+@pytest.mark.unit
+def test_image_can_import_titan_from_the_api_script() -> None:
+    """The first CI run of the smoke test failed with ModuleNotFoundError: titan."""
+    dockerfile = (_ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "WORKDIR /app" in dockerfile
+    assert "ENV PYTHONPATH=/app" in dockerfile
+    assert 'CMD ["python", "scripts/run_api.py"]' in dockerfile
