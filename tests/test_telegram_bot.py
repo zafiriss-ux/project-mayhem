@@ -347,17 +347,20 @@ class TestTrustedChatAuthorisation:
         b = TitanTelegramBot(bot_token="", chat_id="99999")
         assert b._is_trusted(11111) is False
 
-    def test_is_trusted_unconfigured_allows_all(self, monkeypatch):
+    def test_is_trusted_unconfigured_denies_all(self, monkeypatch):
+        # INV-16 / RBP-02: unconfigured trust = lockout, never open access.
         monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
         b = TitanTelegramBot(bot_token="", chat_id=None)
-        assert b._is_trusted(99999) is True
+        assert b._is_trusted(99999) is False
+        assert b._is_trusted("99999") is False
 
-    def test_is_trusted_unconfigured_emits_warning(self, monkeypatch, caplog):
+    def test_is_trusted_unconfigured_logs_critical(self, monkeypatch, caplog):
         monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
         b = TitanTelegramBot(bot_token="", chat_id=None)
-        with caplog.at_level(logging.WARNING, logger="titan.integrations.telegram_bot"):
+        with caplog.at_level(logging.CRITICAL, logger="titan.integrations.telegram_bot"):
             b._is_trusted(99999)
-        assert "no_trusted_chat_configured" in caplog.text
+        records = [r for r in caplog.records if "no_trusted_chat_configured" in r.getMessage()]
+        assert records and all(r.levelno == logging.CRITICAL for r in records)
 
 
 # ════════════════════════════════════════════════════════════════════════════

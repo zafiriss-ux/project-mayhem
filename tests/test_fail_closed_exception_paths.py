@@ -8,10 +8,16 @@ B-4a: GovernanceEngine.apply_constraints() — any exception raised inside the
 B-4b: coaching_pipeline() — any exception raised by _decision_pipeline() is
       caught at the orchestration boundary, alerted via Telegram, and the run
       returns False (no prescription delivered, worker stays alive).
+
+SA:m-1 (INV-13): DegradedModeTracker._hydrate_from_db() — a failed read is
+      logged CRITICAL (never silently swallowed), preserves in-memory state,
+      marks the tracker degraded, and clears on the next successful read.
 """
 
 from __future__ import annotations
 
+import logging
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock
@@ -19,6 +25,7 @@ from unittest.mock import Mock
 import pytest
 
 from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
+from titan.orchestration.daily_coach import DegradedModeTracker
 from titan.science.governance_engine import GovernanceEngine
 
 
@@ -178,3 +185,71 @@ def test_coaching_pipeline_normal_path_returns_effect_runner_result() -> None:
     assert result is True
     coach._effect_runner.assert_called_once_with(decision_result)
     send_alert.assert_not_called()
+
+
+# ── SA:m-1 / INV-13 — DegradedModeTracker hydration ─────────────────────────
+
+_HEALTHY_FLAGS = {
+    "persistence_degraded": False,
+    "data_confidence_low": False,
+    "garmin_data_stale": False,
+    "garmin_api_degraded": False,
+}
+
+
+def test_tracker_hydration_read_failure_logs_critical_and_marks_degraded(caplog) -> None:
+    db = Mock()
+    db.get_all_degraded_mode_states.side_effect = RuntimeError("database is locked")
+
+    with caplog.at_level(logging.CRITICAL, logger="titan.orchestration.daily_coach"):
+        tracker = DegradedModeTracker(db=db)
+
+    assert tracker.hydration_failed is True
+    assert DegradedModeTracker.HYDRATION_FAILURE in tracker.get_degraded_since()
+    assert any(
+        r.levelno == logging.CRITICAL and "degraded_mode_hydration_failed" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_tracker_hydration_failure_preserves_in_memory_state() -> None:
+    db = Mock()
+    db.get_all_degraded_mode_states.return_value = []
+    tracker = DegradedModeTracker(db=db)
+    tracker.update({**_HEALTHY_FLAGS, "garmin_data_stale": True}, alert_fn=Mock())
+    stale_since = tracker.get_degraded_since()["garmin_data_stale"]
+
+    db.get_all_degraded_mode_states.side_effect = RuntimeError("disk I/O error")
+    assert tracker._hydrate_from_db() is False
+
+    assert tracker.get_degraded_since()["garmin_data_stale"] == stale_since
+    assert tracker.hydration_failed is True
+
+
+def test_tracker_hydration_clears_on_next_successful_read() -> None:
+    db = Mock()
+    db.get_all_degraded_mode_states.side_effect = RuntimeError("database is locked")
+    tracker = DegradedModeTracker(db=db)
+    assert tracker.hydration_failed is True
+
+    persisted = datetime(2026, 10, 1, 7, 0, tzinfo=UTC)
+    db.get_all_degraded_mode_states.side_effect = None
+    db.get_all_degraded_mode_states.return_value = [("garmin_api_degraded", persisted.isoformat())]
+    tracker.update({**_HEALTHY_FLAGS, "garmin_api_degraded": True}, alert_fn=Mock())
+
+    assert tracker.hydration_failed is False
+    degraded = tracker.get_degraded_since()
+    assert DegradedModeTracker.HYDRATION_FAILURE not in degraded
+    assert "garmin_api_degraded" in degraded
+
+
+def test_tracker_hydration_marker_is_never_persisted() -> None:
+    db = Mock()
+    db.get_all_degraded_mode_states.side_effect = RuntimeError("database is locked")
+    tracker = DegradedModeTracker(db=db)
+
+    tracker.update(_HEALTHY_FLAGS, alert_fn=Mock())
+
+    written = [c.args[0] for c in db.upsert_degraded_mode_state.call_args_list]
+    deleted = [c.args[0] for c in db.delete_degraded_mode_state.call_args_list]
+    assert DegradedModeTracker.HYDRATION_FAILURE not in written + deleted

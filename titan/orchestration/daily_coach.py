@@ -96,23 +96,53 @@ class DegradedModeTracker:
 
     State is persisted to the ``degraded_mode_state`` SQLite table so that
     degradation timers survive process restarts (HD-06 / OBS-039).
+
+    A failed read of that table (AGENTS INV-13) is logged CRITICAL, keeps any
+    in-memory state, and marks ``HYDRATION_FAILURE`` as degraded. The read is
+    retried on every ``update()``; the first successful read clears the mark.
     """
+
+    HYDRATION_FAILURE = "state_hydration_failed"
 
     def __init__(self, db: "DatabaseManager | None" = None) -> None:
         self._db = db
         self._degraded_since: dict[str, datetime] = {}
+        self._hydration_failed = False
         if db is not None:
             self._hydrate_from_db()
 
-    def _hydrate_from_db(self) -> None:
-        """Restore degradation timers from the database on startup."""
+    @property
+    def hydration_failed(self) -> bool:
+        """True while the last read of ``degraded_mode_state`` failed."""
+        return self._hydration_failed
+
+    def _hydrate_from_db(self) -> bool:
+        """Restore degradation timers from the database; return True on a successful read."""
         try:
             rows = self._db.get_all_degraded_mode_states()  # type: ignore[union-attr]
-        except Exception:
-            return
+        except Exception as exc:
+            _log.critical(
+                "degraded_mode_hydration_failed",
+                extra={"error_class": type(exc).__name__, "detail": str(exc)},
+            )
+            if not self._hydration_failed:
+                self._degraded_since.setdefault(self.HYDRATION_FAILURE, datetime.now(UTC))
+                _daily_coach_event(
+                    "degraded_mode_hydration_failed",
+                    severity=EventSeverity.CRITICAL,
+                    error_class=type(exc).__name__,
+                )
+            self._hydration_failed = True
+            return False
         for failure_type, ts_str in rows:
+            if failure_type == self.HYDRATION_FAILURE:
+                continue  # in-memory only; never restored from the table it describes
             with contextlib.suppress(ValueError, TypeError):
-                self._degraded_since[failure_type] = datetime.fromisoformat(ts_str)
+                self._degraded_since.setdefault(failure_type, datetime.fromisoformat(ts_str))
+        if self._hydration_failed:
+            self._hydration_failed = False
+            self._degraded_since.pop(self.HYDRATION_FAILURE, None)
+            _daily_coach_event("degraded_mode_hydration_recovered", severity=EventSeverity.INFO)
         if self._degraded_since:
             _daily_coach_event(
                 "degraded_mode_restored",
@@ -120,10 +150,11 @@ class DegradedModeTracker:
                 failure_types=list(self._degraded_since.keys()),
                 count=len(self._degraded_since),
             )
+        return True
 
     def _persist_state(self, failure_type: str, degraded_since: datetime | None) -> None:
         """Upsert or delete a single failure_type row via DatabaseManager."""
-        if self._db is None:
+        if self._db is None or failure_type == self.HYDRATION_FAILURE:
             return
         try:
             if degraded_since is not None:
@@ -149,6 +180,10 @@ class DegradedModeTracker:
             flags: Mapping of failure_type → bool (True = currently degraded).
             alert_fn: Callable that sends an alert string to the operator.
         """
+        if self._hydration_failed:
+            self._hydrate_from_db()
+        if self._hydration_failed:
+            flags = {**flags, self.HYDRATION_FAILURE: True}
         now = datetime.now(UTC)
         for name, is_degraded in flags.items():
             if is_degraded:
