@@ -1,12 +1,25 @@
 name: CI — Deterministic Tests & Baseline Hardening
 
-# Runner strategy: ubuntu-latest (GitHub-hosted, included in GitHub Pro plan)
+# Runner strategy: ubuntu-latest (GitHub-hosted). The repository is private on
+# GitHub Free: 2000 Actions minutes/month, and every job is billed rounded up to
+# a whole minute. Cost rules for this file:
+#   - few jobs: cheap checks share one job instead of one job each;
+#   - one full pytest run per Python version (coverage gates read its data);
+#   - push runs only on main (PR branches are covered by the pull_request run);
+#   - a newer push to the same PR cancels the older run;
+#   - Python 3.12 runs on main pushes and manual runs, 3.11 on every PR.
+# Every gate from the previous layout is still enforced; only the grouping changed.
 
 on:
   push:
-    branches: ["main", "claude/**"]
+    branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -19,6 +32,7 @@ jobs:
   ruff-phase-a:
     name: Ruff Phase A (full repo, blocking)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -38,6 +52,7 @@ jobs:
   ruff-phase-b:
     name: Ruff Phase B (clean folders, blocking)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [ruff-phase-a]
 
     steps:
@@ -60,35 +75,21 @@ jobs:
 
           python -m ruff check "${BLOCKING_TARGETS[@]}"
 
-  semgrep:
-    name: Semgrep Security Scan
-    runs-on: ubuntu-latest
-    needs: [ruff-phase-a]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Run semgrep rules
-        run: |
-          pip install semgrep \
-            --quiet \
-            --break-system-packages
-          semgrep --config \
-            .semgrep/titan_rules.yaml \
-            titan/ \
-            --error \
-            --quiet
-
   test:
     # PostgreSQL CI matrix absent by design:
     # TITAN_DB_BACKEND=postgres raises NotImplementedError until ADR-0044
     # full parity (Phase 8A). See Opus TR-13 + TECHNICAL_DEBT.md.
+    # Also carries the former determinism, phase4-observability, docs-consistency,
+    # claude-md-integrity and phase8-ci-checks jobs: their test files are part of
+    # the full suite below, and their extra gates run as steps here.
     name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [ruff-phase-a]
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ${{ github.event_name == 'pull_request' && fromJSON('["3.11"]') || fromJSON('["3.11", "3.12"]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -104,19 +105,37 @@ jobs:
         # uv.lock was removed (Opus 2026-05-25). See TD-UV-LOCK-UNUSED.
         run: pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Run full test suite
-        run: pytest --tb=short -q
+      - name: Run full test suite (with coverage data for the gates below)
+        run: |
+          pytest --tb=short -q \
+                 --cov=titan.science \
+                 --cov-report=
+
+      - name: Coverage gate — governance modules (>= 80%)
+        run: |
+          python -m coverage report \
+            --include="titan/science/governance_engine.py,titan/science/governance_contracts.py" \
+            --fail-under=80
+
+      - name: Phase 4 coverage gate (outcome_tracker + intensity_governor) (>= 98%)
+        run: |
+          python -m coverage report \
+            --include="titan/science/outcome_tracker.py,titan/science/intensity_governor.py,titan/science/governance_engine.py" \
+            --fail-under=98
 
       - name: Run governance integration contract tests
-        run: pytest tests/test_governance_integration.py -v
+        run: pytest tests/test_governance_integration.py -v --no-cov
 
-      - name: Run with coverage (governance modules)
+      - name: Run determinism check (3 runs must produce identical exit codes)
         run: |
-          pytest --cov=titan.science.governance_engine \
-                 --cov=titan.science.governance_contracts \
-                 --cov-report=term-missing \
-                 --cov-fail-under=80 \
-                 -q
+          for i in 1 2 3; do
+            echo "=== Run $i ==="
+            pytest tests/test_governance_integration.py test_core_modules.py::TestGovernanceVo2AndFuelingGates -q --tb=short --no-cov
+          done
+
+      - name: Import architecture check
+        run: lint-imports
+        continue-on-error: false
 
       - name: Pylint (advisory)
         run: |
@@ -127,10 +146,6 @@ jobs:
             --output-format=text \
             2>&1 | tail -20 || true
 
-      - name: Import architecture check
-        run: lint-imports
-        continue-on-error: false
-
       - name: Vulture dead code (advisory)
         run: |
           pip install vulture --quiet
@@ -139,35 +154,18 @@ jobs:
             --exclude "titan/api/" \
             2>&1 | head -30 || true
 
-  determinism:
-    name: Determinism Guard
+  invariants:
+    # Former jobs, one step each: env-policy, semgrep, G-CI-02..G-CI-07,
+    # alembic-integrity, alembic-freeze-guard, backup-verify, runner-health.
+    name: Invariants, policy and security scans
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ruff-phase-a]
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Run determinism check (3 runs must produce identical exit codes)
-        run: |
-          for i in 1 2 3; do
-            echo "=== Run $i ==="
-            pytest tests/test_governance_integration.py test_core_modules.py::TestGovernanceVo2AndFuelingGates -q --tb=short
-          done
-
-  env-policy:
-    name: Environment Policy Baseline
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
+          fetch-depth: 0
 
       - name: Enforce governance_engine architecture lock
         run: |
@@ -191,18 +189,6 @@ jobs:
             echo "governance_engine.py unchanged in push range — lock check skipped"
           fi
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Verify Python version is 3.11+
-        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version}'"
-
-      - name: Verify no pinned dependency conflicts
-        run: pip install -r requirements.txt --dry-run 2>&1 | grep -v "^Requirement already"
-
       - name: Check for accidental .env files in commit
         run: |
           if git ls-files | grep -E '\.env$' | grep -v '\.example'; then
@@ -211,225 +197,7 @@ jobs:
           fi
           echo "No .env files found in tracked files — OK"
 
-      - name: Run system check (module health)
-        # Informational: diagnoses import/threading problems; pytest suite is the real gate.
-        run: python system_check.py || true
-
-  dependency-drift-audit:
-    name: Dependency Drift Audit (unpinned + CVE gate)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install runtime + dev dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Audit unpinned dependencies in requirements files
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-
-          requirement_files = (Path("requirements.txt"), Path("requirements-dev.txt"))
-          allowed_prefixes = ("-r", "--", "git+", "http://", "https://")
-          version_pattern = re.compile(r"==")
-          unpinned: list[str] = []
-
-          for path in requirement_files:
-              for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-                  line = raw_line.split("#", maxsplit=1)[0].strip()
-                  if not line or line.startswith(allowed_prefixes):
-                      continue
-                  if not version_pattern.search(line):
-                      unpinned.append(f"{path}:{line_number}:{line}")
-
-          if unpinned:
-              print("Unpinned dependencies detected:")
-              for entry in unpinned:
-                  print(f"- {entry}")
-              raise SystemExit(1)
-
-          print("All audited dependencies are pinned with ==")
-          PY
-
-      - name: CVE-only dependency gate
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.txt \
-            -r requirements-dev.txt \
-            --ignore-vuln GHSA-gc5v-m9x4-r6x2 \
-            --format json \
-            --output /tmp/audit.json || true
-
-          python3 -c "
-          import json, sys
-          data = json.load(open('/tmp/audit.json'))
-          vulns = [
-              v for pkg in data.get('dependencies', [])
-              for v in pkg.get('vulns', [])
-              if v.get('fix_versions')
-          ]
-          if vulns:
-              print('CVEs found:')
-              for v in vulns:
-                  print(f'  {v[\"id\"]}: '
-                        f'{v[\"description\"][:80]}')
-              sys.exit(1)
-          print('No actionable CVEs found.')
-          "
-
-  complexity-budget:
-    name: Complexity Budget (module count ceiling)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Enforce titan module count ceiling
-        run: |
-          python - <<'PY'
-          import pkgutil
-
-          import titan
-          from titan.config.thresholds import MODULE_COUNT_CEILING as module_ceiling
-
-          module_count = len(
-              [
-                  module.name
-                  for module in pkgutil.walk_packages(titan.__path__, prefix="titan.")
-                  if "__" not in module.name
-              ]
-          )
-
-          if module_count > module_ceiling:
-              raise SystemExit(
-                  f"Complexity budget exceeded: titan module count {module_count} > ceiling {module_ceiling}"
-              )
-
-          print(
-              f"Complexity budget check passed: titan module count {module_count} <= ceiling {module_ceiling}"
-          )
-          PY
-
-  phase4-observability:
-    name: Phase 4 Observability & E2E
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Run Phase 4 observability & SLO alert tests
-        run: |
-          pytest tests/test_phase4_observability_flows.py \
-                 tests/test_phase4_slo_alerts.py \
-                 tests/test_telegram_calibration_command.py \
-                 tests/test_outcome_tracker_persistence.py \
-                 tests/test_e2e_regression_suite.py \
-                 tests/test_phase4_hygiene.py \
-                 -v
-
-      - name: Phase 4 coverage gate (outcome_tracker + intensity_governor)
-        run: |
-          pytest --cov=titan.science.outcome_tracker \
-                 --cov=titan.science.intensity_governor \
-                 --cov=titan.science.governance_engine \
-                 --cov-report=term-missing \
-                 --cov-fail-under=98 \
-                 -q
-
-      - name: Smoke checks (import + instantiate + 1 step)
-        run: pytest test_main_smoke.py -q
-
-  docs-consistency:
-    name: Documentation Consistency Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Run documentation consistency tests
-        run: pytest tests/test_documentation_consistency.py -v
-
-  claude-md-integrity:
-    name: CLAUDE.md Integrity Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Run CLAUDE.md integrity tests
-        run: pytest tests/test_claude_md_integrity.py -v
-
-  phase8-ci-checks:
-    name: Phase 8 CI Consistency Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
-
-      - name: Run Phase 8 CI consistency checks
-        run: pytest tests/test_phase8_ci_checks.py -v
-
-  invariant-naive-datetime:
-    name: G-CI-02 No naive datetime.now()
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: No naive datetime.now() in governance-critical modules
+      - name: G-CI-02 No naive datetime.now() in governance-critical modules
         run: |
           # Scope: governance-critical modules only.
           # Pre-existing debt in other modules tracked as OBS-042 (Phase 9).
@@ -447,14 +215,7 @@ jobs:
             exit 1
           fi
 
-  invariant-insert-or-replace:
-    name: G-CI-03 No INSERT OR REPLACE on multi-source tables
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: No INSERT OR REPLACE on multi-source tables
+      - name: G-CI-03 No INSERT OR REPLACE on multi-source tables
         run: |
           # Allowlist: single-source tables permitted to use INSERT OR REPLACE.
           # auth_users and degraded_mode_state are single-writer tables (database.py only).
@@ -471,14 +232,7 @@ jobs:
             exit 1
           fi
 
-  invariant-athlete-id-drop:
-    name: G-CI-04 No del athlete_id in persistence paths
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: No del athlete_id in persistence paths
+      - name: G-CI-04 No del athlete_id in persistence paths
         run: |
           if grep -rn "del athlete_id\|del context\[.athlete_id.\]" \
              titan/ --include="*.py"; then
@@ -486,19 +240,12 @@ jobs:
             exit 1
           fi
 
-  invariant-nan-test-coverage:
-    name: G-CI-05 Every governance gate has NaN boundary test
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Every governance gate has NaN boundary test
+      - name: G-CI-05 Every governance gate has NaN boundary test
         run: |
           # Extract gate names from governance_engine.py
           # Each gate function must have a corresponding test_*_nan_* in
           # test_governance_mutation.py
-          python - <<'EOF'
+          python3 - <<'EOF'
           import ast, sys, re
           from pathlib import Path
 
@@ -527,16 +274,9 @@ jobs:
               print(f"OK: {len(gates)} gates, all have NaN tests")
           EOF
 
-  invariant-optimistic-defaults:
-    name: G-CI-06 No optimistic .get() defaults in governance
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: No optimistic .get() defaults in governance
+      - name: G-CI-06 No optimistic .get() defaults in governance
         run: |
-          python - <<'EOF'
+          python3 - <<'EOF'
           import ast, sys
           from pathlib import Path
 
@@ -576,59 +316,55 @@ jobs:
               print("OK: No optimistic governance defaults found")
           EOF
 
-  dependency-audit:
-    name: Dependency CVE Audit
-    runs-on: ubuntu-latest
+      - name: Alembic freeze guard
+        run: |
+          # Alembic must not be invoked in SQLite mode
+          # This guard prevents accidental schema collision
+          if grep -r "alembic upgrade" scripts/ \
+             Makefile 2>/dev/null | \
+             grep -v "postgres\|POSTGRES"; then
+            echo "ERROR: alembic upgrade found without postgres context. See alembic/README_FREEZE.md"
+            exit 1
+          fi
+          echo "Alembic freeze: OK"
 
-    steps:
-      - uses: actions/checkout@v4
+      - name: Assert alembic freeze notice intact
+        run: |
+          grep -q "FREEZE" \
+            alembic/README_FREEZE.md || {
+            echo "FAIL: Freeze notice \
+          removed from alembic/README_FREEZE.md"
+            exit 1
+          }
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
-      - name: Install pip-audit
-        run: pip install pip-audit
+      - name: Verify Python version is 3.11+
+        run: python -c "import sys; assert sys.version_info >= (3, 11), f'Python 3.11+ required, got {sys.version}'"
 
-      - name: Run CVE audit
-        # GHSA-gc5v-m9x4-r6x2 is tracked manually in requirements.txt (requests bump)
-        run: pip-audit -r requirements.txt --ignore-vuln GHSA-gc5v-m9x4-r6x2
+      - name: Verify no pinned dependency conflicts
+        # Runs before install: once installed, every line is "Requirement already",
+        # grep -v prints nothing and exits 1.
+        run: pip install -r requirements.txt --dry-run 2>&1 | grep -v "^Requirement already"
 
-  invariant-athlete-isolation:
-    name: G-CI-07 Athlete isolation invariant
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install deps
+      - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
-      - name: Athlete isolation invariant
+      - name: Run system check (module health)
+        # Informational: diagnoses import/threading problems; pytest suite is the real gate.
+        run: python system_check.py || true
+
+      - name: Check pytest available
+        run: python -m pytest --version
+
+      - name: G-CI-07 Athlete isolation invariant
         run: pytest tests/test_athlete_isolation_invariant.py -v --tb=short
 
-  alembic-integrity:
-    name: Alembic Migration Integrity
-    runs-on: ubuntu-latest
-    continue-on-error: false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install deps
-        run: |
-          pip install alembic sqlalchemy \
-            --quiet \
-            --break-system-packages
-      - name: Verify migration chain
+      - name: Verify alembic migration chain
         run: |
           python3 - <<'PYEOF'
           from alembic.config import Config
@@ -645,40 +381,8 @@ jobs:
                 f'{len(revs)} revisions, '
                 f'head={heads[0][:8]}')
           PYEOF
-      - name: Assert freeze notice intact
-        run: |
-          grep -q "FREEZE" \
-            alembic/README_FREEZE.md || {
-            echo "FAIL: Freeze notice \
-          removed from alembic/README_FREEZE.md"
-            exit 1
-          }
 
-  alembic-freeze-guard:
-    name: Alembic freeze guard (SQLite collision prevention)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Alembic freeze guard
-        run: |
-          # Alembic must not be invoked in SQLite mode
-          # This guard prevents accidental schema collision
-          if grep -r "alembic upgrade" scripts/ \
-             Makefile 2>/dev/null | \
-             grep -v "postgres\|POSTGRES"; then
-            echo "ERROR: alembic upgrade found without postgres context. See alembic/README_FREEZE.md"
-            exit 1
-          fi
-          echo "Alembic freeze: OK"
-
-  backup-verify:
-    name: Backup Integrity Verification
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create test DB + backup
+      - name: Backup integrity — create test DB + backup
         run: |
           python3 -c "
           import sqlite3, pathlib
@@ -693,13 +397,100 @@ jobs:
           import subprocess
           subprocess.run(['bash', 'scripts/backup.sh', str(d)], check=True)
           "
-      - name: Verify backup integrity
-        run: |
-          python3 scripts/verify_backup.py /tmp/titan_test
 
-  runner-health:
-    name: Runner Health Check
+      - name: Backup integrity — verify
+        run: python3 scripts/verify_backup.py /tmp/titan_test
+
+      - name: Semgrep security scan
+        run: |
+          pip install semgrep --quiet
+          semgrep --config \
+            .semgrep/titan_rules.yaml \
+            titan/ \
+            --error \
+            --quiet
+
+  dependency-drift-audit:
+    name: Dependency Drift Audit (unpinned + CVE gate)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Audit unpinned dependencies in requirements files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          requirement_files = (Path("requirements.txt"), Path("requirements-dev.txt"))
+          allowed_prefixes = ("-r", "--", "git+", "http://", "https://")
+          version_pattern = re.compile(r"==")
+          unpinned: list[str] = []
+
+          for path in requirement_files:
+              for line_number, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                  line = raw_line.split("#", maxsplit=1)[0].strip()
+                  if not line or line.startswith(allowed_prefixes):
+                      continue
+                  if not version_pattern.search(line):
+                      unpinned.append(f"{path}:{line_number}:{line}")
+
+          if unpinned:
+              print("Unpinned dependencies detected:")
+              for entry in unpinned:
+                  print(f"- {entry}")
+              raise SystemExit(1)
+
+          print("All audited dependencies are pinned with ==")
+          PY
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: CVE-only dependency gate
+        # pip-audit resolves the requirement files in its own isolated env;
+        # installing the project here is not needed.
+        run: |
+          pip-audit -r requirements.txt \
+            -r requirements-dev.txt \
+            --ignore-vuln GHSA-gc5v-m9x4-r6x2 \
+            --format json \
+            --output /tmp/audit.json || true
+
+          python3 -c "
+          import json, sys
+          data = json.load(open('/tmp/audit.json'))
+          vulns = [
+              v for pkg in data.get('dependencies', [])
+              for v in pkg.get('vulns', [])
+              if v.get('fix_versions')
+          ]
+          if vulns:
+              print('CVEs found:')
+              for v in vulns:
+                  print(f'  {v[\"id\"]}: '
+                        f'{v[\"description\"][:80]}')
+              sys.exit(1)
+          print('No actionable CVEs found.')
+          "
+
+      - name: Runtime CVE audit (former dependency-audit job)
+        # GHSA-gc5v-m9x4-r6x2 is tracked manually in requirements.txt (requests bump)
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-gc5v-m9x4-r6x2
+
+  complexity-budget:
+    name: Complexity Budget (module count ceiling)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -712,8 +503,28 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Check Python version
-        run: python --version
+      - name: Enforce titan module count ceiling
+        run: |
+          python - <<'PY'
+          import pkgutil
 
-      - name: Check pytest available
-        run: python -m pytest --version
+          import titan
+          from titan.config.thresholds import MODULE_COUNT_CEILING as module_ceiling
+
+          module_count = len(
+              [
+                  module.name
+                  for module in pkgutil.walk_packages(titan.__path__, prefix="titan.")
+                  if "__" not in module.name
+              ]
+          )
+
+          if module_count > module_ceiling:
+              raise SystemExit(
+                  f"Complexity budget exceeded: titan module count {module_count} > ceiling {module_ceiling}"
+              )
+
+          print(
+              f"Complexity budget check passed: titan module count {module_count} <= ceiling {module_ceiling}"
+          )
+          PY
