@@ -33,7 +33,7 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | Flaky τεστ Hypothesis | #900 | Το `test_gap_flat_unchanged` παράγει απευθείας επίπεδες κλίσεις αντί να πετά σχεδόν όλες τις τιμές με `assume()`· με άτυχο seed έπεφτε στο health check του Hypothesis |
 | #11 Governance record | #899 | Κάθε T-PRA γραμμή του AGENTS §30 (32 items) έχει πλέον εγγραφή στο `TECHNICAL_DEBT.md` με κατάσταση και σε ποια εργασία του πλάνου είναι προγραμματισμένη· νέο τεστ το φυλάει· τα 3 παλιά reports της ρίζας μεταφέρθηκαν στο `archive/` |
 | Διόρθωση Docker worker | #901 | Ο worker του Docker έφτιαχνε το `DailyCoach` με λάθος ορίσματα (π.χ. `GarminSync(athlete_max_hr=...)`, `WeeklyPlanGenerator(db=...)`), οπότε κάθε πρωινός κύκλος αποτύγχανε σιωπηλά και η ρουτίνα των 07:00 UTC δεν έτρεχε ποτέ· τώρα χτίζεται όπως στο `titan/main.py`· 3 νέα τεστ που αποτυγχάνουν στον παλιό κώδικα |
-| #10 Docs που λένε την αλήθεια | #PRNUM | README ξαναγραμμένο με βάση τον κώδικα (Python 3.12, Docker, ώρες σε UTC, σωστά όρια TSB/ACWR/dew point, `GARMIN_EMAIL`, χωρίς υπόσχεση release)· ένας `docs/DEPLOYMENT_GUIDE.md` με τον ελληνικό οδηγό ρύθμισης διορθωμένο· το παλιό `ARCHITECTURE.md` της ρίζας στο `archive/` |
+| #10 Docs που λένε την αλήθεια | #902 | README ξαναγραμμένο με βάση τον κώδικα (Python 3.12, Docker, ώρες σε UTC, σωστά όρια TSB/ACWR/dew point, `GARMIN_EMAIL`, χωρίς υπόσχεση release)· ένας `docs/DEPLOYMENT_GUIDE.md` με τον ελληνικό οδηγό ρύθμισης διορθωμένο· το παλιό `ARCHITECTURE.md` της ρίζας στο `archive/` |
 
 ## Σε εξέλιξη
 
