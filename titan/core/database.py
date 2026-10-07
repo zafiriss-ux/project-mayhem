@@ -22,6 +22,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
 from titan.core.athlete import UniversalAthleteProfile
+from titan.core.repositories.access import AccessRepository
 from titan.core.repositories.governance import GovernanceRepository
 from titan.core.repositories.operations import OperationsRepository
 from titan.core.repositories.physiology import PhysiologyRepository
@@ -1425,74 +1426,18 @@ class DatabaseManager:
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
     ) -> bool:
-        """Increment failed login count for username; lock account when threshold reached.
-
-        Returns True if the account is now locked out.
-        """
-        import time
-        now = time.time()
-        with self._lock:
-            self._ensure_open_locked()
-            c = self.conn.cursor()
-            c.execute(
-                """
-                INSERT INTO login_lockout (username, failed_count, last_attempt_ts)
-                VALUES (?, 1, ?)
-                ON CONFLICT(username) DO UPDATE SET
-                    failed_count = failed_count + 1,
-                    last_attempt_ts = excluded.last_attempt_ts
-                """,
-                (username, now),
-            )
-            c.execute(
-                "SELECT failed_count FROM login_lockout WHERE username = ?",
-                (username,),
-            )
-            row = c.fetchone()
-            failed_count = row[0] if row else 1
-            if failed_count >= max_attempts:
-                c.execute(
-                    "UPDATE login_lockout SET locked_until_ts = ? WHERE username = ?",
-                    (now + lockout_duration_seconds, username),
-                )
-            self.conn.commit()
-            return failed_count >= max_attempts
+        """Increment failed login count for username; lock account when threshold reached."""
+        return self._access.record_failed_login(
+            username=username, lockout_duration_seconds=lockout_duration_seconds, max_attempts=max_attempts
+        )
 
     def is_login_locked_out(self, username: str) -> bool:
         """Return True if the account has an active lockout that has not yet expired."""
-        import time
-        now = time.time()
-        with self._lock:
-            self._ensure_open_locked()
-            c = self.conn.cursor()
-            c.execute(
-                "SELECT locked_until_ts FROM login_lockout WHERE username = ?",
-                (username,),
-            )
-            row = c.fetchone()
-            if not row or row[0] is None:
-                return False
-            if now >= row[0]:
-                c.execute(
-                    "UPDATE login_lockout SET locked_until_ts = NULL, failed_count = 0 "
-                    "WHERE username = ?",
-                    (username,),
-                )
-                self.conn.commit()
-                return False
-            return True
+        return self._access.is_login_locked_out(username=username)
 
     def clear_login_lockout(self, username: str) -> None:
         """Reset failed login count and lockout timestamp for username."""
-        with self._lock:
-            self._ensure_open_locked()
-            c = self.conn.cursor()
-            c.execute(
-                "UPDATE login_lockout SET failed_count = 0, locked_until_ts = NULL "
-                "WHERE username = ?",
-                (username,),
-            )
-            self.conn.commit()
+        self._access.clear_login_lockout(username=username)
 
     def get_nutrition_preferences(self, athlete_id: str = 'owner') -> dict | None:
         """Return nutrition preferences for athlete_id, or None if not set."""
@@ -1558,7 +1503,7 @@ class DatabaseManager:
             athlete_id=athlete_id, window_days=window_days
         )
 
-    # --- Auth User / Token CRUD (HD-04 / T5-70) ---
+    # --- Auth User / Token CRUD (HD-04 / T5-70) (titan/core/repositories/access.py) ---
 
     def upsert_auth_user(
         self,
@@ -1570,149 +1515,57 @@ class DatabaseManager:
         is_active: bool = True,
     ) -> None:
         """Insert or replace an auth user record."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "INSERT OR REPLACE INTO auth_users "
-                "(id, username, password_hash, role, athlete_id, is_active) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (user_id, username, password_hash, role, athlete_id, int(is_active)),
-            )
-            self.conn.commit()
+        self._access.upsert_auth_user(
+            user_id=user_id, username=username, password_hash=password_hash, role=role, athlete_id=athlete_id, is_active=is_active
+        )
 
     def get_auth_user_by_id(self, user_id: str) -> dict | None:
         """Return the auth_users row for the given user_id, or None."""
-        with self._lock:
-            row = self.conn.cursor().execute(
-                "SELECT id, username, password_hash, role, athlete_id, is_active "
-                "FROM auth_users WHERE id = ?",
-                (user_id,),
-            ).fetchone()
-        if row is None:
-            return None
-        return {
-            "id": row[0],
-            "username": row[1],
-            "password_hash": row[2],
-            "role": row[3],
-            "athlete_id": row[4],
-            "is_active": bool(row[5]),
-        }
+        return self._access.get_auth_user_by_id(user_id=user_id)
 
     def get_auth_user_by_username(self, username: str) -> dict | None:
         """Return the auth_users row for the given username, or None."""
-        with self._lock:
-            row = self.conn.cursor().execute(
-                "SELECT id, username, password_hash, role, athlete_id, is_active "
-                "FROM auth_users WHERE username = ?",
-                (username,),
-            ).fetchone()
-        if row is None:
-            return None
-        return {
-            "id": row[0],
-            "username": row[1],
-            "password_hash": row[2],
-            "role": row[3],
-            "athlete_id": row[4],
-            "is_active": bool(row[5]),
-        }
+        return self._access.get_auth_user_by_username(username=username)
 
     def insert_auth_token(
         self, jti: str, user_id: str, issued_at: str, expires_at: str
     ) -> None:
         """Insert a new refresh token row (revoked=0 by default)."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "INSERT OR REPLACE INTO auth_tokens "
-                "(id, user_id, issued_at, expires_at, revoked) VALUES (?, ?, ?, ?, 0)",
-                (jti, user_id, issued_at, expires_at),
-            )
-            self.conn.commit()
+        self._access.insert_auth_token(
+            jti=jti, user_id=user_id, issued_at=issued_at, expires_at=expires_at
+        )
 
     def get_auth_token(self, jti: str) -> dict | None:
         """Return the auth_tokens row for the given jti, or None."""
-        with self._lock:
-            row = self.conn.cursor().execute(
-                "SELECT id, user_id, issued_at, expires_at, revoked "
-                "FROM auth_tokens WHERE id = ?",
-                (jti,),
-            ).fetchone()
-        if row is None:
-            return None
-        return {
-            "id": row[0],
-            "user_id": row[1],
-            "issued_at": row[2],
-            "expires_at": row[3],
-            "revoked": bool(row[4]),
-        }
+        return self._access.get_auth_token(jti=jti)
 
     def set_auth_token_revoked(self, jti: str) -> None:
         """Mark a refresh token as revoked."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "UPDATE auth_tokens SET revoked = 1 WHERE id = ?",
-                (jti,),
-            )
-            self.conn.commit()
+        self._access.set_auth_token_revoked(jti=jti)
 
     def delete_expired_auth_tokens(self, before_iso: str) -> None:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
-        with self._lock:
-            self.conn.cursor().execute(
-                "DELETE FROM auth_tokens WHERE expires_at < ?",
-                (before_iso,),
-            )
-            self.conn.commit()
+        self._access.delete_expired_auth_tokens(before_iso=before_iso)
 
     def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
         """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""
-        with self._lock:
-            rows = self.conn.cursor().execute(
-                "SELECT id, issued_at FROM auth_tokens "
-                "WHERE user_id = ? AND revoked = 0 AND expires_at > ?",
-                (user_id, now_iso),
-            ).fetchall()
-        return [{"id": r[0], "issued_at": r[1]} for r in rows]
+        return self._access.get_active_auth_tokens_for_user(user_id=user_id, now_iso=now_iso)
 
-    # --- Coach-Athlete RBAC Scoping (ADR-0054 / T5-110) ---
+    # --- Coach-Athlete RBAC Scoping (ADR-0054 / T5-110) (titan/core/repositories/access.py) ---
 
     def _get_all_athlete_ids(self) -> list[str]:
         """Return all athlete_ids from the athletes table."""
-        with self._lock:
-            self._ensure_open_locked()
-            rows = self.conn.cursor().execute(
-                "SELECT athlete_id FROM athletes"
-            ).fetchall()
-        return [r[0] for r in rows]
+        return self._access._get_all_athlete_ids()
 
     def get_assigned_athletes(self, coach_id: str) -> list[str]:
-        """Return athlete_ids the coach is permitted to access.
-
-        'system' coach bypasses the assignment table and returns all athletes.
-        """
-        if coach_id == "system":
-            return self._get_all_athlete_ids()
-        with self._lock:
-            self._ensure_open_locked()
-            rows = self.conn.cursor().execute(
-                "SELECT athlete_id FROM coach_athlete_assignments WHERE coach_id = ?",
-                (coach_id,),
-            ).fetchall()
-        return [r[0] for r in rows]
+        """Return athlete_ids the coach is permitted to access."""
+        return self._access.get_assigned_athletes(coach_id=coach_id)
 
     def assign_athlete_to_coach(self, coach_id: str, athlete_id: str) -> None:
         """Grant coach_id access to athlete_id (idempotent via INSERT OR IGNORE)."""
-        with self._lock:
-            self._ensure_open_locked()
-            self.conn.cursor().execute(
-                "INSERT OR IGNORE INTO coach_athlete_assignments "
-                "(coach_id, athlete_id, assigned_at) VALUES (?, ?, datetime('now'))",
-                (coach_id, athlete_id),
-            )
-            self.conn.commit()
+        self._access.assign_athlete_to_coach(coach_id=coach_id, athlete_id=athlete_id)
 
-    # --- Coach audit log (T5-111) ---
+    # --- Coach audit log (T5-111) (titan/core/repositories/access.py) ---
 
     def log_coach_action(
         self,
@@ -1723,16 +1576,9 @@ class DatabaseManager:
         resource: str = "",
     ) -> None:
         """Persist coach action to coach_audit_log. Survives process restart (T5-111)."""
-        with self._lock:
-            self._ensure_open_locked()
-            self.conn.cursor().execute(
-                """INSERT INTO coach_audit_log
-                   (coach_id, athlete_id, action_type, resource, action_detail,
-                    performed_at)
-                   VALUES (?, ?, ?, ?, ?, datetime('now'))""",
-                (coach_id, target_athlete_id, action_type, resource, action_detail),
-            )
-            self.conn.commit()
+        self._access.log_coach_action(
+            coach_id=coach_id, action_type=action_type, target_athlete_id=target_athlete_id, action_detail=action_detail, resource=resource
+        )
 
     def get_coach_audit_log(
         self,
@@ -1740,27 +1586,7 @@ class DatabaseManager:
         limit: int = 100,
     ) -> list[dict]:
         """Retrieve audit log entries ordered newest-first."""
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            if coach_id:
-                cursor.execute(
-                    """SELECT * FROM coach_audit_log
-                       WHERE coach_id = ?
-                       ORDER BY performed_at DESC
-                       LIMIT ?""",
-                    (coach_id, limit),
-                )
-            else:
-                cursor.execute(
-                    """SELECT * FROM coach_audit_log
-                       ORDER BY performed_at DESC
-                       LIMIT ?""",
-                    (limit,),
-                )
-            rows = cursor.fetchall()
-            cols = [d[0] for d in cursor.description]
-        return [dict(zip(cols, row, strict=True)) for row in rows]
+        return self._access.get_coach_audit_log(coach_id=coach_id, limit=limit)
 
     def get_table_names(self) -> list[str]:
         """Return all table names present in the database."""
@@ -1963,6 +1789,10 @@ class DatabaseManager:
     @functools.cached_property
     def _operations(self) -> OperationsRepository:
         return OperationsRepository(self)
+
+    @functools.cached_property
+    def _access(self) -> AccessRepository:
+        return AccessRepository(self)
 
     def update_shoe_mileage(self, shoe_id: int, distance_km: float, date: str) -> None:
         """Add a run's distance to a shoe and set its last-used date."""

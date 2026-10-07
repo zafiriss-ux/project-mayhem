@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 import pytest
 
 from titan.core.database import DatabaseManager
+from titan.core.repositories.access import AccessRepository
 from titan.core.repositories.governance import GovernanceRepository
 from titan.core.repositories.operations import OperationsRepository
 from titan.core.repositories.physiology import PhysiologyRepository
@@ -38,11 +39,19 @@ _OPERATIONS_METHODS = (
     "get_last_sync_outcome", "get_last_garmin_sync_timestamp", "backup_database",
     "_record_backup_failure", "_prune_old_backups", "check_integrity",
 )
+_ACCESS_METHODS = (
+    "record_failed_login", "is_login_locked_out", "clear_login_lockout", "upsert_auth_user",
+    "get_auth_user_by_id", "get_auth_user_by_username", "insert_auth_token", "get_auth_token",
+    "set_auth_token_revoked", "delete_expired_auth_tokens", "get_active_auth_tokens_for_user",
+    "_get_all_athlete_ids", "get_assigned_athletes", "assign_athlete_to_coach", "log_coach_action",
+    "get_coach_audit_log",
+)
 _FACADES = (
     [(TrainingRepository, n) for n in _TRAINING_METHODS]
     + [(PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS]
     + [(GovernanceRepository, n) for n in _GOVERNANCE_METHODS]
     + [(OperationsRepository, n) for n in _OPERATIONS_METHODS]
+    + [(AccessRepository, n) for n in _ACCESS_METHODS]
 )
 
 
@@ -234,3 +243,44 @@ def test_degraded_mode_state_and_nutrition_preferences_round_trip(db) -> None:
     db.save_nutrition_preferences(prefs={"dietary_style": "vegetarian"})
     prefs = db.get_nutrition_preferences()
     assert (prefs["dietary_style"], prefs["meal_frequency"]) == ("vegetarian", 3)
+
+
+@pytest.mark.unit
+def test_lockout_engages_at_max_attempts_and_clears(db) -> None:
+    assert db.record_failed_login("zaf", 60.0, max_attempts=2) is False
+    assert db.is_login_locked_out("zaf") is False
+    assert db.record_failed_login("zaf", 60.0, max_attempts=2) is True
+    assert db.is_login_locked_out("zaf") is True
+    db.clear_login_lockout("zaf")
+    assert db.is_login_locked_out("zaf") is False
+
+
+@pytest.mark.unit
+def test_auth_users_and_refresh_tokens_round_trip(db) -> None:
+    db.upsert_auth_user("u1", "zaf", "hash", "coach", None)
+    db.insert_auth_token("j1", "u1", "2026-10-07T00:00:00", "2026-10-08T00:00:00")
+    db.insert_auth_token("j2", "u1", "2026-10-07T00:00:00", "2026-10-06T00:00:00")
+    db.set_auth_token_revoked("j1")
+
+    assert db.get_auth_user_by_username("zaf") == db.get_auth_user_by_id("u1")
+    assert db.get_auth_user_by_id("u1")["is_active"] is True
+    assert db.get_auth_token("j1")["revoked"] is True
+    assert db.get_active_auth_tokens_for_user("u1", "2026-10-07T12:00:00") == []
+    db.delete_expired_auth_tokens("2026-10-07T12:00:00")
+    assert db.get_auth_token("j2") is None
+    assert db.get_auth_user_by_id("missing") is None
+
+
+@pytest.mark.unit
+def test_coach_scope_is_only_the_assigned_athletes(db) -> None:
+    assert db.get_assigned_athletes("coach-1") == []  # nothing assigned: no access
+    db.assign_athlete_to_coach("coach-1", "a1")
+    db.assign_athlete_to_coach("coach-1", "a1")  # idempotent
+    assert db.get_assigned_athletes("coach-1") == ["a1"]
+    assert db.get_assigned_athletes("system") == db._get_all_athlete_ids() == ["owner"]
+
+    db.log_coach_action("coach-1", "VIEW", "a1", resource="plan")
+    db.log_coach_action("coach-2", "VIEW", "owner")
+    [entry] = db.get_coach_audit_log(coach_id="coach-1")
+    assert (entry["athlete_id"], entry["resource"]) == ("a1", "plan")
+    assert len(db.get_coach_audit_log()) == 2
