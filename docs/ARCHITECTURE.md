@@ -59,6 +59,7 @@ launcher/main.py
 | `titan/core/repositories/training.py` | `TrainingRepository` — training-domain SQL (training log and CTL/ATL/TSB load history, shoes, personal bests, CS performances) behind the `DatabaseManager` facade (plan #18, one domain per PR) |
 | `titan/core/repositories/physiology.py` | `PhysiologyRepository` — physiology-domain SQL (daily metrics, HRV, resting HR, HRR, glycogen debt, weight history) behind the `DatabaseManager` facade (plan #18) |
 | `titan/core/repositories/governance.py` | `GovernanceRepository` — governance-domain SQL (override audit log, governance decisions and outcomes, per-athlete threshold offsets, cold start, calibration rates) behind the `DatabaseManager` facade (plan #18) |
+| `titan/core/repositories/operations.py` | `OperationsRepository` — operations-domain SQL (sync outcomes and Garmin data freshness, degraded-mode state, nutrition preferences) behind the `DatabaseManager` facade (plan #18) |
 | `titan/core/athlete.py` | `UniversalAthleteProfile` — athlete profile loading and validation |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC and SQLite implementation |
 | `titan/core/periodization.py` | Periodization phase state |

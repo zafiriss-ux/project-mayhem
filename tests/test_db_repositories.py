@@ -10,6 +10,7 @@ import pytest
 
 from titan.core.database import DatabaseManager
 from titan.core.repositories.governance import GovernanceRepository
+from titan.core.repositories.operations import OperationsRepository
 from titan.core.repositories.physiology import PhysiologyRepository
 from titan.core.repositories.training import TrainingRepository
 
@@ -31,10 +32,16 @@ _GOVERNANCE_METHODS = (
     "delete_threshold_offset", "get_completion_rate", "is_athlete_cold_start",
     "check_and_exit_cold_start", "increment_cold_start_sessions", "get_false_negative_rate",
 )
+_OPERATIONS_METHODS = (
+    "get_nutrition_preferences", "save_nutrition_preferences", "get_all_degraded_mode_states",
+    "upsert_degraded_mode_state", "delete_degraded_mode_state", "record_sync_outcome",
+    "get_last_sync_outcome", "get_last_garmin_sync_timestamp",
+)
 _FACADES = (
     [(TrainingRepository, n) for n in _TRAINING_METHODS]
     + [(PhysiologyRepository, n) for n in _PHYSIOLOGY_METHODS]
     + [(GovernanceRepository, n) for n in _GOVERNANCE_METHODS]
+    + [(OperationsRepository, n) for n in _OPERATIONS_METHODS]
 )
 
 
@@ -188,3 +195,41 @@ def test_threshold_offsets_per_athlete_and_hard_stops_refused(db) -> None:
 @pytest.mark.unit
 def test_unknown_athlete_is_treated_as_cold_start(db) -> None:
     assert db.is_athlete_cold_start("nobody") is True
+
+
+@pytest.mark.unit
+def test_sync_outcome_keeps_the_last_success_after_a_failure(db) -> None:
+    ok = datetime(2026, 10, 5, 6, 0, tzinfo=UTC)
+    failed = datetime(2026, 10, 6, 6, 0, tzinfo=UTC)
+    db.record_sync_outcome(source="garmin", attempted_at=ok, success=True)
+    db.record_sync_outcome(source="garmin", attempted_at=failed, success=False, error_class="Timeout")
+
+    assert db.get_last_sync_outcome("garmin") == {
+        "last_attempt_ts": failed, "last_success_ts": ok,
+        "last_sync_ok": False, "last_error_class": "Timeout",
+    }
+    assert db.get_last_sync_outcome("strava") is None
+
+
+@pytest.mark.unit
+def test_garmin_freshness_is_the_newest_date_in_either_table(db) -> None:
+    assert db.get_last_garmin_sync_timestamp() is None
+    db.save_daily_metric("2026-10-03", hrv=60.0)
+    db.save_session("2026-10-04", "EASY", 8.0, 2640, rpe=3)
+    assert db.get_last_garmin_sync_timestamp() == datetime(2026, 10, 4, tzinfo=UTC)
+
+
+@pytest.mark.unit
+def test_degraded_mode_state_and_nutrition_preferences_round_trip(db) -> None:
+    db.upsert_degraded_mode_state("GARMIN_API_UNAVAILABLE", "2026-10-05T06:00:00+00:00")
+    db.upsert_degraded_mode_state("GARMIN_API_UNAVAILABLE", "2026-10-06T06:00:00+00:00")
+    assert db.get_all_degraded_mode_states() == [
+        ("GARMIN_API_UNAVAILABLE", "2026-10-06T06:00:00+00:00")
+    ]
+    db.delete_degraded_mode_state("GARMIN_API_UNAVAILABLE")
+    assert db.get_all_degraded_mode_states() == []
+
+    assert db.get_nutrition_preferences() is None
+    db.save_nutrition_preferences(prefs={"dietary_style": "vegetarian"})
+    prefs = db.get_nutrition_preferences()
+    assert (prefs["dietary_style"], prefs["meal_frequency"]) == ("vegetarian", 3)
