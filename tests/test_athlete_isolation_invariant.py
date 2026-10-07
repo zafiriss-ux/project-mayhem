@@ -130,8 +130,10 @@ def test_outcome_tracker_query_methods_accept_athlete_id() -> None:
 @pytest.mark.unit
 def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_global() -> None:
     """New CREATE TABLE statements in migrations must include athlete_id by default."""
-    tree = _parse(_DATABASE_FILE)
+    # Plan #18: the migration steps live in repositories/migrations.py.
+    tree = _parse(_REPOSITORIES_DIR / "migrations.py")
     violations: list[str] = []
+    create_tables_seen = 0
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef) or not node.name.startswith("_apply_v"):
@@ -145,6 +147,7 @@ def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_
             upper = sql.upper()
             if "CREATE TABLE" not in upper:
                 continue
+            create_tables_seen += 1
 
             parts = upper.split()
             table_name = None
@@ -167,6 +170,7 @@ def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_
                 f"{node.name} line {child.lineno}: CREATE TABLE without athlete_id ({table_name or 'UNKNOWN_TABLE'})"
             )
 
+    assert create_tables_seen > 0, "no migration CREATE TABLE found: the scan is looking at the wrong file"
     assert not violations, (
         "Migration CREATE TABLE statements must include athlete_id unless table is explicitly global:\n"
         + "\n".join(violations)

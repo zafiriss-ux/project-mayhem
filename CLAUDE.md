@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (74 modules, excl. __init__/__main__), ceiling 87.
+Main package (75 modules, excl. __init__/__main__), ceiling 87.
 
 | Package | Responsibility |
 |---------|----------------|
@@ -53,7 +53,7 @@ Main package (74 modules, excl. __init__/__main__), ceiling 87.
 | `docs/ROADMAP.MD` | Phase 27 OPEN (ACTIVE, 2026-06-07) — GO 2026-06-09 |
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
-| `titan/core/database.py` | DatabaseManager, migrations |
+| `titan/core/database.py` | DatabaseManager, SCHEMA_VERSION (steps in `titan/core/repositories/migrations.py`) |
 | `titan/orchestration/daily_coach.py` | DailyCoach v5.8 |
 
 ## ADRs (`docs/adr/`)
