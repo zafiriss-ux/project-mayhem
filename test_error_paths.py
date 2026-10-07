@@ -299,6 +299,9 @@ class TestDatabaseManagerErrorPaths:
                     return ("wal",)
                 return None
 
+            def fetchall(self):
+                return []
+
         class FakeConnection:
             def __init__(self):
                 self.cursor_obj = FakeCursor()
