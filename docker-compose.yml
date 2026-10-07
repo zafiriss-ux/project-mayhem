@@ -39,6 +39,18 @@ services:
       - TITAN_DATA_DIR=/data
       - TITAN_BACKUP_DIR=/backups
       - TITAN_DB_BACKEND=sqlite
+    # AGENTS INV-23: unhealthy once the worker's heartbeat is older than 2x its 60s tick.
+    healthcheck:
+      test: ["CMD", "python", "scripts/worker_healthcheck.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 2
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
     depends_on:
       titan-api:

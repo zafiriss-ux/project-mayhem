@@ -53,6 +53,17 @@ _BACKUP_FAIL = Counter(
     "Database backup runs that failed or produced an unverifiable artifact (DR-02)",
 )
 
+_THREAD_DIED = Counter(
+    "titan_worker_thread_died_total",
+    "Supervised worker threads found dead by the watchdog (INV-23)",
+    ["thread"],
+)
+
+_CALLBACK_ERROR = Counter(
+    "titan_scheduler_callback_error_total",
+    "Per-athlete scheduler callbacks that raised (INV-23)",
+)
+
 
 class MetricsCollector:
     def __init__(self, sink: str = "log") -> None:
@@ -71,12 +82,16 @@ class MetricsCollector:
             "api_startup": _API_STARTUP,
             "audit_write_failure": _AUDIT_FAIL,
             "backup_failure_total": _BACKUP_FAIL,
+            "worker_thread_died_total": _THREAD_DIED,
+            "scheduler_callback_error_total": _CALLBACK_ERROR,
         }
         if name in _COUNTERS:
             c = _COUNTERS[name]
             if name == "garmin_sync_success":
                 athlete = (labels or {}).get("athlete", "owner")
                 c.labels(athlete=athlete, status="success").inc()
+            elif name == "worker_thread_died_total":
+                c.labels(thread=(labels or {}).get("thread", "unknown")).inc()
             else:
                 c.inc()
 

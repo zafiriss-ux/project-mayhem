@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3075 tests all green (3060 passed, 6 skipped — 2026-06-21)
+**Historical snapshot:** 3126 tests all green (3120 passed, 6 skipped — 2026-10-07, GitHub CI)
 
 Update after every commit adding/removing tests:
 
@@ -112,7 +112,7 @@ Main package (69 modules, excl. __init__/__main__), ceiling 80.
 - `0057` — Docker Deployment
 - `0058` — DailyCoach Decomposition (Phase A: EngineRegistry)
 - `0059` — Unified pytest Execution Model
-- `0060` — Durable Worker State (Proposed)
+- `0060` — Durable Worker State
 
 ## Docker
 

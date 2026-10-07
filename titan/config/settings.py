@@ -12,6 +12,11 @@ class TitanSettings(BaseSettings):
     TITAN_BACKUP_DIR: str = ""
     BACKUP_RETENTION_DAILY_DAYS: int = 7
     BACKUP_RETENTION_WEEKLY_COUNT: int = 4
+    # AGENTS INV-23: the worker's supervision tick writes a heartbeat; the compose
+    # healthcheck fails once it is older than 2x the tick. A routine running longer
+    # than the budget stops the heartbeat.
+    WORKER_HEARTBEAT_INTERVAL_S: int = 60
+    WORKER_ROUTINE_BUDGET_S: int = 1800
     GARMIN_EMAIL: SecretStr = SecretStr("")
     GARMIN_PASSWORD: SecretStr = SecretStr("")
     TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")

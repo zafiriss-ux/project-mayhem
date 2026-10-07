@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import datetime as _dt
 import logging
+import os
 import signal as _signal
 import sys
 import threading
+import time
 from io import IOBase
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -40,9 +42,20 @@ def _handle_sigterm(signum, frame):  # noqa: ANN001
     _shutdown.set()
 
 
+HEARTBEAT_FILE = "worker.heartbeat"
+
+
 def acquire_worker_lock() -> IOBase | None:
-    """Return an open file handle holding an exclusive lock, or None if already locked."""
-    fh = open(_get_lock_file(), "w")  # noqa: SIM115
+    """Return an open file handle holding an exclusive lock, or None if already locked.
+
+    INV-23(4): the lock is a kernel ``flock``, released when the holding process
+    dies, so a crashed worker never wedges the next start. The holder's PID is
+    written into the file for diagnosis. The file is opened without truncation
+    so a refused start does not erase the live holder's PID.
+    """
+    path = _get_lock_file()
+    fh = open(path, "a+")  # noqa: SIM115
+    fh.seek(0)
     try:
         import fcntl
 
@@ -54,12 +67,61 @@ def acquire_worker_lock() -> IOBase | None:
         try:
             msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
-            fh.close()
+            _log_lock_held(fh)
             return None
     except OSError:
-        fh.close()
+        _log_lock_held(fh)
         return None
+    fh.seek(0)
+    fh.truncate()
+    fh.write(f"{os.getpid()}\n")
+    fh.flush()
     return fh
+
+
+def _log_lock_held(fh: IOBase) -> None:
+    try:
+        fh.seek(0)
+        holder = fh.read().strip() or "unknown"
+    except OSError:
+        holder = "unknown"
+    fh.close()
+    logger.info("worker_lock_held", extra={"holder_pid": holder})
+
+
+def _write_heartbeat(path: Path) -> None:
+    """Record that the supervision loop is alive (INV-23(1)); never raises."""
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_text(_dt.datetime.now(_dt.UTC).isoformat(), encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:
+        logging.getLogger("titan.worker.heartbeat").exception(
+            "worker_heartbeat_write_failed", extra={"path": str(path), "error": str(exc)}
+        )
+
+
+def check_heartbeat(path: Path, max_age_s: float, now: float | None = None) -> tuple[bool, str]:
+    """Healthcheck verdict: healthy only if the heartbeat exists and is fresh."""
+    try:
+        age = (time.time() if now is None else now) - path.stat().st_mtime
+    except OSError:
+        return False, f"no heartbeat at {path}"
+    if age > max_age_s:
+        return False, f"heartbeat is {age:.0f}s old (limit {max_age_s:.0f}s)"
+    return True, f"heartbeat is {age:.0f}s old"
+
+
+def _sleep_with_heartbeat(stop: threading.Event, total_s: float, interval_s: float, heartbeat: Path) -> bool:
+    """Wait ``total_s`` writing a heartbeat every ``interval_s``. True if ``stop`` fired."""
+    deadline = time.monotonic() + total_s
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        if stop.wait(timeout=min(interval_s, remaining)):
+            return True
+        _write_heartbeat(heartbeat)
 
 
 def _run_backup(db: DatabaseManager) -> None:
@@ -138,12 +200,37 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
 
     log.info("worker_started", extra={"db": db_path})
 
-    if get_settings().TITAN_MULTI_ATHLETE == "1":
-        _run_with_scheduler(db, _stop)
+    settings = get_settings()
+    heartbeat = p.parent / HEARTBEAT_FILE
+    interval_s = settings.WORKER_HEARTBEAT_INTERVAL_S
+
+    if settings.TITAN_MULTI_ATHLETE == "1":
+        _run_with_scheduler(db, _stop, heartbeat=heartbeat, interval_s=interval_s)
         return
 
     while True:
+        _write_heartbeat(heartbeat)
         _run_backup(db)
+        _run_routine_supervised(db, heartbeat, interval_s, settings.WORKER_ROUTINE_BUDGET_S)
+        # Sleep until 07:00 UTC next day.
+        # Timezone alignment is out of scope — worker uses UTC 07:00 throughout.
+        wait_s = _seconds_until_next_run(7, 0)
+        log.info("worker_sleeping", extra={"seconds": wait_s})
+        if _sleep_with_heartbeat(_stop, wait_s, interval_s, heartbeat):
+            log.info("worker_graceful_exit")
+            return
+
+
+def _run_routine_supervised(db: DatabaseManager, heartbeat: Path, interval_s: float, budget_s: float) -> None:
+    """Run one morning routine in a watched thread (INV-23(1)).
+
+    The heartbeat keeps beating while the routine runs within ``budget_s``. Past
+    the budget it stops, with one CRITICAL event, so the healthcheck reports the
+    hung routine. A routine is never abandoned: this waits for it to finish.
+    """
+    log = logging.getLogger("titan.worker.runner")
+
+    def _cycle() -> None:
         try:
             coach = _build_daily_coach(db)
             coach.run_morning_routine()
@@ -155,16 +242,34 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
             )
             from titan.observability.metrics import get_metrics
             get_metrics().counter("worker_cycle_error")
-        # Sleep until 07:00 UTC next day.
-        # Timezone alignment is out of scope — worker uses UTC 07:00 throughout.
-        wait_s = _seconds_until_next_run(7, 0)
-        log.info("worker_sleeping", extra={"seconds": wait_s})
-        if _stop.wait(timeout=wait_s):
-            log.info("worker_graceful_exit")
-            return
+
+    thread = threading.Thread(target=_cycle, name="MorningRoutine", daemon=True)
+    started = time.monotonic()
+    thread.start()
+    overrun = False
+    while True:
+        thread.join(timeout=interval_s)
+        if not thread.is_alive():
+            break
+        elapsed = time.monotonic() - started
+        if elapsed <= budget_s:
+            _write_heartbeat(heartbeat)
+        elif not overrun:
+            overrun = True
+            log.critical(
+                "worker_routine_overrun",
+                extra={"elapsed_s": round(elapsed), "budget_s": budget_s},
+            )
+    _write_heartbeat(heartbeat)
 
 
-def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> None:
+def _run_with_scheduler(
+    db: DatabaseManager,
+    stop_event: threading.Event,
+    *,
+    heartbeat: Path | None = None,
+    interval_s: float = 60.0,
+) -> None:
     """Multi-athlete coaching loop via CoachingScheduler (ADR-0046 / P26-03).
 
     Activated when TITAN_MULTI_ATHLETE=1. Registers the owner athlete
@@ -212,10 +317,33 @@ def _run_with_scheduler(db: DatabaseManager, stop_event: threading.Event) -> Non
     scheduler.start()
     log.info("coaching_scheduler_started", extra={"athletes": list(scheduler._athlete_callbacks)})
 
-    # Block until stop event fires (SIGTERM / main() shutdown).
-    stop_event.wait()
+    # Supervise until the stop event fires (SIGTERM / main() shutdown).
+    _supervise_scheduler(scheduler, stop_event, heartbeat=heartbeat, interval_s=interval_s)
     scheduler.stop()
     log.info("coaching_scheduler_stopped")
+
+
+def _supervise_scheduler(
+    scheduler, stop_event: threading.Event, *, heartbeat: Path | None, interval_s: float  # noqa: ANN001
+) -> None:
+    """Watchdog for the CoachingScheduler thread (INV-23(2)).
+
+    A dead thread is never silent: CRITICAL event, ``worker_thread_died_total``,
+    then a restart. The heartbeat is written only while the thread is alive.
+    """
+    log = logging.getLogger("titan.worker.scheduler")
+    if heartbeat is not None:
+        _write_heartbeat(heartbeat)
+    while not stop_event.wait(timeout=interval_s):
+        if not scheduler.is_alive():
+            log.critical("worker_thread_died", extra={"thread_name": "CoachingScheduler"})
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("worker_thread_died_total", labels={"thread": "CoachingScheduler"})
+            scheduler.start()
+            log.info("worker_thread_restarted", extra={"thread_name": "CoachingScheduler"})
+        if heartbeat is not None and scheduler.is_alive():
+            _write_heartbeat(heartbeat)
 
 
 def main() -> None:
