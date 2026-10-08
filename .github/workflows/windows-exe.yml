@@ -1,0 +1,48 @@
+name: Windows exe
+
+# Builds TITAN.exe the way the Release workflow does and runs it once
+# (launcher/build.ps1 fails if `TITAN.exe --version` prints nothing). v5.8.0 and
+# v5.8.1 shipped exes that built fine but could not run on Windows; this catches
+# that before a release.
+#
+# Cost: a Windows runner counts double against Actions minutes, so this runs
+# only on pull requests that change what goes into the exe.
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "launcher/**"
+      - "main.py"
+      - "requirements*.txt"
+      - "pyproject.toml"
+      - ".github/workflows/windows-exe.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-exe-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and start TITAN.exe
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: Build and smoke-test TITAN.exe
+        run: .\launcher\build.ps1
