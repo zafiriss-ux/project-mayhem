@@ -4,6 +4,8 @@ import sys
 
 import pytest
 
+from titan import __version__
+
 
 @pytest.mark.integration
 def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
@@ -33,5 +35,5 @@ def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
     assert "Traceback" not in process.stderr
     assert (
         "Invalid environment variable ATHLETE_AGE" in combined_output
-        or "TITAN v5.8.0" in combined_output
+        or f"TITAN v{__version__}" in combined_output
     )

@@ -7,6 +7,7 @@ Validates Python version, OS compatibility, data directory, disk space, UTF-8.
 All checks return (success: bool, error: Optional[TitanError]).
 """
 
+import functools
 import os
 import platform
 import shutil
@@ -32,15 +33,80 @@ def get_data_directory() -> Path:
     """
     Get platform-specific data directory for TITAN.
 
-    Windows: %USERPROFILE%\\Documents\\TITAN
+    Windows: %USERPROFILE%\\Documents\\TITAN, else the real Documents folder,
+             else %LOCALAPPDATA%\\TITAN (see _windows_data_directory)
     Linux:   ~/Documents/TITAN
     macOS:   ~/Documents/TITAN
     """
     if platform.system() == 'Windows':
-        base = Path(os.environ.get('USERPROFILE', Path.home()))
-    else:
-        base = Path.home()
-    return base / 'Documents' / 'TITAN'
+        return _windows_data_directory()
+    return Path.home() / 'Documents' / 'TITAN'
+
+
+@functools.lru_cache(maxsize=1)
+def _windows_data_directory() -> Path:
+    """First usable of: %USERPROFILE%\\Documents\\TITAN, the shell's Documents
+    folder (moved by OneDrive or the user), %LOCALAPPDATA%\\TITAN.
+
+    %USERPROFILE%\\Documents may not exist, and Windows "Controlled folder
+    access" refuses new folders in Documents with WinError 2. Cached, so every
+    caller in one run uses the same folder.
+    """
+    profile = Path(os.environ.get('USERPROFILE', Path.home()))
+    candidates = [profile / 'Documents' / 'TITAN']
+    documents = _shell_documents_folder()
+    if documents is not None:
+        candidates.append(documents / 'TITAN')
+    local = os.environ.get('LOCALAPPDATA')
+    candidates.append(Path(local) / 'TITAN' if local else profile / 'AppData' / 'Local' / 'TITAN')
+    for candidate in candidates:
+        if _is_usable_directory(candidate):
+            return candidate
+    return candidates[-1]
+
+
+def _shell_documents_folder() -> Path | None:
+    """The user's Documents folder as Windows knows it (FOLDERID_Documents)."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _Guid(ctypes.Structure):
+            _fields_ = [
+                ('Data1', wintypes.DWORD),
+                ('Data2', wintypes.WORD),
+                ('Data3', wintypes.WORD),
+                ('Data4', ctypes.c_ubyte * 8),
+            ]
+
+        folder_id = _Guid(
+            0xFDD39AD0, 0x238F, 0x46AF,
+            (ctypes.c_ubyte * 8)(0xAD, 0xB4, 0x6C, 0x85, 0x48, 0x03, 0x69, 0xC7),
+        )
+        path_ptr = ctypes.c_wchar_p()
+        result = ctypes.windll.shell32.SHGetKnownFolderPath(
+            ctypes.byref(folder_id), 0, None, ctypes.byref(path_ptr)
+        )
+        try:
+            if result != 0 or not path_ptr.value:
+                return None
+            return Path(path_ptr.value)
+        finally:
+            ctypes.windll.ole32.CoTaskMemFree(path_ptr)
+    except (AttributeError, OSError, ValueError):
+        return None
+
+
+def _is_usable_directory(path: Path) -> bool:
+    """True if `path` exists or can be created, and a file can be written in it."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / '.write_test'
+        probe.write_text('test', encoding='utf-8')
+        probe.unlink()
+    except OSError:
+        return False
+    return True
 
 
 # ══════════════════════════════════════════════════════════════════════════════
