@@ -5,6 +5,16 @@ import pytest
 from launcher import wizard
 
 
+def _unset_env(monkeypatch, name: str) -> None:
+    """Remove ``name`` for this test and restore its state after.
+
+    load_env_to_os writes os.environ directly; monkeypatch.delenv on an absent
+    name records nothing, so a value set by the code under test would leak.
+    """
+    monkeypatch.setenv(name, "")
+    monkeypatch.delenv(name)
+
+
 def _set_env_path(monkeypatch, tmp_path: Path) -> Path:
     env_path = tmp_path / ".env"
     monkeypatch.setattr(wizard, "get_env_path", lambda: env_path)
@@ -61,6 +71,7 @@ def test_console_wizard_writes_garmin_email(monkeypatch) -> None:
 def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
     monkeypatch.setattr(launcher_main, "load_env", lambda: {"GARMIN_USERNAME": "legacy@example.com"})
 
@@ -76,6 +87,7 @@ def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
 def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
     monkeypatch.setattr(
         launcher_main,
         "load_env",
@@ -89,3 +101,31 @@ def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     assert os.environ["GARMIN_EMAIL"] == "new@example.com"
     monkeypatch.delenv("GARMIN_USERNAME", raising=False)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+
+
+def test_load_env_to_os_puts_titan_log_in_the_data_folder(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == str(tmp_path / "logs" / "titan.log")
+
+
+def test_load_env_to_os_keeps_titan_log_path_from_env_file(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
+    monkeypatch.setattr(launcher_main, "load_env", lambda: {"TITAN_LOG_PATH": "/custom/titan.log"})
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == "/custom/titan.log"

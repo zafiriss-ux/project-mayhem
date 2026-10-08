@@ -94,6 +94,9 @@ def load_env_to_os():
         env_vars["GARMIN_EMAIL"] = env_vars["GARMIN_USERNAME"]
     for key, value in env_vars.items():
         os.environ[key] = value
+    # titan.log goes next to the launcher logs unless .env names a path; the
+    # default "titan.log" lands in whatever folder TITAN.exe was started from.
+    os.environ.setdefault("TITAN_LOG_PATH", str(get_data_directory() / "logs" / "titan.log"))
     if env_vars:
         print(f"✓ Loaded {len(env_vars)} configuration variables.\n")
 
