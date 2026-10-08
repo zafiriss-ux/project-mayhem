@@ -143,9 +143,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+        # A Release published from the GitHub page creates its tag first, so the
+        # Release can already exist: then only attach the zip to it.
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            "TITAN-v${{ needs.check.outputs.version }}-win64.zip" \
-            --title "TITAN OS ${GITHUB_REF_NAME}" \
-            --generate-notes \
-            --verify-tag
+          zip="TITAN-v${{ needs.check.outputs.version }}-win64.zip"
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" "${zip}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" "${zip}" \
+              --title "TITAN OS ${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --verify-tag
+          fi

@@ -11,6 +11,7 @@
    git tag -a vX.Y.Z -m "Release vX.Y.Z" <commit>
    git push origin vX.Y.Z
    ```
+   Χωρίς git: στη σελίδα Releases → «Draft a new release» → «Choose a tag», γράψε `vX.Y.Z` → «Create new tag on publish», target `main` → «Publish release». Το workflow προσθέτει μετά το zip σε αυτό το Release.
 4. Το workflow `Release` (`.github/workflows/release.yml`) ελέγχει ότι το tag είναι ίδιο με την έκδοση του `pyproject.toml` και ότι το commit είναι στο `main`. Μετά φτιάχνει τα `ghcr.io/zafiriss-ux/titan-api:vX.Y.Z` και `ghcr.io/zafiriss-ux/titan-worker:vX.Y.Z` και ανοίγει το GitHub Release.
 
 Commit χωρίς tag δεν πάει ποτέ σε παραγωγή.
