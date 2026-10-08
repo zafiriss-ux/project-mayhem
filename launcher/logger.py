@@ -101,8 +101,8 @@ def setup_logging(debug: bool = False, prefix: str = 'launcher') -> logging.Logg
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
 
-    # Console handler (only if --debug)
-    if debug:
+    # Console handler (only if --debug and there is a console)
+    if debug and sys.stdout is not None:
         console_formatter = logging.Formatter(
             '%(levelname)-8s %(message)s'
         )
@@ -129,6 +129,9 @@ class TeeStream:
 
     Usage:
         sys.stdout = TeeStream(sys.stdout, logger)
+
+    The windowed Windows build has no console, so sys.stdout and sys.stderr
+    are None there; output then goes to the log only.
     """
 
     def __init__(self, original_stream, logger: logging.Logger):
@@ -140,11 +143,14 @@ class TeeStream:
         if message.strip():  # Skip empty lines
             self.logger.info(message.rstrip())
         # Also write to original stream (console)
-        self.original_stream.write(message)
+        if self.original_stream is not None:
+            self.original_stream.write(message)
+        return len(message)
 
     def flush(self):
         """Flush original stream."""
-        self.original_stream.flush()
+        if self.original_stream is not None:
+            self.original_stream.flush()
 
 
 def redirect_output(logger: logging.Logger, enable: bool = True):

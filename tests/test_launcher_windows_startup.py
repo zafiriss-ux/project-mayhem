@@ -1,0 +1,85 @@
+"""The Windows exe must start when Documents is unusable and when there is no console
+(v5.8.0 crashed on both: WinError 2 creating Documents\\TITAN, and TeeStream writing to
+sys.stdout = None in the windowed build)."""
+
+from __future__ import annotations
+
+import logging
+import sys
+from pathlib import Path
+
+import pytest
+
+from launcher import logger as launcher_logger
+from launcher import validator
+
+
+@pytest.fixture
+def windows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(validator.platform, "system", lambda: "Windows")
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "profile"))
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "local"))
+    monkeypatch.setattr(validator, "_shell_documents_folder", lambda: None)
+    (tmp_path / "profile").mkdir()
+    validator._windows_data_directory.cache_clear()
+    yield tmp_path
+    validator._windows_data_directory.cache_clear()
+
+
+def _block(path: Path) -> None:
+    """Make `path` impossible to use as a folder."""
+    path.write_text("not a folder", encoding="utf-8")
+
+
+def test_profile_documents_is_used_when_it_works(windows: Path) -> None:
+    assert validator.get_data_directory() == windows / "profile" / "Documents" / "TITAN"
+
+
+def test_moved_documents_folder_is_used_when_profile_documents_fails(
+    windows: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _block(windows / "profile" / "Documents")
+    monkeypatch.setattr(validator, "_shell_documents_folder", lambda: windows / "OneDrive" / "Documents")
+
+    assert validator.get_data_directory() == windows / "OneDrive" / "Documents" / "TITAN"
+
+
+def test_local_app_data_is_used_when_no_documents_folder_works(windows: Path) -> None:
+    _block(windows / "profile" / "Documents")
+
+    data_dir = validator.get_data_directory()
+
+    assert data_dir == windows / "local" / "TITAN"
+    assert data_dir.is_dir()
+
+
+def test_logging_starts_when_profile_documents_fails(windows: Path) -> None:
+    _block(windows / "profile" / "Documents")
+
+    log = launcher_logger.setup_logging(prefix="launcher_test")
+    try:
+        assert launcher_logger.get_log_directory() == windows / "local" / "TITAN" / "logs"
+    finally:
+        for handler in log.handlers:
+            handler.close()
+        log.handlers.clear()
+
+
+def test_tee_stream_without_a_console_writes_to_the_log_only(caplog: pytest.LogCaptureFixture) -> None:
+    tee = launcher_logger.TeeStream(None, logging.getLogger("tee_test"))
+
+    with caplog.at_level(logging.INFO, logger="tee_test"):
+        assert tee.write("Version: 5.8.0\n") == len("Version: 5.8.0\n")
+        tee.flush()
+
+    assert "Version: 5.8.0" in caplog.text
+
+
+def test_print_works_after_redirect_without_a_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+
+    launcher_logger.redirect_output(logging.getLogger("tee_test"), enable=True)
+    print("banner")
+
+    assert isinstance(sys.stdout, launcher_logger.TeeStream)
