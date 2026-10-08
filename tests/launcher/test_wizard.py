@@ -5,6 +5,23 @@ import pytest
 from launcher import wizard
 
 
+def _unset_env(monkeypatch, name: str) -> None:
+    """Remove ``name`` for this test and restore its state after.
+
+    load_env_to_os writes os.environ directly; monkeypatch.delenv on an absent
+    name records nothing, so a value set by the code under test would leak.
+    """
+    monkeypatch.setenv(name, "")
+    monkeypatch.delenv(name)
+
+
+def _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path: Path) -> None:
+    for name in ("TITAN_DATA_DIR", "TITAN_GARTH_TOKEN_KEY"):
+        _unset_env(monkeypatch, name)
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
+    monkeypatch.setattr(launcher_main, "ensure_garmin_token_key", lambda: "test-key")
+
+
 def _set_env_path(monkeypatch, tmp_path: Path) -> Path:
     env_path = tmp_path / ".env"
     monkeypatch.setattr(wizard, "get_env_path", lambda: env_path)
@@ -58,9 +75,10 @@ def test_console_wizard_writes_garmin_email(monkeypatch) -> None:
     assert "GARMIN_USERNAME" not in config
 
 
-def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
+def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch, tmp_path: Path) -> None:
     import launcher.main as launcher_main
 
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
     monkeypatch.setattr(launcher_main, "load_env", lambda: {"GARMIN_USERNAME": "legacy@example.com"})
 
@@ -73,9 +91,10 @@ def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
 
 
-def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
+def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch, tmp_path: Path) -> None:
     import launcher.main as launcher_main
 
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
     monkeypatch.setattr(
         launcher_main,
         "load_env",
@@ -89,3 +108,55 @@ def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     assert os.environ["GARMIN_EMAIL"] == "new@example.com"
     monkeypatch.delenv("GARMIN_USERNAME", raising=False)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+
+
+def test_load_env_to_os_gives_the_kernel_a_data_folder_and_token_key(monkeypatch, tmp_path: Path) -> None:
+    """Without both, the kernel never saved the Garmin session in TITAN.exe."""
+    import os
+
+    import launcher.main as launcher_main
+
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_DATA_DIR"] == str(tmp_path)
+    assert os.environ["TITAN_GARTH_TOKEN_KEY"] == "test-key"
+
+
+def test_load_env_to_os_keeps_data_folder_from_env_file(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
+    monkeypatch.setattr(launcher_main, "load_env", lambda: {"TITAN_DATA_DIR": "/custom"})
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_DATA_DIR"] == "/custom"
+
+
+def test_garmin_token_key_is_created_once_and_saved(monkeypatch, tmp_path: Path) -> None:
+    env_path = _set_env_path(monkeypatch, tmp_path)
+    env_path.write_text("GARMIN_EMAIL=athlete@example.com", encoding="utf-8")
+
+    first = wizard.ensure_garmin_token_key()
+    second = wizard.ensure_garmin_token_key()
+
+    assert first == second
+    lines = env_path.read_text(encoding="utf-8").splitlines()
+    assert lines == ["GARMIN_EMAIL=athlete@example.com", f"TITAN_GARTH_TOKEN_KEY={first}"]
+
+
+def test_garmin_token_key_lets_the_kernel_save_the_session(monkeypatch, tmp_path: Path) -> None:
+    from titan.integrations import garmin_sync
+
+    _set_env_path(monkeypatch, tmp_path).write_text("", encoding="utf-8")
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", wizard.ensure_garmin_token_key())
+    monkeypatch.setenv("TITAN_ENV", "")
+
+    encrypted = garmin_sync._encrypt_token("session")
+
+    assert garmin_sync._decrypt_token(encrypted) == "session"
