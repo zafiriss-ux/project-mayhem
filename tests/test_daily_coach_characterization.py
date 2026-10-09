@@ -148,8 +148,14 @@ class _FakeGarminClient:
                 "remSleepSeconds": seconds // 4,
                 "sleepScores": {"overall": {"value": day.sleep_score}},
             },
-            "restingHeartRate": day.rhr,
         }
+
+    def get_stats(self, iso: str) -> dict:
+        # Daily summary; garminconnect models restingHeartRate on it (DailyStats).
+        day = self._day(iso)
+        if day is None:
+            return {}
+        return {"calendarDate": iso, "restingHeartRate": day.rhr, "totalSteps": 9000}
 
     def get_hrv_data(self, iso: str) -> dict:
         day = self._day(iso)

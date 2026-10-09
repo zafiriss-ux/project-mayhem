@@ -666,6 +666,30 @@ def test_persist_garmin_data_sync_sleep_output_sleep_score_extracted_correctly(t
 
 
 @pytest.mark.unit
+def test_persist_garmin_data_uses_last_nights_sleep_and_resting_hr(tmp_path):
+    """sync_sleep() returns 14 nights newest first; only today's entry describes today.
+
+    The loop used to keep the last entry it saw, i.e. the oldest night in the window.
+    """
+    db = DatabaseManager(db_name="today_sleep_entry.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-21"
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = [
+        {"date": day, "total_sleep_hours": 6.5, "sleep_score": 64, "resting_hr": 47},
+        {"date": "2026-03-20", "total_sleep_hours": 8.0, "sleep_score": 88, "resting_hr": None},
+        {"date": "2026-03-08", "total_sleep_hours": 9.0, "sleep_score": 91, "resting_hr": 60},
+    ]
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        assert (rhr, sleep_score, sleep_hours) == (47, 64, 6.5)
+    finally:
+        db.close()
+
+
+@pytest.mark.unit
 def test_persist_garmin_data_sync_sleep_output_rhr_is_absent(tmp_path):
     """T5-60: sync_sleep() does not include a restingHeartRate key.
     _persist_garmin_data must return today_rhr == 0 (→ None after validation)
