@@ -136,18 +136,24 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+def _pem_from_env(value: str) -> str:
+    # scripts/generate_jwt_keys.sh writes each PEM on one .env line with literal
+    # "\n", and Docker's env_file passes them through unescaped.
+    return value.replace("\\n", "\n")
+
+
 def _jwt_private_key() -> str:
     key = get_settings().TITAN_JWT_PRIVATE_KEY.get_secret_value() if get_settings().TITAN_JWT_PRIVATE_KEY else None
     if not key:
         raise AuthError("TITAN_JWT_PRIVATE_KEY is not configured")
-    return key
+    return _pem_from_env(key)
 
 
 def _jwt_public_key() -> str:
     key = get_settings().TITAN_JWT_PUBLIC_KEY or None
     if not key:
         raise AuthError("TITAN_JWT_PUBLIC_KEY is not configured")
-    return key
+    return _pem_from_env(key)
 
 
 def hash_password(plain_password: str) -> str:

@@ -40,3 +40,15 @@ def test_create_app_refuses_keys_from_two_different_pairs(jwt_keys, monkeypatch)
 
     with pytest.raises(AuthError, match="not a valid RS256 key pair"):
         create_app()
+
+
+@pytest.mark.unit
+def test_keys_written_on_one_line_by_generate_jwt_keys_work(monkeypatch):
+    """scripts/generate_jwt_keys.sh stores each PEM on one .env line with a literal
+    backslash-n, and Docker's env_file passes it through unescaped. The Docker smoke
+    job showed those keys could not be parsed, so login could never work there."""
+    private_pem, public_pem = _rsa_pem_pair()
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem.replace("\n", "\\n"))
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem.replace("\n", "\\n"))
+
+    assert create_app() is not None
