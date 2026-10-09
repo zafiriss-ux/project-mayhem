@@ -112,7 +112,8 @@ CS ανά αθλητή (v28, #22, D-028) ·
 `DailyCoach` → 6 αποθήκευση δεδομένων Garmin εκτός `DailyCoach` → 7 σπάσιμο του
 `_decision_pipeline` → 8 προφίλ αθλητή ως αντικείμενο (T5-117) → 9 daemon εκτός `DailyCoach`
 (ADR-0058 Phase C) → 10 ό,τι SQL μένει στο `database.py` → 11 CS ανά αθλητή (v28, D-028) →
-12 έλεγχος τέλους φάσης. Το `governance_engine.py` δεν αλλάζει (ADR-0009).
+12 έλεγχος με συνθετικούς αθλητές (D-031, [`docs/validation/synthetic-athlete-validation.md`](docs/validation/synthetic-athlete-validation.md))
+→ 13 έλεγχος τέλους φάσης. Το `governance_engine.py` δεν αλλάζει (ADR-0009).
 
 | Εργασία | PR | Κατάσταση |
 |---|---|---|
@@ -130,7 +131,7 @@ CS ανά αθλητή (v28, #22, D-028) ·
 | 6 Αποθήκευση δεδομένων Garmin εκτός `DailyCoach` (D-029) | #966 | Έγινε |
 | Εκτός πλάνου: εργαλεία ασφάλειας (D-022) | #958 | Έγινε |
 | Εκτός πλάνου: ευρήματα CodeQL (D-023) | #961 | Έγινε |
-| Εκτός πλάνου: Bandit, DevSkim, CodeQL security-extended (D-030) | #967 | Ανοιχτό |
+| Εκτός πλάνου: Bandit, DevSkim, CodeQL security-extended (D-030) | #967 | Έγινε |
 
 ### Τι έδειξαν τα tests της εργασίας 5
 
