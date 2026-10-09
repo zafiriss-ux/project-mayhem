@@ -751,3 +751,32 @@ def test_configure_rotating_logging_records_info_events(tmp_path, monkeypatch):
             handler.close()
         root.handlers = original_handlers
         root.setLevel(original_level)
+
+
+@pytest.mark.integration
+def test_configure_rotating_logging_writes_utf8(tmp_path, monkeypatch):
+    """The Windows default encoding (cp1253) could not write the banner and looped (5.8.1)."""
+    import io
+
+    log_path = tmp_path / "titan.log"
+    monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
+    # A Greek Windows default, whatever the host's locale.
+    monkeypatch.setattr(io, "text_encoding", lambda encoding, stacklevel=2: encoding or "cp1253")
+    monkeypatch.setattr(logging, "raiseExceptions", False)
+    root = logging.getLogger()
+    original_handlers = list(root.handlers)
+    root.handlers = []
+
+    try:
+        titan_main._configure_rotating_logging()
+        logging.getLogger("titan.banner_test").warning("╔══ 🏃 Weekly Planning ══╗")
+        for handler in root.handlers:
+            handler.flush()
+        handler = next(h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler))
+
+        assert handler.encoding == "utf-8"
+        assert "╔══ 🏃 Weekly Planning ══╗" in log_path.read_text(encoding="utf-8")
+    finally:
+        for handler in root.handlers:
+            handler.close()
+        root.handlers = original_handlers
