@@ -281,24 +281,28 @@ class TestMorningRoutineDedupLock:
         from titan.orchestration.daily_coach import DailyCoach
         coach = DailyCoach.__new__(DailyCoach)
         coach._routine_mutex = threading.Lock()
-        coach._routine_thread = None
-        coach._routine_started_monotonic = None
         return coach
 
+    @staticmethod
+    def _runner(coach):
+        """The background runner main.py builds around the coach (ADR-0058 Phase C, D-035)."""
+        from titan.orchestration.routine_runner import BackgroundRoutineRunner
+        return BackgroundRoutineRunner(lambda: coach.run_morning_routine(), coach.routine_lock)
+
     def test_morning_routine_dedup_blocks_concurrent(self):
-        """Lock held externally → run_morning_routine_async returns False."""
+        """Lock held externally → the runner returns False."""
         coach = self._make_coach_stub()
         coach.run_morning_routine = lambda: None
 
         coach._routine_mutex.acquire()
         try:
-            result = coach.run_morning_routine_async(trigger_source="test_concurrent")
+            result = self._runner(coach).start(trigger_source="test_concurrent")
             assert result is False
         finally:
             coach._routine_mutex.release()
 
     def test_morning_routine_starts_when_idle(self):
-        """Lock free → run_morning_routine_async returns True and starts thread."""
+        """Lock free → the runner returns True and starts thread."""
         coach = self._make_coach_stub()
         ran = threading.Event()
 
@@ -306,7 +310,7 @@ class TestMorningRoutineDedupLock:
             ran.set()
 
         coach.run_morning_routine = _routine
-        result = coach.run_morning_routine_async(trigger_source="test_idle")
+        result = self._runner(coach).start(trigger_source="test_idle")
 
         assert result is True
         assert ran.wait(timeout=2), "routine thread did not execute within 2s"
@@ -320,9 +324,10 @@ class TestMorningRoutineDedupLock:
             done.set()
 
         coach.run_morning_routine = _routine
-        coach.run_morning_routine_async(trigger_source="test_release")
+        runner = self._runner(coach)
+        runner.start(trigger_source="test_release")
         done.wait(timeout=2)
-        coach._routine_thread.join(timeout=2)
+        runner.thread.join(timeout=2)
 
         acquired = coach._routine_mutex.acquire(blocking=False)
         assert acquired, "mutex was not released after routine completed"
@@ -337,8 +342,9 @@ class TestMorningRoutineDedupLock:
             raise RuntimeError("routine error")
 
         coach.run_morning_routine = _failing_routine
-        coach.run_morning_routine_async(trigger_source="test_exception")
-        coach._routine_thread.join(timeout=2)
+        runner = self._runner(coach)
+        runner.start(trigger_source="test_exception")
+        runner.thread.join(timeout=2)
 
         acquired = coach._routine_mutex.acquire(blocking=False)
         assert acquired, "mutex was not released after routine raised"

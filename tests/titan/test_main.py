@@ -1,5 +1,6 @@
 import ast
 import logging
+import threading
 from pathlib import Path
 
 import pytest
@@ -93,10 +94,13 @@ class _DummyWeeklyPlanner:
 class _DummyDailyCoach:
     def __init__(self, *args, **kwargs):
         self.morning_calls = 0
+        self.morning_ran = threading.Event()
+        self.routine_lock = threading.Lock()
         return
 
-    def run_morning_routine_async(self):
+    def run_morning_routine(self):
         self.morning_calls += 1
+        self.morning_ran.set()
         return
 
 
@@ -317,7 +321,8 @@ def test_main_schedules_expected_background_tasks(monkeypatch):
     morning_task, weekly_task = telegram.scheduled_tasks
     assert morning_task["name"] == "Morning Coaching"
     assert morning_task["time_str"] == "07:00"
-    morning_task["callback"]()
+    assert morning_task["callback"]() is True  # BackgroundRoutineRunner.start (D-035)
+    assert daily_coach.morning_ran.wait(timeout=2)
     assert daily_coach.morning_calls == 1
 
     assert weekly_task["name"] == "Weekly Plan"
@@ -656,7 +661,12 @@ def test_main_shutdown_logs_worker_timeout_before_database_close(monkeypatch, ca
         def join(self, timeout):
             close_order.append(f"join_{timeout}")
 
-    daily_coach._routine_thread = _AliveThread()
+    class _RunnerWithLiveThread(titan_main.BackgroundRoutineRunner):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.thread = _AliveThread()
+
+    monkeypatch.setattr(titan_main, "BackgroundRoutineRunner", _RunnerWithLiveThread)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
 
     original_close = db.close

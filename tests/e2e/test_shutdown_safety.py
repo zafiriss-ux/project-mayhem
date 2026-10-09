@@ -24,6 +24,7 @@ from titan.integrations.garmin_sync import GarminSync
 from titan.integrations.telegram_bot import TitanTelegramBot
 from titan.integrations.weather_api import WeatherAPI
 from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.routine_runner import BackgroundRoutineRunner
 
 
 class StubThread:
@@ -66,6 +67,7 @@ def _build_production_daily_coach(db: DatabaseManager, fixed_today: str) -> Dail
 def test_shutdown_safety_invariants_hung_worker_timeout_and_db_close_order(tmp_path, monkeypatch):
     db = DatabaseManager(db_name="e2e_shutdown_safety.db", db_dir=tmp_path)
     coach = _build_production_daily_coach(db=db, fixed_today="2026-03-04")
+    routine_runner = BackgroundRoutineRunner(coach.run_morning_routine, coach.routine_lock)  # as in titan.main (D-035)
 
     garmin = GarminSync()
     weather = WeatherAPI()
@@ -119,7 +121,7 @@ def test_shutdown_safety_invariants_hung_worker_timeout_and_db_close_order(tmp_p
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
-        routine_thread = getattr(coach, "_routine_thread", None)
+        routine_thread = routine_runner.thread
         if routine_thread is not None and routine_thread.is_alive():
             timeout_seconds = 30
             routine_thread.join(timeout=timeout_seconds)

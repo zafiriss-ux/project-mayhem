@@ -238,6 +238,15 @@ routine scheduling) into `CoachingScheduler` (already stubbed in T5-16-B).
 
 Not implemented in this ADR. Stub only.
 
+**Implemented 2026-10-09 (plan task 9, PR #972, D-035):** the thread lifecycle
+(`run_morning_routine_async`, `_routine_thread`, `_routine_started_monotonic`)
+moved to `BackgroundRoutineRunner` in `titan/orchestration/routine_runner.py`.
+`titan/main.py` builds the runner around `daily_coach.run_morning_routine` and
+`daily_coach.routine_lock`, schedules `runner.start`, and joins `runner.thread`
+at shutdown. `DailyCoach` keeps only the lock, which it also holds while it
+hydrates engines. The runner was not merged into `CoachingScheduler`: that class
+calls its callbacks in its own loop and is not used by the console (D-035).
+
 ---
 
 ## EngineRegistry Contract
