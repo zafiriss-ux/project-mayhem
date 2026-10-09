@@ -79,8 +79,9 @@ def _get_token_encryption_key() -> bytes | None:
     Fernet expects the URL-safe base64-encoded key (44 bytes) — we validate
     the env value is decodable but return it in encoded form for Fernet.
     """
-    key = os.environ.get(_TITAN_TOKEN_KEY_ENV)
-    if key is None:
+    key = os.environ.get(_TITAN_TOKEN_KEY_ENV, "").strip()
+    if not key:
+        # Unset and empty are the same: .env.example ships "TITAN_GARTH_TOKEN_KEY=".
         return None
     try:
         decoded = base64.urlsafe_b64decode(key.encode())
@@ -90,6 +91,20 @@ def _get_token_encryption_key() -> bytes | None:
     except Exception:
         _log.warning("Invalid TITAN_GARTH_TOKEN_KEY format — ignoring")
         return None
+
+
+def validate_token_encryption_key() -> None:
+    """Fail at construction on a key that is set but unusable (RBP-04, F-10).
+
+    A malformed key used to be ignored with a WARNING, so the Garmin session
+    was silently never saved. An absent key is left to _encrypt_token, which
+    already refuses to save the session without one outside dev (TD-18).
+    """
+    if os.environ.get(_TITAN_TOKEN_KEY_ENV, "").strip() and _get_token_encryption_key() is None:
+        raise ValueError(
+            "TITAN_GARTH_TOKEN_KEY is set but is not a valid Fernet key "
+            "(URL-safe base64 of 32 bytes). Fix it or remove it from .env."
+        )
 
 
 def _is_dev_environment() -> bool:
@@ -296,6 +311,7 @@ class GarminSync:
     _instance_lock = threading.Lock()
 
     def __init__(self, email: str = None, password: str = None):
+        validate_token_encryption_key()
         with GarminSync._instance_lock:
             GarminSync._instance_count += 1
             instance_id = GarminSync._instance_count

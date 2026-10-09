@@ -270,3 +270,23 @@ def test_killed_lock_holder_does_not_wedge_next_start(monkeypatch: pytest.Monkey
         if holder.poll() is None:
             holder.kill()
         holder.stdout.close()
+
+
+def test_sigterm_handler_does_not_block_while_the_event_lock_is_held(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SIGTERM lands on the main thread, possibly while it is inside _shutdown.wait()
+    holding the event's internal lock. Setting the event from the handler then waited
+    forever and the worker ignored SIGTERM (the e2e restart test hung about 1 run in 10)."""
+    event = threading.Event()
+    monkeypatch.setattr(worker_mod, "_shutdown", event)
+    handler_done = threading.Event()
+
+    def deliver() -> None:
+        worker_mod._handle_sigterm(signal.SIGTERM, None)
+        handler_done.set()
+
+    with event._cond:  # the state the main thread is in inside wait()
+        caller = threading.Thread(target=deliver, daemon=True)
+        caller.start()
+        assert handler_done.wait(timeout=2), "the SIGTERM handler blocked on the event lock"
+
+    assert event.wait(timeout=2), "the shutdown request was lost"

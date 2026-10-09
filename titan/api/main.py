@@ -329,10 +329,13 @@ def create_app(
     audit_store: CoachAuditStore | None = None,
     db: Any = None,
 ) -> FastAPI:
+    # RBP-04: invalid or missing JWT keys stop the API here, at construction,
+    # not later in the lifespan hook.
+    validate_jwt_keys_at_startup()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):  # noqa: ANN001
         from titan.observability.metrics import get_metrics
-        validate_jwt_keys_at_startup()
         get_metrics().counter("api_startup")
         yield
 
