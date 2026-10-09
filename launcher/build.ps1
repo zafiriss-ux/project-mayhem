@@ -16,6 +16,17 @@ if (-not (Test-Path "dist\TITAN.exe")) {
     exit 1
 }
 
+# Smoke: the exe must start and print to its console. A windowed build prints
+# nothing, which is how v5.8.0 and v5.8.1 shipped a menu nobody could see.
+$expected = "TITAN OS v" + (Select-String -Path "pyproject.toml" -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+$smoke = (& "dist\TITAN.exe" --version | Out-String)
+if ($LASTEXITCODE -ne 0 -or -not $smoke.Contains($expected)) {
+    Write-Host "ERROR: dist\TITAN.exe --version did not print '$expected' (exit $LASTEXITCODE):" -ForegroundColor Red
+    Write-Host $smoke
+    exit 1
+}
+Write-Host "Smoke OK: $($smoke.Trim().Split([Environment]::NewLine)[0])"
+
 # Generate SHA256 checksum
 $sha256 = (Get-FileHash "dist\TITAN.exe" -Algorithm SHA256).Hash
 "$sha256 *TITAN.exe" | Out-File -FilePath "dist\TITAN.exe.sha256" -Encoding ASCII

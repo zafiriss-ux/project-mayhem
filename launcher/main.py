@@ -34,6 +34,7 @@ from launcher.wizard import (
     ensure_config,
     ensure_garmin_token_key,
     env_exists,
+    get_env_path,
     load_env,
 )
 
@@ -105,6 +106,11 @@ def load_env_to_os():
     os.environ.setdefault("TITAN_DATA_DIR", str(get_data_directory()))
     if not os.environ.get(GARMIN_TOKEN_KEY):
         os.environ[GARMIN_TOKEN_KEY] = ensure_garmin_token_key()
+    # titan.log goes next to the launcher logs unless .env names a path; the
+    # default "titan.log" lands in whatever folder TITAN.exe was started from.
+    os.environ.setdefault("TITAN_LOG_PATH", str(get_data_directory() / "logs" / "titan.log"))
+    # The kernel's profile editor and setup wizard write this same file.
+    os.environ["TITAN_ENV_FILE"] = str(get_env_path())
     if env_vars:
         print(f"✓ Loaded {len(env_vars)} configuration variables.\n")
 

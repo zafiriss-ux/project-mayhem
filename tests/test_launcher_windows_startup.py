@@ -83,3 +83,11 @@ def test_print_works_after_redirect_without_a_console(monkeypatch: pytest.Monkey
     print("banner")
 
     assert isinstance(sys.stdout, launcher_logger.TeeStream)
+
+
+def test_exe_is_built_with_a_console_window() -> None:
+    """The main menu reads the keyboard; a windowed exe showed nothing after the wizard."""
+    spec = (Path(__file__).resolve().parents[1] / "launcher" / "build.spec").read_text(encoding="utf-8")
+    settings = [line.split("#")[0].strip() for line in spec.splitlines() if line.strip().startswith("console=")]
+
+    assert settings == ["console=True,"]

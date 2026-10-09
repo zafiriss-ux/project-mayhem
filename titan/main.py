@@ -17,6 +17,7 @@ import os
 import sys
 from datetime import UTC, datetime
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 # Add project root to path so `titan` package resolves correctly
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -68,9 +69,15 @@ def _configure_rotating_logging() -> None:
     log_path = get_settings().TITAN_LOG_PATH
     if any(isinstance(h, RotatingFileHandler) and h.baseFilename.endswith(log_path) for h in root.handlers):
         return
+    Path(log_path).parent.mkdir(parents=True, exist_ok=True)
     handler = RotatingFileHandler(log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     root.addHandler(handler)
+    # The root logger defaults to WARNING, which dropped every INFO event, among
+    # them the Garmin sync and DailyCoach step failures (logged at INFO with a
+    # severity field).
+    if root.getEffectiveLevel() > logging.INFO:
+        root.setLevel(logging.INFO)
 
 
 

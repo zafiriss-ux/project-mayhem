@@ -16,7 +16,7 @@ def _unset_env(monkeypatch, name: str) -> None:
 
 
 def _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path: Path) -> None:
-    for name in ("TITAN_DATA_DIR", "TITAN_GARTH_TOKEN_KEY"):
+    for name in ("TITAN_DATA_DIR", "TITAN_GARTH_TOKEN_KEY", "TITAN_LOG_PATH", "TITAN_ENV_FILE"):
         _unset_env(monkeypatch, name)
     monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
     monkeypatch.setattr(launcher_main, "ensure_garmin_token_key", lambda: "test-key")
@@ -108,6 +108,65 @@ def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch, tmp_path: Path)
     assert os.environ["GARMIN_EMAIL"] == "new@example.com"
     monkeypatch.delenv("GARMIN_USERNAME", raising=False)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+
+
+def test_load_env_to_os_puts_titan_log_in_the_data_folder(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == str(tmp_path / "logs" / "titan.log")
+
+
+def test_load_env_to_os_keeps_titan_log_path_from_env_file(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
+    monkeypatch.setattr(launcher_main, "load_env", lambda: {"TITAN_LOG_PATH": "/custom/titan.log"})
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == "/custom/titan.log"
+
+
+def test_load_env_to_os_points_the_kernel_at_the_data_folder_env(monkeypatch, tmp_path: Path) -> None:
+    """TITAN.exe: the profile editor must write the launcher's .env, not one in the temp unpack folder."""
+    import os
+
+    import launcher.main as launcher_main
+
+    _isolate_load_env_to_os(monkeypatch, launcher_main, tmp_path)
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+    monkeypatch.setattr(launcher_main, "get_env_path", lambda: tmp_path / ".env")
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_ENV_FILE"] == str(tmp_path / ".env")
+
+
+def test_kernel_env_path_follows_titan_env_file(tmp_path: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    env_file = tmp_path / "data" / ".env"
+    result = subprocess.run(
+        [sys.executable, "-c", "from titan.ui.setup_wizard import ENV_PATH; print(ENV_PATH)"],
+        env={**os.environ, "TITAN_ENV_FILE": str(env_file)},
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=Path(__file__).resolve().parents[2],
+    )
+
+    assert result.stdout.strip() == str(env_file)
 
 
 def test_load_env_to_os_gives_the_kernel_a_data_folder_and_token_key(monkeypatch, tmp_path: Path) -> None:
