@@ -872,7 +872,7 @@ def _edit_nutrition_prefs(ctx: dict):
         print("\n  Q6. Παρακολούθηση κύκλου;")
         print("    1. Ναι")
         print("    2. Όχι")
-        print(f"  (τρέχον: {menstrual_tracking})")
+        print(f"  (τρέχον: {'Ναι' if menstrual_tracking == 'yes' else 'Όχι'})")
         _map6 = {'1': 'yes', '2': 'no'}
         menstrual_tracking = _map6.get(input("  Επιλογή (Enter=κράτησε): ").strip(), menstrual_tracking)
 

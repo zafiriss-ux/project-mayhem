@@ -91,3 +91,22 @@ def test_titan_core_db_name_enforced(monkeypatch: pytest.MonkeyPatch) -> None:
     stale_db = SimpleNamespace(db_path=Path("/data/titan.db"))
     with pytest.raises(RuntimeError, match="Must use titan_core.db"):
         create_app(db=stale_db)
+
+
+@pytest.mark.integration
+def test_readyz_does_not_expose_exception_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CodeQL py/stack-trace-exposure (#24): /readyz is public, so only the class name."""
+    _generate_jwt_env(monkeypatch)
+    from titan.api.main import create_app
+
+    class _BrokenDB:
+        db_path = Path("/data/titan_core.db")
+
+        def is_db_reachable(self) -> bool:
+            raise RuntimeError("secret path /srv/private/titan_core.db")
+
+    client = TestClient(create_app(db=_BrokenDB()), base_url="https://testserver")
+    response = client.get("/readyz")
+    assert response.status_code == 503
+    assert response.json()["checks"]["db_error"] == "RuntimeError"
+    assert "/srv/private" not in response.text

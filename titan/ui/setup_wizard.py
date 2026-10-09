@@ -191,8 +191,9 @@ def run_setup_wizard() -> dict:
     # ── Save ─────────────────────────────────────────────────────────────
     backend = _save_credentials(creds)
     load_env_file()
-    destination = "keyring" if backend == "keyring" else ".env"
-    print(f"\n✅ Credentials αποθηκεύτηκαν στο {destination}\n")
+    if backend != "secrets_not_saved":
+        destination = "keyring" if backend == "keyring" else ".env"
+        print(f"\n✅ Credentials αποθηκεύτηκαν στο {destination}\n")
     return creds
 
 
@@ -205,11 +206,28 @@ def _save_credentials(creds: dict) -> str:
         _credential_storage_event("keyring")
         return "keyring"
 
-    _save_env(creds)
-    print("  ⚠️  Keyring μη διαθέσιμο: τα credentials αποθηκεύτηκαν σε .env.")
-    print("     Εγκατέστησε/ενεργοποίησε keyring backend για ασφαλή αποθήκευση και ξανατρέξε setup.")
-    _credential_storage_event("env_file_partial")
-    return "env_file_partial"
+    # D-023: without keyring the secrets would land in .env as plain text, so
+    # the user must agree first (CodeQL py/clear-text-storage-sensitive-data).
+    print("  ⚠️  Keyring μη διαθέσιμο (ενεργοποίηση: TITAN_USE_KEYRING=1 και pip install keyring).")
+    print("     Οι κωδικοί Garmin/Telegram θα γραφτούν σε απλό κείμενο στο .env.")
+    if _confirm_plaintext_env():
+        _save_env(creds)
+        print("  Τα credentials αποθηκεύτηκαν σε .env.")
+        _credential_storage_event("env_file_partial")
+        return "env_file_partial"
+
+    _save_env({k: v for k, v in creds.items() if k not in KEYRING_SERVICES})
+    print("  Οι κωδικοί ΔΕΝ αποθηκεύτηκαν. Όρισέ τους ως μεταβλητές περιβάλλοντος:")
+    for env_key in KEYRING_SERVICES:
+        if env_key in creds:
+            print(f"     {env_key}")
+    _credential_storage_event("secrets_not_saved")
+    return "secrets_not_saved"
+
+
+def _confirm_plaintext_env() -> bool:
+    answer = input("  Να αποθηκευτούν στο .env; (ν/ο): ").strip().lower()
+    return answer in {"ν", "ναι", "y", "yes"}
 
 
 def _save_keyring_credentials(creds: dict, keyring) -> None:
