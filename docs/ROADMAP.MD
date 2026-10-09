@@ -1,5 +1,9 @@
 # TITAN OS — Development Roadmap
 
+> **October 2026:** since 2026-10-07 the work follows a refactor plan tracked in
+> [`PROGRESS.md`](../PROGRESS.md), with decisions in [`DECISIONS.md`](../DECISIONS.md) and
+> per-PR changes in [`CHANGELOG.md`](../CHANGELOG.md). The phase table below is unchanged.
+
 ## Philosophy
 Stability first. Architecture before features. No uncontrolled iteration.
 

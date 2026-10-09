@@ -62,7 +62,7 @@ titan/
 
 ## 🚀 Εγκατάσταση
 
-Υπάρχουν δύο τρόποι. Κάθε έκδοση με tag βγάζει GitHub Release με το Windows `TITAN-vX.Y.Z-win64.zip` και εικόνες Docker στο `ghcr.io` ([`docs/RUNBOOK_ROLLBACK.md`](docs/RUNBOOK_ROLLBACK.md)). Release δεν έχει βγει ακόμη.
+Υπάρχουν δύο τρόποι. Κάθε έκδοση με tag βγάζει GitHub Release με το Windows `TITAN-vX.Y.Z-win64.zip` και εικόνες Docker στο `ghcr.io` ([`docs/RUNBOOK_ROLLBACK.md`](docs/RUNBOOK_ROLLBACK.md)). Έχουν βγει τα releases v5.8.0, v5.8.1 και v5.8.3 ([σελίδα Releases](https://github.com/zafiriss-ux/project-mayhem/releases)). Οι αλλαγές ανά έκδοση είναι στο [`CHANGELOG.md`](CHANGELOG.md).
 
 ### Α. Docker (προτεινόμενο για 24/7 λειτουργία)
 

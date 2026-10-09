@@ -6,6 +6,7 @@
 
 ## Χωρίς release ακόμη
 
+- #953 (2026-10-09) docs: έγγραφα που λένε την αλήθεια (εργασία 3)
 - #952 (2026-10-09) docs: CHANGELOG.md και DECISIONS.md (εργασία 2)
 - #951 (2026-10-09) docs(adr): ADR-0061 κανόνες εργασίας του owner (εργασία 1)
 - #950 (2026-10-09) fix(worker): SIGTERM can no longer be lost while the worker sleeps
