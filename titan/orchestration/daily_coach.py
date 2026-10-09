@@ -244,6 +244,22 @@ def _daily_coach_event(
 
 
 _TRUST_CLAMP_KEEP = frozenset({"REST", "EASY"})
+_CLAMP_MAX_DURATION_MIN = 45
+
+
+def _clamp_to_easy_45(session: dict) -> dict:
+    """EASY with at most 45 minutes; the planned distance shrinks in the same ratio.
+
+    The clamps used to cut the duration but keep the planned distance, so the
+    morning message could say "EASY – 16 km" for a 45-minute run.
+    """
+    planned_min = _safe_int(session.get("duration_min", _CLAMP_MAX_DURATION_MIN), _CLAMP_MAX_DURATION_MIN)
+    capped_min = min(planned_min, _CLAMP_MAX_DURATION_MIN)
+    capped = {**session, "session_type": "EASY", "duration_min": capped_min}
+    distance = _safe_float(session.get("distance_km"), 0.0)
+    if distance > 0 and planned_min > capped_min:
+        capped["distance_km"] = round(distance * capped_min / planned_min, 1)
+    return capped
 
 
 def _cap_session_for_invalid_trust(
@@ -271,12 +287,7 @@ def _cap_session_for_invalid_trust(
         session_applied="EASY",
         trust_reasons=list(reasons),
     )
-    capped = {
-        **session,
-        "session_type": "EASY",
-        "duration_min": min(_safe_int(session.get("duration_min", 45), 45), 45),
-    }
-    return capped, True
+    return _clamp_to_easy_45(session), True
 
 
 def _failure_class_for_step(step_number: int, error: Exception) -> str:
@@ -1078,7 +1089,7 @@ class DailyCoach:
         _session_planned = str(today_session.get('session_type', 'EASY')).upper()
 
         if garmin_data_stale:
-            today_session = {**today_session, "session_type": "EASY", "duration_min": min(int(today_session.get("duration_min", 45)), 45)}
+            today_session = _clamp_to_easy_45(today_session)
         today_session, data_trust_clamped = _cap_session_for_invalid_trust(
             today_session,
             trust_level=garmin_trust.trust_level,
