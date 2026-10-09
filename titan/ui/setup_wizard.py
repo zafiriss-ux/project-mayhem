@@ -17,7 +17,9 @@ from pathlib import Path
 from titan import __version__
 
 SECRETS_PATH = Path(__file__).parent.parent.parent / "config_secrets.py"
-ENV_PATH     = Path(__file__).parent.parent.parent / ".env"
+# TITAN.exe: the launcher points TITAN_ENV_FILE at the .env in the data folder.
+# Next to __file__ would be the exe's temporary unpack folder, deleted on exit.
+ENV_PATH     = Path(os.environ.get("TITAN_ENV_FILE") or Path(__file__).parent.parent.parent / ".env")
 EMAIL_REGEX = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 LOCATION_REGEX = re.compile(r"^[A-Za-zÀ-ÿ\s.'-]+,[A-Za-z]{2}$")
 KEYRING_ENV_FLAG = "TITAN_USE_KEYRING"
