@@ -52,6 +52,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -457,6 +458,34 @@ t_cohort_calibration_signals = Table(
     Column("completion_delta_pp", Float),
     Column("computed_at", String, nullable=False),
     UniqueConstraint("threshold_key", "athlete_id", name="uq_cohort_calibration_signals_threshold_key"),
+)
+
+# ---------------------------------------------------------------------------
+# Tables 23–24 — worker_routine_executions, telegram_override_nonces
+# Covers: _apply_v26_migrations() (ADR-0060 D1/D2, INV-15 / INV-17)
+# NOTE: ladder-created (v26); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_worker_routine_executions = Table(
+    "worker_routine_executions",
+    metadata,
+    Column("athlete_id", String, primary_key=True),
+    Column("execution_date", String, primary_key=True),
+    Column("routine_type", String, primary_key=True),
+    Column("started_at", String, nullable=False),
+    Column("completed_at", String),
+)
+
+t_telegram_override_nonces = Table(
+    "telegram_override_nonces",
+    metadata,
+    Column("nonce", String, primary_key=True),
+    Column("command_type", String, nullable=False),
+    Column("athlete_id", String, nullable=False),
+    Column("decision_id", String, nullable=False),
+    Column("issued_at", String, nullable=False),
+    Column("expires_at", String, nullable=False),
+    Column("consumed_at", String),
+    Index("idx_telegram_override_nonces_expires", "expires_at"),
 )
 
 # ---------------------------------------------------------------------------

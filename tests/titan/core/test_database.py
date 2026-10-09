@@ -946,7 +946,7 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
 def test_schema_version_is_11():
     """SCHEMA_VERSION must be 20 after biological_sex/menstrual_tracking migration."""
     from titan.core.database import SCHEMA_VERSION
-    assert SCHEMA_VERSION == 25
+    assert SCHEMA_VERSION == 26
 
 
 @pytest.mark.integration
@@ -1026,7 +1026,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
         assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
         version = cursor.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 25  # SCHEMA_VERSION bumped to 25 by P27-01 cohort_calibration_signals
+        assert version == 26  # SCHEMA_VERSION bumped to 26 by ADR-0060 worker state tables
     finally:
         db.close()
 

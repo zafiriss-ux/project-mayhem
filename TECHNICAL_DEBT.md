@@ -1688,7 +1688,7 @@ RESOLVED disposition.
 |----|--------|------|---------------|--------|--------------|
 | T-PRA-01 | B-1 | 1 | Coach-route scoped authorization (INV-11) + owner-bypass removal | OPEN | Not in the refactor plan yet; Architect to schedule |
 | T-PRA-02 | B-5, SA:m-1 | 1 | Telegram fail-closed trust + durable nonces (INV-16, INV-13) | FIX MERGED: PR #904 (`_is_trusted()` denies when unconfigured; `DegradedModeTracker` hydration fails closed); durable nonces ride T-PRA-03; Architect close pending | Refactor plan task #12 |
-| T-PRA-03 | B-3, B-5 | 1 | Worker durable state tables (INV-15, INV-17) | OPEN | Refactor plan task #14 |
+| T-PRA-03 | B-3, B-5 | 1 | Worker durable state tables (INV-15, INV-17) | FIX PARTIAL — branch `feat/adr0060-routine-executions`: v26 creates both tables (ADR-0060 D3); the worker loop and the multi-athlete scheduler claim the day in `worker_routine_executions` before the morning routine and skip it after a restart (D1, `tests/test_worker_state_durability.py`). Pending: Telegram nonces (D2) | Refactor plan task #14 |
 | T-PRA-04 | B-2, B-9 | 1 | FK enforcement safe rollout (INV-14) | FIX MERGED: PR #874 (`foreign_keys=ON` + `foreign_key_check` refusal at startup); Architect close pending | Refactor plan task #4 |
 | T-PRA-05 | SA:m-4, E-2 | 2 | Worker observability transport (INV-19) | OPEN | Not scheduled |
 | T-PRA-06 | SA:M-2 | 1 | Multi-athlete scheduler registration from `athletes` table | ON HOLD (Architect 2026-10-08, issue #926: Garmin/Telegram accounts are single-owner) | Refactor plan task #20 |

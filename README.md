@@ -74,7 +74,7 @@ docker compose up --build -d
 ```
 
 - `titan-api`: FastAPI στο `http://localhost:8000` (readiness: `GET /readyz` → 200)
-- `titan-worker`: τρέχει κάθε μέρα στις 07:00 UTC την πρωινή ρουτίνα (Garmin sync, καιρός, Telegram) και ένα ημερήσιο backup της βάσης
+- `titan-worker`: τρέχει κάθε μέρα στις 07:00 UTC την πρωινή ρουτίνα (Garmin sync, καιρός, Telegram) και ένα ημερήσιο backup της βάσης. Η ρουτίνα τρέχει μία φορά τη μέρα: ένα restart την ίδια μέρα δεν την ξανατρέχει, γιατί η βάση κρατά ότι ξεκίνησε (ADR-0060)
 - Βάση: `/data/titan_core.db` στο volume `titan-data`
 - Backups: ελεγμένα ημερήσια αντίγραφα στο ξεχωριστό volume `titan-backups` (7 ημερήσια + 4 εβδομαδιαία)
 
