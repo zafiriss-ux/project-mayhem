@@ -2958,3 +2958,27 @@ def test_persist_garmin_data_does_not_store_default_sleep_as_measurement(tmp_pat
         assert tuple(row) == (None, None)
     finally:
         db.close()
+
+
+@pytest.mark.unit
+def test_inv24_cap_shrinks_distance_with_duration():
+    """INV-24: a 22 km / 120' long run capped to EASY 45' becomes 8.2 km, not 22 km."""
+    from titan.science.data_trust import DataTrustLevel
+
+    session = {"session_type": "LONG", "duration_min": 120, "distance_km": 22.0}
+    capped, applied = daily_coach._cap_session_for_invalid_trust(
+        session, trust_level=DataTrustLevel.INVALID, reasons=["test"], stage="test",
+    )
+
+    assert applied is True
+    assert capped == {"session_type": "EASY", "duration_min": 45, "distance_km": 8.2}
+
+
+@pytest.mark.unit
+def test_clamp_keeps_short_sessions_and_missing_distance():
+    assert daily_coach._clamp_to_easy_45({"session_type": "TEMPO", "duration_min": 40, "distance_km": 9.0}) == {
+        "session_type": "EASY", "duration_min": 40, "distance_km": 9.0,
+    }
+    assert daily_coach._clamp_to_easy_45({"session_type": "LONG", "duration_min": 90}) == {
+        "session_type": "EASY", "duration_min": 45,
+    }
