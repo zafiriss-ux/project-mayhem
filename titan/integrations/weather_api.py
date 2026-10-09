@@ -79,11 +79,15 @@ def _http_get(url: str, *, params: dict[str, Any], timeout: int, verify: bool):
     if _HAS_REQUESTS:
         return requests.get(url, params=params, timeout=timeout, verify=verify)
 
+    # The urllib fallback always verifies certificates and only speaks HTTPS
+    # (Bandit B323/B310, D-030). ``verify`` applies to the requests path only.
+    if not url.startswith("https://"):
+        raise ValueError(f"weather API URL must use https: {url!r}")
     query = urllib.parse.urlencode(params)
     full_url = f"{url}?{query}" if query else url
-    context = ssl.create_default_context() if verify else ssl._create_unverified_context()
+    context = ssl.create_default_context()
 
-    with urllib.request.urlopen(full_url, timeout=timeout, context=context) as resp:
+    with urllib.request.urlopen(full_url, timeout=timeout, context=context) as resp:  # nosec B310
         body = resp.read()
         status_code = getattr(resp, "status", 200)
     return _UrllibResponse(body=body, status_code=status_code)
