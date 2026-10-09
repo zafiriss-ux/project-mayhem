@@ -1,10 +1,29 @@
 """Root conftest.py — shared fixtures for all test files."""
 from __future__ import annotations
 
+import os
+import tempfile
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from freezegun import freeze_time as _freeze_time
+
+
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
+    """Point the home folder at a throwaway directory for the whole run.
+
+    ``DatabaseManager()`` without ``db_dir`` and ``python -m titan`` open the
+    real data folder (``~/Documents/TITAN``, on Windows under ``USERPROFILE``),
+    the same database the installed TITAN.exe uses. A test run from a branch
+    with a newer schema would migrate that database, and the installed exe
+    would then refuse to open it (INV-25). Set before collection, so imports
+    and subprocesses (which copy ``os.environ``) see it too.
+    """
+    home = Path(tempfile.mkdtemp(prefix="titan-test-home-"))
+    os.environ["HOME"] = str(home)
+    os.environ["USERPROFILE"] = str(home)
+    os.environ["LOCALAPPDATA"] = str(home / "AppData" / "Local")
 
 
 @pytest.fixture(autouse=True)
