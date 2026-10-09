@@ -958,6 +958,32 @@ class DatabaseManager:
         """Return recent override audit rows (oldest first) for operator review."""
         return self._governance.get_override_log(limit=limit)
 
+    # --- TELEGRAM OVERRIDE NONCES (ADR-0060 D2) (titan/core/repositories/governance.py) ---
+
+    def issue_override_nonce(
+        self,
+        *,
+        nonce: str,
+        command_type: str,
+        athlete_id: str,
+        decision_id: str,
+        issued_at: datetime,
+        expires_at: datetime,
+    ) -> None:
+        """Store a one-time override nonce bound to its decision (INV-17)."""
+        self._governance.issue_override_nonce(
+            nonce=nonce, command_type=command_type, athlete_id=athlete_id,
+            decision_id=decision_id, issued_at=issued_at, expires_at=expires_at,
+        )
+
+    def consume_override_nonce(self, *, nonce: str, command_type: str, now: datetime) -> str | None:
+        """Consume a nonce in one statement; its decision_id, or None if not valid."""
+        return self._governance.consume_override_nonce(nonce=nonce, command_type=command_type, now=now)
+
+    def prune_expired_override_nonces(self, now: datetime) -> int:
+        """Delete expired override nonces; returns how many were deleted."""
+        return self._governance.prune_expired_override_nonces(now=now)
+
     # --- GOVERNANCE OUTCOMES (titan/core/repositories/governance.py) ---
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:

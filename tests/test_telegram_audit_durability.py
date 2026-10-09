@@ -81,7 +81,7 @@ def _ask_for_override_reason(bot: TitanTelegramBot) -> None:
         "athlete_id": "owner",
         "created_at": datetime.now(UTC).isoformat(),
     }
-    nonce = _create_override_nonce("d-1")
+    nonce = _create_override_nonce(bot.db, "d-1", "owner")
     assert "reason" in bot.process_override_callback(CHAT, f"override:request:{nonce}")
 
 

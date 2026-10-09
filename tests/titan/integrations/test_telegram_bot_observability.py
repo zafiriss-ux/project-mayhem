@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import titan.integrations.telegram_bot as telegram_bot
+from titan.core.database import DatabaseManager
 from titan.integrations.telegram_bot import TitanTelegramBot, _create_override_nonce
 
 
@@ -756,7 +757,7 @@ def test_send_governance_decision_falls_back_when_polling_backend_missing():
 
 
 @pytest.mark.integration
-def test_process_override_callback_and_reason_records_signal(monkeypatch):
+def test_process_override_callback_and_reason_records_signal(monkeypatch, tmp_path):
     class _DB:
         def __init__(self):
             self.rows = []
@@ -768,7 +769,7 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
             self.rows.append({"audit": kwargs["action_type"]})
 
     db = _DB()
-    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot = TitanTelegramBot(bot_token="", chat_id=123, db=DatabaseManager(db_dir=tmp_path))
     bot.register_override_callback("db_provider", lambda: db)
     bot._pending_override_prompts[123] = {
         "decision_id": "d-2",
@@ -777,7 +778,7 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch):
         "created_at": "2026-03-07T09:00:00+00:00",
     }
 
-    nonce = _create_override_nonce("d-2")
+    nonce = _create_override_nonce(bot.db, "d-2", "ATH_2")
     assert "required" in bot.process_override_callback(123, f"override:request:{nonce}")
     assert bot.process_override_reason(123, "Need to adjust due to artifact") == "✅ Override recorded."
     assert db.rows[0] == {"audit": "TELEGRAM_OVERRIDE"}
