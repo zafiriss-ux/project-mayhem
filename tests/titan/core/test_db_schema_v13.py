@@ -135,13 +135,13 @@ def test_model_calibration_metadata_calibrated_for_absent(
 
 @pytest.mark.integration
 def test_schema_version_is_thirteen(db: DatabaseManager) -> None:
-    """PRAGMA user_version must equal 25 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 25, (
-        f"SCHEMA_VERSION constant must be 25, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 26 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 26, (
+        f"SCHEMA_VERSION constant must be 26, got {SCHEMA_VERSION}"
     )
     version = db.conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 25, (
-        f"PRAGMA user_version must be 25 after create_tables(), got {version}"
+    assert version == 26, (
+        f"PRAGMA user_version must be 26 after create_tables(), got {version}"
     )
 
 
@@ -165,7 +165,7 @@ def test_v13_migration_idempotent_on_existing_db(tmp_path: Path) -> None:
         ).fetchone()
         assert rows[0] == 1, "owner row must exist exactly once after idempotent open"
         version = db2.conn.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 25
+        assert version == 26
     finally:
         db2.close()
 
@@ -228,6 +228,6 @@ def test_v13_migration_upgrades_pre_v13_database(tmp_path: Path) -> None:
         )
 
         version = db.conn.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 25
+        assert version == 26
     finally:
         db.close()
