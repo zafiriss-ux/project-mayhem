@@ -1547,6 +1547,10 @@ class DailyCoach:
         # training when sleep data is absent.  75 was optimistic (sleep_delta +0.17).
         today_sleep_score = 50
         today_sleep_hours = 7.5
+        # The defaults above feed today's decision only. They are not measurements,
+        # so they are not stored: daily_metrics keeps NULL unless Garmin sent a value.
+        sleep_score_measured = False
+        sleep_hours_measured = False
 
         # ── Activities → training_log ─────────────────────────────────────
         activities = garmin_data.get('activities', [])
@@ -1593,10 +1597,13 @@ class DailyCoach:
                 today_rhr = _safe_int(rhr)
             if s_val is not None:
                 today_sleep_score = _safe_int(s_val)
+                sleep_score_measured = True
             if total_h:
                 today_sleep_hours = _safe_float(total_h)
+                sleep_hours_measured = True
             elif dur_sec:
                 today_sleep_hours = _safe_float(dur_sec) / 3600.0
+                sleep_hours_measured = True
 
         # ── HRV → daily_metrics ───────────────────────────────────────────
         hrv_entries = garmin_data.get('hrv', [])
@@ -1737,8 +1744,8 @@ class DailyCoach:
                     weight       = latest_weight,
                     hrv          = latest_rmssd,
                     rhr          = today_rhr or None,
-                    sleep_hours  = today_sleep_hours if today_sleep_hours > 0 else None,
-                    sleep_quality= today_sleep_score if today_sleep_score > 0 else None,
+                    sleep_hours  = today_sleep_hours if sleep_hours_measured and today_sleep_hours > 0 else None,
+                    sleep_quality= today_sleep_score if sleep_score_measured and today_sleep_score > 0 else None,
                     quality_flag = daily_quality_flag,
                     athlete_id   = getattr(self, "athlete_id", "owner"),
                 )

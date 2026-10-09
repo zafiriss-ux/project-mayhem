@@ -2937,3 +2937,24 @@ def test_recent_trimp_uses_garmin_training_load_since_yesterday():
     ]
 
     assert coach._get_recent_trimp(activities, since_date="2026-03-03") == pytest.approx(140.0)
+
+
+@pytest.mark.unit
+def test_persist_garmin_data_does_not_store_default_sleep_as_measurement(tmp_path):
+    """Without a sleep entry the decision still uses 7.5 h / score 50, but the DB keeps NULL."""
+    db = DatabaseManager(db_name="no_fake_sleep.db", db_dir=tmp_path)
+    coach = _build_atomic_persist_coach(db)
+    day = "2026-03-22"
+    payload = _garmin_payload_for_day(day)
+    payload["sleep"] = []
+
+    try:
+        rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
+
+        assert (sleep_score, sleep_hours) == (50, 7.5)
+        row = db.conn.execute(
+            "SELECT sleep_hours, sleep_quality FROM daily_metrics WHERE date = ?", (day,),
+        ).fetchone()
+        assert tuple(row) == (None, None)
+    finally:
+        db.close()
