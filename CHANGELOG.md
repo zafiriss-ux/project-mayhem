@@ -6,7 +6,10 @@
 
 ## Επόμενη έκδοση
 
+- #962 (2026-10-09) fix: ο glycogen παίρνει φορτίο από το Garmin και ανακάμπτει ρεαλιστικά
 - #961 (2026-10-09) fix: τα ευρήματα του CodeQL (#22, #23, #24)
+- #960 (2026-10-09) build(deps): Bump the python-minor-and-patch group with 2 updates
+- #959 (2026-10-09) ci(deps): Bump actions/dependency-review-action from 4 to 5 in the github-actions group
 - #958 (2026-10-09) ci: εργαλεία ασφάλειας για το δημόσιο repo (CodeQL, Dependency Review, SECURITY.md)
 - #957 (2026-10-09) fix: παλμός ηρεμίας από το Garmin και ύπνος της σωστής νύχτας
 - #956 (2026-10-09) fix: οι ειδοποιήσεις Telegram που δεν έφταναν ποτέ

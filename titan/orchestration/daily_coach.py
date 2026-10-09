@@ -26,7 +26,7 @@ import json
 import logging
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 
@@ -835,7 +835,10 @@ class DailyCoach:
         cs_thermal = self.cs_tracker.apply_thermal(today_temp)
 
         # ── Step 6: Glycogen debt update ─────────────────────────────────────
-        recent_trimp = self._get_recent_trimp(garmin_data.get('activities', []))
+        self._hydrate_glycogen_debt(today_str)
+        recent_trimp = self._get_recent_trimp(
+            garmin_data.get('activities', []), since_date=self._previous_day(today_str),
+        )
         if recent_trimp > 0:
             self.glycogen.update(
                 date               = today_str,
@@ -1833,14 +1836,61 @@ class DailyCoach:
         t.start()
         return True
 
-    def _get_recent_trimp(self, activities: list[dict]) -> float:
+    @staticmethod
+    def _previous_day(day: str) -> str:
+        return (date.fromisoformat(day) - timedelta(days=1)).isoformat()
+
+    def _hydrate_glycogen_debt(self, today_str: str) -> None:
+        """Start from the last stored debt when this accumulator has no history.
+
+        The worker builds a new coach (and accumulator) every morning, so without
+        this the debt restarted at 0 each day. A long-lived coach (console) keeps
+        its in-memory history and is left alone. Nights between the stored day and
+        last night (missed mornings) count as ordinary recovery nights; last night
+        itself is applied by step 6.
+        """
+        if self.glycogen.daily_debt or getattr(self.glycogen, "debt_history", None):
+            return
+        try:
+            previous = self.db.get_previous_glycogen_debt(
+                today_str, athlete_id=getattr(self, "athlete_id", "owner"),
+            )
+        except (sqlite3.Error, AttributeError) as exc:
+            _daily_coach_event(
+                "glycogen_hydration_failed",
+                severity=EventSeverity.WARNING,
+                error_class=type(exc).__name__,
+                error_message=str(exc),
+            )
+            return
+        if not previous:
+            return
+        stored_date, stored_debt = previous
+        max_debt = getattr(self.glycogen, "MAX_DEBT", 10.0)
+        self.glycogen.daily_debt = max(0.0, min(max_debt, float(stored_debt)))
+        try:
+            missed_nights = (date.fromisoformat(today_str) - date.fromisoformat(stored_date[:10])).days - 1
+        except ValueError:
+            missed_nights = 0
+        for _ in range(max(0, missed_nights)):
+            self.glycogen.overnight_resynthesis()
+
+    def _get_recent_trimp(self, activities: list[dict], since_date: str | None = None) -> float:
         """
         Extract TRIMP from synced activities for glycogen debt update.
-        Falls back to sRPE-based estimate if no Garmin TRIMP available.
+
+        Uses, in order: ``trimp``; ``estimated_training_load`` (Edwards TRIMP from
+        GarminSync.sync_activities); the sRPE proxy ``training_load`` × 0.6.
+        With *since_date*, only activities dated on or after it count: the sync
+        returns 14 days, but only the runs since the previous morning add debt.
         """
         total = 0.0
         for act in activities:
+            if since_date is not None and str(act.get('date', '')) < since_date:
+                continue
             trimp = _safe_float(act.get('trimp', 0))
+            if trimp <= 0:
+                trimp = _safe_float(act.get('estimated_training_load', 0))
             if trimp > 0:
                 total += trimp
             else:
