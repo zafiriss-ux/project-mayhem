@@ -512,7 +512,7 @@ def create_app(
     @app.get("/athletes/{athlete_id}/dashboard")
     def athlete_dashboard(
         athlete_id: str,
-        current_user: AuthUser = Depends(_audited(AuditActionType.VIEW_DATA, "athlete_dashboard")),
+        current_user: AuthUser = Depends(_audited(AuditActionType.VIEW_DATA, "athlete_dashboard", coach_only=False)),
     ) -> dict[str, str]:
         if current_user.role != "COACH" and current_user.athlete_id != athlete_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Athlete isolation violation")
@@ -551,18 +551,25 @@ def create_app(
     return app
 
 
-def _audited(action: AuditActionType, resource: str) -> Callable[..., AuthUser]:
+def _audited(action: AuditActionType, resource: str, *, coach_only: bool = True) -> Callable[..., AuthUser]:
     """Route dependency: authorize, then write the coach audit record before the handler runs.
 
     INV-22 (AGENTS §8.13, T-PRA-21): the record is durable (``coach_audit_log``)
     and ordered before the route's effect. If it cannot be written the request
     fails closed with 503 and the handler never runs.
+
+    ``coach_only`` (the default) refuses every non-COACH user with 403 before
+    the assignment check: ``require_coach_athlete_access`` lets non-coaches
+    through for the route's own isolation check, which only routes that serve
+    athletes too (``coach_only=False``) have.
     """
 
     def _dependency(
         request: Request,
         current_user: AuthUser = Depends(require_coach_athlete_access),
     ) -> AuthUser:
+        if coach_only:
+            require_coach(current_user)
         _audit_before_effect(request, current_user, action, resource)
         return current_user
 

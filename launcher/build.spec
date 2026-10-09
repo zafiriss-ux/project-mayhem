@@ -97,7 +97,10 @@ exe = EXE(
     upx=True,  # Compress with UPX
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Windowed mode (no console window)
+    # TITAN's main menu reads the keyboard in a console window. A windowed
+    # build (console=False) has no stdin/stdout, so after the setup wizard
+    # nothing appeared and the menu could not start (v5.8.0, v5.8.1).
+    console=True,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
