@@ -3062,8 +3062,8 @@
     "notes": null,
     "quality_flag": null,
     "resting_hr": null,
-    "sleep_hours": 7.5,
-    "sleep_quality": 50,
+    "sleep_hours": null,
+    "sleep_quality": null,
     "soreness": null,
     "weight_kg": null
    },
@@ -3081,8 +3081,8 @@
     "notes": null,
     "quality_flag": null,
     "resting_hr": null,
-    "sleep_hours": 7.5,
-    "sleep_quality": 50,
+    "sleep_hours": null,
+    "sleep_quality": null,
     "soreness": null,
     "weight_kg": null
    },
@@ -3100,8 +3100,8 @@
     "notes": null,
     "quality_flag": null,
     "resting_hr": null,
-    "sleep_hours": 7.5,
-    "sleep_quality": 50,
+    "sleep_hours": null,
+    "sleep_quality": null,
     "soreness": null,
     "weight_kg": null
    },
