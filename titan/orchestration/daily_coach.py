@@ -27,7 +27,6 @@ import logging
 import sqlite3
 import threading
 from datetime import UTC, date, datetime, timedelta
-from time import monotonic
 from typing import TYPE_CHECKING, Any
 
 from titan.core.structured_events import EventSeverity, structured_event_payload
@@ -482,8 +481,8 @@ class DailyCoach:
             db=self.db, athlete_id=self.athlete_id
         )
         self.athlete_max_hr = athlete_max_hr
-        self._routine_thread: threading.Thread | None = None
-        self._routine_started_monotonic: float | None = None
+        # Held for a whole morning run (by BackgroundRoutineRunner, ADR-0058 Phase C)
+        # and while engines hydrate, so the two never overlap.
         self._routine_mutex = threading.Lock()
         self._degraded_tracker = DegradedModeTracker(db=self.db)
         self._effect_bus = self._build_effect_bus()
@@ -1742,36 +1741,10 @@ class DailyCoach:
             )
             return None
 
-    def run_morning_routine_async(self, trigger_source: str = "async_call") -> bool:
-        """Schedule ``run_morning_routine`` in a daemon thread.
-
-        Returns False if a routine is already running (lock not acquired),
-        True if the routine thread was successfully started.
-        """
-        acquired = self._routine_mutex.acquire(blocking=False)
-        if not acquired:
-            _daily_coach_event(
-                "morning_routine_skipped",
-                trigger_source=trigger_source,
-                reason="already_running",
-            )
-            return False
-
-        def _run_and_release() -> None:
-            try:
-                self.run_morning_routine()
-            finally:
-                self._routine_mutex.release()
-
-        t = threading.Thread(
-            target=_run_and_release,
-            name="DailyCoachRoutine",
-            daemon=True,
-        )
-        self._routine_thread = t
-        self._routine_started_monotonic = monotonic()
-        t.start()
-        return True
+    @property
+    def routine_lock(self) -> threading.Lock:
+        """The lock a background run holds; see titan/orchestration/routine_runner.py (D-035)."""
+        return self._routine_mutex
 
     @staticmethod
     def _previous_day(day: str) -> str:

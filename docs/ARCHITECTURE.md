@@ -114,6 +114,7 @@ launcher/main.py
 | `titan/orchestration/coaching_pipeline.py` | Coaching pipeline helpers |
 | `titan/orchestration/coaching_scheduler.py` | Scheduling for daily coaching routine |
 | `titan/orchestration/contracts.py` | Typed contracts: `TitanContext`, `TitanContextContract`, `DecisionResult`, `PlannedEffect` |
+| `titan/orchestration/routine_runner.py` | `BackgroundRoutineRunner` — runs the morning routine in one daemon thread at a time, under `DailyCoach.routine_lock`; owned by `titan/main.py` (ADR-0058 Phase C, plan task 9, D-035) |
 | `titan/orchestration/garmin_persistence.py` | `persist_garmin_data` — stores one morning's Garmin sync (activities, sleep, HRV, RHR, weight) in one transaction; moved out of `DailyCoach` (plan task 6, D-029) |
 | `titan/orchestration/engine_registry.py` | `EngineRegistry` — single construction site for all per-athlete science engines (ADR-0058) |
 | `titan/orchestration/effect_bus.py` | `TitanEffectBus` — registry-based PlannedEffect dispatcher; no if/elif branches (ADR-0058 Phase B) |

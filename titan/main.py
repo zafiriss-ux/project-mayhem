@@ -42,6 +42,7 @@ from titan.orchestration.contracts import TitanContext, TitanContextContract
 # ── Orchestration ────────────────────────────────────────────────────────────
 from titan.orchestration.daily_coach import DailyCoach
 from titan.orchestration.engine_registry import EngineRegistry
+from titan.orchestration.routine_runner import BackgroundRoutineRunner
 from titan.science.acwr_engine import ACWREngine
 from titan.science.adaptive_memory import AdaptiveMemory
 from titan.science.critical_speed import CriticalSpeedEngine
@@ -487,6 +488,8 @@ def main():
         engines=_engine_reg,
         athlete_profile=athlete_profile,
     )
+    # The morning routine runs in its own thread; the runner owns it (ADR-0058 Phase C, D-035).
+    routine_runner = BackgroundRoutineRunner(daily_coach.run_morning_routine, daily_coach.routine_lock)
 
     # _hydrate_engines_from_db runs at DailyCoach init but tsb_engine must be
     # populated before the menu system reads it; hydrate explicitly here.
@@ -537,11 +540,11 @@ def main():
     telegram.start_bot()
 
     # ── Step 9: Schedule automated tasks ─────────────────────────────────────
-    # Use async wrapper so Telegram polling isn't blocked during morning routine
+    # Run in the background so Telegram polling isn't blocked during morning routine
     telegram.schedule_task(
         name="Morning Coaching",
         time_str="07:00",
-        callback=daily_coach.run_morning_routine_async,
+        callback=routine_runner.start,
     )
 
     def _send_weekly_plan():
@@ -589,7 +592,7 @@ def main():
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
-        routine_thread = getattr(daily_coach, "_routine_thread", None)
+        routine_thread = routine_runner.thread
         if routine_thread is not None and routine_thread.is_alive():
             timeout_seconds = 30
             routine_thread.join(timeout=timeout_seconds)

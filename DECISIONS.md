@@ -9,6 +9,30 @@
 
 ---
 
+## D-035 · Το thread της πρωινής ρουτίνας βγαίνει από το `DailyCoach` (ADR-0058 Phase C)
+
+- **Πότε / ποιος:** 2026-10-09, Claude (#972), εργασία 9 του πλάνου.
+- **Απόφαση:**
+  - Νέο `BackgroundRoutineRunner` στο `titan/orchestration/routine_runner.py`. Ξεκινά την πρωινή
+    ρουτίνα σε daemon thread, μόνο αν δεν τρέχει ήδη άλλη. Ο κώδικας είναι αυτός που είχε το
+    `DailyCoach.run_morning_routine_async`.
+  - Το `DailyCoach` δεν έχει πια thread. Κρατά μόνο το lock, που το δίνει ως `routine_lock` και
+    το κρατά και όσο φορτώνει τα engines από τη βάση.
+  - Το `titan/main.py` φτιάχνει τον runner, βάζει το `runner.start` στο πρόγραμμα των 07:00 και
+    στο κλείσιμο περιμένει το `runner.thread`, όπως πριν περίμενε το thread του coach.
+  - Το event `morning_routine_skipped` βγαίνει από τον ίδιο logger με το ίδιο περιεχόμενο. Ένα
+    test το συγκρίνει με το παλιό.
+  - Τα tests που οδηγούσαν το thread μέσα από τον coach (5 αρχεία) οδηγούν πλέον τον runner, με
+    τους ίδιους ελέγχους.
+- **Γιατί:** το ADR-0058 Phase C ζητά ο `DailyCoach` να είναι σύγχρονος. Ο worker ήδη καλεί τη
+  ρουτίνα σύγχρονα, οπότε το thread το χρειάζεται μόνο η κονσόλα, και εκεί πλέον ανήκει.
+- **Απορρίφθηκαν:**
+  - Να μπει το thread στο `CoachingScheduler`, όπως έγραφε το ADR: εκείνος καλεί τους
+    αθλητές μέσα στο δικό του loop κάθε 60 δευτερόλεπτα και τον χρησιμοποιεί μόνο ο worker για
+    πολλούς αθλητές. Θα άλλαζε τη συμπεριφορά της κονσόλας.
+  - Να μείνει το `run_morning_routine_async` στον coach ως shim προς τον runner: ο coach θα
+    κρατούσε ακόμα thread, άρα το Phase C δεν θα έκλεινε.
+
 ## D-034 · Το Docker smoke κατεβάζει τις εικόνες του Docker Hub από το mirror.gcr.io
 
 - **Πότε / ποιος:** 2026-10-09, Claude (#971).

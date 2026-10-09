@@ -16,6 +16,7 @@ from titan.integrations.telegram_bot import TitanTelegramBot
 from titan.integrations.weather_api import WeatherAPI
 from titan.orchestration.daily_coach import DailyCoach
 from titan.orchestration.engine_registry import EngineRegistry
+from titan.orchestration.routine_runner import BackgroundRoutineRunner
 from titan.science.adaptive_priority_lock import AdaptivePriorityLock
 from titan.science.autonomic_engine import AutonomicFusionEngine
 from titan.science.biomechanics import BiomechanicsEngine
@@ -156,10 +157,13 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
 
     monkeypatch.setattr(TitanTelegramBot, "_scheduler_worker", fast_scheduler_worker)
 
+    # main.py runs the routine through BackgroundRoutineRunner (ADR-0058 Phase C, D-035).
+    runner = BackgroundRoutineRunner(coach.run_morning_routine, coach.routine_lock)
+
     telegram.schedule_task(
         name="Morning Coaching",
         time_str="07:00",
-        callback=coach.run_morning_routine_async,
+        callback=runner.start,
     )
 
     try:
@@ -174,9 +178,9 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
         weather.stop_background_updates()
         telegram.stop_bot()
 
-        if coach._routine_thread is not None:
-            coach._routine_thread.join(timeout=10)
-            assert not coach._routine_thread.is_alive(), "Routine thread did not exit cleanly"
+        if runner.thread is not None:
+            runner.thread.join(timeout=10)
+            assert not runner.thread.is_alive(), "Routine thread did not exit cleanly"
 
         db.close()
 
@@ -190,7 +194,7 @@ def test_full_lifecycle_stress_all_workers_start_run_stop_cleanly(monkeypatch, t
     assert garmin._sync_thread is None or not garmin._sync_thread.is_alive()
     assert weather._update_thread is None or not weather._update_thread.is_alive()
     assert telegram._sched_thread is None or not telegram._sched_thread.is_alive()
-    assert coach._routine_thread is None or not coach._routine_thread.is_alive()
+    assert runner.thread is None or not runner.thread.is_alive()
 
     assert len(scheduler_ticks) == tick_target
     assert len(routine_starts) == 1, "T1-07 guard should allow only one routine run while active"
@@ -233,6 +237,17 @@ def _setup_main_for_shutdown_tests(monkeypatch, daily_coach, db, main_menu_calla
     monkeypatch.setattr(titan_main, "TitanTelegramBot", _Telegram)
     monkeypatch.setattr(titan_main, "DatabaseManager", lambda: db)
     monkeypatch.setattr(titan_main, "DailyCoach", lambda **kwargs: daily_coach)
+
+    class _Runner:
+        """Stands in for BackgroundRoutineRunner and hands main() the fake coach's thread (D-035)."""
+
+        def __init__(self, routine, lock):
+            self.thread = daily_coach.background_thread
+
+        def start(self, trigger_source="async_call"):
+            return True
+
+    monkeypatch.setattr(titan_main, "BackgroundRoutineRunner", _Runner)
     monkeypatch.setattr(titan_main, "main_menu", main_menu_callable)
     monkeypatch.setattr(titan_main, "WeatherAPI", _Worker, raising=False)
 
@@ -292,9 +307,10 @@ def test_shutdown_joins_routine_thread_before_db_close(monkeypatch):
             call_order.append(f"routine.join:{timeout}")
 
     class _DailyCoach:
-        _routine_thread = _RoutineThread()
+        routine_lock = None
+        background_thread = _RoutineThread()
 
-        def run_morning_routine_async(self):
+        def run_morning_routine(self):
             return None
 
     _setup_main_for_shutdown_tests(
@@ -345,9 +361,10 @@ def test_shutdown_avoids_sqlite_programming_error_with_concurrent_routine(monkey
     routine_thread = threading.Thread(target=_routine_target, name="DailyCoachRoutine")
 
     class _DailyCoach:
-        _routine_thread = routine_thread
+        routine_lock = None
+        background_thread = routine_thread
 
-        def run_morning_routine_async(self):
+        def run_morning_routine(self):
             return None
 
     def _main_menu(_ctx):
@@ -387,9 +404,10 @@ def test_shutdown_join_timeout_emits_worker_shutdown_timeout(monkeypatch, caplog
     routine_thread = _RoutineThread()
 
     class _DailyCoach:
-        _routine_thread = routine_thread
+        routine_lock = None
+        background_thread = routine_thread
 
-        def run_morning_routine_async(self):
+        def run_morning_routine(self):
             return None
 
     _setup_main_for_shutdown_tests(
@@ -437,9 +455,10 @@ def test_shutdown_completes_with_bounded_wait_and_no_real_sleep(monkeypatch):
     routine_thread = _RoutineThread()
 
     class _DailyCoach:
-        _routine_thread = routine_thread
+        routine_lock = None
+        background_thread = routine_thread
 
-        def run_morning_routine_async(self):
+        def run_morning_routine(self):
             return None
 
     _setup_main_for_shutdown_tests(

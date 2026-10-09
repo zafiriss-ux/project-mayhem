@@ -1,3 +1,6 @@
+import inspect
+import json
+import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -8,9 +11,10 @@ from types import SimpleNamespace
 import pytest
 
 from titan.core.database import DatabaseManager
-from titan.orchestration import daily_coach
+from titan.orchestration import daily_coach, routine_runner
 from titan.orchestration.daily_coach import DailyCoach, DegradedModeTracker
 from titan.orchestration.engine_registry import EngineRegistry
+from titan.orchestration.routine_runner import BackgroundRoutineRunner
 
 
 class DummyDB:
@@ -287,11 +291,16 @@ def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing()
     assert isinstance(captured_kwargs["cs_confidence"], float)
 
 
+# The background thread moved to BackgroundRoutineRunner (ADR-0058 Phase C, D-035);
+# these tests keep their assertions and drive the runner with the coach's routine lock.
+
+
 @pytest.mark.unit
-def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
+def test_routine_runner_starts_thread_when_idle(monkeypatch):
     coach = DailyCoach.__new__(DailyCoach)
     coach.run_morning_routine = lambda: True
     coach._routine_mutex = threading.Lock()
+    runner = BackgroundRoutineRunner(coach.run_morning_routine, coach.routine_lock)
 
     created_threads = []
 
@@ -309,36 +318,37 @@ def test_run_morning_routine_async_starts_thread_when_idle(monkeypatch):
         def is_alive(self):
             return self.started
 
-    monkeypatch.setattr(daily_coach.threading, "Thread", FakeThread)
-    monkeypatch.setattr(daily_coach, "monotonic", lambda: 123.45)
+    monkeypatch.setattr(routine_runner.threading, "Thread", FakeThread)
+    monkeypatch.setattr(routine_runner, "monotonic", lambda: 123.45)
 
-    result = coach.run_morning_routine_async(trigger_source="scheduler")
+    result = runner.start(trigger_source="scheduler")
 
     assert result is True
     assert len(created_threads) == 1
     assert created_threads[0].name == "DailyCoachRoutine"
     assert created_threads[0].daemon is True
     assert created_threads[0].started is True
-    assert coach._routine_thread is created_threads[0]
-    assert coach._routine_started_monotonic == 123.45
+    assert runner.thread is created_threads[0]
+    assert runner.started_monotonic == 123.45
 
 
 @pytest.mark.unit
-def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
+def test_routine_runner_skips_when_a_run_is_already_active(monkeypatch):
     events = []
     coach = DailyCoach.__new__(DailyCoach)
     coach._routine_mutex = threading.Lock()
+    runner = BackgroundRoutineRunner(lambda: None, coach.routine_lock)
     # Simulate already-running: acquire the lock before calling async
     coach._routine_mutex.acquire()
 
-    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    monkeypatch.setattr(routine_runner, "_routine_event", lambda action, **fields: events.append({"action": action, **fields}))
     monkeypatch.setattr(
-        daily_coach.threading,
+        routine_runner.threading,
         "Thread",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("Thread should not be created on overlap")),
     )
 
-    result = coach.run_morning_routine_async(trigger_source="telegram_poll")
+    result = runner.start(trigger_source="telegram_poll")
     coach._routine_mutex.release()
 
     assert result is False
@@ -346,6 +356,25 @@ def test_run_morning_routine_async_skips_when_thread_already_alive(monkeypatch):
     assert events[0]["action"] == "morning_routine_skipped"
     assert events[0]["reason"] == "already_running"
     assert events[0]["trigger_source"] == "telegram_poll"
+
+
+@pytest.mark.unit
+def test_skipped_run_keeps_the_daily_coach_event_stream(caplog):
+    """The skip event leaves through the daily_coach logger with the daily_coach flow, as before the move."""
+    runner = BackgroundRoutineRunner(lambda: None, threading.Lock())
+    runner.lock.acquire()
+    try:
+        with caplog.at_level(logging.INFO, logger="titan.orchestration.daily_coach"):
+            assert runner.start(trigger_source="scheduler") is False
+    finally:
+        runner.lock.release()
+
+    [record] = [r for r in caplog.records if "morning_routine_skipped" in r.getMessage()]
+    assert record.name == "titan.orchestration.daily_coach"
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="titan.orchestration.daily_coach"):
+        daily_coach._daily_coach_event("morning_routine_skipped", trigger_source="scheduler", reason="already_running")
+    assert json.loads(record.getMessage()) == json.loads(caplog.records[0].getMessage())
 
 
 @pytest.mark.unit
@@ -365,19 +394,20 @@ def test_daily_coach_no_overlap_guard():
         release.wait(timeout=2)
 
     coach.run_morning_routine = _blocking_routine
+    runner = BackgroundRoutineRunner(coach.run_morning_routine, coach.routine_lock)
 
-    coach.run_morning_routine_async(trigger_source="test_first_call")
+    runner.start(trigger_source="test_first_call")
     assert started.wait(timeout=1)
 
-    coach.run_morning_routine_async(trigger_source="test_second_call")
+    runner.start(trigger_source="test_second_call")
     sleep(0.05)
 
     with run_count_lock:
         assert run_count == 1
 
     release.set()
-    coach._routine_thread.join(timeout=5)
-    assert not coach._routine_thread.is_alive()
+    runner.thread.join(timeout=5)
+    assert not runner.thread.is_alive()
 
 
 @pytest.mark.unit
@@ -397,15 +427,23 @@ def test_daily_coach_routine_thread_shutdown(tmp_path):
             raise
 
     coach.run_morning_routine = _routine_with_db_touch
+    runner = BackgroundRoutineRunner(coach.run_morning_routine, coach.routine_lock)
 
     try:
-        coach.run_morning_routine_async(trigger_source="thread_shutdown_test")
-        assert coach._routine_thread is not None
-        coach._routine_thread.join(timeout=5)
-        assert not coach._routine_thread.is_alive()
+        runner.start(trigger_source="thread_shutdown_test")
+        assert runner.thread is not None
+        runner.thread.join(timeout=5)
+        assert not runner.thread.is_alive()
         assert not programming_errors
     finally:
         db.close()
+
+
+@pytest.mark.unit
+def test_daily_coach_has_no_background_thread_of_its_own():
+    """ADR-0058 Phase C: DailyCoach is synchronous; the thread lives in BackgroundRoutineRunner."""
+    assert not hasattr(DailyCoach, "run_morning_routine_async")
+    assert "threading.Thread(" not in inspect.getsource(DailyCoach)
 
 
 def _garmin_payload_for_day(day: str = "2026-03-04") -> dict:
