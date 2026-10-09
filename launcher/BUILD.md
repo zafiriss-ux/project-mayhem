@@ -54,7 +54,7 @@ Should open the GUI setup wizard if `.env` is missing, or start TITAN kernel oth
 **Key Settings:**
 ```python
 name='TITAN'               # Output filename
-console=False             # Windowed mode (no console)
+console=True              # Console window: the main menu reads the keyboard there
 onefile=True              # Single .exe (vs. folder with DLLs)
 upx=True                  # Compress with UPX (~30% size reduction)
 icon=None                 # TODO: Add titan.ico
@@ -79,8 +79,9 @@ Heavy unused packages are excluded to reduce size:
 **Windows VM or clean install:**
 1. Copy `TITAN.exe` to Desktop
 2. Double-click
-3. Wizard appears → enter credentials → "TITAN is ready"
-4. Check Telegram for morning briefing
+3. A console window opens; on first run the setup wizard appears → enter credentials → "Start TITAN"
+4. The TITAN menu appears in the console window
+5. Check Telegram for morning briefing
 
 **Expected file structure after first run:**
 ```
@@ -97,7 +98,7 @@ C:\Users\YourName\Documents\TITAN\
 TITAN.exe --debug
 ```
 
-Opens console window with live logs. Useful for troubleshooting.
+Shows path diagnostics and verbose logs in the console window. Useful for troubleshooting.
 
 ---
 
