@@ -16,8 +16,10 @@ from titan.integrations.garmin_sync import (
 
 
 class _FakeClient:
-    def __init__(self, *, activities=None, weigh_ins=None, sleep=None, hrv=None):
+    def __init__(self, *, activities=None, weigh_ins=None, sleep=None, hrv=None, stats=None):
         self.activities = activities
+        self.stats = stats or {}
+        self.requested_stats_dates = []
         self.weigh_ins = weigh_ins
         self.sleep = sleep or []
         self.hrv = hrv or []
@@ -37,6 +39,13 @@ class _FakeClient:
     def get_sleep_data(self, day):
         self.requested_sleep_dates.append(day)
         item = self.sleep.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def get_stats(self, day):
+        self.requested_stats_dates.append(day)
+        item = self.stats.get(day, {})
         if isinstance(item, Exception):
             raise item
         return item
@@ -277,6 +286,7 @@ def test_sync_sleep_happy_path(monkeypatch):
             "deep_sleep_hours": 2.0,
             "rem_sleep_hours": 1.5,
             "sleep_score": 84,
+            "resting_hr": None,
         }
     ]
     assert ("sleep_synced", {"subsystem": "sync_sleep", "count": 1, "days_back": 1, "detail": "Synced 1 sleep sessions"}) in events
@@ -903,3 +913,64 @@ def test_last_connect_error_set_on_login_failure(monkeypatch, tmp_path):
     assert result is False
     assert sync.last_connect_error is not None
     assert "RuntimeError" in sync.last_connect_error
+
+
+def _sleep_raw(score: int, **extra) -> dict:
+    return {
+        "dailySleepDTO": {
+            "sleepTimeSeconds": 28800,
+            "deepSleepSeconds": 7200,
+            "remSleepSeconds": 5400,
+            "sleepScores": {"overall": {"value": score}},
+        },
+        **extra,
+    }
+
+
+@pytest.mark.integration
+def test_sync_sleep_takes_todays_resting_hr_from_daily_stats():
+    """Resting HR comes from the daily summary (get_stats), fetched for today only."""
+    from datetime import UTC, datetime, timedelta
+
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
+    client = _FakeClient(
+        sleep=[_sleep_raw(80), _sleep_raw(70)],
+        stats={today: {"restingHeartRate": 47}, yesterday: {"restingHeartRate": 99}},
+    )
+    sync = _connected_sync(client)
+
+    result = sync.sync_sleep(days_back=2)
+
+    assert [(r["date"], r["resting_hr"]) for r in result] == [(today, 47), (yesterday, None)]
+    assert client.requested_stats_dates == [today]
+
+
+@pytest.mark.integration
+def test_sync_sleep_prefers_resting_hr_in_sleep_response():
+    """When the sleep response already carries restingHeartRate, no extra call is made."""
+    client = _FakeClient(sleep=[_sleep_raw(80, restingHeartRate=51)])
+    sync = _connected_sync(client)
+
+    result = sync.sync_sleep(days_back=1)
+
+    assert result[0]["resting_hr"] == 51
+    assert client.requested_stats_dates == []
+
+
+@pytest.mark.integration
+def test_sync_sleep_stats_failure_keeps_sleep_and_emits_event(monkeypatch):
+    """A failing daily-stats call loses only the resting HR, never the sleep entry."""
+    from datetime import UTC, datetime
+
+    events = []
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    client = _FakeClient(sleep=[_sleep_raw(80)], stats={today: TimeoutError("stats timeout")})
+    sync = _connected_sync(client)
+
+    result = sync.sync_sleep(days_back=1)
+
+    assert result[0]["sleep_score"] == 80
+    assert result[0]["resting_hr"] is None
+    assert any(action == "resting_hr_unavailable" for action, _ in events)

@@ -1549,16 +1549,18 @@ class DailyCoach:
         activities = garmin_data.get('activities', [])
 
         # ── Sleep → extract RHR + sleep score ─────────────────────────────
-        sleep_entries = garmin_data.get('sleep', [])
+        sleep_entries = [e for e in garmin_data.get('sleep', []) if e]
+        # sync_sleep() returns one dated entry per night, newest first. Only last
+        # night's entry describes today; older nights must not overwrite it (the
+        # loop below keeps the last entry it sees). Undated entries (legacy raw
+        # Garmin shape) keep the previous last-entry-wins behaviour.
+        if any(isinstance(e, dict) and e.get('date') for e in sleep_entries):
+            sleep_entries = [e for e in sleep_entries if e.get('date') == today_str]
         for entry in sleep_entries:
-            if not entry:
-                continue
-            # RHR note: sync_sleep() does NOT emit a restingHeartRate / rhr key.
-            # The 'restingHeartRate' key only exists in the legacy raw Garmin API
-            # shape (pre-flattening).  When the entry comes from sync_sleep() the
-            # rhr variable will be 0 and today_rhr will remain 0 (→ None after
-            # physiological validation), which is the correct conservative outcome.
-            rhr = entry.get('restingHeartRate') or entry.get('rhr') or 0
+            # sync_sleep() emits 'resting_hr' (from the sleep or daily-stats response);
+            # 'restingHeartRate' / 'rhr' are the legacy raw Garmin shapes. Missing
+            # RHR stays 0 (→ None after physiological validation).
+            rhr = entry.get('resting_hr') or entry.get('restingHeartRate') or entry.get('rhr') or 0
 
             # F-29: prefer flattened 'sleep_score' from sync_sleep() (primary path).
             # Fall back to nested sleepScores for backward-compat with the raw
