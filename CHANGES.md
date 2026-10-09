@@ -1,5 +1,8 @@
 # TITAN v51 — CHANGELOG
 
+> Ιστορικό αρχείο: δεν ενημερώνεται πια. Οι αλλαγές από το PR #874 και μετά είναι στο
+> [`CHANGELOG.md`](CHANGELOG.md).
+
 ---
 
 ## v5.8.0 / v51.10 — Phase 6 closure: Web UI / Operator Console (2026-03-02)
