@@ -3,7 +3,7 @@
 ═══════════════════════════════════════════════════════════════════════════════
 
   📦 Package Contents:
-     • TITAN.exe           Windows executable (Python 3.11.9 frozen build)
+     • TITAN.exe           Windows executable (Python 3.12 frozen build)
      • TITAN.exe.sha256    Checksum for integrity verification
      • README-QuickStart.txt   This file
 
@@ -18,11 +18,13 @@
      5. Click "Save & Continue"
      6. Click "Start TITAN"
 
-     That's it! TITAN is now running.
+     That's it! The TITAN menu runs in the black console window.
+     Keep that window open while you use TITAN.
 
   📁 Data Location:
 
      All data stored in:   C:\Users\YourName\Documents\TITAN\
+     (if Windows blocks that folder: %LOCALAPPDATA%\TITAN\)
 
      Folder structure:
         TITAN\
