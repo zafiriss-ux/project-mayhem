@@ -9,6 +9,36 @@
 
 ---
 
+## D-030 · Bandit, DevSkim και οι επιπλέον κανόνες ασφαλείας του CodeQL
+
+- **Πότε / ποιος:** 2026-10-09, Claude (#967), από τη λίστα εργαλείων που έστειλε ο Zaf (τα έτοιμα
+  security workflows του GitHub).
+- **Απόφαση:**
+  - Νέο workflow «Python SAST» σε κάθε PR, σε κάθε push στο `main` και κάθε Δευτέρα.
+    - Bandit 1.9.4 στο `titan/`: μπλοκάρει σε ευρήματα medium ή high και γράφει όλα τα ευρήματα
+      στη σύνοψη του job.
+    - DevSkim (καρφωμένο σε SHA): μόνο αναφορά.
+    - Και τα δύο ανεβάζουν SARIF στο code scanning μόνο όσο το repo είναι δημόσιο, όπως το
+      CodeQL (D-022).
+  - Το CodeQL τρέχει και τους κανόνες `security-extended`.
+  - Νέο `scripts/sarif_summary.py`: γράφει τα ευρήματα ενός SARIF στο log και στη σύνοψη.
+  - Διόρθωση των δύο ευρημάτων medium του Bandit στο `weather_api.py`. Η εναλλακτική διαδρομή
+    μέσω urllib δεν φτιάχνει ποτέ SSL χωρίς έλεγχο πιστοποιητικού (B323) και δέχεται μόνο
+    `https://` (B310). Στην πράξη το `verify` ήταν πάντα `True`, οπότε η συμπεριφορά δεν
+    αλλάζει.
+- **Γιατί:** είναι δωρεάν, δεν θέλουν λογαριασμό ή μυστικό, και ταιριάζουν σε Python. Το Bandit
+  βρίσκει πράγματα που ο ruff και το CodeQL δεν ελέγχουν.
+- **Απορρίφθηκαν:**
+  - Snyk, SonarQube, Checkmarx, CxFlow, Fortify, Black Duck, Codacy, APIsec, EthicalCheck,
+    Debricked, Endor Labs, Frogbot / JFrog και Sysdig: θέλουν λογαριασμό, token ή συνδρομή σε
+    εξωτερική υπηρεσία.
+  - Sobelow: είναι για Elixir.
+  - Microsoft Defender for DevOps: τρέχει σε Windows με .NET.
+  - CRDA: θέλει OpenShift.
+  - Pyre / Pysa: χρειάζονται δικό τους setup τύπων και είναι αργά. Τα ευρήματα taint τα
+    καλύπτει ήδη το CodeQL.
+  - Το έτοιμο «CodeQL Advanced» του GitHub: υπάρχει ήδη, και το δικό μας κάνει περισσότερα.
+
 ## D-029 · Η αποθήκευση των δεδομένων Garmin βγαίνει από το `DailyCoach`· όριο modules 90
 
 - **Πότε / ποιος:** 2026-10-09, Zaf (κάρτα απόφασης «Όριο 90») και Claude (#966), εργασία 6.

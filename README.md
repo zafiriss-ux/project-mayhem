@@ -274,7 +274,7 @@ bash scripts/titan_ci.sh         # το πλήρες CI τοπικά (gates G1�
 
 Κανόνες συνεισφοράς και governance: [`AGENTS.md`](AGENTS.md), [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). Πρόοδος του refactor: [`PROGRESS.md`](PROGRESS.md). Αλλαγές ανά PR: [`CHANGELOG.md`](CHANGELOG.md). Τεχνικές αποφάσεις: [`DECISIONS.md`](DECISIONS.md).
 
-Ασφάλεια: κάθε PR περνά από CodeQL (Python και workflows), gitleaks και, όσο το repo είναι δημόσιο, Dependency Review. Κενά ασφάλειας αναφέρονται ιδιωτικά όπως λέει το [`SECURITY.md`](SECURITY.md).
+Ασφάλεια: κάθε PR περνά από CodeQL (Python και workflows, με τους κανόνες `security-extended`), Bandit, DevSkim, gitleaks και, όσο το repo είναι δημόσιο, Dependency Review. Κενά ασφάλειας αναφέρονται ιδιωτικά όπως λέει το [`SECURITY.md`](SECURITY.md).
 
 ## 📚 Επιστημονική Τεκμηρίωση
 
