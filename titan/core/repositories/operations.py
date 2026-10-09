@@ -1,6 +1,7 @@
 """Operations domain SQL: sync outcomes and freshness, degraded-mode state
 (HD-06), nutrition preferences, worker routine claims (ADR-0060 D1, INV-15),
-and verified backups with integrity checks (AGENTS DR-02)."""
+verified backups with integrity checks (AGENTS DR-02), and the schema
+introspection probes (table names, reachability)."""
 
 from __future__ import annotations
 
@@ -416,3 +417,19 @@ class OperationsRepository:
                     result=result,
                 )
             return ok
+
+    def get_table_names(self) -> list[str]:
+        """Return all table names present in the database."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            rows = self._db.conn.cursor().execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def is_db_reachable(self) -> bool:
+        """Probe that the DB connection is live (schema-introspection query)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            result = self._db.conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
+        return result is not None

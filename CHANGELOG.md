@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #973 (2026-10-09) refactor: ό,τι SQL έμενε στο database.py πάει στα repositories (εργασία 10)
 - #972 (2026-10-09) refactor: το thread της πρωινής ρουτίνας βγαίνει από το DailyCoach (εργασία 9, ADR-0058 Phase C)
 - #971 (2026-10-09) ci: το Docker smoke κατεβάζει τις εικόνες του Docker Hub από το mirror.gcr.io
 - #970 (2026-10-09) refactor: το DailyCoach παίρνει το προφίλ του αθλητή ως αντικείμενο (εργασία 8, T5-117)

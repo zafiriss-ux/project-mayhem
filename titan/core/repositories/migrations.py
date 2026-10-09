@@ -1,4 +1,5 @@
-"""Schema migrations: additive steps v1–v25 guarded by ``PRAGMA user_version``.
+"""Schema migrations: additive steps v1–v27 guarded by ``PRAGMA user_version``,
+and the owner rows a new database starts with.
 
 ``SCHEMA_VERSION`` stays in ``titan.core.database``; base tables come from
 ``titan.core.schema``.
@@ -24,6 +25,26 @@ class SchemaMigrations:
 
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
+
+    def _seed_single_athlete_rows(self, cursor) -> None:
+        """Seed the owner athlete and the system coach assignment (idempotent)."""
+        # Seed owner row for single-athlete installations (is_cold_start=0: owner
+        # bypasses cold-start per ADR-0033 L3-C).
+        cursor.execute("""
+            INSERT OR IGNORE INTO athletes
+                (athlete_id, display_name, created_at, is_cold_start,
+                 cold_start_ends_at, cold_start_sessions_count)
+            VALUES
+                ('owner', 'Owner', datetime('now'), 0,
+                 datetime('now'), 30)
+        """)
+
+        # Seed system coach → owner assignment so single-athlete mode works out of the box.
+        cursor.execute("""
+            INSERT OR IGNORE INTO coach_athlete_assignments
+                (coach_id, athlete_id, assigned_at)
+            VALUES ('system', 'owner', datetime('now'))
+        """)
 
     def _run_migrations(self, cursor) -> None:
         """Apply additive schema migrations guarded by PRAGMA user_version.

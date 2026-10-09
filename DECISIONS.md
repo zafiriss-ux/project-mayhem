@@ -9,6 +9,33 @@
 
 ---
 
+## D-036 · Ό,τι SQL έμενε στο `database.py` πάει στα repositories
+
+- **Πότε / ποιος:** 2026-10-09, Claude (#973), εργασία 10 του πλάνου.
+- **Απόφαση:**
+  - Τα μεταδεδομένα βαθμονόμησης μοντέλων (`upsert_model_calibration_metadata`,
+    `get_model_calibration_metadata`) πάνε στο `GovernanceRepository`. Ο `DatabaseManager`
+    κρατά την προεπιλογή `schema_version=SCHEMA_VERSION` και τη δίνει ρητά στο repository, άρα
+    δεν χρειάζεται κυκλικό import. Αυτό ήταν το εμπόδιο που τα κράτησε έξω στο #920.
+  - Τα `get_table_names` και `is_db_reachable` πάνε στο `OperationsRepository`.
+  - Οι δύο γραμμές που μπαίνουν σε κάθε νέα βάση (ο αθλητής `owner` και η ανάθεσή του στον
+    προπονητή `system`) πάνε στο `SchemaMigrations`.
+  - Ο `DatabaseManager` κρατά τα ίδια ονόματα, ορίσματα και προεπιλογές και απλώς προωθεί.
+  - Στο `database.py` μένουν μόνο:
+    - τα PRAGMA της σύνδεσης (WAL, foreign keys, busy timeout, έλεγχος FK στο άνοιγμα)·
+    - ο βρόχος που φτιάχνει τους βασικούς πίνακες από το `titan/core/schema.py`·
+    - το `BEGIN` των transactions·
+    - ο έλεγχος του αρχείου backup (`_verify_backup_artifact`)·
+    - ο σκελετός PostgreSQL, κλειστός (απόφαση Zaf, PROGRESS #25).
+- **Γιατί:** αυτά ανήκουν στη σύνδεση, όχι σε κάποιο domain. Τα tests του `tests/test_backup_dr.py`
+  αντικαθιστούν το `_verify_backup_artifact` με monkeypatch πάνω στο `titan.core.database`. Αν
+  μετακινούνταν, θα άλλαζαν και τα tests, χωρίς κέρδος.
+- **Απορρίφθηκαν:**
+  - Νέο repository μόνο για τη βαθμονόμηση: θα έβαζε ένα module για δύο μεθόδους, ενώ τα
+    υπόλοιπα της βαθμονόμησης είναι ήδη στο governance.
+  - Μετακίνηση του `SCHEMA_VERSION` έξω από το `database.py`: το CLAUDE.md και τα migrations
+    το περιμένουν εκεί.
+
 ## D-035 · Το thread της πρωινής ρουτίνας βγαίνει από το `DailyCoach` (ADR-0058 Phase C)
 
 - **Πότε / ποιος:** 2026-10-09, Claude (#972), εργασία 9 του πλάνου.
