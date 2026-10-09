@@ -63,7 +63,14 @@ from titan.orchestration.contracts import (
     TodaySessionPlan,
 )
 from titan.orchestration.engine_registry import EngineRegistry
-from titan.science.data_sanity import DataSanityChecker, has_rejects, has_warns
+from titan.orchestration.garmin_persistence import (  # noqa: F401 — re-exported for callers and tests
+    _GARMIN_ACTIVITY_TYPE_MAP,
+    PERSIST_ERROR,
+    PersistenceFailure,
+    _safe_float,
+    _safe_int,
+    persist_garmin_data,
+)
 from titan.science.data_trust import (
     DataTrustLevel,
     combine_trust_reports,
@@ -80,7 +87,6 @@ _log = logging.getLogger(__name__)
 
 DATA_MISSING = "DATA_MISSING"
 ENGINE_ERROR = "ENGINE_ERROR"
-PERSIST_ERROR = "PERSIST_ERROR"
 DELIVERY_ERROR = "DELIVERY_ERROR"
 
 
@@ -219,20 +225,6 @@ class DegradedModeTracker:
         return result
 
 
-class PersistenceFailure(Exception):
-    """Raised by _persist_garmin_data() when the DB transaction rolls back.
-
-    Carries the default metric values so the caller can continue in degraded
-    conservative mode without re-deriving them.
-    """
-
-    def __init__(self, today_rhr: int, today_sleep_score: int, today_sleep_hours: float) -> None:
-        super().__init__("DB transaction rolled back — persistence failed")
-        self.today_rhr = today_rhr
-        self.today_sleep_score = today_sleep_score
-        self.today_sleep_hours = today_sleep_hours
-
-
 def _daily_coach_event(
     action: str,
     *,
@@ -301,22 +293,6 @@ def _failure_class_for_step(step_number: int, error: Exception) -> str:
     return ENGINE_ERROR
 
 
-def _safe_float(value, default: float = 0.0) -> float:
-    """Convert value to float safely."""
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
-
-
-def _safe_int(value, default: int = 0) -> int:
-    """Convert value to int safely."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
-
-
 def _compute_esi(*, temperature_c: float, dew_point_c: float) -> tuple[str, int]:
     """Compute ESI level and target pace adjustment in sec/km."""
     score = float(temperature_c) + (0.5 * float(dew_point_c))
@@ -363,15 +339,6 @@ def _apply_esi_context_to_optimal_time(
     return updated
 
 
-# Mapping from Garmin activityType.typeKey values to internal session_type constants.
-# The act dict produced by GarminSync uses 'activity_type' (not 'session_type'), so
-# a direct act.get('session_type', 'EASY') always falls through to the default.
-_GARMIN_ACTIVITY_TYPE_MAP: dict[str, str] = {
-    "running": "EASY",
-    "interval_training": "INTERVALS",
-    "tempo_run": "TEMPO",
-    "long_run": "LONG_RUN",
-}
 
 
 class DailyCoach:
@@ -1547,266 +1514,19 @@ class DailyCoach:
     def _persist_garmin_data(
         self, garmin_data: dict, today_str: str
     ):
-        """
-        Persist all synced Garmin data to the database.
+        """Persist all synced Garmin data (see ``garmin_persistence.persist_garmin_data``).
 
         Returns:
             (today_rhr, today_sleep_score, today_sleep_hours)
         """
-        today_rhr         = 0
-        # Conservative default: score 50 → sleep_delta ≈ -0.67, which discourages
-        # training when sleep data is absent.  75 was optimistic (sleep_delta +0.17).
-        today_sleep_score = 50
-        today_sleep_hours = 7.5
-        # The defaults above feed today's decision only. They are not measurements,
-        # so they are not stored: daily_metrics keeps NULL unless Garmin sent a value.
-        sleep_score_measured = False
-        sleep_hours_measured = False
-
-        # ── Activities → training_log ─────────────────────────────────────
-        activities = garmin_data.get('activities', [])
-
-        # ── Sleep → extract RHR + sleep score ─────────────────────────────
-        sleep_entries = [e for e in garmin_data.get('sleep', []) if e]
-        # sync_sleep() returns one dated entry per night, newest first. Only last
-        # night's entry describes today; older nights must not overwrite it (the
-        # loop below keeps the last entry it sees). Undated entries (legacy raw
-        # Garmin shape) keep the previous last-entry-wins behaviour.
-        if any(isinstance(e, dict) and e.get('date') for e in sleep_entries):
-            sleep_entries = [e for e in sleep_entries if e.get('date') == today_str]
-        for entry in sleep_entries:
-            # sync_sleep() emits 'resting_hr' (from the sleep or daily-stats response);
-            # 'restingHeartRate' / 'rhr' are the legacy raw Garmin shapes. Missing
-            # RHR stays 0 (→ None after physiological validation).
-            rhr = entry.get('resting_hr') or entry.get('restingHeartRate') or entry.get('rhr') or 0
-
-            # F-29: prefer flattened 'sleep_score' from sync_sleep() (primary path).
-            # Fall back to nested sleepScores for backward-compat with the raw
-            # Garmin API shape.  Use explicit None checks so that a None sleep_score
-            # (Garmin API did not provide a score) does not accidentally collapse to
-            # the 0 sentinel and trigger the raw-key fallback with an empty dict.
-            s_val = entry.get('sleep_score')
-            if s_val is None:
-                score = entry.get('sleepScores', {})
-                if isinstance(score, dict):
-                    overall = score.get('overall', {})
-                    if isinstance(overall, dict):
-                        s_val = overall.get('value')
-                    else:
-                        raw = _safe_float(overall, 0)
-                        s_val = raw if raw else None
-                else:
-                    raw = _safe_float(score, 0)
-                    s_val = raw if raw else None
-
-            # F-29: prefer 'total_sleep_hours' from sync_sleep() (already in hours);
-            # fall back to seconds-based keys from raw Garmin API shape.
-            total_h = entry.get('total_sleep_hours') or 0
-            dur_sec = 0 if total_h else (entry.get('sleepTimeSeconds') or entry.get('duration_sec', 0))
-
-            if rhr:
-                today_rhr = _safe_int(rhr)
-            if s_val is not None:
-                today_sleep_score = _safe_int(s_val)
-                sleep_score_measured = True
-            if total_h:
-                today_sleep_hours = _safe_float(total_h)
-                sleep_hours_measured = True
-            elif dur_sec:
-                today_sleep_hours = _safe_float(dur_sec) / 3600.0
-                sleep_hours_measured = True
-
-        # ── HRV → daily_metrics ───────────────────────────────────────────
-        hrv_entries = garmin_data.get('hrv', [])
-        latest_rmssd = None
-        past_hrv_entries: list[dict] = []
-        for entry in hrv_entries:
-            entry_date = entry.get('date')
-            rmssd_val = _safe_float(entry.get('rmssd', 0)) or None
-            if entry_date == today_str:
-                latest_rmssd = rmssd_val
-            elif entry_date and rmssd_val is not None:
-                # F-32: collect historical HRV entries for multi-day persistence
-                past_hrv_entries.append({'date': entry_date, 'rmssd': rmssd_val})
-
-        # ── Weight → daily_metrics ────────────────────────────────────────
-        weight_entries = garmin_data.get('weight', [])
-        latest_weight = None
-        for entry in weight_entries:
-            if entry.get('date') == today_str:
-                latest_weight = _safe_float(entry.get('weight_kg', 0)) or None
-                break
-
-        from titan.science.physiological_bounds import validate_and_clamp
-
-        phys_inputs = {
-            "rhr_bpm": float(today_rhr) if today_rhr > 0 else None,
-            "sleep_hours": today_sleep_hours if today_sleep_hours > 0 else None,
-            "hrv_ms": latest_rmssd,
-            "weight_kg": latest_weight,
-        }
-        validated_inputs, input_violations = validate_and_clamp(
-            phys_inputs,
-            "persist_garmin_data",
+        return persist_garmin_data(
+            self.db,
+            garmin_data,
+            today_str,
+            athlete_id=getattr(self, "athlete_id", "owner"),
+            # Looked up at call time, so a test that swaps _daily_coach_event sees these events too.
+            emit=lambda action, **fields: _daily_coach_event(action, **fields),
         )
-        for v in input_violations:
-            _daily_coach_event(
-                "physiological_input_validation_failed",
-                field=v.field,
-                value=v.value,
-                lo=v.lo,
-                hi=v.hi,
-                violation_action=v.action,
-            )
-
-        validated_rhr = validated_inputs["rhr_bpm"]
-        today_rhr = int(round(validated_rhr)) if validated_rhr is not None else 0
-        today_sleep_hours = validated_inputs["sleep_hours"] or 0.0
-        latest_rmssd = validated_inputs["hrv_ms"]
-        latest_weight = validated_inputs["weight_kg"]
-
-        _sanity = DataSanityChecker()
-        seen_activity_ids: set[str] = set()
-        try:
-            with self.db.transaction():
-                for idx, act in enumerate(activities, start=1):
-                    activity_date = act.get('date', today_str)
-
-                    # ── Structural sanity check (ADR-0026 Layer 1) ───────────
-                    sanity_violations = _sanity.check_activity(
-                        act,
-                        context="persist_garmin_data",
-                        seen_activity_ids=seen_activity_ids,
-                    )
-                    if has_rejects(sanity_violations):
-                        _daily_coach_event(
-                            "activity_persist",
-                            activity_index=idx,
-                            activity_date=activity_date,
-                            outcome="ACTIVITY_SANITY_REJECTED",
-                            failure_class=None,
-                        )
-                        continue
-                    activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
-
-                    try:
-                        _est_load = act.get('estimated_training_load')
-                        _tl_override = int(_est_load) if _est_load else None
-                        self.db.save_session(
-                            date              = activity_date,
-                            session_type      = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get('activity_type', ''), 'EASY'),
-                            distance_km       = _safe_float(act.get('distance_km', 0)),
-                            duration_sec      = _safe_int(act.get('duration_sec', 0)),
-                            avg_hr            = _safe_int(act.get('avg_hr')) or None,
-                            max_hr            = _safe_int(act.get('max_hr')) or None,
-                            rpe               = act.get('rpe'),
-                            training_load     = _tl_override,
-                            notes             = act.get('name', ''),
-                            garmin_activity_id= act.get('activity_id'),
-                            quality_flag      = activity_quality_flag,
-                            avg_pace_sec_per_km= _safe_int(act.get('avg_pace_sec_per_km')) or None,
-                            athlete_id        = getattr(self, "athlete_id", "owner"),
-                        )
-                        _daily_coach_event(
-                            "activity_persist",
-                            activity_index=idx,
-                            activity_date=activity_date,
-                            outcome="ACTIVITY_PERSISTED",
-                            failure_class=None,
-                        )
-                    except Exception as exc:
-                        _daily_coach_event(
-                            "activity_persist",
-                            activity_index=idx,
-                            activity_date=activity_date,
-                            outcome="ACTIVITY_SKIPPED",
-                            failure_class=PERSIST_ERROR,
-                            error_class=type(exc).__name__,
-                            error_message=str(exc),
-                        )
-                        raise
-
-                daily_metric_violations = _sanity.check_daily_metrics(
-                    {"date": today_str},
-                    context="persist_garmin_data",
-                )
-                if has_rejects(daily_metric_violations):
-                    _daily_coach_event(
-                        "daily_metrics_persist_failed",
-                        date=today_str,
-                        error_class="DataSanityViolation",
-                        error_message="daily_metrics_rejected",
-                    )
-                    raise ValueError("daily_metrics_rejected")
-
-                hrv_sanity_violations = []
-                if latest_rmssd is not None:
-                    hrv_sanity_violations = _sanity.check_hrv(
-                        {"date": today_str, "rmssd": latest_rmssd},
-                        context="persist_garmin_data",
-                    )
-                    if has_rejects(hrv_sanity_violations):
-                        latest_rmssd = None
-
-                daily_quality_flag = "degraded" if has_warns(daily_metric_violations + hrv_sanity_violations) else None
-
-                self.db.save_daily_metric(
-                    date         = today_str,
-                    weight       = latest_weight,
-                    hrv          = latest_rmssd,
-                    rhr          = today_rhr or None,
-                    sleep_hours  = today_sleep_hours if sleep_hours_measured and today_sleep_hours > 0 else None,
-                    sleep_quality= today_sleep_score if sleep_score_measured and today_sleep_score > 0 else None,
-                    quality_flag = daily_quality_flag,
-                    athlete_id   = getattr(self, "athlete_id", "owner"),
-                )
-
-                # F-32: persist HRV for all historical days returned by sync_hrv()
-                # INSERT OR IGNORE — never overwrite manually entered historical data.
-                for past_hrv in past_hrv_entries:
-                    past_hrv_sanity = _sanity.check_hrv(
-                        {"date": past_hrv['date'], "rmssd": past_hrv['rmssd']},
-                        context="persist_garmin_data",
-                    )
-                    if not has_rejects(past_hrv_sanity):
-                        self.db.save_daily_metric_if_missing(
-                            date=past_hrv['date'], hrv=past_hrv['rmssd'],
-                            athlete_id=getattr(self, "athlete_id", "owner"),
-                        )
-
-            if activities:
-                _daily_coach_event(
-                    "activities_persisted",
-                    count=len(activities),
-                    date=today_str,
-                )
-            _daily_coach_event(
-                "activity_persist",
-                activity_index=None,
-                activity_date=today_str,
-                outcome="DAILY_METRICS_PERSISTED",
-                failure_class=None,
-            )
-            _daily_coach_event("daily_metrics_persisted", date=today_str)
-        except Exception as exc:
-            _daily_coach_event(
-                "activity_persist",
-                activity_index=None,
-                activity_date=today_str,
-                outcome="DAILY_METRICS_SKIPPED",
-                failure_class=PERSIST_ERROR,
-                error_class=type(exc).__name__,
-                error_message=str(exc),
-            )
-            _daily_coach_event(
-                "daily_metrics_persist_failed",
-                date=today_str,
-                error_class=type(exc).__name__,
-                error_message=str(exc),
-            )
-            raise PersistenceFailure(today_rhr, today_sleep_score, today_sleep_hours) from exc
-
-        return today_rhr, today_sleep_score, today_sleep_hours
 
     def _get_baseline_rhr(self, days: int = 7) -> float | None:
         """

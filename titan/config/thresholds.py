@@ -229,8 +229,9 @@ MIN_FAT_G: int = 40          # minimum daily fat intake in grams (dietary guidel
 FAT_KCAL_PER_GRAM: int = 9   # caloric density of fat (Atwater factor)
 
 # ── CI tooling constants (importable by tests + CI scripts) ──────────────────
-MODULE_COUNT_CEILING: int = 87  # T4-27-C: 73→79 (2026-06-09); 79→80 (Architect confirmed 2026-10-07);
-# 80→87 (Architect confirmed 2026-10-07, plan #18 repositories package + 6 modules). Matches
+MODULE_COUNT_CEILING: int = 90  # T4-27-C: 73→79 (2026-06-09); 79→80 (Architect confirmed 2026-10-07);
+# 80→87 (Architect confirmed 2026-10-07, plan #18 repositories package + 6 modules);
+# 87→90 (D-029, DailyCoach split, plan tasks 6 and 9). Matches
 # the canonical assertion in tests/test_documentation_consistency.py
 # (AGENTS §16.11; +1 P27-04 rollback_gate.py). pkgutil.walk_packages
 # counts packages (dirs with init.py) in addition to source modules;
