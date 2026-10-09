@@ -35,30 +35,51 @@ _CMD_COOLDOWN_S = 30
 _cmd_rate: dict[tuple[int, str], float] = defaultdict(float)
 _cmd_rate_lock = threading.Lock()
 
-# TD-17: per-decision nonce registry — {nonce: (decision_id, expires_at)}
-_PENDING_OVERRIDES: dict[str, tuple[str, float]] = {}
+# TD-17 / INV-17: one-time override nonces live in telegram_override_nonces
+# (ADR-0060 D2), so they survive a restart and work across processes.
 _OVERRIDE_TTL_SECONDS = 300  # 5 minutes
+_OVERRIDE_COMMAND = "override"
 
 
-def _create_override_nonce(decision_id: str) -> str:
-    """Create a one-time nonce for an override confirmation."""
+def _create_override_nonce(db, decision_id: str, athlete_id: str) -> str | None:  # noqa: ANN001
+    """Issue a one-time nonce for an override confirmation; None if it cannot be stored.
+
+    Without a stored nonce no override button is offered (fail closed, INV-16).
+    """
+    if db is None:
+        _log.critical("telegram_override_nonce_unavailable", extra={"reason": "no database"})
+        return None
     nonce = _secrets_mod.token_urlsafe(16)
-    _PENDING_OVERRIDES[nonce] = (decision_id, time.monotonic() + _OVERRIDE_TTL_SECONDS)
+    now = datetime.now(UTC)
+    try:
+        db.issue_override_nonce(
+            nonce=nonce,
+            command_type=_OVERRIDE_COMMAND,
+            athlete_id=athlete_id,
+            decision_id=decision_id,
+            issued_at=now,
+            expires_at=now + timedelta(seconds=_OVERRIDE_TTL_SECONDS),
+        )
+    except Exception as exc:
+        _log.critical("telegram_override_nonce_unavailable", extra={"reason": str(exc)})
+        return None
     return nonce
 
 
-def _consume_override_nonce(nonce: str) -> str | None:
-    """Consume a nonce — returns decision_id if valid, None if invalid/expired/replayed.
+def _consume_override_nonce(db, nonce: str) -> str | None:  # noqa: ANN001
+    """Consume a nonce: its decision_id if valid, None if unknown, expired or replayed.
 
-    One-time use: nonce is deleted on first valid consumption.
+    The expiry and replay checks are one UPDATE in the database. Without a
+    database, or if the update fails, no override is accepted.
     """
-    entry = _PENDING_OVERRIDES.pop(nonce, None)
-    if entry is None:
-        return None  # Already used or unknown
-    decision_id, expires_at = entry
-    if time.monotonic() > expires_at:
-        return None  # Expired
-    return decision_id
+    if db is None:
+        _log.critical("telegram_override_nonce_unavailable", extra={"reason": "no database"})
+        return None
+    try:
+        return db.consume_override_nonce(nonce=nonce, command_type=_OVERRIDE_COMMAND, now=datetime.now(UTC))
+    except Exception as exc:
+        _log.critical("telegram_override_nonce_unavailable", extra={"reason": str(exc)})
+        return None
 
 
 def _check_rate_limit(chat_id: int, command: str) -> bool:
@@ -516,7 +537,9 @@ class TitanTelegramBot:
         if not (self.bot and TELEBOT_AVAILABLE):
             return self.send_message(text)
 
-        nonce = _create_override_nonce(decision_id)
+        nonce = _create_override_nonce(self.db, decision_id, athlete_id)
+        if nonce is None:
+            return self.send_message(text)
         keyboard = telebot.types.InlineKeyboardMarkup()  # type: ignore[attr-defined]
         keyboard.row(
             telebot.types.InlineKeyboardButton("✅ Accept", callback_data=f"override:accept:{nonce}"),
@@ -544,13 +567,13 @@ class TitanTelegramBot:
         nonce = parts[2] if len(parts) >= 3 else None
 
         if action == "accept":
-            if nonce is None or _consume_override_nonce(nonce) is None:
+            if nonce is None or _consume_override_nonce(self.db, nonce) is None:
                 return "⚠️ This override request has already been used or has expired."
             self._pending_override_prompts.pop(chat_id, None)
             return "✅ Decision accepted."
 
         if action == "request":
-            if nonce is None or _consume_override_nonce(nonce) is None:
+            if nonce is None or _consume_override_nonce(self.db, nonce) is None:
                 return "⚠️ This override request has already been used or has expired."
             pending = self._pending_override_prompts.get(chat_id)
             if pending is None:
@@ -854,11 +877,21 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     # START / STOP
     # ------------------------------------------------------------------ #
+    def _prune_expired_override_nonces(self) -> None:
+        """Drop expired override nonces at startup; unexpired ones stay valid (ADR-0060 D2)."""
+        if self.db is None:
+            return
+        try:
+            self.db.prune_expired_override_nonces(datetime.now(UTC))
+        except Exception as exc:
+            _log.warning("telegram_override_nonce_prune_failed", extra={"error": str(exc)})
+
     def start_bot(self):
         if self.is_running:
             return
         self.is_running = True
         self._stop_event.clear()
+        self._prune_expired_override_nonces()
 
         # Scheduler thread
         self._sched_thread = threading.Thread(

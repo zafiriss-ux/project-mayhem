@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 25
+SCHEMA_VERSION = 26
 
 
 def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = None) -> str | None:
@@ -453,6 +453,10 @@ class DatabaseManager:
         """Version 25: cohort_calibration_signals table (P27-01 scaffolding)."""
         self._migrations._apply_v25_migrations(cursor=cursor)
 
+    def _apply_v26_migrations(self, cursor) -> None:
+        """Version 26: worker_routine_executions + telegram_override_nonces (ADR-0060)."""
+        self._migrations._apply_v26_migrations(cursor=cursor)
+
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
     ) -> bool:
@@ -648,6 +652,30 @@ class DatabaseManager:
         self._operations.delete_degraded_mode_state(
             failure_type=failure_type, athlete_id=athlete_id
         )
+
+    # --- WORKER ROUTINE CLAIMS (ADR-0060 D1) (titan/core/repositories/operations.py) ---
+
+    def claim_routine_execution(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime
+    ) -> bool:
+        """Claim one routine run; False if it already started on that date (INV-15)."""
+        return self._operations.claim_routine_execution(
+            athlete_id=athlete_id, execution_date=execution_date,
+            routine_type=routine_type, started_at=started_at,
+        )
+
+    def complete_routine_execution(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, completed_at: datetime
+    ) -> None:
+        """Mark a claimed routine as returned (INV-15)."""
+        self._operations.complete_routine_execution(
+            athlete_id=athlete_id, execution_date=execution_date,
+            routine_type=routine_type, completed_at=completed_at,
+        )
+
+    def get_incomplete_routine_executions(self, execution_date: str) -> list[tuple[str, str]]:
+        """Return (athlete_id, routine_type) claims of that date that never completed."""
+        return self._operations.get_incomplete_routine_executions(execution_date=execution_date)
 
     # --- BACKUP (titan/core/repositories/operations.py) ---
 
@@ -929,6 +957,32 @@ class DatabaseManager:
     def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
         """Return recent override audit rows (oldest first) for operator review."""
         return self._governance.get_override_log(limit=limit)
+
+    # --- TELEGRAM OVERRIDE NONCES (ADR-0060 D2) (titan/core/repositories/governance.py) ---
+
+    def issue_override_nonce(
+        self,
+        *,
+        nonce: str,
+        command_type: str,
+        athlete_id: str,
+        decision_id: str,
+        issued_at: datetime,
+        expires_at: datetime,
+    ) -> None:
+        """Store a one-time override nonce bound to its decision (INV-17)."""
+        self._governance.issue_override_nonce(
+            nonce=nonce, command_type=command_type, athlete_id=athlete_id,
+            decision_id=decision_id, issued_at=issued_at, expires_at=expires_at,
+        )
+
+    def consume_override_nonce(self, *, nonce: str, command_type: str, now: datetime) -> str | None:
+        """Consume a nonce in one statement; its decision_id, or None if not valid."""
+        return self._governance.consume_override_nonce(nonce=nonce, command_type=command_type, now=now)
+
+    def prune_expired_override_nonces(self, now: datetime) -> int:
+        """Delete expired override nonces; returns how many were deleted."""
+        return self._governance.prune_expired_override_nonces(now=now)
 
     # --- GOVERNANCE OUTCOMES (titan/core/repositories/governance.py) ---
 

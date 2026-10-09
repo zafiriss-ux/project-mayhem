@@ -1,6 +1,6 @@
 """Operations domain SQL: sync outcomes and freshness, degraded-mode state
-(HD-06), nutrition preferences, and verified backups with integrity checks
-(AGENTS DR-02)."""
+(HD-06), nutrition preferences, worker routine claims (ADR-0060 D1, INV-15),
+and verified backups with integrity checks (AGENTS DR-02)."""
 
 from __future__ import annotations
 
@@ -202,6 +202,52 @@ class OperationsRepository:
             return datetime.fromisoformat(latest).replace(tzinfo=UTC)
         except (ValueError, TypeError):
             return None
+
+    def claim_routine_execution(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime
+    ) -> bool:
+        """Claim one routine run (ADR-0060 D1): True if this call inserted the row.
+
+        False means the row already exists, so the routine already started that
+        day. Any other database error propagates so the caller fails closed.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            try:
+                self._db.conn.cursor().execute(
+                    "INSERT INTO worker_routine_executions "
+                    "(athlete_id, execution_date, routine_type, started_at) VALUES (?, ?, ?, ?)",
+                    (athlete_id, execution_date, routine_type, started_at.astimezone(UTC).isoformat()),
+                )
+            except sqlite3.IntegrityError:
+                self._db.conn.rollback()
+                return False
+            self._db.conn.commit()
+            return True
+
+    def complete_routine_execution(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, completed_at: datetime
+    ) -> None:
+        """Mark a claimed routine as returned (ADR-0060 D1 step 2)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                "UPDATE worker_routine_executions SET completed_at = ? "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (completed_at.astimezone(UTC).isoformat(), athlete_id, execution_date, routine_type),
+            )
+            self._db.conn.commit()
+
+    def get_incomplete_routine_executions(self, execution_date: str) -> list[tuple[str, str]]:
+        """Return (athlete_id, routine_type) rows of that date that never completed."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            rows = self._db.conn.cursor().execute(
+                "SELECT athlete_id, routine_type FROM worker_routine_executions "
+                "WHERE execution_date = ? AND completed_at IS NULL ORDER BY athlete_id",
+                (execution_date,),
+            ).fetchall()
+        return [(r[0], r[1]) for r in rows]
 
     def backup_database(
         self,

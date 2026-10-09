@@ -181,6 +181,11 @@ class SchemaMigrations:
                 "cohort calibration signal table for CohortProfile scaffolding (P27-01)",
                 None,  # DDL — see _apply_v25_migrations() below
             ),
+            26: (
+                "worker_routine_executions / telegram_override_nonces",
+                "durable worker routine claims (INV-15) and override nonces (INV-17), ADR-0060",
+                None,  # DDL — see _apply_v26_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -474,6 +479,15 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 25,
                 "table_created": "cohort_calibration_signals (P27-01)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 26:
+            self._db._apply_v26_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 26,
+                "table_created": "worker_routine_executions, telegram_override_nonces (ADR-0060)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1107,3 +1121,34 @@ class SchemaMigrations:
                 UNIQUE (threshold_key, athlete_id)
             )
         """)
+
+    def _apply_v26_migrations(self, cursor) -> None:
+        """Version 26: durable worker state tables (ADR-0060 D1/D2, INV-15/INV-17).
+
+        Stage 1 only: two new tables, no existing table, column or row changes.
+        """
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS worker_routine_executions (
+                athlete_id      TEXT NOT NULL,
+                execution_date  TEXT NOT NULL,
+                routine_type    TEXT NOT NULL,
+                started_at      TEXT NOT NULL,
+                completed_at    TEXT,
+                PRIMARY KEY (athlete_id, execution_date, routine_type)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS telegram_override_nonces (
+                nonce         TEXT PRIMARY KEY,
+                command_type  TEXT NOT NULL,
+                athlete_id    TEXT NOT NULL,
+                decision_id   TEXT NOT NULL,
+                issued_at     TEXT NOT NULL,
+                expires_at    TEXT NOT NULL,
+                consumed_at   TEXT
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_telegram_override_nonces_expires "
+            "ON telegram_override_nonces (expires_at)"
+        )

@@ -6,6 +6,7 @@ constructor keywords), which the cycle's generic except swallowed.
 """
 
 import threading
+from datetime import UTC, datetime
 
 import pytest
 
@@ -59,6 +60,8 @@ def test_run_forever_reaches_morning_routine(worker_db, tmp_path, monkeypatch):
     monkeypatch.setattr(DailyCoach, "run_morning_routine", _fake_routine)
     monkeypatch.setattr(worker, "_run_backup", lambda db: None)
     monkeypatch.setattr(worker, "_seconds_until_next_run", lambda *a, **k: 0.01)
+    # After 07:00 UTC, so today's routine is due whenever the suite runs.
+    monkeypatch.setattr(worker, "_utc_now", lambda: datetime(2026, 10, 9, 8, 0, tzinfo=UTC))
     monkeypatch.setattr(worker.logging.getLogger("titan.worker.runner"), "exception", _no_cycle_error)
 
     worker.run_forever(str(tmp_path / "titan_core.db"), shutdown_event=stop)

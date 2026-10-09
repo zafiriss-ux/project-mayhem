@@ -15,6 +15,7 @@ Features:
 import contextlib
 import logging
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -123,6 +124,11 @@ def setup_logging(debug: bool = False, prefix: str = 'launcher') -> logging.Logg
 # Stdout/Stderr Redirection
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Shared by the stdout and stderr tees: a failure logging stdout reports
+# through stderr, so a guard per stream would let one round through.
+_tee_state = threading.local()
+
+
 class TeeStream:
     """
     Tee stdout/stderr to both console and log file.
@@ -140,8 +146,16 @@ class TeeStream:
 
     def write(self, message):
         """Write to both console and log."""
-        if message.strip():  # Skip empty lines
-            self.logger.info(message.rstrip())
+        # A failing handler reports through logging's handleError, which writes
+        # to sys.stderr, which is this stream. Logging that report again fails
+        # the same way, and each report nests the previous one, so the loop
+        # grows memory without bound. Inside a write, skip the logger.
+        if message.strip() and not getattr(_tee_state, "writing", False):
+            _tee_state.writing = True
+            try:
+                self.logger.info(message.rstrip())
+            finally:
+                _tee_state.writing = False
         # Also write to original stream (console)
         if self.original_stream is not None:
             self.original_stream.write(message)

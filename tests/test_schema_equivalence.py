@@ -44,7 +44,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 25, 2026-06-09
+# Authoritative column snapshot — SCHEMA_VERSION 26, 2026-10-09
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
@@ -260,6 +260,22 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "garmin_activity_id",   # v1 — T5-69 activity deduplication
         "quality_flag",         # v3 — data-sanity gate
         "avg_pace_sec_per_km",  # v19 — pace storage and display
+    ],
+    "telegram_override_nonces": [  # v26 — ADR-0060 D2 (INV-17)
+        "nonce",
+        "command_type",
+        "athlete_id",
+        "decision_id",
+        "issued_at",
+        "expires_at",
+        "consumed_at",
+    ],
+    "worker_routine_executions": [  # v26 — ADR-0060 D1 (INV-15)
+        "athlete_id",
+        "execution_date",
+        "routine_type",
+        "started_at",
+        "completed_at",
     ],
 }
 

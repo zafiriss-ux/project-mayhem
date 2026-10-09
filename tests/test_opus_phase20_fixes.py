@@ -35,7 +35,7 @@ def test_clear_lockout_works() -> None:
 
 
 @pytest.mark.integration
-def test_security_headers_present() -> None:
+def test_security_headers_present(jwt_keys) -> None:  # noqa: ARG001
     """All required security headers must appear on every API response."""
     from fastapi.testclient import TestClient
 
@@ -50,10 +50,10 @@ def test_security_headers_present() -> None:
 
 @pytest.mark.integration
 def test_schema_version_incremented() -> None:
-    """PRAGMA user_version must equal SCHEMA_VERSION == 25 after migration."""
+    """PRAGMA user_version must equal SCHEMA_VERSION == 26 after migration."""
     from titan.core.database import DatabaseManager
 
     db = DatabaseManager(":memory:")
     cursor = db.conn.cursor()
     cursor.execute("PRAGMA user_version")
-    assert cursor.fetchone()[0] == 25
+    assert cursor.fetchone()[0] == 26

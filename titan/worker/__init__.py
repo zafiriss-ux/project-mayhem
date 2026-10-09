@@ -36,10 +36,17 @@ def _get_lock_file() -> Path:
 _shutdown = threading.Event()
 
 
-def _handle_sigterm(signum, frame):  # noqa: ANN001
-    log = logging.getLogger("titan.worker.signal")
-    log.info("worker_shutdown_requested")
+def _request_shutdown() -> None:
+    logging.getLogger("titan.worker.signal").info("worker_shutdown_requested")
     _shutdown.set()
+
+
+def _handle_sigterm(signum, frame):  # noqa: ANN001
+    # The handler runs on the main thread between two bytecodes. If that thread
+    # is inside _shutdown.wait() holding the event's internal lock, set() here
+    # waits for that lock forever and SIGTERM is lost. Another thread can
+    # take the lock once the main thread releases it.
+    threading.Thread(target=_request_shutdown, name="titan-worker-sigterm", daemon=True).start()
 
 
 HEARTBEAT_FILE = "worker.heartbeat"
@@ -152,6 +159,69 @@ def _seconds_until_next_run(hour: int = 7, minute: int = 0) -> float:
     return (target - now).total_seconds()
 
 
+ROUTINE_MORNING = "morning"
+ROUTINE_HOUR_UTC = 7
+
+
+def _utc_now() -> _dt.datetime:
+    """Current UTC time; one seam so tests can pin the clock."""
+    return _dt.datetime.now(_dt.UTC)
+
+
+def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> bool | None:
+    """Claim today's morning routine in ``worker_routine_executions`` (ADR-0060 D1, INV-15).
+
+    True: this worker claimed it and runs it. False: it already started today,
+    so it is skipped. None: the claim itself failed; the routine does not run
+    this cycle (fail closed) and the caller retries on its next cycle.
+    """
+    try:
+        return db.claim_routine_execution(
+            athlete_id=athlete_id,
+            execution_date=now.date().isoformat(),
+            routine_type=ROUTINE_MORNING,
+            started_at=now,
+        )
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").critical(
+            "worker_routine_claim_failed",
+            extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+        return None
+
+
+def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """Record that a claimed routine returned (ADR-0060 D1 step 2)."""
+    try:
+        db.complete_routine_execution(
+            athlete_id=athlete_id,
+            execution_date=execution_date,
+            routine_type=ROUTINE_MORNING,
+            completed_at=_utc_now(),
+        )
+    except Exception as exc:
+        # The claim row stays, so the routine is still not repeated today.
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_complete_failed",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
+        )
+
+
+def _warn_incomplete_routines(db: DatabaseManager, execution_date: str) -> None:
+    """At startup, report routines claimed today that never returned (ADR-0060 D1 step 3)."""
+    log = logging.getLogger("titan.worker.runner")
+    try:
+        rows = db.get_incomplete_routine_executions(execution_date)
+    except Exception as exc:
+        log.exception("worker_routine_state_unreadable", extra={"error": str(exc)})
+        return
+    for athlete_id, routine_type in rows:
+        log.warning(
+            "worker_routine_incomplete",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "routine_type": routine_type},
+        )
+
+
 def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     """Compose a DailyCoach for one athlete, mirroring the titan/main.py composition root.
 
@@ -210,6 +280,8 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     heartbeat = p.parent / HEARTBEAT_FILE
     interval_s = settings.WORKER_HEARTBEAT_INTERVAL_S
 
+    _warn_incomplete_routines(db, _utc_now().date().isoformat())
+
     if settings.TITAN_MULTI_ATHLETE == "1":
         _run_with_scheduler(db, _stop, heartbeat=heartbeat, interval_s=interval_s)
         return
@@ -217,8 +289,10 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     while True:
         _write_heartbeat(heartbeat)
         _run_backup(db)
-        _run_routine_supervised(db, heartbeat, interval_s, settings.WORKER_ROUTINE_BUDGET_S)
-        # Sleep until 07:00 UTC next day.
+        if _run_due_routine(db, _stop, heartbeat, interval_s, settings.WORKER_ROUTINE_BUDGET_S):
+            log.info("worker_graceful_exit")
+            return
+        # Sleep until the next 07:00 UTC.
         # Timezone alignment is out of scope — worker uses UTC 07:00 throughout.
         wait_s = _seconds_until_next_run(7, 0)
         log.info("worker_sleeping", extra={"seconds": wait_s})
@@ -227,12 +301,49 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
             return
 
 
-def _run_routine_supervised(db: DatabaseManager, heartbeat: Path, interval_s: float, budget_s: float) -> None:
+def _run_due_routine(
+    db: DatabaseManager, stop: threading.Event, heartbeat: Path, interval_s: float, budget_s: float
+) -> bool:
+    """Run the owner's morning routine if it is due today; True if ``stop`` fired.
+
+    Due means at or after 07:00 UTC and not yet claimed today: the claim row in
+    ``worker_routine_executions`` decides, so a restart never runs the routine a
+    second time on the same day (ADR-0060 D1, INV-15). A failed claim is retried
+    every ``interval_s`` until it succeeds or the stop event fires.
+    """
+    log = logging.getLogger("titan.worker.runner")
+    while True:
+        now = _utc_now()
+        if now.hour < ROUTINE_HOUR_UTC:
+            log.info("worker_routine_not_due", extra={"due_hour_utc": ROUTINE_HOUR_UTC})
+            return False
+        claimed = _claim_routine(db, "owner", now)
+        if claimed is None:
+            if _sleep_with_heartbeat(stop, interval_s, interval_s, heartbeat):
+                return True
+            continue
+        if not claimed:
+            log.info("worker_routine_already_ran", extra={"execution_date": now.date().isoformat()})
+            return False
+        _run_routine_supervised(db, heartbeat, interval_s, budget_s, execution_date=now.date().isoformat())
+        return False
+
+
+def _run_routine_supervised(
+    db: DatabaseManager,
+    heartbeat: Path,
+    interval_s: float,
+    budget_s: float,
+    *,
+    execution_date: str | None = None,
+) -> None:
     """Run one morning routine in a watched thread (INV-23(1)).
 
     The heartbeat keeps beating while the routine runs within ``budget_s``. Past
     the budget it stops, with one CRITICAL event, so the healthcheck reports the
     hung routine. A routine is never abandoned: this waits for it to finish.
+    When ``execution_date`` is given, the claim row of that date is marked
+    complete once the routine returns.
     """
     log = logging.getLogger("titan.worker.runner")
 
@@ -241,6 +352,8 @@ def _run_routine_supervised(db: DatabaseManager, heartbeat: Path, interval_s: fl
             coach = _build_daily_coach(db)
             coach.run_morning_routine()
             log.info("morning_routine_complete")
+            if execution_date is not None:
+                _complete_routine(db, "owner", execution_date)
         except Exception as exc:
             log.exception(
                 "worker_cycle_error",
@@ -288,29 +401,24 @@ def _run_with_scheduler(
 
     log = logging.getLogger("titan.worker.scheduler")
 
-    # Per-athlete last-run date tracker — prevents firing more than once per day.
-    # Once a callback fires at or after 07:00 UTC it is skipped for the rest
-    # of that calendar day regardless of outcome, mirroring the single-athlete
-    # while-True loop's _seconds_until_next_run(7, 0) gate.
-    last_run_dates: dict[str, str] = {}
-
-    # Run interval: 60s poll; coaching fires once per athlete per day at
-    # 07:00 UTC. The daily gate is enforced inside each callback.
+    # Run interval: 60s poll; coaching fires once per athlete per day at or
+    # after 07:00 UTC. The daily gate is the claim row in
+    # worker_routine_executions (ADR-0060 D1), so it survives a restart.
     scheduler = CoachingScheduler(interval_seconds=60.0)
 
     def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
         def _callback() -> None:
-            now = _dt.datetime.now(_dt.UTC)
-            today = now.strftime("%Y-%m-%d")
-            if now.hour < 7 or last_run_dates.get(athlete_id) == today:
+            now = _utc_now()
+            if now.hour < ROUTINE_HOUR_UTC:
                 return
-            # Mark as run before execution so a mid-routine crash does not
-            # trigger a retry storm — same semantics as the single-athlete
-            # loop which sleeps until 07:00 next day regardless of outcome.
-            last_run_dates[athlete_id] = today
+            # The claim is taken before execution so a mid-routine crash does
+            # not trigger a retry storm; a failed claim retries next poll.
+            if not _claim_routine(db, athlete_id, now):
+                return
             try:
                 coach = _build_daily_coach(db, athlete_id=athlete_id)
                 coach.run_morning_routine()
+                _complete_routine(db, athlete_id, now.date().isoformat())
             except Exception as exc:
                 log.exception(
                     "scheduler_athlete_cycle_error",

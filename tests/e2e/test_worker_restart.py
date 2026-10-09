@@ -29,7 +29,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 # Runs titan.worker.main() with the e2e stubs in place of Garmin/Telegram/weather.
 _WORKER = """
 import importlib.util, sys
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 root = Path(sys.argv[1])
@@ -72,8 +72,20 @@ def announced(self, *args, **kwargs):
     return ok
 
 
+_claim = worker._claim_routine
+
+
+def claim(*args, **kwargs):
+    claimed = _claim(*args, **kwargs)
+    print(f"claim {claimed}", flush=True)
+    return claimed
+
+
 worker._build_daily_coach = build
+worker._claim_routine = claim
 DailyCoach.run_morning_routine = announced
+# 08:00 UTC today: the morning routine is due whenever the test runs.
+worker._utc_now = lambda: datetime.now(UTC).replace(hour=8, minute=0, second=0, microsecond=0)
 worker._seconds_until_next_run = lambda *a, **k: 3600.0  # park until signalled
 worker.main()
 """
@@ -98,11 +110,11 @@ def _start(data_dir: Path) -> subprocess.Popen:
     )
 
 
-def _wait_for_routine(proc: subprocess.Popen) -> str:
+def _wait_for(proc: subprocess.Popen, prefix: str) -> str:
     for line in proc.stdout:
-        if line.startswith("routine_done"):
+        if line.startswith(prefix):
             return line.strip()
-    raise AssertionError(f"worker exited (code {proc.wait(timeout=5)}) before its routine finished")
+    raise AssertionError(f"worker exited (code {proc.wait(timeout=5)}) before printing {prefix!r}")
 
 
 def _counts(db_file: Path, today: str) -> tuple[str, int, int]:
@@ -122,7 +134,8 @@ def test_killed_worker_restarts_on_the_same_database_without_loss_or_duplicates(
 
     first = _start(tmp_path)
     try:
-        assert _wait_for_routine(first) == "routine_done True"
+        assert _wait_for(first, "claim") == "claim True"
+        assert _wait_for(first, "routine_done") == "routine_done True"
         first.send_signal(signal.SIGKILL)  # crash: no shutdown path runs
         first.wait(timeout=10)
     finally:
@@ -135,7 +148,9 @@ def test_killed_worker_restarts_on_the_same_database_without_loss_or_duplicates(
 
     second = _start(tmp_path)  # the kernel freed the dead worker's flock
     try:
-        assert _wait_for_routine(second) == "routine_done True"
+        # ADR-0060 D1: today's claim row survived the crash, so the restart
+        # does not run the morning routine a second time.
+        assert _wait_for(second, "claim") == "claim False"
         second.send_signal(signal.SIGTERM)  # graceful stop this time
         assert second.wait(timeout=10) == 0
     finally:
@@ -146,3 +161,9 @@ def test_killed_worker_restarts_on_the_same_database_without_loss_or_duplicates(
     # Same day, same Garmin activity: the restart adds no second session or metric row.
     assert _counts(db_file, today) == ("ok", 1, 1)
     assert (tmp_path / "worker.heartbeat").exists()
+    conn = sqlite3.connect(db_file)
+    try:
+        claims = conn.execute("SELECT COUNT(*) FROM worker_routine_executions").fetchone()[0]
+    finally:
+        conn.close()
+    assert claims == 1

@@ -26,7 +26,7 @@ def test_prometheus_gauge_registered():
 
 
 @pytest.mark.integration
-def test_metrics_endpoint_returns_200():
+def test_metrics_endpoint_returns_200(jwt_keys):  # noqa: ARG001
     from fastapi.testclient import TestClient
 
     from titan.api.main import create_app

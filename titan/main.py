@@ -70,7 +70,11 @@ def _configure_rotating_logging() -> None:
     if any(isinstance(h, RotatingFileHandler) and h.baseFilename.endswith(log_path) for h in root.handlers):
         return
     Path(log_path).parent.mkdir(parents=True, exist_ok=True)
-    handler = RotatingFileHandler(log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT)
+    # UTF-8 explicitly: the Windows default (cp1253 on a Greek system) cannot
+    # encode the banner's box and emoji characters.
+    handler = RotatingFileHandler(
+        log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding="utf-8"
+    )
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
     root.addHandler(handler)
     # The root logger defaults to WARNING, which dropped every INFO event, among
