@@ -1516,14 +1516,6 @@
      "severity": "info"
     },
     {
-     "action": "persistence_degraded_alert_failed",
-     "error_class": "TypeError",
-     "error_message": "TitanTelegramBot.send_alert() missing 1 required positional argument: 'message'",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info"
-    },
-    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -1852,6 +1844,7 @@
    ],
    "returned": true,
    "telegram": [
+    "⚠️ *Persistence failure*\n\nToday's session data was not written to the database. Training prescription is conservative (EASY). Data will be re-synced on next cycle.",
     "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]

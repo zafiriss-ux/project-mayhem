@@ -195,7 +195,7 @@ class DegradedModeTracker:
                     if elapsed_hours >= _DEGRADED_ALERT_THRESHOLD_HOURS:
                         try:
                             alert_fn(
-                                f"⚠️ TITAN degraded for >{int(elapsed_hours)}h — "
+                                f"TITAN degraded for >{int(elapsed_hours)}h — "
                                 f"{name} unresolved. Check credentials/connectivity."
                             )
                         except Exception as exc:
@@ -699,9 +699,13 @@ class DailyCoach:
             )
             try:
                 self.telegram.send_alert(
-                    "⚠️ Persistence failure — today's session data was not written to the "
-                    "database. Training prescription is conservative (EASY). "
-                    "Data will be re-synced on next cycle."
+                    title="Persistence failure",
+                    message=(
+                        "Today's session data was not written to the "
+                        "database. Training prescription is conservative (EASY). "
+                        "Data will be re-synced on next cycle."
+                    ),
+                    level="warning",
                 )
             except Exception as alert_exc:
                 _daily_coach_event(

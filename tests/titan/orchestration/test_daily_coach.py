@@ -161,7 +161,8 @@ class MinimalCoachFactory:
         )
         coach.telegram = SimpleNamespace(
             send_daily_coaching=lambda payload: telegram_success,
-            send_alert=lambda msg: None,
+            # Same signature as TitanTelegramBot.send_alert.
+            send_alert=lambda title, message, level="warning": None,
         )
         return coach
 
@@ -1740,7 +1741,10 @@ def test_run_morning_routine_persistence_failure_sends_telegram_alert(monkeypatc
     coach.db = _FailingTransactionDB()
     coach.telegram = SimpleNamespace(
         send_daily_coaching=lambda payload: True,
-        send_alert=lambda msg: alert_messages.append(msg),
+        # Same signature as TitanTelegramBot.send_alert.
+        send_alert=lambda title, message, level="warning": alert_messages.append(
+            f"{title}: {message}"
+        ),
     )
 
     coach.run_morning_routine()

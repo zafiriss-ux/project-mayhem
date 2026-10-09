@@ -161,7 +161,9 @@ class TitanEffectBus:
                         getattr(garmin, "is_api_degraded", False)
                     ),
                 },
-                alert_fn=lambda msg: telegram.send_alert(msg),  # type: ignore[union-attr]
+                alert_fn=lambda msg: telegram.send_alert(  # type: ignore[union-attr]
+                    title="TITAN degraded mode", message=msg, level="warning",
+                ),
             )
 
         return hook

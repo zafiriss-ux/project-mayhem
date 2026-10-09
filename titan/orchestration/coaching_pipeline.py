@@ -140,10 +140,14 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
         }, default=str))
         try:
             context.coach.telegram.send_alert(
-                "⚠️ TITAN system error — today's training decision could not be "
-                "computed (governance pipeline exception). No prescription was "
-                "generated. Default to an EASY session or rest; do not do quality "
-                "work today. The system will retry next cycle."
+                title="TITAN system error",
+                message=(
+                    "Today's training decision could not be "
+                    "computed (governance pipeline exception). No prescription was "
+                    "generated. Default to an EASY session or rest; do not do quality "
+                    "work today. The system will retry next cycle."
+                ),
+                level="critical",
             )
         except Exception as alert_exc:
             _log.critical(json.dumps({
