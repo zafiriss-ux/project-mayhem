@@ -35,6 +35,7 @@ from titan.core.structured_events import EventSeverity, structured_event_payload
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from titan.core.athlete import UniversalAthleteProfile
     from titan.orchestration.effect_bus import TitanEffectBus  # noqa: F401
 
 from titan.config.evidence_registry import get_metrics_under_review
@@ -424,7 +425,19 @@ class DailyCoach:
         # Athlete physiological HRmax — used as zone-boundary ceiling in TRIMP
         # calculation.  Source from AthleteProfile.max_hr (never session peak HR).
         athlete_max_hr: int = 0,
+        # T5-117 / D-033: the composition roots pass the profile object; max HR
+        # comes from it. athlete_max_hr stays for test factories.
+        athlete_profile: "UniversalAthleteProfile | None" = None,
     ):
+        if athlete_profile is not None:
+            profile_max_hr = athlete_profile.max_hr or 0
+            if athlete_max_hr and athlete_max_hr != profile_max_hr:
+                raise ValueError(
+                    f"athlete_max_hr={athlete_max_hr} disagrees with athlete_profile.max_hr="
+                    f"{profile_max_hr}; pass the profile only."
+                )
+            athlete_max_hr = profile_max_hr
+        self.athlete_profile = athlete_profile
         self.garmin         = garmin_sync
         # Inject athlete HRmax into the sync instance so _sync_operation can
         # forward it to sync_activities() without changing sync_all()'s signature.

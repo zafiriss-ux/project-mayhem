@@ -257,7 +257,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         athlete_id=athlete_id,
         engines=engines,
         # Same profile source as the console (titan/main.py), so TRIMP uses one max HR (T5-117).
-        athlete_max_hr=UniversalAthleteProfile.from_env().max_hr or 0,
+        athlete_profile=UniversalAthleteProfile.from_env(),
     )
 
 
@@ -265,7 +265,8 @@ def _generate_weekly_plan(coach, db: DatabaseManager, athlete_id: str) -> dict: 
     """Build next week's plan as the console does, store it and send it to Telegram (D-020)."""
     from titan.core.athlete import UniversalAthleteProfile
 
-    profile = UniversalAthleteProfile.from_env()
+    # The profile the coach was built with (D-033); stand-in coaches in tests have none.
+    profile = getattr(coach, "athlete_profile", None) or UniversalAthleteProfile.from_env()
     plan = coach.weekly_planner.generate_weekly_plan(
         athlete_profile=profile.to_dict(), phase=profile.training_phase,
     )
