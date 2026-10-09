@@ -35,7 +35,7 @@ def test_clear_lockout_works() -> None:
 
 
 @pytest.mark.integration
-def test_security_headers_present() -> None:
+def test_security_headers_present(jwt_keys) -> None:  # noqa: ARG001
     """All required security headers must appear on every API response."""
     from fastapi.testclient import TestClient
 

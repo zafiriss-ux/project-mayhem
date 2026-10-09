@@ -214,22 +214,36 @@ def decode_token(token: str, expected_type: str) -> TokenPayload:
 
 
 def validate_jwt_keys_at_startup() -> None:
-    """Fail fast if JWT keys are missing or malformed.
+    """Fail fast if JWT keys are missing, malformed or not one key pair (RBP-04).
 
-    Call at application startup before accepting requests.
+    ``create_app()`` calls this while building the app, so a bad key stops the
+    API at construction instead of at the first login. A probe token is signed
+    with the private key and verified with the public key.
     Raises AuthError with descriptive message.
     """
     try:
-        _jwt_private_key()
+        private_key = _jwt_private_key()
     except AuthError as exc:
         raise AuthError(
             "TITAN_JWT_PRIVATE_KEY missing or invalid. "
             "Set env var before starting API."
         ) from exc
     try:
-        _jwt_public_key()
+        public_key = _jwt_public_key()
     except AuthError as exc:
         raise AuthError(
             "TITAN_JWT_PUBLIC_KEY missing or invalid. "
             "Set env var before starting API."
+        ) from exc
+    try:
+        probe = jwt.encode(
+            {"sub": "startup-key-check", "aud": JWT_AUDIENCE, "iss": JWT_ISSUER},
+            private_key,
+            algorithm="RS256",
+        )
+        jwt.decode(probe, public_key, algorithms=["RS256"], audience=JWT_AUDIENCE, issuer=JWT_ISSUER)
+    except Exception as exc:
+        raise AuthError(
+            "TITAN_JWT_PRIVATE_KEY and TITAN_JWT_PUBLIC_KEY are not a valid RS256 key pair. "
+            "Regenerate them with scripts/generate_jwt_keys.sh."
         ) from exc

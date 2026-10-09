@@ -184,3 +184,29 @@ def daily_coach_context_factory() -> Callable[..., DailyCoachContext]:
         ).to_payload()
 
     return _factory
+
+
+def _rsa_pem_pair() -> tuple[str, str]:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
+    public_pem = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
+    return private_pem, public_pem
+
+
+@pytest.fixture
+def jwt_keys(monkeypatch: pytest.MonkeyPatch) -> tuple[str, str]:
+    """A valid RS256 key pair in the environment; ``create_app()`` requires one (RBP-04)."""
+    private_pem, public_pem = _rsa_pem_pair()
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem)
+    return private_pem, public_pem
