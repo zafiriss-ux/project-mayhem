@@ -12,6 +12,8 @@ Workflow:
   5. Set proper permissions (chmod 600 on Linux/macOS)
 """
 
+import base64
+import os
 import sys
 from pathlib import Path
 
@@ -85,6 +87,29 @@ def write_env(config: dict[str, str]) -> None:
             message=f"Failed to write .env file: {e}",
             remediation="Check folder permissions.",
         ) from e
+
+
+GARMIN_TOKEN_KEY = 'TITAN_GARTH_TOKEN_KEY'
+
+
+def ensure_garmin_token_key() -> str:
+    """Return the key that encrypts the saved Garmin session, creating it once.
+
+    The kernel refuses to save the Garmin session without this key, so without
+    it TITAN.exe logged in to Garmin with the password on every start. The key
+    is appended to .env so the saved session can be read on the next start.
+    """
+    key = load_env().get(GARMIN_TOKEN_KEY)
+    if key:
+        return key
+    key = base64.urlsafe_b64encode(os.urandom(32)).decode('ascii')  # Fernet key format
+    env_path = get_env_path()
+    if env_path.exists():
+        text = env_path.read_text(encoding='utf-8')
+        separator = '' if not text or text.endswith('\n') else '\n'
+        with open(env_path, 'a', encoding='utf-8') as f:
+            f.write(f"{separator}{GARMIN_TOKEN_KEY}={key}\n")
+    return key
 
 
 # ══════════════════════════════════════════════════════════════════════════════

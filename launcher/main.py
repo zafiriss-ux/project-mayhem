@@ -29,7 +29,14 @@ from launcher import __version__
 from launcher.errors import TitanError, translate_kernel_error
 from launcher.logger import init_launcher_logging
 from launcher.validator import get_data_directory, validate_environment
-from launcher.wizard import ensure_config, env_exists, get_env_path, load_env
+from launcher.wizard import (
+    GARMIN_TOKEN_KEY,
+    ensure_config,
+    ensure_garmin_token_key,
+    env_exists,
+    get_env_path,
+    load_env,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Argument Redaction
@@ -94,6 +101,11 @@ def load_env_to_os():
         env_vars["GARMIN_EMAIL"] = env_vars["GARMIN_USERNAME"]
     for key, value in env_vars.items():
         os.environ[key] = value
+    # The kernel keeps the Garmin session in TITAN_DATA_DIR (default /data,
+    # the Docker volume) and saves it only with an encryption key.
+    os.environ.setdefault("TITAN_DATA_DIR", str(get_data_directory()))
+    if not os.environ.get(GARMIN_TOKEN_KEY):
+        os.environ[GARMIN_TOKEN_KEY] = ensure_garmin_token_key()
     # titan.log goes next to the launcher logs unless .env names a path; the
     # default "titan.log" lands in whatever folder TITAN.exe was started from.
     os.environ.setdefault("TITAN_LOG_PATH", str(get_data_directory() / "logs" / "titan.log"))
