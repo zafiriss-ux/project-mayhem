@@ -277,6 +277,7 @@ Documentation is **Architect-owned** (`CLAUDE.md`, `AGENTS.md`, the TITAN Operat
 | ADR index row in `CLAUDE.md` | Integrating a new Architect-authored ADR | §12.4 |
 | Debt entry body / tracking row in `TECHNICAL_DEBT.md` | Task closure (Records Steward) | §12.1 |
 | New OBS / clarification append in `SCRATCHPAD.md` | Out-of-scope finding / `CLARIFICATION_NEEDED` | §15 |
+| `README.md`, `docs/`, `CLAUDE.md`, `PROGRESS.md`, `DECISIONS.md`, `CHANGELOG.md` — only what the PR's own change makes untrue or incomplete | Any task PR | ADR-0061 |
 
 Everything else is Architect-only per §1.2 (RP-7 covers this document and the operating
 contract). A `policy-only` pass (§19) that touches `AGENTS.md` is executed by the Architect, or

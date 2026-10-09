@@ -75,6 +75,7 @@
 | [0058](0058-dailycoach-decomposition.md) | DailyCoach God-Orchestrator Decomposition: EngineRegistry Phase A; EffectBus Phase B stub; daemon extraction Phase C stub | Architecture / Orchestration | ✅ Accepted (2026-05-24) |
 | [0059](0059-pytest-execution-model.md) | Unified pytest Execution Model: `python -m pytest` as single canonical invocation across all CI artifacts | Architecture / CI | ✅ Accepted (2026-06-04) |
 | [0060](0060-durable-worker-state.md) | Durable Worker State: `worker_routine_executions` (INV-15) and `telegram_override_nonces` (INV-17) tables, v26 Stage-1 migration | Architecture / Persistence | ✅ Accepted (2026-10-07) |
+| [0061](0061-owner-working-rules.md) | Owner Working Rules: τα έγγραφα ενημερώνονται στο ίδιο PR, `DECISIONS.md` και `CHANGELOG.md` | Process / Governance | 🔲 Proposed (2026-10-09) |
 
 ---
 
