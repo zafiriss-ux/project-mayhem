@@ -1,4 +1,4 @@
-"""ADR-0060 D1 / INV-15: the worker's "has today's routine run?" survives a restart.
+"""ADR-0060 / INV-15, INV-17: worker routine claims and override nonces survive a restart.
 
 A restart is a fresh ``run_forever`` (or a fresh scheduler) on the same database
 file, with nothing carried over in memory. The claim row in
@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -248,3 +248,56 @@ def test_claim_is_the_insert_itself(tmp_path):
     db.complete_routine_execution(completed_at=_MORNING, **kwargs)
     assert db.get_incomplete_routine_executions(_TODAY) == [("athlete-2", "morning")]
     db.close()
+
+
+# ── ADR-0060 D2 / INV-17: override nonces survive a restart ────────────────────
+
+
+def test_override_nonce_survives_a_restart_and_is_used_once(tmp_path, monkeypatch):
+    """Issued by one bot process, consumed by a fresh one on the same file."""
+    from titan.integrations import telegram_bot as tb
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
+    issuer_db = DatabaseManager(db_dir=tmp_path)
+    nonce = tb._create_override_nonce(issuer_db, "dec-7", "owner")
+    issuer_db.close()  # the process that sent the button is gone
+
+    restarted = tb.TitanTelegramBot(bot_token="", chat_id=123, db=DatabaseManager(db_dir=tmp_path))
+    restarted._prune_expired_override_nonces()  # startup prune keeps unexpired nonces
+
+    assert restarted.process_override_callback(123, f"override:accept:{nonce}") == "✅ Decision accepted."
+    replay = tb.TitanTelegramBot(bot_token="", chat_id=123, db=DatabaseManager(db_dir=tmp_path))
+    assert "already been used or has expired" in replay.process_override_callback(
+        123, f"override:accept:{nonce}"
+    )
+
+
+def test_startup_prunes_only_expired_nonces(tmp_path):
+    db = DatabaseManager(db_dir=tmp_path)
+    for nonce, offset in (("old", -60), ("fresh", 60)):
+        db.issue_override_nonce(
+            nonce=nonce, command_type="override", athlete_id="owner", decision_id=f"d-{nonce}",
+            issued_at=_MORNING, expires_at=_MORNING.replace(second=0) + timedelta(seconds=offset),
+        )
+
+    assert db.prune_expired_override_nonces(_MORNING) == 1
+    assert _rows(tmp_path / "titan_core.db", "SELECT nonce FROM telegram_override_nonces") == [("fresh",)]
+    db.close()
+
+
+def test_without_a_stored_nonce_no_override_button_is_sent(tmp_path, monkeypatch, caplog):
+    from titan.integrations import telegram_bot as tb
+
+    bot = tb.TitanTelegramBot(bot_token="", chat_id=123, db=None)
+    sent: list[str] = []
+    bot.bot = object()  # a polling backend is present
+    monkeypatch.setattr(tb, "TELEBOT_AVAILABLE", True)
+    monkeypatch.setattr(bot, "send_message", lambda text, **_k: sent.append(text) or True)
+
+    with caplog.at_level(logging.CRITICAL):
+        assert bot.send_governance_decision(
+            text="Hard stop", decision_id="d-1", decision_type="HARD_STOP", athlete_id="owner"
+        ) is True
+
+    assert sent == ["Hard stop"]  # plain message, no Accept/Override keyboard
+    assert "telegram_override_nonce_unavailable" in [r.getMessage() for r in caplog.records]

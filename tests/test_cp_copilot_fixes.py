@@ -16,6 +16,7 @@ os.environ.setdefault("WEATHER_LOCATION", "Athens,GR")
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from titan.core.database import DatabaseManager
 from titan.integrations.telegram_bot import (
     TitanTelegramBot,
     _consume_override_nonce,
@@ -24,8 +25,20 @@ from titan.integrations.telegram_bot import (
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_DB: DatabaseManager | None = None
+
+
+@pytest.fixture(autouse=True)
+def _nonce_db(tmp_path):
+    global _DB
+    _DB = DatabaseManager(db_dir=tmp_path)
+    yield
+    _DB.close()
+
+
 def _make_bot() -> TitanTelegramBot:
     bot = TitanTelegramBot.__new__(TitanTelegramBot)
+    bot.db = _DB
     bot._token = ""
     bot._chat_id = 12345
     bot._bot = None
@@ -43,22 +56,22 @@ class TestNoncePerAction:
     def test_nonce_accept_valid(self):
         bot = _make_bot()
         bot.send_message = MagicMock(return_value=True)
-        nonce = _create_override_nonce("dec-001")
+        nonce = _create_override_nonce(_DB, "dec-001", "owner")
         result = bot.process_override_callback(12345, f"override:accept:{nonce}")
         assert result == "✅ Decision accepted."
 
     @pytest.mark.unit
     def test_nonce_accept_replay(self):
         bot = _make_bot()
-        nonce = _create_override_nonce("dec-002")
-        _consume_override_nonce(nonce)  # consume first
+        nonce = _create_override_nonce(_DB, "dec-002", "owner")
+        _consume_override_nonce(_DB, nonce)  # consume first
         result = bot.process_override_callback(12345, f"override:accept:{nonce}")
         assert "expired" in result or "already been used" in result
 
     @pytest.mark.unit
     def test_nonce_request_valid(self):
         bot = _make_bot()
-        nonce = _create_override_nonce("dec-003")
+        nonce = _create_override_nonce(_DB, "dec-003", "owner")
         bot._pending_override_prompts[12345] = {"decision_id": "dec-003", "athlete_id": 1}
         result = bot.process_override_callback(12345, f"override:request:{nonce}")
         assert "reason" in result.lower() or "override" in result.lower()
@@ -66,8 +79,8 @@ class TestNoncePerAction:
     @pytest.mark.unit
     def test_nonce_request_replay(self):
         bot = _make_bot()
-        nonce = _create_override_nonce("dec-004")
-        _consume_override_nonce(nonce)  # consume first
+        nonce = _create_override_nonce(_DB, "dec-004", "owner")
+        _consume_override_nonce(_DB, nonce)  # consume first
         result = bot.process_override_callback(12345, f"override:request:{nonce}")
         assert "expired" in result or "already been used" in result
 

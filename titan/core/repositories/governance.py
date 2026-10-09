@@ -1,5 +1,6 @@
-"""Governance domain SQL: override audit log, governance decisions with their
-outcomes, per-athlete threshold offsets, cold start and calibration rates."""
+"""Governance domain SQL: override audit log, Telegram override nonces
+(ADR-0060 D2), governance decisions with their outcomes, per-athlete threshold
+offsets, cold start and calibration rates."""
 
 from __future__ import annotations
 
@@ -10,6 +11,11 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
+
+
+def _utc_iso(moment: datetime) -> str:
+    """Fixed-width UTC ISO-8601, so nonce times compare correctly as text."""
+    return moment.astimezone(UTC).isoformat(timespec="microseconds")
 
 
 class GovernanceRepository:
@@ -116,6 +122,66 @@ class GovernanceRepository:
             }
             for row in rows
         ]
+
+    def issue_override_nonce(
+        self,
+        *,
+        nonce: str,
+        command_type: str,
+        athlete_id: str,
+        decision_id: str,
+        issued_at: datetime,
+        expires_at: datetime,
+    ) -> None:
+        """Store a one-time override nonce bound to its decision (INV-17)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                """INSERT INTO telegram_override_nonces
+                       (nonce, command_type, athlete_id, decision_id, issued_at, expires_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (nonce, command_type, athlete_id, decision_id,
+                 _utc_iso(issued_at), _utc_iso(expires_at)),
+            )
+            self._db.conn.commit()
+
+    def consume_override_nonce(self, *, nonce: str, command_type: str, now: datetime) -> str | None:
+        """Consume a nonce; return its decision_id, or None if unknown, expired,
+        already used or for another command.
+
+        Expiry and replay are checked in the UPDATE itself (no TOCTOU, ADR-0060 D2).
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """UPDATE telegram_override_nonces
+                      SET consumed_at = :now
+                    WHERE nonce = :nonce
+                      AND command_type = :command_type
+                      AND consumed_at IS NULL
+                      AND expires_at > :now""",
+                {"now": _utc_iso(now), "nonce": nonce, "command_type": command_type},
+            )
+            if cursor.rowcount != 1:
+                self._db.conn.rollback()
+                return None
+            row = cursor.execute(
+                "SELECT decision_id FROM telegram_override_nonces WHERE nonce = ?", (nonce,)
+            ).fetchone()
+            self._db.conn.commit()
+        return row[0]
+
+    def prune_expired_override_nonces(self, now: datetime) -> int:
+        """Delete nonces that expired before ``now``; unexpired ones stay valid."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                "DELETE FROM telegram_override_nonces WHERE expires_at < ?", (_utc_iso(now),)
+            )
+            self._db.conn.commit()
+            return cursor.rowcount
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
         """Persist a governance decision snapshot into governance_outcomes."""
