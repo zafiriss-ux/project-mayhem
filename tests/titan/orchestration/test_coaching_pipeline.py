@@ -107,3 +107,28 @@ def test_coaching_pipeline_decision_pipeline_exception_fails_closed():
     assert result is False
     assert len(alerts) == 1
     assert not effect_runner_calls
+
+
+@pytest.mark.unit
+def test_decision_pipeline_failure_alert_matches_real_send_alert_signature():
+    """INV-12 fail-safe alert must call send_alert the way TitanTelegramBot defines it.
+
+    A one-argument call raised TypeError inside the try block, so the athlete never
+    received the "do not do quality work today" alert.
+    """
+    from unittest.mock import create_autospec
+
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    telegram = create_autospec(TitanTelegramBot, instance=True)
+    coach = SimpleNamespace(
+        _decision_pipeline=lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+        _effect_runner=lambda payload: None,
+        telegram=telegram,
+    )
+
+    assert coaching_pipeline(_build_context(coach=coach)) is False
+    telegram.send_alert.assert_called_once()
+    kwargs = telegram.send_alert.call_args.kwargs
+    assert kwargs["level"] == "critical"
+    assert "EASY session or rest" in kwargs["message"]

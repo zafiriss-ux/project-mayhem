@@ -2561,14 +2561,6 @@
      "step_number": 12
     },
     {
-     "action": "degraded_alert_failed",
-     "error_class": "TypeError",
-     "failure_type": "garmin_data_stale",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info"
-    },
-    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2598,6 +2590,7 @@
    "telegram": [
     "🛑 *CRITICAL*\n\nGarmin data is stale (>26h since last successful sync). Training prescription is conservative (EASY maintenance).",
     "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "⚠️ *TITAN degraded mode*\n\nTITAN degraded for >24h — garmin_data_stale unresolved. Check credentials/connectivity.",
     "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 50/100\n  • Readiness: 93/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA_VOID_CONSERVATIVE\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
