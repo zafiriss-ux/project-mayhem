@@ -36,10 +36,17 @@ def _get_lock_file() -> Path:
 _shutdown = threading.Event()
 
 
-def _handle_sigterm(signum, frame):  # noqa: ANN001
-    log = logging.getLogger("titan.worker.signal")
-    log.info("worker_shutdown_requested")
+def _request_shutdown() -> None:
+    logging.getLogger("titan.worker.signal").info("worker_shutdown_requested")
     _shutdown.set()
+
+
+def _handle_sigterm(signum, frame):  # noqa: ANN001
+    # The handler runs on the main thread between two bytecodes. If that thread
+    # is inside _shutdown.wait() holding the event's internal lock, set() here
+    # waits for that lock forever and SIGTERM is lost. Another thread can
+    # take the lock once the main thread releases it.
+    threading.Thread(target=_request_shutdown, name="titan-worker-sigterm", daemon=True).start()
 
 
 HEARTBEAT_FILE = "worker.heartbeat"
