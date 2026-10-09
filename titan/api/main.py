@@ -391,7 +391,10 @@ def create_app(
                     ok = False
 
         except Exception as e:  # noqa: BLE001
-            checks["db_error"] = str(e)
+            # /readyz is unauthenticated: name the error class only, keep the
+            # message (paths, SQL) in the server log.
+            _log.warning("readyz db check failed: %s: %s", type(e).__name__, e)
+            checks["db_error"] = type(e).__name__
             ok = False
 
         return JSONResponse(
