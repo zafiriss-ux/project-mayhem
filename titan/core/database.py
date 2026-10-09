@@ -906,6 +906,12 @@ class DatabaseManager:
         """Persist today's glycogen debt score (0–10) to daily_metrics."""
         self._physiology.update_glycogen_debt(date=date, debt_score=debt_score, athlete_id=athlete_id)
 
+    def get_previous_glycogen_debt(
+        self, before_date: str, athlete_id: str = "owner",
+    ) -> tuple[str, float] | None:
+        """Return ``(date, debt)`` of the latest stored glycogen debt before *before_date*, or None."""
+        return self._physiology.get_previous_glycogen_debt(before_date=before_date, athlete_id=athlete_id)
+
     # --- CS CALIBRATION PERFORMANCES (titan/core/repositories/training.py) ---
 
     def log_cs_performance(

@@ -1,7 +1,7 @@
 import sqlite3
 import threading
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from time import sleep
 from types import SimpleNamespace
 
@@ -1366,7 +1366,8 @@ def test_run_morning_routine_handles_hrr_locks_weight_and_missing_nutrition(monk
 
     coach.garmin = SimpleNamespace(
         sync_all=lambda: {
-            "activities": [{"date": "2026-03-04", "session_type": "EASY", "distance_km": 5, "duration_sec": 1800, "trimp": 42}],
+            # Only runs since yesterday add glycogen debt, so the run is dated today.
+            "activities": [{"date": datetime.now(UTC).strftime("%Y-%m-%d"), "session_type": "EASY", "distance_km": 5, "duration_sec": 1800, "trimp": 42}],
             "sleep": [None, {"restingHeartRate": 52, "sleepScores": 81, "sleepTimeSeconds": 25200}],
             "hrv": [{"date": "2026-03-04", "rmssd": 45.0}],
             "hrr": [{"date": "2026-03-04", "hrr_60": 25, "hrr_120": 42}],
@@ -2864,3 +2865,75 @@ def test_tsb_loads_in_asc_order(monkeypatch):
     )
     ctl = tsb.calculate_ctl()
     assert ctl is not None, "CTL must be non-None after hydration with valid loads"
+
+
+def _glycogen_coach(db: DatabaseManager) -> DailyCoach:
+    from titan.science.glycogen_model import GlycogenDebtAccumulator
+
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = db
+    coach.athlete_id = "owner"
+    coach.glycogen = GlycogenDebtAccumulator()
+    return coach
+
+
+@pytest.mark.unit
+def test_hydrate_glycogen_debt_starts_from_yesterdays_stored_debt(tmp_path):
+    """The worker builds a new coach every morning; the debt must carry over (D-024)."""
+    db = DatabaseManager(db_name="glycogen_hydrate.db", db_dir=tmp_path)
+    try:
+        db.save_daily_metric(date="2026-03-03", hrv=45.0, rhr=52, sleep_hours=7.0)
+        db.update_glycogen_debt("2026-03-03", 6.2)
+        coach = _glycogen_coach(db)
+
+        coach._hydrate_glycogen_debt("2026-03-04")
+
+        assert coach.glycogen.daily_debt == pytest.approx(6.2)
+    finally:
+        db.close()
+
+
+@pytest.mark.unit
+def test_hydrate_glycogen_debt_recovers_missed_nights(tmp_path):
+    """Two missed mornings: the two nights before last night count as recovery."""
+    db = DatabaseManager(db_name="glycogen_gap.db", db_dir=tmp_path)
+    try:
+        db.save_daily_metric(date="2026-03-01", hrv=45.0, rhr=52, sleep_hours=7.0)
+        db.update_glycogen_debt("2026-03-01", 9.0)
+        coach = _glycogen_coach(db)
+
+        coach._hydrate_glycogen_debt("2026-03-04")
+
+        per_night = coach.glycogen.OVERNIGHT_RECOVERY_PER_8H * (7.5 / 8.0)
+        assert coach.glycogen.daily_debt == pytest.approx(9.0 - 2 * per_night)
+    finally:
+        db.close()
+
+
+@pytest.mark.unit
+def test_hydrate_glycogen_debt_leaves_live_accumulator_alone(tmp_path):
+    db = DatabaseManager(db_name="glycogen_live.db", db_dir=tmp_path)
+    try:
+        db.save_daily_metric(date="2026-03-03", hrv=45.0, rhr=52, sleep_hours=7.0)
+        db.update_glycogen_debt("2026-03-03", 6.2)
+        coach = _glycogen_coach(db)
+        coach.glycogen.daily_debt = 1.5
+
+        coach._hydrate_glycogen_debt("2026-03-04")
+
+        assert coach.glycogen.daily_debt == 1.5
+    finally:
+        db.close()
+
+
+@pytest.mark.unit
+def test_recent_trimp_uses_garmin_training_load_since_yesterday():
+    """sync_activities gives estimated_training_load for 14 days; only runs since yesterday count."""
+    coach = DailyCoach.__new__(DailyCoach)
+    activities = [
+        {"date": "2026-03-04", "estimated_training_load": 80.0},
+        {"date": "2026-03-03", "estimated_training_load": 60.0},
+        {"date": "2026-03-01", "estimated_training_load": 150.0},
+    ]
+
+    assert coach._get_recent_trimp(activities, since_date="2026-03-03") == pytest.approx(140.0)

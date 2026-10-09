@@ -120,6 +120,11 @@ class GlycogenDebtAccumulator:
     """
 
     MAX_DEBT = 10.0
+    # Debt units cleared by 8 h of sleep with MODERATE carbohydrate intake (D-024).
+    # Burke et al. 2011 (J Sports Sci 29 Suppl 1:S17-27): with adequate carbohydrate,
+    # muscle glycogen is restored within ~24 h. 3.5 units clears an easy run or most
+    # of a hard session overnight; LOW carbs (x0.6) leaves debt to build up.
+    OVERNIGHT_RECOVERY_PER_8H = 3.5
 
     def __init__(self) -> None:
         self.daily_debt: float = 0.0
@@ -187,8 +192,7 @@ class GlycogenDebtAccumulator:
             Updated debt score after overnight recovery.
         """
         av_mult = {"HIGH": 1.3, "MODERATE": 1.0, "LOW": 0.6}.get(carb_availability, 1.0)
-        # Base: 0.8 debt-units recovered per 8h well-fueled sleep
-        recovery = 0.8 * (sleep_hours / 8.0) * av_mult
+        recovery = self.OVERNIGHT_RECOVERY_PER_8H * (sleep_hours / 8.0) * av_mult
         self.daily_debt = max(0.0, self.daily_debt - recovery)
         return round(self.daily_debt, 2)
 

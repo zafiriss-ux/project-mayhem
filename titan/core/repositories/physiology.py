@@ -190,6 +190,22 @@ class PhysiologyRepository:
                     athlete_id=athlete_id,
                 )
 
+    def get_previous_glycogen_debt(
+        self, before_date: str, athlete_id: str = "owner",
+    ) -> tuple[str, float] | None:
+        """Return ``(date, debt)`` of the latest stored glycogen debt before *before_date*, or None."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """SELECT date, glycogen_debt FROM daily_metrics
+                   WHERE athlete_id = ? AND date < ? AND glycogen_debt IS NOT NULL
+                   ORDER BY date DESC LIMIT 1""",
+                (athlete_id, before_date),
+            )
+            row = cursor.fetchone()
+        return (str(row[0]), float(row[1])) if row else None
+
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         """Return rolling N-day average resting HR from daily_metrics, or None."""
         with self._db._lock:

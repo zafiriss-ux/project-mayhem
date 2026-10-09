@@ -183,3 +183,30 @@ def test_status_reports_moderate_band() -> None:
     accumulator.daily_debt = 5.0
 
     assert accumulator.status == "MODERATE"
+
+
+@pytest.mark.unit
+def test_daily_easy_runs_do_not_build_debt_with_moderate_carbs() -> None:
+    """D-024: a week of easy runs with normal sleep and carbs must not saturate the debt."""
+    accumulator = GlycogenDebtAccumulator()
+    for day in range(1, 15):
+        accumulator.update(
+            date=f"2026-03-{day:02d}", trimp=70.0, time_above_lt2_min=0.0,
+            dprime_fraction=0.0, intra_carb_g=0.0, weight_kg=70.0,
+        )
+        accumulator.overnight_resynthesis(sleep_hours=7.5, carb_availability="MODERATE")
+    assert accumulator.daily_debt < 4.0
+    assert accumulator.status == "GOOD"
+
+
+@pytest.mark.unit
+def test_hard_days_with_low_carbs_still_build_debt() -> None:
+    """D-024: recovery is not so fast that the protocol can never trigger."""
+    accumulator = GlycogenDebtAccumulator()
+    for day in range(1, 8):
+        accumulator.update(
+            date=f"2026-03-{day:02d}", trimp=150.0, time_above_lt2_min=25.0,
+            dprime_fraction=0.5, intra_carb_g=0.0, weight_kg=70.0,
+        )
+        accumulator.overnight_resynthesis(sleep_hours=6.0, carb_availability="LOW")
+    assert accumulator.daily_debt >= 7.0
