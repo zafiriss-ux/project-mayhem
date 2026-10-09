@@ -135,3 +135,41 @@ def test_audit_does_not_log_non_coach_requests(client: tuple[TestClient, CoachAu
     denied = test_client.get("/athletes/athlete-2/dashboard")
     assert denied.status_code == 403
     assert audit_store.rows == []
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("POST", "/coach/overrides?athlete_id=athlete-2", {"reason": "r"}),
+        ("GET", "/coach/export?athlete_id=athlete-2", None),
+        ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
+        ("POST", "/coach/overrides?athlete_id=athlete-1", {"reason": "r"}),
+        ("GET", "/coach/export?athlete_id=athlete-1", None),
+        ("DELETE", "/coach/athlete-data?athlete_id=athlete-1", None),
+    ],
+)
+def test_athlete_cannot_use_coach_routes(
+    client: tuple[TestClient, CoachAuditStore], method: str, path: str, body: dict[str, str] | None
+) -> None:
+    """ADR-0054: the /coach/* health-data routes are COACH-only, for any athlete_id."""
+    test_client, audit_store = client
+    response = test_client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
+    assert response.status_code == 200
+    headers = _csrf_headers(test_client) if method != "GET" else {}
+
+    denied = test_client.request(method, path, json=body, headers=headers)
+
+    assert denied.status_code == 403
+    assert audit_store.rows == []
+
+
+@pytest.mark.integration
+def test_athlete_still_sees_own_dashboard(client: tuple[TestClient, CoachAuditStore]) -> None:
+    test_client, _ = client
+    response = test_client.post("/auth/login", json={"username": "athlete", "password": "athlete-pass"})
+    assert response.status_code == 200
+
+    own = test_client.get("/athletes/athlete-1/dashboard")
+
+    assert own.status_code == 200
