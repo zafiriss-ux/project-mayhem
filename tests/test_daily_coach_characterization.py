@@ -305,7 +305,7 @@ def _run_scenario(world: dict[str, Any], watch: list[WatchDay | None], *,
                   soreness: int | None = None, weekly_plan: bool = False,
                   before_morning=None) -> dict[str, Any]:
     """Run one morning per entry of *watch*; ``None`` is a Garmin outage morning."""
-    from titan.worker import _build_daily_coach
+    from titan.worker import _build_daily_coach, _plan_next_week_on_sunday, _prepare_weekly_plan
 
     world["recorded"].clear()
     world["outage"].clear()
@@ -326,16 +326,21 @@ def _run_scenario(world: dict[str, Any], watch: list[WatchDay | None], *,
             # A new coach every morning, as the worker builds one per routine.
             coach = _build_daily_coach(db)
             if weekly_plan:
-                # The console (titan/main.py) generates a plan in-process; the worker does not.
+                # The console (titan/main.py) generates a plan in-process.
                 coach.weekly_planner.generate_weekly_plan(
                     athlete_profile=UniversalAthleteProfile.from_env().to_dict(), phase="BUILD",
                 )
             world["sent"].clear()
             world["capture"].events.clear()
+            if not weekly_plan:
+                # The worker loads this week's stored plan, or builds one (D-020).
+                _prepare_weekly_plan(coach, db, "owner", today)
             try:
                 outcome: Any = coach.run_morning_routine(soreness=soreness)
             except Exception as exc:  # recorded, not hidden: a raise is behavior too
                 outcome = {"raised": type(exc).__name__, "message": str(exc)}
+            if not weekly_plan:
+                _plan_next_week_on_sunday(coach, db, "owner", today)
             mornings.append(_jsonable({
                 "date": today.isoformat(),
                 "returned": outcome,
@@ -350,17 +355,13 @@ def _run_scenario(world: dict[str, Any], watch: list[WatchDay | None], *,
 
 
 def test_two_weeks_as_the_worker_runs_them(world):
-    """14 mornings with the worker's defaults; an autonomic crash on morning 10."""
+    """14 mornings as the worker runs them, with its weekly plan (D-020); an autonomic crash on morning 10."""
     watch = [CRASH_DAY if i == 9 else normal_day(i) for i in range(14)]
     _compare_with_golden("two_weeks_worker", _run_scenario(world, watch))
 
 
 def test_three_weeks_with_weekly_plan(world):
-    """21 mornings with low soreness and a generated weekly plan, as in the console.
-
-    The worker never generates a plan, so on its own it always prescribes the planner's
-    fallback session; this scenario covers the gates acting on planned quality sessions.
-    """
+    """21 mornings with low soreness and a weekly plan generated as in the console."""
     watch = [normal_day(i) for i in range(21)]
     _compare_with_golden(
         "three_weeks_weekly_plan",

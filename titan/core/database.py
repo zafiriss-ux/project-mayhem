@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 27
 
 
 def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = None) -> str | None:
@@ -457,6 +457,10 @@ class DatabaseManager:
         """Version 26: worker_routine_executions + telegram_override_nonces (ADR-0060)."""
         self._migrations._apply_v26_migrations(cursor=cursor)
 
+    def _apply_v27_migrations(self, cursor) -> None:
+        """Version 27: weekly_plans table (D-020)."""
+        self._migrations._apply_v27_migrations(cursor=cursor)
+
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
     ) -> bool:
@@ -676,6 +680,16 @@ class DatabaseManager:
     def get_incomplete_routine_executions(self, execution_date: str) -> list[tuple[str, str]]:
         """Return (athlete_id, routine_type) claims of that date that never completed."""
         return self._operations.get_incomplete_routine_executions(execution_date=execution_date)
+
+    # --- WEEKLY PLANS (D-020) (titan/core/repositories/operations.py) ---
+
+    def save_weekly_plan(self, *, athlete_id: str, week_start: str, plan: dict) -> None:
+        """Store the plan of one week; a second plan for the same week replaces it."""
+        self._operations.save_weekly_plan(athlete_id=athlete_id, week_start=week_start, plan=plan)
+
+    def get_latest_weekly_plan(self, *, athlete_id: str, on_or_before: str) -> dict | None:
+        """Return the newest stored plan whose week starts on or before that date."""
+        return self._operations.get_latest_weekly_plan(athlete_id=athlete_id, on_or_before=on_or_before)
 
     # --- BACKUP (titan/core/repositories/operations.py) ---
 

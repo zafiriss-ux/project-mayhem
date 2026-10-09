@@ -489,6 +489,20 @@ t_telegram_override_nonces = Table(
 )
 
 # ---------------------------------------------------------------------------
+# Table 25 — weekly_plans
+# Covers: _apply_v27_migrations() (D-020: the worker's Sunday weekly plan)
+# NOTE: ladder-created (v27); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_weekly_plans = Table(
+    "weekly_plans",
+    metadata,
+    Column("athlete_id", String, primary_key=True),
+    Column("week_start", String, primary_key=True),
+    Column("plan_json", String, nullable=False),
+    Column("created_at", String, nullable=False),
+)
+
+# ---------------------------------------------------------------------------
 # Registry — lookup by table name
 # ---------------------------------------------------------------------------
 _TABLE_REGISTRY: dict[str, Table] = {t.name: t for t in metadata.sorted_tables}

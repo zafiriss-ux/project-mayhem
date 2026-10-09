@@ -13,7 +13,7 @@ docker compose up --build -d
 | Service | Description |
 |---------|-------------|
 | `titan-api` | FastAPI/uvicorn — `http://localhost:8000` |
-| `titan-worker` | Background daemon (Garmin sync, Telegram, morning routine) |
+| `titan-worker` | Background daemon (Garmin sync, Telegram, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020) |
 
 ## Data
 

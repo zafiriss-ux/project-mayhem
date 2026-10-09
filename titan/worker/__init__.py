@@ -261,6 +261,75 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     )
 
 
+def _generate_weekly_plan(coach, db: DatabaseManager, athlete_id: str) -> dict:  # noqa: ANN001
+    """Build next week's plan as the console does, store it and send it to Telegram (D-020)."""
+    from titan.core.athlete import UniversalAthleteProfile
+
+    profile = UniversalAthleteProfile.from_env()
+    plan = coach.weekly_planner.generate_weekly_plan(
+        athlete_profile=profile.to_dict(), phase=profile.training_phase,
+    )
+    db.save_weekly_plan(athlete_id=athlete_id, week_start=plan["week_start"], plan=plan)
+    logging.getLogger("titan.worker.runner").info(
+        "worker_weekly_plan_saved", extra={"athlete_id": athlete_id, "week_start": plan["week_start"]},
+    )
+    coach.telegram.send_weekly_plan(plan)
+    return plan
+
+
+def _plan_covers(plan: dict | None, day: _dt.date) -> bool:
+    """True when ``day`` falls inside the seven days that start at the plan's week_start."""
+    try:
+        start = _dt.date.fromisoformat(str((plan or {}).get("week_start"))[:10])
+    except ValueError:
+        return False
+    return start <= day < start + _dt.timedelta(days=7)
+
+
+def _prepare_weekly_plan(coach, db: DatabaseManager, athlete_id: str, today: _dt.date) -> None:  # noqa: ANN001
+    """Before the morning routine, give the planner this week's stored plan (D-020).
+
+    With no stored plan for this week (first start, or the worker was down on
+    Sunday), one is built now, so the morning never falls back to the planner's
+    default session. A failure here is logged and the routine still runs.
+    """
+    try:
+        stored = db.get_latest_weekly_plan(athlete_id=athlete_id, on_or_before=today.isoformat())
+        if _plan_covers(stored, today):
+            coach.weekly_planner.last_plan = stored
+            return
+        _generate_weekly_plan(coach, db, athlete_id)
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_weekly_plan_failed", extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+
+
+def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today: _dt.date) -> None:  # noqa: ANN001
+    """After Sunday's routine, build the plan of the week that starts tomorrow (D-020)."""
+    if today.weekday() != 6:
+        return
+    tomorrow = (today + _dt.timedelta(days=1)).isoformat()
+    try:
+        stored = db.get_latest_weekly_plan(athlete_id=athlete_id, on_or_before=tomorrow)
+        if stored is not None and str(stored.get("week_start"))[:10] == tomorrow:
+            return
+        _generate_weekly_plan(coach, db, athlete_id)
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_weekly_plan_failed", extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+
+
+def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> None:
+    """One worker morning: this week's plan, the routine, and on Sunday next week's plan."""
+    coach = _build_daily_coach(db, athlete_id=athlete_id)
+    today = _utc_now().date()
+    _prepare_weekly_plan(coach, db, athlete_id, today)
+    coach.run_morning_routine()
+    _plan_next_week_on_sunday(coach, db, athlete_id, today)
+
+
 def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> None:
     """ADR-0057 worker entrypoint. Runs DailyCoach morning routine aligned to 07:00 UTC."""
     from titan.core.athlete import UniversalAthleteProfile
@@ -349,8 +418,7 @@ def _run_routine_supervised(
 
     def _cycle() -> None:
         try:
-            coach = _build_daily_coach(db)
-            coach.run_morning_routine()
+            _run_morning(db)
             log.info("morning_routine_complete")
             if execution_date is not None:
                 _complete_routine(db, "owner", execution_date)
@@ -416,8 +484,7 @@ def _run_with_scheduler(
             if not _claim_routine(db, athlete_id, now):
                 return
             try:
-                coach = _build_daily_coach(db, athlete_id=athlete_id)
-                coach.run_morning_routine()
+                _run_morning(db, athlete_id)
                 _complete_routine(db, athlete_id, now.date().isoformat())
             except Exception as exc:
                 log.exception(

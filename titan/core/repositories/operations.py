@@ -249,6 +249,36 @@ class OperationsRepository:
             ).fetchall()
         return [(r[0], r[1]) for r in rows]
 
+    def save_weekly_plan(self, *, athlete_id: str, week_start: str, plan: dict) -> None:
+        """Store the plan of one week (D-020); a second plan for the same week replaces it."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                "INSERT INTO weekly_plans (athlete_id, week_start, plan_json, created_at) "
+                "VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (athlete_id, week_start) DO UPDATE SET "
+                "plan_json = excluded.plan_json, created_at = excluded.created_at",
+                (athlete_id, week_start, json.dumps(plan, ensure_ascii=False), datetime.now(UTC).isoformat()),
+            )
+            self._db.conn.commit()
+
+    def get_latest_weekly_plan(self, *, athlete_id: str, on_or_before: str) -> dict | None:
+        """Return the newest plan whose week starts on or before ``on_or_before`` (ISO date)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT plan_json FROM weekly_plans WHERE athlete_id = ? AND week_start <= ? "
+                "ORDER BY week_start DESC LIMIT 1",
+                (athlete_id, on_or_before),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            plan = json.loads(row[0])
+        except (TypeError, ValueError):
+            return None
+        return plan if isinstance(plan, dict) else None
+
     def backup_database(
         self,
         backup_dir: Path | None = None,
