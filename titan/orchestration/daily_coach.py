@@ -293,6 +293,32 @@ def _failure_class_for_step(step_number: int, error: Exception) -> str:
     return ENGINE_ERROR
 
 
+def _run_pipeline_step(step_number: int, step_name: str, fn: "Callable[[], Any]") -> Any:
+    """Run one decision-pipeline step and emit its SUCCESS / FAILED step_event."""
+    try:
+        result = fn()
+    except Exception as exc:
+        _daily_coach_event(
+            "step_event",
+            step_number=step_number,
+            step_name=step_name,
+            outcome="FAILED",
+            failure_class=_failure_class_for_step(step_number, exc),
+            error_class=type(exc).__name__,
+            error_message=str(exc),
+        )
+        raise
+    else:
+        _daily_coach_event(
+            "step_event",
+            step_number=step_number,
+            step_name=step_name,
+            outcome="SUCCESS",
+            failure_class=None,
+        )
+        return result
+
+
 def _compute_esi(*, temperature_c: float, dew_point_c: float) -> tuple[str, int]:
     """Compute ESI level and target pace adjustment in sec/km."""
     score = float(temperature_c) + (0.5 * float(dew_point_c))
@@ -339,6 +365,33 @@ def _apply_esi_context_to_optimal_time(
     return updated
 
 
+
+
+@dataclasses.dataclass(frozen=True)
+class _PipelineInputs:
+    """The signals run_morning_routine() steps 1–6 hand to the decision pipeline (steps 7–11)."""
+
+    garmin_data: GarminSyncResult
+    soreness: int
+    subjective_fatigue_score: int
+    today_rhr: int
+    today_sleep_score: int
+    today_sleep_hours: float
+    baseline_rhr_for_comparison: float
+    persistence_degraded: bool
+    garmin_data_stale: bool
+    latest_hrv: float
+    baseline_hrv: float
+    hrv_summary: dict
+    afi_final: float
+    afi_constraints: dict
+    tsb_value: float
+    tsb_status: str
+    cs_thermal: float | None
+    garmin_trust: Any
+    garmin_report_payload: dict
+    startup_hydration_confidence: dict
+    startup_confidence_applies: bool
 
 
 class DailyCoach:
@@ -906,7 +959,7 @@ class DailyCoach:
     # DECISION PIPELINE (steps 7–11, pure: no DB writes, no Telegram sends)
     # ═══════════════════════════════════════════════════════════════════════
 
-    def _decision_pipeline(  # noqa: PLR0912, PLR0914, PLR0915
+    def _decision_pipeline(
         self,
         *,
         garmin_data: GarminSyncResult,
@@ -931,67 +984,191 @@ class DailyCoach:
         startup_hydration_confidence: dict,
         startup_confidence_applies: bool,
     ) -> DecisionResult:
-        """Deprecated compatibility shim — delegates to coaching_pipeline().
+        """Steps 7–11 of the morning routine; returns a DecisionResult (plan task 7, D-032).
 
-        Production path: run_morning_routine → coaching_pipeline().
-        This method exists only for test call-sites; do not add logic here.
+        Called once, from coaching_pipeline(). Each step lives in its own method below,
+        in the order this method calls them.
 
         Invariant: Read-only db access permitted.
         No db.save_*, no telegram.*, no self.db.transaction() for writes.
         All inputs are pre-computed signals from run_morning_routine() steps 1–6.
         """
-
-        def _run_step(step_number: int, step_name: str, fn):
-            try:
-                result = fn()
-            except Exception as exc:
-                _daily_coach_event(
-                    "step_event",
-                    step_number=step_number,
-                    step_name=step_name,
-                    outcome="FAILED",
-                    failure_class=_failure_class_for_step(step_number, exc),
-                    error_class=type(exc).__name__,
-                    error_message=str(exc),
-                )
-                raise
-            else:
-                _daily_coach_event(
-                    "step_event",
-                    step_number=step_number,
-                    step_name=step_name,
-                    outcome="SUCCESS",
-                    failure_class=None,
-                )
-                return result
-
-        # ── Step 7: Readiness ─────────────────────────────────────────────────
-        readiness = _run_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
-            today_hrv    = latest_hrv,
-            baseline_hrv = baseline_hrv,
-            today_rhr    = today_rhr or 50,
-            baseline_rhr = baseline_rhr_for_comparison,
-            sleep_score  = today_sleep_score,
-            soreness     = soreness,
-        ))
-        readiness['score'] = max(0, min(100,
-            readiness.get('score', 50) + afi_constraints.get('afi_modifier', 0)
-        ))
-        _clamp = afi_constraints.get('readiness_clamp')  # None = no clamp applied
-        if _clamp is not None:
-            readiness['score'] = min(readiness['score'], _clamp)
-
-        fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
-            hr_suppression=bool(garmin_data.get('hr_suppression', False)),
-            rpe_mismatch=bool(garmin_data.get('rpe_mismatch', False)),
-            pace_hr_divergence=bool(garmin_data.get('pace_hr_divergence', False)),
-            soreness=subjective_fatigue_score,
+        inp = _PipelineInputs(
+            garmin_data=garmin_data,
+            soreness=soreness,
+            subjective_fatigue_score=subjective_fatigue_score,
+            today_rhr=today_rhr,
+            today_sleep_score=today_sleep_score,
+            today_sleep_hours=today_sleep_hours,
+            baseline_rhr_for_comparison=baseline_rhr_for_comparison,
+            persistence_degraded=persistence_degraded,
+            garmin_data_stale=garmin_data_stale,
+            latest_hrv=latest_hrv,
+            baseline_hrv=baseline_hrv,
+            hrv_summary=hrv_summary,
+            afi_final=afi_final,
+            afi_constraints=afi_constraints,
+            tsb_value=tsb_value,
+            tsb_status=tsb_status,
+            cs_thermal=cs_thermal,
+            garmin_trust=garmin_trust,
+            garmin_report_payload=garmin_report_payload,
+            startup_hydration_confidence=startup_hydration_confidence,
+            startup_confidence_applies=startup_confidence_applies,
         )
+        readiness, fatigue_level, fatigue_tags = self._step_readiness(inp)
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
         ig = self.intensity_governor
 
-        # ── Step 8: Today's planned session (from weekly plan) ───────────────
+        today_session, esi_level, esi_pace_adjustment_sec_per_km = self._step_today_session(garmin_data)
+
+        intensity_gate = ig.evaluate({
+            'drift_pct': garmin_data.get('drift_pct'),
+            'glycogen_debt': self.glycogen.daily_debt,
+
+            'fatigue_level': fatigue_level,
+
+            'acwr': garmin_data.get('acwr'),
+            'readiness_score': readiness.get('score'),
+            'planned_session': today_session.get('session_type', 'EASY'),
+            'planned_volume_pct': today_session.get('volume_pct'),
+        })
+
+        # ── Step 9: Feed activities into load engines ─────────────────────
+        self._feed_load_engines(garmin_data.get('activities', []))
+
+        acwr, tsb_for_vlg, vlg_state, phase, apl_result = self._step_load_priority(
+            garmin_data=garmin_data,
+            tsb_value=tsb_value,
+            afi_constraints=afi_constraints,
+            today_session=today_session,
+        )
+
+        # Capture session type before governance modifies it (for outcome tracking)
+        session_planned = str(today_session.get('session_type', 'EASY')).upper()
+
+        if garmin_data_stale:
+            today_session = _clamp_to_easy_45(today_session)
+        today_session, data_trust_clamped = _cap_session_for_invalid_trust(
+            today_session,
+            trust_level=garmin_trust.trust_level,
+            reasons=list(garmin_trust.reasons),
+            stage="pre_governance",
+        )
+
+        today_session, data_confidence_low = self._step_governance(
+            inp,
+            today_session=today_session,
+            readiness=readiness,
+            fatigue_level=fatigue_level,
+            intensity_gate=intensity_gate,
+            acwr=acwr,
+            apl_result=apl_result,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+        )
+
+        optimal_time = self._step_optimal_time(
+            today_session=today_session,
+            tsb_value=tsb_value,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+        )
+        today_session, weather_degraded_mode, overall_trust, data_trust, post_clamped = (
+            self._step_combined_trust(
+                today_session=today_session,
+                optimal_time=optimal_time,
+                garmin_trust=garmin_trust,
+                garmin_report_payload=garmin_report_payload,
+            )
+        )
+        data_trust_clamped = data_trust_clamped or post_clamped
+
+        nutrition_plan, current_weight = self._step_nutrition(garmin_data, today_session)
+
+        # ── Step 12: Send Telegram message (LLM explains, kernel decided) ────
+        _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
+        coaching_data = self._build_coaching_payload(
+            inp,
+            today_session=today_session,
+            optimal_time=optimal_time,
+            weather_degraded_mode=weather_degraded_mode,
+            overall_trust=overall_trust,
+            data_trust=data_trust,
+            nutrition_plan=nutrition_plan,
+            current_weight=current_weight,
+            readiness=readiness,
+            fatigue_level=fatigue_level,
+            fatigue_tags=fatigue_tags,
+            esi_level=esi_level,
+            esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
+        )
+
+        # ── Build DecisionResult ─────────────────────────────────────────────
+        decision_trace: dict[str, Any] = {
+            # Minimum required fields (ADR-0018 B2.6)
+            "hrv": latest_hrv,
+            "tsb": tsb_for_vlg,
+            "acwr": acwr,
+            "lock_codes_active": today_session.get('governance_locks_applied', []),
+            "session_planned_pre_governance": session_planned,
+            "locks_applied": today_session.get('governance_locks_applied', []),
+            "governance_clean": today_session.get('governance_clean', True),
+            "phase": phase,
+            "vlg_color": getattr(vlg_state, 'color', 'GREEN'),
+            "afi_value": afi_final,
+            "readiness_score": _safe_float(readiness.get('score', 50), 50),
+            "glycogen_debt": self.glycogen.daily_debt,
+            # Extra fields needed by _effect_runner
+            "session_post_governance": today_session.get('session_type', 'EASY'),
+            "apl_result": apl_result,
+            "persistence_degraded": persistence_degraded,
+            "garmin_data_stale": garmin_data_stale,
+            "data_trust_clamped": data_trust_clamped,
+            "data_confidence_low": data_confidence_low,
+        }
+        planned_effects: tuple[PlannedEffect, ...] = (
+            PlannedEffect(effect_type="record_outcome", payload={}),
+            PlannedEffect(effect_type="send_telegram", payload={}),
+        )
+        return DecisionResult(
+            session_plan=today_session,
+            coaching_payload=coaching_data,
+            planned_effects=planned_effects,
+            decision_trace=decision_trace,
+            snapshot_at=datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S'),
+        )
+
+    # ── Step 7: Readiness and fatigue ────────────────────────────────────────
+    def _step_readiness(self, inp: _PipelineInputs) -> tuple[dict, Any, Any]:
+        """Readiness adjusted by AFI, plus the fatigue classification."""
+        readiness = _run_pipeline_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
+            today_hrv    = inp.latest_hrv,
+            baseline_hrv = inp.baseline_hrv,
+            today_rhr    = inp.today_rhr or 50,
+            baseline_rhr = inp.baseline_rhr_for_comparison,
+            sleep_score  = inp.today_sleep_score,
+            soreness     = inp.soreness,
+        ))
+        readiness['score'] = max(0, min(100,
+            readiness.get('score', 50) + inp.afi_constraints.get('afi_modifier', 0)
+        ))
+        _clamp = inp.afi_constraints.get('readiness_clamp')  # None = no clamp applied
+        if _clamp is not None:
+            readiness['score'] = min(readiness['score'], _clamp)
+
+        fatigue_level, fatigue_tags = self.fatigue.classify_fatigue(
+            hr_suppression=bool(inp.garmin_data.get('hr_suppression', False)),
+            rpe_mismatch=bool(inp.garmin_data.get('rpe_mismatch', False)),
+            pace_hr_divergence=bool(inp.garmin_data.get('pace_hr_divergence', False)),
+            soreness=inp.subjective_fatigue_score,
+        )
+        return readiness, fatigue_level, fatigue_tags
+
+    # ── Step 8: Today's planned session (from weekly plan) ───────────────────
+    def _step_today_session(self, garmin_data: GarminSyncResult) -> tuple[TodaySessionPlan, str, int]:
+        """Today's session from the weekly plan, with the ESI context applied."""
         esi_level, esi_pace_adjustment_sec_per_km = _compute_esi(
             temperature_c=_safe_float(garmin_data.get("temperature_c"), 20.0),
             dew_point_c=_safe_float(garmin_data.get("dew_point"), ESI_DEW_POINT_FALLBACK_C),
@@ -1010,118 +1187,121 @@ class DailyCoach:
                     raise
                 return self.weekly_planner.get_today_session()
 
-        today_session: TodaySessionPlan = _run_step(8, "load_today_session", _load_today_session_with_esi)
+        today_session: TodaySessionPlan = _run_pipeline_step(8, "load_today_session", _load_today_session_with_esi)
         today_session = _apply_esi_context_to_session(
             today_session,
             esi_level=esi_level,
             esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
         )
+        return today_session, esi_level, esi_pace_adjustment_sec_per_km
 
-        intensity_gate = ig.evaluate({
-            'drift_pct': garmin_data.get('drift_pct'),
-            'glycogen_debt': self.glycogen.daily_debt,
+    # ── Step 9a: VLG + APL priority resolution ───────────────────────────────
+    def _step_load_priority(
+        self,
+        *,
+        garmin_data: GarminSyncResult,
+        tsb_value: float,
+        afi_constraints: dict,
+        today_session: TodaySessionPlan,
+    ) -> tuple[Any, float, Any, str, dict]:
+        """Returns (acwr, tsb_for_vlg, vlg_state, phase, apl_result).
 
-            'fatigue_level': fatigue_level,
-
-            'acwr': garmin_data.get('acwr'),
-            'readiness_score': readiness.get('score'),
-            'planned_session': today_session.get('session_type', 'EASY'),
-            'planned_volume_pct': today_session.get('volume_pct'),
-        })
-
-        # ── Step 9: Feed activities into load engines ─────────────────────
-        self._feed_load_engines(garmin_data.get('activities', []))
-
-        # ── Step 9a: VLG + APL priority resolution ────────────────────────
-        # Aggregate the three load signals into a unified VLGState, then let
-        # the APL resolve phase-aware gate ordering and adaptive thresholds.
-        # Both results are injected into the governance context so that
-        # GovernanceEngine reads them without any gate logic being altered.
-        _acwr_for_vlg = garmin_data.get('acwr')
-        _tsb_for_vlg = _safe_float(tsb_value, 0.0)
+        Aggregate the three load signals into a unified VLGState, then let
+        the APL resolve phase-aware gate ordering and adaptive thresholds.
+        Both results are injected into the governance context so that
+        GovernanceEngine reads them without any gate logic being altered.
+        """
+        acwr = garmin_data.get('acwr')
+        tsb_for_vlg = _safe_float(tsb_value, 0.0)
         vlg_state = self.vlg.resolve(
-            tsb_value    = _tsb_for_vlg,
-            acwr         = _acwr_for_vlg,
+            tsb_value    = tsb_for_vlg,
+            acwr         = acwr,
             glycogen_debt = self.glycogen.daily_debt,
         )
-        _phase = str(today_session.get('phase', 'BASE') or 'BASE').upper()
+        phase = str(today_session.get('phase', 'BASE') or 'BASE').upper()
         apl_result = self.apl.resolve(
             vlg_state      = vlg_state,
             afi_constraints = afi_constraints,
-            phase          = _phase,
+            phase          = phase,
             cs_confidence  = _safe_float(getattr(self.cs_tracker, 'confidence', 0.0), 0.0),
         )
+        return acwr, tsb_for_vlg, vlg_state, phase, apl_result
 
-        # Capture session type before governance modifies it (for outcome tracking)
-        _session_planned = str(today_session.get('session_type', 'EASY')).upper()
+    # ── Step 9b: Governance hard gates ───────────────────────────────────────
+    def _step_governance(
+        self,
+        inp: _PipelineInputs,
+        *,
+        today_session: TodaySessionPlan,
+        readiness: dict,
+        fatigue_level: Any,
+        intensity_gate: Any,
+        acwr: Any,
+        apl_result: dict,
+        esi_level: str,
+        esi_pace_adjustment_sec_per_km: int,
+    ) -> tuple[TodaySessionPlan, bool]:
+        """Builds the governance context and applies the hard gates (ADR-0009, unchanged).
 
-        if garmin_data_stale:
-            today_session = _clamp_to_easy_45(today_session)
-        today_session, data_trust_clamped = _cap_session_for_invalid_trust(
-            today_session,
-            trust_level=garmin_trust.trust_level,
-            reasons=list(garmin_trust.reasons),
-            stage="pre_governance",
-        )
-
-        # ── Step 9b: Governance hard gates ──────────────────────────────────
+        Returns the governed session and the data_confidence_low flag for the trace.
+        """
         _daily_coach_event("step_started", step_number=9, step_name="apply_governance")
         # Initial garmin-only data_trust for governance context (weather added after step 10)
         data_trust: dict[str, Any] = {
-            "overall": garmin_trust.trust_level.value,
-            "reports": [garmin_report_payload],
+            "overall": inp.garmin_trust.trust_level.value,
+            "reports": [inp.garmin_report_payload],
         }
         context_payload = self._build_daily_coach_context(
-            afi_constraints=afi_constraints,
+            afi_constraints=inp.afi_constraints,
             intensity_gate=intensity_gate,
             readiness_score=_safe_float(readiness.get('score', 50), 50),
             glycogen_debt=self.glycogen.daily_debt,
             fatigue_level=fatigue_level,
-            acwr=_acwr_for_vlg,
-            days_since_last_vo2=garmin_data.get('days_since_last_vo2'),
-            fueling_confirmed=bool(garmin_data.get('fueling_confirmed', False)),
+            acwr=acwr,
+            days_since_last_vo2=inp.garmin_data.get('days_since_last_vo2'),
+            fueling_confirmed=bool(inp.garmin_data.get('fueling_confirmed', False)),
             planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
-            today_hrv=latest_hrv,
-            baseline_hrv=baseline_hrv,
-            hrv_std_dev=_safe_float(hrv_summary.get('std_dev'), 0.0),
-            today_rhr=today_rhr or 50,
-            baseline_rhr=baseline_rhr_for_comparison,
-            sleep_score=today_sleep_score,
-            subjective_fatigue_score=subjective_fatigue_score,
-            tsb_value=_safe_float(tsb_value, 0.0),
-            injury_flag=bool(garmin_data.get('injury_flag', False)),
+            today_hrv=inp.latest_hrv,
+            baseline_hrv=inp.baseline_hrv,
+            hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0),
+            today_rhr=inp.today_rhr or 50,
+            baseline_rhr=inp.baseline_rhr_for_comparison,
+            sleep_score=inp.today_sleep_score,
+            subjective_fatigue_score=inp.subjective_fatigue_score,
+            tsb_value=_safe_float(inp.tsb_value, 0.0),
+            injury_flag=bool(inp.garmin_data.get('injury_flag', False)),
             priority_vector=apl_result.get('priority_vector', {}),
             lock_thresholds=apl_result.get('lock_thresholds', {}),
             data_confidence_low=(
-                sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else None
+                sum(inp.startup_hydration_confidence.values()) < 3 if inp.startup_confidence_applies else None
             ),
-            persistence_degraded=persistence_degraded,
-            garmin_data_stale=garmin_data_stale,
+            persistence_degraded=inp.persistence_degraded,
+            garmin_data_stale=inp.garmin_data_stale,
             data_trust=data_trust,
         )
         context_payload["esi_level"] = esi_level
         context_payload["esi_pace_adjustment_sec_per_km"] = esi_pace_adjustment_sec_per_km
-        context_payload["garmin_data_age_hours"] = garmin_trust.data_age_hours
-        context_payload["garmin_data_trust_level"] = garmin_trust.trust_level.value
+        context_payload["garmin_data_age_hours"] = inp.garmin_trust.data_age_hours
+        context_payload["garmin_data_trust_level"] = inp.garmin_trust.trust_level.value
 
         # ADR-0055: source arbitration — Garmin preferred; ManualEntry fallback (≥48h stale)
         _today = datetime.now(UTC).strftime("%Y-%m-%d")
         _manual_adapter = ManualEntryAdapter(self.db)
         _router = BiometricRouter(
-            garmin_age_hours=garmin_trust.data_age_hours,
+            garmin_age_hours=inp.garmin_trust.data_age_hours,
             manual_adapter=_manual_adapter,
         )
-        _router.get_hrv(_today, garmin_data.get("hrv_rmssd"))
-        _router.get_rhr(_today, garmin_data.get("resting_hr"))
+        _router.get_hrv(_today, inp.garmin_data.get("hrv_rmssd"))
+        _router.get_rhr(_today, inp.garmin_data.get("resting_hr"))
         context_payload["biometric_source"] = _router.active_source
         context_payload["biometric_fallback_active"] = _router.using_fallback
 
         # Compute degraded flags (passed to _effect_runner via decision_trace)
-        _data_confidence_low = bool(
-            sum(startup_hydration_confidence.values()) < 3 if startup_confidence_applies else False
+        data_confidence_low = bool(
+            sum(inp.startup_hydration_confidence.values()) < 3 if inp.startup_confidence_applies else False
         )
 
-        today_session = _run_step(9, "apply_governance", lambda: self.governance.apply_constraints(
+        today_session = _run_pipeline_step(9, "apply_governance", lambda: self.governance.apply_constraints(
             session_plan=today_session,
             context=context_payload,
         ))
@@ -1132,11 +1312,18 @@ class DailyCoach:
             )
 
         self._ensure_vo2_eligibility_contract(today_session)
+        return today_session, data_confidence_low
 
-
-
-
-        # ── Step 10: Optimal time ────────────────────────────────────────────
+    # ── Step 10: Optimal time ────────────────────────────────────────────────
+    def _step_optimal_time(
+        self,
+        *,
+        today_session: TodaySessionPlan,
+        tsb_value: float,
+        esi_level: str,
+        esi_pace_adjustment_sec_per_km: int,
+    ) -> dict:
+        """The recommended training window, with the ESI context applied."""
         _daily_coach_event("step_started", step_number=10, step_name="calculate_optimal_time")
         def _calculate_optimal_time_with_esi() -> dict:
             try:
@@ -1158,31 +1345,48 @@ class DailyCoach:
                     tsb_value=tsb_value,
                 )
 
-        optimal_time = _run_step(10, "calculate_optimal_time", _calculate_optimal_time_with_esi)
-        optimal_time = _apply_esi_context_to_optimal_time(
+        optimal_time = _run_pipeline_step(10, "calculate_optimal_time", _calculate_optimal_time_with_esi)
+        return _apply_esi_context_to_optimal_time(
             optimal_time,
             esi_level=esi_level,
             esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
         )
+
+    @staticmethod
+    def _step_combined_trust(
+        *,
+        today_session: TodaySessionPlan,
+        optimal_time: dict,
+        garmin_trust: Any,
+        garmin_report_payload: dict,
+    ) -> tuple[TodaySessionPlan, bool, Any, dict, bool]:
+        """Combines Garmin and weather trust and caps the session again if it is invalid.
+
+        Returns (session, weather_degraded_mode, overall_trust, data_trust, clamped).
+        """
         weather_data_quality = str(optimal_time.get('weather_data_quality', 'live'))
         weather_degraded_mode = weather_data_quality == 'synthetic'
         weather_trust = evaluate_weather_trust(data_quality=weather_data_quality, data_age_hours=0.0)
 
         overall_trust = combine_trust_reports([garmin_trust, weather_trust])
-        today_session, _post_clamped = _cap_session_for_invalid_trust(
+        today_session, clamped = _cap_session_for_invalid_trust(
             today_session,
             trust_level=overall_trust,
             reasons=list(garmin_trust.reasons) + list(weather_trust.reasons),
             stage="post_weather",
         )
-        data_trust_clamped = data_trust_clamped or _post_clamped
         weather_report_payload = {k: v for k, v in weather_trust.to_payload().items() if k != 'checked_at'}
         data_trust = {
             'overall': overall_trust.value,
             'reports': [garmin_report_payload, weather_report_payload],
         }
+        return today_session, weather_degraded_mode, overall_trust, data_trust, clamped
 
-        # ── Step 11: Nutrition ───────────────────────────────────────────────
+    # ── Step 11: Nutrition ───────────────────────────────────────────────────
+    def _step_nutrition(
+        self, garmin_data: GarminSyncResult, today_session: TodaySessionPlan,
+    ) -> tuple[dict, float]:
+        """Today's nutrition plan and the weight it used."""
         _daily_coach_event("step_started", step_number=11, step_name="calculate_nutrition")
         weight_trend   = self.nutrition.analyze_weight_trend()
         current_weight = weight_trend.get('current_weight', 75.0)
@@ -1193,7 +1397,7 @@ class DailyCoach:
             self.nutrition.add_weight_entry(latest_w['date'], latest_w['weight_kg'])
             current_weight = latest_w['weight_kg']
 
-        nutrition_plan = _run_step(11, "calculate_nutrition", lambda: self.nutrition.calculate_daily_nutrition(
+        nutrition_plan = _run_pipeline_step(11, "calculate_nutrition", lambda: self.nutrition.calculate_daily_nutrition(
             weight_kg    = current_weight,
             today_session= today_session,
         ))
@@ -1204,9 +1408,26 @@ class DailyCoach:
                 cause="NUTRITION_PIPELINE",
                 session_type=today_session.get("session_type", "EASY"),
             )
+        return nutrition_plan, current_weight
 
-        # ── Step 12: Send Telegram message (LLM explains, kernel decided) ────
-        _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
+    def _build_coaching_payload(
+        self,
+        inp: _PipelineInputs,
+        *,
+        today_session: TodaySessionPlan,
+        optimal_time: dict,
+        weather_degraded_mode: bool,
+        overall_trust: Any,
+        data_trust: dict,
+        nutrition_plan: dict,
+        current_weight: float,
+        readiness: dict,
+        fatigue_level: Any,
+        fatigue_tags: Any,
+        esi_level: str,
+        esi_pace_adjustment_sec_per_km: int,
+    ) -> DailyCoachingPayload:
+        """The payload the Telegram message is written from (the LLM explains, the kernel decided)."""
         # Glycogen / electrolyte advisory
         glycogen_protocol   = self.glycogen.norwegian_protocol(current_weight)
         electrolyte_alert   = GlycogenDebtAccumulator.electrolyte_guard(
@@ -1215,7 +1436,7 @@ class DailyCoach:
             session_type = today_session.get('session_type', 'EASY'),
         )
         governance_report = self.governance.get_governance_report(
-            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=afi_constraints
+            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=inp.afi_constraints
         )
 
         decision_rationale = today_session.get('decision_rationale', {})
@@ -1235,23 +1456,23 @@ class DailyCoach:
             'esi_pace_adjustment_sec_per_km': esi_pace_adjustment_sec_per_km,
             'adjusted_target'   : today_session.get('adjusted_target', 'No pace adjustment'),
             # Autonomic / HRV
-            'hrv_status'        : hrv_summary.get('trend', 'N/A'),
-            'hrv_value'         : round(latest_hrv, 1),
-            'hrv_baseline'      : round(baseline_hrv, 1),
-            'afi'               : afi_final,
+            'hrv_status'        : inp.hrv_summary.get('trend', 'N/A'),
+            'hrv_value'         : round(inp.latest_hrv, 1),
+            'hrv_baseline'      : round(inp.baseline_hrv, 1),
+            'afi'               : inp.afi_final,
             # Sleep
-            'sleep_quality'     : today_sleep_score,
-            'sleep_hours'       : round(today_sleep_hours, 1),
+            'sleep_quality'     : inp.today_sleep_score,
+            'sleep_hours'       : round(inp.today_sleep_hours, 1),
             # Readiness (AFI-adjusted)
             'readiness_score'   : readiness.get('score', 'N/A'),
-            'subjective_fatigue_score': subjective_fatigue_score,
+            'subjective_fatigue_score': inp.subjective_fatigue_score,
             'fatigue_level': fatigue_level,
             'fatigue_tags': fatigue_tags,
             # TSB / kinetic
-            'tsb'               : round(tsb_value, 1) if tsb_value is not None else 0,
-            'tsb_status'        : tsb_status,
+            'tsb'               : round(inp.tsb_value, 1) if inp.tsb_value is not None else 0,
+            'tsb_status'        : inp.tsb_status,
             'cs_smoothed'       : round(self.cs_tracker.cs_smoothed, 3) if self.cs_tracker.cs_smoothed else None,
-            'cs_thermal'        : round(cs_thermal, 3) if cs_thermal else None,
+            'cs_thermal'        : round(inp.cs_thermal, 3) if inp.cs_thermal else None,
             'archetype'         : self.cs_tracker.archetype,
             # Metabolic
             'glycogen_debt'     : round(self.glycogen.daily_debt, 1),
@@ -1279,42 +1500,7 @@ class DailyCoach:
             coaching_data["actionable_guidance"] = (
                 f"ESI {esi_level}: adjust pace target by +{esi_pace_adjustment_sec_per_km}s/km."
             )
-
-        # ── Build DecisionResult ─────────────────────────────────────────────
-        _readiness_score = _safe_float(readiness.get('score', 50), 50)
-        decision_trace: dict[str, Any] = {
-            # Minimum required fields (ADR-0018 B2.6)
-            "hrv": latest_hrv,
-            "tsb": _tsb_for_vlg,
-            "acwr": _acwr_for_vlg,
-            "lock_codes_active": today_session.get('governance_locks_applied', []),
-            "session_planned_pre_governance": _session_planned,
-            "locks_applied": today_session.get('governance_locks_applied', []),
-            "governance_clean": today_session.get('governance_clean', True),
-            "phase": _phase,
-            "vlg_color": getattr(vlg_state, 'color', 'GREEN'),
-            "afi_value": afi_final,
-            "readiness_score": _readiness_score,
-            "glycogen_debt": self.glycogen.daily_debt,
-            # Extra fields needed by _effect_runner
-            "session_post_governance": today_session.get('session_type', 'EASY'),
-            "apl_result": apl_result,
-            "persistence_degraded": persistence_degraded,
-            "garmin_data_stale": garmin_data_stale,
-            "data_trust_clamped": data_trust_clamped,
-            "data_confidence_low": _data_confidence_low,
-        }
-        planned_effects: tuple[PlannedEffect, ...] = (
-            PlannedEffect(effect_type="record_outcome", payload={}),
-            PlannedEffect(effect_type="send_telegram", payload={}),
-        )
-        return DecisionResult(
-            session_plan=today_session,
-            coaching_payload=coaching_data,
-            planned_effects=planned_effects,
-            decision_trace=decision_trace,
-            snapshot_at=datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S'),
-        )
+        return coaching_data
 
     # ═══════════════════════════════════════════════════════════════════════
     # EFFECT RUNNER (step 9c + step 12: outcome recording + Telegram delivery)
