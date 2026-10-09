@@ -738,6 +738,30 @@ class GarminSync:
     # ------------------------------------------------------------------ #
     # SLEEP
     # ------------------------------------------------------------------ #
+    def _resting_hr_for_day(self, sleep_raw: dict, day: str, *, today: bool) -> int | None:
+        """Resting HR for *day*: from the sleep response, else (today only) the daily stats.
+
+        The daily summary (``get_stats``) carries ``restingHeartRate``; it costs one
+        extra call, so it is fetched only for today, the one day the coach uses.
+        """
+        value = sleep_raw.get("restingHeartRate")
+        if not value and today:
+            try:
+                value = (self.client.get_stats(day) or {}).get("restingHeartRate")
+            except Exception as e:
+                _garmin_event(
+                    "resting_hr_unavailable",
+                    subsystem="sync_sleep",
+                    date=day,
+                    error_class=e.__class__.__name__,
+                    error_message=str(e),
+                )
+                return None
+        try:
+            return int(value) if value else None
+        except (TypeError, ValueError):
+            return None
+
     def sync_sleep(self, days_back: int = 14) -> list[dict]:
         if not self._ensure_connected():
             return []
@@ -763,6 +787,7 @@ class GarminSync:
                                 "sleep_score": summary.get("sleepScores", {})
                                 .get("overall", {})
                                 .get("value"),
+                                "resting_hr": self._resting_hr_for_day(raw, d, today=(i == 0)),
                             }
                         )
                 except Exception as e:

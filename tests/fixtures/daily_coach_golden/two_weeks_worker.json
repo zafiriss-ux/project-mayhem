@@ -186,14 +186,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -435,7 +427,6 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -608,7 +599,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.040",
+     "afi": "+0.045",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -643,14 +634,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -663,10 +646,10 @@
      "flow": "readiness",
      "hrv_diff": 63.6,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": 0.5,
      "score": 100,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 79,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -864,8 +847,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1047,7 +1029,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.040",
+     "afi": "+0.050",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -1082,14 +1064,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -1102,10 +1076,10 @@
      "flow": "readiness",
      "hrv_diff": 64.8,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.29999999999999716,
      "score": 100,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 80,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -1303,8 +1277,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1486,7 +1459,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.040",
+     "afi": "+0.055",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -1521,14 +1494,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -1541,10 +1506,10 @@
      "flow": "readiness",
      "hrv_diff": 62.4,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": 0.5,
      "score": 100,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 81,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -1742,8 +1707,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1970,14 +1934,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -1990,7 +1946,7 @@
      "flow": "readiness",
      "hrv_diff": 63.6,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.3999999999999986,
      "score": 100,
      "severity": "info",
      "sleep_score": 78,
@@ -2191,7 +2147,6 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -2394,7 +2349,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.040",
+     "afi": "+0.045",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2429,14 +2384,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -2449,10 +2396,10 @@
      "flow": "readiness",
      "hrv_diff": 64.8,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": 0.5,
      "score": 100,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 79,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -2650,8 +2597,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2853,7 +2799,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.040",
+     "afi": "+0.050",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2888,14 +2834,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -2908,10 +2846,10 @@
      "flow": "readiness",
      "hrv_diff": -1.0,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.3999999999999986,
      "score": 95,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 80,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -3129,8 +3067,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -3342,7 +3279,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.043",
+     "afi": "+0.058",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -3377,14 +3314,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -3397,10 +3326,10 @@
      "flow": "readiness",
      "hrv_diff": 0.0,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": 0.5,
      "score": 95,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 81,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -3628,8 +3557,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -3886,14 +3814,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -3906,7 +3826,7 @@
      "flow": "readiness",
      "hrv_diff": 1.0,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.5,
      "score": 95,
      "severity": "info",
      "sleep_score": 78,
@@ -4137,7 +4057,6 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nTuesday, March 10, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -4370,7 +4289,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.006",
+     "afi": "-0.179",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -4405,32 +4324,24 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 20,
       "hrv_bonus": 0,
-      "rhr": 0,
-      "sleep": 0,
+      "rhr": 15,
+      "sleep": 15,
       "sleep_bonus": 0,
       "soreness": 5
      },
      "flow": "readiness",
      "hrv_diff": -24.700000000000003,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
-     "score": 75,
+     "rhr_diff": 10.100000000000001,
+     "score": 45,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 41,
      "soreness": 5,
-     "status": "👍 GOOD"
+     "status": "🛑 POOR"
     },
     {
      "action": "step_event",
@@ -4476,6 +4387,22 @@
      "step_number": 9
     },
     {
+     "action": "DOWNGRADE",
+     "cause": "TRAINING_LOGIC",
+     "count": 3,
+     "downgraded_to": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "2OF4",
+     "indicators": [
+      "I1_hrv_soft",
+      "I2_sleep",
+      "I3_readiness"
+     ],
+     "logger": "titan.science.governance_engine",
+     "original": "EASY"
+    },
+    {
      "action": "REST",
      "baseline_hrv": 59.5,
      "cause": "TRAINING_LOGIC",
@@ -4487,6 +4414,17 @@
      "today_hrv": 34.8
     },
     {
+     "action": "REST",
+     "baseline_rhr": 50.9,
+     "cause": "TRAINING_LOGIC",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H3",
+     "logger": "titan.science.governance_engine",
+     "reason": "RHR spike: autonomic stress — hard stop",
+     "today_rhr": 61
+    },
+    {
      "action": "CLASSIFIED",
      "acwr": null,
      "cause": "TRAINING_LOGIC",
@@ -4494,9 +4432,18 @@
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "HRV_STRESS_CONTEXT",
      "h2_trigger": true,
-     "h3_trigger": false,
+     "h3_trigger": true,
      "logger": "titan.science.governance_engine",
      "stress_context": "UNKNOWN_ACWR"
+    },
+    {
+     "action": "REST",
+     "cause": "TRAINING_LOGIC",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H2+H3",
+     "logger": "titan.science.governance_engine",
+     "reason": "HRV/RHR dual collapse: autonomic stress — hard stop"
     },
     {
      "action": "CALIBRATION_REQUIRED",
@@ -4518,6 +4465,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "READINESS_2OF4_DOWNGRADE",
       "HARD_STOP_SAFETY_GATES",
       "CS_CONFIDENCE_LOCK"
      ],
@@ -4543,6 +4491,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "READINESS_2OF4_DOWNGRADE",
       "HARD_STOP_SAFETY_GATES",
       "CS_CONFIDENCE_LOCK"
      ],
@@ -4681,8 +4630,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 75/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (24.700000000000003 vs 15.0, margin 9.7).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 42/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (24.700000000000003 vs 15.0, margin 9.7).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -4914,7 +4862,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "+0.002",
+     "afi": "+0.012",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -4949,14 +4897,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -4969,10 +4909,10 @@
      "flow": "readiness",
      "hrv_diff": 3.8999999999999986,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -1.8999999999999986,
      "score": 95,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 80,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -5200,8 +5140,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -5443,7 +5382,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "-0.003",
+     "afi": "+0.012",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -5478,14 +5417,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -5498,10 +5429,10 @@
      "flow": "readiness",
      "hrv_diff": 5.0,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.8999999999999986,
      "score": 95,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 81,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -5729,8 +5660,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -6017,14 +5947,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -6037,7 +5959,7 @@
      "flow": "readiness",
      "hrv_diff": 2.8999999999999986,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -1.8999999999999986,
      "score": 95,
      "severity": "info",
      "sleep_score": 78,
@@ -6268,7 +6190,6 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -6521,7 +6442,7 @@
     },
     {
      "action": "afi_computed",
-     "afi": "-0.014",
+     "afi": "-0.009",
      "archetype": "HYBRID",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -6556,14 +6477,6 @@
      "step_number": 7
     },
     {
-     "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 50.0,
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "severity": "info",
-     "today_rhr": 50
-    },
-    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -6576,10 +6489,10 @@
      "flow": "readiness",
      "hrv_diff": 3.8999999999999986,
      "logger": "titan.science.readiness_engine",
-     "rhr_diff": 0.0,
+     "rhr_diff": -0.8999999999999986,
      "score": 95,
      "severity": "info",
-     "sleep_score": 78,
+     "sleep_score": 79,
      "soreness": 5,
      "status": "✅ EXCELLENT"
     },
@@ -6807,8 +6720,7 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
-    "🌅 *GOOD MORNING!*\nSunday, March 15, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: 📉 DECLINING: HRV down -5.9%\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSunday, March 15, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: 📉 DECLINING: HRV down -5.9%\n  • Sleep: 79/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   }
  ],
@@ -6847,7 +6759,7 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
     "sleep_quality": 78,
     "soreness": null,
@@ -6866,9 +6778,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 79,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6885,9 +6797,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 80,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6904,9 +6816,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 81,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6923,7 +6835,7 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
     "sleep_quality": 78,
     "soreness": null,
@@ -6942,9 +6854,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 79,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6961,9 +6873,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 80,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6980,9 +6892,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 81,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -6999,7 +6911,7 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
     "sleep_quality": 78,
     "soreness": null,
@@ -7018,9 +6930,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
-    "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "resting_hr": 61,
+    "sleep_hours": 4.5,
+    "sleep_quality": 41,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -7037,9 +6949,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 80,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -7056,9 +6968,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 81,
     "soreness": null,
     "weight_kg": 70.0
    },
@@ -7075,7 +6987,7 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 49,
     "sleep_hours": 7.5,
     "sleep_quality": 78,
     "soreness": null,
@@ -7094,9 +7006,9 @@
     "mood": null,
     "notes": null,
     "quality_flag": null,
-    "resting_hr": null,
+    "resting_hr": 50,
     "sleep_hours": 7.5,
-    "sleep_quality": 78,
+    "sleep_quality": 79,
     "soreness": null,
     "weight_kg": 70.0
    }
@@ -7104,11 +7016,11 @@
   "governance_outcomes": [
    {
     "acwr": 0.0,
-    "afi_value": -0.003,
+    "afi_value": -0.009,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
-    "date": "2026-03-13",
+    "date": "2026-03-15",
     "decision_was_followed": 1,
     "glycogen_debt": 0.0,
     "governance_clean": 0,
@@ -7156,17 +7068,17 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": -0.014,
+    "afi_value": -0.179,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
-    "date": "2026-03-15",
+    "date": "2026-03-11",
     "decision_was_followed": 1,
     "glycogen_debt": 0.0,
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"READINESS_2OF4_DOWNGRADE\", \"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7174,15 +7086,15 @@
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
     "phase": "BASE",
-    "readiness_score": 95.0,
+    "readiness_score": 42.0,
     "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_post_governance": "REST",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.002,
+    "afi_value": 0.012,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
@@ -7208,17 +7120,17 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.006,
+    "afi_value": 0.012,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
-    "date": "2026-03-11",
+    "date": "2026-03-13",
     "decision_was_followed": 1,
     "glycogen_debt": 0.0,
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7226,9 +7138,9 @@
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
     "phase": "BASE",
-    "readiness_score": 75.0,
+    "readiness_score": 95.0,
     "session_planned": "EASY",
-    "session_post_governance": "REST",
+    "session_post_governance": "EASY",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7245,84 +7157,6 @@
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
     "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
-    "outcome_completed": null,
-    "outcome_independence_ok": 1,
-    "outcome_notes": null,
-    "outcome_rpe": null,
-    "outcome_session_type_actual": null,
-    "override_outcome_exclusion": 0,
-    "phase": "BASE",
-    "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
-    "tsb_value": 0.0,
-    "vlg_color": "GREEN"
-   },
-   {
-    "acwr": 0.0,
-    "afi_value": 0.04,
-    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
-    "athlete_id": "owner",
-    "date": "2026-03-03",
-    "decision_was_followed": 1,
-    "glycogen_debt": 0.0,
-    "governance_clean": 0,
-    "id": "<volatile>",
-    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
-    "outcome_completed": null,
-    "outcome_independence_ok": 1,
-    "outcome_notes": null,
-    "outcome_rpe": null,
-    "outcome_session_type_actual": null,
-    "override_outcome_exclusion": 0,
-    "phase": "BASE",
-    "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
-    "tsb_value": 0.0,
-    "vlg_color": "GREEN"
-   },
-   {
-    "acwr": 0.0,
-    "afi_value": 0.04,
-    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
-    "athlete_id": "owner",
-    "date": "2026-03-04",
-    "decision_was_followed": 1,
-    "glycogen_debt": 0.0,
-    "governance_clean": 0,
-    "id": "<volatile>",
-    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
-    "outcome_completed": null,
-    "outcome_independence_ok": 1,
-    "outcome_notes": null,
-    "outcome_rpe": null,
-    "outcome_session_type_actual": null,
-    "override_outcome_exclusion": 0,
-    "phase": "BASE",
-    "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
-    "tsb_value": 0.0,
-    "vlg_color": "GREEN"
-   },
-   {
-    "acwr": 0.0,
-    "afi_value": 0.04,
-    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
-    "athlete_id": "owner",
-    "date": "2026-03-05",
-    "decision_was_followed": 1,
-    "glycogen_debt": 0.0,
-    "governance_clean": 0,
-    "id": "<volatile>",
-    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7364,7 +7198,59 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.04,
+    "afi_value": 0.044,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-10",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 96.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.045,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-03",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.045,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
@@ -7390,7 +7276,33 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.04,
+    "afi_value": 0.05,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-04",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.05,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
@@ -7416,11 +7328,11 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.043,
+    "afi_value": 0.055,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
-    "date": "2026-03-09",
+    "date": "2026-03-05",
     "decision_was_followed": 1,
     "glycogen_debt": 0.0,
     "governance_clean": 0,
@@ -7434,7 +7346,7 @@
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
     "phase": "BASE",
-    "readiness_score": 96.0,
+    "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
     "tsb_value": 0.0,
@@ -7442,11 +7354,11 @@
    },
    {
     "acwr": 0.0,
-    "afi_value": 0.044,
+    "afi_value": 0.058,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
     "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
     "athlete_id": "owner",
-    "date": "2026-03-10",
+    "date": "2026-03-09",
     "decision_was_followed": 1,
     "glycogen_debt": 0.0,
     "governance_clean": 0,
