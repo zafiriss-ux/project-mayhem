@@ -44,7 +44,8 @@ def test_http_get_uses_requests_when_available(monkeypatch):
 
 
 @pytest.mark.integration
-def test_http_get_uses_urllib_fallback_and_verify_toggle(monkeypatch):
+def test_http_get_urllib_fallback_always_verifies_certificates(monkeypatch):
+    """D-030 (Bandit B323): the urllib fallback never builds an unverified SSL context."""
     class _FakeUrlopenResponse:
         status = 206
 
@@ -61,23 +62,40 @@ def test_http_get_uses_urllib_fallback_and_verify_toggle(monkeypatch):
         calls.append((url, timeout, context))
         return _FakeUrlopenResponse()
 
+    def _unverified():
+        raise AssertionError("unverified SSL context must not be created")
+
     calls = []
     monkeypatch.setattr(weather_api, "_HAS_REQUESTS", False)
     monkeypatch.setattr(weather_api.ssl, "create_default_context", lambda: "verified")
-    monkeypatch.setattr(weather_api.ssl, "_create_unverified_context", lambda: "unverified")
+    monkeypatch.setattr(weather_api.ssl, "_create_unverified_context", _unverified)
     monkeypatch.setattr(weather_api.urllib.request, "urlopen", _urlopen)
 
     verified_response = weather_api._http_get(
         "https://example.test/geocode", params={"name": "Athens"}, timeout=8, verify=True
     )
-    unverified_response = weather_api._http_get(
+    also_verified = weather_api._http_get(
         "https://example.test/geocode", params={}, timeout=4, verify=False
     )
 
     assert calls[0] == ("https://example.test/geocode?name=Athens", 8, "verified")
-    assert calls[1] == ("https://example.test/geocode", 4, "unverified")
+    assert calls[1] == ("https://example.test/geocode", 4, "verified")
     assert verified_response.status_code == 206
-    assert unverified_response.json() == {"path": "urllib"}
+    assert also_verified.json() == {"path": "urllib"}
+
+
+@pytest.mark.integration
+def test_http_get_urllib_fallback_refuses_non_https(monkeypatch):
+    """D-030 (Bandit B310): file:// or http:// URLs never reach urlopen."""
+    monkeypatch.setattr(weather_api, "_HAS_REQUESTS", False)
+    monkeypatch.setattr(
+        weather_api.urllib.request, "urlopen",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("urlopen must not be called")),
+    )
+
+    for url in ("http://example.test/geocode", "file:///etc/passwd"):
+        with pytest.raises(ValueError, match="https"):
+            weather_api._http_get(url, params={}, timeout=4, verify=True)
 
 
 @pytest.mark.integration

@@ -23,6 +23,12 @@ built from it, and the GitHub Actions workflows.
 Out of scope: the third-party services TITAN OS talks to (Garmin Connect, Telegram, Open-Meteo).
 Report problems in those services to their owners.
 
+## Automated checks
+
+Every pull request and every push to `main` runs CodeQL (with the `security-extended` queries),
+Bandit, DevSkim and gitleaks. While the repository is public, Dependency Review runs too and
+the findings appear under Security → Code scanning.
+
 ## Secrets
 
 Credentials are never stored in the repository. They come from environment variables or the
