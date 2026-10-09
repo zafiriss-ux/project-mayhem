@@ -254,8 +254,10 @@ class OperationsRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             self._db.conn.cursor().execute(
-                "INSERT OR REPLACE INTO weekly_plans (athlete_id, week_start, plan_json, created_at) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO weekly_plans (athlete_id, week_start, plan_json, created_at) "
+                "VALUES (?, ?, ?, ?) "
+                "ON CONFLICT (athlete_id, week_start) DO UPDATE SET "
+                "plan_json = excluded.plan_json, created_at = excluded.created_at",
                 (athlete_id, week_start, json.dumps(plan, ensure_ascii=False), datetime.now(UTC).isoformat()),
             )
             self._db.conn.commit()
