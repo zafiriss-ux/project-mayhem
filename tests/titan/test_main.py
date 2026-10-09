@@ -727,3 +727,27 @@ def test_configure_rotating_logging_does_not_duplicate_handler(tmp_path, monkeyp
         for handler in root.handlers:
             handler.close()
         root.handlers = original_handlers
+
+
+@pytest.mark.integration
+def test_configure_rotating_logging_records_info_events(tmp_path, monkeypatch):
+    """Garmin sync and DailyCoach failures are logged at INFO; WARNING on root dropped them."""
+    log_path = tmp_path / "logs" / "titan.log"
+    monkeypatch.setenv("TITAN_LOG_PATH", str(log_path))
+    root = logging.getLogger()
+    original_handlers, original_level = list(root.handlers), root.level
+    root.handlers = []
+    root.setLevel(logging.WARNING)
+
+    try:
+        titan_main._configure_rotating_logging()
+        logging.getLogger("titan.integrations.garmin_sync").info("background_sync_error")
+        for handler in root.handlers:
+            handler.flush()
+
+        assert "background_sync_error" in log_path.read_text(encoding="utf-8")
+    finally:
+        for handler in root.handlers:
+            handler.close()
+        root.handlers = original_handlers
+        root.setLevel(original_level)

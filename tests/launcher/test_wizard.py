@@ -71,6 +71,7 @@ def test_console_wizard_writes_garmin_email(monkeypatch) -> None:
 def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
     _unset_env(monkeypatch, "TITAN_ENV_FILE")
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
     monkeypatch.setattr(launcher_main, "load_env", lambda: {"GARMIN_USERNAME": "legacy@example.com"})
@@ -87,6 +88,7 @@ def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
 def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
     _unset_env(monkeypatch, "TITAN_ENV_FILE")
     monkeypatch.setattr(
         launcher_main,
@@ -103,6 +105,36 @@ def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
 
 
+def test_load_env_to_os_puts_titan_log_in_the_data_folder(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
+    _unset_env(monkeypatch, "TITAN_ENV_FILE")
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == str(tmp_path / "logs" / "titan.log")
+
+
+def test_load_env_to_os_keeps_titan_log_path_from_env_file(monkeypatch, tmp_path: Path) -> None:
+    import os
+
+    import launcher.main as launcher_main
+
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
+    _unset_env(monkeypatch, "TITAN_ENV_FILE")
+    monkeypatch.setattr(launcher_main, "load_env", lambda: {"TITAN_LOG_PATH": "/custom/titan.log"})
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_LOG_PATH"] == "/custom/titan.log"
+
+
 def test_load_env_to_os_points_the_kernel_at_the_data_folder_env(monkeypatch, tmp_path: Path) -> None:
     """TITAN.exe: the profile editor must write the launcher's .env, not one in the temp unpack folder."""
     import os
@@ -110,6 +142,8 @@ def test_load_env_to_os_points_the_kernel_at_the_data_folder_env(monkeypatch, tm
     import launcher.main as launcher_main
 
     _unset_env(monkeypatch, "TITAN_ENV_FILE")
+    _unset_env(monkeypatch, "TITAN_LOG_PATH")
+    monkeypatch.setattr(launcher_main, "get_data_directory", lambda: tmp_path)
     monkeypatch.setattr(launcher_main, "load_env", dict)
     monkeypatch.setattr(launcher_main, "get_env_path", lambda: tmp_path / ".env")
 
