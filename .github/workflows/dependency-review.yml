@@ -1,0 +1,26 @@
+name: Dependency Review
+# Blocks a PR that adds a dependency with a known high/critical advisory or a
+# copyleft licence (D-022). The dependency graph that this action reads is free
+# only on public repositories, so the job is skipped while the repo is private.
+on:
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    name: Dependency review
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
