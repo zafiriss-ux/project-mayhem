@@ -485,7 +485,7 @@ def main():
         db=db,
         athlete_id="owner",
         engines=_engine_reg,
-        athlete_max_hr=athlete_profile.max_hr or 0,
+        athlete_profile=athlete_profile,
     )
 
     # _hydrate_engines_from_db runs at DailyCoach init but tsb_engine must be

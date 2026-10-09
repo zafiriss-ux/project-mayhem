@@ -97,3 +97,53 @@ def test_worker_refuses_to_start_on_malformed_max_hr(worker_db, tmp_path, monkey
 
     with pytest.raises(SystemExit):
         worker.run_forever(str(tmp_path / "titan_core.db"), shutdown_event=threading.Event())
+
+
+@pytest.mark.integration
+def test_worker_coach_carries_the_profile_object(worker_db, monkeypatch):
+    """T5-117 / D-033: the coach holds the profile itself; max HR is read from it once."""
+    from titan.core.athlete import UniversalAthleteProfile
+    from titan.worker import _build_daily_coach
+
+    monkeypatch.setenv("ATHLETE_MAX_HR", "183")
+
+    coach = _build_daily_coach(worker_db)
+
+    assert isinstance(coach.athlete_profile, UniversalAthleteProfile)
+    assert coach.athlete_profile.max_hr == 183
+    assert coach.athlete_max_hr == 183
+    assert coach.garmin.athlete_max_hr == 183
+
+
+@pytest.mark.unit
+def test_daily_coach_refuses_a_max_hr_that_disagrees_with_the_profile():
+    from titan.core.athlete import UniversalAthleteProfile
+
+    profile = UniversalAthleteProfile()
+    profile.max_hr = 183
+
+    with pytest.raises(ValueError, match="disagrees"):
+        DailyCoach(*([None] * 9), athlete_max_hr=170, athlete_profile=profile)
+
+
+@pytest.mark.integration
+def test_weekly_plan_uses_the_coach_profile(worker_db, monkeypatch):
+    """The Sunday plan reads the same profile the coach was built with (D-033)."""
+    from titan import worker
+    from titan.core.athlete import UniversalAthleteProfile
+
+    seen: list[dict] = []
+    coach = worker._build_daily_coach(worker_db)
+    monkeypatch.setattr(
+        coach.weekly_planner,
+        "generate_weekly_plan",
+        lambda athlete_profile, phase: seen.append(athlete_profile) or {"week_start": "2026-10-12"},
+    )
+    monkeypatch.setattr(coach.telegram, "send_weekly_plan", lambda plan: True)
+    monkeypatch.setattr(
+        UniversalAthleteProfile, "from_env", classmethod(lambda cls: pytest.fail("profile read from env again")),
+    )
+
+    worker._generate_weekly_plan(coach, worker_db, "owner")
+
+    assert seen == [coach.athlete_profile.to_dict()]

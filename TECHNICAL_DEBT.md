@@ -986,7 +986,7 @@ When an item is completed, mark it here with date and PR reference:
 | T5-114 | ✅ RESOLVED — Phase 13 (Data-void governance rule; all stages complete 2026-05-03) | — |
 | T5-115 | ✅ RESOLVED — Phase 13 (data_source column; SCHEMA_VERSION 15; migration + UPSERT guard 2026-05-03) | — |
 | T5-116 | ✅ RESOLVED — Phase 13 (/manual_entry Telegram command; 8 tests; data_source='manual_entry' 2026-05-03) | — |
-| T5-117 | 🟡 PARTIAL — PR #911: one profile source (worker + console use `UniversalAthleteProfile.from_env()`, max HR default 191 per Zaf 2026-10-07; context dict via `to_context()`). Open: DailyCoach still takes the dict, not the object | — |
+| T5-117 | ✅ RESOLVED — PR #911 one profile source (max HR default 191); PR #970 `DailyCoach(athlete_profile=...)` takes the object in worker and console, the worker's Sunday plan reuses it (D-033). The console menus keep reading `to_context()`, a projection of the same object | 2026-10-09 |
 | T5-118 | ✅ RESOLVED — Phase 13 (Garmin weight sync dual-format fix; dateWeightList primary + dailyWeightSummaries fallback; WARNING on unknown format; 4 tests; 2026-05-03) | — |
 | T5-119 | ✅ RESOLVED — Phase 13 (Profile editor in menu; _save_athlete_profile_to_env; validation; 6 tests; 2026-05-04) | — |
 | T5-13 | ✅ RESOLVED 2026-03-16 — coach audit trail + migration + non-bypassable middleware path | 2026-03-16 |
@@ -1271,9 +1271,9 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 
 ---
 
-### T5-117 · Two parallel athlete profile systems (architectural debt) 🟡 OPEN
+### T5-117 · Two parallel athlete profile systems (architectural debt) ✅ RESOLVED
 
-**Status:** 🟡 OPEN — Phase 13.
+**Status:** ✅ RESOLVED 2026-10-09 (PR #970, D-033). Originally 🟡 OPEN — Phase 13.
 **Source:** Profile unification audit (2026-05-02).
 **Priority:** MEDIUM (workaround: .env vars override canonical defaults as of this commit).
 
@@ -1286,6 +1286,8 @@ or use existing conftest.py fixtures. Replace `time.sleep(10)` with parametrized
 **Location:** `titan/main.py`, `titan/core/athlete.py`, `titan/orchestration/contracts.py`, `titan/orchestration/daily_coach.py`.
 
 **Progress 2026-10-07 (PR #911):** the Docker worker read `ATHLETE_MAX_HR` from `TitanSettings` (default 160) while the console read `UniversalAthleteProfile.from_env()` (default 191), so TRIMP differed by where it ran when the variable was unset. The worker now uses the profile too, `TitanSettings.ATHLETE_MAX_HR` is removed, and Zaf chose 191 as the one default. `TitanContext.athlete_profile` is built only by `UniversalAthleteProfile.to_context()`. No schema change, so no ADR. Still open: DailyCoach and downstream consumers take the context dict / `athlete_max_hr`, not the profile object.
+
+**Resolved 2026-10-09 (PR #970, D-033):** `DailyCoach` takes `athlete_profile=` (the `UniversalAthleteProfile` object) from both composition roots (`titan/worker/__init__.py`, `titan/main.py`) and reads max HR from it; passing a different `athlete_max_hr` raises `ValueError`. The worker's Sunday plan uses `coach.athlete_profile` instead of a second `from_env()`. `TitanContext.athlete_profile` stays as the `to_context()` projection for the console menus: it is built from the same object, so it carries no values of its own. No schema change, so no ADR.
 
 ---
 
