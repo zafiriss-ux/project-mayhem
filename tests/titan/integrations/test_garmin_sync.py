@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import threading
@@ -1202,3 +1203,37 @@ def test_get_token_encryption_key_returns_bytes_on_valid_key(monkeypatch):
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", key.decode())
     result = _get_token_encryption_key()
     assert isinstance(result, bytes)
+
+
+# ---------------------------------------------------------------------------
+# RBP-04 / F-10: the token key is checked when GarminSync is built
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+def test_garmin_sync_refuses_a_malformed_token_key(monkeypatch):
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", "not-valid-base64!!!")
+    with pytest.raises(ValueError, match="not a valid Fernet key"):
+        GarminSync(email="a@example.com", password="pw")
+
+
+@pytest.mark.integration
+def test_garmin_sync_refuses_a_token_key_of_the_wrong_length(monkeypatch):
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", base64.urlsafe_b64encode(b"short").decode())
+    with pytest.raises(ValueError, match="not a valid Fernet key"):
+        GarminSync(email="a@example.com", password="pw")
+
+
+@pytest.mark.integration
+def test_empty_token_key_counts_as_unset(monkeypatch, caplog):
+    """.env.example ships an empty TITAN_GARTH_TOKEN_KEY=; that must not stop GarminSync."""
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", "")
+    with caplog.at_level(logging.WARNING, logger="titan.integrations.garmin_sync"):
+        GarminSync(email="a@example.com", password="pw")
+    assert _get_token_encryption_key() is None
+    assert not any("Invalid TITAN_GARTH_TOKEN_KEY" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.integration
+def test_garmin_sync_accepts_a_valid_token_key(monkeypatch):
+    monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", Fernet.generate_key().decode())
+    assert GarminSync(email="a@example.com", password="pw").is_connected is False
