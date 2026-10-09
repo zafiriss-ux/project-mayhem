@@ -1,0 +1,2629 @@
+{
+ "days": [
+  {
+   "date": "2026-03-02",
+   "events": [
+    {
+     "action": "routine_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "started_at": "2026-03-02 07:30"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "sync_all_started",
+     "days_back": 14,
+     "detail": "Full Garmin sync starting",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_all"
+    },
+    {
+     "action": "activities_synced",
+     "count": 0,
+     "days_back": 14,
+     "detail": "Synced 0 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "weight_synced",
+     "count": 1,
+     "days_back": 14,
+     "detail": "Synced 1 weight entries",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_weight"
+    },
+    {
+     "action": "sleep_synced",
+     "count": 1,
+     "days_back": 14,
+     "detail": "Synced 1 sleep sessions",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_sleep"
+    },
+    {
+     "action": "hrv_synced",
+     "count": 1,
+     "days_back": 14,
+     "detail": "Synced 1 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 14,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 1
+    },
+    {
+     "action": "sync_complete",
+     "elapsed_s": 0.0,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "timeout_s": 90
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": null,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "DAILY_METRICS_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "daily_metrics_persisted",
+     "date": "2026-03-02",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "persist_garmin_data",
+     "step_number": 2
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "feed_hrv_hrr",
+     "step_number": 3
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "afi_computed",
+     "afi": "+0.040",
+     "archetype": "HYBRID",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_tsb",
+     "step_number": 5
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "update_glycogen",
+     "step_number": 6
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": 50.0,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
+     "action": "computed",
+     "components": {
+      "hrv": 0,
+      "hrv_bonus": 10,
+      "rhr": 0,
+      "sleep": 0,
+      "sleep_bonus": 0,
+      "soreness": 0
+     },
+     "flow": "readiness",
+     "hrv_diff": 62.4,
+     "logger": "titan.science.readiness_engine",
+     "rhr_diff": 0.0,
+     "score": 100,
+     "severity": "info",
+     "sleep_score": 78,
+     "soreness": 1,
+     "status": "✅ EXCELLENT"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "FLAG",
+     "duration_min": 60,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 1,
+     "session_type": "EASY"
+    },
+    {
+     "action": "OVERRIDE_LOCKDOWN",
+     "cause": "COLD_START",
+     "gate_action": "default_locked",
+     "governance_gate": "OVERRIDE_LOCKDOWN",
+     "logger": "titan.science.governance_engine",
+     "reason": "no_outcome_history"
+    },
+    {
+     "action": "CALIBRATION_REQUIRED",
+     "apl_threshold_override": 0.85,
+     "cause": "DATA_PROBLEM",
+     "confidence": 0.0,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "CS_CONFIDENCE_LOCK",
+     "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "EASY_CEILING",
+     "cause": "DATA_PROBLEM",
+     "downgraded_to": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "STARTUP_DATA_CONFIDENCE",
+     "logger": "titan.science.governance_engine",
+     "original_session": "EASY"
+    },
+    {
+     "action": "COMPLETE",
+     "apl_active": true,
+     "final_session": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_clean": false,
+     "governance_gate": "APPLY_CONSTRAINTS",
+     "locks_applied": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK",
+      "STARTUP_DATA_CONFIDENCE_CEILING"
+     ],
+     "logger": "titan.science.governance_engine",
+     "priority_vector": {
+      "CS_CONFIDENCE_LOCK": 3,
+      "OVERRIDE_LOCKDOWN": 2,
+      "PARASYMPATHETIC_GUARD": 1
+     }
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "governance_locks_applied",
+     "flow": "daily_coach",
+     "locks": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK",
+      "STARTUP_DATA_CONFIDENCE_CEILING"
+     ],
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "daily_plan_calculated",
+     "calories": 2482.0,
+     "carbs_g": 420.0,
+     "duration_min": 60,
+     "flow": "nutrition",
+     "hydration_ml": 2800,
+     "logger": "titan.features.nutrition_optimizer",
+     "session_type": "EASY",
+     "severity": "info",
+     "training_phase": "BUILD",
+     "weight_status": "INSUFFICIENT_DATA"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "OVERRIDE_LOCKDOWN",
+     "cause": "COLD_START",
+     "gate_action": "default_locked",
+     "governance_gate": "OVERRIDE_LOCKDOWN",
+     "logger": "titan.science.governance_engine",
+     "reason": "no_outcome_history"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "routine_completed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info"
+    }
+   ],
+   "returned": true,
+   "telegram": [
+    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+   ]
+  },
+  {
+   "date": "2026-03-03",
+   "events": [
+    {
+     "action": "routine_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "started_at": "2026-03-03 07:30"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "sync_all_started",
+     "days_back": 14,
+     "detail": "Full Garmin sync starting",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_all"
+    },
+    {
+     "action": "activities_synced",
+     "count": 1,
+     "days_back": 14,
+     "detail": "Synced 1 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "weight_synced",
+     "count": 2,
+     "days_back": 14,
+     "detail": "Synced 2 weight entries",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_weight"
+    },
+    {
+     "action": "sleep_synced",
+     "count": 2,
+     "days_back": 14,
+     "detail": "Synced 2 sleep sessions",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_sleep"
+    },
+    {
+     "action": "hrv_synced",
+     "count": 2,
+     "days_back": 14,
+     "detail": "Synced 2 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 14,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 2
+    },
+    {
+     "action": "sync_complete",
+     "elapsed_s": 0.0,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "timeout_s": 90
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activities_persisted",
+     "count": 1,
+     "date": "2026-03-03",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": null,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "DAILY_METRICS_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "daily_metrics_persisted",
+     "date": "2026-03-03",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "persist_garmin_data",
+     "step_number": 2
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "feed_hrv_hrr",
+     "step_number": 3
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "afi_computed",
+     "afi": "+0.040",
+     "archetype": "HYBRID",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_tsb",
+     "step_number": 5
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "update_glycogen",
+     "step_number": 6
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": 50.0,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
+     "action": "computed",
+     "components": {
+      "hrv": 0,
+      "hrv_bonus": 10,
+      "rhr": 0,
+      "sleep": 0,
+      "sleep_bonus": 0,
+      "soreness": 0
+     },
+     "flow": "readiness",
+     "hrv_diff": 63.6,
+     "logger": "titan.science.readiness_engine",
+     "rhr_diff": 0.0,
+     "score": 100,
+     "severity": "info",
+     "sleep_score": 78,
+     "soreness": 1,
+     "status": "✅ EXCELLENT"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "DOWNGRADE",
+     "cause": "DATA_PROBLEM",
+     "downgraded_to": "TEMPO",
+     "failed_conditions": [
+      "V1",
+      "V4"
+     ],
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "VO2_ELIGIBILITY",
+     "input_flags": {
+      "acwr_invalid": true,
+      "fatigue_level_invalid": false,
+      "glycogen_debt_invalid": false,
+      "readiness_invalid": false,
+      "zone_invalid": false
+     },
+     "logger": "titan.science.governance_engine",
+     "original_session": "INTERVALS_Z5"
+    },
+    {
+     "action": "FLAG",
+     "duration_min": 66,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "TEMPO"
+    },
+    {
+     "action": "CALIBRATION_REQUIRED",
+     "apl_threshold_override": 0.85,
+     "cause": "DATA_PROBLEM",
+     "confidence": 0.0,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "CS_CONFIDENCE_LOCK",
+     "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "COMPLETE",
+     "apl_active": true,
+     "final_session": "TEMPO",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_clean": false,
+     "governance_gate": "APPLY_CONSTRAINTS",
+     "locks_applied": [
+      "VO2_ELIGIBILITY_GATE",
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.science.governance_engine",
+     "priority_vector": {
+      "CS_CONFIDENCE_LOCK": 3,
+      "OVERRIDE_LOCKDOWN": 2,
+      "PARASYMPATHETIC_GUARD": 1
+     }
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "governance_locks_applied",
+     "flow": "daily_coach",
+     "locks": [
+      "VO2_ELIGIBILITY_GATE",
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "daily_plan_calculated",
+     "calories": 2814.0,
+     "carbs_g": 490.0,
+     "duration_min": 66,
+     "flow": "nutrition",
+     "hydration_ml": 3000,
+     "logger": "titan.features.nutrition_optimizer",
+     "session_type": "TEMPO",
+     "severity": "info",
+     "training_phase": "BUILD",
+     "weight_status": "INSUFFICIENT_DATA"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "routine_completed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info"
+    }
+   ],
+   "returned": true,
+   "telegram": [
+    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* TEMPO – 12 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+   ]
+  },
+  {
+   "date": "2026-03-04",
+   "events": [
+    {
+     "action": "routine_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "started_at": "2026-03-04 07:30"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "sync_all_started",
+     "days_back": 14,
+     "detail": "Full Garmin sync starting",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_all"
+    },
+    {
+     "action": "activities_synced",
+     "count": 2,
+     "days_back": 14,
+     "detail": "Synced 2 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "weight_synced",
+     "count": 3,
+     "days_back": 14,
+     "detail": "Synced 3 weight entries",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_weight"
+    },
+    {
+     "action": "sleep_synced",
+     "count": 3,
+     "days_back": 14,
+     "detail": "Synced 3 sleep sessions",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_sleep"
+    },
+    {
+     "action": "hrv_synced",
+     "count": 3,
+     "days_back": 14,
+     "detail": "Synced 3 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 14,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 3
+    },
+    {
+     "action": "sync_complete",
+     "elapsed_s": 0.0,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "timeout_s": 90
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activities_persisted",
+     "count": 2,
+     "date": "2026-03-04",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-04",
+     "activity_index": null,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "DAILY_METRICS_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "daily_metrics_persisted",
+     "date": "2026-03-04",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "persist_garmin_data",
+     "step_number": 2
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "feed_hrv_hrr",
+     "step_number": 3
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "afi_computed",
+     "afi": "+0.040",
+     "archetype": "HYBRID",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_tsb",
+     "step_number": 5
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "update_glycogen",
+     "step_number": 6
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": 50.0,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
+     "action": "computed",
+     "components": {
+      "hrv": 0,
+      "hrv_bonus": 10,
+      "rhr": 0,
+      "sleep": 0,
+      "sleep_bonus": 0,
+      "soreness": 0
+     },
+     "flow": "readiness",
+     "hrv_diff": 64.8,
+     "logger": "titan.science.readiness_engine",
+     "rhr_diff": 0.0,
+     "score": 100,
+     "severity": "info",
+     "sleep_score": 78,
+     "soreness": 1,
+     "status": "✅ EXCELLENT"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "FLAG",
+     "duration_min": 60,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 1,
+     "session_type": "EASY"
+    },
+    {
+     "action": "CALIBRATION_REQUIRED",
+     "apl_threshold_override": 0.85,
+     "cause": "DATA_PROBLEM",
+     "confidence": 0.0,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "CS_CONFIDENCE_LOCK",
+     "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "COMPLETE",
+     "apl_active": true,
+     "final_session": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_clean": false,
+     "governance_gate": "APPLY_CONSTRAINTS",
+     "locks_applied": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.science.governance_engine",
+     "priority_vector": {
+      "CS_CONFIDENCE_LOCK": 3,
+      "OVERRIDE_LOCKDOWN": 2,
+      "PARASYMPATHETIC_GUARD": 1
+     }
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "governance_locks_applied",
+     "flow": "daily_coach",
+     "locks": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "daily_plan_calculated",
+     "calories": 2482.0,
+     "carbs_g": 420.0,
+     "duration_min": 60,
+     "flow": "nutrition",
+     "hydration_ml": 2800,
+     "logger": "titan.features.nutrition_optimizer",
+     "session_type": "EASY",
+     "severity": "info",
+     "training_phase": "BUILD",
+     "weight_status": "INSUFFICIENT_DATA"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "routine_completed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info"
+    }
+   ],
+   "returned": true,
+   "telegram": [
+    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+   ]
+  },
+  {
+   "date": "2026-03-05",
+   "events": [
+    {
+     "action": "routine_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "started_at": "2026-03-05 07:30"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "sync_all_started",
+     "days_back": 14,
+     "detail": "Full Garmin sync starting",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_all"
+    },
+    {
+     "action": "activities_synced",
+     "count": 2,
+     "days_back": 14,
+     "detail": "Synced 2 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "weight_synced",
+     "count": 4,
+     "days_back": 14,
+     "detail": "Synced 4 weight entries",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_weight"
+    },
+    {
+     "action": "sleep_synced",
+     "count": 4,
+     "days_back": 14,
+     "detail": "Synced 4 sleep sessions",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_sleep"
+    },
+    {
+     "action": "hrv_synced",
+     "count": 4,
+     "days_back": 14,
+     "detail": "Synced 4 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 14,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 4
+    },
+    {
+     "action": "sync_complete",
+     "elapsed_s": 0.0,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "timeout_s": 90
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": null,
+     "error_class": "OperationalError",
+     "error_message": "disk I/O error (characterization)",
+     "failure_class": "PERSIST_ERROR",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "DAILY_METRICS_SKIPPED",
+     "severity": "info"
+    },
+    {
+     "action": "daily_metrics_persist_failed",
+     "date": "2026-03-05",
+     "error_class": "OperationalError",
+     "error_message": "disk I/O error (characterization)",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "error_class": "PersistenceFailure",
+     "error_message": "DB transaction rolled back — persistence failed",
+     "failure_class": "PERSIST_ERROR",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "FAILED",
+     "severity": "info",
+     "step_name": "persist_garmin_data",
+     "step_number": 2
+    },
+    {
+     "action": "persistence_degraded_mode",
+     "flow": "daily_coach",
+     "intensity_ceiling": "EASY",
+     "logger": "titan.orchestration.daily_coach",
+     "reason": "DB transaction rolled back",
+     "severity": "info"
+    },
+    {
+     "action": "persistence_degraded_alert_failed",
+     "error_class": "TypeError",
+     "error_message": "TitanTelegramBot.send_alert() missing 1 required positional argument: 'message'",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "feed_hrv_hrr",
+     "step_number": 3
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "afi_computed",
+     "afi": "+0.040",
+     "archetype": "HYBRID",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_tsb",
+     "step_number": 5
+    },
+    {
+     "action": "update_glycogen_debt_no_row_updated",
+     "athlete_id": "owner",
+     "date": "2026-03-05",
+     "debt_score": 0.0,
+     "flow": "database",
+     "logger": "titan.core.database",
+     "severity": "warning"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "update_glycogen",
+     "step_number": 6
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": 50.0,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
+     "action": "computed",
+     "components": {
+      "hrv": 0,
+      "hrv_bonus": 10,
+      "rhr": 0,
+      "sleep": 0,
+      "sleep_bonus": 0,
+      "soreness": 0
+     },
+     "flow": "readiness",
+     "hrv_diff": 62.4,
+     "logger": "titan.science.readiness_engine",
+     "rhr_diff": 0.0,
+     "score": 100,
+     "severity": "info",
+     "sleep_score": 78,
+     "soreness": 1,
+     "status": "✅ EXCELLENT"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "FLAG",
+     "duration_min": 67,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "TEMPO"
+    },
+    {
+     "action": "CALIBRATION_REQUIRED",
+     "apl_threshold_override": 0.85,
+     "cause": "DATA_PROBLEM",
+     "confidence": 0.0,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "CS_CONFIDENCE_LOCK",
+     "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "EASY_CEILING",
+     "cause": "DATA_PROBLEM",
+     "downgraded_to": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "STARTUP_DATA_CONFIDENCE",
+     "logger": "titan.science.governance_engine",
+     "original_session": "TEMPO"
+    },
+    {
+     "action": "EASY_CEILING",
+     "cause": "DATA_PROBLEM",
+     "downgraded_to": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "PERSISTENCE_DEGRADED",
+     "logger": "titan.science.governance_engine",
+     "original_session": "EASY"
+    },
+    {
+     "action": "COMPLETE",
+     "apl_active": true,
+     "final_session": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_clean": false,
+     "governance_gate": "APPLY_CONSTRAINTS",
+     "locks_applied": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK",
+      "STARTUP_DATA_CONFIDENCE_CEILING",
+      "PERSISTENCE_DEGRADED_CEILING"
+     ],
+     "logger": "titan.science.governance_engine",
+     "priority_vector": {
+      "CS_CONFIDENCE_LOCK": 3,
+      "OVERRIDE_LOCKDOWN": 2,
+      "PARASYMPATHETIC_GUARD": 1
+     }
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "governance_locks_applied",
+     "flow": "daily_coach",
+     "locks": [
+      "FUELING_GATE_FLAG",
+      "CS_CONFIDENCE_LOCK",
+      "STARTUP_DATA_CONFIDENCE_CEILING",
+      "PERSISTENCE_DEGRADED_CEILING"
+     ],
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "daily_plan_calculated",
+     "calories": 2482.0,
+     "carbs_g": 420.0,
+     "duration_min": 67,
+     "flow": "nutrition",
+     "hydration_ml": 2800,
+     "logger": "titan.features.nutrition_optimizer",
+     "session_type": "EASY",
+     "severity": "info",
+     "training_phase": "BUILD",
+     "weight_status": "INSUFFICIENT_DATA"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "routine_completed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info"
+    }
+   ],
+   "returned": true,
+   "telegram": [
+    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+   ]
+  },
+  {
+   "date": "2026-03-06",
+   "events": [
+    {
+     "action": "routine_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "started_at": "2026-03-06 07:30"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "sync_all_started",
+     "days_back": 14,
+     "detail": "Full Garmin sync starting",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_all"
+    },
+    {
+     "action": "activities_synced",
+     "count": 3,
+     "days_back": 14,
+     "detail": "Synced 3 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "weight_synced",
+     "count": 5,
+     "days_back": 14,
+     "detail": "Synced 5 weight entries",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_weight"
+    },
+    {
+     "action": "sleep_synced",
+     "count": 5,
+     "days_back": 14,
+     "detail": "Synced 5 sleep sessions",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_sleep"
+    },
+    {
+     "action": "hrv_synced",
+     "count": 5,
+     "days_back": 14,
+     "detail": "Synced 5 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 14,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 5
+    },
+    {
+     "action": "sync_complete",
+     "elapsed_s": 0.0,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "timeout_s": 90
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "sync_garmin",
+     "step_number": 1
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activities_persisted",
+     "count": 3,
+     "date": "2026-03-06",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": null,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "DAILY_METRICS_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "daily_metrics_persisted",
+     "date": "2026-03-06",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "persist_garmin_data",
+     "step_number": 2
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "feed_hrv_hrr",
+     "step_number": 3
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "compute_afi",
+     "step_number": 4
+    },
+    {
+     "action": "afi_computed",
+     "afi": "+0.040",
+     "archetype": "HYBRID",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_tsb",
+     "step_number": 5
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "update_glycogen",
+     "step_number": 6
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": 50.0,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
+     "action": "computed",
+     "components": {
+      "hrv": 0,
+      "hrv_bonus": 10,
+      "rhr": 0,
+      "sleep": 0,
+      "sleep_bonus": 0,
+      "soreness": 0
+     },
+     "flow": "readiness",
+     "hrv_diff": 62.4,
+     "logger": "titan.science.readiness_engine",
+     "rhr_diff": 0.0,
+     "score": 100,
+     "severity": "info",
+     "sleep_score": 78,
+     "soreness": 1,
+     "status": "✅ EXCELLENT"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "analyze_readiness",
+     "step_number": 7
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "load_today_session",
+     "step_number": 8
+    },
+    {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "CALIBRATION_REQUIRED",
+     "apl_threshold_override": 0.85,
+     "cause": "DATA_PROBLEM",
+     "confidence": 0.0,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "CS_CONFIDENCE_LOCK",
+     "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "COMPLETE",
+     "apl_active": true,
+     "final_session": "EASY",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_clean": false,
+     "governance_gate": "APPLY_CONSTRAINTS",
+     "locks_applied": [
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.science.governance_engine",
+     "priority_vector": {
+      "CS_CONFIDENCE_LOCK": 3,
+      "OVERRIDE_LOCKDOWN": 2,
+      "PARASYMPATHETIC_GUARD": 1
+     }
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "apply_governance",
+     "step_number": 9
+    },
+    {
+     "action": "governance_locks_applied",
+     "flow": "daily_coach",
+     "locks": [
+      "CS_CONFIDENCE_LOCK"
+     ],
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_optimal_time",
+     "step_number": 10
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "daily_plan_calculated",
+     "calories": 2482.0,
+     "carbs_g": 420.0,
+     "duration_min": 48,
+     "flow": "nutrition",
+     "hydration_ml": 2800,
+     "logger": "titan.features.nutrition_optimizer",
+     "session_type": "EASY",
+     "severity": "info",
+     "training_phase": "BUILD",
+     "weight_status": "INSUFFICIENT_DATA"
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "calculate_nutrition",
+     "step_number": 11
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_started",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "step_event",
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info",
+     "step_name": "send_telegram",
+     "step_number": 12
+    },
+    {
+     "action": "routine_completed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "SUCCESS",
+     "severity": "info"
+    }
+   ],
+   "returned": true,
+   "telegram": [
+    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
+    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+   ]
+  }
+ ],
+ "tables": {
+  "athletes": [
+   {
+    "athlete_id": "owner",
+    "biological_sex": "male",
+    "cold_start_ends_at": "<sqlite-clock>",
+    "cold_start_sessions_count": 30,
+    "created_at": "<sqlite-clock>",
+    "display_name": "Owner",
+    "is_cold_start": 0,
+    "menstrual_tracking": "no"
+   }
+  ],
+  "coach_athlete_assignments": [
+   {
+    "assigned_at": "<sqlite-clock>",
+    "athlete_id": "owner",
+    "coach_id": "system",
+    "id": "<volatile>"
+   }
+  ],
+  "daily_metrics": [
+   {
+    "athlete_id": "owner",
+    "data_source": "garmin_api",
+    "date": "2026-03-02",
+    "fatigue_level": null,
+    "glycogen_debt": 0.0,
+    "hrr_120": null,
+    "hrr_60": null,
+    "hrv_rmssd": 62.4,
+    "id": "<volatile>",
+    "mood": null,
+    "notes": null,
+    "quality_flag": null,
+    "resting_hr": null,
+    "sleep_hours": 7.5,
+    "sleep_quality": 78,
+    "soreness": null,
+    "weight_kg": 70.0
+   },
+   {
+    "athlete_id": "owner",
+    "data_source": "garmin_api",
+    "date": "2026-03-03",
+    "fatigue_level": null,
+    "glycogen_debt": 0.0,
+    "hrr_120": null,
+    "hrr_60": null,
+    "hrv_rmssd": 63.6,
+    "id": "<volatile>",
+    "mood": null,
+    "notes": null,
+    "quality_flag": null,
+    "resting_hr": null,
+    "sleep_hours": 7.5,
+    "sleep_quality": 78,
+    "soreness": null,
+    "weight_kg": 70.0
+   },
+   {
+    "athlete_id": "owner",
+    "data_source": "garmin_api",
+    "date": "2026-03-04",
+    "fatigue_level": null,
+    "glycogen_debt": 0.0,
+    "hrr_120": null,
+    "hrr_60": null,
+    "hrv_rmssd": 64.8,
+    "id": "<volatile>",
+    "mood": null,
+    "notes": null,
+    "quality_flag": null,
+    "resting_hr": null,
+    "sleep_hours": 7.5,
+    "sleep_quality": 78,
+    "soreness": null,
+    "weight_kg": 70.0
+   },
+   {
+    "athlete_id": "owner",
+    "data_source": "garmin_api",
+    "date": "2026-03-05",
+    "fatigue_level": null,
+    "glycogen_debt": null,
+    "hrr_120": null,
+    "hrr_60": null,
+    "hrv_rmssd": 62.4,
+    "id": "<volatile>",
+    "mood": null,
+    "notes": null,
+    "quality_flag": null,
+    "resting_hr": null,
+    "sleep_hours": null,
+    "sleep_quality": null,
+    "soreness": null,
+    "weight_kg": null
+   },
+   {
+    "athlete_id": "owner",
+    "data_source": "garmin_api",
+    "date": "2026-03-06",
+    "fatigue_level": null,
+    "glycogen_debt": 0.0,
+    "hrr_120": null,
+    "hrr_60": null,
+    "hrv_rmssd": 63.6,
+    "id": "<volatile>",
+    "mood": null,
+    "notes": null,
+    "quality_flag": null,
+    "resting_hr": null,
+    "sleep_hours": 7.5,
+    "sleep_quality": 78,
+    "soreness": null,
+    "weight_kg": 70.0
+   }
+  ],
+  "governance_outcomes": [
+   {
+    "acwr": 0.0,
+    "afi_value": 0.04,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-02",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.04,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-03",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"VO2_ELIGIBILITY_GATE\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "INTERVALS",
+    "session_post_governance": "TEMPO",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.04,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-04",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.04,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-05",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\", \"PERSISTENCE_DEGRADED_CEILING\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "TEMPO",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   },
+   {
+    "acwr": 0.0,
+    "afi_value": 0.04,
+    "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "athlete_id": "owner",
+    "date": "2026-03-06",
+    "decision_was_followed": 1,
+    "glycogen_debt": 0.0,
+    "governance_clean": 0,
+    "id": "<volatile>",
+    "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
+    "outcome_completed": null,
+    "outcome_independence_ok": 1,
+    "outcome_notes": null,
+    "outcome_rpe": null,
+    "outcome_session_type_actual": null,
+    "override_outcome_exclusion": 0,
+    "phase": "BASE",
+    "readiness_score": 100.0,
+    "session_planned": "EASY",
+    "session_post_governance": "EASY",
+    "tsb_value": 0.0,
+    "vlg_color": "GREEN"
+   }
+  ],
+  "sync_metadata": [
+   {
+    "last_attempt_ts": "2026-03-06T07:30:00+00:00",
+    "last_error_class": null,
+    "last_success_ts": "2026-03-06T07:30:00+00:00",
+    "last_sync_ok": 1,
+    "source": "garmin"
+   }
+  ],
+  "training_log": [
+   {
+    "athlete_id": "owner",
+    "avg_hr": 140,
+    "avg_pace_sec_per_km": 333.0,
+    "date": "2026-03-02",
+    "distance_km": 7.2,
+    "duration_sec": 2400,
+    "garmin_activity_id": "20260302",
+    "id": "<volatile>",
+    "max_hr": 155,
+    "notes": "",
+    "quality_flag": null,
+    "rpe": null,
+    "session_type": "EASY",
+    "shoe_id": null,
+    "surface": null,
+    "temperature_c": null,
+    "training_load": 120,
+    "zone_distribution": null
+   },
+   {
+    "athlete_id": "owner",
+    "avg_hr": 140,
+    "avg_pace_sec_per_km": 333.0,
+    "date": "2026-03-05",
+    "distance_km": 7.2,
+    "duration_sec": 2400,
+    "garmin_activity_id": "20260305",
+    "id": "<volatile>",
+    "max_hr": 155,
+    "notes": "",
+    "quality_flag": null,
+    "rpe": null,
+    "session_type": "EASY",
+    "shoe_id": null,
+    "surface": null,
+    "temperature_c": null,
+    "training_load": 120,
+    "zone_distribution": null
+   },
+   {
+    "athlete_id": "owner",
+    "avg_hr": 162,
+    "avg_pace_sec_per_km": 300.0,
+    "date": "2026-03-03",
+    "distance_km": 10.0,
+    "duration_sec": 3000,
+    "garmin_activity_id": "20260303",
+    "id": "<volatile>",
+    "max_hr": 176,
+    "notes": "",
+    "quality_flag": null,
+    "rpe": null,
+    "session_type": "EASY",
+    "shoe_id": null,
+    "surface": null,
+    "temperature_c": null,
+    "training_load": 200,
+    "zone_distribution": null
+   }
+  ]
+ }
+}
