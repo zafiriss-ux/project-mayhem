@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from titan.core.database import DatabaseManager
+from titan.core.database import SCHEMA_VERSION, DatabaseManager
 from titan.core.repositories.access import AccessRepository
 from titan.core.repositories.governance import GovernanceRepository
 from titan.core.repositories.operations import OperationsRepository
@@ -33,12 +33,14 @@ _GOVERNANCE_METHODS = (
     "annotate_governance_outcome", "save_threshold_offset", "get_athlete_threshold_offsets",
     "delete_threshold_offset", "get_completion_rate", "is_athlete_cold_start",
     "check_and_exit_cold_start", "increment_cold_start_sessions", "get_false_negative_rate",
+    "get_model_calibration_metadata",
 )
 _OPERATIONS_METHODS = (
     "get_nutrition_preferences", "save_nutrition_preferences", "get_all_degraded_mode_states",
     "upsert_degraded_mode_state", "delete_degraded_mode_state", "record_sync_outcome",
     "get_last_sync_outcome", "get_last_garmin_sync_timestamp", "backup_database",
-    "_record_backup_failure", "_prune_old_backups", "check_integrity",
+    "_record_backup_failure", "_prune_old_backups", "check_integrity", "get_table_names",
+    "is_db_reachable",
 )
 _ACCESS_METHODS = (
     "record_failed_login", "is_login_locked_out", "clear_login_lockout", "upsert_auth_user",
@@ -286,6 +288,66 @@ def test_coach_scope_is_only_the_assigned_athletes(db) -> None:
     [entry] = db.get_coach_audit_log(coach_id="coach-1")
     assert (entry["athlete_id"], entry["resource"]) == ("a1", "plan")
     assert len(db.get_coach_audit_log()) == 2
+
+
+@pytest.mark.unit
+def test_model_calibration_metadata_round_trip_with_schema_version_default(db) -> None:
+    assert db.get_model_calibration_metadata("hrv_model") is None
+    db.upsert_model_calibration_metadata(
+        model_name="hrv_model", calibrated_at="2026-10-01T06:00:00", baseline_hrv_ms=52.5
+    )
+    db.upsert_model_calibration_metadata(
+        model_name="hrv_model", calibrated_at="2026-10-02T06:00:00", athlete_id="a1",
+        baseline_vo2=55.0, schema_version=3,
+    )
+    assert db.get_model_calibration_metadata("hrv_model") == {
+        "model_name": "hrv_model", "athlete_id": "owner", "calibrated_at": "2026-10-01T06:00:00",
+        "baseline_hrv_ms": 52.5, "baseline_vo2": None, "schema_version": SCHEMA_VERSION,
+    }
+    assert db.get_model_calibration_metadata("hrv_model", athlete_id="a1")["schema_version"] == 3
+    db.upsert_model_calibration_metadata(
+        model_name="hrv_model", calibrated_at="2026-10-03T06:00:00", baseline_hrv_ms=50.0
+    )
+    row = db.get_model_calibration_metadata("hrv_model")
+    assert (row["calibrated_at"], row["baseline_hrv_ms"]) == ("2026-10-03T06:00:00", 50.0)
+
+
+@pytest.mark.unit
+def test_calibration_upsert_inside_a_transaction_rolls_back_with_it(db) -> None:
+    with pytest.raises(RuntimeError), db.transaction():
+        db.upsert_model_calibration_metadata(model_name="m", calibrated_at="2026-10-01")
+        raise RuntimeError("abort")
+    assert db.get_model_calibration_metadata("m") is None
+
+
+@pytest.mark.unit
+def test_new_database_has_its_tables_and_owner_rows(db) -> None:
+    assert db.is_db_reachable() is True
+    tables = db.get_table_names()
+    assert tables == sorted(tables)
+    assert {"athletes", "coach_athlete_assignments", "model_calibration_metadata"} <= set(tables)
+    assert db._get_all_athlete_ids() == ["owner"]
+    assert db.get_assigned_athletes("system") == ["owner"]
+
+
+@pytest.mark.unit
+def test_reopening_a_database_does_not_duplicate_the_owner_rows(tmp_path) -> None:
+    DatabaseManager(db_dir=tmp_path).close()
+    again = DatabaseManager(db_dir=tmp_path)
+    try:
+        assert again._get_all_athlete_ids() == ["owner"]
+        assert again.get_assigned_athletes("system") == ["owner"]
+    finally:
+        again.close()
+
+
+@pytest.mark.unit
+def test_introspection_fails_on_a_closed_manager(db) -> None:
+    db.close()
+    with pytest.raises(RuntimeError, match="closed"):
+        db.get_table_names()
+    with pytest.raises(RuntimeError, match="closed"):
+        db.is_db_reachable()
 
 
 @pytest.mark.unit

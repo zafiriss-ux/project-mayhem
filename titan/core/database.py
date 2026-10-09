@@ -322,23 +322,7 @@ class DatabaseManager:
         for _tname in _BASE_TABLE_NAMES:
             cursor.execute(_render_table_ddl(_tname))
 
-        # Seed owner row for single-athlete installations (is_cold_start=0: owner
-        # bypasses cold-start per ADR-0033 L3-C).
-        cursor.execute("""
-            INSERT OR IGNORE INTO athletes
-                (athlete_id, display_name, created_at, is_cold_start,
-                 cold_start_ends_at, cold_start_sessions_count)
-            VALUES
-                ('owner', 'Owner', datetime('now'), 0,
-                 datetime('now'), 30)
-        """)
-
-        # Seed system coach → owner assignment so single-athlete mode works out of the box.
-        cursor.execute("""
-            INSERT OR IGNORE INTO coach_athlete_assignments
-                (coach_id, athlete_id, assigned_at)
-            VALUES ('system', 'owner', datetime('now'))
-        """)
+        self._migrations._seed_single_athlete_rows(cursor=cursor)
 
         self.conn.commit()
         self._run_migrations(cursor)
@@ -628,12 +612,7 @@ class DatabaseManager:
 
     def get_table_names(self) -> list[str]:
         """Return all table names present in the database."""
-        with self._lock:
-            self._ensure_open_locked()
-            rows = self.conn.cursor().execute(
-                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-            ).fetchall()
-        return [r[0] for r in rows]
+        return self._operations.get_table_names()
 
     # --- Degraded Mode State (HD-06) (titan/core/repositories/operations.py) ---
 
@@ -828,10 +807,7 @@ class DatabaseManager:
 
     def is_db_reachable(self) -> bool:
         """Probe that the DB connection is live (schema-introspection query)."""
-        with self._lock:
-            self._ensure_open_locked()
-            result = self.conn.execute("SELECT COUNT(*) FROM sqlite_master").fetchone()
-        return result is not None
+        return self._operations.is_db_reachable()
 
     def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
         """Calculate Training Stress Balance from database history."""
@@ -1065,34 +1041,14 @@ class DatabaseManager:
         schema_version: int = SCHEMA_VERSION,
     ) -> None:
         """Insert or update model calibration metadata for a named model."""
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """INSERT INTO model_calibration_metadata (
-                        model_name,
-                        athlete_id,
-                        calibrated_at,
-                        baseline_hrv_ms,
-                        baseline_vo2,
-                        schema_version
-                    ) VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(model_name, athlete_id) DO UPDATE SET
-                        calibrated_at = excluded.calibrated_at,
-                        baseline_hrv_ms = excluded.baseline_hrv_ms,
-                        baseline_vo2 = excluded.baseline_vo2,
-                        schema_version = excluded.schema_version""",
-                (
-                    model_name,
-                    athlete_id,
-                    calibrated_at,
-                    baseline_hrv_ms,
-                    baseline_vo2,
-                    schema_version,
-                ),
-            )
-            if self._transaction_depth == 0:
-                self.conn.commit()
+        self._governance.upsert_model_calibration_metadata(
+            model_name=model_name,
+            calibrated_at=calibrated_at,
+            athlete_id=athlete_id,
+            baseline_hrv_ms=baseline_hrv_ms,
+            baseline_vo2=baseline_vo2,
+            schema_version=schema_version,
+        )
 
     def get_model_calibration_metadata(
         self,
@@ -1100,29 +1056,9 @@ class DatabaseManager:
         athlete_id: str = "owner",
     ) -> dict[str, Any] | None:
         """Return calibration metadata for a model, or None when no row exists."""
-        with self._lock:
-            self._ensure_open_locked()
-            cursor = self.conn.cursor()
-            cursor.execute(
-                """SELECT model_name, athlete_id, calibrated_at,
-                          baseline_hrv_ms, baseline_vo2, schema_version
-                     FROM model_calibration_metadata
-                     WHERE model_name = ? AND athlete_id = ?""",
-                (model_name, athlete_id),
-            )
-            row = cursor.fetchone()
-
-        if row is None:
-            return None
-
-        return {
-            "model_name": str(row[0]),
-            "athlete_id": str(row[1]),
-            "calibrated_at": str(row[2]),
-            "baseline_hrv_ms": float(row[3]) if row[3] is not None else None,
-            "baseline_vo2": float(row[4]) if row[4] is not None else None,
-            "schema_version": int(row[5]),
-        }
+        return self._governance.get_model_calibration_metadata(
+            model_name=model_name, athlete_id=athlete_id
+        )
 
     def record_sync_outcome(
         self,

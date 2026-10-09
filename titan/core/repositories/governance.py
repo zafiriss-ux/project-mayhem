@@ -1,6 +1,6 @@
 """Governance domain SQL: override audit log, Telegram override nonces
 (ADR-0060 D2), governance decisions with their outcomes, per-athlete threshold
-offsets, cold start and calibration rates."""
+offsets, cold start, calibration rates and model calibration metadata."""
 
 from __future__ import annotations
 
@@ -615,3 +615,73 @@ class GovernanceRepository:
         if (total_evaluated or 0) < CALIBRATION_MIN_OUTCOME_COUNT:
             return 0.0
         return false_neg_count / total_evaluated
+
+    def upsert_model_calibration_metadata(
+        self,
+        *,
+        model_name: str,
+        calibrated_at: str,
+        athlete_id: str,
+        baseline_hrv_ms: float | None,
+        baseline_vo2: float | None,
+        schema_version: int,
+    ) -> None:
+        """Insert or update model calibration metadata for a named model."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """INSERT INTO model_calibration_metadata (
+                        model_name,
+                        athlete_id,
+                        calibrated_at,
+                        baseline_hrv_ms,
+                        baseline_vo2,
+                        schema_version
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(model_name, athlete_id) DO UPDATE SET
+                        calibrated_at = excluded.calibrated_at,
+                        baseline_hrv_ms = excluded.baseline_hrv_ms,
+                        baseline_vo2 = excluded.baseline_vo2,
+                        schema_version = excluded.schema_version""",
+                (
+                    model_name,
+                    athlete_id,
+                    calibrated_at,
+                    baseline_hrv_ms,
+                    baseline_vo2,
+                    schema_version,
+                ),
+            )
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
+
+    def get_model_calibration_metadata(
+        self,
+        model_name: str,
+        athlete_id: str = "owner",
+    ) -> dict[str, Any] | None:
+        """Return calibration metadata for a model, or None when no row exists."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """SELECT model_name, athlete_id, calibrated_at,
+                          baseline_hrv_ms, baseline_vo2, schema_version
+                     FROM model_calibration_metadata
+                     WHERE model_name = ? AND athlete_id = ?""",
+                (model_name, athlete_id),
+            )
+            row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return {
+            "model_name": str(row[0]),
+            "athlete_id": str(row[1]),
+            "calibrated_at": str(row[2]),
+            "baseline_hrv_ms": float(row[3]) if row[3] is not None else None,
+            "baseline_vo2": float(row[4]) if row[4] is not None else None,
+            "schema_version": int(row[5]),
+        }

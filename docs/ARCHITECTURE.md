@@ -55,13 +55,13 @@ launcher/main.py
 
 | Module | Role |
 |---|---|
-| `titan/core/database.py` | `DatabaseManager` — SQLite backend, all migrations, SCHEMA_VERSION |
+| `titan/core/database.py` | `DatabaseManager` — SQLite connection setup (WAL, foreign keys, busy timeout), base tables from `titan/core/schema.py`, transactions and SCHEMA_VERSION; the domain SQL lives in the repositories below, behind the same method names (plan #18, task 10) |
 | `titan/core/repositories/training.py` | `TrainingRepository` — training-domain SQL (training log and CTL/ATL/TSB load history, shoes, personal bests, CS performances) behind the `DatabaseManager` facade (plan #18, one domain per PR) |
 | `titan/core/repositories/physiology.py` | `PhysiologyRepository` — physiology-domain SQL (daily metrics, HRV, resting HR, HRR, glycogen debt, weight history) behind the `DatabaseManager` facade (plan #18) |
-| `titan/core/repositories/governance.py` | `GovernanceRepository` — governance-domain SQL (override audit log, governance decisions and outcomes, per-athlete threshold offsets, cold start, calibration rates) behind the `DatabaseManager` facade (plan #18) |
-| `titan/core/repositories/operations.py` | `OperationsRepository` — operations-domain SQL (sync outcomes and Garmin data freshness, degraded-mode state, nutrition preferences, verified backups and retention, integrity check) behind the `DatabaseManager` facade (plan #18) |
+| `titan/core/repositories/governance.py` | `GovernanceRepository` — governance-domain SQL (override audit log, governance decisions and outcomes, per-athlete threshold offsets, cold start, calibration rates, model calibration metadata) behind the `DatabaseManager` facade (plan #18) |
+| `titan/core/repositories/operations.py` | `OperationsRepository` — operations-domain SQL (sync outcomes and Garmin data freshness, degraded-mode state, nutrition preferences, verified backups and retention, integrity check, table names and reachability probe) behind the `DatabaseManager` facade (plan #18) |
 | `titan/core/repositories/access.py` | `AccessRepository` — access-domain SQL (login lockout, auth users and refresh tokens, coach-athlete RBAC scoping per ADR-0054, coach audit log) behind the `DatabaseManager` facade (plan #18) |
-| `titan/core/repositories/migrations.py` | `SchemaMigrations` — the additive schema steps v1–v26 and the INV-25 forward-version guard, run by `DatabaseManager` on open; `SCHEMA_VERSION` stays in `database.py` (plan #18) |
+| `titan/core/repositories/migrations.py` | `SchemaMigrations` — the additive schema steps v1–v27, the owner and system-coach rows a new database starts with, and the INV-25 forward-version guard, run by `DatabaseManager` on open; `SCHEMA_VERSION` stays in `database.py` (plan #18) |
 | `titan/core/athlete.py` | `UniversalAthleteProfile` — athlete profile loading and validation |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC and SQLite implementation |
 | `titan/core/periodization.py` | Periodization phase state |
