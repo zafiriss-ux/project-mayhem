@@ -134,7 +134,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## Schema
 
-SCHEMA_VERSION 26, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete).
+SCHEMA_VERSION 27, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete).
 
 ## Phases 19–26 (CLOSED)
 

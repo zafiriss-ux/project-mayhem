@@ -74,7 +74,7 @@ def test_routine_within_budget_keeps_heartbeat(monkeypatch: pytest.MonkeyPatch, 
         release.wait(timeout=5)
 
     monkeypatch.setattr(worker_mod, "_write_heartbeat", _record)
-    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db: SimpleNamespace(run_morning_routine=_routine))
+    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db, athlete_id="owner": SimpleNamespace(run_morning_routine=_routine))
     threading.Timer(0.15, release.set).start()
 
     worker_mod._run_routine_supervised(None, hb, interval_s=0.02, budget_s=10)
@@ -95,7 +95,7 @@ def test_routine_over_budget_stops_heartbeat_and_logs_critical(
         release.wait(timeout=5)
 
     monkeypatch.setattr(worker_mod, "_write_heartbeat", lambda path: beats.append(time.monotonic() - started))
-    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db: SimpleNamespace(run_morning_routine=_routine))
+    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db, athlete_id="owner": SimpleNamespace(run_morning_routine=_routine))
     threading.Timer(0.4, release.set).start()
 
     with caplog.at_level(logging.CRITICAL, logger="titan.worker.runner"):
@@ -114,7 +114,7 @@ def test_routine_exception_is_logged_and_cycle_returns(
     def _boom() -> None:
         raise RuntimeError("garmin down")
 
-    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db: SimpleNamespace(run_morning_routine=_boom))
+    monkeypatch.setattr(worker_mod, "_build_daily_coach", lambda db, athlete_id="owner": SimpleNamespace(run_morning_routine=_boom))
 
     with caplog.at_level(logging.ERROR, logger="titan.worker.runner"):
         worker_mod._run_routine_supervised(None, tmp_path / "hb", interval_s=0.02, budget_s=10)

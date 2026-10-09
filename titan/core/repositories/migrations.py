@@ -186,6 +186,11 @@ class SchemaMigrations:
                 "durable worker routine claims (INV-15) and override nonces (INV-17), ADR-0060",
                 None,  # DDL — see _apply_v26_migrations() below
             ),
+            27: (
+                "weekly_plans",
+                "weekly plan the worker builds every Sunday, one row per athlete and week (D-020)",
+                None,  # DDL — see _apply_v27_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -488,6 +493,15 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 26,
                 "table_created": "worker_routine_executions, telegram_override_nonces (ADR-0060)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 27:
+            self._db._apply_v27_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 27,
+                "table_created": "weekly_plans (D-020)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1152,3 +1166,15 @@ class SchemaMigrations:
             "CREATE INDEX IF NOT EXISTS idx_telegram_override_nonces_expires "
             "ON telegram_override_nonces (expires_at)"
         )
+
+    def _apply_v27_migrations(self, cursor) -> None:
+        """Version 27: weekly_plans table (D-020). One new table, nothing else changes."""
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS weekly_plans (
+                athlete_id  TEXT NOT NULL,
+                week_start  TEXT NOT NULL,
+                plan_json   TEXT NOT NULL,
+                created_at  TEXT NOT NULL,
+                PRIMARY KEY (athlete_id, week_start)
+            )
+        """)

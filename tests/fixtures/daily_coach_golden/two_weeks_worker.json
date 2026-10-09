@@ -4,6 +4,27 @@
    "date": "2026-03-02",
    "events": [
     {
+     "action": "plan_generation_started",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "severity": "info",
+     "tsb_status": "INSUFFICIENT DATA",
+     "tsb_value": null,
+     "weather_days": 0
+    },
+    {
+     "action": "plan_generated",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "quality_sessions": 2,
+     "recovery_days": 1,
+     "sessions": 7,
+     "severity": "info",
+     "weekly_km": 77
+    },
+    {
      "action": "routine_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -249,6 +270,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 60,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 1,
+     "session_type": "EASY"
+    },
+    {
      "action": "OVERRIDE_LOCKDOWN",
      "cause": "COLD_START",
      "gate_action": "default_locked",
@@ -286,6 +317,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -311,6 +343,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -364,7 +397,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 60,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -427,7 +460,8 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-03  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 0.0\n• TSB: INSUFFICIENT DATA\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯",
+    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -697,6 +731,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 66,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "INTERVALS"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -709,13 +753,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "INTERVALS",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -740,6 +785,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -790,13 +836,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 2979.0,
+     "carbs_g": 595.0,
+     "duration_min": 66,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "INTERVALS",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "INSUFFICIENT_DATA"
@@ -847,7 +893,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* INTERVALS – 12 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 595.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1127,6 +1173,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 60,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 1,
+     "session_type": "EASY"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1146,6 +1202,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -1170,6 +1227,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -1222,7 +1280,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 60,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -1277,7 +1335,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1557,6 +1615,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 67,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "TEMPO"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1569,13 +1637,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "TEMPO",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -1600,6 +1669,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -1650,13 +1720,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 2814.0,
+     "carbs_g": 490.0,
+     "duration_min": 67,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "TEMPO",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "INSUFFICIENT_DATA"
@@ -1707,7 +1777,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* TEMPO – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2092,7 +2162,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 48,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -2147,7 +2217,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2447,6 +2517,17 @@
      "step_number": 9
     },
     {
+     "action": "LOCK",
+     "duration_min": 132,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "locked_to": "PROGRESSIVE",
+     "logger": "titan.science.governance_engine",
+     "original_session": "LONG_RUN",
+     "phase": 4
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -2459,13 +2540,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "PROGRESSIVE",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_LOCK",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -2490,6 +2572,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_LOCK",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -2542,11 +2625,11 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 132,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "PROGRESSIVE",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "INSUFFICIENT_DATA"
@@ -2597,7 +2680,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* PROGRESSIVE – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2909,7 +2992,7 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "REST",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
@@ -3010,13 +3093,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 1986.0,
+     "carbs_g": 280.0,
+     "duration_min": 0,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 2400,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "REST",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -3063,11 +3146,33 @@
      "logger": "titan.orchestration.daily_coach",
      "outcome": "SUCCESS",
      "severity": "info"
+    },
+    {
+     "action": "plan_generation_started",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "severity": "info",
+     "tsb_status": "INSUFFICIENT DATA",
+     "tsb_value": null,
+     "weather_days": 0
+    },
+    {
+     "action": "plan_generated",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "quality_sessions": 2,
+     "recovery_days": 1,
+     "sessions": 7,
+     "severity": "info",
+     "weekly_km": 77
     }
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
+    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-09  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 63.4\n• TSB: INSUFFICIENT DATA\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
    ]
   },
   {
@@ -3377,6 +3482,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 60,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 1,
+     "session_type": "EASY"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -3396,6 +3511,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -3420,6 +3536,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -3502,7 +3619,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 60,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -3557,7 +3674,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -3877,6 +3994,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 66,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "INTERVALS"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -3889,13 +4016,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "INTERVALS",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -3920,6 +4048,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -4000,13 +4129,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 2979.0,
+     "carbs_g": 595.0,
+     "duration_min": 66,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "INTERVALS",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -4057,7 +4186,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 10, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 10, 2026\n\n🏃 *Today:* INTERVALS – 12 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 96/100\n\n🍽 *Nutrition:* 595.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -4575,7 +4704,7 @@
      "action": "daily_plan_calculated",
      "calories": 1986.0,
      "carbs_g": 280.0,
-     "duration_min": 45,
+     "duration_min": 60,
      "flow": "nutrition",
      "hydration_ml": 2400,
      "logger": "titan.features.nutrition_optimizer",
@@ -4630,7 +4759,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 42/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (24.700000000000003 vs 15.0, margin 9.7).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 42/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (24.700000000000003 vs 15.0, margin 9.7).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -4960,6 +5089,16 @@
      "step_number": 9
     },
     {
+     "action": "FLAG",
+     "duration_min": 67,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "logger": "titan.science.governance_engine",
+     "phase": 2,
+     "session_type": "TEMPO"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -4972,13 +5111,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "TEMPO",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -5003,6 +5143,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -5083,13 +5224,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 2814.0,
+     "carbs_g": 490.0,
+     "duration_min": 67,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "TEMPO",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -5140,7 +5281,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* TEMPO – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -5605,7 +5746,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 48,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -5660,7 +5801,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -6010,6 +6151,17 @@
      "step_number": 9
     },
     {
+     "action": "LOCK",
+     "duration_min": 132,
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "FUELING",
+     "locked_to": "PROGRESSIVE",
+     "logger": "titan.science.governance_engine",
+     "original_session": "LONG_RUN",
+     "phase": 4
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -6022,13 +6174,14 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "PROGRESSIVE",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_LOCK",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -6053,6 +6206,7 @@
      "flow": "daily_coach",
      "locks": [
       "INTENSITY_GATE_YELLOW",
+      "FUELING_GATE_LOCK",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -6135,11 +6289,11 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 45,
+     "duration_min": 132,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "PROGRESSIVE",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -6190,7 +6344,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* PROGRESSIVE – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -6552,7 +6706,7 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "EASY",
+     "final_session": "REST",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
@@ -6663,13 +6817,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
-     "duration_min": 45,
+     "calories": 1986.0,
+     "carbs_g": 280.0,
+     "duration_min": 0,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 2400,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "EASY",
+     "session_type": "REST",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -6716,11 +6870,33 @@
      "logger": "titan.orchestration.daily_coach",
      "outcome": "SUCCESS",
      "severity": "info"
+    },
+    {
+     "action": "plan_generation_started",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "severity": "info",
+     "tsb_status": "INSUFFICIENT DATA",
+     "tsb_value": null,
+     "weather_days": 0
+    },
+    {
+     "action": "plan_generated",
+     "flow": "weekly_planner",
+     "logger": "titan.features.weekly_planner",
+     "phase": "BUILD",
+     "quality_sessions": 2,
+     "recovery_days": 1,
+     "sessions": 7,
+     "severity": "info",
+     "weekly_km": 77
     }
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSunday, March 15, 2026\n\n🏃 *Today:* EASY – 8.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: 📉 DECLINING: HRV down -5.9%\n  • Sleep: 79/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSunday, March 15, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: 📉 DECLINING: HRV down -5.9%\n  • Sleep: 79/100\n  • Readiness: 95/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* INTENSITY_GATE_YELLOW\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
+    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-16  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 59.7\n• TSB: INSUFFICIENT DATA\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
    ]
   }
  ],
@@ -7035,8 +7211,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 95.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "REST",
+    "session_post_governance": "REST",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7052,7 +7228,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_LOCK\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7061,8 +7237,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 95.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "LONG_RUN",
+    "session_post_governance": "PROGRESSIVE",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7104,7 +7280,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7113,8 +7289,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 95.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "TEMPO",
+    "session_post_governance": "TEMPO",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7156,7 +7332,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7208,7 +7384,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7217,8 +7393,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 96.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "INTERVALS",
+    "session_post_governance": "INTERVALS",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7234,7 +7410,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7243,8 +7419,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "INTERVALS",
+    "session_post_governance": "INTERVALS",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7260,7 +7436,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_LOCK\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7269,8 +7445,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "LONG_RUN",
+    "session_post_governance": "PROGRESSIVE",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7286,7 +7462,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7321,8 +7497,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 96.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "REST",
+    "session_post_governance": "REST",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7338,7 +7514,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7347,8 +7523,8 @@
     "override_outcome_exclusion": 0,
     "phase": "BASE",
     "readiness_score": 100.0,
-    "session_planned": "EASY",
-    "session_post_governance": "EASY",
+    "session_planned": "TEMPO",
+    "session_post_governance": "TEMPO",
     "tsb_value": 0.0,
     "vlg_color": "GREEN"
    },
@@ -7364,7 +7540,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"INTENSITY_GATE_YELLOW\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -7568,6 +7744,26 @@
     "temperature_c": null,
     "training_load": 220,
     "zone_distribution": null
+   }
+  ],
+  "weekly_plans": [
+   {
+    "athlete_id": "owner",
+    "created_at": "2026-03-02T07:30:00+00:00",
+    "plan_json": "{\"week_start\": \"2026-03-03\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 0.0, \"tsb_status\": \"INSUFFICIENT DATA\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
+    "week_start": "2026-03-03"
+   },
+   {
+    "athlete_id": "owner",
+    "created_at": "2026-03-08T07:30:00+00:00",
+    "plan_json": "{\"week_start\": \"2026-03-09\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 63.4, \"tsb_status\": \"INSUFFICIENT DATA\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
+    "week_start": "2026-03-09"
+   },
+   {
+    "athlete_id": "owner",
+    "created_at": "2026-03-15T07:30:00+00:00",
+    "plan_json": "{\"week_start\": \"2026-03-16\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 59.7, \"tsb_status\": \"INSUFFICIENT DATA\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
+    "week_start": "2026-03-16"
    }
   ]
  }

@@ -44,7 +44,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 26, 2026-10-09
+# Authoritative column snapshot — SCHEMA_VERSION 27, 2026-10-09
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
@@ -276,6 +276,12 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "routine_type",
         "started_at",
         "completed_at",
+    ],
+    "weekly_plans": [  # v27 — D-020 (worker's Sunday weekly plan)
+        "athlete_id",
+        "week_start",
+        "plan_json",
+        "created_at",
     ],
 }
 
