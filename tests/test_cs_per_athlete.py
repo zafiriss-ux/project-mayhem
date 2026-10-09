@@ -62,3 +62,21 @@ def test_v28_migration_is_idempotent(db) -> None:
     db._apply_v28_migrations(cursor)
     names = [row[1] for row in db.conn.execute("PRAGMA table_info(cs_performances)")]
     assert names.count("athlete_id") == 1
+
+
+@pytest.mark.unit
+def test_stage2_writes_the_athlete_and_reads_stay_unchanged(db) -> None:
+    db.log_cs_performance("2026-03-01", 3000, 700.0)
+    db.log_cs_performance("2026-03-02", 5000, 1150.0, athlete_id="a1")
+    rows = db.conn.execute("SELECT date, athlete_id FROM cs_performances ORDER BY date").fetchall()
+    assert rows == [("2026-03-01", "owner"), ("2026-03-02", "a1")]
+    # AGENTS §13.4 Stage 2: reads are switched only in Stage 3.
+    assert db.get_cs_performances() == [("2026-03-02", 5000.0, 1150.0), ("2026-03-01", 3000.0, 700.0)]
+
+
+@pytest.mark.unit
+def test_sqlite_adapter_forwards_the_athlete(db) -> None:
+    from titan.core.persistence import SQLiteAdapter
+
+    SQLiteAdapter(manager=db).log_cs_performance("2026-03-03", 3000, 695.0, athlete_id="a2")
+    assert db.conn.execute("SELECT athlete_id FROM cs_performances").fetchall() == [("a2",)]

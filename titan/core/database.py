@@ -915,9 +915,13 @@ class DatabaseManager:
         time_sec: float,
         surface: str = 'ROAD',
         wind_adjusted: bool = False,
+        athlete_id: str = "owner",
     ) -> None:
         """Log a time-trial / race performance for CS/D' model calibration."""
-        self._training.log_cs_performance(date=date, distance_m=distance_m, time_sec=time_sec, surface=surface, wind_adjusted=wind_adjusted)
+        self._training.log_cs_performance(
+            date=date, distance_m=distance_m, time_sec=time_sec, surface=surface,
+            wind_adjusted=wind_adjusted, athlete_id=athlete_id,
+        )
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
         """Retrieve most recent CS calibration performances."""
