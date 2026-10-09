@@ -91,3 +91,32 @@ def test_exe_is_built_with_a_console_window() -> None:
     settings = [line.split("#")[0].strip() for line in spec.splitlines() if line.strip().startswith("console=")]
 
     assert settings == ["console=True,"]
+
+
+def test_a_failing_log_handler_does_not_loop_through_the_tee(monkeypatch: pytest.MonkeyPatch) -> None:
+    """5.8.1 grew memory without bound: a cp1253 handler failed on the banner, its error
+    report went to stderr (a tee), was logged again, failed again, nesting each report."""
+    log = logging.getLogger("tee_loop_test")
+    log.propagate = False
+    log.setLevel(logging.INFO)
+    calls = []
+
+    class FailingHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            calls.append(record.getMessage())
+            try:
+                "╔══ 🏃".encode("cp1253")
+            except UnicodeEncodeError:
+                self.handleError(record)
+
+    handler = FailingHandler()
+    log.addHandler(handler)
+    monkeypatch.setattr(logging, "raiseExceptions", True)
+    monkeypatch.setattr(sys, "stdout", launcher_logger.TeeStream(None, log))
+    monkeypatch.setattr(sys, "stderr", launcher_logger.TeeStream(None, log))
+    try:
+        print("╔══ 🏃 banner ══╗")
+    finally:
+        log.removeHandler(handler)
+
+    assert calls == ["╔══ 🏃 banner ══╗"]
