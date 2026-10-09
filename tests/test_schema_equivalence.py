@@ -44,7 +44,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 27, 2026-10-09
+# Authoritative column snapshot — SCHEMA_VERSION 28, 2026-10-09
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
@@ -124,6 +124,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "time_sec",
         "surface",
         "wind_adjusted",
+        "athlete_id",  # v28 — CS per athlete (D-028)
     ],
     "daily_metrics": [
         "id",
