@@ -3030,3 +3030,20 @@ def test_clamp_keeps_short_sessions_and_missing_distance():
     assert daily_coach._clamp_to_easy_45({"session_type": "LONG", "duration_min": 90}) == {
         "session_type": "EASY", "duration_min": 45,
     }
+
+
+@pytest.mark.unit
+def test_rest_from_a_gate_has_no_distance_or_duration():
+    """'REST – 10 km' (task 5 finding): a gate's REST keeps no planned volume."""
+    session = {"session_type": "REST", "duration_min": 60, "distance_km": 10, "max_zone": 1}
+    assert daily_coach._rest_without_volume(session) == {
+        "session_type": "REST", "duration_min": 0, "distance_km": 0, "max_zone": 1,
+    }
+    assert session["distance_km"] == 10  # the planned session is not mutated
+    assert daily_coach._rest_without_volume({"session_type": "rest", "distance_km": 5})["distance_km"] == 0
+
+
+@pytest.mark.unit
+def test_non_rest_sessions_keep_their_volume():
+    easy = {"session_type": "EASY", "duration_min": 45, "distance_km": 8.0}
+    assert daily_coach._rest_without_volume(easy) is easy
