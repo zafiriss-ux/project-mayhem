@@ -1,50 +1,92 @@
 name: CodeQL
 on:
-  # push and pull_request triggers disabled — GitHub default CodeQL setup is
-  # active on this repo and conflicts with advanced configuration at SARIF
-  # upload time ("cannot be processed when the default setup is enabled").
-  # Weekly scheduled scan retained for security coverage.
-  # Code scanning (SARIF upload) is not available on this private repository
-  # without a paid plan, so every upload failed and the run went red. Results
-  # are kept as a workflow artifact instead (upload: never).
-  # To re-enable: disable default setup in repo Settings → Code security.
+  # Advanced CodeQL setup (D-022). Keep GitHub "default setup" OFF in
+  # Settings → Code security: when both are on, the SARIF upload is refused
+  # ("cannot be processed when the default setup is enabled").
+  # Upload to code scanning only while the repository is public: code scanning
+  # is free there, but on a private repository on the Free plan every upload
+  # fails. While private, results stay a workflow artifact and a log summary.
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   schedule:
     - cron: '0 3 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   analyze:
-    name: Analyze
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       actions: read
       contents: read
+      security-events: write
 
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'python' ]
+        language: [ 'python', 'actions' ]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v7
+      with:
+        persist-credentials: false
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
-
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v4
+        build-mode: none
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
       with:
-        upload: never
+        category: "/language:${{ matrix.language }}"
+        upload: ${{ github.event.repository.private && 'never' || 'always' }}
         output: codeql-results
 
+    - name: List findings in the log and the job summary
+      if: always()
+      run: |
+        python3 - <<'PY'
+        import glob, json, os
+        rows = []
+        for path in glob.glob("codeql-results/*.sarif"):
+            with open(path, encoding="utf-8") as fh:
+                sarif = json.load(fh)
+            for run in sarif.get("runs", []):
+                for res in run.get("results", []):
+                    loc = res["locations"][0]["physicalLocation"]
+                    line = loc.get("region", {}).get("startLine", "?")
+                    rows.append((res.get("ruleId", "?"), res.get("level", "warning"),
+                                 f'{loc["artifactLocation"]["uri"]}:{line}',
+                                 res["message"]["text"].splitlines()[0][:160]))
+        rows.sort()
+        print(f"CodeQL findings: {len(rows)}")
+        for row in rows:
+            print(" | ".join(row))
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a", encoding="utf-8") as out:
+                out.write(f"### CodeQL findings: {len(rows)}\n\n")
+                if rows:
+                    out.write("| Rule | Level | Location | Message |\n|---|---|---|---|\n")
+                    for row in rows:
+                        out.write("| " + " | ".join(c.replace("|", "\\|") for c in row) + " |\n")
+        PY
+
     - name: Keep SARIF results as an artifact
+      if: always()
       uses: actions/upload-artifact@v7
       with:
         name: codeql-sarif-${{ matrix.language }}

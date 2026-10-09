@@ -170,11 +170,13 @@ jobs:
           fetch-depth: 0
 
       - name: Enforce governance_engine architecture lock
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
           # TD-CI-02: check ALL commits in the push, not just HEAD.
           # github.event.before is the SHA before the push; fall back to HEAD~1
           # for single-commit pushes or branch-creation events.
-          BEFORE="${{ github.event.before }}"
+          BEFORE="${PUSH_BEFORE}"
           if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             BEFORE="$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)"
           fi
