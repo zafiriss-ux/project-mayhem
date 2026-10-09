@@ -5,6 +5,16 @@ import pytest
 from launcher import wizard
 
 
+def _unset_env(monkeypatch, name: str) -> None:
+    """Remove ``name`` for this test and restore its state after.
+
+    load_env_to_os writes os.environ directly; monkeypatch.delenv on an absent
+    name records nothing, so a value set by the code under test would leak.
+    """
+    monkeypatch.setenv(name, "")
+    monkeypatch.delenv(name)
+
+
 def _set_env_path(monkeypatch, tmp_path: Path) -> Path:
     env_path = tmp_path / ".env"
     monkeypatch.setattr(wizard, "get_env_path", lambda: env_path)
@@ -61,6 +71,7 @@ def test_console_wizard_writes_garmin_email(monkeypatch) -> None:
 def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_ENV_FILE")
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
     monkeypatch.setattr(launcher_main, "load_env", lambda: {"GARMIN_USERNAME": "legacy@example.com"})
 
@@ -76,6 +87,7 @@ def test_load_env_to_os_maps_legacy_garmin_username(monkeypatch) -> None:
 def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     import launcher.main as launcher_main
 
+    _unset_env(monkeypatch, "TITAN_ENV_FILE")
     monkeypatch.setattr(
         launcher_main,
         "load_env",
@@ -89,3 +101,36 @@ def test_load_env_to_os_keeps_explicit_garmin_email(monkeypatch) -> None:
     assert os.environ["GARMIN_EMAIL"] == "new@example.com"
     monkeypatch.delenv("GARMIN_USERNAME", raising=False)
     monkeypatch.delenv("GARMIN_EMAIL", raising=False)
+
+
+def test_load_env_to_os_points_the_kernel_at_the_data_folder_env(monkeypatch, tmp_path: Path) -> None:
+    """TITAN.exe: the profile editor must write the launcher's .env, not one in the temp unpack folder."""
+    import os
+
+    import launcher.main as launcher_main
+
+    _unset_env(monkeypatch, "TITAN_ENV_FILE")
+    monkeypatch.setattr(launcher_main, "load_env", dict)
+    monkeypatch.setattr(launcher_main, "get_env_path", lambda: tmp_path / ".env")
+
+    launcher_main.load_env_to_os()
+
+    assert os.environ["TITAN_ENV_FILE"] == str(tmp_path / ".env")
+
+
+def test_kernel_env_path_follows_titan_env_file(tmp_path: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    env_file = tmp_path / "data" / ".env"
+    result = subprocess.run(
+        [sys.executable, "-c", "from titan.ui.setup_wizard import ENV_PATH; print(ENV_PATH)"],
+        env={**os.environ, "TITAN_ENV_FILE": str(env_file)},
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=Path(__file__).resolve().parents[2],
+    )
+
+    assert result.stdout.strip() == str(env_file)

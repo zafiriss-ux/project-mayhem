@@ -29,7 +29,7 @@ from launcher import __version__
 from launcher.errors import TitanError, translate_kernel_error
 from launcher.logger import init_launcher_logging
 from launcher.validator import get_data_directory, validate_environment
-from launcher.wizard import ensure_config, env_exists, load_env
+from launcher.wizard import ensure_config, env_exists, get_env_path, load_env
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Argument Redaction
@@ -94,6 +94,8 @@ def load_env_to_os():
         env_vars["GARMIN_EMAIL"] = env_vars["GARMIN_USERNAME"]
     for key, value in env_vars.items():
         os.environ[key] = value
+    # The kernel's profile editor and setup wizard write this same file.
+    os.environ["TITAN_ENV_FILE"] = str(get_env_path())
     if env_vars:
         print(f"✓ Loaded {len(env_vars)} configuration variables.\n")
 
