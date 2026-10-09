@@ -272,7 +272,7 @@ python -m pytest --no-cov -q     # όλα τα τεστ (φάκελος tests/)
 bash scripts/titan_ci.sh         # το πλήρες CI τοπικά (gates G1–G6)
 ```
 
-Κανόνες συνεισφοράς και governance: [`AGENTS.md`](AGENTS.md), [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). Πρόοδος του refactor: [`PROGRESS.md`](PROGRESS.md).
+Κανόνες συνεισφοράς και governance: [`AGENTS.md`](AGENTS.md), [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md). Πρόοδος του refactor: [`PROGRESS.md`](PROGRESS.md). Αλλαγές ανά PR: [`CHANGELOG.md`](CHANGELOG.md). Τεχνικές αποφάσεις: [`DECISIONS.md`](DECISIONS.md).
 
 ## 📚 Επιστημονική Τεκμηρίωση
 
