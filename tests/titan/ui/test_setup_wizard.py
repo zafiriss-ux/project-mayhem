@@ -130,6 +130,7 @@ def test_save_credentials_defaults_to_env_backend(monkeypatch):
 
     messages = []
     monkeypatch.setattr(setup_wizard._log, "info", lambda message: messages.append(json.loads(message)))
+    monkeypatch.setattr("builtins.input", lambda _prompt="": "ναι")
 
     backend = setup_wizard._save_credentials(creds)
 
@@ -197,6 +198,7 @@ def test_save_credentials_falls_back_to_env_when_keyring_import_fails(monkeypatc
     saved_env = {}
     monkeypatch.setattr(setup_wizard, "_save_env", lambda data: saved_env.update(data))
 
+    monkeypatch.setattr(setup_wizard, "_confirm_plaintext_env", lambda: True)
     backend = setup_wizard._save_credentials(creds)
 
     # CP-03: all creds are saved to .env when keyring is unavailable (import fails)
@@ -303,3 +305,24 @@ def test_q5_empty_input_defaults_to_male(monkeypatch):
     creds = _run_wizard_capturing(monkeypatch, _make_answers(""))
     assert creds["ATHLETE_BIOLOGICAL_SEX"] == "male"
     assert creds["ATHLETE_MENSTRUAL_TRACKING"] == "no"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("answer", ["", "ο", "όχι", "n", "no"])
+def test_save_credentials_without_keyring_keeps_secrets_out_of_env_unless_confirmed(monkeypatch, answer):
+    """D-023 / CodeQL #22: plaintext secrets in .env only after an explicit yes."""
+    monkeypatch.delenv(setup_wizard.KEYRING_ENV_FLAG, raising=False)
+    monkeypatch.setattr("builtins.input", lambda _prompt="": answer)
+    saved_env = {}
+    monkeypatch.setattr(setup_wizard, "_save_env", lambda data: saved_env.update(data))
+
+    creds = {
+        "GARMIN_EMAIL": "athlete@example.com",
+        "GARMIN_PASSWORD": "secret",
+        "TELEGRAM_BOT_TOKEN": "123456789:ABCDEFGHIJKLMNOP",
+        "TELEGRAM_CHAT_ID": "123",
+    }
+    backend = setup_wizard._save_credentials(creds)
+
+    assert backend == "secrets_not_saved"
+    assert saved_env == {"TELEGRAM_CHAT_ID": "123"}
