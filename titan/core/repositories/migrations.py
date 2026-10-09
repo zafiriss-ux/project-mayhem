@@ -1,4 +1,4 @@
-"""Schema migrations: additive steps v1–v27 guarded by ``PRAGMA user_version``,
+"""Schema migrations: additive steps v1–v28 guarded by ``PRAGMA user_version``,
 and the owner rows a new database starts with.
 
 ``SCHEMA_VERSION`` stays in ``titan.core.database``; base tables come from
@@ -211,6 +211,11 @@ class SchemaMigrations:
                 "weekly_plans",
                 "weekly plan the worker builds every Sunday, one row per athlete and week (D-020)",
                 None,  # DDL — see _apply_v27_migrations() below
+            ),
+            28: (
+                "cs_performances",
+                "athlete_id column (DEFAULT 'owner'): CS per athlete, AGENTS §13.4 Stage 1 (D-012, D-028)",
+                None,  # DDL — see _apply_v28_migrations() below
             ),
         }
 
@@ -523,6 +528,15 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 27,
                 "table_created": "weekly_plans (D-020)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 28:
+            self._db._apply_v28_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 28,
+                "changes": "cs_performances athlete_id (D-012, D-028)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1199,3 +1213,18 @@ class SchemaMigrations:
                 PRIMARY KEY (athlete_id, week_start)
             )
         """)
+
+    def _apply_v28_migrations(self, cursor) -> None:
+        """Version 28: cs_performances.athlete_id (D-012, D-028), AGENTS §13.4 Stage 1.
+
+        Additive column with DEFAULT 'owner' (AGENTS §13.3): existing rows belong
+        to the owner. New databases already get the column from the schema
+        descriptor, so a duplicate column is expected there.
+        """
+        try:
+            cursor.execute(
+                "ALTER TABLE cs_performances ADD COLUMN athlete_id TEXT NOT NULL DEFAULT 'owner'"
+            )
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e).lower():
+                raise

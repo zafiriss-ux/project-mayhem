@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3353 tests all green (3353 passed, 6 skipped, 3359 collected — 2026-10-09, full pytest)
+**Historical snapshot:** 3356 tests all green (3356 passed, 6 skipped, 3362 collected — 2026-10-09, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -134,7 +134,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## Schema
 
-SCHEMA_VERSION 27, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete).
+SCHEMA_VERSION 28, `_apply_v*_migrations`. `athlete_id='owner'` (single-athlete).
 
 ## Phases 19–26 (CLOSED)
 

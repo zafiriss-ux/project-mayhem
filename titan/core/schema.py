@@ -382,6 +382,7 @@ t_cs_performances = Table(
     Column("time_sec", Float, nullable=False),
     Column("surface", String, server_default="ROAD"),
     Column("wind_adjusted", Integer, server_default="0"),
+    Column("athlete_id", String, nullable=False, server_default="owner"),  # v28 (D-028)
 )
 
 # Table 15 — override_log (governance discipline audit)
