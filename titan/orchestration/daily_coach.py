@@ -254,6 +254,17 @@ def _clamp_to_easy_45(session: dict) -> dict:
     return capped
 
 
+def _rest_without_volume(session: dict) -> dict:
+    """REST means no distance and no duration, like a REST day from the weekly plan.
+
+    The governance gates turn a session into REST but keep the planned distance,
+    so the morning message could say "REST – 10 km".
+    """
+    if str(session.get("session_type", "")).upper() != "REST":
+        return session
+    return {**session, "distance_km": 0, "duration_min": 0}
+
+
 def _cap_session_for_invalid_trust(
     session: dict,
     *,
@@ -1317,6 +1328,7 @@ class DailyCoach:
             session_plan=today_session,
             context=context_payload,
         ))
+        today_session = _rest_without_volume(today_session)
         if today_session.get('governance_locks_applied'):
             _daily_coach_event(
                 "governance_locks_applied",
