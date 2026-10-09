@@ -65,7 +65,7 @@ class DummyDB:
     def get_hrr_history(self, days: int = 28, athlete_id: str = "owner"):
         return []
 
-    def get_cs_performances(self, limit: int = 10):
+    def get_cs_performances(self, limit: int = 10, athlete_id: str = "owner"):
         return []
 
     def record_sync_outcome(self, **kwargs):
@@ -1474,9 +1474,10 @@ def test_run_morning_routine_telegram_exception_raises_delivery_error_event(monk
     )
 
 
-def _make_hydration_coach(db):
+def _make_hydration_coach(db, athlete_id="owner"):
     coach = DailyCoach.__new__(DailyCoach)
     coach.db = db
+    coach.athlete_id = athlete_id
     coach._routine_mutex = threading.Lock()
     coach.hrv = SimpleNamespace(hrv_log=[], add_hrv_measurement=lambda *_: None, check_baseline_drift=lambda **k: False)
     coach.nutrition = SimpleNamespace(add_weight_entry=lambda *_: None)
@@ -1506,7 +1507,8 @@ class _HydrationDB:
     def get_hrr_history(self, days=28, athlete_id="owner"):
         return self._hrr
 
-    def get_cs_performances(self, limit=10):
+    def get_cs_performances(self, limit=10, athlete_id="owner"):
+        self.cs_athlete_id = athlete_id
         return self._cs
 
 
@@ -1562,7 +1564,15 @@ def test_hydrate_engines_from_db_updates_cs_tracker_when_two_performances_exist(
 
     assert confidence["cs"] is True
     assert cs_updates == [("2026-03-05", 4.1, 250.0)]
+    assert coach.db.cs_athlete_id == "owner"
     assert any(event["action"] == "cs_hydrated" and event["performances"] == 2 for event in events)
+
+
+@pytest.mark.unit
+def test_hydrate_engines_from_db_reads_the_coachs_own_cs_performances():
+    db = _HydrationDB()
+    _make_hydration_coach(db, athlete_id="a1")._hydrate_engines_from_db()
+    assert db.cs_athlete_id == "a1"
 
 
 @pytest.mark.unit

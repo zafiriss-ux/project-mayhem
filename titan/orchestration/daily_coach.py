@@ -1944,7 +1944,7 @@ class DailyCoach:
         # 5. CS performances → CriticalSpeedTracker
         try:
             from titan.science.critical_speed import CriticalSpeedEngine
-            perfs = self.db.get_cs_performances(limit=10)
+            perfs = self.db.get_cs_performances(limit=10, athlete_id=self.athlete_id)
             confidence["cs"] = bool(perfs)
             if len(perfs) >= 2:
                 dist_time = [(dist, t) for _, dist, t in perfs]

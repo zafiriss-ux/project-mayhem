@@ -302,9 +302,9 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_cs_performances(
-        self, limit: int = 10
+        self, limit: int = 10, athlete_id: str = "owner"
     ) -> list[tuple[str, float, float]]:
-        """Return [(date_iso, critical_speed, w_prime), ...] newest-first."""
+        """Return the athlete's [(date_iso, distance_m, time_sec), ...] newest-first."""
 
     # ------------------------------------------------------------------ #
     # Override log                                                         #
@@ -549,8 +549,10 @@ class SQLiteAdapter(PersistenceAdapter):
             athlete_id=athlete_id,
         )
 
-    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
-        return self._manager.get_cs_performances(limit=limit)
+    def get_cs_performances(
+        self, limit: int = 10, athlete_id: str = "owner"
+    ) -> list[tuple[str, float, float]]:
+        return self._manager.get_cs_performances(limit=limit, athlete_id=athlete_id)
 
     def log_override(
         self,
@@ -1046,8 +1048,10 @@ class PostgreSQLAdapter(PersistenceAdapter):
     ) -> None:
         del date, distance_m, time_sec, surface, wind_adjusted, athlete_id
 
-    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
-        del limit
+    def get_cs_performances(
+        self, limit: int = 10, athlete_id: str = "owner"
+    ) -> list[tuple[str, float, float]]:
+        del limit, athlete_id
         return []
 
     def log_override(
