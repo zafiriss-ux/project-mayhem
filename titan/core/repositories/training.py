@@ -188,6 +188,7 @@ class TrainingRepository:
         time_sec: float,
         surface: str = 'ROAD',
         wind_adjusted: bool = False,
+        athlete_id: str = "owner",
     ) -> None:
         """
         Log a time-trial / race performance for CS/D' model calibration.
@@ -198,15 +199,16 @@ class TrainingRepository:
             time_sec:     Elapsed time in seconds
             surface:      ROAD / TRACK / TRAIL
             wind_adjusted: True if pace was corrected for wind
+            athlete_id:   Athlete the performance belongs to (v28, D-037)
         """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """INSERT INTO cs_performances
-                   (date, distance_m, time_sec, surface, wind_adjusted)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (date, distance_m, time_sec, surface, int(wind_adjusted)),
+                   (date, distance_m, time_sec, surface, wind_adjusted, athlete_id)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (date, distance_m, time_sec, surface, int(wind_adjusted), athlete_id),
             )
             self._db.conn.commit()
 

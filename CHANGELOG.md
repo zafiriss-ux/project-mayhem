@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #975 (2026-10-09) feat(db): το log_cs_performance γράφει τον αθλητή (εργασία 11, στάδιο 2)
 - #974 (2026-10-09) feat(db): στήλη athlete_id στο cs_performances, σχήμα v28 (εργασία 11, στάδιο 1)
 - #973 (2026-10-09) refactor: ό,τι SQL έμενε στο database.py πάει στα repositories (εργασία 10)
 - #972 (2026-10-09) refactor: το thread της πρωινής ρουτίνας βγαίνει από το DailyCoach (εργασία 9, ADR-0058 Phase C)

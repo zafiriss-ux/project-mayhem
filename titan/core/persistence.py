@@ -296,8 +296,9 @@ class PersistenceAdapter(ABC):
         time_sec: float,
         surface: str = "ROAD",
         wind_adjusted: bool = False,
+        athlete_id: str = "owner",
     ) -> None:
-        """Persist a critical-speed calibration performance."""
+        """Persist a critical-speed calibration performance for *athlete_id*."""
 
     @abstractmethod
     def get_cs_performances(
@@ -537,6 +538,7 @@ class SQLiteAdapter(PersistenceAdapter):
         time_sec: float,
         surface: str = "ROAD",
         wind_adjusted: bool = False,
+        athlete_id: str = "owner",
     ) -> None:
         self._manager.log_cs_performance(
             date=date,
@@ -544,6 +546,7 @@ class SQLiteAdapter(PersistenceAdapter):
             time_sec=time_sec,
             surface=surface,
             wind_adjusted=wind_adjusted,
+            athlete_id=athlete_id,
         )
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
@@ -1039,8 +1042,9 @@ class PostgreSQLAdapter(PersistenceAdapter):
         time_sec: float,
         surface: str = "ROAD",
         wind_adjusted: bool = False,
+        athlete_id: str = "owner",
     ) -> None:
-        del date, distance_m, time_sec, surface, wind_adjusted
+        del date, distance_m, time_sec, surface, wind_adjusted, athlete_id
 
     def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
         del limit
