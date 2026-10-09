@@ -212,9 +212,11 @@ class TrainingRepository:
             )
             self._db.conn.commit()
 
-    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
+    def get_cs_performances(
+        self, limit: int = 10, athlete_id: str = "owner"
+    ) -> list[tuple[str, float, float]]:
         """
-        Retrieve most recent CS calibration performances.
+        Retrieve the athlete's most recent CS calibration performances.
 
         Returns:
             List of (date, distance_m, time_sec) tuples, ordered DESC.
@@ -224,8 +226,9 @@ class TrainingRepository:
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """SELECT date, distance_m, time_sec FROM cs_performances
+                   WHERE athlete_id = ?
                    ORDER BY date DESC LIMIT ?""",
-                (limit,),
+                (athlete_id, limit),
             )
             return cursor.fetchall()
 

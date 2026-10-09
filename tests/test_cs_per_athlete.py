@@ -1,4 +1,4 @@
-"""Plan task 11 (D-012, D-028), AGENTS §13.4 Stage 1: cs_performances gets athlete_id (v28)."""
+"""Plan task 11 (D-012, D-028, D-037): CS performances are stored and read per athlete (v28)."""
 
 from __future__ import annotations
 
@@ -65,13 +65,12 @@ def test_v28_migration_is_idempotent(db) -> None:
 
 
 @pytest.mark.unit
-def test_stage2_writes_the_athlete_and_reads_stay_unchanged(db) -> None:
+def test_writes_keep_the_athlete(db) -> None:
     db.log_cs_performance("2026-03-01", 3000, 700.0)
     db.log_cs_performance("2026-03-02", 5000, 1150.0, athlete_id="a1")
     rows = db.conn.execute("SELECT date, athlete_id FROM cs_performances ORDER BY date").fetchall()
     assert rows == [("2026-03-01", "owner"), ("2026-03-02", "a1")]
-    # AGENTS §13.4 Stage 2: reads are switched only in Stage 3.
-    assert db.get_cs_performances() == [("2026-03-02", 5000.0, 1150.0), ("2026-03-01", 3000.0, 700.0)]
+    assert db.get_cs_performances() == [("2026-03-01", 3000.0, 700.0)]
 
 
 @pytest.mark.unit
@@ -80,3 +79,18 @@ def test_sqlite_adapter_forwards_the_athlete(db) -> None:
 
     SQLiteAdapter(manager=db).log_cs_performance("2026-03-03", 3000, 695.0, athlete_id="a2")
     assert db.conn.execute("SELECT athlete_id FROM cs_performances").fetchall() == [("a2",)]
+
+
+@pytest.mark.unit
+def test_stage3_each_athlete_reads_only_its_own_cs_performances(db) -> None:
+    db.log_cs_performance("2026-03-01", 3000, 700.0)
+    db.log_cs_performance("2026-03-02", 5000, 1150.0, athlete_id="a1")
+    db.log_cs_performance("2026-03-05", 3000, 690.0, athlete_id="a1")
+
+    assert db.get_cs_performances() == [("2026-03-01", 3000.0, 700.0)]
+    assert db.get_cs_performances(athlete_id="a1") == [
+        ("2026-03-05", 3000.0, 690.0),
+        ("2026-03-02", 5000.0, 1150.0),
+    ]
+    assert db.get_cs_performances(limit=1, athlete_id="a1") == [("2026-03-05", 3000.0, 690.0)]
+    assert db.get_cs_performances(athlete_id="nobody") == []

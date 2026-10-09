@@ -923,9 +923,11 @@ class DatabaseManager:
             wind_adjusted=wind_adjusted, athlete_id=athlete_id,
         )
 
-    def get_cs_performances(self, limit: int = 10) -> list[tuple[str, float, float]]:
-        """Retrieve most recent CS calibration performances."""
-        return self._training.get_cs_performances(limit=limit)
+    def get_cs_performances(
+        self, limit: int = 10, athlete_id: str = "owner"
+    ) -> list[tuple[str, float, float]]:
+        """Retrieve the athlete's most recent CS calibration performances."""
+        return self._training.get_cs_performances(limit=limit, athlete_id=athlete_id)
 
     # --- OVERRIDE AUDIT LOG (titan/core/repositories/governance.py) ---
 
