@@ -356,9 +356,10 @@ class WeeklyPlanGenerator:
                 "day": days[5],
                 "session_type": "REST",
                 "distance_km": 0,
-                "details": "Rest before race",
+                "details": "Complete rest",
             },
-            {"day": days[6], "session_type": "RACE", "distance_km": 42.195, "details": "RACE DAY!"},
+            # SV-13 / D-061: no race date is known, so the week ends with an easy run, not a marathon.
+            {"day": days[6], "session_type": "EASY", "distance_km": 8, "details": "Easy aerobic run"},
         ]
 
     def _apply_hrv_adjustments(self, structure: list[dict], hrv_summary: dict) -> list[dict]:
