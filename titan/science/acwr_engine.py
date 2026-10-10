@@ -1,5 +1,7 @@
 """ACWR Engine - Injury Prevention via Workload Monitoring"""
 
+from datetime import date, timedelta
+
 from titan.config.thresholds import (
     ACWR_DETRAINING_RISK_MAX,
     ACWR_HIGH_RISK_MAX,
@@ -32,6 +34,24 @@ class ACWREngine:
         if acwr <= ACWR_MODERATE_RISK_MAX:
             return round(acwr, 2), "⚠️ MODERATE RISK", "Monitor fatigue"
         return round(acwr, 2), "🛑 HIGH INJURY RISK", "REDUCE LOAD (2-4x risk)"
+
+    @staticmethod
+    def from_daily_loads(loads: list[tuple[str, float]], today: date) -> float | None:
+        """ACWR from ``(YYYY-MM-DD, load)`` rows, for a decision made on ``today``.
+
+        Acute is the load of the 7 completed days before today; chronic is the daily mean
+        of the 28 completed days before today. Today's load is left out: the session it
+        decides has not happened yet. Days without a row count as zero load. Returns None
+        (ADR-0051) when the history does not reach back to the start of the chronic window.
+        """
+        days = [(date.fromisoformat(str(d)[:10]), float(load or 0.0)) for d, load in loads]
+        chronic_start = today - timedelta(days=28)
+        if not days or min(d for d, _ in days) > chronic_start:
+            return None
+        acute_start = today - timedelta(days=7)
+        acute = sum(load for d, load in days if acute_start <= d < today)
+        chronic = sum(load for d, load in days if chronic_start <= d < today) / 28
+        return ACWREngine.calculate_acwr(acute, chronic)[0]
 
     @staticmethod
     def weekly_load_recommendation(chronic_avg: float, target: float = 1.2) -> float:

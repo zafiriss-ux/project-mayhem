@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 import pytest
 
 from titan.config import thresholds
@@ -51,3 +53,40 @@ def test_injury_risk_score_uses_high_risk_threshold_from_thresholds_module() -> 
 
     assert score == 8
     assert label == "High (2-3x risk)"
+
+
+# SV-01, D-044: the ACWR the morning routine uses, from stored daily loads.
+
+def _loads(start: date, days: int, load: float = 50.0) -> list[tuple[str, float]]:
+    return [((start + timedelta(days=i)).isoformat(), load) for i in range(days)]
+
+
+def test_from_daily_loads_is_one_for_a_steady_load() -> None:
+    today = date(2026, 3, 28)
+    assert ACWREngine.from_daily_loads(_loads(today - timedelta(days=42), 42), today) == 1.0
+
+
+def test_from_daily_loads_leaves_out_today() -> None:
+    """The session being decided has not happened; a run already logged today is not acute load."""
+    today = date(2026, 3, 28)
+    rows = _loads(today - timedelta(days=42), 42) + [(today.isoformat(), 500.0)]
+    assert ACWREngine.from_daily_loads(rows, today) == 1.0
+
+
+def test_from_daily_loads_counts_missing_days_as_rest() -> None:
+    today = date(2026, 3, 28)
+    rows = _loads(today - timedelta(days=28), 21)  # nothing in the last 7 days
+    assert ACWREngine.from_daily_loads(rows, today) == 0.0
+
+
+def test_from_daily_loads_spike() -> None:
+    today = date(2026, 3, 28)
+    rows = _loads(today - timedelta(days=28), 21) + _loads(today - timedelta(days=7), 7, 150.0)
+    # acute 1050; chronic (21*50 + 7*150) / 28 = 75 a day, 525 a week
+    assert ACWREngine.from_daily_loads(rows, today) == 2.0
+
+
+def test_from_daily_loads_without_a_full_chronic_window_is_none() -> None:
+    today = date(2026, 3, 28)
+    assert ACWREngine.from_daily_loads(_loads(today - timedelta(days=27), 27), today) is None
+    assert ACWREngine.from_daily_loads([], today) is None

@@ -71,6 +71,7 @@ from titan.orchestration.garmin_persistence import (  # noqa: F401 — re-export
     _safe_int,
     persist_garmin_data,
 )
+from titan.science.acwr_engine import ACWREngine
 from titan.science.data_trust import (
     DataTrustLevel,
     combine_trust_reports,
@@ -1067,6 +1068,7 @@ class DailyCoach:
 
         # ── Step 7.5: Intensity governor (graduated YELLOW/RED gate) ─────────
         ig = self.intensity_governor
+        acwr = self._acwr_from_history()
 
         today_session, esi_level, esi_pace_adjustment_sec_per_km = self._step_today_session(garmin_data)
 
@@ -1076,7 +1078,7 @@ class DailyCoach:
 
             'fatigue_level': fatigue_level,
 
-            'acwr': garmin_data.get('acwr'),
+            'acwr': acwr,
             'readiness_score': readiness.get('score'),
             'planned_session': today_session.get('session_type', 'EASY'),
             'planned_volume_pct': today_session.get('volume_pct'),
@@ -1085,8 +1087,8 @@ class DailyCoach:
         # ── Step 9: Feed activities into load engines ─────────────────────
         self._feed_load_engines(garmin_data.get('activities', []))
 
-        acwr, tsb_for_vlg, vlg_state, phase, apl_result = self._step_load_priority(
-            garmin_data=garmin_data,
+        tsb_for_vlg, vlg_state, phase, apl_result = self._step_load_priority(
+            acwr=acwr,
             tsb_value=tsb_value,
             afi_constraints=afi_constraints,
             today_session=today_session,
@@ -1246,19 +1248,18 @@ class DailyCoach:
     def _step_load_priority(
         self,
         *,
-        garmin_data: GarminSyncResult,
+        acwr: float | None,
         tsb_value: float,
         afi_constraints: dict,
         today_session: TodaySessionPlan,
-    ) -> tuple[Any, float, Any, str, dict]:
-        """Returns (acwr, tsb_for_vlg, vlg_state, phase, apl_result).
+    ) -> tuple[float, Any, str, dict]:
+        """Returns (tsb_for_vlg, vlg_state, phase, apl_result).
 
         Aggregate the three load signals into a unified VLGState, then let
         the APL resolve phase-aware gate ordering and adaptive thresholds.
         Both results are injected into the governance context so that
         GovernanceEngine reads them without any gate logic being altered.
         """
-        acwr = garmin_data.get('acwr')
         tsb_for_vlg = _safe_float(tsb_value, 0.0)
         vlg_state = self.vlg.resolve(
             tsb_value    = tsb_for_vlg,
@@ -1279,7 +1280,7 @@ class DailyCoach:
             phase          = phase,
             cs_confidence  = _safe_float(getattr(self.cs_tracker, 'confidence', 0.0), 0.0),
         )
-        return acwr, tsb_for_vlg, vlg_state, phase, apl_result
+        return tsb_for_vlg, vlg_state, phase, apl_result
 
     # ── Step 9b: Governance hard gates ───────────────────────────────────────
     def _step_governance(
@@ -1827,6 +1828,25 @@ class DailyCoach:
             missed_nights = 0
         for _ in range(max(0, missed_nights)):
             self.glycogen.overnight_resynthesis()
+
+    def _acwr_from_history(self) -> float | None:
+        """ACWR from the stored training loads (SV-01); None when history is short.
+
+        Garmin's sync never returns an ACWR, so every ACWR gate saw None.
+        """
+        try:
+            loads = self.db.get_training_load_history(
+                days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+            )
+            acwr = ACWREngine.from_daily_loads(loads, datetime.now(UTC).date())
+        except Exception as e:
+            _log.exception("ACWR from training history failed: %s", e)
+            _daily_coach_event(
+                "acwr_failed", error_class=type(e).__name__, error_message=str(e),
+            )
+            return None
+        _daily_coach_event("acwr_computed", acwr=acwr)
+        return acwr
 
     def _get_recent_trimp(self, activities: list[dict], since_date: str | None = None) -> float:
         """
