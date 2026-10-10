@@ -36,8 +36,10 @@ class ACWREngine:
         return round(acwr, 2), "🛑 HIGH INJURY RISK", "REDUCE LOAD (2-4x risk)"
 
     @staticmethod
-    def from_daily_loads(loads: list[tuple[str, float]], today: date) -> float | None:
-        """ACWR from ``(YYYY-MM-DD, load)`` rows, for a decision made on ``today``.
+    def acute_chronic_from_daily_loads(
+        loads: list[tuple[str, float]], today: date,
+    ) -> tuple[float, float] | None:
+        """``(acute_7d, chronic_28d_avg)`` from ``(YYYY-MM-DD, load)`` rows, for ``today``.
 
         Acute is the load of the 7 completed days before today; chronic is the daily mean
         of the 28 completed days before today. Today's load is left out: the session it
@@ -51,7 +53,16 @@ class ACWREngine:
         acute_start = today - timedelta(days=7)
         acute = sum(load for d, load in days if acute_start <= d < today)
         chronic = sum(load for d, load in days if chronic_start <= d < today) / 28
-        return ACWREngine.calculate_acwr(acute, chronic)[0]
+        return acute, chronic
+
+    @staticmethod
+    def from_daily_loads(loads: list[tuple[str, float]], today: date) -> float | None:
+        """ACWR from ``(YYYY-MM-DD, load)`` rows, for a decision made on ``today``.
+
+        The windows are those of :meth:`acute_chronic_from_daily_loads`.
+        """
+        window = ACWREngine.acute_chronic_from_daily_loads(loads, today)
+        return None if window is None else ACWREngine.calculate_acwr(*window)[0]
 
     @staticmethod
     def weekly_load_recommendation(chronic_avg: float, target: float = 1.2) -> float:

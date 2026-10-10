@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -254,3 +255,68 @@ def test_menu_system_shoe_display_handles_malformed_data_gracefully(monkeypatch,
     out = capsys.readouterr().out
     assert "equipment data unavailable" in out
     assert any("shoe_display_error" in r.message for r in caplog.records)
+
+
+class _LoadHistoryDB:
+    """Only what menu_analytics reads: recent activities and the load history."""
+
+    def __init__(self, loads: list[tuple[str, float]]) -> None:
+        self._loads = loads
+
+    def get_recent_activities(self, limit: int = 6) -> list[dict]:
+        return [{"distance_km": 10.0, "avg_hr": 140}]
+
+    def get_training_load_history(self, days: int | None = None, athlete_id: str = "owner") -> list[tuple[str, float]]:
+        cutoff = (datetime.now(UTC).date() - timedelta(days=days or 0)).isoformat()
+        return [(d, load) for d, load in self._loads if d >= cutoff]
+
+
+def _run_analytics(monkeypatch, capsys, loads) -> str:
+    from titan.science.acwr_engine import ACWREngine
+
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+    menu_system.menu_analytics({"db": _LoadHistoryDB(loads), "acwr_engine": ACWREngine()})
+    return capsys.readouterr().out
+
+
+@pytest.mark.unit
+def test_console_acwr_matches_the_coach(monkeypatch, capsys):
+    """The console shows the ACWR the morning routine uses (ACWREngine.from_daily_loads, D-044).
+
+    A run every other day for 40 days, plus one today: 14 training days in the last 28
+    (the old console rule) and today's load, which the coach leaves out.
+    """
+    from titan.science.acwr_engine import ACWREngine
+
+    today = datetime.now(UTC).date()
+    loads = [((today - timedelta(days=n)).isoformat(), 60.0 + n) for n in range(0, 41, 2)]
+    expected = ACWREngine.from_daily_loads(loads, today)
+
+    out = _run_analytics(monkeypatch, capsys, loads)
+
+    assert f"ACWR: {expected} " in out
+
+
+@pytest.mark.unit
+def test_console_acwr_known_with_few_sessions_over_28_days(monkeypatch, capsys):
+    """Two runs a week for six weeks is enough history; days without a run count as zero."""
+    today = datetime.now(UTC).date()
+    loads = [((today - timedelta(days=n)).isoformat(), 80.0) for n in range(1, 43) if n % 7 in (2, 5)]
+
+    out = _run_analytics(monkeypatch, capsys, loads)
+
+    assert "INSUFFICIENT DATA" not in out
+    assert "ACWR: 1.0 " in out
+
+
+@pytest.mark.unit
+def test_console_acwr_insufficient_without_28_days_of_history(monkeypatch, capsys):
+    today = datetime.now(UTC).date()
+    loads = [((today - timedelta(days=n)).isoformat(), 80.0) for n in range(1, 21)]
+
+    out = _run_analytics(monkeypatch, capsys, loads)
+
+    assert "INSUFFICIENT DATA" in out

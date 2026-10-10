@@ -685,20 +685,18 @@ def menu_analytics(ctx: dict):
         print(f"    Σύνολο km:   {total_km:.1f}")
         print(f"    Μέσος HR:    {avg_hr:.0f} bpm")
 
-        # ACWR check — read from DB so it works even without a live Garmin sync
+        # ACWR check — read from DB so it works even without a live Garmin sync.
+        # Same windows as the morning routine (ACWREngine.from_daily_loads, D-054).
         acwr_eng = ctx.get("acwr_engine")
         if acwr_eng and db is not None:
-            from datetime import timedelta
-            today = datetime.now(UTC).date()
-            cutoff_7d = (today - timedelta(days=7)).isoformat()
-            load_rows = db.get_training_load_history(days=28)
-            if len(load_rows) < 14:
+            from titan.config.thresholds import CTL_DECAY_DAYS
+            load_rows = db.get_training_load_history(days=CTL_DECAY_DAYS)
+            window = acwr_eng.acute_chronic_from_daily_loads(load_rows, datetime.now(UTC).date())
+            if window is None:
                 print("\n  ⚖️  ACWR: —  →  INSUFFICIENT DATA")
-                print("    Need at least 14 training days in the last 28d")
+                print("    Need 28 days of training history")
             else:
-                acute_7d = sum(load for date, load in load_rows if date >= cutoff_7d)
-                chronic_daily_avg = sum(load for _, load in load_rows) / 28
-                acwr, status, rec = acwr_eng.calculate_acwr(acute_7d, chronic_daily_avg)
+                acwr, status, rec = acwr_eng.calculate_acwr(*window)
                 print(f"\n  ⚖️  ACWR: {acwr}  →  {status}")
                 print(f"    {rec}")
     _divider()
