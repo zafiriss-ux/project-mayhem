@@ -128,6 +128,12 @@ def test_synthetic_garmin_id_stable():
 
 
 @pytest.mark.unit
+def test_synthetic_garmin_id_is_unchanged_for_existing_rows():
+    """Rows imported before D-049 keep their ID, so a re-import finds them."""
+    assert _synthetic_garmin_id("2024-03-01", 10.0, 3000) == "csv_4d8ecdcb766b6406"
+
+
+@pytest.mark.unit
 def test_synthetic_garmin_id_unique():
     id1 = _synthetic_garmin_id("2024-01-15", 16.1, 4660)
     id2 = _synthetic_garmin_id("2024-01-16", 16.1, 4660)
