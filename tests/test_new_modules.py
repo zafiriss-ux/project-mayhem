@@ -1162,7 +1162,7 @@ class TestDailyCoachHelpers:
         coach, _ = stub_deps
         rhr, sleep_score, sleep_hours = coach._persist_garmin_data({}, "2024-03-01")
         assert rhr == 0
-        assert sleep_score == 50  # conservative default (< 70 → negative sleep_delta)
+        assert sleep_score is None  # missing; DailyCoach applies the default (SV-06)
         assert sleep_hours == 7.5
 
     def test_persist_extracts_rhr_from_sleep(self, stub_deps):

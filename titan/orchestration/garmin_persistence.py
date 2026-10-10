@@ -37,7 +37,7 @@ class PersistenceFailure(Exception):
     conservative mode without re-deriving them.
     """
 
-    def __init__(self, today_rhr: int, today_sleep_score: int, today_sleep_hours: float) -> None:
+    def __init__(self, today_rhr: int, today_sleep_score: int | None, today_sleep_hours: float) -> None:
         super().__init__("DB transaction rolled back — persistence failed")
         self.today_rhr = today_rhr
         self.today_sleep_score = today_sleep_score
@@ -67,25 +67,23 @@ def persist_garmin_data(
     *,
     athlete_id: str,
     emit: Callable[..., None],
-) -> tuple[int, int, float]:
+) -> tuple[int, int | None, float]:
     """
     Persist all synced Garmin data to the database.
 
     Returns:
-        (today_rhr, today_sleep_score, today_sleep_hours)
+        (today_rhr, today_sleep_score, today_sleep_hours). A missing RHR is 0 and a
+        missing sleep score is None (ADR-0051, SV-06): the caller decides what they mean.
 
     Raises:
         PersistenceFailure: the transaction rolled back; it carries the values
         the morning decision uses in degraded mode.
     """
     today_rhr         = 0
-    # Conservative default: score 50 → sleep_delta ≈ -0.67, which discourages
-    # training when sleep data is absent.  75 was optimistic (sleep_delta +0.17).
-    today_sleep_score = 50
+    today_sleep_score: int | None = None
     today_sleep_hours = 7.5
-    # The defaults above feed today's decision only. They are not measurements,
-    # so they are not stored: daily_metrics keeps NULL unless Garmin sent a value.
-    sleep_score_measured = False
+    # The default above feeds today's decision only. It is not a measurement,
+    # so it is not stored: daily_metrics keeps NULL unless Garmin sent a value.
     sleep_hours_measured = False
 
     # ── Activities → training_log ─────────────────────────────────────
@@ -133,7 +131,6 @@ def persist_garmin_data(
             today_rhr = _safe_int(rhr)
         if s_val is not None:
             today_sleep_score = _safe_int(s_val)
-            sleep_score_measured = True
         if total_h:
             today_sleep_hours = _safe_float(total_h)
             sleep_hours_measured = True
@@ -281,7 +278,7 @@ def persist_garmin_data(
                 hrv          = latest_rmssd,
                 rhr          = today_rhr or None,
                 sleep_hours  = today_sleep_hours if sleep_hours_measured and today_sleep_hours > 0 else None,
-                sleep_quality= today_sleep_score if sleep_score_measured and today_sleep_score > 0 else None,
+                sleep_quality= today_sleep_score if today_sleep_score else None,
                 quality_flag = daily_quality_flag,
                 athlete_id   = athlete_id,
             )
