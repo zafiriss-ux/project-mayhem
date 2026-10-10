@@ -405,8 +405,8 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         return coach
 
     @pytest.mark.integration
-    def test_soreness_defaults_to_5_when_none(self):
-        """When soreness=None, routine must NOT block and must use 5."""
+    def test_soreness_defaults_to_3_when_none(self):
+        """When soreness=None, routine must NOT block and must use 3 (D-043)."""
         coach = self._make_coach()
         captured = {}
 
@@ -418,7 +418,7 @@ class TestDailyCoachInputDefaults(unittest.TestCase):
         coach.readiness.analyze_readiness = MagicMock(side_effect=capture_analyze)
         # Must not block or raise — soreness=None triggers default
         coach.run_morning_routine(soreness=None, subjective_fatigue_score=None)
-        self.assertEqual(captured.get("soreness"), 5)
+        self.assertEqual(captured.get("soreness"), 3)
 
     @pytest.mark.integration
     def test_soreness_explicit_value_passed_through(self):

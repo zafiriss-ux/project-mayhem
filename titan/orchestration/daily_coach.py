@@ -265,6 +265,30 @@ def _rest_without_volume(session: dict) -> dict:
     return {**session, "distance_km": 0, "duration_min": 0}
 
 
+def _apply_volume_modifier(session: dict) -> dict:
+    """The intensity gate's volume modifier shrinks distance and duration (D-043).
+
+    The gate stored the modifier on the session (YELLOW 0.8, RED 0.0) but nothing
+    applied it, so a downgraded session kept the planned volume. A modifier of 0
+    leaves no run: the session becomes REST.
+    """
+    modifier = _safe_float(session.get("volume_modifier"), 1.0)
+    if not 0.0 <= modifier < 1.0:
+        return session
+    if str(session.get("session_type", "")).upper() == "REST":
+        return session
+    if modifier == 0.0:
+        return {**session, "session_type": "REST", "distance_km": 0, "duration_min": 0}
+    reduced = dict(session)
+    distance = _safe_float(session.get("distance_km"), 0.0)
+    duration = _safe_int(session.get("duration_min"), 0)
+    if distance > 0:
+        reduced["distance_km"] = round(distance * modifier, 1)
+    if duration > 0:
+        reduced["duration_min"] = round(duration * modifier)
+    return reduced
+
+
 def _cap_session_for_invalid_trust(
     session: dict,
     *,
@@ -678,10 +702,10 @@ class DailyCoach:
         """Execute complete morning coaching routine.
 
         Args:
-            soreness: Subjective soreness/fatigue score 0-10. Defaults to 5
-                (neutral) when not provided. Pass explicitly when calling
-                from a UI or Telegram handler that has already collected
-                the value interactively.
+            soreness: Subjective soreness/fatigue score 0-10. Defaults to 3
+                when not provided, below FATIGUE_SORENESS_PERIPHERAL_MIN (D-043).
+                Pass explicitly when calling from a UI or Telegram handler
+                that has already collected the value interactively.
             subjective_fatigue_score: Explicit fatigue score 0-10. Defaults
                 to ``soreness`` when omitted.
 
@@ -692,7 +716,7 @@ class DailyCoach:
         """
         # Apply neutral defaults — no console I/O in the orchestration core
         if soreness is None:
-            soreness = 5  # neutral default for headless / service runs
+            soreness = 3  # below FATIGUE_SORENESS_PERIPHERAL_MIN: no report is not a sore athlete (D-043)
         soreness = max(0, min(10, int(soreness)))
 
         if subjective_fatigue_score is None:
@@ -1335,7 +1359,7 @@ class DailyCoach:
             session_plan=today_session,
             context=context_payload,
         ))
-        today_session = _rest_without_volume(today_session)
+        today_session = _rest_without_volume(_apply_volume_modifier(today_session))
         if today_session.get('governance_locks_applied'):
             _daily_coach_event(
                 "governance_locks_applied",
