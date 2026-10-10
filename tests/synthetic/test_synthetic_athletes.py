@@ -35,14 +35,9 @@ def _everything(_v: Violation) -> bool:
 
 # rule -> the findings that explain its violations today (report ids).
 KNOWN: dict[str, list[Known]] = {
-    "rest_has_no_volume": [("SV-03", _detail_starts("EASY with 0 km"))],
     "reduction_reduces_volume": [("SV-04", _everything)],
-    "governance_never_raises_intensity": [
-        ("SV-05", _detail_starts("LONG_RUN -> PROGRESSIVE")),
-        ("SV-03", _detail_starts("REST -> EASY")),
-    ],
+    "governance_never_raises_intensity": [("SV-05", _detail_starts("LONG_RUN -> PROGRESSIVE"))],
     "stored_runs_are_runnable": [("SV-17", lambda v: v[1] == "duration_in_minutes")],
-    "risk_never_more_aggressive": [("SV-03", _detail_starts("EASY vs ordinary REST"))],
     "missing_reading_not_replaced": [("SV-06", _everything)],
     "telegram_numbers_are_formatted": [("SV-07", _everything)],
 }

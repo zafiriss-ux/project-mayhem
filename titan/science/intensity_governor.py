@@ -155,7 +155,8 @@ class IntensityGovernor:
         else:
             max_zone = 2
             volume_modifier = 0.0
-            session_override = "EASY"
+            # A REST day is already the easiest session; overriding it gave "EASY 0 km" (SV-03).
+            session_override = None if planned_session == "REST" else "EASY"
 
         audit["aggregate"] = aggregate
         audit["triggered_signals"] = list(triggered_signals)
