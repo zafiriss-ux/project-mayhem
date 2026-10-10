@@ -130,7 +130,7 @@ def main() -> int:
         for file_path, tier, percent, missing_lines in sorted_under_threshold:
             print(f"{tier.code} {file_path} — {format_percent(percent)}")
             print(f"missing lines: {missing_lines}")
-            print("invariant mapping: TODO")
+            print("invariant mapping: TODO")  # DevSkim: ignore DS176209
 
     return 1 if under_threshold else 0
 

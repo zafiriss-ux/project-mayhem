@@ -41,9 +41,11 @@ GARMIN_PAYLOAD_MALFORMED = "GARMIN_PAYLOAD_MALFORMED"
 GARMIN_TIMEOUT = "GARMIN_TIMEOUT"
 GARMIN_API_UNAVAILABLE = "GARMIN_API_UNAVAILABLE"
 _DEFAULT_SYNC_TIMEOUT_S = 90
-_GARTH_TOKEN_FILENAME = ".garth_token"
+# Bandit B105: file name, not a token.
+_GARTH_TOKEN_FILENAME = ".garth_token"  # nosec B105
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
-_TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"
+# Bandit B105: env var name, not a key.
+_TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"  # nosec B105
 
 def _get_data_dir() -> Path:
     """Return TITAN_DATA_DIR as a Path — lazy so tests can monkeypatch TITAN_DATA_DIR.

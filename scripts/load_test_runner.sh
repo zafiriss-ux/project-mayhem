@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-API_URL="http://localhost:8000"
+API_URL="http://localhost:8000"  # DevSkim: ignore DS162092
 RESULTS="/tmp/titan_load_results.json"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }

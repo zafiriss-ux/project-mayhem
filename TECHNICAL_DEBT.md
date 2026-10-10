@@ -745,14 +745,14 @@ Close criteria met:
 
 ### P15-D22 · Telegram — legacy Markdown parse mode 🟡 OPEN
 
-**Status:** 🟡 OPEN — deferred; _escape_md2 helper added as scaffold
+**Status:** 🟡 OPEN — deferred; _escape_markdown_v2 helper added as scaffold
 **Source:** Opus audit 2026-05-09, finding D-22. Three explicit `parse_mode="Markdown"` call sites (lines 111, 444, 525 in `titan/integrations/telegram_bot.py`). Telegram's legacy Markdown parser is deprecated.
 **Type:** Integration / UX
 **Priority:** P3. Workflow Path: A.
 
 **Blocker:** Line 652 actively uses `*bold*` Markdown syntax (`f"{emoji} *{title}*\n\n{message}"`). The TeleBot default at line 111 implicitly covers all `reply_to` call sites. A safe MarkdownV2 migration requires a full message audit to escape all special characters (`_*[]()~\`>#+-=|{}.!`) throughout all composed message strings before switching the parse mode.
 
-**Acceptance criteria:** All message composition sites audited; all text passed to Telegram either uses `_escape_md2()` before `parse_mode="MarkdownV2"` or uses `parse_mode=None` (plain text). Zero `parse_mode="Markdown"` remaining. Test added to assert `parse_mode` arg equals `"MarkdownV2"` or `None`.
+**Acceptance criteria:** All message composition sites audited; all text passed to Telegram either uses `_escape_markdown_v2()` before `parse_mode="MarkdownV2"` or uses `parse_mode=None` (plain text). Zero `parse_mode="Markdown"` remaining. Test added to assert `parse_mode` arg equals `"MarkdownV2"` or `None`.
 
 ---
 
@@ -778,7 +778,7 @@ Close criteria met:
 
 | ID | Finding | Status |
 |---|---|---|
-| P15-D22 | Telegram legacy `parse_mode="Markdown"` — `_escape_md2` helper added; mode change deferred | 🟡 OPEN (scaffold only — see P15-D22 entry above) |
+| P15-D22 | Telegram legacy `parse_mode="Markdown"` — `_escape_markdown_v2` helper added; mode change deferred | 🟡 OPEN (scaffold only — see P15-D22 entry above) |
 | P15-SEC8 | No rate limit on `/auth/refresh` — `LoginRateLimiter(limit=5, window=60)` wired in | ✅ RESOLVED |
 | P15-H3 | `datetime.utcnow()` in `database.py` — all 20 occurrences replaced with `datetime.now(UTC)` | ✅ RESOLVED |
 | P15-OPS1 | No process supervisor — `docs/titan.service` + `docs/SYSTEMD_SETUP.md` added | ✅ RESOLVED |
