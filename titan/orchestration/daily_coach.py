@@ -1958,12 +1958,18 @@ class DailyCoach:
             from titan.science.critical_speed import CriticalSpeedEngine
             perfs = self.db.get_cs_performances(limit=10, athlete_id=self.athlete_id)
             confidence["cs"] = bool(perfs)
-            if len(perfs) >= 2:
-                dist_time = [(dist, t) for _, dist, t in perfs]
-                cs_raw, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(dist_time)
+            # Replay the trials oldest first, one tracker update per trial from the
+            # second on, as if each had been ingested when it was run (D-040).
+            # The tracker's confidence counts updates; one update for all trials
+            # kept it at 60% at most, under the 70% lock threshold.
+            chronological = list(reversed(perfs))
+            for k in range(2, len(chronological) + 1):
+                window = chronological[:k]
+                cs_raw, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(
+                    [(dist, t) for _, dist, t in window]
+                )
                 if cs_raw and d_prime:
-                    latest_date = perfs[0][0]
-                    self.cs_tracker.update(latest_date, cs_raw, d_prime)
+                    self.cs_tracker.update(window[-1][0], cs_raw, d_prime)
             _daily_coach_event(
                 "cs_hydrated",
                 performances=len(perfs),
