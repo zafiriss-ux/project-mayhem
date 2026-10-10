@@ -122,12 +122,15 @@ def test_generate_weekly_plan_peak_phase_uses_peak_defaults():
 
 
 @pytest.mark.unit
-def test_generate_weekly_plan_taper_phase_keeps_race_day_and_message():
+def test_generate_weekly_plan_taper_phase_ends_with_an_easy_run_and_keeps_message():
+    """SV-13 / D-061: without a race date the taper Sunday is EASY 8 km, not a 42.195 km RACE."""
     planner = _planner()
 
     plan = planner.generate_weekly_plan(athlete_profile={}, weather_forecast=None, phase="TAPER")
 
-    assert plan["daily_sessions"][6]["session_type"] == "RACE"
+    sunday = plan["daily_sessions"][6]
+    assert (sunday["session_type"], sunday["distance_km"]) == ("EASY", 8)
+    assert all(d["session_type"] != "RACE" for d in plan["daily_sessions"])
     assert plan["motivation"].startswith("Trust the taper")
 
 
