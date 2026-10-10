@@ -40,14 +40,14 @@
 | Κανόνας | Τι ελέγχει | Παραβιάσεις |
 |---|---|---|
 | `no_morning_raises` | κανένα πρωί δεν ρίχνει exception | 0 |
-| `rest_has_no_volume` | REST = 0 km, και κάθε άλλη προπόνηση έχει όγκο | 23 |
+| `rest_has_no_volume` | REST = 0 km, και κάθε άλλη προπόνηση έχει όγκο | 23 (0 μετά το #985) |
 | `reduction_reduces_volume` | προπόνηση που υποβαθμίστηκε είναι και μικρότερη | 67 (64 μετά το #982, 27 μετά το #984) |
 | `gate_modifier_reduces_volume` | ο συντελεστής όγκου της πύλης έντασης μικραίνει την προπόνηση (D-043, από το #982) | 631 πριν από το #982, 0 μετά |
-| `governance_never_raises_intensity` | η τελική απόφαση δεν είναι πιο σκληρή από το πλάνο | 73 |
+| `governance_never_raises_intensity` | η τελική απόφαση δεν είναι πιο σκληρή από το πλάνο | 73 (49 μετά το #985) |
 | `pace_is_plausible` | απόσταση και διάρκεια δίνουν ρυθμό 2:30–10:00 /km | 0 |
 | `stored_values_in_bounds` | ό,τι γράφεται στο `daily_metrics` είναι μέσα στα `physiological_bounds` (ADR-0023) | 0 |
 | `stored_runs_are_runnable` | ένα τρέξιμο στο `training_log` έχει ρυθμό 2:00–15:00 /km ή σήμα ποιότητας | 6 |
-| `risk_never_more_aggressive` | με δεδομένα κινδύνου, το τελευταίο πρωί δεν είναι πιο σκληρό ή μεγαλύτερο από τη συνηθισμένη εβδομάδα | 2 |
+| `risk_never_more_aggressive` | με δεδομένα κινδύνου, το τελευταίο πρωί δεν είναι πιο σκληρό ή μεγαλύτερο από τη συνηθισμένη εβδομάδα | 2 (0 μετά το #985) |
 | `acwr_known_after_six_weeks` | μετά από 6 εβδομάδες το ACWR υπάρχει (ADR-0051) | 84 (0 μετά το #983) |
 | `phase_follows_the_athlete` | η ρουτίνα χρησιμοποιεί το `TRAINING_PHASE` του αθλητή | 4 (0 μετά το #981) |
 | `missing_reading_not_replaced` | HRV που λείπει δεν αντικαθίσταται από άλλης μέρας (ADR-0051) | 30 |
@@ -62,7 +62,7 @@
 |---|---|---|---|
 | SV-01 | **Διορθώθηκε στο #983.** Το ACWR δεν υπολογιζόταν ποτέ. Το `sync_all` δεν δίνει `acwr` και κανείς δεν το βάζει στο `garmin_data`, οπότε οι πύλες ACWR, το VLG και το stress context (`UNKNOWN_ACWR`) δεν ενεργοποιούνται ποτέ. | όλοι, κάθε πρωί· και στο `acwr_spike` (100' κάθε μέρα) | `garmin_sync.sync_all`, `daily_coach.py` |
 | SV-02 | **Διορθώθηκε στο #981.** Η φάση ήταν πάντα BASE. Το `get_today_session` δεν δίνει τη φάση του πλάνου, και η ρουτίνα πέφτει στο `'BASE'`, άρα τα όρια APL της TAPER/PEAK δεν εφαρμόζονται ποτέ. | `steady_m`, `loading_m` (BUILD), `taper_f` (TAPER), `elite_f` (PEAK) | `daily_coach.py:1244` |
-| SV-03 | Όταν το IntensityGovernor είναι RED, βάζει `session_override="EASY"` και σε ημέρα REST, οπότε βγαίνει «EASY 0 km». | `taper_f` στο `acwr_spike` και `glycogen_drain`, 23 πρωινά συνολικά | `intensity_governor.py:158`, εφαρμόζεται στο `governance_engine.py:1265` |
+| SV-03 | **Διορθώθηκε στο #985.** Όταν το IntensityGovernor είναι RED, βάζει `session_override="EASY"` και σε ημέρα REST, οπότε βγαίνει «EASY 0 km». Το ίδιο έκανε και ο περιορισμός σε EASY 45' όταν τα δεδομένα του Garmin είναι παλιά (`taper_f` στο `garmin_out_3`, βρέθηκε στο #985). | `taper_f` στο `acwr_spike` και `glycogen_drain`, 23 πρωινά συνολικά | `intensity_governor.py:158`, εφαρμόζεται στο `governance_engine.py:1265`· `daily_coach._clamp_to_easy_45` |
 | SV-04 | **Μερικώς διορθώθηκε στο #982:** ο συντελεστής της πύλης έντασης εφαρμόζεται. Μένουν οι υποβαθμίσεις από άλλες πύλες (VO2, fueling, 2of4, H4 χωρίς πύλη έντασης), που δεν έχουν συντελεστή. Η υποβάθμιση κρατούσε τον όγκο του πλάνου. Το `volume_modifier` (YELLOW 0,8, RED 0,0) γράφεται στο `session_plan` αλλά δεν εφαρμόζεται. Η H4 («υποχρεωτική μείωση φορτίου», ADR-0009: EASY, ζώνη 2) κρατά 22 km / 132'· ένας RACE που γίνεται EASY κρατά 42,195 km. | 67 πρωινά, π.χ. `INTERVALS 66' -> EASY 66'`, `RACE 168' -> EASY 168'` | `governance_engine.py:1264` |
 | SV-05 | Η πύλη fueling κάνει κάθε LONG_RUN 90'+ PROGRESSIVE, γιατί το `fueling_confirmed` δεν δίνεται ποτέ. Το PROGRESSIVE είναι πιο σκληρό από το LONG_RUN. | 50 πρωινά, κάθε μεγάλο τρέξιμο | `governance_engine.py:1023` |
 | SV-06 | Όταν λείπει το σημερινό HRV, η απόφαση παίρνει το χθεσινό από το HRV engine (το ADR-0051 λέει να μείνει κενό). Παλμός ηρεμίας που λείπει γίνεται 0 ή 50, σκορ ύπνου που λείπει γίνεται 50. | `garmin_out_1`: «today has no HRV, decision used 57.6» | `daily_coach.py` |
@@ -92,7 +92,7 @@
 |---|---|---|
 | SV-02 φάση | η ρουτίνα παίρνει το `TRAINING_PHASE` του αθλητή όταν η προπόνηση της μέρας δεν έχει φάση (D-042) | #981 |
 | SV-01 ACWR | υπολογισμός από το `training_log`: 7 ολοκληρωμένες μέρες προς τον ημερήσιο μέσο 28 ημερών (D-044) | #983 |
-| SV-03 REST → EASY | το governor δεν κάνει override σε REST (`intensity_governor.py`, όχι governance_engine) | επόμενο |
+| SV-03 REST → EASY | η ημέρα REST μένει REST στο governor και στον περιορισμό για παλιά δεδομένα Garmin (`intensity_governor.py`, `daily_coach.py`, όχι governance_engine· D-046) | #985 |
 | SV-07 μορφοποίηση | στρογγυλοποίηση στο κείμενο | επόμενο |
 | SV-06 HRV που λείπει | μένει κενό, όπως λέει το ADR-0051 | επόμενο |
 | SV-08 TSB | ημερήσια σειρά με μηδενικές μέρες, με πηγή (ενότητα 5) | επόμενο |

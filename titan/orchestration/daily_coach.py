@@ -244,8 +244,11 @@ def _clamp_to_easy_45(session: dict) -> dict:
     """EASY with at most 45 minutes; the planned distance shrinks in the same ratio.
 
     The clamps used to cut the duration but keep the planned distance, so the
-    morning message could say "EASY – 16 km" for a 45-minute run.
+    morning message could say "EASY – 16 km" for a 45-minute run. A REST day
+    stays REST: turning it into EASY gave "EASY 0 km" (SV-03).
     """
+    if str(session.get("session_type", "")).upper() == "REST":
+        return session
     planned_min = _safe_int(session.get("duration_min", _CLAMP_MAX_DURATION_MIN), _CLAMP_MAX_DURATION_MIN)
     capped_min = min(planned_min, _CLAMP_MAX_DURATION_MIN)
     capped = {**session, "session_type": "EASY", "duration_min": capped_min}

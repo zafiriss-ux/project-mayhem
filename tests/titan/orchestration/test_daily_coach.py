@@ -3120,6 +3120,13 @@ def test_clamp_keeps_short_sessions_and_missing_distance():
 
 
 @pytest.mark.unit
+def test_stale_garmin_clamp_leaves_a_rest_day_as_rest():
+    """SV-03: the staleness clamp turned a planned REST day into 'EASY 0 km'."""
+    rest = {"session_type": "REST", "duration_min": 0, "distance_km": 0}
+    assert daily_coach._clamp_to_easy_45(rest) == rest
+
+
+@pytest.mark.unit
 def test_rest_from_a_gate_has_no_distance_or_duration():
     """'REST – 10 km' (task 5 finding): a gate's REST keeps no planned volume."""
     session = {"session_type": "REST", "duration_min": 60, "distance_km": 10, "max_zone": 1}
