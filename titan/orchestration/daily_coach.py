@@ -1218,9 +1218,9 @@ class DailyCoach:
     # ── Step 8: Today's planned session (from weekly plan) ───────────────────
     def _step_today_session(self, garmin_data: GarminSyncResult) -> tuple[TodaySessionPlan, str, int]:
         """Today's session from the weekly plan, with the ESI context applied."""
+        temperature_c, dew_point_c = self._esi_weather(garmin_data)
         esi_level, esi_pace_adjustment_sec_per_km = _compute_esi(
-            temperature_c=_safe_float(garmin_data.get("temperature_c"), 20.0),
-            dew_point_c=_safe_float(garmin_data.get("dew_point"), ESI_DEW_POINT_FALLBACK_C),
+            temperature_c=temperature_c, dew_point_c=dew_point_c,
         )
 
         _daily_coach_event("step_started", step_number=8, step_name="load_today_session")
@@ -1243,6 +1243,34 @@ class DailyCoach:
             esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
         )
         return today_session, esi_level, esi_pace_adjustment_sec_per_km
+
+    def _esi_weather(self, garmin_data: GarminSyncResult) -> tuple[float, float]:
+        """Temperature and dew point for the ESI (SV-21).
+
+        Garmin's sync carries neither, so the ESI always used the fallbacks
+        (20 °C, dew point 18 °C), which add up to EXTREME. The live or cached weather
+        the routine already fetches for the training window is used instead. Without
+        it (no client, synthetic fallback, failure) the conservative fallbacks stay
+        (ADR-0051).
+        """
+        temperature = garmin_data.get("temperature_c")
+        dew_point = garmin_data.get("dew_point")
+        weather = getattr(self, "weather", None)
+        if temperature is None and weather is not None:
+            try:
+                current = weather.get_current_conditions() or {}
+            except Exception as e:
+                _daily_coach_event(
+                    "esi_weather_failed", error_class=type(e).__name__, error_message=str(e),
+                )
+                current = {}
+            if current.get("data_quality") in ("live", "cached"):
+                temperature = current.get("temp_c")
+                dew_point = current.get("dew_point")
+        return (
+            _safe_float(temperature, 20.0),
+            _safe_float(dew_point, ESI_DEW_POINT_FALLBACK_C),
+        )
 
     # ── Step 9a: VLG + APL priority resolution ───────────────────────────────
     def _step_load_priority(

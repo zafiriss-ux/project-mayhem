@@ -365,9 +365,12 @@ class WeatherAPI:
             age = (datetime.now(UTC) - self.cache_timestamp).total_seconds() / 3600
             if age < self.cache_duration_hours:
                 current = copy.deepcopy(self.cache.get("current", {}))
-                current["data_quality"] = "cached"
-                current["weather_confidence"] = "LIVE"
-                current["data_trust"] = evaluate_weather_trust(data_quality="cached", data_age_hours=age).to_payload()
+                # A cached synthetic fallback stays synthetic: relabelling it "cached"
+                # would hide the outage from the trust checks (SV-21).
+                quality = "synthetic" if current.get("is_fallback") else "cached"
+                current["data_quality"] = quality
+                current["weather_confidence"] = "SYNTHETIC" if quality == "synthetic" else "LIVE"
+                current["data_trust"] = evaluate_weather_trust(data_quality=quality, data_age_hours=age).to_payload()
                 return current
 
         try:
