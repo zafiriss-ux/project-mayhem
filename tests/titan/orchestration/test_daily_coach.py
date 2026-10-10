@@ -1569,6 +1569,71 @@ def test_hydrate_engines_from_db_updates_cs_tracker_when_two_performances_exist(
 
 
 @pytest.mark.unit
+def test_hydrate_engines_from_db_replays_cs_trials_oldest_first(monkeypatch):
+    """D-040: one tracker update per trial from the second on, each fitted on the trials so far."""
+    windows = []
+    cs_updates = []
+    from titan.science.critical_speed import CriticalSpeedEngine
+
+    def _fake_estimate(dist_time):
+        windows.append(list(dist_time))
+        return 4.0 + len(dist_time) / 10, 200.0
+
+    monkeypatch.setattr(CriticalSpeedEngine, "estimate_cs_and_dprime", staticmethod(_fake_estimate))
+    coach = _make_hydration_coach(
+        _HydrationDB(
+            cs=[
+                ("2026-03-09", 10000.0, 2400.0),
+                ("2026-03-05", 5000.0, 1200.0),
+                ("2026-03-01", 3000.0, 700.0),
+            ]
+        )
+    )
+    coach.cs_tracker = SimpleNamespace(confidence=1.0, archetype="stable", update=lambda *args: cs_updates.append(args))
+
+    coach._hydrate_engines_from_db()
+
+    assert windows == [
+        [(3000.0, 700.0), (5000.0, 1200.0)],
+        [(3000.0, 700.0), (5000.0, 1200.0), (10000.0, 2400.0)],
+    ]
+    assert cs_updates == [("2026-03-05", 4.2, 200.0), ("2026-03-09", 4.3, 200.0)]
+
+
+@pytest.mark.unit
+def test_hydrated_cs_tracker_lifts_the_confidence_lock_with_five_recent_trials():
+    """D-040: with real engines, five trials of the last fortnight clear CS_CONFIDENCE_LOCK (70%)."""
+    from titan.science.critical_speed import CriticalSpeedTracker
+    from titan.science.governance_engine import GovernanceEngine
+
+    today = datetime.now(UTC).date()
+    trials = [(5000.0, 1100.0), (3000.0, 630.0), (10000.0, 2350.0), (1500.0, 300.0), (8000.0, 1850.0)]
+    cs = [((today - timedelta(days=3 * i)).isoformat(), d, t) for i, (d, t) in enumerate(trials)]
+    coach = _make_hydration_coach(_HydrationDB(cs=cs))
+    coach.cs_tracker = CriticalSpeedTracker()
+
+    coach._hydrate_engines_from_db()
+
+    assert coach.cs_tracker.confidence >= 0.70
+    assert GovernanceEngine().check_cs_confidence_lock(coach.cs_tracker)["locked"] is False
+
+
+@pytest.mark.unit
+def test_hydrated_cs_tracker_stays_locked_with_two_trials():
+    """D-040: two trials give a single estimate, which is not enough to lift the lock."""
+    from titan.science.critical_speed import CriticalSpeedTracker
+    from titan.science.governance_engine import GovernanceEngine
+
+    today = datetime.now(UTC).date().isoformat()
+    coach = _make_hydration_coach(_HydrationDB(cs=[(today, 5000.0, 1100.0), (today, 3000.0, 630.0)]))
+    coach.cs_tracker = CriticalSpeedTracker()
+
+    coach._hydrate_engines_from_db()
+
+    assert GovernanceEngine().check_cs_confidence_lock(coach.cs_tracker)["locked"] is True
+
+
+@pytest.mark.unit
 def test_hydrate_engines_from_db_reads_the_coachs_own_cs_performances():
     db = _HydrationDB()
     _make_hydration_coach(db, athlete_id="a1")._hydrate_engines_from_db()
