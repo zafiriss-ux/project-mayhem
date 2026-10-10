@@ -69,6 +69,7 @@ from titan.orchestration.garmin_persistence import (  # noqa: F401 — re-export
     PersistenceFailure,
     _safe_float,
     _safe_int,
+    backfill_training_history,
     persist_garmin_data,
 )
 from titan.science.acwr_engine import ACWREngine
@@ -806,6 +807,20 @@ class DailyCoach:
                     "persistence_degraded_alert_failed",
                     error_class=type(alert_exc).__name__,
                     error_message=str(alert_exc),
+                )
+
+        if not persistence_degraded and garmin_data.get("activities"):
+            # D-055: a new athlete's first syncs bring 14 days; CTL/TSB need more.
+            try:
+                backfill_training_history(
+                    self.db, self.garmin, today_str,
+                    athlete_id=getattr(self, "athlete_id", "owner"),
+                    emit=lambda action, **fields: _daily_coach_event(action, **fields),
+                )
+            except Exception as exc:  # the morning goes on with the history it has
+                _daily_coach_event(
+                    "training_history_backfill_failed",
+                    error_class=type(exc).__name__, error_message=str(exc),
                 )
 
         sync_status = str(garmin_data.get("status", "ok"))
