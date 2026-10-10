@@ -53,6 +53,7 @@ from titan.science.glycogen_model import GlycogenModel
 # ── Science engines ──────────────────────────────────────────────────────────
 from titan.science.rcp_engine import RCPEngine
 from titan.science.trimp_engine import TRIMPEngine
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS
 
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
@@ -493,7 +494,7 @@ def main():
 
     # _hydrate_engines_from_db runs at DailyCoach init but tsb_engine must be
     # populated before the menu system reads it; hydrate explicitly here.
-    _tsb_loads = db.get_training_load_history(days=42)
+    _tsb_loads = db.get_training_load_history(days=LOAD_HISTORY_DAYS)
     for _d, _l in _tsb_loads:
         tsb_engine.add_daily_load(_d, float(_l))
 
