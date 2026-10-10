@@ -809,6 +809,9 @@ class TitanTelegramBot:
             text += f"\n✅ *Actionable guidance:* {_tidy_floats(data['actionable_guidance'])}"
         if data.get("hrv_stress_context"):
             text += f"\n🩺 *Stress context:* {_tidy_floats(data['hrv_stress_context'])}"
+        fueling_gate = data.get("fueling_gate") or {}
+        if fueling_gate.get("action") == "FLAG" and fueling_gate.get("phase") == 4:
+            text += "\n🍌 *Fueling:* carry food or gels for this long run."
         if data.get("special_note"):
             text += f"\n⚠️ {data['special_note']}"
         return self.send_message(text)

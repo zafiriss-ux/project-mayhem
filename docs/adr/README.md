@@ -77,6 +77,7 @@
 | [0060](0060-durable-worker-state.md) | Durable Worker State: `worker_routine_executions` (INV-15) and `telegram_override_nonces` (INV-17) tables, v26 Stage-1 migration | Architecture / Persistence | ✅ Accepted (2026-10-07) |
 | [0061](0061-owner-working-rules.md) | Owner Working Rules: τα έγγραφα ενημερώνονται στο ίδιο PR, `DECISIONS.md` και `CHANGELOG.md` | Process / Governance | 🔲 Proposed (2026-10-09) |
 | [0062](0062-red-intensity-gate-volume.md) | Το RED της πύλης έντασης κρατά 70% όγκο ρητά· το 0,0 μένει 0,0 | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
+| [0063](0063-long-run-fueling-reminder.md) | Το μεγάλο τρέξιμο χωρίς επιβεβαιωμένο fueling μένει, με υπενθύμιση στο πρωινό μήνυμα | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
 
 ---
 

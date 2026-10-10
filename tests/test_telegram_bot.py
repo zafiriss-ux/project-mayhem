@@ -169,6 +169,16 @@ class TestMessageFormatters:
         bot.send_daily_coaching(_coaching_data)
         assert any("Recovery day" in t for t in captured)
 
+    def test_send_daily_coaching_reminds_to_carry_fuel_on_a_long_run(self, bot, _coaching_data):
+        """SV-05 / ADR-0063: the long-run fueling flag becomes a line in the morning message."""
+        captured = []
+        bot.send_message = lambda text, **kw: captured.append(text) or True
+        bot.send_daily_coaching(_coaching_data)
+        _coaching_data["fueling_gate"] = {"action": "FLAG", "phase": 4, "session_unchanged": True}
+        bot.send_daily_coaching(_coaching_data)
+        assert "food or gels" not in captured[0]
+        assert "🍌 *Fueling:* carry food or gels for this long run." in captured[1]
+
     def test_send_weekly_plan_returns_bool(self, bot, _weekly_plan):
         assert isinstance(bot.send_weekly_plan(_weekly_plan), bool)
 
