@@ -3113,12 +3113,24 @@ def test_inv24_cap_shrinks_distance_with_duration():
 
 
 @pytest.mark.unit
-def test_clamp_keeps_short_sessions_and_missing_distance():
+def test_clamp_downgrade_keeps_70pct_up_to_45_minutes():
+    """SV-22 / D-063: a session the clamp downgrades keeps 70% of its volume, at most 45'."""
+    assert daily_coach._clamp_to_easy_45({"session_type": "LONG_RUN", "duration_min": 30, "distance_km": 5.0}) == {
+        "session_type": "EASY", "duration_min": 21, "distance_km": 3.5,
+    }
     assert daily_coach._clamp_to_easy_45({"session_type": "TEMPO", "duration_min": 40, "distance_km": 9.0}) == {
-        "session_type": "EASY", "duration_min": 40, "distance_km": 9.0,
+        "session_type": "EASY", "duration_min": 28, "distance_km": 6.3,
     }
     assert daily_coach._clamp_to_easy_45({"session_type": "LONG", "duration_min": 90}) == {
         "session_type": "EASY", "duration_min": 45,
+    }
+
+
+@pytest.mark.unit
+def test_clamp_only_caps_an_easy_session():
+    """An EASY session is not downgraded, so the clamp keeps it whole up to 45'."""
+    assert daily_coach._clamp_to_easy_45({"session_type": "EASY", "duration_min": 40, "distance_km": 7.0}) == {
+        "session_type": "EASY", "duration_min": 40, "distance_km": 7.0,
     }
 
 
