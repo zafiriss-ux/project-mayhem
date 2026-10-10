@@ -353,8 +353,8 @@ def test_sync_hrv_happy_path_updates_metrics_and_returns_data(monkeypatch):
     sync = _connected_sync(
         _FakeClient(
             hrv=[
-                {"hrvSummary": {"lastNight5MinHigh": 48.26, "status": "BALANCED"}},
-                {"hrvSummary": {"weeklyAvg": 51.0, "status": "LOW"}},
+                {"hrvSummary": {"lastNightAvg": 48.26, "status": "BALANCED"}},
+                {"hrvSummary": {"lastNightAvg": 51.0, "lastNight5MinHigh": 70, "weeklyAvg": 60, "status": "LOW"}},
             ]
         )
     )
@@ -369,6 +369,25 @@ def test_sync_hrv_happy_path_updates_metrics_and_returns_data(monkeypatch):
 
 
 @pytest.mark.integration
+def test_sync_hrv_reads_the_night_average_only(monkeypatch):
+    """SV-12 / D-056: lastNightAvg is the night's HRV; the 5-minute high and the
+    7-night average are not, so a night without lastNightAvg has no reading."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_f: None)
+    sync = _connected_sync(
+        _FakeClient(
+            hrv=[
+                {"hrvSummary": {"lastNightAvg": 40.0, "lastNight5MinHigh": 55.0, "weeklyAvg": 44.0}},
+                {"hrvSummary": {"lastNight5MinHigh": 52.0, "weeklyAvg": 44.0}},
+            ]
+        )
+    )
+
+    result = sync.sync_hrv(days_back=2)
+
+    assert [r["rmssd"] for r in result] == [40.0]
+
+
+@pytest.mark.integration
 def test_sync_hrv_skipped_day_logs_and_emits_structured_event(monkeypatch, caplog):
     events = []
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda action, **fields: events.append((action, fields)))
@@ -377,7 +396,7 @@ def test_sync_hrv_skipped_day_logs_and_emits_structured_event(monkeypatch, caplo
         _FakeClient(
             hrv=[
                 ValueError("bad hrv payload"),
-                {"hrvSummary": {"lastNight5MinHigh": 42, "status": "BALANCED"}},
+                {"hrvSummary": {"lastNightAvg": 42, "status": "BALANCED"}},
             ]
         )
     )

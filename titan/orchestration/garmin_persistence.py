@@ -385,3 +385,47 @@ def backfill_training_history(
             )
     emit("training_history_backfilled", count=len(activities), days_back=LOAD_HISTORY_DAYS)
     return len(activities)
+
+
+HRV_REWRITE_MARKER = "garmin_hrv_last_night_avg"
+HRV_REWRITE_NIGHTS = 28
+
+
+def rewrite_recent_hrv_once(
+    db: DatabaseManager,
+    garmin,  # noqa: ANN001 - GarminSync; typed loosely to keep this module free of integrations
+    *,
+    athlete_id: str,
+    emit: Callable[..., None],
+) -> int:
+    """Re-read the last 28 nights of HRV from Garmin once, after the SV-12 fix (D-056).
+
+    Until D-056 the sync stored ``lastNight5MinHigh`` (or ``weeklyAvg``), which is higher
+    than the night's average. The baseline would then make every new, correct value look
+    like a drop. This replaces the Garmin-sourced HRV of the last ``HRV_REWRITE_NIGHTS``
+    nights with ``lastNightAvg``; hand-entered rows are kept. It runs until one pass
+    succeeds, which is recorded in ``sync_metadata`` under ``HRV_REWRITE_MARKER``.
+    Returns the number of nights rewritten.
+    """
+    marker = db.get_last_sync_outcome(HRV_REWRITE_MARKER)
+    if marker and marker.get("last_success_ts"):
+        return 0
+    from datetime import UTC, datetime
+
+    entries = garmin.sync_hrv(HRV_REWRITE_NIGHTS)
+    if not entries:
+        return 0
+    sanity = DataSanityChecker()
+    rewritten = 0
+    with db.transaction():
+        for entry in entries:
+            rmssd = _safe_float(entry.get("rmssd")) or None
+            if not entry.get("date") or rmssd is None:
+                continue
+            if has_rejects(sanity.check_hrv({"date": entry["date"], "rmssd": rmssd}, context="rewrite_recent_hrv")):
+                continue
+            db.replace_garmin_hrv(date=entry["date"], hrv=rmssd, athlete_id=athlete_id)
+            rewritten += 1
+    db.record_sync_outcome(source=HRV_REWRITE_MARKER, attempted_at=datetime.now(UTC), success=True)
+    emit("hrv_history_rewritten", nights=rewritten, field="lastNightAvg")
+    return rewritten

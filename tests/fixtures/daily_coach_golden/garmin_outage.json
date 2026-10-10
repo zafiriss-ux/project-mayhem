@@ -122,6 +122,33 @@
      "step_number": 2
     },
     {
+     "action": "hrv_synced",
+     "count": 1,
+     "days_back": 28,
+     "detail": "Synced 1 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 28,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 1
+    },
+    {
+     "action": "hrv_history_rewritten",
+     "field": "lastNightAvg",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "nights": 1,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -196,7 +223,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 62.4,
+     "hrv_diff": 52.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.0,
      "score": 100,
@@ -689,7 +716,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 63.6,
+     "hrv_diff": 53.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.5,
      "score": 100,
@@ -1197,7 +1224,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 64.8,
+     "hrv_diff": 54.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.29999999999999716,
      "score": 100,
@@ -3018,7 +3045,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 62.4,
+     "hrv_diff": 52.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.20000000000000284,
      "score": 100,
@@ -3260,7 +3287,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -3279,7 +3306,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -3298,7 +3325,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 64.8,
+    "hrv_rmssd": 54.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -3374,7 +3401,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -3571,6 +3598,13 @@
    }
   ],
   "sync_metadata": [
+   {
+    "last_attempt_ts": "2026-03-02T07:30:00+00:00",
+    "last_error_class": null,
+    "last_success_ts": "2026-03-02T07:30:00+00:00",
+    "last_sync_ok": 1,
+    "source": "garmin_hrv_last_night_avg"
+   },
    {
     "last_attempt_ts": "2026-03-08T07:30:00+00:00",
     "last_error_class": null,

@@ -71,7 +71,7 @@
 | SV-09 | **Διορθώθηκε στο #982** (απόφαση Zaf, D-043): το soreness που λείπει μετρά 3. Ο worker έδινε soreness 5, που είναι ακριβώς το `FATIGUE_SORENESS_PERIPHERAL_MIN`. Έτσι η κόπωση βγαίνει MEDIUM και η πύλη έντασης YELLOW κάθε πρωί. Το YELLOW βάζει ζώνη 3 ως ανώτατη, αλλά τα INTERVALS περνούν. | όλοι, κάθε πρωί | `daily_coach.py:694` |
 | SV-10 | Η πύλη H2 κοιτά πτώση HRV σε απόλυτα ms (15 ms). Για τον `senior_m` το HRV πέφτει από 34,6 σε 20,2 ms (−42%), δηλαδή 14,4 ms, και η πύλη δεν ενεργοποιείται. | `senior_m` στο `low_hrv` | `governance_engine.py` (ADR-0009) |
 | SV-11 | Κάθε τρέξιμο από το Garmin γράφεται ως EASY. | όλα τα τρεξίματα | `garmin_persistence.py:25` |
-| SV-12 | Το sync του HRV διαβάζει `lastNight5MinHigh` ή `weeklyAvg` αντί για `lastNightAvg`. | κάθε πρωί | `garmin_sync.py:852` |
+| SV-12 | **Διορθώθηκε στο #997** (D-056). Το sync του HRV διαβάζει `lastNight5MinHigh` ή `weeklyAvg` αντί για `lastNightAvg`. | κάθε πρωί | `garmin_sync.py:852` |
 | SV-13 | Ο planner βάζει «RACE 42.195 km» κάθε Κυριακή στη φάση TAPER (δεν υπάρχει ημερομηνία αγώνα). Το TSB της αποφόρτισης λέγεται «SEVERE DETRAINING». | `taper_f` | `weekly_planner.py` |
 | SV-14 | Οι όγκοι του planner είναι σταθεροί: 6:00 /km για όλους, 20 km μεγάλο τρέξιμο και για τον `novice_f`. | `novice_f` | `weekly_planner.py` |
 | SV-15 | Είσοδοι που δεν γεμίζουν ποτέ στη ρουτίνα του worker: `days_since_last_vo2`, `injury_flag`, `drift_pct`, `hrr`, `rpe_mismatch`· η θερμοκρασία είναι 20 όταν λείπει ο καιρός και το βάρος 70 (το ADR-0051 θέλει κενό). | όλοι | `daily_coach.py` |

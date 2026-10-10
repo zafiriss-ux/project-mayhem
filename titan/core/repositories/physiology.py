@@ -106,6 +106,31 @@ class PhysiologyRepository:
             if self._db._transaction_depth == 0:
                 self._db.conn.commit()
 
+    def replace_garmin_hrv(self, date: str, hrv: float, athlete_id: str = "owner") -> None:
+        """Set HRV for a date from Garmin, unless the row was entered by hand (D-056).
+
+        Creates the row when the date has none. A ``manual_entry`` row is left alone.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """
+                UPDATE daily_metrics SET hrv_rmssd = ?
+                WHERE athlete_id = ? AND date = ? AND COALESCE(data_source, 'garmin_api') != 'manual_entry'
+                """,
+                (hrv, athlete_id, date),
+            )
+            cursor.execute(
+                """
+                INSERT OR IGNORE INTO daily_metrics (athlete_id, date, hrv_rmssd, data_source)
+                VALUES (?, ?, ?, 'garmin_api')
+                """,
+                (athlete_id, date, hrv),
+            )
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
+
     def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
         """
         Save Heart Rate Recovery values for a date.

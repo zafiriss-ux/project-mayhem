@@ -8,9 +8,12 @@ import pytest
 from titan.core.database import DatabaseManager
 from titan.orchestration import daily_coach
 from titan.orchestration.garmin_persistence import (
+    HRV_REWRITE_MARKER,
+    HRV_REWRITE_NIGHTS,
     PersistenceFailure,
     backfill_training_history,
     persist_garmin_data,
+    rewrite_recent_hrv_once,
 )
 
 DAY = "2026-03-04"
@@ -151,3 +154,39 @@ def test_long_enough_history_is_not_fetched_again(db):
 
     assert count == 0
     assert len(garmin.calls) == 1
+
+
+class _HrvGarmin:
+    def __init__(self, nights: dict[str, float]) -> None:
+        self.nights = nights
+        self.calls: list[int] = []
+
+    def sync_hrv(self, days_back: int) -> list[dict]:
+        self.calls.append(days_back)
+        return [{"date": d, "rmssd": v, "status": "", "source": "garmin"} for d, v in self.nights.items()]
+
+
+@pytest.mark.unit
+def test_recent_hrv_is_rewritten_once_and_manual_rows_are_kept(db):
+    """D-056: the 28 nights stored with lastNight5MinHigh are replaced by lastNightAvg, once."""
+    db.save_daily_metric(date="2026-03-01", hrv=66.0, athlete_id="owner")
+    db.save_daily_metric(date="2026-03-02", hrv=70.0, data_source="manual_entry", athlete_id="owner")
+    garmin = _HrvGarmin({"2026-03-01": 52.0, "2026-03-02": 50.0, "2026-03-03": 49.0})
+    events: list[str] = []
+
+    rewritten = rewrite_recent_hrv_once(db, garmin, athlete_id="owner", emit=lambda a, **_f: events.append(a))
+    again = rewrite_recent_hrv_once(db, garmin, athlete_id="owner", emit=lambda a, **_f: events.append(a))
+
+    rows = dict(db.conn.execute("SELECT date, hrv_rmssd FROM daily_metrics ORDER BY date").fetchall())
+    assert rows == {"2026-03-01": 52.0, "2026-03-02": 70.0, "2026-03-03": 49.0}
+    assert (rewritten, again) == (3, 0)
+    assert garmin.calls == [HRV_REWRITE_NIGHTS]
+    assert events == ["hrv_history_rewritten"]
+
+
+@pytest.mark.unit
+def test_hrv_rewrite_waits_for_a_morning_with_garmin_data(db):
+    garmin = _HrvGarmin({})
+
+    assert rewrite_recent_hrv_once(db, garmin, athlete_id="owner", emit=lambda *_a, **_f: None) == 0
+    assert db.get_last_sync_outcome(HRV_REWRITE_MARKER) is None

@@ -200,7 +200,7 @@ def test_sync_hrv_logs_skipped_malformed_records(caplog):
             today = datetime.now().strftime("%Y-%m-%d")
             if day == today:
                 raise ValueError("bad payload")
-            return {"hrvSummary": {"weeklyAvg": 46.2, "status": "BALANCED"}}
+            return {"hrvSummary": {"lastNightAvg": 46.2, "status": "BALANCED"}}
 
     caplog.set_level(logging.INFO)
     sync = GarminSync(email="x", password="y")

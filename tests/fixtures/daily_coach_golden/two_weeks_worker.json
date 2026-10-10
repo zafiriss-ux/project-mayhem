@@ -143,6 +143,33 @@
      "step_number": 2
     },
     {
+     "action": "hrv_synced",
+     "count": 1,
+     "days_back": 28,
+     "detail": "Synced 1 HRV measurements",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_hrv"
+    },
+    {
+     "action": "hrv_sync_metrics",
+     "days_back": 28,
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "skipped_days": 0,
+     "synced_days": 1
+    },
+    {
+     "action": "hrv_history_rewritten",
+     "field": "lastNightAvg",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "nights": 1,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -217,7 +244,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 62.4,
+     "hrv_diff": 52.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.0,
      "score": 100,
@@ -711,7 +738,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 63.6,
+     "hrv_diff": 53.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.5,
      "score": 100,
@@ -1219,7 +1246,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 64.8,
+     "hrv_diff": 54.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.29999999999999716,
      "score": 100,
@@ -1704,7 +1731,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 62.4,
+     "hrv_diff": 52.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.5,
      "score": 100,
@@ -2209,7 +2236,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 63.6,
+     "hrv_diff": 53.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.3999999999999986,
      "score": 100,
@@ -2722,7 +2749,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 64.8,
+     "hrv_diff": 54.0,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 0.5,
      "score": 100,
@@ -3248,7 +3275,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": -1.0,
+     "hrv_diff": -0.8999999999999986,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.3999999999999986,
      "score": 100,
@@ -3498,7 +3525,7 @@
    "returned": true,
    "telegram": [
     "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
-    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-09  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 63.4\n• TSB: ⚠️ FUNCTIONAL OVERREACH\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
+    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-09  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 52.9\n• TSB: ⚠️ FUNCTIONAL OVERREACH\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
    ]
   },
   {
@@ -4418,7 +4445,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 1.0,
+     "hrv_diff": 0.8999999999999986,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.5,
      "score": 100,
@@ -5056,7 +5083,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": -24.700000000000003,
+     "hrv_diff": -20.6,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": 10.100000000000001,
      "score": 50,
@@ -5150,14 +5177,14 @@
     },
     {
      "action": "REST",
-     "baseline_hrv": 59.5,
+     "baseline_hrv": 49.6,
      "cause": "TRAINING_LOGIC",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "H2",
      "logger": "titan.science.governance_engine",
      "reason": "HRV collapse: autonomic stress — hard stop",
-     "today_hrv": 34.8
+     "today_hrv": 29.0
     },
     {
      "action": "REST",
@@ -5359,7 +5386,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 47/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (24.7 vs 15.0, margin 9.7).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 47/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (20.6 vs 15.0, margin 5.6).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -5724,7 +5751,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 3.8999999999999986,
+     "hrv_diff": 3.299999999999997,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -1.8999999999999986,
      "score": 100,
@@ -6371,7 +6398,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 5.0,
+     "hrv_diff": 4.100000000000001,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.8999999999999986,
      "score": 100,
@@ -7014,7 +7041,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 2.8999999999999986,
+     "hrv_diff": 2.3999999999999986,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -1.8999999999999986,
      "score": 100,
@@ -7670,7 +7697,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 3.8999999999999986,
+     "hrv_diff": 3.299999999999997,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.8999999999999986,
      "score": 100,
@@ -7942,7 +7969,7 @@
    "returned": true,
    "telegram": [
     "🌅 *GOOD MORNING!*\nSunday, March 15, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: 📉 DECLINING: HRV down -5.9%\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-53.9 vs -50.0, margin 3.9).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
-    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-16  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 59.7\n• TSB: 🛑 OVERTRAINED\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
+    "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-16  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 77 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 49.7\n• TSB: 🛑 OVERTRAINED\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (10 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (12 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (10 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (15 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (8 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (22 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
    ]
   }
  ],
@@ -7976,7 +8003,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -7995,7 +8022,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8014,7 +8041,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 64.8,
+    "hrv_rmssd": 54.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8033,7 +8060,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8052,7 +8079,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8071,7 +8098,7 @@
     "glycogen_debt": 0.02,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 64.8,
+    "hrv_rmssd": 54.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8090,7 +8117,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8109,7 +8136,7 @@
     "glycogen_debt": 0.99,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8128,7 +8155,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 64.8,
+    "hrv_rmssd": 54.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8147,7 +8174,7 @@
     "glycogen_debt": 1.03,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 34.8,
+    "hrv_rmssd": 29.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8166,7 +8193,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8185,7 +8212,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 64.8,
+    "hrv_rmssd": 54.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8204,7 +8231,7 @@
     "glycogen_debt": 0.02,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 62.4,
+    "hrv_rmssd": 52.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8223,7 +8250,7 @@
     "glycogen_debt": 0.0,
     "hrr_120": null,
     "hrr_60": null,
-    "hrv_rmssd": 63.6,
+    "hrv_rmssd": 53.0,
     "id": "<volatile>",
     "mood": null,
     "notes": null,
@@ -8603,6 +8630,13 @@
   ],
   "sync_metadata": [
    {
+    "last_attempt_ts": "2026-03-02T07:30:00+00:00",
+    "last_error_class": null,
+    "last_success_ts": "2026-03-02T07:30:00+00:00",
+    "last_sync_ok": 1,
+    "source": "garmin_hrv_last_night_avg"
+   },
+   {
     "last_attempt_ts": "2026-03-15T07:30:00+00:00",
     "last_error_class": null,
     "last_success_ts": "2026-03-15T07:30:00+00:00",
@@ -8802,13 +8836,13 @@
    {
     "athlete_id": "owner",
     "created_at": "2026-03-08T07:30:00+00:00",
-    "plan_json": "{\"week_start\": \"2026-03-09\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 63.4, \"tsb_status\": \"⚠️ FUNCTIONAL OVERREACH\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
+    "plan_json": "{\"week_start\": \"2026-03-09\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 52.9, \"tsb_status\": \"⚠️ FUNCTIONAL OVERREACH\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
     "week_start": "2026-03-09"
    },
    {
     "athlete_id": "owner",
     "created_at": "2026-03-15T07:30:00+00:00",
-    "plan_json": "{\"week_start\": \"2026-03-16\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 59.7, \"tsb_status\": \"🛑 OVERTRAINED\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
+    "plan_json": "{\"week_start\": \"2026-03-16\", \"phase\": \"BUILD\", \"total_km\": 77, \"quality_count\": 2, \"easy_count\": 3, \"rest_count\": 1, \"lactate_threshold\": 168, \"avg_drift\": \"See past week analysis\", \"hrv_baseline\": 49.7, \"tsb_status\": \"🛑 OVERTRAINED\", \"daily_sessions\": [{\"day\": \"Monday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Recovery from weekend\"}, {\"day\": \"Tuesday\", \"session_type\": \"INTERVALS\", \"distance_km\": 12, \"details\": \"3km WU + 6x1km @ VO2max + 2km CD\"}, {\"day\": \"Wednesday\", \"session_type\": \"EASY\", \"distance_km\": 10, \"details\": \"Easy aerobic\"}, {\"day\": \"Thursday\", \"session_type\": \"TEMPO\", \"distance_km\": 15, \"details\": \"3km WU + 8km @ LT + 2km CD\"}, {\"day\": \"Friday\", \"session_type\": \"EASY\", \"distance_km\": 8, \"details\": \"Recovery run\"}, {\"day\": \"Saturday\", \"session_type\": \"LONG_RUN\", \"distance_km\": 22, \"details\": \"Long run with progression\"}, {\"day\": \"Sunday\", \"session_type\": \"REST\", \"distance_km\": 0, \"details\": \"Complete rest\"}], \"motivation\": \"Quality work pays off - stay sharp! 🎯\"}",
     "week_start": "2026-03-16"
    }
   ]

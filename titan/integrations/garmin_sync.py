@@ -851,7 +851,9 @@ class GarminSync:
                 try:
                     raw = self.client.get_hrv_data(d)
                     summary = raw.get("hrvSummary", {})
-                    rmssd = summary.get("lastNight5MinHigh") or summary.get("weeklyAvg")
+                    # SV-12 / D-056: the night's average RMSSD, the value Garmin shows as
+                    # HRV. Not the best 5 minutes, and not the 7-night average.
+                    rmssd = summary.get("lastNightAvg")
                     if rmssd:
                         hrv_data.append(
                             {
