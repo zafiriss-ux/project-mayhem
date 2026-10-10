@@ -252,7 +252,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         readiness_engine=engines.readiness,
         optimal_time_calc=OptimalTimeCalculator(weather),
         nutrition_optimizer=NutritionOptimizer(GlycogenModel()),
-        weekly_planner=WeeklyPlanGenerator(engines.hrv, engines.tsb, ACWREngine()),
+        weekly_planner=WeeklyPlanGenerator(engines.hrv, engines.tsb, ACWREngine(), db=db, athlete_id=athlete_id),
         db=db,
         athlete_id=athlete_id,
         engines=engines,

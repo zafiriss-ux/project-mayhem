@@ -35,6 +35,7 @@ def _everything(_v: Violation) -> bool:
 
 # rule -> the findings that explain its violations today (report ids).
 KNOWN: dict[str, list[Known]] = {
+    "reduction_reduces_volume": [("SV-22", lambda v: v[1] in {"garmin_out_1", "garmin_out_3", "stale_data"})],
 }
 
 

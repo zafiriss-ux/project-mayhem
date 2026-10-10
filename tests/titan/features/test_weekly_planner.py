@@ -452,3 +452,101 @@ def test_should_replan_triggers_generate_weekly_plan_and_updates_last_plan(monke
 
     assert new_plan is not None
     assert planner.last_plan is new_plan
+
+
+class _FakeDB:
+    def __init__(self, activities):
+        self.activities = activities
+
+    def get_recent_activities(self, limit=90, athlete_id="owner"):
+        return self.activities[:limit]
+
+
+def _runs(km_per_week, today):
+    from datetime import timedelta
+
+    return [
+        {"date": (today - timedelta(days=d)).isoformat(), "distance_km": km_per_week / 4}
+        for w in range(4) for d in (7 * w + 1, 7 * w + 3, 7 * w + 5, 7 * w + 7)
+    ]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("km_per_week", "expected_build_km"),
+    [
+        pytest.param(20.0, 22.0, id="novice-20km-gets-22km"),
+        pytest.param(100.0, 110.0, id="high-volume-100km-gets-110km"),
+        pytest.param(0.0, 30.0, id="no-history-gets-30km"),
+    ],
+)
+def test_build_week_follows_the_last_four_weeks_plus_at_most_10pct(km_per_week, expected_build_km):
+    """SV-14 / D-062: the week is the 4-week average + 10%, or 30 km with no runs."""
+    from datetime import UTC, datetime
+
+    today = datetime.now(UTC).date()
+    activities = _runs(km_per_week, today) if km_per_week else []
+    planner = WeeklyPlanGenerator(
+        hrv_engine=_FakeHRVEngine(), tsb_engine=_FakeTSBEngine(), acwr_engine=_FakeACWR(),
+        db=_FakeDB(activities),
+    )
+
+    plan = planner.generate_weekly_plan(athlete_profile={}, weather_forecast=None, phase="BUILD")
+
+    assert plan["total_km"] == pytest.approx(expected_build_km, abs=0.5)
+    long_run = max(d["distance_km"] for d in plan["daily_sessions"])
+    assert long_run == pytest.approx(22 * expected_build_km / 77, abs=0.1)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("phase", ["BASE", "BUILD", "PEAK", "TAPER"])
+def test_no_phase_goes_above_the_recent_average_plus_10pct(phase):
+    from datetime import UTC, datetime
+
+    today = datetime.now(UTC).date()
+    planner = WeeklyPlanGenerator(
+        hrv_engine=_FakeHRVEngine(), tsb_engine=_FakeTSBEngine(), acwr_engine=_FakeACWR(),
+        db=_FakeDB(_runs(40.0, today)),
+    )
+
+    plan = planner.generate_weekly_plan(athlete_profile={}, weather_forecast=None, phase=phase)
+
+    assert plan["total_km"] <= 44.0 + 0.5
+
+
+@pytest.mark.unit
+def test_runs_older_than_four_weeks_do_not_count():
+    from datetime import UTC, datetime, timedelta
+
+    today = datetime.now(UTC).date()
+    old = [{"date": (today - timedelta(days=40)).isoformat(), "distance_km": 200.0}]
+    planner = WeeklyPlanGenerator(
+        hrv_engine=_FakeHRVEngine(), tsb_engine=_FakeTSBEngine(), acwr_engine=_FakeACWR(),
+        db=_FakeDB(old),
+    )
+
+    plan = planner.generate_weekly_plan(athlete_profile={}, weather_forecast=None, phase="BUILD")
+
+    assert plan["total_km"] == pytest.approx(30.0, abs=0.5)
+
+
+@pytest.mark.unit
+def test_without_a_database_the_templates_keep_their_kilometres():
+    plan = _planner().generate_weekly_plan(athlete_profile={}, weather_forecast=None, phase="BUILD")
+
+    assert plan["total_km"] == 77
+
+
+@pytest.mark.unit
+def test_a_short_history_is_averaged_over_its_own_length():
+    """One week of 40 km from a new athlete is 40 km a week, not 10 (40 / 4 weeks)."""
+    from datetime import UTC, datetime, timedelta
+
+    today = datetime.now(UTC).date()
+    week = [{"date": (today - timedelta(days=d)).isoformat(), "distance_km": 10.0} for d in (1, 3, 5, 7)]
+    planner = WeeklyPlanGenerator(
+        hrv_engine=_FakeHRVEngine(), tsb_engine=_FakeTSBEngine(), acwr_engine=_FakeACWR(),
+        db=_FakeDB(week),
+    )
+
+    assert planner.recent_weekly_km() == pytest.approx(40.0)
