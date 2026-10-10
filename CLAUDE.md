@@ -115,6 +115,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90.
 - `0060` — Durable Worker State
 - `0061` — Owner Working Rules
 - `0062` — RED intensity gate volume
+- `0063` — Long-run fueling reminder
 
 ## Docker
 

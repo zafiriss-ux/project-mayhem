@@ -2804,15 +2804,14 @@
      "step_number": 9
     },
     {
-     "action": "LOCK",
+     "action": "FLAG",
      "duration_min": 132,
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "FUELING",
-     "locked_to": "PROGRESSIVE",
      "logger": "titan.science.governance_engine",
-     "original_session": "LONG_RUN",
-     "phase": 4
+     "phase": 4,
+     "session_type": "LONG_RUN"
     },
     {
      "action": "CALIBRATION_REQUIRED",
@@ -2827,13 +2826,13 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "PROGRESSIVE",
+     "final_session": "LONG_RUN",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -2857,7 +2856,7 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -2891,13 +2890,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
+     "calories": 3144.0,
+     "carbs_g": 630.0,
      "duration_min": 132,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "PROGRESSIVE",
+     "session_type": "LONG_RUN",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "INSUFFICIENT_DATA"
@@ -2948,7 +2947,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* PROGRESSIVE – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling gate lock applied; session intensity reduced.\n✅ *Actionable guidance:* Confirm fueling plan before scheduling quality or long sessions.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -7021,15 +7020,14 @@
      "step_number": 9
     },
     {
-     "action": "LOCK",
+     "action": "FLAG",
      "duration_min": 132,
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "FUELING",
-     "locked_to": "PROGRESSIVE",
      "logger": "titan.science.governance_engine",
-     "original_session": "LONG_RUN",
-     "phase": 4
+     "phase": 4,
+     "session_type": "LONG_RUN"
     },
     {
      "action": "CALIBRATION_REQUIRED",
@@ -7044,13 +7042,13 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "PROGRESSIVE",
+     "final_session": "LONG_RUN",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -7074,7 +7072,7 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -7138,13 +7136,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
+     "calories": 3144.0,
+     "carbs_g": 630.0,
      "duration_min": 132,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "PROGRESSIVE",
+     "session_type": "LONG_RUN",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -7195,7 +7193,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* PROGRESSIVE – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling gate lock applied; session intensity reduced.\n✅ *Actionable guidance:* Confirm fueling plan before scheduling quality or long sessions.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -11871,15 +11869,14 @@
      "step_number": 9
     },
     {
-     "action": "LOCK",
+     "action": "FLAG",
      "duration_min": 132,
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "FUELING",
-     "locked_to": "PROGRESSIVE",
      "logger": "titan.science.governance_engine",
-     "original_session": "LONG_RUN",
-     "phase": 4
+     "phase": 4,
+     "session_type": "LONG_RUN"
     },
     {
      "action": "CALIBRATION_REQUIRED",
@@ -11894,13 +11891,13 @@
     {
      "action": "COMPLETE",
      "apl_active": true,
-     "final_session": "PROGRESSIVE",
+     "final_session": "LONG_RUN",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -11924,7 +11921,7 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_LOCK",
+      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -11988,13 +11985,13 @@
     },
     {
      "action": "daily_plan_calculated",
-     "calories": 2482.0,
-     "carbs_g": 420.0,
+     "calories": 3144.0,
+     "carbs_g": 630.0,
      "duration_min": 132,
      "flow": "nutrition",
-     "hydration_ml": 2800,
+     "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
-     "session_type": "PROGRESSIVE",
+     "session_type": "LONG_RUN",
      "severity": "info",
      "training_phase": "BUILD",
      "weight_status": "STABLE"
@@ -12045,7 +12042,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 21, 2026\n\n🏃 *Today:* PROGRESSIVE – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling gate lock applied; session intensity reduced.\n✅ *Actionable guidance:* Confirm fueling plan before scheduling quality or long sessions.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 21, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -13187,7 +13184,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_LOCK\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13197,7 +13194,7 @@
     "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "LONG_RUN",
-    "session_post_governance": "PROGRESSIVE",
+    "session_post_governance": "LONG_RUN",
     "tsb_value": -45.6,
     "vlg_color": "YELLOW"
    },
@@ -13395,7 +13392,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_LOCK\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13405,7 +13402,7 @@
     "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "LONG_RUN",
-    "session_post_governance": "PROGRESSIVE",
+    "session_post_governance": "LONG_RUN",
     "tsb_value": -26.3,
     "vlg_color": "GREEN"
    },
@@ -13655,7 +13652,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_LOCK\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13665,7 +13662,7 @@
     "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "LONG_RUN",
-    "session_post_governance": "PROGRESSIVE",
+    "session_post_governance": "LONG_RUN",
     "tsb_value": -42.9,
     "vlg_color": "YELLOW"
    },

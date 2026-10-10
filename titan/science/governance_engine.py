@@ -1021,23 +1021,17 @@ class GovernanceEngine:
             return result
 
         if session_type == "LONG_RUN" and duration >= 90:
-            session_plan["session_type"] = "PROGRESSIVE"
+            # ADR-0063: the long run stays; the morning message reminds the athlete to
+            # carry food or gels. Locking it to PROGRESSIVE made the session harder (SV-05).
             result = {
-                "action": "LOCK",
+                "action": "FLAG",
                 "phase": 4,
-                "reason": f"LONG_RUN {duration} min without confirmed fueling: long-run fueling is required",
-                "original_session": "LONG_RUN",
-                "locked_to": "PROGRESSIVE",
+                "reason": f"LONG_RUN {duration} min without confirmed fueling: carry food or gels",
+                "session_unchanged": True,
             }
             _gate_event(
-                "FUELING",
-                "LOCK",
-                phase=4,
-                original_session="LONG_RUN",
-                locked_to="PROGRESSIVE",
-                duration_min=duration,
-                garmin_data_age_hours=_garmin_age,
-                garmin_data_trust_level=_garmin_trust,
+                "FUELING", "FLAG", phase=4, session_type="LONG_RUN", duration_min=duration,
+                garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
             )
             return result
 

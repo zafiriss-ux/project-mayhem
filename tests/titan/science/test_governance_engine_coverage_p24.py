@@ -198,28 +198,28 @@ class TestFuelingGateLongRunPhase4:
     """LONG_RUN ≥90 min without fueling → phase-4 LOCK to PROGRESSIVE."""
 
     @pytest.mark.unit
-    def test_long_run_90min_no_fueling_locks_to_progressive(self) -> None:
-        """Lines 1023-1042: LONG_RUN 90 min → LOCK, session becomes PROGRESSIVE."""
+    def test_long_run_90min_no_fueling_flags_and_keeps_the_long_run(self) -> None:
+        """ADR-0063: LONG_RUN 90 min → FLAG phase 4, the session stays LONG_RUN."""
         ge = GovernanceEngine()
         sp = _session_plan("LONG_RUN", 90)
         ctx = _base_context()
         ctx["session_plan"] = sp
         result = ge._check_fueling_gate(sp, ctx)
         assert result is not None
-        assert result["action"] == "LOCK"
+        assert result["action"] == "FLAG"
         assert result["phase"] == 4
-        assert sp["session_type"] == "PROGRESSIVE"
+        assert sp["session_type"] == "LONG_RUN"
 
     @pytest.mark.unit
-    def test_long_run_120min_no_fueling_also_locked(self) -> None:
-        """Lines 1023-1042: LONG_RUN 120 min → same phase-4 lock."""
+    def test_long_run_120min_no_fueling_also_flagged(self) -> None:
+        """ADR-0063: LONG_RUN 120 min → same phase-4 flag."""
         ge = GovernanceEngine()
         sp = _session_plan("LONG_RUN", 120)
         ctx = _base_context()
         ctx["session_plan"] = sp
         result = ge._check_fueling_gate(sp, ctx)
         assert result is not None
-        assert result["action"] == "LOCK"
+        assert result["action"] == "FLAG"
         assert result["phase"] == 4
 
     @pytest.mark.unit

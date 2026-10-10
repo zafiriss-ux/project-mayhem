@@ -1299,13 +1299,16 @@ class TestGovernanceVo2AndFuelingGates:
         assert result['fueling_gate']['action'] == 'FLAG'
         assert result['fueling_gate']['session_unchanged'] is True
 
-    def test_fueling_long_run_lock(self, gov):
+    def test_fueling_long_run_stays_with_a_reminder(self, gov):
+        """SV-05 / ADR-0063: a long run without confirmed fueling stays a long run."""
         plan = {'session_type': 'LONG_RUN', 'duration_min': 110}
         # T5-49: supply healthy sleep/readiness so the 2-of-4 gate does not fire.
         result = gov.apply_constraints(plan, context={'fueling_confirmed': False, 'sleep_score': 80, 'readiness_score': 70})
-        assert result['session_type'] == 'PROGRESSIVE'
-        assert result['fueling_gate']['action'] == 'LOCK'
-        assert result['fueling_gate']['locked_to'] == 'PROGRESSIVE'
+        assert result['session_type'] == 'LONG_RUN'
+        assert result['fueling_gate']['action'] == 'FLAG'
+        assert result['fueling_gate']['session_unchanged'] is True
+        assert 'FUELING_GATE_FLAG' in result['governance_locks_applied']
+        assert 'FUELING_GATE_LOCK' not in result['governance_locks_applied']
 
     def test_gate_ordering_vo2_before_fueling(self, gov):
         plan = {'session_type': 'HAMMER', 'duration_min': 45}
