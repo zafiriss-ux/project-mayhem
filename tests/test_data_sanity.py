@@ -487,3 +487,55 @@ def test_save_daily_metric_with_quality_flag(tmp_path):
     assert row is not None
     assert row[0] == "degraded"
     db.close()
+
+
+# ─── SV-17: values in the wrong unit ─────────────────────────────────────────
+
+
+@pytest.mark.integration
+def test_run_with_duration_in_minutes_warns():
+    """SV-17: 7.27 km in 40 "seconds" (really minutes) is 5 s/km; flag it, don't reject it."""
+    checker = DataSanityChecker()
+    row = {"date": _past_date_str(), "activity_type": "running", "distance_km": 7.27, "duration_sec": 40}
+    violations = checker.check_activity(row)
+    assert [v.rule for v in violations] == ["run_pace_implausible"]
+    assert has_warns(violations) and not has_rejects(violations)
+
+
+@pytest.mark.integration
+def test_run_pace_slower_than_walking_warns():
+    checker = DataSanityChecker()
+    row = {"date": _past_date_str(), "distance_km": 1.0, "duration_sec": 1200}
+    assert [v.rule for v in checker.check_activity(row)] == ["run_pace_implausible"]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("duration_sec", [120, 300, 900])
+def test_run_pace_at_bounds_no_violation(duration_sec):
+    checker = DataSanityChecker()
+    row = {"date": _past_date_str(), "activity_type": "running", "distance_km": 1.0, "duration_sec": duration_sec}
+    assert checker.check_activity(row) == []
+
+
+@pytest.mark.integration
+def test_cycling_pace_not_checked():
+    """40 km in an hour is a normal ride; the run pace rule does not apply."""
+    checker = DataSanityChecker()
+    row = {"date": _past_date_str(), "activity_type": "cycling", "distance_km": 40.0, "duration_sec": 3600}
+    assert checker.check_activity(row) == []
+
+
+@pytest.mark.integration
+def test_daily_metrics_sleep_in_wrong_unit_warns():
+    """SV-17: 0.12 h is a minutes/hours mix-up, not a night's sleep."""
+    checker = DataSanityChecker()
+    violations = checker.check_daily_metrics({"date": _past_date_str(), "sleep_hours": 0.12})
+    assert [v.rule for v in violations] == ["sleep_hours_implausible"]
+    assert has_warns(violations) and not has_rejects(violations)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("sleep_hours", [None, 0, 1.0, 7.5])
+def test_daily_metrics_plausible_or_missing_sleep_no_violation(sleep_hours):
+    checker = DataSanityChecker()
+    assert checker.check_daily_metrics({"date": _past_date_str(), "sleep_hours": sleep_hours}) == []

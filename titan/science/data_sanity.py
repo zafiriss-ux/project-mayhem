@@ -20,6 +20,14 @@ MODULE_VERSION = "1.0.0"
 
 _log = logging.getLogger(__name__)
 
+# SV-17: values in the wrong unit pass the bounds but not these checks.
+# 2:00 /km is faster than the average pace of any world record from 1500 m up
+# (about 2:26 /km); 15:00 /km is walking. Source: synthetic-athlete-report.md §5.
+RUN_PACE_SEC_PER_KM = (120.0, 900.0)
+# A whole night under one hour is far more likely a minutes/hours mix-up than sleep.
+MIN_NIGHT_SLEEP_HOURS = 1.0
+RUN_ACTIVITY_TYPES = frozenset({"running", "interval_training", "tempo_run", "long_run"})
+
 # ADR-0033-L3-D-RESOLVED (2026-04-18): Single-athlete assumption resolved.
 # Multi-athlete isolation complete. This module contains no per-athlete
 # DB queries — sanity validation is athlete-agnostic by design.
@@ -74,6 +82,7 @@ class DataSanityChecker:
         - distance_km > 0 and duration_sec == 0         → reject
         - timestamp in future (> now + 1 h drift margin)→ reject
         - hrv_ms == 0                                   → reject  (defence-in-depth)
+        - run pace outside RUN_PACE_SEC_PER_KM          → warn    (SV-17, wrong unit)
         """
         violations: list[SanityViolation] = []
 
@@ -134,6 +143,26 @@ class DataSanityChecker:
             else:
                 seen_activity_ids.add(str(activity_id))
 
+        # Rule: a run's pace must be one a person can run (SV-17). A duration
+        # in minutes read as seconds gives 7.27 km in 40 s, i.e. 5 s/km.
+        activity_type = row.get("activity_type")
+        if (not activity_type or activity_type in RUN_ACTIVITY_TYPES) and distance_km and duration_sec:
+            try:
+                pace = float(duration_sec) / float(distance_km)
+            except (TypeError, ValueError, ZeroDivisionError):
+                pace = None
+            lo, hi = RUN_PACE_SEC_PER_KM
+            if pace is not None and pace > 0 and not lo <= pace <= hi:
+                v = SanityViolation(
+                    record_type="activity",
+                    field="duration_sec",
+                    rule="run_pace_implausible",
+                    value=f"distance_km={distance_km} duration_sec={duration_sec} pace={pace:.0f}s/km",
+                    severity="warn",
+                )
+                violations.append(v)
+                _emit(context, v)
+
         # Rule: timestamp must not be in the future (> now + 1 h clock-drift margin)
         if timestamp_str:
             try:
@@ -181,6 +210,7 @@ class DataSanityChecker:
 
         Rules (ADR-0026 Table 1):
         - date is None or empty string → reject
+        - 0 < sleep_hours < MIN_NIGHT_SLEEP_HOURS → warn (SV-17, wrong unit)
         """
         violations: list[SanityViolation] = []
 
@@ -192,6 +222,18 @@ class DataSanityChecker:
                 rule="date_null_or_empty",
                 value=date_val,
                 severity="reject",
+            )
+            violations.append(v)
+            _emit(context, v)
+
+        sleep_hours = row.get("sleep_hours")
+        if sleep_hours is not None and 0 < float(sleep_hours) < MIN_NIGHT_SLEEP_HOURS:
+            v = SanityViolation(
+                record_type="daily_metrics",
+                field="sleep_hours",
+                rule="sleep_hours_implausible",
+                value=sleep_hours,
+                severity="warn",
             )
             violations.append(v)
             _emit(context, v)

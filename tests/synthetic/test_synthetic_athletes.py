@@ -37,7 +37,6 @@ def _everything(_v: Violation) -> bool:
 KNOWN: dict[str, list[Known]] = {
     "reduction_reduces_volume": [("SV-04", _everything)],
     "governance_never_raises_intensity": [("SV-05", _detail_starts("LONG_RUN -> PROGRESSIVE"))],
-    "stored_runs_are_runnable": [("SV-17", lambda v: v[1] == "duration_in_minutes")],
 }
 
 
