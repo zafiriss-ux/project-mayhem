@@ -88,6 +88,20 @@ def reduction_reduces_volume(outcomes: list[Outcome]) -> list[Violation]:
     return out
 
 
+def gate_modifier_reduces_volume(outcomes: list[Outcome]) -> list[Violation]:
+    """D-043: the intensity gate's volume modifier (YELLOW 0.8, RED 0.0) shrinks the session."""
+    out = []
+    for o in outcomes:
+        for m in o.mornings:
+            modifier = (m.session or {}).get("volume_modifier")
+            p_min, f_min = _num(m.planned, "duration_min"), _num(m.session, "duration_min")
+            if modifier is None or not 0 <= float(modifier) < 1 or not p_min:
+                continue
+            if f_min > round(p_min * float(modifier)):
+                out.append(_v(o, m, f"{_type(m)} {f_min:g}' with modifier {modifier} of {p_min:g}'"))
+    return out
+
+
 def governance_never_raises_intensity(outcomes: list[Outcome]) -> list[Violation]:
     """Governance only restricts: the final session is never above the planned one."""
     out = []
@@ -203,6 +217,7 @@ RULES = {
     "no_morning_raises": no_morning_raises,
     "rest_has_no_volume": rest_has_no_volume,
     "reduction_reduces_volume": reduction_reduces_volume,
+    "gate_modifier_reduces_volume": gate_modifier_reduces_volume,
     "governance_never_raises_intensity": governance_never_raises_intensity,
     "pace_is_plausible": pace_is_plausible,
     "stored_values_in_bounds": stored_values_in_bounds,

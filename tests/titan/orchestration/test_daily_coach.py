@@ -3134,3 +3134,26 @@ def test_rest_from_a_gate_has_no_distance_or_duration():
 def test_non_rest_sessions_keep_their_volume():
     easy = {"session_type": "EASY", "duration_min": 45, "distance_km": 8.0}
     assert daily_coach._rest_without_volume(easy) is easy
+
+
+# D-043: the intensity gate's volume modifier shrinks the session (SV-04).
+
+@pytest.mark.unit
+def test_volume_modifier_shrinks_distance_and_duration():
+    session = {"session_type": "EASY", "distance_km": 12.0, "duration_min": 72, "volume_modifier": 0.8}
+    reduced = daily_coach._apply_volume_modifier(session)
+    assert (reduced["session_type"], reduced["distance_km"], reduced["duration_min"]) == ("EASY", 9.6, 58)
+
+
+@pytest.mark.unit
+def test_volume_modifier_of_zero_leaves_rest():
+    session = {"session_type": "EASY", "distance_km": 10.0, "duration_min": 60, "volume_modifier": 0.0}
+    reduced = daily_coach._apply_volume_modifier(session)
+    assert (reduced["session_type"], reduced["distance_km"], reduced["duration_min"]) == ("REST", 0, 0)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("modifier", [1.0, None, 1.5, -0.2, float("nan")])
+def test_volume_modifier_outside_zero_to_one_changes_nothing(modifier):
+    session = {"session_type": "TEMPO", "distance_km": 10.0, "duration_min": 50, "volume_modifier": modifier}
+    assert daily_coach._apply_volume_modifier(session) == session
