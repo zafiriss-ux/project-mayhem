@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3445 tests all green (3445 passed, 6 skipped, 3451 collected — 2026-10-10, full pytest)
+**Historical snapshot:** 3450 tests all green (3450 passed, 6 skipped, 3456 collected — 2026-10-10, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -151,7 +151,8 @@ The refactor plan from 2026-10-07 on is tracked in `PROGRESS.md`; decisions in `
 
 1. **DB path**: Pass `db=` arg. Never call `DatabaseManager()` inside pipeline.
 2. **Column**: `training_load` (not `trimp`) in `training_log`.
-3. **`get_training_load_history()`**: `CTL_DECAY_DAYS` window (42 days).
+3. **`get_training_load_history()`**: `CTL_DECAY_DAYS` window (42 days) by default. CTL/ATL/TSB
+   callers pass `LOAD_HISTORY_DAYS` (210 days, `tsb_engine.py`); the kernel fills rest days with 0 (D-051).
 4. **`parse_hr()` locale**: `round(float(str(s).replace(",", ".")))`.
 5. **Telegram 409**: Two bots—kill python, restart.
 6. **`db_name='titan_core.db'`**: Never use `titan.db` — stale file.

@@ -1,4 +1,5 @@
 import math
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -8,9 +9,11 @@ from titan.science.tsb_engine import TSBEngine
 
 
 def _build_engine_with_history(loads: list[float]) -> TSBEngine:
+    """One load per consecutive day, the last one today (the kernel runs up to today)."""
     engine = TSBEngine()
+    first = datetime.now(UTC).date() - timedelta(days=len(loads) - 1)
     for index, load in enumerate(loads):
-        engine.add_daily_load(f"2026-01-{index + 1:02d}", load)
+        engine.add_daily_load((first + timedelta(days=index)).isoformat(), load)
     return engine
 
 
@@ -150,8 +153,8 @@ def test_predict_race_day_tsb_uses_current_internal_ctl_atl_state() -> None:
     temp_ctl = 50.0
     temp_atl = 40.0
     for load in [100.0, 50.0, 0.0]:
-        temp_atl = (load * (2 / 8)) + (temp_atl * (6 / 8))
-        temp_ctl = (load * (2 / 43)) + (temp_ctl * (41 / 43))
+        temp_atl += (load - temp_atl) / 7
+        temp_ctl += (load - temp_ctl) / 42
     expected = round(temp_ctl - temp_atl, 1)
 
     assert predicted == expected
@@ -164,3 +167,52 @@ def test_predict_race_day_tsb_with_zero_days_returns_current_form_delta() -> Non
     engine.atl = 42.81
 
     assert engine.predict_race_day_tsb(days=0, loads=[300.0]) == -5.6
+
+
+# ── SV-08 / D-051: TrainingPeaks form over every calendar day ────────────────
+
+
+def _kernel(loads: list[tuple[str, float]], end: date) -> tuple[float, float, float]:
+    return tsb_engine.compute_ctl_atl_tsb(loads, reference_date=end)
+
+
+@pytest.mark.unit
+def test_one_session_follows_the_trainingpeaks_formula() -> None:
+    """CTL += (load - CTL) / 42 and ATL += (load - ATL) / 7, from 0 (TrainingPeaks)."""
+    assert _kernel([("2026-03-01", 100.0)], date(2026, 3, 1)) == (2.4, 14.3, -11.9)
+
+
+@pytest.mark.unit
+def test_rest_days_count_as_zero_load() -> None:
+    """A gap in the log is a rest day: it lowers CTL and ATL like an explicit 0."""
+    end = date(2026, 3, 4)
+    sparse = [("2026-03-01", 100.0), ("2026-03-04", 100.0)]
+    explicit = [("2026-03-01", 100.0), ("2026-03-02", 0.0), ("2026-03-03", 0.0), ("2026-03-04", 100.0)]
+    back_to_back = [("2026-03-03", 100.0), ("2026-03-04", 100.0)]
+    assert _kernel(sparse, end) == _kernel(explicit, end)
+    assert _kernel(sparse, end) != _kernel(back_to_back, end)
+
+
+@pytest.mark.unit
+def test_days_after_the_last_session_decay_up_to_the_reference_date() -> None:
+    loads = [("2026-03-01", 100.0)]
+    same_day = _kernel(loads, date(2026, 3, 1))
+    week_later = _kernel(loads, date(2026, 3, 8))
+    assert week_later[0] < same_day[0] and week_later[1] < same_day[1]
+    assert week_later[2] > same_day[2]  # ATL falls faster, so form rises
+
+
+@pytest.mark.unit
+def test_two_sessions_on_one_day_add_up() -> None:
+    end = date(2026, 3, 1)
+    assert _kernel([("2026-03-01", 60.0), ("2026-03-01", 40.0)], end) == _kernel([("2026-03-01", 100.0)], end)
+
+
+@pytest.mark.unit
+def test_steady_athlete_does_not_jump_overnight() -> None:
+    """SV-08: steady_m went from TSB 16.0 to 59.5 in one day. Daily steps stay small."""
+    week = [60.0, 0.0, 70.0, 50.0, 0.0, 60.0, 120.0]
+    start = date(2026, 1, 1)
+    loads = [((start + timedelta(days=i)).isoformat(), week[i % 7]) for i in range(84)]
+    tsbs = [_kernel(loads, start + timedelta(days=d))[2] for d in range(42, 84)]
+    assert max(abs(b - a) for a, b in zip(tsbs, tsbs[1:], strict=False)) < 20

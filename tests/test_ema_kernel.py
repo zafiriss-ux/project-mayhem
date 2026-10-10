@@ -77,4 +77,5 @@ def test_production_values_unchanged() -> None:
     )
     # Snapshot of canonical EMA behavior.
     # Update intentionally if decay constants change.
-    assert result == (6.9, 22.5, -15.6)
+    # D-051 (SV-08): TrainingPeaks form, every calendar day to the reference date.
+    assert result == (3.1, 7.7, -4.6)

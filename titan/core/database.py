@@ -1256,8 +1256,8 @@ class PostgreSQLDatabaseManager:
         return [(str(row[0]), float(row[1])) for row in rows]
 
     def get_ctl_atl_tsb(self) -> tuple[float, float, float]:
-        from titan.science.tsb_engine import compute_ctl_atl_tsb
-        loads = self.get_training_load_history(CTL_DECAY_DAYS)
+        from titan.science.tsb_engine import LOAD_HISTORY_DAYS, compute_ctl_atl_tsb
+        loads = self.get_training_load_history(LOAD_HISTORY_DAYS)
         return compute_ctl_atl_tsb(
             daily_loads=loads,
             ctl_decay_days=CTL_DECAY_DAYS,

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
@@ -10,49 +10,84 @@ from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.1.0"
+
+
+def _today() -> date:
+    """Today in UTC, the date the morning routine uses."""
+    return datetime.now(UTC).date()
+
+
+# Days of load history the CTL needs: five time constants, so a start from 0 is
+# forgotten (e^-5 < 1%). replay_tsb used this warm-up already (SV-08, D-051).
+LOAD_HISTORY_DAYS = 5 * CTL_DECAY_DAYS
+
+
+def daily_load_series(
+    daily_loads: list[tuple[str, float]],
+    end_date: date,
+) -> list[tuple[str, float]]:
+    """One (date, load) per calendar day, from the first load to *end_date*.
+
+    Days without a session get load 0, so a rest day lowers CTL and ATL. Loads on
+    the same day are added; loads after *end_date* are left out.
+    """
+    by_day: dict[str, float] = {}
+    for date_str, load in daily_loads:
+        day = str(date_str)[:10]
+        by_day[day] = by_day.get(day, 0.0) + float(load)
+    end = end_date.isoformat()
+    days = sorted(d for d in by_day if d <= end)
+    if not days:
+        return []
+    current = date.fromisoformat(days[0])
+    series = []
+    while current <= end_date:
+        iso = current.isoformat()
+        series.append((iso, by_day.get(iso, 0.0)))
+        current += timedelta(days=1)
+    return series
 
 
 def compute_ctl_atl_tsb(
     daily_loads: list[tuple[str, float]],
-    ctl_decay_days: int = 42,
-    atl_decay_days: int = 7,
+    ctl_decay_days: int = CTL_DECAY_DAYS,
+    atl_decay_days: int = ATL_DECAY_DAYS,
     reference_date: date | None = None,
 ) -> tuple[float, float, float]:
     """
-    Canonical Banister EMA kernel.
+    Canonical Banister EMA kernel (TrainingPeaks form, SV-08, D-051).
+
+    CTLtoday = CTLyesterday + (loadtoday − CTLyesterday) / time constant, and the
+    same for ATL, over every calendar day: a day without training has load 0.
+    Source: TrainingPeaks help articles 204071884 (CTL) and 204071894 (ATL).
 
     Args:
-        daily_loads: List of (date_str, load) tuples, sorted ASC by date.
-            Each tuple is ONE day's total load (pre-aggregated by caller).
-        ctl_decay_days: EMA time constant for fitness (default 42).
-        atl_decay_days: EMA time constant for fatigue (default 7).
-        reference_date: Cutoff for ATL window. Defaults to today.
+        daily_loads: (date_str, load) tuples, in any order. Days may be missing
+            (rest days) or repeated (two sessions); the kernel builds the daily series.
+        ctl_decay_days: time constant for fitness (default 42).
+        atl_decay_days: time constant for fatigue (default 7).
+        reference_date: last day of the series. Defaults to today.
 
     Returns:
-        (ctl, atl, tsb) rounded to 1dp.
+        (ctl, atl, tsb) rounded to 1dp. Both start from 0 on the first loaded day.
 
     Invariants enforced:
         - Empty stream → (0.0, 0.0, 0.0)
-        - Loads must be pre-aggregated per day
-        - ATL uses date window, not item count
+        - One value per calendar day, rest days as 0
     """
-    if not daily_loads:
+    series = daily_load_series(daily_loads, reference_date or _today())
+    if not series:
         return 0.0, 0.0, 0.0
 
-    ref = reference_date or date.today()
-    atl_cutoff = (ref - timedelta(days=atl_decay_days)).isoformat()
-
-    ctl_k = 2.0 / (ctl_decay_days + 1)
-    atl_k = 2.0 / (atl_decay_days + 1)
+    ctl_k = 1.0 / ctl_decay_days
+    atl_k = 1.0 / atl_decay_days
 
     ctl = 0.0
     atl = 0.0
-
-    for date_str, load in daily_loads:
-        ctl = load * ctl_k + ctl * (1 - ctl_k)
-        if date_str >= atl_cutoff:
-            atl = load * atl_k + atl * (1 - atl_k)
+    for _date_str, load in series:
+        ctl += (load - ctl) * ctl_k
+        atl += (load - atl) * atl_k
 
     tsb = ctl - atl
     return (
@@ -80,7 +115,7 @@ def replay_tsb(
     """
     loads = db.get_training_load_history(
         athlete_id=athlete_id,
-        days=ctl_decay_days * 5,  # 5τ warmup window
+        days=ctl_decay_days * 5,  # 5τ warmup window (LOAD_HISTORY_DAYS)
     )
     loads_up_to = [
         (d, load) for d, load in loads
@@ -104,27 +139,29 @@ class TSBEngine:
     def add_daily_load(self, date: str, load: float) -> None:
         self.daily_loads.append((date, load))
 
+    def _kernel(self, ctl_decay_days: int, atl_decay_days: int) -> tuple[float, float, float]:
+        return compute_ctl_atl_tsb(
+            self.daily_loads,
+            ctl_decay_days=ctl_decay_days,
+            atl_decay_days=atl_decay_days,
+            reference_date=_today(),
+        )
+
     def calculate_ctl(self, decay: int | None = None) -> float | None:
-        """Chronic Training Load (42-day EMA)"""
+        """Chronic Training Load (42-day time constant, rest days count as 0)."""
         if not self.daily_loads:
             return None
         decay_days = CTL_DECAY_DAYS if decay is None else decay
-        ctl, alpha = self.daily_loads[0][1], 2.0 / (decay_days + 1)
-        for _, load in self.daily_loads[1:]:
-            ctl = (load * alpha) + (ctl * (1 - alpha))
-        self.ctl = ctl
-        return round(ctl, 1)
+        self.ctl = self._kernel(decay_days, ATL_DECAY_DAYS)[0]
+        return self.ctl
 
     def calculate_atl(self, decay: int | None = None) -> float | None:
-        """Acute Training Load (7-day EMA)"""
+        """Acute Training Load (7-day time constant, rest days count as 0)."""
         if not self.daily_loads:
             return None
         decay_days = ATL_DECAY_DAYS if decay is None else decay
-        atl, alpha = self.daily_loads[0][1], 2.0 / (decay_days + 1)
-        for _, load in self.daily_loads[1:]:
-            atl = (load * alpha) + (atl * (1 - alpha))
-        self.atl = atl
-        return round(atl, 1)
+        self.atl = self._kernel(CTL_DECAY_DAYS, decay_days)[1]
+        return self.atl
 
     def calculate_tsb(self) -> tuple[float | None, str]:
         """Training Stress Balance"""
@@ -166,8 +203,6 @@ class TSBEngine:
             return None
         temp_ctl, temp_atl = self.ctl, self.atl
         for load in loads[:days]:
-            atl_alpha = 2 / (ATL_DECAY_DAYS + 1)
-            ctl_alpha = 2 / (CTL_DECAY_DAYS + 1)
-            temp_atl = (load * atl_alpha) + (temp_atl * (1 - atl_alpha))
-            temp_ctl = (load * ctl_alpha) + (temp_ctl * (1 - ctl_alpha))
+            temp_atl += (load - temp_atl) / ATL_DECAY_DAYS
+            temp_ctl += (load - temp_ctl) / CTL_DECAY_DAYS
         return round(temp_ctl - temp_atl, 1)

@@ -6,7 +6,7 @@ There is no garmin_activities table; Garmin sync data is also written to trainin
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
@@ -161,12 +161,12 @@ def test_tsb_prefers_garmin_row_via_training_log(tmp_path):
 
 @pytest.mark.integration
 def test_tsb_calculation_correctness_known_inputs():
-    """EMA correctness: single load value → CTL == ATL == that value (seed condition)."""
+    """EMA correctness: one load today, from 0 → CTL = load/42, ATL = load/7 (TrainingPeaks, D-051)."""
     tsb = TSBEngine()
-    tsb.add_daily_load("2026-01-01", 50.0)
+    tsb.add_daily_load(datetime.now(UTC).date().isoformat(), 50.0)
 
     ctl = tsb.calculate_ctl()
     atl = tsb.calculate_atl()
 
-    assert ctl == pytest.approx(50.0, rel=0.01)
-    assert atl == pytest.approx(50.0, rel=0.01)
+    assert ctl == pytest.approx(50.0 / 42, abs=0.05)
+    assert atl == pytest.approx(50.0 / 7, abs=0.05)

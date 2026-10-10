@@ -420,11 +420,12 @@ class TrainingRepository:
         """
         with self._db._lock:
             from titan.observability.metrics import get_metrics
-            from titan.science.tsb_engine import (
-                compute_ctl_atl_tsb,  # deferred: avoids circular import
+            from titan.science.tsb_engine import (  # deferred: avoids circular import
+                LOAD_HISTORY_DAYS,
+                compute_ctl_atl_tsb,
             )
             t0 = time.monotonic()
-            loads = self._db.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
+            loads = self._db.get_training_load_history(LOAD_HISTORY_DAYS, athlete_id=athlete_id)
             ctl, atl, tsb = compute_ctl_atl_tsb(
                 daily_loads=loads,
                 ctl_decay_days=CTL_DECAY_DAYS,

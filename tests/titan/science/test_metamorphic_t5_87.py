@@ -14,6 +14,8 @@ but the relationship between outputs *is* known.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from titan.science.acwr_engine import ACWREngine
@@ -25,9 +27,11 @@ from titan.science.tsb_engine import TSBEngine
 
 
 def _tsb_engine(loads: list[float]) -> TSBEngine:
+    """One load per consecutive day, the last one today (the kernel runs up to today)."""
     engine = TSBEngine()
+    first = datetime.now(UTC).date() - timedelta(days=len(loads) - 1)
     for idx, load in enumerate(loads):
-        engine.add_daily_load(f"2026-01-{idx + 1:02d}", load)
+        engine.add_daily_load((first + timedelta(days=idx)).isoformat(), load)
     return engine
 
 
@@ -105,7 +109,7 @@ def test_mr04_acwr_injury_risk_score_non_decreasing() -> None:
 def test_mr05_rest_day_increases_tsb() -> None:
     """MR-05: Appending a zero-load rest day after a training block increases TSB.
 
-    ATL (7-day EMA, α≈0.25) decays faster than CTL (42-day EMA, α≈0.046) on a
+    ATL (time constant 7, α = 1/7) decays faster than CTL (42, α = 1/42) on a
     zero-load day, so TSB = CTL − ATL rises.
     """
     base_loads = [100.0] * 14
@@ -142,7 +146,8 @@ def test_mr07_constant_load_converges_to_steady_state() -> None:
     EMA → x regardless of decay window.
     """
     constant_load = 80.0
-    engine = _tsb_engine([constant_load] * 200)
+    # α = 1/42 needs about 7 time constants to settle within 0.5 (D-051).
+    engine = _tsb_engine([constant_load] * 300)
 
     ctl = engine.calculate_ctl()
     atl = engine.calculate_atl()
