@@ -1078,7 +1078,7 @@ class TestIntensityGovernor:
         result = governor.evaluate({'drift_pct': 6.2, 'planned_session': 'TEMPO'})
         assert result.color == 'RED'
         assert result.max_zone == 2
-        assert result.volume_modifier == 0.0
+        assert result.volume_modifier == 0.7  # ADR-0062
         assert result.session_override == 'EASY'
 
 

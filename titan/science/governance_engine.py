@@ -1252,7 +1252,9 @@ class GovernanceEngine:
                     int(session_plan.get("max_zone", 5) or 5),
                     int(intensity_gate.get("max_zone", 5) or 5),
                 )
-                _vol_mod = float(intensity_gate.get("volume_modifier", INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE) or INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE)
+                # ADR-0062: the conservative modifier replaces a missing value only; 0.0 stays 0.0.
+                _raw_vol_mod = intensity_gate.get("volume_modifier")
+                _vol_mod = float(INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE if _raw_vol_mod is None else _raw_vol_mod)
                 if not math.isfinite(_vol_mod):
                     _gate_event(
                         "INTENSITY_GATE", "NAN_REJECTED",

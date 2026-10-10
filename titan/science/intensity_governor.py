@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from titan.config.thresholds import (
+    INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
     INTENSITY_GOVERNOR_ACWR_RED,
     INTENSITY_GOVERNOR_ACWR_YELLOW,
     INTENSITY_GOVERNOR_DRIFT_RED,
@@ -154,7 +155,8 @@ class IntensityGovernor:
             session_override = "TEMPO" if planned_session in {"HAMMER", "RACE"} else None
         else:
             max_zone = 2
-            volume_modifier = 0.0
+            # 70% volume on RED, as applied since the start (SV-20, ADR-0062).
+            volume_modifier = INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE
             # A REST day is already the easiest session; overriding it gave "EASY 0 km" (SV-03).
             session_override = None if planned_session == "REST" else "EASY"
 

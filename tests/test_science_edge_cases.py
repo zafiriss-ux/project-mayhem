@@ -130,3 +130,24 @@ def test_governance_approves_quality_session_under_nominal_conditions():
     )
     assert result.get("hard_stop_reasons", []) == []
     assert result.get("governance_locks_applied", []) == []
+
+
+@pytest.mark.parametrize(
+    ("gate_volume_modifier", "expected"),
+    [
+        pytest.param(0.0, 0.0, id="zero-stays-zero"),
+        pytest.param(None, 0.7, id="missing-falls-back-to-conservative"),
+    ],
+)
+def test_zero_volume_modifier_is_not_replaced(gate_volume_modifier, expected):
+    """ADR-0062: the conservative 0.7 replaces a missing modifier only, not a 0.0."""
+    gate = {"color": "YELLOW", "max_zone": 2, "session_override": "EASY"}
+    if gate_volume_modifier is not None:
+        gate["volume_modifier"] = gate_volume_modifier
+
+    result = GovernanceEngine().apply_constraints(
+        _quality_session(),
+        _healthy_context(intensity_gate_result=gate),
+    )
+
+    assert result["volume_modifier"] == pytest.approx(expected)

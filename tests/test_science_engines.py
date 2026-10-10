@@ -357,7 +357,7 @@ class TestIntensityGovernor:
         result = gov.evaluate({"drift_pct": 6.0})  # RED
         assert result.color == "RED"
         assert result.max_zone == 2
-        assert result.volume_modifier == pytest.approx(0.0, abs=1e-9)
+        assert result.volume_modifier == pytest.approx(0.7, abs=1e-9)  # ADR-0062
         assert result.session_override == "EASY"
 
     def test_red_overrides_yellow(self, gov):

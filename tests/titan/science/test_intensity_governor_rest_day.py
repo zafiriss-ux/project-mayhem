@@ -19,7 +19,7 @@ def test_red_gate_leaves_a_rest_day_as_rest(planned: str) -> None:
         {"drift_pct": INTENSITY_GOVERNOR_DRIFT_RED + 1.0, "planned_session": planned}
     )
     assert result.color == "RED"
-    assert result.volume_modifier == 0.0
+    assert result.volume_modifier == 0.7  # ADR-0062; a REST day has no volume to scale
     assert result.session_override is None
     assert result.audit["applied_constraints"]["session_override"] is None
 
