@@ -209,10 +209,11 @@ class TestDatabase:
 
         ctl, atl, tsb = db.get_ctl_atl_tsb()
 
-        # Expected values from chronological EMA on loads [1,2,3,4]
-        assert ctl == pytest.approx(0.4, abs=0.1)
-        assert atl == pytest.approx(1.8, abs=0.1)
-        assert tsb == pytest.approx(-1.5, abs=0.1)
+        # Expected values from chronological EMA on loads [1,2,3,4], TrainingPeaks
+        # form from 0 (D-051). Reverse order would give ATL 1.1.
+        assert ctl == pytest.approx(0.2, abs=0.05)
+        assert atl == pytest.approx(1.2, abs=0.05)
+        assert tsb == pytest.approx(-1.0, abs=0.05)
 
     def test_temperature_c_canonical(self, db):
         """save_session accepts temperature_c without warning."""

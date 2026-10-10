@@ -909,8 +909,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
         return [(str(row[0]), float(row[1] or 0)) for row in rows]
 
     def get_ctl_atl_tsb(self, athlete_id: str = "owner") -> tuple[float, float, float]:
-        from titan.science.tsb_engine import compute_ctl_atl_tsb
-        loads = self.get_training_load_history(CTL_DECAY_DAYS, athlete_id=athlete_id)
+        from titan.science.tsb_engine import LOAD_HISTORY_DAYS, compute_ctl_atl_tsb
+        loads = self.get_training_load_history(LOAD_HISTORY_DAYS, athlete_id=athlete_id)
         # get_training_load_history returns DESC; kernel expects ASC
         chronological_loads = list(reversed(loads))
         return compute_ctl_atl_tsb(

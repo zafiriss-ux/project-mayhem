@@ -82,6 +82,7 @@ from titan.science.glycogen_model import GlycogenDebtAccumulator
 from titan.science.governance_engine import GovernanceEngine
 from titan.science.intensity_governor import IntensityGovernor
 from titan.science.outcome_tracker import OutcomeTracker
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS
 from titan.science.volume_load_gauge import VolumeLoadGauge
 
 _log = logging.getLogger(__name__)
@@ -1919,12 +1920,13 @@ class DailyCoach:
 
     def _feed_load_engines(self, activities: list[dict]) -> None:
         """
-        Refresh TSBEngine from DB after Garmin sync. Clears and reloads 42-day window.
+        Refresh TSBEngine from DB after Garmin sync. Clears and reloads the
+        LOAD_HISTORY_DAYS window (5 CTL time constants, D-051).
         Uses training_load from DB so CTL/ATL are always current.
         """
         try:
             loads = self.db.get_training_load_history(
-                days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+                days=LOAD_HISTORY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
             )
             self.tsb.daily_loads.clear()
             for date_str, load in loads:
@@ -2018,10 +2020,10 @@ class DailyCoach:
                 error_message=str(e),
             )
 
-        # 3. Training load history → TSB engine (42-day window for CTL)
+        # 3. Training load history → TSB engine (LOAD_HISTORY_DAYS warm-up for CTL, D-051)
         try:
             loads = self.db.get_training_load_history(
-                days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
+                days=LOAD_HISTORY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
             )
             self.tsb.daily_loads.clear()
             for date_str, load in loads:

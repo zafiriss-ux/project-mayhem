@@ -16,7 +16,7 @@ from titan.science.fatigue_engine import FatigueEngine
 from titan.science.hrv_engine import HRVGuidedEngine
 from titan.science.lactate_logic import LactateLogic
 from titan.science.readiness_engine import ReadinessEngine
-from titan.science.tsb_engine import TSBEngine
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS, TSBEngine
 
 
 @dataclass(frozen=True)
@@ -53,7 +53,7 @@ class EngineRegistry:
         it is stateless, and the per-athlete threshold offsets are loaded by
         ThresholdAdapter in coaching_pipeline() for ``context.athlete_id``.
         """
-        loads = db.get_training_load_history(athlete_id=athlete_id, days=90)
+        loads = db.get_training_load_history(athlete_id=athlete_id, days=LOAD_HISTORY_DAYS)
         tsb = TSBEngine()
         for date_str, load in loads:
             tsb.add_daily_load(date_str, float(load))
