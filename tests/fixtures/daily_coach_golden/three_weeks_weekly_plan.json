@@ -587,6 +587,34 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 1,
+     "days_back": 210,
+     "detail": "Synced 1 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 1,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -1057,6 +1085,44 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 2,
+     "days_back": 210,
+     "detail": "Synced 2 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 2,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -1502,6 +1568,44 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 2,
+     "days_back": 210,
+     "detail": "Synced 2 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 2,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -1961,6 +2065,54 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 3,
+     "days_back": 210,
+     "detail": "Synced 3 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 3,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -2414,6 +2566,64 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 4,
+     "days_back": 210,
+     "detail": "Synced 4 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 4,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -2882,6 +3092,64 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 4,
+     "days_back": 210,
+     "detail": "Synced 4 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 4,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -3367,6 +3635,74 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 5,
+     "days_back": 210,
+     "detail": "Synced 5 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 5,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -3884,6 +4220,84 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 6,
+     "days_back": 210,
+     "detail": "Synced 6 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 6,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -4436,6 +4850,94 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 7,
+     "days_back": 210,
+     "detail": "Synced 7 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 7,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -4961,6 +5463,94 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 7,
+     "days_back": 210,
+     "detail": "Synced 7 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 7,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -5512,6 +6102,104 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 8,
+     "days_back": 210,
+     "detail": "Synced 8 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 8,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -6045,6 +6733,114 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 9,
+     "days_back": 210,
+     "detail": "Synced 9 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 9,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -6593,6 +7389,114 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 9,
+     "days_back": 210,
+     "detail": "Synced 9 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 9,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -7152,6 +8056,124 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 10,
+     "days_back": 210,
+     "detail": "Synced 10 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 10,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -7707,6 +8729,134 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 11,
+     "days_back": 210,
+     "detail": "Synced 11 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 11,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -8278,6 +9428,144 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 12,
+     "days_back": 210,
+     "detail": "Synced 12 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-17",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 12,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 12,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -8845,6 +10133,144 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 12,
+     "days_back": 210,
+     "detail": "Synced 12 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-17",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 12,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 12,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -9416,6 +10842,154 @@
      "step_number": 2
     },
     {
+     "action": "activities_synced",
+     "count": 13,
+     "days_back": 210,
+     "detail": "Synced 13 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-19",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-17",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 12,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 13,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 13,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -9959,6 +11533,164 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 14,
+     "days_back": 210,
+     "detail": "Synced 14 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-20",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-19",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-17",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 12,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 13,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 14,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 14,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",
@@ -10517,6 +12249,164 @@
      "severity": "info",
      "step_name": "persist_garmin_data",
      "step_number": 2
+    },
+    {
+     "action": "activities_synced",
+     "count": 14,
+     "days_back": 210,
+     "detail": "Synced 14 activities",
+     "flow": "garmin_sync",
+     "logger": "titan.integrations.garmin_sync",
+     "severity": "info",
+     "subsystem": "sync_activities"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-20",
+     "activity_index": 1,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-19",
+     "activity_index": 2,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-17",
+     "activity_index": 3,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-16",
+     "activity_index": 4,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-15",
+     "activity_index": 5,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-13",
+     "activity_index": 6,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-12",
+     "activity_index": 7,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-10",
+     "activity_index": 8,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-09",
+     "activity_index": 9,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-08",
+     "activity_index": 10,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-06",
+     "activity_index": 11,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-05",
+     "activity_index": 12,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-03",
+     "activity_index": 13,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "activity_persist",
+     "activity_date": "2026-03-02",
+     "activity_index": 14,
+     "failure_class": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "outcome": "ACTIVITY_PERSISTED",
+     "severity": "info"
+    },
+    {
+     "action": "training_history_backfilled",
+     "count": 14,
+     "days_back": 210,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_event",

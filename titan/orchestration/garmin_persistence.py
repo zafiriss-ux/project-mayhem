@@ -4,7 +4,8 @@ Moved out of ``DailyCoach._persist_garmin_data`` without changing behavior:
 activities go to ``training_log`` and last night's sleep, HRV, resting HR and
 weight go to ``daily_metrics``, all in one transaction. The caller passes the
 event function, so the structured events keep the ``daily_coach`` flow and
-logger they always had.
+logger they always had. ``backfill_training_history`` fetches older activities
+when the stored history is too short for CTL/TSB (D-055).
 """
 from __future__ import annotations
 
@@ -58,6 +59,75 @@ def _safe_int(value, default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _save_activities(
+    db: DatabaseManager,
+    activities: list[dict],
+    today_str: str,
+    *,
+    athlete_id: str,
+    emit: Callable[..., None],
+    sanity: DataSanityChecker,
+) -> None:
+    """Write Garmin activities to ``training_log``; the caller holds the transaction."""
+    seen_activity_ids: set[str] = set()
+    for idx, act in enumerate(activities, start=1):
+        activity_date = act.get('date', today_str)
+
+        # ── Structural sanity check (ADR-0026 Layer 1) ───────────
+        sanity_violations = sanity.check_activity(
+            act,
+            context="persist_garmin_data",
+            seen_activity_ids=seen_activity_ids,
+        )
+        if has_rejects(sanity_violations):
+            emit(
+                "activity_persist",
+                activity_index=idx,
+                activity_date=activity_date,
+                outcome="ACTIVITY_SANITY_REJECTED",
+                failure_class=None,
+            )
+            continue
+        activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
+
+        try:
+            _est_load = act.get('estimated_training_load')
+            _tl_override = int(_est_load) if _est_load else None
+            db.save_session(
+                date              = activity_date,
+                session_type      = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get('activity_type', ''), 'EASY'),
+                distance_km       = _safe_float(act.get('distance_km', 0)),
+                duration_sec      = _safe_int(act.get('duration_sec', 0)),
+                avg_hr            = _safe_int(act.get('avg_hr')) or None,
+                max_hr            = _safe_int(act.get('max_hr')) or None,
+                rpe               = act.get('rpe'),
+                training_load     = _tl_override,
+                notes             = act.get('name', ''),
+                garmin_activity_id= act.get('activity_id'),
+                quality_flag      = activity_quality_flag,
+                avg_pace_sec_per_km= _safe_int(act.get('avg_pace_sec_per_km')) or None,
+                athlete_id        = athlete_id,
+            )
+            emit(
+                "activity_persist",
+                activity_index=idx,
+                activity_date=activity_date,
+                outcome="ACTIVITY_PERSISTED",
+                failure_class=None,
+            )
+        except Exception as exc:
+            emit(
+                "activity_persist",
+                activity_index=idx,
+                activity_date=activity_date,
+                outcome="ACTIVITY_SKIPPED",
+                failure_class=PERSIST_ERROR,
+                error_class=type(exc).__name__,
+                error_message=str(exc),
+            )
+            raise
 
 
 def persist_garmin_data(
@@ -188,65 +258,11 @@ def persist_garmin_data(
     latest_weight = validated_inputs["weight_kg"]
 
     _sanity = DataSanityChecker()
-    seen_activity_ids: set[str] = set()
     try:
         with db.transaction():
-            for idx, act in enumerate(activities, start=1):
-                activity_date = act.get('date', today_str)
-
-                # ── Structural sanity check (ADR-0026 Layer 1) ───────────
-                sanity_violations = _sanity.check_activity(
-                    act,
-                    context="persist_garmin_data",
-                    seen_activity_ids=seen_activity_ids,
-                )
-                if has_rejects(sanity_violations):
-                    emit(
-                        "activity_persist",
-                        activity_index=idx,
-                        activity_date=activity_date,
-                        outcome="ACTIVITY_SANITY_REJECTED",
-                        failure_class=None,
-                    )
-                    continue
-                activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
-
-                try:
-                    _est_load = act.get('estimated_training_load')
-                    _tl_override = int(_est_load) if _est_load else None
-                    db.save_session(
-                        date              = activity_date,
-                        session_type      = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get('activity_type', ''), 'EASY'),
-                        distance_km       = _safe_float(act.get('distance_km', 0)),
-                        duration_sec      = _safe_int(act.get('duration_sec', 0)),
-                        avg_hr            = _safe_int(act.get('avg_hr')) or None,
-                        max_hr            = _safe_int(act.get('max_hr')) or None,
-                        rpe               = act.get('rpe'),
-                        training_load     = _tl_override,
-                        notes             = act.get('name', ''),
-                        garmin_activity_id= act.get('activity_id'),
-                        quality_flag      = activity_quality_flag,
-                        avg_pace_sec_per_km= _safe_int(act.get('avg_pace_sec_per_km')) or None,
-                        athlete_id        = athlete_id,
-                    )
-                    emit(
-                        "activity_persist",
-                        activity_index=idx,
-                        activity_date=activity_date,
-                        outcome="ACTIVITY_PERSISTED",
-                        failure_class=None,
-                    )
-                except Exception as exc:
-                    emit(
-                        "activity_persist",
-                        activity_index=idx,
-                        activity_date=activity_date,
-                        outcome="ACTIVITY_SKIPPED",
-                        failure_class=PERSIST_ERROR,
-                        error_class=type(exc).__name__,
-                        error_message=str(exc),
-                    )
-                    raise
+            _save_activities(
+                db, activities, today_str, athlete_id=athlete_id, emit=emit, sanity=_sanity,
+            )
 
             daily_metric_violations = _sanity.check_daily_metrics(
                 {
@@ -332,3 +348,40 @@ def persist_garmin_data(
         raise PersistenceFailure(today_rhr, today_sleep_score, today_sleep_hours) from exc
 
     return today_rhr, today_sleep_score, today_sleep_hours
+
+
+def backfill_training_history(
+    db: DatabaseManager,
+    garmin,  # noqa: ANN001 - GarminSync; typed loosely to keep this module free of integrations
+    today_str: str,
+    *,
+    athlete_id: str,
+    emit: Callable[..., None],
+) -> int:
+    """Fetch ``LOAD_HISTORY_DAYS`` of activities when the stored history is too short (D-055).
+
+    CTL starts from 0 (D-051), so with only the 14 days of a normal sync a new athlete's TSB
+    falls far below the H4 floor. When ``training_log`` has no session on or before
+    ``today - CTL_DECAY_DAYS``, the activities of the last ``LOAD_HISTORY_DAYS`` days are
+    fetched once and stored like any synced activity (duplicates are ignored by
+    ``garmin_activity_id``). Returns the number of activities fetched.
+    """
+    from datetime import date, timedelta
+
+    from titan.config.thresholds import CTL_DECAY_DAYS
+    from titan.science.tsb_engine import LOAD_HISTORY_DAYS
+
+    oldest_needed = (date.fromisoformat(today_str) - timedelta(days=CTL_DECAY_DAYS)).isoformat()
+    rows = db.get_training_load_history(LOAD_HISTORY_DAYS, athlete_id=athlete_id)
+    if any(str(d)[:10] <= oldest_needed for d, _load in rows):
+        return 0
+    activities = garmin.sync_activities(
+        LOAD_HISTORY_DAYS, athlete_max_hr=getattr(garmin, "athlete_max_hr", 0) or 0,
+    )
+    if activities:
+        with db.transaction():
+            _save_activities(
+                db, activities, today_str, athlete_id=athlete_id, emit=emit, sanity=DataSanityChecker(),
+            )
+    emit("training_history_backfilled", count=len(activities), days_back=LOAD_HISTORY_DAYS)
+    return len(activities)

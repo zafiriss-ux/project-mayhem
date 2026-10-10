@@ -1,11 +1,17 @@
 """Garmin persistence moved out of DailyCoach (plan task 6, D-029)."""
 from __future__ import annotations
 
+from datetime import UTC, date, datetime, timedelta
+
 import pytest
 
 from titan.core.database import DatabaseManager
 from titan.orchestration import daily_coach
-from titan.orchestration.garmin_persistence import PersistenceFailure, persist_garmin_data
+from titan.orchestration.garmin_persistence import (
+    PersistenceFailure,
+    backfill_training_history,
+    persist_garmin_data,
+)
 
 DAY = "2026-03-04"
 
@@ -92,3 +98,56 @@ def test_values_in_the_wrong_unit_are_stored_with_a_quality_flag(db):
     day_flag = db.conn.execute("SELECT quality_flag FROM daily_metrics WHERE date = ?", (DAY,)).fetchone()[0]
     assert run_flag == "degraded"
     assert day_flag == "degraded"
+
+
+def _today() -> str:
+    # The load-history query reads SQLite's own clock, so these tests use the real date.
+    return datetime.now(UTC).date().isoformat()
+
+
+class _HistoryGarmin:
+    """Serves activities by age in days; records how far back it was asked."""
+
+    athlete_max_hr = 0
+
+    def __init__(self, ages: list[int]) -> None:
+        self.ages = ages
+        self.calls: list[int] = []
+
+    def sync_activities(self, days_back: int, athlete_max_hr: int = 0) -> list[dict]:
+        self.calls.append(days_back)
+        today = date.fromisoformat(_today())
+        return [{
+            "activity_id": f"garmin-old-{age}", "date": (today - timedelta(days=age)).isoformat(),
+            "activity_type": "running", "distance_km": 10, "duration_sec": 3300,
+            "estimated_training_load": 80, "name": "old",
+        } for age in self.ages if age <= days_back]
+
+
+@pytest.mark.unit
+def test_short_history_is_backfilled_from_garmin(db):
+    """D-055: with no session older than 42 days, 210 days of activities are fetched once."""
+    from titan.science.tsb_engine import LOAD_HISTORY_DAYS
+
+    garmin = _HistoryGarmin([3, 60, 150, 300])
+    events: list[str] = []
+
+    count = backfill_training_history(db, garmin, _today(), athlete_id="owner", emit=lambda a, **_f: events.append(a))
+
+    assert garmin.calls == [LOAD_HISTORY_DAYS]
+    assert count == 3
+    dates = [r[0] for r in db.conn.execute("SELECT date FROM training_log ORDER BY date")]
+    today = date.fromisoformat(_today())
+    assert dates == [(today - timedelta(days=age)).isoformat() for age in (150, 60, 3)]
+    assert events[-1] == "training_history_backfilled"
+
+
+@pytest.mark.unit
+def test_long_enough_history_is_not_fetched_again(db):
+    garmin = _HistoryGarmin([60])
+    backfill_training_history(db, garmin, _today(), athlete_id="owner", emit=lambda *_a, **_f: None)
+
+    count = backfill_training_history(db, garmin, _today(), athlete_id="owner", emit=lambda *_a, **_f: None)
+
+    assert count == 0
+    assert len(garmin.calls) == 1
