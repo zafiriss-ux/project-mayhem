@@ -39,6 +39,7 @@ from typing import Any
 import pytest
 from freezegun import freeze_time
 
+from tests.sqlite_clock import freeze_sqlite_clock
 from titan.core.athlete import UniversalAthleteProfile
 from titan.core.database import DatabaseManager
 
@@ -321,6 +322,7 @@ def _run_scenario(world: dict[str, Any], watch: list[WatchDay | None], *,
         today = START_DAY + timedelta(days=index)
         with freeze_time(f"{today.isoformat()} {RUN_TIME}"):
             db = DatabaseManager(db_name=world["db_path"].name, db_dir=world["db_path"].parent)
+            freeze_sqlite_clock(db.conn)  # SV-19: load-history queries see the frozen day
             if before_morning is not None:
                 before_morning(index, db)
             # A new coach every morning, as the worker builds one per routine.
@@ -358,6 +360,32 @@ def test_two_weeks_as_the_worker_runs_them(world):
     """14 mornings as the worker runs them, with its weekly plan (D-020); an autonomic crash on morning 10."""
     watch = [CRASH_DAY if i == 9 else normal_day(i) for i in range(14)]
     _compare_with_golden("two_weeks_worker", _run_scenario(world, watch))
+
+
+def test_mornings_see_the_training_load_of_the_scenario(world):
+    """SV-19: SQLite reads the frozen day, so the load of the scenario reaches TSB.
+
+    With SQLite on the real clock, ``date('now', '-N days')`` missed the scenario's rows
+    and every morning's TSB was 0.
+    """
+    # Sunday (morning 7) plans next week from the TSB of the stored load.
+    result = _run_scenario(world, [normal_day(i) for i in range(7)])
+    tsb_values = [
+        event["tsb_value"]
+        for day in result["days"]
+        for event in day["events"]
+        if event.get("action") == "plan_generation_started" and event.get("tsb_value") is not None
+    ]
+    assert tsb_values and any(value < 0 for value in tsb_values)
+
+
+def test_freeze_sqlite_clock_reads_the_frozen_day():
+    conn = sqlite3.connect(":memory:")
+    freeze_sqlite_clock(conn)
+    with freeze_time("2026-03-02 07:30:00"):
+        row = conn.execute("SELECT date('now'), date('now', '-42 days'), datetime('now')").fetchone()
+    conn.close()
+    assert row == ("2026-03-02", "2026-01-19", "2026-03-02 07:30:00")
 
 
 def test_three_weeks_with_weekly_plan(world):

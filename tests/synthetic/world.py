@@ -12,7 +12,7 @@ characterization tests of task 5:
 - Weather: ``_http_get`` answers as Open-Meteo for a mild spring morning (12 °C, 70%).
 - Time: frozen at 07:30 UTC, for Python and for SQLite. freezegun does not reach SQLite's
   own clock, so ``date()`` and ``datetime()`` are replaced on each morning's connection by
-  functions that read the frozen clock (``_freeze_sqlite_clock``); otherwise the
+  functions that read the frozen clock (``tests.sqlite_clock``); otherwise the
   load-history query (``date('now', '-42 days')``) would look at the real date.
   The last morning is a fixed Saturday, so every run sees the same weekly plan.
 
@@ -34,6 +34,8 @@ from pathlib import Path
 from typing import Any
 
 from freezegun import freeze_time
+
+from tests.sqlite_clock import freeze_sqlite_clock
 
 HISTORY_DAYS = 42      # CTL_DECAY_DAYS: the whole chronic window is filled
 SCENARIO_DAYS = 7      # an acute (ACWR) week
@@ -526,7 +528,7 @@ class World:
         raised = None
         with freeze_time(f"{day.isoformat()} {RUN_TIME}"):
             db = DatabaseManager(db_name=db_path.name, db_dir=db_path.parent)
-            _freeze_sqlite_clock(db.conn)
+            freeze_sqlite_clock(db.conn)
             try:
                 _run_morning(db, athlete_id="owner")
             except Exception as exc:  # a raise is an outcome too
@@ -574,22 +576,6 @@ class World:
             outcome.mornings.append(self._morning(db_path, day))
         outcome.runs = _training_rows(db_path, self.dates[HISTORY_DAYS].isoformat())
         return outcome
-
-
-def _sqlite_time(value: Any, mods: tuple[Any, ...]) -> datetime:
-    """The two forms the schema and queries use: ``('now')`` and ``('now', '-N days')``."""
-    base = datetime.now(UTC).replace(tzinfo=None) if value == "now" else datetime.fromisoformat(str(value))
-    for mod in mods:
-        amount, unit = str(mod).split()
-        if not unit.startswith("day"):
-            raise ValueError(f"unsupported SQLite modifier in synthetic validation: {mod!r}")
-        base += timedelta(days=float(amount))
-    return base
-
-
-def _freeze_sqlite_clock(conn) -> None:  # noqa: ANN001
-    conn.create_function("date", -1, lambda v, *m: _sqlite_time(v, m).date().isoformat())
-    conn.create_function("datetime", -1, lambda v, *m: _sqlite_time(v, m).strftime("%Y-%m-%d %H:%M:%S"))
 
 
 def _training_rows(db_path: Path, since: str) -> list[dict[str, Any]]:
