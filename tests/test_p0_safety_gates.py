@@ -228,13 +228,16 @@ def test_hard_stop_gate_boundary(ctx_overrides, expect_fire, gate):
 # ── AT-CONFIG: Thresholds are config-driven ──────────────────────────────────
 
 def test_config_hrv_delta_respected(monkeypatch):
-    """AT-CONFIG: Raising HARD_STOP_HRV_DELTA to 30 means delta=-27 doesn't fire H2.
+    """AT-CONFIG: Raising HARD_STOP_HRV_DELTA to 30 (and HARD_STOP_HRV_DROP_PCT to 60%,
+    ADR-0064) means delta=-27 doesn't fire H2.
     RHR is kept normal so only the HRV threshold is tested in isolation."""
     import titan.config.thresholds as thr_mod
     import titan.science.governance_engine as ge_mod
 
     monkeypatch.setattr(thr_mod, "HARD_STOP_HRV_DELTA", 30)
     monkeypatch.setattr(ge_mod, "HARD_STOP_HRV_DELTA", 30)
+    monkeypatch.setattr(thr_mod, "HARD_STOP_HRV_DROP_PCT", 0.60)
+    monkeypatch.setattr(ge_mod, "HARD_STOP_HRV_DROP_PCT", 0.60)
 
     ctx = make_context(
         today_hrv=28.0, baseline_hrv=55.0,   # delta = -27, below new threshold of 30

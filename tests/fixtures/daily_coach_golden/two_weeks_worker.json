@@ -5385,7 +5385,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 47/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (20.6 vs 15.0, margin 5.6).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 41/100\n  • Readiness: 47/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HRV collapse crossed safety threshold (20.6 vs 14.88, margin 5.72).\n✅ *Actionable guidance:* Replace intensity with rest and reassess HRV tomorrow morning.\n🩺 *Stress context:* UNKNOWN_ACWR\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {

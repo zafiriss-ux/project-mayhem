@@ -1,6 +1,9 @@
 """Centralized governance and safety thresholds."""
 
 HARD_STOP_HRV_DELTA = 15.0
+# H2 also fires on a drop of this fraction of the baseline, whichever comes first (ADR-0064).
+# 30% equals 15 ms at a 50 ms baseline, so it only tightens H2 below that baseline.
+HARD_STOP_HRV_DROP_PCT = 0.30
 HARD_STOP_RHR_DELTA = 8.0
 HARD_STOP_TSB_FLOOR = -50.0
 ILLNESS_PATTERN_HRV_DELTA = 20.0
@@ -166,6 +169,7 @@ RATE_LIMITER_MAX_KEYS = 10_000
 # and is therefore excluded by type, not by this guard.
 HARD_STOP_THRESHOLD_KEYS: frozenset[str] = frozenset({
     "HARD_STOP_HRV_DELTA",
+    "HARD_STOP_HRV_DROP_PCT",
     "HARD_STOP_RHR_DELTA",
     "HARD_STOP_TSB_FLOOR",
     "SUBJECTIVE_FATIGUE_EXTREME",
