@@ -259,6 +259,16 @@ def _clamp_to_easy_45(session: dict) -> dict:
     return capped
 
 
+# Readiness and AFI need a number when Garmin sent no sleep score: 50 gives
+# sleep_delta ≈ -0.67 and the readiness sleep deduction, which discourages
+# training. Governance gets None instead and applies ADR-0051 itself (SV-06).
+_MISSING_SLEEP_SCORE = 50
+
+
+def _sleep_score_or_default(score: int | None) -> int:
+    return _MISSING_SLEEP_SCORE if score is None else score
+
+
 def _rest_without_volume(session: dict) -> dict:
     """REST means no distance and no duration, like a REST day from the weekly plan.
 
@@ -414,8 +424,8 @@ class _PipelineInputs:
     garmin_data: GarminSyncResult
     soreness: int
     subjective_fatigue_score: int
-    today_rhr: int
-    today_sleep_score: int
+    today_rhr: int            # 0 when tonight's reading is missing
+    today_sleep_score: int | None   # None when Garmin sent no score (ADR-0051, SV-06)
     today_sleep_hours: float
     baseline_rhr_for_comparison: float
     persistence_degraded: bool
@@ -890,7 +900,7 @@ class DailyCoach:
         today_hrr60  = (self.autonomic.hrr_log[-1][1] if self.autonomic.hrr_log else None)
 
         # Sleep depth delta: map Garmin sleep score to -1..+1 (70 = baseline)
-        sleep_delta = max(-1.0, min(1.0, (today_sleep_score - 70) / 30))
+        sleep_delta = max(-1.0, min(1.0, (_sleep_score_or_default(today_sleep_score) - 70) / 30))
 
         def _step4_compute_afi():
             afi_raw_local = self.autonomic.calculate_afi(
@@ -1203,7 +1213,7 @@ class DailyCoach:
             baseline_hrv = inp.baseline_hrv,
             today_rhr    = inp.today_rhr or 50,
             baseline_rhr = inp.baseline_rhr_for_comparison,
-            sleep_score  = inp.today_sleep_score,
+            sleep_score  = _sleep_score_or_default(inp.today_sleep_score),
             soreness     = inp.soreness,
         ))
         readiness['score'] = max(0, min(100,
@@ -1366,7 +1376,9 @@ class DailyCoach:
             today_hrv=inp.today_hrv,
             baseline_hrv=inp.baseline_hrv,
             hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0),
-            today_rhr=inp.today_rhr or 50,
+            # Missing readings reach governance as None, which applies ADR-0051
+            # itself: no RHR → EASY ceiling (H3_MISSING), no sleep score → 40 (SV-06).
+            today_rhr=inp.today_rhr or None,
             baseline_rhr=inp.baseline_rhr_for_comparison,
             sleep_score=inp.today_sleep_score,
             subjective_fatigue_score=inp.subjective_fatigue_score,
@@ -1564,7 +1576,7 @@ class DailyCoach:
             'hrv_baseline'      : round(inp.baseline_hrv, 1),
             'afi'               : inp.afi_final,
             # Sleep
-            'sleep_quality'     : inp.today_sleep_score,
+            'sleep_quality'     : inp.today_sleep_score if inp.today_sleep_score is not None else 'N/A',
             'sleep_hours'       : round(inp.today_sleep_hours, 1),
             # Readiness (AFI-adjusted)
             'readiness_score'   : readiness.get('score', 'N/A'),
@@ -1753,9 +1765,9 @@ class DailyCoach:
         today_hrv: float | None,
         baseline_hrv: float,
         hrv_std_dev: float,
-        today_rhr: int,
+        today_rhr: int | None,
         baseline_rhr: float,
-        sleep_score: int,
+        sleep_score: int | None,
         subjective_fatigue_score: int,
         tsb_value: float,
         injury_flag: bool,

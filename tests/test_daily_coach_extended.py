@@ -165,7 +165,7 @@ class TestPersistGarminData:
             "activities": [], "sleep": [], "hrv": [], "weight": [],
         })
         assert rhr == 0
-        assert sleep_score == 50   # conservative default (< 70 → negative sleep_delta)
+        assert sleep_score is None  # missing; DailyCoach applies the default (SV-06)
         assert sleep_hours == 7.5  # default
 
     def test_activity_saved_to_db(self, coach):
@@ -223,7 +223,7 @@ class TestPersistGarminData:
         }
         rhr, sleep_score, _ = self._call(coach, garmin_data)
         assert rhr == 0
-        assert sleep_score == 50  # default unchanged
+        assert sleep_score is None  # still missing (SV-06)
 
 
 # ════════════════════════════════════════════════════════════════════════════

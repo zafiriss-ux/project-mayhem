@@ -784,9 +784,10 @@ def test_persist_garmin_data_sync_sleep_output_rhr_is_absent(tmp_path):
 
 @pytest.mark.unit
 def test_persist_garmin_data_missing_sleep_data_defaults_are_conservative(tmp_path):
-    """T5-60 regression: when sleep data is entirely absent the default
-    sleep_score must be conservative (< 70, i.e. negative sleep_delta),
-    not the former optimistic 75 default."""
+    """T5-60 regression: when sleep data is entirely absent the readiness/AFI
+    default sleep_score must be conservative (< 70, i.e. negative sleep_delta),
+    not the former optimistic 75 default. Persistence reports the score as
+    missing (None); the default lives in DailyCoach (SV-06)."""
     db = DatabaseManager(db_name="t5_60_conservative_default.db", db_dir=tmp_path)
     coach = _build_atomic_persist_coach(db)
     day = "2026-03-22"
@@ -795,7 +796,9 @@ def test_persist_garmin_data_missing_sleep_data_defaults_are_conservative(tmp_pa
     payload["sleep"] = []   # No sleep data at all
 
     try:
-        _rhr, sleep_score, _sleep_hours = coach._persist_garmin_data(payload, day)
+        _rhr, measured, _sleep_hours = coach._persist_garmin_data(payload, day)
+        assert measured is None
+        sleep_score = daily_coach._sleep_score_or_default(measured)
 
         # Conservative: score must be below 70 so sleep_delta is negative.
         assert sleep_score < 70, (
@@ -1283,7 +1286,7 @@ def test_run_morning_routine_partial_sleep_payload_uses_safe_defaults():
     coach.telegram = SimpleNamespace(send_daily_coaching=lambda data: payload.update(data) or True)
 
     assert coach.run_morning_routine() is True
-    assert payload["sleep_quality"] == 50  # conservative default (< 70 → negative sleep_delta)
+    assert payload["sleep_quality"] == "N/A"  # missing, not a fake score (SV-06)
     assert payload["sleep_hours"] == 7.5
 
 
@@ -1815,7 +1818,7 @@ def test_persist_garmin_data_rollback_raises_persistence_failure_with_defaults(m
 
     pf = exc_info.value
     assert pf.today_rhr == 0
-    assert pf.today_sleep_score == 50  # conservative default (< 70 → negative sleep_delta)
+    assert pf.today_sleep_score is None  # missing; DailyCoach applies the default (SV-06)
     assert pf.today_sleep_hours == 7.5
 
     persist_failed_events = [e for e in events if e.get("action") == "daily_metrics_persist_failed"]
@@ -3076,7 +3079,7 @@ def test_recent_trimp_uses_garmin_training_load_since_yesterday():
 
 @pytest.mark.unit
 def test_persist_garmin_data_does_not_store_default_sleep_as_measurement(tmp_path):
-    """Without a sleep entry the decision still uses 7.5 h / score 50, but the DB keeps NULL."""
+    """Without a sleep entry the decision uses 7.5 h and no score, and the DB keeps NULL."""
     db = DatabaseManager(db_name="no_fake_sleep.db", db_dir=tmp_path)
     coach = _build_atomic_persist_coach(db)
     day = "2026-03-22"
@@ -3086,7 +3089,7 @@ def test_persist_garmin_data_does_not_store_default_sleep_as_measurement(tmp_pat
     try:
         rhr, sleep_score, sleep_hours = coach._persist_garmin_data(payload, day)
 
-        assert (sleep_score, sleep_hours) == (50, 7.5)
+        assert (sleep_score, sleep_hours) == (None, 7.5)
         row = db.conn.execute(
             "SELECT sleep_hours, sleep_quality FROM daily_metrics WHERE date = ?", (day,),
         ).fetchone()
