@@ -726,7 +726,7 @@
      "action": "load_engines_refreshed",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
-     "sessions": 0,
+     "sessions": 1,
      "severity": "info"
     },
     {
@@ -1196,7 +1196,7 @@
      "action": "load_engines_refreshed",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
-     "sessions": 0,
+     "sessions": 2,
      "severity": "info"
     },
     {
@@ -1658,7 +1658,7 @@
      "action": "load_engines_refreshed",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
-     "sessions": 0,
+     "sessions": 2,
      "severity": "info"
     },
     {
@@ -2140,7 +2140,7 @@
      "action": "load_engines_refreshed",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
-     "sessions": 0,
+     "sessions": 3,
      "severity": "info"
     },
     {
@@ -2455,7 +2455,7 @@
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
-    "tsb_value": 0.0,
+    "tsb_value": -20.2,
     "vlg_color": "GREEN"
    },
    {
@@ -2507,7 +2507,7 @@
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
-    "tsb_value": 0.0,
+    "tsb_value": -9.9,
     "vlg_color": "GREEN"
    },
    {
@@ -2533,7 +2533,7 @@
     "readiness_score": 100.0,
     "session_planned": "TEMPO",
     "session_post_governance": "EASY",
-    "tsb_value": 0.0,
+    "tsb_value": -24.6,
     "vlg_color": "GREEN"
    }
   ],
