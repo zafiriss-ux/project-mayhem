@@ -149,7 +149,7 @@ CS ανά αθλητή (v28, #22, D-028) ·
 | 12ζ Χωρίς σημερινό HRV η μέρα παίρνει ταβάνι EASY (απόφαση Zaf, SV-06, D-048) | #987 | Έγινε |
 | 12η Οι ειδοποιήσεις ασφαλείας του code scanning μπαίνουν στο πλάνο (D-049) | #988 | Έγινε |
 | 12θ SHA-1 του import CSV δηλώνεται ως μη κρυπτογραφικό (#44, D-049) | #989 | Έγινε |
-| 12ι Σχόλια με αιτιολόγηση στις ψευδείς ειδοποιήσεις (D-049) | — | Μετά το 12θ |
+| 12ι Σχόλια με αιτιολόγηση στις ψευδείς ειδοποιήσεις (D-049) | #990 | Έγινε· τα #22 και #50 τα κλείνει ο Zaf |
 | Εκτός πλάνου: εργαλεία ασφάλειας (D-022) | #958 | Έγινε |
 | Εκτός πλάνου: ευρήματα CodeQL (D-023) | #961 | Έγινε |
 | Εκτός πλάνου: Bandit, DevSkim, CodeQL security-extended (D-030) | #967 | Έγινε |
@@ -165,12 +165,12 @@ CS ανά αθλητή (v28, #22, D-028) ·
 |---|---|---|---|
 | #22 CodeQL, κωδικοί σε απλό κείμενο | `titan/ui/setup_wizard.py` (`_save_env`) | Πραγματικό, ήδη αποφασισμένο: το `.env` γράφεται μόνο αν ο χρήστης συμφωνήσει, με δικαιώματα 600 (D-023, «Ρωτά πρώτα») | Καμία αλλαγή κώδικα· ο Zaf το κλείνει ως αποδεκτό κίνδυνο |
 | #44 DevSkim, αδύναμο hash | `scripts/import_garmin_csv.py` | Το SHA-1 φτιάχνει σταθερό id εγγραφής, όχι υπογραφή. Άλλος αλγόριθμος θα άλλαζε τα id και θα έφερνε διπλές εγγραφές | 12θ (#989): `usedforsecurity=False` |
-| #34, #35, #36 DevSkim, αδύναμο hash | `titan/integrations/telegram_bot.py` | Ψευδές: το `MD2` είναι Telegram MarkdownV2 (escape χαρακτήρων), όχι ο αλγόριθμος MD2 | 12ι: σχόλιο suppression |
-| #37–#43, #45–#49 DevSkim, localhost | smoke/load tests, `Dockerfile`, `docker-compose.yml` | Ψευδές: healthcheck και tests μέσα στο ίδιο container ή μηχάνημα | 12ι: σχόλιο suppression |
-| #33 DevSkim, TODO | `scripts/coverage_panel.py` | Ψευδές: το «TODO» είναι κείμενο που τυπώνει το script, όχι εκκρεμότητα | 12ι: σχόλιο suppression |
-| #50 CodeQL, χαλαρά δικαιώματα αρχείου | `tests/test_garmin_token_permissions.py` | Ψευδές: το test βάζει 0o644 επίτηδες για να ελέγξει ότι ο κώδικας τα σφίγγει | 12ι: σχόλιο suppression |
-| #25, #26, #29–#32 Bandit, κωδικός στον κώδικα | `titan/api/auth.py`, `titan/integrations/garmin_sync.py`, `titan/ui/setup_wizard.py` | Ψευδές: ονόματα μεταβλητών περιβάλλοντος, όνομα αρχείου και τύποι token, όχι τιμές | 12ι: `# nosec` με αιτιολόγηση |
-| #27, #28 Bandit, subprocess | `titan/core/persistence.py` | Χαμηλός κίνδυνος: το `pg_dump` τρέχει με σταθερή λίστα ορισμάτων, χωρίς shell | 12ι: `# nosec` με αιτιολόγηση |
+| #34, #35, #36 DevSkim, αδύναμο hash | `titan/integrations/telegram_bot.py` | Ψευδές: το `MD2` είναι Telegram MarkdownV2 (escape χαρακτήρων), όχι ο αλγόριθμος MD2 | 12ι (#990): μετονομασία σε `_escape_markdown_v2` |
+| #37–#43, #45–#49 DevSkim, localhost | smoke/load tests, `Dockerfile`, `docker-compose.yml` | Ψευδές: healthcheck και tests μέσα στο ίδιο container ή μηχάνημα | 12ι (#990): σχόλιο suppression |
+| #33 DevSkim, TODO | `scripts/coverage_panel.py` | Ψευδές: το «TODO» είναι κείμενο που τυπώνει το script, όχι εκκρεμότητα | 12ι (#990): σχόλιο suppression |
+| #50 CodeQL, χαλαρά δικαιώματα αρχείου | `tests/test_garmin_token_permissions.py` | Ψευδές: το test βάζει 0o644 επίτηδες για να ελέγξει ότι ο κώδικας τα σφίγγει | Το CodeQL δεν δέχεται σχόλιο suppression· ο Zaf το κλείνει ως ψευδές |
+| #25, #26, #29–#32 Bandit, κωδικός στον κώδικα | `titan/api/auth.py`, `titan/integrations/garmin_sync.py`, `titan/ui/setup_wizard.py` | Ψευδές: ονόματα μεταβλητών περιβάλλοντος, όνομα αρχείου και τύποι token, όχι τιμές | 12ι (#990): `# nosec` με αιτιολόγηση |
+| #27, #28 Bandit, subprocess | `titan/core/persistence.py` | Χαμηλός κίνδυνος: το `pg_dump` τρέχει με σταθερή λίστα ορισμάτων, χωρίς shell | 12ι (#990): `# nosec` με αιτιολόγηση |
 
 ### Τι έδειξαν τα tests της εργασίας 5
 
@@ -220,5 +220,5 @@ Garmin. Κλειδώνουν τη σημερινή συμπεριφορά, μα�
 ## Ανοιχτές αποφάσεις (Zaf)
 
 - Σύνδεση ή αφαίρεση των κουμπιών override στο Telegram (βλ. παραπάνω).
-- Κλείσιμο της ειδοποίησης #22 του CodeQL ως αποδεκτού κινδύνου (D-023, D-049).
+- Κλείσιμο των ειδοποιήσεων #22 (αποδεκτός κίνδυνος, D-023) και #50 (ψευδές, test) του CodeQL από τη σελίδα code scanning (D-049).
 - AGENTS RE-05 ζητά CodeQL σε κάθε PR, αλλά το code scanning δεν είναι διαθέσιμο σε ιδιωτικό repo χωρίς πληρωμένο πλάνο.
