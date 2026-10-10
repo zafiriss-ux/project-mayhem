@@ -283,11 +283,12 @@ def _rest_without_volume(session: dict) -> dict:
 
 
 def _apply_volume_modifier(session: dict) -> dict:
-    """The intensity gate's volume modifier shrinks distance and duration (D-043).
+    """The governance volume modifier shrinks distance and duration (D-043).
 
-    The gate stored the modifier on the session (YELLOW 0.8, RED 0.0) but nothing
+    The gate stored the modifier on the session (YELLOW 0.8, RED 0.7) but nothing
     applied it, so a downgraded session kept the planned volume. A modifier of 0
-    leaves no run: the session becomes REST.
+    leaves no run: the session becomes REST. A ``max_duration_min`` set by governance
+    (ADR-0065) then caps the duration, and the distance shrinks in proportion.
     """
     modifier = _safe_float(session.get("volume_modifier"), 1.0)
     if not 0.0 <= modifier < 1.0:
@@ -303,6 +304,11 @@ def _apply_volume_modifier(session: dict) -> dict:
         reduced["distance_km"] = round(distance * modifier, 1)
     if duration > 0:
         reduced["duration_min"] = round(duration * modifier)
+    cap = _safe_int(session.get("max_duration_min"), 0)
+    if cap > 0 and reduced.get("duration_min", 0) > cap:
+        if distance > 0:
+            reduced["distance_km"] = round(reduced["distance_km"] * cap / reduced["duration_min"], 1)
+        reduced["duration_min"] = cap
     return reduced
 
 

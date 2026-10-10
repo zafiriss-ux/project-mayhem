@@ -3169,6 +3169,17 @@ def test_volume_modifier_outside_zero_to_one_changes_nothing(modifier):
     assert daily_coach._apply_volume_modifier(session) == session
 
 
+@pytest.mark.unit
+def test_max_duration_caps_a_downgraded_session_and_shrinks_its_distance():
+    """ADR-0065: H4's EASY 22 km / 132' becomes 70% (92') and then the 60' cap, 10 km."""
+    session = {
+        "session_type": "EASY", "distance_km": 22.0, "duration_min": 132,
+        "volume_modifier": 0.7, "max_duration_min": 60,
+    }
+    reduced = daily_coach._apply_volume_modifier(session)
+    assert (reduced["session_type"], reduced["distance_km"], reduced["duration_min"]) == ("EASY", 10.0, 60)
+
+
 # SV-21: the ESI reads the weather the routine already fetches.
 
 @pytest.mark.unit
