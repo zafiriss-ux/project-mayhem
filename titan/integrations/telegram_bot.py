@@ -26,6 +26,27 @@ _log = logging.getLogger(__name__)
 
 _AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
 
+_FLOAT_NOISE = re.compile(r"\d+\.\d{5,}")
+
+
+def _short_number(value: float, decimals: int) -> str:
+    """``19.699999999999996`` -> ``19.7``; ``10.0`` -> ``10`` (no exponent form)."""
+    text = f"{round(value, decimals):.{decimals}f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
+
+
+def _tidy_floats(text: object) -> str:
+    """Round float noise in free text, e.g. a gate rationale (SV-07)."""
+    return _FLOAT_NOISE.sub(lambda m: _short_number(float(m.group()), 2), str(text))
+
+
+def _km(value: object) -> str:
+    """Distances in messages: one decimal at most (the weekly plan said '63.195 km', SV-07)."""
+    try:
+        return _short_number(float(value), 1)
+    except (TypeError, ValueError):
+        return str(value)
+
 SEND_FAIL = "SEND_FAIL"
 POLL_FAIL = "POLL_FAIL"
 SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
@@ -747,7 +768,7 @@ class TitanTelegramBot:
             f"Week of: {plan.get('week_start', 'N/A')}  |  Phase: {plan.get('phase', 'N/A')}",
             "",
             "📊 *Summary:*",
-            f"• Volume: {plan.get('total_km', 0)} km",
+            f"• Volume: {_km(plan.get('total_km', 0))} km",
             f"• Quality sessions: {plan.get('quality_count', 0)}",
             f"• Easy days: {plan.get('easy_count', 0)}  |  Rest: {plan.get('rest_count', 0)}",
             "",
@@ -759,7 +780,7 @@ class TitanTelegramBot:
             "📅 *Daily Breakdown:*",
         ]
         for d in plan.get("daily_sessions", []):
-            lines.append(f"*{d['day']}* – {d['session_type']} ({d.get('distance_km', 0)} km)")
+            lines.append(f"*{d['day']}* – {d['session_type']} ({_km(d.get('distance_km', 0))} km)")
             lines.append(f"  └ {d.get('details', '')}")
             if d.get("optimal_time"):
                 lines.append(f"  └ ⏰ Best time: {d['optimal_time']}")
@@ -781,11 +802,11 @@ class TitanTelegramBot:
             f"👟 *Shoe:* {data.get('shoe', 'See /shoes')}\n"
         )
         if data.get("primary_reason"):
-            text += f"\n🧭 *Why this decision:* {data['primary_reason']}"
+            text += f"\n🧭 *Why this decision:* {_tidy_floats(data['primary_reason'])}"
         if data.get("actionable_guidance"):
-            text += f"\n✅ *Actionable guidance:* {data['actionable_guidance']}"
+            text += f"\n✅ *Actionable guidance:* {_tidy_floats(data['actionable_guidance'])}"
         if data.get("hrv_stress_context"):
-            text += f"\n🩺 *Stress context:* {data['hrv_stress_context']}"
+            text += f"\n🩺 *Stress context:* {_tidy_floats(data['hrv_stress_context'])}"
         if data.get("special_note"):
             text += f"\n⚠️ {data['special_note']}"
         return self.send_message(text)
