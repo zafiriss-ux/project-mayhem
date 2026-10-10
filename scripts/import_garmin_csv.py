@@ -88,7 +88,7 @@ def _synthetic_garmin_id(date_str: str, distance: float, duration_sec: int) -> s
 
     Ensures idempotency: same row hashes to the same ID on every import run,
     so the UNIQUE INDEX on garmin_activity_id prevents duplicate inserts.
-    SHA-1 is a fingerprint here, not a security control, and must not change:
+    The hash is a fingerprint here, not a security control, and must not change:
     a different algorithm would give rows already in the DB a new ID (D-049).
     """
     key = f"csv:{date_str}:{distance:.3f}:{duration_sec}"
