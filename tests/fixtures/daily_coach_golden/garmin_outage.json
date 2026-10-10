@@ -216,6 +216,13 @@
      "step_number": 7
     },
     {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -672,6 +679,13 @@
      "severity": "info",
      "step_name": "analyze_readiness",
      "step_number": 7
+    },
+    {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_started",
@@ -1137,6 +1151,13 @@
      "step_number": 7
     },
     {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -1535,6 +1556,13 @@
      "severity": "info",
      "step_name": "analyze_readiness",
      "step_number": 7
+    },
+    {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_started",
@@ -1946,6 +1974,13 @@
      "step_number": 7
     },
     {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2342,6 +2377,13 @@
      "severity": "info",
      "step_name": "analyze_readiness",
      "step_number": 7
+    },
+    {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_started",
@@ -2782,6 +2824,13 @@
      "severity": "info",
      "step_name": "analyze_readiness",
      "step_number": 7
+    },
+    {
+     "action": "acwr_computed",
+     "acwr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info"
     },
     {
      "action": "step_started",
