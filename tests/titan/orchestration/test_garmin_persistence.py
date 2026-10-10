@@ -77,3 +77,18 @@ def test_daily_coach_delegates_and_keeps_its_names(db, monkeypatch):
 
     assert coach._persist_garmin_data(_payload(), DAY) == (48, 82, 7.2)
     assert events[-1] == "daily_metrics_persisted"
+
+
+@pytest.mark.unit
+def test_values_in_the_wrong_unit_are_stored_with_a_quality_flag(db):
+    """SV-17: a run timed in minutes and sleep in the wrong unit are kept, but flagged."""
+    payload = _payload()
+    payload["activities"][0].update(distance_km=7.27, duration_sec=40)
+    payload["sleep"][0]["total_sleep_hours"] = 0.12
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=lambda *_a, **_f: None)
+
+    run_flag = db.conn.execute("SELECT quality_flag FROM training_log WHERE date = ?", (DAY,)).fetchone()[0]
+    day_flag = db.conn.execute("SELECT quality_flag FROM daily_metrics WHERE date = ?", (DAY,)).fetchone()[0]
+    assert run_flag == "degraded"
+    assert day_flag == "degraded"

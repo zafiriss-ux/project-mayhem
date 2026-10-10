@@ -249,7 +249,10 @@ def persist_garmin_data(
                     raise
 
             daily_metric_violations = _sanity.check_daily_metrics(
-                {"date": today_str},
+                {
+                    "date": today_str,
+                    "sleep_hours": today_sleep_hours if sleep_hours_measured else None,
+                },
                 context="persist_garmin_data",
             )
             if has_rejects(daily_metric_violations):
