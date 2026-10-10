@@ -598,7 +598,7 @@ class TestGarminSync:
         gs.is_connected = True
         gs.client = MagicMock()
         gs.client.get_hrv_data.return_value = {
-            "hrvSummary": {"lastNight5MinHigh": "62.5", "status": "BALANCED"}
+            "hrvSummary": {"lastNightAvg": "62.5", "status": "BALANCED"}
         }
         hrv = gs.sync_hrv(days_back=1)
         assert len(hrv) == 1

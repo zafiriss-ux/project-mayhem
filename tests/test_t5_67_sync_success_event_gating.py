@@ -130,7 +130,7 @@ class TestSyncHrvSuccessEventGating:
         sync = _make_connected_sync()
         sync.client.get_hrv_data = MagicMock(return_value={
             "hrvSummary": {
-                "lastNight5MinHigh": 58.5,
+                "lastNightAvg": 58.5,
                 "status": "BALANCED",
             }
         })

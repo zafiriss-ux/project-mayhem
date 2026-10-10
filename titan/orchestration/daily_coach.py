@@ -71,6 +71,7 @@ from titan.orchestration.garmin_persistence import (  # noqa: F401 — re-export
     _safe_int,
     backfill_training_history,
     persist_garmin_data,
+    rewrite_recent_hrv_once,
 )
 from titan.science.acwr_engine import ACWREngine
 from titan.science.data_trust import (
@@ -820,6 +821,19 @@ class DailyCoach:
             except Exception as exc:  # the morning goes on with the history it has
                 _daily_coach_event(
                     "training_history_backfill_failed",
+                    error_class=type(exc).__name__, error_message=str(exc),
+                )
+        if not persistence_degraded and garmin_data.get("hrv"):
+            # D-056: once, replace the HRV stored before the SV-12 fix.
+            try:
+                rewrite_recent_hrv_once(
+                    self.db, self.garmin,
+                    athlete_id=getattr(self, "athlete_id", "owner"),
+                    emit=lambda action, **fields: _daily_coach_event(action, **fields),
+                )
+            except Exception as exc:  # the morning goes on; the next one tries again
+                _daily_coach_event(
+                    "hrv_history_rewrite_failed",
                     error_class=type(exc).__name__, error_message=str(exc),
                 )
 

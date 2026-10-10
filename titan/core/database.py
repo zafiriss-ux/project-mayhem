@@ -760,6 +760,10 @@ class DatabaseManager:
         """Persist HRV for a historical date only if no row exists yet."""
         self._physiology.save_daily_metric_if_missing(date=date, hrv=hrv, athlete_id=athlete_id)
 
+    def replace_garmin_hrv(self, date: str, hrv: float, athlete_id: str = "owner") -> None:
+        """Set HRV for a date from Garmin, unless the row was entered by hand (D-056)."""
+        self._physiology.replace_garmin_hrv(date=date, hrv=hrv, athlete_id=athlete_id)
+
     # --- TRAINING LOG (titan/core/repositories/training.py) ---
 
     def _ensure_open_locked(self) -> None:
