@@ -91,6 +91,31 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         ),
     ),
 
+    # ── Hard-stop gate H2: relative HRV drop (ADR-0064) ─────────────────────
+    'HARD_STOP_HRV_DROP_PCT': ThresholdEvidence(
+        parameter='HARD_STOP_HRV_DROP_PCT',
+        value=0.30,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source=(
+            'Vesterinen et al. (2016) Med Sci Sports Exerc 48(7):1347–1354 '
+            '(smallest worthwhile change defined per athlete, not in absolute ms); '
+            'owner decision ADR-0064 (SV-10)'
+        ),
+        rationale=(
+            'H2 fires when HRV drops HARD_STOP_HRV_DELTA (15 ms) or 30% of the '
+            'baseline, whichever is smaller. An absolute 15 ms is 43% of a 35 ms '
+            'baseline, so low-HRV athletes could lose 40%+ without a hard stop. '
+            '30% equals 15 ms at a 50 ms baseline, so H2 only becomes stricter '
+            'below that baseline and is unchanged above it.'
+        ),
+        policy_note=(
+            'HEURISTIC: the per-athlete principle is supported; the 30% value is a '
+            'policy choice anchored to the existing 15 ms at a 50 ms baseline. '
+            'Excluded from per-athlete adaptation (HARD_STOP_THRESHOLD_KEYS).'
+        ),
+    ),
+
     # ── HRV rolling-baseline drift detector (HD-01 / INV-06) ─────────────────
     'HRV_DRIFT_THRESHOLD_MS': ThresholdEvidence(
         parameter='HRV_DRIFT_THRESHOLD_MS',

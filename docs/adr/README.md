@@ -78,6 +78,7 @@
 | [0061](0061-owner-working-rules.md) | Owner Working Rules: τα έγγραφα ενημερώνονται στο ίδιο PR, `DECISIONS.md` και `CHANGELOG.md` | Process / Governance | 🔲 Proposed (2026-10-09) |
 | [0062](0062-red-intensity-gate-volume.md) | Το RED της πύλης έντασης κρατά 70% όγκο ρητά· το 0,0 μένει 0,0 | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
 | [0063](0063-long-run-fueling-reminder.md) | Το μεγάλο τρέξιμο χωρίς επιβεβαιωμένο fueling μένει, με υπενθύμιση στο πρωινό μήνυμα | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
+| [0064](0064-h2-relative-hrv-drop.md) | Η H2 δίνει REST σε πτώση HRV 15 ms ή 30% της βάσης, ό,τι έρθει πρώτο | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
 
 ---
 

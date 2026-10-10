@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3473 tests all green (3473 passed, 6 skipped, 3479 collected — 2026-10-10, full pytest)
+**Historical snapshot:** 3477 tests all green (3477 passed, 6 skipped, 3483 collected — 2026-10-10, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -116,6 +116,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90.
 - `0061` — Owner Working Rules
 - `0062` — RED intensity gate volume
 - `0063` — Long-run fueling reminder
+- `0064` — H2 relative HRV drop
 
 ## Docker
 

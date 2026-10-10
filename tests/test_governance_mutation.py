@@ -87,13 +87,33 @@ def test_h2_fires_at_threshold():
 @pytest.mark.unit
 @pytest.mark.governance
 def test_h2_does_not_fire_below_threshold():
-    """H2 must NOT fire when today_hrv drop is 1ms below HARD_STOP_HRV_DELTA."""
+    """H2 must NOT fire when today_hrv drop is 1ms below HARD_STOP_HRV_DELTA.
+
+    Baseline 60 ms: 30% of it is 18 ms, so the 15 ms threshold is the one that applies (ADR-0064).
+    """
     ctx = _base_context(
-        today_hrv=40.0 - HARD_STOP_HRV_DELTA + 1.0,
-        baseline_hrv=40.0,
+        today_hrv=60.0 - HARD_STOP_HRV_DELTA + 1.0,
+        baseline_hrv=60.0,
     )
     result = _engine().apply_constraints(_base_session(), ctx)
     assert result["session_type"] != "REST"
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize(
+    ("today_hrv", "baseline_hrv", "expect_rest"),
+    [
+        pytest.param(20.2, 34.6, True, id="senior-m-42pct-drop-of-14ms-fires"),
+        pytest.param(28.0, 40.0, True, id="exactly-30pct-fires"),
+        pytest.param(28.4, 40.0, False, id="29pct-drop-of-11.6ms-does-not-fire"),
+    ],
+)
+def test_h2_fires_on_a_30pct_drop_below_a_low_baseline(today_hrv, baseline_hrv, expect_rest):
+    """SV-10 / ADR-0064: H2 fires at 15 ms or 30% of baseline, whichever comes first."""
+    ctx = _base_context(today_hrv=today_hrv, baseline_hrv=baseline_hrv)
+    result = _engine().apply_constraints(_base_session(), ctx)
+    assert (result["session_type"] == "REST") is expect_rest
 
 
 # ── H3: RHR Spike ────────────────────────────────────────────────────────────

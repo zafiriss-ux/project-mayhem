@@ -20,6 +20,7 @@ from titan.config.thresholds import (
     GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
     GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
     HARD_STOP_HRV_DELTA,
+    HARD_STOP_HRV_DROP_PCT,
     HARD_STOP_RHR_DELTA,
     HARD_STOP_TSB_FLOOR,
     ILLNESS_PATTERN_HRV_DELTA,
@@ -314,6 +315,16 @@ class GovernanceEngine:
 
 
     @staticmethod
+    def h2_drop_threshold_ms(baseline_hrv: float) -> float:
+        """The HRV drop in ms that fires H2: 15 ms or 30% of the baseline, whichever is smaller.
+
+        ADR-0064 (SV-10). A non-positive baseline keeps the absolute 15 ms.
+        """
+        if baseline_hrv > 0:
+            return min(HARD_STOP_HRV_DELTA, HARD_STOP_HRV_DROP_PCT * baseline_hrv)
+        return HARD_STOP_HRV_DELTA
+
+    @staticmethod
     def classify_hrv_stress_context(context: dict) -> str:
         """Classify H2/H3 stress source for explicit non-training safety handling."""
         try:
@@ -325,6 +336,7 @@ class GovernanceEngine:
             else:
                 hrv_delta = _bhrv - _thrv
         except (TypeError, ValueError):
+            _bhrv = 0.0
             hrv_delta = 0.0
 
         try:
@@ -356,7 +368,7 @@ class GovernanceEngine:
         if hrv_delta >= ILLNESS_PATTERN_HRV_DELTA and rhr_delta >= ILLNESS_PATTERN_RHR_DELTA:
             return "ILLNESS_PATTERN"
 
-        if hrv_delta >= HARD_STOP_HRV_DELTA:
+        if hrv_delta >= GovernanceEngine.h2_drop_threshold_ms(_bhrv):
             return "UNEXPLAINED_MODERATE"
 
         return "TRAINING_EXPLAINED"
@@ -392,7 +404,7 @@ class GovernanceEngine:
             )
 
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
-        # Fires when drop >= HARD_STOP_HRV_DELTA (inclusive boundary).
+        # Fires when drop >= 15 ms or 30% of baseline, whichever is smaller (inclusive; ADR-0064).
         h2_trigger = False
         try:
             _h2_today = float(context.get("today_hrv"))
@@ -404,7 +416,7 @@ class GovernanceEngine:
                             garmin_data_trust_level=_garmin_trust)
                 h2_trigger = False
             else:
-                h2_trigger = _h2_today <= _h2_base - HARD_STOP_HRV_DELTA
+                h2_trigger = _h2_base - _h2_today >= self.h2_drop_threshold_ms(_h2_base)
         except (TypeError, ValueError):
             # ADR-0051: keys present but non-castable → conservative fail.
             # Absent keys mean the caller does not supply HRV; treat as no-op.
@@ -1114,22 +1126,25 @@ class GovernanceEngine:
         )
 
         try:
-            hrv_delta = float(context.get("baseline_hrv")) - float(context.get("today_hrv"))
+            _baseline_hrv = float(context.get("baseline_hrv"))
+            hrv_delta = _baseline_hrv - float(context.get("today_hrv"))
         except (TypeError, ValueError):
+            _baseline_hrv = 0.0
             hrv_delta = None
-        h2_trigger = bool(hrv_delta is not None and hrv_delta >= HARD_STOP_HRV_DELTA)
+        h2_threshold = self.h2_drop_threshold_ms(_baseline_hrv)
+        h2_trigger = bool(hrv_delta is not None and hrv_delta >= h2_threshold)
         findings.append(
             GateFinding(
                 gate="H2",
                 status="TRIGGERED" if h2_trigger else "CLEAR",
                 actual_value=hrv_delta,
-                threshold_value=HARD_STOP_HRV_DELTA,
-                margin=self._margin_ge(hrv_delta, HARD_STOP_HRV_DELTA),
+                threshold_value=h2_threshold,
+                margin=self._margin_ge(hrv_delta, h2_threshold),
                 reason=self._format_template(
                     "H2",
                     actual=hrv_delta,
-                    threshold=HARD_STOP_HRV_DELTA,
-                    margin=self._margin_ge(hrv_delta, HARD_STOP_HRV_DELTA),
+                    threshold=h2_threshold,
+                    margin=self._margin_ge(hrv_delta, h2_threshold),
                 ),
             )
         )
