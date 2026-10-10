@@ -8,6 +8,7 @@ ignored is forbidden.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -115,6 +116,8 @@ def _coach_planning_tempo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Da
     monkeypatch.setattr(coach.weekly_planner, "get_today_session", lambda: dict(_TEMPO))
     # Past the override-lockdown cold start, so governance alone would keep TEMPO.
     monkeypatch.setattr(coach.db, "get_override_ratio", lambda days=14: 0.0)
+    # Tonight's HRV is present (D-048: a missing reading would cap the day at EASY).
+    coach.hrv.add_hrv_measurement(datetime.now(UTC).strftime("%Y-%m-%d"), 60.0)
     return coach
 
 

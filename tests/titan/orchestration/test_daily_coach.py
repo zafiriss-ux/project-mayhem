@@ -3201,3 +3201,32 @@ def test_esi_weather_failure_keeps_the_fallback():
 def test_esi_weather_prefers_garmin_values():
     coach = SimpleNamespace(weather=None)
     assert daily_coach.DailyCoach._esi_weather(coach, {"temperature_c": 25.0, "dew_point": 15.0}) == (25.0, 15.0)
+
+
+@pytest.mark.unit
+def test_today_hrv_is_none_when_tonights_reading_is_missing():
+    """SV-06 / ADR-0051: yesterday's rMSSD is not today's reading."""
+    yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
+    coach = SimpleNamespace(hrv=SimpleNamespace(hrv_log=[(yesterday, 57.6)]))
+    assert daily_coach.DailyCoach._today_hrv(coach) is None
+
+
+@pytest.mark.unit
+def test_today_hrv_uses_the_entry_dated_today_wherever_it_sits():
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
+    coach = SimpleNamespace(hrv=SimpleNamespace(hrv_log=[(today, 63.64), (yesterday, 62.4)]))
+    assert daily_coach.DailyCoach._today_hrv(coach) == 63.6
+
+
+@pytest.mark.unit
+def test_missing_today_hrv_puts_an_easy_ceiling_on_quality_work():
+    """D-048: with no HRV tonight, governance applies the ADR-0051 EASY ceiling."""
+    from titan.science.governance_engine import GovernanceEngine
+
+    context = {"today_hrv": None, "baseline_hrv": 60.0}
+    plan = GovernanceEngine().apply_constraints(
+        session_plan={"session_type": "TEMPO", "duration_min": 50},
+        context=context,
+    )
+    assert plan["session_type"] == "EASY"
