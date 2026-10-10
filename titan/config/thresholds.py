@@ -100,6 +100,9 @@ INTENSITY_GOVERNOR_READINESS_RED = 40.0
 
 # Conservative volume modifier when intensity gate fires but modifier is absent — ADR-0051.
 INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE = 0.7  # Conservative volume reduction when modifier absent (ADR-0051)
+# A session downgraded by a gate without its own modifier (2of4, hard stops, VO2, fueling)
+# keeps INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE of its volume and at most this long (ADR-0065).
+GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN = 60
 
 # VolumeLoadGauge thresholds — T5-35 (Category A only).
 VLG_TSB_YELLOW_MIN = -30.0

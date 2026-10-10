@@ -35,7 +35,6 @@ def _everything(_v: Violation) -> bool:
 
 # rule -> the findings that explain its violations today (report ids).
 KNOWN: dict[str, list[Known]] = {
-    "reduction_reduces_volume": [("SV-04", _everything)],
 }
 
 

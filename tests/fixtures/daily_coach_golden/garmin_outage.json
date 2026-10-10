@@ -824,6 +824,17 @@
      "session_type": "TEMPO"
     },
     {
+     "action": "REDUCED",
+     "downgraded_to": "TEMPO",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "DOWNGRADE_VOLUME",
+     "logger": "titan.science.governance_engine",
+     "max_duration_min": 60,
+     "original_session": "INTERVALS",
+     "volume_modifier": 0.7
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -904,7 +915,7 @@
      "action": "daily_plan_calculated",
      "calories": 2814.0,
      "carbs_g": 490.0,
-     "duration_min": 66,
+     "duration_min": 46,
      "flow": "nutrition",
      "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
@@ -959,7 +970,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* TEMPO – 12 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* TEMPO – 8.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1736,6 +1747,17 @@
      "session_type": "EASY"
     },
     {
+     "action": "REDUCED",
+     "downgraded_to": "EASY",
+     "garmin_data_age_hours": 24.0,
+     "garmin_data_trust_level": "SUSPECT",
+     "governance_gate": "DOWNGRADE_VOLUME",
+     "logger": "titan.science.governance_engine",
+     "max_duration_min": 60,
+     "original_session": "TEMPO",
+     "volume_modifier": 0.7
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1832,7 +1854,7 @@
      "action": "daily_plan_calculated",
      "calories": 2558.0,
      "carbs_g": 450.0,
-     "duration_min": 67,
+     "duration_min": 47,
      "flow": "nutrition",
      "hydration_ml": 2900,
      "logger": "titan.features.nutrition_optimizer",
@@ -1887,7 +1909,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: N/A\n  • Readiness: 83/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 10.5 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: N/A\n  • Readiness: 83/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {

@@ -151,3 +151,21 @@ def test_zero_volume_modifier_is_not_replaced(gate_volume_modifier, expected):
     )
 
     assert result["volume_modifier"] == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("intensity_gate", "tsb_value", "expected_modifier", "expected_cap"),
+    [
+        pytest.param(None, -60.0, 0.7, 60, id="h4-downgrade-gets-70pct-and-60min"),
+        pytest.param({"color": "YELLOW", "volume_modifier": 0.8}, -60.0, 0.7, 60, id="yellow-plus-h4-takes-the-smaller"),
+        pytest.param({"color": "YELLOW", "volume_modifier": 0.8}, 0.0, 0.8, None, id="intensity-gate-alone-keeps-its-own"),
+        pytest.param(None, 0.0, None, None, id="no-downgrade-no-reduction"),
+    ],
+)
+def test_a_downgrade_without_its_own_modifier_reduces_volume(intensity_gate, tsb_value, expected_modifier, expected_cap):
+    """SV-04 / ADR-0065: 2of4, hard stops, VO2 and fueling downgrades get 70% and at most 60'."""
+    context = _healthy_context(tsb_value=tsb_value, intensity_gate_result=intensity_gate)
+    result = GovernanceEngine().apply_constraints(_quality_session(), context)
+
+    assert result.get("volume_modifier") == (None if expected_modifier is None else pytest.approx(expected_modifier))
+    assert result.get("max_duration_min") == expected_cap

@@ -850,6 +850,20 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC policy constant; not derived from population data. Recalibrate via OutcomeTracker if conservative ceiling proves too restrictive.',
     ),
 
+    'GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN': ThresholdEvidence(
+        parameter='GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN',
+        value=60,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Owner decision ADR-0065 (SV-04, synthetic-athlete validation).',
+        rationale=(
+            'A session downgraded by 2of4, a hard stop (H4 mandatory load reduction), VO2 or '
+            'fueling kept its planned volume (e.g. EASY 168 min after a RACE). It now keeps 70% '
+            'of the volume and at most 60 minutes, so a downgraded day stays under an hour.'
+        ),
+        policy_note='HEURISTIC policy cap; recalibrate via OutcomeTracker with downgraded-day outcomes.',
+    ),
+
     'VLG_TSB_YELLOW_MIN': ThresholdEvidence(
         parameter='VLG_TSB_YELLOW_MIN',
         value=-30.0,

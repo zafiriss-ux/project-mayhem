@@ -18,6 +18,7 @@ from titan.config.thresholds import (
     DATA_VOID_THRESHOLD_HOURS,
     DATA_VOID_ZONE_CAP,
     GOVERNANCE_CS_CONFIDENCE_THRESHOLD,
+    GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN,
     GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD,
     HARD_STOP_HRV_DELTA,
     HARD_STOP_HRV_DROP_PCT,
@@ -1281,6 +1282,7 @@ class GovernanceEngine:
                 elif color == "YELLOW":
                     applied_locks.append("INTENSITY_GATE_YELLOW")
 
+            _type_after_intensity_gate = str(session_plan.get("session_type", "")).upper()
             count_2of4, indicators = self._evaluate_2of4_indicators(context)
             if count_2of4 >= 2:
                 original = str(session_plan.get("session_type", "EASY")).upper()
@@ -1341,6 +1343,23 @@ class GovernanceEngine:
                     applied_locks.append("FUELING_GATE_LOCK")
                 else:
                     applied_locks.append("FUELING_GATE_FLAG")
+
+            # ADR-0065 (SV-04): 2of4, the hard stops, VO2 and fueling have no volume modifier,
+            # so a session they downgrade keeps 70% of its volume and at most 60 minutes.
+            _downgraded_to = str(session_plan.get("session_type", "")).upper()
+            if _downgraded_to not in {"REST", _type_after_intensity_gate}:
+                _current_mod = session_plan.get("volume_modifier")
+                _downgrade_mod = INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE
+                if _current_mod is not None:
+                    _downgrade_mod = min(float(_current_mod), _downgrade_mod)
+                session_plan["volume_modifier"] = _downgrade_mod
+                session_plan["max_duration_min"] = GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN
+                _gate_event(
+                    "DOWNGRADE_VOLUME", "REDUCED",
+                    original_session=_type_after_intensity_gate, downgraded_to=_downgraded_to,
+                    volume_modifier=_downgrade_mod, max_duration_min=GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN,
+                    garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
+                )
 
             # H6 data-void cap (ADR-0053)
             if context.get("_h6_data_void"):
