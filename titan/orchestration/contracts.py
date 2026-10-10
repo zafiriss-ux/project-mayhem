@@ -104,9 +104,9 @@ class DailyCoachContext(TypedDict):
     today_hrv: float | None
     baseline_hrv: float
     hrv_std_dev: float
-    today_rhr: int
+    today_rhr: int | None
     baseline_rhr: float
-    sleep_score: int
+    sleep_score: int | None
     subjective_fatigue_score: int
     tsb_value: float
     injury_flag: bool
@@ -133,9 +133,9 @@ class DailyCoachContextContract:
     today_hrv: float | None
     baseline_hrv: float
     hrv_std_dev: float
-    today_rhr: int
+    today_rhr: int | None
     baseline_rhr: float
-    sleep_score: int
+    sleep_score: int | None
     subjective_fatigue_score: int
     tsb_value: float
     injury_flag: bool
@@ -194,7 +194,7 @@ class DailyCoachingPayload(TypedDict):
     hrv_value: float
     hrv_baseline: float
     afi: float
-    sleep_quality: int
+    sleep_quality: int | str
     sleep_hours: float
     readiness_score: float | str
     subjective_fatigue_score: int
