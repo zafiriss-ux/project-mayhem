@@ -101,7 +101,7 @@ class DailyCoachContext(TypedDict):
     days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int
-    today_hrv: float
+    today_hrv: float | None
     baseline_hrv: float
     hrv_std_dev: float
     today_rhr: int
@@ -130,7 +130,7 @@ class DailyCoachContextContract:
     days_since_last_vo2: int | None
     fueling_confirmed: bool
     planned_duration_min: int
-    today_hrv: float
+    today_hrv: float | None
     baseline_hrv: float
     hrv_std_dev: float
     today_rhr: int

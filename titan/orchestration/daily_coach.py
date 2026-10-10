@@ -420,6 +420,7 @@ class _PipelineInputs:
     persistence_degraded: bool
     garmin_data_stale: bool
     latest_hrv: float
+    today_hrv: float | None   # None when tonight's reading is missing (ADR-0051, SV-06)
     baseline_hrv: float
     hrv_summary: dict
     afi_final: float
@@ -1055,6 +1056,7 @@ class DailyCoach:
             persistence_degraded=persistence_degraded,
             garmin_data_stale=garmin_data_stale,
             latest_hrv=latest_hrv,
+            today_hrv=self._today_hrv(),
             baseline_hrv=baseline_hrv,
             hrv_summary=hrv_summary,
             afi_final=afi_final,
@@ -1160,7 +1162,7 @@ class DailyCoach:
         # ── Build DecisionResult ─────────────────────────────────────────────
         decision_trace: dict[str, Any] = {
             # Minimum required fields (ADR-0018 B2.6)
-            "hrv": latest_hrv,
+            "hrv": inp.today_hrv,
             "tsb": tsb_for_vlg,
             "acwr": acwr,
             "lock_codes_active": today_session.get('governance_locks_applied', []),
@@ -1196,7 +1198,7 @@ class DailyCoach:
     def _step_readiness(self, inp: _PipelineInputs) -> tuple[dict, Any, Any]:
         """Readiness adjusted by AFI, plus the fatigue classification."""
         readiness = _run_pipeline_step(7, "analyze_readiness", lambda: self.readiness.analyze_readiness(
-            today_hrv    = inp.latest_hrv,
+            today_hrv    = inp.today_hrv,
             baseline_hrv = inp.baseline_hrv,
             today_rhr    = inp.today_rhr or 50,
             baseline_rhr = inp.baseline_rhr_for_comparison,
@@ -1246,6 +1248,19 @@ class DailyCoach:
             esi_pace_adjustment_sec_per_km=esi_pace_adjustment_sec_per_km,
         )
         return today_session, esi_level, esi_pace_adjustment_sec_per_km
+
+    def _today_hrv(self) -> float | None:
+        """Tonight's rMSSD, or None when it is missing (ADR-0051, SV-06).
+
+        The HRV engine's latest value can be from an earlier day; deciding on it
+        as if it were today's hid a missing reading from the governance gates.
+        """
+        log = getattr(getattr(self, "hrv", None), "hrv_log", None) or []
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        for day, value in reversed(log):
+            if str(day)[:10] == today:
+                return round(_safe_float(value, 0.0), 1)
+        return None
 
     def _esi_weather(self, garmin_data: GarminSyncResult) -> tuple[float, float]:
         """Temperature and dew point for the ESI (SV-21).
@@ -1347,7 +1362,7 @@ class DailyCoach:
             days_since_last_vo2=inp.garmin_data.get('days_since_last_vo2'),
             fueling_confirmed=bool(inp.garmin_data.get('fueling_confirmed', False)),
             planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
-            today_hrv=inp.latest_hrv,
+            today_hrv=inp.today_hrv,
             baseline_hrv=inp.baseline_hrv,
             hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0),
             today_rhr=inp.today_rhr or 50,
@@ -1734,7 +1749,7 @@ class DailyCoach:
         days_since_last_vo2: Any,
         fueling_confirmed: bool,
         planned_duration_min: int,
-        today_hrv: float,
+        today_hrv: float | None,
         baseline_hrv: float,
         hrv_std_dev: float,
         today_rhr: int,

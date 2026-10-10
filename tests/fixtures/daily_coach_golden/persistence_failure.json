@@ -2075,7 +2075,7 @@
       "soreness": 0
      },
      "flow": "readiness",
-     "hrv_diff": 62.4,
+     "hrv_diff": 63.6,
      "logger": "titan.science.readiness_engine",
      "rhr_diff": -0.20000000000000284,
      "score": 100,
