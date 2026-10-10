@@ -104,6 +104,13 @@ INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE = 0.7  # Conservative volume reducti
 # keeps INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE of its volume and at most this long (ADR-0065).
 GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN = 60
 
+# WeeklyPlanGenerator volume (SV-14 / D-062): the week follows the athlete's average km per week
+# over the last PLANNER_VOLUME_WINDOW_DAYS, plus at most PLANNER_WEEKLY_KM_GROWTH_MAX; with no runs
+# in that window the BUILD week is PLANNER_DEFAULT_WEEKLY_KM.
+PLANNER_VOLUME_WINDOW_DAYS = 28
+PLANNER_WEEKLY_KM_GROWTH_MAX = 0.10
+PLANNER_DEFAULT_WEEKLY_KM = 30.0
+
 # VolumeLoadGauge thresholds — T5-35 (Category A only).
 VLG_TSB_YELLOW_MIN = -30.0
 VLG_ACWR_RED_MIN = 0.7

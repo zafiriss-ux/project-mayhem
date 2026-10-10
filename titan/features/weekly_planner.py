@@ -10,8 +10,13 @@ Generates intelligent weekly plans based on:
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
+from titan.config.thresholds import (
+    PLANNER_DEFAULT_WEEKLY_KM,
+    PLANNER_VOLUME_WINDOW_DAYS,
+    PLANNER_WEEKLY_KM_GROWTH_MAX,
+)
 from titan.core.structured_events import make_event_emitter
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
@@ -29,7 +34,14 @@ class WeeklyPlanGenerator:
     considering lactate threshold, drift, HRV, and recovery status.
     """
 
-    def __init__(self, hrv_engine: HRVGuidedEngine, tsb_engine: TSBEngine, acwr_engine: ACWREngine):
+    def __init__(
+        self,
+        hrv_engine: HRVGuidedEngine,
+        tsb_engine: TSBEngine,
+        acwr_engine: ACWREngine,
+        db=None,  # noqa: ANN001
+        athlete_id: str = "owner",
+    ):
         """
         Initialize weekly planner.
 
@@ -37,10 +49,15 @@ class WeeklyPlanGenerator:
             hrv_engine: HRV analysis engine
             tsb_engine: TSB calculation engine
             acwr_engine: ACWR monitoring engine
+            db: DatabaseManager whose training_log sets the weekly volume (SV-14 / D-062).
+                Without one the phase templates keep their fixed kilometres.
+            athlete_id: Whose training_log to read (ADR-0033).
         """
         self.hrv_engine = hrv_engine
         self.tsb_engine = tsb_engine
         self.acwr_engine = acwr_engine
+        self.db = db
+        self.athlete_id = athlete_id
         self.last_plan = None
 
     def get_today_session(
@@ -197,6 +214,8 @@ class WeeklyPlanGenerator:
             structure = self._generate_taper_week(athlete_profile, tsb_value)
         else:
             structure = self._generate_build_week(athlete_profile, tsb_value)
+
+        structure = self._scale_to_recent_volume(structure)
 
         # Apply HRV adjustments
         structure = self._apply_hrv_adjustments(structure, hrv_summary)
@@ -361,6 +380,54 @@ class WeeklyPlanGenerator:
             # SV-13 / D-061: no race date is known, so the week ends with an easy run, not a marathon.
             {"day": days[6], "session_type": "EASY", "distance_km": 8, "details": "Easy aerobic run"},
         ]
+
+    def recent_weekly_km(self) -> float | None:
+        """Average km per week over the last PLANNER_VOLUME_WINDOW_DAYS; None without a database.
+
+        The window is the days before today (the plan is built in the morning, before the
+        day's run). An athlete whose first run is more recent than the window is averaged over
+        the days since that run (at least one week), so a short history is not divided by four.
+        """
+        if self.db is None:
+            return None
+        today = datetime.now(UTC).date()
+        activities = self.db.get_recent_activities(limit=500, athlete_id=self.athlete_id)
+        dated = [(str(a.get("date", ""))[:10], float(a.get("distance_km") or 0.0)) for a in activities]
+        dated = [(d, km) for d, km in dated if d and d < today.isoformat()]
+        if not dated:
+            return 0.0
+        span_days = (today - date.fromisoformat(min(d for d, _ in dated))).days
+        span_days = max(7, min(PLANNER_VOLUME_WINDOW_DAYS, span_days))
+        since = (today - timedelta(days=span_days)).isoformat()
+        total = sum(km for d, km in dated if d >= since)
+        return total / (span_days / 7)
+
+    def _scale_to_recent_volume(self, structure: list[dict]) -> list[dict]:
+        """SV-14 / D-062: scale the week so BUILD is the recent average + at most 10%.
+
+        With no runs in the window the BUILD week is PLANNER_DEFAULT_WEEKLY_KM. Every phase
+        keeps its shape relative to BUILD, so no phase goes above the 10% growth.
+        """
+        try:
+            recent_km = self.recent_weekly_km()
+        except Exception as exc:
+            _log.warning("weekly_planner_recent_km_failed", extra={"error": str(exc)})
+            recent_km = 0.0
+        if recent_km is None:
+            return structure
+        if recent_km > 0:
+            target_km = recent_km * (1 + PLANNER_WEEKLY_KM_GROWTH_MAX)
+        else:
+            target_km = PLANNER_DEFAULT_WEEKLY_KM
+        build_km = sum(d["distance_km"] for d in self._generate_build_week({}, 0.0))
+        factor = target_km / build_km
+        for day in structure:
+            day["distance_km"] = round(day["distance_km"] * factor, 1)
+        _planner_event(
+            "plan_volume_scaled", recent_weekly_km=round(recent_km, 1),
+            target_build_km=round(target_km, 1), factor=round(factor, 3),
+        )
+        return structure
 
     def _apply_hrv_adjustments(self, structure: list[dict], hrv_summary: dict) -> list[dict]:
         """Adjust plan based on HRV status."""

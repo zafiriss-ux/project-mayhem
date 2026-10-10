@@ -864,6 +864,46 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC policy cap; recalibrate via OutcomeTracker with downgraded-day outcomes.',
     ),
 
+    'PLANNER_VOLUME_WINDOW_DAYS': ThresholdEvidence(
+        parameter='PLANNER_VOLUME_WINDOW_DAYS',
+        value=28,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Owner decision D-062 (SV-14, synthetic-athlete validation).',
+        rationale=(
+            'The weekly planner gave every athlete the same kilometres (a 20-22 km long run even '
+            'for a novice). It now scales the week to the average km per week of the last four '
+            'weeks, the same chronic window as the ACWR.'
+        ),
+        policy_note='HEURISTIC policy window; recalibrate via OutcomeTracker with planned vs completed volume.',
+    ),
+
+    'PLANNER_WEEKLY_KM_GROWTH_MAX': ThresholdEvidence(
+        parameter='PLANNER_WEEKLY_KM_GROWTH_MAX',
+        value=0.10,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Owner decision D-062 (SV-14); the common 10% weekly-mileage rule of thumb.',
+        rationale=(
+            'The planned week is at most 10% above the recent average, so the plan never asks '
+            'for a jump in volume the athlete has not run.'
+        ),
+        policy_note='HEURISTIC rule of thumb, not population-derived; recalibrate via OutcomeTracker.',
+    ),
+
+    'PLANNER_DEFAULT_WEEKLY_KM': ThresholdEvidence(
+        parameter='PLANNER_DEFAULT_WEEKLY_KM',
+        value=30.0,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Owner decision D-062 (SV-14, synthetic-athlete validation).',
+        rationale=(
+            'With no runs in the last four weeks the planner has nothing to follow, so the BUILD '
+            'week starts from a conservative 30 km instead of the 77 km template.'
+        ),
+        policy_note='HEURISTIC conservative default; recalibrate via OutcomeTracker with new-athlete outcomes.',
+    ),
+
     'VLG_TSB_YELLOW_MIN': ThresholdEvidence(
         parameter='VLG_TSB_YELLOW_MIN',
         value=-30.0,

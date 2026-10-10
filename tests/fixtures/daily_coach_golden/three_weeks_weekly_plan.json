@@ -300,16 +300,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -346,7 +336,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -371,7 +360,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -408,7 +396,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 23,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -471,7 +459,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -814,16 +802,6 @@
      "original_session": "INTERVALS_Z5"
     },
     {
-     "action": "FLAG",
-     "duration_min": 66,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 2,
-     "session_type": "TEMPO"
-    },
-    {
      "action": "REDUCED",
      "downgraded_to": "TEMPO",
      "garmin_data_age_hours": 0.0,
@@ -854,7 +832,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "VO2_ELIGIBILITY_GATE",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -879,7 +856,6 @@
      "flow": "daily_coach",
      "locks": [
       "VO2_ELIGIBILITY_GATE",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -915,7 +891,7 @@
      "action": "daily_plan_calculated",
      "calories": 2814.0,
      "carbs_g": 490.0,
-     "duration_min": 46,
+     "duration_min": 18,
      "flow": "nutrition",
      "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
@@ -970,7 +946,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* TEMPO – 8.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* TEMPO – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1312,16 +1288,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1340,7 +1306,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -1364,7 +1329,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -1400,7 +1364,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 6,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -1455,7 +1419,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 1.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1797,16 +1761,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 67,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 2,
-     "session_type": "TEMPO"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1825,7 +1779,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -1849,7 +1802,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -1885,7 +1837,7 @@
      "action": "daily_plan_calculated",
      "calories": 2814.0,
      "carbs_g": 490.0,
-     "duration_min": 67,
+     "duration_min": 16,
      "flow": "nutrition",
      "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
@@ -1940,7 +1892,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* TEMPO – 15 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* TEMPO – 3.7 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2378,7 +2330,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 48,
+     "duration_min": 12,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -2433,7 +2385,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 2.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2815,16 +2767,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 132,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 4,
-     "session_type": "LONG_RUN"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -2843,7 +2785,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -2867,7 +2808,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -2903,7 +2843,7 @@
      "action": "daily_plan_calculated",
      "calories": 3144.0,
      "carbs_g": 630.0,
-     "duration_min": 132,
+     "duration_min": 46,
      "flow": "nutrition",
      "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
@@ -2958,7 +2898,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* LONG_RUN – 7.7 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -3893,16 +3833,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -3921,7 +3851,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -3945,7 +3874,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -4011,7 +3939,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 30,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -4066,7 +3994,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 09, 2026\n\n🏃 *Today:* EASY – 5.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -4509,16 +4437,6 @@
      "original_session": "INTERVALS_Z5"
     },
     {
-     "action": "FLAG",
-     "duration_min": 66,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 2,
-     "session_type": "TEMPO"
-    },
-    {
      "action": "REDUCED",
      "downgraded_to": "TEMPO",
      "garmin_data_age_hours": 0.0,
@@ -4549,7 +4467,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "VO2_ELIGIBILITY_GATE",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -4574,7 +4491,6 @@
      "flow": "daily_coach",
      "locks": [
       "VO2_ELIGIBILITY_GATE",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -4640,7 +4556,7 @@
      "action": "daily_plan_calculated",
      "calories": 2814.0,
      "carbs_g": 490.0,
-     "duration_min": 46,
+     "duration_min": 29,
      "flow": "nutrition",
      "hydration_ml": 3000,
      "logger": "titan.features.nutrition_optimizer",
@@ -4695,7 +4611,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 10, 2026\n\n🏃 *Today:* TEMPO – 8.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 10, 2026\n\n🏃 *Today:* TEMPO – 5.5 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 490.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* VO2 eligibility checks failed; intensity downgraded.\n✅ *Actionable guidance:* Complete prerequisites (recovery, fueling, readiness) before VO2 work.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -5137,16 +5053,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -5165,7 +5071,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -5189,7 +5094,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -5255,7 +5159,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 39,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -5310,7 +5214,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 11, 2026\n\n🏃 *Today:* EASY – 6.6 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -5762,16 +5666,6 @@
      "tsb_value": -56.5
     },
     {
-     "action": "FLAG",
-     "duration_min": 67,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -5802,7 +5696,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -5827,7 +5720,6 @@
      "flow": "daily_coach",
      "locks": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -5893,7 +5785,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 47,
+     "duration_min": 32,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -5948,7 +5840,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* EASY – 10.5 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-56.5 vs -50.0, margin 6.5).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 12, 2026\n\n🏃 *Today:* EASY – 7.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-56.5 vs -50.0, margin 6.5).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -6516,7 +6408,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 48,
+     "duration_min": 30,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -6571,7 +6463,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 13, 2026\n\n🏃 *Today:* EASY – 5.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -7053,16 +6945,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 132,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 4,
-     "session_type": "LONG_RUN"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -7081,7 +6963,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -7105,7 +6986,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -7171,7 +7051,7 @@
      "action": "daily_plan_calculated",
      "calories": 3144.0,
      "carbs_g": 630.0,
-     "duration_min": 132,
+     "duration_min": 84,
      "flow": "nutrition",
      "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
@@ -7226,7 +7106,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 14, 2026\n\n🏃 *Today:* LONG_RUN – 14.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -8383,16 +8263,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -8411,7 +8281,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -8435,7 +8304,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -8501,7 +8369,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 37,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -8556,7 +8424,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 16, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 16, 2026\n\n🏃 *Today:* EASY – 6.2 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -9078,16 +8946,6 @@
      "tsb_value": -56.0
     },
     {
-     "action": "FLAG",
-     "duration_min": 66,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -9118,7 +8976,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -9143,7 +9000,6 @@
      "flow": "daily_coach",
      "locks": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -9209,7 +9065,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 46,
+     "duration_min": 31,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -9264,7 +9120,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 17, 2026\n\n🏃 *Today:* EASY – 8.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change -0.5%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-56.0 vs -50.0, margin 6.0).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 17, 2026\n\n🏃 *Today:* EASY – 5.8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change -0.5%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-56.0 vs -50.0, margin 6.0).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -9796,16 +9652,6 @@
      "tsb_value": -53.4
     },
     {
-     "action": "FLAG",
-     "duration_min": 60,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -9825,7 +9671,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -9850,7 +9695,6 @@
      "flow": "daily_coach",
      "locks": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -9916,7 +9760,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 60,
+     "duration_min": 41,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -9971,7 +9815,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 18, 2026\n\n🏃 *Today:* EASY – 10 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-53.4 vs -50.0, margin 3.4).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 18, 2026\n\n🏃 *Today:* EASY – 6.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-53.4 vs -50.0, margin 3.4).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -10503,16 +10347,6 @@
      "tsb_value": -57.6
     },
     {
-     "action": "FLAG",
-     "duration_min": 67,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 1,
-     "session_type": "EASY"
-    },
-    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -10543,7 +10377,6 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -10568,7 +10401,6 @@
      "flow": "daily_coach",
      "locks": [
       "HARD_STOP_SAFETY_GATES",
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -10634,7 +10466,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 47,
+     "duration_min": 34,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -10689,7 +10521,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 19, 2026\n\n🏃 *Today:* EASY – 10.5 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-57.6 vs -50.0, margin 7.6).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 19, 2026\n\n🏃 *Today:* EASY – 7.5 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* TSB dropped below critical floor (-57.6 vs -50.0, margin 7.6).\n✅ *Actionable guidance:* Shift to easy aerobic work until freshness rebounds above threshold.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -11327,7 +11159,7 @@
      "action": "daily_plan_calculated",
      "calories": 2482.0,
      "carbs_g": 420.0,
-     "duration_min": 48,
+     "duration_min": 32,
      "flow": "nutrition",
      "hydration_ml": 2800,
      "logger": "titan.features.nutrition_optimizer",
@@ -11382,7 +11214,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 20, 2026\n\n🏃 *Today:* EASY – 8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change -0.5%\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 20, 2026\n\n🏃 *Today:* EASY – 5.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change -0.5%\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -11924,16 +11756,6 @@
      "step_number": 9
     },
     {
-     "action": "FLAG",
-     "duration_min": 132,
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "FUELING",
-     "logger": "titan.science.governance_engine",
-     "phase": 4,
-     "session_type": "LONG_RUN"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -11952,7 +11774,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.science.governance_engine",
@@ -11976,7 +11797,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "FUELING_GATE_FLAG",
       "CS_CONFIDENCE_LOCK"
      ],
      "logger": "titan.orchestration.daily_coach",
@@ -12042,7 +11862,7 @@
      "action": "daily_plan_calculated",
      "calories": 3144.0,
      "carbs_g": 630.0,
-     "duration_min": 132,
+     "duration_min": 88,
      "flow": "nutrition",
      "hydration_ml": 3200,
      "logger": "titan.features.nutrition_optimizer",
@@ -12097,7 +11917,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 21, 2026\n\n🏃 *Today:* LONG_RUN – 22 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Fueling warning raised; proceed conservatively.\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n🍌 *Fueling:* carry food or gels for this long run.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 21, 2026\n\n🏃 *Today:* LONG_RUN – 14.8 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: ➡️ STABLE: HRV change 0.3%\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 630.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* Critical speed confidence below threshold; recalibration required.\n✅ *Actionable guidance:* Run the required CS calibration session before race simulation.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -13239,7 +13059,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13265,7 +13085,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13317,7 +13137,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13343,7 +13163,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"VO2_ELIGIBILITY_GATE\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"VO2_ELIGIBILITY_GATE\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13369,7 +13189,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13421,7 +13241,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"VO2_ELIGIBILITY_GATE\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"VO2_ELIGIBILITY_GATE\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13447,7 +13267,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13525,7 +13345,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13551,7 +13371,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13603,7 +13423,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13629,7 +13449,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13655,7 +13475,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13681,7 +13501,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13707,7 +13527,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -13733,7 +13553,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"FUELING_GATE_FLAG\", \"CS_CONFIDENCE_LOCK\"]",
+    "locks_applied_json": "[\"CS_CONFIDENCE_LOCK\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,

@@ -457,7 +457,7 @@ def main():
     rcp_engine       = RCPEngine()
 
     # ── Step 4b: Feature modules ─────────────────────────────────────────────
-    weekly_planner    = WeeklyPlanGenerator(hrv_engine, tsb_engine, acwr_engine)
+    weekly_planner    = WeeklyPlanGenerator(hrv_engine, tsb_engine, acwr_engine, db=db)
     optimal_time_calc = OptimalTimeCalculator(weather)
     nutrition_optimizer = NutritionOptimizer(glycogen_model)
 
