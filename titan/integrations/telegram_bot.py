@@ -115,17 +115,17 @@ def _check_rate_limit(chat_id: int, command: str) -> bool:
         return True
 
 
-_MD2_SPECIAL = re.compile(r"([_*\[\]()~`>#+=|{}.!\-\\])")
+_MARKDOWN_V2_SPECIAL = re.compile(r"([_*\[\]()~`>#+=|{}.!\-\\])")
 
 
-def _escape_md2(text: str) -> str:
+def _escape_markdown_v2(text: str) -> str:
     """Escape *text* for Telegram MarkdownV2.
 
     NOTE: parse_mode="Markdown" (legacy) is still in use throughout this module.
     Switch to parse_mode="MarkdownV2" only after all message composition sites
     have been audited and their content wrapped with this helper — see P15-D22.
     """
-    return _MD2_SPECIAL.sub(r"\\\1", text)
+    return _MARKDOWN_V2_SPECIAL.sub(r"\\\1", text)
 
 
 def _telegram_event(

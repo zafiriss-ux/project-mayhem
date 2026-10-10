@@ -42,7 +42,7 @@ def test_api_health():
     timeout = 60
     while time.time() - start < timeout:
         code, out, err = run_cmd(
-            "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",
+            "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",  # DevSkim: ignore DS162092
             shell=True
         )
         if code == 0 and '"status":"ok"' in out:
@@ -56,7 +56,7 @@ def test_api_readyz():
     """Test 2: API /readyz endpoint"""
     log("Test 2/8: Checking API /readyz...")
     code, out, err = run_cmd(
-        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/readyz",
+        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/readyz",  # DevSkim: ignore DS162092
         shell=True
     )
     if code != 0 or '"ready":true' not in out:
@@ -123,7 +123,7 @@ def test_persistence():
     start = time.time()
     while time.time() - start < 30:
         code, out, err = run_cmd(
-            "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",
+            "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",  # DevSkim: ignore DS162092
             shell=True
         )
         if code == 0 and '"status":"ok"' in out:
@@ -156,7 +156,7 @@ def test_worker_resilience():
     time.sleep(2)
 
     code, out, err = run_cmd(
-        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",
+        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/health",  # DevSkim: ignore DS162092
         shell=True
     )
     if code != 0 or '"status":"ok"' not in out:
@@ -185,7 +185,7 @@ def test_readyz_checks():
     """Test 8: /readyz detailed checks"""
     log("Test 8/8: Checking /readyz health details...")
     code, out, err = run_cmd(
-        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/readyz",
+        "docker exec project-mayhem-titan-api-1 curl -s http://localhost:8000/readyz",  # DevSkim: ignore DS162092
         shell=True
     )
     if code == 0:

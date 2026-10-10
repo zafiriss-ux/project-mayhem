@@ -26,8 +26,10 @@ KEYRING_ENV_FLAG = "TITAN_USE_KEYRING"
 KEYRING_USERNAME = "credential"
 KEYRING_SERVICES = {
     "GARMIN_EMAIL": "TITAN_GARMIN_EMAIL",
-    "GARMIN_PASSWORD": "TITAN_GARMIN_PASSWORD",
-    "TELEGRAM_BOT_TOKEN": "TITAN_TELEGRAM_TOKEN",
+    # Bandit B105: keyring service name.
+    "GARMIN_PASSWORD": "TITAN_GARMIN_PASSWORD",  # nosec B105
+    # Bandit B105: keyring service name.
+    "TELEGRAM_BOT_TOKEN": "TITAN_TELEGRAM_TOKEN",  # nosec B105
 }
 
 _log = logging.getLogger(__name__)

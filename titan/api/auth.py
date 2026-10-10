@@ -172,7 +172,8 @@ def create_access_token(user: AuthUser, now: datetime | None = None) -> tuple[st
         "role": user.role,
         "athlete_id": user.athlete_id,
         "exp": expires_at,
-        "token_type": "access",
+        # Bandit B105: JWT claim value, not a secret.
+        "token_type": "access",  # nosec B105
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
     }
@@ -192,7 +193,8 @@ def create_refresh_token(
         "role": user.role,
         "athlete_id": user.athlete_id,
         "exp": expires_at,
-        "token_type": "refresh",
+        # Bandit B105: JWT claim value, not a secret.
+        "token_type": "refresh",  # nosec B105
         "jti": jti,
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,

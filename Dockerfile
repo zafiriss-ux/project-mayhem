@@ -40,7 +40,7 @@ USER titan
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-    CMD curl -f http://localhost:8000/readyz || exit 1
+    CMD curl -f http://localhost:8000/readyz || exit 1  # DevSkim: ignore DS162092
 
 CMD ["python", "scripts/run_api.py"]
 

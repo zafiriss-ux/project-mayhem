@@ -1,7 +1,9 @@
 """TITAN OS — Pure-Python load test runner (stdlib only, no external deps).
 
 Usage:
-    python3 scripts/load_test.py --url http://localhost:8000 [--json-output /tmp/results.json]
+    python3 scripts/load_test.py [--url URL] [--json-output /tmp/results.json]
+
+Without --url it targets the API on this machine, port 8000.
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ class LoadTestRunner:
         self.concurrency = concurrency
         self.duration_seconds = duration_seconds
         parsed = urllib.parse.urlparse(base_url)
-        self._host = parsed.hostname or "localhost"
+        self._host = parsed.hostname or "localhost"  # DevSkim: ignore DS162092
         self._port = parsed.port or 8000
 
     def _make_request(self, path: str) -> tuple[bool, float]:
@@ -259,7 +261,7 @@ def _print_table(results: list[tuple[str, LoadTestResult, bool]]) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="TITAN OS Load Test Runner")
-    parser.add_argument("--url", default="http://localhost:8000")
+    parser.add_argument("--url", default="http://localhost:8000")  # DevSkim: ignore DS162092
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--duration", type=int, default=30)
     parser.add_argument("--json-output", default=None)

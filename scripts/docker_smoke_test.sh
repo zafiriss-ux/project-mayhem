@@ -16,7 +16,7 @@ if ! grep -q "TITAN_JWT_PRIVATE_KEY" \
 fi
 
 COMPOSE="docker compose"
-API_URL="http://localhost:8000"
+API_URL="http://localhost:8000"  # DevSkim: ignore DS162092
 TIMEOUT=60
 
 log()  { echo "[$(date +%H:%M:%S)] $*"; }

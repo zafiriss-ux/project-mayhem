@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-import subprocess
+import subprocess  # nosec B404
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from datetime import UTC, date, datetime, timedelta
@@ -1282,7 +1282,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
             self._dsn,
         ]
         try:
-            subprocess.run(command, check=True, capture_output=True, text=True)
+            # Bandit B404/B603: subprocess runs only pg_dump, with a fixed argv and no shell.
+            subprocess.run(command, check=True, capture_output=True, text=True)  # nosec B603
         except (FileNotFoundError, subprocess.CalledProcessError) as error:
             if dest.exists():
                 dest.unlink()
