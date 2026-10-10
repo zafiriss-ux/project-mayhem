@@ -44,7 +44,6 @@ KNOWN: dict[str, list[Known]] = {
     "stored_runs_are_runnable": [("SV-17", lambda v: v[1] == "duration_in_minutes")],
     "risk_never_more_aggressive": [("SV-03", _detail_starts("EASY vs ordinary REST"))],
     "acwr_known_after_six_weeks": [("SV-01", _everything)],
-    "phase_follows_the_athlete": [("SV-02", _detail_starts("BASE instead of"))],
     "missing_reading_not_replaced": [("SV-06", _everything)],
     "telegram_numbers_are_formatted": [("SV-07", _everything)],
 }

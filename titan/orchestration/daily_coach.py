@@ -1241,7 +1241,14 @@ class DailyCoach:
             acwr         = acwr,
             glycogen_debt = self.glycogen.daily_debt,
         )
-        phase = str(today_session.get('phase', 'BASE') or 'BASE').upper()
+        # The plan's day sessions carry no phase; the athlete's TRAINING_PHASE is the
+        # phase the plan was built for (worker, D-020). BASE only without a profile.
+        profile = getattr(self, 'athlete_profile', None)
+        phase = str(
+            today_session.get('phase')
+            or getattr(profile, 'training_phase', None)
+            or 'BASE'
+        ).upper()
         apl_result = self.apl.resolve(
             vlg_state      = vlg_state,
             afi_constraints = afi_constraints,

@@ -291,6 +291,28 @@ def test_run_morning_routine_defaults_apl_phase_and_cs_confidence_when_missing()
     assert isinstance(captured_kwargs["cs_confidence"], float)
 
 
+@pytest.mark.unit
+def test_apl_phase_follows_the_athlete_profile_when_the_session_has_none():
+    """SV-02: the plan's day sessions carry no phase, so the APL used BASE every day."""
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.athlete_profile = SimpleNamespace(training_phase="taper", max_hr=190)
+    captured_kwargs = {}
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: {
+            "session_type": "EASY", "volume_pct": 1.0, "duration_min": 45, "distance_km": 8,
+        }
+    )
+
+    def _capture_apl_call(**kwargs):
+        captured_kwargs.update(kwargs)
+        return {"priority_vector": {}, "lock_thresholds": {}}
+
+    coach.apl = SimpleNamespace(resolve=_capture_apl_call)
+
+    assert coach.run_morning_routine() is True
+    assert captured_kwargs["phase"] == "TAPER"
+
+
 # The background thread moved to BackgroundRoutineRunner (ADR-0058 Phase C, D-035);
 # these tests keep their assertions and drive the runner with the coach's routine lock.
 

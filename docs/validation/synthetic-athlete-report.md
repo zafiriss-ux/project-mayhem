@@ -48,7 +48,7 @@
 | `stored_runs_are_runnable` | ένα τρέξιμο στο `training_log` έχει ρυθμό 2:00–15:00 /km ή σήμα ποιότητας | 6 |
 | `risk_never_more_aggressive` | με δεδομένα κινδύνου, το τελευταίο πρωί δεν είναι πιο σκληρό ή μεγαλύτερο από τη συνηθισμένη εβδομάδα | 2 |
 | `acwr_known_after_six_weeks` | μετά από 6 εβδομάδες το ACWR υπάρχει (ADR-0051) | 84 |
-| `phase_follows_the_athlete` | η ρουτίνα χρησιμοποιεί το `TRAINING_PHASE` του αθλητή | 4 |
+| `phase_follows_the_athlete` | η ρουτίνα χρησιμοποιεί το `TRAINING_PHASE` του αθλητή | 4 (0 μετά το #981) |
 | `missing_reading_not_replaced` | HRV που λείπει δεν αντικαθίσταται από άλλης μέρας (ADR-0051) | 30 |
 | `telegram_numbers_are_formatted` | κανένας αριθμός στο Telegram με 5+ δεκαδικά | 11 |
 
@@ -60,7 +60,7 @@
 | Id | Τι συμβαίνει | Είσοδος που το δείχνει | Πού |
 |---|---|---|---|
 | SV-01 | Το ACWR δεν υπολογίζεται ποτέ. Το `sync_all` δεν δίνει `acwr` και κανείς δεν το βάζει στο `garmin_data`, οπότε οι πύλες ACWR, το VLG και το stress context (`UNKNOWN_ACWR`) δεν ενεργοποιούνται ποτέ. | όλοι, κάθε πρωί· και στο `acwr_spike` (100' κάθε μέρα) | `garmin_sync.sync_all`, `daily_coach.py` |
-| SV-02 | Η φάση είναι πάντα BASE. Το `get_today_session` δεν δίνει τη φάση του πλάνου, και η ρουτίνα πέφτει στο `'BASE'`, άρα τα όρια APL της TAPER/PEAK δεν εφαρμόζονται ποτέ. | `steady_m`, `loading_m` (BUILD), `taper_f` (TAPER), `elite_f` (PEAK) | `daily_coach.py:1244` |
+| SV-02 | **Διορθώθηκε στο #981.** Η φάση ήταν πάντα BASE. Το `get_today_session` δεν δίνει τη φάση του πλάνου, και η ρουτίνα πέφτει στο `'BASE'`, άρα τα όρια APL της TAPER/PEAK δεν εφαρμόζονται ποτέ. | `steady_m`, `loading_m` (BUILD), `taper_f` (TAPER), `elite_f` (PEAK) | `daily_coach.py:1244` |
 | SV-03 | Όταν το IntensityGovernor είναι RED, βάζει `session_override="EASY"` και σε ημέρα REST, οπότε βγαίνει «EASY 0 km». | `taper_f` στο `acwr_spike` και `glycogen_drain`, 23 πρωινά συνολικά | `intensity_governor.py:158`, εφαρμόζεται στο `governance_engine.py:1265` |
 | SV-04 | Η υποβάθμιση κρατά τον όγκο του πλάνου. Το `volume_modifier` (YELLOW 0,8, RED 0,0) γράφεται στο `session_plan` αλλά δεν εφαρμόζεται. Η H4 («υποχρεωτική μείωση φορτίου», ADR-0009: EASY, ζώνη 2) κρατά 22 km / 132'· ένας RACE που γίνεται EASY κρατά 42,195 km. | 67 πρωινά, π.χ. `INTERVALS 66' -> EASY 66'`, `RACE 168' -> EASY 168'` | `governance_engine.py:1264` |
 | SV-05 | Η πύλη fueling κάνει κάθε LONG_RUN 90'+ PROGRESSIVE, γιατί το `fueling_confirmed` δεν δίνεται ποτέ. Το PROGRESSIVE είναι πιο σκληρό από το LONG_RUN. | 50 πρωινά, κάθε μεγάλο τρέξιμο | `governance_engine.py:1023` |
@@ -87,7 +87,7 @@
 
 | Εύρημα | Τρόπος | PR |
 |---|---|---|
-| SV-02 φάση | η ρουτίνα παίρνει τη φάση του πλάνου ή του αθλητή | επόμενο |
+| SV-02 φάση | η ρουτίνα παίρνει το `TRAINING_PHASE` του αθλητή όταν η προπόνηση της μέρας δεν έχει φάση (D-042) | #981 |
 | SV-01 ACWR | υπολογισμός από το `training_log` | επόμενο |
 | SV-03 REST → EASY | το governor δεν κάνει override σε REST (`intensity_governor.py`, όχι governance_engine) | επόμενο |
 | SV-07 μορφοποίηση | στρογγυλοποίηση στο κείμενο | επόμενο |

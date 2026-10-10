@@ -259,14 +259,6 @@
      "session_type": "EASY"
     },
     {
-     "action": "OVERRIDE_LOCKDOWN",
-     "cause": "COLD_START",
-     "gate_action": "default_locked",
-     "governance_gate": "OVERRIDE_LOCKDOWN",
-     "logger": "titan.science.governance_engine",
-     "reason": "no_outcome_history"
-    },
-    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -275,6 +267,14 @@
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "CS_CONFIDENCE_LOCK",
      "logger": "titan.science.governance_engine"
+    },
+    {
+     "action": "OVERRIDE_LOCKDOWN",
+     "cause": "COLD_START",
+     "gate_action": "default_locked",
+     "governance_gate": "OVERRIDE_LOCKDOWN",
+     "logger": "titan.science.governance_engine",
+     "reason": "no_outcome_history"
     },
     {
      "action": "EASY_CEILING",
@@ -301,8 +301,8 @@
      ],
      "logger": "titan.science.governance_engine",
      "priority_vector": {
-      "CS_CONFIDENCE_LOCK": 3,
-      "OVERRIDE_LOCKDOWN": 2,
+      "CS_CONFIDENCE_LOCK": 2,
+      "OVERRIDE_LOCKDOWN": 3,
       "PARASYMPATHETIC_GUARD": 1
      }
     },
@@ -762,8 +762,8 @@
      ],
      "logger": "titan.science.governance_engine",
      "priority_vector": {
-      "CS_CONFIDENCE_LOCK": 3,
-      "OVERRIDE_LOCKDOWN": 2,
+      "CS_CONFIDENCE_LOCK": 2,
+      "OVERRIDE_LOCKDOWN": 3,
       "PARASYMPATHETIC_GUARD": 1
      }
     },
@@ -1203,8 +1203,8 @@
      ],
      "logger": "titan.science.governance_engine",
      "priority_vector": {
-      "CS_CONFIDENCE_LOCK": 3,
-      "OVERRIDE_LOCKDOWN": 2,
+      "CS_CONFIDENCE_LOCK": 2,
+      "OVERRIDE_LOCKDOWN": 3,
       "PARASYMPATHETIC_GUARD": 1
      }
     },
@@ -1680,8 +1680,8 @@
      ],
      "logger": "titan.science.governance_engine",
      "priority_vector": {
-      "CS_CONFIDENCE_LOCK": 3,
-      "OVERRIDE_LOCKDOWN": 2,
+      "CS_CONFIDENCE_LOCK": 2,
+      "OVERRIDE_LOCKDOWN": 3,
       "PARASYMPATHETIC_GUARD": 1
      }
     },
@@ -2122,8 +2122,8 @@
      ],
      "logger": "titan.science.governance_engine",
      "priority_vector": {
-      "CS_CONFIDENCE_LOCK": 3,
-      "OVERRIDE_LOCKDOWN": 2,
+      "CS_CONFIDENCE_LOCK": 2,
+      "OVERRIDE_LOCKDOWN": 3,
       "PARASYMPATHETIC_GUARD": 1
      }
     },
@@ -2375,7 +2375,7 @@
     "acwr": 0.0,
     "afi_value": 0.04,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"CS_CONFIDENCE_LOCK\": 2, \"OVERRIDE_LOCKDOWN\": 3}",
     "athlete_id": "owner",
     "date": "2026-03-02",
     "decision_was_followed": 1,
@@ -2390,7 +2390,7 @@
     "outcome_rpe": null,
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
-    "phase": "BASE",
+    "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
@@ -2401,7 +2401,7 @@
     "acwr": 0.0,
     "afi_value": 0.04,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"CS_CONFIDENCE_LOCK\": 2, \"OVERRIDE_LOCKDOWN\": 3}",
     "athlete_id": "owner",
     "date": "2026-03-06",
     "decision_was_followed": 1,
@@ -2416,7 +2416,7 @@
     "outcome_rpe": null,
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
-    "phase": "BASE",
+    "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
@@ -2427,7 +2427,7 @@
     "acwr": 0.0,
     "afi_value": 0.045,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"CS_CONFIDENCE_LOCK\": 2, \"OVERRIDE_LOCKDOWN\": 3}",
     "athlete_id": "owner",
     "date": "2026-03-03",
     "decision_was_followed": 1,
@@ -2442,7 +2442,7 @@
     "outcome_rpe": null,
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
-    "phase": "BASE",
+    "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "INTERVALS",
     "session_post_governance": "TEMPO",
@@ -2453,7 +2453,7 @@
     "acwr": 0.0,
     "afi_value": 0.05,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"CS_CONFIDENCE_LOCK\": 2, \"OVERRIDE_LOCKDOWN\": 3}",
     "athlete_id": "owner",
     "date": "2026-03-04",
     "decision_was_followed": 1,
@@ -2468,7 +2468,7 @@
     "outcome_rpe": null,
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
-    "phase": "BASE",
+    "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
@@ -2479,7 +2479,7 @@
     "acwr": 0.0,
     "afi_value": 0.055,
     "algorithm_version_snapshot": "{\"acwr_engine\": \"1.0.0\", \"adaptive_memory\": \"1.0.0\", \"adaptive_priority_lock\": \"1.0.0\", \"automated_periodization\": \"1.0.0\", \"autonomic_engine\": \"1.0.0\", \"biomechanics\": \"1.0.0\", \"critical_speed\": \"1.0.0\", \"data_sanity\": \"1.0.0\", \"data_trust\": \"1.0.0\", \"drift_engine\": \"1.0.0\", \"durability_engine\": \"1.0.0\", \"efficiency_engine\": \"1.0.0\", \"fatigue_engine\": \"1.0.0\", \"glycogen_model\": \"1.0.0\", \"governance_contracts\": \"1.0.0\", \"governance_engine\": \"1.0.0\", \"hrv_engine\": \"1.0.0\", \"injury_risk_model\": \"1.0.0\", \"intensity_governor\": \"1.0.0\", \"lactate_logic\": \"1.0.0\", \"load_prediction_shadow\": \"1.0.0\", \"ml_safety\": \"1.0.0\", \"outcome_tracker\": \"1.0.0\", \"override_signal\": \"1.0.0\", \"physiological_bounds\": \"1.0.0\", \"rcp_engine\": \"1.0.0\", \"readiness_engine\": \"1.0.0\", \"trimp_engine\": \"1.0.1\", \"tsb_engine\": \"1.0.0\", \"volume_load_gauge\": \"1.0.0\"}",
-    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"OVERRIDE_LOCKDOWN\": 2, \"CS_CONFIDENCE_LOCK\": 3}",
+    "apl_priority_vector_json": "{\"PARASYMPATHETIC_GUARD\": 1, \"CS_CONFIDENCE_LOCK\": 2, \"OVERRIDE_LOCKDOWN\": 3}",
     "athlete_id": "owner",
     "date": "2026-03-05",
     "decision_was_followed": 1,
@@ -2494,7 +2494,7 @@
     "outcome_rpe": null,
     "outcome_session_type_actual": null,
     "override_outcome_exclusion": 0,
-    "phase": "BASE",
+    "phase": "BUILD",
     "readiness_score": 100.0,
     "session_planned": "TEMPO",
     "session_post_governance": "EASY",
