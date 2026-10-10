@@ -3157,3 +3157,40 @@ def test_volume_modifier_of_zero_leaves_rest():
 def test_volume_modifier_outside_zero_to_one_changes_nothing(modifier):
     session = {"session_type": "TEMPO", "distance_km": 10.0, "duration_min": 50, "volume_modifier": modifier}
     assert daily_coach._apply_volume_modifier(session) == session
+
+
+# SV-21: the ESI reads the weather the routine already fetches.
+
+@pytest.mark.unit
+def test_esi_weather_uses_live_conditions_when_garmin_has_none():
+    weather = SimpleNamespace(get_current_conditions=lambda: {
+        "data_quality": "live", "temp_c": 12.0, "dew_point": 6.7,
+    })
+    coach = SimpleNamespace(weather=weather)
+    assert daily_coach.DailyCoach._esi_weather(coach, {}) == (12.0, 6.7)
+    assert daily_coach._compute_esi(temperature_c=12.0, dew_point_c=6.7)[0] != "EXTREME"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("current", [
+    {"data_quality": "synthetic", "temp_c": 12.0, "dew_point": 6.7},
+    {},
+])
+def test_esi_weather_keeps_the_conservative_fallback_without_real_weather(current):
+    coach = SimpleNamespace(weather=SimpleNamespace(get_current_conditions=lambda: current))
+    assert daily_coach.DailyCoach._esi_weather(coach, {}) == (20.0, daily_coach.ESI_DEW_POINT_FALLBACK_C)
+
+
+@pytest.mark.unit
+def test_esi_weather_failure_keeps_the_fallback():
+    def _boom():
+        raise RuntimeError("weather down")
+
+    coach = SimpleNamespace(weather=SimpleNamespace(get_current_conditions=_boom))
+    assert daily_coach.DailyCoach._esi_weather(coach, {}) == (20.0, daily_coach.ESI_DEW_POINT_FALLBACK_C)
+
+
+@pytest.mark.unit
+def test_esi_weather_prefers_garmin_values():
+    coach = SimpleNamespace(weather=None)
+    assert daily_coach.DailyCoach._esi_weather(coach, {"temperature_c": 25.0, "dew_point": 15.0}) == (25.0, 15.0)

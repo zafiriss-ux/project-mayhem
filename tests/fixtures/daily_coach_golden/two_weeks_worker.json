@@ -244,6 +244,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -362,23 +379,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -710,6 +710,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -831,23 +848,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -1180,6 +1180,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -1278,23 +1295,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -1627,6 +1627,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -1725,23 +1742,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -2084,6 +2084,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2170,23 +2187,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -2539,6 +2539,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -2638,23 +2655,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -3007,6 +3007,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -3093,23 +3110,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -3514,6 +3514,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -3612,23 +3629,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -4031,6 +4031,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -4152,23 +4169,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -4581,6 +4581,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -4732,23 +4749,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -5161,6 +5161,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -5259,23 +5276,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -5698,6 +5698,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -5784,23 +5801,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -6233,6 +6233,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -6332,23 +6349,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",
@@ -6781,6 +6781,23 @@
      "severity": "info"
     },
     {
+     "action": "weather_degraded_mode_active",
+     "detail": "network disabled in characterization tests",
+     "error_class": "ConnectionError",
+     "flow": "weather_api",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
+     "action": "weather_synthetic_fallback_activated",
+     "flow": "weather_api",
+     "location": "Athens,GR",
+     "logger": "titan.integrations.weather_api",
+     "severity": "warning",
+     "source": "get_current_conditions"
+    },
+    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -6867,23 +6884,6 @@
      "severity": "info",
      "step_name": "calculate_optimal_time",
      "step_number": 10
-    },
-    {
-     "action": "weather_degraded_mode_active",
-     "detail": "network disabled in characterization tests",
-     "error_class": "ConnectionError",
-     "flow": "weather_api",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
-    },
-    {
-     "action": "weather_synthetic_fallback_activated",
-     "flow": "weather_api",
-     "location": "Athens,GR",
-     "logger": "titan.integrations.weather_api",
-     "severity": "warning",
-     "source": "get_current_conditions"
     },
     {
      "action": "step_event",

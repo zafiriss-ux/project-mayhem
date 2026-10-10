@@ -9,7 +9,7 @@ characterization tests of task 5:
 - Garmin Connect: ``GarminSync.connect`` installs a fake client serving the raw shapes the
   sync code reads, for what the watch recorded up to the current (frozen) morning.
 - Telegram: ``send_message`` records the text.
-- Weather: ``_http_get`` raises, so the synthetic fallback is used.
+- Weather: ``_http_get`` answers as Open-Meteo for a mild spring morning (12 °C, 70%).
 - Time: frozen at 07:30 UTC, for Python and for SQLite. freezegun does not reach SQLite's
   own clock, so ``date()`` and ``datetime()`` are replaced on each morning's connection by
   functions that read the frozen clock (``_freeze_sqlite_clock``); otherwise the
@@ -409,6 +409,28 @@ class _EventCapture(logging.Handler):
             self.events.append({"logger": record.name, **payload})
 
 
+class _FakeWeatherResponse:
+    """Open-Meteo for a mild spring morning: 12 °C, 70% humidity (dew point about 7 °C)."""
+
+    def __init__(self, now: datetime) -> None:
+        start = now.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+        hours = [(start + timedelta(hours=i)).isoformat() for i in range(48)]
+        self._payload = {
+            "results": [{"latitude": 37.98, "longitude": 23.73}],   # geocoding: Athens
+            "current": {"temperature_2m": 12.0, "relative_humidity_2m": 70,
+                        "weather_code": 1, "wind_speed_10m": 8.0},
+            "hourly": {"time": hours, "temperature_2m": [12.0] * 48,
+                       "relative_humidity_2m": [70] * 48, "weather_code": [1] * 48,
+                       "wind_speed_10m": [8.0] * 48},
+        }
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, Any]:
+        return self._payload
+
+
 class World:
     """Patches the outside world once; runs athletes and scenarios on demand."""
 
@@ -444,8 +466,8 @@ class World:
             world._sent.append(text)
             return True
 
-        def _no_network(*_args, **_kwargs):
-            raise ConnectionError("network disabled in synthetic validation")
+        def _weather(*_args, **_kwargs):
+            return _FakeWeatherResponse(datetime.now(UTC))
 
         original_pipeline = DailyCoach._decision_pipeline
 
@@ -464,7 +486,7 @@ class World:
         monkeypatch.setattr(garmin_module.GarminSync, "connect", _connect)
         monkeypatch.setattr(WeeklyPlanGenerator, "get_today_session", _spy_today)
         monkeypatch.setattr(telegram_module.TitanTelegramBot, "send_message", _record_send)
-        monkeypatch.setattr(weather_module, "_http_get", _no_network)
+        monkeypatch.setattr(weather_module, "_http_get", _weather)
         monkeypatch.setattr(DailyCoach, "_decision_pipeline", _spy_pipeline)
 
         self.capture = _EventCapture()

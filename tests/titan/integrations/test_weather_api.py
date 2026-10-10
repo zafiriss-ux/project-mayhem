@@ -273,6 +273,24 @@ def test_get_current_conditions_cache_marks_data_quality(monkeypatch):
 
 
 @pytest.mark.integration
+def test_get_current_conditions_cached_fallback_stays_synthetic(monkeypatch):
+    """SV-21: a cached synthetic fallback must not be relabelled as live weather."""
+    api = WeatherAPI(location="Athens,GR")
+
+    def _raise():
+        raise RuntimeError("api_down")
+
+    monkeypatch.setattr(api, "_fetch_open_meteo", _raise)
+
+    first_payload = api.get_current_conditions()
+    cached_payload = api.get_current_conditions()
+
+    assert first_payload["data_quality"] == "synthetic"
+    assert cached_payload["data_quality"] == "synthetic"
+    assert cached_payload["weather_confidence"] == "SYNTHETIC"
+
+
+@pytest.mark.integration
 def test_get_current_conditions_fallback_emits_degraded_event(monkeypatch, caplog):
     api = WeatherAPI(location="Athens,GR")
 
