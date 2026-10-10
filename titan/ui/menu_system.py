@@ -309,6 +309,7 @@ def menu_data_browser(ctx: dict):
         print("  4. 😴 Ύπνος")
         print("  5. ⚖️  Ιστορικό βάρους")
         print("  6. 📈 TSB / CTL / ATL")
+        print("  7. ⏱  Καταχώρηση δοκιμής ταχύτητας (Critical Speed)")
         print("  0. ← Πίσω")
         _divider()
         c = input("  Επιλογή: ").strip()
@@ -326,6 +327,38 @@ def menu_data_browser(ctx: dict):
             _browser_weight(ctx)
         elif c == "6":
             _browser_tsb(ctx)
+        elif c == "7":
+            _record_time_trial(ctx)
+
+
+def _record_time_trial(ctx: dict) -> None:
+    """Ask for one time-trial and store it for Critical Speed calibration (D-039)."""
+    from titan.science.critical_speed import parse_time_trial, parse_trial_date
+
+    _clear()
+    _header("Δοκιμή ταχύτητας (Critical Speed)")
+    db = ctx.get("db")
+    if db is None:
+        print("  ❌ Η βάση δεδομένων δεν είναι διαθέσιμη.")
+    else:
+        print("  Απόσταση σε μέτρα (5000) ή χιλιόμετρα (5k).")
+        print("  Χρόνος ως λεπτά:δευτερόλεπτα (18:30) ή ώρες:λεπτά:δευτερόλεπτα.")
+        distance = input("  Απόσταση: ").strip()
+        time_text = input("  Χρόνος: ").strip()
+        date_text = input("  Ημερομηνία YYYY-MM-DD [Enter = σήμερα]: ").strip()
+        try:
+            distance_m, time_sec = parse_time_trial(distance, time_text)
+            trial_date = parse_trial_date(date_text, datetime.now(UTC).date())
+        except ValueError as exc:
+            print(f"  ❌ {exc}")
+        else:
+            db.log_cs_performance(
+                date=trial_date, distance_m=distance_m, time_sec=time_sec, athlete_id="owner"
+            )
+            minutes, seconds = divmod(round(time_sec), 60)
+            print(f"  ✅ Καταχωρήθηκε: {distance_m:g} m σε {minutes}:{seconds:02d} ({trial_date})")
+    _divider()
+    input("  [Enter] ")
 
 
 def _browser_activities(ctx: dict):

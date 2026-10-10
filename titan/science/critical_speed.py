@@ -16,7 +16,7 @@ Scientific Basis:
 - Jones, A.M. & Doust, J.H. (1997). J Sports Sci, 15(6), 643-648. (thermal)
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from titan.config.thresholds import ESI_MODERATE_MIN
 
@@ -118,6 +118,81 @@ class CriticalSpeedEngine:
 
         t = d_prime_m / (v - cs_m_per_s)
         return t
+
+
+# Input guards for a manually entered time-trial (D-039). They reject typing
+# mistakes; they are not governance thresholds. Evidence: HEURISTIC.
+TRIAL_DISTANCE_RANGE_M = (400.0, 42195.0)  # a 400 m effort up to a marathon
+TRIAL_TIME_RANGE_S = (60.0, 6 * 3600.0)    # one minute up to six hours
+TRIAL_SPEED_RANGE_M_S = (1.5, 8.0)         # brisk walk; 8 m/s is above every 800 m+ world record
+
+
+def _parse_trial_distance(raw: str) -> float:
+    text = raw.strip().lower().replace(",", ".")
+    factor = 1.0
+    for suffix in ("km", "k"):
+        if text.endswith(suffix):
+            text, factor = text[: -len(suffix)], 1000.0
+            break
+    else:
+        if text.endswith("m"):
+            text = text[:-1]
+    try:
+        return float(text) * factor
+    except ValueError:
+        raise ValueError(f"Invalid distance: '{raw}'") from None
+
+
+def _parse_trial_time(raw: str) -> float:
+    parts = raw.strip().replace(",", ".").split(":")
+    if len(parts) > 3:
+        raise ValueError(f"Invalid time: '{raw}'")
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        raise ValueError(f"Invalid time: '{raw}'") from None
+    if any(v < 0 for v in values) or any(v >= 60 for v in values[1:]):
+        raise ValueError(f"Invalid time: '{raw}'")
+    seconds = 0.0
+    for v in values:
+        seconds = seconds * 60 + v
+    return seconds
+
+
+def parse_time_trial(distance: str, time: str) -> tuple[float, float]:
+    """Parse a manually entered time-trial into ``(distance_m, time_sec)``.
+
+    *distance* is metres ("5000", "5000m") or kilometres ("5k", "5km", "5,0km").
+    *time* is seconds ("1110"), "mm:ss" ("18:30") or "h:mm:ss" ("1:25:00").
+    Raises ``ValueError`` with a readable message when the input is malformed
+    or outside the ``TRIAL_*`` ranges.
+    """
+    distance_m = _parse_trial_distance(distance)
+    time_sec = _parse_trial_time(time)
+    lo, hi = TRIAL_DISTANCE_RANGE_M
+    if not lo <= distance_m <= hi:
+        raise ValueError(f"Distance out of range: {distance_m:g} m (valid: {lo:g}–{hi:g} m)")
+    lo, hi = TRIAL_TIME_RANGE_S
+    if not lo <= time_sec <= hi:
+        raise ValueError(f"Time out of range: {time_sec:g} s (valid: {lo:g}–{hi:g} s)")
+    speed = distance_m / time_sec
+    lo, hi = TRIAL_SPEED_RANGE_M_S
+    if not lo <= speed <= hi:
+        raise ValueError(f"Average speed not plausible: {speed:.2f} m/s (valid: {lo:g}–{hi:g} m/s)")
+    return distance_m, time_sec
+
+
+def parse_trial_date(raw: str | None, today: date) -> str:
+    """Return the trial date as ISO text; empty means *today*, a future date is rejected."""
+    if raw is None or not raw.strip():
+        return today.isoformat()
+    try:
+        day = date.fromisoformat(raw.strip())
+    except ValueError:
+        raise ValueError(f"Invalid date: '{raw}' (use YYYY-MM-DD)") from None
+    if day > today:
+        raise ValueError(f"Date is in the future: {day.isoformat()}")
+    return day.isoformat()
 
 
 class CriticalSpeedTracker:

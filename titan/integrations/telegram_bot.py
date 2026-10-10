@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from titan.config.settings import get_settings
 from titan.core.structured_events import EventSeverity, structured_event_payload
+from titan.science.critical_speed import parse_time_trial, parse_trial_date
 from titan.science.override_signal import OverrideSignal, record_override_signal
 from titan.utils.secrets import SecretStr
 
@@ -233,6 +234,7 @@ class TitanTelegramBot:
                 "/shoes – Shoe recommendation for today\n"
                 "/calibration – Governance calibration summary\n"
                 "/manual_entry – Log metrics manually (HRV, RHR, Sleep, Fatigue, Weight)\n"
+                "/time_trial – Log a time-trial for Critical Speed (distance, time)\n"
             )
             self.bot.reply_to(message, text)
 
@@ -377,6 +379,18 @@ class TitanTelegramBot:
             reply = self.handle_manual_entry_text(args, chat_id=message.chat.id)
             self.bot.reply_to(message, reply)
 
+        @self.bot.message_handler(commands=["time_trial"])
+        def cmd_time_trial(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            if not _check_rate_limit(message.chat.id, "time_trial"):
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
+                return
+            parts = (message.text or "").strip().split(None, 1)
+            args = parts[1] if len(parts) > 1 else ""
+            self.bot.reply_to(message, self.handle_time_trial_text(args, chat_id=message.chat.id))
+
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
         def cb_override(call):
             if not self._is_trusted(call.message.chat.id):
@@ -478,6 +492,32 @@ class TitanTelegramBot:
             if col in parsed:
                 summary_parts.append(f"{label}={parsed[col]}")
         return "✅ Logged: " + ", ".join(summary_parts)
+
+    def handle_time_trial_text(self, args: str, chat_id: int | str | None = None) -> str:
+        """Process ``/time_trial DISTANCE TIME [YYYY-MM-DD]``; store it for CS calibration (D-039)."""
+        usage = "Usage: /time_trial 5000 18:30 [YYYY-MM-DD]  (distance in m or 5k; time mm:ss or h:mm:ss)"
+        tokens = args.split()
+        if len(tokens) not in (2, 3):
+            return usage
+        try:
+            distance_m, time_sec = parse_time_trial(tokens[0], tokens[1])
+            trial_date = parse_trial_date(tokens[2] if len(tokens) == 3 else None, datetime.now(UTC).date())
+        except ValueError as exc:
+            return f"❌ {exc}\n{usage}"
+
+        if self.db is None:
+            return "❌ Database not available."
+
+        detail = json.dumps(
+            {"date": trial_date, "distance_m": distance_m, "time_sec": time_sec}, sort_keys=True
+        )
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_TIME_TRIAL", "owner", detail):
+            return _AUDIT_UNAVAILABLE_REPLY
+        self.db.log_cs_performance(
+            date=trial_date, distance_m=distance_m, time_sec=time_sec, athlete_id="owner"
+        )
+        minutes, seconds = divmod(round(time_sec), 60)
+        return f"✅ Time-trial logged: {distance_m:g} m in {minutes}:{seconds:02d} on {trial_date}"
 
     @staticmethod
     def _audit_before_effect(
