@@ -49,6 +49,7 @@ from titan.config.thresholds import (
     ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM,
     GARMIN_DATA_MAX_AGE_HOURS,
     HRV_DRIFT_THRESHOLD_MS,
+    INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
 )
 from titan.core.database import DatabaseManager
 from titan.integrations.biometric_router import BiometricRouter, ManualEntryAdapter
@@ -248,12 +249,17 @@ def _clamp_to_easy_45(session: dict) -> dict:
 
     The clamps used to cut the duration but keep the planned distance, so the
     morning message could say "EASY – 16 km" for a 45-minute run. A REST day
-    stays REST: turning it into EASY gave "EASY 0 km" (SV-03).
+    stays REST: turning it into EASY gave "EASY 0 km" (SV-03). A session that is
+    not EASY is downgraded, so it also keeps only 70% of its volume, as a gate's
+    downgrade does (ADR-0065); an EASY session is only capped (SV-22 / D-063).
     """
-    if str(session.get("session_type", "")).upper() == "REST":
+    session_type = str(session.get("session_type", "")).upper()
+    if session_type == "REST":
         return session
     planned_min = _safe_int(session.get("duration_min", _CLAMP_MAX_DURATION_MIN), _CLAMP_MAX_DURATION_MIN)
     capped_min = min(planned_min, _CLAMP_MAX_DURATION_MIN)
+    if session_type != "EASY":
+        capped_min = min(round(planned_min * INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE), capped_min)
     capped = {**session, "session_type": "EASY", "duration_min": capped_min}
     distance = _safe_float(session.get("distance_km"), 0.0)
     if distance > 0 and planned_min > capped_min:

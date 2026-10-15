@@ -2697,7 +2697,7 @@
      "action": "daily_plan_calculated",
      "calories": 2558.0,
      "carbs_g": 450.0,
-     "duration_min": 32,
+     "duration_min": 22,
      "flow": "nutrition",
      "hydration_ml": 2900,
      "logger": "titan.features.nutrition_optimizer",
@@ -2754,7 +2754,7 @@
    "telegram": [
     "🛑 *CRITICAL*\n\nGarmin data is stale (>26h since last successful sync). Training prescription is conservative (EASY maintenance).",
     "⚠️ *TITAN degraded mode*\n\nTITAN degraded for >24h — garmin_data_stale unresolved. Check credentials/connectivity.",
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 5.4 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: N/A\n  • Readiness: 83/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 3.7 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: N/A\n  • Readiness: 83/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
