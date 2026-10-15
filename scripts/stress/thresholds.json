@@ -1,0 +1,29 @@
+{
+  "_comment": "Acceptance thresholds for the DB stress test. Written BEFORE the dry run and the full run (2026-10-10). Only SLO-02 and SLO-04 in docs/SLO.md touch the database; every other limit below is a PROPOSAL awaiting owner approval (open decision), not an accepted SLO.",
+  "_sources": {
+    "SLO-02": "docs/SLO.md: full 7-gate governance evaluation P99 <= 2000 ms. DB reads are one part of that budget; proposal: DB share <= 5% (100 ms p99).",
+    "SLO-04": "docs/SLO.md: zero unhandled write failures in governance_outcomes and training_log."
+  },
+  "checks": [
+    {"id": "T01", "source": "proposal (derived from SLO-02)", "metric": "ctl_atl_tsb p95 at 100% dataset (warm)", "op": "<=", "limit_ms": 50},
+    {"id": "T02", "source": "proposal (derived from SLO-02)", "metric": "ctl_atl_tsb p99 at 100% dataset (warm)", "op": "<=", "limit_ms": 100},
+    {"id": "T03", "source": "proposal", "metric": "recent_activities_90 p95 at 100% dataset (warm)", "op": "<=", "limit_ms": 20},
+    {"id": "T04", "source": "proposal", "metric": "range_30d_raw_sql p95 at 100% dataset (warm)", "op": "<=", "limit_ms": 20},
+    {"id": "T05", "source": "proposal", "metric": "hrv_history_28 p95 at 100% dataset (warm)", "op": "<=", "limit_ms": 10},
+    {"id": "T06", "source": "proposal", "metric": "Garmin sync persist (one weekly sync tx) p95, main load", "op": "<=", "limit_ms": 100},
+    {"id": "T07", "source": "proposal", "metric": "Garmin sync persist p99, main load", "op": "<=", "limit_ms": 250},
+    {"id": "T08", "source": "SLO-04 + proposal", "metric": "'database is locked' failures with <= 4 workers (any mode)", "op": "==", "limit": 0},
+    {"id": "T09", "source": "SLO-04", "metric": "lost or phantom rows after concurrency runs", "op": "==", "limit": 0},
+    {"id": "T10", "source": "owner request §6", "metric": "valid activity records lost (any cause)", "op": "==", "limit": 0},
+    {"id": "T11", "source": "owner request §6", "metric": "valid daily-metrics records lost (any cause)", "op": "==", "limit": 0},
+    {"id": "T12", "source": "owner request §6", "metric": "new training_log rows from repeated syncs", "op": "==", "limit": 0},
+    {"id": "T13", "source": "ADR-0040 / owner request §6", "metric": "cross-athlete leakage (rows / athletes with mismatch)", "op": "==", "limit": 0},
+    {"id": "T14", "source": "owner request §4", "metric": "integrity_check ok and 0 foreign-key violations", "op": "==", "limit": 0},
+    {"id": "T15", "source": "proposal", "metric": "rows left after crash inside an outer transaction", "op": "==", "limit": 0},
+    {"id": "T16", "source": "proposal", "metric": "re-import after crash gives exact row count, no duplicates", "op": "==", "limit": 0},
+    {"id": "T17", "source": "proposal", "metric": "SQLite storage (db+wal) at 100% dataset", "op": "<=", "limit_mb": 2048},
+    {"id": "T18", "source": "proposal", "metric": "harness peak RSS during main load", "op": "<=", "limit_mb": 1024},
+    {"id": "T19", "source": "proposal", "metric": "DatabaseManager open (cold start) at 100% dataset", "op": "<=", "limit_ms": 2000},
+    {"id": "T20", "source": "proposal", "metric": "initial import throughput via real Garmin path (activity rows/s, persist only)", "op": ">=", "limit": 5000}
+  ]
+}

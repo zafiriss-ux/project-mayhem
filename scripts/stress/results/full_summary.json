@@ -1,0 +1,3153 @@
+{
+ "environment": {
+  "utc_start": "2026-10-15T21:12:06.312824+00:00",
+  "git_sha": "0852e888141d9ed143818b1ec3eb7d8bfe194e80",
+  "python": "3.13.16",
+  "sqlite_library": "3.45.1",
+  "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+  "cpu_count": 4,
+  "schema_version_code": 28,
+  "pragmas_as_set_by_DatabaseManager": {
+   "journal_mode": "wal",
+   "synchronous": 1,
+   "busy_timeout": 5000,
+   "foreign_keys": 1,
+   "user_version": 28,
+   "page_size": 4096,
+   "cache_size": -2000,
+   "temp_store": 0,
+   "mmap_size": 0,
+   "wal_autocheckpoint": 1000,
+   "locking_mode": "normal"
+  },
+  "new_db_open_ms": 22.6,
+  "ram_total_gb": 15.7,
+  "fresh_stress_db_open_ms": 15.9
+ },
+ "config": {
+  "seed": 20261010,
+  "athletes": 10000,
+  "anchor": "2026-10-10",
+  "small": false,
+  "tiny": false,
+  "growth_sample": 200,
+  "query_sample": 300,
+  "leak_sample": 10000,
+  "resync_athletes": 1000,
+  "conc_duration": 20.0,
+  "update_count": 20000,
+  "rollback_syncs": 1000,
+  "crash_syncs": 6000,
+  "index_insert_rows": 50000,
+  "bulk_pool_rows": 100000,
+  "command": "python scripts/stress/run_stress.py --seed 20261010 --athletes 10000 --out .stress_tmp/full"
+ },
+ "phase_wall_s": {
+  "phase1_bulk_insert": 6.4,
+  "phase2_main_load+phase7_growth": 172.4,
+  "verify_dataset": 18.9,
+  "verify_read_path_loads": 50.5,
+  "verify_leakage": 608.0,
+  "phase4_resync": 11.9,
+  "phase3_queries": 140.4,
+  "index_cost_on_copy": 77.0,
+  "phase5_concurrency": 253.9,
+  "phase6_update_rollback_restart": 27.5,
+  "backup_restore": 8.2,
+  "postgres_comparison": 281.6
+ },
+ "total_wall_s": 1656.7,
+ "main_load": {
+  "wall_s": 171.9,
+  "generation_s": 9.2,
+  "syncs": 520000,
+  "syncs_failed": 802,
+  "sync_failure_causes": {
+   "TypeError: '>' not supported between instances of 'str' and 'int'": 392,
+   "ValueError: could not convert string to float: '4,6km'": 2,
+   "ValueError: could not convert string to float: '6,7km'": 3,
+   "ValueError: could not convert string to float: '9,6km'": 4,
+   "ValueError: could not convert string to float: '11,6km'": 2,
+   "ValueError: could not convert string to float: '5,9km'": 2,
+   "ValueError: could not convert string to float: '10,9km'": 9,
+   "ValueError: could not convert string to float: '10,0km'": 6,
+   "ValueError: could not convert string to float: '8,4km'": 8,
+   "ValueError: could not convert string to float: '5,0km'": 2,
+   "ValueError: could not convert string to float: '11,5km'": 4,
+   "ValueError: could not convert string to float: '11,9km'": 5,
+   "ValueError: could not convert string to float: '11,0km'": 2,
+   "ValueError: could not convert string to float: '6,1km'": 9,
+   "ValueError: could not convert string to float: '6,3km'": 7,
+   "ValueError: could not convert string to float: '11,7km'": 6,
+   "ValueError: could not convert string to float: '6,6km'": 8,
+   "ValueError: could not convert string to float: '7,5km'": 2,
+   "ValueError: could not convert string to float: '9,2km'": 8,
+   "ValueError: could not convert string to float: '8,0km'": 4,
+   "ValueError: could not convert string to float: '9,7km'": 5,
+   "ValueError: could not convert string to float: '30,9km'": 2,
+   "ValueError: could not convert string to float: '7,7km'": 4,
+   "ValueError: could not convert string to float: '10,4km'": 4,
+   "ValueError: could not convert string to float: '25,0km'": 3,
+   "ValueError: could not convert string to float: '12,3km'": 4,
+   "ValueError: could not convert string to float: '28,5km'": 2,
+   "ValueError: could not convert string to float: '4,3km'": 1,
+   "ValueError: could not convert string to float: '12,4km'": 4,
+   "ValueError: could not convert string to float: '11,1km'": 8,
+   "ValueError: could not convert string to float: '29,5km'": 1,
+   "ValueError: could not convert string to float: '5,1km'": 2,
+   "ValueError: could not convert string to float: '10,2km'": 5,
+   "ValueError: could not convert string to float: '13,4km'": 1,
+   "ValueError: could not convert string to float: '17,8km'": 1,
+   "ValueError: could not convert string to float: '28,3km'": 1,
+   "ValueError: could not convert string to float: '30,4km'": 1,
+   "ValueError: could not convert string to float: '9,0km'": 5,
+   "ValueError: could not convert string to float: '16,1km'": 1,
+   "ValueError: could not convert string to float: '7,0km'": 3,
+   "ValueError: could not convert string to float: '24,8km'": 1,
+   "ValueError: could not convert string to float: '8,9km'": 7,
+   "ValueError: could not convert string to float: '11,4km'": 2,
+   "ValueError: could not convert string to float: '4,2km'": 2,
+   "ValueError: could not convert string to float: '19,6km'": 1,
+   "ValueError: could not convert string to float: '9,3km'": 4,
+   "ValueError: could not convert string to float: '22,6km'": 2,
+   "ValueError: could not convert string to float: '5,7km'": 1,
+   "ValueError: could not convert string to float: '9,1km'": 3,
+   "ValueError: could not convert string to float: '11,3km'": 4,
+   "ValueError: could not convert string to float: '9,8km'": 2,
+   "ValueError: could not convert string to float: '8,7km'": 5,
+   "ValueError: could not convert string to float: '31,9km'": 1,
+   "ValueError: could not convert string to float: '26,9km'": 1,
+   "ValueError: could not convert string to float: '11,2km'": 8,
+   "ValueError: could not convert string to float: '4,7km'": 2,
+   "ValueError: could not convert string to float: '31,0km'": 1,
+   "ValueError: could not convert string to float: '4,9km'": 3,
+   "ValueError: could not convert string to float: '28,4km'": 1,
+   "ValueError: could not convert string to float: '12,7km'": 3,
+   "ValueError: could not convert string to float: '6,5km'": 1,
+   "ValueError: could not convert string to float: '13,1km'": 3,
+   "ValueError: could not convert string to float: '26,6km'": 2,
+   "ValueError: could not convert string to float: '8,5km'": 5,
+   "ValueError: could not convert string to float: '31,1km'": 1,
+   "ValueError: could not convert string to float: '10,5km'": 3,
+   "ValueError: could not convert string to float: '4,8km'": 2,
+   "ValueError: could not convert string to float: '12,2km'": 4,
+   "ValueError: could not convert string to float: '22,2km'": 1,
+   "ValueError: could not convert string to float: '7,9km'": 7,
+   "ValueError: could not convert string to float: '13,8km'": 2,
+   "ValueError: could not convert string to float: '12,5km'": 3,
+   "ValueError: could not convert string to float: '13,9km'": 4,
+   "ValueError: could not convert string to float: '31,2km'": 1,
+   "ValueError: could not convert string to float: '13,7km'": 2,
+   "ValueError: could not convert string to float: '9,9km'": 3,
+   "ValueError: could not convert string to float: '13,6km'": 4,
+   "ValueError: could not convert string to float: '10,7km'": 3,
+   "ValueError: could not convert string to float: '14,0km'": 2,
+   "ValueError: could not convert string to float: '13,3km'": 5,
+   "ValueError: could not convert string to float: '7,8km'": 5,
+   "ValueError: could not convert string to float: '4,5km'": 2,
+   "ValueError: could not convert string to float: '13,2km'": 3,
+   "ValueError: could not convert string to float: '13,5km'": 3,
+   "ValueError: could not convert string to float: '5,3km'": 2,
+   "ValueError: could not convert string to float: '7,6km'": 5,
+   "ValueError: could not convert string to float: '28,1km'": 1,
+   "ValueError: could not convert string to float: '29,0km'": 1,
+   "ValueError: could not convert string to float: '10,3km'": 8,
+   "ValueError: could not convert string to float: '10,6km'": 2,
+   "ValueError: could not convert string to float: '10,1km'": 5,
+   "ValueError: could not convert string to float: '12,6km'": 2,
+   "ValueError: could not convert string to float: '16,2km'": 1,
+   "ValueError: could not convert string to float: '17,7km'": 1,
+   "ValueError: could not convert string to float: '16,8km'": 3,
+   "ValueError: could not convert string to float: '18,7km'": 2,
+   "ValueError: could not convert string to float: '26,5km'": 2,
+   "ValueError: could not convert string to float: '31,3km'": 2,
+   "ValueError: could not convert string to float: '20,5km'": 1,
+   "ValueError: could not convert string to float: '7,3km'": 3,
+   "ValueError: could not convert string to float: '17,1km'": 1,
+   "ValueError: could not convert string to float: '17,6km'": 1,
+   "ValueError: could not convert string to float: '7,2km'": 3,
+   "ValueError: could not convert string to float: '12,0km'": 1,
+   "ValueError: could not convert string to float: '26,7km'": 1,
+   "ValueError: could not convert string to float: '8,8km'": 5,
+   "ValueError: could not convert string to float: '9,4km'": 5,
+   "ValueError: could not convert string to float: '12,9km'": 3,
+   "ValueError: could not convert string to float: '8,6km'": 6,
+   "ValueError: could not convert string to float: '12,1km'": 2,
+   "ValueError: could not convert string to float: '28,6km'": 1,
+   "ValueError: could not convert string to float: '10,8km'": 3,
+   "ValueError: could not convert string to float: '23,8km'": 1,
+   "ValueError: could not convert string to float: '8,2km'": 5,
+   "ValueError: could not convert string to float: '28,2km'": 1,
+   "ValueError: could not convert string to float: '12,8km'": 5,
+   "ValueError: could not convert string to float: '29,3km'": 1,
+   "ValueError: could not convert string to float: '5,4km'": 1,
+   "ValueError: could not convert string to float: '30,7km'": 1,
+   "ValueError: could not convert string to float: '25,4km'": 1,
+   "ValueError: could not convert string to float: '8,3km'": 2,
+   "ValueError: could not convert string to float: '8,1km'": 1,
+   "ValueError: could not convert string to float: '31,6km'": 1,
+   "ValueError: could not convert string to float: '9,5km'": 4,
+   "ValueError: could not convert string to float: '26,4km'": 1,
+   "ValueError: could not convert string to float: '21,8km'": 2,
+   "ValueError: could not convert string to float: '20,6km'": 2,
+   "ValueError: could not convert string to float: '7,1km'": 1,
+   "ValueError: could not convert string to float: '13,0km'": 1,
+   "ValueError: could not convert string to float: '6,4km'": 3,
+   "ValueError: could not convert string to float: '27,5km'": 2,
+   "ValueError: could not convert string to float: '5,8km'": 2,
+   "ValueError: could not convert string to float: '11,8km'": 1,
+   "ValueError: could not convert string to float: '6,9km'": 2,
+   "ValueError: could not convert string to float: '20,8km'": 1,
+   "ValueError: could not convert string to float: '25,7km'": 1,
+   "ValueError: could not convert string to float: '25,6km'": 2,
+   "ValueError: could not convert string to float: '4,1km'": 1,
+   "ValueError: could not convert string to float: '4,4km'": 1,
+   "ValueError: could not convert string to float: '5,6km'": 1,
+   "ValueError: could not convert string to float: '23,1km'": 1,
+   "ValueError: could not convert string to float: '16,7km'": 1,
+   "ValueError: could not convert string to float: '20,7km'": 1,
+   "ValueError: could not convert string to float: '16,0km'": 1,
+   "ValueError: could not convert string to float: '22,0km'": 1,
+   "ValueError: could not convert string to float: '6,2km'": 2,
+   "ValueError: could not convert string to float: '24,4km'": 1,
+   "ValueError: could not convert string to float: '29,8km'": 1,
+   "ValueError: could not convert string to float: '31,7km'": 1,
+   "ValueError: could not convert string to float: '25,9km'": 1,
+   "ValueError: could not convert string to float: '29,4km'": 1,
+   "ValueError: could not convert string to float: '27,7km'": 1
+  },
+  "sync_latency": {
+   "n": 520000,
+   "p50_ms": 0.078,
+   "p95_ms": 0.188,
+   "p99_ms": 0.67,
+   "max_ms": 34.617,
+   "mean_ms": 0.15
+  },
+  "syncs_per_s_persist_only": 6671.5,
+  "training_log_rows": 747831,
+  "daily_metrics_rows": 1161746,
+  "activity_rows_per_s_persist_only": 9594.6,
+  "activity_rows_per_s_incl_generation": 4349.8,
+  "totals": {
+   "activities_generated": 751236,
+   "activity_anomalies": 7704,
+   "daily_records_generated": 520000,
+   "daily_anomalies": 5173,
+   "syncs": 520000,
+   "activity_payload_records": 752039,
+   "manual_entries": 359
+  },
+  "activities_per_athlete_distribution": {
+   "min": 50,
+   "max": 100,
+   "mean": 75.12,
+   "histogram_by_10": {
+    "50": 1938,
+    "60": 1937,
+    "70": 1971,
+    "80": 1935,
+    "90": 2047,
+    "100": 172
+   }
+  },
+  "storage": {
+   "db_bytes": 198742016,
+   "wal_bytes": 4173592,
+   "shm_bytes": 32768,
+   "total_bytes": 202948376
+  },
+  "resources": {
+   "wall_s": 171.931,
+   "rss_max_mb": 84.1,
+   "rss_mean_mb": 75.7,
+   "cpu_self_seconds": 142.86,
+   "cpu_self_pct_of_one_core": 83.1,
+   "cpu_sampled_mean_pct": 0.0,
+   "cpu_sampled_max_pct": 0.0,
+   "sampler": "psutil"
+  },
+  "emit_outcomes": {
+   "activity_persist:DAILY_METRICS_PERSISTED": 519198,
+   "daily_metrics_persisted": 519198,
+   "activity_persist:ACTIVITY_PERSISTED": 749157,
+   "activities_persisted": 411875,
+   "activity_persist:ACTIVITY_SANITY_REJECTED": 1549,
+   "physiological_input_validation_failed": 2590,
+   "activity_persist:DAILY_METRICS_SKIPPED": 802,
+   "daily_metrics_persist_failed": 802
+  }
+ },
+ "growth": [
+  {
+   "fraction": 0.1,
+   "athletes_loaded": 1000,
+   "training_log_rows": 74263,
+   "daily_metrics_rows": 115702,
+   "storage": {
+    "db_bytes": 19832832,
+    "wal_bytes": 4165352,
+    "shm_bytes": 32768,
+    "total_bytes": 24030952
+   },
+   "segment_sync_latency": {
+    "n": 52000,
+    "p50_ms": 0.075,
+    "p95_ms": 0.17,
+    "p99_ms": 0.611,
+    "max_ms": 29.823,
+    "mean_ms": 0.142
+   },
+   "segment_syncs_per_s": 6188.3,
+   "segment_activity_rows_per_s": 8837.7,
+   "databasemanager_open_ms": 24.9,
+   "queries": {
+    "recent_activities_90": {
+     "n": 200,
+     "p50_ms": 4.735,
+     "p95_ms": 6.352,
+     "p99_ms": 7.027,
+     "max_ms": 9.508,
+     "mean_ms": 4.954
+    },
+    "range_30d_raw_sql": {
+     "n": 200,
+     "p50_ms": 4.498,
+     "p95_ms": 6.271,
+     "p99_ms": 6.942,
+     "max_ms": 7.426,
+     "mean_ms": 4.777
+    },
+    "training_load_history_210d": {
+     "n": 200,
+     "p50_ms": 4.642,
+     "p95_ms": 6.389,
+     "p99_ms": 6.689,
+     "max_ms": 6.798,
+     "mean_ms": 4.868
+    },
+    "ctl_atl_tsb": {
+     "n": 200,
+     "p50_ms": 5.013,
+     "p95_ms": 6.863,
+     "p99_ms": 7.38,
+     "max_ms": 29.438,
+     "mean_ms": 5.356
+    },
+    "hrv_history_28": {
+     "n": 200,
+     "p50_ms": 0.079,
+     "p95_ms": 0.123,
+     "p99_ms": 0.173,
+     "max_ms": 0.601,
+     "mean_ms": 0.091
+    },
+    "baseline_rhr_7": {
+     "n": 200,
+     "p50_ms": 0.034,
+     "p95_ms": 0.055,
+     "p99_ms": 0.069,
+     "max_ms": 0.11,
+     "mean_ms": 0.037
+    },
+    "weight_history_30": {
+     "n": 200,
+     "p50_ms": 0.059,
+     "p95_ms": 0.091,
+     "p99_ms": 0.128,
+     "max_ms": 5.945,
+     "mean_ms": 0.095
+    },
+    "daily_metric_one_day": {
+     "n": 200,
+     "p50_ms": 0.014,
+     "p95_ms": 0.021,
+     "p99_ms": 0.045,
+     "max_ms": 0.07,
+     "mean_ms": 0.015
+    }
+   }
+  },
+  {
+   "fraction": 0.25,
+   "athletes_loaded": 2500,
+   "training_log_rows": 186405,
+   "daily_metrics_rows": 290021,
+   "storage": {
+    "db_bytes": 49602560,
+    "wal_bytes": 4173592,
+    "shm_bytes": 32768,
+    "total_bytes": 53808920
+   },
+   "segment_sync_latency": {
+    "n": 78000,
+    "p50_ms": 0.078,
+    "p95_ms": 0.178,
+    "p99_ms": 0.607,
+    "max_ms": 34.617,
+    "mean_ms": 0.146
+   },
+   "segment_syncs_per_s": 5993.7,
+   "segment_activity_rows_per_s": 8617.2,
+   "databasemanager_open_ms": 51.6,
+   "queries": {
+    "recent_activities_90": {
+     "n": 200,
+     "p50_ms": 13.192,
+     "p95_ms": 19.932,
+     "p99_ms": 22.062,
+     "max_ms": 53.985,
+     "mean_ms": 14.532
+    },
+    "range_30d_raw_sql": {
+     "n": 200,
+     "p50_ms": 12.966,
+     "p95_ms": 19.018,
+     "p99_ms": 21.462,
+     "max_ms": 47.557,
+     "mean_ms": 13.984
+    },
+    "training_load_history_210d": {
+     "n": 200,
+     "p50_ms": 13.031,
+     "p95_ms": 18.906,
+     "p99_ms": 30.347,
+     "max_ms": 75.144,
+     "mean_ms": 14.448
+    },
+    "ctl_atl_tsb": {
+     "n": 200,
+     "p50_ms": 13.488,
+     "p95_ms": 20.117,
+     "p99_ms": 26.103,
+     "max_ms": 33.705,
+     "mean_ms": 14.698
+    },
+    "hrv_history_28": {
+     "n": 200,
+     "p50_ms": 0.091,
+     "p95_ms": 0.155,
+     "p99_ms": 0.255,
+     "max_ms": 0.859,
+     "mean_ms": 0.107
+    },
+    "baseline_rhr_7": {
+     "n": 200,
+     "p50_ms": 0.041,
+     "p95_ms": 0.079,
+     "p99_ms": 0.172,
+     "max_ms": 0.354,
+     "mean_ms": 0.05
+    },
+    "weight_history_30": {
+     "n": 200,
+     "p50_ms": 0.064,
+     "p95_ms": 0.114,
+     "p99_ms": 0.313,
+     "max_ms": 0.663,
+     "mean_ms": 0.078
+    },
+    "daily_metric_one_day": {
+     "n": 200,
+     "p50_ms": 0.016,
+     "p95_ms": 0.027,
+     "p99_ms": 0.052,
+     "max_ms": 0.149,
+     "mean_ms": 0.019
+    }
+   }
+  },
+  {
+   "fraction": 0.5,
+   "athletes_loaded": 5000,
+   "training_log_rows": 373486,
+   "daily_metrics_rows": 580795,
+   "storage": {
+    "db_bytes": 99389440,
+    "wal_bytes": 4173592,
+    "shm_bytes": 32768,
+    "total_bytes": 103595800
+   },
+   "segment_sync_latency": {
+    "n": 130000,
+    "p50_ms": 0.077,
+    "p95_ms": 0.178,
+    "p99_ms": 0.616,
+    "max_ms": 33.699,
+    "mean_ms": 0.144
+   },
+   "segment_syncs_per_s": 6114.3,
+   "segment_activity_rows_per_s": 8799.1,
+   "databasemanager_open_ms": 92.6,
+   "queries": {
+    "recent_activities_90": {
+     "n": 200,
+     "p50_ms": 26.029,
+     "p95_ms": 35.386,
+     "p99_ms": 41.859,
+     "max_ms": 44.416,
+     "mean_ms": 27.437
+    },
+    "range_30d_raw_sql": {
+     "n": 200,
+     "p50_ms": 25.734,
+     "p95_ms": 35.633,
+     "p99_ms": 42.106,
+     "max_ms": 43.942,
+     "mean_ms": 27.057
+    },
+    "training_load_history_210d": {
+     "n": 200,
+     "p50_ms": 26.086,
+     "p95_ms": 32.666,
+     "p99_ms": 40.145,
+     "max_ms": 44.113,
+     "mean_ms": 27.08
+    },
+    "ctl_atl_tsb": {
+     "n": 200,
+     "p50_ms": 26.46,
+     "p95_ms": 34.385,
+     "p99_ms": 42.784,
+     "max_ms": 45.122,
+     "mean_ms": 27.78
+    },
+    "hrv_history_28": {
+     "n": 200,
+     "p50_ms": 0.091,
+     "p95_ms": 0.143,
+     "p99_ms": 0.415,
+     "max_ms": 0.515,
+     "mean_ms": 0.105
+    },
+    "baseline_rhr_7": {
+     "n": 200,
+     "p50_ms": 0.041,
+     "p95_ms": 0.066,
+     "p99_ms": 0.084,
+     "max_ms": 0.369,
+     "mean_ms": 0.046
+    },
+    "weight_history_30": {
+     "n": 200,
+     "p50_ms": 0.063,
+     "p95_ms": 0.11,
+     "p99_ms": 0.32,
+     "max_ms": 0.861,
+     "mean_ms": 0.078
+    },
+    "daily_metric_one_day": {
+     "n": 200,
+     "p50_ms": 0.016,
+     "p95_ms": 0.042,
+     "p99_ms": 0.077,
+     "max_ms": 0.269,
+     "mean_ms": 0.02
+    }
+   }
+  },
+  {
+   "fraction": 1.0,
+   "athletes_loaded": 10000,
+   "training_log_rows": 747831,
+   "daily_metrics_rows": 1161746,
+   "storage": {
+    "db_bytes": 198742016,
+    "wal_bytes": 4173592,
+    "shm_bytes": 32768,
+    "total_bytes": 202948376
+   },
+   "segment_sync_latency": {
+    "n": 260000,
+    "p50_ms": 0.079,
+    "p95_ms": 0.2,
+    "p99_ms": 0.739,
+    "max_ms": 29.526,
+    "mean_ms": 0.156
+   },
+   "segment_syncs_per_s": 5652.5,
+   "segment_activity_rows_per_s": 8138.4,
+   "databasemanager_open_ms": 203.5,
+   "queries": {
+    "recent_activities_90": {
+     "n": 200,
+     "p50_ms": 53.882,
+     "p95_ms": 66.712,
+     "p99_ms": 79.6,
+     "max_ms": 84.72,
+     "mean_ms": 56.094
+    },
+    "range_30d_raw_sql": {
+     "n": 200,
+     "p50_ms": 53.466,
+     "p95_ms": 66.46,
+     "p99_ms": 73.238,
+     "max_ms": 86.579,
+     "mean_ms": 55.356
+    },
+    "training_load_history_210d": {
+     "n": 200,
+     "p50_ms": 53.778,
+     "p95_ms": 67.45,
+     "p99_ms": 71.356,
+     "max_ms": 77.073,
+     "mean_ms": 55.705
+    },
+    "ctl_atl_tsb": {
+     "n": 200,
+     "p50_ms": 54.485,
+     "p95_ms": 72.891,
+     "p99_ms": 81.788,
+     "max_ms": 84.593,
+     "mean_ms": 57.082
+    },
+    "hrv_history_28": {
+     "n": 200,
+     "p50_ms": 0.094,
+     "p95_ms": 0.144,
+     "p99_ms": 0.199,
+     "max_ms": 0.546,
+     "mean_ms": 0.105
+    },
+    "baseline_rhr_7": {
+     "n": 200,
+     "p50_ms": 0.042,
+     "p95_ms": 0.067,
+     "p99_ms": 0.164,
+     "max_ms": 0.326,
+     "mean_ms": 0.048
+    },
+    "weight_history_30": {
+     "n": 200,
+     "p50_ms": 0.063,
+     "p95_ms": 0.117,
+     "p99_ms": 0.231,
+     "max_ms": 0.535,
+     "mean_ms": 0.077
+    },
+    "daily_metric_one_day": {
+     "n": 200,
+     "p50_ms": 0.017,
+     "p95_ms": 0.025,
+     "p99_ms": 0.049,
+     "max_ms": 0.115,
+     "mean_ms": 0.019
+    }
+   }
+  }
+ ],
+ "queries": {
+  "os_page_cache_dropped": true,
+  "databasemanager_open_ms_cold": 423.8,
+  "databasemanager_open_ms_warm": 120.7,
+  "cold_pass": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 54.134,
+    "p95_ms": 78.785,
+    "p99_ms": 96.193,
+    "max_ms": 104.419,
+    "mean_ms": 57.141
+   },
+   "range_30d_raw_sql": {
+    "n": 300,
+    "p50_ms": 54.179,
+    "p95_ms": 74.051,
+    "p99_ms": 92.825,
+    "max_ms": 102.837,
+    "mean_ms": 56.677
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 54.577,
+    "p95_ms": 75.891,
+    "p99_ms": 95.812,
+    "max_ms": 106.518,
+    "mean_ms": 57.179
+   },
+   "ctl_atl_tsb": {
+    "n": 300,
+    "p50_ms": 54.557,
+    "p95_ms": 79.639,
+    "p99_ms": 97.603,
+    "max_ms": 101.382,
+    "mean_ms": 58.277
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.145,
+    "p95_ms": 0.421,
+    "p99_ms": 0.854,
+    "max_ms": 4.719,
+    "mean_ms": 0.189
+   },
+   "baseline_rhr_7": {
+    "n": 300,
+    "p50_ms": 0.047,
+    "p95_ms": 0.097,
+    "p99_ms": 0.325,
+    "max_ms": 0.358,
+    "mean_ms": 0.057
+   },
+   "weight_history_30": {
+    "n": 300,
+    "p50_ms": 0.076,
+    "p95_ms": 0.201,
+    "p99_ms": 0.483,
+    "max_ms": 0.52,
+    "mean_ms": 0.093
+   },
+   "daily_metric_one_day": {
+    "n": 300,
+    "p50_ms": 0.019,
+    "p95_ms": 0.051,
+    "p99_ms": 0.154,
+    "max_ms": 1.278,
+    "mean_ms": 0.027
+   },
+   "errors": {},
+   "athletes_sampled": 300,
+   "resources": {
+    "wall_s": 68.906,
+    "rss_max_mb": 123.1,
+    "rss_mean_mb": 122.3,
+    "cpu_self_seconds": 68.73,
+    "cpu_self_pct_of_one_core": 99.7,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  "warm_pass": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 55.757,
+    "p95_ms": 81.248,
+    "p99_ms": 99.142,
+    "max_ms": 105.711,
+    "mean_ms": 59.012
+   },
+   "range_30d_raw_sql": {
+    "n": 300,
+    "p50_ms": 55.312,
+    "p95_ms": 77.598,
+    "p99_ms": 92.339,
+    "max_ms": 102.18,
+    "mean_ms": 58.099
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 55.223,
+    "p95_ms": 80.345,
+    "p99_ms": 87.709,
+    "max_ms": 107.272,
+    "mean_ms": 58.553
+   },
+   "ctl_atl_tsb": {
+    "n": 300,
+    "p50_ms": 55.947,
+    "p95_ms": 78.743,
+    "p99_ms": 92.133,
+    "max_ms": 98.232,
+    "mean_ms": 59.039
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.096,
+    "p95_ms": 0.183,
+    "p99_ms": 0.403,
+    "max_ms": 1.148,
+    "mean_ms": 0.117
+   },
+   "baseline_rhr_7": {
+    "n": 300,
+    "p50_ms": 0.044,
+    "p95_ms": 0.094,
+    "p99_ms": 0.218,
+    "max_ms": 0.47,
+    "mean_ms": 0.054
+   },
+   "weight_history_30": {
+    "n": 300,
+    "p50_ms": 0.064,
+    "p95_ms": 0.124,
+    "p99_ms": 0.245,
+    "max_ms": 0.919,
+    "mean_ms": 0.078
+   },
+   "daily_metric_one_day": {
+    "n": 300,
+    "p50_ms": 0.018,
+    "p95_ms": 0.049,
+    "p99_ms": 0.142,
+    "max_ms": 0.287,
+    "mean_ms": 0.024
+   },
+   "errors": {},
+   "athletes_sampled": 300,
+   "resources": {
+    "wall_s": 70.507,
+    "rss_max_mb": 121.2,
+    "rss_mean_mb": 121.2,
+    "cpu_self_seconds": 70.34,
+    "cpu_self_pct_of_one_core": 99.8,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  }
+ },
+ "query_plans": [
+  {
+   "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load, avg_pace_sec_per_km FROM training_log WHERE athlete_id = 'ath07565' ORDER BY date DESC LIMIT 90",
+   "plan": [
+    "SCAN training_log",
+    "USE TEMP B-TREE FOR ORDER BY"
+   ],
+   "full_scan": true
+  },
+  {
+   "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load FROM training_log WHERE athlete_id = 'ath07565' AND date BETWEEN '2026-09-10' AND '2026-10-10' ORDER BY date",
+   "plan": [
+    "SCAN training_log",
+    "USE TEMP B-TREE FOR ORDER BY"
+   ],
+   "full_scan": true
+  },
+  {
+   "sql": "SELECT date, SUM(training_load) as training_load FROM training_log WHERE athlete_id = 'ath07565' AND training_load IS NOT NULL AND training_load > 0 AND date >= date('now', '-' || 210 || ' days') GROUP BY date ORDER BY date ASC",
+   "plan": [
+    "SCAN training_log",
+    "USE TEMP B-TREE FOR GROUP BY"
+   ],
+   "full_scan": true
+  },
+  {
+   "sql": "SELECT date, hrv_rmssd FROM daily_metrics WHERE athlete_id = 'ath07565' AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0 ORDER BY date DESC LIMIT 28",
+   "plan": [
+    "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=?)"
+   ],
+   "full_scan": false
+  },
+  {
+   "sql": "SELECT AVG(resting_hr) FROM daily_metrics WHERE athlete_id = 'ath07565' AND date >= '2026-10-08' AND resting_hr IS NOT NULL AND resting_hr > 0",
+   "plan": [
+    "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=? AND date>?)"
+   ],
+   "full_scan": false
+  },
+  {
+   "sql": "SELECT date, weight_kg FROM daily_metrics WHERE athlete_id = 'ath07565' AND weight_kg IS NOT NULL AND weight_kg > 0 ORDER BY date DESC LIMIT 30",
+   "plan": [
+    "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=?)"
+   ],
+   "full_scan": false
+  },
+  {
+   "sql": "SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source FROM daily_metrics WHERE athlete_id = 'ath07565' AND date = '2026-10-10'",
+   "plan": [
+    "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=? AND date=?)"
+   ],
+   "full_scan": false
+  },
+  {
+   "sql": "SELECT id FROM training_log WHERE garmin_activity_id = '7000000001'",
+   "plan": [
+    "SEARCH training_log USING COVERING INDEX idx_training_log_garmin_id (garmin_activity_id=?)"
+   ],
+   "full_scan": false
+  }
+ ],
+ "index_cost": {
+  "insert_without_index": {
+   "rows": 50000,
+   "rows_per_s": 215017.6,
+   "tx_latency_1000_rows": {
+    "n": 50,
+    "p50_ms": 4.703,
+    "p95_ms": 5.567,
+    "p99_ms": 24.955,
+    "max_ms": 24.955,
+    "mean_ms": 4.648
+   }
+  },
+  "insert_with_index": {
+   "rows": 50000,
+   "rows_per_s": 191098.5,
+   "tx_latency_1000_rows": {
+    "n": 50,
+    "p50_ms": 4.114,
+    "p95_ms": 6.103,
+    "p99_ms": 26.352,
+    "max_ms": 26.352,
+    "mean_ms": 5.23
+   }
+  },
+  "create_index_s": 0.54,
+  "storage_before_index": {
+   "db_bytes": 201981952,
+   "wal_bytes": 4120032,
+   "shm_bytes": 32768,
+   "total_bytes": 206134752
+  },
+  "storage_after_index": {
+   "db_bytes": 227557376,
+   "wal_bytes": 0,
+   "shm_bytes": 65536,
+   "total_bytes": 227622912
+  },
+  "index_bytes_dbstat": 22388736,
+  "queries_without_index": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 54.231,
+    "p95_ms": 74.002,
+    "p99_ms": 87.793,
+    "max_ms": 91.252,
+    "mean_ms": 56.815
+   },
+   "range_30d_raw_sql": {
+    "n": 300,
+    "p50_ms": 54.124,
+    "p95_ms": 74.946,
+    "p99_ms": 86.085,
+    "max_ms": 93.811,
+    "mean_ms": 56.619
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 54.571,
+    "p95_ms": 74.088,
+    "p99_ms": 80.543,
+    "max_ms": 144.359,
+    "mean_ms": 57.459
+   },
+   "ctl_atl_tsb": {
+    "n": 300,
+    "p50_ms": 54.618,
+    "p95_ms": 75.263,
+    "p99_ms": 85.567,
+    "max_ms": 106.418,
+    "mean_ms": 57.274
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.094,
+    "p95_ms": 0.152,
+    "p99_ms": 0.253,
+    "max_ms": 0.326,
+    "mean_ms": 0.104
+   },
+   "baseline_rhr_7": {
+    "n": 300,
+    "p50_ms": 0.041,
+    "p95_ms": 0.075,
+    "p99_ms": 0.136,
+    "max_ms": 0.168,
+    "mean_ms": 0.047
+   },
+   "weight_history_30": {
+    "n": 300,
+    "p50_ms": 0.063,
+    "p95_ms": 0.101,
+    "p99_ms": 0.128,
+    "max_ms": 0.18,
+    "mean_ms": 0.069
+   },
+   "daily_metric_one_day": {
+    "n": 300,
+    "p50_ms": 0.016,
+    "p95_ms": 0.023,
+    "p99_ms": 0.039,
+    "max_ms": 0.061,
+    "mean_ms": 0.017
+   },
+   "errors": {},
+   "athletes_sampled": 300
+  },
+  "queries_with_index": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 0.209,
+    "p95_ms": 0.425,
+    "p99_ms": 0.905,
+    "max_ms": 1.845,
+    "mean_ms": 0.246
+   },
+   "range_30d_raw_sql": {
+    "n": 300,
+    "p50_ms": 0.022,
+    "p95_ms": 0.058,
+    "p99_ms": 0.163,
+    "max_ms": 0.362,
+    "mean_ms": 0.028
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 0.088,
+    "p95_ms": 0.267,
+    "p99_ms": 0.727,
+    "max_ms": 1.01,
+    "mean_ms": 0.117
+   },
+   "ctl_atl_tsb": {
+    "n": 300,
+    "p50_ms": 0.424,
+    "p95_ms": 1.005,
+    "p99_ms": 1.83,
+    "max_ms": 2.613,
+    "mean_ms": 0.51
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.083,
+    "p95_ms": 0.204,
+    "p99_ms": 0.543,
+    "max_ms": 0.738,
+    "mean_ms": 0.101
+   },
+   "baseline_rhr_7": {
+    "n": 300,
+    "p50_ms": 0.03,
+    "p95_ms": 0.076,
+    "p99_ms": 0.194,
+    "max_ms": 0.806,
+    "mean_ms": 0.035
+   },
+   "weight_history_30": {
+    "n": 300,
+    "p50_ms": 0.076,
+    "p95_ms": 0.134,
+    "p99_ms": 0.253,
+    "max_ms": 0.579,
+    "mean_ms": 0.083
+   },
+   "daily_metric_one_day": {
+    "n": 300,
+    "p50_ms": 0.013,
+    "p95_ms": 0.025,
+    "p99_ms": 0.064,
+    "max_ms": 0.151,
+    "mean_ms": 0.015
+   },
+   "errors": {},
+   "athletes_sampled": 300
+  },
+  "plans_with_index": [
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load, avg_pace_sec_per_km FROM training_log WHERE athlete_id = 'ath04762' ORDER BY date DESC LIMIT 90",
+    "plan": [
+     "SEARCH training_log USING INDEX idx_stress_training_log_athlete_date (athlete_id=?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load FROM training_log WHERE athlete_id = 'ath04762' AND date BETWEEN '2026-09-10' AND '2026-10-10' ORDER BY date",
+    "plan": [
+     "SEARCH training_log USING INDEX idx_stress_training_log_athlete_date (athlete_id=? AND date>? AND date<?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT date, SUM(training_load) as training_load FROM training_log WHERE athlete_id = 'ath04762' AND training_load IS NOT NULL AND training_load > 0 AND date >= date('now', '-' || 210 || ' days') GROUP BY date ORDER BY date ASC",
+    "plan": [
+     "SEARCH training_log USING INDEX idx_stress_training_log_athlete_date (athlete_id=? AND date>?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT date, hrv_rmssd FROM daily_metrics WHERE athlete_id = 'ath04762' AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0 ORDER BY date DESC LIMIT 28",
+    "plan": [
+     "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT AVG(resting_hr) FROM daily_metrics WHERE athlete_id = 'ath04762' AND date >= '2026-10-08' AND resting_hr IS NOT NULL AND resting_hr > 0",
+    "plan": [
+     "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=? AND date>?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT date, weight_kg FROM daily_metrics WHERE athlete_id = 'ath04762' AND weight_kg IS NOT NULL AND weight_kg > 0 ORDER BY date DESC LIMIT 30",
+    "plan": [
+     "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source FROM daily_metrics WHERE athlete_id = 'ath04762' AND date = '2026-10-10'",
+    "plan": [
+     "SEARCH daily_metrics USING INDEX sqlite_autoindex_daily_metrics_1 (athlete_id=? AND date=?)"
+    ],
+    "full_scan": false
+   },
+   {
+    "sql": "SELECT id FROM training_log WHERE garmin_activity_id = '7000000001'",
+    "plan": [
+     "SEARCH training_log USING COVERING INDEX idx_training_log_garmin_id (garmin_activity_id=?)"
+    ],
+    "full_scan": false
+   }
+  ]
+ },
+ "bulk": [
+  {
+   "label": "b1",
+   "path": "raw",
+   "batch_rows_per_tx": 1,
+   "rows": 20000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.69,
+   "rows_per_s": 28983.1,
+   "tx_per_s": 28983.1,
+   "tx_latency": {
+    "n": 20000,
+    "p50_ms": 0.013,
+    "p95_ms": 0.029,
+    "p99_ms": 0.076,
+    "max_ms": 10.262,
+    "mean_ms": 0.034
+   },
+   "resources": {
+    "wall_s": 0.696,
+    "rss_max_mb": 104.8,
+    "rss_mean_mb": 103.8,
+    "cpu_self_seconds": 0.39,
+    "cpu_self_pct_of_one_core": 56.1,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "b10",
+   "path": "raw",
+   "batch_rows_per_tx": 10,
+   "rows": 50000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.459,
+   "rows_per_s": 109037.3,
+   "tx_per_s": 10903.7,
+   "tx_latency": {
+    "n": 5000,
+    "p50_ms": 0.05,
+    "p95_ms": 0.092,
+    "p99_ms": 0.329,
+    "max_ms": 9.925,
+    "mean_ms": 0.091
+   },
+   "resources": {
+    "wall_s": 0.464,
+    "rss_max_mb": 111.9,
+    "rss_mean_mb": 111.9,
+    "cpu_self_seconds": 0.31,
+    "cpu_self_pct_of_one_core": 66.8,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "b100",
+   "path": "raw",
+   "batch_rows_per_tx": 100,
+   "rows": 100000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.5,
+   "rows_per_s": 199970.4,
+   "tx_per_s": 1999.7,
+   "tx_latency": {
+    "n": 1000,
+    "p50_ms": 0.327,
+    "p95_ms": 0.549,
+    "p99_ms": 4.933,
+    "max_ms": 18.429,
+    "mean_ms": 0.498
+   },
+   "resources": {
+    "wall_s": 0.505,
+    "rss_max_mb": 124.2,
+    "rss_mean_mb": 124.2,
+    "cpu_self_seconds": 0.39,
+    "cpu_self_pct_of_one_core": 77.2,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "b1000",
+   "path": "raw",
+   "batch_rows_per_tx": 1000,
+   "rows": 100000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.409,
+   "rows_per_s": 244393.7,
+   "tx_per_s": 244.4,
+   "tx_latency": {
+    "n": 100,
+    "p50_ms": 3.089,
+    "p95_ms": 10.809,
+    "p99_ms": 22.544,
+    "max_ms": 22.544,
+    "mean_ms": 4.073
+   },
+   "resources": {
+    "wall_s": 0.415,
+    "rss_max_mb": 124.2,
+    "rss_mean_mb": 124.2,
+    "cpu_self_seconds": 0.36,
+    "cpu_self_pct_of_one_core": 86.8,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "b10000",
+   "path": "raw",
+   "batch_rows_per_tx": 10000,
+   "rows": 100000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.398,
+   "rows_per_s": 251485.6,
+   "tx_per_s": 25.1,
+   "tx_latency": {
+    "n": 10,
+    "p50_ms": 32.536,
+    "p95_ms": 65.878,
+    "p99_ms": 65.878,
+    "max_ms": 65.878,
+    "mean_ms": 39.578
+   },
+   "resources": {
+    "wall_s": 0.403,
+    "rss_max_mb": 124.2,
+    "rss_mean_mb": 124.2,
+    "cpu_self_seconds": 0.35,
+    "cpu_self_pct_of_one_core": 86.9,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "save_session_autocommit",
+   "path": "save_session",
+   "batch_rows_per_tx": 1,
+   "rows": 20000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.883,
+   "rows_per_s": 22657.2,
+   "tx_per_s": 22657.2,
+   "tx_latency": {
+    "n": 20000,
+    "p50_ms": 0.016,
+    "p95_ms": 0.04,
+    "p99_ms": 0.124,
+    "max_ms": 12.534,
+    "mean_ms": 0.044
+   },
+   "resources": {
+    "wall_s": 0.889,
+    "rss_max_mb": 110.2,
+    "rss_mean_mb": 110.2,
+    "cpu_self_seconds": 0.5,
+    "cpu_self_pct_of_one_core": 56.3,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "save_session_tx500",
+   "path": "save_session",
+   "batch_rows_per_tx": 500,
+   "rows": 50000,
+   "synchronous": "NORMAL (production)",
+   "wall_s": 0.341,
+   "rows_per_s": 146523.7,
+   "tx_per_s": 293.0,
+   "tx_latency": {
+    "n": 100,
+    "p50_ms": 2.619,
+    "p95_ms": 5.789,
+    "p99_ms": 23.404,
+    "max_ms": 23.404,
+    "mean_ms": 3.403
+   },
+   "resources": {
+    "wall_s": 0.347,
+    "rss_max_mb": 112.8,
+    "rss_mean_mb": 112.8,
+    "cpu_self_seconds": 0.31,
+    "cpu_self_pct_of_one_core": 89.4,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "label": "b1_sync_full_nonprod",
+   "path": "raw",
+   "batch_rows_per_tx": 1,
+   "rows": 5000,
+   "synchronous": "FULL",
+   "wall_s": 1.178,
+   "rows_per_s": 4244.9,
+   "tx_per_s": 4244.9,
+   "tx_latency": {
+    "n": 5000,
+    "p50_ms": 0.16,
+    "p95_ms": 0.627,
+    "p99_ms": 1.216,
+    "max_ms": 7.16,
+    "mean_ms": 0.234
+   },
+   "resources": {
+    "wall_s": 1.184,
+    "rss_max_mb": 109.9,
+    "rss_mean_mb": 109.9,
+    "cpu_self_seconds": 0.34,
+    "cpu_self_pct_of_one_core": 28.7,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  }
+ ],
+ "resync": {
+  "write_path": "persist_garmin_data (same payloads re-sent)",
+  "passes": [
+   {
+    "sync_pass": 2,
+    "athletes": 1000,
+    "syncs": 52000,
+    "syncs_failed": 81,
+    "new_training_log_rows": 0,
+    "new_daily_metrics_rows": 0,
+    "sync_latency": {
+     "n": 52000,
+     "p50_ms": 0.066,
+     "p95_ms": 0.179,
+     "p99_ms": 0.475,
+     "max_ms": 18.107,
+     "mean_ms": 0.096
+    },
+    "syncs_per_s": 8743.9,
+    "emit_outcomes": {
+     "activity_persist:ACTIVITY_PERSISTED": 75501,
+     "activities_persisted": 41347,
+     "activity_persist:DAILY_METRICS_PERSISTED": 51919,
+     "daily_metrics_persisted": 51919,
+     "activity_persist:DAILY_METRICS_SKIPPED": 81,
+     "daily_metrics_persist_failed": 81,
+     "activity_persist:ACTIVITY_SANITY_REJECTED": 157,
+     "physiological_input_validation_failed": 262
+    },
+    "resources": {
+     "wall_s": 5.952,
+     "rss_max_mb": 137.3,
+     "rss_mean_mb": 136.2,
+     "cpu_self_seconds": 5.34,
+     "cpu_self_pct_of_one_core": 89.7,
+     "cpu_sampled_mean_pct": 0.0,
+     "cpu_sampled_max_pct": 0.0,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "sync_pass": 3,
+    "athletes": 1000,
+    "syncs": 52000,
+    "syncs_failed": 81,
+    "new_training_log_rows": 0,
+    "new_daily_metrics_rows": 0,
+    "sync_latency": {
+     "n": 52000,
+     "p50_ms": 0.066,
+     "p95_ms": 0.159,
+     "p99_ms": 0.355,
+     "max_ms": 13.217,
+     "mean_ms": 0.09
+    },
+    "syncs_per_s": 9320.7,
+    "emit_outcomes": {
+     "activity_persist:ACTIVITY_PERSISTED": 75501,
+     "activities_persisted": 41347,
+     "activity_persist:DAILY_METRICS_PERSISTED": 51919,
+     "daily_metrics_persisted": 51919,
+     "activity_persist:DAILY_METRICS_SKIPPED": 81,
+     "daily_metrics_persist_failed": 81,
+     "activity_persist:ACTIVITY_SANITY_REJECTED": 157,
+     "physiological_input_validation_failed": 262
+    },
+    "resources": {
+     "wall_s": 5.584,
+     "rss_max_mb": 135.3,
+     "rss_mean_mb": 134.4,
+     "cpu_self_seconds": 4.97,
+     "cpu_self_pct_of_one_core": 89.0,
+     "cpu_sampled_mean_pct": 0.0,
+     "cpu_sampled_max_pct": 0.0,
+     "sampler": "psutil"
+    }
+   }
+  ],
+  "duplicate_garmin_ids_after": 0
+ },
+ "concurrency": [
+  {
+   "mode": "threads_shared_connection",
+   "workers": 1,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 567,
+   "writes_attempted": 147,
+   "writes_ok": 147,
+   "writes_failed": 0,
+   "read_ops_per_s": 28.4,
+   "write_tx_per_s": 7.3,
+   "read_latency": {
+    "n": 567,
+    "p50_ms": 50.385,
+    "p95_ms": 68.039,
+    "p99_ms": 79.739,
+    "max_ms": 93.3,
+    "mean_ms": 35.256
+   },
+   "write_latency": {
+    "n": 147,
+    "p50_ms": 0.247,
+    "p95_ms": 0.431,
+    "p99_ms": 0.771,
+    "max_ms": 1.049,
+    "mean_ms": 0.245
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    147,
+    147
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.2,
+   "resources": {
+    "wall_s": 20.208,
+    "rss_max_mb": 125.4,
+    "rss_mean_mb": 125.4,
+    "cpu_self_seconds": 20.1,
+    "cpu_self_pct_of_one_core": 99.5,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 1,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 557,
+   "writes_attempted": 134,
+   "writes_ok": 134,
+   "writes_failed": 0,
+   "read_ops_per_s": 27.9,
+   "write_tx_per_s": 6.7,
+   "read_latency": {
+    "n": 557,
+    "p50_ms": 49.915,
+    "p95_ms": 67.257,
+    "p99_ms": 79.178,
+    "max_ms": 99.098,
+    "mean_ms": 35.873
+   },
+   "write_latency": {
+    "n": 134,
+    "p50_ms": 0.259,
+    "p95_ms": 0.381,
+    "p99_ms": 0.531,
+    "max_ms": 0.768,
+    "mean_ms": 0.246
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    134,
+    134
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.88,
+   "resources": {
+    "wall_s": 20.88,
+    "rss_max_mb": 192.8,
+    "rss_mean_mb": 190.8,
+    "cpu_self_seconds": 20.59,
+    "cpu_self_pct_of_one_core": 98.6,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 1,
+   "write_ratio": 1.0,
+   "duration_s": 20.0,
+   "reads": 0,
+   "writes_attempted": 125717,
+   "writes_ok": 125717,
+   "writes_failed": 0,
+   "read_ops_per_s": 0.0,
+   "write_tx_per_s": 6285.9,
+   "read_latency": {
+    "n": 0
+   },
+   "write_latency": {
+    "n": 125717,
+    "p50_ms": 0.062,
+    "p95_ms": 0.132,
+    "p99_ms": 0.592,
+    "max_ms": 46.744,
+    "mean_ms": 0.15
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    125717,
+    125717
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.61,
+   "resources": {
+    "wall_s": 20.614,
+    "rss_max_mb": 195.4,
+    "rss_mean_mb": 190.9,
+    "cpu_self_seconds": 12.81,
+    "cpu_self_pct_of_one_core": 62.1,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "threads_shared_connection",
+   "workers": 2,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 467,
+   "writes_attempted": 109,
+   "writes_ok": 109,
+   "writes_failed": 0,
+   "read_ops_per_s": 23.4,
+   "write_tx_per_s": 5.5,
+   "read_latency": {
+    "n": 467,
+    "p50_ms": 62.116,
+    "p95_ms": 239.777,
+    "p99_ms": 406.512,
+    "max_ms": 608.214,
+    "mean_ms": 70.069
+   },
+   "write_latency": {
+    "n": 109,
+    "p50_ms": 1.166,
+    "p95_ms": 261.669,
+    "p99_ms": 398.445,
+    "max_ms": 431.732,
+    "mean_ms": 68.043
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    109,
+    109
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.25,
+   "resources": {
+    "wall_s": 20.252,
+    "rss_max_mb": 137.1,
+    "rss_mean_mb": 137.1,
+    "cpu_self_seconds": 20.11,
+    "cpu_self_pct_of_one_core": 99.3,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 2,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 916,
+   "writes_attempted": 210,
+   "writes_ok": 210,
+   "writes_failed": 0,
+   "read_ops_per_s": 45.8,
+   "write_tx_per_s": 10.5,
+   "read_latency": {
+    "n": 916,
+    "p50_ms": 59.596,
+    "p95_ms": 81.254,
+    "p99_ms": 96.254,
+    "max_ms": 113.197,
+    "mean_ms": 43.63
+   },
+   "write_latency": {
+    "n": 210,
+    "p50_ms": 0.261,
+    "p95_ms": 0.461,
+    "p99_ms": 0.755,
+    "max_ms": 3.941,
+    "mean_ms": 0.271
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    210,
+    210
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.68,
+   "resources": {
+    "wall_s": 20.684,
+    "rss_max_mb": 249.0,
+    "rss_mean_mb": 245.7,
+    "cpu_self_seconds": 40.95,
+    "cpu_self_pct_of_one_core": 198.0,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 2,
+   "write_ratio": 1.0,
+   "duration_s": 20.0,
+   "reads": 0,
+   "writes_attempted": 189491,
+   "writes_ok": 189491,
+   "writes_failed": 0,
+   "read_ops_per_s": 0.0,
+   "write_tx_per_s": 9474.5,
+   "read_latency": {
+    "n": 0
+   },
+   "write_latency": {
+    "n": 189491,
+    "p50_ms": 0.073,
+    "p95_ms": 1.068,
+    "p99_ms": 1.885,
+    "max_ms": 54.242,
+    "mean_ms": 0.2
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    189491,
+    189491
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 21.11,
+   "resources": {
+    "wall_s": 21.119,
+    "rss_max_mb": 252.5,
+    "rss_mean_mb": 244.8,
+    "cpu_self_seconds": 25.31,
+    "cpu_self_pct_of_one_core": 119.8,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "threads_shared_connection",
+   "workers": 4,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 391,
+   "writes_attempted": 82,
+   "writes_ok": 82,
+   "writes_failed": 0,
+   "read_ops_per_s": 19.6,
+   "write_tx_per_s": 4.1,
+   "read_latency": {
+    "n": 391,
+    "p50_ms": 75.908,
+    "p95_ms": 801.906,
+    "p99_ms": 1315.653,
+    "max_ms": 2663.209,
+    "mean_ms": 156.57
+   },
+   "write_latency": {
+    "n": 82,
+    "p50_ms": 93.725,
+    "p95_ms": 1045.441,
+    "p99_ms": 1490.462,
+    "max_ms": 1490.462,
+    "mean_ms": 231.02
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    82,
+    82
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.23,
+   "resources": {
+    "wall_s": 20.231,
+    "rss_max_mb": 138.1,
+    "rss_mean_mb": 138.1,
+    "cpu_self_seconds": 20.07,
+    "cpu_self_pct_of_one_core": 99.2,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 4,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 1388,
+   "writes_attempted": 373,
+   "writes_ok": 373,
+   "writes_failed": 0,
+   "read_ops_per_s": 69.4,
+   "write_tx_per_s": 18.6,
+   "read_latency": {
+    "n": 1388,
+    "p50_ms": 75.542,
+    "p95_ms": 111.79,
+    "p99_ms": 130.16,
+    "max_ms": 152.666,
+    "mean_ms": 57.562
+   },
+   "write_latency": {
+    "n": 373,
+    "p50_ms": 0.283,
+    "p95_ms": 2.721,
+    "p99_ms": 5.45,
+    "max_ms": 12.388,
+    "mean_ms": 0.625
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    373,
+    373
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.77,
+   "resources": {
+    "wall_s": 20.778,
+    "rss_max_mb": 361.7,
+    "rss_mean_mb": 355.0,
+    "cpu_self_seconds": 81.32,
+    "cpu_self_pct_of_one_core": 391.4,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 4,
+   "write_ratio": 1.0,
+   "duration_s": 20.0,
+   "reads": 0,
+   "writes_attempted": 171743,
+   "writes_ok": 171743,
+   "writes_failed": 0,
+   "read_ops_per_s": 0.0,
+   "write_tx_per_s": 8587.1,
+   "read_latency": {
+    "n": 0
+   },
+   "write_latency": {
+    "n": 171743,
+    "p50_ms": 0.077,
+    "p95_ms": 1.258,
+    "p99_ms": 3.728,
+    "max_ms": 731.694,
+    "mean_ms": 0.453
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    171743,
+    171743
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.8,
+   "resources": {
+    "wall_s": 20.803,
+    "rss_max_mb": 358.3,
+    "rss_mean_mb": 347.0,
+    "cpu_self_seconds": 26.29,
+    "cpu_self_pct_of_one_core": 126.4,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "threads_shared_connection",
+   "workers": 8,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 326,
+   "writes_attempted": 85,
+   "writes_ok": 85,
+   "writes_failed": 0,
+   "read_ops_per_s": 16.3,
+   "write_tx_per_s": 4.2,
+   "read_latency": {
+    "n": 326,
+    "p50_ms": 92.894,
+    "p95_ms": 1653.763,
+    "p99_ms": 3351.604,
+    "max_ms": 4823.045,
+    "mean_ms": 320.849
+   },
+   "write_latency": {
+    "n": 85,
+    "p50_ms": 178.193,
+    "p95_ms": 3019.259,
+    "p99_ms": 5310.897,
+    "max_ms": 5310.897,
+    "mean_ms": 671.982
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    85,
+    85
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 20.63,
+   "resources": {
+    "wall_s": 20.633,
+    "rss_max_mb": 139.0,
+    "rss_mean_mb": 138.8,
+    "cpu_self_seconds": 20.51,
+    "cpu_self_pct_of_one_core": 99.4,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 8,
+   "write_ratio": 0.2,
+   "duration_s": 20.0,
+   "reads": 1327,
+   "writes_attempted": 332,
+   "writes_ok": 332,
+   "writes_failed": 0,
+   "read_ops_per_s": 66.3,
+   "write_tx_per_s": 16.6,
+   "read_latency": {
+    "n": 1327,
+    "p50_ms": 169.269,
+    "p95_ms": 212.931,
+    "p99_ms": 247.175,
+    "max_ms": 338.023,
+    "mean_ms": 120.906
+   },
+   "write_latency": {
+    "n": 332,
+    "p50_ms": 0.276,
+    "p95_ms": 4.447,
+    "p99_ms": 6.976,
+    "max_ms": 14.311,
+    "mean_ms": 0.795
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    332,
+    332
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 21.85,
+   "resources": {
+    "wall_s": 21.854,
+    "rss_max_mb": 585.3,
+    "rss_mean_mb": 566.4,
+    "cpu_self_seconds": 86.01,
+    "cpu_self_pct_of_one_core": 393.6,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  {
+   "mode": "processes_own_connection",
+   "workers": 8,
+   "write_ratio": 1.0,
+   "duration_s": 20.0,
+   "reads": 0,
+   "writes_attempted": 133736,
+   "writes_ok": 133736,
+   "writes_failed": 0,
+   "read_ops_per_s": 0.0,
+   "write_tx_per_s": 6686.8,
+   "read_latency": {
+    "n": 0
+   },
+   "write_latency": {
+    "n": 133736,
+    "p50_ms": 0.1,
+    "p95_ms": 2.704,
+    "p99_ms": 19.228,
+    "max_ms": 1837.401,
+    "mean_ms": 1.179
+   },
+   "errors": {},
+   "database_is_locked_errors": 0,
+   "retries": 0,
+   "deadlocks": 0,
+   "rows_stored_vs_writes_ok": [
+    133736,
+    133736
+   ],
+   "lost_or_phantom_rows": 0,
+   "wall_s_incl_startup": 21.81,
+   "resources": {
+    "wall_s": 21.816,
+    "rss_max_mb": 574.1,
+    "rss_mean_mb": 552.1,
+    "cpu_self_seconds": 31.97,
+    "cpu_self_pct_of_one_core": 146.5,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  }
+ ],
+ "update_rollback_restart": {
+  "updates": {
+   "write_path": "DatabaseManager.save_daily_metric (ON CONFLICT upsert)",
+   "updates": 20000,
+   "latency_autocommit": {
+    "n": 20000,
+    "p50_ms": 0.021,
+    "p95_ms": 0.047,
+    "p99_ms": 0.119,
+    "max_ms": 41.149,
+    "mean_ms": 0.075
+   },
+   "values_verified": 20000,
+   "manual_rows_checked": 100,
+   "manual_provenance_and_subjective_fields_preserved": 100,
+   "resources": {
+    "wall_s": 1.527,
+    "rss_max_mb": 138.9,
+    "rss_mean_mb": 138.9,
+    "cpu_self_seconds": 0.77,
+    "cpu_self_pct_of_one_core": 50.4,
+    "cpu_sampled_mean_pct": 0.0,
+    "cpu_sampled_max_pct": 0.0,
+    "sampler": "psutil"
+   }
+  },
+  "rollback": {
+   "syncs_with_poisoned_record": 1000,
+   "persistence_failures": 1000,
+   "rows_left_behind": 0,
+   "failing_tx_latency": {
+    "n": 1000,
+    "p50_ms": 0.072,
+    "p95_ms": 0.106,
+    "p99_ms": 0.156,
+    "max_ms": 2.182,
+    "mean_ms": 0.082
+   },
+   "valid_records_discarded_with_the_batch": 5000,
+   "emit_outcomes": {
+    "activity_persist:ACTIVITY_PERSISTED": 5000,
+    "activity_persist:DAILY_METRICS_SKIPPED": 1000,
+    "daily_metrics_persist_failed": 1000
+   }
+  },
+  "crash_restart": {
+   "outer_transaction": {
+    "syncs_in_import": 6000,
+    "syncs_done_in_child_before_sigkill": 3110,
+    "wal_bytes_after_kill": 317272,
+    "reopen_ms": 225.9,
+    "integrity_check": "ok",
+    "foreign_key_violations": 0,
+    "rows_present_after_crash": 0,
+    "expected_after_crash": 0,
+    "reimport_s": 1.14,
+    "rows_after_reimport": 18000,
+    "distinct_ids_after_reimport": 18000,
+    "expected_rows": 18000
+   },
+   "per_sync_commit": {
+    "syncs_in_import": 6000,
+    "syncs_done_in_child_before_sigkill": 3010,
+    "wal_bytes_after_kill": 4144752,
+    "reopen_ms": 261.0,
+    "integrity_check": "ok",
+    "foreign_key_violations": 0,
+    "rows_present_after_crash": 9033,
+    "expected_after_crash": "3 x committed syncs (~9030)",
+    "reimport_s": 0.76,
+    "rows_after_reimport": 18000,
+    "distinct_ids_after_reimport": 18000,
+    "expected_rows": 18000
+   }
+  }
+ },
+ "backup_restore": {
+  "write_path": "DatabaseManager.backup_database (sqlite3 online backup API + verify)",
+  "backup_created": true,
+  "backup_s": 3.37,
+  "source_storage": {
+   "db_bytes": 285622272,
+   "wal_bytes": 4128272,
+   "shm_bytes": 32768,
+   "total_bytes": 289783312
+  },
+  "backup_bytes": 285569024,
+  "concurrent_writer_latency": {
+   "n": 491,
+   "p50_ms": 0.218,
+   "p95_ms": 0.536,
+   "p99_ms": 1.5,
+   "max_ms": 1007.308,
+   "mean_ms": 2.387
+  },
+  "concurrent_writer_errors": {},
+  "resources": {
+   "wall_s": 3.773,
+   "rss_max_mb": 135.1,
+   "rss_mean_mb": 135.1,
+   "cpu_self_seconds": 2.96,
+   "cpu_self_pct_of_one_core": 78.5,
+   "cpu_sampled_mean_pct": 0.0,
+   "cpu_sampled_max_pct": 0.0,
+   "sampler": "psutil"
+  },
+  "restore_open_ms": 258.5,
+  "restore_integrity_check": "ok",
+  "restore_user_version": 28,
+  "rows_before_backup_excl_probe": {
+   "training_log": 1405990,
+   "daily_metrics": 1288207
+  },
+  "rows_in_restored_copy_excl_probe": {
+   "training_log": 1405990,
+   "daily_metrics": 1288207
+  },
+  "restore_row_mismatch": 0
+ },
+ "verification": {
+  "valid_activities": {
+   "kept_ok": 742505,
+   "lost_in_rolled_back_sync": 1027
+  },
+  "valid_daily_records": {
+   "kept_ok": 514031,
+   "lost_in_rolled_back_sync": 796
+  },
+  "activity_anomaly_counts": {
+   "distance_zero": 349,
+   "distance_negative": 402,
+   "hr_missing": 377,
+   "max_hr_lt_avg_hr": 401,
+   "pace_absurd": 375,
+   "hr_extreme": 377,
+   "duration_zero_with_distance": 363,
+   "extid_collision_other_athlete": 388,
+   "wrong_type_hr": 392,
+   "date_missing": 401,
+   "load_extreme": 399,
+   "wrong_type_distance": 410,
+   "date_future": 373,
+   "dup_in_payload": 412,
+   "duration_negative": 385,
+   "dup_resync": 391,
+   "date_null": 405,
+   "load_negative": 375,
+   "date_unparseable": 370,
+   "manual_duplicate": 359
+  },
+  "activity_anomaly_observed": {
+   "distance_zero": {
+    "stored x1, distance_km=0.0": 349
+   },
+   "distance_negative": {
+    "stored x1, distance_km='neg'": 401,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 1
+   },
+   "hr_missing": {
+    "stored x1, avg_hr=None, max_hr=None": 376,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 1
+   },
+   "max_hr_lt_avg_hr": {
+    "not stored (0 rows)": 401
+   },
+   "pace_absurd": {
+    "stored x1, quality_flag='degraded', duration_sec=>0": 375
+   },
+   "hr_extreme": {
+    "stored x1, avg_hr=255, max_hr=299": 377
+   },
+   "duration_zero_with_distance": {
+    "not stored (0 rows)": 363
+   },
+   "extid_collision_other_athlete": {
+    "not stored (0 rows)": 387,
+    "stored x1": 1
+   },
+   "wrong_type_hr": {
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 392
+   },
+   "date_missing": {
+    "stored x1, date=sync day (mis-dated)": 324,
+    "stored x1, date=true date": 75,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 2
+   },
+   "load_extreme": {
+    "stored x1, training_load=25000": 399
+   },
+   "wrong_type_distance": {
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 410
+   },
+   "date_future": {
+    "not stored (0 rows)": 373
+   },
+   "dup_in_payload": {
+    "stored x1": 412
+   },
+   "duration_negative": {
+    "stored x1, duration_sec=neg": 385
+   },
+   "dup_resync": {
+    "stored x1": 391
+   },
+   "date_null": {
+    "not stored (0 rows)": 402,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 3
+   },
+   "load_negative": {
+    "stored x1, training_load=-50": 374,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 1
+   },
+   "date_unparseable": {
+    "stored x1, quality_flag='degraded', date='2026-02-30'": 298,
+    "stored x1, quality_flag='degraded', date='2025-02-30'": 71,
+    "its sync rolled back (PersistenceFailure) -> 0 rows": 1
+   },
+   "manual_duplicate": {
+    "stored x2": 359
+   }
+  },
+  "daily_anomaly_counts": {
+   "hrv_zero": 625,
+   "hrv_extreme": 636,
+   "rhr_absurd": 639,
+   "weight_negative": 670,
+   "all_optional_missing": 687,
+   "sleep_tiny": 670,
+   "weight_zero": 601,
+   "sleep_minutes_as_hours": 645
+  },
+  "daily_anomaly_observed": {
+   "hrv_zero": {
+    "row stored: hrv=None, quality_flag=None": 625
+   },
+   "hrv_extreme": {
+    "row stored: hrv=None, quality_flag=None": 634,
+    "sync rolled back -> no row": 2
+   },
+   "rhr_absurd": {
+    "row stored: rhr=None, quality_flag=None": 638,
+    "sync rolled back -> no row": 1
+   },
+   "weight_negative": {
+    "row stored: weight=25.0, quality_flag=None": 670
+   },
+   "all_optional_missing": {
+    "row stored: hrv=None, rhr=None, weight=None, sleep_h=None, quality_flag=None": 686,
+    "sync rolled back -> no row": 1
+   },
+   "sleep_tiny": {
+    "row stored: sleep_h=0.5, quality_flag='degraded'": 669,
+    "sync rolled back -> no row": 1
+   },
+   "weight_zero": {
+    "row stored: weight=None, quality_flag=None": 601
+   },
+   "sleep_minutes_as_hours": {
+    "row stored: sleep_h=None, quality_flag=None": 644,
+    "sync rolled back -> no row": 1
+   }
+  },
+  "failed_sync_anomaly_class_presence": {
+   "wrong_type_hr": 392,
+   "wrong_type_distance": 410,
+   "distance_negative": 1,
+   "date_missing": 2,
+   "load_negative": 1,
+   "dup_resync": 1,
+   "date_null": 3,
+   "hr_missing": 1,
+   "date_unparseable": 1
+  },
+  "rows_whose_payload_tag_athlete_differs_from_athlete_id": 0,
+  "untagged_rows": 0,
+  "duplicate_garmin_ids": 0,
+  "rows_with_athlete_id_not_in_athletes": 0,
+  "integrity_check": "ok",
+  "foreign_key_violations": 0,
+  "resources": {
+   "wall_s": 18.67,
+   "rss_max_mb": 647.9,
+   "rss_mean_mb": 480.5,
+   "cpu_self_seconds": 18.54,
+   "cpu_self_pct_of_one_core": 99.3,
+   "cpu_sampled_mean_pct": 0.0,
+   "cpu_sampled_max_pct": 0.0,
+   "sampler": "psutil"
+  }
+ },
+ "read_path_load_anomalies": {
+  "load_extreme": {
+   "date absent from get_training_load_history (excluded/nulled or outside window)": 399
+  },
+  "load_negative": {
+   "date absent from get_training_load_history (excluded/nulled or outside window)": 375
+  }
+ },
+ "leakage": {
+  "get_recent_activities": {
+   "athletes_checked": 10000,
+   "athletes_with_mismatch_vs_payload_tag": 0,
+   "latency": {
+    "n": 10000,
+    "p50_ms": 56.503,
+    "p95_ms": 77.066,
+    "p99_ms": 89.254,
+    "max_ms": 397.897,
+    "mean_ms": 59.419
+   }
+  },
+  "get_hrv_history": {
+   "athletes_checked": 10000,
+   "rows_returned": 1159801,
+   "rows_not_matching_own_ground_truth": 0,
+   "latency": {
+    "n": 10000,
+    "p50_ms": 0.193,
+    "p95_ms": 0.437,
+    "p99_ms": 1.384,
+    "max_ms": 4.147,
+    "mean_ms": 0.247
+   }
+  },
+  "unscoped_api_probe": {
+   "get_active_shoes_returns_rows_of_athletes": [
+    "probe-A",
+    "probe-B"
+   ],
+   "get_pr_5k_returned_time_sec": 1100,
+   "note": "get_active_shoes()/get_pr()/add_shoe()/save_personal_best() take no athlete_id; two athletes' probe rows are both visible to either caller"
+  },
+  "resources": {
+   "wall_s": 606.247,
+   "rss_max_mb": 234.6,
+   "rss_mean_mb": 233.9,
+   "cpu_self_seconds": 603.35,
+   "cpu_self_pct_of_one_core": 99.5,
+   "cpu_sampled_mean_pct": 0.0,
+   "cpu_sampled_max_pct": 0.0,
+   "sampler": "psutil"
+  }
+ },
+ "storage_after_load_and_checkpoint": {
+  "db_bytes": 198787072,
+  "wal_bytes": 0,
+  "shm_bytes": 0,
+  "total_bytes": 198787072
+ },
+ "log_action_counts": {
+  "bounds_violation:weight_kg": 806,
+  "data_sanity_warn:sleep_hours_implausible": 789,
+  "bounds_violation:hrv_ms": 778,
+  "data_quality_warning:hrv_ms": 778,
+  "bounds_violation:sleep_hours": 767,
+  "data_quality_warning:sleep_hours": 767,
+  "bounds_violation:rhr_bpm": 763,
+  "data_quality_warning:rhr_bpm": 763,
+  "data_sanity_reject:duplicate_activity_id_in_payload": 510,
+  "data_sanity_warn:timestamp_unparseable": 479,
+  "data_sanity_reject:max_hr_lt_avg_hr": 463,
+  "data_sanity_warn:run_pace_implausible": 459,
+  "data_sanity_reject:timestamp_in_future": 447,
+  "data_sanity_reject:nonzero_distance_zero_duration": 443,
+  "bounds_violation:training_load": 350,
+  "data_quality_warning:training_load": 350
+ },
+ "postgres": {
+  "label": "NOT the TITAN backend - hand-translated equivalent schema in a throwaway local PostgreSQL 16 cluster",
+  "cluster_init_start_s": 0.73,
+  "settings": {
+   "server_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+   "shared_buffers": "128MB",
+   "synchronous_commit": "on",
+   "fsync": "on",
+   "wal_level": "replica",
+   "max_connections": "50",
+   "work_mem": "4MB"
+  },
+  "copy_load": {
+   "training_log_rows": 1406481,
+   "daily_metrics_rows": 1288484,
+   "wall_s": 18.19,
+   "rows_per_s": 148117.6,
+   "resources": {
+    "wall_s": 18.868,
+    "rss_max_mb": 499.5,
+    "rss_mean_mb": 343.5,
+    "cpu_self_seconds": 16.04,
+    "cpu_self_pct_of_one_core": 85.0,
+    "cpu_sampled_mean_pct": 84.2,
+    "cpu_sampled_max_pct": 103.9,
+    "sampler": "psutil"
+   }
+  },
+  "storage_without_index": {
+   "database_bytes": 512326679,
+   "training_log_total_bytes": 280920064,
+   "daily_metrics_total_bytes": 222052352
+  },
+  "queries_without_index_cold_after_restart": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 57.662,
+    "p95_ms": 71.934,
+    "p99_ms": 83.416,
+    "max_ms": 91.693,
+    "mean_ms": 58.94
+   },
+   "range_30d": {
+    "n": 300,
+    "p50_ms": 62.552,
+    "p95_ms": 79.307,
+    "p99_ms": 91.66,
+    "max_ms": 96.002,
+    "mean_ms": 64.322
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 74.587,
+    "p95_ms": 93.748,
+    "p99_ms": 105.675,
+    "max_ms": 112.908,
+    "mean_ms": 76.334
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 1.005,
+    "p95_ms": 1.538,
+    "p99_ms": 2.366,
+    "max_ms": 2.615,
+    "mean_ms": 1.013
+   },
+   "athletes_sampled": 300
+  },
+  "queries_without_index_warm": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 55.081,
+    "p95_ms": 67.178,
+    "p99_ms": 72.727,
+    "max_ms": 80.542,
+    "mean_ms": 56.169
+   },
+   "range_30d": {
+    "n": 300,
+    "p50_ms": 60.374,
+    "p95_ms": 73.289,
+    "p99_ms": 78.721,
+    "max_ms": 161.767,
+    "mean_ms": 61.854
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 73.181,
+    "p95_ms": 88.028,
+    "p99_ms": 94.391,
+    "max_ms": 105.737,
+    "mean_ms": 74.518
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.993,
+    "p95_ms": 1.374,
+    "p99_ms": 2.363,
+    "max_ms": 3.76,
+    "mean_ms": 1.038
+   },
+   "athletes_sampled": 300
+  },
+  "create_index_s": 1.55,
+  "storage_with_index": {
+   "database_bytes": 553434135,
+   "training_log_total_bytes": 322453504,
+   "daily_metrics_total_bytes": 222060544
+  },
+  "queries_with_index_warm": {
+   "recent_activities_90": {
+    "n": 300,
+    "p50_ms": 0.166,
+    "p95_ms": 0.266,
+    "p99_ms": 0.424,
+    "max_ms": 0.55,
+    "mean_ms": 0.178
+   },
+   "range_30d": {
+    "n": 300,
+    "p50_ms": 0.092,
+    "p95_ms": 0.172,
+    "p99_ms": 0.282,
+    "max_ms": 0.365,
+    "mean_ms": 0.102
+   },
+   "training_load_history_210d": {
+    "n": 300,
+    "p50_ms": 0.177,
+    "p95_ms": 0.373,
+    "p99_ms": 1.576,
+    "max_ms": 1.981,
+    "mean_ms": 0.235
+   },
+   "hrv_history_28": {
+    "n": 300,
+    "p50_ms": 0.108,
+    "p95_ms": 0.213,
+    "p99_ms": 0.476,
+    "max_ms": 0.566,
+    "mean_ms": 0.123
+   },
+   "athletes_sampled": 300
+  },
+  "plans_with_index": [
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load, avg_pace_sec_per_km FROM training_log WHERE athlete_id = %s ORDER BY date DESC LIMI",
+    "plan": [
+     "Limit (actual time=0.020..0.042 rows=80 loops=1)",
+     "  Buffers: shared hit=7",
+     "  ->  Index Scan Backward using idx_tl_athlete_date on training_log (actual time=0.019..0.035 rows=80 loops=1)",
+     "        Index Cond: (athlete_id = 'ath07565'::text)",
+     "        Buffers: shared hit=7",
+     "Planning Time: 0.069 ms",
+     "Execution Time: 0.056 ms"
+    ],
+    "seq_scan": false
+   },
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load FROM training_log WHERE athlete_id = %s AND date BETWEEN %s AND %s ORDER BY date",
+    "plan": [
+     "Index Scan using idx_tl_athlete_date on training_log (actual time=0.006..0.008 rows=5 loops=1)",
+     "  Index Cond: ((athlete_id = 'ath07565'::text) AND (date >= '2026-09-10'::text) AND (date <= '2026-10-10'::text))",
+     "  Buffers: shared hit=4",
+     "Planning Time: 0.061 ms",
+     "Execution Time: 0.014 ms"
+    ],
+    "seq_scan": false
+   },
+   {
+    "sql": "SELECT date, SUM(training_load) FROM training_log WHERE athlete_id = %s AND training_load IS NOT NULL AND training_load > 0 AND date >= to_char(current_date - %",
+    "plan": [
+     "GroupAggregate (actual time=0.013..0.032 rows=43 loops=1)",
+     "  Group Key: date",
+     "  Buffers: shared hit=5",
+     "  ->  Index Scan using idx_tl_athlete_date on training_log (actual time=0.010..0.018 rows=43 loops=1)",
+     "        Index Cond: ((athlete_id = 'ath07565'::text) AND (date >= to_char(((CURRENT_DATE - 210))::timestamp with time zone, 'YYYY-MM-DD'::text)))",
+     "        Filter: ((training_load IS NOT NULL) AND (training_load > 0))",
+     "        Buffers: shared hit=5",
+     "Planning Time: 0.096 ms",
+     "Execution Time: 0.047 ms"
+    ],
+    "seq_scan": false
+   },
+   {
+    "sql": "SELECT date, hrv_rmssd FROM daily_metrics WHERE athlete_id = %s AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0 ORDER BY date DESC LIMIT 28",
+    "plan": [
+     "Limit (actual time=0.012..0.021 rows=28 loops=1)",
+     "  Buffers: shared hit=5",
+     "  ->  Index Scan Backward using daily_metrics_athlete_id_date_key on daily_metrics (actual time=0.012..0.018 rows=28 loops=1)",
+     "        Index Cond: (athlete_id = 'ath07565'::text)",
+     "        Filter: ((hrv_rmssd IS NOT NULL) AND (hrv_rmssd > '0'::double precision))",
+     "        Buffers: shared hit=5",
+     "Planning Time: 0.042 ms",
+     "Execution Time: 0.028 ms"
+    ],
+    "seq_scan": false
+   }
+  ],
+  "batch_insert": [
+   {
+    "label": "b1",
+    "batch_rows_per_tx": 1,
+    "rows": 5000,
+    "rows_per_s": 979.9,
+    "tx_per_s": 979.9,
+    "tx_latency": {
+     "n": 5000,
+     "p50_ms": 0.878,
+     "p95_ms": 1.954,
+     "p99_ms": 2.89,
+     "max_ms": 10.598,
+     "mean_ms": 1.018
+    },
+    "resources": {
+     "wall_s": 5.12,
+     "rss_max_mb": 444.8,
+     "rss_mean_mb": 441.0,
+     "cpu_self_seconds": 1.78,
+     "cpu_self_pct_of_one_core": 34.8,
+     "cpu_sampled_mean_pct": 19.3,
+     "cpu_sampled_max_pct": 30.5,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "label": "b100",
+    "batch_rows_per_tx": 100,
+    "rows": 100000,
+    "rows_per_s": 24553.5,
+    "tx_per_s": 245.5,
+    "tx_latency": {
+     "n": 1000,
+     "p50_ms": 3.669,
+     "p95_ms": 7.096,
+     "p99_ms": 9.419,
+     "max_ms": 15.47,
+     "mean_ms": 4.068
+    },
+    "resources": {
+     "wall_s": 4.09,
+     "rss_max_mb": 494.6,
+     "rss_mean_mb": 476.2,
+     "cpu_self_seconds": 2.28,
+     "cpu_self_pct_of_one_core": 55.7,
+     "cpu_sampled_mean_pct": 49.5,
+     "cpu_sampled_max_pct": 66.1,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "label": "b1000",
+    "batch_rows_per_tx": 1000,
+    "rows": 100000,
+    "rows_per_s": 43348.2,
+    "tx_per_s": 43.3,
+    "tx_latency": {
+     "n": 100,
+     "p50_ms": 21.419,
+     "p95_ms": 32.484,
+     "p99_ms": 53.613,
+     "max_ms": 53.613,
+     "mean_ms": 23.03
+    },
+    "resources": {
+     "wall_s": 2.324,
+     "rss_max_mb": 520.9,
+     "rss_mean_mb": 487.1,
+     "cpu_self_seconds": 1.53,
+     "cpu_self_pct_of_one_core": 65.8,
+     "cpu_sampled_mean_pct": 60.3,
+     "cpu_sampled_max_pct": 90.7,
+     "sampler": "psutil"
+    }
+   }
+  ],
+  "connection_cost": {
+   "connect_per_op": {
+    "n": 1000,
+    "p50_ms": 4.075,
+    "p95_ms": 5.207,
+    "p99_ms": 6.528,
+    "max_ms": 10.595,
+    "mean_ms": 4.264
+   },
+   "persistent_connection": {
+    "n": 1000,
+    "p50_ms": 0.354,
+    "p95_ms": 0.5,
+    "p99_ms": 0.625,
+    "max_ms": 1.236,
+    "mean_ms": 0.37
+   },
+   "note": "psycopg_pool not installed; a pool removes the connect cost shown in connect_per_op"
+  },
+  "concurrency_threads_own_connection": [
+   {
+    "workers": 1,
+    "write_ratio": 0.2,
+    "duration_s": 20.0,
+    "synchronous_commit": "on (default)",
+    "reads": 32233,
+    "writes_ok": 8028,
+    "writes_failed": 0,
+    "read_ops_per_s": 1611.7,
+    "write_tx_per_s": 401.4,
+    "read_latency": {
+     "n": 32233,
+     "p50_ms": 0.296,
+     "p95_ms": 0.661,
+     "p99_ms": 1.405,
+     "max_ms": 7.806,
+     "mean_ms": 0.357
+    },
+    "write_latency": {
+     "n": 8028,
+     "p50_ms": 0.916,
+     "p95_ms": 1.597,
+     "p99_ms": 2.483,
+     "max_ms": 35.189,
+     "mean_ms": 1.009
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.025,
+     "rss_max_mb": 626.1,
+     "rss_mean_mb": 602.7,
+     "cpu_self_seconds": 9.6,
+     "cpu_self_pct_of_one_core": 47.9,
+     "cpu_sampled_mean_pct": 33.5,
+     "cpu_sampled_max_pct": 44.3,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "workers": 2,
+    "write_ratio": 0.2,
+    "duration_s": 20.0,
+    "synchronous_commit": "on (default)",
+    "reads": 48609,
+    "writes_ok": 11990,
+    "writes_failed": 0,
+    "read_ops_per_s": 2430.4,
+    "write_tx_per_s": 599.5,
+    "read_latency": {
+     "n": 48609,
+     "p50_ms": 0.444,
+     "p95_ms": 1.089,
+     "p99_ms": 1.805,
+     "max_ms": 14.396,
+     "mean_ms": 0.526
+    },
+    "write_latency": {
+     "n": 11990,
+     "p50_ms": 1.03,
+     "p95_ms": 1.979,
+     "p99_ms": 3.006,
+     "max_ms": 28.077,
+     "mean_ms": 1.151
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.025,
+     "rss_max_mb": 927.6,
+     "rss_mean_mb": 789.0,
+     "cpu_self_seconds": 19.0,
+     "cpu_self_pct_of_one_core": 94.9,
+     "cpu_sampled_mean_pct": 55.1,
+     "cpu_sampled_max_pct": 96.9,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "workers": 4,
+    "write_ratio": 0.2,
+    "duration_s": 20.0,
+    "synchronous_commit": "on (default)",
+    "reads": 25419,
+    "writes_ok": 6272,
+    "writes_failed": 0,
+    "read_ops_per_s": 1271.0,
+    "write_tx_per_s": 313.6,
+    "read_latency": {
+     "n": 25419,
+     "p50_ms": 2.137,
+     "p95_ms": 4.074,
+     "p99_ms": 5.354,
+     "max_ms": 18.205,
+     "mean_ms": 2.281
+    },
+    "write_latency": {
+     "n": 6272,
+     "p50_ms": 3.232,
+     "p95_ms": 5.652,
+     "p99_ms": 7.832,
+     "max_ms": 25.299,
+     "mean_ms": 3.443
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.037,
+     "rss_max_mb": 1097.4,
+     "rss_mean_mb": 1036.8,
+     "cpu_self_seconds": 25.35,
+     "cpu_self_pct_of_one_core": 126.5,
+     "cpu_sampled_mean_pct": 34.7,
+     "cpu_sampled_max_pct": 45.4,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "workers": 8,
+    "write_ratio": 0.2,
+    "duration_s": 20.0,
+    "synchronous_commit": "on (default)",
+    "reads": 20996,
+    "writes_ok": 5346,
+    "writes_failed": 0,
+    "read_ops_per_s": 1049.8,
+    "write_tx_per_s": 267.3,
+    "read_latency": {
+     "n": 20996,
+     "p50_ms": 5.378,
+     "p95_ms": 8.712,
+     "p99_ms": 11.179,
+     "max_ms": 36.432,
+     "mean_ms": 5.624
+    },
+    "write_latency": {
+     "n": 5346,
+     "p50_ms": 7.48,
+     "p95_ms": 11.674,
+     "p99_ms": 14.79,
+     "max_ms": 34.847,
+     "mean_ms": 7.783
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.05,
+     "rss_max_mb": 1677.9,
+     "rss_mean_mb": 1507.9,
+     "cpu_self_seconds": 27.66,
+     "cpu_self_pct_of_one_core": 138.0,
+     "cpu_sampled_mean_pct": 30.1,
+     "cpu_sampled_max_pct": 37.9,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "workers": 8,
+    "write_ratio": 1.0,
+    "duration_s": 20.0,
+    "synchronous_commit": "on (default)",
+    "reads": 0,
+    "writes_ok": 21167,
+    "writes_failed": 0,
+    "read_ops_per_s": 0.0,
+    "write_tx_per_s": 1058.3,
+    "read_latency": {
+     "n": 0
+    },
+    "write_latency": {
+     "n": 21167,
+     "p50_ms": 7.33,
+     "p95_ms": 11.302,
+     "p99_ms": 14.008,
+     "max_ms": 24.222,
+     "mean_ms": 7.545
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.046,
+     "rss_max_mb": 1380.9,
+     "rss_mean_mb": 1163.8,
+     "cpu_self_seconds": 27.96,
+     "cpu_self_pct_of_one_core": 139.5,
+     "cpu_sampled_mean_pct": 32.2,
+     "cpu_sampled_max_pct": 41.6,
+     "sampler": "psutil"
+    }
+   },
+   {
+    "workers": 8,
+    "write_ratio": 1.0,
+    "duration_s": 20.0,
+    "synchronous_commit": "off (closer to SQLite synchronous=NORMAL)",
+    "reads": 0,
+    "writes_ok": 22878,
+    "writes_failed": 0,
+    "read_ops_per_s": 0.0,
+    "write_tx_per_s": 1143.9,
+    "read_latency": {
+     "n": 0
+    },
+    "write_latency": {
+     "n": 22878,
+     "p50_ms": 6.756,
+     "p95_ms": 10.13,
+     "p99_ms": 12.506,
+     "max_ms": 26.158,
+     "mean_ms": 6.981
+    },
+    "errors": {},
+    "lost_or_phantom_rows": 0,
+    "resources": {
+     "wall_s": 20.044,
+     "rss_max_mb": 1399.6,
+     "rss_mean_mb": 1184.9,
+     "cpu_self_seconds": 28.68,
+     "cpu_self_pct_of_one_core": 143.1,
+     "cpu_sampled_mean_pct": 27.7,
+     "cpu_sampled_max_pct": 36.9,
+     "sampler": "psutil"
+    }
+   }
+  ],
+  "rls": {
+   "policy": "USING/WITH CHECK athlete_id = current_setting('app.athlete_id')",
+   "rows_visible_without_app_athlete_id": 0,
+   "cross_athlete_insert": "rejected: InsufficientPrivilege",
+   "athletes_checked": 300,
+   "foreign_rows_returned": 0,
+   "athletes_with_wrong_row_count": 0,
+   "select_all_under_rls_latency": {
+    "n": 300,
+    "p50_ms": 0.102,
+    "p95_ms": 0.442,
+    "p99_ms": 0.968,
+    "max_ms": 3.31,
+    "mean_ms": 0.163
+   },
+   "recent_90_with_rls_latency": {
+    "n": 300,
+    "p50_ms": 0.193,
+    "p95_ms": 0.488,
+    "p99_ms": 1.001,
+    "max_ms": 6.272,
+    "mean_ms": 0.255
+   },
+   "recent_90_superuser_no_rls_latency": {
+    "n": 300,
+    "p50_ms": 0.199,
+    "p95_ms": 0.555,
+    "p99_ms": 0.718,
+    "max_ms": 1.146,
+    "mean_ms": 0.236
+   }
+  },
+  "cluster_destroyed": true,
+  "plans_without_index": [
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load, avg_pace_sec_per_km FROM training_log WHERE athlete_id = %s ORDER BY date DESC LIMI",
+    "plan": [
+     "Limit (actual time=50.750..55.959 rows=80 loops=1)",
+     "  Buffers: shared hit=16275 read=7519",
+     "  ->  Gather Merge (actual time=50.748..55.947 rows=80 loops=1)",
+     "        Workers Planned: 2",
+     "        Workers Launched: 2",
+     "        Buffers: shared hit=16275 read=7519",
+     "        ->  Sort (actual time=48.445..48.448 rows=27 loops=3)",
+     "              Sort Key: date DESC",
+     "              Sort Method: quicksort  Memory: 32kB",
+     "              Buffers: shared hit=16275 read=7519",
+     "              Worker 0:  Sort Method: quicksort  Memory: 25kB",
+     "              Worker 1:  Sort Method: quicksort  Memory: 25kB",
+     "              ->  Parallel Seq Scan on training_log (actual time=38.657..48.350 rows=27 loops=3)",
+     "                    Filter: (athlete_id = 'ath07565'::text)",
+     "                    Rows Removed by Filter: 468800",
+     "                    Buffers: shared hit=16201 read=7519",
+     "Planning Time: 0.101 ms",
+     "Execution Time: 56.004 ms"
+    ],
+    "seq_scan": true
+   },
+   {
+    "sql": "SELECT date, session_type, distance_km, duration_sec, avg_hr, training_load FROM training_log WHERE athlete_id = %s AND date BETWEEN %s AND %s ORDER BY date",
+    "plan": [
+     "Gather Merge (actual time=57.044..61.525 rows=5 loops=1)",
+     "  Workers Planned: 2",
+     "  Workers Launched: 2",
+     "  Buffers: shared hit=16275 read=7519",
+     "  ->  Sort (actual time=54.489..54.491 rows=2 loops=3)",
+     "        Sort Key: date",
+     "        Sort Method: quicksort  Memory: 25kB",
+     "        Buffers: shared hit=16275 read=7519",
+     "        Worker 0:  Sort Method: quicksort  Memory: 25kB",
+     "        Worker 1:  Sort Method: quicksort  Memory: 25kB",
+     "        ->  Parallel Seq Scan on training_log (actual time=43.580..54.408 rows=2 loops=3)",
+     "              Filter: ((date >= '2026-09-10'::text) AND (date <= '2026-10-10'::text) AND (athlete_id = 'ath07565'::text))",
+     "              Rows Removed by Filter: 468825",
+     "              Buffers: shared hit=16201 read=7519",
+     "Planning Time: 0.161 ms",
+     "Execution Time: 61.571 ms"
+    ],
+    "seq_scan": true
+   },
+   {
+    "sql": "SELECT date, SUM(training_load) FROM training_log WHERE athlete_id = %s AND training_load IS NOT NULL AND training_load > 0 AND date >= to_char(current_date - %",
+    "plan": [
+     "Finalize GroupAggregate (actual time=65.776..69.968 rows=43 loops=1)",
+     "  Group Key: date",
+     "  Buffers: shared hit=16279 read=7515",
+     "  ->  Gather Merge (actual time=65.766..69.947 rows=43 loops=1)",
+     "        Workers Planned: 2",
+     "        Workers Launched: 2",
+     "        Buffers: shared hit=16279 read=7515",
+     "        ->  Partial GroupAggregate (actual time=63.291..63.300 rows=14 loops=3)",
+     "              Group Key: date",
+     "              Buffers: shared hit=16279 read=7515",
+     "              ->  Sort (actual time=63.285..63.287 rows=14 loops=3)",
+     "                    Sort Key: date",
+     "                    Sort Method: quicksort  Memory: 25kB",
+     "                    Buffers: shared hit=16279 read=7515",
+     "                    Worker 0:  Sort Method: quicksort  Memory: 25kB",
+     "                    Worker 1:  Sort Method: quicksort  Memory: 26kB",
+     "                    ->  Parallel Seq Scan on training_log (actual time=51.098..63.198 rows=14 loops=3)",
+     "                          Filter: ((training_load IS NOT NULL) AND (training_load > 0) AND (athlete_id = 'ath07565'::text) AND (date >= to_char(((CURRENT_DATE - 210))::timestamp with time zone, 'YYYY-MM-DD'::text)))",
+     "                          Rows Removed by Filter: 468813",
+     "                          Buffers: shared hit=16205 read=7515",
+     "Planning Time: 0.194 ms",
+     "Execution Time: 70.019 ms"
+    ],
+    "seq_scan": true
+   },
+   {
+    "sql": "SELECT date, hrv_rmssd FROM daily_metrics WHERE athlete_id = %s AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0 ORDER BY date DESC LIMIT 28",
+    "plan": [
+     "Limit (actual time=0.653..0.666 rows=28 loops=1)",
+     "  Buffers: shared read=5",
+     "  ->  Index Scan Backward using daily_metrics_athlete_id_date_key on daily_metrics (actual time=0.651..0.661 rows=28 loops=1)",
+     "        Index Cond: (athlete_id = 'ath07565'::text)",
+     "        Filter: ((hrv_rmssd IS NOT NULL) AND (hrv_rmssd > '0'::double precision))",
+     "        Buffers: shared read=5",
+     "Planning Time: 0.116 ms",
+     "Execution Time: 0.680 ms"
+    ],
+    "seq_scan": false
+   }
+  ]
+ },
+ "thresholds_evaluation": [
+  {
+   "id": "T01",
+   "source": "proposal (derived from SLO-02)",
+   "metric": "ctl_atl_tsb p95 at 100% dataset (warm)",
+   "op": "<=",
+   "limit_ms": 50,
+   "observed": 78.743,
+   "verdict": "FAIL"
+  },
+  {
+   "id": "T02",
+   "source": "proposal (derived from SLO-02)",
+   "metric": "ctl_atl_tsb p99 at 100% dataset (warm)",
+   "op": "<=",
+   "limit_ms": 100,
+   "observed": 92.133,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T03",
+   "source": "proposal",
+   "metric": "recent_activities_90 p95 at 100% dataset (warm)",
+   "op": "<=",
+   "limit_ms": 20,
+   "observed": 81.248,
+   "verdict": "FAIL"
+  },
+  {
+   "id": "T04",
+   "source": "proposal",
+   "metric": "range_30d_raw_sql p95 at 100% dataset (warm)",
+   "op": "<=",
+   "limit_ms": 20,
+   "observed": 77.598,
+   "verdict": "FAIL"
+  },
+  {
+   "id": "T05",
+   "source": "proposal",
+   "metric": "hrv_history_28 p95 at 100% dataset (warm)",
+   "op": "<=",
+   "limit_ms": 10,
+   "observed": 0.183,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T06",
+   "source": "proposal",
+   "metric": "Garmin sync persist (one weekly sync tx) p95, main load",
+   "op": "<=",
+   "limit_ms": 100,
+   "observed": 0.188,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T07",
+   "source": "proposal",
+   "metric": "Garmin sync persist p99, main load",
+   "op": "<=",
+   "limit_ms": 250,
+   "observed": 0.67,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T08",
+   "source": "SLO-04 + proposal",
+   "metric": "'database is locked' failures with <= 4 workers (any mode)",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T09",
+   "source": "SLO-04",
+   "metric": "lost or phantom rows after concurrency runs",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T10",
+   "source": "owner request \u00a76",
+   "metric": "valid activity records lost (any cause)",
+   "op": "==",
+   "limit": 0,
+   "observed": 1027,
+   "verdict": "FAIL"
+  },
+  {
+   "id": "T11",
+   "source": "owner request \u00a76",
+   "metric": "valid daily-metrics records lost (any cause)",
+   "op": "==",
+   "limit": 0,
+   "observed": 796,
+   "verdict": "FAIL"
+  },
+  {
+   "id": "T12",
+   "source": "owner request \u00a76",
+   "metric": "new training_log rows from repeated syncs",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T13",
+   "source": "ADR-0040 / owner request \u00a76",
+   "metric": "cross-athlete leakage (rows / athletes with mismatch)",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T14",
+   "source": "owner request \u00a74",
+   "metric": "integrity_check ok and 0 foreign-key violations",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T15",
+   "source": "proposal",
+   "metric": "rows left after crash inside an outer transaction",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T16",
+   "source": "proposal",
+   "metric": "re-import after crash gives exact row count, no duplicates",
+   "op": "==",
+   "limit": 0,
+   "observed": 0,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T17",
+   "source": "proposal",
+   "metric": "SQLite storage (db+wal) at 100% dataset",
+   "op": "<=",
+   "limit_mb": 2048,
+   "observed": 193.5,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T18",
+   "source": "proposal",
+   "metric": "harness peak RSS during main load",
+   "op": "<=",
+   "limit_mb": 1024,
+   "observed": 84.1,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T19",
+   "source": "proposal",
+   "metric": "DatabaseManager open (cold start) at 100% dataset",
+   "op": "<=",
+   "limit_ms": 2000,
+   "observed": 203.5,
+   "verdict": "PASS"
+  },
+  {
+   "id": "T20",
+   "source": "proposal",
+   "metric": "initial import throughput via real Garmin path (activity rows/s, persist only)",
+   "op": ">=",
+   "limit": 5000,
+   "observed": 9594.6,
+   "verdict": "PASS"
+  }
+ ]
+}
