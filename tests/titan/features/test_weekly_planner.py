@@ -550,3 +550,13 @@ def test_a_short_history_is_averaged_over_its_own_length():
     )
 
     assert planner.recent_weekly_km() == pytest.approx(40.0)
+
+
+@pytest.mark.unit
+def test_taper_plan_labels_a_high_tsb_fresh_not_detraining():
+    """SV-13 / D-064: the weekly plan of a taper week does not call the rising TSB DETRAINING."""
+    plan = _planner(tsb_value=28.0, tsb_status="⚠️ SEVERE DETRAINING").generate_weekly_plan(
+        athlete_profile={}, weather_forecast=None, phase="TAPER",
+    )
+
+    assert plan["tsb_status"] == "✅ FRESH (taper)"
