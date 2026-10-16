@@ -4,7 +4,7 @@ Complete athlete demographics, physiology, and training data
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from itertools import count
 from typing import Any
 from uuid import uuid4
@@ -12,6 +12,74 @@ from uuid import uuid4
 _log = logging.getLogger(__name__)
 
 _ATHLETE_ID_SEQUENCE = count()
+
+OWNER_ATHLETE_ID = "owner"
+
+# One set of profile limits for the owner's console editor and the athlete_profiles table
+# (#911, ADR-0067 D5.1). Inclusive bounds.
+VALID_TRAINING_PHASES: frozenset[str] = frozenset({"BASE", "BUILD", "PEAK", "TAPER"})
+VALID_TRAINING_GOALS: frozenset[str] = frozenset({"5K", "10K", "HM", "M"})
+PROFILE_LIMITS: dict[str, tuple[float, float]] = {
+    "age": (10, 100),
+    "weight_kg": (20.0, 300.0),
+    "height_cm": (100, 250),
+    "max_hr": (100, 220),
+    "threshold_hr": (80, 210),
+}
+MIN_ATHLETE_AGE = 18  # an athlete other than the owner is an adult (ADR-0067 D5.1)
+PROFILE_FIELDS: tuple[str, ...] = (
+    "birth_date", "sex", "weight_kg", "height_cm", "max_hr", "threshold_hr",
+    "training_phase", "training_goal", "location_city", "location_country",
+)
+
+
+class AthleteNotReady(Exception):
+    """The athlete cannot be coached: nothing may run or be called for them (ADR-0067 D7.1)."""
+
+    def __init__(self, athlete_id: str, reason: str) -> None:
+        super().__init__(f"athlete {athlete_id} is not ready: {reason}")
+        self.athlete_id = athlete_id
+        self.reason = reason
+
+
+def age_on(birth_date: date, today: date) -> int:
+    """Whole years from birth_date to today."""
+    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+
+
+def profile_problems(record: dict[str, Any], today: date) -> list[str]:
+    """Every reason the athlete_profiles record cannot be used; empty when it is complete.
+
+    A missing field is a problem: nothing falls back to a default (ADR-0067 D5.1, D5.3).
+    """
+    problems = [f"{field}: missing" for field in PROFILE_FIELDS if record.get(field) in (None, "")]
+    if problems:
+        return problems
+    try:
+        born = date.fromisoformat(str(record["birth_date"]))
+    except ValueError:
+        return ["birth_date: not an ISO date"]
+    age = age_on(born, today)
+    if age < MIN_ATHLETE_AGE:
+        problems.append(f"birth_date: under {MIN_ATHLETE_AGE}")
+    elif not PROFILE_LIMITS["age"][0] <= age <= PROFILE_LIMITS["age"][1]:
+        problems.append("birth_date: age out of range")
+    if record["sex"] not in ("M", "F"):
+        problems.append("sex: must be M or F")
+    for field in ("weight_kg", "height_cm", "max_hr", "threshold_hr"):
+        lo, hi = PROFILE_LIMITS[field]
+        try:
+            value = float(record[field])
+        except (TypeError, ValueError):
+            problems.append(f"{field}: not a number")
+            continue
+        if not lo <= value <= hi:
+            problems.append(f"{field}: must be between {lo} and {hi}")
+    if str(record["training_phase"]).upper() not in VALID_TRAINING_PHASES:
+        problems.append("training_phase: unknown")
+    if str(record["training_goal"]).upper() not in VALID_TRAINING_GOALS:
+        problems.append("training_goal: unknown")
+    return problems
 
 
 class UniversalAthleteProfile:
@@ -380,3 +448,59 @@ class UniversalAthleteProfile:
         profile.training_phase = os.environ.get("TRAINING_PHASE", "BUILD")
         profile.current_goal = os.environ.get("TRAINING_GOAL", "5K")
         return profile
+
+    @classmethod
+    def from_record(
+        cls, athlete_id: str, display_name: str, record: dict[str, Any], *, today: date
+    ) -> "UniversalAthleteProfile":
+        """The profile of an athlete other than the owner, from their athlete_profiles row.
+
+        Only stored values are used. Every value the constructor carries for the owner
+        (resting HR, VO2max, paces, race day, Critical Speed) is cleared, so this athlete
+        never receives the owner's values (ADR-0067 D7.1). Raises AthleteNotReady when
+        the record is incomplete or out of range.
+        """
+        problems = profile_problems(record, today)
+        if problems:
+            raise AthleteNotReady(athlete_id, "; ".join(problems))
+        profile = cls(athlete_id=athlete_id, name=display_name)
+        profile.set_demographics(
+            str(record["sex"]),
+            age_on(date.fromisoformat(str(record["birth_date"])), today),
+            float(record["height_cm"]),
+            float(record["weight_kg"]),
+        )
+        profile.birth_date = str(record["birth_date"])
+        profile.max_hr = int(record["max_hr"])
+        profile.threshold_hr = int(record["threshold_hr"])
+        profile.training_phase = str(record["training_phase"]).upper()
+        profile.current_goal = str(record["training_goal"]).upper()
+        profile.location_city = str(record["location_city"])
+        profile.location_country = str(record["location_country"])
+        profile.resting_hr = None
+        profile.vo2_max = None
+        profile.race_day = None
+        profile.base_5k_time_str = None
+        profile.base_5k_sec = None
+        profile.paces = {}
+        profile.critical_speed_m_per_s = None
+        profile.d_prime_m = None
+        return profile
+
+
+def load_athlete_profile(db: Any, athlete_id: str, *, today: date | None = None) -> UniversalAthleteProfile:
+    """The profile the morning uses for ``athlete_id`` (ADR-0067 D5, Phase 4 step 3).
+
+    The owner reads ``.env`` as before (from_env). Any other athlete reads their
+    athlete_profiles row; with no row, or an incomplete one, AthleteNotReady is raised
+    before anything is built or called.
+    """
+    if athlete_id == OWNER_ATHLETE_ID:
+        return UniversalAthleteProfile.from_env()
+    stored = db.get_athlete_profile(athlete_id)
+    if stored is None:
+        raise AthleteNotReady(athlete_id, "no profile")
+    display_name, record = stored
+    return UniversalAthleteProfile.from_record(
+        athlete_id, display_name, record, today=today or datetime.now(UTC).date()
+    )

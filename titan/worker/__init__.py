@@ -228,8 +228,12 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     Every collaborator is built with the constructor signature it actually has;
     the worker loops used to pass keyword arguments these constructors do not
     accept, so each morning cycle failed with TypeError before any work ran.
+
+    The profile is the athlete's own (ADR-0067 D5): the owner's from .env, any other
+    athlete's from athlete_profiles. AthleteNotReady is raised before any collaborator
+    is built when that athlete has no complete profile.
     """
-    from titan.core.athlete import UniversalAthleteProfile
+    from titan.core.athlete import load_athlete_profile
     from titan.features.nutrition_optimizer import NutritionOptimizer
     from titan.features.optimal_time_calculator import OptimalTimeCalculator
     from titan.features.weekly_planner import WeeklyPlanGenerator
@@ -241,6 +245,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     from titan.science.acwr_engine import ACWREngine
     from titan.science.glycogen_model import GlycogenModel
 
+    profile = load_athlete_profile(db, athlete_id)
     weather = WeatherAPI()
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
@@ -256,17 +261,19 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         db=db,
         athlete_id=athlete_id,
         engines=engines,
-        # Same profile source as the console (titan/main.py), so TRIMP uses one max HR (T5-117).
-        athlete_profile=UniversalAthleteProfile.from_env(),
+        # The owner's comes from .env as in the console (titan/main.py), so TRIMP uses one
+        # max HR (T5-117); another athlete's from athlete_profiles (ADR-0067 D5).
+        athlete_profile=profile,
     )
 
 
 def _generate_weekly_plan(coach, db: DatabaseManager, athlete_id: str) -> dict:  # noqa: ANN001
     """Build next week's plan as the console does, store it and send it to Telegram (D-020)."""
-    from titan.core.athlete import UniversalAthleteProfile
+    from titan.core.athlete import load_athlete_profile
 
     # The profile the coach was built with (D-033); stand-in coaches in tests have none.
-    profile = getattr(coach, "athlete_profile", None) or UniversalAthleteProfile.from_env()
+    # Never the owner's .env for another athlete (ADR-0067 D7.1).
+    profile = getattr(coach, "athlete_profile", None) or load_athlete_profile(db, athlete_id)
     plan = coach.weekly_planner.generate_weekly_plan(
         athlete_profile=profile.to_dict(), phase=profile.training_phase,
     )
@@ -323,7 +330,11 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
 
 
 def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> None:
-    """One worker morning: this week's plan, the routine, and on Sunday next week's plan."""
+    """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
+
+    An athlete with no complete profile raises AthleteNotReady here, before the coach,
+    Garmin, weather or Telegram is built or called (ADR-0067 D7.1).
+    """
     coach = _build_daily_coach(db, athlete_id=athlete_id)
     today = _utc_now().date()
     _prepare_weekly_plan(coach, db, athlete_id, today)

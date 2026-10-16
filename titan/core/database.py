@@ -21,7 +21,7 @@ try:
     import psycopg2
 except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
-from titan.core.athlete import UniversalAthleteProfile
+from titan.core.athlete import OWNER_ATHLETE_ID, UniversalAthleteProfile, profile_problems
 from titan.core.repositories.access import AccessRepository
 from titan.core.repositories.governance import GovernanceRepository
 from titan.core.repositories.migrations import SchemaMigrations
@@ -525,6 +525,31 @@ class DatabaseManager:
         """Return (completion_rate, sample_count) for athlete_id in [start_date, end_date]."""
         return self._governance.get_completion_rate(
             athlete_id=athlete_id, start_date=start_date, end_date=end_date
+        )
+
+    def get_athlete_profile(self, athlete_id: str) -> tuple[str, dict] | None:
+        """Return (display_name, athlete_profiles row), or None when the athlete has no profile."""
+        return self._governance.get_athlete_profile(athlete_id=athlete_id)
+
+    def save_athlete_profile(self, athlete_id: str, record: dict) -> None:
+        """Store the profile of an athlete other than the owner (ADR-0067 D5).
+
+        Raises ValueError for the owner, whose profile stays in .env (D1.3), or for an
+        incomplete or out-of-range record, so a stored profile is always usable.
+        """
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner's profile lives in .env, not in athlete_profiles")
+        now = datetime.now(UTC)
+        problems = profile_problems(record, now.date())
+        if problems:
+            raise ValueError(f"athlete profile rejected: {'; '.join(problems)}")
+        normalized = {
+            **record,
+            "training_phase": str(record["training_phase"]).upper(),
+            "training_goal": str(record["training_goal"]).upper(),
+        }
+        self._governance.save_athlete_profile(
+            athlete_id=athlete_id, record=normalized, updated_at=now.isoformat()
         )
 
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
