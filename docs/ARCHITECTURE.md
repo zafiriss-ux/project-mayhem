@@ -55,7 +55,7 @@ launcher/main.py
 
 | Module | Role |
 |---|---|
-| `titan/core/database.py` | `DatabaseManager` — SQLite connection setup (WAL, foreign keys, busy timeout), base tables from `titan/core/schema.py`, transactions and SCHEMA_VERSION; the domain SQL lives in the repositories below, behind the same method names (plan #18, task 10) |
+| `titan/core/database.py` | `DatabaseManager` — SQLite connection setup (WAL with a 64 MiB size limit, foreign keys, busy timeout), base tables from `titan/core/schema.py`, transactions and SCHEMA_VERSION; the domain SQL lives in the repositories below, behind the same method names (plan #18, task 10) |
 | `titan/core/repositories/training.py` | `TrainingRepository` — training-domain SQL (training log and CTL/ATL/TSB load history, shoes, personal bests, CS performances) behind the `DatabaseManager` facade (plan #18, one domain per PR) |
 | `titan/core/repositories/physiology.py` | `PhysiologyRepository` — physiology-domain SQL (daily metrics, HRV, resting HR, HRR, glycogen debt, weight history) behind the `DatabaseManager` facade (plan #18) |
 | `titan/core/repositories/governance.py` | `GovernanceRepository` — governance-domain SQL (override audit log, governance decisions and outcomes, per-athlete threshold offsets, cold start, calibration rates, model calibration metadata) behind the `DatabaseManager` facade (plan #18) |
