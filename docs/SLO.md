@@ -90,11 +90,29 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 
 ---
 
+## SLO-07 — Storage Read Latency (advisory)
+
+| Field | Value |
+|-------|-------|
+| **Objective** | Athlete-scoped reads of `training_log` stay fast as the history grows |
+| **Target** | `get_ctl_atl_tsb` p95 ≤ 100 ms; an athlete-scoped date-window read p95 ≤ 50 ms at realistic volume (≤ 250 ms at stress volume, 100k–1M rows) |
+| **Measurement window** | Rolling 7 days |
+| **Measurement** | `titan_ctl_recompute_ms` histogram on `/metrics`; the date-window read has no production metric yet; it was measured by the SQLite assessment harness, which is not in the repository |
+| **Alert threshold** | None (advisory). A p95 over target is a reason to re-run the assessment |
+| **Error budget** | None — advisory, does not pause work |
+| **Related decisions** | D-077 (`idx_training_log_athlete_date`), D-083 |
+
+Baseline (SQLite assessment, 2026-10-16): before the v29 index the 30-day read was 0.30 ms
+realistic and 70.8 ms p95 at 1M rows; with the index, 0.02 ms and 0.17 ms.
+
+---
+
 ## SLO Error Budget Policy
 
 - Error budget is consumed when an SLO target is missed.
 - When error budget for SLO-01, SLO-03, or SLO-04 drops below 50% in a rolling 30-day window,
   new feature work is paused until the budget is restored.
+- SLO-07 is advisory and has no error budget.
 - SLO-05 has zero error budget — any bypass event triggers immediate stop-the-line per AGENTS.md §7.
 
 ---
