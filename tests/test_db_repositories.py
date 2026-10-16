@@ -104,6 +104,15 @@ def test_personal_bests_and_cs_performances_round_trip(db) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(("distance_km", "time_sec"), [(0, 1200), (0.0, 1200), (-5.0, 1200), (5.0, 0), (5.0, -1)])
+def test_personal_best_refuses_a_non_positive_distance_or_time(db, distance_km, time_sec) -> None:
+    """F10: distance 0 raised ZeroDivisionError; now a clear ValueError and nothing is written."""
+    with pytest.raises(ValueError, match="positive distance and time"):
+        db.save_personal_best(distance_km, time_sec, "2026-02-14")
+    assert db.conn.execute("SELECT COUNT(*) FROM personal_bests").fetchone() == (0,)
+
+
+@pytest.mark.unit
 def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
     with pytest.warns(DeprecationWarning, match="temperature_c") as record:
         db.save_session("2026-01-05", "EASY", 8.0, 2640, rpe=3, temperature=12.0)
