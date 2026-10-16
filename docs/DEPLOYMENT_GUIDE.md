@@ -31,7 +31,7 @@ bash scripts/titan_ci.sh
 - Local: `~/Documents/TITAN/titan_core.db`
 - **NEVER** use `titan.db` — that file is stale and must not be referenced in any runbook or script.
 
-Backups and restore: [`docs/runbooks/database-recovery.md`](runbooks/database-recovery.md). The Docker worker also takes a daily backup (`<data dir>/backups/titan_core.db.YYYYMMDD`, last 7 kept).
+Backups and restore: [`docs/runbooks/database-recovery.md`](runbooks/database-recovery.md). The Docker worker also takes a daily backup (`/backups/titan_YYYY-MM-DD.db` on the `titan-backups` volume, 7 daily + 4 weekly; see [`RUNBOOK_DR.md`](RUNBOOK_DR.md)).
 
 ---
 
@@ -151,7 +151,7 @@ python -m titan             # κατευθείαν
 
 Στο Docker, ο `titan-worker` τρέχει μόνο την πρωινή ρουτίνα και το ημερήσιο backup (βλ. [`docs/runbooks/docker-deploy.md`](runbooks/docker-deploy.md)).
 
-Logs: `titan.log` στον τρέχοντα φάκελο (ή ό,τι ορίζει το `TITAN_LOG_PATH`). Του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`.
+Logs: με τον launcher, `~/Documents/TITAN/logs/titan.log`· με `python -m titan`, `titan.log` στον τρέχοντα φάκελο (ή ό,τι ορίζει το `TITAN_LOG_PATH`). Του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`.
 
 ## 6. Χειροκίνητη εκτέλεση
 

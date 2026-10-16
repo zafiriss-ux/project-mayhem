@@ -9,11 +9,12 @@
 
 ## Backup Location
 
-Automated daily backups run at each worker startup and every 24 h thereafter:
+Automated daily backups are taken only by the Docker `titan-worker`, at startup and every day at
+07:00 UTC. Local mode (launcher or `python -m titan`) takes no automatic backups.
 
-- **Container:** `/data/backups/titan_YYYY-MM-DD.db`
-- **Local default:** `~/Documents/TITAN/backups/titan_YYYY-MM-DD.db`
-- **Retention:** 7 days (configurable via `keep=` in `DatabaseManager.backup_database`)
+- **Container:** `/backups/titan_YYYY-MM-DD.db` on the `titan-backups` volume (`TITAN_BACKUP_DIR=/backups`)
+- **Retention:** 7 daily + 4 weekly (`BACKUP_RETENTION_DAILY_DAYS`, `BACKUP_RETENTION_WEEKLY_COUNT` in `.env`)
+- Full Docker procedure: [`docs/RUNBOOK_DR.md`](../RUNBOOK_DR.md)
 
 Manual on-demand backup:
 
@@ -27,30 +28,11 @@ bash scripts/backup.sh [data_dir]
 
 ## Recovery Procedure
 
-### From automated backup
+### From automated backup (Docker)
 
-```bash
-# List available backups
-ls ~/Documents/TITAN/backups/
-
-# Stop the system
-docker compose stop titan-api titan-worker
-
-# Restore (replace YYYY-MM-DD with the target date)
-cp ~/Documents/TITAN/backups/titan_YYYY-MM-DD.db \
-   ~/Documents/TITAN/titan_core.db
-
-# Verify integrity
-python3 -c "
-import sqlite3
-c = sqlite3.connect('$HOME/Documents/TITAN/titan_core.db')
-print(c.execute('PRAGMA integrity_check').fetchone())
-c.close()
-"
-
-# Restart
-docker compose start titan-api titan-worker
-```
+The backups live in the `titan-backups` volume, not on the host. Follow «Επαναφορά (Docker)» in
+[`docs/RUNBOOK_DR.md`](../RUNBOOK_DR.md): it lists the backups, checks the chosen one with
+`scripts/restore_drill.py`, keeps the current file as `titan_core.db.before-restore` and restarts.
 
 ---
 
@@ -65,11 +47,8 @@ docker compose start titan-api titan-worker
 
 ## Database Location
 
-Default path: `titan_core.db` in the data directory (or `DATABASE_PATH` env override).
-
-```bash
-echo $DATABASE_PATH  # if set; otherwise assume ./titan_core.db
-```
+Path: `titan_core.db` in the data directory — `/data/titan_core.db` in Docker,
+`~/Documents/TITAN/titan_core.db` locally. There is no environment variable that moves it.
 
 ---
 
@@ -173,7 +152,7 @@ python main.py
 
 ## Backup Procedure
 
-Automated: `titan-worker` calls `DatabaseManager.backup_database(keep=7)` at each cycle start (every 24 h). No cron setup required in Docker deployments.
+Automated: `titan-worker` calls `DatabaseManager.backup_database(keep=7, keep_weekly=4)` at each cycle start (startup, then daily at 07:00 UTC), with the values from `.env`. No cron setup required in Docker deployments.
 
 Manual on-demand:
 
@@ -188,14 +167,16 @@ bash scripts/backup.sh [data_dir]
 Before restoring, verify the backup file is not corrupt:
 
 ```bash
-# Verify latest backup integrity
+# Worker backups (titan_YYYY-MM-DD.db), Docker
+docker compose run --rm --no-deps titan-worker python scripts/restore_drill.py
+# Exit 0 = OK, exit 1 = failed — try an earlier backup
+
+# Manual backups from scripts/backup.sh (titan_core.db.YYYYMMDD) only
 python3 scripts/verify_backup.py ~/Documents/TITAN
-# Exit 0 = OK
-# Exit 1 = corrupt — restore an earlier backup
 ```
 
-The script prints the backup path and file size on success.
-If it fails, try the next most-recent file in `~/Documents/TITAN/backups/`.
+`verify_backup.py` looks only for `titan_core.db.*` files, so it does not see the worker's
+backups. If a check fails, try the next most-recent file.
 
 ---
 

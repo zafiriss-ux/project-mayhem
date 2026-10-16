@@ -14,7 +14,7 @@ TITAN OS is a self-hosted coaching system. The primary threat surface consists o
 1. External API credentials (Garmin, Telegram) stored in `~/Documents/TITAN/.env`
 2. SQLite database containing athlete biometric and training history
 3. Telegram bot receiving and dispatching commands
-4. Optional future FastAPI/React operator console (Phase 8B — not yet deployed)
+4. FastAPI service `titan-api` on port 8000 (Docker), with JWT login/refresh and coach routes (ADR-0048, ADR-0054)
 
 ---
 
@@ -114,18 +114,17 @@ TITAN OS is a self-hosted coaching system. The primary threat surface consists o
 
 | Field | Detail |
 |-------|--------|
-| **Asset** | `titan.db` SQLite file |
+| **Asset** | `titan_core.db` SQLite file |
 | **Threat** | Local attacker or buggy write corrupts the athlete database |
 | **Likelihood** | Low |
 | **Impact** | High — loss of training history; governance pipeline runs on invalid data |
-| **Control** | All writes use `threading.Lock`; `DailyCoach` enters degraded-conservative mode on persistence failure (ADR-0020); daily backup recommended |
-| **Residual Risk** | Medium — no automated backup; see `docs/runbooks/database-recovery.md` |
+| **Control** | All writes use `threading.Lock`; `DailyCoach` enters degraded-conservative mode on persistence failure (ADR-0020); the Docker worker takes a verified daily backup to a separate volume (7 daily + 4 weekly) |
+| **Residual Risk** | Low in Docker (both volumes are on the same host disk; copy backups off the machine, `docs/RUNBOOK_DR.md`). Medium in local mode, which takes no automatic backups |
 
 ---
 
 ## Out of Scope (Current Phase)
 
-- FastAPI / React operator console authentication (Phase 8B — addressed in ADR-0048)
 - Multi-tenant / multi-athlete isolation (Phase 9 — addressed in ADR-0033 Layer 3)
 - Network-level DDoS or API rate-limit exhaustion attacks
 - Physical host security

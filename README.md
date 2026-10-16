@@ -1,4 +1,4 @@
-# TITAN OS v5.8.0 — Closed-Loop Sovereign Training Intelligence
+# TITAN OS v5.8.4 — Closed-Loop Sovereign Training Intelligence
 
 🏃‍♂️ **Αυτόνομο Σύστημα Προπόνησης με Επιστημονική Νοημοσύνη**
 
@@ -162,7 +162,7 @@ ATHLETE_MAX_HR=185
 
 **"Database is corrupted"** → Βλ. [`docs/runbooks/database-recovery.md`](docs/runbooks/database-recovery.md).
 
-Logs του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`. Log του TITAN: `titan.log` (ή ό,τι ορίζει το `TITAN_LOG_PATH`).
+Logs του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`. Log του TITAN: με τον launcher `~/Documents/TITAN/logs/titan.log`, με `python -m titan` το `titan.log` του τρέχοντος φακέλου (ή ό,τι ορίζει το `TITAN_LOG_PATH`).
 
 ## 📋 Χρήση
 
@@ -334,4 +334,4 @@ curl "https://api.open-meteo.com/v1/forecast?latitude=37.98&longitude=23.73&curr
 
 ## 👨‍💻 Author
 
-TITAN OS v5.8.0 — Developed with Claude Code
+TITAN OS v5.8.4 — Developed with Claude Code
