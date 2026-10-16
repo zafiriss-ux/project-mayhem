@@ -854,9 +854,11 @@ class DatabaseManager:
     def _migrations(self) -> SchemaMigrations:
         return SchemaMigrations(self)
 
-    def update_shoe_mileage(self, shoe_id: int, distance_km: float, date: str) -> None:
-        """Add a run's distance to a shoe and set its last-used date."""
-        self._training.update_shoe_mileage(shoe_id, distance_km, date)
+    def update_shoe_mileage(
+        self, shoe_id: int, distance_km: float, date: str, athlete_id: str = "owner"
+    ) -> None:
+        """Add a run's distance to a shoe of *athlete_id* and set its last-used date."""
+        self._training.update_shoe_mileage(shoe_id, distance_km, date, athlete_id=athlete_id)
 
     def add_shoe(
         self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
@@ -864,13 +866,15 @@ class DatabaseManager:
         """Add a shoe for *athlete_id*; returns its id."""
         return self._training.add_shoe(name, shoe_type, max_km, athlete_id=athlete_id)
 
-    def get_active_shoes(self) -> list[tuple]:
-        """Active shoes as (id, name, total_km, max_km, last_used, type)."""
-        return self._training.get_active_shoes()
+    def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
+        """Active shoes of *athlete_id* as (id, name, total_km, max_km, last_used, type)."""
+        return self._training.get_active_shoes(athlete_id=athlete_id)
 
-    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
+    def check_shoe_availability(
+        self, shoe_id: int, athlete_id: str = "owner"
+    ) -> tuple[bool, str]:
         """(is_available, message) from the mileage limit and foam recovery time."""
-        return self._training.check_shoe_availability(shoe_id)
+        return self._training.check_shoe_availability(shoe_id, athlete_id=athlete_id)
 
     # --- PERSONAL BESTS (titan/core/repositories/training.py) ---
 
@@ -888,9 +892,11 @@ class DatabaseManager:
             athlete_id=athlete_id,
         )
 
-    def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
-        """Get personal best for a distance."""
-        return self._training.get_pr(distance_km=distance_km)
+    def get_pr(
+        self, distance_km: float, athlete_id: str = "owner"
+    ) -> tuple[int, str, str | None] | None:
+        """Get the personal best of *athlete_id* for a distance."""
+        return self._training.get_pr(distance_km=distance_km, athlete_id=athlete_id)
 
     # --- HRR (Heart Rate Recovery) (titan/core/repositories/physiology.py) ---
 

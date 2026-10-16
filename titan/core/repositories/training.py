@@ -19,7 +19,9 @@ class TrainingRepository:
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
 
-    def update_shoe_mileage(self, shoe_id: int, distance_km: float, date: str) -> None:
+    def update_shoe_mileage(
+        self, shoe_id: int, distance_km: float, date: str, athlete_id: str = "owner"
+    ) -> None:
         """
         Update shoe mileage after a run.
 
@@ -27,6 +29,7 @@ class TrainingRepository:
             shoe_id: ID of the shoe
             distance_km: Distance added in km
             date: Date of the run (ISO format)
+            athlete_id: Only a shoe of this athlete is updated (F9, D-076)
         """
         with self._db._lock:
             self._db._ensure_open_locked()
@@ -34,8 +37,8 @@ class TrainingRepository:
             cursor.execute("""
                 UPDATE gear_usage
                 SET total_km = total_km + ?, last_used = ?
-                WHERE id = ?
-            """, (distance_km, date, shoe_id))
+                WHERE id = ? AND athlete_id = ?
+            """, (distance_km, date, shoe_id, athlete_id))
             self._db.conn.commit()
 
     def add_shoe(
@@ -63,9 +66,9 @@ class TrainingRepository:
             self._db.conn.commit()
         return cursor.lastrowid
 
-    def get_active_shoes(self) -> list[tuple]:
+    def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
         """
-        Get all active shoes.
+        Get the active shoes of *athlete_id* (F9, D-076).
 
         Returns:
             List of tuples: (id, name, total_km, max_km, last_used, type)
@@ -76,12 +79,14 @@ class TrainingRepository:
             cursor.execute("""
                 SELECT id, shoe_name, total_km, max_km_limit, last_used, shoe_type
                 FROM gear_usage
-                WHERE status = 'ACTIVE'
+                WHERE status = 'ACTIVE' AND athlete_id = ?
                 ORDER BY shoe_name
-            """)
+            """, (athlete_id,))
             return cursor.fetchall()
 
-    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
+    def check_shoe_availability(
+        self, shoe_id: int, athlete_id: str = "owner"
+    ) -> tuple[bool, str]:
         """
         Check if shoe is available for use.
 
@@ -96,6 +101,7 @@ class TrainingRepository:
 
         Args:
             shoe_id: ID of the shoe to check
+            athlete_id: A shoe of another athlete counts as not found (F9, D-076)
 
         Returns:
             Tuple of (is_available, message)
@@ -110,8 +116,8 @@ class TrainingRepository:
             cursor.execute("""
                 SELECT last_used, compression_recovery_hours, total_km, max_km_limit
                 FROM gear_usage
-                WHERE id = ?
-            """, (shoe_id,))
+                WHERE id = ? AND athlete_id = ?
+            """, (shoe_id, athlete_id))
             result = cursor.fetchone()
 
         if not result:
@@ -176,12 +182,15 @@ class TrainingRepository:
             """, (distance_km, time_sec, pace_per_km, date, race_name, athlete_id))
             self._db.conn.commit()
 
-    def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
+    def get_pr(
+        self, distance_km: float, athlete_id: str = "owner"
+    ) -> tuple[int, str, str | None] | None:
         """
-        Get personal best for a distance.
+        Get the personal best of *athlete_id* for a distance.
 
         Args:
             distance_km: Distance in kilometers
+            athlete_id: Athlete whose records are read (F9, D-076)
 
         Returns:
             Tuple of (time_sec, date, race_name) or None if no PR exists
@@ -192,10 +201,10 @@ class TrainingRepository:
             cursor.execute("""
                 SELECT time_sec, date, race_name
                 FROM personal_bests
-                WHERE distance_km = ?
+                WHERE distance_km = ? AND athlete_id = ?
                 ORDER BY time_sec ASC
                 LIMIT 1
-            """, (distance_km,))
+            """, (distance_km, athlete_id))
             return cursor.fetchone()
 
     def log_cs_performance(
@@ -337,8 +346,9 @@ class TrainingRepository:
                   quality_flag, avg_pace_sec_per_km))
             if cursor.rowcount == 1 and shoe_id and distance_km:
                 cursor.execute("""
-                    UPDATE gear_usage SET total_km = total_km + ?, last_used = ? WHERE id = ?
-                """, (distance_km, date, shoe_id))
+                    UPDATE gear_usage SET total_km = total_km + ?, last_used = ?
+                    WHERE id = ? AND athlete_id = ?
+                """, (distance_km, date, shoe_id, athlete_id))
             if self._db._transaction_depth == 0:
                 self._db.conn.commit()
 

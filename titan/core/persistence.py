@@ -233,18 +233,20 @@ class PersistenceAdapter(ABC):
         """Insert a new shoe row for *athlete_id* and return its generated id."""
 
     @abstractmethod
-    def get_active_shoes(self) -> list[tuple]:
-        """Return all active shoes as (id, name, type, total_km, max_km, …) tuples."""
+    def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
+        """Return the active shoes of *athlete_id* as (id, name, type, total_km, …) tuples."""
 
     @abstractmethod
-    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
-        """Return (available, reason_string)."""
+    def check_shoe_availability(
+        self, shoe_id: int, athlete_id: str = "owner"
+    ) -> tuple[bool, str]:
+        """Return (available, reason_string); another athlete's shoe counts as not found."""
 
     @abstractmethod
     def update_shoe_mileage(
-        self, shoe_id: int, distance_km: float, date: str
+        self, shoe_id: int, distance_km: float, date: str, athlete_id: str = "owner"
     ) -> None:
-        """Add *distance_km* to the shoe's running total."""
+        """Add *distance_km* to the running total of a shoe of *athlete_id*."""
 
     # ------------------------------------------------------------------ #
     # Personal bests                                                       #
@@ -263,9 +265,9 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_pr(
-        self, distance_km: float
+        self, distance_km: float, athlete_id: str = "owner"
     ) -> tuple[int, str, str | None] | None:
-        """Return (time_seconds, date, race_name) for the best at *distance_km*, or None."""
+        """Return (time_seconds, date, race_name) of *athlete_id*'s best, or None."""
 
     # ------------------------------------------------------------------ #
     # Heart-rate recovery                                                  #
@@ -489,19 +491,22 @@ class SQLiteAdapter(PersistenceAdapter):
             name=name, shoe_type=shoe_type, max_km=max_km, athlete_id=athlete_id
         )
 
-    def get_active_shoes(self) -> list[tuple]:
-        return self._manager.get_active_shoes()
+    def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
+        return self._manager.get_active_shoes(athlete_id=athlete_id)
 
-    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
-        return self._manager.check_shoe_availability(shoe_id=shoe_id)
+    def check_shoe_availability(
+        self, shoe_id: int, athlete_id: str = "owner"
+    ) -> tuple[bool, str]:
+        return self._manager.check_shoe_availability(shoe_id=shoe_id, athlete_id=athlete_id)
 
     def update_shoe_mileage(
-        self, shoe_id: int, distance_km: float, date: str
+        self, shoe_id: int, distance_km: float, date: str, athlete_id: str = "owner"
     ) -> None:
         self._manager.update_shoe_mileage(
             shoe_id=shoe_id,
             distance_km=distance_km,
             date=date,
+            athlete_id=athlete_id,
         )
 
     def save_personal_best(
@@ -521,9 +526,9 @@ class SQLiteAdapter(PersistenceAdapter):
         )
 
     def get_pr(
-        self, distance_km: float
+        self, distance_km: float, athlete_id: str = "owner"
     ) -> tuple[int, str, str | None] | None:
-        return self._manager.get_pr(distance_km=distance_km)
+        return self._manager.get_pr(distance_km=distance_km, athlete_id=athlete_id)
 
     def save_hrr(self, date: str, hrr_60: int, hrr_120: int = 0, athlete_id: str = "owner") -> None:
         self._manager.save_hrr(date=date, hrr_60=hrr_60, hrr_120=hrr_120, athlete_id=athlete_id)
@@ -937,7 +942,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
             )
             return int(result.scalar_one())
 
-    def get_active_shoes(self) -> list[tuple]:
+    def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(
@@ -947,18 +952,26 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     self._gear_usage.c.total_km,
                     self._gear_usage.c.max_km_limit,
                     self._gear_usage.c.status,
-                ).where(self._gear_usage.c.status == "ACTIVE")
+                ).where(
+                    self._gear_usage.c.status == "ACTIVE",
+                    self._gear_usage.c.athlete_id == athlete_id,
+                )
             ).all()
         return [tuple(row) for row in rows]
 
-    def check_shoe_availability(self, shoe_id: int) -> tuple[bool, str]:
+    def check_shoe_availability(
+        self, shoe_id: int, athlete_id: str = "owner"
+    ) -> tuple[bool, str]:
         with self._engine.connect() as conn:
             row = conn.execute(
                 select(
                     self._gear_usage.c.total_km,
                     self._gear_usage.c.max_km_limit,
                     self._gear_usage.c.status,
-                ).where(self._gear_usage.c.id == shoe_id)
+                ).where(
+                    self._gear_usage.c.id == shoe_id,
+                    self._gear_usage.c.athlete_id == athlete_id,
+                )
             ).first()
         if row is None:
             return (False, "shoe_not_found")
@@ -970,12 +983,15 @@ class PostgreSQLAdapter(PersistenceAdapter):
         return (True, "available")
 
     def update_shoe_mileage(
-        self, shoe_id: int, distance_km: float, date: str
+        self, shoe_id: int, distance_km: float, date: str, athlete_id: str = "owner"
     ) -> None:
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._gear_usage)
-                .where(self._gear_usage.c.id == shoe_id)
+                .where(
+                    self._gear_usage.c.id == shoe_id,
+                    self._gear_usage.c.athlete_id == athlete_id,
+                )
                 .values(
                     total_km=self._gear_usage.c.total_km + distance_km,
                     last_used=date,
@@ -1004,7 +1020,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
             )
 
     def get_pr(
-        self, distance_km: float
+        self, distance_km: float, athlete_id: str = "owner"
     ) -> tuple[int, str, str | None] | None:
         with self._engine.connect() as conn:
             row = conn.execute(
@@ -1013,7 +1029,10 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     self._personal_bests.c.date,
                     self._personal_bests.c.race_name,
                 )
-                .where(self._personal_bests.c.distance_km == distance_km)
+                .where(
+                    self._personal_bests.c.distance_km == distance_km,
+                    self._personal_bests.c.athlete_id == athlete_id,
+                )
                 .order_by(self._personal_bests.c.time_sec.asc())
                 .limit(1)
             ).first()
