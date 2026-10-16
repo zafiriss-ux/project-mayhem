@@ -123,6 +123,10 @@ class TrainingRepository:
         # Check compression recovery
         if last_used:
             last_used_date = datetime.fromisoformat(last_used)
+            if last_used_date.tzinfo is None:
+                # last_used is the session date ("YYYY-MM-DD"); read it as UTC so the
+                # subtraction below does not mix naive and aware datetimes (F8).
+                last_used_date = last_used_date.replace(tzinfo=UTC)
             hours_since = (datetime.now(UTC) - last_used_date).total_seconds() / 3600
 
             if hours_since < recovery_hours:
