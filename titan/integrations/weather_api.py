@@ -105,7 +105,7 @@ class WeatherAPI:
     - Automatic refresh in background thread
     """
 
-    def __init__(self, api_key: str = None, location: str = None):
+    def __init__(self, api_key: str = None, location: str = None, *, athlete_id: str = "owner"):
         """
         Initialize WeatherAPI.
 
@@ -113,9 +113,18 @@ class WeatherAPI:
             api_key: Ignored — Open-Meteo requires no authentication.
                      Accepted for backward-compatibility only.
             location: Location string (e.g., "Athens,GR")
+            athlete_id: The owner falls back to WEATHER_LOCATION as before. Any other
+                     athlete needs their own location, from their profile, and never
+                     gets the owner's (ADR-0067 D5.1).
         """
         self.api_key = api_key or os.getenv("WEATHER_API_KEY")  # unused; kept for compat
-        self.location = location or os.getenv("WEATHER_LOCATION", "Athens,GR")
+        self.athlete_id = athlete_id
+        if athlete_id != "owner":
+            if not (location or "").strip(" ,"):
+                raise ValueError("an athlete other than the owner needs their own weather location")
+            self.location = location
+        else:
+            self.location = location or os.getenv("WEATHER_LOCATION", "Athens,GR")
         self.cache = {}
         self.cache_timestamp = None
         self.cache_duration_hours = 1
