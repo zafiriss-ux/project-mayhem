@@ -97,6 +97,9 @@ def menu_daily_plan(ctx: dict):
     # Recovery
     hrv_summary = hrv_eng.get_hrv_summary() if hrv_eng else {}
     tsb_val, tsb_status = tsb_eng.calculate_tsb() if tsb_eng else (None, "N/A")
+    from titan.science.tsb_engine import tsb_status_for_phase
+
+    tsb_status = tsb_status_for_phase(tsb_val, tsb_status, ctx.get("phase"))
 
     print(f"\n  📅 {datetime.now(UTC).strftime('%A %d %B %Y')}\n")
 
@@ -508,6 +511,9 @@ def _browser_tsb(ctx: dict):
         ctl = tsb_eng.calculate_ctl()
         atl = tsb_eng.calculate_atl()
         tsb, status = tsb_eng.calculate_tsb()
+        from titan.science.tsb_engine import tsb_status_for_phase
+
+        status = tsb_status_for_phase(tsb, status, ctx.get("phase"))
         if ctl is None:
             print("\n  ℹ️  Ανεπαρκή δεδομένα προπόνησης.")
             print("     Κάνε Garmin sync (επιλογή 6) για να φορτωθεί ιστορικό.")

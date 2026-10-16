@@ -53,7 +53,7 @@ from titan.science.glycogen_model import GlycogenModel
 # ── Science engines ──────────────────────────────────────────────────────────
 from titan.science.rcp_engine import RCPEngine
 from titan.science.trimp_engine import TRIMPEngine
-from titan.science.tsb_engine import LOAD_HISTORY_DAYS
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS, tsb_status_for_phase
 
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
@@ -214,6 +214,7 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
         try:
             hrv_s = hrv.get_hrv_summary()
             tsb_val, tsb_status = tsb.calculate_tsb()
+            tsb_status = tsb_status_for_phase(tsb_val, tsb_status, ctx.get("athlete_profile", {}).get("phase"))
             return (
                 f"📊 *STATS*\n"
                 f"• HRV baseline: {hrv_s.get('baseline', 'N/A')}\n"

@@ -20,7 +20,7 @@ from titan.config.thresholds import (
 from titan.core.structured_events import make_event_emitter
 from titan.science.acwr_engine import ACWREngine
 from titan.science.hrv_engine import HRVGuidedEngine
-from titan.science.tsb_engine import TSBEngine
+from titan.science.tsb_engine import TSBEngine, tsb_status_for_phase
 
 _log = logging.getLogger(__name__)
 _planner_event = make_event_emitter("weekly_planner", _log)
@@ -194,6 +194,7 @@ class WeeklyPlanGenerator:
         # Get current status
         hrv_summary = self.hrv_engine.get_hrv_summary()
         tsb_value, tsb_status = self.tsb_engine.calculate_tsb()
+        tsb_status = tsb_status_for_phase(tsb_value, tsb_status, phase)
 
         _planner_event(
             "plan_generation_started",

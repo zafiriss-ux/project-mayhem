@@ -216,3 +216,22 @@ def test_steady_athlete_does_not_jump_overnight() -> None:
     loads = [((start + timedelta(days=i)).isoformat(), week[i % 7]) for i in range(84)]
     tsbs = [_kernel(loads, start + timedelta(days=d))[2] for d in range(42, 84)]
     assert max(abs(b - a) for a, b in zip(tsbs, tsbs[1:], strict=False)) < 20
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("tsb_value", "status", "phase", "expected"),
+    [
+        (30.0, "⚠️ SEVERE DETRAINING", "TAPER", "✅ FRESH (taper)"),
+        (20.0, "⚠️ DETRAINING", "taper", "✅ FRESH (taper)"),
+        (8.0, "✅ FRESH", "TAPER", "✅ FRESH (taper)"),
+        (3.0, "🎯 RACE FORM", "TAPER", "🎯 RACE FORM"),
+        (30.0, "⚠️ SEVERE DETRAINING", "BUILD", "⚠️ SEVERE DETRAINING"),
+        (None, "INSUFFICIENT DATA", "TAPER", "INSUFFICIENT DATA"),
+    ],
+)
+def test_taper_reads_a_high_tsb_as_fresh(tsb_value, status, phase, expected) -> None:
+    """SV-13 / D-064: in TAPER a TSB above +5 is FRESH (taper), not DETRAINING."""
+    from titan.science.tsb_engine import tsb_status_for_phase
+
+    assert tsb_status_for_phase(tsb_value, status, phase) == expected

@@ -129,6 +129,20 @@ def replay_tsb(
     )
 
 
+TAPER_FRESH_STATUS = "✅ FRESH (taper)"
+
+
+def tsb_status_for_phase(tsb_value: float | None, status: str, phase: str | None) -> str:
+    """The TSB label for the athlete's training phase (SV-13 / D-064).
+
+    In TAPER a rising TSB is the goal, so every TSB above +5 reads FRESH (taper)
+    instead of DETRAINING. Display only: no decision reads this label.
+    """
+    if str(phase or "").upper() == "TAPER" and tsb_value is not None and tsb_value > 5:
+        return TAPER_FRESH_STATUS
+    return status
+
+
 class TSBEngine:
     """Training Stress Balance: CTL - ATL = Form"""
 
