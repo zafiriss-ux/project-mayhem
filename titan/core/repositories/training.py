@@ -522,7 +522,6 @@ class TrainingRepository:
             )
             elapsed_ms = (time.monotonic() - t0) * 1000
             get_metrics().histogram("ctl_recompute_ms", elapsed_ms, {"athlete": athlete_id})
-            get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
 
             from titan.science.physiological_bounds import (
                 validate_single,  # deferred: avoids circular import
@@ -530,11 +529,14 @@ class TrainingRepository:
             ctl_out = validate_single("ctl", ctl, "ctl_atl_tsb")
             atl_out = validate_single("atl", atl, "ctl_atl_tsb")
             # Return zero-safe defaults when validation nulls a value (ADR-0023 §3)
-            return (
-                ctl_out if ctl_out is not None else 0.0,
-                atl_out if atl_out is not None else 0.0,
-                tsb,
-            )
+            ctl_out = ctl_out if ctl_out is not None else 0.0
+            atl_out = atl_out if atl_out is not None else 0.0
+            # D-082: TSB is CTL − ATL of the values returned, so a clamped CTL or ATL
+            # moves TSB with it (before, TSB kept the unclamped difference).
+            if (ctl_out, atl_out) != (ctl, atl):
+                tsb = round(ctl_out - atl_out, 1)
+            get_metrics().gauge("tsb_value", tsb, {"athlete": athlete_id})
+            return (ctl_out, atl_out, tsb)
 
     def replay_tsb(
         self,
