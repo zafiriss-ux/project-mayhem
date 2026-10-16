@@ -1289,7 +1289,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
         success: bool,
         error_class: str | None = None,
     ) -> None:
-        del athlete_id, source, attempted_at, success, error_class
+        del source, attempted_at, success, error_class, athlete_id
 
     def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
         del source, athlete_id
