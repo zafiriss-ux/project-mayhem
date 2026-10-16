@@ -316,7 +316,7 @@ class PhysiologyRepository:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
-                """SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source
+                """SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source, sleep_quality
                    FROM daily_metrics
                    WHERE athlete_id = ? AND date = ?""",
                 (athlete_id, date),
@@ -331,4 +331,5 @@ class PhysiologyRepository:
             "sleep_hours": row[3],
             "weight_kg": row[4],
             "data_source": row[5],
+            "sleep_quality": row[6],
         }

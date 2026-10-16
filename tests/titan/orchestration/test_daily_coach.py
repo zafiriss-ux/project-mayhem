@@ -3256,3 +3256,59 @@ def test_missing_today_hrv_puts_an_easy_ceiling_on_quality_work():
         context=context,
     )
     assert plan["session_type"] == "EASY"
+
+
+# SV-16 / ADR-0066: three bad nights in a row make the day EASY with 70% of its volume.
+
+@pytest.mark.unit
+def test_sleep_debt_eases_any_run_to_easy_with_70pct():
+    assert daily_coach._ease_for_sleep_debt({"session_type": "TEMPO", "duration_min": 50, "distance_km": 10.0}) == {
+        "session_type": "EASY", "duration_min": 35, "distance_km": 7.0,
+    }
+    assert daily_coach._ease_for_sleep_debt({"session_type": "EASY", "duration_min": 40, "distance_km": 7.0}) == {
+        "session_type": "EASY", "duration_min": 28, "distance_km": 4.9,
+    }
+    rest = {"session_type": "REST", "duration_min": 0, "distance_km": 0}
+    assert daily_coach._ease_for_sleep_debt(rest) == rest
+
+
+def _sleep_db(tmp_path, scores_back):
+    """daily_metrics with a sleep score for 1, 2, ... days before today (None = no row)."""
+    db = DatabaseManager(db_name="sleep_debt.db", db_dir=tmp_path)
+    today = datetime.now(UTC).date()
+    for back, score in enumerate(scores_back, start=1):
+        if score is not None:
+            db.save_daily_metric(date=(today - timedelta(days=back)).isoformat(), sleep_quality=score)
+    return db
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("tonight", "before", "expected"),
+    [
+        (34, [34, 34], 3),       # three bad nights
+        (59, [40, 55], 3),       # every score under 60
+        (34, [34, 60], 2),       # 60 is not bad
+        (34, [70, 34], 1),       # a good night ends the run
+        (34, [None, 34], 1),     # a night without a score ends the run (ADR-0051)
+        (None, [34, 34], 0),     # no score tonight
+        (80, [34, 34], 0),
+    ],
+)
+def test_bad_sleep_nights_counts_the_run_up_to_tonight(tmp_path, tonight, before, expected):
+    db = _sleep_db(tmp_path, before)
+    try:
+        coach = SimpleNamespace(db=db, athlete_id="owner")
+        assert DailyCoach._bad_sleep_nights(coach, tonight) == expected
+    finally:
+        db.close()
+
+
+@pytest.mark.unit
+def test_bad_sleep_nights_reads_only_this_athlete(tmp_path):
+    db = _sleep_db(tmp_path, [34, 34])
+    try:
+        coach = SimpleNamespace(db=db, athlete_id="someone_else")
+        assert DailyCoach._bad_sleep_nights(coach, 34) == 1
+    finally:
+        db.close()

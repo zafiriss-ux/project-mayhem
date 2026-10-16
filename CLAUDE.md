@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3499 tests all green (3499 passed, 7 skipped, 3506 collected — 2026-10-15, full pytest)
+**Historical snapshot:** 3509 tests all green (3509 passed, 7 skipped, 3516 collected — 2026-10-16, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -118,6 +118,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90.
 - `0063` — Long-run fueling reminder
 - `0064` — H2 relative HRV drop
 - `0065` — Downgrade volume cap
+- `0066` — Sleep debt EASY day
 
 ## Docker
 

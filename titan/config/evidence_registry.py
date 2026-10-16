@@ -864,6 +864,35 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         policy_note='HEURISTIC policy cap; recalibrate via OutcomeTracker with downgraded-day outcomes.',
     ),
 
+    'SLEEP_DEBT_NIGHTS': ThresholdEvidence(
+        parameter='SLEEP_DEBT_NIGHTS',
+        value=3,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Owner decision ADR-0066 (SV-16, synthetic-athlete validation).',
+        rationale=(
+            'Three nights of 4.2 h sleep (score 34) changed the session for 1 of 6 synthetic '
+            'athletes, because bad sleep is only one of the four 2-of-4 indicators. One bad night '
+            'is common; three in a row are a clear fatigue signal, so the day becomes EASY with '
+            '70% of its volume.'
+        ),
+        policy_note='HEURISTIC policy count; recalibrate via OutcomeTracker with post-sleep-debt outcomes.',
+    ),
+
+    'SLEEP_DEBT_SCORE_MAX': ThresholdEvidence(
+        parameter='SLEEP_DEBT_SCORE_MAX',
+        value=60,
+        evidence_level='HEURISTIC',
+        population='MIXED',
+        source='Same limit as the 2-of-4 sleep indicator I2 in governance_engine (ADR-0009); ADR-0066.',
+        rationale=(
+            'A night counts as bad when its sleep score is under 60, the score the governance '
+            'engine already treats as poor sleep. A night without a score is not counted as bad '
+            '(ADR-0051: a missing reading is not replaced).'
+        ),
+        policy_note='HEURISTIC; follows the I2 limit if that is recalibrated.',
+    ),
+
     'PLANNER_VOLUME_WINDOW_DAYS': ThresholdEvidence(
         parameter='PLANNER_VOLUME_WINDOW_DAYS',
         value=28,

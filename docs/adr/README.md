@@ -80,6 +80,7 @@
 | [0063](0063-long-run-fueling-reminder.md) | Το μεγάλο τρέξιμο χωρίς επιβεβαιωμένο fueling μένει, με υπενθύμιση στο πρωινό μήνυμα | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
 | [0064](0064-h2-relative-hrv-drop.md) | Η H2 δίνει REST σε πτώση HRV 15 ms ή 30% της βάσης, ό,τι έρθει πρώτο | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
 | [0065](0065-downgrade-volume-cap.md) | Υποβάθμιση από πύλη χωρίς δικό της συντελεστή: όγκος 70% και το πολύ 60' | Governance (ADR-0009) | 🔲 Proposed (2026-10-10) |
+| [0066](0066-sleep-debt-easy-day.md) | Τρεις συνεχόμενες νύχτες με score ύπνου κάτω από 60 κάνουν τη μέρα EASY με 70% του όγκου | Governance (ADR-0009) | 🔲 Proposed (2026-10-16) |
 
 ---
 
