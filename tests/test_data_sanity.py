@@ -159,7 +159,7 @@ def test_activity_within_drift_margin_not_rejected():
 @pytest.mark.integration
 @pytest.mark.parametrize("empty", [None, ""])
 def test_activity_with_an_empty_date_is_rejected(empty):
-    """F1 (D-070): an explicit empty date is rejected for this record, not written as NULL."""
+    """F1 (D-071): an explicit empty date is rejected for this record, not written as NULL."""
     violations = DataSanityChecker().check_activity({"date": empty, "distance_km": 5.0, "duration_sec": 1800})
     assert [(v.rule, v.severity) for v in violations] == [("date_null_or_empty", "reject")]
 

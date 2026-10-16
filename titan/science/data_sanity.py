@@ -165,7 +165,7 @@ class DataSanityChecker:
                 _emit(context, v)
 
         # Rule: a date key that is present but empty (None / "") would be written as a
-        # NULL training_log.date; reject this record only (F1, D-070).
+        # NULL training_log.date; reject this record only (F1, D-071).
         if "date" in row and not row["date"]:
             v = SanityViolation(
                 record_type="activity",
