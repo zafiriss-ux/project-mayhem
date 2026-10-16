@@ -159,6 +159,9 @@ forward:
   model training without explicit per-athlete consent recorded in a `consent_log` table.
 - The `consent_log` table schema (columns: `athlete_id`, `consent_type`, `granted_at`,
   `revoked_at`) is a Phase 8A deliverable (D9, added to Alembic migration).
+- *Note 2026-10-16 (ADR-0067 D4, D-091):* the SQLite ladder's v30 `consent_log` drops the
+  `'default'` athlete and adds `text_version` and `channel`. Alembic stays frozen at the D9 shape
+  (T-PRA-30); SQLite remains the backend (D-085).
 
 ---
 

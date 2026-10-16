@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -234,7 +235,7 @@ def test_governance_decision_and_outcome_round_trip_per_athlete(db) -> None:
 @pytest.mark.unit
 def test_override_log_and_ratio(db) -> None:
     today = datetime.now(UTC).strftime("%Y-%m-%d")
-    db.log_override(today, "TEMPO", "EASY", "legs heavy")
+    db.log_override(today, "TEMPO", "EASY", "legs heavy", athlete_id="owner")
 
     assert db.get_override_log(limit=1)[0]["reason"] == "legs heavy"
     assert db.get_override_ratio(days=14) is None  # cold start: no governance history
@@ -242,6 +243,29 @@ def test_override_log_and_ratio(db) -> None:
         {"date": today, "session_planned": "TEMPO", "session_post_governance": "EASY"}
     )
     assert db.get_override_ratio(days=14) == round(1 / 14, 3)
+
+
+@pytest.mark.unit
+def test_override_log_and_ratio_are_per_athlete(db) -> None:
+    """ADR-0067 D3: another athlete's override neither shows nor counts for the owner."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    db.save_governance_decision(
+        {"date": today, "session_planned": "TEMPO", "session_post_governance": "EASY"}
+    )
+    db.log_override(today, "TEMPO", "EASY", "other athlete", athlete_id="a-0000beef")
+
+    assert db.get_override_log(limit=10) == []
+    assert db.get_override_ratio(days=14) == 0.0
+    assert db.get_override_log(limit=10, athlete_id="a-0000beef")[0]["reason"] == "other athlete"
+
+
+@pytest.mark.unit
+def test_override_without_athlete_is_refused(db) -> None:
+    """ADR-0067 D3: neither the code nor the table accepts an override with no athlete."""
+    with pytest.raises(TypeError):
+        db.log_override("2026-10-16", "TEMPO", "EASY")  # type: ignore[call-arg]
+    with pytest.raises(sqlite3.IntegrityError):
+        db.conn.execute("INSERT INTO override_log (date) VALUES ('2026-10-16')")
 
 
 @pytest.mark.unit
@@ -266,14 +290,28 @@ def test_unknown_athlete_is_treated_as_cold_start(db) -> None:
 def test_sync_outcome_keeps_the_last_success_after_a_failure(db) -> None:
     ok = datetime(2026, 10, 5, 6, 0, tzinfo=UTC)
     failed = datetime(2026, 10, 6, 6, 0, tzinfo=UTC)
-    db.record_sync_outcome(source="garmin", attempted_at=ok, success=True)
-    db.record_sync_outcome(source="garmin", attempted_at=failed, success=False, error_class="Timeout")
+    db.record_sync_outcome(athlete_id="owner", source="garmin", attempted_at=ok, success=True)
+    db.record_sync_outcome(
+        athlete_id="owner", source="garmin", attempted_at=failed, success=False, error_class="Timeout"
+    )
 
     assert db.get_last_sync_outcome("garmin") == {
         "last_attempt_ts": failed, "last_success_ts": ok,
         "last_sync_ok": False, "last_error_class": "Timeout",
     }
     assert db.get_last_sync_outcome("strava") is None
+
+
+@pytest.mark.unit
+def test_sync_outcome_is_per_athlete(db) -> None:
+    """ADR-0067 D3: one athlete's Garmin sync never stands in for another's."""
+    ok = datetime(2026, 10, 5, 6, 0, tzinfo=UTC)
+    db.record_sync_outcome(athlete_id="a-0000beef", source="garmin", attempted_at=ok, success=True)
+
+    assert db.get_last_sync_outcome("garmin") is None
+    assert db.get_last_sync_outcome("garmin", athlete_id="a-0000beef")["last_success_ts"] == ok
+    with pytest.raises(sqlite3.IntegrityError):
+        db.conn.execute("INSERT INTO sync_metadata (source) VALUES ('garmin')")
 
 
 @pytest.mark.unit

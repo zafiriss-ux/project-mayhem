@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 29
+SCHEMA_VERSION = 30
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -460,6 +460,10 @@ class DatabaseManager:
     def _apply_v29_migrations(self, cursor) -> None:
         """Version 29: training_log (athlete_id, date) index (D-077)."""
         self._migrations._apply_v29_migrations(cursor=cursor)
+
+    def _apply_v30_migrations(self, cursor) -> None:
+        """Version 30: athlete_id without DEFAULT, consent per text version, profiles, accounts (ADR-0067)."""
+        self._migrations._apply_v30_migrations(cursor=cursor)
 
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
@@ -965,9 +969,13 @@ class DatabaseManager:
         prescribed: str,
         actual: str,
         reason: str = '',
+        *,
+        athlete_id: str,
     ) -> None:
         """Record a session override (athlete deviated from prescribed session)."""
-        self._governance.log_override(date=date, prescribed=prescribed, actual=actual, reason=reason)
+        self._governance.log_override(
+            date=date, prescribed=prescribed, actual=actual, reason=reason, athlete_id=athlete_id
+        )
 
     def record_override_signal(
         self,
@@ -988,9 +996,9 @@ class DatabaseManager:
         """Calculate the fraction of days in the last N days with an override."""
         return self._governance.get_override_ratio(athlete_id=athlete_id, days=days)
 
-    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
+    def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
         """Return recent override audit rows (oldest first) for operator review."""
-        return self._governance.get_override_log(limit=limit)
+        return self._governance.get_override_log(limit=limit, athlete_id=athlete_id)
 
     # --- TELEGRAM OVERRIDE NONCES (ADR-0060 D2) (titan/core/repositories/governance.py) ---
 
@@ -1101,19 +1109,21 @@ class DatabaseManager:
     def record_sync_outcome(
         self,
         *,
+        athlete_id: str,
         source: str,
         attempted_at: datetime,
         success: bool,
         error_class: str | None = None,
     ) -> None:
-        """Persist latest sync attempt outcome for a source system."""
+        """Persist the athlete's latest sync attempt outcome for a source system."""
         self._operations.record_sync_outcome(
-            source=source, attempted_at=attempted_at, success=success, error_class=error_class
+            athlete_id=athlete_id, source=source, attempted_at=attempted_at,
+            success=success, error_class=error_class,
         )
 
-    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
         """Return latest sync outcome metadata for a source."""
-        return self._operations.get_last_sync_outcome(source=source)
+        return self._operations.get_last_sync_outcome(source=source, athlete_id=athlete_id)
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         """Return a datetime representing the most recent data written by Garmin sync."""

@@ -432,7 +432,7 @@ def rewrite_recent_hrv_once(
     succeeds, which is recorded in ``sync_metadata`` under ``HRV_REWRITE_MARKER``.
     Returns the number of nights rewritten.
     """
-    marker = db.get_last_sync_outcome(HRV_REWRITE_MARKER)
+    marker = db.get_last_sync_outcome(HRV_REWRITE_MARKER, athlete_id=athlete_id)
     if marker and marker.get("last_success_ts"):
         return 0
     from datetime import UTC, datetime
@@ -451,6 +451,8 @@ def rewrite_recent_hrv_once(
                 continue
             db.replace_garmin_hrv(date=entry["date"], hrv=rmssd, athlete_id=athlete_id)
             rewritten += 1
-    db.record_sync_outcome(source=HRV_REWRITE_MARKER, attempted_at=datetime.now(UTC), success=True)
+    db.record_sync_outcome(
+        athlete_id=athlete_id, source=HRV_REWRITE_MARKER, attempted_at=datetime.now(UTC), success=True
+    )
     emit("hrv_history_rewritten", nights=rewritten, field="lastNightAvg")
     return rewritten

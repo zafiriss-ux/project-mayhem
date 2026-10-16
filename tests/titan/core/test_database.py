@@ -276,6 +276,7 @@ def test_save_personal_best_cursor_inside_lock(tmp_path):
                 prescribed="REST",
                 actual="EASY",
                 reason="Felt good",
+                athlete_id="owner",
             ),
         ),
         (
@@ -349,7 +350,7 @@ def test_write_after_close_raises(tmp_path):
     [
         lambda db: db.update_glycogen_debt(date="2026-03-05", debt_score=3.5),
         lambda db: db.log_cs_performance(date="2026-03-05", distance_m=3000.0, time_sec=700.0),
-        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
+        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST", athlete_id="owner"),
         lambda db: db.save_governance_decision({"date": "2026-03-05"}),
         lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
         lambda db: db.upsert_model_calibration_metadata(
@@ -373,7 +374,7 @@ def test_in_scope_write_methods_fail_fast_after_close(tmp_path, write_call):
     [
         lambda db: db.update_glycogen_debt(date="2026-03-05", debt_score=3.5),
         lambda db: db.log_cs_performance(date="2026-03-05", distance_m=3000.0, time_sec=700.0),
-        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST"),
+        lambda db: db.log_override(date="2026-03-05", prescribed="EASY", actual="REST", athlete_id="owner"),
         lambda db: db.save_governance_decision({"date": "2026-03-05"}),
         lambda db: db.update_governance_outcome(date="2026-03-05", rpe=4),
         lambda db: db.upsert_model_calibration_metadata(
@@ -954,7 +955,7 @@ def test_governance_outcomes_create_table_has_athlete_id_column(tmp_path):
 def test_schema_version_is_11():
     """SCHEMA_VERSION must be 20 after biological_sex/menstrual_tracking migration."""
     from titan.core.database import SCHEMA_VERSION
-    assert SCHEMA_VERSION == 29
+    assert SCHEMA_VERSION == 30
 
 
 @pytest.mark.integration
@@ -1034,7 +1035,7 @@ def test_v11_migration_adds_athlete_id_to_existing_governance_outcomes(tmp_path)
         columns = {row[1] for row in cursor.execute("PRAGMA table_info(governance_outcomes)").fetchall()}
         assert "athlete_id" in columns, "v11 migration must add athlete_id to governance_outcomes"
         version = cursor.execute("PRAGMA user_version").fetchone()[0]
-        assert version == 29  # SCHEMA_VERSION bumped to 29 by idx_training_log_athlete_date (D-077)
+        assert version == 30  # SCHEMA_VERSION bumped to 30 by the multi-athlete step 2 (ADR-0067, D-091)
     finally:
         db.close()
 

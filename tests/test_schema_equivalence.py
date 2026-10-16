@@ -79,6 +79,27 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "biological_sex",
         "menstrual_tracking",
     ],
+    "athlete_accounts": [  # v30 — ADR-0067 D9, D10 (D-091)
+        "athlete_id",
+        "garmin_user_id",
+        "garmin_token_state",
+        "telegram_chat_id",
+        "updated_at",
+    ],
+    "athlete_profiles": [  # v30 — ADR-0067 D5 (D-091)
+        "athlete_id",
+        "birth_date",
+        "sex",
+        "weight_kg",
+        "height_cm",
+        "max_hr",
+        "threshold_hr",
+        "training_phase",
+        "training_goal",
+        "location_city",
+        "location_country",
+        "updated_at",
+    ],
     "auth_tokens": [
         "id",
         "user_id",
@@ -110,12 +131,14 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "action_detail",
         "performed_at",
     ],
-    "consent_log": [
+    "consent_log": [  # v30 rebuild — ADR-0067 D4 (D-091)
         "id",
         "athlete_id",
         "consent_type",
+        "text_version",
         "granted_at",
         "revoked_at",
+        "channel",
     ],
     "cs_performances": [
         "id",
@@ -213,6 +236,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
     ],
     "override_log": [
         "id",
+        "athlete_id",  # v30 — ADR-0067 D3 (D-091)
         "date",
         "prescribed_type",
         "actual_type",
@@ -236,6 +260,7 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "athlete_id",
     ],
     "sync_metadata": [
+        "athlete_id",  # v30 — ADR-0067 D3 (D-091)
         "source",
         "last_attempt_ts",
         "last_success_ts",

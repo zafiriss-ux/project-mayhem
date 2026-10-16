@@ -71,7 +71,7 @@ class DummyDB:
     def record_sync_outcome(self, **kwargs):
         self._last_sync_outcome = kwargs
 
-    def get_last_sync_outcome(self, source: str):
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner"):
         return None
 
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
@@ -1200,7 +1200,7 @@ def test_run_morning_routine_keeps_weather_recommendation_when_live():
 def test_run_morning_routine_fresh_garmin_data_keeps_planned_session_type():
     captured = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
-    coach.db.get_last_sync_outcome = lambda source: {
+    coach.db.get_last_sync_outcome = lambda source, athlete_id="owner": {
         "last_success_ts": datetime.now(),
         "last_error_class": None,
     }
@@ -1227,7 +1227,7 @@ def test_run_morning_routine_stale_garmin_data_forces_easy_and_sets_context_flag
     coach.weekly_planner = SimpleNamespace(
         get_today_session=lambda: {"session_type": "INTERVAL", "volume_pct": 1.0, "duration_min": 75, "distance_km": 12}
     )
-    coach.db.get_last_sync_outcome = lambda source: {
+    coach.db.get_last_sync_outcome = lambda source, athlete_id="owner": {
         "last_success_ts": datetime.now() - timedelta(hours=27),
         "last_error_class": "GARMIN_TIMEOUT",
     }
@@ -1986,7 +1986,7 @@ def test_run_morning_routine_propagates_data_trust_to_payload_and_context():
     captured_payload = {}
     captured_context = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
-    coach.db.get_last_sync_outcome = lambda source: {
+    coach.db.get_last_sync_outcome = lambda source, athlete_id="owner": {
         "last_success_ts": datetime.now(),
         "last_error_class": None,
     }
@@ -2018,7 +2018,7 @@ def test_run_morning_routine_propagates_data_trust_to_payload_and_context():
 def test_run_morning_routine_adds_suspect_data_trust_caveat():
     captured_payload = {}
     coach = MinimalCoachFactory.build(telegram_success=True)
-    coach.db.get_last_sync_outcome = lambda source: {
+    coach.db.get_last_sync_outcome = lambda source, athlete_id="owner": {
         "last_success_ts": datetime.now() - timedelta(hours=13),
         "last_error_class": None,
     }

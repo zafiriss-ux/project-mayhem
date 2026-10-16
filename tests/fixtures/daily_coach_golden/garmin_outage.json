@@ -3573,6 +3573,7 @@
   ],
   "sync_metadata": [
    {
+    "athlete_id": "owner",
     "last_attempt_ts": "2026-03-02T07:30:00+00:00",
     "last_error_class": null,
     "last_success_ts": "2026-03-02T07:30:00+00:00",
@@ -3580,6 +3581,7 @@
     "source": "garmin_hrv_last_night_avg"
    },
    {
+    "athlete_id": "owner",
     "last_attempt_ts": "2026-03-08T07:30:00+00:00",
     "last_error_class": null,
     "last_success_ts": "2026-03-08T07:30:00+00:00",

@@ -1,4 +1,4 @@
-"""Schema migrations: additive steps v1–v29 guarded by ``PRAGMA user_version``,
+"""Schema migrations: steps v1–v30 guarded by ``PRAGMA user_version``,
 and the owner rows a new database starts with.
 
 ``SCHEMA_VERSION`` stays in ``titan.core.database``; base tables come from
@@ -221,6 +221,12 @@ class SchemaMigrations:
                 "training_log",
                 "idx_training_log_athlete_date: per-athlete date-window reads use an index (D-077)",
                 None,  # DDL — see _apply_v29_migrations() below
+            ),
+            30: (
+                "sync_metadata / override_log / consent_log / athlete_profiles / athlete_accounts",
+                "multi-athlete step 2 (ADR-0067 D3, D4): athlete_id without DEFAULT, consent per "
+                "text version, per-athlete profile and account tables (D-091)",
+                None,  # DDL — see _apply_v30_migrations() below
             ),
         }
 
@@ -551,6 +557,18 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 29,
                 "changes": "training_log (athlete_id, date) index (D-077)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 30:
+            self._db._apply_v30_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 30,
+                "changes": (
+                    "sync_metadata/override_log athlete_id; consent_log text_version; "
+                    "athlete_profiles, athlete_accounts (ADR-0067, D-091)"
+                ),
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1254,3 +1272,138 @@ class SchemaMigrations:
             "CREATE INDEX IF NOT EXISTS idx_training_log_athlete_date "
             "ON training_log(athlete_id, date)"
         )
+
+    def _apply_v30_migrations(self, cursor) -> None:
+        """Version 30: multi-athlete step 2 (ADR-0067 D3, D4; D-091).
+
+        New ``athlete_id`` columns have no DEFAULT (AGENTS §16.10 A40-4 as amended by
+        ADR-0067): an insert without ``athlete_id`` fails. SQLite cannot add a NOT NULL
+        column without a default, so each table is rebuilt. A table that already has the
+        target shape (a fresh database whose base table came from the descriptor) is left
+        as it is.
+
+        Existing rows become the owner's (ADR-0067 D3.1). Both tables only ever held the
+        owner's data: ``sync_metadata`` records the outcome of the owner's Garmin sync and
+        the owner's one-off HRV rewrite (sources ``garmin`` and ``HRV_REWRITE_MARKER``),
+        and ``override_log`` is written only by the owner's operator console.
+
+        ``consent_log`` gets ``text_version`` and ``channel`` (ADR-0067 D4). No code has
+        ever written it; any row found is kept with text version ``'unversioned'``, which
+        no consent text has, so it never counts as consent.
+        """
+        def _columns(table: str) -> list[str]:
+            return [row[1] for row in cursor.execute(f"PRAGMA table_info({table})")]
+
+        def _rebuild(table: str, marker: str, create_sql: str, copy_sql: str) -> None:
+            """Give *table* its v30 shape; copy its rows when it already exists."""
+            existing = _columns(table)
+            if marker in existing:
+                return
+            if not existing:  # a partial database without the table: create it directly
+                cursor.execute(create_sql.format(name=table))
+                return
+            cursor.execute(create_sql.format(name=f"{table}_v30_new"))
+            cursor.execute(copy_sql.format(new=f"{table}_v30_new", old=table))
+            cursor.execute(f"DROP TABLE {table}")
+            cursor.execute(f"ALTER TABLE {table}_v30_new RENAME TO {table}")
+
+        # FROZEN HISTORICAL SNAPSHOTS: column lists below are fixed at v30.
+        _rebuild(
+            "sync_metadata",
+            "athlete_id",
+            """
+                CREATE TABLE {name} (
+                    athlete_id       TEXT NOT NULL,
+                    source           TEXT NOT NULL,
+                    last_attempt_ts  TEXT,
+                    last_success_ts  TEXT,
+                    last_sync_ok     INTEGER NOT NULL DEFAULT 0,
+                    last_error_class TEXT,
+                    PRIMARY KEY (athlete_id, source)
+                )
+            """,
+            """
+                INSERT INTO {new}
+                SELECT 'owner', source, last_attempt_ts, last_success_ts,
+                       last_sync_ok, last_error_class
+                FROM {old}
+            """,
+        )
+        _rebuild(
+            "override_log",
+            "athlete_id",
+            """
+                CREATE TABLE {name} (
+                    id              INTEGER NOT NULL,
+                    athlete_id      VARCHAR NOT NULL,
+                    date            VARCHAR NOT NULL,
+                    prescribed_type VARCHAR,
+                    actual_type     VARCHAR,
+                    reason          VARCHAR,
+                    CONSTRAINT pk_override_log PRIMARY KEY (id)
+                )
+            """,
+            """
+                INSERT INTO {new}
+                SELECT id, 'owner', date, prescribed_type, actual_type, reason
+                FROM {old}
+            """,
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_override_log_athlete_date "
+            "ON override_log (athlete_id, date)"
+        )
+        _rebuild(
+            "consent_log",
+            "text_version",
+            """
+                CREATE TABLE {name} (
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    athlete_id   TEXT NOT NULL,
+                    consent_type TEXT NOT NULL,
+                    text_version TEXT NOT NULL,
+                    granted_at   TEXT NOT NULL,
+                    revoked_at   TEXT,
+                    channel      TEXT NOT NULL
+                )
+            """,
+            """
+                INSERT INTO {new}
+                    (id, athlete_id, consent_type, text_version, granted_at, revoked_at, channel)
+                SELECT id, athlete_id, consent_type, 'unversioned', granted_at, revoked_at, 'legacy'
+                FROM {old}
+            """,
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_consent_log_athlete "
+            "ON consent_log (athlete_id, granted_at)"
+        )
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athlete_profiles (
+                athlete_id        TEXT NOT NULL PRIMARY KEY
+                                  REFERENCES athletes (athlete_id),
+                birth_date        TEXT NOT NULL,
+                sex               TEXT NOT NULL CHECK (sex IN ('M', 'F')),
+                weight_kg         REAL NOT NULL,
+                height_cm         REAL NOT NULL,
+                max_hr            INTEGER NOT NULL,
+                threshold_hr      INTEGER NOT NULL,
+                training_phase    TEXT NOT NULL,
+                training_goal     TEXT NOT NULL,
+                location_city     TEXT NOT NULL,
+                location_country  TEXT NOT NULL,
+                updated_at        TEXT NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athlete_accounts (
+                athlete_id         TEXT NOT NULL PRIMARY KEY
+                                   REFERENCES athletes (athlete_id),
+                garmin_user_id     TEXT UNIQUE,
+                garmin_token_state TEXT NOT NULL
+                                   CHECK (garmin_token_state IN ('missing', 'ok', 'expired')),
+                telegram_chat_id   TEXT UNIQUE,
+                updated_at         TEXT NOT NULL
+            )
+        """)

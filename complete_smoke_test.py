@@ -108,8 +108,8 @@ def test_persistence():
         "import os; os.environ['TITAN_DATA_DIR'] = '/data'; "
         "from titan.core.database import DatabaseManager; from pathlib import Path; "
         "db = DatabaseManager(db_dir=Path('/data')); "
-        "db.conn.execute('INSERT INTO sync_metadata (source, last_success_ts, last_sync_ok) VALUES (?, ?, ?)', "
-        "('persistence_marker', '2025-01-01T00:00:00', 1)); db.conn.commit(); print('marker_written')\"",
+        "db.conn.execute('INSERT INTO sync_metadata (athlete_id, source, last_success_ts, last_sync_ok) VALUES (?, ?, ?, ?)', "
+        "('owner', 'persistence_marker', '2025-01-01T00:00:00', 1)); db.conn.commit(); print('marker_written')\"",
         shell=True
     )
     if code != 0 or 'marker_written' not in out:
