@@ -858,9 +858,11 @@ class DatabaseManager:
         """Add a run's distance to a shoe and set its last-used date."""
         self._training.update_shoe_mileage(shoe_id, distance_km, date)
 
-    def add_shoe(self, name: str, shoe_type: str = "DAILY", max_km: int = 800) -> int:
-        """Add a shoe; returns its id."""
-        return self._training.add_shoe(name, shoe_type, max_km)
+    def add_shoe(
+        self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
+    ) -> int:
+        """Add a shoe for *athlete_id*; returns its id."""
+        return self._training.add_shoe(name, shoe_type, max_km, athlete_id=athlete_id)
 
     def get_active_shoes(self) -> list[tuple]:
         """Active shoes as (id, name, total_km, max_km, last_used, type)."""
@@ -877,10 +879,14 @@ class DatabaseManager:
         distance_km: float,
         time_sec: int,
         date: str,
-        race_name: str | None = None
+        race_name: str | None = None,
+        athlete_id: str = "owner",
     ) -> None:
-        """Save a personal best."""
-        self._training.save_personal_best(distance_km=distance_km, time_sec=time_sec, date=date, race_name=race_name)
+        """Save a personal best for *athlete_id*."""
+        self._training.save_personal_best(
+            distance_km=distance_km, time_sec=time_sec, date=date, race_name=race_name,
+            athlete_id=athlete_id,
+        )
 
     def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
         """Get personal best for a distance."""
