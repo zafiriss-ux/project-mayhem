@@ -276,6 +276,14 @@ class TrainingRepository:
             sRPE (session RPE) = RPE × duration (minutes)
             Based on Foster et al. (2001)
         """
+        # F3: a date that is not a calendar day (e.g. "2026-09-31") must not reach
+        # training_log, where it later breaks the CTL/ATL/TSB calculation.
+        if date is not None:
+            try:
+                datetime.fromisoformat(str(date)[:10])
+            except ValueError:
+                raise ValueError(f"save_session: {date!r} is not a calendar date (YYYY-MM-DD)") from None
+
         # Resolve deprecated alias; temperature_c takes precedence
         if temperature_c is None and temperature is not None:
             import warnings

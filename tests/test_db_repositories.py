@@ -104,6 +104,15 @@ def test_personal_bests_and_cs_performances_round_trip(db) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("bad_date", ["2026-09-31", "2026-02-30", "garbage"])
+def test_save_session_refuses_a_date_that_is_not_a_calendar_day(db, bad_date) -> None:
+    """F3: an impossible date reached training_log and then broke get_ctl_atl_tsb."""
+    with pytest.raises(ValueError, match="not a calendar date"):
+        db.save_session(bad_date, "EASY", 5.0, 1800)
+    assert db.conn.execute("SELECT COUNT(*) FROM training_log").fetchone() == (0,)
+
+
+@pytest.mark.unit
 def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
     with pytest.warns(DeprecationWarning, match="temperature_c") as record:
         db.save_session("2026-01-05", "EASY", 8.0, 2640, rpe=3, temperature=12.0)

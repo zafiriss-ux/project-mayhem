@@ -165,13 +165,15 @@ def test_activity_past_timestamp_not_rejected():
 
 
 @pytest.mark.integration
-def test_activity_unparseable_timestamp_warns():
+@pytest.mark.parametrize("bad_date", ["not-a-date", "2026-09-31", "2026-02-30", "2026-13-01"])
+def test_activity_unparseable_or_impossible_date_is_rejected(bad_date):
+    """F3 (D-069): a date that is not a calendar day is rejected, not stored as degraded."""
     checker = DataSanityChecker()
-    row = {"date": "not-a-date", "distance_km": 5.0, "duration_sec": 1800}
+    row = {"date": bad_date, "distance_km": 5.0, "duration_sec": 1800}
     violations = checker.check_activity(row)
-    warn_violations = [v for v in violations if v.rule == "timestamp_unparseable"]
-    assert len(warn_violations) == 1
-    assert warn_violations[0].severity == "warn"
+    rejects = [v for v in violations if v.rule == "timestamp_unparseable"]
+    assert len(rejects) == 1
+    assert rejects[0].severity == "reject"
 
 
 # ─── check_daily_metrics ─────────────────────────────────────────────────────
