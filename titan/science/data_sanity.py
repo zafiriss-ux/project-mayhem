@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-MODULE_VERSION = "1.0.0"
+MODULE_VERSION = "1.0.1"
 
 _log = logging.getLogger(__name__)
 
@@ -26,6 +26,9 @@ _log = logging.getLogger(__name__)
 RUN_PACE_SEC_PER_KM = (120.0, 900.0)
 # A whole night under one hour is far more likely a minutes/hours mix-up than sleep.
 MIN_NIGHT_SLEEP_HOURS = 1.0
+# D-081: a heart rate outside this range is a sensor or parsing error, not a reading.
+# 20 bpm is below any recorded human resting rate; 250 bpm is above any recorded maximum.
+ACTIVITY_HR_BPM = (20.0, 250.0)
 RUN_ACTIVITY_TYPES = frozenset({"running", "interval_training", "tempo_run", "long_run"})
 
 # ADR-0033-L3-D-RESOLVED (2026-04-18): Single-athlete assumption resolved.
@@ -81,6 +84,8 @@ class DataSanityChecker:
         - avg_hr/max_hr/distance_km/duration_sec not a number → reject (F2)
         - date key present but None or ""              → reject  (F1)
         - max_hr < avg_hr                               → reject
+        - distance_km or duration_sec negative          → reject  (D-081)
+        - avg_hr/max_hr > 0 outside ACTIVITY_HR_BPM     → reject  (D-081)
         - distance_km > 0 and duration_sec == 0         → reject
         - timestamp in future (> now + 1 h drift margin)→ reject
         - date not a calendar date (e.g. 2026-09-31)   → reject  (F3)
@@ -117,6 +122,34 @@ class DataSanityChecker:
         distance_km = numeric["distance_km"]
         duration_sec = numeric["duration_sec"]
         timestamp_str = row.get("date") or row.get("timestamp")
+
+        # Rule (D-081): a negative distance or duration is not a measurement.
+        for field in ("distance_km", "duration_sec"):
+            if numeric[field] is not None and numeric[field] < 0:
+                v = SanityViolation(
+                    record_type="activity",
+                    field=field,
+                    rule="negative_value",
+                    value=row.get(field),
+                    severity="reject",
+                )
+                violations.append(v)
+                _emit(context, v)
+
+        # Rule (D-081): a heart rate outside ACTIVITY_HR_BPM; 0 or None means "no HR".
+        lo_hr, hi_hr = ACTIVITY_HR_BPM
+        for field in ("avg_hr", "max_hr"):
+            hr = numeric[field]
+            if hr is not None and hr != 0 and not lo_hr <= hr <= hi_hr:
+                v = SanityViolation(
+                    record_type="activity",
+                    field=field,
+                    rule="heart_rate_out_of_range",
+                    value=row.get(field),
+                    severity="reject",
+                )
+                violations.append(v)
+                _emit(context, v)
 
         # Rule: max_hr must be >= avg_hr when both are present and non-zero
         if (
