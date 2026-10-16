@@ -226,7 +226,6 @@ class OperationsRepository:
         propagates so the caller fails closed.
         """
         key = (athlete_id, execution_date, routine_type)
-        where = "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?"
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
@@ -237,7 +236,9 @@ class OperationsRepository:
                     (*key, started_at.astimezone(UTC).isoformat()),
                 )
                 attempts, delivered_at, completed_at = cursor.execute(
-                    f"SELECT attempts, delivered_at, completed_at FROM worker_routine_executions {where}", key
+                    "SELECT attempts, delivered_at, completed_at FROM worker_routine_executions "
+                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                    key,
                 ).fetchone()
                 if delivered_at is not None or completed_at is not None:
                     state = "closed"
@@ -245,7 +246,9 @@ class OperationsRepository:
                     state = "exhausted"
                 else:
                     cursor.execute(
-                        f"UPDATE worker_routine_executions SET attempts = attempts + 1 {where}", key
+                        "UPDATE worker_routine_executions SET attempts = attempts + 1 "
+                        "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                        key,
                     )
                     attempts += 1
                     state = "run"
