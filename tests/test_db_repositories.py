@@ -104,6 +104,15 @@ def test_personal_bests_and_cs_performances_round_trip(db) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(("athlete_id", "date"), [(None, "2026-01-05"), ("", "2026-01-05"), ("owner", None), ("owner", "")])
+def test_save_session_refuses_a_missing_athlete_or_date(db, athlete_id, date) -> None:
+    """F1: INSERT OR IGNORE dropped a NOT NULL row silently; now the caller gets a ValueError."""
+    with pytest.raises(ValueError, match="athlete_id and date are required"):
+        db.save_session(date, "EASY", 5.0, 1800, garmin_activity_id="f1", athlete_id=athlete_id)
+    assert db.conn.execute("SELECT COUNT(*) FROM training_log").fetchone() == (0,)
+
+
+@pytest.mark.unit
 def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
     with pytest.warns(DeprecationWarning, match="temperature_c") as record:
         db.save_session("2026-01-05", "EASY", 8.0, 2640, rpe=3, temperature=12.0)
