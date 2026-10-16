@@ -393,7 +393,7 @@ def _browser_activities(ctx: dict):
                   f"{a.get('activity_type', a.get('session_type', 'run')):<10} "
                   f"{a.get('distance_km',0):>5.1f} "
                   f"{dur_min:>6} "
-                  f"{a.get('avg_hr',0):>5} "
+                  f"{a.get('avg_hr') or '—':>5} "
                   f"{pace_str:>8}")
     _divider()
     input("  [Enter] ")
