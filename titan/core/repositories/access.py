@@ -299,6 +299,30 @@ class AccessRepository:
             ).fetchone()
         return row[0] if row else None
 
+    def get_consent_rows(self, athlete_id: str) -> list[dict]:
+        """Return the athlete's consent_log rows, oldest first."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            rows = self._db.conn.cursor().execute(
+                "SELECT text_version, granted_at, revoked_at FROM consent_log "
+                "WHERE athlete_id = ? ORDER BY granted_at, id",
+                (athlete_id,),
+            ).fetchall()
+        return [{"text_version": r[0], "granted_at": r[1], "revoked_at": r[2]} for r in rows]
+
+    def grant_consent(
+        self, athlete_id: str, *, consent_type: str, text_version: str, granted_at: str, channel: str
+    ) -> None:
+        """Insert one consent row (ADR-0067 D4.1); a new consent is always a new row."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                "INSERT INTO consent_log (athlete_id, consent_type, text_version, granted_at, channel) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (athlete_id, consent_type, text_version, granted_at, channel),
+            )
+            self._db.conn.commit()
+
     def revoke_consent(self, athlete_id: str, *, revoked_at: str) -> int:
         """Set revoked_at on the athlete's current consent rows (ADR-0067 D4.3); return the count."""
         with self._db._lock:

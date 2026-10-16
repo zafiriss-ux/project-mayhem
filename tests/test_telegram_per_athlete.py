@@ -51,7 +51,7 @@ class _FakeTeleBot:
     def callback_query_handler(self, func=None):  # noqa: ANN001, ANN201
         return lambda fn: fn
 
-    def reply_to(self, message, text: str) -> None:  # noqa: ANN001
+    def reply_to(self, message, text: str, **_kwargs) -> None:  # noqa: ANN001
         self.replies.append((message.chat.id, text))
 
 
@@ -109,8 +109,8 @@ def _audit(db: DatabaseManager) -> list[tuple[str, str, str]]:
 def _grant_consent(db: DatabaseManager, athlete_id: str) -> None:
     db.conn.execute(
         "INSERT INTO consent_log (athlete_id, consent_type, text_version, granted_at, revoked_at, channel) "
-        "VALUES (?, 'coaching', 'v1', ?, NULL, 'telegram')",
-        (athlete_id, datetime.now(UTC).isoformat()),
+        "VALUES (?, 'coaching', 'v1', '2026-01-01T00:00:00+00:00', NULL, 'telegram')",
+        (athlete_id,),
     )
     db.conn.commit()
 
@@ -182,6 +182,7 @@ def test_an_athletes_help_lists_sync_and_stop_only(bot) -> None:
 
 @pytest.mark.integration
 def test_an_athletes_sync_audits_first_and_syncs_that_athlete_only(bot, db) -> None:
+    _grant_consent(db, _A)
     seen: list[tuple[str, list]] = []
     bot.register_athlete_command("sync", lambda athlete_id: seen.append((athlete_id, _audit(db))) or "done")
     bot.register_command("sync", lambda: pytest.fail("the owner's sync ran for an athlete"))
@@ -194,6 +195,7 @@ def test_an_athletes_sync_audits_first_and_syncs_that_athlete_only(bot, db) -> N
 
 @pytest.mark.integration
 def test_an_athletes_sync_without_its_audit_row_does_nothing(bot, db, monkeypatch) -> None:
+    _grant_consent(db, _A)
     bot.register_athlete_command("sync", lambda athlete_id: pytest.fail("synced without an audit row"))
     monkeypatch.setattr(db, "log_coach_action", MagicMock(side_effect=RuntimeError("disk full")))
     monkeypatch.setattr(
@@ -250,7 +252,7 @@ def test_the_owners_stop_changes_nothing(bot, db) -> None:
 
 
 @pytest.mark.unit
-def test_athletes_can_be_given_sync_and_stop_only(bot) -> None:
+def test_athletes_can_be_given_their_own_commands_only(bot) -> None:
     with pytest.raises(ValueError, match="only"):
         bot.register_athlete_command("today", lambda athlete_id: "")
 
@@ -306,6 +308,7 @@ def test_an_athletes_decision_comes_without_override_buttons(data_dir, monkeypat
 
 
 def _ready(db: DatabaseManager, athlete_id: str) -> None:
+    _grant_consent(db, athlete_id)
     db.save_athlete_profile(athlete_id, _PROFILE)
     db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
     db.set_garmin_token_state(athlete_id, "ok")

@@ -13,10 +13,12 @@ import time
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
 from titan.config.settings import get_settings
+from titan.core.athlete import CONSENT_TEXT_VERSION
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.critical_speed import parse_time_trial, parse_trial_date
 from titan.science.override_signal import OverrideSignal, record_override_signal
@@ -27,13 +29,26 @@ _log = logging.getLogger(__name__)
 _AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
 
 _OWNER_ATHLETE_ID = "owner"
-# An athlete other than the owner has these commands only (ADR-0067 D10.3).
-ATHLETE_COMMANDS = ("sync", "stop")
+# An athlete other than the owner has these commands only (ADR-0067 D4.1, D10.3).
+ATHLETE_COMMANDS = ("consent", "agree", "sync", "stop")
 _ATHLETE_HELP = (
     "🎯 *TITAN AI Coach*\n\n"
+    "/consent – Read the consent text\n"
+    "/agree – Give your consent to that text\n"
     "/sync – Sync your Garmin data now\n"
     "/stop – Stop coaching and withdraw your consent\n"
 )
+_CONSENT_DIR = Path(__file__).resolve().parents[2] / "docs" / "consent"
+_NO_CONSENT_REPLY = "⏸ Nothing runs for you without your consent. Send /consent to read the text."
+
+
+def _consent_text(version: str) -> str | None:
+    """The athlete-facing consent text of ``version`` (docs/consent/<version>.md), or None."""
+    try:
+        return (_CONSENT_DIR / f"{version}.md").read_text(encoding="utf-8").strip() or None
+    except OSError as exc:
+        _log.critical("titan.telegram.consent_text_unreadable", extra={"version": version, "error": str(exc)})
+        return None
 
 _FLOAT_NOISE = re.compile(r"\d+\.\d{5,}")
 
@@ -394,6 +409,22 @@ class TitanTelegramBot:
                 return
             self.bot.reply_to(message, self.handle_athlete_stop(message.chat.id, athlete_id))
 
+        @self.bot.message_handler(commands=["consent", "agree"])
+        def cmd_consent(message):
+            athlete_id = self._athlete_for_chat(message.chat.id)
+            if athlete_id is None:
+                if self._is_trusted(message.chat.id):
+                    self.bot.reply_to(message, "ℹ️ The owner is exempt from consent.")
+                else:
+                    _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            command, _, args = (message.text or "").partition(" ")
+            if command.lstrip("/").split("@")[0] == "agree":
+                self.bot.reply_to(message, self.handle_athlete_agree(message.chat.id, athlete_id, args))
+            else:
+                # Plain text: the consent text is shown exactly as written.
+                self.bot.reply_to(message, self.handle_athlete_consent(), parse_mode="")
+
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
             if not self._is_trusted(message.chat.id):
@@ -603,9 +634,50 @@ class TitanTelegramBot:
         callback = self.athlete_cmd_callbacks.get("sync")
         if callback is None:
             return "⏳ Sync not available yet."
+        if not self._has_consent(athlete_id):
+            return _NO_CONSENT_REPLY
         if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_SYNC", athlete_id):
             return _AUDIT_UNAVAILABLE_REPLY
         return callback(athlete_id) or "✅ Sync complete."
+
+    def _has_consent(self, athlete_id: str) -> bool:
+        """The athlete's current consent (ADR-0067 D4.2); an unreadable answer counts as none."""
+        try:
+            return bool(self.db.has_current_consent(athlete_id))
+        except Exception as exc:
+            _log.error("titan.telegram.consent_check_failed", extra={"error_class": exc.__class__.__name__})
+            return False
+
+    @staticmethod
+    def handle_athlete_consent() -> str:
+        """/consent from an athlete's own chat: the current text and how to agree to it."""
+        text = _consent_text(CONSENT_TEXT_VERSION)
+        if text is None:
+            return "❌ The consent text is not available right now. Please try again later."
+        return f"{text}\n\nTo agree to version {CONSENT_TEXT_VERSION}, send: /agree {CONSENT_TEXT_VERSION}"
+
+    def handle_athlete_agree(self, chat_id: int | str, athlete_id: str, args: str) -> str:
+        """/agree <version> from an athlete's own chat: audit first, then record consent (D4.1)."""
+        version = (args or "").strip()
+        if version != CONSENT_TEXT_VERSION:
+            return f"ℹ️ Send /consent to read the text, then /agree {CONSENT_TEXT_VERSION} to agree to it."
+        if _consent_text(version) is None:
+            return "❌ The consent text is not available right now, so nothing was recorded."
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_CONSENT", athlete_id, detail=version):
+            return _AUDIT_UNAVAILABLE_REPLY
+        try:
+            granted = self.db.grant_consent(athlete_id, version)
+        except ValueError:
+            return "⏹ Your 30 days after /stop have passed, so consent can no longer be given here."
+        except Exception as exc:
+            _log.critical(
+                "titan.telegram.consent_grant_failed",
+                extra={"athlete_id": athlete_id, "error_class": exc.__class__.__name__},
+            )
+            return "❌ Could not record your consent. Please try again."
+        if not granted:
+            return f"✅ Your consent to version {version} is already recorded."
+        return f"✅ Thank you. Your consent to version {version} is recorded. /stop withdraws it at any time."
 
     def handle_athlete_stop(self, chat_id: int | str, athlete_id: str) -> str:
         """/stop from an athlete's own chat: audit first, then withdraw consent (ADR-0067 D4.3)."""

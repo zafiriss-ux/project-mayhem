@@ -287,6 +287,7 @@ def test_an_athlete_without_a_usable_garmin_token_builds_nothing(db, key_file, m
     from titan import worker
     from titan.integrations import telegram_bot, weather_api
 
+    db.grant_consent(_A, "v1")
     db.save_athlete_profile(_A, dict(_PROFILE))
     if state is not None:
         db.bind_garmin_account(_A, "garmin-1")
