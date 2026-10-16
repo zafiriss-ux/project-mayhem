@@ -368,6 +368,14 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
     telegram.register_command("shoes",      cb_shoes)
     telegram.register_command("calibration", cb_calibration)
 
+    # /sync from another athlete's own chat syncs that athlete only (ADR-0067 D10.3).
+    def cb_athlete_sync(athlete_id: str) -> str:
+        from titan.worker import sync_athlete_on_request
+
+        return sync_athlete_on_request(telegram.db, athlete_id)
+
+    telegram.register_athlete_command("sync", cb_athlete_sync)
+
     log.info(
         "telegram_callbacks_registered",
         extra={"command_count": 10},

@@ -26,6 +26,15 @@ _log = logging.getLogger(__name__)
 
 _AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
 
+_OWNER_ATHLETE_ID = "owner"
+# An athlete other than the owner has these commands only (ADR-0067 D10.3).
+ATHLETE_COMMANDS = ("sync", "stop")
+_ATHLETE_HELP = (
+    "🎯 *TITAN AI Coach*\n\n"
+    "/sync – Sync your Garmin data now\n"
+    "/stop – Stop coaching and withdraw your consent\n"
+)
+
 _FLOAT_NOISE = re.compile(r"\d+\.\d{5,}")
 
 
@@ -162,19 +171,28 @@ class TitanTelegramBot:
     # Hard cap on user-supplied override reason text (DB bloat + re-render guard).
     _MAX_OVERRIDE_REASON_LEN: int = 500
 
-    def __init__(self, bot_token: str = None, chat_id=None, db=None):
+    def __init__(self, bot_token: str = None, chat_id=None, db=None, *, athlete_id: str = _OWNER_ATHLETE_ID):
         self.db = db
+        self.athlete_id = athlete_id
         self.bot_token = SecretStr(_value=bot_token or get_settings().TELEGRAM_BOT_TOKEN.get_secret_value())
-        raw_id = chat_id or get_settings().TELEGRAM_CHAT_ID
+        if athlete_id != _OWNER_ATHLETE_ID:
+            # Another athlete's bot only sends, to that athlete's own chat: never the
+            # owner's TELEGRAM_CHAT_ID as a fallback, and it trusts no inbound chat
+            # (the owner's polling bot routes athlete chats, ADR-0067 D10.1).
+            if not chat_id:
+                raise ValueError("an athlete other than the owner needs their own Telegram chat")
+            raw_id = chat_id
+            self._trusted_chat_id: str | None = None
+        else:
+            raw_id = chat_id or get_settings().TELEGRAM_CHAT_ID
+            # Trusted inbound chat ID for per-handler authorisation.
+            # None = unconfigured (deny all, INV-16 / RBP-02); str = strict match.
+            _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
+            self._trusted_chat_id = str(_raw_trusted) if _raw_trusted else None
         try:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):
             self.chat_id = raw_id  # keep as str until set
-
-        # Trusted inbound chat ID for per-handler authorisation.
-        # None = unconfigured (deny all, INV-16 / RBP-02); str = strict match.
-        _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
-        self._trusted_chat_id: str | None = str(_raw_trusted) if _raw_trusted else None
 
         self.bot = None
         self.is_running = False
@@ -188,6 +206,8 @@ class TitanTelegramBot:
 
         # Callbacks for commands – set by orchestration layer
         self.cmd_callbacks: dict[str, Callable] = {}
+        # Callbacks taking the athlete_id, for commands from an athlete's own chat.
+        self.athlete_cmd_callbacks: dict[str, Callable[[str], str]] = {}
         self.override_callbacks: dict[str, Callable] = {}
         self._pending_override_prompts: dict[int, dict[str, str]] = {}
 
@@ -195,7 +215,8 @@ class TitanTelegramBot:
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
-                self._register_handlers()
+                if athlete_id == _OWNER_ATHLETE_ID:
+                    self._register_handlers()
             except Exception as e:
                 _telegram_event(
                     "failure",
@@ -229,6 +250,23 @@ class TitanTelegramBot:
             return False
         return str(chat_id) == str(self._trusted_chat_id)
 
+    def _athlete_for_chat(self, chat_id: int | str) -> str | None:
+        """Return the athlete whose private chat this is, or None (ADR-0067 D10.2).
+
+        The owner's chat is never an athlete's. Any lookup failure is treated as an
+        unregistered chat, which gets no reply.
+        """
+        if self.athlete_id != _OWNER_ATHLETE_ID or self.db is None or self._is_trusted(chat_id):
+            return None
+        try:
+            athlete_id = self.db.get_athlete_for_telegram_chat(chat_id)
+        except Exception as exc:
+            _log.error("titan.telegram.athlete_lookup_failed", extra={"error_class": exc.__class__.__name__})
+            return None
+        if athlete_id in (None, _OWNER_ATHLETE_ID):
+            return None
+        return athlete_id
+
     # ------------------------------------------------------------------ #
     # COMMAND HANDLERS
     # ------------------------------------------------------------------ #
@@ -239,6 +277,9 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["start", "help"])
         def cmd_help(message):
             if not self._is_trusted(message.chat.id):
+                if self._athlete_for_chat(message.chat.id) is not None:
+                    self.bot.reply_to(message, _ATHLETE_HELP)
+                    return
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             self.chat_id = message.chat.id  # auto-capture only for trusted sender
@@ -323,6 +364,10 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["sync"])
         def cmd_sync(message):
             if not self._is_trusted(message.chat.id):
+                athlete_id = self._athlete_for_chat(message.chat.id)
+                if athlete_id is not None:
+                    self.bot.reply_to(message, self.handle_athlete_sync(message.chat.id, athlete_id))
+                    return
                 _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
                 return
             if not _check_rate_limit(message.chat.id, "sync"):
@@ -337,6 +382,17 @@ class TitanTelegramBot:
             self.bot.reply_to(message, "🔄 Starting Garmin sync...")
             result = self.cmd_callbacks["sync"]()
             self.bot.reply_to(message, result or "✅ Sync complete.")
+
+        @self.bot.message_handler(commands=["stop"])
+        def cmd_stop(message):
+            athlete_id = self._athlete_for_chat(message.chat.id)
+            if athlete_id is None:
+                if self._is_trusted(message.chat.id):
+                    self.bot.reply_to(message, "ℹ️ /stop is for athletes; the owner has no consent to withdraw.")
+                else:
+                    _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                return
+            self.bot.reply_to(message, self.handle_athlete_stop(message.chat.id, athlete_id))
 
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
@@ -540,6 +596,37 @@ class TitanTelegramBot:
         minutes, seconds = divmod(round(time_sec), 60)
         return f"✅ Time-trial logged: {distance_m:g} m in {minutes}:{seconds:02d} on {trial_date}"
 
+    def handle_athlete_sync(self, chat_id: int | str, athlete_id: str) -> str:
+        """/sync from an athlete's own chat: audit first, then sync that athlete only (D10.3)."""
+        if not _check_rate_limit(chat_id, "sync"):
+            return "⏳ Please wait 30 seconds before repeating this command."
+        callback = self.athlete_cmd_callbacks.get("sync")
+        if callback is None:
+            return "⏳ Sync not available yet."
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_SYNC", athlete_id):
+            return _AUDIT_UNAVAILABLE_REPLY
+        return callback(athlete_id) or "✅ Sync complete."
+
+    def handle_athlete_stop(self, chat_id: int | str, athlete_id: str) -> str:
+        """/stop from an athlete's own chat: audit first, then withdraw consent (ADR-0067 D4.3)."""
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_STOP", athlete_id):
+            return _AUDIT_UNAVAILABLE_REPLY
+        try:
+            self.db.revoke_consent(athlete_id)
+        except Exception as exc:
+            _log.critical(
+                "titan.telegram.consent_revoke_failed",
+                extra={"athlete_id": athlete_id, "error_class": exc.__class__.__name__},
+            )
+            return "❌ Could not record your stop. Please try again."
+        return "⏹ Stopped. Your consent is withdrawn and no coaching runs for you."
+
+    def register_athlete_command(self, command: str, callback: Callable[[str], str]) -> None:
+        """Register the callback for a command from an athlete's own chat (ATHLETE_COMMANDS)."""
+        if command not in ATHLETE_COMMANDS:
+            raise ValueError(f"athletes have {ATHLETE_COMMANDS} only, not /{command}")
+        self.athlete_cmd_callbacks[command] = callback
+
     @staticmethod
     def _audit_before_effect(
         db, chat_id: int | str | None, action: str, athlete_id: str, detail: str = ""
@@ -583,8 +670,12 @@ class TitanTelegramBot:
         decision_type: str,
         athlete_id: str,
     ) -> bool:
-        """Send governance decision with inline Accept/Override affordances."""
-        if not self.chat_id:
+        """Send governance decision with inline Accept/Override affordances.
+
+        Another athlete gets the decision without the buttons: athletes have /sync and
+        /stop only (ADR-0067 D10.3).
+        """
+        if not self.chat_id or self.athlete_id != _OWNER_ATHLETE_ID:
             return self.send_message(text)
 
         payload = {
