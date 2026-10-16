@@ -993,3 +993,21 @@ def test_sync_sleep_stats_failure_keeps_sleep_and_emits_event(monkeypatch):
     assert result[0]["sleep_score"] == 80
     assert result[0]["resting_hr"] is None
     assert any(action == "resting_hr_unavailable" for action, _ in events)
+
+
+@pytest.mark.integration
+def test_sync_activity_without_heart_rate_gets_a_middle_zone_estimate(monkeypatch):
+    """F6: no HR used to give load = minutes (zone 1); now minutes x 3, marked as an estimate."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_f: None)
+    raw = {
+        "startTimeLocal": "2026-03-01T08:00:00", "activityType": {"typeKey": "running"},
+        "distance": 10000, "duration": 3600, "activityId": 222,
+    }
+    sync = _connected_sync(_FakeClient(activities=[raw, dict(raw, activityId=223, averageHR=110)]))
+
+    no_hr, with_hr = sync.sync_activities(days_back=1, athlete_max_hr=190)
+
+    assert no_hr["estimated_training_load"] == 180.0
+    assert no_hr["load_estimated"] is True
+    assert with_hr["estimated_training_load"] == 60.0
+    assert with_hr["load_estimated"] is False

@@ -169,3 +169,13 @@ class TestEdwardsTRIMPImpulseMagnitude:
         )
         assert zone == expected_zone
         assert trimp == expected_trimp
+
+
+@pytest.mark.parametrize("avg_hr", [0, None, -1])
+def test_no_heart_rate_uses_middle_zone(avg_hr):
+    """F6: without HR, a 60-minute session counted 60 (zone 1); now the middle zone."""
+    trimp, zone = TRIMPEngine.calculate_edwards_trimp(
+        duration_min=60, avg_hr=avg_hr, athlete_max_hr=190
+    )
+    assert zone == 3
+    assert trimp == 180.0

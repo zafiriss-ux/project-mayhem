@@ -166,6 +166,18 @@ def test_values_in_the_wrong_unit_are_stored_with_a_quality_flag(db):
     assert day_flag == "degraded"
 
 
+@pytest.mark.unit
+def test_a_load_estimated_without_heart_rate_is_stored_with_a_quality_flag(db):
+    """F6: the middle-zone load of a session without HR is kept, but flagged."""
+    payload = _payload()
+    payload["activities"][0].update(estimated_training_load=135.0, load_estimated=True)
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=lambda *_a, **_f: None)
+
+    row = db.conn.execute("SELECT training_load, quality_flag FROM training_log WHERE date = ?", (DAY,)).fetchone()
+    assert tuple(row) == (135, "degraded")
+
+
 def _today() -> str:
     # The load-history query reads SQLite's own clock, so these tests use the real date.
     return datetime.now(UTC).date().isoformat()
