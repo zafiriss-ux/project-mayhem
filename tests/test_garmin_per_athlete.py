@@ -149,8 +149,8 @@ def test_a_key_inside_the_data_folder_is_refused(data_dir, monkeypatch) -> None:
 
 @pytest.mark.unit
 @pytest.mark.skipif(os.name != "posix", reason="file modes are POSIX")
-def test_a_key_readable_by_others_is_refused(key_file) -> None:
-    os.chmod(key_file, 0o644)
+def test_a_key_readable_by_its_group_is_refused(key_file) -> None:
+    os.chmod(key_file, 0o640)  # group-readable is enough to be refused
     with pytest.raises(RuntimeError, match="0600"):
         encrypt_athlete_token("x")
 
@@ -220,7 +220,7 @@ def test_a_rejected_token_pauses_the_athlete_and_no_login_happens(key_file, monk
 def test_an_unusable_key_stops_the_connect_and_keeps_the_token(key_file, monkeypatch) -> None:
     _fake_garminconnect(monkeypatch)
     _store_token(_A, "session-of-a")
-    os.chmod(key_file, 0o644)
+    os.chmod(key_file, 0o640)  # group-readable is enough to be refused
 
     sync = GarminSync(athlete_id=_A)
 
