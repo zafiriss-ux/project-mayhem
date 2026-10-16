@@ -23,8 +23,6 @@ _EXPECTED_PATHS = frozenset(
         "/athletes/{athlete_id}/dashboard",
         "/coach/notes",
         "/coach/overrides",
-        "/coach/export",
-        "/coach/athlete-data",
     }
 )
 
@@ -115,8 +113,6 @@ def test_protected_endpoints_reject_no_auth(client: TestClient) -> None:
         ("GET", "/athletes/owner/dashboard"),
         ("POST", "/coach/notes"),
         ("POST", "/coach/overrides"),
-        ("GET", "/coach/export"),
-        ("DELETE", "/coach/athlete-data"),
     ]
     for method, path in protected:
         headers = csrf_headers if method not in {"GET", "HEAD", "OPTIONS"} else {}

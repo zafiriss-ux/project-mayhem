@@ -18,8 +18,6 @@ from titan.core.database import DatabaseManager
 _ROUTES = [
     ("get", "/athletes/a1/dashboard", None, "athlete_dashboard"),
     ("post", "/coach/overrides?athlete_id=a1", {"reason": "legs heavy"}, "coach_override"),
-    ("get", "/coach/export?athlete_id=a1", None, "health_export"),
-    ("delete", "/coach/athlete-data?athlete_id=a1", None, "athlete_data"),
 ]
 
 
@@ -82,7 +80,7 @@ def test_audit_write_failure_fails_closed_before_the_action(
 
     response = _call(setup, method, url, body)
 
-    assert response.status_code == 503  # the handler never ran: no "deleted" / "export_ready" body
+    assert response.status_code == 503  # the handler never ran: no "override_submitted" body
     assert "not performed" in response.json()["detail"]
     assert setup.counted == ["audit_write_failure"]
     assert setup.audit_store.rows == []
@@ -91,6 +89,6 @@ def test_audit_write_failure_fails_closed_before_the_action(
 
 @pytest.mark.integration
 def test_unassigned_coach_is_denied_and_not_audited(setup) -> None:
-    response = setup.client.delete("/coach/athlete-data?athlete_id=a2", headers=setup.csrf)
+    response = setup.client.post("/coach/overrides?athlete_id=a2", json={"reason": "r"}, headers=setup.csrf)
     assert response.status_code == 403
     assert setup.db.get_coach_audit_log() == []

@@ -296,8 +296,6 @@ class LoginRateLimiter:
 class AuditActionType(StrEnum):
     VIEW_DATA = "VIEW_DATA"
     SUBMIT_OVERRIDE = "SUBMIT_OVERRIDE"
-    EXPORT_DATA = "EXPORT_DATA"
-    DELETE_DATA = "DELETE_DATA"
 
 
 @dataclass(frozen=True)
@@ -536,19 +534,9 @@ def create_app(
     ) -> dict[str, str]:
         return {"status": "override_submitted", "athlete_id": athlete_id}
 
-    @app.get("/coach/export")
-    def export_health_data(
-        athlete_id: str,
-        _: AuthUser = Depends(_audited(AuditActionType.EXPORT_DATA, "health_export")),
-    ) -> dict[str, str]:
-        return {"status": "export_ready", "athlete_id": athlete_id}
-
-    @app.delete("/coach/athlete-data")
-    def delete_athlete_data(
-        athlete_id: str,
-        _: AuthUser = Depends(_audited(AuditActionType.DELETE_DATA, "athlete_data")),
-    ) -> dict[str, str]:
-        return {"status": "deleted", "athlete_id": athlete_id}
+    # GET /coach/export and DELETE /coach/athlete-data were stubs that reported an export or a
+    # deletion that never happened. They are removed (ADR-0067 D2.5, D6.2; D-097): export and
+    # deletion run on the routine machine with `python scripts/athletes.py export|remove`.
 
     # Mount Prometheus scrape endpoint — no auth; internal scrape only.
     # Bind to localhost in prod via compose network policy.

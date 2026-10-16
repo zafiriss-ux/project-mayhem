@@ -225,6 +225,64 @@ def decrypt_athlete_token(data: bytes) -> str:
         raise ValueError("Garmin token decryption failed — token invalid") from exc
 
 
+def _restrict_to_current_user(path: Path) -> None:
+    """Windows: an ACL that grants the file to the account running TITAN only (ADR-0067 D9.3)."""
+    import getpass
+    import subprocess  # nosec B404 - a fixed system tool, no shell
+
+    subprocess.run(  # nosec B603 B607 - fixed arguments, no shell
+        ["icacls", str(path), "/inheritance:r", "/grant:r", f"{getpass.getuser()}:F"],
+        check=True, capture_output=True,
+    )
+
+
+def _on_windows() -> bool:
+    return os.name == "nt"
+
+
+def write_athlete_token(athlete_id: str, session: str) -> Path:
+    """Write an athlete's encrypted token readable by the running account only (D9.2, D9.3).
+
+    POSIX: 0600. Windows: the ACL is set on an empty file before any token byte is written;
+    if it cannot be set, the file is removed and nothing is written.
+    """
+    path = athlete_token_path(athlete_id)
+    data = encrypt_athlete_token(session)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if _on_windows():
+        _write_private_file(path, b"")
+        try:
+            _restrict_to_current_user(path)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+    _write_private_file(path, data)
+    return path
+
+
+def relogin_athlete(db, athlete_id: str, email: str, password: str, prompt_mfa) -> str:  # noqa: ANN001
+    """Log an athlete in to Garmin on the routine machine and store only the token (ADR-0067 D9).
+
+    The athlete types the password (and MFA code) here; it is passed to Garmin and never
+    stored or logged (D9.1). The account is bound first, so an account that belongs to
+    another athlete is refused before any token is written (D9.4). Returns the bound id.
+    """
+    from garminconnect import Garmin
+
+    if athlete_id == _OWNER_ATHLETE_ID:
+        raise ValueError("the owner's Garmin login stays in .env")
+    client = Garmin(email, password, prompt_mfa=prompt_mfa)
+    client.login()
+    garmin_user_id = str(getattr(client, "display_name", "") or "").strip()
+    if not garmin_user_id:
+        raise RuntimeError("Garmin did not return an account id after login")
+    db.bind_garmin_account(athlete_id, garmin_user_id)
+    write_athlete_token(athlete_id, client.client.dumps())
+    db.set_garmin_token_state(athlete_id, "ok")
+    _garmin_event("relogin_success", subsystem="connect", athlete_id=athlete_id, detail="Athlete token stored")
+    return garmin_user_id
+
+
 def _garmin_event(
     action: str,
     *,
