@@ -579,6 +579,35 @@ class DatabaseManager:
             athlete_id=athlete_id, state=state, updated_at=datetime.now(UTC).isoformat()
         )
 
+    def bind_telegram_chat(self, athlete_id: str, telegram_chat_id: str | int) -> None:
+        """Bind a private Telegram chat to an athlete other than the owner (ADR-0067 D10.1).
+
+        Raises ValueError for the owner, whose chat stays TELEGRAM_CHAT_ID in .env, for the
+        owner's chat itself, or when the chat is already bound to another athlete.
+        """
+        from titan.config.settings import get_settings
+
+        chat = str(telegram_chat_id).strip()
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner's Telegram chat lives in .env, not in athlete_accounts")
+        if not chat:
+            raise ValueError("a Telegram chat id is required")
+        if chat == str(get_settings().TELEGRAM_CHAT_ID or "").strip():
+            raise ValueError("this Telegram chat is the owner's")
+        self._access.bind_telegram_chat(
+            athlete_id=athlete_id, telegram_chat_id=chat, updated_at=datetime.now(UTC).isoformat()
+        )
+
+    def get_athlete_for_telegram_chat(self, telegram_chat_id: str | int) -> str | None:
+        """Return the athlete whose private chat this is, or None for an unregistered chat."""
+        return self._access.get_athlete_for_telegram_chat(telegram_chat_id=str(telegram_chat_id).strip())
+
+    def revoke_consent(self, athlete_id: str) -> int:
+        """Revoke the athlete's current consent (ADR-0067 D4.3); return the rows revoked."""
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner is exempt from consent (ADR-0067 D4.5)")
+        return self._access.revoke_consent(athlete_id=athlete_id, revoked_at=datetime.now(UTC).isoformat())
+
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
         """Return True if the athlete is in the cold-start bootstrapping period."""
         return self._governance.is_athlete_cold_start(athlete_id=athlete_id)

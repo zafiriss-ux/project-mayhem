@@ -131,6 +131,12 @@ EOF
    python -c "from titan.integrations.telegram_bot import TitanTelegramBot; print('✅ Sent' if TitanTelegramBot().send_message('🎯 TITAN test') else '❌ Failed')"
    ```
 
+Άλλοι αθλητές (Φάση 4, ADR-0067 D10): το ίδιο bot, με ένα ιδιωτικό chat ο καθένας, δεμένο στο
+`athlete_accounts.telegram_chat_id` (ένα chat σε έναν αθλητή, ποτέ το chat του owner). Ο αθλητής
+έχει μόνο `/sync` (συγχρονίζει μόνο τα δικά του δεδομένα Garmin) και `/stop` (ανακαλεί τη
+συγκατάθεσή του)· κάθε άλλη εντολή μένει χωρίς απάντηση, όπως και κάθε chat που δεν έχει δεθεί.
+Δεν τρέχει δεύτερο bot: τα chat των αθλητών τα ακούει η ίδια διεργασία με τον owner.
+
 ## 4. Καιρός
 
 Το TITAN χρησιμοποιεί το [Open-Meteo](https://open-meteo.com/): δωρεάν, χωρίς εγγραφή ή API key. Στο `.env` χρειάζεται μόνο η τοποθεσία:

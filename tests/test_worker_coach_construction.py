@@ -50,6 +50,8 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     # Since step 4 the athlete also needs their own Garmin account and token (ADR-0067 D9).
     worker_db.bind_garmin_account("a-00000002", "garmin-b")
     worker_db.set_garmin_token_state("a-00000002", "ok")
+    # Since step 5 the athlete also needs their own Telegram chat (ADR-0067 D10.1).
+    worker_db.bind_telegram_chat("a-00000002", "20000002")
 
     coach = _build_daily_coach(worker_db, athlete_id="a-00000002")
 
@@ -58,6 +60,7 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     assert coach.athlete_profile.max_hr == 186
     assert coach.garmin.athlete_id == "a-00000002"
     assert coach.garmin.token_only is True
+    assert coach.telegram.chat_id == 20000002
 
 
 @pytest.mark.integration

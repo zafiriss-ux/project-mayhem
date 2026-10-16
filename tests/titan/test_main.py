@@ -66,6 +66,9 @@ class _DummyTelegram:
     def register_command(self, name, callback):
         self.commands[name] = callback
 
+    def register_athlete_command(self, name, callback):
+        self.athlete_commands = {**getattr(self, "athlete_commands", {}), name: callback}
+
     def start_bot(self):
         return None
 
@@ -400,6 +403,9 @@ class _CallbackTelegram:
     def register_command(self, name, callback):
         self.commands[name] = callback
 
+    def register_athlete_command(self, name, callback):
+        self.athlete_commands = {**getattr(self, "athlete_commands", {}), name: callback}
+
     def send_weekly_plan(self, plan):
         self.sent_weekly_plans.append(plan)
 
@@ -551,6 +557,8 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring():
         "shoes",
         "calibration",
     }
+    # ADR-0067 D10.3: athletes get /sync only from the console callbacks (/stop lives in the bot).
+    assert set(telegram.athlete_commands) == {"sync"}
     assert "✅" in telegram.commands["today"]()
     assert "✅" in telegram.commands["week"]()
     assert telegram.sent_weekly_plans[-1]["phase"] == "PEAK"

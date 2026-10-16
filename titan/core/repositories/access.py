@@ -262,6 +262,55 @@ class AccessRepository:
                 raise ValueError("the athlete has no Garmin account bound")
             self._db.conn.commit()
 
+    def bind_telegram_chat(self, athlete_id: str, telegram_chat_id: str, *, updated_at: str) -> None:
+        """Bind a private Telegram chat to the athlete; refuse one bound elsewhere (ADR-0067 D10.1).
+
+        An athlete without a Garmin account yet gets a row with token state 'missing'.
+        The check and the write run under one lock, and the UNIQUE column backs it.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            holder = cursor.execute(
+                "SELECT athlete_id FROM athlete_accounts WHERE telegram_chat_id = ?",
+                (telegram_chat_id,),
+            ).fetchone()
+            if holder is not None and holder[0] != athlete_id:
+                raise ValueError("this Telegram chat is already bound to another athlete")
+            if holder is not None:
+                return
+            cursor.execute(
+                """INSERT INTO athlete_accounts (athlete_id, garmin_token_state, telegram_chat_id, updated_at)
+                   VALUES (?, 'missing', ?, ?)
+                   ON CONFLICT(athlete_id) DO UPDATE SET
+                        telegram_chat_id = excluded.telegram_chat_id,
+                        updated_at = excluded.updated_at""",
+                (athlete_id, telegram_chat_id, updated_at),
+            )
+            self._db.conn.commit()
+
+    def get_athlete_for_telegram_chat(self, telegram_chat_id: str) -> str | None:
+        """Return the athlete bound to this Telegram chat, or None."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT athlete_id FROM athlete_accounts WHERE telegram_chat_id = ?",
+                (telegram_chat_id,),
+            ).fetchone()
+        return row[0] if row else None
+
+    def revoke_consent(self, athlete_id: str, *, revoked_at: str) -> int:
+        """Set revoked_at on the athlete's current consent rows (ADR-0067 D4.3); return the count."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                "UPDATE consent_log SET revoked_at = ? WHERE athlete_id = ? AND revoked_at IS NULL",
+                (revoked_at, athlete_id),
+            )
+            self._db.conn.commit()
+            return cursor.rowcount
+
     def _get_all_athlete_ids(self) -> list[str]:
         """Return all athlete_ids from the athletes table."""
         with self._db._lock:

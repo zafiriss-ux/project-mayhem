@@ -251,6 +251,58 @@ def _record_garmin_token_state(db: DatabaseManager, athlete_id: str, garmin) -> 
     )
 
 
+def _require_telegram_ready(db: DatabaseManager, athlete_id: str) -> str | None:
+    """Return the athlete's private Telegram chat; raise AthleteNotReady when none is bound.
+
+    The owner's chat stays TELEGRAM_CHAT_ID in .env (ADR-0067 D1.3), so None is returned
+    for the owner. Any other athlete is never sent anything without their own chat (D7.1).
+    """
+    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady
+
+    if athlete_id == OWNER_ATHLETE_ID:
+        return None
+    account = db.get_athlete_account(athlete_id)
+    if account is None or not account.get("telegram_chat_id"):
+        raise AthleteNotReady(athlete_id, "telegram: no chat bound")
+    return account["telegram_chat_id"]
+
+
+def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
+    """/sync from an athlete's own chat: sync and store that athlete's Garmin data only (D10.3).
+
+    The reply never carries error details or another athlete's data. Not for the owner,
+    whose /sync stays the console callback in titan/main.py.
+    """
+    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady, load_athlete_profile
+    from titan.integrations.garmin_sync import GarminSync
+    from titan.orchestration.garmin_persistence import persist_garmin_data
+
+    log = logging.getLogger("titan.worker.runner")
+    if athlete_id == OWNER_ATHLETE_ID:
+        raise ValueError("the owner's /sync is the console callback, not this one")
+    try:
+        load_athlete_profile(db, athlete_id)
+        _require_garmin_ready(db, athlete_id)
+    except AthleteNotReady as exc:
+        log.info("athlete_sync_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
+        return "⏸ Your setup is not complete yet, so nothing was synced."
+    garmin = GarminSync(athlete_id=athlete_id)
+    try:
+        if not garmin.connect():
+            return "⏸ Garmin is not connected for you, so nothing was synced."
+        data = garmin.sync_all()
+        persist_garmin_data(
+            db, data, _utc_now().date().isoformat(), athlete_id=athlete_id,
+            emit=lambda action, **fields: log.info(action, extra={"athlete_id": athlete_id, **fields}),
+        )
+    except Exception:
+        log.exception("athlete_sync_failed", extra={"athlete_id": athlete_id})
+        return "❌ Sync failed. Please try again later."
+    finally:
+        _record_garmin_token_state(db, athlete_id, garmin)
+    return "✅ Sync complete."
+
+
 def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     """Compose a DailyCoach for one athlete, mirroring the titan/main.py composition root.
 
@@ -276,12 +328,17 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
 
     profile = load_athlete_profile(db, athlete_id)
     _require_garmin_ready(db, athlete_id)
+    telegram_chat = _require_telegram_ready(db, athlete_id)
     weather = WeatherAPI()
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
         garmin_sync=GarminSync(athlete_id=athlete_id),
         weather_api=weather,
-        telegram_bot=TitanTelegramBot(db=db),
+        # Another athlete's messages go to their own chat only, never the owner's (ADR-0067 D10.1).
+        telegram_bot=(
+            TitanTelegramBot(db=db) if telegram_chat is None
+            else TitanTelegramBot(db=db, chat_id=telegram_chat, athlete_id=athlete_id)
+        ),
         hrv_engine=engines.hrv,
         tsb_engine=engines.tsb,
         readiness_engine=engines.readiness,

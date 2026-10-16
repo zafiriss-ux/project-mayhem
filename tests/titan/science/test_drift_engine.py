@@ -13,6 +13,9 @@ class _TelegramHarness:
     def register_command(self, name, callback) -> None:
         self.commands[name] = callback
 
+    def register_athlete_command(self, name, callback) -> None:
+        self.athlete_commands = {**getattr(self, "athlete_commands", {}), name: callback}
+
 
 class _NoopDailyCoach:
     def __init__(self) -> None:
