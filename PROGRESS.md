@@ -107,8 +107,9 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | Βήμα | PR | Κατάσταση |
 |---|---|---|
 | 1 ADR-0067: διάρκεια και διαγραφή δεδομένων, συγκατάθεση, λογαριασμοί, πρωινό ανά αθλητή· αλλαγές στο AGENTS §8.6 και §16.10 (D-090) | #1028 | Έγινε |
-| 2 Migration v30, με baseline του owner πρώτα: `athlete_id` χωρίς DEFAULT σε `sync_metadata` και `override_log`, νέο `consent_log`, πίνακες `athlete_profiles` και `athlete_accounts` (D-091) | #1029 | Σε έλεγχο |
-| 3 Το προφίλ του αθλητή από τη βάση | — | Επόμενο |
+| 2 Migration v30, με baseline του owner πρώτα: `athlete_id` χωρίς DEFAULT σε `sync_metadata` και `override_log`, νέο `consent_log`, πίνακες `athlete_profiles` και `athlete_accounts` (D-091) | #1029 | Έγινε |
+| 3 Το προφίλ του αθλητή από τη βάση: ο owner από το `.env`, κάθε άλλος από το `athlete_profiles` χωρίς προεπιλογές· χωρίς πλήρες προφίλ δεν χτίζεται τίποτα (D-092) | — | Σε έλεγχο |
+| 4 Garmin ανά αθλητή | — | Επόμενο |
 
 ## Επόμενα
 

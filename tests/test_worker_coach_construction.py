@@ -38,9 +38,21 @@ def test_build_daily_coach_returns_wired_coach(worker_db):
 def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     from titan.worker import _build_daily_coach
 
-    coach = _build_daily_coach(worker_db, athlete_id="athlete-2")
+    # Since Phase 4 step 3 an athlete other than the owner needs a stored profile (ADR-0067 D5).
+    worker_db.conn.execute(
+        "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES ('a-00000002', 'B', 'now')"
+    )
+    worker_db.save_athlete_profile("a-00000002", {
+        "birth_date": "1990-05-01", "sex": "F", "weight_kg": 58.0, "height_cm": 165,
+        "max_hr": 186, "threshold_hr": 166, "training_phase": "BASE", "training_goal": "10K",
+        "location_city": "Thessaloniki", "location_country": "GR",
+    })
 
-    assert coach.athlete_id == "athlete-2"
+    coach = _build_daily_coach(worker_db, athlete_id="a-00000002")
+
+    assert coach.athlete_id == "a-00000002"
+    assert coach.athlete_profile.athlete_id == "a-00000002"
+    assert coach.athlete_profile.max_hr == 186
 
 
 @pytest.mark.integration

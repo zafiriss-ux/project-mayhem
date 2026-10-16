@@ -482,6 +482,52 @@ class GovernanceRepository:
             return None, 0
         return completed_count / total_count, total_count
 
+    _PROFILE_COLUMNS = (
+        "birth_date", "sex", "weight_kg", "height_cm", "max_hr", "threshold_hr",
+        "training_phase", "training_goal", "location_city", "location_country",
+    )
+
+    def get_athlete_profile(self, athlete_id: str) -> tuple[str, dict] | None:
+        """Return (display_name, athlete_profiles row) for the athlete, or None without a row.
+
+        v30 (ADR-0067 D5). The owner has no row: the owner's profile is in .env.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                """SELECT a.display_name, p.birth_date, p.sex, p.weight_kg, p.height_cm,
+                          p.max_hr, p.threshold_hr, p.training_phase, p.training_goal,
+                          p.location_city, p.location_country
+                   FROM athlete_profiles p JOIN athletes a ON a.athlete_id = p.athlete_id
+                   WHERE p.athlete_id = ?""",
+                (athlete_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return row[0], dict(zip(self._PROFILE_COLUMNS, row[1:], strict=True))
+
+    def save_athlete_profile(self, athlete_id: str, record: dict, *, updated_at: str) -> None:
+        """Insert or replace the athlete's athlete_profiles row (the caller validates it)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                """INSERT INTO athlete_profiles (
+                        athlete_id, birth_date, sex, weight_kg, height_cm, max_hr, threshold_hr,
+                        training_phase, training_goal, location_city, location_country, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(athlete_id) DO UPDATE SET
+                        birth_date = excluded.birth_date, sex = excluded.sex,
+                        weight_kg = excluded.weight_kg, height_cm = excluded.height_cm,
+                        max_hr = excluded.max_hr, threshold_hr = excluded.threshold_hr,
+                        training_phase = excluded.training_phase,
+                        training_goal = excluded.training_goal,
+                        location_city = excluded.location_city,
+                        location_country = excluded.location_country,
+                        updated_at = excluded.updated_at""",
+                (athlete_id, *(record[c] for c in self._PROFILE_COLUMNS), updated_at),
+            )
+            self._db.conn.commit()
+
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
         """Return True if the athlete is in the cold-start bootstrapping period.
 

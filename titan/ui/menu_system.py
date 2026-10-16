@@ -17,8 +17,12 @@ from datetime import UTC, datetime
 from titan import __version__
 
 # ── Profile-editor constants (importable for tests) ──────────────────────────
-VALID_TRAINING_PHASES: frozenset[str] = frozenset({"BASE", "BUILD", "PEAK", "TAPER"})
-VALID_TRAINING_GOALS: frozenset[str] = frozenset({"5K", "10K", "HM", "M"})
+# One source with the athlete_profiles checks (ADR-0067 D5.1).
+from titan.core.athlete import (
+    PROFILE_LIMITS,
+    VALID_TRAINING_GOALS,
+    VALID_TRAINING_PHASES,
+)
 
 _log = logging.getLogger(__name__)
 
@@ -760,11 +764,11 @@ def _validate_field(key: str, value: str) -> tuple[bool, str]:
     """Validate a single athlete-profile env key/value pair."""
     _validators: dict[str, object] = {
         "ATHLETE_NAME":         lambda v: (bool(v.strip()), "Name cannot be empty"),
-        "ATHLETE_AGE":          lambda v: _validate_int(v, 10, 100),
-        "ATHLETE_WEIGHT":       lambda v: _validate_float(v, 20.0, 300.0),
-        "ATHLETE_HEIGHT":       lambda v: _validate_int(v, 100, 250),
-        "ATHLETE_MAX_HR":       lambda v: _validate_int(v, 100, 220),
-        "ATHLETE_THRESHOLD_HR": lambda v: _validate_int(v, 80, 210),
+        "ATHLETE_AGE":          lambda v: _validate_int(v, *PROFILE_LIMITS["age"]),
+        "ATHLETE_WEIGHT":       lambda v: _validate_float(v, *PROFILE_LIMITS["weight_kg"]),
+        "ATHLETE_HEIGHT":       lambda v: _validate_int(v, *PROFILE_LIMITS["height_cm"]),
+        "ATHLETE_MAX_HR":       lambda v: _validate_int(v, *PROFILE_LIMITS["max_hr"]),
+        "ATHLETE_THRESHOLD_HR": lambda v: _validate_int(v, *PROFILE_LIMITS["threshold_hr"]),
         "TRAINING_PHASE":       lambda v: (
             v.upper() in VALID_TRAINING_PHASES,
             f"Must be one of: {', '.join(sorted(VALID_TRAINING_PHASES))}",

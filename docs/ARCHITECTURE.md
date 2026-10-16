@@ -201,6 +201,11 @@ Step 12 — send_telegram:       DecisionResult → PlannedEffect → TelegramBo
   → ctx["athlete_profile"] (AthleteProfile TypedDict)
 ```
 
+The worker builds each athlete's profile with `load_athlete_profile(db, athlete_id)`
+(`titan/core/athlete.py`): the owner's from `.env` as above, any other athlete's from the
+`athlete_profiles` row with no default. An athlete with no complete profile raises
+`AthleteNotReady` before the coach is built (ADR-0067 D5, D7.1; D-092).
+
 ---
 
 ## Shared State — ctx dict
