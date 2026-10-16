@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import os
+import stat
 import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -149,8 +151,19 @@ def test_a_key_inside_the_data_folder_is_refused(data_dir, monkeypatch) -> None:
 
 @pytest.mark.unit
 @pytest.mark.skipif(os.name != "posix", reason="file modes are POSIX")
-def test_a_key_readable_by_its_group_is_refused(key_file) -> None:
-    os.chmod(key_file, 0o640)  # group-readable is enough to be refused
+def test_a_key_readable_by_its_group_is_refused(key_file, monkeypatch) -> None:
+    # The mode is reported through stat rather than set on disk, so no test writes a
+    # key file readable beyond its owner.
+    real_stat = Path.stat
+    target = key_file.resolve()
+
+    def _group_readable(self, *args, **kwargs):
+        result = real_stat(self, *args, **kwargs)
+        if self == target:
+            return os.stat_result((result.st_mode | stat.S_IRGRP, *tuple(result)[1:]))
+        return result
+
+    monkeypatch.setattr(Path, "stat", _group_readable)
     with pytest.raises(RuntimeError, match="0600"):
         encrypt_athlete_token("x")
 
@@ -220,7 +233,7 @@ def test_a_rejected_token_pauses_the_athlete_and_no_login_happens(key_file, monk
 def test_an_unusable_key_stops_the_connect_and_keeps_the_token(key_file, monkeypatch) -> None:
     _fake_garminconnect(monkeypatch)
     _store_token(_A, "session-of-a")
-    os.chmod(key_file, 0o640)  # group-readable is enough to be refused
+    key_file.write_bytes(b"not-a-key")
 
     sync = GarminSync(athlete_id=_A)
 
