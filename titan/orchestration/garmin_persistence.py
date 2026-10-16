@@ -90,7 +90,9 @@ def _save_activities(
                 failure_class=None,
             )
             continue
-        activity_quality_flag = "degraded" if has_warns(sanity_violations) else None
+        # F6 (D-075): a load estimated without a heart rate is flagged like a sanity warning.
+        load_estimated = bool(act.get("load_estimated"))
+        activity_quality_flag = "degraded" if has_warns(sanity_violations) or load_estimated else None
 
         try:
             _est_load = act.get('estimated_training_load')

@@ -2,7 +2,11 @@
 
 import math
 
-MODULE_VERSION = "1.0.1"
+MODULE_VERSION = "1.0.2"
+
+# F6 (D-075): without a heart rate the zone is unknown. The middle zone keeps a hard
+# session from counting as the lightest one, which would make TSB look fresher.
+NO_HR_ZONE_MULTIPLIER = 3
 
 
 class TRIMPEngine:
@@ -45,10 +49,14 @@ class TRIMPEngine:
                 session peak is below the physiological HRmax.
 
         Returns:
-            (trimp_value, zone_multiplier)
+            (trimp_value, zone_multiplier). Without avg_hr the multiplier is
+            NO_HR_ZONE_MULTIPLIER, an estimate.
         """
         if not athlete_max_hr or athlete_max_hr < 100:  # Physiologically impossible below 100 bpm
             return None, 0
+
+        if not avg_hr or avg_hr <= 0:  # no heart rate recorded (F6, D-075)
+            return duration_min * NO_HR_ZONE_MULTIPLIER, NO_HR_ZONE_MULTIPLIER
 
         hr_percent = (avg_hr / athlete_max_hr) * 100
 

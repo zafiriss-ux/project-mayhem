@@ -603,6 +603,9 @@ class GarminSync:
                 NOT from the session peak HR in the Garmin payload.
                 When 0 (not supplied), TRIMP calculation returns None and
                 ``estimated_training_load`` defaults to 0.0.
+
+        An activity without a heart rate gets a middle-zone load estimate and
+        ``load_estimated=True`` (F6, D-075).
         """
         if not self._ensure_connected():
             return []
@@ -643,6 +646,7 @@ class GarminSync:
                             "elevation_gain_m": int(a.get("elevationGain", 0)),
                             "activity_id": a.get("activityId"),
                             "estimated_training_load": estimated_load,
+                            "load_estimated": bool(trimp_val) and not avg_hr,
                         }
                     )
                 except Exception as e:
