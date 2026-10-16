@@ -24,6 +24,13 @@ from titan.science.physiological_bounds import (
     validate_single,
 )
 
+
+def _days_ago(n: int) -> str:
+    """A date inside the "last N days" window of the history reads (F5, D-072)."""
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(days=n)).strftime("%Y-%m-%d")
+
 # ─── validate_and_clamp: happy path ──────────────────────────────────────────
 
 
@@ -235,14 +242,14 @@ def test_get_hrv_history_filters_artefact_values(tmp_path):
     db = DatabaseManager(db_name="test_bounds.db", db_dir=tmp_path)
 
     # Save one valid HRV and one artefact HRV
-    db.save_daily_metric(date="2026-01-01", hrv=55.0)
-    db.save_daily_metric(date="2026-01-02", hrv=850.0)  # extreme artefact → nulled
+    db.save_daily_metric(date=_days_ago(2), hrv=55.0)
+    db.save_daily_metric(date=_days_ago(1), hrv=850.0)  # extreme artefact → nulled
 
     rows = db.get_hrv_history(days=30)
     dates = [r[0] for r in rows]
 
-    assert "2026-01-01" in dates
-    assert "2026-01-02" not in dates  # artefact row excluded
+    assert _days_ago(2) in dates
+    assert _days_ago(1) not in dates  # artefact row excluded
 
     db.close()
 
@@ -255,7 +262,7 @@ def test_get_hrv_history_clamps_mild_outlier(tmp_path):
     db = DatabaseManager(db_name="test_bounds_clamp.db", db_dir=tmp_path)
 
     # 310 ms: (310-300)=10 excess; span=299.9 → 10 <= 299.9 → clamped to 300.0
-    db.save_daily_metric(date="2026-01-01", hrv=310.0)
+    db.save_daily_metric(date=_days_ago(2), hrv=310.0)
 
     rows = db.get_hrv_history(days=30)
     assert len(rows) == 1
@@ -408,14 +415,14 @@ def test_get_weight_history_filters_extreme_artefact_values(tmp_path):
 
     db = DatabaseManager(db_name="test_weight_bounds.db", db_dir=tmp_path)
 
-    db.save_daily_metric(date="2026-01-01", weight=72.0)
-    db.save_daily_metric(date="2026-01-02", weight=900.0)  # extreme artefact
+    db.save_daily_metric(date=_days_ago(2), weight=72.0)
+    db.save_daily_metric(date=_days_ago(1), weight=900.0)  # extreme artefact
 
     rows = db.get_weight_history(days=30)
     dates = [r[0] for r in rows]
 
-    assert "2026-01-01" in dates
-    assert "2026-01-02" not in dates
+    assert _days_ago(2) in dates
+    assert _days_ago(1) not in dates
 
     db.close()
 

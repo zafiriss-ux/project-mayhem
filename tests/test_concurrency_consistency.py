@@ -22,6 +22,13 @@ from titan.config.thresholds import RATE_LIMITER_MAX_KEYS
 from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
 from titan.orchestration.daily_coach import DegradedModeTracker
 
+
+def _days_ago(n: int) -> str:
+    """A date inside the "last N days" window of the history reads (F5, D-072)."""
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(days=n)).strftime("%Y-%m-%d")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CC-01 — DegradedModeTracker restart survival (raw DB mechanics)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -291,7 +298,7 @@ class TestConcurrentAthleteWritesNoCollision:
             try:
                 barrier.wait()
                 db.save_daily_metric(
-                    date="2026-01-01",
+                    date=_days_ago(2),
                     hrv=60.0,
                     rhr=48,
                     sleep_hours=7.5,
@@ -304,7 +311,7 @@ class TestConcurrentAthleteWritesNoCollision:
             try:
                 barrier.wait()
                 db.save_daily_metric(
-                    date="2026-01-02",
+                    date=_days_ago(1),
                     hrv=55.0,
                     rhr=52,
                     sleep_hours=6.0,
@@ -324,12 +331,12 @@ class TestConcurrentAthleteWritesNoCollision:
 
         # Verify each date stored the correct values.
         hrv_rows = dict(db.get_hrv_history(days=10))
-        assert "2026-01-01" in hrv_rows, "Date A row must be present after concurrent write"
-        assert "2026-01-02" in hrv_rows, "Date B row must be present after concurrent write"
-        assert hrv_rows["2026-01-01"] == pytest.approx(60.0, abs=0.01), (
+        assert _days_ago(2) in hrv_rows, "Date A row must be present after concurrent write"
+        assert _days_ago(1) in hrv_rows, "Date B row must be present after concurrent write"
+        assert hrv_rows[_days_ago(2)] == pytest.approx(60.0, abs=0.01), (
             "Date A HRV value must not be contaminated by date B's write"
         )
-        assert hrv_rows["2026-01-02"] == pytest.approx(55.0, abs=0.01), (
+        assert hrv_rows[_days_ago(1)] == pytest.approx(55.0, abs=0.01), (
             "Date B HRV value must not be contaminated by date A's write"
         )
 
@@ -348,14 +355,14 @@ class TestConcurrentAthleteWritesNoCollision:
         def writer_1() -> None:
             try:
                 barrier.wait()
-                db.save_daily_metric(date="2026-03-01", hrv=60.0, rhr=48)
+                db.save_daily_metric(date=_days_ago(1), hrv=60.0, rhr=48)
             except Exception as exc:
                 errors.append(exc)
 
         def writer_2() -> None:
             try:
                 barrier.wait()
-                db.save_daily_metric(date="2026-03-01", hrv=58.0, rhr=50)
+                db.save_daily_metric(date=_days_ago(1), hrv=58.0, rhr=50)
             except Exception as exc:
                 errors.append(exc)
 
@@ -370,11 +377,11 @@ class TestConcurrentAthleteWritesNoCollision:
             f"Concurrent same-date writes must not raise; errors: {errors}"
         )
 
-        # Exactly one row for 2026-03-01.
+        # Exactly one row for that date.
         hrv_rows = dict(db.get_hrv_history(days=30))
-        assert "2026-03-01" in hrv_rows, "Row must exist after concurrent same-date write"
+        assert _days_ago(1) in hrv_rows, "Row must exist after concurrent same-date write"
         # Value must be one of the two written values (last-write-wins UPSERT).
-        assert hrv_rows["2026-03-01"] in (
+        assert hrv_rows[_days_ago(1)] in (
             pytest.approx(60.0, abs=0.01),
             pytest.approx(58.0, abs=0.01),
         ), (
@@ -399,7 +406,7 @@ class TestConcurrentAthleteWritesNoCollision:
         def worker(thread_idx: int) -> None:
             try:
                 barrier.wait()
-                date = f"2026-04-{thread_idx + 1:02d}"
+                date = _days_ago(thread_idx + 1)
                 db.save_daily_metric(
                     date=date,
                     hrv=60.0 + thread_idx,
@@ -427,7 +434,7 @@ class TestConcurrentAthleteWritesNoCollision:
         # Verify all dates were written.
         hrv_rows = dict(db.get_hrv_history(days=30))
         for i in range(n_threads):
-            date = f"2026-04-{i + 1:02d}"
+            date = _days_ago(i + 1)
             assert date in hrv_rows, f"Date '{date}' must be present after concurrent write"
 
 
