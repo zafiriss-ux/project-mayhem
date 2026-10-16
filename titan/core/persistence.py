@@ -228,9 +228,9 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def add_shoe(
-        self, name: str, shoe_type: str = "DAILY", max_km: int = 800
+        self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
     ) -> int:
-        """Insert a new shoe row and return its generated id."""
+        """Insert a new shoe row for *athlete_id* and return its generated id."""
 
     @abstractmethod
     def get_active_shoes(self) -> list[tuple]:
@@ -257,8 +257,9 @@ class PersistenceAdapter(ABC):
         time_sec: int,
         date: str,
         race_name: str | None = None,
+        athlete_id: str = "owner",
     ) -> None:
-        """Persist a personal-best row."""
+        """Persist a personal-best row for *athlete_id*."""
 
     @abstractmethod
     def get_pr(
@@ -482,9 +483,11 @@ class SQLiteAdapter(PersistenceAdapter):
         return self._manager.get_ctl_atl_tsb(athlete_id=athlete_id)
 
     def add_shoe(
-        self, name: str, shoe_type: str = "DAILY", max_km: int = 800
+        self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
     ) -> int:
-        return self._manager.add_shoe(name=name, shoe_type=shoe_type, max_km=max_km)
+        return self._manager.add_shoe(
+            name=name, shoe_type=shoe_type, max_km=max_km, athlete_id=athlete_id
+        )
 
     def get_active_shoes(self) -> list[tuple]:
         return self._manager.get_active_shoes()
@@ -507,12 +510,14 @@ class SQLiteAdapter(PersistenceAdapter):
         time_sec: int,
         date: str,
         race_name: str | None = None,
+        athlete_id: str = "owner",
     ) -> None:
         self._manager.save_personal_best(
             distance_km=distance_km,
             time_sec=time_sec,
             date=date,
             race_name=race_name,
+            athlete_id=athlete_id,
         )
 
     def get_pr(
@@ -920,12 +925,14 @@ class PostgreSQLAdapter(PersistenceAdapter):
         )
 
     def add_shoe(
-        self, name: str, shoe_type: str = "DAILY", max_km: int = 800
+        self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
     ) -> int:
         with self._engine.begin() as conn:
             result = conn.execute(
                 insert(self._gear_usage)
-                .values(shoe_name=name, shoe_type=shoe_type, max_km_limit=max_km)
+                .values(
+                    shoe_name=name, shoe_type=shoe_type, max_km_limit=max_km, athlete_id=athlete_id
+                )
                 .returning(self._gear_usage.c.id)
             )
             return int(result.scalar_one())
@@ -981,11 +988,13 @@ class PostgreSQLAdapter(PersistenceAdapter):
         time_sec: int,
         date: str,
         race_name: str | None = None,
+        athlete_id: str = "owner",
     ) -> None:
         pace = time_sec / distance_km if distance_km > 0 else None
         with self._engine.begin() as conn:
             conn.execute(
                 insert(self._personal_bests).values(
+                    athlete_id=athlete_id,
                     distance_km=distance_km,
                     time_sec=time_sec,
                     pace_sec_per_km=pace,

@@ -38,7 +38,9 @@ class TrainingRepository:
             """, (distance_km, date, shoe_id))
             self._db.conn.commit()
 
-    def add_shoe(self, name: str, shoe_type: str = "DAILY", max_km: int = 800) -> int:
+    def add_shoe(
+        self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
+    ) -> int:
         """
         Add new shoe to database.
 
@@ -46,6 +48,7 @@ class TrainingRepository:
             name: Descriptive name (e.g., "Nike Pegasus 40")
             shoe_type: Type of shoe ("DAILY", "RACE", "RECOVERY", "TRAIL")
             max_km: Maximum recommended mileage
+            athlete_id: Athlete the shoe belongs to (F9, D-076)
 
         Returns:
             ID of the newly added shoe
@@ -54,9 +57,9 @@ class TrainingRepository:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute("""
-                INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit)
-                VALUES (?, ?, ?)
-            """, (name, shoe_type, max_km))
+                INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit, athlete_id)
+                VALUES (?, ?, ?, ?)
+            """, (name, shoe_type, max_km, athlete_id))
             self._db.conn.commit()
         return cursor.lastrowid
 
@@ -140,7 +143,8 @@ class TrainingRepository:
         distance_km: float,
         time_sec: int,
         date: str,
-        race_name: str | None = None
+        race_name: str | None = None,
+        athlete_id: str = "owner",
     ) -> None:
         """
         Save a personal best.
@@ -150,6 +154,7 @@ class TrainingRepository:
             time_sec: Time in seconds
             date: Date of the performance (ISO format)
             race_name: Optional race name
+            athlete_id: Athlete the record belongs to (F9, D-076)
 
         Raises:
             ValueError: distance_km or time_sec is not positive (F10).
@@ -166,9 +171,9 @@ class TrainingRepository:
             cursor = self._db.conn.cursor()
             cursor.execute("""
                 INSERT INTO personal_bests
-                (distance_km, time_sec, pace_sec_per_km, date, race_name)
-                VALUES (?, ?, ?, ?, ?)
-            """, (distance_km, time_sec, pace_per_km, date, race_name))
+                (distance_km, time_sec, pace_sec_per_km, date, race_name, athlete_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (distance_km, time_sec, pace_per_km, date, race_name, athlete_id))
             self._db.conn.commit()
 
     def get_pr(self, distance_km: float) -> tuple[int, str, str | None] | None:
