@@ -552,6 +552,33 @@ class DatabaseManager:
             athlete_id=athlete_id, record=normalized, updated_at=now.isoformat()
         )
 
+    def get_athlete_account(self, athlete_id: str) -> dict | None:
+        """Return the athlete's external accounts (Garmin, Telegram), or None."""
+        return self._access.get_athlete_account(athlete_id=athlete_id)
+
+    def bind_garmin_account(self, athlete_id: str, garmin_user_id: str) -> None:
+        """Bind a Garmin account to an athlete other than the owner (ADR-0067 D9.4).
+
+        Raises ValueError for the owner, whose Garmin login stays in .env (D1.3), or
+        when the account is already bound to another athlete.
+        """
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner's Garmin account lives in .env, not in athlete_accounts")
+        if not str(garmin_user_id).strip():
+            raise ValueError("a Garmin account id is required")
+        self._access.bind_garmin_account(
+            athlete_id=athlete_id, garmin_user_id=str(garmin_user_id).strip(),
+            updated_at=datetime.now(UTC).isoformat(),
+        )
+
+    def set_garmin_token_state(self, athlete_id: str, state: str) -> None:
+        """Record the athlete's Garmin token state: 'missing', 'ok' or 'expired' (ADR-0067 D9.5)."""
+        if state not in ("missing", "ok", "expired"):
+            raise ValueError(f"unknown Garmin token state: {state!r}")
+        self._access.set_garmin_token_state(
+            athlete_id=athlete_id, state=state, updated_at=datetime.now(UTC).isoformat()
+        )
+
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
         """Return True if the athlete is in the cold-start bootstrapping period."""
         return self._governance.is_athlete_cold_start(athlete_id=athlete_id)
@@ -1150,9 +1177,9 @@ class DatabaseManager:
         """Return latest sync outcome metadata for a source."""
         return self._operations.get_last_sync_outcome(source=source, athlete_id=athlete_id)
 
-    def get_last_garmin_sync_timestamp(self) -> datetime | None:
-        """Return a datetime representing the most recent data written by Garmin sync."""
-        return self._operations.get_last_garmin_sync_timestamp()
+    def get_last_garmin_sync_timestamp(self, athlete_id: str = "owner") -> datetime | None:
+        """Return a datetime representing the most recent data Garmin sync wrote for the athlete."""
+        return self._operations.get_last_garmin_sync_timestamp(athlete_id=athlete_id)
 
     def get_weight_history(self, days: int = 30, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return (date, weight_kg) rows from the last N days, newest-first."""

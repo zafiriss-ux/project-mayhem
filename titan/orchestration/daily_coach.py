@@ -2242,7 +2242,9 @@ class DailyCoach:
                 STALE_DATA_WARN_HOURS,
             )
 
-            last_ts = self.db.get_last_garmin_sync_timestamp()
+            last_ts = self.db.get_last_garmin_sync_timestamp(
+                athlete_id=getattr(self, "athlete_id", "owner")
+            )
             if last_ts is not None:
                 now_utc = datetime.now(tz=UTC)
                 hours_since = (now_utc - last_ts).total_seconds() / 3600

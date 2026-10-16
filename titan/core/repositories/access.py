@@ -1,5 +1,6 @@
 """Access domain SQL: login lockout, auth users and refresh tokens (HD-04 /
-T5-70), coach-athlete RBAC scoping (ADR-0054) and the coach audit log (T5-111)."""
+T5-70), coach-athlete RBAC scoping (ADR-0054), the coach audit log (T5-111) and
+the external accounts of athletes other than the owner (ADR-0067 D9, D10)."""
 
 from __future__ import annotations
 
@@ -201,6 +202,65 @@ class AccessRepository:
                 (user_id, now_iso),
             ).fetchall()
         return [{"id": r[0], "issued_at": r[1]} for r in rows]
+
+    def get_athlete_account(self, athlete_id: str) -> dict | None:
+        """Return the athlete's athlete_accounts row, or None (the owner never has one)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT garmin_user_id, garmin_token_state, telegram_chat_id, updated_at "
+                "FROM athlete_accounts WHERE athlete_id = ?",
+                (athlete_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {
+            "garmin_user_id": row[0],
+            "garmin_token_state": row[1],
+            "telegram_chat_id": row[2],
+            "updated_at": row[3],
+        }
+
+    def bind_garmin_account(self, athlete_id: str, garmin_user_id: str, *, updated_at: str) -> None:
+        """Bind a Garmin account to the athlete; refuse one already bound elsewhere (ADR-0067 D9.4).
+
+        A new or changed binding has no usable token yet ('missing') until a relogin.
+        The check and the write run under one lock, and the UNIQUE column backs it.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            holder = cursor.execute(
+                "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ?",
+                (garmin_user_id,),
+            ).fetchone()
+            if holder is not None and holder[0] != athlete_id:
+                raise ValueError("this Garmin account is already bound to another athlete")
+            if holder is not None:
+                return
+            cursor.execute(
+                """INSERT INTO athlete_accounts (athlete_id, garmin_user_id, garmin_token_state, updated_at)
+                   VALUES (?, ?, 'missing', ?)
+                   ON CONFLICT(athlete_id) DO UPDATE SET
+                        garmin_user_id = excluded.garmin_user_id,
+                        garmin_token_state = 'missing',
+                        updated_at = excluded.updated_at""",
+                (athlete_id, garmin_user_id, updated_at),
+            )
+            self._db.conn.commit()
+
+    def set_garmin_token_state(self, athlete_id: str, state: str, *, updated_at: str) -> None:
+        """Record the athlete's Garmin token state ('missing', 'ok' or 'expired')."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                "UPDATE athlete_accounts SET garmin_token_state = ?, updated_at = ? WHERE athlete_id = ?",
+                (state, updated_at, athlete_id),
+            )
+            if cursor.rowcount == 0:
+                raise ValueError("the athlete has no Garmin account bound")
+            self._db.conn.commit()
 
     def _get_all_athlete_ids(self) -> list[str]:
         """Return all athlete_ids from the athletes table."""

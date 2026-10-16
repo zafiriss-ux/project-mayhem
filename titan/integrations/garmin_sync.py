@@ -9,6 +9,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -46,6 +47,10 @@ _GARTH_TOKEN_FILENAME = ".garth_token"  # nosec B105
 _LOGIN_RETRY_WAITS_S = (60, 120, 240)  # exponential backoff for 429 rate-limit retries
 # Bandit B105: env var name, not a key.
 _TITAN_TOKEN_KEY_ENV = "TITAN_GARTH_TOKEN_KEY"  # nosec B105
+# Bandit B105: env var name of the athletes' key file, not a key (ADR-0067 D9.2).
+_ATHLETE_TOKEN_KEY_FILE_ENV = "TITAN_TOKEN_KEY_FILE"  # nosec B105
+_OWNER_ATHLETE_ID = "owner"
+_ATHLETE_ID_IN_PATH = re.compile(r"[a-z0-9_-]+")
 
 def _get_data_dir() -> Path:
     """Return TITAN_DATA_DIR as a Path — lazy so tests can monkeypatch TITAN_DATA_DIR.
@@ -149,6 +154,65 @@ def _decrypt_token(data: bytes) -> str:
             "TITAN_GARTH_TOKEN_KEY must be set in production. "
             "Set TITAN_ENV=dev to bypass in development."
         )
+    try:
+        return Fernet(key).decrypt(data).decode()
+    except Exception as exc:
+        _garmin_event(
+            "token_decrypt_failed",
+            severity=EventSeverity.WARNING,
+            failure_class="TOKEN_DECRYPT_FAIL",
+            error_class=type(exc).__name__,
+        )
+        raise ValueError("Garmin token decryption failed — token invalid") from exc
+
+
+def athlete_token_path(athlete_id: str) -> Path:
+    """Token file of an athlete other than the owner: <data>/garmin/<athlete_id>/ (ADR-0067 D9.2).
+
+    The id goes into a path, so only ``[a-z0-9_-]+`` is accepted.
+    """
+    if athlete_id == _OWNER_ATHLETE_ID or not _ATHLETE_ID_IN_PATH.fullmatch(athlete_id):
+        raise ValueError(f"not an athlete id that can name a token folder: {athlete_id!r}")
+    return _get_data_dir() / "garmin" / athlete_id / _GARTH_TOKEN_FILENAME
+
+
+def _athlete_token_key() -> bytes:
+    """The Fernet key for athletes' tokens, read from the file TITAN_TOKEN_KEY_FILE names.
+
+    Fail-closed (ADR-0067 D9.2, D9.3): the file must exist outside the data folder, so a
+    copy of the data folder alone does not decrypt the tokens, and on POSIX it must be
+    readable by its owner only. There is no plaintext fallback, not even in dev.
+    """
+    raw = os.environ.get(_ATHLETE_TOKEN_KEY_FILE_ENV, "").strip()
+    if not raw:
+        raise RuntimeError(f"{_ATHLETE_TOKEN_KEY_FILE_ENV} is not set")
+    key_path = Path(raw).expanduser().resolve()
+    data_dir = _get_data_dir().expanduser().resolve()
+    if key_path == data_dir or data_dir in key_path.parents:
+        raise RuntimeError(f"{_ATHLETE_TOKEN_KEY_FILE_ENV} must point outside the data folder")
+    if os.name == "posix" and key_path.stat().st_mode & 0o077:
+        raise RuntimeError(f"{_ATHLETE_TOKEN_KEY_FILE_ENV} must be readable by its owner only (0600)")
+    key = key_path.read_bytes().strip()
+    try:
+        if len(base64.urlsafe_b64decode(key)) != 32:  # noqa: PLR2004
+            raise ValueError("key must decode to exactly 32 bytes")
+    except Exception as exc:
+        raise RuntimeError(f"{_ATHLETE_TOKEN_KEY_FILE_ENV} does not hold a valid Fernet key") from exc
+    return key
+
+
+def encrypt_athlete_token(data: str) -> bytes:
+    """Encrypt an athlete's Garth session with the athletes' key (ADR-0067 D9.2)."""
+    from cryptography.fernet import Fernet
+
+    return Fernet(_athlete_token_key()).encrypt(data.encode())
+
+
+def decrypt_athlete_token(data: bytes) -> str:
+    """Decrypt an athlete's token; any failure is an invalid token, never plaintext."""
+    from cryptography.fernet import Fernet
+
+    key = _athlete_token_key()
     try:
         return Fernet(key).decrypt(data).decode()
     except Exception as exc:
@@ -311,9 +375,21 @@ class GarminSync:
 
     _instance_count: int = 0
     _instance_lock = threading.Lock()
+    # Class defaults match the owner, for instances built without __init__ (as before step 4).
+    athlete_id: str = _OWNER_ATHLETE_ID
+    token_only: bool = False
+    token_expired: bool = False
 
-    def __init__(self, email: str = None, password: str = None):
+    def __init__(self, email: str = None, password: str = None, *, athlete_id: str = _OWNER_ATHLETE_ID):
         validate_token_encryption_key()
+        # The owner logs in with GARMIN_EMAIL/GARMIN_PASSWORD as before. Any other athlete
+        # only ever uses their stored token: no password is held and no login happens in
+        # the morning (ADR-0067 D9.1, D9.6). A missing or rejected token sets token_expired.
+        self.athlete_id = athlete_id
+        self.token_only = athlete_id != _OWNER_ATHLETE_ID
+        if self.token_only:
+            athlete_token_path(athlete_id)  # rejects an id that cannot name a folder
+        self.token_expired = False
         with GarminSync._instance_lock:
             GarminSync._instance_count += 1
             instance_id = GarminSync._instance_count
@@ -333,8 +409,13 @@ class GarminSync:
                     "detail": "Multiple GarminSync instances detected — expected exactly 1 in production",
                 },
             )
-        self.email = SecretStr(_value=email or get_settings().GARMIN_EMAIL.get_secret_value())
-        self.password = SecretStr(_value=password or get_settings().GARMIN_PASSWORD.get_secret_value())
+        if self.token_only:
+            # Never the owner's credentials for another athlete.
+            self.email = SecretStr()
+            self.password = SecretStr()
+        else:
+            self.email = SecretStr(_value=email or get_settings().GARMIN_EMAIL.get_secret_value())
+            self.password = SecretStr(_value=password or get_settings().GARMIN_PASSWORD.get_secret_value())
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
@@ -381,7 +462,10 @@ class GarminSync:
         Stored in TITAN_DATA_DIR (default ~/Documents/TITAN) alongside titan.db.
         A startup warning is emitted if a legacy project-root token exists but
         the canonical data-dir path does not, prompting the operator to migrate.
+        Another athlete's token is in their own folder (ADR-0067 D9.2).
         """
+        if self.token_only:
+            return athlete_token_path(self.athlete_id)
         token_path = _get_garth_token_path()
         legacy_path = Path(__file__).parent.parent.parent / _GARTH_TOKEN_FILENAME
         if legacy_path.exists() and not token_path.exists():
@@ -393,7 +477,7 @@ class GarminSync:
         return token_path
 
     def connect(self) -> bool:
-        if not self.email or not self.password:
+        if not self.token_only and (not self.email or not self.password):
             self.last_connect_error = "Garmin credentials missing – run setup first."
             _garmin_event("connect_missing_credentials", subsystem="connect", detail="Garmin credentials missing – run setup first.")
             return False
@@ -410,11 +494,29 @@ class GarminSync:
 
             token_path = self._get_token_path()
 
+            if self.token_only:
+                # A missing or unsafe key file is a setup fault, not an expired token:
+                # stop before the token is read, so it is never deleted for it.
+                try:
+                    _athlete_token_key()
+                except Exception as key_err:
+                    self.last_connect_error = f"{key_err.__class__.__name__}: {key_err}"
+                    _garmin_event(
+                        "connect_token_key_unusable",
+                        subsystem="connect",
+                        athlete_id=self.athlete_id,
+                        error_class=key_err.__class__.__name__,
+                        detail=str(key_err),
+                    )
+                    return False
+
             # Try loading a persisted session token to avoid re-login 429s.
             if token_path.exists():
                 try:
                     raw_token = token_path.read_bytes()
-                    token_data = _decrypt_token(raw_token)
+                    token_data = (
+                        decrypt_athlete_token(raw_token) if self.token_only else _decrypt_token(raw_token)
+                    )
                     client = Garmin()
                     client.client.loads(token_data)
                     # Verify the token is still accepted by the Garmin API.
@@ -491,6 +593,19 @@ class GarminSync:
                     _garmin_event("connect_token_loaded", subsystem="connect", detail="Connected via saved Garth session token")
                     _garmin_event("connect_success", subsystem="connect", detail="Connected to Garmin Connect")
                     return True
+
+            if self.token_only:
+                # No morning login for an athlete other than the owner: the athlete is
+                # paused until `athletes relogin` (ADR-0067 D9.5, D9.6).
+                self.token_expired = True
+                self.last_connect_error = "Garmin token missing or expired; athletes relogin needed"
+                _garmin_event(
+                    "connect_relogin_required",
+                    subsystem="connect",
+                    athlete_id=self.athlete_id,
+                    detail="No usable Garmin token; this athlete is paused until relogin",
+                )
+                return False
 
             # Full login — token missing or expired.
             # Retry up to 3 times with exponential backoff on GARMIN_RATE_LIMIT (429) only.

@@ -47,12 +47,17 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
         "max_hr": 186, "threshold_hr": 166, "training_phase": "BASE", "training_goal": "10K",
         "location_city": "Thessaloniki", "location_country": "GR",
     })
+    # Since step 4 the athlete also needs their own Garmin account and token (ADR-0067 D9).
+    worker_db.bind_garmin_account("a-00000002", "garmin-b")
+    worker_db.set_garmin_token_state("a-00000002", "ok")
 
     coach = _build_daily_coach(worker_db, athlete_id="a-00000002")
 
     assert coach.athlete_id == "a-00000002"
     assert coach.athlete_profile.athlete_id == "a-00000002"
     assert coach.athlete_profile.max_hr == 186
+    assert coach.garmin.athlete_id == "a-00000002"
+    assert coach.garmin.token_only is True
 
 
 @pytest.mark.integration

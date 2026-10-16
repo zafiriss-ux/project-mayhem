@@ -176,23 +176,26 @@ class OperationsRepository:
             "last_error_class": row[3],
         }
 
-    def get_last_garmin_sync_timestamp(self) -> datetime | None:
-        """Return a datetime representing the most recent data written by Garmin sync.
+    def get_last_garmin_sync_timestamp(self, athlete_id: str = "owner") -> datetime | None:
+        """Return a datetime representing the most recent data Garmin sync wrote for the athlete.
 
-        Checks the latest date in both daily_metrics and training_log and returns
-        the more recent of the two, parsed as a midnight-UTC datetime.
+        Checks the athlete's latest date in both daily_metrics and training_log and
+        returns the more recent of the two, parsed as a midnight-UTC datetime. Another
+        athlete's fresh data never makes this athlete's data look fresh (ADR-0067 D3).
 
-        Returns None if no data exists in either table.
+        Returns None if the athlete has no data in either table.
         """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
-                "SELECT MAX(date) FROM daily_metrics WHERE date IS NOT NULL"
+                "SELECT MAX(date) FROM daily_metrics WHERE athlete_id = ? AND date IS NOT NULL",
+                (athlete_id,),
             )
             dm_row = cursor.fetchone()
             cursor.execute(
-                "SELECT MAX(date) FROM training_log WHERE date IS NOT NULL"
+                "SELECT MAX(date) FROM training_log WHERE athlete_id = ? AND date IS NOT NULL",
+                (athlete_id,),
             )
             tl_row = cursor.fetchone()
 

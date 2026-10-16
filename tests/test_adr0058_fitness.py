@@ -40,7 +40,7 @@ class _DummyDB:
     def get_cs_performances(self, **_kw):
         return []
 
-    def get_last_garmin_sync_timestamp(self):
+    def get_last_garmin_sync_timestamp(self, athlete_id="owner"):
         return None
 
     def get_all_degraded_mode_states(self):
