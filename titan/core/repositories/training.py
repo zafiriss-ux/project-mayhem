@@ -332,7 +332,8 @@ class TrainingRepository:
 
         Returns:
             List of dicts with keys: date, session_type, distance_km,
-            duration_sec, avg_hr, training_load.
+            duration_sec, avg_hr, training_load. ``avg_hr`` is ``None`` when
+            the session has no heart-rate data.
         """
         with self._db._lock:
             self._db._ensure_open_locked()
@@ -355,7 +356,7 @@ class TrainingRepository:
                 "session_type": r[1],
                 "distance_km": r[2] or 0.0,
                 "duration_sec": r[3] or 0,
-                "avg_hr": r[4] or 0,
+                "avg_hr": r[4],  # NULL stays None: no HR is not 0 bpm (F7)
                 "training_load": r[5] or 0,
                 "avg_pace_sec_per_km": r[6] or 0,
             }
