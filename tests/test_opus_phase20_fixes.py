@@ -50,10 +50,10 @@ def test_security_headers_present(jwt_keys) -> None:  # noqa: ARG001
 
 @pytest.mark.integration
 def test_schema_version_incremented() -> None:
-    """PRAGMA user_version must equal SCHEMA_VERSION == 29 after migration."""
+    """PRAGMA user_version must equal SCHEMA_VERSION == 30 after migration."""
     from titan.core.database import DatabaseManager
 
     db = DatabaseManager(":memory:")
     cursor = db.conn.cursor()
     cursor.execute("PRAGMA user_version")
-    assert cursor.fetchone()[0] == 29
+    assert cursor.fetchone()[0] == 30

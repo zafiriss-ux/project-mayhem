@@ -211,15 +211,15 @@ def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
 
 @pytest.mark.integration
 def test_schema_version_incremented(tmp_path: Path) -> None:
-    """Fresh DB must carry SCHEMA_VERSION == 29 in PRAGMA user_version."""
-    assert SCHEMA_VERSION == 29, (
-        f"Expected SCHEMA_VERSION=29 in database.py, got {SCHEMA_VERSION}"
+    """Fresh DB must carry SCHEMA_VERSION == 30 in PRAGMA user_version."""
+    assert SCHEMA_VERSION == 30, (
+        f"Expected SCHEMA_VERSION=30 in database.py, got {SCHEMA_VERSION}"
     )
     db = DatabaseManager(db_name="version_check.db", db_dir=tmp_path)
     try:
         version = db.conn.execute("PRAGMA user_version").fetchone()[0]
     finally:
         db.close()
-    assert version == 29, (
-        f"PRAGMA user_version must be 29 after create_tables(), got {version}"
+    assert version == 30, (
+        f"PRAGMA user_version must be 30 after create_tables(), got {version}"
     )

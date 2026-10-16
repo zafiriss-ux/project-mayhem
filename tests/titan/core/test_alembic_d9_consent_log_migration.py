@@ -1,4 +1,9 @@
-"""T5-08-B D9 tests for consent_log migration."""
+"""T5-08-B D9 tests for consent_log migration.
+
+These pin the frozen Alembic chain (ADR-0044, T-PRA-30), which keeps the D9 shape. The SQLite
+ladder's v30 consent_log (no DEFAULT, text_version, channel; ADR-0067 D4) is tested in
+tests/test_schema_v30_multi_athlete.py.
+"""
 
 from __future__ import annotations
 

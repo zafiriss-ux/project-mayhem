@@ -30,6 +30,8 @@ class GovernanceRepository:
         prescribed: str,
         actual: str,
         reason: str = '',
+        *,
+        athlete_id: str,
     ) -> None:
         """
         Record a session override (athlete deviated from prescribed session).
@@ -40,14 +42,15 @@ class GovernanceRepository:
             prescribed: Prescribed session type (e.g. 'REST')
             actual:     Actual session performed (e.g. 'INTERVALS')
             reason:     Optional athlete-supplied reason
+            athlete_id: The athlete who overrode; required, no default (ADR-0067 D3)
         """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
-                """INSERT INTO override_log (date, prescribed_type, actual_type, reason)
-                   VALUES (?, ?, ?, ?)""",
-                (date, prescribed, actual, reason),
+                """INSERT INTO override_log (athlete_id, date, prescribed_type, actual_type, reason)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (athlete_id, date, prescribed, actual, reason),
             )
             self._db.conn.commit()
 
@@ -93,24 +96,25 @@ class GovernanceRepository:
                 return None  # cold-start: no outcome history
             cursor.execute(
                 """SELECT COUNT(*) FROM override_log
-                   WHERE date >= date('now', '-' || ? || ' days')""",
-                (days,),
+                   WHERE athlete_id = ? AND date >= date('now', '-' || ? || ' days')""",
+                (athlete_id, days),
             )
             row = cursor.fetchone()
         overrides = row[0] if row else 0
         return round(overrides / days, 3)
 
-    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
-        """Return recent override audit rows (oldest first) for operator review."""
+    def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
+        """Return the athlete's recent override audit rows (oldest first) for operator review."""
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """SELECT date, prescribed_type, actual_type, reason
                    FROM override_log
+                   WHERE athlete_id = ?
                    ORDER BY id ASC
                    LIMIT ?""",
-                (limit,),
+                (athlete_id, limit),
             )
             rows = cursor.fetchall()
         return [

@@ -255,6 +255,7 @@ class OperatorConsoleService:
             prescribed=prescribed_type,
             actual=actual_type,
             reason=reason,
+            athlete_id="owner",  # the operator console is the owner's (ADR-0067 D1.3)
         )
         return True
 

@@ -2,7 +2,7 @@
 DB schema contract tests — ADR-0033 Layer 3 + ADR-0052 + Phase 9 entry gate.
 Any migration that changes a column set MUST update this file in the same PR.
 
-Column sets verified against: DatabaseManager (SCHEMA_VERSION=29).
+Column sets verified against: DatabaseManager (SCHEMA_VERSION=30).
 Run to re-verify: python -c "
     import tempfile; from pathlib import Path
     from titan.core.database import DatabaseManager
@@ -23,7 +23,7 @@ import pytest
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
 # ── Column contract sets (source-of-truth for schema regression) ─────────────
-# These include all columns added by migrations up to SCHEMA_VERSION=29.
+# These include all columns added by migrations up to SCHEMA_VERSION=30.
 
 GOVERNANCE_OUTCOMES_COLUMNS = {
     "id",
@@ -241,11 +241,11 @@ def test_titan_settings_postgres_dsn_required() -> None:
 
 @pytest.mark.integration
 def test_schema_version_is_twentyfour(test_db_conn) -> None:  # TD-08-R2: renamed from test_schema_version_is_thirteen (was v14→v19→v23→v24 stale chain)
-    """PRAGMA user_version must equal 29 (SCHEMA_VERSION) after create_tables()."""
-    assert SCHEMA_VERSION == 29, (
-        f"Expected SCHEMA_VERSION=29 in database.py, got {SCHEMA_VERSION}"
+    """PRAGMA user_version must equal 30 (SCHEMA_VERSION) after create_tables()."""
+    assert SCHEMA_VERSION == 30, (
+        f"Expected SCHEMA_VERSION=30 in database.py, got {SCHEMA_VERSION}"
     )
     version = test_db_conn.execute("PRAGMA user_version").fetchone()[0]
-    assert version == 29, (
-        f"PRAGMA user_version must be 29 after create_tables(), got {version}"
+    assert version == 30, (
+        f"PRAGMA user_version must be 30 after create_tables(), got {version}"
     )

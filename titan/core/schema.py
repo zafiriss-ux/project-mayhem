@@ -311,14 +311,18 @@ t_model_calibration_metadata = Table(
 # Covers: SQLite ladder (v23 migration, TD-08 Step 5 / F3.4, 2026-06-02) and Alembic d9.
 # Ref: ADR-0044 Phase 8A (GDPR), F3.4
 # ---------------------------------------------------------------------------
+# v30 (ADR-0067 D4): athlete_id has no DEFAULT; one row per consent to one text version.
 t_consent_log = Table(
     "consent_log",
     metadata,
     Column("id", BigInteger, primary_key=True),
-    Column("athlete_id", String, nullable=False, server_default="default"),
+    Column("athlete_id", String, nullable=False),
     Column("consent_type", String, nullable=False),
+    Column("text_version", String, nullable=False),  # v30
     Column("granted_at", String, nullable=False),
     Column("revoked_at", String),
+    Column("channel", String, nullable=False),  # v30 — 'telegram' ('legacy' for pre-v30 rows)
+    Index("idx_consent_log_athlete", "athlete_id", "granted_at"),
 )
 
 # ---------------------------------------------------------------------------
@@ -338,9 +342,11 @@ t_alembic_version = Table(
 # Ref: T1-20, ADR-0030
 # NOTE: ladder-created (v4); NOT in _BASE_TABLE_NAMES.
 # ---------------------------------------------------------------------------
+# v30 (ADR-0067 D3): one row per athlete and source; athlete_id has no DEFAULT.
 t_sync_metadata = Table(
     "sync_metadata",
     metadata,
+    Column("athlete_id", String, primary_key=True),  # v30
     Column("source", String, primary_key=True),
     Column("last_attempt_ts", String),
     Column("last_success_ts", String),
@@ -388,14 +394,17 @@ t_cs_performances = Table(
 )
 
 # Table 15 — override_log (governance discipline audit)
+# v30 (ADR-0067 D3): athlete_id has no DEFAULT.
 t_override_log = Table(
     "override_log",
     metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("athlete_id", String, nullable=False),  # v30
     Column("date", String, nullable=False),
     Column("prescribed_type", String),
     Column("actual_type", String),
     Column("reason", String),
+    Index("idx_override_log_athlete_date", "athlete_id", "date"),
 )
 
 # Table 16 — override_signals (ADR-0042 first-class override invariant)
@@ -503,6 +512,43 @@ t_weekly_plans = Table(
     Column("week_start", String, primary_key=True),
     Column("plan_json", String, nullable=False),
     Column("created_at", String, nullable=False),
+)
+
+# ---------------------------------------------------------------------------
+# Tables 26–27 — athlete_profiles, athlete_accounts
+# Covers: _apply_v30_migrations() (ADR-0067 D5, D9, D10; D-091)
+# The owner has no row: the owner's profile and accounts stay in .env (ADR-0067 D1.3).
+# NOTE: ladder-created (v30); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_athlete_profiles = Table(
+    "athlete_profiles",
+    metadata,
+    Column("athlete_id", String, ForeignKey("athletes.athlete_id"), primary_key=True),
+    Column("birth_date", String, nullable=False),
+    Column("sex", String, nullable=False),
+    Column("weight_kg", Float, nullable=False),
+    Column("height_cm", Float, nullable=False),
+    Column("max_hr", Integer, nullable=False),
+    Column("threshold_hr", Integer, nullable=False),
+    Column("training_phase", String, nullable=False),
+    Column("training_goal", String, nullable=False),
+    Column("location_city", String, nullable=False),
+    Column("location_country", String, nullable=False),
+    Column("updated_at", String, nullable=False),
+    CheckConstraint("sex IN ('M', 'F')", name="sex"),
+)
+
+t_athlete_accounts = Table(
+    "athlete_accounts",
+    metadata,
+    Column("athlete_id", String, ForeignKey("athletes.athlete_id"), primary_key=True),
+    Column("garmin_user_id", String, unique=True),
+    Column("garmin_token_state", String, nullable=False),
+    Column("telegram_chat_id", String, unique=True),
+    Column("updated_at", String, nullable=False),
+    CheckConstraint(
+        "garmin_token_state IN ('missing', 'ok', 'expired')", name="garmin_token_state"
+    ),
 )
 
 # ---------------------------------------------------------------------------

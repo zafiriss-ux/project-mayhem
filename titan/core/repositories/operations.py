@@ -108,12 +108,16 @@ class OperationsRepository:
     def record_sync_outcome(
         self,
         *,
+        athlete_id: str,
         source: str,
         attempted_at: datetime,
         success: bool,
         error_class: str | None = None,
     ) -> None:
-        """Persist latest sync attempt outcome for a source system."""
+        """Persist the athlete's latest sync attempt outcome for a source system.
+
+        ``athlete_id`` is required, with no default (ADR-0067 D3).
+        """
         attempted_iso = attempted_at.astimezone(UTC).isoformat()
         success_iso = attempted_iso if success else None
 
@@ -122,13 +126,14 @@ class OperationsRepository:
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """INSERT INTO sync_metadata (
+                        athlete_id,
                         source,
                         last_attempt_ts,
                         last_success_ts,
                         last_sync_ok,
                         last_error_class
-                    ) VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(source) DO UPDATE SET
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(athlete_id, source) DO UPDATE SET
                         last_attempt_ts = excluded.last_attempt_ts,
                         last_success_ts = CASE
                             WHEN excluded.last_sync_ok = 1 THEN excluded.last_success_ts
@@ -136,19 +141,19 @@ class OperationsRepository:
                         END,
                         last_sync_ok = excluded.last_sync_ok,
                         last_error_class = excluded.last_error_class""",
-                (source, attempted_iso, success_iso, 1 if success else 0, error_class),
+                (athlete_id, source, attempted_iso, success_iso, 1 if success else 0, error_class),
             )
             self._db.conn.commit()
 
-    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
-        """Return latest sync outcome metadata for a source."""
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
+        """Return the athlete's latest sync outcome metadata for a source."""
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """SELECT last_attempt_ts, last_success_ts, last_sync_ok, last_error_class
-                   FROM sync_metadata WHERE source = ?""",
-                (source,),
+                   FROM sync_metadata WHERE athlete_id = ? AND source = ?""",
+                (athlete_id, source),
             )
             row = cursor.fetchone()
 

@@ -162,6 +162,12 @@ D9 adds a `consent_log` table. When D9 closes:
 
 **D9 parity gate (binary):** This matrix must be updated before D9 is declared DONE.
 
+**v30 note (ADR-0067 D4, D-091):** the SQLite ladder's v30 `consent_log` has `athlete_id` with no
+DEFAULT, plus `text_version` and `channel`. The frozen Alembic chain keeps the D9 shape. The
+consent adapter methods arrive in Phase 4 step 7; v30 adds none, so this matrix gains no row yet.
+`log_override`, `get_override_log`, `record_sync_outcome` and `get_last_sync_outcome` now take
+`athlete_id`; the PostgreSQL stubs accept and ignore it until T-PRA-30.
+
 ---
 
 ## §5 Non-Goals

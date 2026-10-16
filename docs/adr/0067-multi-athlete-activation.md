@@ -1,6 +1,6 @@
 # ADR-0067: Multi-athlete activation — data lifecycle, consent, accounts and the per-athlete morning
 
-**Status:** PROPOSED (accepted on merge of this PR)
+**Status:** ACCEPTED (2026-10-16, merge of #1028)
 **Date:** 2026-10-16
 **Author:** Zaf (Owner, Architect: rules and product decisions) / Claude (drafting, technical choices)
 **Related:** ADR-0015 (Phase 8 data-lifecycle gate, append-only tables), ADR-0040 and AGENTS §16.10

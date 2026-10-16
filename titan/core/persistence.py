@@ -320,6 +320,8 @@ class PersistenceAdapter(ABC):
         prescribed: str,
         actual: str,
         reason: str = "",
+        *,
+        athlete_id: str,
     ) -> None:
         """Record a session override (athlete deviated from prescribed session)."""
 
@@ -340,7 +342,7 @@ class PersistenceAdapter(ABC):
         """Return the fraction of sessions with overrides in the last *days* days."""
 
     @abstractmethod
-    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
+    def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
         """Return the most recent override entries as dicts."""
 
     # ------------------------------------------------------------------ #
@@ -385,6 +387,7 @@ class PersistenceAdapter(ABC):
     def record_sync_outcome(
         self,
         *,
+        athlete_id: str,
         source: str,
         attempted_at: datetime,
         success: bool,
@@ -393,7 +396,7 @@ class PersistenceAdapter(ABC):
         """Record the result of an external-data sync (Garmin, weather, …)."""
 
     @abstractmethod
-    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
         """Return the most recent sync outcome row for *source*, or None."""
 
     @abstractmethod
@@ -570,12 +573,15 @@ class SQLiteAdapter(PersistenceAdapter):
         prescribed: str,
         actual: str,
         reason: str = "",
+        *,
+        athlete_id: str,
     ) -> None:
         self._manager.log_override(
             date=date,
             prescribed=prescribed,
             actual=actual,
             reason=reason,
+            athlete_id=athlete_id,
         )
 
     def record_override_signal(
@@ -598,8 +604,8 @@ class SQLiteAdapter(PersistenceAdapter):
     def get_override_ratio(self, athlete_id: str = "owner", days: int = 14) -> float | None:
         return self._manager.get_override_ratio(athlete_id=athlete_id, days=days)
 
-    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
-        return self._manager.get_override_log(limit=limit)
+    def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
+        return self._manager.get_override_log(limit=limit, athlete_id=athlete_id)
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
         self._manager.save_governance_decision(decision=decision)
@@ -641,20 +647,22 @@ class SQLiteAdapter(PersistenceAdapter):
     def record_sync_outcome(
         self,
         *,
+        athlete_id: str,
         source: str,
         attempted_at: datetime,
         success: bool,
         error_class: str | None = None,
     ) -> None:
         self._manager.record_sync_outcome(
+            athlete_id=athlete_id,
             source=source,
             attempted_at=attempted_at,
             success=success,
             error_class=error_class,
         )
 
-    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
-        return self._manager.get_last_sync_outcome(source=source)
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
+        return self._manager.get_last_sync_outcome(source=source, athlete_id=athlete_id)
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:
         return self._manager.get_last_garmin_sync_timestamp()
@@ -1088,8 +1096,11 @@ class PostgreSQLAdapter(PersistenceAdapter):
         prescribed: str,
         actual: str,
         reason: str = "",
+        *,
+        athlete_id: str,
     ) -> None:
-        del prescribed  # not stored in governance_outcomes
+        # PostgreSQL stays behind the ADR-0044 gate; athlete scoping joins the T-PRA-30 parity work.
+        del prescribed, athlete_id  # not stored in governance_outcomes
         with self._engine.begin() as conn:
             conn.execute(
                 update(self._governance_outcomes)
@@ -1136,7 +1147,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
             return 0.0
         return float(overrides) / float(total)
 
-    def get_override_log(self, limit: int = 50) -> list[dict[str, str]]:
+    def get_override_log(self, limit: int = 50, athlete_id: str = "owner") -> list[dict[str, str]]:
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(
@@ -1272,15 +1283,16 @@ class PostgreSQLAdapter(PersistenceAdapter):
     def record_sync_outcome(
         self,
         *,
+        athlete_id: str,
         source: str,
         attempted_at: datetime,
         success: bool,
         error_class: str | None = None,
     ) -> None:
-        del source, attempted_at, success, error_class
+        del athlete_id, source, attempted_at, success, error_class
 
-    def get_last_sync_outcome(self, source: str) -> dict[str, Any] | None:
-        del source
+    def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
+        del source, athlete_id
         return None
 
     def get_last_garmin_sync_timestamp(self) -> datetime | None:

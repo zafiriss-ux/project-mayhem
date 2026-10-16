@@ -175,3 +175,33 @@ def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_
         "Migration CREATE TABLE statements must include athlete_id unless table is explicitly global:\n"
         + "\n".join(violations)
     )
+
+
+# Columns that had an athlete_id DEFAULT before ADR-0067. AGENTS §16.10 A40-4 (as amended
+# by ADR-0067 D3) forbids a DEFAULT on any new one, so this set may only shrink.
+_ATHLETE_ID_DEFAULTS_BEFORE_ADR_0067: frozenset[str] = frozenset({
+    "cs_performances", "daily_metrics", "degraded_mode_state", "gear_usage",
+    "governance_outcomes", "model_calibration_metadata", "personal_bests", "training_log",
+})
+
+
+@pytest.mark.unit
+def test_no_new_athlete_id_column_has_a_default(tmp_path) -> None:
+    """G-CI-07 / ADR-0067 D3: a table added or rebuilt from v30 on has athlete_id with no DEFAULT."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_dir=tmp_path)
+    try:
+        with_default = set()
+        tables = db.conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        ).fetchall()
+        for (table,) in tables:
+            for _cid, name, _type, _notnull, default, _pk in db.conn.execute(f"PRAGMA table_info({table})"):
+                if name == "athlete_id" and default is not None:
+                    with_default.add(table)
+    finally:
+        db.close()
+
+    new = sorted(with_default - _ATHLETE_ID_DEFAULTS_BEFORE_ADR_0067)
+    assert not new, f"athlete_id with a DEFAULT in new or rebuilt tables (ADR-0067 D3): {new}"

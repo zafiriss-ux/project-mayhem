@@ -891,6 +891,7 @@ class DailyCoach:
             else ("GARMIN_EMPTY_SYNC" if total_records == 0 else None)
         )
         self.db.record_sync_outcome(
+            athlete_id=getattr(self, "athlete_id", "owner"),
             source="garmin",
             attempted_at=datetime.now(tz=UTC),
             success=sync_ok,
@@ -909,7 +910,7 @@ class DailyCoach:
 
         garmin_data_stale = False
         hours_since_success = GARMIN_DATA_MAX_AGE_HOURS + 1
-        garmin_sync_state = self.db.get_last_sync_outcome("garmin") or {}
+        garmin_sync_state = self.db.get_last_sync_outcome("garmin", athlete_id=getattr(self, "athlete_id", "owner")) or {}
         last_success_ts = garmin_sync_state.get("last_success_ts")
         if isinstance(last_success_ts, datetime):
             hours_since_success = (datetime.now(tz=UTC) - last_success_ts.astimezone(UTC)).total_seconds() / 3600
