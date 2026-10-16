@@ -5,6 +5,8 @@ __pycache__/
 .github/
 tests/
 docs/
+# The consent text is shown to athletes by the bot (ADR-0067 D4.1).
+!docs/consent/
 archive/
 *.db
 *.log

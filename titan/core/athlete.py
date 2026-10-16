@@ -33,6 +33,34 @@ PROFILE_FIELDS: tuple[str, ...] = (
 )
 
 
+# Consent (ADR-0067 D4). The text of each version is docs/consent/<version>.md; a new version
+# means a new file and a new value here, and nobody counts as consenting to it until they agree.
+CONSENT_TYPE = "coaching"
+CONSENT_TEXT_VERSION = "v1"
+CONSENT_FREEZE_DAYS = 30  # after /stop: frozen, then deleted (D4.3); re-consent only within it (D4.4)
+
+
+def _utc_day(timestamp: str) -> date:
+    return datetime.fromisoformat(timestamp).astimezone(UTC).date()
+
+
+def consent_is_current(rows: list[dict[str, Any]], today: date) -> bool:
+    """True when the athlete may be coached on ``today`` (UTC) under ADR-0067 D4.
+
+    A row counts only for CONSENT_TEXT_VERSION and only while not revoked. A consent given
+    after a /stop takes effect from the next UTC day (D4.4); a first consent from its own day.
+    """
+    revocations = [_utc_day(row["revoked_at"]) for row in rows if row.get("revoked_at")]
+    for row in rows:
+        if row.get("revoked_at") or row.get("text_version") != CONSENT_TEXT_VERSION:
+            continue
+        granted = _utc_day(row["granted_at"])
+        resumed = any(day <= granted for day in revocations)
+        if (granted < today) if resumed else (granted <= today):
+            return True
+    return False
+
+
 class AthleteNotReady(Exception):
     """The athlete cannot be coached: nothing may run or be called for them (ADR-0067 D7.1)."""
 

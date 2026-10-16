@@ -52,6 +52,8 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     worker_db.set_garmin_token_state("a-00000002", "ok")
     # Since step 5 the athlete also needs their own Telegram chat (ADR-0067 D10.1).
     worker_db.bind_telegram_chat("a-00000002", "20000002")
+    # Since step 7 the athlete also needs their own current consent (ADR-0067 D4.2).
+    worker_db.grant_consent("a-00000002", "v1")
 
     coach = _build_daily_coach(worker_db, athlete_id="a-00000002")
 

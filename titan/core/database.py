@@ -602,6 +602,41 @@ class DatabaseManager:
         """Return the athlete whose private chat this is, or None for an unregistered chat."""
         return self._access.get_athlete_for_telegram_chat(telegram_chat_id=str(telegram_chat_id).strip())
 
+    def has_current_consent(self, athlete_id: str, *, now: datetime | None = None) -> bool:
+        """True when the athlete may be coached today (ADR-0067 D4); the owner is exempt (D4.5)."""
+        from titan.core.athlete import consent_is_current
+
+        if athlete_id == OWNER_ATHLETE_ID:
+            return True
+        today = (now or datetime.now(UTC)).astimezone(UTC).date()
+        return consent_is_current(self._access.get_consent_rows(athlete_id=athlete_id), today)
+
+    def grant_consent(self, athlete_id: str, text_version: str, *, now: datetime | None = None) -> bool:
+        """Record the athlete's own consent to ``text_version`` via Telegram (ADR-0067 D4.1, D4.4).
+
+        Returns False when that version is already consented to and not revoked. Raises
+        ValueError for the owner, for any version but the current one, and when the
+        30 days after the last /stop have passed.
+        """
+        from titan.core.athlete import CONSENT_FREEZE_DAYS, CONSENT_TEXT_VERSION, CONSENT_TYPE
+
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner is exempt from consent (ADR-0067 D4.5)")
+        if text_version != CONSENT_TEXT_VERSION:
+            raise ValueError(f"only the current consent text {CONSENT_TEXT_VERSION} can be agreed to")
+        moment = (now or datetime.now(UTC)).astimezone(UTC)
+        rows = self._access.get_consent_rows(athlete_id=athlete_id)
+        if any(r["text_version"] == text_version and not r["revoked_at"] for r in rows):
+            return False
+        revoked = [datetime.fromisoformat(r["revoked_at"]) for r in rows if r["revoked_at"]]
+        if revoked and moment - max(revoked) > timedelta(days=CONSENT_FREEZE_DAYS):
+            raise ValueError("the 30 days after /stop have passed; only a new athlete can join")
+        self._access.grant_consent(
+            athlete_id=athlete_id, consent_type=CONSENT_TYPE, text_version=text_version,
+            granted_at=moment.isoformat(), channel="telegram",
+        )
+        return True
+
     def revoke_consent(self, athlete_id: str) -> int:
         """Revoke the athlete's current consent (ADR-0067 D4.3); return the rows revoked."""
         if athlete_id == OWNER_ATHLETE_ID:

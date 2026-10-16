@@ -222,6 +222,18 @@ def _warn_incomplete_routines(db: DatabaseManager, execution_date: str) -> None:
         )
 
 
+def _require_consent(db: DatabaseManager, athlete_id: str) -> None:
+    """Raise AthleteNotReady unless the athlete has a current consent (ADR-0067 D4.2).
+
+    Checked first, so without consent nothing is called or written for the athlete.
+    The owner is exempt (D4.5).
+    """
+    from titan.core.athlete import AthleteNotReady
+
+    if not db.has_current_consent(athlete_id, now=_utc_now()):
+        raise AthleteNotReady(athlete_id, "consent: none current")
+
+
 def _require_garmin_ready(db: DatabaseManager, athlete_id: str) -> None:
     """Raise AthleteNotReady unless the athlete has a bound Garmin account with a usable token.
 
@@ -281,6 +293,7 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     if athlete_id == OWNER_ATHLETE_ID:
         raise ValueError("the owner's /sync is the console callback, not this one")
     try:
+        _require_consent(db, athlete_id)
         load_athlete_profile(db, athlete_id)
         _require_garmin_ready(db, athlete_id)
     except AthleteNotReady as exc:
@@ -312,7 +325,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
 
     The profile is the athlete's own (ADR-0067 D5): the owner's from .env, any other
     athlete's from athlete_profiles. AthleteNotReady is raised before any collaborator
-    is built when that athlete has no complete profile.
+    is built when that athlete has no current consent (checked first) or no complete profile.
     """
     from titan.core.athlete import load_athlete_profile
     from titan.features.nutrition_optimizer import NutritionOptimizer
@@ -326,6 +339,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     from titan.science.acwr_engine import ACWREngine
     from titan.science.glycogen_model import GlycogenModel
 
+    _require_consent(db, athlete_id)
     profile = load_athlete_profile(db, athlete_id)
     _require_garmin_ready(db, athlete_id)
     telegram_chat = _require_telegram_ready(db, athlete_id)
@@ -424,9 +438,9 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
 def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> None:
     """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
 
-    An athlete with no complete profile, or without a bound Garmin account and a usable
-    token, raises AthleteNotReady here, before the coach, Garmin, weather or Telegram is
-    built or called (ADR-0067 D7.1, D9.5).
+    An athlete with no current consent, no complete profile, or without a bound Garmin
+    account and a usable token, raises AthleteNotReady here, before the coach, Garmin,
+    weather or Telegram is built or called (ADR-0067 D4.2, D7.1, D9.5).
     """
     coach = _build_daily_coach(db, athlete_id=athlete_id)
     today = _utc_now().date()
@@ -583,23 +597,7 @@ def _run_with_scheduler(
     scheduler = CoachingScheduler(interval_seconds=60.0)
 
     def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
-        def _callback() -> None:
-            now = _utc_now()
-            if now.hour < ROUTINE_HOUR_UTC:
-                return
-            # The claim is taken before execution so a mid-routine crash does
-            # not trigger a retry storm; a failed claim retries next poll.
-            if not _claim_routine(db, athlete_id, now):
-                return
-            try:
-                _run_morning(db, athlete_id)
-                _complete_routine(db, athlete_id, now.date().isoformat())
-            except Exception as exc:
-                log.exception(
-                    "scheduler_athlete_cycle_error",
-                    extra={"athlete_id": athlete_id, "error": str(exc)},
-                )
-        return _callback
+        return lambda: _scheduled_morning(db, athlete_id)
 
     scheduler.register_athlete("owner", _make_athlete_callback("owner"))
 
@@ -610,6 +608,38 @@ def _run_with_scheduler(
     _supervise_scheduler(scheduler, stop_event, heartbeat=heartbeat, interval_s=interval_s)
     scheduler.stop()
     log.info("coaching_scheduler_stopped")
+
+
+def _scheduled_morning(db: DatabaseManager, athlete_id: str) -> None:
+    """One scheduler poll for one athlete: claim and run today's morning when it is due."""
+    from titan.core.athlete import AthleteNotReady
+
+    log = logging.getLogger("titan.worker.scheduler")
+    now = _utc_now()
+    if now.hour < ROUTINE_HOUR_UTC:
+        return
+    # Without consent not even the claim row is written (ADR-0067 D4.2); after /stop the
+    # routine does not start (D4.3).
+    try:
+        _require_consent(db, athlete_id)
+    except AthleteNotReady as exc:
+        log.info("scheduler_athlete_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
+        return
+    except Exception as exc:
+        log.exception("scheduler_consent_check_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+        return
+    # The claim is taken before execution so a mid-routine crash does
+    # not trigger a retry storm; a failed claim retries next poll.
+    if not _claim_routine(db, athlete_id, now):
+        return
+    try:
+        _run_morning(db, athlete_id)
+        _complete_routine(db, athlete_id, now.date().isoformat())
+    except Exception as exc:
+        log.exception(
+            "scheduler_athlete_cycle_error",
+            extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
 
 
 def _supervise_scheduler(

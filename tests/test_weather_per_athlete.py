@@ -78,6 +78,7 @@ def db(tmp_path, monkeypatch):
         manager.bind_garmin_account(athlete, f"garmin-{athlete}")
         manager.set_garmin_token_state(athlete, "ok")
         manager.bind_telegram_chat(athlete, 7000 + index)
+        manager.grant_consent(athlete, "v1")
     manager.conn.commit()
     yield manager
     manager.close()
