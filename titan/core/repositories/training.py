@@ -349,8 +349,53 @@ class TrainingRepository:
                     UPDATE gear_usage SET total_km = total_km + ?, last_used = ?
                     WHERE id = ? AND athlete_id = ?
                 """, (distance_km, date, shoe_id, athlete_id))
+            elif cursor.rowcount == 0 and garmin_activity_id:
+                self._update_edited_activity(
+                    cursor, athlete_id, garmin_activity_id, date, session_type, distance_km,
+                    duration_sec, avg_hr, max_hr, rpe, training_load, shoe_id, surface,
+                    temperature_c, notes, quality_flag, avg_pace_sec_per_km,
+                )
             if self._db._transaction_depth == 0:
                 self._db.conn.commit()
+
+    @staticmethod
+    def _update_edited_activity(
+        cursor, athlete_id, garmin_activity_id, date, session_type, distance_km, duration_sec,
+        avg_hr, max_hr, rpe, training_load, shoe_id, surface, temperature_c, notes,
+        quality_flag, avg_pace_sec_per_km,
+    ) -> None:
+        """A Garmin activity seen again replaces the stored version (D-080).
+
+        Only the athlete's own row is updated; the id stays unique across the database
+        (D-079), so another athlete's row is left alone. Fields Garmin does not send
+        (shoe, surface, temperature) keep their stored value when the new one is None,
+        and the old distance moves off the old shoe onto the current one.
+        """
+        old = cursor.execute(
+            "SELECT distance_km, shoe_id FROM training_log "
+            "WHERE garmin_activity_id = ? AND athlete_id = ?",
+            (garmin_activity_id, athlete_id),
+        ).fetchone()
+        if old is None:
+            return
+        old_distance, old_shoe = old
+        cursor.execute("""
+            UPDATE training_log
+            SET date = ?, session_type = ?, distance_km = ?, duration_sec = ?, avg_hr = ?,
+                max_hr = ?, rpe = ?, training_load = ?, shoe_id = COALESCE(?, shoe_id),
+                surface = COALESCE(?, surface), temperature_c = COALESCE(?, temperature_c),
+                notes = ?, quality_flag = ?, avg_pace_sec_per_km = ?
+            WHERE garmin_activity_id = ? AND athlete_id = ?
+        """, (date, session_type, distance_km, duration_sec, avg_hr, max_hr, rpe, training_load,
+              shoe_id, surface, temperature_c, notes, quality_flag, avg_pace_sec_per_km,
+              garmin_activity_id, athlete_id))
+        new_shoe = shoe_id if shoe_id is not None else old_shoe
+        for shoe, km in ((old_shoe, -(old_distance or 0)), (new_shoe, distance_km or 0)):
+            if shoe is not None and km:
+                cursor.execute(
+                    "UPDATE gear_usage SET total_km = total_km + ? WHERE id = ? AND athlete_id = ?",
+                    (km, shoe, athlete_id),
+                )
 
     def get_recent_activities(
         self, limit: int = 90, athlete_id: str = "owner"
