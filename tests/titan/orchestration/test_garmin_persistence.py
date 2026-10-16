@@ -101,6 +101,26 @@ def test_an_activity_without_a_date_is_rejected_not_reported_as_persisted(db):
 
 
 @pytest.mark.unit
+def test_a_non_numeric_field_rejects_only_that_activity(db):
+    """F2: distance_km="ten" raised in the sanity check and the whole sync rolled back."""
+    payload = _payload()
+    payload["activities"].append({
+        "activity_id": "garmin-bad", "date": DAY, "activity_type": "running",
+        "distance_km": "ten", "duration_sec": 1800, "name": "bad",
+    })
+    outcomes: list[str] = []
+
+    def _emit(action, **fields):
+        if action == "activity_persist" and fields["outcome"].startswith("ACTIVITY_"):
+            outcomes.append(fields["outcome"])
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=_emit)
+
+    assert outcomes == ["ACTIVITY_PERSISTED", "ACTIVITY_SANITY_REJECTED"]
+    assert db.conn.execute("SELECT garmin_activity_id FROM training_log").fetchall() == [("garmin-1",)]
+
+
+@pytest.mark.unit
 def test_rolled_back_transaction_raises_with_the_decision_values(db, monkeypatch):
     def _fail(**_kwargs):
         raise RuntimeError("disk full")

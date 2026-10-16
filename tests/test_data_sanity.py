@@ -165,6 +165,24 @@ def test_activity_with_an_empty_date_is_rejected(empty):
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(("field", "value"), [("distance_km", "ten"), ("duration_sec", "1h"), ("avg_hr", "high"),
+                                              ("max_hr", [170]), ("distance_km", True)])
+def test_activity_with_a_non_numeric_field_is_rejected_not_raised(field, value):
+    """F2 (D-073): a non-numeric field raised inside check_activity and rolled back the whole sync."""
+    row = {"date": "2026-01-01", "distance_km": 5.0, "duration_sec": 1800, "avg_hr": 140, "max_hr": 160, field: value}
+    violations = DataSanityChecker().check_activity(row)
+    assert [(v.field, v.rule, v.severity) for v in violations] == [(field, "field_not_numeric", "reject")]
+
+
+@pytest.mark.integration
+def test_activity_with_numeric_strings_is_still_checked():
+    """F2: numeric strings are read as numbers, so the cross-field rules still run."""
+    row = {"date": "2026-01-01", "distance_km": "5.0", "duration_sec": "1800", "avg_hr": "170", "max_hr": "150"}
+    violations = DataSanityChecker().check_activity(row)
+    assert [(v.rule, v.severity) for v in violations] == [("max_hr_lt_avg_hr", "reject")]
+
+
+@pytest.mark.integration
 def test_activity_past_timestamp_not_rejected():
     checker = DataSanityChecker()
     row = {"date": "2026-01-01", "distance_km": 5.0, "duration_sec": 1800}
