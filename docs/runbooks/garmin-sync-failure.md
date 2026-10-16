@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-29
 **Owner:** Engineering
-**Trigger:** `garmin_api_degraded` CRITICAL event; two consecutive zero-result syncs; morning briefing with stale data warning
+**Trigger:** `garmin_api_degraded` CRITICAL event; three consecutive failed or empty syncs; morning briefing with stale data warning
 
 ---
 
@@ -11,7 +11,7 @@
 
 - Telegram briefing contains stale workout data or explicitly warns "Garmin data unavailable"
 - `garmin_api_degraded` CRITICAL structured event in application log
-- `GarminSyncResult` shows `activities=0, sleep=0, hrv=0, weight=0` for two or more consecutive syncs
+- `GarminSyncResult` shows `activities=0, sleep=0, hrv=0, weight=0` for three or more consecutive syncs
 - Log line: `connect_token_assumed_valid` without a subsequent `sync_complete` event with non-zero counts
 
 ---
@@ -21,7 +21,7 @@
 | Condition | Severity | Action |
 |-----------|----------|--------|
 | Single zero-result sync, next sync succeeds | Low | Monitor; no action required |
-| Two consecutive zero-result syncs | Medium | Follow this runbook |
+| Three consecutive failed or empty syncs (`garmin_api_degraded`) | Medium | Follow this runbook |
 | Zero-result syncs for > 12 hours | High | Follow this runbook + check Garmin API status |
 | Governance pipeline running on data > 48h stale | P1 | Suspend coaching recommendations until sync restored |
 
@@ -33,12 +33,13 @@
 
 ```bash
 # Find the most recent sync result
-grep "garmin_sync\|garmin_api_degraded\|connect_token" ~/Documents/TITAN/titan.log | tail -30
+# Launcher: ~/Documents/TITAN/logs/titan.log · python -m titan: ./titan.log · Docker: docker compose logs titan-worker
+grep "garmin_sync\|garmin_api_degraded\|connect_token" ~/Documents/TITAN/logs/titan.log | tail -30
 ```
 
 Look for:
 - `connect_token_assumed_valid` — stale token + 429 path (most common, see Path Z1)
-- `sync_timeout` — network timeout
+- `timeout_cancelled` — network timeout (see Path Z3)
 - `connect_failed` — authentication failure
 - `garmin_api_degraded` — confirmed degradation event
 
@@ -93,7 +94,7 @@ After applying the fix, restart TITAN OS and confirm:
 ```bash
 # Wait for the next sync cycle (up to 6 hours) or trigger manually via Telegram /sync command
 # Check log for:
-grep "sync_complete" ~/Documents/TITAN/titan.log | tail -5
+grep "sync_complete" ~/Documents/TITAN/logs/titan.log | tail -5
 ```
 
 A successful sync logs `sync_complete` with non-zero counts for at least activities or HRV.

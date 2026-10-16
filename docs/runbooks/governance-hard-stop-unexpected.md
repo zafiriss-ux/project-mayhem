@@ -72,7 +72,7 @@ If RHR data is abnormal (e.g., 0 bpm, 150+ bpm during sleep):
   weeks — the system may have ingested duplicate or incorrect activity data.
 
 ```bash
-grep "tsb_value\|training_load" ~/Documents/TITAN/titan.log | tail -20
+grep "tsb_value\|training_load" ~/Documents/TITAN/logs/titan.log | tail -20
 ```
 
 ---
@@ -81,7 +81,8 @@ grep "tsb_value\|training_load" ~/Documents/TITAN/titan.log | tail -20
 
 - This gate fires from athlete self-report. Did you enter a fatigue score of 8 or higher
   in the morning check-in?
-- If the score was entered in error, it can be corrected via the Telegram `/checkin` command.
+- If no score is given, it defaults to the morning soreness value (`DailyCoach.run_morning_routine`). There is no
+  Telegram command that changes it after the routine has run; the next morning uses the new input.
 
 ---
 

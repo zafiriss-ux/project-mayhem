@@ -15,7 +15,7 @@ docker-compose up -d
 
 # Check it's running
 docker-compose ps
-docker-compose logs -f titan
+docker-compose logs -f titan-api      # ή titan-worker
 
 # Stop
 docker-compose down
@@ -23,7 +23,8 @@ docker-compose down
 
 ## Data persistence
 
-All data (`titan.db`, `.garth_token`) is stored in the `titan-data` Docker volume.
+All data (`titan_core.db`, `.garth_token`) is stored in the `titan-data` Docker volume.
+Backups go to the separate `titan-backups` volume.
 
 ```bash
 docker volume inspect titan-data
@@ -31,13 +32,9 @@ docker volume inspect titan-data
 
 ## Backup
 
-```bash
-docker run --rm \
-  -v titan-data:/data \
-  -v $(pwd):/backup \
-  python:3.11-slim \
-  cp /data/titan.db /backup/titan_backup_$(date +%Y%m%d).db
-```
+The `titan-worker` takes a verified backup every day (`/backups/titan_YYYY-MM-DD.db` on the
+`titan-backups` volume, 7 daily + 4 weekly). Checking, restoring and copying a backup off the
+machine: [`RUNBOOK_DR.md`](RUNBOOK_DR.md).
 
 ## Environment variables
 

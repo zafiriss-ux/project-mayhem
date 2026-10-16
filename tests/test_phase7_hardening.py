@@ -29,7 +29,7 @@ ROOT = pathlib.Path(__file__).parent.parent
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestVersionConsistency(unittest.TestCase):
-    """Ensure README and requirements.txt both declare v5.8.0."""
+    """README.md and requirements.txt declare the package version (pyproject.toml, #896)."""
 
     def _readme_version(self):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -53,16 +53,18 @@ class TestVersionConsistency(unittest.TestCase):
         return None
 
     @pytest.mark.integration
-    def test_readme_declares_v580(self):
+    def test_readme_declares_package_version(self):
+        from titan import __version__
         ver = self._readme_version()
         self.assertIsNotNone(ver, "README.md must have a version line starting with '# TITAN OS'")
-        self.assertEqual(ver, "v5.8.0", f"README version should be v5.8.0, got {ver!r}")
+        self.assertEqual(ver, f"v{__version__}", f"README version should be v{__version__}, got {ver!r}")
 
     @pytest.mark.integration
-    def test_requirements_declares_v580(self):
+    def test_requirements_declares_package_version(self):
+        from titan import __version__
         ver = self._requirements_version()
         self.assertIsNotNone(ver, "requirements.txt must have a version comment on line 1")
-        self.assertEqual(ver, "v5.8.0", f"requirements.txt version should be v5.8.0, got {ver!r}")
+        self.assertEqual(ver, f"v{__version__}", f"requirements.txt version should be v{__version__}, got {ver!r}")
 
     @pytest.mark.integration
     def test_readme_and_requirements_versions_match(self):

@@ -54,7 +54,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90.
 | `docs/SLO.md` | SLOs + runbooks |
 | `titan/config/thresholds.py` | Safety threshold constants |
 | `titan/core/database.py` | DatabaseManager, SCHEMA_VERSION (steps in `titan/core/repositories/migrations.py`) |
-| `titan/orchestration/daily_coach.py` | DailyCoach v5.8 |
+| `titan/orchestration/daily_coach.py` | DailyCoach (morning pipeline) |
 
 ## ADRs (`docs/adr/`)
 

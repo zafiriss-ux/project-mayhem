@@ -68,9 +68,10 @@ After `docker compose up -d`:
 
 ### Telegram (manual, needs credentials)
 
-- Set `TELEGRAM_BOT_TOKEN` in `.env`
+- Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`
 - `docker compose up -d titan-worker`
-- Send `/start` to bot — verify response within 30s
+- The worker only sends messages; it does not answer commands such as `/start` (those need local
+  mode, `python -m titan`). Check that the 07:00 UTC morning message arrives.
 
 ### Morning routine (manual)
 

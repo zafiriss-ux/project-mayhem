@@ -22,7 +22,7 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 | **Objective** | At least one successful Garmin sync per 6-hour window |
 | **Target** | ≥ 99% of 6-hour windows contain a non-zero sync result |
 | **Measurement window** | Rolling 30 days |
-| **Alert threshold** | Two consecutive zero-result syncs → `garmin_api_degraded` CRITICAL event |
+| **Alert threshold** | Three consecutive failed or empty syncs (`GARMIN_DEGRADATION_FAILURE_THRESHOLD_COUNT`) → `garmin_api_degraded` CRITICAL event |
 | **Runbook** | `docs/runbooks/garmin-sync-failure.md` |
 | **Related ADR** | ADR-0050 |
 
@@ -32,7 +32,7 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 
 | Field | Value |
 |-------|-------|
-| **Objective** | Full 7-gate governance evaluation completes within 2 seconds |
+| **Objective** | Full governance evaluation completes within 2 seconds |
 | **Target** | P99 latency ≤ 2,000 ms |
 | **Measurement window** | Per-session |
 | **Alert threshold** | Any single evaluation > 5,000 ms → structured warning event |
@@ -45,7 +45,7 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 | Field | Value |
 |-------|-------|
 | **Objective** | Telegram morning briefing delivered within 5 minutes of scheduled 07:00 |
-| **Target** | ≥ 95% of scheduled briefings delivered by 07:05 local time |
+| **Target** | ≥ 95% of scheduled briefings delivered by 07:05 UTC |
 | **Measurement window** | Rolling 30 days |
 | **Alert threshold** | Briefing not delivered by 07:10 → operator alert |
 | **Runbook** | `docs/runbooks/governance-hard-stop-unexpected.md` (for safety-gate-caused delays) |
@@ -69,11 +69,11 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 
 | Field | Value |
 |-------|-------|
-| **Objective** | No governance hard-stop gate (H1–H7) is bypassed under any code path |
+| **Objective** | No governance hard-stop gate (H1–H6) is bypassed under any code path |
 | **Target** | 100% — zero bypass events in production |
 | **Measurement window** | Continuous |
 | **Alert threshold** | Any detection of gate bypass → P0 incident, immediate stop-the-line |
-| **Verification** | `tests/test_p0_safety_gates.py` (20 tests), `tests/test_governance_integration.py` (27 tests) |
+| **Verification** | `tests/test_p0_safety_gates.py`, `tests/test_governance_integration.py` |
 | **Related ADR** | ADR-0009 |
 
 ---
@@ -85,7 +85,7 @@ alerting thresholds, runbook triggers, and Phase 8 readiness criteria.
 | **Objective** | Load prediction shadow model RMSE stays within 15% of baseline over 90 days |
 | **Target** | Rolling 90-day RMSE ≤ 1.15 × baseline RMSE |
 | **Measurement window** | Rolling 90 days |
-| **Alert threshold** | RMSE exceeds threshold → `model_drift_detected` event; ADR-0014 promotion review triggered |
+| **Alert threshold** | RMSE exceeds threshold → ADR-0014 promotion review. Not automated: no drift event is emitted yet |
 | **Related ADR** | ADR-0014, ADR-0033 |
 
 ---

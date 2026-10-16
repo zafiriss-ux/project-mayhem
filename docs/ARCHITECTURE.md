@@ -19,8 +19,8 @@ launcher/main.py
   → ensure_config()                 # runs setup wizard if first run
   → run_titan_kernel()
       → titan.__main__.main()
-          → titan/main.py: run()
-              → DatabaseManager(db_dir=TITAN_DATA_DIR)
+          → titan/main.py: main()
+              → DatabaseManager()               # launcher data dir, ~/Documents/TITAN
               → UniversalAthleteProfile.from_env()
               → instantiate all science engines (TSBEngine, HRVGuidedEngine, …)
               → DailyCoach(db=db, tsb_engine=tsb_engine, …)
@@ -67,7 +67,7 @@ launcher/main.py
 | `titan/core/periodization.py` | Periodization phase state |
 | `titan/core/equipment.py` | Equipment inventory model |
 | `titan/core/structured_events.py` | Structured event logging helpers |
-| `titan/core/schema.py` | SQLAlchemy Core MetaData descriptor — single authoritative source for all 19 table definitions (TD-08) |
+| `titan/core/schema.py` | SQLAlchemy Core MetaData descriptor — single authoritative source for all 24 table definitions, plus `alembic_version` (TD-08) |
 
 ### Layer 3 — Science Engines
 
@@ -110,7 +110,7 @@ launcher/main.py
 
 | Module | Role |
 |---|---|
-| `titan/orchestration/daily_coach.py` | `DailyCoach` v5.8 — 12-step morning pipeline |
+| `titan/orchestration/daily_coach.py` | `DailyCoach` — 12-step morning pipeline |
 | `titan/orchestration/coaching_pipeline.py` | Coaching pipeline helpers |
 | `titan/orchestration/coaching_scheduler.py` | Scheduling for daily coaching routine |
 | `titan/orchestration/contracts.py` | Typed contracts: `TitanContext`, `TitanContextContract`, `DecisionResult`, `PlannedEffect` |
@@ -150,7 +150,7 @@ launcher/main.py
 
 ```
 training_log table (SQLite, training_load column)
-  → DatabaseManager.get_training_load_history(days=400)   # CTL_DECAY_DAYS default
+  → DatabaseManager.get_training_load_history(days=LOAD_HISTORY_DAYS)   # 210 days
   → titan/main.py: tsb_engine.add_daily_load(date, load)  # hydration loop after DailyCoach init
   → TSBEngine.daily_loads: list[tuple[str, float]]
   → TSBEngine.calculate_ctl() / calculate_atl() / calculate_tsb()
@@ -159,10 +159,8 @@ training_log table (SQLite, training_load column)
   → menu_system: ctx["tsb_engine"] read in browser / display flows
 ```
 
-> **⚠️ KNOWN ISSUE (TD-CTL-01):** `TSBEngine.daily_loads` is empty at UI render time despite
-> successful DB hydration (15 rows confirmed in DB). All pipeline components verified
-> individually. Root cause is an unknown state mutation between hydration and UI render.
-> Registered 2026-05-20. See `TECHNICAL_DEBT.md` TD-CTL-01.
+> TD-CTL-01 (empty `TSBEngine.daily_loads` at UI render) was resolved on 2026-05-22 (PR #719,
+> per-day aggregation). See `TECHNICAL_DEBT.md`.
 
 ### Garmin Sync Flow
 
@@ -245,7 +243,7 @@ that reads from `ctx` shares the same live objects.
 
 ## Database Schema Summary
 
-- **Backend:** SQLite at `~/Documents/TITAN/titan.db`
+- **Backend:** SQLite at `~/Documents/TITAN/titan_core.db` (Docker: `/data/titan_core.db`)
 - **SCHEMA_VERSION:** 29 (tracked via `PRAGMA user_version`)
 - **Connection class:** `titan/core/database.py:DatabaseManager`
 
@@ -277,10 +275,10 @@ Key tables:
 
 | ID | Description | Priority |
 |---|---|---|
-| TD-CTL-01 | TSBEngine `daily_loads` empty at UI render despite 15 rows in DB. All pipeline components verified individually (hydration code correct, no exceptions). Root cause: unknown state mutation between hydration and UI render. | HIGH |
-| TD-04 | DailyCoach god-orchestrator (~1747 LOC); violates single-responsibility; targeted by ADR-0018 kernel boundary split | HIGH |
-| TD-08 | Schema defined in two places (database.py + Alembic migration path) | MED |
-| TD-11 | No OTel / Prometheus metrics export; observability gap for production | HIGH |
+| TD-08-R1 | `PostgreSQLDatabaseManager.create_tables()` keeps its own DDL, not derived from `schema.py` (PG backend gated, ADR-0044) | LOW |
+| TD-08-R2 | `tests/test_db_schema_contracts.py` is a third column authority | LOW |
+
+TD-CTL-01, TD-04, TD-08 and TD-11 are resolved (see `TECHNICAL_DEBT.md`).
 
 See `TECHNICAL_DEBT.md` for the full register and phase execution sequences.
 
