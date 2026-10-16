@@ -645,6 +645,8 @@ class GarminSync:
                             "calories": int(a.get("calories", 0)),
                             "elevation_gain_m": int(a.get("elevationGain", 0)),
                             "activity_id": a.get("activityId"),
+                            # Garmin's primary benefit (e.g. TEMPO, VO2MAX); SV-11, D-089.
+                            "training_effect_label": a.get("trainingEffectLabel"),
                             "estimated_training_load": estimated_load,
                             "load_estimated": bool(trimp_val) and not avg_hr,
                         }
