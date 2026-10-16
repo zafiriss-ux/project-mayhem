@@ -119,6 +119,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90.
 - `0064` — H2 relative HRV drop
 - `0065` — Downgrade volume cap
 - `0066` — Sleep debt EASY day
+- `0067` — Multi-athlete activation
 
 ## Docker
 

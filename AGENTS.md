@@ -478,8 +478,11 @@ Stage-1 mechanics. The "additive column" permission never covers new tables.
 
 **INV-15 binding semantics:** durable table `worker_routine_executions`, PRIMARY KEY
 `(athlete_id, execution_date, routine_type)` (athlete_id per §16.10 A40-4), with
-`started_at`/`completed_at` markers. Before any routine: `INSERT`; unique-constraint hit → skip
-(idempotent). On completion: `UPDATE completed_at`. On startup: reconstruct today's state from
+`started_at`/`completed_at` markers. Before any routine: `INSERT`; unique-constraint hit on a
+completed row → skip (idempotent). An incomplete row (`completed_at` NULL, crash before delivery)
+resumes on the same UTC day, at most 3 attempts: a decision already in `governance_outcomes` is
+re-sent, not recomputed, so that table is never written twice for one athlete and day
+(ADR-0067 D8). On completion: `UPDATE completed_at`. On startup: reconstruct today's state from
 this table — never from a dict. **Full DDL is owned by the authorizing ADR (T-PRA-03
 deliverable); this section binds keys and semantics only** — schema topology is ADR territory
 per §13.3, and a second DDL copy here is a guaranteed drift pair.
@@ -1051,8 +1054,10 @@ when count > 20.
 - A40-2: new cross-athlete calibration defaults annotated
   `# ADR-0040: single-athlete default; per-athlete in the multi-athlete activation phase`.
 - A40-3: new athlete-data test fixtures set an explicit `athlete_id` (e.g. `"test_athlete_01"`).
-- A40-4: new per-athlete tables/columns include `athlete_id TEXT NOT NULL DEFAULT 'default'`.
-The literal `'default'` is permitted **only** in the A40-1 signature form and the A40-4 DDL form;
+- A40-4: new per-athlete tables/columns include `athlete_id TEXT NOT NULL` with **no DEFAULT**; an
+insert without `athlete_id` fails (ADR-0067 D3). Columns created before ADR-0067 keep
+`DEFAULT 'default'` (or the recorded `'owner'` drift).
+The literal `'default'` is permitted **only** in the A40-1 signature form and the pre-ADR-0067 A40-4 DDL form;
 everywhere else use the constant (INV-18). **Recorded drift:** `persistence.py` read methods were
 standardized on `athlete_id: str = "owner"` (ADR-0033-L3-D, 2026-04-17) — that value conflicts
 with the canonical `'default'` and is normalized as part of the INV-14 reconciliation migration
