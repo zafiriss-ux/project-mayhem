@@ -89,6 +89,16 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 python -c "from titan.integrations.garmin_sync import GarminSync; g = GarminSync(); print('✅ Connected' if g.connect() else '❌ Failed')"
 ```
 
+Άλλοι αθλητές (Φάση 4, ADR-0067 D9): ο καθένας έχει δικό του token στο
+`<data>/garmin/<athlete_id>/.garth_token`, κρυπτογραφημένο με ένα κλειδί Fernet που ζει σε αρχείο
+**έξω** από τον φάκελο δεδομένων:
+```bash
+TITAN_TOKEN_KEY_FILE=/etc/titan/athlete_token.key   # mode 0600, όχι μέσα στο TITAN_DATA_DIR
+```
+Αν η μεταβλητή λείπει, το αρχείο είναι μέσα στα δεδομένα, είναι αναγνώσιμο από άλλους ή δεν είναι
+έγκυρο κλειδί, κανένας άλλος αθλητής δεν συγχρονίζεται και το token του δεν σβήνεται. Ο owner δεν
+επηρεάζεται.
+
 Πρώτος συγχρονισμός:
 ```bash
 python << 'EOF'

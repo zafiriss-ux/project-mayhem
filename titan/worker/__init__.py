@@ -222,6 +222,35 @@ def _warn_incomplete_routines(db: DatabaseManager, execution_date: str) -> None:
         )
 
 
+def _require_garmin_ready(db: DatabaseManager, athlete_id: str) -> None:
+    """Raise AthleteNotReady unless the athlete has a bound Garmin account with a usable token.
+
+    The owner's Garmin login stays in .env and is not checked here (ADR-0067 D1.3). Any
+    other athlete is paused while the token is missing or expired (D9.5).
+    """
+    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady
+
+    if athlete_id == OWNER_ATHLETE_ID:
+        return
+    account = db.get_athlete_account(athlete_id)
+    if account is None or not account.get("garmin_user_id"):
+        raise AthleteNotReady(athlete_id, "garmin: no account bound")
+    if account["garmin_token_state"] != "ok":
+        raise AthleteNotReady(athlete_id, f"garmin: token {account['garmin_token_state']}")
+
+
+def _record_garmin_token_state(db: DatabaseManager, athlete_id: str, garmin) -> None:  # noqa: ANN001
+    """After the morning, pause an athlete whose stored Garmin token was missing or rejected (D9.5)."""
+    from titan.core.athlete import OWNER_ATHLETE_ID
+
+    if athlete_id == OWNER_ATHLETE_ID or not getattr(garmin, "token_expired", False):
+        return
+    db.set_garmin_token_state(athlete_id, "expired")
+    logging.getLogger("titan.worker.runner").warning(
+        "athlete_garmin_token_expired", extra={"athlete_id": athlete_id},
+    )
+
+
 def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     """Compose a DailyCoach for one athlete, mirroring the titan/main.py composition root.
 
@@ -246,10 +275,11 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     from titan.science.glycogen_model import GlycogenModel
 
     profile = load_athlete_profile(db, athlete_id)
+    _require_garmin_ready(db, athlete_id)
     weather = WeatherAPI()
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
-        garmin_sync=GarminSync(),
+        garmin_sync=GarminSync(athlete_id=athlete_id),
         weather_api=weather,
         telegram_bot=TitanTelegramBot(db=db),
         hrv_engine=engines.hrv,
@@ -332,13 +362,17 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
 def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> None:
     """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
 
-    An athlete with no complete profile raises AthleteNotReady here, before the coach,
-    Garmin, weather or Telegram is built or called (ADR-0067 D7.1).
+    An athlete with no complete profile, or without a bound Garmin account and a usable
+    token, raises AthleteNotReady here, before the coach, Garmin, weather or Telegram is
+    built or called (ADR-0067 D7.1, D9.5).
     """
     coach = _build_daily_coach(db, athlete_id=athlete_id)
     today = _utc_now().date()
     _prepare_weekly_plan(coach, db, athlete_id, today)
-    coach.run_morning_routine()
+    try:
+        coach.run_morning_routine()
+    finally:
+        _record_garmin_token_state(db, athlete_id, getattr(coach, "garmin", None))
     _plan_next_week_on_sunday(coach, db, athlete_id, today)
 
 

@@ -400,7 +400,7 @@ class PersistenceAdapter(ABC):
         """Return the most recent sync outcome row for *source*, or None."""
 
     @abstractmethod
-    def get_last_garmin_sync_timestamp(self) -> datetime | None:
+    def get_last_garmin_sync_timestamp(self, athlete_id: str = "owner") -> datetime | None:
         """Return the datetime of the most recent successful Garmin sync, or None."""
 
     # ------------------------------------------------------------------ #
@@ -664,8 +664,8 @@ class SQLiteAdapter(PersistenceAdapter):
     def get_last_sync_outcome(self, source: str, athlete_id: str = "owner") -> dict[str, Any] | None:
         return self._manager.get_last_sync_outcome(source=source, athlete_id=athlete_id)
 
-    def get_last_garmin_sync_timestamp(self) -> datetime | None:
-        return self._manager.get_last_garmin_sync_timestamp()
+    def get_last_garmin_sync_timestamp(self, athlete_id: str = "owner") -> datetime | None:
+        return self._manager.get_last_garmin_sync_timestamp(athlete_id=athlete_id)
 
     def is_db_reachable(self) -> bool:
         return self._manager.is_db_reachable()
@@ -1295,7 +1295,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
         del source, athlete_id
         return None
 
-    def get_last_garmin_sync_timestamp(self) -> datetime | None:
+    def get_last_garmin_sync_timestamp(self, athlete_id: str = "owner") -> datetime | None:
+        _ = athlete_id
         return None
 
     def backup_database(self, backup_dir: Any = None, keep: int = 30, keep_weekly: int = 0) -> Any:
