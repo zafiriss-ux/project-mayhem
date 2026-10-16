@@ -329,7 +329,12 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     profile = load_athlete_profile(db, athlete_id)
     _require_garmin_ready(db, athlete_id)
     telegram_chat = _require_telegram_ready(db, athlete_id)
-    weather = WeatherAPI()
+    # The owner keeps WEATHER_LOCATION; any other athlete's weather is for the location in
+    # their own profile (ADR-0067 D5.1), so two cities give two ESIs.
+    weather = (
+        WeatherAPI() if athlete_id == "owner"
+        else WeatherAPI(location=f"{profile.location_city},{profile.location_country}", athlete_id=athlete_id)
+    )
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
         garmin_sync=GarminSync(athlete_id=athlete_id),
