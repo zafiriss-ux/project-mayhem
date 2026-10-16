@@ -365,8 +365,8 @@ def backfill_training_history(
     CTL starts from 0 (D-051), so with only the 14 days of a normal sync a new athlete's TSB
     falls far below the H4 floor. When ``training_log`` has no session on or before
     ``today - CTL_DECAY_DAYS``, the activities of the last ``LOAD_HISTORY_DAYS`` days are
-    fetched once and stored like any synced activity (duplicates are ignored by
-    ``garmin_activity_id``). Returns the number of activities fetched.
+    fetched once and stored like any synced activity (a known ``garmin_activity_id``
+    updates its row, D-080). Returns the number of activities fetched.
     """
     from datetime import date, timedelta
 
