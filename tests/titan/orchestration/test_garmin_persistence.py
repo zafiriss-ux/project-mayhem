@@ -58,6 +58,29 @@ def test_persist_stores_the_sync_for_the_given_athlete_and_reports_through_emit(
 
 
 @pytest.mark.unit
+def test_an_impossible_activity_date_is_skipped_and_the_sync_keeps_the_rest(db):
+    """F3: '2026-09-31' was stored as degraded and get_ctl_atl_tsb then raised for the athlete."""
+    payload = _payload()
+    payload["activities"].append({
+        "activity_id": "garmin-bad", "date": "2026-09-31", "activity_type": "running",
+        "distance_km": 5, "duration_sec": 1800, "name": "bad",
+    })
+    outcomes: list[str] = []
+
+    def _emit(action, **fields):
+        if action == "activity_persist" and fields["outcome"].startswith("ACTIVITY_"):
+            outcomes.append(fields["outcome"])
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=_emit)
+
+    assert outcomes == ["ACTIVITY_PERSISTED", "ACTIVITY_SANITY_REJECTED"]
+    dates = [r[0] for r in db.conn.execute("SELECT date FROM training_log").fetchall()]
+    assert dates == [DAY]
+    ctl, atl, tsb = db.get_ctl_atl_tsb(athlete_id="owner")
+    assert all(isinstance(x, float) for x in (ctl, atl, tsb))
+
+
+@pytest.mark.unit
 def test_rolled_back_transaction_raises_with_the_decision_values(db, monkeypatch):
     def _fail(**_kwargs):
         raise RuntimeError("disk full")

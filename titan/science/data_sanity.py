@@ -81,6 +81,7 @@ class DataSanityChecker:
         - max_hr < avg_hr                               → reject
         - distance_km > 0 and duration_sec == 0         → reject
         - timestamp in future (> now + 1 h drift margin)→ reject
+        - date not a calendar date (e.g. 2026-09-31)   → reject  (F3)
         - hrv_ms == 0                                   → reject  (defence-in-depth)
         - run pace outside RUN_PACE_SEC_PER_KM          → warn    (SV-17, wrong unit)
         """
@@ -188,13 +189,14 @@ class DataSanityChecker:
                     violations.append(v)
                     _emit(context, v)
             except (ValueError, TypeError):
-                # Unparseable timestamp — warn (not reject; may be a format we don't know)
+                # Unparseable timestamp — reject (F3, D-070): the value is stored as
+                # training_log.date and a non-date there breaks CTL/ATL/TSB for the athlete.
                 v = SanityViolation(
                     record_type="activity",
                     field="date",
                     rule="timestamp_unparseable",
                     value=str(timestamp_str),
-                    severity="warn",
+                    severity="reject",
                 )
                 violations.append(v)
                 _emit(context, v)
