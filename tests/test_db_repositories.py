@@ -131,6 +131,21 @@ def test_save_session_refuses_a_missing_athlete_or_date(db, athlete_id, date) ->
 
 
 @pytest.mark.unit
+def test_hrv_and_weight_history_are_the_last_n_days_not_the_last_n_rows(db) -> None:
+    """F5 (D-072): after a gap, LIMIT N returned readings up to 100 days old."""
+    from datetime import timedelta
+
+    today = datetime.now(UTC).date()
+    for ago in (1, 3, 40, 70, 100):
+        db.save_daily_metric(date=(today - timedelta(days=ago)).isoformat(), hrv=50.0 + ago / 10, weight=70.0)
+    inside = [(today - timedelta(days=ago)).isoformat() for ago in (1, 3)]
+
+    assert [d for d, _ in db.get_hrv_history(days=14)] == inside
+    assert [d for d, _ in db.get_weight_history(days=14)] == inside
+    assert db.get_hrv_history(days=0) == []
+
+
+@pytest.mark.unit
 def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
     with pytest.warns(DeprecationWarning, match="temperature_c") as record:
         db.save_session("2026-01-05", "EASY", 8.0, 2640, rpe=3, temperature=12.0)

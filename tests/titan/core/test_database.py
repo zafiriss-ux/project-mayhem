@@ -7,6 +7,13 @@ import pytest
 from titan.core.database import DatabaseManager
 
 
+def _days_ago(n: int) -> str:
+    """A date inside the "last N days" window of the history reads (F5, D-072)."""
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(days=n)).strftime("%Y-%m-%d")
+
+
 def _assert_write_method_uses_locked_guard(db, write_call):
     events = []
     state = {"in_lock": False}
@@ -459,12 +466,13 @@ class _CommitSpyConnection:
 def test_standalone_write_methods_commit_and_persist(tmp_path):
     db = DatabaseManager(db_name="standalone_commit_methods.db", db_dir=tmp_path)
     db.conn = _CommitSpyConnection(db.conn)
+    day = _days_ago(1)
 
-    db.save_daily_metric(date="2026-03-05", weight=70.2, hrv=30.0, rhr=50)
+    db.save_daily_metric(date=day, weight=70.2, hrv=30.0, rhr=50)
     assert db.conn.commit_calls == 1
 
     db.save_session(
-        date="2026-03-05",
+        date=day,
         session_type="EASY",
         distance_km=8.0,
         duration_sec=2400,
@@ -472,16 +480,16 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     )
     assert db.conn.commit_calls == 2
 
-    db.save_hrr(date="2026-03-05", hrr_60=30, hrr_120=45)
+    db.save_hrr(date=day, hrr_60=30, hrr_120=45)
     assert db.conn.commit_calls == 3
 
     shoe_id = db.add_shoe(name="Pegasus 40", shoe_type="DAILY", max_km=700)
     assert db.conn.commit_calls == 4
 
-    db.update_shoe_mileage(shoe_id=shoe_id, distance_km=10.5, date="2026-03-05")
+    db.update_shoe_mileage(shoe_id=shoe_id, distance_km=10.5, date=day)
     assert db.conn.commit_calls == 5
 
-    db.save_personal_best(distance_km=5.0, time_sec=1200, date="2026-03-05", race_name="City 5K")
+    db.save_personal_best(distance_km=5.0, time_sec=1200, date=day, race_name="City 5K")
     assert db.conn.commit_calls == 6
 
     db.upsert_model_calibration_metadata(
@@ -493,11 +501,11 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     assert db.conn.commit_calls == 7
 
     cur = db.conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+    cur.execute("SELECT COUNT(*) FROM daily_metrics WHERE date = ?", (day,))
     assert cur.fetchone()[0] == 1
-    cur.execute("SELECT COUNT(*) FROM training_log WHERE date = ?", ("2026-03-05",))
+    cur.execute("SELECT COUNT(*) FROM training_log WHERE date = ?", (day,))
     assert cur.fetchone()[0] == 1
-    cur.execute("SELECT hrr_60, hrr_120 FROM daily_metrics WHERE date = ?", ("2026-03-05",))
+    cur.execute("SELECT hrr_60, hrr_120 FROM daily_metrics WHERE date = ?", (day,))
     assert cur.fetchone() == (30, 45)
     cur.execute("SELECT total_km FROM gear_usage WHERE id = ?", (shoe_id,))
     assert float(cur.fetchone()[0]) == 10.5

@@ -16,6 +16,13 @@ import titan.integrations.weather_api as weather_module
 from titan.core.database import DatabaseManager
 from titan.integrations.weather_api import WeatherAPI
 
+
+def _days_ago(n: int) -> str:
+    """A date inside the "last N days" window of the history reads (F5, D-072)."""
+    from datetime import UTC, datetime, timedelta
+
+    return (datetime.now(UTC) - timedelta(days=n)).strftime("%Y-%m-%d")
+
 # ─────────────────────────────────────────────────────────────────────────────
 # T1-06: DatabaseManager.get_baseline_rhr / get_hrv_history / get_weight_history
 # ─────────────────────────────────────────────────────────────────────────────
@@ -94,10 +101,10 @@ class TestGetHrvHistory:
         db = DatabaseManager(db_name="t106_hrv2.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
         cursor.execute(
-            "INSERT INTO daily_metrics (date, hrv_rmssd) VALUES (?, ?)", ("2026-03-01", 45.0)
+            "INSERT INTO daily_metrics (date, hrv_rmssd) VALUES (?, ?)", (_days_ago(2), 45.0)
         )
         cursor.execute(
-            "INSERT INTO daily_metrics (date, hrv_rmssd) VALUES (?, ?)", ("2026-03-02", 55.0)
+            "INSERT INTO daily_metrics (date, hrv_rmssd) VALUES (?, ?)", (_days_ago(1), 55.0)
         )
         db.conn.commit()
 
@@ -106,8 +113,8 @@ class TestGetHrvHistory:
 
         assert len(result) == 2
         # Newest first
-        assert result[0][0] == "2026-03-02"
-        assert result[1][0] == "2026-03-01"
+        assert result[0][0] == _days_ago(1)
+        assert result[1][0] == _days_ago(2)
 
     @pytest.mark.integration
     def test_hrv_history_raises_on_closed_db(self, tmp_path):
@@ -130,10 +137,10 @@ class TestGetWeightHistory:
         db = DatabaseManager(db_name="t106_wt2.db", db_dir=tmp_path)
         cursor = db.conn.cursor()
         cursor.execute(
-            "INSERT INTO daily_metrics (date, weight_kg) VALUES (?, ?)", ("2026-03-01", 72.0)
+            "INSERT INTO daily_metrics (date, weight_kg) VALUES (?, ?)", (_days_ago(2), 72.0)
         )
         cursor.execute(
-            "INSERT INTO daily_metrics (date, weight_kg) VALUES (?, ?)", ("2026-03-02", 71.5)
+            "INSERT INTO daily_metrics (date, weight_kg) VALUES (?, ?)", (_days_ago(1), 71.5)
         )
         db.conn.commit()
 
@@ -141,7 +148,7 @@ class TestGetWeightHistory:
         db.close()
 
         assert len(result) == 2
-        assert result[0][0] == "2026-03-02"
+        assert result[0][0] == _days_ago(1)
 
     @pytest.mark.integration
     def test_weight_history_raises_on_closed_db(self, tmp_path):

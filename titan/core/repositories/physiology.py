@@ -11,6 +11,11 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 
+def _history_start(days: int) -> str:
+    """First date (YYYY-MM-DD, UTC) of a "last N days" window, as the PostgreSQL adapter computes it."""
+    return (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+
 class PhysiologyRepository:
     """Physiology SQL, on the owning DatabaseManager's connection and lock."""
 
@@ -256,15 +261,19 @@ class PhysiologyRepository:
 
         Values are validated against physiological bounds (ADR-0023 / T1-18).
         Rows with sensor-artefact HRV (nulled by bounds check) are excluded.
+        The window is calendar days, the same as the PostgreSQL adapter (F5, D-072):
+        after a gap without data it returns fewer rows, never older ones.
         """
+        start_date = _history_start(days)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """SELECT date, hrv_rmssd FROM daily_metrics
                    WHERE athlete_id = ? AND hrv_rmssd IS NOT NULL AND hrv_rmssd > 0
-                   ORDER BY date DESC LIMIT ?""",
-                (athlete_id, days),
+                     AND date >= ?
+                   ORDER BY date DESC""",
+                (athlete_id, start_date),
             )
             rows = cursor.fetchall()
 
@@ -288,15 +297,17 @@ class PhysiologyRepository:
             return round(sum(values) / len(values), 2)
 
     def get_weight_history(self, days: int = 30, athlete_id: str = "owner") -> list[tuple[str, float]]:
-        """Return (date, weight_kg) rows from the last N days, newest-first."""
+        """Return (date, weight_kg) rows from the last N calendar days, newest-first (F5)."""
+        start_date = _history_start(days)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
                 """SELECT date, weight_kg FROM daily_metrics
                    WHERE athlete_id = ? AND weight_kg IS NOT NULL AND weight_kg > 0
-                   ORDER BY date DESC LIMIT ?""",
-                (athlete_id, days),
+                     AND date >= ?
+                   ORDER BY date DESC""",
+                (athlete_id, start_date),
             )
             rows = cursor.fetchall()
 
