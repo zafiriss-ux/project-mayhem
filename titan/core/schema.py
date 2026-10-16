@@ -104,7 +104,8 @@ t_daily_metrics = Table(
 # ---------------------------------------------------------------------------
 # Table 2 — training_log
 # Covers: create_database() base + v1 (garmin_activity_id), v3 (quality_flag),
-#         v19 (avg_pace_sec_per_km), v20 (athlete_id on training_log)
+#         v19 (avg_pace_sec_per_km), v20 (athlete_id on training_log),
+#         v29 (idx_training_log_athlete_date)
 # Ref: T5-69 (dedup), ADR-0019 (data sanity), T5-116
 # ---------------------------------------------------------------------------
 t_training_log = Table(
@@ -128,6 +129,7 @@ t_training_log = Table(
     Column("garmin_activity_id", String),   # v1 — T5-69 deduplication
     Column("quality_flag", Integer),        # v3 — data-sanity gate
     Column("avg_pace_sec_per_km", Float),   # v19 — pace storage
+    Index("idx_training_log_athlete_date", "athlete_id", "date"),  # v29 (D-077)
 )
 
 # ---------------------------------------------------------------------------

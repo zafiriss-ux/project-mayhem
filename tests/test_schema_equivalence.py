@@ -44,7 +44,7 @@ import pytest
 from titan.core.database import DatabaseManager
 
 # ---------------------------------------------------------------------------
-# Authoritative column snapshot — SCHEMA_VERSION 28, 2026-10-09
+# Authoritative column snapshot — SCHEMA_VERSION 29 (v29 adds an index only), 2026-10-16
 #
 # Column order follows PRAGMA table_info cid sequence:
 #   create_database() base columns appear first;
