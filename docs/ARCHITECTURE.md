@@ -63,6 +63,7 @@ launcher/main.py
 | `titan/core/repositories/access.py` | `AccessRepository` — access-domain SQL (login lockout, auth users and refresh tokens, coach-athlete RBAC scoping per ADR-0054, coach audit log) behind the `DatabaseManager` facade (plan #18) |
 | `titan/core/repositories/migrations.py` | `SchemaMigrations` — the schema steps v1–v30, the owner and system-coach rows a new database starts with, and the INV-25 forward-version guard, run by `DatabaseManager` on open; `SCHEMA_VERSION` stays in `database.py` (plan #18) |
 | `titan/core/athlete.py` | `UniversalAthleteProfile` — athlete profile loading and validation |
+| `titan/core/athlete_lifecycle.py` | Add, export and delete an athlete other than the owner; deletion records (ADR-0067 D2, D6; `scripts/athletes.py`) |
 | `titan/core/persistence.py` | `PersistenceAdapter` ABC and SQLite implementation |
 | `titan/core/periodization.py` | Periodization phase state |
 | `titan/core/equipment.py` | Equipment inventory model |

@@ -150,6 +150,22 @@ def _run_backup(db: DatabaseManager) -> None:
         log.info("backup_complete", extra={"path": str(backed_up)})
 
 
+def _athlete_housekeeping(db: DatabaseManager, *, at_start: bool = False) -> None:
+    """Re-apply recorded deletions at start (ADR-0067 D2.7), then delete athletes 30 days after /stop (D4.3).
+
+    A failure is logged at CRITICAL and never stops the owner's routine.
+    """
+    from titan.core import athlete_lifecycle
+
+    log = logging.getLogger("titan.worker.runner")
+    try:
+        if at_start:
+            athlete_lifecycle.reapply_deletions(db)
+        athlete_lifecycle.purge_expired_athletes(db, now=_utc_now())
+    except Exception as exc:
+        log.critical("worker_athlete_housekeeping_failed", extra={"error": str(exc)})
+
+
 def _seconds_until_next_run(hour: int = 7, minute: int = 0) -> float:
     """Return seconds until next HH:MM UTC. Always > 0."""
     now = _dt.datetime.now(_dt.UTC)
@@ -472,6 +488,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     interval_s = settings.WORKER_HEARTBEAT_INTERVAL_S
 
     _warn_incomplete_routines(db, _utc_now().date().isoformat())
+    _athlete_housekeeping(db, at_start=True)
 
     if settings.TITAN_MULTI_ATHLETE == "1":
         _run_with_scheduler(db, _stop, heartbeat=heartbeat, interval_s=interval_s)
@@ -480,6 +497,7 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
     while True:
         _write_heartbeat(heartbeat)
         _run_backup(db)
+        _athlete_housekeeping(db)
         if _run_due_routine(db, _stop, heartbeat, interval_s, settings.WORKER_ROUTINE_BUDGET_S):
             log.info("worker_graceful_exit")
             return

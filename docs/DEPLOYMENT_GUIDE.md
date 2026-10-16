@@ -140,6 +140,22 @@ Garmin) και `/stop` (ανακαλεί τη συγκατάθεσή του)· �
 Το κείμενο v1 είναι προσχέδιο: δεν χρησιμοποιείται για πραγματικό αθλητή πριν το δει δικηγόρος.
 Δεν τρέχει δεύτερο bot: τα chat των αθλητών τα ακούει η ίδια διεργασία με τον owner.
 
+Διαχείριση αθλητών (Φάση 4, ADR-0067 D2, D6, D9, D-097), στο μηχάνημα της ρουτίνας:
+```bash
+TITAN_DELETION_RECORD_FILE=/etc/titan/deletions.jsonl   # έξω από TITAN_DATA_DIR και TITAN_BACKUP_DIR
+
+python scripts/athletes.py add --name "Maria" --profile maria.json --chat 123456789
+python scripts/athletes.py relogin a-1234abcd       # ο αθλητής γράφει ο ίδιος τον κωδικό· δεν κρατιέται
+python scripts/athletes.py list
+python scripts/athletes.py export a-1234abcd --out a-1234abcd.json   # αρχείο 0600
+python scripts/athletes.py remove a-1234abcd        # ζητά να γράψεις το id
+```
+Το `maria.json` έχει όλα τα πεδία του `athlete_profiles` (ημερομηνία γέννησης, φύλο, βάρος, ύψος,
+μέγιστο και κατωφλιακό ΚΣ, φάση, στόχος, πόλη, χώρα). Μετά το `add` και το `relogin` ο αθλητής
+στέλνει `/consent` και `/agree v1` στο δικό του chat. Χωρίς `TITAN_DELETION_RECORD_FILE` η διαγραφή
+απορρίπτεται. Ο worker σβήνει μόνος του τον αθλητή 30 ημέρες μετά το `/stop`. Στο Docker:
+`docker compose exec titan-worker python scripts/athletes.py list`.
+
 ## 4. Καιρός
 
 Το TITAN χρησιμοποιεί το [Open-Meteo](https://open-meteo.com/): δωρεάν, χωρίς εγγραφή ή API key. Στο `.env` χρειάζεται μόνο η τοποθεσία:

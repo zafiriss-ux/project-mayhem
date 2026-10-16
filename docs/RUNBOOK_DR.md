@@ -79,6 +79,13 @@ python -m pytest tests/ -k db_integrity -v
 
 Τα δεδομένα μετά την ώρα του αντιγράφου χάνονται (έως 24 ώρες). Το επόμενο Garmin sync ξαναφέρνει όσα είναι ακόμα διαθέσιμα στο Garmin.
 
+Αθλητές που διαγράφηκαν μετά την ώρα του αντιγράφου (ADR-0067 D2.7, D-097): ο worker τους ξανασβήνει
+στην εκκίνηση από το `TITAN_DELETION_RECORD_FILE`, πριν τρέξει οτιδήποτε. Για να το κάνεις με το χέρι
+πριν ξεκινήσει ο worker:
+```bash
+docker compose run --rm --no-deps titan-worker python scripts/athletes.py reapply-deletions
+```
+
 ## Αντίγραφο εκτός μηχανήματος
 
 ```bash

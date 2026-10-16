@@ -72,8 +72,6 @@ def test_audit_middleware_writes_rows_for_all_required_action_types(client: tupl
     responses = [
         test_client.get("/athletes/athlete-2/dashboard?include=hrv"),
         test_client.post("/coach/overrides?athlete_id=athlete-2", json={"reason": "coach"}, headers=csrf),
-        test_client.get("/coach/export?athlete_id=athlete-2&format=json"),
-        test_client.delete("/coach/athlete-data?athlete_id=athlete-2", headers=csrf),
     ]
     assert all(response.status_code == 200 for response in responses)
 
@@ -81,8 +79,6 @@ def test_audit_middleware_writes_rows_for_all_required_action_types(client: tupl
     assert actions == [
         AuditActionType.VIEW_DATA.value,
         AuditActionType.SUBMIT_OVERRIDE.value,
-        AuditActionType.EXPORT_DATA.value,
-        AuditActionType.DELETE_DATA.value,
     ]
 
 
@@ -109,8 +105,6 @@ def test_audit_path_is_non_bypassable_for_covered_health_data_endpoints(
     covered = [
         ("GET", "/athletes/athlete-2/dashboard", None),
         ("POST", "/coach/overrides?athlete_id=athlete-2", {"reason": "r"}),
-        ("GET", "/coach/export?athlete_id=athlete-2", None),
-        ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
     ]
 
     csrf = _csrf_headers(test_client)
@@ -142,11 +136,7 @@ def test_audit_does_not_log_non_coach_requests(client: tuple[TestClient, CoachAu
     ("method", "path", "body"),
     [
         ("POST", "/coach/overrides?athlete_id=athlete-2", {"reason": "r"}),
-        ("GET", "/coach/export?athlete_id=athlete-2", None),
-        ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
         ("POST", "/coach/overrides?athlete_id=athlete-1", {"reason": "r"}),
-        ("GET", "/coach/export?athlete_id=athlete-1", None),
-        ("DELETE", "/coach/athlete-data?athlete_id=athlete-1", None),
     ],
 )
 def test_athlete_cannot_use_coach_routes(

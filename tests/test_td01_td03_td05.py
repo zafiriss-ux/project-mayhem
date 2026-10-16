@@ -503,13 +503,11 @@ def _make_rsa_keypair() -> tuple[str, str]:
 
 _ATHLETE_SCOPED_ROUTES = [
     ("POST", "/coach/overrides?athlete_id=athlete-2", {"reason": "r"}),
-    ("GET", "/coach/export?athlete_id=athlete-2", None),
-    ("DELETE", "/coach/athlete-data?athlete_id=athlete-2", None),
 ]
 
 
 class TestCoachRBACRoutes:
-    """Route-level integration tests for COACH RBAC on the three athlete-scoped endpoints."""
+    """Route-level integration tests for COACH RBAC on the athlete-scoped coach endpoint."""
 
     @pytest.fixture(autouse=True)
     def setup_client(self, monkeypatch: pytest.MonkeyPatch) -> None:
