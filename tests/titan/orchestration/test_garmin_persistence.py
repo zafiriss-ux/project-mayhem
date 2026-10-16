@@ -81,6 +81,26 @@ def test_an_impossible_activity_date_is_skipped_and_the_sync_keeps_the_rest(db):
 
 
 @pytest.mark.unit
+def test_an_activity_without_a_date_is_rejected_not_reported_as_persisted(db):
+    """F1: the row was dropped by INSERT OR IGNORE while the event said ACTIVITY_PERSISTED."""
+    payload = _payload()
+    payload["activities"].append({
+        "activity_id": "garmin-nodate", "date": None, "activity_type": "running",
+        "distance_km": 5, "duration_sec": 1800, "name": "no date",
+    })
+    outcomes: list[str] = []
+
+    def _emit(action, **fields):
+        if action == "activity_persist" and fields["outcome"].startswith("ACTIVITY_"):
+            outcomes.append(fields["outcome"])
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=_emit)
+
+    assert outcomes == ["ACTIVITY_PERSISTED", "ACTIVITY_SANITY_REJECTED"]
+    assert db.conn.execute("SELECT COUNT(*) FROM training_log").fetchone() == (1,)
+
+
+@pytest.mark.unit
 def test_rolled_back_transaction_raises_with_the_decision_values(db, monkeypatch):
     def _fail(**_kwargs):
         raise RuntimeError("disk full")

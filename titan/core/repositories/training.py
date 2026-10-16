@@ -290,7 +290,7 @@ class TrainingRepository:
         """
         # F3: a date that is not a calendar day (e.g. "2026-09-31") must not reach
         # training_log, where it later breaks the CTL/ATL/TSB calculation.
-        if date is not None:
+        if date:  # an empty date is refused just below (F1)
             try:
                 datetime.fromisoformat(str(date)[:10])
             except ValueError:
@@ -309,6 +309,14 @@ class TrainingRepository:
         # Calculate training load: prefer explicit override, fall back to sRPE
         computed_load = (rpe * (duration_sec / 60)) if rpe else 0
         training_load = training_load if training_load is not None else int(computed_load)
+
+        # F1: athlete_id and date are NOT NULL. INSERT OR IGNORE (kept for the
+        # garmin_activity_id dedup) would drop such a row silently, so refuse it here.
+        if not athlete_id or not date:
+            raise ValueError(
+                f"save_session: athlete_id and date are required, got "
+                f"athlete_id={athlete_id!r}, date={date!r}"
+            )
 
         with self._db._lock:
             self._db._ensure_open_locked()

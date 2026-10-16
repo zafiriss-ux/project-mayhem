@@ -78,6 +78,7 @@ class DataSanityChecker:
         """Cross-field structural validation for a Garmin activity row.
 
         Rules (ADR-0026 Table 1):
+        - date key present but None or ""              → reject  (F1)
         - max_hr < avg_hr                               → reject
         - distance_km > 0 and duration_sec == 0         → reject
         - timestamp in future (> now + 1 h drift margin)→ reject
@@ -163,6 +164,19 @@ class DataSanityChecker:
                 )
                 violations.append(v)
                 _emit(context, v)
+
+        # Rule: a date key that is present but empty (None / "") would be written as a
+        # NULL training_log.date; reject this record only (F1, D-071).
+        if "date" in row and not row["date"]:
+            v = SanityViolation(
+                record_type="activity",
+                field="date",
+                rule="date_null_or_empty",
+                value=row["date"],
+                severity="reject",
+            )
+            violations.append(v)
+            _emit(context, v)
 
         # Rule: timestamp must not be in the future (> now + 1 h clock-drift margin)
         if timestamp_str:
