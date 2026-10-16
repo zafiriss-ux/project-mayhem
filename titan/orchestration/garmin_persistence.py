@@ -31,6 +31,29 @@ _GARMIN_ACTIVITY_TYPE_MAP: dict[str, str] = {
 }
 
 
+def _label_session_type(label: object) -> str | None:
+    """Session type from Garmin's ``trainingEffectLabel``, or None (SV-11, D-089).
+
+    Garmin names the primary benefit Recovery, Base, Tempo, Threshold, VO2 Max,
+    Anaerobic or Sprint. The label is compared without case, spaces or
+    underscores, so ``VO2MAX`` and ``VO2_MAX`` both count.
+    """
+    key = "".join(ch for ch in str(label or "").upper() if ch.isalnum())
+    if key.startswith(("VO2", "ANAEROBIC")) or key == "SPRINT":
+        return "INTERVALS"
+    if key == "TEMPO" or "THRESHOLD" in key:
+        return "TEMPO"
+    return None
+
+
+def _garmin_session_type(act: dict) -> str:
+    """Stored session type: the activity type first, then the training-effect label."""
+    mapped = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get("activity_type", ""), "EASY")
+    if mapped != "EASY":
+        return mapped
+    return _label_session_type(act.get("training_effect_label")) or "EASY"
+
+
 class PersistenceFailure(Exception):
     """Raised by persist_garmin_data() when the DB transaction rolls back.
 
@@ -99,7 +122,7 @@ def _save_activities(
             _tl_override = int(_est_load) if _est_load else None
             db.save_session(
                 date              = activity_date,
-                session_type      = _GARMIN_ACTIVITY_TYPE_MAP.get(act.get('activity_type', ''), 'EASY'),
+                session_type      = _garmin_session_type(act),
                 distance_km       = _safe_float(act.get('distance_km', 0)),
                 duration_sec      = _safe_int(act.get('duration_sec', 0)),
                 avg_hr            = _safe_int(act.get('avg_hr')) or None,

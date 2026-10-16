@@ -407,6 +407,11 @@ def _run_pipeline_step(step_number: int, step_name: str, fn: "Callable[[], Any]"
         return result
 
 
+# Stored session types the V5 gate counts as a VO2 session (GovernanceEngine._VO2_SESSIONS
+# plus INTERVALS, which is how a Garmin VO2 Max/Anaerobic/Sprint run is stored, D-089).
+_VO2_HISTORY_TYPES = frozenset({"INTERVALS", "HAMMER", "RACE"})
+
+
 def _compute_esi(*, temperature_c: float, dew_point_c: float) -> tuple[str, int]:
     """Compute ESI level and target pace adjustment in sec/km."""
     score = float(temperature_c) + (0.5 * float(dew_point_c))
@@ -1339,6 +1344,39 @@ class DailyCoach:
         )
         return today_session, esi_level, esi_pace_adjustment_sec_per_km
 
+    def _days_since_last_vo2(self, garmin_data: GarminSyncResult) -> int | None:
+        """Days since the athlete's last VO2 session, for the V5 gate (SV-15, D-089).
+
+        A VO2 session is a stored INTERVALS, HAMMER or RACE run (``training_log``,
+        typed from Garmin's training-effect label since D-089). None when there is
+        none in the last 30 sessions or the history cannot be read: the gate then
+        does not apply, as before.
+        """
+        provided = garmin_data.get("days_since_last_vo2")
+        if provided is not None:
+            return provided
+        db = getattr(self, "db", None)
+        if db is None or not hasattr(db, "get_recent_activities"):
+            return None
+        try:
+            sessions = db.get_recent_activities(
+                limit=30, athlete_id=getattr(self, "athlete_id", "owner"),
+            )
+        except Exception as e:
+            _daily_coach_event(
+                "vo2_history_failed", error_class=type(e).__name__, error_message=str(e),
+            )
+            return None
+        today = datetime.now(UTC).date()
+        for session in sessions:
+            if str(session.get("session_type", "")).upper() in _VO2_HISTORY_TYPES:
+                try:
+                    day = date.fromisoformat(str(session.get("date", ""))[:10])
+                except ValueError:
+                    continue
+                return max(0, (today - day).days)
+        return None
+
     def _today_hrv(self) -> float | None:
         """Tonight's rMSSD, or None when it is missing (ADR-0051, SV-06).
 
@@ -1449,7 +1487,7 @@ class DailyCoach:
             glycogen_debt=self.glycogen.daily_debt,
             fatigue_level=fatigue_level,
             acwr=acwr,
-            days_since_last_vo2=inp.garmin_data.get('days_since_last_vo2'),
+            days_since_last_vo2=self._days_since_last_vo2(inp.garmin_data),
             fueling_confirmed=bool(inp.garmin_data.get('fueling_confirmed', False)),
             planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
             today_hrv=inp.today_hrv,
