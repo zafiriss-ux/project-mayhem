@@ -66,6 +66,49 @@ else
     log "✅ worker_started confirmed"
 fi
 
+# ── 5b. Two athletes besides the owner (Phase 4 step 10, ADR-0067) ──────────
+# Zaf adds them with scripts/athletes.py on the worker's volume. Without Garmin and
+# consent they are not ready: the worker's readiness check says why, and nothing is
+# claimed or written for them (D4.2, D7.1).
+log "Adding two athletes..."
+add_athlete() {  # name, Telegram chat id, city
+    $COMPOSE exec -T titan-worker sh -c "cat > /tmp/smoke_profile.json" <<JSON
+{"birth_date": "1990-05-01", "sex": "F", "weight_kg": 58, "height_cm": 165, "max_hr": 190,
+ "threshold_hr": 172, "training_phase": "BASE", "training_goal": "10K",
+ "location_city": "$3", "location_country": "GR"}
+JSON
+    $COMPOSE exec -T titan-worker python scripts/athletes.py add \
+        --name "$1" --profile /tmp/smoke_profile.json --chat "$2" > /dev/null || \
+        fail "athletes.py add $1 failed"
+}
+add_athlete "Smoke A" 900001 Larissa
+add_athlete "Smoke B" 900002 Patras
+
+count_athletes() {
+    $COMPOSE exec -T titan-worker python scripts/athletes.py list | grep -c "consent=no" || true
+}
+[ "$(count_athletes)" = "2" ] || fail "athletes.py list does not show the two athletes"
+log "✅ Two athletes added"
+
+$COMPOSE exec -T titan-worker python3 - <<'PY' || fail "readiness check of the two athletes failed"
+import sys; sys.path.insert(0, '.')
+from pathlib import Path
+from titan import worker
+from titan.config.settings import get_settings
+from titan.core.database import DatabaseManager
+db = DatabaseManager(db_dir=Path(get_settings().TITAN_DATA_DIR))
+others = [a for a in db.list_athletes_in_order() if a != 'owner']
+assert len(others) == 2, others
+for athlete_id in others:
+    problem = worker._readiness_problem(db, athlete_id)
+    assert problem == 'consent: none current', (athlete_id, problem)
+claimed = db.conn.execute(
+    "SELECT COUNT(*) FROM worker_routine_executions WHERE athlete_id != 'owner'").fetchone()[0]
+assert claimed == 0, claimed
+print('two athletes, both waiting for consent, nothing claimed for them')
+PY
+log "✅ Both athletes not ready (consent), nothing claimed for them"
+
 # ── 6. Persistence test ───────────────────────────────────────────────────────
 log "Testing volume persistence..."
 $COMPOSE exec -T titan-api python3 -c "
@@ -104,6 +147,9 @@ assert row and row[0] == 'smoke_test', \
 print('Persistence OK')
 "
 log "✅ Persistence after restart: OK"
+
+[ "$(count_athletes)" = "2" ] || fail "the two athletes did not survive the restart"
+log "✅ Two athletes after restart"
 
 [ -n "$($COMPOSE ps --status running -q titan-worker)" ] || \
     fail "worker not running after restart"
