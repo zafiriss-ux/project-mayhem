@@ -1,4 +1,4 @@
-"""Schema migrations: additive steps v1–v28 guarded by ``PRAGMA user_version``,
+"""Schema migrations: additive steps v1–v29 guarded by ``PRAGMA user_version``,
 and the owner rows a new database starts with.
 
 ``SCHEMA_VERSION`` stays in ``titan.core.database``; base tables come from
@@ -216,6 +216,11 @@ class SchemaMigrations:
                 "cs_performances",
                 "athlete_id column (DEFAULT 'owner'): CS per athlete, AGENTS §13.4 Stage 1 (D-012, D-028)",
                 None,  # DDL — see _apply_v28_migrations() below
+            ),
+            29: (
+                "training_log",
+                "idx_training_log_athlete_date: per-athlete date-window reads use an index (D-077)",
+                None,  # DDL — see _apply_v29_migrations() below
             ),
         }
 
@@ -537,6 +542,15 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 28,
                 "changes": "cs_performances athlete_id (D-012, D-028)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 29:
+            self._db._apply_v29_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 29,
+                "changes": "training_log (athlete_id, date) index (D-077)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1228,3 +1242,15 @@ class SchemaMigrations:
         except sqlite3.OperationalError as e:
             if "duplicate column" not in str(e).lower():
                 raise
+
+    def _apply_v29_migrations(self, cursor) -> None:
+        """Version 29: index on training_log (athlete_id, date) (D-077).
+
+        Additive (AGENTS §13.3). Every athlete-scoped date-window read of
+        training_log (CTL/ATL/TSB history, recent activities) did a full table
+        scan; the SQLite assessment measured p95 70.8 → 0.17 ms at 1M rows.
+        """
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_training_log_athlete_date "
+            "ON training_log(athlete_id, date)"
+        )

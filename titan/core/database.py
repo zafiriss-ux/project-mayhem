@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 28
+SCHEMA_VERSION = 29
 
 
 def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = None) -> str | None:
@@ -448,6 +448,10 @@ class DatabaseManager:
     def _apply_v28_migrations(self, cursor) -> None:
         """Version 28: cs_performances.athlete_id (D-012, D-028)."""
         self._migrations._apply_v28_migrations(cursor=cursor)
+
+    def _apply_v29_migrations(self, cursor) -> None:
+        """Version 29: training_log (athlete_id, date) index (D-077)."""
+        self._migrations._apply_v29_migrations(cursor=cursor)
 
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
