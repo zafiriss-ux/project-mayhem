@@ -142,6 +142,9 @@ def _derive_field_hint(error: Exception) -> str:
 # self-reports its schema state on every startup.
 SCHEMA_VERSION = 29
 
+# Largest size the WAL file is kept at after a checkpoint resets it (D-078).
+WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
+
 
 def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = None) -> str | None:
     """Return None if *path* is a sound SQLite backup, else a description of the problem.
@@ -259,6 +262,11 @@ class DatabaseManager:
         # Busy timeout: wait up to 5 seconds if DB is locked
         # Prevents "database is locked" errors during concurrent access
         cursor.execute("PRAGMA busy_timeout=5000")
+
+        # D-078: after a checkpoint resets the WAL, SQLite truncates the file back to
+        # this size. Without it the WAL keeps its largest size; the SQLite assessment
+        # saw it reach 861 MB beside a 107 MB database under continuous readers.
+        cursor.execute(f"PRAGMA journal_size_limit={WAL_SIZE_LIMIT_BYTES}")
 
         # INV-14: enforce declared foreign keys. SQLite defaults FK enforcement OFF;
         # without this, the ForeignKey constraints in schema.py are decorative.
