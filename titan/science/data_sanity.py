@@ -78,6 +78,7 @@ class DataSanityChecker:
         """Cross-field structural validation for a Garmin activity row.
 
         Rules (ADR-0026 Table 1):
+        - avg_hr/max_hr/distance_km/duration_sec not a number → reject (F2)
         - date key present but None or ""              → reject  (F1)
         - max_hr < avg_hr                               → reject
         - distance_km > 0 and duration_sec == 0         → reject
@@ -88,10 +89,33 @@ class DataSanityChecker:
         """
         violations: list[SanityViolation] = []
 
-        avg_hr = row.get("avg_hr")
-        max_hr = row.get("max_hr")
-        distance_km = row.get("distance_km")
-        duration_sec = row.get("duration_sec")
+        # Rule: the numeric fields must be numbers (F2, D-073). A value such as
+        # distance_km="ten" made the rules below raise, and the whole sync rolled
+        # back; now only this record is rejected. Numeric strings ("10.5") pass.
+        numeric: dict[str, float | None] = {}
+        for field in ("avg_hr", "max_hr", "distance_km", "duration_sec"):
+            raw = row.get(field)
+            try:
+                if isinstance(raw, bool):
+                    raise TypeError
+                numeric[field] = None if raw is None else float(raw)
+            except (TypeError, ValueError):
+                v = SanityViolation(
+                    record_type="activity",
+                    field=field,
+                    rule="field_not_numeric",
+                    value=str(raw),
+                    severity="reject",
+                )
+                violations.append(v)
+                _emit(context, v)
+        if violations:
+            return violations
+
+        avg_hr = numeric["avg_hr"]
+        max_hr = numeric["max_hr"]
+        distance_km = numeric["distance_km"]
+        duration_sec = numeric["duration_sec"]
         timestamp_str = row.get("date") or row.get("timestamp")
 
         # Rule: max_hr must be >= avg_hr when both are present and non-zero
@@ -106,7 +130,7 @@ class DataSanityChecker:
                 record_type="activity",
                 field="max_hr",
                 rule="max_hr_lt_avg_hr",
-                value=f"max_hr={max_hr} < avg_hr={avg_hr}",
+                value=f"max_hr={row.get('max_hr')} < avg_hr={row.get('avg_hr')}",
                 severity="reject",
             )
             violations.append(v)
@@ -123,7 +147,7 @@ class DataSanityChecker:
                 record_type="activity",
                 field="duration_sec",
                 rule="nonzero_distance_zero_duration",
-                value=f"distance_km={distance_km} duration_sec={duration_sec}",
+                value=f"distance_km={row.get('distance_km')} duration_sec={row.get('duration_sec')}",
                 severity="reject",
             )
             violations.append(v)
@@ -159,7 +183,7 @@ class DataSanityChecker:
                     record_type="activity",
                     field="duration_sec",
                     rule="run_pace_implausible",
-                    value=f"distance_km={distance_km} duration_sec={duration_sec} pace={pace:.0f}s/km",
+                    value=f"distance_km={row.get('distance_km')} duration_sec={row.get('duration_sec')} pace={pace:.0f}s/km",
                     severity="warn",
                 )
                 violations.append(v)
