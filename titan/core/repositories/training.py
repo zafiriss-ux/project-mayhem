@@ -123,6 +123,10 @@ class TrainingRepository:
         # Check compression recovery
         if last_used:
             last_used_date = datetime.fromisoformat(last_used)
+            if last_used_date.tzinfo is None:
+                # last_used is the session date ("YYYY-MM-DD"); read it as UTC so the
+                # subtraction below does not mix naive and aware datetimes (F8).
+                last_used_date = last_used_date.replace(tzinfo=UTC)
             hours_since = (datetime.now(UTC) - last_used_date).total_seconds() / 3600
 
             if hours_since < recovery_hours:
@@ -146,7 +150,15 @@ class TrainingRepository:
             time_sec: Time in seconds
             date: Date of the performance (ISO format)
             race_name: Optional race name
+
+        Raises:
+            ValueError: distance_km or time_sec is not positive (F10).
         """
+        if not distance_km or distance_km <= 0 or not time_sec or time_sec <= 0:
+            raise ValueError(
+                f"personal best needs a positive distance and time, got "
+                f"distance_km={distance_km!r}, time_sec={time_sec!r}"
+            )
         pace_per_km = time_sec / distance_km
 
         with self._db._lock:
@@ -276,6 +288,14 @@ class TrainingRepository:
             sRPE (session RPE) = RPE × duration (minutes)
             Based on Foster et al. (2001)
         """
+        # F3: a date that is not a calendar day (e.g. "2026-09-31") must not reach
+        # training_log, where it later breaks the CTL/ATL/TSB calculation.
+        if date:  # an empty date is refused just below (F1)
+            try:
+                datetime.fromisoformat(str(date)[:10])
+            except ValueError:
+                raise ValueError(f"save_session: {date!r} is not a calendar date (YYYY-MM-DD)") from None
+
         # Resolve deprecated alias; temperature_c takes precedence
         if temperature_c is None and temperature is not None:
             import warnings

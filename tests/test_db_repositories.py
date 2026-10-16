@@ -104,6 +104,24 @@ def test_personal_bests_and_cs_performances_round_trip(db) -> None:
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize("bad_date", ["2026-09-31", "2026-02-30", "garbage"])
+def test_save_session_refuses_a_date_that_is_not_a_calendar_day(db, bad_date) -> None:
+    """F3: an impossible date reached training_log and then broke get_ctl_atl_tsb."""
+    with pytest.raises(ValueError, match="not a calendar date"):
+        db.save_session(bad_date, "EASY", 5.0, 1800)
+    assert db.conn.execute("SELECT COUNT(*) FROM training_log").fetchone() == (0,)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(("distance_km", "time_sec"), [(0, 1200), (0.0, 1200), (-5.0, 1200), (5.0, 0), (5.0, -1)])
+def test_personal_best_refuses_a_non_positive_distance_or_time(db, distance_km, time_sec) -> None:
+    """F10: distance 0 raised ZeroDivisionError; now a clear ValueError and nothing is written."""
+    with pytest.raises(ValueError, match="positive distance and time"):
+        db.save_personal_best(distance_km, time_sec, "2026-02-14")
+    assert db.conn.execute("SELECT COUNT(*) FROM personal_bests").fetchone() == (0,)
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(("athlete_id", "date"), [(None, "2026-01-05"), ("", "2026-01-05"), ("owner", None), ("owner", "")])
 def test_save_session_refuses_a_missing_athlete_or_date(db, athlete_id, date) -> None:
     """F1: INSERT OR IGNORE dropped a NOT NULL row silently; now the caller gets a ValueError."""

@@ -246,6 +246,20 @@ class TestDatabase:
         assert isinstance(available, bool)
         assert isinstance(msg, str)
 
+    def test_used_shoe_availability_reads_the_session_date(self, db):
+        """F8: a used shoe (last_used 'YYYY-MM-DD') raised TypeError, naive vs aware datetime."""
+        from datetime import UTC, datetime
+
+        rested = db.add_shoe("Rested Shoe", "DAILY", 800)
+        db.update_shoe_mileage(rested, 10.0, "2020-01-01")
+        assert db.check_shoe_availability(rested) == (True, "Available")
+
+        fresh = db.add_shoe("Fresh Shoe", "DAILY", 800)
+        db.update_shoe_mileage(fresh, 10.0, datetime.now(UTC).date().isoformat())
+        available, msg = db.check_shoe_availability(fresh)
+        assert available is False
+        assert "recovery" in msg
+
     def test_personal_best_roundtrip(self, db):
         db.save_personal_best(5.0, 1140, "2026-02-13", "Test 5K")
         pr = db.get_pr(5.0)
