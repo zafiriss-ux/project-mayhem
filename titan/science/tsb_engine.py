@@ -113,9 +113,13 @@ def replay_tsb(
 
     Returns (ctl, atl, tsb).
     """
+    # The history query counts days back from today, so a past as_of_date needs
+    # the gap to today on top of the 5τ warm-up; the window then ends at
+    # as_of_date, not at today (F4, D-074).
+    days_since = max(0, (_today() - as_of_date).days)
     loads = db.get_training_load_history(
         athlete_id=athlete_id,
-        days=ctl_decay_days * 5,  # 5τ warmup window (LOAD_HISTORY_DAYS)
+        days=ctl_decay_days * 5 + days_since,  # 5τ warmup before as_of_date
     )
     loads_up_to = [
         (d, load) for d, load in loads

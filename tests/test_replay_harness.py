@@ -83,3 +83,30 @@ def test_replay_empty_returns_zeros(tmp_path):
     db = _make_db(tmp_path)
     assert db.replay_tsb("owner", date.today()) == (0.0, 0.0, 0.0)
     assert db.replay_tsb("owner", date(2020, 1, 1)) == (0.0, 0.0, 0.0)
+
+
+def _shifted_replay(tmp_path: Path, name: str, offset: int, loads: list[tuple[int, int]]):
+    """Replay as of today-offset, with each load at (offset + n) days ago."""
+    db = _make_db(tmp_path, name)
+    for n, load in loads:
+        _insert(db, _days_ago(offset + n), load)
+    return db.replay_tsb("owner", date.today() - timedelta(days=offset))
+
+
+@pytest.mark.integration
+def test_replay_long_ago_sees_its_own_history(tmp_path):
+    """F4: a replay 300 days back used a window ending today and returned zeros."""
+    loads = [(n, 60) for n in range(1, 15)]
+    then = _shifted_replay(tmp_path, "then.db", 300, loads)
+    now = _shifted_replay(tmp_path, "now.db", 0, loads)
+    assert then[0] > 0
+    assert then == pytest.approx(now, abs=0.01)
+
+
+@pytest.mark.integration
+def test_replay_past_date_keeps_full_warmup(tmp_path):
+    """F4: a replay 30 days back got 30 days less warm-up than a replay today."""
+    loads = [(n, 50) for n in range(1, 211)]
+    then = _shifted_replay(tmp_path, "then.db", 30, loads)
+    now = _shifted_replay(tmp_path, "now.db", 0, loads)
+    assert then == pytest.approx(now, abs=0.01)
