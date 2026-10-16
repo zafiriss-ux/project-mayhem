@@ -189,7 +189,7 @@ class DataSanityChecker:
                     violations.append(v)
                     _emit(context, v)
             except (ValueError, TypeError):
-                # Unparseable timestamp — reject (F3, D-069): the value is stored as
+                # Unparseable timestamp — reject (F3, D-070): the value is stored as
                 # training_log.date and a non-date there breaks CTL/ATL/TSB for the athlete.
                 v = SanityViolation(
                     record_type="activity",
