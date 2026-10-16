@@ -1,6 +1,7 @@
 # ADR-0060: Durable Worker State — routine executions and Telegram override nonces
 
-**Status:** ACCEPTED (Zaf, merge of #907, 2026-10-07)
+**Status:** ACCEPTED (Zaf, merge of #907, 2026-10-07). D1 item 3 amended by ADR-0067 D8: a crash
+before delivery resumes the same UTC day without a second `governance_outcomes` write.
 **Date:** 2026-10-07
 **Author:** Zaf (Owner) / Claude (Design Authority)
 **Related:** AGENTS §8.6 (INV-15, INV-17), §8.14 (INV-23), §13.3, §13.4, §14.2, §14.3;

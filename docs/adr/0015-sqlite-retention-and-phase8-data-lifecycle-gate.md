@@ -44,6 +44,9 @@ below becomes a hard prerequisite before implementation work can start.
 
 No Phase 8 implementation may start until that ADR is accepted.
 
+**Closed by ADR-0067 D2 (2026-10-16):** shared SQLite, no pruning while active, deletion 30 days
+after `/stop`, one JSON export per athlete, restore followed by the deletion records.
+
 ## Consequences
 
 ### Positive
