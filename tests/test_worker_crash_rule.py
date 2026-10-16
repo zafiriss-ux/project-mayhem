@@ -193,7 +193,8 @@ def test_a_crash_on_the_last_attempt_leaves_the_day_once(data_dir) -> None:
     assert _day(data_dir) == [(3, 0, 1)]
 
 
-def test_the_scheduler_follows_the_same_rule(data_dir) -> None:
+def test_the_scheduler_follows_the_same_rule(data_dir, monkeypatch) -> None:
+    monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)  # in-process stand-in coach
     _Coach.delivers, _Coach.writes_decision = False, False
     db = DatabaseManager(db_dir=data_dir)
 

@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 _log = logging.getLogger(__name__)
 
 DELETION_RECORD_ENV = "TITAN_DELETION_RECORD_FILE"
+# routine_type of the owner's row that marks the day's "not run" notice about an athlete (D-099).
+NOT_READY_NOTICE_PREFIX = "not_ready:"
 _ATHLETE_ID = re.compile(r"a-[0-9a-f]{8}")  # ADR-0067 D3.5
 _EXPORT_FORMAT = "titan-athlete-export/1"
 
@@ -196,6 +198,12 @@ def _delete_rows(db: DatabaseManager, athlete_id: str) -> dict[str, int]:
             for table in ordered:
                 cursor = conn.execute(f"DELETE FROM {_quoted(table)} WHERE athlete_id = ?", (athlete_id,))  # nosec B608
                 counts[table] = cursor.rowcount
+            # The worker's once-a-day "not run" notices to Zaf name the athlete (D-099).
+            cursor = conn.execute(
+                "DELETE FROM worker_routine_executions WHERE athlete_id = 'owner' AND routine_type = ?",
+                (f"{NOT_READY_NOTICE_PREFIX}{athlete_id}",),
+            )
+            counts["worker_routine_executions"] = counts.get("worker_routine_executions", 0) + cursor.rowcount
             conn.commit()
         except Exception:
             conn.rollback()
@@ -206,7 +214,8 @@ def _delete_rows(db: DatabaseManager, athlete_id: str) -> dict[str, int]:
 def delete_athlete(db: DatabaseManager, athlete_id: str, *, now: datetime | None = None) -> dict[str, int]:
     """Delete the athlete: record first, then every row in one transaction, then the token (D6).
 
-    The worker runs only the owner until step 9, so the athlete has no scheduler entry to leave.
+    The worker lists the athletes again on every round, so once the rows are gone the
+    athlete has left the scheduler (D6.1).
     """
     _check_athlete_id(athlete_id)
     deleted_at = (now or datetime.now(UTC)).astimezone(UTC).isoformat()

@@ -166,6 +166,55 @@ def _athlete_housekeeping(db: DatabaseManager, *, at_start: bool = False) -> Non
         log.critical("worker_athlete_housekeeping_failed", extra={"error": str(exc)})
 
 
+def _readiness_problem(db: DatabaseManager, athlete_id: str) -> str | None:
+    """Why the athlete cannot be run today, or None (ADR-0067 D7.1).
+
+    Consent first (D4.2), then profile, Garmin and Telegram. Only the database is read:
+    nothing is called or written for an athlete who is not ready.
+    """
+    from titan.core.athlete import AthleteNotReady, load_athlete_profile
+
+    try:
+        _require_consent(db, athlete_id)
+        load_athlete_profile(db, athlete_id)
+        _require_garmin_ready(db, athlete_id)
+        _require_telegram_ready(db, athlete_id)
+    except AthleteNotReady as exc:
+        return exc.reason
+    return None
+
+
+def _tell_zaf_not_ready(db: DatabaseManager, athlete_id: str, reason: str, now: _dt.datetime) -> None:
+    """Tell Zaf once per UTC day that an athlete is not run, and why (ADR-0067 D7.1).
+
+    The marker is the owner's row in ``worker_routine_executions`` with routine type
+    ``not_ready:<athlete_id>``, so a restart does not tell again and nothing is written
+    for the athlete. A failed send is tried again on the next round, at most 3 times a day.
+    """
+    from titan.core.athlete_lifecycle import NOT_READY_NOTICE_PREFIX
+
+    log = logging.getLogger("titan.worker.scheduler")
+    day = now.date().isoformat()
+    routine = f"{NOT_READY_NOTICE_PREFIX}{athlete_id}"
+    try:
+        state, _attempt = db.begin_routine_attempt(
+            athlete_id="owner", execution_date=day, routine_type=routine,
+            started_at=now, max_attempts=ROUTINE_MAX_ATTEMPTS,
+        )
+        if state != "run":
+            return
+        from titan.integrations.telegram_bot import TitanTelegramBot
+
+        # Plain text: reasons name fields such as location_city.
+        sent = TitanTelegramBot(db=db).send_message(f"⏸ {athlete_id} is not run today: {reason}.", parse_mode="")
+        if sent:
+            db.mark_routine_delivered(
+                athlete_id="owner", execution_date=day, routine_type=routine, delivered_at=_utc_now(),
+            )
+    except Exception as exc:
+        log.exception("scheduler_not_ready_notice_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+
+
 def _seconds_until_next_run(hour: int = 7, minute: int = 0) -> float:
     """Return seconds until next HH:MM UTC. Always > 0."""
     now = _dt.datetime.now(_dt.UTC)
@@ -712,30 +761,38 @@ def _run_with_scheduler(
     heartbeat: Path | None = None,
     interval_s: float = 60.0,
 ) -> None:
-    """Multi-athlete coaching loop via CoachingScheduler (ADR-0046 / P26-03).
+    """Multi-athlete coaching loop via CoachingScheduler (ADR-0046 / P26-03, ADR-0067 D8).
 
-    Activated when TITAN_MULTI_ATHLETE=1. Registers the owner athlete
-    and any additional athletes from the athletes table, then runs the
-    scheduler until the stop event fires.
+    Activated when TITAN_MULTI_ATHLETE=1. One callback, the round, runs every 60 s poll:
+    every athlete in the fixed order, the owner first, each ready one in its own child
+    process (D8.1, D8.5). The athletes are read from the database on every round, so a new
+    athlete joins and a deleted one leaves without a restart.
     """
-    from collections.abc import Callable
-
     from titan.orchestration.coaching_scheduler import CoachingScheduler
 
     log = logging.getLogger("titan.worker.scheduler")
 
     # Run interval: 60s poll; coaching fires once per athlete per day at or
-    # after 07:00 UTC. The daily gate is the claim row in
-    # worker_routine_executions (ADR-0060 D1), so it survives a restart.
+    # after 07:00 UTC. The daily gate is the row in worker_routine_executions
+    # (ADR-0060 D1, ADR-0067 D8.4), so it survives a restart.
     scheduler = CoachingScheduler(interval_seconds=60.0)
+    backed_up_on: list[str] = []
 
-    def _make_athlete_callback(athlete_id: str) -> Callable[[], None]:
-        return lambda: _scheduled_morning(db, athlete_id)
+    def _round() -> None:
+        # The daily backup, as the owner loop takes it (DR-01); a restart may take one more.
+        today = _utc_now().date().isoformat()
+        if today not in backed_up_on:
+            try:
+                _run_backup(db)
+            except Exception as exc:
+                log.exception("worker_backup_failed", extra={"error": str(exc)})
+            backed_up_on[:] = [today]
+        _morning_round(db)
 
-    scheduler.register_athlete("owner", _make_athlete_callback("owner"))
+    scheduler.register_athlete("round", _round)
 
     scheduler.start()
-    log.info("coaching_scheduler_started", extra={"athletes": list(scheduler._athlete_callbacks)})
+    log.info("coaching_scheduler_started", extra={"athletes": db.list_athletes_in_order()})
 
     # Supervise until the stop event fires (SIGTERM / main() shutdown).
     _supervise_scheduler(scheduler, stop_event, heartbeat=heartbeat, interval_s=interval_s)
@@ -743,30 +800,112 @@ def _run_with_scheduler(
     log.info("coaching_scheduler_stopped")
 
 
-def _scheduled_morning(db: DatabaseManager, athlete_id: str) -> None:
-    """One scheduler poll for one athlete: claim and run today's morning when it is due."""
-    from titan.core.athlete import AthleteNotReady
+def _morning_round(db: DatabaseManager) -> None:
+    """One scheduler poll: athletes past 30 days after /stop are deleted, then every athlete
+    in the fixed order, the owner first (ADR-0067 D4.3, D8.1). One athlete's failure never
+    stops the round for the others (INV-23(3)).
+    """
+    log = logging.getLogger("titan.worker.scheduler")
+    if _utc_now().hour < ROUTINE_HOUR_UTC:
+        return
+    _athlete_housekeeping(db)
+    for athlete_id in db.list_athletes_in_order():
+        try:
+            _scheduled_morning(db, athlete_id)
+        except Exception as exc:
+            log.exception("scheduler_athlete_cycle_error", extra={"athlete_id": athlete_id, "error": str(exc)})
 
+
+def _scheduled_morning(db: DatabaseManager, athlete_id: str) -> None:
+    """One poll for one athlete: when it is due and the athlete is ready, one attempt in a child process."""
     log = logging.getLogger("titan.worker.scheduler")
     now = _utc_now()
     if now.hour < ROUTINE_HOUR_UTC:
         return
-    # Without consent not even the claim row is written (ADR-0067 D4.2); after /stop the
-    # routine does not start (D4.3).
+    # Not ready: nothing is called or written for the athlete, not even the claim row, and
+    # Zaf is told once that day (ADR-0067 D4.2, D7.1). After /stop the routine does not start.
     try:
-        _require_consent(db, athlete_id)
-    except AthleteNotReady as exc:
-        log.info("scheduler_athlete_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
-        return
+        problem = _readiness_problem(db, athlete_id)
     except Exception as exc:
-        log.exception("scheduler_consent_check_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+        log.exception("scheduler_readiness_check_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+        return
+    if problem is not None:
+        log.info("scheduler_athlete_not_ready", extra={"athlete_id": athlete_id, "reason": problem})
+        _tell_zaf_not_ready(db, athlete_id, problem, now)
         return
     # The attempt is counted before it runs, so a crash counts too and a day is tried at
     # most ROUTINE_MAX_ATTEMPTS times (ADR-0067 D8.4); a failed claim retries next poll.
     attempt = _claim_routine(db, athlete_id, now)
     if attempt is None or attempt is False:
         return
-    _attempt_morning(db, athlete_id, now.date().isoformat(), attempt)
+    _run_attempt(db, athlete_id, now.date().isoformat(), attempt)
+
+
+# Exit codes of the child process: delivered, or not delivered and already handled there.
+_CHILD_DELIVERED = 0
+_CHILD_NOT_DELIVERED = 3
+
+
+def _child_morning(db_path: str, athlete_id: str, execution_date: str, attempt: int) -> None:
+    """Child-process entry: one attempt of one athlete on its own connection (ADR-0067 D8.5)."""
+    from titan.core.database import DatabaseManager
+
+    logging.basicConfig(level=logging.INFO)
+    path = Path(db_path)
+    db = DatabaseManager(db_name=path.name, db_dir=path.parent)
+    try:
+        delivered = _attempt_morning(db, athlete_id, execution_date, attempt)
+    finally:
+        db.close()
+    sys.exit(_CHILD_DELIVERED if delivered else _CHILD_NOT_DELIVERED)
+
+
+# What the child process runs; a seam so tests can run a stand-in in a real child process.
+_CHILD_ENTRY = _child_morning
+
+
+def _routine_budget_s() -> float:
+    """The time limit of one athlete's attempt (``WORKER_ROUTINE_BUDGET_S``, ADR-0067 D8.5)."""
+    return float(get_settings().WORKER_ROUTINE_BUDGET_S)
+
+
+def _run_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int) -> bool:
+    """Run one claimed attempt in its own child process with a time limit; True if delivered.
+
+    Past ``WORKER_ROUTINE_BUDGET_S`` the process is killed: SQLite rolls back its open
+    transaction, the attempt stays counted, and the round moves on (ADR-0067 D8.5). A thread
+    is not used because it cannot be stopped safely. A child that was killed or died before
+    it could handle its own end leaves the day here when that was the last attempt.
+    """
+    import multiprocessing
+
+    log = logging.getLogger("titan.worker.scheduler")
+    budget_s = _routine_budget_s()
+    process = multiprocessing.get_context("spawn").Process(
+        target=_CHILD_ENTRY,
+        args=(str(db.db_path), athlete_id, execution_date, attempt),
+        name=f"morning-{athlete_id}",
+        daemon=True,
+    )
+    process.start()
+    process.join(timeout=budget_s)
+    if process.is_alive():
+        process.kill()
+        process.join()
+        log.critical(
+            "worker_routine_killed",
+            extra={"athlete_id": athlete_id, "attempt": attempt, "budget_s": budget_s},
+        )
+    if process.exitcode == _CHILD_DELIVERED:
+        return True
+    if process.exitcode != _CHILD_NOT_DELIVERED:
+        log.critical(
+            "worker_routine_child_died",
+            extra={"athlete_id": athlete_id, "attempt": attempt, "exitcode": process.exitcode},
+        )
+        if attempt >= ROUTINE_MAX_ATTEMPTS:
+            _leave_day(db, athlete_id, execution_date)
+    return False
 
 
 def _supervise_scheduler(

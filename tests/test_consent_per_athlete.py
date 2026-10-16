@@ -188,13 +188,14 @@ def test_after_stop_the_routine_does_not_start(db, monkeypatch) -> None:
     db.grant_consent(_A, CONSENT_TEXT_VERSION, now=_DAY1 - timedelta(days=3))
     db.revoke_consent(_A)
     monkeypatch.setattr(worker, "_utc_now", lambda: _DAY1)
-    monkeypatch.setattr(worker, "_run_morning", lambda *_a: pytest.fail("the routine started after /stop"))
-    writes = db.conn.total_changes
+    monkeypatch.setattr(worker, "_run_attempt", lambda *_a: pytest.fail("the routine started after /stop"))
 
     worker._scheduled_morning(db, _A)
 
-    assert db.conn.total_changes == writes
-    assert db.conn.execute("SELECT COUNT(*) FROM worker_routine_executions").fetchone()[0] == 0
+    # Nothing for the athlete; the only row is the owner's marker of Zaf's notice (D-099).
+    assert db.conn.execute(
+        "SELECT athlete_id, routine_type FROM worker_routine_executions"
+    ).fetchall() == [("owner", f"not_ready:{_A}")]
 
 
 @pytest.mark.integration
@@ -206,6 +207,7 @@ def test_a_new_consent_after_stop_resumes_the_next_utc_day(db, monkeypatch) -> N
     db.conn.commit()
     db.grant_consent(_A, CONSENT_TEXT_VERSION, now=_DAY1 + timedelta(hours=1))
     ran: list[str] = []
+    monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)
     monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id: ran.append(athlete_id))
 
     monkeypatch.setattr(worker, "_utc_now", lambda: _DAY1 + timedelta(hours=2))
@@ -223,6 +225,7 @@ def test_the_owner_runs_without_any_consent_row(db, monkeypatch) -> None:
 
     ran: list[str] = []
     monkeypatch.setattr(worker, "_utc_now", lambda: _DAY1)
+    monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)
     monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id: ran.append(athlete_id))
 
     worker._scheduled_morning(db, "owner")

@@ -156,6 +156,11 @@ python scripts/athletes.py remove a-1234abcd        # ζητά να γράψει
 απορρίπτεται. Ο worker σβήνει μόνος του τον αθλητή 30 ημέρες μετά το `/stop`. Στο Docker:
 `docker compose exec titan-worker python scripts/athletes.py list`.
 
+Με `TITAN_MULTI_ATHLETE=1` ο worker τρέχει κάθε πρωί από τις 07:00 UTC όλους τους έτοιμους
+αθλητές, τον owner πρώτο, τον καθένα σε δική του διεργασία με όριο `WORKER_ROUTINE_BUDGET_S`
+(ADR-0067 D8, D-099). Όποιος δεν είναι έτοιμος (συγκατάθεση, προφίλ, Garmin, Telegram) δεν τρέχει,
+και ο owner παίρνει ένα μήνυμα την ημέρα με το γιατί. Χωρίς τη μεταβλητή τρέχει μόνο ο owner.
+
 ## 4. Καιρός
 
 Το TITAN χρησιμοποιεί το [Open-Meteo](https://open-meteo.com/): δωρεάν, χωρίς εγγραφή ή API key. Στο `.env` χρειάζεται μόνο η τοποθεσία:
