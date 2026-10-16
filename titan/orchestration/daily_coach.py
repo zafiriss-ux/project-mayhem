@@ -50,6 +50,8 @@ from titan.config.thresholds import (
     GARMIN_DATA_MAX_AGE_HOURS,
     HRV_DRIFT_THRESHOLD_MS,
     INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
+    SLEEP_DEBT_NIGHTS,
+    SLEEP_DEBT_SCORE_MAX,
 )
 from titan.core.database import DatabaseManager
 from titan.integrations.biometric_router import BiometricRouter, ManualEntryAdapter
@@ -265,6 +267,28 @@ def _clamp_to_easy_45(session: dict) -> dict:
     if distance > 0 and planned_min > capped_min:
         capped["distance_km"] = round(distance * capped_min / planned_min, 1)
     return capped
+
+
+def _ease_for_sleep_debt(session: dict) -> dict:
+    """After SLEEP_DEBT_NIGHTS bad nights the day is EASY with 70% of its volume (SV-16 / ADR-0066).
+
+    REST stays REST. Distance and duration both keep
+    INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE of the plan, an EASY session too.
+    """
+    if str(session.get("session_type", "")).upper() == "REST":
+        return session
+    eased = {**session, "session_type": "EASY"}
+    duration = _safe_int(session.get("duration_min"), 0)
+    if duration > 0:
+        eased["duration_min"] = round(duration * INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE)
+    distance = _safe_float(session.get("distance_km"), 0.0)
+    if distance > 0:
+        eased["distance_km"] = round(distance * INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE, 1)
+    return eased
+
+
+def _is_bad_sleep_score(score: Any) -> bool:
+    return isinstance(score, int | float) and not isinstance(score, bool) and score < SLEEP_DEBT_SCORE_MAX
 
 
 # Readiness and AFI need a number when Garmin sent no sleep score: 50 gives
@@ -1162,6 +1186,20 @@ class DailyCoach:
             reasons=list(garmin_trust.reasons),
             stage="pre_governance",
         )
+        # SV-16 / ADR-0066: stale or invalid data is already capped, and its sleep is not tonight's.
+        if not (garmin_data_stale or data_trust_clamped):
+            bad_nights = self._bad_sleep_nights(inp.today_sleep_score)
+            if bad_nights >= SLEEP_DEBT_NIGHTS:
+                eased = _ease_for_sleep_debt(today_session)
+                _daily_coach_event(
+                    "sleep_debt_ease",
+                    severity=EventSeverity.WARNING,
+                    nights=bad_nights,
+                    score_max=SLEEP_DEBT_SCORE_MAX,
+                    session_planned=str(today_session.get("session_type", "")).upper(),
+                    session_applied=str(eased.get("session_type", "")).upper(),
+                )
+                today_session = eased
 
         today_session, data_confidence_low = self._step_governance(
             inp,
@@ -1889,6 +1927,28 @@ class DailyCoach:
     def routine_lock(self) -> threading.Lock:
         """The lock a background run holds; see titan/orchestration/routine_runner.py (D-035)."""
         return self._routine_mutex
+
+    def _bad_sleep_nights(self, today_sleep_score: int | None) -> int:
+        """Bad nights in a row, tonight first, up to SLEEP_DEBT_NIGHTS (SV-16 / ADR-0066).
+
+        Tonight's score comes from this morning's sync, the nights before from
+        daily_metrics.sleep_quality. A night without a score ends the run: a missing
+        reading is not counted as a bad one (ADR-0051).
+        """
+        if not _is_bad_sleep_score(today_sleep_score):
+            return 0
+        today = date.fromisoformat(datetime.now(UTC).strftime('%Y-%m-%d'))
+        athlete_id = getattr(self, "athlete_id", "owner")
+        nights = 1
+        for back in range(1, SLEEP_DEBT_NIGHTS):
+            try:
+                row = self.db.get_daily_metric((today - timedelta(days=back)).isoformat(), athlete_id=athlete_id)
+            except sqlite3.Error:
+                break
+            if not isinstance(row, dict) or not _is_bad_sleep_score(row.get("sleep_quality")):
+                break
+            nights += 1
+        return nights
 
     @staticmethod
     def _previous_day(day: str) -> str:

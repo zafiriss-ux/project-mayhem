@@ -175,6 +175,25 @@ def risk_never_more_aggressive(outcomes: list[Outcome]) -> list[Violation]:
     return out
 
 
+def sleep_debt_eases_the_day(outcomes: list[Outcome]) -> list[Violation]:
+    """ADR-0066 (SV-16): after three nights in a row with a sleep score under 60 the last
+    morning is EASY (or REST) and keeps at most 70% of the planned duration."""
+    out = []
+    for o in outcomes:
+        last3 = o.nights[-3:]
+        if len(last3) < 3 or not all(n is not None and n.sleep_score is not None and n.sleep_score < 60
+                                     for n in last3):
+            continue
+        m = o.last
+        if _type(m) not in ("EASY", "RECOVERY", "REST"):
+            out.append(_v(o, m, f"{_type(m)} after three bad nights"))
+            continue
+        p_min, f_min = _num(m.planned, "duration_min"), _num(m.session, "duration_min")
+        if _type(m) != "REST" and p_min and f_min > round(p_min * 0.7):
+            out.append(_v(o, m, f"{p_min:g}' planned -> {f_min:g}' after three bad nights"))
+    return out
+
+
 def acwr_known_after_six_weeks(outcomes: list[Outcome]) -> list[Violation]:
     """ADR-0051: ACWR may be None only for insufficient history; six weeks are enough."""
     return [_v(o, o.last, "acwr is None") for o in outcomes
@@ -223,6 +242,7 @@ RULES = {
     "stored_values_in_bounds": stored_values_in_bounds,
     "stored_runs_are_runnable": stored_runs_are_runnable,
     "risk_never_more_aggressive": risk_never_more_aggressive,
+    "sleep_debt_eases_the_day": sleep_debt_eases_the_day,
     "acwr_known_after_six_weeks": acwr_known_after_six_weeks,
     "phase_follows_the_athlete": phase_follows_the_athlete,
     "missing_reading_not_replaced": missing_reading_not_replaced,

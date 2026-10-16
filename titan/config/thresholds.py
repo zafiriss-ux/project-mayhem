@@ -103,6 +103,11 @@ INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE = 0.7  # Conservative volume reducti
 # A session downgraded by a gate without its own modifier (2of4, hard stops, VO2, fueling)
 # keeps INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE of its volume and at most this long (ADR-0065).
 GOVERNANCE_DOWNGRADE_MAX_DURATION_MIN = 60
+# SLEEP_DEBT_NIGHTS nights in a row with a sleep score under SLEEP_DEBT_SCORE_MAX make the day EASY
+# with INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE of its volume (SV-16 / ADR-0066). The score limit
+# is the one of the 2-of-4 sleep indicator (I2) in governance_engine.
+SLEEP_DEBT_NIGHTS = 3
+SLEEP_DEBT_SCORE_MAX = 60
 
 # WeeklyPlanGenerator volume (SV-14 / D-062): the week follows the athlete's average km per week
 # over the last PLANNER_VOLUME_WINDOW_DAYS, plus at most PLANNER_WEEKLY_KM_GROWTH_MAX; with no runs
