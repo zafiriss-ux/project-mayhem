@@ -93,7 +93,8 @@ def test_restart_does_not_rerun_the_routine_or_double_write_governance(data_dir,
                             "FROM worker_routine_executions")
     assert len(claims) == 1
     assert claims[0][:3] == ("owner", _TODAY, "morning")
-    assert claims[0][3] is not None  # the routine returned, so the claim is complete
+    assert claims[0][3] is not None  # the routine delivered, so the day is closed
+    assert _rows(db_file, "SELECT attempts, delivered_at IS NOT NULL FROM worker_routine_executions") == [(1, 1)]
 
 
 def test_next_day_runs_again(data_dir, monkeypatch):
@@ -119,21 +120,24 @@ def test_before_0700_utc_nothing_is_claimed_or_run(data_dir, monkeypatch):
     assert _rows(data_dir / "titan_core.db", "SELECT COUNT(*) FROM worker_routine_executions") == [(0,)]
 
 
-def test_a_routine_that_crashed_midway_is_not_retried_and_is_reported(data_dir, monkeypatch, caplog):
+def test_a_routine_that_crashed_midway_is_reported_and_resumes(data_dir, monkeypatch, caplog):
+    """ADR-0067 D8.4 (amends ADR-0060 D1 item 3): a crash before delivery is not a finished day."""
     monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
     db = DatabaseManager(db_dir=data_dir)
-    assert db.claim_routine_execution(
-        athlete_id="owner", execution_date=_TODAY, routine_type="morning", started_at=_MORNING
-    )
+    assert db.begin_routine_attempt(
+        athlete_id="owner", execution_date=_TODAY, routine_type="morning", started_at=_MORNING, max_attempts=3
+    ) == ("run", 1)
     db.close()
 
     with caplog.at_level(logging.WARNING, logger="titan.worker.runner"):
-        _start_worker(data_dir, stop_after_routine=False)
+        _start_worker(data_dir, stop_after_routine=True)
 
-    assert _GovernanceWritingCoach.calls == []
+    assert _GovernanceWritingCoach.calls == ["owner"]
     incomplete = [r for r in caplog.records if r.getMessage() == "worker_routine_incomplete"]
     assert len(incomplete) == 1
     assert incomplete[0].execution_date == _TODAY
+    assert _rows(data_dir / "titan_core.db", "SELECT attempts, delivered_at IS NOT NULL "
+                                             "FROM worker_routine_executions") == [(2, 1)]
 
 
 def test_failed_claim_fails_closed_then_retries(tmp_path, monkeypatch, caplog):
@@ -143,18 +147,18 @@ def test_failed_claim_fails_closed_then_retries(tmp_path, monkeypatch, caplog):
         def __init__(self) -> None:
             self.attempts = 0
 
-        def claim_routine_execution(self, **_kwargs) -> bool:
+        def begin_routine_attempt(self, **_kwargs) -> tuple[str, int]:
             self.attempts += 1
             if self.attempts == 1:
                 raise sqlite3.OperationalError("database is locked")
-            return True
+            return "run", 1
 
     db = _FlakyDb()
     ran: list[str] = []
     monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
     monkeypatch.setattr(
         worker, "_run_routine_supervised",
-        lambda *a, **k: ran.append(k["execution_date"]),
+        lambda *a, **k: ran.append(k["execution_date"]) or True,
     )
 
     with caplog.at_level(logging.CRITICAL, logger="titan.worker.runner"):
@@ -168,7 +172,7 @@ def test_failed_claim_fails_closed_then_retries(tmp_path, monkeypatch, caplog):
 
 def test_failed_claim_never_runs_the_routine_before_stop(tmp_path, monkeypatch):
     class _BrokenDb:
-        def claim_routine_execution(self, **_kwargs) -> bool:
+        def begin_routine_attempt(self, **_kwargs) -> tuple[str, int]:
             raise sqlite3.OperationalError("disk I/O error")
 
     stop = threading.Event()
@@ -234,19 +238,25 @@ def test_multi_athlete_scheduler_waits_for_0700_utc(data_dir, monkeypatch):
     db.close()
 
 
-def test_claim_is_the_insert_itself(tmp_path):
+def test_one_row_per_athlete_day_and_routine_counts_the_attempts(tmp_path):
+    """ADR-0067 D8.2, D8.4: the row is the claim; each attempt is counted before it runs."""
     db = DatabaseManager(db_dir=tmp_path)
-    kwargs = {"athlete_id": "owner", "execution_date": _TODAY, "routine_type": "morning"}
+    kwargs = {"athlete_id": "owner", "execution_date": _TODAY, "routine_type": "morning",
+              "started_at": _MORNING, "max_attempts": 3}
 
-    assert db.claim_routine_execution(started_at=_MORNING, **kwargs) is True
-    assert db.claim_routine_execution(started_at=_MORNING, **kwargs) is False
-    assert db.claim_routine_execution(
-        started_at=_MORNING, **{**kwargs, "athlete_id": "athlete-2"}
-    ) is True
+    assert [db.begin_routine_attempt(**kwargs) for _ in range(4)] == [
+        ("run", 1), ("run", 2), ("run", 3), ("exhausted", 3)
+    ]
+    assert db.begin_routine_attempt(**{**kwargs, "athlete_id": "athlete-2"}) == ("run", 1)
     assert db.get_incomplete_routine_executions(_TODAY) == [("athlete-2", "morning"), ("owner", "morning")]
 
-    db.complete_routine_execution(completed_at=_MORNING, **kwargs)
-    assert db.get_incomplete_routine_executions(_TODAY) == [("athlete-2", "morning")]
+    db.complete_routine_execution(athlete_id="owner", execution_date=_TODAY, routine_type="morning",
+                                  completed_at=_MORNING)
+    assert db.begin_routine_attempt(**kwargs) == ("closed", 3)
+    db.mark_routine_delivered(athlete_id="athlete-2", execution_date=_TODAY, routine_type="morning",
+                              delivered_at=_MORNING)
+    assert db.begin_routine_attempt(**{**kwargs, "athlete_id": "athlete-2"}) == ("closed", 1)
+    assert db.get_incomplete_routine_executions(_TODAY) == []
     db.close()
 
 

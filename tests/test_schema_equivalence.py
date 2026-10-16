@@ -296,12 +296,14 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "expires_at",
         "consumed_at",
     ],
-    "worker_routine_executions": [  # v26 — ADR-0060 D1 (INV-15)
+    "worker_routine_executions": [  # v26 — ADR-0060 D1 (INV-15); v31 — ADR-0067 D8.4
         "athlete_id",
         "execution_date",
         "routine_type",
         "started_at",
         "completed_at",
+        "delivered_at",
+        "attempts",
     ],
     "weekly_plans": [  # v27 — D-020 (worker's Sunday weekly plan)
         "athlete_id",

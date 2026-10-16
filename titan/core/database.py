@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 30
+SCHEMA_VERSION = 31
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -465,6 +465,10 @@ class DatabaseManager:
         """Version 30: athlete_id without DEFAULT, consent per text version, profiles, accounts (ADR-0067)."""
         self._migrations._apply_v30_migrations(cursor=cursor)
 
+    def _apply_v31_migrations(self, cursor) -> None:
+        """Version 31: worker_routine_executions delivered_at and attempts (ADR-0067 D8.4)."""
+        self._migrations._apply_v31_migrations(cursor=cursor)
+
     def record_failed_login(
         self, username: str, lockout_duration_seconds: float, max_attempts: int
     ) -> bool:
@@ -774,19 +778,29 @@ class DatabaseManager:
 
     # --- WORKER ROUTINE CLAIMS (ADR-0060 D1) (titan/core/repositories/operations.py) ---
 
-    def claim_routine_execution(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime
-    ) -> bool:
-        """Claim one routine run; False if it already started on that date (INV-15)."""
-        return self._operations.claim_routine_execution(
+    def begin_routine_attempt(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
+        max_attempts: int,
+    ) -> tuple[str, int]:
+        """Start one attempt at a routine: ("run", n), ("closed", n) or ("exhausted", n) (INV-15)."""
+        return self._operations.begin_routine_attempt(
             athlete_id=athlete_id, execution_date=execution_date,
-            routine_type=routine_type, started_at=started_at,
+            routine_type=routine_type, started_at=started_at, max_attempts=max_attempts,
+        )
+
+    def mark_routine_delivered(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
+    ) -> None:
+        """Record that the day's message was delivered; the day is never sent again (ADR-0067 D8.3)."""
+        self._operations.mark_routine_delivered(
+            athlete_id=athlete_id, execution_date=execution_date,
+            routine_type=routine_type, delivered_at=delivered_at,
         )
 
     def complete_routine_execution(
         self, *, athlete_id: str, execution_date: str, routine_type: str, completed_at: datetime
     ) -> None:
-        """Mark a claimed routine as returned (INV-15)."""
+        """Close a routine day that is left undelivered (INV-15, ADR-0067 D8.4)."""
         self._operations.complete_routine_execution(
             athlete_id=athlete_id, execution_date=execution_date,
             routine_type=routine_type, completed_at=completed_at,
@@ -1175,6 +1189,10 @@ class DatabaseManager:
     ) -> list[dict[str, Any]]:
         """Fetch governance decisions ordered by insertion order (oldest first)."""
         return self._governance.get_governance_decisions(limit=limit, athlete_id=athlete_id)
+
+    def get_governance_decision_on(self, athlete_id: str, date: str) -> dict[str, Any] | None:
+        """The athlete's stored decision of that date, or None (ADR-0067 D8.4)."""
+        return self._governance.get_governance_decision_on(athlete_id=athlete_id, date=date)
 
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
         """Attach or replace manual operator note for latest governance decision on date."""

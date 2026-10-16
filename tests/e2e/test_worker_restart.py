@@ -73,6 +73,7 @@ def announced(self, *args, **kwargs):
 
 
 _claim = worker._claim_routine
+_delivered = worker._mark_delivered
 
 
 def claim(*args, **kwargs):
@@ -81,8 +82,14 @@ def claim(*args, **kwargs):
     return claimed
 
 
+def delivered(*args, **kwargs):
+    _delivered(*args, **kwargs)
+    print("delivered", flush=True)
+
+
 worker._build_daily_coach = build
 worker._claim_routine = claim
+worker._mark_delivered = delivered
 DailyCoach.run_morning_routine = announced
 # 08:00 UTC today: the morning routine is due whenever the test runs.
 worker._utc_now = lambda: datetime.now(UTC).replace(hour=8, minute=0, second=0, microsecond=0)
@@ -134,8 +141,9 @@ def test_killed_worker_restarts_on_the_same_database_without_loss_or_duplicates(
 
     first = _start(tmp_path)
     try:
-        assert _wait_for(first, "claim") == "claim True"
+        assert _wait_for(first, "claim") == "claim 1"
         assert _wait_for(first, "routine_done") == "routine_done True"
+        assert _wait_for(first, "delivered") == "delivered"
         first.send_signal(signal.SIGKILL)  # crash: no shutdown path runs
         first.wait(timeout=10)
     finally:
@@ -148,8 +156,8 @@ def test_killed_worker_restarts_on_the_same_database_without_loss_or_duplicates(
 
     second = _start(tmp_path)  # the kernel freed the dead worker's flock
     try:
-        # ADR-0060 D1: today's claim row survived the crash, so the restart
-        # does not run the morning routine a second time.
+        # ADR-0060 D1, ADR-0067 D8.3: today's delivered row survived the crash, so the
+        # restart does not run or send the morning routine a second time.
         assert _wait_for(second, "claim") == "claim False"
         second.send_signal(signal.SIGTERM)  # graceful stop this time
         assert second.wait(timeout=10) == 0

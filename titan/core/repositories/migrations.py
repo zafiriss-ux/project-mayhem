@@ -228,6 +228,12 @@ class SchemaMigrations:
                 "text version, per-athlete profile and account tables (D-091)",
                 None,  # DDL — see _apply_v30_migrations() below
             ),
+            31: (
+                "worker_routine_executions",
+                "delivered_at and attempts: a morning not delivered resumes on the same UTC day, "
+                "at most 3 attempts (ADR-0067 D8.4, D-098)",
+                None,  # DDL — see _apply_v31_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -569,6 +575,15 @@ class SchemaMigrations:
                     "sync_metadata/override_log athlete_id; consent_log text_version; "
                     "athlete_profiles, athlete_accounts (ADR-0067, D-091)"
                 ),
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 31:
+            self._db._apply_v31_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 31,
+                "changes": "worker_routine_executions delivered_at, attempts (ADR-0067 D8.4, D-098)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1407,3 +1422,34 @@ class SchemaMigrations:
                 updated_at         TEXT NOT NULL
             )
         """)
+
+    def _apply_v31_migrations(self, cursor) -> None:
+        """Version 31: delivery marker and attempt count of a routine (ADR-0067 D8.4; D-098).
+
+        ``delivered_at`` is set once the day's message is delivered; such a day is never
+        sent again (D8.3). ``attempts`` counts the runs of that day; after 3 the day is left.
+        A row from before v31 was one run that is already over, so it gets ``attempts = 1``
+        and keeps its ``completed_at``; a row without ``completed_at`` resumes.
+        """
+        columns = [row[1] for row in cursor.execute("PRAGMA table_info(worker_routine_executions)")]
+        if not columns:  # a partial database without the table: create it in its v31 shape
+            cursor.execute("""
+                CREATE TABLE worker_routine_executions (
+                    athlete_id      TEXT NOT NULL,
+                    execution_date  TEXT NOT NULL,
+                    routine_type    TEXT NOT NULL,
+                    started_at      TEXT NOT NULL,
+                    completed_at    TEXT,
+                    delivered_at    TEXT,
+                    attempts        INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (athlete_id, execution_date, routine_type)
+                )
+            """)
+            return
+        if "delivered_at" not in columns:
+            cursor.execute("ALTER TABLE worker_routine_executions ADD COLUMN delivered_at TEXT")
+        if "attempts" not in columns:
+            cursor.execute(
+                "ALTER TABLE worker_routine_executions ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
+            )
+            cursor.execute("UPDATE worker_routine_executions SET attempts = 1")
