@@ -41,7 +41,7 @@ BACKUP_RETENTION_WEEKLY_COUNT=4   # + το πιο πρόσφατο από καθ
 
 ```bash
 docker compose exec titan-worker python scripts/restore_drill.py
-# {"backup_dir": "/backups", "ok": true, "backup": "titan_2026-10-16.db", "user_version": 30, "tables": 27}
+# {"backup_dir": "/backups", "ok": true, "backup": "titan_2026-10-16.db", "user_version": 31, "tables": 27}
 ```
 
 Exit code 0 σημαίνει επιτυχία και 1 αποτυχία. Τρέχει σε κάθε κλείσιμο φάσης μαζί με:

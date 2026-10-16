@@ -177,6 +177,10 @@ def _seconds_until_next_run(hour: int = 7, minute: int = 0) -> float:
 
 ROUTINE_MORNING = "morning"
 ROUTINE_HOUR_UTC = 7
+# A day whose message was not delivered resumes, at most this many attempts (ADR-0067 D8.4).
+ROUTINE_MAX_ATTEMPTS = 3
+# The owner loop waits this long before the next attempt of the same day.
+ROUTINE_RETRY_DELAY_S = 15 * 60
 
 
 def _utc_now() -> _dt.datetime:
@@ -184,19 +188,22 @@ def _utc_now() -> _dt.datetime:
     return _dt.datetime.now(_dt.UTC)
 
 
-def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> bool | None:
-    """Claim today's morning routine in ``worker_routine_executions`` (ADR-0060 D1, INV-15).
+def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> int | bool | None:
+    """Take the next attempt at today's morning (ADR-0060 D1, amended by ADR-0067 D8.4; INV-15).
 
-    True: this worker claimed it and runs it. False: it already started today,
-    so it is skipped. None: the claim itself failed; the routine does not run
-    this cycle (fail closed) and the caller retries on its next cycle.
+    An int: the attempt number this worker now runs. False: nothing runs today, because the
+    day was delivered or left (a day whose attempts are used up is left here). None: the
+    claim itself failed; the routine does not run this cycle (fail closed) and the caller
+    retries on its next cycle.
     """
+    execution_date = now.date().isoformat()
     try:
-        return db.claim_routine_execution(
+        state, attempt = db.begin_routine_attempt(
             athlete_id=athlete_id,
-            execution_date=now.date().isoformat(),
+            execution_date=execution_date,
             routine_type=ROUTINE_MORNING,
             started_at=now,
+            max_attempts=ROUTINE_MAX_ATTEMPTS,
         )
     except Exception as exc:
         logging.getLogger("titan.worker.runner").critical(
@@ -204,10 +211,15 @@ def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> b
             extra={"athlete_id": athlete_id, "error": str(exc)},
         )
         return None
+    if state == "run":
+        return attempt
+    if state == "exhausted":  # the last attempt crashed before it could leave the day
+        _leave_day(db, athlete_id, execution_date)
+    return False
 
 
 def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
-    """Record that a claimed routine returned (ADR-0060 D1 step 2)."""
+    """Close a routine day that is left without a delivery (ADR-0060 D1 step 2, ADR-0067 D8.4)."""
     try:
         db.complete_routine_execution(
             athlete_id=athlete_id,
@@ -216,11 +228,106 @@ def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str)
             completed_at=_utc_now(),
         )
     except Exception as exc:
-        # The claim row stays, so the routine is still not repeated today.
+        # The day stays open with its attempts used up, so it is left again next cycle.
         logging.getLogger("titan.worker.runner").exception(
             "worker_routine_complete_failed",
             extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
         )
+
+
+def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """Record the day's delivery; a delivered day is never sent again (ADR-0067 D8.3)."""
+    try:
+        db.mark_routine_delivered(
+            athlete_id=athlete_id,
+            execution_date=execution_date,
+            routine_type=ROUTINE_MORNING,
+            delivered_at=_utc_now(),
+        )
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").critical(
+            "worker_routine_delivery_unrecorded",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
+        )
+
+
+def _leave_day(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """After the last attempt: CRITICAL, one message to Zaf, and the day is closed (ADR-0067 D8.4)."""
+    log = logging.getLogger("titan.worker.runner")
+    log.critical(
+        "worker_routine_left",
+        extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempts": ROUTINE_MAX_ATTEMPTS},
+    )
+    try:
+        from titan.integrations.telegram_bot import TitanTelegramBot
+
+        # Zaf is the owner, so the owner's chat (TELEGRAM_CHAT_ID) gets it, never an athlete's.
+        TitanTelegramBot(db=db).send_alert(
+            title="Morning briefing not delivered",
+            message=(
+                f"The morning briefing of {athlete_id} for {execution_date} failed "
+                f"{ROUTINE_MAX_ATTEMPTS} times and is left for today."
+            ),
+            level="critical",
+        )
+    except Exception as exc:
+        log.exception("worker_routine_left_alert_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+    _complete_routine(db, athlete_id, execution_date)
+
+
+def _athlete_telegram(db: DatabaseManager, athlete_id: str):  # noqa: ANN202
+    """The athlete's own Telegram: the owner's from .env, anyone else's private chat (ADR-0067 D10.1)."""
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    chat = _require_telegram_ready(db, athlete_id)
+    if chat is None:
+        return TitanTelegramBot(db=db)
+    return TitanTelegramBot(db=db, chat_id=chat, athlete_id=athlete_id)
+
+
+def _send_stored_decision(db: DatabaseManager, athlete_id: str, decision: dict) -> bool:
+    """Send the day's stored decision instead of computing it again (ADR-0067 D8.4)."""
+    _require_consent(db, athlete_id)
+    text = (
+        f"🌅 Today's session: {decision['session_post_governance']}\n"
+        "The morning briefing was interrupted; this is the decision TITAN made earlier today."
+    )
+    if decision.get("locks_applied"):
+        text += "\nLocks: " + ", ".join(str(lock) for lock in decision["locks_applied"])
+    return bool(_athlete_telegram(db, athlete_id).send_message(text, parse_mode=""))
+
+
+def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int) -> bool:
+    """Run one claimed attempt of the day; True once the day's message is delivered (ADR-0067 D8.4).
+
+    When the athlete's decision of that day is already stored it is sent, not computed
+    again, so ``governance_outcomes`` is never written twice for one athlete and day.
+    Otherwise the routine runs. Not delivered after the last attempt: the day is left.
+    """
+    log = logging.getLogger("titan.worker.runner")
+    delivered = False
+    try:
+        stored = db.get_governance_decision_on(athlete_id, execution_date)
+        if stored is not None:
+            log.info("worker_routine_resend_stored", extra={"athlete_id": athlete_id, "attempt": attempt})
+            delivered = _send_stored_decision(db, athlete_id, stored)
+        else:
+            delivered = _run_morning(db, athlete_id) is True
+            log.info("morning_routine_complete", extra={"athlete_id": athlete_id, "delivered": delivered})
+    except Exception as exc:
+        log.exception("worker_cycle_error", extra={"athlete_id": athlete_id, "error": str(exc)})
+        from titan.observability.metrics import get_metrics
+        get_metrics().counter("worker_cycle_error")
+    if delivered:
+        _mark_delivered(db, athlete_id, execution_date)
+    elif attempt >= ROUTINE_MAX_ATTEMPTS:
+        _leave_day(db, athlete_id, execution_date)
+    else:
+        log.warning(
+            "worker_routine_not_delivered",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempt": attempt},
+        )
+    return delivered
 
 
 def _warn_incomplete_routines(db: DatabaseManager, execution_date: str) -> None:
@@ -348,7 +455,6 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     from titan.features.optimal_time_calculator import OptimalTimeCalculator
     from titan.features.weekly_planner import WeeklyPlanGenerator
     from titan.integrations.garmin_sync import GarminSync
-    from titan.integrations.telegram_bot import TitanTelegramBot
     from titan.integrations.weather_api import WeatherAPI
     from titan.orchestration.daily_coach import DailyCoach
     from titan.orchestration.engine_registry import EngineRegistry
@@ -358,7 +464,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     _require_consent(db, athlete_id)
     profile = load_athlete_profile(db, athlete_id)
     _require_garmin_ready(db, athlete_id)
-    telegram_chat = _require_telegram_ready(db, athlete_id)
+    _require_telegram_ready(db, athlete_id)
     # The owner keeps WEATHER_LOCATION; any other athlete's weather is for the location in
     # their own profile (ADR-0067 D5.1), so two cities give two ESIs.
     weather = (
@@ -370,10 +476,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
         garmin_sync=GarminSync(athlete_id=athlete_id),
         weather_api=weather,
         # Another athlete's messages go to their own chat only, never the owner's (ADR-0067 D10.1).
-        telegram_bot=(
-            TitanTelegramBot(db=db) if telegram_chat is None
-            else TitanTelegramBot(db=db, chat_id=telegram_chat, athlete_id=athlete_id)
-        ),
+        telegram_bot=_athlete_telegram(db, athlete_id),
         hrv_engine=engines.hrv,
         tsb_engine=engines.tsb,
         readiness_engine=engines.readiness,
@@ -451,21 +554,23 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
         )
 
 
-def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> None:
+def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> bool:
     """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
 
-    An athlete with no current consent, no complete profile, or without a bound Garmin
-    account and a usable token, raises AthleteNotReady here, before the coach, Garmin,
-    weather or Telegram is built or called (ADR-0067 D4.2, D7.1, D9.5).
+    Returns what the routine returns: True when the decision was made and the day's
+    message delivered. An athlete with no current consent, no complete profile, or without
+    a bound Garmin account and a usable token, raises AthleteNotReady here, before the
+    coach, Garmin, weather or Telegram is built or called (ADR-0067 D4.2, D7.1, D9.5).
     """
     coach = _build_daily_coach(db, athlete_id=athlete_id)
     today = _utc_now().date()
     _prepare_weekly_plan(coach, db, athlete_id, today)
     try:
-        coach.run_morning_routine()
+        delivered = coach.run_morning_routine()
     finally:
         _record_garmin_token_state(db, athlete_id, getattr(coach, "garmin", None))
     _plan_next_week_on_sunday(coach, db, athlete_id, today)
+    return delivered is True
 
 
 def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> None:
@@ -515,10 +620,11 @@ def _run_due_routine(
 ) -> bool:
     """Run the owner's morning routine if it is due today; True if ``stop`` fired.
 
-    Due means at or after 07:00 UTC and not yet claimed today: the claim row in
-    ``worker_routine_executions`` decides, so a restart never runs the routine a
-    second time on the same day (ADR-0060 D1, INV-15). A failed claim is retried
-    every ``interval_s`` until it succeeds or the stop event fires.
+    Due means at or after 07:00 UTC and today's message not yet delivered: the row in
+    ``worker_routine_executions`` decides, so a restart never sends the day twice
+    (ADR-0060 D1, INV-15). An attempt that did not deliver is followed by the next one
+    after ``ROUTINE_RETRY_DELAY_S``, at most ``ROUTINE_MAX_ATTEMPTS`` a day (ADR-0067 D8.4).
+    A failed claim is retried every ``interval_s`` until it succeeds or the stop event fires.
     """
     log = logging.getLogger("titan.worker.runner")
     while True:
@@ -526,16 +632,21 @@ def _run_due_routine(
         if now.hour < ROUTINE_HOUR_UTC:
             log.info("worker_routine_not_due", extra={"due_hour_utc": ROUTINE_HOUR_UTC})
             return False
-        claimed = _claim_routine(db, "owner", now)
-        if claimed is None:
+        attempt = _claim_routine(db, "owner", now)
+        if attempt is None:
             if _sleep_with_heartbeat(stop, interval_s, interval_s, heartbeat):
                 return True
             continue
-        if not claimed:
+        if attempt is False:
             log.info("worker_routine_already_ran", extra={"execution_date": now.date().isoformat()})
             return False
-        _run_routine_supervised(db, heartbeat, interval_s, budget_s, execution_date=now.date().isoformat())
-        return False
+        delivered = _run_routine_supervised(
+            db, heartbeat, interval_s, budget_s, execution_date=now.date().isoformat(), attempt=attempt
+        )
+        if delivered or attempt >= ROUTINE_MAX_ATTEMPTS:
+            return False
+        if _sleep_with_heartbeat(stop, ROUTINE_RETRY_DELAY_S, interval_s, heartbeat):
+            return True
 
 
 def _run_routine_supervised(
@@ -545,23 +656,26 @@ def _run_routine_supervised(
     budget_s: float,
     *,
     execution_date: str | None = None,
-) -> None:
-    """Run one morning routine in a watched thread (INV-23(1)).
+    attempt: int = 1,
+) -> bool:
+    """Run one morning attempt of the owner in a watched thread (INV-23(1)); True if delivered.
 
     The heartbeat keeps beating while the routine runs within ``budget_s``. Past
     the budget it stops, with one CRITICAL event, so the healthcheck reports the
     hung routine. A routine is never abandoned: this waits for it to finish.
-    When ``execution_date`` is given, the claim row of that date is marked
-    complete once the routine returns.
+    When ``execution_date`` is given, the attempt follows the crash rule of that
+    day (ADR-0067 D8.4): delivery recorded, or the day left after the last attempt.
     """
     log = logging.getLogger("titan.worker.runner")
+    delivered: list[bool] = [False]
 
     def _cycle() -> None:
+        if execution_date is not None:
+            delivered[0] = _attempt_morning(db, "owner", execution_date, attempt)
+            return
         try:
-            _run_morning(db)
+            delivered[0] = _run_morning(db) is True
             log.info("morning_routine_complete")
-            if execution_date is not None:
-                _complete_routine(db, "owner", execution_date)
         except Exception as exc:
             log.exception(
                 "worker_cycle_error",
@@ -588,6 +702,7 @@ def _run_routine_supervised(
                 extra={"elapsed_s": round(elapsed), "budget_s": budget_s},
             )
     _write_heartbeat(heartbeat)
+    return delivered[0]
 
 
 def _run_with_scheduler(
@@ -646,18 +761,12 @@ def _scheduled_morning(db: DatabaseManager, athlete_id: str) -> None:
     except Exception as exc:
         log.exception("scheduler_consent_check_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
         return
-    # The claim is taken before execution so a mid-routine crash does
-    # not trigger a retry storm; a failed claim retries next poll.
-    if not _claim_routine(db, athlete_id, now):
+    # The attempt is counted before it runs, so a crash counts too and a day is tried at
+    # most ROUTINE_MAX_ATTEMPTS times (ADR-0067 D8.4); a failed claim retries next poll.
+    attempt = _claim_routine(db, athlete_id, now)
+    if attempt is None or attempt is False:
         return
-    try:
-        _run_morning(db, athlete_id)
-        _complete_routine(db, athlete_id, now.date().isoformat())
-    except Exception as exc:
-        log.exception(
-            "scheduler_athlete_cycle_error",
-            extra={"athlete_id": athlete_id, "error": str(exc)},
-        )
+    _attempt_morning(db, athlete_id, now.date().isoformat(), attempt)
 
 
 def _supervise_scheduler(

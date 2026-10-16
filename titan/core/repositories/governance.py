@@ -338,6 +338,31 @@ class GovernanceRepository:
             })
         return decisions
 
+    def get_governance_decision_on(self, athlete_id: str, date: str) -> dict[str, Any] | None:
+        """The athlete's decision of that date, or None (ADR-0067 D8.4).
+
+        A resumed morning sends this instead of computing the day again, so
+        ``governance_outcomes`` is never written twice for one athlete and day.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT session_post_governance, locks_applied_json, phase FROM governance_outcomes "
+                "WHERE athlete_id = ? AND date = ? ORDER BY id DESC LIMIT 1",
+                (athlete_id, date),
+            ).fetchone()
+        if row is None:
+            return None
+        # deferred: titan.core.database imports this module
+        from titan.core.database import _safe_json
+
+        return {
+            "date": date,
+            "session_post_governance": row[0],
+            "locks_applied": _safe_json(row[1], [], "locks_applied_json"),
+            "phase": row[2],
+        }
+
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
         """Attach or replace manual operator note for latest governance decision on date."""
         with self._db._lock:

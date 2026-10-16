@@ -212,32 +212,67 @@ class OperationsRepository:
         except (ValueError, TypeError):
             return None
 
-    def claim_routine_execution(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime
-    ) -> bool:
-        """Claim one routine run (ADR-0060 D1): True if this call inserted the row.
+    def begin_routine_attempt(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
+        max_attempts: int,
+    ) -> tuple[str, int]:
+        """Start one attempt at a routine day (ADR-0060 D1 as amended by ADR-0067 D8.4).
 
-        False means the row already exists, so the routine already started that
-        day. Any other database error propagates so the caller fails closed.
+        The row is one per athlete, UTC day and routine (D8.2). Returns ``("run", n)`` when
+        this call took attempt ``n`` and the routine runs; ``("closed", n)`` when the day was
+        delivered or left; ``("exhausted", n)`` when ``max_attempts`` were used without a
+        delivery and the day is not yet closed, so the caller leaves it. The attempt is
+        counted before the routine runs, so a crash counts too. Any database error
+        propagates so the caller fails closed.
         """
+        key = (athlete_id, execution_date, routine_type)
+        where = "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?"
         with self._db._lock:
             self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
             try:
-                self._db.conn.cursor().execute(
-                    "INSERT INTO worker_routine_executions "
-                    "(athlete_id, execution_date, routine_type, started_at) VALUES (?, ?, ?, ?)",
-                    (athlete_id, execution_date, routine_type, started_at.astimezone(UTC).isoformat()),
+                cursor.execute(
+                    "INSERT OR IGNORE INTO worker_routine_executions "
+                    "(athlete_id, execution_date, routine_type, started_at, attempts) VALUES (?, ?, ?, ?, 0)",
+                    (*key, started_at.astimezone(UTC).isoformat()),
                 )
-            except sqlite3.IntegrityError:
+                attempts, delivered_at, completed_at = cursor.execute(
+                    f"SELECT attempts, delivered_at, completed_at FROM worker_routine_executions {where}", key
+                ).fetchone()
+                if delivered_at is not None or completed_at is not None:
+                    state = "closed"
+                elif attempts >= max_attempts:
+                    state = "exhausted"
+                else:
+                    cursor.execute(
+                        f"UPDATE worker_routine_executions SET attempts = attempts + 1 {where}", key
+                    )
+                    attempts += 1
+                    state = "run"
+                self._db.conn.commit()
+            except Exception:
                 self._db.conn.rollback()
-                return False
+                raise
+        return state, attempts
+
+    def mark_routine_delivered(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
+    ) -> None:
+        """Record the delivery of the day's message; it also closes the day (ADR-0067 D8.3)."""
+        at = delivered_at.astimezone(UTC).isoformat()
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                "UPDATE worker_routine_executions SET delivered_at = ?, completed_at = COALESCE(completed_at, ?) "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (at, at, athlete_id, execution_date, routine_type),
+            )
             self._db.conn.commit()
-            return True
 
     def complete_routine_execution(
         self, *, athlete_id: str, execution_date: str, routine_type: str, completed_at: datetime
     ) -> None:
-        """Mark a claimed routine as returned (ADR-0060 D1 step 2)."""
+        """Close a routine day (ADR-0060 D1 step 2): delivered, or left after its attempts."""
         with self._db._lock:
             self._db._ensure_open_locked()
             self._db.conn.cursor().execute(
