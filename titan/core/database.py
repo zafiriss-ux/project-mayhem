@@ -715,6 +715,10 @@ class DatabaseManager:
 
     # --- Coach-Athlete RBAC Scoping (ADR-0054 / T5-110) (titan/core/repositories/access.py) ---
 
+    def list_athletes_in_order(self) -> list[str]:
+        """Every athlete, the owner first, then by registration (ADR-0067 D8.1)."""
+        return self._access.list_athletes_in_order()
+
     def _get_all_athlete_ids(self) -> list[str]:
         """Return all athlete_ids from the athletes table."""
         return self._access._get_all_athlete_ids()

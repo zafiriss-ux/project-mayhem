@@ -207,6 +207,7 @@ def _scheduler_callbacks(db: DatabaseManager, monkeypatch) -> dict:
 
     monkeypatch.setattr(cs, "CoachingScheduler", _FakeScheduler)
     monkeypatch.setattr(worker, "_supervise_scheduler", lambda *a, **k: None)
+    monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)  # in-process stand-in coach
     worker._run_with_scheduler(db, threading.Event())
     return registered
 
@@ -217,10 +218,10 @@ def test_multi_athlete_scheduler_uses_the_durable_claim(data_dir, monkeypatch):
     db = DatabaseManager(db_dir=data_dir)
 
     first = _scheduler_callbacks(db, monkeypatch)
-    first["owner"]()
-    first["owner"]()  # next 60 s poll, same process
+    first["round"]()
+    first["round"]()  # next 60 s poll, same process
     restarted = _scheduler_callbacks(db, monkeypatch)
-    restarted["owner"]()  # same day, new process
+    restarted["round"]()  # same day, new process
 
     assert _GovernanceWritingCoach.calls == ["owner"]
     assert _rows(data_dir / "titan_core.db", "SELECT COUNT(*) FROM governance_outcomes") == [(1,)]
@@ -231,7 +232,7 @@ def test_multi_athlete_scheduler_waits_for_0700_utc(data_dir, monkeypatch):
     monkeypatch.setattr(worker, "_utc_now", lambda: _NIGHT)
     db = DatabaseManager(db_dir=data_dir)
 
-    _scheduler_callbacks(db, monkeypatch)["owner"]()
+    _scheduler_callbacks(db, monkeypatch)["round"]()
 
     assert _GovernanceWritingCoach.calls == []
     assert db.get_incomplete_routine_executions(_TODAY) == []

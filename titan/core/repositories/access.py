@@ -344,6 +344,15 @@ class AccessRepository:
             ).fetchall()
         return [r[0] for r in rows]
 
+    def list_athletes_in_order(self) -> list[str]:
+        """Every athlete in the worker's fixed order: the owner first, then by registration (ADR-0067 D8.1)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            rows = self._db.conn.cursor().execute(
+                "SELECT athlete_id FROM athletes ORDER BY athlete_id != 'owner', created_at, athlete_id"
+            ).fetchall()
+        return [r[0] for r in rows]
+
     def get_assigned_athletes(self, coach_id: str) -> list[str]:
         """Return athlete_ids the coach is permitted to access.
 
