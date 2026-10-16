@@ -93,6 +93,23 @@ def test_browser_activities_handles_empty_and_populated_data(monkeypatch, capsys
 
 
 @pytest.mark.unit
+def test_browser_activities_shows_a_dash_for_a_session_without_hr(monkeypatch, capsys):
+    """F7: a session with no HR (avg_hr None) prints a dash, not 0, and does not crash."""
+    monkeypatch.setattr(menu_system, "_clear", lambda: None)
+    monkeypatch.setattr(menu_system, "_header", lambda title="": None)
+    monkeypatch.setattr(menu_system, "_divider", lambda: None)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    menu_system._browser_activities(
+        {"recent_activities": [{"date": "2026-01-11", "session_type": "EASY", "distance_km": 5.0,
+                                "duration_sec": 1800, "avg_hr": None, "avg_pace_sec_per_km": 360}]}
+    )
+    row = next(line for line in capsys.readouterr().out.splitlines() if "2026-01-11" in line)
+    assert "—" in row
+    assert " 0 " not in row
+
+
+@pytest.mark.unit
 def test_browser_drift_uses_first_second_half_hr_and_fallback(monkeypatch, capsys):
     class _FakeDriftEngine:
         @staticmethod

@@ -112,6 +112,15 @@ def test_save_session_deprecation_warning_points_at_the_caller(db) -> None:
 
 
 @pytest.mark.unit
+def test_recent_activities_keep_a_missing_avg_hr_as_none(db) -> None:
+    """F7: a session saved without HR reads back avg_hr None, not 0 bpm."""
+    db.save_session("2026-01-06", "EASY", 5.0, 1800)
+    db.save_session("2026-01-07", "EASY", 6.0, 2100, avg_hr=142)
+    by_date = {a["date"]: a["avg_hr"] for a in db.get_recent_activities()}
+    assert by_date == {"2026-01-06": None, "2026-01-07": 142}
+
+
+@pytest.mark.unit
 def test_ctl_atl_tsb_reads_history_through_the_facade(db, monkeypatch) -> None:
     calls: list[tuple] = []
 
