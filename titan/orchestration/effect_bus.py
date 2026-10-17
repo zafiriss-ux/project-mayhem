@@ -149,6 +149,7 @@ class TitanEffectBus:
             garmin:   GarminSync instance (provides is_api_degraded property).
             telegram: TitanTelegramBot instance (provides send_alert method).
         """
+        from titan.integrations.telegram_bot import alert_operator
 
         def hook(result: DecisionResult) -> None:
             trace = result.decision_trace
@@ -161,8 +162,13 @@ class TitanEffectBus:
                         getattr(garmin, "is_api_degraded", False)
                     ),
                 },
-                alert_fn=lambda msg: telegram.send_alert(  # type: ignore[union-attr]
+                alert_fn=lambda msg: alert_operator(
+                    telegram,  # type: ignore[arg-type]
                     title="TITAN degraded mode", message=msg, level="warning",
+                    athlete_text=(
+                        "⚠️ TITAN has been running in a reduced mode for over a day; your "
+                        "sessions stay conservative. Zaf has been told."
+                    ),
                 ),
             )
 
