@@ -66,6 +66,7 @@ def canonical_governance_inputs() -> tuple[dict, dict]:
         "days_since_last_vo2": 3,
         "fueling_confirmed": True,
         "db": _NeutralDB(),
+        "athlete_id": "owner",  # ADR-0068
         "cs_tracker": _FullCSTracker(),
         "afi_constraints": {},
         "intensity_gate_result": None,

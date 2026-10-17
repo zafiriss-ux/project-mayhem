@@ -1669,7 +1669,8 @@ class DailyCoach:
             session_type = today_session.get('session_type', 'EASY'),
         )
         governance_report = self.governance.get_governance_report(
-            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=inp.afi_constraints
+            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=inp.afi_constraints,
+            athlete_id=getattr(self, "athlete_id", None),  # ADR-0068
         )
 
         decision_rationale = today_session.get('decision_rationale', {})
@@ -1922,6 +1923,7 @@ class DailyCoach:
             lock_thresholds=lock_thresholds,
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
+            athlete_id=getattr(self, "athlete_id", None),  # ADR-0068: no owner default
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low

@@ -71,6 +71,7 @@ def _safe_ctx(**overrides: object) -> dict:
         "days_since_last_vo2": 3,
         "fueling_confirmed": True,
         "db": _NeutralDB(),
+        "athlete_id": "owner",  # ADR-0068
         "cs_tracker": _FullConfidenceTracker(),
         "afi_constraints": {},
         "intensity_gate_result": None,
@@ -88,7 +89,7 @@ class TestChaosScenarios:
     def test_c1_db_runtime_error_returns_fail_safe_lock(self) -> None:
         """RuntimeError from DB must produce locked=True fail-safe, not propagate."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_RaisingDB(RuntimeError("disk I/O error")))
+        result = gov.check_override_lockdown(db=_RaisingDB(RuntimeError("disk I/O error")), athlete_id="owner")
 
         assert result["locked"] is True
         assert result.get("error_code") in {"DB_READ_ERROR", "SCHEMA_MISMATCH"}
@@ -98,7 +99,7 @@ class TestChaosScenarios:
     def test_c2_db_none_ratio_returns_fail_safe_lock(self) -> None:
         """None override ratio must trigger the fail-safe conservative lock path."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_NoneRatioDB())
+        result = gov.check_override_lockdown(db=_NoneRatioDB(), athlete_id="owner")
 
         assert result["locked"] is True
 

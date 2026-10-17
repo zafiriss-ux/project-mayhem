@@ -137,7 +137,7 @@ def test_check_override_lockdown_db_read_failure_still_fails_closed() -> None:
     db = Mock()
     db.get_override_ratio = Mock(side_effect=RuntimeError("db unavailable"))
 
-    lock = engine.check_override_lockdown(db)
+    lock = engine.check_override_lockdown(db, athlete_id="owner")
 
     assert lock["locked"] is True
     assert lock["max_zone"] == 2

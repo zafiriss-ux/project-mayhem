@@ -242,7 +242,7 @@ class TestOverrideLockdownColdStart:
     def test_override_lockdown_cold_start_locked(self):
         """No outcome history (None ratio) → locked=True, reason=cold_start_no_history."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_NoneRatioDB())
+        result = gov.check_override_lockdown(db=_NoneRatioDB(), athlete_id="owner")
 
         assert result["locked"] is True
         assert result.get("reason") == "cold_start_no_history"
@@ -250,14 +250,14 @@ class TestOverrideLockdownColdStart:
     def test_override_lockdown_cold_start_max_zone_2(self):
         """Cold-start lock must cap at zone 2."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_NoneRatioDB())
+        result = gov.check_override_lockdown(db=_NoneRatioDB(), athlete_id="owner")
 
         assert result.get("max_zone") == 2
 
     def test_override_lockdown_with_history_not_auto_locked(self):
         """When override ratio is within threshold, gate must NOT auto-lock."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_FloatRatioDB(ratio=0.10))
+        result = gov.check_override_lockdown(db=_FloatRatioDB(ratio=0.10), athlete_id="owner")
 
         assert result["locked"] is False
         assert result.get("ratio") == pytest.approx(0.10)
@@ -265,7 +265,7 @@ class TestOverrideLockdownColdStart:
     def test_override_lockdown_with_history_above_threshold_locks(self):
         """Override ratio above threshold must still lock normally."""
         gov = GovernanceEngine()
-        result = gov.check_override_lockdown(db=_FloatRatioDB(ratio=0.90))
+        result = gov.check_override_lockdown(db=_FloatRatioDB(ratio=0.90), athlete_id="owner")
 
         assert result["locked"] is True
         assert result.get("ratio") == pytest.approx(0.90)
