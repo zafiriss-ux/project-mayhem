@@ -1,8 +1,9 @@
 """titan.worker — background effect runner (ADR-0057).
 
-Owns all write-heavy side effects: Garmin sync, sending Telegram messages (it
-does not poll for commands), the morning round of every ready athlete, backups. Enforces a single-instance advisory lock so
-docker restart never spawns a duplicate.
+Owns all write-heavy side effects: Garmin sync, sending Telegram messages, the
+morning round of every ready athlete, backups. With TITAN_MULTI_ATHLETE=1 it also
+listens for Telegram commands, so athletes can send /consent and /agree (D-103).
+Enforces a single-instance advisory lock so docker restart never spawns a duplicate.
 """
 
 from __future__ import annotations
@@ -816,13 +817,45 @@ def _run_with_scheduler(
 
     scheduler.register_athlete("round", _round)
 
+    listener = _start_command_listener(db)
     scheduler.start()
     log.info("coaching_scheduler_started", extra={"athletes": db.list_athletes_in_order()})
 
     # Supervise until the stop event fires (SIGTERM / main() shutdown).
-    _supervise_scheduler(scheduler, stop_event, heartbeat=heartbeat, interval_s=interval_s)
-    scheduler.stop()
+    try:
+        _supervise_scheduler(scheduler, stop_event, heartbeat=heartbeat, interval_s=interval_s)
+    finally:
+        scheduler.stop()
+        if listener is not None:
+            listener.stop_bot()
     log.info("coaching_scheduler_stopped")
+
+
+def _command_bot(db: DatabaseManager):  # noqa: ANN202
+    """The owner's bot with the athletes' /sync wired to this worker (D-103, finding К-1).
+
+    It routes each athlete's own chat: /consent, /agree, /sync, /stop, /start, /help
+    (ADR-0067 D10). Owner commands with no callback here answer "not ready".
+    """
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    bot = TitanTelegramBot(db=db)
+    bot.register_athlete_command("sync", lambda athlete_id: sync_athlete_on_request(db, athlete_id))
+    return bot
+
+
+def _start_command_listener(db: DatabaseManager):  # noqa: ANN202
+    """Listen for Telegram commands in multi-athlete mode, so an athlete can give consent
+    in a Docker-only install (D-103). Without a bot token nothing listens and the round runs.
+    """
+    log = logging.getLogger("titan.worker.scheduler")
+    bot = _command_bot(db)
+    if bot.bot is None:
+        log.warning("command_listener_not_started", extra={"reason": "no bot token or telebot"})
+        return None
+    bot.start_bot()
+    log.info("command_listener_started")
+    return bot
 
 
 def _morning_round(db: DatabaseManager) -> None:
