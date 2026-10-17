@@ -360,7 +360,7 @@ class OperationsRepository:
             cursor = self._db.conn.cursor()
             for table in ("daily_metrics", "training_log"):
                 rows = cursor.execute(
-                    f"SELECT * FROM {table} WHERE athlete_id = ? AND date = ?",  # noqa: S608 - fixed names
+                    f"SELECT * FROM {table} WHERE athlete_id = ? AND date = ?",  # noqa: S608  # nosec B608 - fixed names
                     (athlete_id, date),
                 )
                 names = [d[0] for d in rows.description]
