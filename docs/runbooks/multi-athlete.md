@@ -87,6 +87,9 @@ python scripts/athletes.py new-key
 5. Ο αθλητής στέλνει στο δικό του chat `/consent` (διαβάζει το κείμενο) και μετά `/agree v1`.
    ⚠️ Το κείμενο v1 (`docs/consent/v1.md`) είναι προσχέδιο: όχι για πραγματικό αθλητή πριν το δει
    δικηγόρος.
+   ⚠️ Τις εντολές Telegram τις ακούει μόνο το `python -m titan`, όχι ο `titan-worker` του Docker
+   (Φάση 4, εύρημα Κ-1 του ελέγχου κλεισίματος). Σε εγκατάσταση μόνο με Docker, το `/consent` και το
+   `/agree v1` δεν παίρνουν απάντηση ακόμα.
 
 6. Έλεγχος:
 
@@ -94,8 +97,9 @@ python scripts/athletes.py new-key
    python scripts/athletes.py list
    ```
 
-   Ένας έτοιμος αθλητής δείχνει `garmin=ok  chat=yes  consent=yes  ready=yes`. Ο πρωινός κύκλος τον
-   τρέχει από το επόμενο πρωί (07:00 UTC), μετά τον owner.
+   Ένας έτοιμος αθλητής δείχνει `garmin=ok  chat=yes  consent=yes  ready=yes`. Ο πρωινός κύκλος
+   ελέγχει κάθε λεπτό από τις 07:00 ως τις 23:59 UTC, οπότε τον τρέχει την ίδια μέρα αν έγινε έτοιμος
+   μετά τις 07:00, αλλιώς στις 07:00, μετά τον owner.
 
 ---
 
@@ -167,7 +171,7 @@ worker έχει στο τέλος τα πεδία της, π.χ. `athlete_id=a-1
 | `worker_routine_child_died` | Η διεργασία του τερμάτισε με σφάλμα· το traceback είναι λίγο πιο πάνω |
 | `worker_routine_left` (CRITICAL) | Τρεις αποτυχίες· η μέρα έκλεισε |
 | `worker_routine_resend_stored` | Ξαναστάλθηκε το μήνυμα που είχε ήδη φτιαχτεί |
-| `athlete_garmin_token_expired` | Το token απορρίφθηκε σήμερα· από αύριο ο αθλητής είναι σε παύση (§4) |
+| `athlete_garmin_token_expired` | Το token απορρίφθηκε σήμερα· ο αθλητής είναι σε παύση από τώρα (§4) |
 | `connect_token_key_unusable` | Το κλειδί των token λείπει ή δεν είναι ασφαλές (§4, τελευταία παράγραφος) |
 
 Αν δεν υπάρχει καμία γραμμή για τον αθλητή, έλεγξε ότι το `TITAN_MULTI_ATHLETE=1` είναι στο
@@ -189,7 +193,8 @@ python scripts/athletes.py relogin a-1234abcd
 python scripts/athletes.py list            # garmin=ok  ready=yes
 ```
 
-Ο αθλητής τρέχει ξανά από το επόμενο πρωί. Αν θέλει τα δεδομένα του αμέσως, στέλνει `/sync` στο chat του.
+Αν η μέρα δεν έχει παραδοθεί και είναι μετά τις 07:00 UTC, ο επόμενος κύκλος τον τρέχει την ίδια
+μέρα. Αν θέλει τα δεδομένα του αμέσως, στέλνει `/sync` στο chat του.
 
 **Αν το `list` λέει `garmin=ok` αλλά τα logs γράφουν `connect_token_key_unusable`:** το πρόβλημα είναι
 το κλειδί, όχι το token. Το token δεν σβήνεται γι' αυτό. Έλεγξε ότι το `TITAN_TOKEN_KEY_FILE` είναι

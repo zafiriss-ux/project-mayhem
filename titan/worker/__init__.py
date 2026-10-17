@@ -1,7 +1,7 @@
 """titan.worker — background effect runner (ADR-0057).
 
-Owns all write-heavy side effects: Garmin sync, Telegram poller,
-morning routine scheduler. Enforces a single-instance advisory lock so
+Owns all write-heavy side effects: Garmin sync, sending Telegram messages (it
+does not poll for commands), the morning round of every ready athlete, backups. Enforces a single-instance advisory lock so
 docker restart never spawns a duplicate.
 """
 

@@ -68,7 +68,7 @@ launcher/main.py
 | `titan/core/periodization.py` | Periodization phase state |
 | `titan/core/equipment.py` | Equipment inventory model |
 | `titan/core/structured_events.py` | Structured event logging helpers |
-| `titan/core/schema.py` | SQLAlchemy Core MetaData descriptor — single authoritative source for all 24 table definitions, plus `alembic_version` (TD-08) |
+| `titan/core/schema.py` | SQLAlchemy Core MetaData descriptor — single authoritative source for all 26 table definitions, plus `alembic_version` (TD-08) |
 
 ### Layer 3 — Science Engines
 
@@ -265,7 +265,7 @@ Key tables:
 | `daily_metrics` | Sleep, HRV, RHR, weight — one row per athlete per date |
 | `governance_outcomes` | Governance decisions with lock codes and rationale |
 | `athlete_threshold_offsets` | Per-athlete threshold overrides |
-| `athletes` | Athlete registry (single-athlete: `athlete_id = 'owner'`) |
+| `athletes` | Athlete registry: `owner`, and other athletes as `a-` + 8 hex (ADR-0067); their profile and accounts are in `athlete_profiles` and `athlete_accounts` |
 | `override_log` | Human override audit trail |
 | `override_signals` | Active override signals |
 | `gear_usage` | Equipment usage tracking |

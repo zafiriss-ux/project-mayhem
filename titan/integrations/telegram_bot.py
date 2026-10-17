@@ -744,8 +744,8 @@ class TitanTelegramBot:
     ) -> bool:
         """Send governance decision with inline Accept/Override affordances.
 
-        Another athlete gets the decision without the buttons: athletes have /sync and
-        /stop only (ADR-0067 D10.3).
+        Another athlete gets the decision without the buttons: athletes have /consent,
+        /agree, /sync and /stop only (ADR-0067 D10.3).
         """
         if not self.chat_id or self.athlete_id != _OWNER_ATHLETE_ID:
             return self.send_message(text)

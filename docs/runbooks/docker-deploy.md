@@ -13,7 +13,7 @@ docker compose up --build -d
 | Service | Description |
 |---------|-------------|
 | `titan-api` | FastAPI/uvicorn — `http://localhost:8000` |
-| `titan-worker` | Background daemon (Garmin sync, Telegram, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020) |
+| `titan-worker` | Background daemon (Garmin sync, sending Telegram messages, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020; athletes' deletions re-applied at start and the 30-day purge after `/stop`, ADR-0067). It does not answer Telegram commands |
 
 ## Data
 
@@ -27,7 +27,7 @@ the data cannot decrypt the tokens and a restored backup cannot bring back a del
 
 Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart. The file holds the PID of the running worker. The kernel releases the lock when that process dies, so a crashed worker never blocks the next start.
 
-Worker health (INV-23): the worker writes `/data/worker.heartbeat` every 60 s. `docker compose ps` shows `titan-worker` as unhealthy once the heartbeat is older than 120 s: the loop has stopped, the scheduler thread could not be restarted, or the morning routine has run past `WORKER_ROUTINE_BUDGET_S` (30 min, logged as CRITICAL `worker_routine_overrun`). Check it by hand with `docker compose exec titan-worker python scripts/worker_healthcheck.py`. Plain Docker Compose reports unhealthy but does not restart the container.
+Worker health (INV-23): the worker writes `/data/worker.heartbeat` every 60 s. `docker compose ps` shows `titan-worker` as unhealthy once the heartbeat is older than 120 s: the loop has stopped, the scheduler thread could not be restarted, or, with only the owner, the morning routine has run past `WORKER_ROUTINE_BUDGET_S` (30 min, logged as CRITICAL `worker_routine_overrun`). With `TITAN_MULTI_ATHLETE=1` an athlete's attempt that runs past the budget is stopped instead (`worker_routine_killed`) and the worker stays healthy. Check it by hand with `docker compose exec titan-worker python scripts/worker_healthcheck.py`. Plain Docker Compose reports unhealthy but does not restart the container.
 
 ## Logs
 

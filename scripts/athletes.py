@@ -1,4 +1,4 @@
-"""Athletes other than the owner: add, relogin, list, export, remove (ADR-0067 D2, D5, D6, D9).
+"""Athletes other than the owner: new-key, add, relogin, list, export, remove, purge (ADR-0067 D2, D5, D6, D9).
 
 Runs on the routine machine. Zaf runs it; the athlete is present for ``relogin`` and types
 their own Garmin password, which is never stored (D9.1). Consent is not given here: the

@@ -543,7 +543,7 @@ class GarminSync:
     def _get_token_path(self) -> Path:
         """Return path to the persisted Garth session token file.
 
-        Stored in TITAN_DATA_DIR (default ~/Documents/TITAN) alongside titan.db.
+        Stored in TITAN_DATA_DIR (default /data; the launcher sets ~/Documents/TITAN) alongside titan_core.db.
         A startup warning is emitted if a legacy project-root token exists but
         the canonical data-dir path does not, prompting the operator to migrate.
         Another athlete's token is in their own folder (ADR-0067 D9.2).

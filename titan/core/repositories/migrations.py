@@ -1,4 +1,4 @@
-"""Schema migrations: steps v1–v30 guarded by ``PRAGMA user_version``,
+"""Schema migrations: steps v1–v31 guarded by ``PRAGMA user_version``,
 and the owner rows a new database starts with.
 
 ``SCHEMA_VERSION`` stays in ``titan.core.database``; base tables come from
