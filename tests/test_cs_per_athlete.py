@@ -48,7 +48,7 @@ def test_v28_migration_gives_existing_rows_to_the_owner(tmp_path: Path) -> None:
 
     db = DatabaseManager(db_name=db_path.name, db_dir=tmp_path)
     try:
-        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 31
+        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 32
         assert db.conn.execute("SELECT athlete_id FROM cs_performances").fetchall() == [("owner",)]
         assert db.get_cs_performances() == [("2026-02-01", 5000.0, 1140.0)]
     finally:

@@ -5,11 +5,12 @@ introspection probes (table names, reachability)."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sqlite3
 from contextlib import suppress
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -214,7 +215,7 @@ class OperationsRepository:
 
     def begin_routine_attempt(
         self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
-        max_attempts: int,
+        max_attempts: int, retry_gap: timedelta | None = None, start_by: datetime | None = None,
     ) -> tuple[str, int]:
         """Start one attempt at a routine day (ADR-0060 D1 as amended by ADR-0067 D8.4).
 
@@ -224,19 +225,30 @@ class OperationsRepository:
         delivery and the day is not yet closed, so the caller leaves it. The attempt is
         counted before the routine runs, so a crash counts too. Any database error
         propagates so the caller fails closed.
+
+        With ``retry_gap``, attempt ``n + 1`` starts no earlier than ``n`` gaps after the
+        first attempt (``started_at`` of the row); before that ``("wait", n)`` is returned and
+        nothing changes (D-109). With ``start_by``, a day that has no row yet is not started
+        after that time: ``("late", 0)`` and no row is written (D-109).
         """
         key = (athlete_id, execution_date, routine_type)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             try:
+                if start_by is not None and started_at > start_by and cursor.execute(
+                    "SELECT 1 FROM worker_routine_executions "
+                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                    key,
+                ).fetchone() is None:
+                    return "late", 0
                 cursor.execute(
                     "INSERT OR IGNORE INTO worker_routine_executions "
                     "(athlete_id, execution_date, routine_type, started_at, attempts) VALUES (?, ?, ?, ?, 0)",
                     (*key, started_at.astimezone(UTC).isoformat()),
                 )
-                attempts, delivered_at, completed_at = cursor.execute(
-                    "SELECT attempts, delivered_at, completed_at FROM worker_routine_executions "
+                attempts, delivered_at, completed_at, first_started = cursor.execute(
+                    "SELECT attempts, delivered_at, completed_at, started_at FROM worker_routine_executions "
                     "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
                     key,
                 ).fetchone()
@@ -244,6 +256,10 @@ class OperationsRepository:
                     state = "closed"
                 elif attempts >= max_attempts:
                     state = "exhausted"
+                elif retry_gap is not None and attempts > 0 and started_at < (
+                    datetime.fromisoformat(first_started).astimezone(UTC) + attempts * retry_gap
+                ):
+                    state = "wait"
                 else:
                     cursor.execute(
                         "UPDATE worker_routine_executions SET attempts = attempts + 1 "
@@ -284,6 +300,78 @@ class OperationsRepository:
                 (completed_at.astimezone(UTC).isoformat(), athlete_id, execution_date, routine_type),
             )
             self._db.conn.commit()
+
+    def get_routine_resume(self, *, athlete_id: str, execution_date: str, routine_type: str) -> dict[str, Any]:
+        """What an earlier attempt of that day left for the next one; {} when nothing (D-109)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT resume_json FROM worker_routine_executions "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (athlete_id, execution_date, routine_type),
+            ).fetchone()
+        if row is None or not row[0]:
+            return {}
+        try:
+            data = json.loads(row[0])
+        except ValueError:
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def update_routine_resume(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any]
+    ) -> None:
+        """Merge ``fields`` into the day's ``resume_json`` (D-109); the claimed row must exist."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            key = (athlete_id, execution_date, routine_type)
+            row = cursor.execute(
+                "SELECT resume_json FROM worker_routine_executions "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                key,
+            ).fetchone()
+            if row is None:
+                raise LookupError(f"no routine row for {key}")
+            try:
+                data = json.loads(row[0]) if row[0] else {}
+            except ValueError:
+                data = {}
+            if not isinstance(data, dict):
+                data = {}
+            data.update(fields)
+            cursor.execute(
+                "UPDATE worker_routine_executions SET resume_json = ? "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (json.dumps(data, sort_keys=True, default=str), *key),
+            )
+            self._db.conn.commit()
+
+    def routine_inputs_fingerprint(self, athlete_id: str, date: str) -> str | None:
+        """A hash of the athlete's stored inputs of that date, or None when there are none (D-109).
+
+        The inputs are the ``daily_metrics`` row and the ``training_log`` rows of that athlete
+        and date, without their ids. Taken when the day's decision is recorded and again
+        before a retry resends it: a different hash means the inputs changed since.
+        """
+        parts: list[Any] = []
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            for table in ("daily_metrics", "training_log"):
+                rows = cursor.execute(
+                    f"SELECT * FROM {table} WHERE athlete_id = ? AND date = ?",  # noqa: S608 - fixed names
+                    (athlete_id, date),
+                )
+                names = [d[0] for d in rows.description]
+                parts.append([table, sorted(
+                    json.dumps({k: v for k, v in zip(names, row, strict=True) if k != "id"},
+                               sort_keys=True, default=str)
+                    for row in rows.fetchall()
+                )])
+        if not any(found for _table, found in parts):
+            return None
+        return hashlib.sha256(json.dumps(parts, sort_keys=True).encode("utf-8")).hexdigest()
 
     def get_incomplete_routine_executions(self, execution_date: str) -> list[tuple[str, str]]:
         """Return (athlete_id, routine_type) rows of that date that never completed."""

@@ -230,12 +230,16 @@ class OutcomeTracker:
         athlete_profile_id: str | None = None,
         afi_value: float | None = None,
         date: str | None = None,
+        replace_same_day: bool = False,
     ) -> GovernanceDecision:
         """
         Record a governance decision immediately after apply_constraints().
 
         Returns the GovernanceDecision dataclass for the caller to hold
         if it needs to attach an outcome via record_outcome() later.
+
+        ``replace_same_day``: a morning retry that computed the day again supersedes the
+        stored decision of that date in place instead of adding a second row (D-109).
         """
         cause = _classify_lock_cause(
             locks_applied=locks_applied,
@@ -261,8 +265,16 @@ class OutcomeTracker:
             afi_value=float(afi_value) if afi_value is not None else None,
             algorithm_version_snapshot=_algorithm_version_snapshot(),
         )
+        replaced = False
+        if replace_same_day:
+            self._decisions = [
+                d for d in self._decisions
+                if not (d.date == decision.date and d.athlete_profile_id == decision.athlete_profile_id)
+            ]
+            replace = getattr(self._db, "replace_governance_decision_on", None)
+            replaced = bool(replace(asdict(decision))) if replace is not None else False
         self._decisions.append(decision)
-        if self._db is not None:
+        if self._db is not None and not replaced:
             self._db.save_governance_decision(asdict(decision))
 
         _log.info(

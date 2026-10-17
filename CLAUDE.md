@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3773 tests all green (3773 passed, 7 skipped, 3780 collected — 2026-10-17, full pytest)
+**Historical snapshot:** 3798 tests all green (3798 passed, 7 skipped, 3805 collected — 2026-10-17, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -140,7 +140,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## Schema
 
-SCHEMA_VERSION 31, `_apply_v*_migrations`. `athlete_id='owner'` for the owner; new `athlete_id` columns have no DEFAULT (ADR-0067).
+SCHEMA_VERSION 32, `_apply_v*_migrations`. `athlete_id='owner'` for the owner; new `athlete_id` columns have no DEFAULT (ADR-0067).
 
 ## Phases 19–26 (CLOSED)
 

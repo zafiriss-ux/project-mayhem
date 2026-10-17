@@ -173,6 +173,11 @@ updated in step 2.
    otherwise the routine runs. `governance_outcomes` is never written twice for one athlete and day.
    After 3 attempts in one day the day is left, with a CRITICAL log and one message to Zaf. The
    delivery marker and attempt count are DDL for step 9, under this ADR.
+   *Implementation note (D-109, 2026-10-17):* the stored decision is sent only while that day's
+   inputs are the ones it was computed on, with its distance, duration and caps; otherwise the day
+   is computed again through the gates and replaces the stored row in place (still one row), or,
+   if that fails, the stored decision is sent at most EASY. Attempts are at least 15 minutes
+   apart, and with several athletes no day starts after 12:00 UTC.
 5. Each athlete's routine runs in its own child process with a time limit. When the limit is hit
    the process is killed, SQLite rolls back its open transaction, the attempt counts, and the loop
    moves to the next athlete. A thread is not used for this because it cannot be stopped safely.

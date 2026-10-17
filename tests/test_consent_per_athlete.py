@@ -208,7 +208,7 @@ def test_a_new_consent_after_stop_resumes_the_next_utc_day(db, monkeypatch) -> N
     db.grant_consent(_A, CONSENT_TEXT_VERSION, now=_DAY1 + timedelta(hours=1))
     ran: list[str] = []
     monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)
-    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id: ran.append(athlete_id))
+    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id, **_kw: ran.append(athlete_id))
 
     monkeypatch.setattr(worker, "_utc_now", lambda: _DAY1 + timedelta(hours=2))
     worker._scheduled_morning(db, _A)
@@ -226,7 +226,7 @@ def test_the_owner_runs_without_any_consent_row(db, monkeypatch) -> None:
     ran: list[str] = []
     monkeypatch.setattr(worker, "_utc_now", lambda: _DAY1)
     monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)
-    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id: ran.append(athlete_id))
+    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id, **_kw: ran.append(athlete_id))
 
     worker._scheduled_morning(db, "owner")
 

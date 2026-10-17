@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import sqlite3
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -197,8 +197,11 @@ def test_the_scheduler_follows_the_same_rule(data_dir, monkeypatch) -> None:
     monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)  # in-process stand-in coach
     _Coach.delivers, _Coach.writes_decision = False, False
     db = DatabaseManager(db_dir=data_dir)
+    clock = [_MORNING]
+    monkeypatch.setattr(worker, "_utc_now", lambda: clock[0])
 
-    for _ in range(5):  # five 60 s polls of the same day
+    for poll in range(5):  # five polls of the same day, further apart than the retry gap (D-109)
+        clock[0] = _MORNING + timedelta(seconds=poll * (worker.ROUTINE_RETRY_DELAY_S + 60))
         worker._scheduled_morning(db, "owner")
 
     assert _Coach.calls == ["owner"] * 3
@@ -226,7 +229,7 @@ def test_v31_gives_old_rows_one_attempt_and_keeps_their_state(tmp_path) -> None:
 
     db = DatabaseManager(db_dir=tmp_path)
     try:
-        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 31
+        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 32
         rows = db.conn.execute(
             "SELECT execution_date, attempts, delivered_at, completed_at IS NOT NULL "
             "FROM worker_routine_executions ORDER BY execution_date"

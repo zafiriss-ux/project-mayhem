@@ -89,7 +89,7 @@ def _in_process(monkeypatch) -> list[str]:
     """Run each attempt in-process with a routine that delivers; return the athletes run."""
     ran: list[str] = []
     monkeypatch.setattr(worker, "_run_attempt", worker._attempt_morning)
-    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id: ran.append(athlete_id) or True)
+    monkeypatch.setattr(worker, "_run_morning", lambda _db, athlete_id, **_kw: ran.append(athlete_id) or True)
     return ran
 
 

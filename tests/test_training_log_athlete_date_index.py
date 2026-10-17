@@ -24,7 +24,7 @@ def test_a_new_database_has_the_index(tmp_path) -> None:
     db = DatabaseManager(db_dir=tmp_path)
     try:
         assert _index_columns(db.conn) == ["athlete_id", "date"]
-        assert SCHEMA_VERSION == 31
+        assert SCHEMA_VERSION == 32
     finally:
         db.close()
 
@@ -44,7 +44,7 @@ def test_a_v28_database_gets_the_index_on_open(tmp_path) -> None:
     db = DatabaseManager(db_dir=tmp_path)
     try:
         assert _index_columns(db.conn) == ["athlete_id", "date"]
-        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 31
+        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == 32
     finally:
         db.close()
 

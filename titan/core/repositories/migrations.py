@@ -587,6 +587,15 @@ class SchemaMigrations:
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
+        if current_version < 32:
+            self._db._apply_v32_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 32,
+                "changes": "worker_routine_executions resume_json (D-109)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
         self._db._apply_v19_pace_backfill(cursor)
 
         # Suppress unused-variable warning for _migrations (kept as documentation).
@@ -1453,3 +1462,15 @@ class SchemaMigrations:
                 "ALTER TABLE worker_routine_executions ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0"
             )
             cursor.execute("UPDATE worker_routine_executions SET attempts = 1")
+
+    def _apply_v32_migrations(self, cursor) -> None:
+        """Version 32: what a later attempt of the same day needs (D-109).
+
+        ``resume_json`` holds the session that was sent with its caps, a hash of the inputs it
+        was computed on, and whether the athlete was already told of a system error that day.
+        Nullable and additive (AGENTS.md section 13.3): a row from before v32 has none, and a
+        retry of such a day treats its inputs as unknown.
+        """
+        columns = [row[1] for row in cursor.execute("PRAGMA table_info(worker_routine_executions)")]
+        if "resume_json" not in columns:
+            cursor.execute("ALTER TABLE worker_routine_executions ADD COLUMN resume_json TEXT")

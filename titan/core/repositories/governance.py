@@ -231,6 +231,48 @@ class GovernanceRepository:
             )
             self._db.conn.commit()
 
+    def replace_governance_decision_on(self, decision: dict[str, Any]) -> bool:
+        """Overwrite the athlete's decision of that date with a recomputed one (D-109).
+
+        A morning retry that computes the day again on newer inputs supersedes the
+        stored decision in place, so ``governance_outcomes`` keeps one row for one athlete
+        and day (ADR-0067 D8.4, D-098). The latest row of that day keeps its id; the
+        outcome columns are left as they are. False when there is no row to replace.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                """UPDATE governance_outcomes SET
+                       session_planned = ?, session_post_governance = ?, locks_applied_json = ?,
+                       governance_clean = ?, phase = ?, vlg_color = ?, apl_priority_vector_json = ?,
+                       lock_thresholds_active_json = ?, acwr = ?, tsb_value = ?, readiness_score = ?,
+                       glycogen_debt = ?, afi_value = ?, algorithm_version_snapshot = ?
+                   WHERE id = (SELECT id FROM governance_outcomes WHERE athlete_id = ? AND date = ?
+                               ORDER BY id DESC LIMIT 1)""",
+                (
+                    decision['session_planned'],
+                    decision['session_post_governance'],
+                    json.dumps(decision.get('locks_applied', []), default=str),
+                    int(bool(decision.get('governance_clean', False))),
+                    decision.get('phase', ''),
+                    decision.get('vlg_color', ''),
+                    json.dumps(decision.get('apl_priority_vector', {}), default=str),
+                    json.dumps(decision.get('lock_thresholds_active', {}), default=str),
+                    float(decision.get('acwr', 0.0)),
+                    float(decision.get('tsb_value', 0.0)),
+                    float(decision.get('readiness_score', 0.0)),
+                    float(decision.get('glycogen_debt', 0.0)),
+                    decision.get('afi_value'),
+                    json.dumps(decision.get('algorithm_version_snapshot', {}), default=str),
+                    decision.get('athlete_profile_id', 'owner'),
+                    decision['date'],
+                ),
+            )
+            replaced = cursor.rowcount > 0
+            self._db.conn.commit()
+        return replaced
+
     def update_governance_outcome(
         self,
         date: str,
