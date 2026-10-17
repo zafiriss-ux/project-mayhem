@@ -77,10 +77,12 @@ class SchemaMigrations:
         }
         for table, marker in _V30_REBUILT_TABLES:
             stale = f"{table}_v30_new"
+            # Names below are the constant _V30_REBUILT_TABLES and columns read from this
+            # database's own schema, never input, so the f-strings carry no user data.
             if stale not in tables:
                 continue
             current = [row[1] for row in cursor.execute(f"PRAGMA table_info({table})")]
-            stale_rows = cursor.execute(f"SELECT COUNT(*) FROM {stale}").fetchone()[0]
+            stale_rows = cursor.execute(f"SELECT COUNT(*) FROM {stale}").fetchone()[0]  # nosec B608
             if not current:
                 cursor.execute(f"ALTER TABLE {stale} RENAME TO {table}")
                 outcome = "renamed_back"
@@ -90,12 +92,12 @@ class SchemaMigrations:
             elif stale_rows == 0:
                 cursor.execute(f"DROP TABLE {stale}")
                 outcome = "dropped_empty_copy"
-            elif cursor.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0:
+            elif cursor.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0:  # nosec B608
                 columns = ", ".join(
                     row[1] for row in cursor.execute(f"PRAGMA table_info({stale})")
                     if row[1] in current
                 )
-                cursor.execute(f"INSERT INTO {table} ({columns}) SELECT {columns} FROM {stale}")
+                cursor.execute(f"INSERT INTO {table} ({columns}) SELECT {columns} FROM {stale}")  # nosec B608
                 cursor.execute(f"DROP TABLE {stale}")
                 outcome = "moved_rows_back"
             else:
