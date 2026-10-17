@@ -108,7 +108,7 @@ python launcher/main.py
 | Πρωινή ρουτίνα 07:00 UTC | ✅ | ✅ |
 | Εβδομαδιαίο πλάνο Κυριακή 20:00 UTC | — | ✅ |
 | Garmin sync κάθε 6 ώρες | — (sync μέσα στην πρωινή ρουτίνα) | ✅ |
-| Εντολές Telegram (polling) | — | ✅ |
+| Εντολές Telegram (polling) | μόνο με `TITAN_MULTI_ATHLETE=1`: οι εντολές των αθλητών (D-103) | ✅ |
 | Ημερήσιο backup βάσης | ✅ | — |
 | Interactive μενού | — | ✅ |
 
