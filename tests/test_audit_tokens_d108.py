@@ -412,7 +412,7 @@ def test_an_export_over_an_existing_file_leaves_it_0600(env, db) -> None:
     athlete_id = lifecycle.add_athlete(db, "Maria", dict(_PROFILE), 2000, now=_NOW)
     out = env / "export.json"
     out.write_text("old", encoding="utf-8")
-    os.chmod(out, 0o640)
+    os.chmod(out, 0o700)
 
     assert _cli().main(["export", athlete_id, "--out", str(out)]) == 0
 
@@ -502,8 +502,8 @@ def test_failures_within_the_window_lock_known_and_unknown_names_alike(clock, us
 def test_the_token_folders_are_private_and_old_ones_are_tightened(key_file, data_dir) -> None:
     athlete_folder = data_dir / "garmin" / _A
     athlete_folder.mkdir(parents=True)
-    os.chmod(data_dir / "garmin", 0o750)
-    os.chmod(athlete_folder, 0o750)
+    os.chmod(data_dir / "garmin", 0o710)
+    os.chmod(athlete_folder, 0o710)
     data_mode = stat.S_IMODE(data_dir.stat().st_mode)
 
     garmin_sync.write_athlete_token(_A, '{"session": "s"}')
