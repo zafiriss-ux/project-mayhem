@@ -283,10 +283,10 @@ def test_get_baseline_rhr_clamps_high_value(tmp_path):
 
     db = DatabaseManager(db_name="test_rhr_clamp.db", db_dir=tmp_path)
 
-    # Use today's date so it falls within the 7-day window
-    today = datetime.date.today().isoformat()
+    # Yesterday: inside the 7-day window, and the baseline leaves today out (D-105)
+    yesterday = (datetime.datetime.now(datetime.UTC).date() - datetime.timedelta(days=1)).isoformat()
     # rhr=125: (125-120)=5 excess; span=95 → 5 <= 95 → clamped to 120
-    db.save_daily_metric(date=today, rhr=125)
+    db.save_daily_metric(date=yesterday, rhr=125)
     result = db.get_baseline_rhr(days=7)
     assert result == pytest.approx(BOUNDS["rhr_bpm"][1])  # 120.0
 

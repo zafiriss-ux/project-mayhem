@@ -102,8 +102,8 @@ class DailyCoachContext(TypedDict):
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float | None
-    baseline_hrv: float
-    hrv_std_dev: float
+    baseline_hrv: float | None
+    hrv_std_dev: float | None
     today_rhr: int | None
     baseline_rhr: float
     sleep_score: int | None
@@ -133,8 +133,8 @@ class DailyCoachContextContract:
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float | None
-    baseline_hrv: float
-    hrv_std_dev: float
+    baseline_hrv: float | None
+    hrv_std_dev: float | None
     today_rhr: int | None
     baseline_rhr: float
     sleep_score: int | None
@@ -197,7 +197,7 @@ class DailyCoachingPayload(TypedDict):
     conditions: str
     hrv_status: str
     hrv_value: float
-    hrv_baseline: float
+    hrv_baseline: float | None
     afi: float
     sleep_quality: int | str
     sleep_hours: float

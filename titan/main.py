@@ -66,6 +66,12 @@ LOG_MAX_BYTES = 10 * 1024 * 1024
 LOG_BACKUP_COUNT = 5
 
 
+def _baseline_text(hrv_summary: dict) -> str:
+    """The HRV baseline for a message: N/A while it cannot be computed (D-105)."""
+    baseline = hrv_summary.get("baseline")
+    return "N/A" if baseline is None else str(baseline)
+
+
 def _configure_rotating_logging() -> None:
     """Attach a rotating file handler to the TITAN logger tree."""
     root = logging.getLogger()
@@ -219,7 +225,7 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             tsb_status = tsb_status_for_phase(tsb_val, tsb_status, ctx.get("athlete_profile", {}).get("phase"))
             return (
                 f"📊 *STATS*\n"
-                f"• HRV baseline: {hrv_s.get('baseline', 'N/A')}\n"
+                f"• HRV baseline: {_baseline_text(hrv_s)}\n"
                 f"• HRV trend: {hrv_s.get('trend', 'N/A')}\n"
                 f"• TSB: {round(tsb_val, 1)} ({tsb_status})\n"
                 f"• CTL (fitness): {round(tsb.ctl, 1)}\n"
@@ -234,7 +240,7 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
         try:
             hrv_s = hrv.get_hrv_summary()
             latest = hrv_s.get("latest_hrv", 0)
-            baseline = hrv_s.get("baseline", 50)
+            baseline = hrv_s.get("baseline")  # None: fewer than 7 readings (D-105)
             rec = readiness.analyze_readiness(
                 today_hrv=latest, baseline_hrv=baseline,
                 today_rhr=50, baseline_rhr=48,
@@ -244,7 +250,7 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
                 f"💊 *RECOVERY*\n"
                 f"• Readiness score: {rec.get('score', 'N/A')}/100\n"
                 f"• Status: {rec.get('status', 'N/A')}\n"
-                f"• HRV: {latest} (baseline {baseline})\n"
+                f"• HRV: {latest} (baseline {_baseline_text(hrv_s)})\n"
                 f"• Recommendation: {rec.get('recommendation', 'N/A')}"
             )
         except Exception as e:

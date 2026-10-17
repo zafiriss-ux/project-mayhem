@@ -45,7 +45,7 @@ class AthleteCoachingContext:
     persistence_degraded: bool
     garmin_data_stale: bool
     latest_hrv: float
-    baseline_hrv: float
+    baseline_hrv: float | None
     hrv_summary: dict[str, Any]
     afi_final: float
     afi_constraints: dict[str, Any]

@@ -21,8 +21,8 @@ def test_empty_state_returns_safe_defaults_without_crashing() -> None:
 
     assert summary == {
         "latest_hrv": 0.0,
-        "baseline": 0.0,
-        "std_dev": 0.0,
+        "baseline": None,  # missing, never 0.0 (D-105, SG-01)
+        "std_dev": None,
         "trend": "Need 14+ days for trend analysis",
         "data_points": 0,
     }

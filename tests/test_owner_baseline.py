@@ -21,14 +21,16 @@ import pytest
 _FIXTURES = Path(__file__).parent / "fixtures"
 
 # sha256 of json.dumps(golden["days"], sort_keys=True, ensure_ascii=False).
-# Baseline 39aee23; re-fingerprinted by ADR-0068 (D-106, owner decision 2026-10-17
-# «Διόρθωσε τα»): the owner's mornings became stricter on purpose (H2_MISSING with
-# no HRV baseline, ADR-0065 cap on H4 days); every changed morning is listed in D-106.
+# Baseline 39aee23; re-fingerprinted by ADR-0068 (D-106) and then by D-105 (SG-01/SG-06),
+# both approved by Zaf 2026-10-17: the owner's mornings became stricter on purpose
+# (H2_MISSING with no HRV baseline, ADR-0065 cap on H4 days, baselines without today).
+# After D-105 no session changes against D-106; only the logged baselines and texts do,
+# and a first morning no longer sends the "check database health" RHR alert.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "568cadad10b3132b853bb9ebea357315bf1a7db37251e9f509e1d32beb22f9e7",
-    "persistence_failure": "d4e0b032000dad10c55b7617a5bd9541aac20ae1b07f20350822237417306a61",
-    "three_weeks_weekly_plan": "081563e5476adb19bdf6b474bcdad9ba23ddbd2cc3f4b915d795d179f4efb58c",
-    "two_weeks_worker": "ae8fd07f7e497eab7c8a2ce23a3d74cf9f001ce1a277bee9a70c5dc147ff9f0e",
+    "garmin_outage": "d11314d0e1d762e8c58c06e515caa54a1ca8fad396eb94413e60a0b6bcd330ca",
+    "persistence_failure": "5ece4cdd5dc10f7d7d2f1f9271aef11b703b59640fae8c51096d102ed202cf37",
+    "three_weeks_weekly_plan": "cead645d9bb4dde9d389854bcb03624e0a05e2870013a280727071cc902602e9",
+    "two_weeks_worker": "24a7e42196eb30abe0572b006f857198c8fd63645bc7019f653d7e75dda97de7",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"

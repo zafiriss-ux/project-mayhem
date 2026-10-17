@@ -24,6 +24,7 @@ import contextlib
 import dataclasses
 import json
 import logging
+import math
 import sqlite3
 import threading
 from datetime import UTC, date, datetime, timedelta
@@ -303,6 +304,38 @@ def _is_bad_sleep_score(score: Any) -> bool:
 _MISSING_SLEEP_SCORE = 50
 
 
+def _hrv_baseline_or_none(value: Any) -> float | None:
+    """The HRV baseline as a positive finite number, or None when it is missing (D-105).
+
+    A missing, non-numeric, non-finite or non-positive baseline is not a baseline:
+    it reaches governance as None, which applies the ADR-0051 EASY ceiling.
+    """
+    try:
+        baseline = float(value)
+    except (TypeError, ValueError):
+        return None
+    return baseline if math.isfinite(baseline) and baseline > 0 else None
+
+
+def _stricter_h2_baseline(
+    before_today: float | None, with_today: float | None, today_hrv: float | None,
+) -> float | None:
+    """The H2 baseline: the readings before today, unless that loses a hard stop (D-105).
+
+    The baseline that leaves today out is the right one. Only when the old baseline
+    (the last readings, today's included) would fire H2 and the new one would not,
+    for example on the morning with 6 earlier readings, does the old one stay, so the
+    fix never turns a REST into something lighter.
+    """
+    def _fires(baseline: float | None) -> bool:
+        return (baseline is not None and today_hrv is not None
+                and baseline - today_hrv >= GovernanceEngine.h2_drop_threshold_ms(baseline))
+
+    if _fires(with_today) and not _fires(before_today):
+        return with_today
+    return before_today
+
+
 def _sleep_score_or_default(score: int | None) -> int:
     return _MISSING_SLEEP_SCORE if score is None else score
 
@@ -481,7 +514,7 @@ class _PipelineInputs:
     garmin_data_stale: bool
     latest_hrv: float
     today_hrv: float | None   # None when tonight's reading is missing (ADR-0051, SV-06)
-    baseline_hrv: float
+    baseline_hrv: float | None  # None when fewer than 7 earlier readings (D-105, SG-01)
     hrv_summary: dict
     afi_final: float
     afi_constraints: dict
@@ -979,9 +1012,16 @@ class DailyCoach:
         # ── Step 4: AFI — Autonomic Fusion Index ────────────────────────────
         _daily_coach_event("step_started", step_number=4, step_name="compute_afi")
         ln_dev   = self.hrv.calculate_ln_rmssd_deviation(short_days=7, long_days=28)
-        hrv_summary   = self.hrv.get_hrv_summary()
+        # D-105 (SG-01): the baseline is the readings before today, and a baseline
+        # that cannot be computed stays None. Governance then applies the ADR-0051
+        # EASY ceiling (H2_MISSING) instead of comparing against an invented value.
+        hrv_summary   = self.hrv.get_hrv_summary(before_date=today_str)
         latest_hrv   = _safe_float(hrv_summary.get('latest_hrv'), 0.0)
-        baseline_hrv = _safe_float(hrv_summary.get('baseline'), 50.0)
+        baseline_hrv = _stricter_h2_baseline(
+            _hrv_baseline_or_none(hrv_summary.get('baseline')),
+            _hrv_baseline_or_none(self.hrv.get_hrv_summary().get('baseline')),
+            self._today_hrv(),
+        )
         hrv_pct_above = ((latest_hrv - baseline_hrv) / baseline_hrv * 100) if baseline_hrv else 0.0
         today_hrr60  = (self.autonomic.hrr_log[-1][1] if self.autonomic.hrr_log else None)
 
@@ -1036,6 +1076,7 @@ class DailyCoach:
 
         # ── Pre-pipeline: baseline RHR (DB read; alert fires here if unavailable) ──
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
+        self._baseline_rhr_read_failed = False
         baseline_rhr = self._get_baseline_rhr(days=7)
         baseline_rhr_for_comparison = baseline_rhr
         if baseline_rhr is None:
@@ -1045,6 +1086,10 @@ class DailyCoach:
                 today_rhr=today_rhr or 50,
                 fallback_baseline_rhr=baseline_rhr_for_comparison,
             )
+        # The operator alert is for a read that failed. No RHR before today (a new
+        # athlete's first morning, D-105) is not a database fault: H3 still runs in the
+        # same degraded mode, but nobody is told to check the database.
+        if baseline_rhr is None and getattr(self, "_baseline_rhr_read_failed", True):
             try:
                 alert_operator(
                     self.telegram,
@@ -1126,7 +1171,7 @@ class DailyCoach:
         persistence_degraded: bool,
         garmin_data_stale: bool,
         latest_hrv: float,
-        baseline_hrv: float,
+        baseline_hrv: float | None,
         hrv_summary: dict,
         afi_final: float,
         afi_constraints: dict,
@@ -1513,7 +1558,7 @@ class DailyCoach:
             planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
             today_hrv=inp.today_hrv,
             baseline_hrv=inp.baseline_hrv,
-            hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0),
+            hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0) if inp.baseline_hrv is not None else None,
             # Missing readings reach governance as None, which applies ADR-0051
             # itself: no RHR → EASY ceiling (H3_MISSING), no sleep score → 40 (SV-06).
             today_rhr=inp.today_rhr or None,
@@ -1712,7 +1757,7 @@ class DailyCoach:
             # Autonomic / HRV
             'hrv_status'        : inp.hrv_summary.get('trend', 'N/A'),
             'hrv_value'         : round(inp.latest_hrv, 1),
-            'hrv_baseline'      : round(inp.baseline_hrv, 1),
+            'hrv_baseline'      : round(inp.baseline_hrv, 1) if inp.baseline_hrv is not None else None,
             'afi'               : inp.afi_final,
             # Sleep
             'sleep_quality'     : inp.today_sleep_score if inp.today_sleep_score is not None else 'N/A',
@@ -1902,8 +1947,8 @@ class DailyCoach:
         fueling_confirmed: bool,
         planned_duration_min: int,
         today_hrv: float | None,
-        baseline_hrv: float,
-        hrv_std_dev: float,
+        baseline_hrv: float | None,
+        hrv_std_dev: float | None,
         today_rhr: int | None,
         baseline_rhr: float,
         sleep_score: int | None,
@@ -1977,6 +2022,7 @@ class DailyCoach:
         try:
             return self.db.get_baseline_rhr(days=days, athlete_id=getattr(self, "athlete_id", "owner"))
         except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
+            self._baseline_rhr_read_failed = True
             _daily_coach_event(
                 "baseline_rhr_unavailable",
                 error_class=type(exc).__name__,

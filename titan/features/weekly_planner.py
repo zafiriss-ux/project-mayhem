@@ -237,7 +237,8 @@ class WeeklyPlanGenerator:
             "rest_count": sum(1 for d in structure if d["session_type"] == "REST"),
             "lactate_threshold": athlete_profile.get("threshold_hr", "N/A"),
             "avg_drift": "See past week analysis",
-            "hrv_baseline": hrv_summary.get("baseline", "N/A"),
+            # A missing baseline (fewer than 7 readings) is None, shown as N/A (D-105).
+            "hrv_baseline": hrv_summary.get("baseline") if hrv_summary.get("baseline") is not None else "N/A",
             "tsb_status": tsb_status,
             "daily_sessions": structure,
             "motivation": self._get_motivational_message(phase, tsb_value),
