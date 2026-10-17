@@ -24,32 +24,37 @@ class BiometricSourceAdapter(Protocol):
 
 
 class ManualEntryAdapter:
-    """Reads manual_entry rows from daily_metrics. Fallback when Garmin is unavailable."""
+    """Reads one athlete's manual_entry rows from daily_metrics. Fallback when Garmin is unavailable.
 
-    def __init__(self, db: DatabaseManager) -> None:
+    The rows are the athlete's own (ISO-4, D-110): before, every athlete's pipeline read
+    the owner's manual HRV and RHR.
+    """
+
+    def __init__(self, db: DatabaseManager, athlete_id: str = "owner") -> None:
         self._db = db
+        self._athlete_id = athlete_id
 
     def get_hrv(self, date: str) -> float | None:
-        row = self._db.get_daily_metric(date)
+        row = self._db.get_daily_metric(date, athlete_id=self._athlete_id)
         if not row or row.get("data_source") != "manual_entry":
             return None
         return row.get("hrv_rmssd")
 
     def get_rhr(self, date: str) -> float | None:
-        row = self._db.get_daily_metric(date)
+        row = self._db.get_daily_metric(date, athlete_id=self._athlete_id)
         if not row or row.get("data_source") != "manual_entry":
             return None
         value = row.get("resting_hr")
         return float(value) if value is not None else None
 
     def get_sleep_hours(self, date: str) -> float | None:
-        row = self._db.get_daily_metric(date)
+        row = self._db.get_daily_metric(date, athlete_id=self._athlete_id)
         if not row or row.get("data_source") != "manual_entry":
             return None
         return row.get("sleep_hours")
 
     def get_weight_kg(self, date: str) -> float | None:
-        row = self._db.get_daily_metric(date)
+        row = self._db.get_daily_metric(date, athlete_id=self._athlete_id)
         if not row or row.get("data_source") != "manual_entry":
             return None
         return row.get("weight_kg")

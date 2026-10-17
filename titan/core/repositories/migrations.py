@@ -331,6 +331,16 @@ class SchemaMigrations:
                 "at most 3 attempts (ADR-0067 D8.4, D-098)",
                 None,  # DDL — see _apply_v31_migrations() below
             ),
+            32: (
+                "worker_routine_executions",
+                "resume_json: what a later attempt of the same day needs (D-109)",
+                None,  # DDL — see _apply_v32_migrations() below
+            ),
+            33: (
+                "degraded_mode_state",
+                "one row per athlete and failure type; athlete_id without DEFAULT (ISO-2, D-110)",
+                None,  # rebuild — see _apply_v33_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -690,6 +700,15 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 32,
                 "changes": "worker_routine_executions resume_json (D-109)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 33:
+            self._db._apply_v33_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 33,
+                "changes": "degraded_mode_state per athlete (ISO-2, D-110)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1574,3 +1593,45 @@ class SchemaMigrations:
         columns = [row[1] for row in cursor.execute("PRAGMA table_info(worker_routine_executions)")]
         if "resume_json" not in columns:
             cursor.execute("ALTER TABLE worker_routine_executions ADD COLUMN resume_json TEXT")
+
+    def _apply_v33_migrations(self, cursor) -> None:
+        """Version 33: degraded-mode timers per athlete (ISO-2; D-110).
+
+        Before v33 the key was ``failure_type`` alone and every tracker wrote
+        ``athlete_id = 'default'``, so one athlete's stale Garmin started the timer that
+        alerted for another, and a healthy athlete's morning cleared it. The table is
+        rebuilt with the key ``(athlete_id, failure_type)`` and no DEFAULT on
+        ``athlete_id`` (ADR-0067 D3). Rows marked ``'default'`` become the owner's: until
+        Phase 4 only the owner ran, and a wrong owner timer only resets on the next
+        healthy morning. The whole ladder runs in one transaction (D-104), so an
+        interrupted rebuild leaves the v32 table as it was.
+        """
+        # FROZEN HISTORICAL SNAPSHOT: column list fixed at v33.
+        create_sql = """
+            CREATE TABLE {name} (
+                athlete_id     TEXT NOT NULL,
+                failure_type   TEXT NOT NULL,
+                degraded_since TEXT NOT NULL,
+                PRIMARY KEY (athlete_id, failure_type)
+            )
+        """
+        info = list(cursor.execute("PRAGMA table_info(degraded_mode_state)"))
+        if not info:  # a partial database without the table: create it in its v33 shape
+            cursor.execute(create_sql.format(name="degraded_mode_state"))
+            return
+        primary_key = [row[1] for row in sorted(info, key=lambda row: row[5]) if row[5]]
+        if primary_key == ["athlete_id", "failure_type"]:
+            return
+        cursor.execute("DROP TABLE IF EXISTS degraded_mode_state_v33_new")
+        cursor.execute(create_sql.format(name="degraded_mode_state_v33_new"))
+        # A failure type may sit under 'default' and under 'owner'; the earlier timer wins.
+        cursor.execute("""
+            INSERT INTO degraded_mode_state_v33_new (athlete_id, failure_type, degraded_since)
+            SELECT CASE WHEN athlete_id IS NULL OR athlete_id = 'default' THEN 'owner'
+                        ELSE athlete_id END,
+                   failure_type, MIN(degraded_since)
+            FROM degraded_mode_state
+            GROUP BY 1, 2
+        """)
+        cursor.execute("DROP TABLE degraded_mode_state")
+        cursor.execute("ALTER TABLE degraded_mode_state_v33_new RENAME TO degraded_mode_state")

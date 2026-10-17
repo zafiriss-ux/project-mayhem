@@ -180,7 +180,7 @@ def test_migration_create_table_statements_include_athlete_id_or_are_explicitly_
 # Columns that had an athlete_id DEFAULT before ADR-0067. AGENTS §16.10 A40-4 (as amended
 # by ADR-0067 D3) forbids a DEFAULT on any new one, so this set may only shrink.
 _ATHLETE_ID_DEFAULTS_BEFORE_ADR_0067: frozenset[str] = frozenset({
-    "cs_performances", "daily_metrics", "degraded_mode_state", "gear_usage",
+    "cs_performances", "daily_metrics", "gear_usage",
     "governance_outcomes", "model_calibration_metadata", "personal_bests", "training_log",
 })
 

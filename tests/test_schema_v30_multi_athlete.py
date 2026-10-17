@@ -82,7 +82,7 @@ def upgraded(tmp_path):
 @pytest.mark.unit
 def test_v29_rows_become_the_owners(upgraded) -> None:
     conn = upgraded.conn
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 32
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 33
     assert conn.execute("SELECT athlete_id, source, last_sync_ok FROM sync_metadata").fetchall() == [
         ("owner", "garmin", 1)
     ]
