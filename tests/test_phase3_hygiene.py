@@ -207,11 +207,11 @@ class TestGovernanceEngineExceptionPaths:
         """Generic DB read failures must lock conservatively and emit structured alert."""
 
         class _RaisingDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 raise RuntimeError("db unavailable")
 
         caplog.set_level(logging.INFO)
-        result = gov.check_override_lockdown(_RaisingDB())
+        result = gov.check_override_lockdown(_RaisingDB(), athlete_id="owner")
 
         assert result["locked"] is True
         assert result["error_code"] == "DB_READ_ERROR"
@@ -235,10 +235,10 @@ class TestGovernanceEngineExceptionPaths:
     @pytest.mark.governance
     def test_override_lockdown_happy_path_reads_ratio(self):
         class _HealthyDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 return 0.25
 
-        result = gov.check_override_lockdown(_HealthyDB())
+        result = gov.check_override_lockdown(_HealthyDB(), athlete_id="owner")
         assert result["locked"] is False
         assert result["ratio"] == 0.25
 
@@ -246,10 +246,10 @@ class TestGovernanceEngineExceptionPaths:
     @pytest.mark.governance
     def test_override_lockdown_schema_mismatch_classification(self):
         class _SchemaMismatchDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 raise RuntimeError("no such table: override_log")
 
-        result = gov.check_override_lockdown(_SchemaMismatchDB())
+        result = gov.check_override_lockdown(_SchemaMismatchDB(), athlete_id="owner")
         assert result["locked"] is True
         assert result["error_code"] == "SCHEMA_MISMATCH"
 
@@ -257,10 +257,10 @@ class TestGovernanceEngineExceptionPaths:
     @pytest.mark.governance
     def test_override_lockdown_computation_error_classification(self):
         class _BadRatioDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 return "invalid-float"
 
-        result = gov.check_override_lockdown(_BadRatioDB())
+        result = gov.check_override_lockdown(_BadRatioDB(), athlete_id="owner")
         assert result["locked"] is True
         assert result["error_code"] == "COMPUTATION_ERROR"
 
@@ -269,20 +269,20 @@ class TestGovernanceEngineExceptionPaths:
     @pytest.mark.governance
     def test_override_lockdown_uses_thresholds_constant_boundary(self):
         class _BoundaryDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 return GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD
 
-        result = gov.check_override_lockdown(_BoundaryDB())
+        result = gov.check_override_lockdown(_BoundaryDB(), athlete_id="owner")
         assert result["locked"] is False
 
     @pytest.mark.unit
     @pytest.mark.governance
     def test_override_lockdown_locks_above_thresholds_constant(self):
         class _AboveBoundaryDB:
-            def get_override_ratio(self, days=14):
+            def get_override_ratio(self, *, athlete_id, days=14):
                 return GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD + 0.01
 
-        result = gov.check_override_lockdown(_AboveBoundaryDB())
+        result = gov.check_override_lockdown(_AboveBoundaryDB(), athlete_id="owner")
         assert result["locked"] is True
 
     @pytest.mark.unit

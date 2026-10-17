@@ -430,7 +430,7 @@ class TestOrchestrationBoundaryBackwardCompat:
 
 
 class _StubDB:
-    def get_override_ratio(self, days=14):
+    def get_override_ratio(self, *, athlete_id, days=14):
         return 0.95
 
 
@@ -447,6 +447,7 @@ class TestAdaptivePriorityOrder:
         plan = {'session_type': 'RACE', 'duration_min': 30}
         context = {
             'db': _StubDB(),
+            'athlete_id': 'owner',  # ADR-0068
             'cs_tracker': _StubCsTracker(),
             'afi_constraints': {'parasympathetic_guard': {'triggered': False}},
         }
@@ -460,6 +461,7 @@ class TestAdaptivePriorityOrder:
         plan = {'session_type': 'RACE', 'duration_min': 30}
         context = {
             'db': _StubDB(),
+            'athlete_id': 'owner',  # ADR-0068
             'cs_tracker': _StubCsTracker(),
             'afi_constraints': {'parasympathetic_guard': {'triggered': False}},
             'priority_vector': {

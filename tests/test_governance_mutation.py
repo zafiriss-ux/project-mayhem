@@ -373,15 +373,15 @@ def test_fueling_gate_nan_duration_does_not_lock():
 
 @pytest.mark.unit
 @pytest.mark.governance
-def test_intensity_gate_nan_volume_modifier_defaults_to_one():
-    """INTENSITY_GATE: NaN volume_modifier must be rejected and default to 1.0 (INV-01)."""
+def test_intensity_gate_nan_volume_modifier_defaults_to_conservative():
+    """INTENSITY_GATE: NaN volume_modifier is rejected and takes 0.7, not 1.0 (INV-01, ADR-0068)."""
     ctx = _base_context(
         intensity_gate_result={"color": "GREEN", "max_zone": 5, "volume_modifier": float("nan")}
     )
     result = _engine().apply_constraints(_base_session(), ctx)
     assert result is not None
-    assert result.get("volume_modifier") == 1.0, (
-        f"volume_modifier must default to 1.0 on NaN input (INV-01); "
+    assert result.get("volume_modifier") == pytest.approx(0.7), (
+        f"volume_modifier must take the conservative 0.7 on NaN input (ADR-0068); "
         f"got {result.get('volume_modifier')}"
     )
 
@@ -472,10 +472,10 @@ def test_override_lockdown_nan_input_conservative():
     engine = GovernanceEngine()
 
     class _CorruptedRatioDb:
-        def get_override_ratio(self, days: int = 14) -> float:
+        def get_override_ratio(self, *, athlete_id: str, days: int = 14) -> float:
             raise RuntimeError("NaN detected in stored ratio — data integrity failure")
 
-    result = engine.check_override_lockdown(_CorruptedRatioDb())
+    result = engine.check_override_lockdown(_CorruptedRatioDb(), athlete_id="owner")
     assert result["locked"] is True, (
         "check_override_lockdown must return conservative locked=True on data error (INV-01)"
     )
@@ -686,3 +686,380 @@ def test_gate_guidance_for_nan_conservative():
     result = GovernanceEngine._guidance_for_gate(str(float("nan")))
     assert result
     assert "conservative" in result.lower() or "monitor" in result.lower()
+
+
+# ── ADR-0068: governance gate fixes (SG-02, SG-03, SG-05, SG-07, SG-09, SG-10) ─
+# Every case below failed on c068709. A lock never raises intensity; a bad or
+# missing input takes the conservative value.
+
+_PARA_GUARD = {"parasympathetic_guard": {"triggered": True, "reason": "parasympathetic saturation"}}
+
+
+class _RatioDb:
+    """A db double that returns a per-athlete override ratio and records the calls."""
+
+    def __init__(self, ratios: dict):
+        self.ratios = ratios
+        self.calls: list[dict] = []
+
+    def get_override_ratio(self, athlete_id: str = "owner", days: int = 14):
+        self.calls.append({"athlete_id": athlete_id, "days": days})
+        return self.ratios.get(athlete_id)
+
+
+# SG-02 — the override lockdown reads the athlete's own ratio.
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_override_lockdown_boundary_on_athlete_own_ratio_locks():
+    """Boundary-ON: the athlete's own ratio over the ceiling locks, whatever the owner's is."""
+    db = _RatioDb({"owner": 0.0, "ath-a": GovernanceEngine.OVERRIDE_LOCKDOWN_THRESHOLD + 0.01})
+    lock = _engine().check_override_lockdown(db, athlete_id="ath-a")
+    assert lock["locked"] is True
+    assert db.calls == [{"athlete_id": "ath-a", "days": 14}]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_override_lockdown_boundary_off_athlete_own_ratio_at_ceiling_does_not_lock():
+    """Boundary-OFF: the athlete's own ratio at the ceiling does not lock, even if the owner's does."""
+    db = _RatioDb({"owner": 0.857, "ath-a": GovernanceEngine.OVERRIDE_LOCKDOWN_THRESHOLD})
+    lock = _engine().check_override_lockdown(db, athlete_id="ath-a")
+    assert lock["locked"] is False
+    assert db.calls[0]["athlete_id"] == "ath-a"
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_override_lockdown_new_athlete_gets_cold_start_lock_not_owner_ratio():
+    """A new athlete (no outcomes) gets the cold-start default-deny, not the owner's 0.0."""
+    db = _RatioDb({"owner": 0.0})
+    lock = _engine().check_override_lockdown(db, athlete_id="ath-new")
+    assert lock["locked"] is True
+    assert lock["reason"] == "cold_start_no_history"
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("athlete_id", [None, "", "   ", 42])
+def test_override_lockdown_without_athlete_id_fails_closed(athlete_id):
+    """No athlete_id → locked (fail-closed), and the owner's ratio is never read."""
+    db = _RatioDb({"owner": 0.0})
+    lock = _engine().check_override_lockdown(db, athlete_id=athlete_id)
+    assert lock["locked"] is True
+    assert lock["error_code"] == "ATHLETE_ID_MISSING"
+    assert db.calls == []
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_override_lockdown_nan_ratio_fails_closed():
+    """A NaN ratio cannot be compared (nan > x is False): it must lock, not pass."""
+    lock = _engine().check_override_lockdown(_RatioDb({"ath-a": float("nan")}), athlete_id="ath-a")
+    assert lock["locked"] is True
+    assert lock["error_code"] == "COMPUTATION_ERROR"
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_apply_constraints_override_lockdown_uses_context_athlete_id():
+    """apply_constraints passes the context's athlete_id; no athlete_id → quality session locked."""
+    db = _RatioDb({"owner": 0.9, "ath-a": 0.0})
+    clean = _engine().apply_constraints(_base_session(), _base_context(db=db, athlete_id="ath-a"))
+    assert clean["session_type"] == "INTERVALS"
+    assert "OVERRIDE_LOCKDOWN" not in clean["governance_locks_applied"]
+    assert db.calls[-1]["athlete_id"] == "ath-a"
+
+    no_athlete = _engine().apply_constraints(_base_session(), _base_context(db=_RatioDb({"owner": 0.0})))
+    assert no_athlete["session_type"] == "EASY"
+    assert "OVERRIDE_LOCKDOWN" in no_athlete["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_governance_report_override_lockdown_is_per_athlete():
+    """The governance report reads the same athlete's ratio; without one it reports locked."""
+    db = _RatioDb({"owner": 0.9, "ath-a": 0.0})
+    assert _engine().get_governance_report(db=db, athlete_id="ath-a")["override_lockdown"]["locked"] is False
+    assert _engine().get_governance_report(db=db)["override_lockdown"]["locked"] is True
+
+
+@pytest.mark.integration
+@pytest.mark.governance
+def test_two_athletes_on_one_db_get_their_own_override_lock_state(tmp_path):
+    """End to end on a real DB: owner overrides 12 of 14 days, A never → only the owner locks."""
+    from datetime import UTC, datetime, timedelta
+
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
+    today = datetime.now(UTC).date()
+    for i in range(12):
+        day = (today - timedelta(days=i)).isoformat()
+        for athlete in ("owner", "ath-a"):
+            db.save_governance_decision({
+                "athlete_profile_id": athlete, "date": day,
+                "session_planned": "INTERVALS", "session_post_governance": "INTERVALS",
+            })
+        db.log_override(day, "EASY", "INTERVALS", "felt good", athlete_id="owner")
+    assert db.get_override_ratio(athlete_id="owner", days=14) > GovernanceEngine.OVERRIDE_LOCKDOWN_THRESHOLD
+    assert db.get_override_ratio(athlete_id="ath-a", days=14) == 0.0
+
+    def _morning(athlete_id: str) -> dict:
+        return _engine().apply_constraints(_base_session(), _base_context(db=db, athlete_id=athlete_id))
+
+    owner, ath_a = _morning("owner"), _morning("ath-a")
+    assert owner["session_type"] == "EASY"
+    assert "OVERRIDE_LOCKDOWN" in owner["governance_locks_applied"]
+    assert ath_a["session_type"] == "INTERVALS"
+    assert "OVERRIDE_LOCKDOWN" not in ath_a["governance_locks_applied"]
+    # A brand-new athlete on the same DB gets the cold-start default-deny.
+    assert "OVERRIDE_LOCKDOWN" in _morning("ath-new")["governance_locks_applied"]
+    db.close()
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_daily_coach_context_carries_athlete_id():
+    """DailyCoach's context contract carries the athlete_id (no owner default)."""
+    from titan.orchestration.contracts import DailyCoachContextContract
+
+    kwargs = {k: _base_context()[k] for k in (
+        "afi_constraints", "readiness_score", "glycogen_debt", "fatigue_level", "acwr",
+        "days_since_last_vo2", "fueling_confirmed", "planned_duration_min", "today_hrv",
+        "baseline_hrv", "hrv_std_dev", "today_rhr", "baseline_rhr", "sleep_score",
+        "subjective_fatigue_score", "tsb_value", "injury_flag", "priority_vector", "lock_thresholds",
+    )}
+    payload = DailyCoachContextContract(
+        db=None, cs_tracker=None, intensity_gate_result={}, athlete_id="ath-a", **kwargs,
+    ).to_payload()
+    assert payload["athlete_id"] == "ath-a"
+    assert "athlete_id" not in DailyCoachContextContract(
+        db=None, cs_tracker=None, intensity_gate_result={}, **kwargs,
+    ).to_payload()
+
+
+# SG-03 — the parasympathetic guard never raises intensity.
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("hard_stop", [
+    pytest.param({"injury_flag": True}, id="H1-injury"),
+    pytest.param({"today_rhr": 50 + HARD_STOP_RHR_DELTA, "baseline_rhr": 50.0}, id="H3-rhr"),
+])
+def test_parasympathetic_guard_boundary_on_keeps_hard_stop_rest(hard_stop):
+    """Boundary-ON: guard + hard stop → REST stays REST (zone 1), not EASY/zone 2."""
+    ctx = _base_context(afi_constraints=_PARA_GUARD, **hard_stop)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["session_type"] == "REST"
+    assert result["max_zone"] == 1
+    assert "PARASYMPATHETIC_GUARD" in result["governance_locks_applied"]
+    assert "HARD_STOP_SAFETY_GATES" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_parasympathetic_guard_boundary_off_without_hard_stop_gives_easy():
+    """Boundary-OFF: guard without a hard stop still turns TEMPO into EASY, zone ≤ 2."""
+    ctx = _base_context(afi_constraints=_PARA_GUARD)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["session_type"] == "EASY"
+    assert result["max_zone"] == 2
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_parasympathetic_guard_never_raises_a_lower_zone():
+    """A session already capped at zone 1 keeps zone 1 under the guard."""
+    ctx = _base_context(
+        afi_constraints=_PARA_GUARD,
+        intensity_gate_result={"color": "RED", "max_zone": 1, "volume_modifier": 0.7},
+    )
+    result = _engine().apply_constraints(_base_session(session_type="EASY"), ctx)
+    assert result["max_zone"] == 1
+
+
+# SG-05 — the exception fail-closed path keeps REST and the locks applied so far.
+
+class _BrokenColor:
+    def __str__(self) -> str:
+        raise RuntimeError("boom")
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_exception_fail_closed_boundary_on_keeps_rest_and_prior_locks():
+    """Boundary-ON: injury + afi_constraints=None (raises late) → REST with H1 lock kept."""
+    ctx = _base_context(injury_flag=True, afi_constraints=None)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["session_type"] == "REST"
+    assert result["max_zone"] == 1
+    assert "HARD_STOP_SAFETY_GATES" in result["governance_locks_applied"]
+    assert "GOVERNANCE_EXCEPTION_FAIL_CLOSED" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("hard_stop", [
+    pytest.param({"injury_flag": True}, id="H1-injury"),
+    pytest.param({"today_hrv": 40.0 - HARD_STOP_HRV_DELTA, "baseline_hrv": 40.0}, id="H2-hrv"),
+])
+def test_exception_before_hard_stops_fails_to_rest_when_a_hard_stop_input_is_present(hard_stop):
+    """An exception raised before the hard stops ran still gives REST when H1/H2 fire on the inputs."""
+    ctx = _base_context(intensity_gate_result={"color": _BrokenColor()}, **hard_stop)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["governance_exception_fail_closed"] is True
+    assert result["session_type"] == "REST"
+    assert result["max_zone"] == 1
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_exception_fail_closed_boundary_off_without_hard_stop_gives_easy_zone2():
+    """Boundary-OFF: an exception with no hard-stop input → EASY, zone ≤ 2 (unchanged rule)."""
+    ctx = _base_context(intensity_gate_result={"color": _BrokenColor()})
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["session_type"] == "EASY"
+    assert result["max_zone"] == 2
+    assert result["governance_locks_applied"] == ["GOVERNANCE_EXCEPTION_FAIL_CLOSED"]
+
+
+# SG-07 + H2 baseline — a non-finite or baseline-less input gets the *_MISSING ceiling.
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize(("overrides", "lock"), [
+    pytest.param({"today_hrv": float("nan")}, "DATA_MISSING_CONSERVATIVE_H2", id="today-hrv-nan"),
+    pytest.param({"today_hrv": 30.0, "baseline_hrv": float("nan")}, "DATA_MISSING_CONSERVATIVE_H2",
+                 id="baseline-hrv-nan"),
+    pytest.param({"today_hrv": 30.0, "baseline_hrv": float("inf")}, "DATA_MISSING_CONSERVATIVE_H2",
+                 id="baseline-hrv-inf"),
+    pytest.param({"today_rhr": float("nan")}, "DATA_MISSING_CONSERVATIVE_H3", id="today-rhr-nan"),
+    pytest.param({"baseline_rhr": float("nan")}, "DATA_MISSING_CONSERVATIVE_H3", id="baseline-rhr-nan"),
+])
+def test_nan_hrv_rhr_boundary_on_applies_easy_ceiling(overrides, lock):
+    """Boundary-ON: NaN HRV/RHR is missing data → EASY ceiling + lock code (was TEMPO, no locks)."""
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO", max_zone=4), _base_context(**overrides))
+    assert result["session_type"] == "EASY"
+    assert lock in result["governance_locks_applied"]
+    assert "STARTUP_DATA_CONFIDENCE_CEILING" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("fatigue", [float("nan"), float("inf"), "not-a-number"])
+def test_nan_fatigue_boundary_on_applies_h5_missing_ceiling(fatigue):
+    """Boundary-ON: NaN/non-numeric fatigue is missing fatigue → H5_MISSING MODERATE ceiling (zone ≤ 3)."""
+    result = _engine().apply_constraints(
+        _base_session(session_type="TEMPO", max_zone=4), _base_context(subjective_fatigue_score=fatigue),
+    )
+    assert result["max_zone"] <= 3
+    assert "DATA_MISSING_CONSERVATIVE_H5" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_finite_inputs_boundary_off_apply_no_missing_ceiling():
+    """Boundary-OFF: finite HRV/RHR/fatigue with a positive baseline → no *_MISSING lock."""
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO", max_zone=4), _base_context())
+    assert result["session_type"] == "TEMPO"
+    assert not [c for c in result["governance_locks_applied"] if c.startswith("DATA_MISSING_CONSERVATIVE")]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("baseline_hrv", [0.0, -5.0])
+def test_h2_non_positive_baseline_boundary_on_is_missing_not_disabled(baseline_hrv):
+    """Boundary-ON: a baseline ≤ 0 is no baseline → H2_MISSING EASY ceiling (it never disables H2)."""
+    ctx = _base_context(today_hrv=30.0, baseline_hrv=baseline_hrv, hrv_std_dev=0.0)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert result["session_type"] == "EASY"
+    assert "DATA_MISSING_CONSERVATIVE_H2" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_h2_smallest_positive_baseline_boundary_off_is_evaluated():
+    """Boundary-OFF: a positive baseline is a baseline; H2 is evaluated, not marked missing."""
+    ctx = _base_context(today_hrv=1.0, baseline_hrv=1.0)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO"), ctx)
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in result["governance_locks_applied"]
+    assert result["session_type"] == "TEMPO"
+
+
+# SG-09 — H4 reduces the load of every session that is not REST.
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("session_type", ["LONG_RUN", "PROGRESSIVE", "EASY", "TEMPO"])
+def test_h4_boundary_on_caps_volume_and_duration_for_every_session(session_type):
+    """Boundary-ON: TSB at the floor → EASY, 70% volume, at most 60' (LONG_RUN was untouched)."""
+    ctx = _base_context(tsb_value=HARD_STOP_TSB_FLOOR)
+    result = _engine().apply_constraints(
+        _base_session(session_type=session_type, duration_min=150, max_zone=3), ctx,
+    )
+    assert result["session_type"] == "EASY"
+    assert result["max_zone"] <= 2
+    assert result["volume_modifier"] == pytest.approx(0.7)
+    assert result["max_duration_min"] == 60
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_h4_boundary_off_leaves_long_run_unchanged():
+    """Boundary-OFF: TSB one unit above the floor → LONG_RUN keeps its type and has no cap."""
+    ctx = _base_context(tsb_value=HARD_STOP_TSB_FLOOR + 1)
+    result = _engine().apply_constraints(
+        _base_session(session_type="LONG_RUN", duration_min=150, max_zone=3), ctx,
+    )
+    assert result["session_type"] == "LONG_RUN"
+    assert "max_duration_min" not in result
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_h4_rest_stays_rest_without_volume_cap():
+    """H4 on a REST day (H1 injury) keeps REST and adds no volume cap."""
+    ctx = _base_context(tsb_value=HARD_STOP_TSB_FLOOR - 20, injury_flag=True)
+    result = _engine().apply_constraints(_base_session(session_type="LONG_RUN"), ctx)
+    assert result["session_type"] == "REST"
+    assert "max_duration_min" not in result
+
+
+# SG-10 — intensity-gate inputs take the conservative value.
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("bad_modifier", [float("nan"), float("inf"), "x"])
+def test_intensity_gate_nan_volume_modifier_boundary_on_takes_conservative_value(bad_modifier):
+    """Boundary-ON: RED with a NaN/non-numeric modifier → 0.7, never 1.0."""
+    ctx = _base_context(intensity_gate_result={"color": "RED", "max_zone": 2, "volume_modifier": bad_modifier})
+    result = _engine().apply_constraints(_base_session(session_type="EASY"), ctx)
+    assert result["volume_modifier"] == pytest.approx(0.7)
+    assert "GOVERNANCE_EXCEPTION_FAIL_CLOSED" not in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize(("gate_zone", "expected"), [
+    pytest.param(0, 1, id="zero-is-zone-1-not-5"),
+    pytest.param(-3, 1, id="negative-is-zone-1"),
+    pytest.param(float("nan"), 2, id="nan-is-easy-ceiling"),
+    pytest.param("high", 2, id="non-numeric-is-easy-ceiling"),
+])
+def test_intensity_gate_max_zone_boundary_on_out_of_range_is_conservative(gate_zone, expected):
+    """Boundary-ON: max_zone 0 → 1 (was 5); NaN/non-numeric → 2."""
+    ctx = _base_context(intensity_gate_result={"color": "RED", "max_zone": gate_zone, "volume_modifier": 0.7})
+    result = _engine().apply_constraints(_base_session(session_type="EASY"), ctx)
+    assert result["max_zone"] == expected
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize(("modifier", "expected"), [(1.5, 1.0), (-0.2, 0.0), (0.0, 0.0), (0.8, 0.8)])
+def test_intensity_gate_volume_modifier_boundary_off_in_range_kept_out_of_range_clamped(modifier, expected):
+    """Boundary-OFF: an in-range modifier is kept as is; out-of-range is clamped to [0, 1]."""
+    ctx = _base_context(intensity_gate_result={"color": "YELLOW", "max_zone": 3, "volume_modifier": modifier})
+    result = _engine().apply_constraints(_base_session(session_type="EASY"), ctx)
+    assert result["volume_modifier"] == pytest.approx(expected)
+    assert result["max_zone"] == 3

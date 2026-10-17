@@ -20,12 +20,15 @@ import pytest
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
-# sha256 of json.dumps(golden["days"], sort_keys=True, ensure_ascii=False) at 39aee23.
+# sha256 of json.dumps(golden["days"], sort_keys=True, ensure_ascii=False).
+# Baseline 39aee23; re-fingerprinted by ADR-0068 (D-106, owner decision 2026-10-17
+# «Διόρθωσε τα»): the owner's mornings became stricter on purpose (H2_MISSING with
+# no HRV baseline, ADR-0065 cap on H4 days); every changed morning is listed in D-106.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "ff836b039030fd3326f6fc2cd5a9e1805608a979bf641300cb51882b570f32f2",
-    "persistence_failure": "a0d145b19b2459aef7076f3a4167714ef32f8a92d35aed84bda4f1e221157fa3",
-    "three_weeks_weekly_plan": "fca7ae0741eaf3cab000474cb4c243238e8c019763b2742ba8596c390cb3891c",
-    "two_weeks_worker": "61b9198b661baff388cdded3260cd17e0aae49452c9038691c59c4f25e1a68a5",
+    "garmin_outage": "568cadad10b3132b853bb9ebea357315bf1a7db37251e9f509e1d32beb22f9e7",
+    "persistence_failure": "d4e0b032000dad10c55b7617a5bd9541aac20ae1b07f20350822237417306a61",
+    "three_weeks_weekly_plan": "081563e5476adb19bdf6b474bcdad9ba23ddbd2cc3f4b915d795d179f4efb58c",
+    "two_weeks_worker": "ae8fd07f7e497eab7c8a2ce23a3d74cf9f001ce1a277bee9a70c5dc147ff9f0e",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"
