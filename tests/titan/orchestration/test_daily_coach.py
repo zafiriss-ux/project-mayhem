@@ -999,6 +999,37 @@ def test_run_morning_routine_uses_degraded_mode_when_baseline_missing(monkeypatc
     assert any(event["action"] == "baseline_rhr_degraded_mode" for event in events)
 
 
+def _alert_spy(monkeypatch) -> list[dict]:
+    alerts: list[dict] = []
+    monkeypatch.setattr(daily_coach, "alert_operator", lambda telegram, **kw: alerts.append(kw))
+    return alerts
+
+
+@pytest.mark.unit
+def test_no_rhr_before_today_is_degraded_mode_without_a_database_alert(monkeypatch):
+    """A first morning has no RHR before today (D-105): no "check database health" alert."""
+    alerts = _alert_spy(monkeypatch)
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.db.get_baseline_rhr = lambda days=7, athlete_id="owner": None
+
+    assert coach.run_morning_routine() is True
+    assert not [a for a in alerts if "RHR Baseline Unavailable" in a["title"]]
+
+
+@pytest.mark.unit
+def test_a_failed_rhr_baseline_read_still_alerts_the_operator(monkeypatch):
+    alerts = _alert_spy(monkeypatch)
+    coach = MinimalCoachFactory.build(telegram_success=True)
+
+    def _broken(days=7, athlete_id="owner"):
+        raise sqlite3.OperationalError("database is locked")
+
+    coach.db.get_baseline_rhr = _broken
+
+    assert coach.run_morning_routine() is True
+    assert [a for a in alerts if "RHR Baseline Unavailable" in a["title"]]
+
+
 @pytest.mark.unit
 def test_run_morning_routine_h3_comparison_uses_valid_baseline(monkeypatch):
     coach = MinimalCoachFactory.build(telegram_success=True)

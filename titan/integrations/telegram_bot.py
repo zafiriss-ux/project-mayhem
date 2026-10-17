@@ -18,13 +18,16 @@ from typing import Literal
 from uuid import uuid4
 
 from titan.config.settings import get_settings
-from titan.core.athlete import CONSENT_TEXT_VERSION
+from titan.core.athlete import CONSENT_TEXT_VERSION, canonical_chat_id
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.critical_speed import parse_time_trial, parse_trial_date
 from titan.science.override_signal import OverrideSignal, record_override_signal
-from titan.utils.secrets import SecretStr
+from titan.utils.secrets import SecretStr, install_log_redaction, redact_secrets, register_secret
 
 _log = logging.getLogger(__name__)
+# The bot token is in every Telegram API URL; no log line of this module, telebot or
+# urllib3 may carry it, at any level (D-108, TK-01).
+install_log_redaction()
 
 _AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
 
@@ -160,9 +163,11 @@ def _telegram_event(
 ) -> None:
     """Emit a structured Telegram delivery event as a single JSON log line."""
     _log.info(
-        json.dumps(
-            structured_event_payload("telegram", action, severity=severity, **fields),
-            default=str,
+        redact_secrets(
+            json.dumps(
+                structured_event_payload("telegram", action, severity=severity, **fields),
+                default=str,
+            )
         )
     )
 
@@ -196,14 +201,19 @@ class TitanTelegramBot:
             # (the owner's polling bot routes athlete chats, ADR-0067 D10.1).
             if not chat_id:
                 raise ValueError("an athlete other than the owner needs their own Telegram chat")
-            raw_id = chat_id
+            # Only the canonical form is sent to (D-107): "01001" or "+1" would reach
+            # int() as another chat than the one stored and checked.
+            raw_id = canonical_chat_id(chat_id)
+            if raw_id is None or raw_id != str(chat_id):
+                raise ValueError("an athlete's Telegram chat id is not in canonical form")
             self._trusted_chat_id: str | None = None
         else:
             raw_id = chat_id or get_settings().TELEGRAM_CHAT_ID
-            # Trusted inbound chat ID for per-handler authorisation.
-            # None = unconfigured (deny all, INV-16 / RBP-02); str = strict match.
+            # Trusted inbound chat ID for per-handler authorisation, in the canonical form
+            # Telegram's own int id has (D-107). None = unconfigured or not a chat id
+            # (deny all, INV-16 / RBP-02); str = strict match.
             _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
-            self._trusted_chat_id = str(_raw_trusted) if _raw_trusted else None
+            self._trusted_chat_id = canonical_chat_id(_raw_trusted, allow_negative=True) if _raw_trusted else None
         try:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):
@@ -227,6 +237,7 @@ class TitanTelegramBot:
         self._pending_override_prompts: dict[int, dict[str, str]] = {}
 
         bot_token_value = self.bot_token.get_secret_value()
+        register_secret(bot_token_value)
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
@@ -238,17 +249,17 @@ class TitanTelegramBot:
                     failure_class=CALLBACK_ERROR,
                     subsystem="init",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
                 _log.error(
                     "startup_failure",
                     extra={
                         "component": "telegram_bot_init",
                         "error_class": e.__class__.__name__,
-                        "detail": str(e),
+                        "detail": redact_secrets(e),
                     },
                 )
-                _log.warning("telegram_init_warning", extra={"detail": str(e)})
+                _log.warning("telegram_init_warning", extra={"detail": redact_secrets(e)})
 
     # ------------------------------------------------------------------ #
     # AUTHORISATION
@@ -777,7 +788,7 @@ class TitanTelegramBot:
                 failure_class=SEND_FAIL,
                 subsystem="send_governance_decision",
                 error_class=e.__class__.__name__,
-                error_message=str(e),
+                error_message=redact_secrets(e),
             )
             return False
         return True
@@ -892,21 +903,23 @@ class TitanTelegramBot:
                     "slo_alert",
                     slo_key="telegram_delivery_failed",
                     cause="INTEGRATION_DELIVERY",
-                    error=str(e),
+                    error=redact_secrets(e),
                 )
                 _telegram_event(
                     "failure",
                     failure_class=SEND_FAIL,
                     subsystem="send_message",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
-                _log.error("telegram_send_error", extra={"detail": str(e)})
+                _log.error("telegram_send_error", extra={"detail": redact_secrets(e)})
                 return False
             else:
                 return True
         else:
-            # Fallback: log only
+            # No bot (no token, or telebot missing): nothing reached anyone, so this is not
+            # a delivery (D-107). The worker then retries the day and, after the last
+            # attempt, leaves it with an alert; the console keeps working and warns here.
             _telegram_event(
                 "failure",
                 failure_class=SEND_FAIL,
@@ -915,7 +928,7 @@ class TitanTelegramBot:
                 bot_available=bool(self.bot),
                 telebot_available=TELEBOT_AVAILABLE,
             )
-            _log.info(
+            _log.warning(
                 "telegram_fallback_delivery_preview",
                 extra={
                     "message_length": len(text),
@@ -923,7 +936,7 @@ class TitanTelegramBot:
                     "reason": "fallback_console_only",
                 },
             )
-            return True
+            return False
 
     def send_weekly_plan(self, plan: dict) -> bool:
         lines = [
@@ -1138,7 +1151,7 @@ class TitanTelegramBot:
                     "webhook_removal_failed",
                     subsystem="start_bot",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
             self._poll_thread = threading.Thread(
                 target=self._poll_worker, daemon=True, name="TelegramPoller"
@@ -1168,7 +1181,7 @@ class TitanTelegramBot:
                     failure_class=POLL_FAIL,
                     subsystem="stop_bot",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
         if self._sched_thread:
             self._sched_thread.join(timeout=5)
@@ -1213,11 +1226,11 @@ class TitanTelegramBot:
                     failure_class=POLL_FAIL,
                     subsystem="poll_worker",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                     is_conflict=is_conflict,
                     backoff_s=backoff_s,
                 )
-                _log.warning("telegram_polling_retry", extra={"detail": str(e), "backoff_s": backoff_s})
+                _log.warning("telegram_polling_retry", extra={"detail": redact_secrets(e), "backoff_s": backoff_s})
                 self._stop_event.wait(timeout=backoff_s)
                 backoff_s = min(backoff_s * 2, max_backoff_s)
 
@@ -1253,13 +1266,45 @@ class TitanTelegramBot:
                         subsystem="scheduler_worker",
                         task_name=task["name"],
                         error_class=e.__class__.__name__,
-                        error_message=str(e),
+                        error_message=redact_secrets(e),
                     )
                     _log.error(
                         "telegram_scheduled_task_error",
-                        extra={"task_name": task["name"], "detail": str(e)},
+                        extra={"task_name": task["name"], "detail": redact_secrets(e)},
                     )
             # Sleep until next full minute
             sleep_seconds = max(1, 60 - now.second)
             expected_wakeup = now_ts + sleep_seconds
             self._stop_event.wait(timeout=sleep_seconds)
+
+
+def alert_operator(
+    telegram: TitanTelegramBot,
+    *,
+    title: str,
+    message: str,
+    athlete_text: str,
+    level: str = "warning",
+    event_type: str | None = None,
+    lock_code: str | None = None,
+) -> None:
+    """Send an operator alert about the coached athlete to the right people (D-107).
+
+    The owner's own bot: exactly as before, ``send_structured_alert`` when ``event_type``
+    is given, else ``send_alert``. Another athlete's bot: the athlete gets ``athlete_text``,
+    short and with no operator instructions, and the owner's chat (TELEGRAM_CHAT_ID) gets
+    the operator alert with the athlete id. Neither carries health data.
+    """
+    athlete_id = getattr(telegram, "athlete_id", _OWNER_ATHLETE_ID)
+    if not isinstance(athlete_id, str) or athlete_id == _OWNER_ATHLETE_ID:
+        if event_type is not None:
+            telegram.send_structured_alert(event_type=event_type, lock_code=lock_code or event_type, message=message)
+        else:
+            telegram.send_alert(title=title, message=message, level=level)
+        return
+    try:
+        telegram.send_message(athlete_text, parse_mode="")
+    finally:
+        TitanTelegramBot(db=getattr(telegram, "db", None)).send_message(
+            f"{title} — athlete {athlete_id} ({level})\n\n{message}", parse_mode="",
+        )

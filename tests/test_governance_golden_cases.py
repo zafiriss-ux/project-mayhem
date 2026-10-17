@@ -87,6 +87,7 @@ def _make(
         "days_since_last_vo2": 3,
         "fueling_confirmed": True,
         "db": _NeutralDB(),
+        "athlete_id": "owner",  # ADR-0068: the lockdown reads this athlete's ratio
         "cs_tracker": _FullCSTracker(),
         "afi_constraints": {},
         "intensity_gate_result": None,

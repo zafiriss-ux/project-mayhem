@@ -107,7 +107,10 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'baseline, whichever is smaller. An absolute 15 ms is 43% of a 35 ms '
             'baseline, so low-HRV athletes could lose 40%+ without a hard stop. '
             '30% equals 15 ms at a 50 ms baseline, so H2 only becomes stricter '
-            'below that baseline and is unchanged above it.'
+            'below that baseline and is unchanged above it. '
+            'Reviewed 2026-10-17 (ADR-0068): a baseline of 0 or less, None or non-finite, and a '
+            'non-finite today HRV, are missing HRV (H2_MISSING EASY ceiling); '
+            'with a 0 baseline the threshold was 0 ms and H2 could never fire.'
         ),
         policy_note=(
             'HEURISTIC: the per-athlete principle is supported; the 30% value is a '
@@ -161,7 +164,9 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'cited across overtraining literature as a clinical indicator requiring '
             'load reduction. 8 bpm balances sensitivity against measurement noise: '
             'wearable RHR has 3–5 bpm inter-day variability depending on '
-            'measurement conditions, so 8 bpm represents a clear signal above noise.'
+            'measurement conditions, so 8 bpm represents a clear signal above noise. '
+            'Reviewed 2026-10-17 (ADR-0068): a non-finite RHR is missing RHR (H3_MISSING EASY '
+            'ceiling), no longer a silent pass.'
         ),
         policy_note=(
             'MODERATE: the physiological basis is well-supported. The 8 bpm '
@@ -191,7 +196,10 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'athletes and is associated with high injury and illness risk in coach '
             'practice. The -50 floor as a quality-session hard stop is a policy '
             'decision derived from coaching convention, not a directly measured '
-            'injury threshold.'
+            'injury threshold. '
+            'Reviewed 2026-10-17 (ADR-0068): at the floor every session above EASY (LONG_RUN, '
+            'PROGRESSIVE included) becomes EASY and every non-REST day keeps 70% '
+            'of its volume and at most 60 minutes (ADR-0065 cap).'
         ),
         policy_note=(
             'HEURISTIC. No RCT establishes -50 as a specific injury threshold. '
@@ -224,7 +232,9 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
             'perceives their systemic state as severely compromised. '
             'Foster\'s session-RPE work validates the scale\'s sensitivity to '
             'training load; the 8/10 threshold for a fatigue gate is conservative '
-            'enough to avoid suppressing training on moderately hard days.'
+            'enough to avoid suppressing training on moderately hard days. '
+            'Reviewed 2026-10-17 (ADR-0068): a non-finite or non-numeric score is a missing score '
+            '(H5_MISSING ceiling), as an absent one.'
         ),
         policy_note=(
             'MODERATE: the RPE scale is validated; the 8/10 threshold for a '
@@ -846,7 +856,14 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         evidence_level='HEURISTIC',
         population='MIXED',
         source='Conservative-fail default per ADR-0051; applied when intensity gate fires but volume_modifier key is absent from gate payload.',
-        rationale='A 30% volume reduction is the conservative fallback when the gate payload is incomplete. Absent modifier on a flagged gate must not silently pass full volume (optimistic default eliminated per ADR-0051/INV-05).',
+        rationale=(
+            'A 30% volume reduction is the conservative fallback when the gate payload is incomplete. '
+            'Absent modifier on a flagged gate must not silently pass full volume (optimistic default '
+            'eliminated per ADR-0051/INV-05). '
+            'Reviewed 2026-10-17 (ADR-0068): a non-finite or non-numeric modifier also takes 0.7 (it was 1.0), '
+            'a modifier outside 0..1 is clamped, and an out-of-range or bad max_zone is clamped to 1..5 '
+            '(0 was read as 5).'
+        ),
         policy_note='HEURISTIC policy constant; not derived from population data. Recalibrate via OutcomeTracker if conservative ceiling proves too restrictive.',
     ),
 
@@ -859,7 +876,9 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         rationale=(
             'A session downgraded by 2of4, a hard stop (H4 mandatory load reduction), VO2 or '
             'fueling kept its planned volume (e.g. EASY 168 min after a RACE). It now keeps 70% '
-            'of the volume and at most 60 minutes, so a downgraded day stays under an hour.'
+            'of the volume and at most 60 minutes, so a downgraded day stays under an hour. '
+            'Reviewed 2026-10-17 (ADR-0068): every non-REST day at the H4 floor gets the cap, also when its '
+            'type did not change (EASY stays EASY but is shortened).'
         ),
         policy_note='HEURISTIC policy cap; recalibrate via OutcomeTracker with downgraded-day outcomes.',
     ),
@@ -1019,7 +1038,13 @@ EVIDENCE_REGISTRY: dict[str, ThresholdEvidence] = {
         evidence_level='HEURISTIC',
         population='MIXED',
         source='Internal GovernanceEngine policy threshold (T5-30 Category A extraction).',
-        rationale='Override ratio above 80% over 14 days indicates plan-integrity breakdown and triggers conservative quality-session lockdown.',
+        rationale=(
+            'Override ratio above 80% over 14 days indicates plan-integrity breakdown and triggers '
+            'conservative quality-session lockdown. '
+            'Reviewed 2026-10-17 (ADR-0068): the ratio is the athlete\'s own (athlete_id from the governance '
+            'context); with no athlete_id, or a non-finite ratio, the lockdown fails closed instead '
+            'of reading the owner\'s ratio.'
+        ),
         policy_note='HEURISTIC governance control threshold pending outcome-linked override efficacy calibration.',
     ),
 

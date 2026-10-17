@@ -56,6 +56,7 @@ from titan.config.thresholds import (
 )
 from titan.core.database import DatabaseManager
 from titan.integrations.biometric_router import BiometricRouter, ManualEntryAdapter
+from titan.integrations.telegram_bot import alert_operator
 from titan.orchestration.coaching_pipeline import AthleteCoachingContext, coaching_pipeline
 from titan.orchestration.contracts import (
     DailyCoachContext,
@@ -99,6 +100,11 @@ DELIVERY_ERROR = "DELIVERY_ERROR"
 
 
 _DEGRADED_ALERT_THRESHOLD_HOURS = 24
+# What an athlete other than the owner reads when an operator alert is about them (D-107).
+_ATHLETE_TEXT_CONSERVATIVE = (
+    "⚠️ Something went wrong on our side today, so today's session is a conservative EASY one. "
+    "Zaf has been told."
+)
 
 
 class DegradedModeTracker:
@@ -868,7 +874,8 @@ class DailyCoach:
                 intensity_ceiling="EASY",
             )
             try:
-                self.telegram.send_alert(
+                alert_operator(
+                    self.telegram,
                     title="Persistence failure",
                     message=(
                         "Today's session data was not written to the "
@@ -876,6 +883,7 @@ class DailyCoach:
                         "Data will be re-synced on next cycle."
                     ),
                     level="warning",
+                    athlete_text=_ATHLETE_TEXT_CONSERVATIVE,
                 )
             except Exception as alert_exc:
                 _daily_coach_event(
@@ -957,12 +965,19 @@ class DailyCoach:
                     last_error_class=garmin_sync_state.get("last_error_class"),
                 )
                 try:
-                    self.telegram.send_structured_alert(
+                    alert_operator(
+                        self.telegram,
+                        title="Garmin data stale",
                         event_type="garmin_data_stale",
                         lock_code="GARMIN_DATA_STALE",
                         message=(
                             "Garmin data is stale (>26h since last successful sync). "
                             "Training prescription is conservative (EASY maintenance)."
+                        ),
+                        level="critical",
+                        athlete_text=(
+                            "⚠️ Your Garmin data has not synced for over a day, so today's "
+                            "session is a conservative EASY one. Zaf has been told."
                         ),
                     )
                 except Exception as alert_exc:
@@ -1061,6 +1076,7 @@ class DailyCoach:
 
         # ── Pre-pipeline: baseline RHR (DB read; alert fires here if unavailable) ──
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
+        self._baseline_rhr_read_failed = False
         baseline_rhr = self._get_baseline_rhr(days=7)
         baseline_rhr_for_comparison = baseline_rhr
         if baseline_rhr is None:
@@ -1070,8 +1086,13 @@ class DailyCoach:
                 today_rhr=today_rhr or 50,
                 fallback_baseline_rhr=baseline_rhr_for_comparison,
             )
+        # The operator alert is for a read that failed. No RHR before today (a new
+        # athlete's first morning, D-105) is not a database fault: H3 still runs in the
+        # same degraded mode, but nobody is told to check the database.
+        if baseline_rhr is None and getattr(self, "_baseline_rhr_read_failed", True):
             try:
-                self.telegram.send_alert(
+                alert_operator(
+                    self.telegram,
                     title="⚠️ Data Integrity: RHR Baseline Unavailable",
                     message=(
                         "Baseline RHR could not be read from DB.\n"
@@ -1080,6 +1101,10 @@ class DailyCoach:
                         "Check database health."
                     ),
                     level="warning",
+                    athlete_text=(
+                        "⚠️ Part of your history could not be read today, so today's readiness "
+                        "check runs in a reduced mode. Zaf has been told."
+                    ),
                 )
             except Exception as _alert_exc:
                 _daily_coach_event(
@@ -1709,7 +1734,8 @@ class DailyCoach:
             session_type = today_session.get('session_type', 'EASY'),
         )
         governance_report = self.governance.get_governance_report(
-            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=inp.afi_constraints
+            db=self.db, cs_tracker=self.cs_tracker, afi_constraints=inp.afi_constraints,
+            athlete_id=getattr(self, "athlete_id", None),  # ADR-0068
         )
 
         decision_rationale = today_session.get('decision_rationale', {})
@@ -1962,6 +1988,7 @@ class DailyCoach:
             lock_thresholds=lock_thresholds,
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
+            athlete_id=getattr(self, "athlete_id", None),  # ADR-0068: no owner default
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low
@@ -1995,6 +2022,7 @@ class DailyCoach:
         try:
             return self.db.get_baseline_rhr(days=days, athlete_id=getattr(self, "athlete_id", "owner"))
         except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
+            self._baseline_rhr_read_failed = True
             _daily_coach_event(
                 "baseline_rhr_unavailable",
                 error_class=type(exc).__name__,

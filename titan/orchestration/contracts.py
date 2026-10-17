@@ -115,6 +115,8 @@ class DailyCoachContext(TypedDict):
     garmin_data_stale: NotRequired[bool]
     hrv_stress_context: NotRequired[str]
     data_trust: NotRequired[Mapping[str, object]]
+    # ADR-0068: whose override ratio the lockdown reads; absent → the lockdown fails closed.
+    athlete_id: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -144,6 +146,7 @@ class DailyCoachContextContract:
     garmin_data_stale: bool | None = None
     hrv_stress_context: str | None = None
     data_trust: Mapping[str, object] | None = None
+    athlete_id: str | None = None
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -176,6 +179,8 @@ class DailyCoachContextContract:
             payload["hrv_stress_context"] = self.hrv_stress_context
         if self.data_trust is not None:
             payload["data_trust"] = self.data_trust
+        if self.athlete_id is not None:
+            payload["athlete_id"] = self.athlete_id
         return payload
 
 

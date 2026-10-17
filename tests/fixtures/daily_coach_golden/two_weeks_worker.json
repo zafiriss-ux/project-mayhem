@@ -511,7 +511,6 @@
    "returned": true,
    "telegram": [
     "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-03  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 30 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: N/A\n• TSB: INSUFFICIENT DATA\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (3.9 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (4.7 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (3.9 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (5.8 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (3.1 km)\n  └ Recovery run\n*Saturday* – LONG_RUN (8.6 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯",
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },

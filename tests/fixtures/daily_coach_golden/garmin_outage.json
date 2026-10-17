@@ -480,7 +480,6 @@
    ],
    "returned": true,
    "telegram": [
-    "⚠️ *⚠️ Data Integrity: RHR Baseline Unavailable*\n\nBaseline RHR could not be read from DB.\nH3 gate is operating in degraded mode — using today's RHR as its own baseline (delta = 0).\nCheck database health.",
     "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },

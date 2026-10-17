@@ -1003,32 +1003,32 @@ class TestGovernanceEngine:
             tracker.update(d, 3.5, 200.0)
 
         class FakeDB:
-            def get_override_ratio(self, days): return 0.0
+            def get_override_ratio(self, *, athlete_id, days): return 0.0
 
         plan = {'session_type': 'INTERVALS'}
         # T5-49: supply healthy sleep/readiness so the 2-of-4 downgrade does not fire.
         # ADR-0051: supply subjective_fatigue_score so H5 missing-data gate does not fire.
-        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'cs_tracker': tracker, 'sleep_score': 80, 'readiness_score': 70, 'subjective_fatigue_score': 0})
+        result = gov.apply_constraints(plan, context={'db': FakeDB(), 'athlete_id': 'owner', 'cs_tracker': tracker, 'sleep_score': 80, 'readiness_score': 70, 'subjective_fatigue_score': 0})
         assert result['governance_clean'] is True
         assert result['governance_locks_applied'] == []
 
     def test_override_lockdown_fires(self, gov):
         """Override ratio > 80% + quality session → OVERRIDE_LOCKDOWN."""
         class HighOverrideDB:
-            def get_override_ratio(self, days): return 0.9
+            def get_override_ratio(self, *, athlete_id, days): return 0.9
 
         plan = {'session_type': 'INTERVALS'}
-        result = gov.apply_constraints(plan, context={'db': HighOverrideDB()})
+        result = gov.apply_constraints(plan, context={'db': HighOverrideDB(), 'athlete_id': 'owner'})
         assert 'OVERRIDE_LOCKDOWN' in result['governance_locks_applied']
         assert result['session_type'] == 'EASY'
 
     def test_override_lockdown_skips_easy_session(self, gov):
         """Override lockdown must NOT downgrade already-easy sessions."""
         class HighOverrideDB:
-            def get_override_ratio(self, days): return 0.9
+            def get_override_ratio(self, *, athlete_id, days): return 0.9
 
         plan = {'session_type': 'EASY'}
-        result = gov.apply_constraints(plan, context={'db': HighOverrideDB()})
+        result = gov.apply_constraints(plan, context={'db': HighOverrideDB(), 'athlete_id': 'owner'})
         assert result['session_type'] == 'EASY'
         assert 'OVERRIDE_LOCKDOWN' not in result['governance_locks_applied']
 

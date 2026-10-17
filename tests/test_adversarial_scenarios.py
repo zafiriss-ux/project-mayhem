@@ -145,7 +145,7 @@ class TestBE01OverrideLaundering:
         mock_db.get_override_ratio.return_value = 0.86  # 86% override rate
 
         engine = GovernanceEngine()
-        result = engine.check_override_lockdown(mock_db)
+        result = engine.check_override_lockdown(mock_db, athlete_id="owner")
 
         assert result["locked"] is True, (
             "Expected lockdown when ratio > GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD"
@@ -170,7 +170,7 @@ class TestBE01OverrideLaundering:
         mock_db.get_override_ratio.return_value = GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD
 
         engine = GovernanceEngine()
-        result = engine.check_override_lockdown(mock_db)
+        result = engine.check_override_lockdown(mock_db, athlete_id="owner")
 
         # Boundary is strict >; at the exact threshold the gate stays open.
         assert result["locked"] is False, (

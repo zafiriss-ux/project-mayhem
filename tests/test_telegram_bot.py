@@ -136,8 +136,9 @@ class TestTelegramBotInit:
 
 class TestSendMessage:
 
-    def test_returns_true_with_chat_id(self, bot):
-        assert bot.send_message("Hello TITAN") is True
+    def test_returns_false_without_a_bot_even_with_chat_id(self, bot):
+        """No bot: nothing reached anyone, so it is not a delivery (D-107, RC-03)."""
+        assert bot.send_message("Hello TITAN") is False
 
     def test_returns_false_without_chat_id(self, monkeypatch):
         """Bot with no chat_id (and env var cleared) must return False."""

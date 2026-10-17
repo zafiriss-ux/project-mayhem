@@ -76,7 +76,11 @@ class AuthStore:
         )
 
     def record_failed_attempt(self, username: str) -> None:
-        self._db.record_failed_login(username, LOCKOUT_DURATION_SECONDS, LOCKOUT_MAX_ATTEMPTS)
+        # Per username, as decided (D-006); only failures within the window add up (D-108).
+        # An unknown username is counted the same way, so both take the same path (RBP-05).
+        self._db.record_failed_login(
+            username, LOCKOUT_DURATION_SECONDS, LOCKOUT_MAX_ATTEMPTS, window_seconds=LOCKOUT_WINDOW_SECONDS
+        )
 
     def is_locked_out(self, username: str) -> bool:
         return self._db.is_login_locked_out(username)
