@@ -482,3 +482,33 @@ def test_docker_gives_the_worker_a_key_and_a_deletion_record_outside_data_and_ba
         assert folder in mounts, (name, folder)
         assert f"  {mounts[folder]}:" in named_volumes, (name, mounts[folder])
         assert folder not in (env["TITAN_DATA_DIR"], env["TITAN_BACKUP_DIR"])
+
+
+@pytest.mark.integration
+def test_after_remove_no_column_of_any_table_names_the_athlete(db, env) -> None:
+    """Phase 4 close (step 12): checked without athlete_tables, by reading every value of every table."""
+    from titan import worker
+
+    maria, nikos = _add(db, "Maria", 2000), _add(db, "Nikos", 3000)
+    _seed(db, maria, 2000)
+    _seed(db, nikos, 3000)
+    worker._tell_zaf_not_ready(db, maria, "consent: none current", _NOW)
+
+    lifecycle.delete_athlete(db, maria, now=_NOW)
+
+    def mentions(needle: str) -> list[tuple[str, str]]:
+        found = []
+        for (table,) in db.conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall():
+            columns = [col[1] for col in db.conn.execute(f'PRAGMA table_info("{table}")')]
+            for column in columns:
+                hit = db.conn.execute(
+                    f'SELECT 1 FROM "{table}" WHERE CAST("{column}" AS TEXT) LIKE ? LIMIT 1',  # nosec B608
+                    (f"%{needle}%",),
+                ).fetchone()
+                if hit:
+                    found.append((table, column))
+        return found
+
+    assert mentions(maria) == []
+    assert mentions("telegram:2000") == [] and mentions(f"garmin-{maria}") == []
+    assert mentions(nikos), "the check must see the athlete who was not removed"

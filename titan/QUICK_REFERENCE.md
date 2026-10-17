@@ -129,20 +129,12 @@ system_status = MathCore.system_status_SSV(
 ```
 
 ### Manage Multiple Athletes
-```python
-adb = AthleteDatabase()
-
-# Create athletes
-athlete1 = adb.create_athlete("Runner One", "M", 30, 180, 75)
-athlete2 = adb.create_athlete("Runner Two", "F", 28, 165, 58)
-
-# Switch between them
-adb.switch_athlete(athlete1.athlete_id)
-current = adb.get_current()
-
-# List all
-for a in adb.list_all():
-    print(f"{a['name']}: {a['goal']}")
+Athletes other than the owner live in the database (ADR-0067) and are managed with
+`scripts/athletes.py`; see `docs/runbooks/multi-athlete.md`. The JSON `AthleteDatabase`
+is legacy: the worker never runs the athletes it holds.
+```bash
+python scripts/athletes.py add --name "Maria" --profile maria.json --chat 123456789
+python scripts/athletes.py list
 ```
 
 ## Constants Reference

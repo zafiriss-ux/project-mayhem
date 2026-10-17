@@ -9,8 +9,9 @@
 
 ## Backup Location
 
-Automated daily backups are taken only by the Docker `titan-worker`, at startup and every day at
-07:00 UTC. Local mode (launcher or `python -m titan`) takes no automatic backups.
+Automated daily backups are taken only by the Docker `titan-worker`, at startup and once a day: at
+07:00 UTC with only the owner, on the first round of the UTC day (about 00:00) with
+`TITAN_MULTI_ATHLETE=1`. Local mode (launcher or `python -m titan`) takes no automatic backups.
 
 - **Container:** `/backups/titan_YYYY-MM-DD.db` on the `titan-backups` volume (`TITAN_BACKUP_DIR=/backups`)
 - **Retention:** 7 daily + 4 weekly (`BACKUP_RETENTION_DAILY_DAYS`, `BACKUP_RETENTION_WEEKLY_COUNT` in `.env`)
@@ -152,7 +153,7 @@ python main.py
 
 ## Backup Procedure
 
-Automated: `titan-worker` calls `DatabaseManager.backup_database(keep=7, keep_weekly=4)` at each cycle start (startup, then daily at 07:00 UTC), with the values from `.env`. No cron setup required in Docker deployments.
+Automated: `titan-worker` calls `DatabaseManager.backup_database(keep=7, keep_weekly=4)` at each cycle start (startup, then once a UTC day: 07:00 with only the owner, the first round of the day with `TITAN_MULTI_ATHLETE=1`), with the values from `.env`. No cron setup required in Docker deployments.
 
 Manual on-demand:
 
