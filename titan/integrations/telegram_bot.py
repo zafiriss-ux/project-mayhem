@@ -79,6 +79,8 @@ POLL_FAIL = "POLL_FAIL"
 SCHEDULER_DRIFT = "SCHEDULER_DRIFT"
 CALLBACK_ERROR = "CALLBACK_ERROR"
 OVERRIDE_SILENCE = "OVERRIDE_SILENCE"
+# A scheduled task with this time runs every minute (D-111).
+EVERY_MINUTE = "*"
 
 _CMD_COOLDOWN_S = 30
 _cmd_rate: dict[tuple[int, str], float] = defaultdict(float)
@@ -1098,6 +1100,7 @@ class TitanTelegramBot:
         days: list[str] = None,
         source: str | None = None,
     ):
+        """Run ``callback`` at ``time_str`` (HH:MM UTC) on ``days``; ``EVERY_MINUTE`` runs it each minute."""
         all_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         with self._tasks_lock:
             self.scheduled_tasks.append(
@@ -1254,7 +1257,9 @@ class TitanTelegramBot:
             cur_day = now.strftime("%A")
             with self._tasks_lock:
                 due_tasks = [
-                    task for task in self.scheduled_tasks if task["time"] == cur_time and cur_day in task["days"]
+                    task
+                    for task in self.scheduled_tasks
+                    if task["time"] in (cur_time, EVERY_MINUTE) and cur_day in task["days"]
                 ]
             for task in due_tasks:
                 try:

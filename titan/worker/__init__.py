@@ -219,7 +219,9 @@ def _tell_zaf_not_ready(db: DatabaseManager, athlete_id: str, reason: str, now: 
 
     The marker is the owner's row in ``worker_routine_executions`` with routine type
     ``not_ready:<athlete_id>``, so a restart does not tell again and nothing is written
-    for the athlete. A failed send is tried again on the next round, at most 3 times a day.
+    for the athlete. A failed send is tried again at most 3 times a day, each try at least
+    ``ROUTINE_RETRY_DELAY_S`` after the previous one, so a short Telegram outage does not use
+    up the day's tries in three polls (DW-08, D-111).
     """
     from titan.core.athlete_lifecycle import NOT_READY_NOTICE_PREFIX
 
@@ -230,6 +232,7 @@ def _tell_zaf_not_ready(db: DatabaseManager, athlete_id: str, reason: str, now: 
         state, _attempt = db.begin_routine_attempt(
             athlete_id="owner", execution_date=day, routine_type=routine,
             started_at=now, max_attempts=ROUTINE_MAX_ATTEMPTS,
+            retry_gap=_dt.timedelta(seconds=ROUTINE_RETRY_DELAY_S),
         )
         if state != "run":
             return
@@ -300,6 +303,7 @@ def _utc_now() -> _dt.datetime:
 
 def _claim_routine(
     db: DatabaseManager, athlete_id: str, now: _dt.datetime, *, spaced: bool = False,
+    last_start: bool | None = None,
 ) -> int | bool | None:
     """Take the next attempt at today's morning (ADR-0060 D1, amended by ADR-0067 D8.4; INV-15).
 
@@ -309,7 +313,10 @@ def _claim_routine(
     ``ROUTINE_LAST_START_HOUR_UTC`` (D-109). A day this process already sent is never claimed
     again, even when recording that delivery failed (D-109). None: the claim itself failed;
     the routine does not run this cycle (fail closed) and the caller retries on its next cycle.
+    ``last_start`` turns the noon limit on or off on its own; by default it follows ``spaced``.
     """
+    if last_start is None:
+        last_start = spaced
     execution_date = now.date().isoformat()
     key = _day_key(db, athlete_id, execution_date)
     if key in _UNRECORDED_SENDS:
@@ -317,7 +324,7 @@ def _claim_routine(
         return False
     gap = _dt.timedelta(seconds=ROUTINE_RETRY_DELAY_S) if spaced else None
     start_by = (
-        now.replace(hour=ROUTINE_LAST_START_HOUR_UTC, minute=0, second=0, microsecond=0) if spaced else None
+        now.replace(hour=ROUTINE_LAST_START_HOUR_UTC, minute=0, second=0, microsecond=0) if last_start else None
     )
     try:
         state, attempt = db.begin_routine_attempt(
@@ -893,7 +900,11 @@ def run_forever(db_path: str, shutdown_event: threading.Event | None = None) -> 
 
     while True:
         _write_heartbeat(heartbeat)
-        _run_backup(db)
+        # A backup that fails never stops the morning (DW-04, D-111), as in the round.
+        try:
+            _run_backup(db)
+        except Exception as exc:
+            log.exception("worker_backup_failed", extra={"error": str(exc)})
         _athlete_housekeeping(db)
         if _run_due_routine(db, _stop, heartbeat, interval_s, settings.WORKER_ROUTINE_BUDGET_S):
             log.info("worker_graceful_exit")
@@ -993,8 +1004,49 @@ def _run_routine_supervised(
                 "worker_routine_overrun",
                 extra={"elapsed_s": round(elapsed), "budget_s": budget_s},
             )
+            _tell_zaf_overrun(db, elapsed, budget_s)
     _write_heartbeat(heartbeat)
     return delivered[0]
+
+
+def _tell_zaf_overrun(db: DatabaseManager, elapsed_s: float, budget_s: float) -> None:
+    """Tell Zaf once that the owner's morning is still running past its budget (DW-05, D-111).
+
+    The routine thread cannot be stopped from here, and the stopped heartbeat only reaches
+    whoever reads the healthcheck, so the owner is told on Telegram too. A failed send is
+    logged; the routine is still waited for.
+    """
+    try:
+        from titan.integrations.telegram_bot import TitanTelegramBot
+
+        TitanTelegramBot(db=db).send_message(
+            f"⏳ The morning routine has been running for {round(elapsed_s / 60)} min "
+            f"(budget {round(budget_s / 60)} min). The worker is waiting for it; today's "
+            "briefing may be late or missing.",
+            parse_mode="",
+        )
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_overrun_alert_failed", extra={"error": str(exc)},
+        )
+
+
+def run_owner_morning_if_due(db: DatabaseManager) -> bool:
+    """One check of the owner's morning for the console: run it when due; True if delivered.
+
+    Due means at or after 07:00 UTC and the day neither delivered nor left nor waiting for
+    its next attempt. The day is claimed in ``worker_routine_executions`` as the worker
+    claims it, so a console and a worker on the same database send one morning, and a
+    console that missed the 07:00 minute still runs that day (DW-02, DW-10, D-111). As in the
+    owner loop there is no noon limit; attempts are ``ROUTINE_RETRY_DELAY_S`` apart.
+    """
+    now = _utc_now()
+    if now.hour < ROUTINE_HOUR_UTC:
+        return False
+    attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False)
+    if attempt is None or attempt is False:
+        return False
+    return _attempt_morning(db, "owner", now.date().isoformat(), attempt)
 
 
 def _run_with_scheduler(

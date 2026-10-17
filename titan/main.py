@@ -36,7 +36,7 @@ from titan.features.weekly_planner import WeeklyPlanGenerator
 
 # ── Core integrations ────────────────────────────────────────────────────────
 from titan.integrations.garmin_sync import GarminSync
-from titan.integrations.telegram_bot import TitanTelegramBot
+from titan.integrations.telegram_bot import EVERY_MINUTE, TitanTelegramBot
 from titan.orchestration.contracts import TitanContext, TitanContextContract
 
 # ── Orchestration ────────────────────────────────────────────────────────────
@@ -558,18 +558,35 @@ def main():
     telegram.start_bot()
 
     # ── Step 9: Schedule automated tasks ─────────────────────────────────────
-    # Run in the background so Telegram polling isn't blocked during morning routine
+    # Checked every minute in the background, so Telegram polling isn't blocked during the
+    # morning routine. The day is claimed as the worker claims it: with a worker on the same
+    # database the owner gets one morning, and a missed 07:00 minute still runs (D-111).
+    from titan.worker import run_owner_morning_if_due
+
+    morning_runner = BackgroundRoutineRunner(
+        lambda: run_owner_morning_if_due(db), daily_coach.routine_lock
+    )
     telegram.schedule_task(
         name="Morning Coaching",
-        time_str="07:00",
-        callback=routine_runner.start,
+        time_str=EVERY_MINUTE,
+        callback=lambda: morning_runner.start(trigger_source="console_schedule"),
     )
 
     def _send_weekly_plan():
+        # One plan per week: when the worker or an earlier run stored next week's plan,
+        # it is not built or sent again (D-111).
+        from datetime import timedelta
+
+        tomorrow = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+        stored = db.get_latest_weekly_plan(athlete_id="owner", on_or_before=tomorrow)
+        if stored is not None and str(stored.get("week_start"))[:10] == tomorrow:
+            titan_ctx["last_weekly_plan"] = stored
+            return
         plan = weekly_planner.generate_weekly_plan(
             athlete_profile=athlete_profile.to_dict(),
             phase=athlete_profile.training_phase,
         )
+        db.save_weekly_plan(athlete_id="owner", week_start=plan["week_start"], plan=plan)
         titan_ctx["last_weekly_plan"] = plan
         telegram.send_weekly_plan(plan)
 
@@ -584,7 +601,7 @@ def main():
         "scheduled_tasks_configured",
         extra={
             "tasks": [
-                "Morning coaching: Daily @ 07:00",
+                "Morning coaching: Daily from 07:00 (claimed as the worker claims it)",
                 "Weekly plan: Sunday @ 20:00",
                 "Garmin sync: Every 6 hours (background)",
                 "Weather updates: Every 1 hour (background)",
