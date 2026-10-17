@@ -325,15 +325,21 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
 
-        # TD-08 Step 2: DDL rendered from canonical descriptor (titan/core/schema.py).
-        # Ordering respects FK dependencies: gear_usage before training_log.
-        for _tname in _BASE_TABLE_NAMES:
-            cursor.execute(_render_table_ddl(_tname))
+        # D-104: base tables, owner rows, every pending migration and user_version are
+        # one transaction; a start killed midway leaves the database as it was.
+        with self._migrations.schema_transaction(cursor):
+            # Before the base tables: override_log must not be created empty while its
+            # rows sit in override_log_v30_new (an upgrade interrupted before D-104).
+            self._migrations._recover_interrupted_v30_rebuilds(cursor)
 
-        self._migrations._seed_single_athlete_rows(cursor=cursor)
+            # TD-08 Step 2: DDL rendered from canonical descriptor (titan/core/schema.py).
+            # Ordering respects FK dependencies: gear_usage before training_log.
+            for _tname in _BASE_TABLE_NAMES:
+                cursor.execute(_render_table_ddl(_tname))
 
-        self.conn.commit()
-        self._run_migrations(cursor)
+            self._migrations._seed_single_athlete_rows(cursor=cursor)
+
+            self._run_migrations(cursor)
 
     # --- MIGRATIONS (titan/core/repositories/migrations.py) ---
 
