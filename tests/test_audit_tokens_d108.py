@@ -418,20 +418,33 @@ def test_an_export_over_an_existing_file_leaves_it_0600(env, db) -> None:
     assert stat.S_IMODE(out.stat().st_mode) == 0o600
 
 
+def _rmtree_that_fails(_path, ignore_errors=False, **_kwargs) -> None:
+    """A folder that cannot be removed; with ignore_errors the failure is hidden, as before."""
+    if not ignore_errors:
+        raise PermissionError("Permission denied")
+
+
 @pytest.mark.integration
 def test_a_token_folder_that_cannot_be_removed_is_reported(db, monkeypatch, caplog) -> None:
     athlete_id = lifecycle.add_athlete(db, "Maria", dict(_PROFILE), 2000, now=_NOW)
     garmin_sync.write_athlete_token(athlete_id, '{"session": "s"}')
 
-    def _rmtree(_path, ignore_errors=False, **_kwargs):
-        if not ignore_errors:
-            raise PermissionError("Permission denied")
-
-    monkeypatch.setattr(lifecycle.shutil, "rmtree", _rmtree)
+    monkeypatch.setattr(lifecycle.shutil, "rmtree", _rmtree_that_fails)
     with pytest.raises(RuntimeError, match="token folder"):
         lifecycle.delete_athlete(db, athlete_id, now=_NOW)
 
     assert "athlete_token_folder_delete_failed" in caplog.text
+
+
+@pytest.mark.integration
+def test_the_command_line_says_when_the_token_folder_is_left(env, db, monkeypatch, capsys) -> None:
+    athlete_id = lifecycle.add_athlete(db, "Maria", dict(_PROFILE), 2000, now=_NOW)
+    garmin_sync.write_athlete_token(athlete_id, '{"session": "s"}')
+    monkeypatch.setattr(lifecycle.shutil, "rmtree", _rmtree_that_fails)
+
+    assert _cli().main(["remove", athlete_id, "--yes"]) == 1
+
+    assert "token folder" in capsys.readouterr().err
 
 
 @pytest.mark.unit

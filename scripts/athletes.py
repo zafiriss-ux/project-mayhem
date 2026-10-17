@@ -138,6 +138,10 @@ def cmd_remove(args: argparse.Namespace, db: DatabaseManager) -> int:
             file=sys.stderr,
         )
         return 1
+    except lifecycle.TokenFolderNotRemoved as exc:
+        # The rows are gone but the Garmin token folder is not (D-108, TK-08).
+        print(f"Delete of {args.athlete_id} incomplete: {exc}", file=sys.stderr)
+        return 1
     print(f"Deleted {args.athlete_id}: {sum(counts.values())} rows.")
     return 0
 

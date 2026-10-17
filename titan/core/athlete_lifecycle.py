@@ -255,6 +255,10 @@ def delete_athlete(db: DatabaseManager, athlete_id: str, *, now: datetime | None
     return counts
 
 
+class TokenFolderNotRemoved(RuntimeError):
+    """The athlete's rows are deleted but the Garmin token folder could not be (TK-08)."""
+
+
 def _remove_token_folder(athlete_id: str) -> None:
     """Remove the athlete's Garmin token folder; a failure is logged and raised, never hidden (TK-08)."""
     folder = _token_folder(athlete_id)
@@ -267,7 +271,7 @@ def _remove_token_folder(athlete_id: str) -> None:
             "athlete_token_folder_delete_failed",
             extra={"athlete_id": athlete_id, "error_class": type(exc).__name__},
         )
-        raise RuntimeError(
+        raise TokenFolderNotRemoved(
             f"the rows of {athlete_id} are deleted, but the Garmin token folder {folder} was not "
             f"({type(exc).__name__}); remove it by hand"
         ) from exc
