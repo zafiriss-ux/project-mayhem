@@ -1,0 +1,189 @@
+# Runbook — Αθλητές εκτός του owner
+
+**Version:** 1.0
+**Date:** 2026-10-17
+**Owner:** Zaf
+**Trigger:** προσθήκη ή διαγραφή αθλητή· μήνυμα `⏸ <id> is not run today: …` στο Telegram του owner·
+μήνυμα «Morning briefing not delivered»· αθλητής που λέει ότι δεν πήρε το πρωινό μήνυμα.
+
+Κανόνες: ADR-0067 (D2 προσθήκη, D4 συγκατάθεση, D6 διαγραφή, D7 ετοιμότητα, D8 πρωινός κύκλος,
+D9 Garmin, D10 Telegram). Ο owner δεν αλλάζει από τίποτα εδώ: τα στοιχεία του μένουν στο `.env`.
+
+---
+
+## 0. Πού τρέχουν οι εντολές
+
+Όλες οι εντολές τρέχουν στο μηχάνημα της ρουτίνας, εκεί που τρέχει ο worker.
+
+**Docker (προτεινόμενο).** Το `docker-compose.yml` δίνει ήδη στον worker τον φάκελο `/secrets` (volume
+`titan-secrets`, χωριστό από τα δεδομένα και τα backups) με το κλειδί των token και το αρχείο
+διαγραφών. Βάλε μπροστά από κάθε εντολή:
+
+```bash
+docker compose exec titan-worker python scripts/athletes.py list
+```
+
+**Τοπικά.** Ο worker (`python -m titan.worker`) και το `scripts/athletes.py` διαβάζουν τις ρυθμίσεις από
+το περιβάλλον, όχι από το `.env`. Στο ίδιο τερματικό με τον worker, πριν από κάθε εντολή:
+
+```bash
+export TITAN_DATA_DIR=~/Documents/TITAN
+export TITAN_TOKEN_KEY_FILE=~/.titan-secrets/athlete_token.key     # έξω από το TITAN_DATA_DIR
+export TITAN_DELETION_RECORD_FILE=~/.titan-secrets/deletions.jsonl # έξω από δεδομένα και backups
+export TITAN_MULTI_ATHLETE=1
+```
+
+Ο πρωινός κύκλος τρέχει τους άλλους αθλητές μόνο με `TITAN_MULTI_ATHLETE=1` (στο Docker, στο `.env`).
+Χωρίς αυτό τρέχει μόνο ο owner.
+
+**Μία φορά, πριν από τον πρώτο αθλητή:** το κλειδί που κρυπτογραφεί τα Garmin token των αθλητών.
+
+```bash
+python scripts/athletes.py new-key
+```
+
+Γράφει το αρχείο του `TITAN_TOKEN_KEY_FILE` με mode 0600 και αρνείται αν υπάρχει ήδη, γιατί ένα νέο
+κλειδί θα έκανε κάθε αποθηκευμένο token άχρηστο. Κράτα ένα αντίγραφο του κλειδιού κάπου ασφαλές, όχι
+μαζί με τα backups. Αν χαθεί, κάθε αθλητής ξανακάνει `relogin` (§4).
+
+---
+
+## 1. Προσθήκη αθλητή
+
+Χρειάζονται: το όνομα, το προφίλ, το Telegram chat id του αθλητή, και ο αθλητής παρών για το Garmin.
+
+1. Ο αθλητής ανοίγει το bot στο Telegram και παίρνει το chat id του από τον `@userinfobot`. Ένα chat
+   ανήκει σε έναν αθλητή, και ποτέ δεν είναι το chat του owner.
+
+2. Γράψε το προφίλ σε ένα αρχείο JSON με όλα τα πεδία:
+
+   ```json
+   {"birth_date": "1990-05-01", "sex": "F", "weight_kg": 58, "height_cm": 165, "max_hr": 190,
+    "threshold_hr": 172, "training_phase": "BASE", "training_goal": "10K",
+    "location_city": "Larissa", "location_country": "GR"}
+   ```
+
+   Στο Docker, γράψε το αρχείο μέσα στο container:
+   `docker compose exec -T titan-worker sh -c "cat > /tmp/maria.json" < maria.json`.
+
+3. Πρόσθεσε τον αθλητή. Τυπώνει το νέο id (`a-` και 8 χαρακτήρες):
+
+   ```bash
+   python scripts/athletes.py add --name "Maria" --profile maria.json --chat 123456789
+   ```
+
+4. Σύνδεση με το Garmin, με τον αθλητή δίπλα σου. Ο αθλητής γράφει ο ίδιος e-mail, κωδικό και, αν
+   ζητηθεί, τον κωδικό MFA. Ο κωδικός πάει μόνο στο Garmin· κρατιέται μόνο το κρυπτογραφημένο token.
+   Στο Docker χρειάζεται `-it`, γιατί η εντολή ρωτά:
+
+   ```bash
+   python scripts/athletes.py relogin a-1234abcd
+   docker compose exec -it titan-worker python scripts/athletes.py relogin a-1234abcd
+   ```
+
+   Ένας λογαριασμός Garmin δένεται σε έναν μόνο αθλητή· αν ανήκει ήδη σε άλλον, η εντολή αρνείται.
+
+5. Ο αθλητής στέλνει στο δικό του chat `/consent` (διαβάζει το κείμενο) και μετά `/agree v1`.
+   ⚠️ Το κείμενο v1 (`docs/consent/v1.md`) είναι προσχέδιο: όχι για πραγματικό αθλητή πριν το δει
+   δικηγόρος.
+
+6. Έλεγχος:
+
+   ```bash
+   python scripts/athletes.py list
+   ```
+
+   Ένας έτοιμος αθλητής δείχνει `garmin=ok  chat=yes  consent=yes  ready=yes`. Ο πρωινός κύκλος τον
+   τρέχει από το επόμενο πρωί (07:00 UTC), μετά τον owner.
+
+---
+
+## 2. Διαγραφή αθλητή
+
+Η διαγραφή δεν αναιρείται. Πρώτα η εξαγωγή, αν ο αθλητής θέλει τα δεδομένα του:
+
+```bash
+python scripts/athletes.py export a-1234abcd --out a-1234abcd.json   # αρχείο 0600
+python scripts/athletes.py remove a-1234abcd                         # ζητά να γράψεις το id
+```
+
+Το `remove` γράφει πρώτα μια γραμμή στο αρχείο διαγραφών (`TITAN_DELETION_RECORD_FILE`: μόνο id και
+ώρα), μετά σβήνει κάθε γραμμή του αθλητή σε κάθε πίνακα με `athlete_id`, σε μία συναλλαγή, και μετά
+τον φάκελο του token του. Χωρίς `TITAN_DELETION_RECORD_FILE` αρνείται και δεν σβήνει τίποτα.
+
+- **Μετά από `/stop`:** ο αθλητής παγώνει αμέσως (καμία κλήση, κανένα μήνυμα). Ο worker τον σβήνει
+  μόνος του 30 ημέρες μετά. Για να γίνει τώρα: `python scripts/athletes.py purge-expired`.
+- **Μετά από restore backup:** ο worker ξανασβήνει μόνος του, στην εκκίνηση, όσους γράφει το αρχείο
+  διαγραφών. Με το χέρι: `python scripts/athletes.py reapply-deletions`.
+- Το αρχείο εξαγωγής περιέχει προσωπικά δεδομένα: δώσ' το στον αθλητή και σβήσ' το.
+
+---
+
+## 3. Ένας αθλητής δεν πήρε μήνυμα
+
+### Βήμα 1 — Τι λέει το `list` για σήμερα
+
+```bash
+python scripts/athletes.py list
+```
+
+| Στήλη | Σημαίνει | Τι κάνεις |
+|---|---|---|
+| `ready=no (consent: none current)` | Δεν έχει συγκατάθεση, ή έστειλε `/stop` | Ο αθλητής στέλνει `/consent` και `/agree v1` (§1.5). Μέσα στις 30 ημέρες μετά το `/stop` μπορεί να ξαναδώσει |
+| `ready=no (no profile)` ή όνομα πεδίου | Λείπει ή είναι άκυρο πεδίο του προφίλ | Σβήσε και πρόσθεσε ξανά τον αθλητή με σωστό προφίλ (§2, §1) |
+| `ready=no (garmin: no account bound)` | Δεν έγινε ποτέ `relogin` | §1.4 |
+| `ready=no (garmin: token missing)` ή `token expired` | Το token δεν υπάρχει ή το Garmin το απέρριψε | §4 |
+| `ready=no (telegram: no chat bound)` | Δεν υπάρχει chat | Σβήσε και πρόσθεσε ξανά τον αθλητή με το σωστό `--chat` |
+| `ready=yes  today=not started` | Είναι έτοιμος, αλλά ο κύκλος δεν τον έτρεξε σήμερα | Βήμα 2 |
+| `today=attempt N not delivered` | Ξεκίνησε και δεν παραδόθηκε, ή τρέχει τώρα· ο επόμενος κύκλος ξαναδοκιμάζει, ως 3 φορές τη μέρα | Βήμα 2 |
+| `today=left after 3 attempts` | Τρεις αποτυχίες· η μέρα έκλεισε και ο owner πήρε «Morning briefing not delivered» | Βήμα 2. Αύριο ξαναδοκιμάζει μόνος του |
+| `today=delivered` | Το Telegram δέχτηκε το μήνυμα | Ο αθλητής να ελέγξει ότι έχει ανοίξει το bot και δεν το έχει μπλοκάρει· αλλιώς το chat id είναι λάθος (§1.1) |
+
+Το «σήμερα» είναι η μέρα UTC. Όταν ένας αθλητής δεν είναι έτοιμος, ο owner παίρνει μία φορά την ημέρα
+το `⏸ <id> is not run today: <λόγος>.` με τον ίδιο λόγο που δείχνει το `list`.
+
+### Βήμα 2 — Τα logs του worker
+
+```bash
+docker compose logs titan-worker | grep "a-1234abcd" | tail -30
+```
+
+Ο worker γράφει στο stderr, οπότε τοπικά τα logs είναι στο τερματικό του worker. Κάθε γραμμή του
+worker έχει στο τέλος τα πεδία της, π.χ. `athlete_id=a-1234abcd reason=consent: none current`.
+
+| Γεγονός | Σημαίνει |
+|---|---|
+| `scheduler_athlete_not_ready` | Δεν ήταν έτοιμος· το `reason` είναι ο λόγος του Βήματος 1 |
+| `worker_routine_killed` | Η διεργασία του ξεπέρασε το `WORKER_ROUTINE_BUDGET_S` και σταμάτησε |
+| `worker_routine_child_died` | Η διεργασία του τερμάτισε με σφάλμα· το traceback είναι λίγο πιο πάνω |
+| `worker_routine_left` (CRITICAL) | Τρεις αποτυχίες· η μέρα έκλεισε |
+| `worker_routine_resend_stored` | Ξαναστάλθηκε το μήνυμα που είχε ήδη φτιαχτεί |
+| `athlete_garmin_token_expired` | Το token απορρίφθηκε σήμερα· από αύριο ο αθλητής είναι σε παύση (§4) |
+| `connect_token_key_unusable` | Το κλειδί των token λείπει ή δεν είναι ασφαλές (§4, τελευταία παράγραφος) |
+
+Αν δεν υπάρχει καμία γραμμή για τον αθλητή, έλεγξε ότι το `TITAN_MULTI_ATHLETE=1` είναι στο
+περιβάλλον του worker (§0) και ότι ο worker τρέχει (`docker compose ps`).
+
+---
+
+## 4. Λήξη του Garmin token
+
+**Συμπτώματα:** `garmin=expired` (ή `missing`) στο `list`, `athlete_garmin_token_expired` ή
+`connect_relogin_required` στα logs, και το `⏸ <id> is not run today: garmin: token expired.` στον
+owner. Ο worker δεν κάνει ποτέ login με κωδικό για άλλον αθλητή, οπότε ο αθλητής μένει σε παύση ώσπου
+να ξανασυνδεθεί. Ο owner και οι άλλοι αθλητές δεν επηρεάζονται.
+
+**Λύση:** με τον αθλητή παρόντα,
+
+```bash
+python scripts/athletes.py relogin a-1234abcd
+python scripts/athletes.py list            # garmin=ok  ready=yes
+```
+
+Ο αθλητής τρέχει ξανά από το επόμενο πρωί. Αν θέλει τα δεδομένα του αμέσως, στέλνει `/sync` στο chat του.
+
+**Αν το `list` λέει `garmin=ok` αλλά τα logs γράφουν `connect_token_key_unusable`:** το πρόβλημα είναι
+το κλειδί, όχι το token. Το token δεν σβήνεται γι' αυτό. Έλεγξε ότι το `TITAN_TOKEN_KEY_FILE` είναι
+ορισμένο, ότι το αρχείο υπάρχει έξω από το `TITAN_DATA_DIR` και ότι έχει mode 0600
+(`chmod 600 <αρχείο>`). Αν το κλειδί χάθηκε, δεν ξαναβρίσκεται: σβήσε το αρχείο, αν έμεινε άκυρο, τρέξε
+`new-key` και κάνε `relogin` σε κάθε αθλητή.

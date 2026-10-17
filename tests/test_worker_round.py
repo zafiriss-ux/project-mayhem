@@ -307,3 +307,20 @@ def test_the_child_entry_exits_with_the_delivery(monkeypatch, tmp_path) -> None:
         worker._child_morning(str(tmp_path / "titan_core.db"), "owner", _TODAY, 1)
 
     assert (delivered.value.code, not_delivered.value.code) == (worker._CHILD_DELIVERED, worker._CHILD_NOT_DELIVERED)
+
+
+def test_worker_log_lines_carry_the_athlete_id() -> None:
+    """Regression (Phase 4 step 11, D-101): basicConfig dropped extra=, so no log line named the athlete."""
+    formatter = worker._ExtraFormatter("%(levelname)s %(name)s %(message)s")
+    record = logging.getLogger("titan.worker.scheduler").makeRecord(
+        "titan.worker.scheduler", logging.INFO, __file__, 1, "scheduler_athlete_not_ready", None, None,
+        extra={"athlete_id": "a-0000000a", "reason": "consent: none current"},
+    )
+
+    line = formatter.format(record)
+
+    assert line == (
+        "INFO titan.worker.scheduler scheduler_athlete_not_ready athlete_id=a-0000000a reason=consent: none current"
+    )
+    plain = logging.getLogger("titan.worker").makeRecord("titan.worker", logging.INFO, __file__, 1, "tick", None, None)
+    assert formatter.format(plain) == "INFO titan.worker tick"

@@ -5,6 +5,7 @@ their own Garmin password, which is never stored (D9.1). Consent is not given he
 athlete gives it in their own Telegram chat with /agree (D4.1).
 
 Usage:
+    python scripts/athletes.py new-key
     python scripts/athletes.py add --name "Maria" --profile profile.json --chat 123456789
     python scripts/athletes.py relogin a-1234abcd
     python scripts/athletes.py list
@@ -58,7 +59,35 @@ def cmd_relogin(args: argparse.Namespace, db: DatabaseManager) -> int:
     return 0
 
 
+def cmd_new_key(_args: argparse.Namespace, _db: DatabaseManager) -> int:
+    from titan.integrations.garmin_sync import create_athlete_token_key
+
+    print(f"Wrote a new athletes' key to {create_athlete_token_key()} (mode 0600). Keep a copy outside the backups.")
+    return 0
+
+
+def _today(db: DatabaseManager, athlete_id: str) -> str:
+    """This UTC day's morning briefing of the athlete, from worker_routine_executions (ADR-0060, D8)."""
+    from titan.worker import ROUTINE_MAX_ATTEMPTS, ROUTINE_MORNING, _utc_now
+
+    row = db.conn.execute(
+        "SELECT attempts, delivered_at, completed_at FROM worker_routine_executions "
+        "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+        (athlete_id, _utc_now().date().isoformat(), ROUTINE_MORNING),
+    ).fetchone()
+    if row is None:
+        return "not started"
+    attempts, delivered_at, completed_at = row
+    if delivered_at:
+        return "delivered"
+    if completed_at:
+        return f"left after {ROUTINE_MAX_ATTEMPTS} attempts"
+    return f"attempt {attempts} not delivered"
+
+
 def cmd_list(_args: argparse.Namespace, db: DatabaseManager) -> int:
+    from titan.worker import _readiness_problem
+
     rows = db.conn.execute(
         "SELECT a.athlete_id, a.display_name, acc.garmin_token_state, acc.telegram_chat_id IS NOT NULL "
         "FROM athletes a LEFT JOIN athlete_accounts acc ON acc.athlete_id = a.athlete_id "
@@ -66,7 +95,12 @@ def cmd_list(_args: argparse.Namespace, db: DatabaseManager) -> int:
     ).fetchall()
     for athlete_id, name, garmin, chat in rows:
         consent = "yes" if db.has_current_consent(athlete_id) else "no"
-        print(f"{athlete_id}  {name}  garmin={garmin or 'none'}  chat={'yes' if chat else 'no'}  consent={consent}")
+        problem = _readiness_problem(db, athlete_id)
+        ready = "yes" if problem is None else f"no ({problem})"
+        print(
+            f"{athlete_id}  {name}  garmin={garmin or 'none'}  chat={'yes' if chat else 'no'}  consent={consent}"
+            f"  ready={ready}  today={_today(db, athlete_id)}"
+        )
     return 0
 
 
@@ -109,6 +143,9 @@ def cmd_reapply_deletions(_args: argparse.Namespace, db: DatabaseManager) -> int
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("new-key", help="write the athletes' Garmin token key to TITAN_TOKEN_KEY_FILE, once").set_defaults(
+        func=cmd_new_key
+    )
     add = sub.add_parser("add", help="register an athlete: name, profile, private Telegram chat")
     add.add_argument("--name", required=True)
     add.add_argument("--profile", required=True, help="JSON file with every athlete_profiles field")

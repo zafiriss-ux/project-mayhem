@@ -123,7 +123,7 @@ Main package (78 modules, excl. __init__/__main__), ceiling 90.
 
 ## Docker
 
-See `docs/runbooks/docker-deploy.md` (ADR-0057).
+See `docs/runbooks/docker-deploy.md` (ADR-0057). Athletes other than the owner: `docs/runbooks/multi-athlete.md`.
 
 ```bash
 docker compose up --build -d

@@ -393,7 +393,10 @@ def test_the_command_line_adds_exports_and_removes(env, capsys, monkeypatch) -> 
     assert cli.main(["add", "--name", "Maria", "--profile", str(profile), "--chat", "2000"]) == 0
     athlete_id = capsys.readouterr().out.splitlines()[0]
     assert cli.main(["list"]) == 0
-    assert f"{athlete_id}  Maria  garmin=missing  chat=yes  consent=no" in capsys.readouterr().out
+    assert (
+        f"{athlete_id}  Maria  garmin=missing  chat=yes  consent=no  ready=no (consent: none current)  today=not started"
+        in capsys.readouterr().out
+    )
 
     out = env / "export.json"
     assert cli.main(["export", athlete_id, "--out", str(out)]) == 0
@@ -405,3 +408,77 @@ def test_the_command_line_adds_exports_and_removes(env, capsys, monkeypatch) -> 
     assert cli.main(["remove", athlete_id, "--yes"]) == 0
     assert cli.main(["export", athlete_id]) == 1
     assert "refused" in capsys.readouterr().err
+
+
+@pytest.mark.integration
+def test_list_says_what_happened_to_this_morning(env, db, capsys, monkeypatch) -> None:
+    """Runbook "an athlete got no message" (Phase 4 step 11): list tells the day's state."""
+    from titan import worker
+
+    cli = _cli()
+    athlete_id = lifecycle.add_athlete(db, "Maria", _PROFILE, "2000")
+    monkeypatch.setattr(worker, "_utc_now", lambda: _NOW)
+    day = _NOW.date().isoformat()
+
+    def today() -> str:
+        assert cli.main(["list"]) == 0
+        return capsys.readouterr().out.split("today=")[1].strip()
+
+    assert today() == "not started"
+    db.begin_routine_attempt(
+        athlete_id=athlete_id, execution_date=day, routine_type=worker.ROUTINE_MORNING,
+        started_at=_NOW, max_attempts=worker.ROUTINE_MAX_ATTEMPTS,
+    )
+    assert today() == "attempt 1 not delivered"
+    db.complete_routine_execution(
+        athlete_id=athlete_id, execution_date=day, routine_type=worker.ROUTINE_MORNING, completed_at=_NOW,
+    )
+    assert today() == f"left after {worker.ROUTINE_MAX_ATTEMPTS} attempts"
+    db.mark_routine_delivered(
+        athlete_id=athlete_id, execution_date=day, routine_type=worker.ROUTINE_MORNING, delivered_at=_NOW,
+    )
+    assert today() == "delivered"
+
+
+@pytest.mark.integration
+def test_new_key_writes_one_usable_key_and_never_replaces_it(env, capsys, monkeypatch) -> None:
+    from titan.integrations.garmin_sync import decrypt_athlete_token, encrypt_athlete_token
+
+    cli = _cli()
+    key_file = env / "fresh" / "athletes.key"
+    monkeypatch.setenv("TITAN_TOKEN_KEY_FILE", str(key_file))
+
+    assert cli.main(["new-key"]) == 0
+    assert stat.S_IMODE(key_file.stat().st_mode) == 0o600
+    first = key_file.read_bytes()
+    assert decrypt_athlete_token(encrypt_athlete_token("token")) == "token"
+
+    assert cli.main(["new-key"]) == 1
+    assert "already exists" in capsys.readouterr().err
+    assert key_file.read_bytes() == first
+
+
+@pytest.mark.integration
+def test_new_key_refuses_a_file_inside_the_data_folder(env, capsys, monkeypatch) -> None:
+    cli = _cli()
+    inside = env / "data" / "athletes.key"
+    monkeypatch.setenv("TITAN_TOKEN_KEY_FILE", str(inside))
+
+    assert cli.main(["new-key"]) == 1
+    assert "outside the data folder" in capsys.readouterr().err
+    assert not inside.exists()
+
+
+def test_docker_gives_the_worker_a_key_and_a_deletion_record_outside_data_and_backups() -> None:
+    """Regression (Phase 4 step 11): the compose file had no place for either, so relogin and remove failed."""
+    text = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(encoding="utf-8")
+    worker = text.split("  titan-worker:", 1)[1]
+    items = [line.strip()[2:] for line in worker.splitlines() if line.strip().startswith("- ")]
+    env = dict(item.split("=", 1) for item in items if "=" in item)
+    mounts = {item.split(":")[1]: item.split(":")[0] for item in items if item.count(":") >= 1 and "=" not in item}
+    named_volumes = text.split("services:", 1)[0]
+    for name in ("TITAN_TOKEN_KEY_FILE", "TITAN_DELETION_RECORD_FILE"):
+        folder = str(Path(env[name]).parent)
+        assert folder in mounts, (name, folder)
+        assert f"  {mounts[folder]}:" in named_volumes, (name, mounts[folder])
+        assert folder not in (env["TITAN_DATA_DIR"], env["TITAN_BACKUP_DIR"])

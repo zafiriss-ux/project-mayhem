@@ -201,6 +201,32 @@ def _athlete_token_key() -> bytes:
     return key
 
 
+def create_athlete_token_key() -> Path:
+    """Write a new athletes' key to the file TITAN_TOKEN_KEY_FILE names, mode 0600 (ADR-0067 D9.2).
+
+    Refused when the file already exists: a new key would leave every stored athlete token
+    unreadable. A file that would break the rules of ``_athlete_token_key`` is removed again.
+    """
+    from cryptography.fernet import Fernet
+
+    raw = os.environ.get(_ATHLETE_TOKEN_KEY_FILE_ENV, "").strip()
+    if not raw:
+        raise RuntimeError(f"{_ATHLETE_TOKEN_KEY_FILE_ENV} is not set")
+    key_path = Path(raw).expanduser().resolve()
+    if key_path.exists():
+        raise RuntimeError(f"{key_path} already exists; a new key would make every athlete token unreadable")
+    key_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as handle:
+        handle.write(Fernet.generate_key())
+    try:
+        _athlete_token_key()
+    except Exception:
+        key_path.unlink()
+        raise
+    return key_path
+
+
 def encrypt_athlete_token(data: str) -> bytes:
     """Encrypt an athlete's Garth session with the athletes' key (ADR-0067 D9.2)."""
     from cryptography.fernet import Fernet

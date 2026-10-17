@@ -2,6 +2,9 @@ volumes:
   titan-data:
   # AGENTS DR-01: backups live on their own volume, never on titan-data.
   titan-backups:
+  # ADR-0067 D9.2, D6.3: the athletes' token key and the deletion record, never on titan-data
+  # or titan-backups, so a copy of the data cannot decrypt tokens and a restore cannot undo a deletion.
+  titan-secrets:
 
 services:
   titan-api:
@@ -34,10 +37,13 @@ services:
     volumes:
       - titan-data:/data
       - titan-backups:/backups
+      - titan-secrets:/secrets
       - ./scripts:/app/scripts:ro
     environment:
       - TITAN_DATA_DIR=/data
       - TITAN_BACKUP_DIR=/backups
+      - TITAN_TOKEN_KEY_FILE=/secrets/athlete_token.key
+      - TITAN_DELETION_RECORD_FILE=/secrets/deletions.jsonl
       - TITAN_DB_BACKEND=sqlite
     # AGENTS INV-23: unhealthy once the worker's heartbeat is older than 2x its 60s tick.
     healthcheck:

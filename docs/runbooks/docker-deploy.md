@@ -19,6 +19,12 @@ docker compose up --build -d
 
 Named volume `titan-data` → `/data/titan_core.db` (SQLite, WAL mode).
 
+Named volume `titan-secrets` → `/secrets` on `titan-worker` only: the athletes' Garmin token key
+(`TITAN_TOKEN_KEY_FILE`, written once by `python scripts/athletes.py new-key`) and the deletion record
+(`TITAN_DELETION_RECORD_FILE`). It is kept apart from `titan-data` and `titan-backups`, so a copy of
+the data cannot decrypt the tokens and a restored backup cannot bring back a deleted athlete
+(ADR-0067 D6.3, D9.2). `docker compose down -v` deletes it too. Athletes: [`multi-athlete.md`](multi-athlete.md).
+
 Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart. The file holds the PID of the running worker. The kernel releases the lock when that process dies, so a crashed worker never blocks the next start.
 
 Worker health (INV-23): the worker writes `/data/worker.heartbeat` every 60 s. `docker compose ps` shows `titan-worker` as unhealthy once the heartbeat is older than 120 s: the loop has stopped, the scheduler thread could not be restarted, or the morning routine has run past `WORKER_ROUTINE_BUDGET_S` (30 min, logged as CRITICAL `worker_routine_overrun`). Check it by hand with `docker compose exec titan-worker python scripts/worker_healthcheck.py`. Plain Docker Compose reports unhealthy but does not restart the container.
