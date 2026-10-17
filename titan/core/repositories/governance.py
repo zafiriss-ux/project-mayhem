@@ -405,8 +405,12 @@ class GovernanceRepository:
             "phase": row[2],
         }
 
-    def annotate_governance_outcome(self, date: str, note: str) -> bool:
-        """Attach or replace manual operator note for latest governance decision on date."""
+    def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
+        """Attach or replace the operator note on one athlete's latest decision of *date*.
+
+        Scoped by ``athlete_id`` (ISO-3, D-110): before, the note landed on whichever
+        athlete's decision of that day was written last.
+        """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
@@ -415,11 +419,11 @@ class GovernanceRepository:
                    SET outcome_notes = ?
                    WHERE id = (
                        SELECT id FROM governance_outcomes
-                       WHERE date = ?
+                       WHERE date = ? AND athlete_id = ?
                        ORDER BY id DESC
                        LIMIT 1
                    )""",
-                (note, date),
+                (note, date, athlete_id),
             )
             self._db.conn.commit()
             return cursor.rowcount > 0

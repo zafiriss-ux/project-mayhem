@@ -376,8 +376,8 @@ class PersistenceAdapter(ABC):
         """Return the most recent governance decision rows as dicts."""
 
     @abstractmethod
-    def annotate_governance_outcome(self, date: str, note: str) -> bool:
-        """Append a free-text annotation to a governance outcome row. Returns True on success."""
+    def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
+        """Append a free-text annotation to this athlete's governance outcome row. Returns True on success."""
 
     # ------------------------------------------------------------------ #
     # Sync tracking                                                        #
@@ -641,8 +641,8 @@ class SQLiteAdapter(PersistenceAdapter):
     ) -> list[dict[str, Any]]:
         return self._manager.get_governance_decisions(limit=limit, athlete_id=athlete_id)
 
-    def annotate_governance_outcome(self, date: str, note: str) -> bool:
-        return self._manager.annotate_governance_outcome(date=date, note=note)
+    def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
+        return self._manager.annotate_governance_outcome(date=date, note=note, athlete_id=athlete_id)
 
     def record_sync_outcome(
         self,
@@ -1264,11 +1264,13 @@ class PostgreSQLAdapter(PersistenceAdapter):
             for row in rows
         ]
 
-    def annotate_governance_outcome(self, date: str, note: str) -> bool:
+    def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
+        # Only this athlete's decision of the day gets the note (ISO-3, D-110).
         with self._engine.begin() as conn:
             row = conn.execute(
                 select(self._governance_outcomes.c.outcome_notes)
                 .where(self._governance_outcomes.c.date == date)
+                .where(self._governance_outcomes.c.athlete_id == athlete_id)
                 .order_by(self._governance_outcomes.c.id.desc())
                 .limit(1)
             ).first()
@@ -1279,6 +1281,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
             conn.execute(
                 update(self._governance_outcomes)
                 .where(self._governance_outcomes.c.date == date)
+                .where(self._governance_outcomes.c.athlete_id == athlete_id)
                 .values(outcome_notes=merged)
             )
         return True
