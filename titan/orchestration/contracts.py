@@ -102,8 +102,8 @@ class DailyCoachContext(TypedDict):
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float | None
-    baseline_hrv: float
-    hrv_std_dev: float
+    baseline_hrv: float | None
+    hrv_std_dev: float | None
     today_rhr: int | None
     baseline_rhr: float
     sleep_score: int | None
@@ -115,6 +115,8 @@ class DailyCoachContext(TypedDict):
     garmin_data_stale: NotRequired[bool]
     hrv_stress_context: NotRequired[str]
     data_trust: NotRequired[Mapping[str, object]]
+    # ADR-0068: whose override ratio the lockdown reads; absent → the lockdown fails closed.
+    athlete_id: NotRequired[str]
 
 
 @dataclass(frozen=True)
@@ -131,8 +133,8 @@ class DailyCoachContextContract:
     fueling_confirmed: bool
     planned_duration_min: int
     today_hrv: float | None
-    baseline_hrv: float
-    hrv_std_dev: float
+    baseline_hrv: float | None
+    hrv_std_dev: float | None
     today_rhr: int | None
     baseline_rhr: float
     sleep_score: int | None
@@ -144,6 +146,7 @@ class DailyCoachContextContract:
     garmin_data_stale: bool | None = None
     hrv_stress_context: str | None = None
     data_trust: Mapping[str, object] | None = None
+    athlete_id: str | None = None
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -176,6 +179,8 @@ class DailyCoachContextContract:
             payload["hrv_stress_context"] = self.hrv_stress_context
         if self.data_trust is not None:
             payload["data_trust"] = self.data_trust
+        if self.athlete_id is not None:
+            payload["athlete_id"] = self.athlete_id
         return payload
 
 
@@ -192,7 +197,7 @@ class DailyCoachingPayload(TypedDict):
     conditions: str
     hrv_status: str
     hrv_value: float
-    hrv_baseline: float
+    hrv_baseline: float | None
     afi: float
     sleep_quality: int | str
     sleep_hours: float

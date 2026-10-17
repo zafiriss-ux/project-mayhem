@@ -8,6 +8,7 @@ Usage:
     python scripts/athletes.py new-key
     python scripts/athletes.py add --name "Maria" --profile profile.json --chat 123456789
     python scripts/athletes.py relogin a-1234abcd
+    python scripts/athletes.py chat a-1234abcd --chat 123456789
     python scripts/athletes.py list
     python scripts/athletes.py export a-1234abcd --out a-1234abcd.json
     python scripts/athletes.py remove a-1234abcd
@@ -22,6 +23,7 @@ import argparse
 import getpass
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -42,6 +44,16 @@ def cmd_add(args: argparse.Namespace, db: DatabaseManager) -> int:
     print(athlete_id)
     print(f"Next: python scripts/athletes.py relogin {athlete_id}  (with the athlete present)")
     print("Then the athlete sends /consent and /agree in their own Telegram chat.")
+    return 0
+
+
+def cmd_chat(args: argparse.Namespace, db: DatabaseManager) -> int:
+    """Bind the athlete's chat again, in the canonical form (D-107); consent and data are kept."""
+    if not lifecycle.athlete_exists(db, args.athlete_id):
+        print(f"no athlete {args.athlete_id}", file=sys.stderr)
+        return 1
+    db.bind_telegram_chat(args.athlete_id, args.chat)
+    print(f"Telegram chat of {args.athlete_id} is now {db.get_athlete_account(args.athlete_id)['telegram_chat_id']}.")
     return 0
 
 
@@ -110,6 +122,10 @@ def cmd_export(args: argparse.Namespace, db: DatabaseManager) -> int:
         print(text)
         return 0
     fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    if os.name == "posix":
+        # The mode of os.open applies only to a new file; an existing one is tightened here,
+        # before any personal data is written to it (D-108, TK-05).
+        os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
         handle.write(text)
     print(f"Exported {args.athlete_id} to {args.out}")
@@ -123,7 +139,20 @@ def cmd_remove(args: argparse.Namespace, db: DatabaseManager) -> int:
     if not args.yes and input(f"Type {args.athlete_id} to delete every row of this athlete: ").strip() != args.athlete_id:
         print("Nothing deleted.")
         return 1
-    counts = lifecycle.delete_athlete(db, args.athlete_id)
+    try:
+        counts = lifecycle.delete_athlete(db, args.athlete_id)
+    except sqlite3.Error as exc:
+        # Nothing was deleted; the deletion record is written, so the delete is retried (D-108).
+        print(
+            f"Delete of {args.athlete_id} failed ({type(exc).__name__}); no row was deleted. The deletion record"
+            " is kept: fix the cause and run `athletes.py reapply-deletions` (the worker also does at start).",
+            file=sys.stderr,
+        )
+        return 1
+    except lifecycle.TokenFolderNotRemoved as exc:
+        # The rows are gone but the Garmin token folder is not (D-108, TK-08).
+        print(f"Delete of {args.athlete_id} incomplete: {exc}", file=sys.stderr)
+        return 1
     print(f"Deleted {args.athlete_id}: {sum(counts.values())} rows.")
     return 0
 
@@ -154,6 +183,10 @@ def build_parser() -> argparse.ArgumentParser:
     relogin = sub.add_parser("relogin", help="the athlete logs in to Garmin here; only the token is kept")
     relogin.add_argument("athlete_id")
     relogin.set_defaults(func=cmd_relogin)
+    chat = sub.add_parser("chat", help="bind the athlete's private Telegram chat again (canonical form)")
+    chat.add_argument("athlete_id")
+    chat.add_argument("--chat", required=True, help="the athlete's private Telegram chat id")
+    chat.set_defaults(func=cmd_chat)
     sub.add_parser("list", help="athletes other than the owner and what each still needs").set_defaults(func=cmd_list)
     export = sub.add_parser("export", help="one JSON document with every row of the athlete")
     export.add_argument("athlete_id")

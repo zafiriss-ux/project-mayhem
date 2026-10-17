@@ -64,14 +64,24 @@ class HRVGuidedEngine:
             seen[date] = val  # later writes overwrite earlier ones
         self.hrv_log = list(seen.items())
 
-    def calculate_baseline(self, days: int = 7) -> tuple[float | None, float | None]:
-        """Calculate rolling baseline (mean ± SD)."""
+    def calculate_baseline(
+        self, days: int = 7, before_date: str | None = None
+    ) -> tuple[float | None, float | None]:
+        """Calculate rolling baseline (mean ± SD) over the last *days* readings.
+
+        With *before_date* (``YYYY-MM-DD``) only readings dated before that day count,
+        so today's reading is not part of its own baseline (D-105). Fewer readings
+        than *days* → ``(None, None)``: the baseline is missing.
+        """
         if days <= 0:
             return None, None
-        if len(self.hrv_log) < days:
+        log = self.hrv_log
+        if before_date is not None:
+            log = [(d, v) for d, v in log if str(d)[:10] < before_date]
+        if len(log) < days:
             return None, None
 
-        recent = [hrv for _, hrv in self.hrv_log[-days:]]
+        recent = [hrv for _, hrv in log[-days:]]
         baseline = sum(recent) / len(recent)
         if len(recent) < 2:
             return baseline, 0.0
@@ -114,23 +124,27 @@ class HRVGuidedEngine:
         ]
         return round((sum(diffs_squared) / len(diffs_squared)) ** 0.5, 1)
 
-    def get_hrv_summary(self) -> dict:
+    def get_hrv_summary(self, before_date: str | None = None) -> dict:
         """
         Return a summary dict consumed by DailyCoach, WeeklyPlanGenerator, etc.
 
         Keys:
             latest_hrv  – most recent rMSSD value (0 if no data)
-            baseline    – rolling 7-day mean (0 if insufficient data)
-            std_dev     – rolling 7-day SD  (0 if insufficient data)
+            baseline    – rolling 7-reading mean; None if insufficient data (SG-01, D-105)
+            std_dev     – rolling 7-reading SD;   None if insufficient data
             trend       – human-readable trend string
             data_points – number of measurements loaded
+
+        A baseline that cannot be computed is missing, never 0.0: a 0.0 baseline
+        made H2 compare 0 − today against its threshold and never fire.
+        *before_date* leaves that day (today) out of the baseline.
         """
-        baseline, std_dev = self.calculate_baseline(self.baseline_days)
+        baseline, std_dev = self.calculate_baseline(self.baseline_days, before_date=before_date)
         latest_hrv = self.hrv_log[-1][1] if self.hrv_log else 0.0
         return {
             "latest_hrv": round(latest_hrv, 1),
-            "baseline": round(baseline, 1) if baseline is not None else 0.0,
-            "std_dev": round(std_dev, 1) if std_dev is not None else 0.0,
+            "baseline": round(baseline, 1) if baseline is not None else None,
+            "std_dev": round(std_dev, 1) if std_dev is not None else None,
             "trend": self.get_trend_analysis(),
             "data_points": len(self.hrv_log),
         }

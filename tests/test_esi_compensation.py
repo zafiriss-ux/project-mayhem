@@ -7,7 +7,7 @@ from titan.science.governance_engine import GovernanceEngine
 
 
 class _DummyEngine:
-    def get_hrv_summary(self):
+    def get_hrv_summary(self, before_date=None):
         return {"baseline": 40}
 
     def calculate_tsb(self):

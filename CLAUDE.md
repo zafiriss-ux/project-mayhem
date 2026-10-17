@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3798 tests all green (3798 passed, 7 skipped, 3805 collected — 2026-10-17, full pytest)
+**Historical snapshot:** 3941 tests all green (3941 passed, 7 skipped, 3948 collected — 2026-10-17, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -120,6 +120,7 @@ Main package (78 modules, excl. __init__/__main__), ceiling 90. The ceiling test
 - `0065` — Downgrade volume cap
 - `0066` — Sleep debt EASY day
 - `0067` — Multi-athlete activation
+- `0068` — Governance gate fail-closed fixes
 
 ## Docker
 

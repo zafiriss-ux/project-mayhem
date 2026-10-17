@@ -103,6 +103,12 @@ No rule may promote any other gate above this. When `afi_constraints
 clamped readiness to ≤25 and disabled Z4/Z5. APL confirms it remains rank 1
 regardless of phase.
 
+A lock never raises intensity (ADR-0068): the guard gives `min(current, EASY)`
+and `min(current zone, 2)`, so a `REST` from a hard stop stays `REST`. The
+`OVERRIDE_LOCKDOWN` reads the athlete's own 14-day override ratio
+(`athlete_id` in the governance context); without an `athlete_id` it fails
+closed (locked, zone 2) and never reads the owner's ratio.
+
 ### 5.2 Phase × Load matrix
 
 | Phase | VLG load_band | Gate rank 2 | Gate rank 3 | Rationale |

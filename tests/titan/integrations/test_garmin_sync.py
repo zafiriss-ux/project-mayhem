@@ -725,7 +725,7 @@ def test_sync_activities_auth_exception_invalidates_session(monkeypatch):
 
     invalidated = {"called": False}
 
-    def _fake_invalidate():
+    def _fake_invalidate(*_error):
         invalidated["called"] = True
 
     monkeypatch.setattr(sync, "_invalidate_session", _fake_invalidate)
@@ -754,7 +754,7 @@ def test_sync_sleep_outer_auth_exception_invalidates_session(monkeypatch):
 
     invalidated = {"called": False}
 
-    def _fake_invalidate():
+    def _fake_invalidate(*_error):
         invalidated["called"] = True
 
     monkeypatch.setattr(sync, "_invalidate_session", _fake_invalidate)

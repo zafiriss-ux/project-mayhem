@@ -66,6 +66,7 @@ def _neutral(**overrides: object) -> dict:
         "days_since_last_vo2": 3,
         "fueling_confirmed": True,
         "db": _NeutralDB(),
+        "athlete_id": "owner",  # ADR-0068
         "cs_tracker": _FullConfidenceTracker(),
         "afi_constraints": {},
         "intensity_gate_result": None,
@@ -196,8 +197,8 @@ class TestGovernanceMonotonicity:
         ratio_b = min(ratio_a + extra, 1.0)
         gov = GovernanceEngine()
 
-        result_a = gov.check_override_lockdown(db=_HighRatioDB(ratio_a))
-        result_b = gov.check_override_lockdown(db=_HighRatioDB(ratio_b))
+        result_a = gov.check_override_lockdown(db=_HighRatioDB(ratio_a), athlete_id="owner")
+        result_b = gov.check_override_lockdown(db=_HighRatioDB(ratio_b), athlete_id="owner")
 
         if result_a["locked"]:
             assert result_b["locked"], (

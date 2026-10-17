@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -19,12 +21,99 @@ if TYPE_CHECKING:
 # Same logger as titan.core.database: migration log records keep their source name.
 _log = logging.getLogger("titan.core.database")
 
+# The tables v30 rebuilds through ``<table>_v30_new``, with the column that marks the v30
+# shape (D-104).
+_V30_REBUILT_TABLES: tuple[tuple[str, str], ...] = (
+    ("sync_metadata", "athlete_id"),
+    ("override_log", "athlete_id"),
+    ("consent_log", "text_version"),
+)
+
 
 class SchemaMigrations:
     """Migration steps, run on the owning DatabaseManager's cursor."""
 
     def __init__(self, db: DatabaseManager) -> None:
         self._db = db
+
+    @contextmanager
+    def schema_transaction(self, cursor) -> Iterator[None]:
+        """Run the block in one ``BEGIN IMMEDIATE`` transaction (D-104).
+
+        In the sqlite3 module's default mode a DDL statement outside a transaction
+        commits by itself, so a rebuild (CREATE new, copy, DROP old, RENAME) killed midway
+        left a half state. Inside one explicit transaction a kill leaves the database as
+        it was before the block; ``PRAGMA user_version`` is written in the same
+        transaction. ``IMMEDIATE`` takes the write lock before the version is read, so a
+        second process starting at the same time waits and then finds the work done.
+        A block nested in an open transaction joins it; the outer block commits.
+        """
+        conn = self._db.conn
+        if conn.in_transaction:
+            yield
+            return
+        cursor.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        except BaseException:
+            conn.rollback()
+            raise
+        conn.commit()
+
+    def _recover_interrupted_v30_rebuilds(self, cursor) -> None:
+        """Repair what a v30 rebuild interrupted before D-104 left behind (idempotent).
+
+        Runs before the base tables are created, so ``override_log`` (a base table) is not
+        created empty over rows that sit only in ``override_log_v30_new``. The rows are
+        copied from the old table and never deleted from it before the copy, so:
+
+        - old table missing → its rows are in ``<table>_v30_new``: rename it back;
+        - old table in the old shape → it still has every row: drop the copy, v30 redoes it;
+        - table already in the new shape → drop an empty copy; move the copy's rows into an
+          empty table; when both hold rows nothing is dropped and the case is logged.
+        """
+        tables = {
+            row[0] for row in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        for table, marker in _V30_REBUILT_TABLES:
+            stale = f"{table}_v30_new"
+            # Names below are the constant _V30_REBUILT_TABLES and columns read from this
+            # database's own schema, never input, so the f-strings carry no user data.
+            if stale not in tables:
+                continue
+            current = [row[1] for row in cursor.execute(f"PRAGMA table_info({table})")]
+            stale_rows = cursor.execute(f"SELECT COUNT(*) FROM {stale}").fetchone()[0]  # nosec B608
+            if not current:
+                cursor.execute(f"ALTER TABLE {stale} RENAME TO {table}")
+                outcome = "renamed_back"
+            elif marker not in current:
+                cursor.execute(f"DROP TABLE {stale}")
+                outcome = "dropped_copy_old_table_whole"
+            elif stale_rows == 0:
+                cursor.execute(f"DROP TABLE {stale}")
+                outcome = "dropped_empty_copy"
+            elif cursor.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0:  # nosec B608
+                columns = ", ".join(
+                    row[1] for row in cursor.execute(f"PRAGMA table_info({stale})")
+                    if row[1] in current
+                )
+                cursor.execute(f"INSERT INTO {table} ({columns}) SELECT {columns} FROM {stale}")  # nosec B608
+                cursor.execute(f"DROP TABLE {stale}")
+                outcome = "moved_rows_back"
+            else:
+                _log.critical(json.dumps({
+                    "flow": "database", "action": "db_v30_rebuild_recovery",
+                    "table": table, "stale_table": stale, "stale_rows": stale_rows,
+                    "outcome": "LEFT_FOR_OPERATOR",
+                    "detail": "both tables hold rows; nothing dropped",
+                }))
+                continue
+            _log.warning(json.dumps({
+                "flow": "database", "action": "db_v30_rebuild_recovery",
+                "table": table, "stale_table": stale, "stale_rows": stale_rows,
+                "outcome": outcome,
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
 
     def _seed_single_athlete_rows(self, cursor) -> None:
         """Seed the owner athlete and the system coach assignment (idempotent)."""
@@ -54,7 +143,15 @@ class SchemaMigrations:
         After all pending migrations run, user_version is updated to
         SCHEMA_VERSION. This replaces the old OperationalError-suppression
         approach with a deterministic version gate (T1-16).
+
+        All pending steps and the ``user_version`` write run in one transaction (D-104):
+        an interrupted upgrade leaves the previous version, and the next start redoes it.
         """
+        with self.schema_transaction(cursor):
+            self._run_pending_migrations(cursor)
+
+    def _run_pending_migrations(self, cursor) -> None:
+        """The steps of ``_run_migrations``; the caller holds the transaction."""
         current_version: int = cursor.execute("PRAGMA user_version").fetchone()[0]
 
         # deferred: titan.core.database imports this module
@@ -603,7 +700,6 @@ class SchemaMigrations:
 
         # PRAGMA does not support ? binding — version is a trusted internal constant
         cursor.execute("PRAGMA user_version = " + str(SCHEMA_VERSION))
-        self._db.conn.commit()
 
     def _apply_v1_migrations(self, cursor) -> None:
         """Version 1: additive column migrations for daily_metrics and training_log."""
@@ -1315,6 +1411,10 @@ class SchemaMigrations:
         ever written it; any row found is kept with text version ``'unversioned'``, which
         no consent text has, so it never counts as consent.
         """
+        # D-104: a copy left by an interrupted rebuild is repaired first, so the
+        # "table missing" branch below never creates an empty table beside its rows.
+        self._recover_interrupted_v30_rebuilds(cursor)
+
         def _columns(table: str) -> list[str]:
             return [row[1] for row in cursor.execute(f"PRAGMA table_info({table})")]
 

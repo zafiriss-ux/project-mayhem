@@ -237,15 +237,22 @@ class PhysiologyRepository:
         return (str(row[0]), float(row[1])) if row else None
 
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        """Return rolling N-day average resting HR from daily_metrics, or None."""
+        """Return the average resting HR of the N days before today, or None.
+
+        Today's row is left out (D-105, SG-06): the morning persists today's RHR
+        before H3 reads this baseline, and a spike must not dilute its own baseline.
+        """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
-            cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+            now = datetime.now(UTC)
+            today = now.strftime("%Y-%m-%d")
+            cutoff = (now - timedelta(days=days)).strftime("%Y-%m-%d")
             cursor.execute(
                 """SELECT AVG(resting_hr) FROM daily_metrics
-                   WHERE athlete_id = ? AND date >= ? AND resting_hr IS NOT NULL AND resting_hr > 0""",
-                (athlete_id, cutoff),
+                   WHERE athlete_id = ? AND date >= ? AND date < ?
+                     AND resting_hr IS NOT NULL AND resting_hr > 0""",
+                (athlete_id, cutoff, today),
             )
             row = cursor.fetchone()
         if row and row[0]:

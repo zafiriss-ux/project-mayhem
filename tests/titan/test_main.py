@@ -428,7 +428,7 @@ class _CallbackDailyCoach:
 
 
 class _CallbackHRV:
-    def get_hrv_summary(self):
+    def get_hrv_summary(self, before_date=None):
         return {"baseline": 52, "trend": "UP", "latest_hrv": 54}
 
 

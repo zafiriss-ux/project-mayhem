@@ -45,7 +45,7 @@ class AthleteCoachingContext:
     persistence_degraded: bool
     garmin_data_stale: bool
     latest_hrv: float
-    baseline_hrv: float
+    baseline_hrv: float | None
     hrv_summary: dict[str, Any]
     afi_final: float
     afi_constraints: dict[str, Any]
@@ -148,7 +148,10 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
                     "athlete_id": _athlete_id,
                 }))
                 return False
-            context.coach.telegram.send_alert(
+            from titan.integrations.telegram_bot import alert_operator
+
+            alert_operator(
+                context.coach.telegram,
                 title="TITAN system error",
                 message=(
                     "Today's training decision could not be "
@@ -157,6 +160,10 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
                     "work today. The system will retry next cycle."
                 ),
                 level="critical",
+                athlete_text=(
+                    "⚠️ Today's session could not be worked out. Do an EASY session or rest "
+                    "today, no quality work. Zaf has been told."
+                ),
             )
         except Exception as alert_exc:
             _log.critical(json.dumps({

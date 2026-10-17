@@ -48,7 +48,7 @@ def _coach(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> DailyCoach:
     )
     monkeypatch.setattr(coach.weekly_planner, "get_today_session", lambda: dict(_TEMPO))
     # Past the override-lockdown cold start, so governance alone would keep TEMPO.
-    monkeypatch.setattr(coach.db, "get_override_ratio", lambda days=14: 0.0)
+    monkeypatch.setattr(coach.db, "get_override_ratio", lambda *, athlete_id, days=14: 0.0)
     # Tonight's HRV is present, so only the reading under test is missing (D-048).
     coach.hrv.add_hrv_measurement(datetime.now(UTC).strftime("%Y-%m-%d"), 60.0)
     return coach

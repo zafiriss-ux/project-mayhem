@@ -91,6 +91,7 @@ class GovernanceEngine:
 
     _QUALITY_SESSIONS = frozenset({"INTERVALS", "TEMPO", "RACE", "HAMMER"})
     _VO2_SESSIONS = frozenset({"HAMMER", "RACE"})
+    _REST_HARD_STOPS = frozenset({"H1", "H2", "H3", "H2_H3_NON_TRAINING_STRESS"})
 
     _DOWNGRADE_MAP_2OF4 = {
         "INTERVALS": "TEMPO",
@@ -106,6 +107,7 @@ class GovernanceEngine:
         self,
         threshold_adapter: ThresholdAdapter | None = None,
         db: Any | None = None,
+        athlete_id: str | None = None,
     ) -> None:
         """Initialise GovernanceEngine.
 
@@ -115,9 +117,19 @@ class GovernanceEngine:
                 use unmodified constants from thresholds.py.
             db: Optional DatabaseManager for methods that need direct DB access
                 (e.g. apply_override_lockdown). When None, those methods are no-ops.
+            athlete_id: The athlete whose override ratio the lockdown reads when the
+                context carries none (ADR-0068). Without one the lockdown fails closed.
         """
         self._threshold_adapter = threshold_adapter
         self._db = db
+        self._athlete_id = athlete_id
+
+    def _resolve_athlete_id(self, context: dict | None = None) -> str | None:
+        """The context's athlete_id, else the engine's; None when neither is a non-empty str."""
+        for candidate in ((context or {}).get("athlete_id"), self._athlete_id):
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate
+        return None
 
     def _get_soft_threshold(self, threshold_name: str, base_value: float) -> float:
         """Return the (possibly adapted) threshold value for soft gates.
@@ -132,7 +144,10 @@ class GovernanceEngine:
             return self._threshold_adapter.get_threshold(threshold_name, base_value)
         return base_value
 
-    def check_override_lockdown(self, db: Any, threshold: float | None = None) -> dict:
+    def check_override_lockdown(
+        self, db: Any, threshold: float | None = None, athlete_id: str | None = None,
+    ) -> dict:
+        """The athlete's own 14-day override lockdown (ADR-0068: no athlete_id → locked)."""
         effective_threshold = (
             threshold if threshold is not None else self.OVERRIDE_LOCKDOWN_THRESHOLD
         )
@@ -161,9 +176,14 @@ class GovernanceEngine:
                 "error_code": error_code,
             }
 
+        if not (isinstance(athlete_id, str) and athlete_id.strip()):
+            # ADR-0068 (SG-02): without an athlete the ratio would be the owner's
+            # (repository default) — never read someone else's ratio, lock instead.
+            return _fail_safe("ATHLETE_ID_MISSING", LookupError("governance context has no athlete_id"))
+
         try:
-            raw_ratio = db.get_override_ratio(days=14)
-        except (AttributeError, LookupError, OSError, RuntimeError) as exc:
+            raw_ratio = db.get_override_ratio(athlete_id=athlete_id, days=14)
+        except (AttributeError, LookupError, OSError, RuntimeError, TypeError) as exc:
             error_code = "SCHEMA_MISMATCH" if "no such table" in str(exc).lower() else "DB_READ_ERROR"
             return _fail_safe(error_code, exc)
 
@@ -190,6 +210,8 @@ class GovernanceEngine:
             ratio = float(raw_ratio)
         except (AttributeError, TypeError, ValueError, ZeroDivisionError) as exc:
             return _fail_safe("COMPUTATION_ERROR", exc)
+        if not math.isfinite(ratio):
+            return _fail_safe("COMPUTATION_ERROR", ValueError(f"non-finite override ratio {ratio!r}"))
 
         if ratio > effective_threshold:
             return {
@@ -231,8 +253,14 @@ class GovernanceEngine:
         db = self._db
         if db is None:
             return
+        athlete_id = self._resolve_athlete_id(context)
+        if athlete_id is None:
+            # ADR-0068 (SG-02): no athlete → never the owner's ratio; fail closed.
+            session_plan["lock_applied"] = True
+            context["override_locked"] = True
+            return
         try:
-            ratio = db.get_override_ratio(days=14)
+            ratio = db.get_override_ratio(athlete_id=athlete_id, days=14)
         except Exception:
             session_plan["lock_applied"] = True
             context["override_locked"] = True
@@ -248,9 +276,23 @@ class GovernanceEngine:
             session_plan["lock_applied"] = True
             context["override_locked"] = True
             return
-        if float(ratio) > self.OVERRIDE_LOCKDOWN_THRESHOLD:
+        _ratio = float(ratio)
+        if not math.isfinite(_ratio) or _ratio > self.OVERRIDE_LOCKDOWN_THRESHOLD:
             session_plan["lock_applied"] = True
             context["override_locked"] = True
+
+    @staticmethod
+    def _bounded_zone(value: Any, *, missing: int) -> int:
+        """A zone in 1..5 (ADR-0068): None → ``missing``; non-numeric or non-finite → 2."""
+        if value is None:
+            return missing
+        try:
+            zone = float(value)
+        except (TypeError, ValueError):
+            return 2
+        if not math.isfinite(zone):
+            return 2
+        return int(min(max(zone, 1.0), 5.0))
 
     @staticmethod
     def _to_dict_maybe(value: Any) -> dict:
@@ -306,7 +348,8 @@ class GovernanceEngine:
 
         try:
             subjective_fatigue = int(context.get("subjective_fatigue_score", 0))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
+            # Non-finite/non-numeric fatigue: H5_MISSING applies the ceiling (ADR-0068).
             subjective_fatigue = 0
         if subjective_fatigue >= SUBJECTIVE_FATIGUE_2OF4:
             indicators.append("I4_subjective")
@@ -407,6 +450,7 @@ class GovernanceEngine:
         # H2 — HRV Collapse (Gate 2a: HRV drop alone sufficient — OR semantics)
         # Fires when drop >= 15 ms or 30% of baseline, whichever is smaller (inclusive; ADR-0064).
         h2_trigger = False
+        _h2_missing = False
         try:
             _h2_today = float(context.get("today_hrv"))
             _h2_base = float(context.get("baseline_hrv"))
@@ -415,31 +459,39 @@ class GovernanceEngine:
                             reason="non-finite HRV input rejected (INV-01)",
                             garmin_data_age_hours=_garmin_age,
                             garmin_data_trust_level=_garmin_trust)
-                h2_trigger = False
+                # ADR-0068 (SG-07): non-finite HRV is missing HRV → H2_MISSING ceiling.
+                _h2_missing = True
+            elif _h2_base <= 0:
+                # ADR-0068: a baseline of 0 or less is no baseline; it must not disable H2.
+                _h2_missing = True
             else:
                 h2_trigger = _h2_base - _h2_today >= self.h2_drop_threshold_ms(_h2_base)
         except (TypeError, ValueError):
             # ADR-0051: keys present but non-castable → conservative fail.
             # Absent keys mean the caller does not supply HRV; treat as no-op.
-            if "today_hrv" in context or "baseline_hrv" in context:
-                _gate_event(
-                    "H2_HRV",
-                    "EASY_ceiling_applied",
-                    reason="governance_data_missing_conservative",
-                    severity="WARNING",
-                    garmin_data_age_hours=_garmin_age,
-                    garmin_data_trust_level=_garmin_trust,
-                )
-                # ADR-0051: missing HRV data → conservative fail
-                context["data_confidence_low"] = True
-                # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
-                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
-                    session_plan["session_type"] = "EASY"
-                context["_h2_data_missing"] = True
-                reasons.append({
-                    "gate": "H2_MISSING",
-                    "reason": "HRV data missing or non-numeric — EASY ceiling applied (ADR-0051)",
-                })
+            _h2_missing = "today_hrv" in context or "baseline_hrv" in context
+        if _h2_missing:
+            _gate_event(
+                "H2_HRV",
+                "EASY_ceiling_applied",
+                reason="governance_data_missing_conservative",
+                severity="WARNING",
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
+            )
+            # ADR-0051: missing HRV data → conservative fail
+            context["data_confidence_low"] = True
+            # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
+            if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                session_plan["session_type"] = "EASY"
+            context["_h2_data_missing"] = True
+            reasons.append({
+                "gate": "H2_MISSING",
+                "reason": (
+                    "HRV data missing, non-finite or without a positive baseline — "
+                    "EASY ceiling applied (ADR-0051, ADR-0068)"
+                ),
+            })
         if h2_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
@@ -460,6 +512,7 @@ class GovernanceEngine:
         # H3 — RHR Spike (Gate 2b: RHR spike alone sufficient — OR semantics)
         # Fires when rise >= HARD_STOP_RHR_DELTA (inclusive boundary).
         h3_trigger = False
+        _h3_missing = False
         try:
             _h3_today = float(context.get("today_rhr"))
             _h3_base = float(context.get("baseline_rhr"))
@@ -468,31 +521,33 @@ class GovernanceEngine:
                             reason="non-finite RHR input rejected (INV-01)",
                             garmin_data_age_hours=_garmin_age,
                             garmin_data_trust_level=_garmin_trust)
-                h3_trigger = False
+                # ADR-0068 (SG-07): non-finite RHR is missing RHR → H3_MISSING ceiling.
+                _h3_missing = True
             else:
                 h3_trigger = _h3_today >= _h3_base + HARD_STOP_RHR_DELTA
         except (TypeError, ValueError):
             # ADR-0051: keys present but non-castable → conservative fail.
             # Absent keys mean the caller does not supply RHR; treat as no-op.
-            if "today_rhr" in context or "baseline_rhr" in context:
-                _gate_event(
-                    "H3_RHR",
-                    "EASY_ceiling_applied",
-                    reason="governance_data_missing_conservative",
-                    severity="WARNING",
-                    garmin_data_age_hours=_garmin_age,
-                    garmin_data_trust_level=_garmin_trust,
-                )
-                # ADR-0051: missing RHR data → conservative fail
-                context["data_confidence_low"] = True
-                # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
-                if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
-                    session_plan["session_type"] = "EASY"
-                context["_h3_data_missing"] = True
-                reasons.append({
-                    "gate": "H3_MISSING",
-                    "reason": "RHR data missing or non-numeric — EASY ceiling applied (ADR-0051)",
-                })
+            _h3_missing = "today_rhr" in context or "baseline_rhr" in context
+        if _h3_missing:
+            _gate_event(
+                "H3_RHR",
+                "EASY_ceiling_applied",
+                reason="governance_data_missing_conservative",
+                severity="WARNING",
+                garmin_data_age_hours=_garmin_age,
+                garmin_data_trust_level=_garmin_trust,
+            )
+            # ADR-0051: missing RHR data → conservative fail
+            context["data_confidence_low"] = True
+            # Apply EASY ceiling immediately; signal apply_constraints to emit lock code.
+            if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
+                session_plan["session_type"] = "EASY"
+            context["_h3_data_missing"] = True
+            reasons.append({
+                "gate": "H3_MISSING",
+                "reason": "RHR data missing or non-finite — EASY ceiling applied (ADR-0051, ADR-0068)",
+            })
         if h3_trigger:
             session_plan["session_type"] = "REST"
             session_plan["max_zone"] = 1
@@ -589,8 +644,11 @@ class GovernanceEngine:
                 })
             tsb_value = None
         if tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR:
-            if str(session_plan.get("session_type", "EASY")).upper() in self._QUALITY_SESSIONS:
+            # ADR-0068 (SG-09): every session above EASY (LONG_RUN, PROGRESSIVE too) becomes
+            # EASY, and apply_constraints gives every non-REST H4 day the ADR-0065 volume cap.
+            if str(session_plan.get("session_type", "EASY")).upper() not in {"REST", "EASY"}:
                 session_plan["session_type"] = "EASY"
+            context["_h4_load_reduction"] = True
             reason = "TSB at overtraining threshold: mandatory load reduction"
             session_plan["governance_override"] = reason
             session_plan["max_zone"] = min(int(session_plan.get("max_zone", 5)), 2)
@@ -601,7 +659,24 @@ class GovernanceEngine:
             )
 
         # H5 — Extreme Subjective Fatigue
-        if "subjective_fatigue_score" not in context:
+        _h5_missing = "subjective_fatigue_score" not in context
+        subjective_fatigue = 0
+        if not _h5_missing:
+            try:
+                _h5_raw = float(context.get("subjective_fatigue_score", 0))
+                if not math.isfinite(_h5_raw):
+                    _gate_event("H5", "NAN_REJECTED",
+                                reason="non-finite fatigue input rejected (INV-01)",
+                                garmin_data_age_hours=_garmin_age,
+                                garmin_data_trust_level=_garmin_trust)
+                    # ADR-0068 (SG-07): non-finite fatigue is missing fatigue → H5_MISSING ceiling.
+                    _h5_missing = True
+                else:
+                    subjective_fatigue = int(_h5_raw)
+            except (TypeError, ValueError):
+                # ADR-0068: a present but non-numeric score is missing, as for H2/H3.
+                _h5_missing = True
+        if _h5_missing:
             # ADR-0051: absent fatigue key → conservative soft downgrade (not hard stop).
             # H5 is a soft gate — does NOT set data_confidence_low (that would escalate
             # to STARTUP_DATA_CONFIDENCE_CEILING, an unintended hard downgrade).
@@ -617,22 +692,8 @@ class GovernanceEngine:
             context["_h5_data_missing"] = True
             reasons.append({
                 "gate": "H5_MISSING",
-                "reason": "Subjective fatigue data absent — MODERATE ceiling applied (ADR-0051)",
+                "reason": "Subjective fatigue data absent or non-numeric — MODERATE ceiling applied (ADR-0051)",
             })
-            subjective_fatigue = 0
-        else:
-            try:
-                _h5_raw = float(context.get("subjective_fatigue_score", 0))
-                if not math.isfinite(_h5_raw):
-                    _gate_event("H5", "NAN_REJECTED",
-                                reason="non-finite fatigue input rejected (INV-01)",
-                                garmin_data_age_hours=_garmin_age,
-                                garmin_data_trust_level=_garmin_trust)
-                    subjective_fatigue = 0
-                else:
-                    subjective_fatigue = int(_h5_raw)
-            except (TypeError, ValueError):
-                subjective_fatigue = 0
         if subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME:
             if str(session_plan.get("session_type", "EASY")).upper() != "REST":
                 session_plan["session_type"] = "EASY"
@@ -1194,7 +1255,7 @@ class GovernanceEngine:
 
         try:
             subjective_fatigue = int(context.get("subjective_fatigue_score", 0))
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             subjective_fatigue = 0
         h5_trigger = subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME
         findings.append(
@@ -1239,14 +1300,28 @@ class GovernanceEngine:
             gate_findings=findings,
         )
 
+    def _fail_closed_requires_rest(self, session_plan: dict, context: dict) -> bool:
+        """True when REST is already set or a hard stop H1–H3 fires on the inputs (ADR-0068)."""
+        if str(session_plan.get("session_type", "")).upper() == "REST":
+            return True
+        try:
+            if bool(context.get("injury_flag", False)):
+                return True
+            probe = self._check_hard_stops(dict(session_plan), dict(context))
+        except Exception:
+            # The hard stops themselves cannot be evaluated: EASY/zone 2 is the fallback.
+            return False
+        return any(r.get("gate") in self._REST_HARD_STOPS for r in probe)
+
     def apply_constraints(self, session_plan: dict, context: dict) -> dict:
+        # Outside the try so the fail-closed path keeps the locks already applied (ADR-0068).
+        applied_locks: list[str] = []
         try:
             _garmin_age = context.get("garmin_data_age_hours")
             _garmin_trust = context.get("garmin_data_trust_level", "UNKNOWN")
             db = context.get("db")
             cs_tracker = context.get("cs_tracker")
             afi_constr = context.get("afi_constraints", {})
-            applied_locks: list[str] = []
 
             # APL injections — adaptive thresholds and gate priority vector.
             # If APL was not invoked upstream, these default to {} and all gate
@@ -1258,13 +1333,18 @@ class GovernanceEngine:
             if intensity_gate:
                 session_plan["intensity_gate_result"] = intensity_gate
                 color = str(intensity_gate.get("color", "GREEN")).upper()
+                # ADR-0068 (SG-10): a non-numeric zone gives the EASY ceiling, an out-of-range
+                # one is clamped to 1..5 (max_zone 0 is zone 1, never 5).
                 session_plan["max_zone"] = min(
-                    int(session_plan.get("max_zone", 5) or 5),
-                    int(intensity_gate.get("max_zone", 5) or 5),
+                    self._bounded_zone(session_plan.get("max_zone"), missing=5),
+                    self._bounded_zone(intensity_gate.get("max_zone"), missing=5),
                 )
                 # ADR-0062: the conservative modifier replaces a missing value only; 0.0 stays 0.0.
                 _raw_vol_mod = intensity_gate.get("volume_modifier")
-                _vol_mod = float(INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE if _raw_vol_mod is None else _raw_vol_mod)
+                try:
+                    _vol_mod = float(INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE if _raw_vol_mod is None else _raw_vol_mod)
+                except (TypeError, ValueError):
+                    _vol_mod = math.nan
                 if not math.isfinite(_vol_mod):
                     _gate_event(
                         "INTENSITY_GATE", "NAN_REJECTED",
@@ -1272,8 +1352,9 @@ class GovernanceEngine:
                         garmin_data_age_hours=_garmin_age,
                         garmin_data_trust_level=_garmin_trust,
                     )
-                    _vol_mod = 1.0
-                session_plan["volume_modifier"] = _vol_mod
+                    # ADR-0068 (SG-10): a bad modifier takes the conservative value, not 1.0.
+                    _vol_mod = INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE
+                session_plan["volume_modifier"] = min(max(_vol_mod, 0.0), 1.0)
                 override = intensity_gate.get("session_override")
                 if override:
                     session_plan["session_type"] = override
@@ -1346,8 +1427,12 @@ class GovernanceEngine:
 
             # ADR-0065 (SV-04): 2of4, the hard stops, VO2 and fueling have no volume modifier,
             # so a session they downgrade keeps 70% of its volume and at most 60 minutes.
+            # ADR-0068 (SG-09): an H4 day that is not REST gets the same cap even when its type
+            # did not change (EASY stays EASY but still loses volume).
             _downgraded_to = str(session_plan.get("session_type", "")).upper()
-            if _downgraded_to not in {"REST", _type_after_intensity_gate}:
+            if _downgraded_to != "REST" and (
+                _downgraded_to != _type_after_intensity_gate or context.get("_h4_load_reduction")
+            ):
                 _current_mod = session_plan.get("volume_modifier")
                 _downgrade_mod = INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE
                 if _current_mod is not None:
@@ -1378,12 +1463,18 @@ class GovernanceEngine:
             for gate_name, _rank in sorted(gate_order.items(), key=lambda x: x[1]):
                 if gate_name == "PARASYMPATHETIC_GUARD":
                     if para_guard.get("triggered"):
-                        session_plan["session_type"] = "EASY"
-                        session_plan["max_zone"] = 2
-                        session_plan["governance_override"] = para_guard["reason"]
+                        # ADR-0068 (SG-03): a lock never raises intensity — min(current, EASY).
+                        # A REST from a hard stop stays REST and keeps its reason.
+                        if str(session_plan.get("session_type", "EASY")).upper() != "REST":
+                            session_plan["session_type"] = "EASY"
+                            session_plan["governance_override"] = para_guard["reason"]
+                        session_plan["max_zone"] = min(
+                            self._bounded_zone(session_plan.get("max_zone"), missing=5), 2,
+                        )
                         applied_locks.append("PARASYMPATHETIC_GUARD")
                         _gate_event(
-                            "PARASYMPATHETIC_GUARD", "EASY", reason=para_guard.get("reason"),
+                            "PARASYMPATHETIC_GUARD", str(session_plan.get("session_type", "EASY")).upper(),
+                            reason=para_guard.get("reason"),
                             garmin_data_age_hours=_garmin_age, garmin_data_trust_level=_garmin_trust,
                         )
                     continue
@@ -1392,10 +1483,14 @@ class GovernanceEngine:
                     if not db:
                         continue
                     override_threshold = lock_thresholds.get("override_ratio_ceiling") or None
-                    lock = self.check_override_lockdown(db, threshold=override_threshold)
+                    lock = self.check_override_lockdown(
+                        db, threshold=override_threshold, athlete_id=self._resolve_athlete_id(context),
+                    )
                     if lock["locked"] and session_plan.get("session_type") in lock["disabled_sessions"]:
                         session_plan["session_type"] = "EASY"
-                        session_plan["max_zone"] = lock["max_zone"]
+                        session_plan["max_zone"] = min(
+                            self._bounded_zone(session_plan.get("max_zone"), missing=5), lock["max_zone"],
+                        )
                         session_plan["governance_override"] = lock["reason"]
                         applied_locks.append("OVERRIDE_LOCKDOWN")
                         _gate_event(
@@ -1492,13 +1587,25 @@ class GovernanceEngine:
                 invariant="INV-12",
                 reason="apply_constraints raised — forcing EASY/zone-2 (fail-closed)",
             )
-            session_plan["session_type"] = "EASY"
-            session_plan["max_zone"] = 2
+            # ADR-0068 (SG-05): fail closed never loosens — REST (already set, or a hard-stop
+            # input present) stays REST; otherwise min(current, EASY) with zone ≤ 2.
+            if self._fail_closed_requires_rest(session_plan, context):
+                session_plan["session_type"] = "REST"
+                session_plan["max_zone"] = 1
+            else:
+                session_plan["session_type"] = "EASY"
+                session_plan["max_zone"] = min(self._bounded_zone(session_plan.get("max_zone"), missing=2), 2)
             session_plan["governance_exception_fail_closed"] = True
-            # use the SAME key the normal path writes locks into:
+            # use the SAME key the normal path writes locks into, keeping the locks applied so far:
             locks_key = "governance_locks_applied"
-            session_plan.setdefault(locks_key, [])
-            session_plan[locks_key].append("GOVERNANCE_EXCEPTION_FAIL_CLOSED")
+            _prior_locks = session_plan.get(locks_key)
+            if not isinstance(_prior_locks, list):
+                _prior_locks = []
+            for _lock in applied_locks:
+                if _lock not in _prior_locks:
+                    _prior_locks.append(_lock)
+            _prior_locks.append("GOVERNANCE_EXCEPTION_FAIL_CLOSED")
+            session_plan[locks_key] = _prior_locks
             return session_plan
         else:
             return session_plan
@@ -1508,9 +1615,13 @@ class GovernanceEngine:
         db: Any | None = None,
         cs_tracker: Any | None = None,
         afi_constraints: dict | None = None,
+        athlete_id: str | None = None,
     ) -> dict:
+        _athlete_id = self._resolve_athlete_id({"athlete_id": athlete_id})
         return {
-            "override_lockdown": self.check_override_lockdown(db) if db else {"locked": False},
+            "override_lockdown": (
+                self.check_override_lockdown(db, athlete_id=_athlete_id) if db else {"locked": False}
+            ),
             "cs_confidence_lock": self.check_cs_confidence_lock(cs_tracker)
             if cs_tracker
             else {"locked": False},

@@ -140,7 +140,8 @@ def test_sqlite_adapter_preserves_daily_metric_behavior(tmp_path) -> None:
         today = datetime.now(UTC).date().isoformat()
         adapter.save_daily_metric(today, rhr=45, hrv=52.5, weight=70.2)
 
-        assert adapter.get_baseline_rhr(days=7) == 45.0
+        # Today's RHR is not part of its own baseline (D-105, SG-06).
+        assert adapter.get_baseline_rhr(days=7) is None
         assert adapter.get_hrv_history(days=7) == [(today, 52.5)]
         assert adapter.get_weight_history(days=7) == [(today, 70.2)]
     finally:
@@ -277,7 +278,8 @@ def test_postgres_adapter_happy_path_core_queries() -> None:
         adapter.save_personal_best(5.0, 1200, today, race_name="Test")
         adapter.save_governance_decision(decision)
 
-        assert adapter.get_baseline_rhr(days=7) == 45.0
+        # Today's RHR is not part of its own baseline (D-105, SG-06).
+        assert adapter.get_baseline_rhr(days=7) is None
         assert adapter.get_hrv_history(days=7) == [(today, 50.0)]
         assert adapter.get_weight_history(days=7) == [(today, 70.0)]
         assert adapter.get_training_load_history(days=7) == [(today, 240.0)]
@@ -503,9 +505,11 @@ def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatc
 def _build_two_athlete_engine() -> tuple:
     """Return (engine, adapter) with daily_metrics, training_log, and
     governance_outcomes pre-seeded for 'athlete_a' and 'athlete_b'."""
-    from datetime import UTC, datetime
+    from datetime import UTC, datetime, timedelta
 
     _today = datetime.now(UTC).date().isoformat()
+    # daily_metrics rows are yesterday's: the RHR baseline leaves today out (D-105).
+    _yesterday = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
     engine = create_engine("sqlite+pysqlite:///:memory:")
     with engine.begin() as conn:
         conn.execute(text("""
@@ -600,11 +604,11 @@ def _build_two_athlete_engine() -> tuple:
         # Seed daily_metrics: athlete_a rhr=55, athlete_b rhr=70
         conn.execute(text(
             "INSERT INTO daily_metrics (athlete_id, date, resting_hr, hrv_rmssd, weight_kg) "
-            f"VALUES ('athlete_a', '{_today}', 55, 42.0, 68.0)"
+            f"VALUES ('athlete_a', '{_yesterday}', 55, 42.0, 68.0)"
         ))
         conn.execute(text(
             "INSERT INTO daily_metrics (athlete_id, date, resting_hr, hrv_rmssd, weight_kg) "
-            f"VALUES ('athlete_b', '{_today}', 70, 35.0, 80.0)"
+            f"VALUES ('athlete_b', '{_yesterday}', 70, 35.0, 80.0)"
         ))
 
         # Seed training_log: athlete_a load=100, athlete_b load=200

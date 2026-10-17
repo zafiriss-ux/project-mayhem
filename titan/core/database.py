@@ -325,15 +325,21 @@ class DatabaseManager:
         """
         cursor = self.conn.cursor()
 
-        # TD-08 Step 2: DDL rendered from canonical descriptor (titan/core/schema.py).
-        # Ordering respects FK dependencies: gear_usage before training_log.
-        for _tname in _BASE_TABLE_NAMES:
-            cursor.execute(_render_table_ddl(_tname))
+        # D-104: base tables, owner rows, every pending migration and user_version are
+        # one transaction; a start killed midway leaves the database as it was.
+        with self._migrations.schema_transaction(cursor):
+            # Before the base tables: override_log must not be created empty while its
+            # rows sit in override_log_v30_new (an upgrade interrupted before D-104).
+            self._migrations._recover_interrupted_v30_rebuilds(cursor)
 
-        self._migrations._seed_single_athlete_rows(cursor=cursor)
+            # TD-08 Step 2: DDL rendered from canonical descriptor (titan/core/schema.py).
+            # Ordering respects FK dependencies: gear_usage before training_log.
+            for _tname in _BASE_TABLE_NAMES:
+                cursor.execute(_render_table_ddl(_tname))
 
-        self.conn.commit()
-        self._run_migrations(cursor)
+            self._migrations._seed_single_athlete_rows(cursor=cursor)
+
+            self._run_migrations(cursor)
 
     # --- MIGRATIONS (titan/core/repositories/migrations.py) ---
 
@@ -474,11 +480,17 @@ class DatabaseManager:
         self._migrations._apply_v32_migrations(cursor=cursor)
 
     def record_failed_login(
-        self, username: str, lockout_duration_seconds: float, max_attempts: int
+        self,
+        username: str,
+        lockout_duration_seconds: float,
+        max_attempts: int,
+        *,
+        window_seconds: float | None = None,
     ) -> bool:
         """Increment failed login count for username; lock account when threshold reached."""
         return self._access.record_failed_login(
-            username=username, lockout_duration_seconds=lockout_duration_seconds, max_attempts=max_attempts
+            username=username, lockout_duration_seconds=lockout_duration_seconds, max_attempts=max_attempts,
+            window_seconds=window_seconds,
         )
 
     def is_login_locked_out(self, username: str) -> bool:
@@ -587,28 +599,62 @@ class DatabaseManager:
             athlete_id=athlete_id, state=state, updated_at=datetime.now(UTC).isoformat()
         )
 
+    def bindable_telegram_chat(self, telegram_chat_id: str | int) -> str:
+        """Return the canonical form of an athlete's chat id, or raise ValueError (D-107).
+
+        Refused: anything but a positive decimal integer (a private chat); any chat while the
+        owner's TELEGRAM_CHAT_ID is unset or not a chat id, since the owner check cannot run;
+        and the owner's chat itself, compared in the same canonical form.
+        """
+        from titan.config.settings import get_settings
+        from titan.core.athlete import canonical_chat_id
+
+        if not str("" if telegram_chat_id is None else telegram_chat_id).strip():
+            raise ValueError("a Telegram chat id is required")
+        chat = canonical_chat_id(telegram_chat_id)
+        if chat is None:
+            raise ValueError(
+                "a Telegram chat id is a positive decimal integer (the athlete's private chat): "
+                "digits only, no '+', '-', '_' or spaces inside"
+            )
+        owner_raw = str(get_settings().TELEGRAM_CHAT_ID or "").strip()
+        if not owner_raw:
+            raise ValueError(
+                "TELEGRAM_CHAT_ID (the owner's chat) is not set, so the chat cannot be checked "
+                "against it; set TELEGRAM_CHAT_ID, or run the command in the container, which reads .env"
+            )
+        owner = canonical_chat_id(owner_raw, allow_negative=True)
+        if owner is None:
+            raise ValueError("TELEGRAM_CHAT_ID (the owner's chat) is not a decimal integer chat id")
+        if chat == owner:
+            raise ValueError("this Telegram chat is the owner's")
+        return chat
+
     def bind_telegram_chat(self, athlete_id: str, telegram_chat_id: str | int) -> None:
         """Bind a private Telegram chat to an athlete other than the owner (ADR-0067 D10.1).
 
         Raises ValueError for the owner, whose chat stays TELEGRAM_CHAT_ID in .env, for the
-        owner's chat itself, or when the chat is already bound to another athlete.
+        owner's chat itself, or when the chat is already bound to another athlete. The chat
+        is stored in its canonical form, the one it is sent to (D-107).
         """
-        from titan.config.settings import get_settings
-
-        chat = str(telegram_chat_id).strip()
         if athlete_id == OWNER_ATHLETE_ID:
             raise ValueError("the owner's Telegram chat lives in .env, not in athlete_accounts")
-        if not chat:
-            raise ValueError("a Telegram chat id is required")
-        if chat == str(get_settings().TELEGRAM_CHAT_ID or "").strip():
-            raise ValueError("this Telegram chat is the owner's")
+        chat = self.bindable_telegram_chat(telegram_chat_id)
         self._access.bind_telegram_chat(
             athlete_id=athlete_id, telegram_chat_id=chat, updated_at=datetime.now(UTC).isoformat()
         )
 
     def get_athlete_for_telegram_chat(self, telegram_chat_id: str | int) -> str | None:
-        """Return the athlete whose private chat this is, or None for an unregistered chat."""
-        return self._access.get_athlete_for_telegram_chat(telegram_chat_id=str(telegram_chat_id).strip())
+        """Return the athlete whose private chat this is, or None for an unregistered chat.
+
+        Looked up by the canonical form (D-107); a stored id not in that form never matches.
+        """
+        from titan.core.athlete import canonical_chat_id
+
+        chat = canonical_chat_id(telegram_chat_id)
+        if chat is None:
+            return None
+        return self._access.get_athlete_for_telegram_chat(telegram_chat_id=chat)
 
     def has_current_consent(self, athlete_id: str, *, now: datetime | None = None) -> bool:
         """True when the athlete may be coached today (ADR-0067 D4); the owner is exempt (D4.5)."""

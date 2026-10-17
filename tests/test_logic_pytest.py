@@ -51,8 +51,9 @@ class TestHRVEnginePytest:
     def test_empty_log_latest_hrv_zero(self, engine):
         assert engine.get_hrv_summary()["latest_hrv"] == 0.0
 
-    def test_empty_log_baseline_zero(self, engine):
-        assert engine.get_hrv_summary()["baseline"] == 0.0
+    def test_empty_log_baseline_missing(self, engine):
+        # D-105 (SG-01): a baseline that cannot be computed is None, never 0.0.
+        assert engine.get_hrv_summary()["baseline"] is None
 
     def test_latest_hrv_correct_after_data(self, loaded_engine):
         assert loaded_engine.get_hrv_summary()["latest_hrv"] == 67.0

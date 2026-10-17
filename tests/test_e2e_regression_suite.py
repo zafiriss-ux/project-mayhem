@@ -13,7 +13,7 @@ def _planner(*, hrv_baseline: float, hrv_latest: float, tsb_value: float, tsb_st
     tsb = TSBEngine()
     acwr = ACWREngine()
 
-    hrv.get_hrv_summary = lambda: {'baseline': hrv_baseline, 'latest_hrv': hrv_latest}
+    hrv.get_hrv_summary = lambda before_date=None: {'baseline': hrv_baseline, 'latest_hrv': hrv_latest}
     tsb.calculate_tsb = lambda: (tsb_value, tsb_status)
     return WeeklyPlanGenerator(hrv_engine=hrv, tsb_engine=tsb, acwr_engine=acwr)
 

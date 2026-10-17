@@ -172,7 +172,7 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        """Return the rolling median RHR over the last *days* days, or None."""
+        """Return the rolling median RHR over the *days* days before today, or None (D-105)."""
 
     @abstractmethod
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
@@ -818,7 +818,9 @@ class PostgreSQLAdapter(PersistenceAdapter):
             conn.execute(insert(self._daily_metrics).values(**values))
 
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+        now = datetime.now(UTC)
+        start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
+        today = now.strftime("%Y-%m-%d")  # today's RHR is not part of its baseline (D-105)
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._daily_metrics.c.resting_hr)
@@ -826,6 +828,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     and_(
                         self._daily_metrics.c.athlete_id == athlete_id,
                         self._daily_metrics.c.date >= start_date,
+                        self._daily_metrics.c.date < today,
                         self._daily_metrics.c.resting_hr.is_not(None),
                     )
                 )

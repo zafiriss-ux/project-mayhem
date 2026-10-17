@@ -17,14 +17,23 @@ class AccessRepository:
         self._db = db
 
     def record_failed_login(
-        self, username: str, lockout_duration_seconds: float, max_attempts: int
+        self,
+        username: str,
+        lockout_duration_seconds: float,
+        max_attempts: int,
+        *,
+        window_seconds: float | None = None,
     ) -> bool:
         """Increment failed login count for username; lock account when threshold reached.
 
+        With ``window_seconds``, a failure more than that long after the previous one starts
+        the count again at 1, so old failures do not add up for ever (D-108, TK-06).
         Returns True if the account is now locked out.
         """
         import time
         now = time.time()
+        # No window: every earlier failure counts, as before.
+        stale_before = now - window_seconds if window_seconds is not None else float("-inf")
         with self._db._lock:
             self._db._ensure_open_locked()
             c = self._db.conn.cursor()
@@ -33,10 +42,12 @@ class AccessRepository:
                 INSERT INTO login_lockout (username, failed_count, last_attempt_ts)
                 VALUES (?, 1, ?)
                 ON CONFLICT(username) DO UPDATE SET
-                    failed_count = failed_count + 1,
+                    failed_count = CASE
+                        WHEN login_lockout.last_attempt_ts IS NOT NULL AND login_lockout.last_attempt_ts < ?
+                        THEN 1 ELSE login_lockout.failed_count + 1 END,
                     last_attempt_ts = excluded.last_attempt_ts
                 """,
-                (username, now),
+                (username, now, stale_before),
             )
             c.execute(
                 "SELECT failed_count FROM login_lockout WHERE username = ?",
@@ -271,13 +282,20 @@ class AccessRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
-            holder = cursor.execute(
-                "SELECT athlete_id FROM athlete_accounts WHERE telegram_chat_id = ?",
-                (telegram_chat_id,),
-            ).fetchone()
-            if holder is not None and holder[0] != athlete_id:
+            # Every stored id is compared in its canonical form (D-107), so a row written
+            # before as "01001" or "+1001" still holds chat 1001, where it would be sent.
+            from titan.core.athlete import canonical_chat_id
+
+            holders = {
+                row[0]: row[1]
+                for row in cursor.execute(
+                    "SELECT athlete_id, telegram_chat_id FROM athlete_accounts WHERE telegram_chat_id IS NOT NULL"
+                ).fetchall()
+                if canonical_chat_id(row[1], allow_negative=True) == telegram_chat_id
+            }
+            if any(holder != athlete_id for holder in holders):
                 raise ValueError("this Telegram chat is already bound to another athlete")
-            if holder is not None:
+            if holders.get(athlete_id) == telegram_chat_id:
                 return
             cursor.execute(
                 """INSERT INTO athlete_accounts (athlete_id, garmin_token_state, telegram_chat_id, updated_at)

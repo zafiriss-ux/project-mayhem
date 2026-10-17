@@ -55,9 +55,9 @@ OUTPUTS (session prescription + audit record)
 | Input | Type | Source | Required |
 |---|---|---|---|
 | `hrv` | float (ms) | Morning measurement | Yes |
-| `hrv_baseline_7d` | float (ms) | Rolling 7-day mean | Yes |
+| `hrv_baseline_7d` | float (ms) | Mean of the 7 readings before today; missing with fewer (EASY ceiling, D-105) | Yes |
 | `rhr` | int (bpm) | Morning measurement | Yes |
-| `rhr_baseline_7d` | float (bpm) | Rolling 7-day mean | Yes |
+| `rhr_baseline_7d` | float (bpm) | Mean of the 7 days before today, today excluded (D-105) | Yes |
 | `sleep_score` | float (0–100) or hours | Device / self-report | Yes |
 | `subjective_fatigue` | int (1–10) | Athlete self-report | Yes |
 | `acute_load_atl` | float (AU) | Computed from session history | Yes |

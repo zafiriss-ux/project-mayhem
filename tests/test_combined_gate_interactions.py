@@ -60,7 +60,7 @@ def _ctx(**overrides) -> dict:
 class _HighRatioDb:
     """Stub db that reports an override ratio above the lockdown threshold."""
 
-    def get_override_ratio(self, days: int = 14) -> float:
+    def get_override_ratio(self, *, athlete_id: str, days: int = 14) -> float:
         return 0.90  # > GOVERNANCE_OVERRIDE_LOCKDOWN_THRESHOLD (0.80)
 
 
@@ -81,6 +81,7 @@ def test_h1_and_h2_both_fire_simultaneously():
         today_hrv=35.0,      # H2: drop = 20 >= HARD_STOP_HRV_DELTA (15)
         baseline_hrv=55.0,
         db=_HighRatioDb(),   # OVERRIDE_LOCKDOWN condition also active
+        athlete_id="owner",
     )
     plan = gov.apply_constraints(_plan("INTERVALS"), ctx)
 
