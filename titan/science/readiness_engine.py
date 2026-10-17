@@ -13,8 +13,8 @@ _readiness_event = make_event_emitter("readiness", _log)
 class ReadinessEngine:
     @staticmethod
     def analyze_readiness(
-        today_hrv: float,
-        baseline_hrv: float,
+        today_hrv: float | None,
+        baseline_hrv: float | None,
         today_rhr: float,
         baseline_rhr: float,
         sleep_score: int,

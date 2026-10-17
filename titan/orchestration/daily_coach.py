@@ -24,6 +24,7 @@ import contextlib
 import dataclasses
 import json
 import logging
+import math
 import sqlite3
 import threading
 from datetime import UTC, date, datetime, timedelta
@@ -297,6 +298,19 @@ def _is_bad_sleep_score(score: Any) -> bool:
 _MISSING_SLEEP_SCORE = 50
 
 
+def _hrv_baseline_or_none(value: Any) -> float | None:
+    """The HRV baseline as a positive finite number, or None when it is missing (D-105).
+
+    A missing, non-numeric, non-finite or non-positive baseline is not a baseline:
+    it reaches governance as None, which applies the ADR-0051 EASY ceiling.
+    """
+    try:
+        baseline = float(value)
+    except (TypeError, ValueError):
+        return None
+    return baseline if math.isfinite(baseline) and baseline > 0 else None
+
+
 def _sleep_score_or_default(score: int | None) -> int:
     return _MISSING_SLEEP_SCORE if score is None else score
 
@@ -475,7 +489,7 @@ class _PipelineInputs:
     garmin_data_stale: bool
     latest_hrv: float
     today_hrv: float | None   # None when tonight's reading is missing (ADR-0051, SV-06)
-    baseline_hrv: float
+    baseline_hrv: float | None  # None when fewer than 7 earlier readings (D-105, SG-01)
     hrv_summary: dict
     afi_final: float
     afi_constraints: dict
@@ -964,9 +978,12 @@ class DailyCoach:
         # ── Step 4: AFI — Autonomic Fusion Index ────────────────────────────
         _daily_coach_event("step_started", step_number=4, step_name="compute_afi")
         ln_dev   = self.hrv.calculate_ln_rmssd_deviation(short_days=7, long_days=28)
-        hrv_summary   = self.hrv.get_hrv_summary()
+        # D-105 (SG-01): the baseline is the readings before today, and a baseline
+        # that cannot be computed stays None. Governance then applies the ADR-0051
+        # EASY ceiling (H2_MISSING) instead of comparing against an invented value.
+        hrv_summary   = self.hrv.get_hrv_summary(before_date=today_str)
         latest_hrv   = _safe_float(hrv_summary.get('latest_hrv'), 0.0)
-        baseline_hrv = _safe_float(hrv_summary.get('baseline'), 50.0)
+        baseline_hrv = _hrv_baseline_or_none(hrv_summary.get('baseline'))
         hrv_pct_above = ((latest_hrv - baseline_hrv) / baseline_hrv * 100) if baseline_hrv else 0.0
         today_hrr60  = (self.autonomic.hrr_log[-1][1] if self.autonomic.hrr_log else None)
 
@@ -1106,7 +1123,7 @@ class DailyCoach:
         persistence_degraded: bool,
         garmin_data_stale: bool,
         latest_hrv: float,
-        baseline_hrv: float,
+        baseline_hrv: float | None,
         hrv_summary: dict,
         afi_final: float,
         afi_constraints: dict,
@@ -1493,7 +1510,7 @@ class DailyCoach:
             planned_duration_min=_safe_int(today_session.get('duration_min', 45), 45),
             today_hrv=inp.today_hrv,
             baseline_hrv=inp.baseline_hrv,
-            hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0),
+            hrv_std_dev=_safe_float(inp.hrv_summary.get('std_dev'), 0.0) if inp.baseline_hrv is not None else None,
             # Missing readings reach governance as None, which applies ADR-0051
             # itself: no RHR → EASY ceiling (H3_MISSING), no sleep score → 40 (SV-06).
             today_rhr=inp.today_rhr or None,
@@ -1691,7 +1708,7 @@ class DailyCoach:
             # Autonomic / HRV
             'hrv_status'        : inp.hrv_summary.get('trend', 'N/A'),
             'hrv_value'         : round(inp.latest_hrv, 1),
-            'hrv_baseline'      : round(inp.baseline_hrv, 1),
+            'hrv_baseline'      : round(inp.baseline_hrv, 1) if inp.baseline_hrv is not None else None,
             'afi'               : inp.afi_final,
             # Sleep
             'sleep_quality'     : inp.today_sleep_score if inp.today_sleep_score is not None else 'N/A',
@@ -1881,8 +1898,8 @@ class DailyCoach:
         fueling_confirmed: bool,
         planned_duration_min: int,
         today_hrv: float | None,
-        baseline_hrv: float,
-        hrv_std_dev: float,
+        baseline_hrv: float | None,
+        hrv_std_dev: float | None,
         today_rhr: int | None,
         baseline_rhr: float,
         sleep_score: int | None,
