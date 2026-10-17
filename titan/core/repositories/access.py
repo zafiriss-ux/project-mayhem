@@ -282,13 +282,20 @@ class AccessRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
-            holder = cursor.execute(
-                "SELECT athlete_id FROM athlete_accounts WHERE telegram_chat_id = ?",
-                (telegram_chat_id,),
-            ).fetchone()
-            if holder is not None and holder[0] != athlete_id:
+            # Every stored id is compared in its canonical form (D-107), so a row written
+            # before as "01001" or "+1001" still holds chat 1001, where it would be sent.
+            from titan.core.athlete import canonical_chat_id
+
+            holders = {
+                row[0]: row[1]
+                for row in cursor.execute(
+                    "SELECT athlete_id, telegram_chat_id FROM athlete_accounts WHERE telegram_chat_id IS NOT NULL"
+                ).fetchall()
+                if canonical_chat_id(row[1], allow_negative=True) == telegram_chat_id
+            }
+            if any(holder != athlete_id for holder in holders):
                 raise ValueError("this Telegram chat is already bound to another athlete")
-            if holder is not None:
+            if holders.get(athlete_id) == telegram_chat_id:
                 return
             cursor.execute(
                 """INSERT INTO athlete_accounts (athlete_id, garmin_token_state, telegram_chat_id, updated_at)

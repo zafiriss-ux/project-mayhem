@@ -139,7 +139,10 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
             "outcome": "DECISION_PIPELINE_FAILED",
         }, default=str))
         try:
-            context.coach.telegram.send_alert(
+            from titan.integrations.telegram_bot import alert_operator
+
+            alert_operator(
+                context.coach.telegram,
                 title="TITAN system error",
                 message=(
                     "Today's training decision could not be "
@@ -148,6 +151,10 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
                     "work today. The system will retry next cycle."
                 ),
                 level="critical",
+                athlete_text=(
+                    "⚠️ Today's session could not be worked out. Do an EASY session or rest "
+                    "today, no quality work. Zaf has been told."
+                ),
             )
         except Exception as alert_exc:
             _log.critical(json.dumps({
