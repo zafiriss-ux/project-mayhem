@@ -22,12 +22,14 @@ ENV TITAN_DB_BACKEND=sqlite
 # `python scripts/run_api.py` puts /app/scripts, not /app, on sys.path.
 ENV PYTHONPATH=/app
 
-# Create non-root user and writable data + backup volumes (backups: AGENTS DR-01)
+# Create non-root user and writable data + backup volumes (backups: AGENTS DR-01).
+# /secrets: the athletes' token key and the deletion record, owner only (ADR-0067 D9.2, D6.3).
 RUN groupadd -r titan && \
     useradd -r -g titan --home /app titan && \
     chown -R titan:titan /app && \
-    mkdir -p /data /backups && \
-    chown titan:titan /data /backups
+    mkdir -p /data /backups /secrets && \
+    chown titan:titan /data /backups /secrets && \
+    chmod 700 /secrets
 
 # ── api ──────────────────────────────────────────────────────────────────────
 FROM base AS api

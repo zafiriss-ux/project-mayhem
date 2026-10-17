@@ -97,7 +97,8 @@ TITAN_TOKEN_KEY_FILE=/etc/titan/athlete_token.key   # mode 0600, όχι μέσα
 ```
 Αν η μεταβλητή λείπει, το αρχείο είναι μέσα στα δεδομένα, είναι αναγνώσιμο από άλλους ή δεν είναι
 έγκυρο κλειδί, κανένας άλλος αθλητής δεν συγχρονίζεται και το token του δεν σβήνεται. Ο owner δεν
-επηρεάζεται.
+επηρεάζεται. Το κλειδί το γράφει μία φορά το `python scripts/athletes.py new-key`. Στο Docker το
+`docker-compose.yml` βάζει το κλειδί και το αρχείο διαγραφών στο volume `titan-secrets` (`/secrets`).
 
 Πρώτος συγχρονισμός:
 ```bash
@@ -160,6 +161,9 @@ python scripts/athletes.py remove a-1234abcd        # ζητά να γράψει
 αθλητές, τον owner πρώτο, τον καθένα σε δική του διεργασία με όριο `WORKER_ROUTINE_BUDGET_S`
 (ADR-0067 D8, D-099). Όποιος δεν είναι έτοιμος (συγκατάθεση, προφίλ, Garmin, Telegram) δεν τρέχει,
 και ο owner παίρνει ένα μήνυμα την ημέρα με το γιατί. Χωρίς τη μεταβλητή τρέχει μόνο ο owner.
+
+Βήμα βήμα, και τι κάνεις όταν ένας αθλητής δεν πήρε μήνυμα ή έληξε το token του:
+[`docs/runbooks/multi-athlete.md`](runbooks/multi-athlete.md).
 
 ## 4. Καιρός
 

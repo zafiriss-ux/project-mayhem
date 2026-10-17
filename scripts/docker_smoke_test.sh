@@ -109,6 +109,11 @@ print('two athletes, both waiting for consent, nothing claimed for them')
 PY
 log "✅ Both athletes not ready (consent), nothing claimed for them"
 
+# Runbook docs/runbooks/multi-athlete.md: the token key lives on titan-secrets (Phase 4 step 11).
+$COMPOSE exec -T titan-worker python scripts/athletes.py new-key > /dev/null || \
+    fail "athletes.py new-key failed"
+log "✅ Athletes' token key written to /secrets"
+
 # ── 6. Persistence test ───────────────────────────────────────────────────────
 log "Testing volume persistence..."
 $COMPOSE exec -T titan-api python3 -c "
@@ -150,6 +155,28 @@ log "✅ Persistence after restart: OK"
 
 [ "$(count_athletes)" = "2" ] || fail "the two athletes did not survive the restart"
 log "✅ Two athletes after restart"
+
+# The key survived the restart and is never replaced; one athlete is exported and removed,
+# and the deletion record is on titan-secrets (runbook, Phase 4 step 11; ADR-0067 D6).
+if $COMPOSE exec -T titan-worker python scripts/athletes.py new-key > /dev/null 2>&1; then
+    fail "athletes.py new-key replaced the key after the restart"
+fi
+log "✅ Token key kept after restart"
+SMOKE_B=$($COMPOSE exec -T titan-worker python scripts/athletes.py list | grep "Smoke B" | cut -d" " -f1)
+[ -n "$SMOKE_B" ] || fail "Smoke B not found in athletes.py list"
+$COMPOSE exec -T titan-worker python scripts/athletes.py export "$SMOKE_B" --out /tmp/smoke_b.json > /dev/null || \
+    fail "athletes.py export failed"
+$COMPOSE cp titan-worker:/tmp/smoke_b.json /tmp/smoke_b_export.json || fail "docker compose cp of the export failed"
+grep -q "$SMOKE_B" /tmp/smoke_b_export.json || fail "the copied export does not name Smoke B"
+rm -f /tmp/smoke_b_export.json
+$COMPOSE exec -T titan-worker python scripts/athletes.py remove "$SMOKE_B" --yes > /dev/null || \
+    fail "athletes.py remove failed"
+[ "$(count_athletes)" = "1" ] || fail "athletes.py remove left Smoke B in the list"
+$COMPOSE exec -T titan-worker grep -q "$SMOKE_B" /secrets/deletions.jsonl || \
+    fail "the deletion record does not name Smoke B"
+$COMPOSE exec -T titan-worker python scripts/athletes.py reapply-deletions > /dev/null || \
+    fail "athletes.py reapply-deletions failed"
+log "✅ One athlete exported and removed, deletion recorded outside the data"
 
 [ -n "$($COMPOSE ps --status running -q titan-worker)" ] || \
     fail "worker not running after restart"

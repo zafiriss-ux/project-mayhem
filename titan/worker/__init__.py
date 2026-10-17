@@ -25,6 +25,31 @@ from titan.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Attributes every LogRecord has; anything else came from ``extra=``.
+_RECORD_FIELDS = frozenset(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {"message", "asctime"}
+
+
+class _ExtraFormatter(logging.Formatter):
+    """The plain worker line plus the ``extra`` fields, so an athlete's id is in the log (runbook, D-101)."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        extra = {k: v for k, v in vars(record).items() if k not in _RECORD_FIELDS}
+        if not extra:
+            return line
+        return line + " " + " ".join(f"{k}={v}" for k, v in sorted(extra.items()))
+
+
+def _configure_logging() -> None:
+    """INFO to stderr, as ``basicConfig`` did, with the ``extra`` fields on each line.
+
+    Like ``basicConfig``, nothing changes when the root logger already has a handler.
+    """
+    handler = logging.StreamHandler()
+    handler.setFormatter(_ExtraFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
+
+
 def _get_lock_file() -> Path:
     """Return the worker lock file path — lazy so tests can monkeypatch TITAN_DATA_DIR.
 
@@ -850,7 +875,7 @@ def _child_morning(db_path: str, athlete_id: str, execution_date: str, attempt: 
     """Child-process entry: one attempt of one athlete on its own connection (ADR-0067 D8.5)."""
     from titan.core.database import DatabaseManager
 
-    logging.basicConfig(level=logging.INFO)
+    _configure_logging()
     path = Path(db_path)
     db = DatabaseManager(db_name=path.name, db_dir=path.parent)
     try:
@@ -932,7 +957,7 @@ def _supervise_scheduler(
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
+    _configure_logging()
     _signal.signal(_signal.SIGTERM, _handle_sigterm)
     lock = acquire_worker_lock()
     if lock is None:

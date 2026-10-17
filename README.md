@@ -162,6 +162,8 @@ ATHLETE_MAX_HR=185
 
 **"Database is corrupted"** → Βλ. [`docs/runbooks/database-recovery.md`](docs/runbooks/database-recovery.md).
 
+**Άλλοι αθλητές: προσθήκη, διαγραφή, «δεν πήρα μήνυμα», λήξη Garmin token** → Βλ. [`docs/runbooks/multi-athlete.md`](docs/runbooks/multi-athlete.md).
+
 Logs του launcher: `~/Documents/TITAN/logs/launcher_YYYY-MM-DD.log`. Log του TITAN: με τον launcher `~/Documents/TITAN/logs/titan.log`, με `python -m titan` το `titan.log` του τρέχοντος φακέλου (ή ό,τι ορίζει το `TITAN_LOG_PATH`).
 
 ## 📋 Χρήση
@@ -323,7 +325,7 @@ curl "https://api.open-meteo.com/v1/forecast?latitude=37.98&longitude=23.73&curr
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — αρχιτεκτονική, modules, ροές δεδομένων
 - [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) — εγκατάσταση και πρώτη ρύθμιση
-- [`docs/runbooks/`](docs/runbooks/) — Docker, ανάκτηση βάσης, Garmin, governance
+- [`docs/runbooks/`](docs/runbooks/) — Docker, ανάκτηση βάσης, Garmin, governance, άλλοι αθλητές
 - [`docs/ROADMAP.MD`](docs/ROADMAP.MD) — φάσεις και τι ακολουθεί
 - [`docs/adr/`](docs/adr/) — αρχιτεκτονικές αποφάσεις (ADR)
 - [`titan/QUICK_REFERENCE.md`](titan/QUICK_REFERENCE.md) — developer quick reference

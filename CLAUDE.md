@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 3760 tests all green (3760 passed, 7 skipped, 3767 collected — 2026-10-16, full pytest)
+**Historical snapshot:** 3765 tests all green (3765 passed, 7 skipped, 3772 collected — 2026-10-17, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -123,7 +123,7 @@ Main package (78 modules, excl. __init__/__main__), ceiling 90.
 
 ## Docker
 
-See `docs/runbooks/docker-deploy.md` (ADR-0057).
+See `docs/runbooks/docker-deploy.md` (ADR-0057). Athletes other than the owner: `docs/runbooks/multi-athlete.md`.
 
 ```bash
 docker compose up --build -d
