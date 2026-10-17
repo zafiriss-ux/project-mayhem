@@ -34,3 +34,8 @@ the findings appear under Security → Code scanning.
 Credentials are never stored in the repository. They come from environment variables or the
 local encrypted token store (see `.env.example`). If you find a credential in the code or in the
 git history, report it as described above.
+
+No log line carries the Telegram bot token, at any level: Telegram, telebot and urllib3 records and
+the worker and console handlers pass a redaction filter (D-108). Garmin token folders are 0700 and
+token files 0600; exports are 0600 and leave out password hashes; the Docker image excludes
+`.garth_token`, `*.key` and `data/`.

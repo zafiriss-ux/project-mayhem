@@ -15,3 +15,8 @@ archive/
 actions-runner/
 *.docx
 node_modules/
+# Secrets and runtime data never go into the image (D-108, TK-08): Garmin tokens, key files,
+# a local data folder.
+**/.garth_token
+**/*.key
+data/

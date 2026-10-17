@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 from titan.config.settings import get_settings
+from titan.utils.secrets import install_log_redaction
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ def _configure_logging() -> None:
     """
     handler = logging.StreamHandler()
     handler.setFormatter(_ExtraFormatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    # Every worker line passes the redaction filter, so no bot token reaches docker logs (D-108).
+    install_log_redaction(handler)
     logging.basicConfig(level=logging.INFO, handlers=[handler])
 
 

@@ -23,6 +23,7 @@ import argparse
 import getpass
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -121,6 +122,10 @@ def cmd_export(args: argparse.Namespace, db: DatabaseManager) -> int:
         print(text)
         return 0
     fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    if os.name == "posix":
+        # The mode of os.open applies only to a new file; an existing one is tightened here,
+        # before any personal data is written to it (D-108, TK-05).
+        os.fchmod(fd, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
         handle.write(text)
     print(f"Exported {args.athlete_id} to {args.out}")
@@ -134,7 +139,20 @@ def cmd_remove(args: argparse.Namespace, db: DatabaseManager) -> int:
     if not args.yes and input(f"Type {args.athlete_id} to delete every row of this athlete: ").strip() != args.athlete_id:
         print("Nothing deleted.")
         return 1
-    counts = lifecycle.delete_athlete(db, args.athlete_id)
+    try:
+        counts = lifecycle.delete_athlete(db, args.athlete_id)
+    except sqlite3.Error as exc:
+        # Nothing was deleted; the deletion record is written, so the delete is retried (D-108).
+        print(
+            f"Delete of {args.athlete_id} failed ({type(exc).__name__}); no row was deleted. The deletion record"
+            " is kept: fix the cause and run `athletes.py reapply-deletions` (the worker also does at start).",
+            file=sys.stderr,
+        )
+        return 1
+    except lifecycle.TokenFolderNotRemoved as exc:
+        # The rows are gone but the Garmin token folder is not (D-108, TK-08).
+        print(f"Delete of {args.athlete_id} incomplete: {exc}", file=sys.stderr)
+        return 1
     print(f"Deleted {args.athlete_id}: {sum(counts.values())} rows.")
     return 0
 

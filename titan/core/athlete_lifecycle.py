@@ -32,6 +32,14 @@ DELETION_RECORD_ENV = "TITAN_DELETION_RECORD_FILE"
 NOT_READY_NOTICE_PREFIX = "not_ready:"
 _ATHLETE_ID = re.compile(r"a-[0-9a-f]{8}")  # ADR-0067 D3.5
 _EXPORT_FORMAT = "titan-athlete-export/1"
+# Columns never written to an export: the password hash and the override nonces (D-108,
+# TK-04). A column whose name says it holds a secret is left out too, so a new one is not missed.
+_EXPORT_EXCLUDED_COLUMNS = frozenset({"password_hash", "nonce"})
+_SECRET_COLUMN = re.compile(r"(password|secret|token_hash|api_key|private_key)", re.IGNORECASE)
+
+
+def _exported_column(name: str) -> bool:
+    return name not in _EXPORT_EXCLUDED_COLUMNS and not _SECRET_COLUMN.search(name)
 
 
 def _check_athlete_id(athlete_id: str) -> None:
@@ -129,7 +137,10 @@ def export_athlete(db: DatabaseManager, athlete_id: str, *, now: datetime | None
         for table in athlete_tables(db):
             cursor.execute(f"SELECT * FROM {_quoted(table)} WHERE athlete_id = ?", (athlete_id,))  # nosec B608
             columns = [d[0] for d in cursor.description]
-            tables[table] = [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+            tables[table] = [
+                {col: value for col, value in zip(columns, row, strict=True) if _exported_column(col)}
+                for row in cursor.fetchall()
+            ]
     return {
         "format": _EXPORT_FORMAT,
         "athlete_id": athlete_id,
@@ -195,9 +206,17 @@ def _delete_rows(db: DatabaseManager, athlete_id: str) -> dict[str, int]:
         try:
             conn.execute("BEGIN IMMEDIATE")
             conn.execute("PRAGMA defer_foreign_keys = ON")
+            if "auth_users" in tables:
+                # A refresh token row names its user, not always the athlete (its athlete_id
+                # is not filled), so it goes by user before the user goes (D-108, TK-03).
+                cursor = conn.execute(
+                    "DELETE FROM auth_tokens WHERE user_id IN (SELECT id FROM auth_users WHERE athlete_id = ?)",
+                    (athlete_id,),
+                )
+                counts["auth_tokens"] = cursor.rowcount
             for table in ordered:
                 cursor = conn.execute(f"DELETE FROM {_quoted(table)} WHERE athlete_id = ?", (athlete_id,))  # nosec B608
-                counts[table] = cursor.rowcount
+                counts[table] = counts.get(table, 0) + cursor.rowcount
             # The worker's once-a-day "not run" notices to Zaf name the athlete (D-099).
             cursor = conn.execute(
                 "DELETE FROM worker_routine_executions WHERE athlete_id = 'owner' AND routine_type = ?",
@@ -221,10 +240,41 @@ def delete_athlete(db: DatabaseManager, athlete_id: str, *, now: datetime | None
     deleted_at = (now or datetime.now(UTC)).astimezone(UTC).isoformat()
     deletion_record_path()  # fail before anything changes when the record cannot be kept
     _append_deletion_record(athlete_id, deleted_at)
-    counts = _delete_rows(db, athlete_id)
-    shutil.rmtree(_token_folder(athlete_id), ignore_errors=True)
+    try:
+        counts = _delete_rows(db, athlete_id)
+    except Exception as exc:
+        # The record is already written, so a restart of the worker or `reapply-deletions`
+        # deletes the rows again; the failure is said, never silent (D-097, D-108).
+        _log.error(
+            "athlete_delete_failed",
+            extra={"athlete_id": athlete_id, "error_class": type(exc).__name__, "deletion_record_kept": True},
+        )
+        raise
+    _remove_token_folder(athlete_id)
     _log.warning("athlete_deleted", extra={"athlete_id": athlete_id, "rows": sum(counts.values())})
     return counts
+
+
+class TokenFolderNotRemoved(RuntimeError):
+    """The athlete's rows are deleted but the Garmin token folder could not be (TK-08)."""
+
+
+def _remove_token_folder(athlete_id: str) -> None:
+    """Remove the athlete's Garmin token folder; a failure is logged and raised, never hidden (TK-08)."""
+    folder = _token_folder(athlete_id)
+    try:
+        shutil.rmtree(folder)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        _log.error(
+            "athlete_token_folder_delete_failed",
+            extra={"athlete_id": athlete_id, "error_class": type(exc).__name__},
+        )
+        raise TokenFolderNotRemoved(
+            f"the rows of {athlete_id} are deleted, but the Garmin token folder {folder} was not "
+            f"({type(exc).__name__}); remove it by hand"
+        ) from exc
 
 
 def reapply_deletions(db: DatabaseManager) -> list[str]:
@@ -243,7 +293,7 @@ def reapply_deletions(db: DatabaseManager) -> list[str]:
             )
         if left:
             _delete_rows(db, athlete_id)
-            shutil.rmtree(_token_folder(athlete_id), ignore_errors=True)
+            _remove_token_folder(athlete_id)
             again.append(athlete_id)
             _log.warning("athlete_deletion_reapplied", extra={"athlete_id": athlete_id})
     return again

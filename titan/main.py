@@ -58,6 +58,7 @@ from titan.science.tsb_engine import LOAD_HISTORY_DAYS, tsb_status_for_phase
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
 from titan.ui.setup_wizard import ensure_credentials
+from titan.utils.secrets import install_log_redaction
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ def _configure_rotating_logging() -> None:
         log_path, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding="utf-8"
     )
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    install_log_redaction(handler)  # no bot token in the log file (D-108)
     root.addHandler(handler)
     # The root logger defaults to WARNING, which dropped every INFO event, among
     # them the Garmin sync and DailyCoach step failures (logged at INFO with a

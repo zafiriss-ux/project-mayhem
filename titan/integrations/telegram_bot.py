@@ -22,9 +22,12 @@ from titan.core.athlete import CONSENT_TEXT_VERSION, canonical_chat_id
 from titan.core.structured_events import EventSeverity, structured_event_payload
 from titan.science.critical_speed import parse_time_trial, parse_trial_date
 from titan.science.override_signal import OverrideSignal, record_override_signal
-from titan.utils.secrets import SecretStr
+from titan.utils.secrets import SecretStr, install_log_redaction, redact_secrets, register_secret
 
 _log = logging.getLogger(__name__)
+# The bot token is in every Telegram API URL; no log line of this module, telebot or
+# urllib3 may carry it, at any level (D-108, TK-01).
+install_log_redaction()
 
 _AUDIT_UNAVAILABLE_REPLY = "❌ Audit log unavailable: command not performed."
 
@@ -160,9 +163,11 @@ def _telegram_event(
 ) -> None:
     """Emit a structured Telegram delivery event as a single JSON log line."""
     _log.info(
-        json.dumps(
-            structured_event_payload("telegram", action, severity=severity, **fields),
-            default=str,
+        redact_secrets(
+            json.dumps(
+                structured_event_payload("telegram", action, severity=severity, **fields),
+                default=str,
+            )
         )
     )
 
@@ -232,6 +237,7 @@ class TitanTelegramBot:
         self._pending_override_prompts: dict[int, dict[str, str]] = {}
 
         bot_token_value = self.bot_token.get_secret_value()
+        register_secret(bot_token_value)
         if TELEBOT_AVAILABLE and bot_token_value:
             try:
                 self.bot = telebot.TeleBot(bot_token_value, parse_mode="Markdown")
@@ -243,17 +249,17 @@ class TitanTelegramBot:
                     failure_class=CALLBACK_ERROR,
                     subsystem="init",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
                 _log.error(
                     "startup_failure",
                     extra={
                         "component": "telegram_bot_init",
                         "error_class": e.__class__.__name__,
-                        "detail": str(e),
+                        "detail": redact_secrets(e),
                     },
                 )
-                _log.warning("telegram_init_warning", extra={"detail": str(e)})
+                _log.warning("telegram_init_warning", extra={"detail": redact_secrets(e)})
 
     # ------------------------------------------------------------------ #
     # AUTHORISATION
@@ -782,7 +788,7 @@ class TitanTelegramBot:
                 failure_class=SEND_FAIL,
                 subsystem="send_governance_decision",
                 error_class=e.__class__.__name__,
-                error_message=str(e),
+                error_message=redact_secrets(e),
             )
             return False
         return True
@@ -897,16 +903,16 @@ class TitanTelegramBot:
                     "slo_alert",
                     slo_key="telegram_delivery_failed",
                     cause="INTEGRATION_DELIVERY",
-                    error=str(e),
+                    error=redact_secrets(e),
                 )
                 _telegram_event(
                     "failure",
                     failure_class=SEND_FAIL,
                     subsystem="send_message",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
-                _log.error("telegram_send_error", extra={"detail": str(e)})
+                _log.error("telegram_send_error", extra={"detail": redact_secrets(e)})
                 return False
             else:
                 return True
@@ -1145,7 +1151,7 @@ class TitanTelegramBot:
                     "webhook_removal_failed",
                     subsystem="start_bot",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
             self._poll_thread = threading.Thread(
                 target=self._poll_worker, daemon=True, name="TelegramPoller"
@@ -1175,7 +1181,7 @@ class TitanTelegramBot:
                     failure_class=POLL_FAIL,
                     subsystem="stop_bot",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                 )
         if self._sched_thread:
             self._sched_thread.join(timeout=5)
@@ -1220,11 +1226,11 @@ class TitanTelegramBot:
                     failure_class=POLL_FAIL,
                     subsystem="poll_worker",
                     error_class=e.__class__.__name__,
-                    error_message=str(e),
+                    error_message=redact_secrets(e),
                     is_conflict=is_conflict,
                     backoff_s=backoff_s,
                 )
-                _log.warning("telegram_polling_retry", extra={"detail": str(e), "backoff_s": backoff_s})
+                _log.warning("telegram_polling_retry", extra={"detail": redact_secrets(e), "backoff_s": backoff_s})
                 self._stop_event.wait(timeout=backoff_s)
                 backoff_s = min(backoff_s * 2, max_backoff_s)
 
@@ -1260,11 +1266,11 @@ class TitanTelegramBot:
                         subsystem="scheduler_worker",
                         task_name=task["name"],
                         error_class=e.__class__.__name__,
-                        error_message=str(e),
+                        error_message=redact_secrets(e),
                     )
                     _log.error(
                         "telegram_scheduled_task_error",
-                        extra={"task_name": task["name"], "detail": str(e)},
+                        extra={"task_name": task["name"], "detail": redact_secrets(e)},
                     )
             # Sleep until next full minute
             sleep_seconds = max(1, 60 - now.second)
