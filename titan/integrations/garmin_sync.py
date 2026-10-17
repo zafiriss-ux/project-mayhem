@@ -266,6 +266,19 @@ def _on_windows() -> bool:
     return os.name == "nt"
 
 
+def _make_private_token_dirs(folder: Path) -> None:
+    """Create ``garmin/`` and ``garmin/<athlete_id>/`` readable by the running account only (0700).
+
+    The data folder itself is left alone. A folder made by an earlier version (0755) is
+    tightened on the next write (D-108, TK-07).
+    """
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if _on_windows():
+        return
+    for path in (folder.parent, folder):
+        os.chmod(path, 0o700)
+
+
 def write_athlete_token(athlete_id: str, session: str) -> Path:
     """Write an athlete's encrypted token readable by the running account only (D9.2, D9.3).
 
@@ -274,7 +287,7 @@ def write_athlete_token(athlete_id: str, session: str) -> Path:
     """
     path = athlete_token_path(athlete_id)
     data = encrypt_athlete_token(session)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    _make_private_token_dirs(path.parent)
     if _on_windows():
         _write_private_file(path, b"")
         try:
@@ -356,6 +369,23 @@ def _classify_failure(error: Exception) -> str:
     ):
         return GARMIN_PAYLOAD_MALFORMED
     return GARMIN_API_UNAVAILABLE
+
+
+def _is_definite_token_rejection(error: BaseException) -> bool:
+    """True only when Garmin itself refused the stored session (401 or an auth error).
+
+    A network or proxy failure, a timeout, a 429 or a Garmin 5xx says nothing about the
+    token, so an athlete's token is kept for those and the sync is tried again later
+    (D-108, TK-02). requests' errors are OSError subclasses; an HTTP error carries its status.
+    """
+    status = getattr(getattr(error, "response", None), "status_code", None)
+    if status is not None:
+        return status == 401  # noqa: PLR2004
+    if isinstance(error, OSError):
+        return False
+    if _classify_failure(error) == GARMIN_AUTH_FAIL:
+        return True
+    return re.search(r"\b401\b", str(error)) is not None
 
 
 def _emit_failure(subsystem: str, failure_class: str, error: Exception, **fields: Any) -> None:
@@ -596,13 +626,32 @@ class GarminSync:
 
             # Try loading a persisted session token to avoid re-login 429s.
             if token_path.exists():
+                athlete_token_data = ""
+                if self.token_only:
+                    try:
+                        athlete_token_data = decrypt_athlete_token(token_path.read_bytes())
+                    except ValueError:
+                        # A valid key that is not the one the token was written with (key
+                        # rotated or replaced): a setup fault, so the token is kept (D-108).
+                        self.last_connect_error = (
+                            "Garmin token cannot be decrypted with the current TITAN_TOKEN_KEY_FILE; token kept"
+                        )
+                        _garmin_event(
+                            "connect_token_key_mismatch",
+                            severity=EventSeverity.CRITICAL,
+                            subsystem="connect",
+                            athlete_id=self.athlete_id,
+                            detail="Token does not decrypt with the current key; token kept, no relogin marked",
+                        )
+                        return False
+                token_loaded = False
                 try:
-                    raw_token = token_path.read_bytes()
                     token_data = (
-                        decrypt_athlete_token(raw_token) if self.token_only else _decrypt_token(raw_token)
+                        athlete_token_data if self.token_only else _decrypt_token(token_path.read_bytes())
                     )
                     client = Garmin()
                     client.client.loads(token_data)
+                    token_loaded = True
                     # Verify the token is still accepted by the Garmin API.
                     # client.loads() only deserialises from disk — it does NOT check the
                     # server.  A single lightweight call here ensures we catch expired
@@ -642,6 +691,21 @@ class GarminSync:
                                     detail="Token ping rate-limited (429); secondary call also rate-limited; assuming token valid, skipping re-login",
                                 )
                                 return True
+                            if not _is_definite_token_rejection(secondary_err):
+                                # An outage, not a rejection: keep the token, the owner's too, and
+                                # do not log in now in a rate-limited window (D-108).
+                                self.last_connect_error = (
+                                    f"{secondary_err.__class__.__name__}: Garmin token check failed; token kept"
+                                )
+                                _garmin_event(
+                                    "connect_token_check_failed",
+                                    subsystem="connect",
+                                    athlete_id=self.athlete_id,
+                                    error_class=secondary_err.__class__.__name__,
+                                    failure_class=_secondary_failure_class,
+                                    detail="Token check failed (network or Garmin error); token kept, sync retried later",
+                                )
+                                return False
                             # Secondary call failed with non-rate-limit error — token is stale.
                             # Invalidate the session (resets auth state + deletes token file)
                             # and return False immediately.  Do NOT attempt a fresh login now:
@@ -661,15 +725,44 @@ class GarminSync:
                             return False
                         else:
                             return True
-                    _garmin_event(
-                        "connect_token_load_failed",
-                        subsystem="connect",
-                        error_class=token_err.__class__.__name__,
-                        detail="Saved token invalid or expired; falling back to full login",
-                    )
-                    # Delete the stale token so the next startup attempts a fresh login.
-                    with contextlib.suppress(Exception):
-                        token_path.unlink(missing_ok=True)
+                    # A token that does not load is unusable; one that loads is dropped only
+                    # when Garmin itself rejects it.
+                    if token_loaded and not _is_definite_token_rejection(token_err):
+                        # Network down, proxy error or Garmin 5xx: the token may be fine, so it
+                        # is kept (D-108, TK-02). An athlete's sync fails now and is retried later;
+                        # the owner still tries the .env login as before.
+                        self.last_connect_error = (
+                            f"{token_err.__class__.__name__}: Garmin token check failed; token kept"
+                        )
+                        _garmin_event(
+                            "connect_token_check_failed",
+                            subsystem="connect",
+                            athlete_id=self.athlete_id,
+                            error_class=token_err.__class__.__name__,
+                            failure_class=_token_failure_class,
+                            detail=(
+                                "Token check failed (network or Garmin error); token kept, sync retried later"
+                                if self.token_only
+                                else "Token check failed (network or Garmin error); token kept, trying full login"
+                            ),
+                        )
+                        if self.token_only:
+                            return False
+                    else:
+                        _garmin_event(
+                            "connect_token_load_failed",
+                            subsystem="connect",
+                            athlete_id=self.athlete_id,
+                            error_class=token_err.__class__.__name__,
+                            detail=(
+                                "Garmin rejected the saved token; token removed, athletes relogin needed"
+                                if self.token_only
+                                else "Saved token invalid or expired; falling back to full login"
+                            ),
+                        )
+                        # Delete the rejected token so the next startup attempts a fresh login.
+                        with contextlib.suppress(Exception):
+                            token_path.unlink(missing_ok=True)
                 else:
                     self.client = client
                     self.is_connected = True
@@ -771,17 +864,30 @@ class GarminSync:
             return self.connect()
         return True
 
-    def _invalidate_session(self) -> None:
+    def _invalidate_session(self, error: BaseException | None = None) -> None:
         """Reset auth state and delete the stale token file.
 
         Called whenever a sync method receives a GARMIN_AUTH_FAIL response so
         that the next _ensure_connected() call attempts a fresh login instead
         of re-using a session that the Garmin server has already rejected.
+        An athlete's token is kept when ``error`` is an outage, not a rejection
+        (D-108); when it is deleted the athlete is marked for relogin.
         """
         self.is_connected = False
         self.client = None
+        if self.token_only and error is not None and not _is_definite_token_rejection(error):
+            _garmin_event(
+                "session_reset_token_kept",
+                subsystem="auth",
+                athlete_id=self.athlete_id,
+                error_class=error.__class__.__name__,
+                detail="Sync failed with a network or Garmin error; session reset, token kept",
+            )
+            return
         with contextlib.suppress(Exception):
             self._get_token_path().unlink(missing_ok=True)
+        if self.token_only:
+            self.token_expired = True
         _garmin_event(
             "session_invalidated",
             subsystem="auth",
@@ -865,7 +971,7 @@ class GarminSync:
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
-                self._invalidate_session()
+                self._invalidate_session(e)
             _emit_failure("sync_activities", failure_class, e, days_back=days_back)
             _garmin_event("sync_activities_failed", subsystem="sync_activities", failure_class=failure_class, error_class=e.__class__.__name__, detail="Activity sync failed", error_message=str(e), days_back=days_back)
         # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
@@ -933,7 +1039,7 @@ class GarminSync:
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
-                self._invalidate_session()
+                self._invalidate_session(e)
             _emit_failure("sync_weight", failure_class, e, days_back=days_back)
             _garmin_event("sync_weight_failed", subsystem="sync_weight", failure_class=failure_class, error_class=e.__class__.__name__, detail="Weight sync failed", error_message=str(e), days_back=days_back)
         # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
@@ -1017,14 +1123,14 @@ class GarminSync:
                         error_message=error_message,
                     )
                     if failure_class == GARMIN_AUTH_FAIL:
-                        self._invalidate_session()
+                        self._invalidate_session(e)
                         break
                     continue
             sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
-                self._invalidate_session()
+                self._invalidate_session(e)
             _emit_failure("sync_sleep", failure_class, e, days_back=days_back)
             _garmin_event("sync_sleep_failed", subsystem="sync_sleep", failure_class=failure_class, error_class=e.__class__.__name__, detail="Sleep sync failed", error_message=str(e), days_back=days_back)
         # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.
@@ -1088,14 +1194,14 @@ class GarminSync:
                         error_message=error_message,
                     )
                     if failure_class == GARMIN_AUTH_FAIL:
-                        self._invalidate_session()
+                        self._invalidate_session(e)
                         break
                     continue
             sync_succeeded = True
         except Exception as e:
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
-                self._invalidate_session()
+                self._invalidate_session(e)
             _emit_failure("sync_hrv", failure_class, e, days_back=days_back)
             _garmin_event("sync_hrv_failed", subsystem="sync_hrv", failure_class=failure_class, error_class=e.__class__.__name__, detail="HRV sync failed", error_message=str(e), days_back=days_back)
         # T5-67: success events gated on boolean flag — never emitted on exception-aborted sync.

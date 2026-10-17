@@ -470,11 +470,17 @@ class DatabaseManager:
         self._migrations._apply_v31_migrations(cursor=cursor)
 
     def record_failed_login(
-        self, username: str, lockout_duration_seconds: float, max_attempts: int
+        self,
+        username: str,
+        lockout_duration_seconds: float,
+        max_attempts: int,
+        *,
+        window_seconds: float | None = None,
     ) -> bool:
         """Increment failed login count for username; lock account when threshold reached."""
         return self._access.record_failed_login(
-            username=username, lockout_duration_seconds=lockout_duration_seconds, max_attempts=max_attempts
+            username=username, lockout_duration_seconds=lockout_duration_seconds, max_attempts=max_attempts,
+            window_seconds=window_seconds,
         )
 
     def is_login_locked_out(self, username: str) -> bool:

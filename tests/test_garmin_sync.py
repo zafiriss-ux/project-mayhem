@@ -730,7 +730,7 @@ def test_sync_activities_auth_fail_invalidates_session(monkeypatch):
 
     sync = _connected_sync(_FakeClient(activities=Exception("401 Unauthorized")))
     invalidated = []
-    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+    monkeypatch.setattr(sync, "_invalidate_session", lambda *_error: invalidated.append(True))
 
     result = sync.sync_activities(days_back=1)
 
@@ -746,7 +746,7 @@ def test_sync_weight_auth_fail_invalidates_session(monkeypatch):
 
     sync = _connected_sync(_FakeClient(weigh_ins=Exception("401 forbidden")))
     invalidated = []
-    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+    monkeypatch.setattr(sync, "_invalidate_session", lambda *_error: invalidated.append(True))
 
     result = sync.sync_weight(days_back=7)
 
@@ -763,7 +763,7 @@ def test_sync_sleep_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
     # 3 days requested; first day returns auth fail, remaining days should NOT be fetched
     sync = _connected_sync(_FakeClient(sleep=[Exception("401 Unauthorized"), {}, {}]))
     invalidated = []
-    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+    monkeypatch.setattr(sync, "_invalidate_session", lambda *_error: invalidated.append(True))
 
     result = sync.sync_sleep(days_back=3)
 
@@ -781,7 +781,7 @@ def test_sync_hrv_auth_fail_invalidates_session_and_breaks_loop(monkeypatch):
 
     sync = _connected_sync(_FakeClient(hrv=[Exception("401 Unauthorized"), {}, {}]))
     invalidated = []
-    monkeypatch.setattr(sync, "_invalidate_session", lambda: invalidated.append(True))
+    monkeypatch.setattr(sync, "_invalidate_session", lambda *_error: invalidated.append(True))
 
     result = sync.sync_hrv(days_back=3)
 
