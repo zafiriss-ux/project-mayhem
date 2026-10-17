@@ -4,6 +4,7 @@ Complete athlete demographics, physiology, and training data
 """
 
 import logging
+import re
 from datetime import UTC, date, datetime
 from itertools import count
 from typing import Any
@@ -68,6 +69,28 @@ class AthleteNotReady(Exception):
         super().__init__(f"athlete {athlete_id} is not ready: {reason}")
         self.athlete_id = athlete_id
         self.reason = reason
+
+
+_CHAT_DIGITS = re.compile(r"[0-9]{1,20}")
+
+
+def canonical_chat_id(value: object, *, allow_negative: bool = False) -> str | None:
+    """The one stored and compared form of a Telegram chat id, or None when refused (D-107).
+
+    Only plain ASCII decimal digits, around which whitespace is ignored: no '+', no '_',
+    no other digits, no fractions. Leading zeros are dropped (``str(int(x))``), so "01001"
+    and 1001 are the same chat, as they are when sent. A '-' (group chat) is refused unless
+    ``allow_negative``: an athlete's chat is a private one, whose id is positive; the owner's
+    TELEGRAM_CHAT_ID may be a group. 0 is never a chat.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    text = str(value).strip()
+    negative = allow_negative and text.startswith("-")
+    digits = text[1:] if negative else text
+    if not _CHAT_DIGITS.fullmatch(digits) or int(digits) == 0:
+        return None
+    return ("-" if negative else "") + str(int(digits))
 
 
 def age_on(birth_date: date, today: date) -> int:

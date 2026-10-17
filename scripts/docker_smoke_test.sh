@@ -15,6 +15,12 @@ if ! grep -q "TITAN_JWT_PRIVATE_KEY" \
   bash scripts/generate_jwt_keys.sh
 fi
 
+# Binding an athlete's chat needs the owner's chat set (D-107, RC-04). A test id, not a
+# secret: no bot token is set here, so nothing is ever sent to it.
+if ! grep -q "^TELEGRAM_CHAT_ID=[0-9-]" .env 2>/dev/null; then
+  echo "TELEGRAM_CHAT_ID=900000" >> .env
+fi
+
 COMPOSE="docker compose"
 API_URL="http://localhost:8000"  # DevSkim: ignore DS162092
 TIMEOUT=60
