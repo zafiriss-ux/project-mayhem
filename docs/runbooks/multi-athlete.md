@@ -64,7 +64,8 @@ python scripts/athletes.py new-key
    ```
 
    Στο Docker, γράψε το αρχείο μέσα στο container:
-   `docker compose exec -T titan-worker sh -c "cat > /tmp/maria.json" < maria.json`.
+   `docker compose exec -T titan-worker sh -c "cat > /tmp/maria.json" < maria.json`, και στο `add`
+   δώσε `--profile /tmp/maria.json`.
 
 3. Πρόσθεσε τον αθλητή. Τυπώνει το νέο id (`a-` και 8 χαρακτήρες):
 
@@ -110,6 +111,14 @@ python scripts/athletes.py remove a-1234abcd                         # ζητά 
 Το `remove` γράφει πρώτα μια γραμμή στο αρχείο διαγραφών (`TITAN_DELETION_RECORD_FILE`: μόνο id και
 ώρα), μετά σβήνει κάθε γραμμή του αθλητή σε κάθε πίνακα με `athlete_id`, σε μία συναλλαγή, και μετά
 τον φάκελο του token του. Χωρίς `TITAN_DELETION_RECORD_FILE` αρνείται και δεν σβήνει τίποτα.
+
+Στο Docker η εξαγωγή γράφεται μέσα στο container, και το `remove` ρωτά, οπότε θέλει `-it`:
+
+```bash
+docker compose exec titan-worker python scripts/athletes.py export a-1234abcd --out /tmp/a-1234abcd.json
+docker compose cp titan-worker:/tmp/a-1234abcd.json .
+docker compose exec -it titan-worker python scripts/athletes.py remove a-1234abcd
+```
 
 - **Μετά από `/stop`:** ο αθλητής παγώνει αμέσως (καμία κλήση, κανένα μήνυμα). Ο worker τον σβήνει
   μόνος του 30 ημέρες μετά. Για να γίνει τώρα: `python scripts/athletes.py purge-expired`.

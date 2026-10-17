@@ -166,6 +166,9 @@ SMOKE_B=$($COMPOSE exec -T titan-worker python scripts/athletes.py list | grep "
 [ -n "$SMOKE_B" ] || fail "Smoke B not found in athletes.py list"
 $COMPOSE exec -T titan-worker python scripts/athletes.py export "$SMOKE_B" --out /tmp/smoke_b.json > /dev/null || \
     fail "athletes.py export failed"
+$COMPOSE cp titan-worker:/tmp/smoke_b.json /tmp/smoke_b_export.json || fail "docker compose cp of the export failed"
+grep -q "$SMOKE_B" /tmp/smoke_b_export.json || fail "the copied export does not name Smoke B"
+rm -f /tmp/smoke_b_export.json
 $COMPOSE exec -T titan-worker python scripts/athletes.py remove "$SMOKE_B" --yes > /dev/null || \
     fail "athletes.py remove failed"
 [ "$(count_athletes)" = "1" ] || fail "athletes.py remove left Smoke B in the list"
