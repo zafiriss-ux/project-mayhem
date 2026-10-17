@@ -19,7 +19,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -242,7 +242,8 @@ class TestGetBaselineRhr:
         assert coach._get_baseline_rhr(days=7) is None
 
     def test_returns_average_of_stored_rhr(self, coach):
-        base = datetime.now() - timedelta(days=3)
+        # The four days before today: today is not part of its own baseline (D-105).
+        base = datetime.now(UTC) - timedelta(days=4)
         for i in range(4):
             d = (base + timedelta(days=i)).strftime("%Y-%m-%d")
             coach.db.save_daily_metric(date=d, rhr=45 + i)  # 45, 46, 47, 48

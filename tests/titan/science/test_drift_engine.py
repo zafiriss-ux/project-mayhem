@@ -34,7 +34,7 @@ class _NoopPlanner:
 
 
 class _NoopHRV:
-    def get_hrv_summary(self):
+    def get_hrv_summary(self, before_date=None):
         return {"baseline": 50, "trend": "STABLE", "latest_hrv": 50}
 
 

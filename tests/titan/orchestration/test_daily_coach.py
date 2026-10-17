@@ -121,7 +121,7 @@ class MinimalCoachFactory:
             hrv_log=[],
             add_hrv_measurement=lambda *a, **k: None,
             calculate_ln_rmssd_deviation=lambda **k: 0.0,
-            get_hrv_summary=lambda: {"latest_hrv": 45.0, "baseline": 40.0, "trend": "steady", "std_dev": 1.0},
+            get_hrv_summary=lambda before_date=None: {"latest_hrv": 45.0, "baseline": 40.0, "trend": "steady", "std_dev": 1.0},
             check_baseline_drift=lambda **k: False,
         )
         coach.autonomic = SimpleNamespace(

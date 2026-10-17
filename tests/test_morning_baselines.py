@@ -132,6 +132,24 @@ def test_hrv_collapse_with_ten_nights_is_still_rest(tmp_path, monkeypatch):
     assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"]
 
 
+def test_hrv_collapse_on_the_morning_with_six_earlier_nights_stays_rest(tmp_path, monkeypatch):
+    """6 earlier nights + today = 7 readings: before D-105 that was a baseline and H2 fired.
+
+    Leaving today out makes the baseline missing that morning; the fix must not turn
+    that REST into an EASY, so the old baseline stays when only it fires H2.
+    """
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=6, today_hrv=35.0)
+    assert payload["session_type"] == "REST", payload["session_type"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"]
+
+
+def test_six_earlier_nights_without_collapse_is_capped_at_easy(tmp_path, monkeypatch):
+    """6 earlier nights and a normal HRV: the baseline before today is missing → EASY ceiling."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=6, today_hrv=76.0)
+    assert payload["session_type"] in {"EASY", "REST"}, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" in payload["governance_locks"]
+
+
 def test_rhr_spike_is_not_diluted_by_todays_reading(tmp_path, monkeypatch):
     """SG-06: earlier RHR 50, today 58 (+8): H3 fires; today's 58 is not in its own baseline."""
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,

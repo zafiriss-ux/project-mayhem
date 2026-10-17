@@ -311,6 +311,25 @@ def _hrv_baseline_or_none(value: Any) -> float | None:
     return baseline if math.isfinite(baseline) and baseline > 0 else None
 
 
+def _stricter_h2_baseline(
+    before_today: float | None, with_today: float | None, today_hrv: float | None,
+) -> float | None:
+    """The H2 baseline: the readings before today, unless that loses a hard stop (D-105).
+
+    The baseline that leaves today out is the right one. Only when the old baseline
+    (the last readings, today's included) would fire H2 and the new one would not,
+    for example on the morning with 6 earlier readings, does the old one stay, so the
+    fix never turns a REST into something lighter.
+    """
+    def _fires(baseline: float | None) -> bool:
+        return (baseline is not None and today_hrv is not None
+                and baseline - today_hrv >= GovernanceEngine.h2_drop_threshold_ms(baseline))
+
+    if _fires(with_today) and not _fires(before_today):
+        return with_today
+    return before_today
+
+
 def _sleep_score_or_default(score: int | None) -> int:
     return _MISSING_SLEEP_SCORE if score is None else score
 
@@ -983,7 +1002,11 @@ class DailyCoach:
         # EASY ceiling (H2_MISSING) instead of comparing against an invented value.
         hrv_summary   = self.hrv.get_hrv_summary(before_date=today_str)
         latest_hrv   = _safe_float(hrv_summary.get('latest_hrv'), 0.0)
-        baseline_hrv = _hrv_baseline_or_none(hrv_summary.get('baseline'))
+        baseline_hrv = _stricter_h2_baseline(
+            _hrv_baseline_or_none(hrv_summary.get('baseline')),
+            _hrv_baseline_or_none(self.hrv.get_hrv_summary().get('baseline')),
+            self._today_hrv(),
+        )
         hrv_pct_above = ((latest_hrv - baseline_hrv) / baseline_hrv * 100) if baseline_hrv else 0.0
         today_hrr60  = (self.autonomic.hrr_log[-1][1] if self.autonomic.hrr_log else None)
 

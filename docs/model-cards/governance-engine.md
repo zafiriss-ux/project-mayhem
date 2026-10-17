@@ -34,8 +34,8 @@ invariants, known limitations, and evidence quality for each gate threshold.
 | Feature | Source | Unit | Valid Range | Notes |
 |---------|--------|------|-------------|-------|
 | `hrv_rmssd` | Garmin HRV | ms | 10–200 | 7-day rolling mean used for H2 gate |
-| `hrv_baseline` | Computed from 14-day history | ms | 10–200 | |
-| `rhr` | Garmin | bpm | 30–120 | H3 gate uses delta from 7-day mean |
+| `hrv_baseline` | Mean of the last 7 readings dated before today (D-105) | ms | 10–200 | None with fewer than 7 earlier readings → H2_MISSING, EASY ceiling (ADR-0051) |
+| `rhr` | Garmin | bpm | 30–120 | H3 gate uses delta from the mean of the 7 days before today (D-105) |
 | `tsb` | TSB engine (CTL−ATL) | AU | −100 to +30 | H4 gate |
 | `subjective_fatigue` | Athlete self-report | RPE 0–10 | 0–10 | H5 gate |
 | `acwr` | ACWR engine | ratio | 0.0–3.0 | VO2 eligibility sub-gate |
@@ -107,9 +107,10 @@ require an ADR and update to `evidence_registry.py`.
 4. **No temporal context:** The engine evaluates a single time slice. It does not model
    multi-day recovery trajectories or detect improving-trend overrides for H2/H3.
 
-5. **Cold-start behavior:** On first run (no history), HRV baseline defaults to a
-   population mean. Safety gates remain active but may fire at incorrect rates for the
-   first 14 days.
+5. **Cold-start behavior:** With fewer than 7 HRV readings before today the HRV baseline is
+   missing (None, never 0.0 or a population value). H2 cannot compare, so governance applies
+   the ADR-0051 EASY ceiling with lock `DATA_MISSING_CONSERVATIVE_H2` until 7 earlier readings
+   exist (D-105).
 
 ---
 

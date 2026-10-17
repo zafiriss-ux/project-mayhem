@@ -77,7 +77,7 @@ class StubSimpleEngine:
     def calculate_ln_rmssd_deviation(self, **_kwargs):
         return 0.0
 
-    def get_hrv_summary(self):
+    def get_hrv_summary(self, before_date=None):
         return {"latest_hrv": 49.0, "baseline": 45.0, "trend": "steady", "std_dev": 1.2}
 
     def check_baseline_drift(self, window_days: int = 14) -> bool:

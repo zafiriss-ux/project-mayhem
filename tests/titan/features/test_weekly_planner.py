@@ -8,7 +8,7 @@ class _FakeHRVEngine:
         self.baseline = baseline
         self.latest_hrv = latest_hrv
 
-    def get_hrv_summary(self):
+    def get_hrv_summary(self, before_date=None):
         return {"baseline": self.baseline, "latest_hrv": self.latest_hrv}
 
     def get_trend_analysis(self):
