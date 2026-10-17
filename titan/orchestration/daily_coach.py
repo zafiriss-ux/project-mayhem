@@ -304,6 +304,12 @@ def _is_bad_sleep_score(score: Any) -> bool:
 _MISSING_SLEEP_SCORE = 50
 
 
+def _routine_day(coach: object) -> date:
+    """The UTC day this morning is for: the worker's claimed day, else today (D-109)."""
+    day = getattr(coach, "routine_date", None)
+    return date.fromisoformat(day) if day else datetime.now(UTC).date()
+
+
 def _hrv_baseline_or_none(value: Any) -> float | None:
     """The HRV baseline as a positive finite number, or None when it is missing (D-105).
 
@@ -617,6 +623,16 @@ class DailyCoach:
         # Held for a whole morning run (by BackgroundRoutineRunner, ADR-0058 Phase C)
         # and while engines hydrate, so the two never overlap.
         self._routine_mutex = threading.Lock()
+        # Set by the worker for one morning (D-109): the claimed UTC day, so a run that
+        # crosses midnight still computes and records the day it was claimed for; whether
+        # a recomputed decision supersedes the stored one of that day; a line added to the
+        # briefing; and a callback once the decision is recorded.
+        self.routine_date: str | None = None
+        self.replace_decision = False
+        self.briefing_note: str | None = None
+        self.on_decision_recorded: Callable[[dict], None] | None = None
+        # Asked before the athlete is sent "TITAN system error"; False skips it (D-109).
+        self.before_system_error_alert: Callable[[], bool] | None = None
         self._degraded_tracker = DegradedModeTracker(db=self.db)
         self._effect_bus = self._build_effect_bus()
         self._startup_hydration_confidence: dict[str, bool] = {
@@ -855,7 +871,7 @@ class DailyCoach:
         garmin_data: GarminSyncResult = _run_step(1, "sync_garmin", self.garmin.sync_all)
 
         # ── Step 2: Persist to DB ────────────────────────────────────────────
-        today_str = datetime.now(UTC).strftime('%Y-%m-%d')
+        today_str = _routine_day(self).isoformat()
         persistence_degraded = False
         try:
             today_rhr, today_sleep_score, today_sleep_hours = _run_step(
@@ -1433,7 +1449,7 @@ class DailyCoach:
                 "vo2_history_failed", error_class=type(e).__name__, error_message=str(e),
             )
             return None
-        today = datetime.now(UTC).date()
+        today = _routine_day(self)
         for session in sessions:
             if str(session.get("session_type", "")).upper() in _VO2_HISTORY_TYPES:
                 try:
@@ -1450,7 +1466,7 @@ class DailyCoach:
         as if it were today's hid a missing reading from the governance gates.
         """
         log = getattr(getattr(self, "hrv", None), "hrv_log", None) or []
-        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        today = _routine_day(self).isoformat()
         for day, value in reversed(log):
             if str(day)[:10] == today:
                 return round(_safe_float(value, 0.0), 1)
@@ -1582,7 +1598,7 @@ class DailyCoach:
         context_payload["garmin_data_trust_level"] = inp.garmin_trust.trust_level.value
 
         # ADR-0055: source arbitration — Garmin preferred; ManualEntry fallback (≥48h stale)
-        _today = datetime.now(UTC).strftime("%Y-%m-%d")
+        _today = _routine_day(self).isoformat()
         _manual_adapter = ManualEntryAdapter(self.db)
         _router = BiometricRouter(
             garmin_age_hours=inp.garmin_trust.data_age_hours,
@@ -1815,6 +1831,8 @@ class DailyCoach:
         def _handle(effect, result):
             trace = result.decision_trace
             outcome_tracker.record_decision(
+                date=_routine_day(self).isoformat(),
+                replace_same_day=bool(getattr(self, "replace_decision", False)),
                 session_planned=str(trace.get("session_planned_pre_governance", "EASY")),
                 session_post_governance=str(trace.get("session_post_governance", "EASY")),
                 locks_applied=list(trace.get("locks_applied", [])),
@@ -1829,6 +1847,9 @@ class DailyCoach:
                 afi_value=float(trace.get("afi_value", 0.0)),
                 athlete_profile_id=athlete_profile_id,
             )
+            recorded = getattr(self, "on_decision_recorded", None)
+            if recorded is not None:
+                recorded(dict(result.session_plan))
 
         return _handle
 
@@ -1838,8 +1859,13 @@ class DailyCoach:
 
         def _handle(effect, result):
             _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
+            payload = result.coaching_payload
+            note = getattr(self, "briefing_note", None)
+            if note:
+                earlier = payload.get("special_note")
+                payload = {**payload, "special_note": f"{earlier}\n⚠️ {note}" if earlier else note}
             try:
-                delivery_ok = telegram.send_daily_coaching(result.coaching_payload)
+                delivery_ok = telegram.send_daily_coaching(payload)
             except Exception as exc:
                 _daily_coach_event(
                     "step_event",
@@ -2044,7 +2070,7 @@ class DailyCoach:
         """
         if not _is_bad_sleep_score(today_sleep_score):
             return 0
-        today = date.fromisoformat(datetime.now(UTC).strftime('%Y-%m-%d'))
+        today = _routine_day(self)
         athlete_id = getattr(self, "athlete_id", "owner")
         nights = 1
         for back in range(1, SLEEP_DEBT_NIGHTS):
@@ -2105,7 +2131,7 @@ class DailyCoach:
             loads = self.db.get_training_load_history(
                 days=CTL_DECAY_DAYS, athlete_id=getattr(self, "athlete_id", "owner")
             )
-            acwr = ACWREngine.from_daily_loads(loads, datetime.now(UTC).date())
+            acwr = ACWREngine.from_daily_loads(loads, _routine_day(self))
         except Exception as e:
             _log.exception("ACWR from training history failed: %s", e)
             _daily_coach_event(

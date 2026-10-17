@@ -15,6 +15,7 @@ import signal as _signal
 import sys
 import threading
 import time
+from dataclasses import dataclass
 from io import IOBase
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -257,8 +258,39 @@ ROUTINE_MORNING = "morning"
 ROUTINE_HOUR_UTC = 7
 # A day whose message was not delivered resumes, at most this many attempts (ADR-0067 D8.4).
 ROUTINE_MAX_ATTEMPTS = 3
-# The owner loop waits this long before the next attempt of the same day.
+# The next attempt of the same day starts at least this long after the previous one: the
+# owner loop sleeps it, the round counts it from the day's first attempt (D-109).
 ROUTINE_RETRY_DELAY_S = 15 * 60
+# With several athletes no day's first attempt starts after this hour UTC (D-109): a briefing
+# that arrives in the afternoon or evening is no longer a morning briefing.
+ROUTINE_LAST_START_HOUR_UTC = 12
+# Recording a delivery that failed is tried again after these pauses (D-109).
+_MARK_RETRY_DELAYS_S: tuple[float, ...] = (0.5, 2.0)
+# Sessions at or below EASY: a resend that cannot be checked again keeps these (D-109).
+_AT_MOST_EASY = frozenset({"REST", "RECOVERY", "EASY"})
+_EASY_MAX_DURATION_MIN = 45
+
+# Days of this process whose briefing reached Telegram but whose delivery could not be
+# recorded, days already left, and days logged as too late; keyed by database file,
+# athlete and date (D-109).
+_UNRECORDED_SENDS: set[tuple[str, str, str]] = set()
+_LEFT_DAYS: set[tuple[str, str, str]] = set()
+_LATE_LOGGED: set[tuple[str, str, str]] = set()
+
+
+def _day_key(db: DatabaseManager, athlete_id: str, execution_date: str) -> tuple[str, str, str]:
+    return (str(getattr(db, "db_path", "")), athlete_id, execution_date)
+
+
+@dataclass
+class _MorningDay:
+    """One claimed attempt of one athlete's day, as the routine sees it (D-109)."""
+
+    execution_date: str
+    attempt: int
+    replace_decision: bool = False
+    note: str | None = None
+    decided: bool = False
 
 
 def _utc_now() -> _dt.datetime:
@@ -266,15 +298,27 @@ def _utc_now() -> _dt.datetime:
     return _dt.datetime.now(_dt.UTC)
 
 
-def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> int | bool | None:
+def _claim_routine(
+    db: DatabaseManager, athlete_id: str, now: _dt.datetime, *, spaced: bool = False,
+) -> int | bool | None:
     """Take the next attempt at today's morning (ADR-0060 D1, amended by ADR-0067 D8.4; INV-15).
 
-    An int: the attempt number this worker now runs. False: nothing runs today, because the
-    day was delivered or left (a day whose attempts are used up is left here). None: the
-    claim itself failed; the routine does not run this cycle (fail closed) and the caller
-    retries on its next cycle.
+    An int: the attempt number this worker now runs. False: nothing runs now, because the
+    day was delivered or left (a day whose attempts are used up is left here), or, with
+    ``spaced``, the next attempt is not due yet or the day would start after
+    ``ROUTINE_LAST_START_HOUR_UTC`` (D-109). A day this process already sent is never claimed
+    again, even when recording that delivery failed (D-109). None: the claim itself failed;
+    the routine does not run this cycle (fail closed) and the caller retries on its next cycle.
     """
     execution_date = now.date().isoformat()
+    key = _day_key(db, athlete_id, execution_date)
+    if key in _UNRECORDED_SENDS:
+        _mark_delivered(db, athlete_id, execution_date)
+        return False
+    gap = _dt.timedelta(seconds=ROUTINE_RETRY_DELAY_S) if spaced else None
+    start_by = (
+        now.replace(hour=ROUTINE_LAST_START_HOUR_UTC, minute=0, second=0, microsecond=0) if spaced else None
+    )
     try:
         state, attempt = db.begin_routine_attempt(
             athlete_id=athlete_id,
@@ -282,6 +326,8 @@ def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> i
             routine_type=ROUTINE_MORNING,
             started_at=now,
             max_attempts=ROUTINE_MAX_ATTEMPTS,
+            retry_gap=gap,
+            start_by=start_by,
         )
     except Exception as exc:
         logging.getLogger("titan.worker.runner").critical(
@@ -293,6 +339,13 @@ def _claim_routine(db: DatabaseManager, athlete_id: str, now: _dt.datetime) -> i
         return attempt
     if state == "exhausted":  # the last attempt crashed before it could leave the day
         _leave_day(db, athlete_id, execution_date)
+    elif state == "late" and key not in _LATE_LOGGED:
+        _LATE_LOGGED.add(key)
+        logging.getLogger("titan.worker.runner").warning(
+            "worker_routine_too_late",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date,
+                   "last_start_hour_utc": ROUTINE_LAST_START_HOUR_UTC},
+        )
     return False
 
 
@@ -313,25 +366,49 @@ def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str)
         )
 
 
-def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
-    """Record the day's delivery; a delivered day is never sent again (ADR-0067 D8.3)."""
-    try:
-        db.mark_routine_delivered(
-            athlete_id=athlete_id,
-            execution_date=execution_date,
-            routine_type=ROUTINE_MORNING,
-            delivered_at=_utc_now(),
-        )
-    except Exception as exc:
-        logging.getLogger("titan.worker.runner").critical(
-            "worker_routine_delivery_unrecorded",
-            extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
-        )
+def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -> bool:
+    """Record the day's delivery; a delivered day is never sent again (ADR-0067 D8.3).
+
+    A failure (such as "database is locked") is tried again after short pauses. If it still
+    fails, this process remembers that the day was sent, so it neither sends it again nor
+    reports it as not delivered (D-109). False when the delivery is still unrecorded.
+    """
+    key = _day_key(db, athlete_id, execution_date)
+    error = ""
+    for delay in (0.0, *_MARK_RETRY_DELAYS_S):
+        if delay:
+            time.sleep(delay)
+        try:
+            db.mark_routine_delivered(
+                athlete_id=athlete_id,
+                execution_date=execution_date,
+                routine_type=ROUTINE_MORNING,
+                delivered_at=_utc_now(),
+            )
+        except Exception as exc:
+            error = str(exc)
+            continue
+        _UNRECORDED_SENDS.discard(key)
+        return True
+    _UNRECORDED_SENDS.add(key)
+    logging.getLogger("titan.worker.runner").critical(
+        "worker_routine_delivery_unrecorded",
+        extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": error},
+    )
+    return False
 
 
 def _leave_day(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
-    """After the last attempt: CRITICAL, one message to Zaf, and the day is closed (ADR-0067 D8.4)."""
+    """After the last attempt: CRITICAL, one message to Zaf, and the day is closed (ADR-0067 D8.4).
+
+    When closing the day fails, the next poll closes it again without a second message (D-109).
+    """
     log = logging.getLogger("titan.worker.runner")
+    key = _day_key(db, athlete_id, execution_date)
+    if key in _LEFT_DAYS:
+        _complete_routine(db, athlete_id, execution_date)
+        return
+    _LEFT_DAYS.add(key)
     log.critical(
         "worker_routine_left",
         extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempts": ROUTINE_MAX_ATTEMPTS},
@@ -363,34 +440,158 @@ def _athlete_telegram(db: DatabaseManager, athlete_id: str):  # noqa: ANN202
     return TitanTelegramBot(db=db, chat_id=chat, athlete_id=athlete_id)
 
 
-def _send_stored_decision(db: DatabaseManager, athlete_id: str, decision: dict) -> bool:
-    """Send the day's stored decision instead of computing it again (ADR-0067 D8.4)."""
+_RESEND_NOTE = (
+    "The morning briefing was interrupted; this is the decision TITAN made earlier today. "
+    "If you already got this morning's message, this one repeats it."
+)
+_RECOMPUTED_NOTE = (
+    "Your data changed after TITAN's first decision today, so today was computed again. "
+    "If you already got a briefing today, follow this one."
+)
+_CAPPED_NOTE = (
+    "Your data changed after TITAN's first decision today and today could not be computed "
+    "again, so the session is at most EASY. If you already got a briefing today, follow this one."
+)
+
+
+def _session_caps(session: dict | None) -> dict:
+    """The parts of a sent session a resend repeats: type, volume and its caps (D-109)."""
+    keys = ("session_type", "distance_km", "duration_min", "max_duration_min", "max_zone")
+    return {k: (session or {}).get(k) for k in keys if (session or {}).get(k) is not None}
+
+
+def _caps_text(caps: dict | None) -> str | None:
+    """'8 km · 45 min · at most 60 min · zone 2 at most', or None when there is nothing to say (D-109)."""
+    caps = caps or {}
+    if str(caps.get("session_type", "")).upper() == "REST":
+        return None
+    parts: list[str] = []
+    for key, fmt in (("distance_km", "{:g} km"), ("duration_min", "{:g} min"),
+                     ("max_duration_min", "at most {:g} min"), ("max_zone", "zone {:g} at most")):
+        try:
+            value = float(caps.get(key) or 0)
+        except (TypeError, ValueError):
+            continue
+        if value > 0 and not (key == "max_zone" and value >= 5):
+            parts.append(fmt.format(value))
+    return " · ".join(parts) or None
+
+
+def _send_stored_decision(
+    db: DatabaseManager, athlete_id: str, decision: dict, caps: dict | None = None, *, note: str = _RESEND_NOTE,
+) -> bool:
+    """Send the day's stored decision instead of computing it again (ADR-0067 D8.4).
+
+    ``caps`` is the session computed with it, so the resend keeps its distance, duration
+    and caps (D-109). The note says that it may repeat an earlier message (DW-06).
+    """
     _require_consent(db, athlete_id)
-    text = (
-        f"🌅 Today's session: {decision['session_post_governance']}\n"
-        "The morning briefing was interrupted; this is the decision TITAN made earlier today."
-    )
+    lines = [f"🌅 Today's session: {decision['session_post_governance']}"]
+    volume = _caps_text(caps)
+    if volume:
+        lines.append(volume)
     if decision.get("locks_applied"):
-        text += "\nLocks: " + ", ".join(str(lock) for lock in decision["locks_applied"])
-    return bool(_athlete_telegram(db, athlete_id).send_message(text, parse_mode=""))
+        lines.append("Locks: " + ", ".join(str(lock) for lock in decision["locks_applied"]))
+    lines.append(note)
+    return bool(_athlete_telegram(db, athlete_id).send_message("\n".join(lines), parse_mode=""))
+
+
+def _capped_at_easy(decision: dict) -> tuple[dict, dict]:
+    """The stored decision, never above EASY, with EASY's 45-minute cap (D-109, INV-24)."""
+    stored = str(decision.get("session_post_governance", "")).upper()
+    session = stored if stored in _AT_MOST_EASY else "EASY"
+    caps: dict = {"session_type": session}
+    if session != "REST":
+        caps["max_duration_min"] = _EASY_MAX_DURATION_MIN
+    return {**decision, "session_post_governance": session}, caps
+
+
+def _bind_day(coach, db: DatabaseManager, athlete_id: str, day: _MorningDay) -> None:  # noqa: ANN001
+    """Give the coach the claimed day and the hooks of a resumable morning (D-109).
+
+    The day, not the clock, dates the whole routine, so a run that crosses midnight still
+    computes and records the day it was claimed for. Once the decision is recorded, the
+    sent session and a hash of the inputs it was computed on are kept for a later attempt.
+    The athlete is told of a system error at most once a day.
+    """
+    log = logging.getLogger("titan.worker.runner")
+    where = {"athlete_id": athlete_id, "execution_date": day.execution_date, "routine_type": ROUTINE_MORNING}
+
+    def _recorded(session: dict) -> None:
+        day.decided = True
+        try:
+            db.update_routine_resume(**where, fields={
+                "session": _session_caps(session),
+                "inputs": db.routine_inputs_fingerprint(athlete_id, day.execution_date),
+            })
+        except Exception as exc:  # a retry then treats the inputs as changed and computes again
+            log.exception("worker_routine_resume_unsaved", extra={"athlete_id": athlete_id, "error": str(exc)})
+
+    def _alert_allowed() -> bool:
+        try:
+            if db.get_routine_resume(**where).get("athlete_alerted"):
+                return False
+            db.update_routine_resume(**where, fields={"athlete_alerted": _utc_now().isoformat()})
+        except Exception as exc:  # unsure: telling twice is better than never
+            log.exception("worker_routine_resume_unsaved", extra={"athlete_id": athlete_id, "error": str(exc)})
+        return True
+
+    coach.routine_date = day.execution_date
+    coach.replace_decision = day.replace_decision
+    coach.briefing_note = day.note
+    coach.on_decision_recorded = _recorded
+    coach.before_system_error_alert = _alert_allowed
+
+
+def _resume_stored_day(db: DatabaseManager, athlete_id: str, stored: dict, day: _MorningDay) -> bool:
+    """A later attempt of a day whose decision is stored; True once delivered (D-109).
+
+    The stored decision is sent only while the athlete's inputs of that day are the ones it
+    was computed on. Otherwise the day is computed again through the gated pipeline and the
+    new decision replaces the stored one in place (one ``governance_outcomes`` row per day).
+    If no new decision can be made, the stored one is sent at most EASY.
+    """
+    log = logging.getLogger("titan.worker.runner")
+    resume = db.get_routine_resume(
+        athlete_id=athlete_id, execution_date=day.execution_date, routine_type=ROUTINE_MORNING,
+    )
+    if db.routine_inputs_fingerprint(athlete_id, day.execution_date) == resume.get("inputs"):
+        log.info("worker_routine_resend_stored", extra={"athlete_id": athlete_id, "attempt": day.attempt})
+        return _send_stored_decision(db, athlete_id, stored, resume.get("session"))
+    log.warning("worker_routine_inputs_changed", extra={"athlete_id": athlete_id, "attempt": day.attempt})
+    day.replace_decision, day.note = True, _RECOMPUTED_NOTE
+    try:
+        delivered = _run_morning(db, athlete_id, day=day) is True
+    except Exception as exc:
+        log.exception("worker_routine_recompute_failed", extra={"athlete_id": athlete_id, "error": str(exc)})
+        delivered = False
+    if delivered or day.decided:
+        return delivered
+    capped, caps = _capped_at_easy(stored)
+    log.warning(
+        "worker_routine_resend_capped",
+        extra={"athlete_id": athlete_id, "session": capped["session_post_governance"]},
+    )
+    return _send_stored_decision(db, athlete_id, capped, caps, note=_CAPPED_NOTE)
 
 
 def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int) -> bool:
     """Run one claimed attempt of the day; True once the day's message is delivered (ADR-0067 D8.4).
 
-    When the athlete's decision of that day is already stored it is sent, not computed
-    again, so ``governance_outcomes`` is never written twice for one athlete and day.
-    Otherwise the routine runs. Not delivered after the last attempt: the day is left.
+    When the athlete's decision of that day is already stored, it is sent again only if the
+    inputs did not change since; otherwise the day is computed again (D-109). Either way
+    ``governance_outcomes`` keeps one row for one athlete and day. With nothing stored the
+    routine runs. Not delivered after the last attempt: the day is left.
     """
     log = logging.getLogger("titan.worker.runner")
     delivered = False
+    day = _MorningDay(execution_date=execution_date, attempt=attempt)
     try:
         stored = db.get_governance_decision_on(athlete_id, execution_date)
         if stored is not None:
-            log.info("worker_routine_resend_stored", extra={"athlete_id": athlete_id, "attempt": attempt})
-            delivered = _send_stored_decision(db, athlete_id, stored)
+            delivered = _resume_stored_day(db, athlete_id, stored, day)
         else:
-            delivered = _run_morning(db, athlete_id) is True
+            delivered = _run_morning(db, athlete_id, day=day) is True
             log.info("morning_routine_complete", extra={"athlete_id": athlete_id, "delivered": delivered})
     except Exception as exc:
         log.exception("worker_cycle_error", extra={"athlete_id": athlete_id, "error": str(exc)})
@@ -641,7 +842,7 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
         )
 
 
-def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> bool:
+def _run_morning(db: DatabaseManager, athlete_id: str = "owner", *, day: _MorningDay | None = None) -> bool:
     """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
 
     Returns what the routine returns: True when the decision was made and the day's
@@ -650,7 +851,11 @@ def _run_morning(db: DatabaseManager, athlete_id: str = "owner") -> bool:
     coach, Garmin, weather or Telegram is built or called (ADR-0067 D4.2, D7.1, D9.5).
     """
     coach = _build_daily_coach(db, athlete_id=athlete_id)
-    today = _utc_now().date()
+    if day is None:
+        today = _utc_now().date()
+    else:  # the claimed day, so a run that crosses midnight stays on it (D-109)
+        today = _dt.date.fromisoformat(day.execution_date)
+        _bind_day(coach, db, athlete_id, day)
     _prepare_weekly_plan(coach, db, athlete_id, today)
     try:
         delivered = coach.run_morning_routine()
@@ -905,15 +1110,19 @@ def _scheduled_morning(db: DatabaseManager, athlete_id: str) -> None:
         return
     # The attempt is counted before it runs, so a crash counts too and a day is tried at
     # most ROUTINE_MAX_ATTEMPTS times (ADR-0067 D8.4); a failed claim retries next poll.
-    attempt = _claim_routine(db, athlete_id, now)
+    # Attempts are ROUTINE_RETRY_DELAY_S apart, and no day starts after
+    # ROUTINE_LAST_START_HOUR_UTC (D-109).
+    attempt = _claim_routine(db, athlete_id, now, spaced=True)
     if attempt is None or attempt is False:
         return
     _run_attempt(db, athlete_id, now.date().isoformat(), attempt)
 
 
-# Exit codes of the child process: delivered, or not delivered and already handled there.
+# Exit codes of the child process: delivered, not delivered and already handled there, or
+# delivered but the child could not record it, so the parent records it (D-109).
 _CHILD_DELIVERED = 0
 _CHILD_NOT_DELIVERED = 3
+_CHILD_SENT_UNRECORDED = 4
 
 
 def _child_morning(db_path: str, athlete_id: str, execution_date: str, attempt: int) -> None:
@@ -925,8 +1134,11 @@ def _child_morning(db_path: str, athlete_id: str, execution_date: str, attempt: 
     db = DatabaseManager(db_name=path.name, db_dir=path.parent)
     try:
         delivered = _attempt_morning(db, athlete_id, execution_date, attempt)
+        unrecorded = _day_key(db, athlete_id, execution_date) in _UNRECORDED_SENDS
     finally:
         db.close()
+    if delivered and unrecorded:
+        sys.exit(_CHILD_SENT_UNRECORDED)
     sys.exit(_CHILD_DELIVERED if delivered else _CHILD_NOT_DELIVERED)
 
 
@@ -967,6 +1179,10 @@ def _run_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, atte
             extra={"athlete_id": athlete_id, "attempt": attempt, "budget_s": budget_s},
         )
     if process.exitcode == _CHILD_DELIVERED:
+        return True
+    if process.exitcode == _CHILD_SENT_UNRECORDED:
+        # The briefing reached Telegram: record it here, and never send it again (D-109).
+        _mark_delivered(db, athlete_id, execution_date)
         return True
     if process.exitcode != _CHILD_NOT_DELIVERED:
         log.critical(

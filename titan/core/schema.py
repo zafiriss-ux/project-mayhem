@@ -487,6 +487,7 @@ t_worker_routine_executions = Table(
     Column("completed_at", String),
     Column("delivered_at", String),  # v31 (ADR-0067 D8.3)
     Column("attempts", Integer, nullable=False, server_default="0"),  # v31 (ADR-0067 D8.4)
+    Column("resume_json", Text),  # v32 (D-109)
 )
 
 t_telegram_override_nonces = Table(

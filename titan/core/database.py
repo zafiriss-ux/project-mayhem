@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 31
+SCHEMA_VERSION = 32
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -474,6 +474,10 @@ class DatabaseManager:
     def _apply_v31_migrations(self, cursor) -> None:
         """Version 31: worker_routine_executions delivered_at and attempts (ADR-0067 D8.4)."""
         self._migrations._apply_v31_migrations(cursor=cursor)
+
+    def _apply_v32_migrations(self, cursor) -> None:
+        """Version 32: worker_routine_executions resume_json (D-109)."""
+        self._migrations._apply_v32_migrations(cursor=cursor)
 
     def record_failed_login(
         self,
@@ -830,13 +834,33 @@ class DatabaseManager:
 
     def begin_routine_attempt(
         self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
-        max_attempts: int,
+        max_attempts: int, retry_gap: timedelta | None = None, start_by: datetime | None = None,
     ) -> tuple[str, int]:
-        """Start one attempt at a routine: ("run", n), ("closed", n) or ("exhausted", n) (INV-15)."""
+        """Start one attempt at a routine: ("run", n), ("closed", n), ("exhausted", n),
+        ("wait", n) before ``retry_gap`` has passed, or ("late", 0) after ``start_by`` (INV-15, D-109)."""
         return self._operations.begin_routine_attempt(
             athlete_id=athlete_id, execution_date=execution_date,
             routine_type=routine_type, started_at=started_at, max_attempts=max_attempts,
+            retry_gap=retry_gap, start_by=start_by,
         )
+
+    def get_routine_resume(self, *, athlete_id: str, execution_date: str, routine_type: str) -> dict[str, Any]:
+        """What an earlier attempt of that day left for the next one; {} when nothing (D-109)."""
+        return self._operations.get_routine_resume(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type,
+        )
+
+    def update_routine_resume(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, fields: dict[str, Any]
+    ) -> None:
+        """Merge ``fields`` into that day's ``resume_json`` (D-109)."""
+        self._operations.update_routine_resume(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type, fields=fields,
+        )
+
+    def routine_inputs_fingerprint(self, athlete_id: str, date: str) -> str | None:
+        """Hash of the athlete's daily_metrics and training_log rows of that date; None if none (D-109)."""
+        return self._operations.routine_inputs_fingerprint(athlete_id=athlete_id, date=date)
 
     def mark_routine_delivered(
         self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
@@ -1243,6 +1267,10 @@ class DatabaseManager:
     def get_governance_decision_on(self, athlete_id: str, date: str) -> dict[str, Any] | None:
         """The athlete's stored decision of that date, or None (ADR-0067 D8.4)."""
         return self._governance.get_governance_decision_on(athlete_id=athlete_id, date=date)
+
+    def replace_governance_decision_on(self, decision: dict[str, Any]) -> bool:
+        """Supersede the athlete's stored decision of that date in place; False if none (D-109)."""
+        return self._governance.replace_governance_decision_on(decision=decision)
 
     def annotate_governance_outcome(self, date: str, note: str) -> bool:
         """Attach or replace manual operator note for latest governance decision on date."""

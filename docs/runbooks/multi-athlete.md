@@ -163,8 +163,8 @@ python scripts/athletes.py list
 | `ready=no (telegram: no chat bound)` | Δεν υπάρχει chat | Σβήσε και πρόσθεσε ξανά τον αθλητή με το σωστό `--chat` |
 | `ready=no (telegram: chat id not in canonical form, …)` | Το chat γράφτηκε πριν το D-107 σε άλλη μορφή (`01001`, `+1001`) και μπορεί να φτάνει σε άλλο chat· ο αθλητής δεν τρέχει | Ξαναδέσε το chat: `python scripts/athletes.py chat <id> --chat <ψηφία>`· συγκατάθεση και δεδομένα μένουν |
 | `ready=no (telegram: chat is the owner's, …)` | Το chat του αθλητή είναι το `TELEGRAM_CHAT_ID` του owner | Ξαναδέσε το σωστό chat του αθλητή με `athletes.py chat` |
-| `ready=yes  today=not started` | Είναι έτοιμος, αλλά ο κύκλος δεν τον έτρεξε σήμερα | Βήμα 2 |
-| `today=attempt N not delivered` | Ξεκίνησε και δεν παραδόθηκε, ή τρέχει τώρα· ο επόμενος κύκλος ξαναδοκιμάζει, ως 3 φορές τη μέρα | Βήμα 2 |
+| `ready=yes  today=not started` | Είναι έτοιμος, αλλά ο κύκλος δεν τον έτρεξε σήμερα. Μετά τις 12:00 UTC καμία μέρα δεν ξεκινά (`worker_routine_too_late`)· ξεκινά αύριο στις 07:00 | Βήμα 2 |
+| `today=attempt N not delivered` | Ξεκίνησε και δεν παραδόθηκε, ή τρέχει τώρα· η επόμενη προσπάθεια ξεκινά 15 λεπτά μετά την προηγούμενη, ως 3 φορές τη μέρα | Βήμα 2 |
 | `today=left after 3 attempts` | Τρεις αποτυχίες· η μέρα έκλεισε και ο owner πήρε «Morning briefing not delivered» | Βήμα 2. Αύριο ξαναδοκιμάζει μόνος του |
 | `today=delivered` | Το Telegram δέχτηκε το μήνυμα | Ο αθλητής να ελέγξει ότι έχει ανοίξει το bot και δεν το έχει μπλοκάρει· αλλιώς το chat id είναι λάθος (§1.1) |
 
@@ -193,7 +193,11 @@ worker έχει στο τέλος τα πεδία της, π.χ. `athlete_id=a-1
 | `worker_routine_killed` | Η διεργασία του ξεπέρασε το `WORKER_ROUTINE_BUDGET_S` και σταμάτησε |
 | `worker_routine_child_died` | Η διεργασία του τερμάτισε με σφάλμα· το traceback είναι λίγο πιο πάνω |
 | `worker_routine_left` (CRITICAL) | Τρεις αποτυχίες· η μέρα έκλεισε |
-| `worker_routine_resend_stored` | Ξαναστάλθηκε το μήνυμα που είχε ήδη φτιαχτεί |
+| `worker_routine_resend_stored` | Ξαναστάλθηκε η απόφαση που είχε ήδη φτιαχτεί, με τα όριά της· τα δεδομένα της μέρας δεν άλλαξαν. Ο αθλητής βλέπει ότι μπορεί να επαναλαμβάνει προηγούμενο μήνυμα |
+| `worker_routine_inputs_changed` | Τα δεδομένα της μέρας άλλαξαν μετά την πρώτη απόφαση· η μέρα υπολογίστηκε ξανά με τις πύλες και η νέα απόφαση αντικατέστησε την παλιά |
+| `worker_routine_resend_capped` | Ο νέος υπολογισμός δεν έβγαλε απόφαση· στάλθηκε η παλιά το πολύ EASY με 45 λεπτά |
+| `worker_routine_delivery_unrecorded` (CRITICAL) | Το μήνυμα στάλθηκε, η καταγραφή απέτυχε και μετά τις επαναλήψεις· ο worker δεν το ξαναστέλνει και ξαναδοκιμάζει την καταγραφή σε κάθε κύκλο. Μετά από επανεκκίνηση μπορεί να σταλεί μία φορά ακόμα |
+| `worker_routine_too_late` | Μετά τις 12:00 UTC καμία μέρα δεν ξεκινά (D-109) |
 | `athlete_garmin_token_expired` | Το token απορρίφθηκε σήμερα· ο αθλητής είναι σε παύση από τώρα (§4) |
 | `connect_token_key_unusable` | Το κλειδί των token λείπει ή δεν είναι ασφαλές (§4, τελευταία παράγραφος) |
 | `connect_token_key_mismatch` (CRITICAL) | Το κλειδί είναι έγκυρο αλλά δεν είναι αυτό που κρυπτογράφησε το token· το token μένει (§4, τελευταία παράγραφος) |

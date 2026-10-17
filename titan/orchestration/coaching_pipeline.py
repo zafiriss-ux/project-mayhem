@@ -138,7 +138,16 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
             "invariant": "INV-12",
             "outcome": "DECISION_PIPELINE_FAILED",
         }, default=str))
+        # A morning retried by the worker tells the athlete at most once a day (D-109): the
+        # worker sets this hook, which records the alert and answers False after the first.
+        alert_allowed = getattr(context.coach, "before_system_error_alert", None)
         try:
+            if alert_allowed is not None and not alert_allowed():
+                _log.warning(json.dumps({
+                    "flow": "coaching_pipeline", "action": "fail_safe_alert_already_sent_today",
+                    "athlete_id": _athlete_id,
+                }))
+                return False
             from titan.integrations.telegram_bot import alert_operator
 
             alert_operator(
