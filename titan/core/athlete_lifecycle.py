@@ -85,9 +85,9 @@ def add_athlete(
     problems = profile_problems(profile, moment.date())
     if problems:
         raise ValueError("profile refused: " + "; ".join(problems))
-    chat = str(telegram_chat_id).strip()
-    if not chat:
-        raise ValueError("a Telegram chat id is required")
+    # The canonical form, refused when not a private chat id, when TELEGRAM_CHAT_ID is unset
+    # or when it is the owner's (D-107): checked before anything is written.
+    chat = db.bindable_telegram_chat(telegram_chat_id)
     if db.get_athlete_for_telegram_chat(chat) is not None:
         raise ValueError("this Telegram chat is already bound to an athlete")
     athlete_id = new_athlete_id()

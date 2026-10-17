@@ -55,6 +55,13 @@ python scripts/athletes.py new-key
 1. Ο αθλητής ανοίγει το bot στο Telegram και παίρνει το chat id του από τον `@userinfobot`. Ένα chat
    ανήκει σε έναν αθλητή, και ποτέ δεν είναι το chat του owner.
 
+   Το chat id γράφεται μόνο με ψηφία, όπως το δείχνει ο `@userinfobot` (D-107). Κρατιέται χωρίς
+   μηδενικά μπροστά (`0123` γίνεται `123`)· `+`, `-`, `_`, κενά ανάμεσα ή δεκαδικά απορρίπτονται. Το
+   chat ενός αθλητή είναι ιδιωτικό, άρα θετικός αριθμός· μόνο το `TELEGRAM_CHAT_ID` του owner μπορεί
+   να είναι ομάδα (`-…`). Το `add` και το `chat` αρνούνται όσο το `TELEGRAM_CHAT_ID` είναι κενό, γιατί
+   τότε δεν ελέγχεται αν το chat είναι του owner: τρέξε τις εντολές μέσα στο container, που διαβάζει
+   το `.env`, ή όρισε το `TELEGRAM_CHAT_ID` στο shell.
+
 2. Γράψε το προφίλ σε ένα αρχείο JSON με όλα τα πεδία:
 
    ```json
@@ -149,6 +156,8 @@ python scripts/athletes.py list
 | `ready=no (garmin: no account bound)` | Δεν έγινε ποτέ `relogin` | §1.4 |
 | `ready=no (garmin: token missing)` ή `token expired` | Το token δεν υπάρχει ή το Garmin το απέρριψε | §4 |
 | `ready=no (telegram: no chat bound)` | Δεν υπάρχει chat | Σβήσε και πρόσθεσε ξανά τον αθλητή με το σωστό `--chat` |
+| `ready=no (telegram: chat id not in canonical form, …)` | Το chat γράφτηκε πριν το D-107 σε άλλη μορφή (`01001`, `+1001`) και μπορεί να φτάνει σε άλλο chat· ο αθλητής δεν τρέχει | Ξαναδέσε το chat: `python scripts/athletes.py chat <id> --chat <ψηφία>`· συγκατάθεση και δεδομένα μένουν |
+| `ready=no (telegram: chat is the owner's, …)` | Το chat του αθλητή είναι το `TELEGRAM_CHAT_ID` του owner | Ξαναδέσε το σωστό chat του αθλητή με `athletes.py chat` |
 | `ready=yes  today=not started` | Είναι έτοιμος, αλλά ο κύκλος δεν τον έτρεξε σήμερα | Βήμα 2 |
 | `today=attempt N not delivered` | Ξεκίνησε και δεν παραδόθηκε, ή τρέχει τώρα· ο επόμενος κύκλος ξαναδοκιμάζει, ως 3 φορές τη μέρα | Βήμα 2 |
 | `today=left after 3 attempts` | Τρεις αποτυχίες· η μέρα έκλεισε και ο owner πήρε «Morning briefing not delivered» | Βήμα 2. Αύριο ξαναδοκιμάζει μόνος του |
@@ -156,6 +165,13 @@ python scripts/athletes.py list
 
 Το «σήμερα» είναι η μέρα UTC. Όταν ένας αθλητής δεν είναι έτοιμος, ο owner παίρνει μία φορά την ημέρα
 το `⏸ <id> is not run today: <λόγος>.` με τον ίδιο λόγο που δείχνει το `list`.
+
+Χωρίς `TELEGRAM_BOT_TOKEN` τίποτα δεν στέλνεται, και η μέρα δεν γράφεται `delivered` (D-107): μένει
+`attempt N not delivered`, ξαναδοκιμάζεται και μετά τις 3 φορές κλείνει, με warning
+`telegram_fallback_delivery_preview` στα logs. Ειδοποιήσεις συστήματος για έναν αθλητή (αποτυχία
+εγγραφής, Garmin χωρίς sync πάνω από 26 ώρες, βάση που δεν διαβάζεται, degraded mode) πηγαίνουν στο
+chat του owner με το id του αθλητή· ο αθλητής παίρνει μόνο ένα σύντομο μήνυμα ότι η σημερινή
+προπόνηση είναι συντηρητική.
 
 ### Βήμα 2 — Τα logs του worker
 

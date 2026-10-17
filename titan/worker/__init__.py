@@ -467,14 +467,23 @@ def _require_telegram_ready(db: DatabaseManager, athlete_id: str) -> str | None:
     The owner's chat stays TELEGRAM_CHAT_ID in .env (ADR-0067 D1.3), so None is returned
     for the owner. Any other athlete is never sent anything without their own chat (D7.1).
     """
-    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady
+    from titan.config.settings import get_settings
+    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady, canonical_chat_id
 
     if athlete_id == OWNER_ATHLETE_ID:
         return None
     account = db.get_athlete_account(athlete_id)
     if account is None or not account.get("telegram_chat_id"):
         raise AthleteNotReady(athlete_id, "telegram: no chat bound")
-    return account["telegram_chat_id"]
+    stored = account["telegram_chat_id"]
+    # Fail closed on a chat stored before D-107 in another form ("01001", "+1"): it is sent
+    # to int(stored), which may be another athlete's or the owner's chat. Zaf is told and
+    # binds it again with ``athletes.py chat``; nothing is sent to it meanwhile.
+    if canonical_chat_id(stored) != stored:
+        raise AthleteNotReady(athlete_id, "telegram: chat id not in canonical form, run athletes.py chat")
+    if stored == canonical_chat_id(get_settings().TELEGRAM_CHAT_ID, allow_negative=True):
+        raise AthleteNotReady(athlete_id, "telegram: chat is the owner's, run athletes.py chat")
+    return stored
 
 
 def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
