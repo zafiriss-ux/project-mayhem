@@ -87,9 +87,11 @@ python scripts/athletes.py new-key
 5. Ο αθλητής στέλνει στο δικό του chat `/consent` (διαβάζει το κείμενο) και μετά `/agree v1`.
    ⚠️ Το κείμενο v1 (`docs/consent/v1.md`) είναι προσχέδιο: όχι για πραγματικό αθλητή πριν το δει
    δικηγόρος.
-   ⚠️ Τις εντολές Telegram τις ακούει μόνο το `python -m titan`, όχι ο `titan-worker` του Docker
-   (Φάση 4, εύρημα Κ-1 του ελέγχου κλεισίματος). Σε εγκατάσταση μόνο με Docker, το `/consent` και το
-   `/agree v1` δεν παίρνουν απάντηση ακόμα.
+   Τις εντολές τις ακούει ο `titan-worker` με `TITAN_MULTI_ATHLETE=1` (D-103). Στο log του worker
+   φαίνεται `command_listener_started`· αν λέει `command_listener_not_started`, λείπει το
+   `TELEGRAM_BOT_TOKEN`. ⚠️ Μην τρέχεις ταυτόχρονα το `python -m titan` με το ίδιο token: το
+   Telegram δίνει τις εντολές μόνο σε έναν από τους δύο (σφάλμα 409), και αν μοιράζονται τη βάση η
+   πρωινή ρουτίνα του owner φεύγει δύο φορές.
 
 6. Έλεγχος:
 

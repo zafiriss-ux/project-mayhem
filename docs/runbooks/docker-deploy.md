@@ -13,7 +13,7 @@ docker compose up --build -d
 | Service | Description |
 |---------|-------------|
 | `titan-api` | FastAPI/uvicorn — `http://localhost:8000` |
-| `titan-worker` | Background daemon (Garmin sync, sending Telegram messages, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020; athletes' deletions re-applied at start and the 30-day purge after `/stop`, ADR-0067). It does not answer Telegram commands |
+| `titan-worker` | Background daemon (Garmin sync, sending Telegram messages, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020; athletes' deletions re-applied at start and the 30-day purge after `/stop`, ADR-0067). With `TITAN_MULTI_ATHLETE=1` it also answers the athletes' Telegram commands (`/consent`, `/agree`, `/sync`, `/stop`, D-103); otherwise it answers no commands |
 
 ## Data
 
@@ -76,8 +76,11 @@ After `docker compose up -d`:
 
 - Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`
 - `docker compose up -d titan-worker`
-- The worker only sends messages; it does not answer commands such as `/start` (those need local
-  mode, `python -m titan`). Check that the 07:00 UTC morning message arrives.
+- With one athlete the worker only sends messages; owner commands such as `/today` need local
+  mode, `python -m titan`. With `TITAN_MULTI_ATHLETE=1` the worker listens (log line
+  `command_listener_started`): athletes get their commands, and owner commands answer "not ready".
+  Never run `python -m titan` with the same bot token at the same time (Telegram 409).
+  Check that the 07:00 UTC morning message arrives.
 
 ### Morning routine (manual)
 
