@@ -53,7 +53,8 @@ def test_send_message_without_bot_emits_send_fail_event(monkeypatch):
 
     bot = TitanTelegramBot(bot_token="", chat_id=123)
 
-    assert bot.send_message("hello") is True
+    # No bot is not a delivery (D-107, RC-03).
+    assert bot.send_message("hello") is False
     assert any(
         action == "failure"
         and fields.get("failure_class") == telegram_bot.SEND_FAIL
@@ -120,7 +121,7 @@ def test_send_message_fallback_logs_metadata_without_message_content(monkeypatch
     secret_message = "SECRET123"
 
     with caplog.at_level("INFO"):
-        assert bot.send_message(secret_message) is True
+        assert bot.send_message(secret_message) is False  # not a delivery (D-107)
 
     fallback_record = next(r for r in caplog.records if r.msg == "telegram_fallback_delivery_preview")
     assert fallback_record.message_length == len(secret_message)
@@ -752,7 +753,7 @@ def test_send_governance_decision_falls_back_when_polling_backend_missing():
         decision_id="d-1",
         decision_type="HARD_STOP_SAFETY_GATES",
         athlete_id="ATH_1",
-    ) is True
+    ) is False  # no bot: the prompt is kept, but nothing was delivered (D-107)
     assert bot._pending_override_prompts[123]["decision_id"] == "d-1"
 
 
