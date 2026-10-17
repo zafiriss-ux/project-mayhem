@@ -626,7 +626,7 @@ class GarminSync:
 
             # Try loading a persisted session token to avoid re-login 429s.
             if token_path.exists():
-                athlete_token_data = ""
+                athlete_token_data = ""  # nosec B105 - empty until read, not a password
                 if self.token_only:
                     try:
                         athlete_token_data = decrypt_athlete_token(token_path.read_bytes())
