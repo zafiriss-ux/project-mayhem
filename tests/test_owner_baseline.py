@@ -20,12 +20,14 @@ import pytest
 
 _FIXTURES = Path(__file__).parent / "fixtures"
 
-# sha256 of json.dumps(golden["days"], sort_keys=True, ensure_ascii=False) at 39aee23.
+# sha256 of json.dumps(golden["days"], sort_keys=True, ensure_ascii=False) at 39aee23,
+# updated once by D-105 (SG-01, audit fix ordered by Zaf 2026-10-17): the first mornings
+# without an HRV baseline go from TEMPO/LONG_RUN to EASY. Governance golden unchanged.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "ff836b039030fd3326f6fc2cd5a9e1805608a979bf641300cb51882b570f32f2",
-    "persistence_failure": "a0d145b19b2459aef7076f3a4167714ef32f8a92d35aed84bda4f1e221157fa3",
-    "three_weeks_weekly_plan": "fca7ae0741eaf3cab000474cb4c243238e8c019763b2742ba8596c390cb3891c",
-    "two_weeks_worker": "61b9198b661baff388cdded3260cd17e0aae49452c9038691c59c4f25e1a68a5",
+    "garmin_outage": "13938e99d77d92168280e606062ca989e7c9345720999452f231d2fd01e335d2",
+    "persistence_failure": "2c8cc20d4f81ffed84d29da5c944fdc6b89e17cc0641f5c177ccd259f537b0f8",
+    "three_weeks_weekly_plan": "79027e720b93996b62411a7316dbe0ff7ee132c05bea35f5766aec191eddfaaa",
+    "two_weeks_worker": "fc8a19d65521af6a14c85bf6d800a1ec47ac945de927dd47193243723a0ae1da",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"
