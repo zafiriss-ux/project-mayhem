@@ -46,11 +46,10 @@ python scripts/athletes.py new-key
 κλειδί θα έκανε κάθε αποθηκευμένο token άχρηστο. Κράτα ένα αντίγραφο του κλειδιού κάπου ασφαλές, όχι
 μαζί με τα backups. Αν χαθεί, κάθε αθλητής ξανακάνει `relogin` (§4).
 
-**Μόνο SQLite για πολλούς αθλητές (ISO-5, D-112).** Οι αθλητές εκτός του owner τρέχουν μόνο με τη
-βάση SQLite (`TITAN_DB_BACKEND=sqlite`, η προεπιλογή). Η υλοποίηση PostgreSQL
-(`titan/core/persistence.py`, `PostgreSQLAdapter.save_governance_decision`) δεν γράφει ακόμα το
-`athlete_id` της απόφασης, άρα κάθε απόφαση θα καταγραφόταν στον owner. Μην ενεργοποιείς το
-`TITAN_MULTI_ATHLETE=1` μαζί με `TITAN_DB_BACKEND=postgres` μέχρι να διορθωθεί (ADR-0044).
+**Μόνο SQLite (ISO-5, D-112).** Η εφαρμογή τρέχει μόνο με SQLite: το `TITAN_DB_BACKEND=postgres`
+σταματά την εκκίνηση (`get_database_manager`, ADR-0044). Όταν ανοίξει το PostgreSQL, πρώτα πρέπει το
+`PostgreSQLAdapter.save_governance_decision` (`titan/core/persistence.py`) να γράφει το `athlete_id`
+της απόφασης· σήμερα δεν το γράφει, άρα κάθε απόφαση θα καταγραφόταν στον owner.
 
 ---
 

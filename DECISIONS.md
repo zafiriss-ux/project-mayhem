@@ -27,16 +27,17 @@
   - **Το threshold HR κάτω από το max HR (SG-12).** Το `profile_problems` απορρίπτει προφίλ με
     `threshold_hr` ίσο ή πάνω από το `max_hr`, γιατί οι ζώνες βγαίνουν λάθος. Το λέει μία φορά: όταν
     κάποιο από τα δύο είναι ήδη εκτός ορίων, μένει μόνο εκείνο το μήνυμα.
-  - **PostgreSQL μόνο για τον owner (ISO-5).** Το `PostgreSQLAdapter.save_governance_decision` δεν
-    γράφει ακόμα το `athlete_id`. Το [runbook](docs/runbooks/multi-athlete.md) λέει να μην
-    ενεργοποιηθεί το `TITAN_MULTI_ATHLETE=1` με `TITAN_DB_BACKEND=postgres` μέχρι να διορθωθεί.
+  - **Το PostgreSQL δεν γράφει ακόμα αθλητή (ISO-5).** Το `PostgreSQLAdapter.save_governance_decision`
+    δεν γράφει το `athlete_id`. Σήμερα δεν τρέχει, γιατί το `TITAN_DB_BACKEND=postgres` σταματά την
+    εκκίνηση (ADR-0044). Το [runbook](docs/runbooks/multi-athlete.md) λέει ότι πρέπει να διορθωθεί
+    πριν ανοίξει το PostgreSQL.
   - **Το ISO-6 έχει ήδη απόφαση.** Ο κωδικός δραστηριότητας Garmin μένει μοναδικός σε όλη τη βάση
     (D-079). Δεν αλλάζει.
 - **Εναλλακτικές που απορρίφθηκαν:**
   - Trigger στη βάση για τα κλειδιά hard-stop: θέλει νέο βήμα σχήματος, και το σχήμα v33 είναι στο
     #1048. Μένει για μετά, ως v34. Μέχρι τότε το `load` αγνοεί τέτοιες γραμμές.
-  - Διόρθωση του PostgreSQL εδώ: η διόρθωση θέλει το δικό της τεστ με βάση PostgreSQL. Η σημείωση
-    στο runbook αρκεί μέχρι τότε.
+  - Διόρθωση του PostgreSQL εδώ: το PostgreSQL είναι κλειστό (απόφαση Zaf 2026-10-08, ADR-0044) και
+    η διόρθωση θέλει το δικό της τεστ με βάση PostgreSQL. Η σημείωση στο runbook αρκεί μέχρι τότε.
 - **Τεστ:** `tests/test_lows_d112.py`. Χωρίς τη διόρθωση αποτυγχάνουν τα 2 τεστ του SG-12 για
   threshold ίσο ή πάνω από το max, το τεστ του TSB, τα 4 τεστ του ορίου αποθήκευσης και το τεστ
   της αποκοπής στο `load`.
