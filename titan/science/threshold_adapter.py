@@ -56,7 +56,18 @@ class ThresholdAdapter:
     def load(self) -> None:
         """Load offsets from DB. Must be called once before get_threshold()."""
         rows = self._db.get_athlete_threshold_offsets(self._athlete_id)
-        self._offsets = {row["threshold_key"]: row["delta_value"] for row in rows}
+        self._offsets = {}
+        for row in rows:
+            key = row["threshold_key"]
+            try:
+                delta = float(row["delta_value"])
+            except (TypeError, ValueError):
+                continue
+            # A stored row is never trusted past the ceiling, nor for a hard-stop key, even
+            # when it was written by raw SQL around save_threshold_offset (SG-08, D-112).
+            if key in HARD_STOP_GATE_NAMES or not math.isfinite(delta):
+                continue
+            self._offsets[key] = max(-THRESHOLD_ADAPTER_MAX_DELTA_PCT, min(THRESHOLD_ADAPTER_MAX_DELTA_PCT, delta))
         self._loaded = True
 
     def get_threshold(self, threshold_name: str, base_value: float) -> float:

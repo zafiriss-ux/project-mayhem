@@ -126,6 +126,11 @@ def profile_problems(record: dict[str, Any], today: date) -> list[str]:
             continue
         if not lo <= value <= hi:
             problems.append(f"{field}: must be between {lo} and {hi}")
+    # The threshold HR is a fraction of the max HR; at or above it the zones are wrong (SG-12, D-112).
+    if not any(p.startswith(("max_hr:", "threshold_hr:")) for p in problems) and float(
+        record["threshold_hr"]
+    ) >= float(record["max_hr"]):
+        problems.append("threshold_hr: must be below max_hr")
     if str(record["training_phase"]).upper() not in VALID_TRAINING_PHASES:
         problems.append("training_phase: unknown")
     if str(record["training_goal"]).upper() not in VALID_TRAINING_GOALS:

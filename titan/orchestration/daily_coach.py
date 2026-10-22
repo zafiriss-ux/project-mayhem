@@ -1588,7 +1588,9 @@ class DailyCoach:
             baseline_rhr=inp.baseline_rhr_for_comparison,
             sleep_score=inp.today_sleep_score,
             subjective_fatigue_score=inp.subjective_fatigue_score,
-            tsb_value=_safe_float(inp.tsb_value, 0.0),
+            # No load history gives no TSB, which reaches governance as None: H4_MISSING applies
+            # the EASY ceiling (ADR-0051, SG-11, D-112). A neutral 0.0 here hid it.
+            tsb_value=inp.tsb_value,
             injury_flag=bool(inp.garmin_data.get('injury_flag', False)),
             priority_vector=apl_result.get('priority_vector', {}),
             lock_thresholds=apl_result.get('lock_thresholds', {}),

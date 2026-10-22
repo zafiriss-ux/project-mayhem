@@ -441,8 +441,9 @@ class GovernanceRepository:
 
         Raises ValueError if threshold_key is in HARD_STOP_THRESHOLD_KEYS —
         hard-stop gates H1–H5 are permanently excluded from adaptation.
-        The ±20 % ceiling is ThresholdAdapter's responsibility (Stage 2);
-        this layer enforces only the H1–H5 exclusion invariant.
+        Raises ValueError too when delta_value is not finite or outside the
+        ±THRESHOLD_ADAPTER_MAX_DELTA_PCT ceiling, so a raw or manual write can
+        never store what the adapter would refuse (SG-08, D-112).
 
         The INSERT ... ON CONFLICT DO UPDATE provides UPSERT semantics:
         a second call with the same (athlete_id, threshold_key) replaces
@@ -456,11 +457,25 @@ class GovernanceRepository:
             confidence:    Confidence score in [0.0, 1.0].
             updated_at:    UTC ISO-8601 timestamp string.
         """
-        from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS  # local import avoids circular
+        import math
+
+        from titan.config.thresholds import (  # local import avoids circular
+            HARD_STOP_THRESHOLD_KEYS,
+            THRESHOLD_ADAPTER_MAX_DELTA_PCT,
+        )
         if threshold_key in HARD_STOP_THRESHOLD_KEYS:
             raise ValueError(
                 f"threshold_key '{threshold_key}' is a hard-stop gate "
                 f"and cannot be adapted (ADR-0052)."
+            )
+        try:
+            delta = float(delta_value)
+        except (TypeError, ValueError):
+            delta = math.nan
+        if not math.isfinite(delta) or abs(delta) > THRESHOLD_ADAPTER_MAX_DELTA_PCT:
+            raise ValueError(
+                f"delta_value {delta_value!r} for '{threshold_key}' is outside "
+                f"±{THRESHOLD_ADAPTER_MAX_DELTA_PCT} (ADR-0052)."
             )
         with self._db._lock:
             self._db._ensure_open_locked()
