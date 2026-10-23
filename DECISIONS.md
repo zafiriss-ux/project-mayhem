@@ -9,6 +9,23 @@
 
 ---
 
+## D-122 · MA-F3 (8α): κενό athlete id δεν γίνεται owner στις αποφάσεις governance
+
+- **Πότε / ποιος:** 2026-10-23. Claude, PR-8α του πλάνου διορθώσεων των ελέγχων MA/OW.
+- **Πρόβλημα:** `OutcomeTracker.record_decision(athlete_profile_id='')` επέστρεφε απόφαση του owner, το
+  `GovernanceDecision` έκανε `None`/`""` owner, και κάθε writer του `governance_outcomes` έγραφε owner όταν
+  το id ήταν κενό. Μια απόφαση άλλου αθλητή με χαμένο id θα έμπαινε στο ιστορικό του owner (A1.4, 6.3).
+- **Απόφαση:**
+  - Νέο `decision_athlete_id()` στο `repositories/governance.py`, που χρησιμοποιούν όλοι οι writers
+    (SQLite save και replace, `PostgreSQLDatabaseManager`, `PostgreSQLAdapter`): κλειδί που λείπει → owner·
+    κενό, κενά ή `None` → `ValueError`, χωρίς εγγραφή.
+  - Το `GovernanceDecision` απορρίπτει κενό, κενά ή `None`· η προεπιλογή του πεδίου και το παλιό
+    `"DEFAULT"` μένουν owner. Το `record_decision` κάνει owner μόνο όταν δεν δόθηκε id.
+  - Το παλιό τεστ που ήθελε `None` → owner ελέγχει τώρα την άρνηση (σφίξιμο, όχι παράκαμψη).
+- **Εναλλακτική που απορρίφθηκε:** να γίνει κι εδώ υποχρεωτικό το id, χωρίς owner όταν λείπει. Το
+  εγκεκριμένο πλάνο κρατά την προεπιλογή για όταν δεν δίνεται id (PR-8β)· οι callers που δεν είναι του
+  owner περνούν ρητό id στο PR-8γ.
+
 ## D-121 · MA-F8: ο PostgreSQLAdapter γράφει το athlete_id της απόφασης
 
 - **Πότε / ποιος:** 2026-10-23. Claude, PR-7 του πλάνου διορθώσεων των ελέγχων MA/OW (= P4-06).
