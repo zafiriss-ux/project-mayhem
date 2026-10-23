@@ -282,9 +282,13 @@ class TitanTelegramBot:
         """Return the athlete whose private chat this is, or None (ADR-0067 D10.2).
 
         The owner's chat is never an athlete's. Any lookup failure is treated as an
-        unregistered chat, which gets no reply.
+        unregistered chat, which gets no reply. With multi-athlete mode off
+        (TITAN_MULTI_ATHLETE != "1") no chat is an athlete's, whichever process runs the
+        bot, the console included (MA-F9, D-119).
         """
         if self.athlete_id != _OWNER_ATHLETE_ID or self.db is None or self._is_trusted(chat_id):
+            return None
+        if get_settings().TITAN_MULTI_ATHLETE != "1":
             return None
         try:
             athlete_id = self.db.get_athlete_for_telegram_chat(chat_id)
