@@ -1817,3 +1817,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | OW-L3 | Σιωπηλές προεπιλογές για max HR, threshold HR και φάση όταν λείπουν από το `.env` | LOW | RESOLVED (D-125) |
 | MA-F4 | Το εβδομαδιαίο πλάνο ξαναστελνόταν σε retry της ίδιας μέρας | MEDIUM | RESOLVED (D-126) |
 | OW-M1 | Δυναμικά πεδία χωρίς escaping έσπαγαν το legacy Markdown και το Telegram απέρριπτε το μήνυμα | MEDIUM | RESOLVED (D-127) |
+| OW-F4 | Το `/today` της κονσόλας έγραφε δεύτερη απόφαση την ίδια μέρα, χωρίς claim, lock και audit | HIGH | RESOLVED (D-128) |
