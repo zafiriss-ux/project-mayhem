@@ -1,6 +1,6 @@
 # TITAN OS — Decision Model
 
-**Version:** 1.0
+**Version:** 1.1 (2026-10-23: §3A records what the code does, ADR-0070)
 **Scope:** Inputs → Gates → Outputs evaluation pipeline for endurance training recommendations
 
 ---
@@ -59,11 +59,11 @@ OUTPUTS (session prescription + audit record)
 | `rhr` | int (bpm) | Morning measurement | Yes |
 | `rhr_baseline_7d` | float (bpm) | Mean of the 7 days before today, today excluded (D-105) | Yes |
 | `sleep_score` | float (0–100) or hours | Device / self-report | Yes |
-| `subjective_fatigue` | int (1–10) | Athlete self-report | Yes |
+| `subjective_fatigue` | int (0–10; `/manual_entry` accepts 1–10) | Athlete self-report, stored (D-133); 3 when none is stored (D-043) | Yes |
 | `acute_load_atl` | float (AU) | Computed from session history | Yes |
 | `chronic_load_ctl` | float (AU) | Computed from session history | Yes |
 | `tsb` | float (AU) | CTL − ATL | Derived |
-| `injury_flag` | bool | Athlete report / system flag | Yes |
+| `injury_flag` | bool | Open injury from `/injury` (D-136), else the Garmin flag; unknown is not CLEAR (D-134) | Yes |
 | `session_history` | list | Previous N sessions log | Yes |
 | `active_profile` | string | Profile ID (e.g., "5K") | Yes |
 | `planned_session_type` | enum | Z1/Z2/Z3/Z4/VO2/Rest | Yes |
@@ -195,7 +195,7 @@ ELSE:
   → final_color = GREEN
 ```
 
-**The downgrade rule:** 2 of 4 primary indicators (HRV, RHR, sleep, subjective fatigue) negative → YELLOW, regardless of whether any single gate reached YELLOW.
+**The downgrade rule:** 2 of 4 primary indicators negative → YELLOW, regardless of whether any single gate reached YELLOW. In the code the four are HRV, sleep, readiness and subjective fatigue; RHR is not one of them (§3A).
 
 ---
 
@@ -250,6 +250,27 @@ IF active_training_phase == "intensity_phase":
     → flag: "phase_lock_violation"
     → log warning; do not silently allow
 ```
+
+---
+
+## 3A. What the code does (2026-10-23, ADR-0070)
+
+The gates above are the model. The code (`titan/science/governance_engine.py`, constants in
+`titan/config/thresholds.py`, ADR-0009) differs in these points. Where they differ, the code and
+its ADRs decide; changing a threshold needs ADR-0009.
+
+| Point | This document | Code |
+|---|---|---|
+| Thresholds | From the active profile | Constants in `thresholds.py`; per-athlete offsets never apply to H1–H5 (ADR-0052) |
+| H2, HRV collapse | `hrv_baseline_7d - profile.hrv_collapse_delta_ms` | Drop of at least min(15 ms, 30% of the baseline) (ADR-0064) |
+| H3, RHR spike | `profile.rhr_collapse_delta_bpm` | Rise of at least 8 bpm |
+| Gate 4 / H4 | `tsb < floor` → RED, hard stop | TSB below −50 → EASY, zone 2 at most, with the ADR-0065 volume cap; not REST |
+| H5, extreme fatigue | Part of Gate 3 | Fatigue 8 or more on the 0–10 scale |
+| 2 of 4 | HRV, RHR, sleep, fatigue | HRV below baseline minus one SD, sleep below 60, readiness below 50, fatigue 6 or more |
+| Missing data | Not described | H2/H3/H4/H5_MISSING give EASY with a zone ceiling (ADR-0051); the label is not HARD_STOP (ADR-0069 §6) |
+
+The code cites "DECISION_MODEL §4" for the gate order; that is §4 below, and the gates themselves
+are in §3.
 
 ---
 

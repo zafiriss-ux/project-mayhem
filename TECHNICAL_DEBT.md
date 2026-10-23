@@ -1622,7 +1622,7 @@ Entry gate: Phase 25 close audit PASS (2026-06-06). Scope: CoachingScheduler act
 
 | Item | Description | Status | Opus ref |
 |------|-------------|--------|----------|
-| P26-01 | ATHLETE_MAX_HR per-athlete resolution | DEFERRED Phase 9 — requires adding max_hr column to athletes table (schema change, SCHEMA_VERSION bump). Current divergence (TitanSettings default=160 vs UniversalAthleteProfile default=191) is non-critical in single-athlete mode; both produce valid TRIMP zone ceilings. Fix during Phase 9 per-athlete profile schema work (athletes table → max_hr, age, weight). | A1-F2 (Opus pre-Phase-26 audit 2026-06-07), ADR-0016 |
+| P26-01 | ATHLETE_MAX_HR per-athlete resolution | RESOLVED (ADR-0070): `athlete_profiles.max_hr` (NOT NULL) holds each athlete's max HR since ADR-0067; the owner keeps the `.env` value (D-125). | A1-F2 (Opus pre-Phase-26 audit 2026-06-07), ADR-0016 |
 | P26-02 | Corpus gate measurement — query COUNT(DISTINCT athlete_id) ≥ 3 AND per-athlete governance_outcomes ≥ 90 | ✅ RESOLVED 2026-06-07 (advisory-mode query in `tests/test_phase9_corpus_gate.py`; gate mode via `TITAN_PHASE9_CORPUS_GATE`) | A3-F3 |
 | P26-03 | CoachingScheduler activation — wire into worker composition root | ✅ RESOLVED 2026-06-07 (`TITAN_MULTI_ATHLETE` flag selects `_run_with_scheduler`; `run_forever` single-athlete fallback retained) | A3-F1 |
 | P26-04 | EngineRegistry.from_db DB hydration — implement TODO-Phase9 markers | ✅ RESOLVED 2026-06-07 (TSB load history + HRV baseline hydration, athlete-scoped; CS-performance/APL-offset hydration → TODO-P26-04b/c carried to Phase 9) | A3-F2 |
@@ -1690,16 +1690,16 @@ RESOLVED disposition.
 |----|--------|------|---------------|--------|--------------|
 | T-PRA-01 | B-1 | 1 | Coach-route scoped authorization (INV-11) + owner-bypass removal | OPEN | Not in the refactor plan yet; Architect to schedule |
 | T-PRA-02 | B-5, SA:m-1 | 1 | Telegram fail-closed trust + durable nonces (INV-16, INV-13) | FIX MERGED: PR #904 (`_is_trusted()` denies when unconfigured; `DegradedModeTracker` hydration fails closed); durable nonces: branch `feat/adr0060-telegram-nonces` (T-PRA-03); Architect close pending | Refactor plan task #12 |
-| T-PRA-03 | B-3, B-5 | 1 | Worker durable state tables (INV-15, INV-17) | FIX PENDING — branches `feat/adr0060-routine-executions` (v26 creates both tables, ADR-0060 D3; the worker loop and the multi-athlete scheduler claim the day in `worker_routine_executions` before the morning routine and skip it after a restart, D1) and `feat/adr0060-telegram-nonces` (override nonces in `telegram_override_nonces`, consumed by one UPDATE with in-query expiry/replay checks, pruned at bot start, fail closed without a database, D2); `tests/test_worker_state_durability.py` | Refactor plan task #14 |
+| T-PRA-03 | B-3, B-5 | 1 | Worker durable state tables (INV-15, INV-17) | RESOLVED (ADR-0070): `worker_routine_executions` and `telegram_override_nonces` exist since v26, the delivery marker since v31 (ADR-0060, D-098); `tests/test_worker_state_durability.py` | Refactor plan task #14 |
 | T-PRA-04 | B-2, B-9 | 1 | FK enforcement safe rollout (INV-14) | FIX MERGED: PR #874 (`foreign_keys=ON` + `foreign_key_check` refusal at startup); Architect close pending | Refactor plan task #4 |
 | T-PRA-05 | SA:m-4, E-2 | 2 | Worker observability transport (INV-19) | OPEN | Not scheduled |
-| T-PRA-06 | SA:M-2 | 1 | Multi-athlete scheduler registration from `athletes` table | ON HOLD (Architect 2026-10-08, issue #926: Garmin/Telegram accounts are single-owner) | Refactor plan task #20 |
+| T-PRA-06 | SA:M-2 | 1 | Multi-athlete scheduler registration from `athletes` table | RESOLVED (ADR-0070): the worker round runs every ready athlete from `athlete_accounts` (ADR-0067); the #926 hold ended with ADR-0067 | Refactor plan task #20 |
 | T-PRA-07 | B-4 | 1 | Fail-closed governance guard (INV-12) | RESOLVED 2026-06-12 (PR #865) | — |
 | T-PRA-08 | B-6 | 1 | Off-volume backups, retention, integrity check, restore drill, `RUNBOOK_DR.md` | FIX MERGED: PR #906 (`titan-backups` volume, verified artifacts, 7 daily + 4 weekly retention, `scripts/restore_drill.py`, `docs/RUNBOOK_DR.md`); DR-03 drill result recorded at next phase close; Architect close pending | Refactor plan task #15 |
 | T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | FIX MERGED: PR #909 (version only in `pyproject.toml`, read at runtime; `release.yml` builds `ghcr.io` images per `vX.Y.Z` tag on `main`; `docker-compose.release.yml` pins images; `docs/RUNBOOK_ROLLBACK.md`; `tests/test_release_engineering.py`); RE-03 staging drill pending the first tag; Architect close pending | Refactor plan task #16 |
 | T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | OPEN | Not scheduled |
 | T-PRA-11 | B-13 | 2 | Request body-size middleware (RBP-01) | FIX MERGED: PR #928 (`BodySizeLimitMiddleware`: Content-Length pre-check + streamed-read cap → 413; `API_MAX_BODY_SIZE_BYTES` default 1 MiB; `tests/test_request_boundary.py`); Architect close pending | Refactor plan task #21 |
-| T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling 80) | OPEN (module ceiling reconciled to 80 in PR #891; T-PRA rows mirrored here) | Refactor plan task #11 |
+| T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling) | OPEN (module ceiling: AGENTS §16.11 states 90, the test value, ADR-0070; T-PRA rows mirrored here) | Refactor plan task #11 |
 | T-PRA-14 | B-10 | 2 | MPC doc/comment corrections; ADR-0044 execution-date decision | OPEN | Refactor plan task #25 (Architect decision) |
 | T-PRA-18 | SA:BENIGN1/2 | 2 | Wire ADR-0052 calibration loop (see T-PRA-18-CAL above) | DEFERRED-FORMAL | Refactor plan task #23 |
 | T-PRA-20 | SA:BENIGN3 | 3 | Diagnostic-script DB path from config | FIX MERGED: PR #895 (`scripts/diagnostics/` read `TITAN_DATA_DIR`); Architect close pending | Refactor plan task #6 |
@@ -1754,7 +1754,7 @@ so G12 applies per AGENTS.md §16.2-G12.
 | F26-03 | Partial hydration (CS performances / APL offsets — TODO-P26-04b/c) | Engine runs on incomplete inputs and emits a recommendation as if fully hydrated | MED | TSB + HRV hydration live and tested; CS-performance/APL-offset paths explicitly deferred (not silently skipped) and carried to Phase 9 with per-athlete profile schema ✅ |
 | F26-04 | Threshold-offset calibration (ADR-0052, `athlete_threshold_offsets`) | Auto-calibration loosens an H1–H5 hard stop | HIGH | `HARD_STOP_THRESHOLD_KEYS` excludes HRV/RHR/TSB/fatigue/injury from per-athlete adaptation; damping (5%) and max-delta (±20%) bounds PROVISIONAL; MODERATE→STRONG promotion gated on corpus + confidence bounds ✅ |
 | F26-05 | Phase 9 corpus gate (`test_phase9_corpus_gate.py`) | Calibration activates before ≥3 athletes × ≥90 paired decisions exist → premature personalization on thin data | MED | Corpus-gate query executable in advisory mode by default; enforcing gate mode behind `TITAN_PHASE9_CORPUS_GATE`; auto-threshold calibration held until corpus met ✅ |
-| F26-06 | ATHLETE_MAX_HR divergence (P26-01) | Global default (160) vs profile default (191) skews TRIMP zone ceilings across athletes | LOW | Non-critical in single-athlete mode (both yield valid ceilings); DEFERRED Phase 9 — resolved by athletes-table `max_hr` column (schema bump) |
+| F26-06 | ATHLETE_MAX_HR divergence (P26-01) | Global default (160) vs profile default (191) skews TRIMP zone ceilings across athletes | LOW | RESOLVED with P26-01 (ADR-0070): `athlete_profiles.max_hr` per athlete |
 
 **G12 gate:** SATISFIED.
 
@@ -1796,6 +1796,9 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | P4-06 | PostgreSQL: η εγγραφή `athlete_id` πριν ανοίξει ξανά ο σκελετός (ISO-5, D-112) | 4 | LOW | Όταν ανοίξει το PostgreSQL (ADR-0044) |
 | P4-07 | Προεπιλογή του H5 για νέο αθλητή (D-043) | 2 | MEDIUM | RESOLVED (D-133, ADR-0069 §2) |
 | P4-08 | Έλεγχος του `docs/consent/v1.md` από δικηγόρο· να αναφέρει και το βάρος σώματος | — | — | Πριν από τον πιλότο |
+| P4-09 | Τα γεγονότα `slo_alert` γράφονται μόνο στο log και δεν φτάνουν σε κανέναν (E-3· το T-PRA-31 αντικαταστάθηκε, D-139) | 2 | MEDIUM | OPEN (ADR-0070) |
+| P4-10 | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3, ενώ το ADR-0055 το έλεγε (addendum ADR-0070) | 2 | MEDIUM | OPEN· αλλάζει τι βλέπουν οι πύλες, θέλει ADR-0009 |
+| P4-11 | Ο `cold_start_conservative_factor` του ADR-0033 μπαίνει στο context αλλά δεν τον διαβάζει καμία πύλη (addendum ADR-0070· ο ThresholdAdapter είναι το T-PRA-18) | 3 | LOW | OPEN |
 
 ---
 
