@@ -887,10 +887,22 @@ class DatabaseManager:
             retry_gap=retry_gap, start_by=start_by, runner=runner, stale_after=stale_after,
         )
 
-    def end_routine_attempt(self, *, athlete_id: str, execution_date: str, routine_type: str) -> None:
-        """Clear the mark of the attempt in progress, whatever its outcome (ADR-0069 §4β)."""
+    def end_routine_attempt(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, attempt: int,
+    ) -> None:
+        """Clear attempt ``attempt``'s own mark, whatever its outcome (ADR-0069 §4β, M0-01)."""
         self._operations.end_routine_attempt(
             athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type,
+            attempt=attempt,
+        )
+
+    def routine_attempt_is_current(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, attempt: int,
+    ) -> bool:
+        """True while ``attempt`` is the day's latest attempt and the day is open (M0-01)."""
+        return self._operations.routine_attempt_is_current(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type,
+            attempt=attempt,
         )
 
     # --- ATHLETE INJURIES (ADR-0069 §3) (titan/core/repositories/operations.py) ---

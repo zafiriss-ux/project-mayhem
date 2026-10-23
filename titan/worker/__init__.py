@@ -363,18 +363,46 @@ def _claim_routine(
     return False
 
 
-def _end_attempt(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
-    """Clear the day's "attempt in progress" mark (ADR-0069 §4β).
+def _end_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, *, attempt: int) -> None:
+    """Clear attempt ``attempt``'s own "attempt in progress" mark (ADR-0069 §4β, M0-01).
 
-    A failure is logged; the mark then stops holding at the attempt's time limit.
+    A later attempt's mark stays. A failure is logged; the mark then stops holding at the
+    attempt's time limit.
     """
     try:
-        db.end_routine_attempt(athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING)
+        db.end_routine_attempt(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING, attempt=attempt,
+        )
     except Exception as exc:
         logging.getLogger("titan.worker.runner").exception(
             "worker_routine_end_failed",
             extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
         )
+
+
+def _attempt_is_current(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int) -> bool:
+    """True while this attempt still owns the open day; checked before a write or a send (M0-01).
+
+    An attempt can outlive its time limit (the owner's thread is never abandoned) while a
+    later attempt takes the day over. The attempt number is the fencing token. A failed
+    check counts as not current: nothing is sent, and a later attempt runs the day.
+    """
+    try:
+        current = db.routine_attempt_is_current(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING, attempt=attempt,
+        )
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_fence_unreadable",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
+        )
+        return False
+    if not current:
+        logging.getLogger("titan.worker.runner").warning(
+            "worker_routine_superseded",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempt": attempt},
+        )
+    return current
 
 
 def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
@@ -605,6 +633,8 @@ def _bind_day(coach, db: DatabaseManager, athlete_id: str, day: _MorningDay) -> 
         return True
 
     coach.routine_date = day.execution_date
+    # M0-01: a decision is recorded and a briefing sent only while this attempt owns the day.
+    coach.attempt_is_current = lambda: _attempt_is_current(db, athlete_id, day.execution_date, day.attempt)
     coach.replace_decision = day.replace_decision
     coach.briefing_note = day.note
     coach.on_decision_recorded = _recorded
@@ -630,6 +660,8 @@ def _resume_stored_day(db: DatabaseManager, athlete_id: str, stored: dict, day: 
     )
     if db.routine_inputs_fingerprint(athlete_id, day.execution_date) == resume.get("inputs"):
         log.info("worker_routine_resend_stored", extra={"athlete_id": athlete_id, "attempt": day.attempt})
+        if not _attempt_is_current(db, athlete_id, day.execution_date, day.attempt):
+            return False
         return _send_stored_decision(db, athlete_id, stored, resume.get("session"))
     log.warning("worker_routine_inputs_changed", extra={"athlete_id": athlete_id, "attempt": day.attempt})
     day.replace_decision, day.note = True, _RECOMPUTED_NOTE
@@ -640,6 +672,8 @@ def _resume_stored_day(db: DatabaseManager, athlete_id: str, stored: dict, day: 
         delivered = False
     if delivered or day.decided:
         return delivered
+    if not _attempt_is_current(db, athlete_id, day.execution_date, day.attempt):
+        return False
     capped, caps = _capped_at_easy(stored)
     log.warning(
         "worker_routine_resend_capped",
@@ -664,7 +698,9 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
             athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
         )
         stored = db.get_governance_decision_on(athlete_id, execution_date)
-        if resume.get("sending"):
+        if not _attempt_is_current(db, athlete_id, execution_date, attempt):
+            pass  # a later attempt took the day over, or it is closed (M0-01)
+        elif resume.get("sending"):
             # An earlier attempt died while sending (MA-F5): the briefing may have arrived.
             delivered = _send_crash_reminder(db, athlete_id)
         elif stored is not None:
@@ -676,9 +712,12 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
         log.exception("worker_cycle_error", extra={"athlete_id": athlete_id, "error": str(exc)})
         from titan.observability.metrics import get_metrics
         get_metrics().counter("worker_cycle_error")
-    _end_attempt(db, athlete_id, execution_date)
     if delivered:
+        # Recorded before the mark is cleared (M0-18): a day with no mark and no delivery
+        # could be claimed by the next attempt in between, which would send it again.
         _mark_delivered(db, athlete_id, execution_date)
+    elif not _attempt_is_current(db, athlete_id, execution_date, attempt):
+        pass  # superseded or closed: the day is the later attempt's, not this one's to leave
     elif attempt >= ROUTINE_MAX_ATTEMPTS:
         _leave_day(db, athlete_id, execution_date)
     else:
@@ -686,6 +725,7 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
             "worker_routine_not_delivered",
             extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempt": attempt},
         )
+    _end_attempt(db, athlete_id, execution_date, attempt=attempt)
     return delivered
 
 
@@ -1409,13 +1449,13 @@ def _run_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, atte
             "worker_routine_killed",
             extra={"athlete_id": athlete_id, "attempt": attempt, "budget_s": budget_s},
         )
-    # A killed child cannot clear its own mark (ADR-0069 §4β).
-    _end_attempt(db, athlete_id, execution_date)
-    if process.exitcode == _CHILD_DELIVERED:
-        return True
     if process.exitcode == _CHILD_SENT_UNRECORDED:
         # The briefing reached Telegram: record it here, and never send it again (D-109).
+        # Before the mark is cleared (M0-18).
         _mark_delivered(db, athlete_id, execution_date)
+    # A killed child cannot clear its own mark (ADR-0069 §4β).
+    _end_attempt(db, athlete_id, execution_date, attempt=attempt)
+    if process.exitcode in (_CHILD_DELIVERED, _CHILD_SENT_UNRECORDED):
         return True
     if process.exitcode != _CHILD_NOT_DELIVERED:
         log.critical(
