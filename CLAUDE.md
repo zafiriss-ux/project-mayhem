@@ -142,7 +142,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## Schema
 
-SCHEMA_VERSION 33, `_apply_v*_migrations`. `athlete_id='owner'` for the owner; new `athlete_id` columns have no DEFAULT (ADR-0067).
+SCHEMA_VERSION 34, `_apply_v*_migrations`. `athlete_id='owner'` for the owner; new `athlete_id` columns have no DEFAULT (ADR-0067).
 
 ## Phases 19–26 (CLOSED)
 

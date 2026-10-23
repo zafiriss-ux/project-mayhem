@@ -26,8 +26,6 @@ _LEGACY_TABLES = (
 _KNOWN_DRIFT = {
     # Fresh DDL (schema.py) says Integer; v3 added TEXT. Writers store "degraded".
     ("training_log", "quality_flag"),
-    # v11 added the column with DEFAULT 'default'; every INSERT passes athlete_id.
-    ("governance_outcomes", "athlete_id"),
 }
 
 

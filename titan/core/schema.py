@@ -59,6 +59,7 @@ from sqlalchemy import (
     Table,
     Text,
     UniqueConstraint,
+    text,
 )
 
 # Naming convention for constraints — required for Alembic autogenerate
@@ -187,8 +188,9 @@ t_governance_outcomes = Table(
     Column("vlg_color", String, nullable=False),
     Column("apl_priority_vector_json", Text, nullable=False),
     Column("lock_thresholds_active_json", Text, nullable=False),
-    Column("acwr", Float, nullable=False),
-    Column("tsb_value", Float, nullable=False),
+    # v34 (ADR-0069 §4α): an unknown ACWR or TSB is NULL, not 0.0 (OW-M2).
+    Column("acwr", Float),
+    Column("tsb_value", Float),
     Column("readiness_score", Float, nullable=False),
     Column("glycogen_debt", Float, nullable=False),
     Column("afi_value", Float),
@@ -200,6 +202,8 @@ t_governance_outcomes = Table(
     Column("override_outcome_exclusion", Integer, nullable=False, server_default="0"),
     Column("outcome_independence_ok", Integer, nullable=False, server_default="1"),
     Column("algorithm_version_snapshot", Text),
+    # v34 (ADR-0069 §4δ): one decision per athlete and day.
+    Index("uq_governance_outcomes_athlete_date", "athlete_id", "date", unique=True),
 )
 
 # ---------------------------------------------------------------------------
@@ -488,6 +492,9 @@ t_worker_routine_executions = Table(
     Column("delivered_at", String),  # v31 (ADR-0067 D8.3)
     Column("attempts", Integer, nullable=False, server_default="0"),  # v31 (ADR-0067 D8.4)
     Column("resume_json", Text),  # v32 (D-109)
+    # v34 (ADR-0069 §4β): the attempt in progress and its runner ("<runner>:<process token>").
+    Column("running_since", String),
+    Column("running_by", String),
 )
 
 t_telegram_override_nonces = Table(
@@ -551,6 +558,26 @@ t_athlete_accounts = Table(
     Column("updated_at", String, nullable=False),
     CheckConstraint(
         "garmin_token_state IN ('missing', 'ok', 'expired')", name="garmin_token_state"
+    ),
+)
+
+# ---------------------------------------------------------------------------
+# Table 28 — athlete_injuries
+# Covers: _apply_v34_migrations() (ADR-0069 §3 and §4ε)
+# athlete_id has no DEFAULT (ADR-0067 D3); at most one open injury per athlete.
+# NOTE: ladder-created (v34); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_athlete_injuries = Table(
+    "athlete_injuries",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("athlete_id", String, nullable=False),
+    Column("description", Text, nullable=False),
+    Column("opened_at", String, nullable=False),
+    Column("closed_at", String),
+    Index(
+        "uq_athlete_injuries_one_open", "athlete_id", unique=True,
+        sqlite_where=text("closed_at IS NULL"),
     ),
 )
 

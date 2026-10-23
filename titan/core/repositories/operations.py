@@ -18,6 +18,19 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 
+def _attempt_mark_holds(
+    running_since: str | None, running_by: str | None, *, runner: str, now: datetime,
+    stale_after: timedelta | None,
+) -> bool:
+    """True while another attempt of the day is still running (P4-03, ADR-0069 §4β)."""
+    if running_since is None:
+        return False
+    if stale_after is not None and now >= datetime.fromisoformat(running_since).astimezone(UTC) + stale_after:
+        return False
+    # The same runner from another process token: that process is gone (it restarted).
+    restarted = bool(running_by) and running_by != runner and running_by.split(":", 1)[0] == runner.split(":", 1)[0]
+    return not restarted
+
 class OperationsRepository:
     """Operations SQL, on the owning DatabaseManager's connection and lock."""
 
@@ -216,6 +229,7 @@ class OperationsRepository:
     def begin_routine_attempt(
         self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
         max_attempts: int, retry_gap: timedelta | None = None, start_by: datetime | None = None,
+        runner: str | None = None, stale_after: timedelta | None = None,
     ) -> tuple[str, int]:
         """Start one attempt at a routine day (ADR-0060 D1 as amended by ADR-0067 D8.4).
 
@@ -230,6 +244,11 @@ class OperationsRepository:
         first attempt (``started_at`` of the row); before that ``("wait", n)`` is returned and
         nothing changes (D-109). With ``start_by``, a day that has no row yet is not started
         after that time: ``("late", 0)`` and no row is written (D-109).
+
+        With ``runner`` (``"<runner>:<process token>"``), the attempt taken is marked as in
+        progress, and while another attempt's mark holds ``("wait", n)`` is returned (P4-03,
+        ADR-0069 §4β). A mark does not hold once it is older than ``stale_after``, or when it
+        is the same runner's from another process token: that process is gone (a restart).
         """
         key = (athlete_id, execution_date, routine_type)
         with self._db._lock:
@@ -247,8 +266,9 @@ class OperationsRepository:
                     "(athlete_id, execution_date, routine_type, started_at, attempts) VALUES (?, ?, ?, ?, 0)",
                     (*key, started_at.astimezone(UTC).isoformat()),
                 )
-                attempts, delivered_at, completed_at, first_started = cursor.execute(
-                    "SELECT attempts, delivered_at, completed_at, started_at FROM worker_routine_executions "
+                attempts, delivered_at, completed_at, first_started, running_since, running_by = cursor.execute(
+                    "SELECT attempts, delivered_at, completed_at, started_at, running_since, running_by "
+                    "FROM worker_routine_executions "
                     "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
                     key,
                 ).fetchone()
@@ -256,15 +276,26 @@ class OperationsRepository:
                     state = "closed"
                 elif attempts >= max_attempts:
                     state = "exhausted"
-                elif retry_gap is not None and attempts > 0 and started_at < (
-                    datetime.fromisoformat(first_started).astimezone(UTC) + attempts * retry_gap
+                elif (
+                    retry_gap is not None and attempts > 0 and started_at < (
+                        datetime.fromisoformat(first_started).astimezone(UTC) + attempts * retry_gap
+                    )
+                ) or (
+                    runner is not None and _attempt_mark_holds(
+                        running_since, running_by, runner=runner, now=started_at, stale_after=stale_after,
+                    )
                 ):
                     state = "wait"
                 else:
                     cursor.execute(
-                        "UPDATE worker_routine_executions SET attempts = attempts + 1 "
+                        "UPDATE worker_routine_executions SET attempts = attempts + 1, "
+                        "running_since = ?, running_by = ? "
                         "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
-                        key,
+                        (
+                            started_at.astimezone(UTC).isoformat() if runner is not None else None,
+                            runner,
+                            *key,
+                        ),
                     )
                     attempts += 1
                     state = "run"
@@ -273,6 +304,17 @@ class OperationsRepository:
                 self._db.conn.rollback()
                 raise
         return state, attempts
+
+    def end_routine_attempt(self, *, athlete_id: str, execution_date: str, routine_type: str) -> None:
+        """The attempt in progress ended, whatever its outcome: clear its mark (ADR-0069 §4β)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            self._db.conn.cursor().execute(
+                "UPDATE worker_routine_executions SET running_since = NULL, running_by = NULL "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (athlete_id, execution_date, routine_type),
+            )
+            self._db.conn.commit()
 
     def mark_routine_delivered(
         self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime

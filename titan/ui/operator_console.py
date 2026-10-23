@@ -134,7 +134,9 @@ class OperatorConsoleService:
 
         samples = len(timeline)
         avg_readiness = round(sum(p["readiness_score"] for p in timeline) / samples, 2)
-        avg_acwr = round(sum(p["acwr"] for p in timeline) / samples, 3)
+        # An unknown ACWR (NULL since v34) is left out of the average, not counted as 0 (OW-M2).
+        known_acwr = [p["acwr"] for p in timeline if p["acwr"] is not None]
+        avg_acwr = round(sum(known_acwr) / len(known_acwr), 3) if known_acwr else None
         vlg_counts = dict(Counter(p["vlg_color"] for p in timeline))
 
         summary = {

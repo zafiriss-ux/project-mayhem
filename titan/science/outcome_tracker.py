@@ -71,9 +71,10 @@ class GovernanceDecision:
     apl_priority_vector: dict[str, int]
     lock_thresholds_active: dict[str, float]
 
-    # Input signal snapshot — for future threshold calibration
-    acwr: float
-    tsb_value: float
+    # Input signal snapshot — for future threshold calibration.
+    # None: unknown at decision time, stored as NULL (OW-M2, ADR-0069 §4α).
+    acwr: float | None
+    tsb_value: float | None
     readiness_score: float
     glycogen_debt: float
     afi_value: float | None
@@ -100,7 +101,7 @@ class GovernanceDecision:
 
 def _classify_lock_cause(
     locks_applied: list[str],
-    acwr: float,
+    acwr: float | None,
     readiness_score: float,
 ) -> str:
     """
@@ -120,7 +121,9 @@ def _classify_lock_cause(
     # Proxy heuristic: if ACWR or readiness are implausible values that
     # default-replaced would produce, suspect a data pipeline problem.
     data_signals = []
-    if acwr <= 0.0 or acwr > 3.0:
+    if acwr is None:
+        data_signals.append("acwr_missing")
+    elif acwr <= 0.0 or acwr > 3.0:
         data_signals.append("acwr_out_of_range")
     if readiness_score <= 0.0:
         data_signals.append("readiness_zero")
@@ -225,8 +228,8 @@ class OutcomeTracker:
         phase: str,
         vlg_color: str,
         apl_result: dict,
-        acwr: float,
-        tsb_value: float,
+        acwr: float | None,
+        tsb_value: float | None,
         readiness_score: float,
         glycogen_debt: float,
         athlete_profile_id: str | None = None,
@@ -260,8 +263,8 @@ class OutcomeTracker:
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get("priority_vector", {})),
             lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),
-            acwr=float(acwr),
-            tsb_value=float(tsb_value),
+            acwr=float(acwr) if acwr is not None else None,
+            tsb_value=float(tsb_value) if tsb_value is not None else None,
             readiness_score=float(readiness_score),
             glycogen_debt=float(glycogen_debt),
             afi_value=float(afi_value) if afi_value is not None else None,
@@ -292,8 +295,8 @@ class OutcomeTracker:
                     "athlete_profile_id": decision.athlete_profile_id,
                     "vlg_color": decision.vlg_color,
                     "cause": cause,
-                    "acwr": round(decision.acwr, 3),
-                    "tsb_value": round(decision.tsb_value, 1),
+                    "acwr": round(decision.acwr, 3) if decision.acwr is not None else None,
+                    "tsb_value": round(decision.tsb_value, 1) if decision.tsb_value is not None else None,
                     "readiness_score": round(decision.readiness_score, 1),
                     "glycogen_debt": round(decision.glycogen_debt, 2),
                 },

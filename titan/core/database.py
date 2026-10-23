@@ -141,7 +141,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 33
+SCHEMA_VERSION = 34
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -516,6 +516,10 @@ class DatabaseManager:
         """Version 33: degraded_mode_state keyed by (athlete_id, failure_type) (ISO-2)."""
         self._migrations._apply_v33_migrations(cursor=cursor)
 
+    def _apply_v34_migrations(self, cursor) -> None:
+        """Version 34: the schema step of ADR-0069 §4 (OW-M2, P4-03, P4-04, injuries)."""
+        self._migrations._apply_v34_migrations(cursor=cursor)
+
     def record_failed_login(
         self,
         username: str,
@@ -872,13 +876,21 @@ class DatabaseManager:
     def begin_routine_attempt(
         self, *, athlete_id: str, execution_date: str, routine_type: str, started_at: datetime,
         max_attempts: int, retry_gap: timedelta | None = None, start_by: datetime | None = None,
+        runner: str | None = None, stale_after: timedelta | None = None,
     ) -> tuple[str, int]:
         """Start one attempt at a routine: ("run", n), ("closed", n), ("exhausted", n),
-        ("wait", n) before ``retry_gap`` has passed, or ("late", 0) after ``start_by`` (INV-15, D-109)."""
+        ("wait", n) before ``retry_gap`` has passed or while another attempt of ``runner``'s
+        day runs (ADR-0069 §4β), or ("late", 0) after ``start_by`` (INV-15, D-109)."""
         return self._operations.begin_routine_attempt(
             athlete_id=athlete_id, execution_date=execution_date,
             routine_type=routine_type, started_at=started_at, max_attempts=max_attempts,
-            retry_gap=retry_gap, start_by=start_by,
+            retry_gap=retry_gap, start_by=start_by, runner=runner, stale_after=stale_after,
+        )
+
+    def end_routine_attempt(self, *, athlete_id: str, execution_date: str, routine_type: str) -> None:
+        """Clear the mark of the attempt in progress, whatever its outcome (ADR-0069 §4β)."""
+        self._operations.end_routine_attempt(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type,
         )
 
     def get_routine_resume(self, *, athlete_id: str, execution_date: str, routine_type: str) -> dict[str, Any]:

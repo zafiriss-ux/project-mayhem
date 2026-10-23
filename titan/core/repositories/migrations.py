@@ -341,6 +341,12 @@ class SchemaMigrations:
                 "one row per athlete and failure type; athlete_id without DEFAULT (ISO-2, D-110)",
                 None,  # rebuild — see _apply_v33_migrations() below
             ),
+            34: (
+                "governance_outcomes / worker_routine_executions / athlete_threshold_offsets / athlete_injuries",
+                "nullable TSB/ACWR, one decision per athlete and day, attempt in progress, "
+                "no H1-H5 offsets, injuries (ADR-0069 §4)",
+                None,  # rebuild + DDL — see _apply_v34_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -709,6 +715,18 @@ class SchemaMigrations:
                 "flow": "database", "action": "db_schema_migration",
                 "version": 33,
                 "changes": "degraded_mode_state per athlete (ISO-2, D-110)",
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 34:
+            self._db._apply_v34_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 34,
+                "changes": (
+                    "governance_outcomes nullable TSB/ACWR and one row per athlete and day; "
+                    "attempt in progress; H1-H5 offsets refused; athlete_injuries (ADR-0069 §4)"
+                ),
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1635,3 +1653,124 @@ class SchemaMigrations:
         """)
         cursor.execute("DROP TABLE degraded_mode_state")
         cursor.execute("ALTER TABLE degraded_mode_state_v33_new RENAME TO degraded_mode_state")
+
+    def _apply_v34_migrations(self, cursor) -> None:
+        """Version 34: the schema step of ADR-0069 §4, in one step.
+
+        (α) ``governance_outcomes.acwr`` and ``tsb_value`` accept NULL: an unknown TSB or ACWR
+            is stored as unknown, not as 0.0 (OW-M2). The table is rebuilt, because SQLite
+            cannot drop NOT NULL. Rows already stored keep their values.
+        (β) ``worker_routine_executions.running_since`` and ``running_by``: the attempt in
+            progress, so a second attempt waits instead of running beside it (P4-03).
+        (γ) Triggers refuse H1-H5 keys in ``athlete_threshold_offsets``, beside the guard in
+            ``save_threshold_offset`` (P4-04, ADR-0052).
+        (δ) One decision per athlete and day: the duplicates are removed (the latest row of
+            the day stays, as ``replace_governance_decision_on`` keeps it) and a unique index
+            is added.
+        (ε) ``athlete_injuries``: the athlete's open and closed injuries, ``athlete_id``
+            without DEFAULT (ADR-0067 D3), at most one open per athlete.
+
+        The whole ladder runs in one transaction (D-104).
+        """
+        from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS
+
+        # (α) FROZEN HISTORICAL SNAPSHOT: column list fixed at v34.
+        columns = (
+            "id, athlete_id, date, session_planned, session_post_governance, locks_applied_json, "
+            "governance_clean, phase, vlg_color, apl_priority_vector_json, "
+            "lock_thresholds_active_json, acwr, tsb_value, readiness_score, glycogen_debt, "
+            "afi_value, outcome_rpe, outcome_completed, outcome_session_type_actual, "
+            "outcome_notes, decision_was_followed, override_outcome_exclusion, "
+            "outcome_independence_ok, algorithm_version_snapshot"
+        )
+        create_sql = """
+            CREATE TABLE {name} (
+                id INTEGER NOT NULL,
+                athlete_id VARCHAR DEFAULT 'owner' NOT NULL,
+                date VARCHAR NOT NULL,
+                session_planned VARCHAR NOT NULL,
+                session_post_governance VARCHAR NOT NULL,
+                locks_applied_json TEXT NOT NULL,
+                governance_clean INTEGER NOT NULL,
+                phase VARCHAR NOT NULL,
+                vlg_color VARCHAR NOT NULL,
+                apl_priority_vector_json TEXT NOT NULL,
+                lock_thresholds_active_json TEXT NOT NULL,
+                acwr FLOAT,
+                tsb_value FLOAT,
+                readiness_score FLOAT NOT NULL,
+                glycogen_debt FLOAT NOT NULL,
+                afi_value FLOAT,
+                outcome_rpe INTEGER,
+                outcome_completed INTEGER,
+                outcome_session_type_actual VARCHAR,
+                outcome_notes TEXT,
+                decision_was_followed INTEGER DEFAULT '1' NOT NULL,
+                override_outcome_exclusion INTEGER DEFAULT '0' NOT NULL,
+                outcome_independence_ok INTEGER DEFAULT '1' NOT NULL,
+                algorithm_version_snapshot TEXT,
+                CONSTRAINT pk_governance_outcomes PRIMARY KEY (id)
+            )
+        """
+        info = list(cursor.execute("PRAGMA table_info(governance_outcomes)"))
+        if not info:  # a partial database without the table: create it in its v34 shape
+            cursor.execute(create_sql.format(name="governance_outcomes"))
+        elif any(row[1] in ("acwr", "tsb_value") and row[3] for row in info):
+            cursor.execute("DROP TABLE IF EXISTS governance_outcomes_v34_new")
+            cursor.execute(create_sql.format(name="governance_outcomes_v34_new"))
+            # Only the columns the old table has: a very old database reaches v34 in one
+            # ladder run, and the columns it lacks take their defaults.
+            present = {row[1] for row in info}
+            copied = ", ".join(c for c in columns.split(", ") if c in present)
+            cursor.execute(
+                f"INSERT INTO governance_outcomes_v34_new ({copied}) "
+                f"SELECT {copied} FROM governance_outcomes"
+            )
+            cursor.execute("DROP TABLE governance_outcomes")
+            cursor.execute("ALTER TABLE governance_outcomes_v34_new RENAME TO governance_outcomes")
+
+        # (δ) The latest row of an athlete's day is the decision that stands (D-109).
+        cursor.execute("""
+            DELETE FROM governance_outcomes
+            WHERE id NOT IN (SELECT MAX(id) FROM governance_outcomes GROUP BY athlete_id, date)
+        """)
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_governance_outcomes_athlete_date "
+            "ON governance_outcomes (athlete_id, date)"
+        )
+
+        # (β) The attempt in progress, and who runs it ("<runner>:<process token>").
+        routine_columns = [row[1] for row in cursor.execute("PRAGMA table_info(worker_routine_executions)")]
+        if routine_columns:
+            if "running_since" not in routine_columns:
+                cursor.execute("ALTER TABLE worker_routine_executions ADD COLUMN running_since TEXT")
+            if "running_by" not in routine_columns:
+                cursor.execute("ALTER TABLE worker_routine_executions ADD COLUMN running_by TEXT")
+
+        # (γ) A hard-stop key never gets an offset, whatever writes it (ADR-0052).
+        keys = ", ".join(f"'{key}'" for key in sorted(HARD_STOP_THRESHOLD_KEYS))
+        for event in ("INSERT", "UPDATE"):
+            cursor.execute(f"""
+                CREATE TRIGGER IF NOT EXISTS trg_threshold_offsets_no_hard_stop_{event.lower()}
+                BEFORE {event} ON athlete_threshold_offsets
+                WHEN NEW.threshold_key IN ({keys})
+                BEGIN
+                    SELECT RAISE(ABORT, 'hard-stop threshold keys H1-H5 cannot be adapted (ADR-0052)');
+                END
+            """)
+
+        # (ε) FROZEN HISTORICAL SNAPSHOT: column list fixed at v34.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS athlete_injuries (
+                id INTEGER NOT NULL,
+                athlete_id VARCHAR NOT NULL,
+                description TEXT NOT NULL,
+                opened_at VARCHAR NOT NULL,
+                closed_at VARCHAR,
+                CONSTRAINT pk_athlete_injuries PRIMARY KEY (id)
+            )
+        """)
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_athlete_injuries_one_open "
+            "ON athlete_injuries (athlete_id) WHERE closed_at IS NULL"
+        )

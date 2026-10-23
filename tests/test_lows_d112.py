@@ -90,6 +90,9 @@ def test_a_raw_offset_past_the_ceiling_is_clamped_when_read(tmp_path) -> None:
 
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
     try:
+        # Since v34 a trigger refuses the hard-stop key (ADR-0069 §4γ); a row written before
+        # v34 may still be there, so the trigger is dropped to put one in.
+        db.conn.execute("DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert")
         db.conn.executemany(
             "INSERT INTO athlete_threshold_offsets (athlete_id, threshold_key, delta_value, updated_at, "
             "source, confidence) VALUES ('owner', ?, ?, '2026-10-17', 'manual', 1.0)",
