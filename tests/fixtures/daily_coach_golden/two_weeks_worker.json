@@ -347,6 +347,15 @@
      "severity": "WARNING"
     },
     {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H4_TSB",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -385,6 +394,7 @@
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -411,6 +421,7 @@
      "locks": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -842,6 +853,15 @@
      "severity": "WARNING"
     },
     {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H4_TSB",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -883,6 +903,7 @@
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -909,6 +930,7 @@
      "locks": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -8525,7 +8547,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8603,7 +8625,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,

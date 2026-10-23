@@ -26,11 +26,13 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # (H2_MISSING with no HRV baseline, ADR-0065 cap on H4 days, baselines without today).
 # After D-105 no session changes against D-106; only the logged baselines and texts do,
 # and a first morning no longer sends the "check database health" RHR alert.
+# D-112 (SG-11), approved by Zaf: with no load history TSB reaches governance as None, so the
+# first mornings also log DATA_MISSING_CONSERVATIVE_H4; no session or Telegram text changes.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "d11314d0e1d762e8c58c06e515caa54a1ca8fad396eb94413e60a0b6bcd330ca",
-    "persistence_failure": "5ece4cdd5dc10f7d7d2f1f9271aef11b703b59640fae8c51096d102ed202cf37",
-    "three_weeks_weekly_plan": "cead645d9bb4dde9d389854bcb03624e0a05e2870013a280727071cc902602e9",
-    "two_weeks_worker": "24a7e42196eb30abe0572b006f857198c8fd63645bc7019f653d7e75dda97de7",
+    "garmin_outage": "75ac6a953f5b24e0ff03c17ccb92be4cc94f9fa13a63425a408f2c8c82b99973",
+    "persistence_failure": "a7682c4ad4e80d6d10eb5f89252128b2030e7a1a99e2fca18bb99fac666ef23e",
+    "three_weeks_weekly_plan": "600f05c9bc54cc08ef3511befb93b668bc9edcc2d47eda79f9377644e9c64d9e",
+    "two_weeks_worker": "225cb747d02172d59207d4ab553efbd34a620267757ba6d697f601c62da3fda4",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"

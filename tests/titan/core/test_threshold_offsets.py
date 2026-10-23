@@ -93,7 +93,7 @@ def test_save_threshold_offset_upsert(tmp_path: Path) -> None:
         db.save_threshold_offset(
             athlete_id="athlete_1",
             threshold_key="VO2_READINESS_MIN",
-            delta_value=2.0,
+            delta_value=0.10,  # inside the ±0.20 ceiling (D-112)
             source="calibration",
             confidence=0.60,
             updated_at="2026-04-12T06:00:00Z",
@@ -101,7 +101,7 @@ def test_save_threshold_offset_upsert(tmp_path: Path) -> None:
         db.save_threshold_offset(
             athlete_id="athlete_1",
             threshold_key="VO2_READINESS_MIN",
-            delta_value=-3.5,
+            delta_value=-0.15,
             source="manual",
             confidence=0.85,
             updated_at="2026-04-12T10:00:00Z",
@@ -112,7 +112,7 @@ def test_save_threshold_offset_upsert(tmp_path: Path) -> None:
 
     assert len(rows) == 1, "UPSERT must produce exactly 1 row, not 2"
     row = rows[0]
-    assert row["delta_value"] == pytest.approx(-3.5), "Second write delta_value must win"
+    assert row["delta_value"] == pytest.approx(-0.15), "Second write delta_value must win"
     assert row["source"] == "manual"
     assert row["confidence"] == pytest.approx(0.85)
     assert row["updated_at"] == "2026-04-12T10:00:00Z"
