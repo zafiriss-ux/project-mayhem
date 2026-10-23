@@ -1819,3 +1819,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | OW-M1 | Δυναμικά πεδία χωρίς escaping έσπαγαν το legacy Markdown και το Telegram απέρριπτε το μήνυμα | MEDIUM | RESOLVED (D-127) |
 | OW-F4 | Το `/today` της κονσόλας έγραφε δεύτερη απόφαση την ίδια μέρα, χωρίς claim, lock και audit | HIGH | RESOLVED (D-128) |
 | OW-L1 | Το `/sync` του owner και το background sync δεν αποθήκευαν τα δεδομένα Garmin | LOW | RESOLVED (D-129) |
+| OW-L5 (14α) | Η ημερομηνία του briefing ήταν του ρολογιού, όχι της μέρας του πρωινού | LOW | RESOLVED (D-130) |

@@ -12,7 +12,7 @@ import threading
 import time
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
@@ -999,9 +999,14 @@ class TitanTelegramBot:
 
         sleep = data.get('sleep_quality', 'N/A')
         sleep_text = f"{sleep}/100" if isinstance(sleep, (int, float)) else "N/A"
+        # The morning's own day, so a morning sent after midnight keeps its date (OW-L5, D-130).
+        try:
+            briefing_day = date.fromisoformat(str(data["briefing_date"]))
+        except (KeyError, ValueError):
+            briefing_day = datetime.now(UTC).date()
         text = (
             f"🌅 *GOOD MORNING!*\n"
-            f"{datetime.now(UTC).strftime('%A, %B %d, %Y')}\n\n"
+            f"{briefing_day.strftime('%A, %B %d, %Y')}\n\n"
             f"🏃 *Today:* {field('session_type', 'REST')} – {field('duration', 'N/A')}\n\n"
             f"⏰ *Optimal Run Time:* {field('optimal_time', 'N/A')}\n"
             f"  └ Dew point: {field('dew_point', 'N/A')}°C  |  {field('conditions', '')}\n\n"

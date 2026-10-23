@@ -1868,7 +1868,8 @@ class DailyCoach:
 
         def _handle(effect, result):
             _daily_coach_event("step_started", step_number=12, step_name="send_telegram")
-            payload = result.coaching_payload
+            # The claimed day dates the message, not the clock at sending (OW-L5, D-130).
+            payload = {**result.coaching_payload, "briefing_date": _routine_day(self).isoformat()}
             note = getattr(self, "briefing_note", None)
             if note:
                 earlier = payload.get("special_note")
