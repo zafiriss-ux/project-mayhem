@@ -839,6 +839,8 @@ class DailyCoach:
         if soreness is None:
             # The athlete's /manual_entry FATIGUE reaches H5 (OW-F2, ADR-0069 §2).
             soreness = self._stored_fatigue_level()
+        # The D-043 default is not a measurement: H5 reads it as UNKNOWN (OW-F3, ADR-0069 §3).
+        self._subjective_fatigue_measured = soreness is not None or subjective_fatigue_score is not None
         if soreness is None:
             soreness = 3  # below FATIGUE_SORENESS_PERIPHERAL_MIN: no report is not a sore athlete (D-043)
         soreness = max(0, min(10, int(soreness)))
@@ -1597,7 +1599,12 @@ class DailyCoach:
             # No load history gives no TSB, which reaches governance as None: H4_MISSING applies
             # the EASY ceiling (ADR-0051, SG-11, D-112). A neutral 0.0 here hid it.
             tsb_value=inp.tsb_value,
-            injury_flag=bool(inp.garmin_data.get('injury_flag', False)),
+            # No source sends one yet (/injury comes with schema v34): None, so H1 is UNKNOWN.
+            injury_flag=(
+                None if inp.garmin_data.get('injury_flag') is None
+                else bool(inp.garmin_data.get('injury_flag'))
+            ),
+            subjective_fatigue_measured=getattr(self, "_subjective_fatigue_measured", None),
             priority_vector=apl_result.get('priority_vector', {}),
             lock_thresholds=apl_result.get('lock_thresholds', {}),
             data_confidence_low=(
@@ -1996,9 +2003,10 @@ class DailyCoach:
         sleep_score: int | None,
         subjective_fatigue_score: int,
         tsb_value: float,
-        injury_flag: bool,
+        injury_flag: bool | None,
         priority_vector: dict[str, Any],
         lock_thresholds: dict[str, Any],
+        subjective_fatigue_measured: bool | None = None,
         data_confidence_low: bool | None = None,
         persistence_degraded: bool = False,
         garmin_data_stale: bool | None = None,
@@ -2028,6 +2036,7 @@ class DailyCoach:
             injury_flag=injury_flag,
             priority_vector=priority_vector,
             lock_thresholds=lock_thresholds,
+            subjective_fatigue_measured=subjective_fatigue_measured,
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
             athlete_id=getattr(self, "athlete_id", None),  # ADR-0068: no owner default
