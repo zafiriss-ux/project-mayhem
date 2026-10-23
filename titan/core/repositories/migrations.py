@@ -1721,11 +1721,10 @@ class SchemaMigrations:
             # Only the columns the old table has: a very old database reaches v34 in one
             # ladder run, and the columns it lacks take their defaults.
             present = {row[1] for row in info}
+            # The names come from the fixed column list above, never from input.
             copied = ", ".join(c for c in columns.split(", ") if c in present)
-            cursor.execute(
-                f"INSERT INTO governance_outcomes_v34_new ({copied}) "
-                f"SELECT {copied} FROM governance_outcomes"
-            )
+            copy_sql = f"INSERT INTO governance_outcomes_v34_new ({copied}) SELECT {copied} FROM governance_outcomes"  # nosec B608
+            cursor.execute(copy_sql)
             cursor.execute("DROP TABLE governance_outcomes")
             cursor.execute("ALTER TABLE governance_outcomes_v34_new RENAME TO governance_outcomes")
 
