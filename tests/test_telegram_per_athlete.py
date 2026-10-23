@@ -361,15 +361,18 @@ def _fake_garminconnect(monkeypatch) -> dict:
     seen = {"logins": 0}
 
     class _Garth:
-        def loads(self, _data: str) -> None:
-            pass
+        token = ""
+
+        def loads(self, data: str) -> None:
+            self.token = data
 
     class _Garmin:
         def __init__(self, *args) -> None:
             self.client = _Garth()
 
         def connectapi(self, _path):
-            return None
+            # The token "session-of-a" belongs to the Garmin account bound to athlete A (MA-F1).
+            return {"displayName": f"garmin-{_A}" if self.client.token == "session-of-a" else "garmin-other"}
 
         def login(self):
             seen["logins"] += 1

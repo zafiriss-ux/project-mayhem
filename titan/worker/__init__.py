@@ -717,7 +717,7 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     except AthleteNotReady as exc:
         log.info("athlete_sync_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
         return "⏸ Your setup is not complete yet, so nothing was synced."
-    garmin = GarminSync(athlete_id=athlete_id)
+    garmin = GarminSync(athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id))
     try:
         if not garmin.connect():
             return "⏸ Garmin is not connected for you, so nothing was synced."
@@ -732,6 +732,15 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     finally:
         _record_garmin_token_state(db, athlete_id, garmin)
     return "✅ Sync complete."
+
+
+def _bound_garmin_account(db: DatabaseManager, athlete_id: str) -> str | None:
+    """The Garmin account bound to the athlete, or None (the owner's lives in .env)."""
+    from titan.core.athlete import OWNER_ATHLETE_ID
+
+    if athlete_id == OWNER_ATHLETE_ID:
+        return None
+    return (db.get_athlete_account(athlete_id) or {}).get("garmin_user_id")
 
 
 def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
@@ -768,7 +777,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     )
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
-        garmin_sync=GarminSync(athlete_id=athlete_id),
+        garmin_sync=GarminSync(athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id)),
         weather_api=weather,
         # Another athlete's messages go to their own chat only, never the owner's (ADR-0067 D10.1).
         telegram_bot=_athlete_telegram(db, athlete_id),

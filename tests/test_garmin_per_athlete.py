@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import stat
 import sys
@@ -81,8 +82,16 @@ class _FakeGarth:
         self._loaded.append(data)
 
 
-def _fake_garminconnect(monkeypatch, *, reject_token: bool = False) -> dict:
-    """A garminconnect module that records what was loaded and whether a login happened."""
+def _account_of(session: str) -> str:
+    """The Garmin account a fake session answers for: 'session-of-x' belongs to 'garmin-x'."""
+    return session.replace("session-of-", "garmin-")
+
+
+def _fake_garminconnect(monkeypatch, *, reject_token: bool = False, profile_error: Exception | None = None) -> dict:
+    """A garminconnect module that records what was loaded and whether a login happened.
+
+    The profile call answers with the Garmin account of the loaded session, as Garmin does.
+    """
     seen = {"loaded": [], "logins": 0, "constructed_with": []}
 
     class _Garmin:
@@ -93,6 +102,9 @@ def _fake_garminconnect(monkeypatch, *, reject_token: bool = False) -> dict:
         def connectapi(self, _path):
             if reject_token:
                 raise RuntimeError("401 Unauthorized")
+            if profile_error is not None:
+                raise profile_error
+            return {"displayName": _account_of(seen["loaded"][-1])}
 
         def login(self):
             seen["logins"] += 1
@@ -196,13 +208,65 @@ def test_an_athlete_connects_with_their_own_stored_token(key_file, monkeypatch) 
     _store_token(_A, "session-of-a")
     _store_token(_B, "session-of-b")
 
-    sync = GarminSync(athlete_id=_A)
+    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
 
     assert sync.connect() is True
     assert seen["loaded"] == ["session-of-a"]
     assert seen["logins"] == 0
     assert seen["constructed_with"] == [()]
     assert sync.token_expired is False
+
+
+@pytest.mark.integration
+def test_a_token_of_another_garmin_account_is_never_used(key_file, monkeypatch, caplog) -> None:
+    """MA-F1: A's folder holds a session of B's Garmin account; A is paused, the file is kept."""
+    seen = _fake_garminconnect(monkeypatch)
+    _store_token(_A, "session-of-b")
+
+    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
+
+    with caplog.at_level(logging.INFO, logger=garmin_sync._log.name):
+        assert sync.connect() is False
+    assert sync.is_connected is False and sync.client is None
+    assert sync.token_expired is True
+    assert seen["logins"] == 0
+    assert athlete_token_path(_A).exists()
+    assert any("connect_token_account_mismatch" in r.getMessage() and "critical" in r.getMessage().lower()
+               for r in caplog.records)
+
+
+@pytest.mark.integration
+def test_an_athlete_with_no_bound_garmin_account_never_uses_a_token(key_file, monkeypatch) -> None:
+    _fake_garminconnect(monkeypatch)
+    _store_token(_A, "session-of-a")
+
+    sync = GarminSync(athlete_id=_A)
+
+    assert sync.connect() is False
+    assert sync.token_expired is True
+
+
+@pytest.mark.integration
+def test_a_rate_limited_account_check_keeps_the_token_and_does_not_connect(key_file, monkeypatch) -> None:
+    seen = _fake_garminconnect(monkeypatch, profile_error=RuntimeError("429 Too Many Requests"))
+    _store_token(_A, "session-of-a")
+
+    sync = GarminSync(athlete_id=_A, expected_garmin_user_id="garmin-a")
+
+    assert sync.connect() is False
+    assert sync.token_expired is False
+    assert athlete_token_path(_A).exists()
+    assert seen["logins"] == 0
+
+
+@pytest.mark.integration
+def test_the_worker_passes_the_athletes_bound_account(db, monkeypatch) -> None:
+    from titan import worker
+
+    db.bind_garmin_account(_A, "garmin-a")
+    assert worker._bound_garmin_account(db, _A) == "garmin-a"
+    assert worker._bound_garmin_account(db, _B) is None
+    assert worker._bound_garmin_account(db, "owner") is None
 
 
 @pytest.mark.integration
@@ -352,7 +416,7 @@ def test_two_garmin_accounts_each_write_to_their_own_athlete(db, key_file, monke
     }
     for athlete, activities in feeds.items():
         _store_token(athlete, f"session-of-{athlete}")
-        sync = GarminSync(athlete_id=athlete)
+        sync = GarminSync(athlete_id=athlete, expected_garmin_user_id=f"garmin-{athlete}")
         assert sync.connect() is True
         sync.client = _ActivityClient(activities)
         synced = sync.sync_activities(days_back=3)
