@@ -13,6 +13,21 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 
+def decision_athlete_id(decision: dict[str, Any]) -> str:
+    """Return the athlete a governance decision belongs to (MA-F3, D-122).
+
+    A decision that does not name an athlete is the owner's. One that names an
+    empty athlete (``""``, blanks or ``None``) is refused: guessing the owner there
+    would write another athlete's decision into the owner's history.
+    """
+    if "athlete_profile_id" not in decision:
+        return "owner"
+    athlete_id = decision["athlete_profile_id"]
+    if not isinstance(athlete_id, str) or not athlete_id.strip():
+        raise ValueError("governance decision names an empty athlete_profile_id")
+    return athlete_id
+
+
 def _utc_iso(moment: datetime) -> str:
     """Fixed-width UTC ISO-8601, so nonce times compare correctly as text."""
     return moment.astimezone(UTC).isoformat(timespec="microseconds")
@@ -204,7 +219,7 @@ class GovernanceRepository:
                        outcome_independence_ok, algorithm_version_snapshot
                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
-                    decision.get('athlete_profile_id', 'owner'),
+                    decision_athlete_id(decision),
                     decision['date'],
                     decision['session_planned'],
                     decision['session_post_governance'],
@@ -265,7 +280,7 @@ class GovernanceRepository:
                     float(decision.get('glycogen_debt', 0.0)),
                     decision.get('afi_value'),
                     json.dumps(decision.get('algorithm_version_snapshot', {}), default=str),
-                    decision.get('athlete_profile_id', 'owner'),
+                    decision_athlete_id(decision),
                     decision['date'],
                 ),
             )

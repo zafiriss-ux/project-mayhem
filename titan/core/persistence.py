@@ -49,6 +49,7 @@ from sqlalchemy.exc import IntegrityError
 
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
+from titan.core.repositories.governance import decision_athlete_id
 
 _log = logging.getLogger(__name__)
 
@@ -1188,9 +1189,9 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     algorithm_version_snapshot=json.dumps(
                         decision.get("algorithm_version_snapshot", {})
                     ),
-                    # MA-F8: same rule as the SQLite repository, so every
-                    # decision row names its athlete.
-                    athlete_id=decision.get("athlete_profile_id", "owner"),
+                    # MA-F8 / MA-F3: same rule as the SQLite repository, so every
+                    # decision row names its athlete and an empty one is refused.
+                    athlete_id=decision_athlete_id(decision),
                 )
             )
 

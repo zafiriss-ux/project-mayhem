@@ -90,9 +90,11 @@ class GovernanceDecision:
     algorithm_version_snapshot: dict[str, str] | None = None
 
     def __post_init__(self) -> None:
-        # Normalise sentinel: callers that pass athlete_profile_id=None or the
-        # legacy "DEFAULT" string both resolve to the canonical owner identifier.
-        if not self.athlete_profile_id or self.athlete_profile_id == "DEFAULT":
+        # MA-F3 (D-122): an athlete id that was passed but is empty never becomes
+        # the owner's; only the field's default and the legacy "DEFAULT" do.
+        if not isinstance(self.athlete_profile_id, str) or not self.athlete_profile_id.strip():
+            raise ValueError("GovernanceDecision needs a non-empty athlete_profile_id")
+        if self.athlete_profile_id == "DEFAULT":
             self.athlete_profile_id = "owner"
 
 
@@ -254,7 +256,7 @@ class OutcomeTracker:
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
-            athlete_profile_id=str(athlete_profile_id or "owner"),
+            athlete_profile_id="owner" if athlete_profile_id is None else athlete_profile_id,
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get("priority_vector", {})),
             lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),
