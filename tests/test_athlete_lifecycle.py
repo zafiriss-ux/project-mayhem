@@ -323,6 +323,29 @@ def test_a_restore_deletes_the_athlete_again(db, env) -> None:
         restored.close()
 
 
+@pytest.mark.integration
+def test_a_deletion_record_naming_the_owner_or_no_athlete_deletes_nothing_of_theirs(db, env, caplog) -> None:
+    """OW-L2: a record line for 'owner' or a malformed id is refused; the real athletes still go."""
+    maria = _add(db, "Maria", 2000)
+    _seed(db, maria, 2000)
+    db.save_daily_metric("2026-10-20", hrv=50.0, athlete_id="owner")
+    record = lifecycle.deletion_record_path()
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text(
+        "".join(json.dumps({"athlete_id": who, "deleted_at": "2026-10-01"}) + "\n" for who in ("owner", "", "x'; --", maria)),
+        encoding="utf-8",
+    )
+
+    with caplog.at_level(logging.ERROR, logger=lifecycle._log.name):
+        assert lifecycle.reapply_deletions(db) == [maria]
+
+    owner_rows = db.conn.execute("SELECT COUNT(*) FROM daily_metrics WHERE athlete_id = 'owner'").fetchone()[0]
+    assert owner_rows == 1
+    assert _rows(db, maria) == {}
+    refused = [r for r in caplog.records if r.getMessage() == "athlete_deletion_record_refused"]
+    assert len(refused) == 3
+
+
 # ── 30 days after /stop ───────────────────────────────────────────────────────
 
 

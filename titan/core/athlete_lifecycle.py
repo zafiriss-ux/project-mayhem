@@ -278,12 +278,21 @@ def _remove_token_folder(athlete_id: str) -> None:
 
 
 def reapply_deletions(db: DatabaseManager) -> list[str]:
-    """After a restore, delete again every athlete in the deletion record (D2.7, D6.3)."""
+    """After a restore, delete again every athlete in the deletion record (D2.7, D6.3).
+
+    A line naming the owner or no valid athlete id is refused and logged, never acted on
+    (OW-L2): the record can only take back what ``delete_athlete`` could have deleted.
+    """
     if not os.environ.get(DELETION_RECORD_ENV, "").strip():
         return []
     again: list[str] = []
     for record in read_deletion_records():
-        athlete_id = record["athlete_id"]
+        athlete_id = record.get("athlete_id") if isinstance(record, dict) else None
+        try:
+            _check_athlete_id(athlete_id if isinstance(athlete_id, str) else "")
+        except ValueError:
+            _log.error("athlete_deletion_record_refused", extra={"athlete_id": str(athlete_id)[:40]})
+            continue
         tables = athlete_tables(db)
         with db._lock:
             db._ensure_open_locked()
