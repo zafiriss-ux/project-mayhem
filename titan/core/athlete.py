@@ -495,6 +495,13 @@ class UniversalAthleteProfile:
                 )
                 sys.exit(1)
 
+        # OW-L3 (D-125): max HR sets the TRIMP zones (load, TSB, ACWR, H4), so a missing
+        # value is not silent. The start goes on with the default; the log names the
+        # variable only, never a value.
+        for var in ("ATHLETE_MAX_HR", "ATHLETE_THRESHOLD_HR", "TRAINING_PHASE"):
+            if var not in os.environ:
+                _log.warning("startup_env_default_used", extra={"var": var})
+
         profile = cls(name=os.environ.get("ATHLETE_NAME", "Athlete"))
         profile.age = _parse("ATHLETE_AGE", _defaults.age, int)
         profile.weight_kg = _parse("ATHLETE_WEIGHT", _defaults.weight_kg, float)
