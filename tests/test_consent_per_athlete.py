@@ -107,6 +107,11 @@ def db(data_dir):
         manager.save_athlete_profile(athlete, _PROFILE)
         manager.bind_garmin_account(athlete, f"garmin-{athlete}")
         manager.set_garmin_token_state(athlete, "ok")
+        from titan.integrations.garmin_sync import (
+            athlete_token_path,  # a ready athlete has the token file (MA-F2)
+        )
+        athlete_token_path(athlete).parent.mkdir(parents=True, exist_ok=True)
+        athlete_token_path(athlete).write_bytes(b"synthetic-token")
         manager.bind_telegram_chat(athlete, chat)
     yield manager
     manager.close()

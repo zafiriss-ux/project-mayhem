@@ -50,6 +50,11 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     # Since step 4 the athlete also needs their own Garmin account and token (ADR-0067 D9).
     worker_db.bind_garmin_account("a-00000002", "garmin-b")
     worker_db.set_garmin_token_state("a-00000002", "ok")
+    from titan.integrations.garmin_sync import (
+        athlete_token_path,  # a ready athlete has the token file (MA-F2)
+    )
+    athlete_token_path("a-00000002").parent.mkdir(parents=True, exist_ok=True)
+    athlete_token_path("a-00000002").write_bytes(b"synthetic-token")
     # Since step 5 the athlete also needs their own Telegram chat (ADR-0067 D10.1).
     worker_db.bind_telegram_chat("a-00000002", "20000002")
     # Since step 7 the athlete also needs their own current consent (ADR-0067 D4.2).

@@ -346,6 +346,26 @@ def test_an_unknown_token_state_is_refused(db) -> None:
 # ── worker ────────────────────────────────────────────────────────────────────
 
 @pytest.mark.integration
+def test_token_state_ok_without_the_token_file_is_not_ready(db, key_file) -> None:
+    """MA-F2: the DB says 'ok' but the encrypted token file is gone; no briefing is built."""
+    from titan import worker
+    from titan.core.athlete import AthleteNotReady
+
+    db.bind_garmin_account(_A, "garmin-a")
+    db.set_garmin_token_state(_A, "ok")
+    assert not athlete_token_path(_A).exists()
+
+    with pytest.raises(AthleteNotReady, match="token file"):
+        worker._require_garmin_ready(db, _A)
+    assert db.get_athlete_account(_A)["garmin_token_state"] == "expired"  # relogin shows in `list`
+
+    _store_token(_A, "session-of-a")  # as `athletes.py relogin` does: token file, then 'ok'
+    db.set_garmin_token_state(_A, "ok")
+    worker._require_garmin_ready(db, _A)
+
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize("state", [None, "missing", "expired"])
 def test_an_athlete_without_a_usable_garmin_token_builds_nothing(db, key_file, monkeypatch, state) -> None:
     from titan import worker

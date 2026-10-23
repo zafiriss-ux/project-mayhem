@@ -658,6 +658,20 @@ def _require_garmin_ready(db: DatabaseManager, athlete_id: str) -> None:
         raise AthleteNotReady(athlete_id, "garmin: no account bound")
     if account["garmin_token_state"] != "ok":
         raise AthleteNotReady(athlete_id, f"garmin: token {account['garmin_token_state']}")
+    # The state in the DB is not the token: without the encrypted file there is nothing to
+    # sync with, so the athlete is not ready even when the state says 'ok' (MA-F2).
+    from titan.integrations.garmin_sync import athlete_token_path
+
+    if not athlete_token_path(athlete_id).exists():
+        # Recorded as 'expired', as a sync that finds no token does (D9.5), so the operator
+        # sees the relogin in `athletes.py list`; the athlete is refused either way.
+        try:
+            db.set_garmin_token_state(athlete_id, "expired")
+        except Exception as exc:
+            logging.getLogger("titan.worker.runner").exception(
+                "athlete_token_state_unsaved", extra={"athlete_id": athlete_id, "error": str(exc)},
+            )
+        raise AthleteNotReady(athlete_id, "garmin: token file missing")
 
 
 def _record_garmin_token_state(db: DatabaseManager, athlete_id: str, garmin) -> None:  # noqa: ANN001
