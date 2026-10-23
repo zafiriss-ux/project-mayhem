@@ -140,7 +140,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 32
+SCHEMA_VERSION = 33
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -479,6 +479,10 @@ class DatabaseManager:
         """Version 32: worker_routine_executions resume_json (D-109)."""
         self._migrations._apply_v32_migrations(cursor=cursor)
 
+    def _apply_v33_migrations(self, cursor) -> None:
+        """Version 33: degraded_mode_state keyed by (athlete_id, failure_type) (ISO-2)."""
+        self._migrations._apply_v33_migrations(cursor=cursor)
+
     def record_failed_login(
         self,
         username: str,
@@ -810,20 +814,20 @@ class DatabaseManager:
 
     # --- Degraded Mode State (HD-06) (titan/core/repositories/operations.py) ---
 
-    def get_all_degraded_mode_states(self, athlete_id: str = "default") -> list[tuple[str, str]]:
+    def get_all_degraded_mode_states(self, athlete_id: str = "owner") -> list[tuple[str, str]]:
         """Return all (failure_type, degraded_since) rows for the given athlete."""
         return self._operations.get_all_degraded_mode_states(athlete_id=athlete_id)
 
     def upsert_degraded_mode_state(
-        self, failure_type: str, degraded_since: str, athlete_id: str = "default"
+        self, failure_type: str, degraded_since: str, athlete_id: str = "owner"
     ) -> None:
-        """Insert or replace a degraded-mode row keyed by failure_type."""
+        """Insert or replace the degraded-mode row of one athlete and failure type (ISO-2)."""
         self._operations.upsert_degraded_mode_state(
             failure_type=failure_type, degraded_since=degraded_since, athlete_id=athlete_id
         )
 
     def delete_degraded_mode_state(
-        self, failure_type: str, athlete_id: str = "default"
+        self, failure_type: str, athlete_id: str = "owner"
     ) -> None:
         """Delete the degraded-mode row for a failure_type (degradation resolved)."""
         self._operations.delete_degraded_mode_state(
@@ -1272,9 +1276,9 @@ class DatabaseManager:
         """Supersede the athlete's stored decision of that date in place; False if none (D-109)."""
         return self._governance.replace_governance_decision_on(decision=decision)
 
-    def annotate_governance_outcome(self, date: str, note: str) -> bool:
-        """Attach or replace manual operator note for latest governance decision on date."""
-        return self._governance.annotate_governance_outcome(date=date, note=note)
+    def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
+        """Attach or replace the operator note on one athlete's latest decision of *date* (ISO-3)."""
+        return self._governance.annotate_governance_outcome(date=date, note=note, athlete_id=athlete_id)
 
     def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
         """Return rolling N-day average resting HR from daily_metrics, or None."""

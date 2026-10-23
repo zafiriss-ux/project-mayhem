@@ -103,8 +103,9 @@ class TestDegradedModePersistence:
         # Seed the DB directly
         db_seed = _make_db(tmp_path)
         db_seed.conn.cursor().execute(
-            "INSERT OR REPLACE INTO degraded_mode_state (failure_type, degraded_since) VALUES (?, ?)",
-            ("GARMIN_SYNC", ts.isoformat()),
+            "INSERT OR REPLACE INTO degraded_mode_state (athlete_id, failure_type, degraded_since) "
+            "VALUES (?, ?, ?)",
+            ("owner", "GARMIN_SYNC", ts.isoformat()),
         )
         db_seed.conn.commit()
         db_seed.close()

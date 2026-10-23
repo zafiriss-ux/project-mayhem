@@ -124,8 +124,11 @@ class DegradedModeTracker:
 
     HYDRATION_FAILURE = "state_hydration_failed"
 
-    def __init__(self, db: "DatabaseManager | None" = None) -> None:
+    def __init__(self, db: "DatabaseManager | None" = None, athlete_id: str = "owner") -> None:
         self._db = db
+        # Each athlete has their own timers (ISO-2, D-110): another athlete's stale Garmin
+        # never alerts for this one, and this one's healthy morning never clears theirs.
+        self._athlete_id = athlete_id
         self._degraded_since: dict[str, datetime] = {}
         self._hydration_failed = False
         if db is not None:
@@ -139,7 +142,9 @@ class DegradedModeTracker:
     def _hydrate_from_db(self) -> bool:
         """Restore degradation timers from the database; return True on a successful read."""
         try:
-            rows = self._db.get_all_degraded_mode_states()  # type: ignore[union-attr]
+            rows = self._db.get_all_degraded_mode_states(  # type: ignore[union-attr]
+                athlete_id=self._athlete_id
+            )
         except Exception as exc:
             _log.critical(
                 "degraded_mode_hydration_failed",
@@ -178,9 +183,11 @@ class DegradedModeTracker:
             return
         try:
             if degraded_since is not None:
-                self._db.upsert_degraded_mode_state(failure_type, degraded_since.isoformat())
+                self._db.upsert_degraded_mode_state(
+                    failure_type, degraded_since.isoformat(), athlete_id=self._athlete_id
+                )
             else:
-                self._db.delete_degraded_mode_state(failure_type)
+                self._db.delete_degraded_mode_state(failure_type, athlete_id=self._athlete_id)
         except Exception as exc:
             _daily_coach_event(
                 "degraded_mode_persist_failed",
@@ -633,7 +640,7 @@ class DailyCoach:
         self.on_decision_recorded: Callable[[dict], None] | None = None
         # Asked before the athlete is sent "TITAN system error"; False skips it (D-109).
         self.before_system_error_alert: Callable[[], bool] | None = None
-        self._degraded_tracker = DegradedModeTracker(db=self.db)
+        self._degraded_tracker = DegradedModeTracker(db=self.db, athlete_id=self.athlete_id)
         self._effect_bus = self._build_effect_bus()
         self._startup_hydration_confidence: dict[str, bool] = {
             "hrv": False,
@@ -1599,7 +1606,7 @@ class DailyCoach:
 
         # ADR-0055: source arbitration — Garmin preferred; ManualEntry fallback (≥48h stale)
         _today = _routine_day(self).isoformat()
-        _manual_adapter = ManualEntryAdapter(self.db)
+        _manual_adapter = ManualEntryAdapter(self.db, athlete_id=getattr(self, "athlete_id", "owner"))
         _router = BiometricRouter(
             garmin_age_hours=inp.garmin_trust.data_age_hours,
             manual_adapter=_manual_adapter,

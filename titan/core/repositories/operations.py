@@ -73,7 +73,7 @@ class OperationsRepository:
             ))
             self._db.conn.commit()
 
-    def get_all_degraded_mode_states(self, athlete_id: str = "default") -> list[tuple[str, str]]:
+    def get_all_degraded_mode_states(self, athlete_id: str = "owner") -> list[tuple[str, str]]:
         """Return all (failure_type, degraded_since) rows for the given athlete."""
         with self._db._lock:
             return self._db.conn.cursor().execute(
@@ -83,9 +83,9 @@ class OperationsRepository:
             ).fetchall()
 
     def upsert_degraded_mode_state(
-        self, failure_type: str, degraded_since: str, athlete_id: str = "default"
+        self, failure_type: str, degraded_since: str, athlete_id: str = "owner"
     ) -> None:
-        """Insert or replace a degraded-mode row keyed by failure_type."""
+        """Insert or replace the degraded-mode row of one athlete and failure type (ISO-2)."""
         with self._db._lock:
             self._db.conn.cursor().execute(
                 "INSERT OR REPLACE INTO degraded_mode_state "
@@ -95,7 +95,7 @@ class OperationsRepository:
             self._db.conn.commit()
 
     def delete_degraded_mode_state(
-        self, failure_type: str, athlete_id: str = "default"
+        self, failure_type: str, athlete_id: str = "owner"
     ) -> None:
         """Delete the degraded-mode row for a failure_type (degradation resolved)."""
         with self._db._lock:

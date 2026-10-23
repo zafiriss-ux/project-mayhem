@@ -433,13 +433,13 @@ t_coach_athlete_assignments = Table(
 )
 
 # Table 18 — degraded_mode_state (HD-06 / DegradedModeTracker persistence)
-# Ref: HD-06, OBS-039
+# Ref: HD-06, OBS-039; one row per athlete and failure type since v33 (ISO-2, D-110)
 t_degraded_mode_state = Table(
     "degraded_mode_state",
     metadata,
+    Column("athlete_id", String, primary_key=True),  # no DEFAULT (ADR-0067 D3, ISO-2)
     Column("failure_type", String, primary_key=True),
     Column("degraded_since", String, nullable=False),
-    Column("athlete_id", String, nullable=False, server_default="default"),
 )
 
 # Table 19 — login_lockout (auth brute-force protection / T5-70)
