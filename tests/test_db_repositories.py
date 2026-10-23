@@ -191,6 +191,7 @@ def test_daily_metrics_round_trip_per_athlete(db) -> None:
     assert db.get_daily_metric("2026-10-01") == {
         "date": "2026-10-01", "hrv_rmssd": 64.0, "resting_hr": 48,
         "sleep_hours": None, "weight_kg": 70.2, "data_source": "garmin_api", "sleep_quality": None,
+        "fatigue_level": None,  # read by the morning's H5 (OW-F2, ADR-0069 §2)
     }
     assert db.get_daily_metric("2026-10-01", athlete_id="other")["hrv_rmssd"] == 40.0
     assert db.conn.execute(
