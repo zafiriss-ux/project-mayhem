@@ -460,6 +460,7 @@ class _RaisingNutrition:
 class _CallbackDailyCoach:
     def __init__(self, summary):
         self.summary = summary
+        self.routine_lock = threading.Lock()
         self.outcome_tracker = self
 
     def run_morning_routine(self):
@@ -553,7 +554,11 @@ def _make_callback_context(summary):
 
 
 @pytest.mark.unit
-def test_register_telegram_callbacks_success_paths_cover_command_wiring():
+def test_register_telegram_callbacks_success_paths_cover_command_wiring(monkeypatch):
+    # /today goes through the worker's claimed, audited path (OW-F4, D-128).
+    import titan.worker
+
+    monkeypatch.setattr(titan.worker, "run_owner_today", lambda db, lock: "delivered")
     summary = {
         "status": "CALIBRATED",
         "n_decisions": 24,
@@ -584,6 +589,7 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring():
     }
     telegram = _CallbackTelegram()
     ctx = _make_callback_context(summary)
+    ctx["db"] = object()
 
     titan_main._register_telegram_callbacks(telegram, ctx)
 
@@ -616,10 +622,17 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring():
 
 
 @pytest.mark.unit
-def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messages():
+def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messages(monkeypatch):
+    import titan.worker
+
+    def _today_down(db, lock):
+        raise RuntimeError("coach down")
+
+    monkeypatch.setattr(titan.worker, "run_owner_today", _today_down)
     class _RaisingCoach:
         def __init__(self):
             self.outcome_tracker = self
+            self.routine_lock = threading.Lock()
 
         def run_morning_routine(self):
             raise RuntimeError("coach down")
@@ -656,6 +669,7 @@ def test_register_telegram_callbacks_error_and_empty_branches_return_guard_messa
 
     telegram = _CallbackTelegram()
     ctx = {
+        "db": object(),
         "daily_coach": _RaisingCoach(),
         "weekly_planner": _RaisingPlanner(),
         "athlete_profile": {},
