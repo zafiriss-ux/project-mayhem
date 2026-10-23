@@ -465,7 +465,8 @@ def _activity_day(activity: dict) -> str:
         try:
             return date.fromisoformat(gmt[:10]).isoformat()
         except ValueError:
-            pass
+            # A malformed startTimeGMT is not a day: the local time is the fallback.
+            _log.debug("activity_start_gmt_unparsable")
     return _activity_utc_date(activity.get("startTimeLocal", ""))
 
 
