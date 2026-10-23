@@ -84,6 +84,9 @@ class _DummyTelegram:
         return
 
 
+_NEXT_MONDAY = "2026-10-19"
+
+
 class _DummyWeeklyPlanner:
     def __init__(self, *args, **kwargs):
         self.calls = []
@@ -91,7 +94,7 @@ class _DummyWeeklyPlanner:
 
     def generate_weekly_plan(self, athlete_profile, phase):
         self.calls.append({"athlete_profile": athlete_profile, "phase": phase})
-        return {"status": "ok"}
+        return {"status": "ok", "week_start": _NEXT_MONDAY}
 
 
 class _DummyDailyCoach:
@@ -110,6 +113,14 @@ class _DummyDailyCoach:
 class _DummyDatabase:
     def __init__(self):
         self.closed = False
+        self.stored_plan = None
+        self.saved_plans = []
+
+    def get_latest_weekly_plan(self, athlete_id="owner", on_or_before=None):
+        return self.stored_plan
+
+    def save_weekly_plan(self, athlete_id, week_start, plan):
+        self.saved_plans.append((athlete_id, week_start, plan))
 
     def close(self):
         self.closed = True
@@ -315,18 +326,27 @@ def test_main_smoke_invalid_env_value_exits_before_menu(monkeypatch):
 
 @pytest.mark.unit
 def test_main_schedules_expected_background_tasks(monkeypatch):
-    _garmin, _weather, telegram, _db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    _garmin, _weather, telegram, db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
+    import titan.worker as worker
+
+    checked = threading.Event()
+    seen = []
+    monkeypatch.setattr(
+        worker, "run_owner_morning_if_due", lambda db_: seen.append(db_) or checked.set() or True
+    )
 
     titan_main.main()
 
     assert len(telegram.scheduled_tasks) == 2
     morning_task, weekly_task = telegram.scheduled_tasks
     assert morning_task["name"] == "Morning Coaching"
-    assert morning_task["time_str"] == "07:00"
+    # Checked every minute and claimed as the worker claims the day (D-111).
+    assert morning_task["time_str"] == "*"
     assert morning_task["callback"]() is True  # BackgroundRoutineRunner.start (D-035)
-    assert daily_coach.morning_ran.wait(timeout=2)
-    assert daily_coach.morning_calls == 1
+    assert checked.wait(timeout=2)
+    assert seen == [db]
+    assert daily_coach.morning_calls == 0  # never the console coach's routine directly
 
     assert weekly_task["name"] == "Weekly Plan"
     assert weekly_task["time_str"] == "20:00"
@@ -348,8 +368,30 @@ def test_main_weekly_task_callback_sends_generated_plan(monkeypatch):
 
     assert weekly_planner.calls
     assert weekly_planner.calls[0]["phase"] == "TAPER"
-    assert captured["ctx"]["last_weekly_plan"] == {"status": "ok"}
-    assert telegram.sent_weekly_plans == [{"status": "ok"}]
+    plan = {"status": "ok", "week_start": _NEXT_MONDAY}
+    assert captured["ctx"]["last_weekly_plan"] == plan
+    assert telegram.sent_weekly_plans == [plan]
+    assert _db.saved_plans == [("owner", _NEXT_MONDAY, plan)]
+
+
+@pytest.mark.unit
+def test_main_weekly_task_does_not_send_a_second_plan_for_the_same_week(monkeypatch):
+    """The worker's Sunday morning already stored next week's plan: nothing more is sent (D-111)."""
+    _garmin, _weather, telegram, db, _daily_coach, weekly_planner = _patch_main_dependencies(monkeypatch)
+    captured = {}
+    monkeypatch.setattr(titan_main, "main_menu", lambda ctx: captured.setdefault("ctx", ctx))
+    from datetime import UTC, datetime, timedelta
+
+    tomorrow = (datetime.now(UTC).date() + timedelta(days=1)).isoformat()
+    db.stored_plan = {"week_start": tomorrow, "sessions": []}
+
+    titan_main.main()
+    next(t for t in telegram.scheduled_tasks if t["name"] == "Weekly Plan")["callback"]()
+
+    assert weekly_planner.calls == []
+    assert telegram.sent_weekly_plans == []
+    assert db.saved_plans == []
+    assert captured["ctx"]["last_weekly_plan"] == db.stored_plan
 
 
 @pytest.mark.unit
