@@ -48,8 +48,8 @@ class PhysiologyRepository:
             rhr: Resting heart rate in bpm
             sleep_hours: Sleep duration in hours
             sleep_quality: Sleep quality score (0-100)
-            soreness: Soreness level (0-5 scale)
-            fatigue: Fatigue level (0-5 scale)
+            soreness: Soreness level (0-10 scale)
+            fatigue: Fatigue level (0-10 scale, the H5 scale; ADR-0069 §2)
             mood: Mood score (0-5 scale)
             notes: Optional text notes
             data_source: Provenance tag — 'garmin_api' or 'manual_entry'
@@ -61,7 +61,9 @@ class PhysiologyRepository:
             # T5-66: Per-column UPSERT semantics.
             # Garmin-sourced columns (hrv_rmssd, resting_hr, sleep_hours,
             # sleep_quality, weight_kg, quality_flag) are overwritten on re-sync.
-            # Manual subjective fields (soreness, fatigue_level, mood, notes) are
+            # A manual fatigue_level is stored when a row already exists (the morning sync
+            # creates it first); a Garmin re-sync passes None and keeps it (OW-F2, ADR-0069 §2).
+            # The other manual subjective fields (soreness, mood, notes) are
             # preserved when a row already exists — a Garmin re-sync must not zero
             # values the athlete manually entered.
             # T5-115: data_source is preserved if already set to 'manual_entry' so
@@ -80,6 +82,7 @@ class PhysiologyRepository:
                     sleep_hours  = CASE WHEN excluded.sleep_hours  IS NOT NULL THEN excluded.sleep_hours  ELSE sleep_hours  END,
                     sleep_quality= CASE WHEN excluded.sleep_quality IS NOT NULL THEN excluded.sleep_quality ELSE sleep_quality END,
                     quality_flag = CASE WHEN excluded.quality_flag IS NOT NULL THEN excluded.quality_flag ELSE quality_flag END,
+                    fatigue_level = CASE WHEN excluded.fatigue_level IS NOT NULL THEN excluded.fatigue_level ELSE fatigue_level END,
                     data_source  = CASE WHEN data_source = 'manual_entry' THEN data_source ELSE excluded.data_source END
             """, (athlete_id, date, weight, hrv, rhr, sleep_hours, sleep_quality, soreness, fatigue, mood, notes, quality_flag, data_source))
             if self._db._transaction_depth == 0:
@@ -334,7 +337,8 @@ class PhysiologyRepository:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
-                """SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source, sleep_quality
+                """SELECT date, hrv_rmssd, resting_hr, sleep_hours, weight_kg, data_source, sleep_quality,
+                          fatigue_level
                    FROM daily_metrics
                    WHERE athlete_id = ? AND date = ?""",
                 (athlete_id, date),
@@ -350,4 +354,5 @@ class PhysiologyRepository:
             "weight_kg": row[4],
             "data_source": row[5],
             "sleep_quality": row[6],
+            "fatigue_level": row[7],
         }

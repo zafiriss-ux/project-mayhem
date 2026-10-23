@@ -837,6 +837,9 @@ class DailyCoach:
         """
         # Apply neutral defaults — no console I/O in the orchestration core
         if soreness is None:
+            # The athlete's /manual_entry FATIGUE reaches H5 (OW-F2, ADR-0069 §2).
+            soreness = self._stored_fatigue_level()
+        if soreness is None:
             soreness = 3  # below FATIGUE_SORENESS_PERIPHERAL_MIN: no report is not a sore athlete (D-043)
         soreness = max(0, min(10, int(soreness)))
 
@@ -2134,6 +2137,36 @@ class DailyCoach:
             missed_nights = 0
         for _ in range(max(0, missed_nights)):
             self.glycogen.overnight_resynthesis()
+
+    def _stored_fatigue_level(self) -> int | None:
+        """The athlete's stored fatigue (0-10) for the morning: its own day, else the evening before.
+
+        ``/manual_entry FATIGUE=`` stores it on the day it is sent, so the evening's entry is on
+        the day before the morning (OW-F2, ADR-0069 §2). None when there is none, or when the
+        read fails: the caller keeps the D-043 default.
+        """
+        athlete_id = getattr(self, "athlete_id", "owner")
+        day = _routine_day(self)
+        for back in (0, 1):
+            iso = (day - timedelta(days=back)).isoformat()
+            try:
+                row = self.db.get_daily_metric(iso, athlete_id=athlete_id)
+            except Exception as e:
+                _log.exception("stored fatigue read failed: %s", e)
+                _daily_coach_event(
+                    "stored_fatigue_read_failed", error_class=type(e).__name__, error_message=str(e),
+                )
+                return None
+            value = row.get("fatigue_level") if isinstance(row, dict) else None
+            if value is None:
+                continue
+            try:
+                level = int(value)
+            except (TypeError, ValueError):
+                continue
+            _daily_coach_event("stored_fatigue_used", date=iso, fatigue_level=level)
+            return max(0, min(10, level))
+        return None
 
     def _acwr_from_history(self) -> float | None:
         """ACWR from the stored training loads (SV-01); None when history is short.
