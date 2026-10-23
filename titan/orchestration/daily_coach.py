@@ -1073,6 +1073,9 @@ class DailyCoach:
         )
 
         # ── Step 5: TSB + kinetic state ──────────────────────────────────────
+        # Reload the stored loads first: step 2 has just stored yesterday's run, and the
+        # history read when the coach was built does not have it (OW-F1, ADR-0069 §1).
+        self._feed_load_engines(garmin_data.get('activities', []))
         self.tsb.reference_date = _routine_day(self)  # the morning's day, not the clock's (D-131)
         tsb_value, tsb_status = _run_step(5, "calculate_tsb", self.tsb.calculate_tsb)
         today_temp = garmin_data.get('temperature_c') or 20.0
@@ -1260,8 +1263,7 @@ class DailyCoach:
             'planned_volume_pct': today_session.get('volume_pct'),
         })
 
-        # ── Step 9: Feed activities into load engines ─────────────────────
-        self._feed_load_engines(garmin_data.get('activities', []))
+        # Step 9 (load engines) runs before step 5 since OW-F1 (ADR-0069 §1).
 
         tsb_for_vlg, vlg_state, phase, apl_result = self._step_load_priority(
             acwr=acwr,
