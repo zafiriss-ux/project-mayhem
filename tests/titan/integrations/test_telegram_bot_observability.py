@@ -213,7 +213,9 @@ def test_init_failure_logs_structured_startup_event(monkeypatch, caplog):
     record = next(r for r in caplog.records if r.msg == "startup_failure")
     assert record.component == "telegram_bot_init"
     assert record.error_class == "RuntimeError"
-    assert record.detail == "invalid token"
+    # The library's text can quote part of the token, so it is never logged (MA-F7, D-120).
+    assert "invalid token" not in record.detail
+    assert "TELEGRAM_BOT_TOKEN" in record.detail
 
 
 @pytest.mark.integration
