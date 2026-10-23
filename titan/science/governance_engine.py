@@ -1175,11 +1175,15 @@ class GovernanceEngine:
     def _build_decision_rationale(self, context: dict, session_plan: dict, applied_locks: list[str]) -> DecisionRationale:
         findings: list[GateFinding] = []
 
-        injury_flag = bool(context.get("injury_flag", False))
+        # OW-F3 (ADR-0069 §3): a gate H1-H5 (ADR-0009) whose input was not measured is UNKNOWN,
+        # never CLEAR.
+        # Only the wording: the hard stops and the missing-data ceilings decide as before.
+        raw_injury_flag = context.get("injury_flag")
+        injury_flag = bool(raw_injury_flag)
         findings.append(
             GateFinding(
                 gate="H1",
-                status="TRIGGERED" if injury_flag else "CLEAR",
+                status="TRIGGERED" if injury_flag else ("UNKNOWN" if raw_injury_flag is None else "CLEAR"),
                 actual_value=injury_flag,
                 threshold_value=True,
                 margin=None,
@@ -1198,7 +1202,7 @@ class GovernanceEngine:
         findings.append(
             GateFinding(
                 gate="H2",
-                status="TRIGGERED" if h2_trigger else "CLEAR",
+                status="TRIGGERED" if h2_trigger else ("UNKNOWN" if hrv_delta is None else "CLEAR"),
                 actual_value=hrv_delta,
                 threshold_value=h2_threshold,
                 margin=self._margin_ge(hrv_delta, h2_threshold),
@@ -1219,7 +1223,7 @@ class GovernanceEngine:
         findings.append(
             GateFinding(
                 gate="H3",
-                status="TRIGGERED" if h3_trigger else "CLEAR",
+                status="TRIGGERED" if h3_trigger else ("UNKNOWN" if rhr_delta is None else "CLEAR"),
                 actual_value=rhr_delta,
                 threshold_value=HARD_STOP_RHR_DELTA,
                 margin=self._margin_ge(rhr_delta, HARD_STOP_RHR_DELTA),
@@ -1240,7 +1244,7 @@ class GovernanceEngine:
         findings.append(
             GateFinding(
                 gate="H4",
-                status="TRIGGERED" if h4_trigger else "CLEAR",
+                status="TRIGGERED" if h4_trigger else ("UNKNOWN" if tsb_value is None else "CLEAR"),
                 actual_value=tsb_value,
                 threshold_value=HARD_STOP_TSB_FLOOR,
                 margin=self._margin_le(tsb_value, HARD_STOP_TSB_FLOOR),
@@ -1258,10 +1262,15 @@ class GovernanceEngine:
         except (TypeError, ValueError, OverflowError):
             subjective_fatigue = 0
         h5_trigger = subjective_fatigue >= SUBJECTIVE_FATIGUE_EXTREME
+        # The D-043 default 3 is not the athlete's entry: the morning marks it not measured.
+        h5_unknown = (
+            context.get("subjective_fatigue_score") is None
+            or context.get("subjective_fatigue_measured") is False
+        )
         findings.append(
             GateFinding(
                 gate="H5",
-                status="TRIGGERED" if h5_trigger else "CLEAR",
+                status="TRIGGERED" if h5_trigger else ("UNKNOWN" if h5_unknown else "CLEAR"),
                 actual_value=subjective_fatigue,
                 threshold_value=SUBJECTIVE_FATIGUE_EXTREME,
                 margin=self._margin_ge(float(subjective_fatigue), float(SUBJECTIVE_FATIGUE_EXTREME)),
@@ -1289,6 +1298,9 @@ class GovernanceEngine:
         primary = next((f for f in findings if f.status == "TRIGGERED"), None)
         if primary is None:
             primary_reason = "No governance lock triggered: training proceeds as planned."
+            not_measured = [f.gate for f in findings if f.status == "UNKNOWN"]
+            if not_measured:
+                primary_reason += f" Not measured: {', '.join(not_measured)}."
             actionable_guidance = "Execute planned session and continue normal monitoring."
         else:
             primary_reason = primary.reason

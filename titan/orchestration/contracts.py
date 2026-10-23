@@ -109,9 +109,12 @@ class DailyCoachContext(TypedDict):
     sleep_score: int | None
     subjective_fatigue_score: int
     tsb_value: float
-    injury_flag: bool
+    # None: no source sent one, so H1 is UNKNOWN (OW-F3, ADR-0069 §3).
+    injury_flag: bool | None
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
+    # False: the score is the D-043 default 3, not the athlete's entry; H5 is UNKNOWN.
+    subjective_fatigue_measured: NotRequired[bool]
     garmin_data_stale: NotRequired[bool]
     hrv_stress_context: NotRequired[str]
     data_trust: NotRequired[Mapping[str, object]]
@@ -140,13 +143,14 @@ class DailyCoachContextContract:
     sleep_score: int | None
     subjective_fatigue_score: int
     tsb_value: float
-    injury_flag: bool
+    injury_flag: bool | None
     priority_vector: Mapping[str, float]
     lock_thresholds: Mapping[str, float]
     garmin_data_stale: bool | None = None
     hrv_stress_context: str | None = None
     data_trust: Mapping[str, object] | None = None
     athlete_id: str | None = None
+    subjective_fatigue_measured: bool | None = None
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -181,6 +185,8 @@ class DailyCoachContextContract:
             payload["data_trust"] = self.data_trust
         if self.athlete_id is not None:
             payload["athlete_id"] = self.athlete_id
+        if self.subjective_fatigue_measured is not None:
+            payload["subjective_fatigue_measured"] = self.subjective_fatigue_measured
         return payload
 
 
