@@ -39,21 +39,27 @@ T0 = "2026-03-02 07:30:00"
 
 
 class _Bot:
-    """Stands in for TitanTelegramBot: records the chat and text of every send."""
+    """Stands in for TitanTelegramBot: records the chat, text and alert level of every send.
 
-    sent: list[tuple[str, str]] = []
+    The level is ``None`` for a plain ``send_message``.
+    """
+
+    sent: list[tuple[str, str, str | None]] = []
 
     def __init__(self, *_args, chat_id=None, db=None, athlete_id: str = "owner", **_kwargs) -> None:
         self.athlete_id = athlete_id
         self.db = db
         self.chat = str(chat_id) if chat_id is not None else _OWNER_CHAT
 
-    def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
-        type(self).sent.append((self.chat, text))
+    def _record(self, text: str, level: str | None) -> bool:
+        type(self).sent.append((self.chat, text, level))
         return True
 
+    def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
+        return self._record(text, None)
+
     def send_alert(self, title: str, message: str, level: str = "warning") -> bool:
-        return self.send_message(f"{title}\n{message}")
+        return self._record(f"{title}\n{message}", level)
 
     def send_structured_alert(self, event_type: str, lock_code: str, message: str) -> bool:
         return self.send_message(f"{event_type}/{lock_code}\n{message}")
@@ -139,10 +145,17 @@ def test_garmin_down_for_24_hours_tells_the_owner_once(monkeypatch, db) -> None:
 
         clock.tick(timedelta(hours=1))
         _morning(tracker, garmin, owner_bot)
+        assert len(_Bot.sent) == 1, "one alert at 24 hours"
+
+        # The alert restarts the timer: the next morning sends nothing new (no alert storm).
+        clock.tick(timedelta(hours=1))
+        _morning(tracker, garmin, owner_bot)
     assert len(_Bot.sent) == 1
-    chat, text = _Bot.sent[0]
+    chat, text, level = _Bot.sent[0]
     assert chat == _OWNER_CHAT
     assert "TITAN degraded mode" in text and "garmin_api_degraded" in text
+    # Today's level (D-143): the event is CRITICAL, the Telegram alert goes out as a warning.
+    assert level == "warning"
 
 
 @pytest.mark.integration
@@ -182,10 +195,12 @@ def test_an_athletes_alert_reaches_the_athlete_and_the_owner(monkeypatch, db) ->
         _morning(tracker, garmin, athlete_bot)
         clock.tick(timedelta(hours=24))
         _morning(tracker, garmin, athlete_bot)
-    to_athlete = [t for c, t in _Bot.sent if c == _ATHLETE_CHAT]
-    to_owner = [t for c, t in _Bot.sent if c == _OWNER_CHAT]
+    to_athlete = [t for c, t, _level in _Bot.sent if c == _ATHLETE_CHAT]
+    to_owner = [t for c, t, _level in _Bot.sent if c == _OWNER_CHAT]
     assert len(to_athlete) == 1 and len(to_owner) == 1
+    assert "reduced mode" in to_athlete[0]
     assert "garmin_api_degraded" not in to_athlete[0] and "Check credentials" not in to_athlete[0]
     assert _ATHLETE in to_owner[0] and "garmin_api_degraded" in to_owner[0]
+    assert "(warning)" in to_owner[0]
     # The owner's own timers are untouched by the athlete's (ISO-2).
     assert dict(db.get_all_degraded_mode_states(athlete_id="owner")) == {}
