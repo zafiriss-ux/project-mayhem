@@ -220,6 +220,8 @@ class DailyCoachingPayload(TypedDict):
     fueling_gate: Mapping[str, object] | None
     vo2_eligibility: Mapping[str, object] | None
     data_trust: NotRequired[Mapping[str, object]]
+    # The morning's day (ISO), added by the send step so the briefing keeps it (D-130).
+    briefing_date: NotRequired[str]
 
 
 @dataclass(frozen=True)
