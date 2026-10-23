@@ -18,7 +18,7 @@
   `titan-backups`, όχι το `titan-secrets:/secrets`. Οι `TITAN_TOKEN_KEY_FILE` και
   `TITAN_DELETION_RECORD_FILE` έδειχναν έτσι σε φάκελο μέσα στο container. Σε κάθε αναδημιουργία του
   container (νέα έκδοση, νέο image) χάνονταν το κλειδί των tokens Garmin των αθλητών και το αρχείο
-  διαγραφών. Χωρίς το αρχείο διαγραφών, ένα restore μπορεί να επαναφέρει αθλητή που διαγράφηκε
+  διαγραφών, όπου είχαν δημιουργηθεί (`new-key`, διαγραφή αθλητή). Χωρίς το αρχείο διαγραφών, ένα restore μπορεί να επαναφέρει αθλητή που διαγράφηκε
   (ADR-0067 D6.3).
 - **Απόφαση:** η λίστα του release παίρνει και το `titan-secrets:/secrets`. Νέο test στο
   `tests/test_release_engineering.py` ελέγχει ότι κάθε named volume του worker στο βασικό compose

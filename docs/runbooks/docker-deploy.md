@@ -28,18 +28,22 @@ the data cannot decrypt the tokens and a restored backup cannot bring back a del
 The release file (`docker-compose.release.yml`) keeps this volume as well (M0-04, D-144). Release
 v5.9.0 left it out, so `/secrets` lived inside the worker container and was lost whenever the
 container was recreated. If you ran released images before this fix, copy the files out of the
-running worker **before** you upgrade, then back in:
+running worker **before** you upgrade, then back in (`titan` is the alias from
+[`RUNBOOK_ROLLBACK.md`](../RUNBOOK_ROLLBACK.md), both compose files):
 
 ```bash
-docker compose cp titan-worker:/secrets ./secrets-rescue        # old container, still running
+alias titan='docker compose -f docker-compose.yml -f docker-compose.release.yml'
+titan cp titan-worker:/secrets ./secrets-rescue        # old container, still running
 # upgrade as usual (docs/RUNBOOK_ROLLBACK.md), then:
-docker compose cp ./secrets-rescue/. titan-worker:/secrets
-docker compose restart titan-worker && rm -rf ./secrets-rescue
+titan cp ./secrets-rescue/. titan-worker:/secrets
+# docker cp writes the files as root; the worker runs as user titan
+titan exec -u root titan-worker sh -c 'chown -R titan:titan /secrets && chmod 700 /secrets && chmod 600 /secrets/*'
+titan restart titan-worker && rm -rf ./secrets-rescue
 ```
 
-If the old container is already gone, the key is lost: run `python scripts/athletes.py new-key` and
-each athlete links Garmin again. Deletions made before the upgrade are no longer recorded, so check
-the athlete list after any restore.
+If the old container is already gone, the key is lost: run
+`titan exec titan-worker python scripts/athletes.py new-key` and each athlete links Garmin again.
+Deletions made before the upgrade are no longer recorded, so check the athlete list after any restore.
 
 Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart. The file holds the PID of the running worker. The kernel releases the lock when that process dies, so a crashed worker never blocks the next start.
 

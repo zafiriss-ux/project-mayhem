@@ -86,9 +86,12 @@ def _worker_volume_mounts(compose_text: str) -> list[str]:
     lines = worker.split("\n    volumes:", 1)[1].splitlines()[1:]
     mounts: list[str] = []
     for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
         if not line.startswith("      - "):
             break
-        mounts.append(line.removeprefix("      - ").strip())
+        mounts.append(stripped.removeprefix("- ").split(" #", 1)[0].strip())
     return mounts
 
 
