@@ -392,7 +392,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
@@ -419,7 +418,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
@@ -522,7 +520,7 @@
    "returned": true,
    "telegram": [
     "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-03  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 30 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: N/A\n• TSB: INSUFFICIENT DATA\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (3.9 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (4.7 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (3.9 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (5.8 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (3.1 km)\n  └ Recovery run\n*Saturday* – LONG\\_RUN (8.6 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯",
-    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -892,7 +890,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -918,7 +915,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -1012,7 +1008,7 @@
    "returned": true,
    "telegram": [
     "⚠️ *TITAN missing data*\n\nHRV baseline missing for over 24h. Sessions stay at most EASY until it is back (ADR-0051).",
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1391,7 +1387,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -1417,7 +1412,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -1510,7 +1504,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1900,7 +1894,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -1926,7 +1919,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -2019,7 +2011,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 4.1 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 4.1 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2418,7 +2410,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -2444,7 +2435,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -2537,7 +2527,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 3.1 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 3.1 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2967,7 +2957,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -2993,7 +2982,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -3086,7 +3074,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 6.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nSaturday, March 07, 2026\n\n🏃 *Today:* EASY – 6.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -3505,7 +3493,6 @@
      "governance_clean": false,
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -3531,7 +3518,6 @@
      "action": "governance_locks_applied",
      "flow": "daily_coach",
      "locks": [
-      "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -3674,7 +3660,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
+    "🌅 *GOOD MORNING!*\nSunday, March 08, 2026\n\n🏃 *Today:* REST – 0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 280.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted",
     "🎯 *WEEKLY TRAINING PLAN*\nWeek of: 2026-03-09  |  Phase: BUILD\n\n📊 *Summary:*\n• Volume: 38.5 km\n• Quality sessions: 2\n• Easy days: 3  |  Rest: 1\n\n💡 *Key Status:*\n• Lactate threshold: 168 bpm\n• HRV baseline: 52.9\n• TSB: ⚠️ FUNCTIONAL OVERREACH\n\n📅 *Daily Breakdown:*\n*Monday* – EASY (5 km)\n  └ Recovery from weekend\n*Tuesday* – INTERVALS (6 km)\n  └ 3km WU + 6x1km @ VO2max + 2km CD\n*Wednesday* – EASY (5 km)\n  └ Easy aerobic\n*Thursday* – TEMPO (7.5 km)\n  └ 3km WU + 8km @ LT + 2km CD\n*Friday* – EASY (4 km)\n  └ Recovery run\n*Saturday* – LONG\\_RUN (11 km)\n  └ Long run with progression\n*Sunday* – REST (0 km)\n  └ Complete rest\n\n💪 Quality work pays off - stay sharp! 🎯"
    ]
   },
@@ -8617,7 +8603,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8643,7 +8629,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8695,7 +8681,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8721,7 +8707,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8747,7 +8733,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8773,7 +8759,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.15, \"tsb_floor\": -40.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8799,7 +8785,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
