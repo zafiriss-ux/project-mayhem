@@ -1601,11 +1601,8 @@ class DailyCoach:
             # No load history gives no TSB, which reaches governance as None: H4_MISSING applies
             # the EASY ceiling (ADR-0051, SG-11, D-112). A neutral 0.0 here hid it.
             tsb_value=inp.tsb_value,
-            # No source sends one yet (/injury comes with schema v34): None, so H1 is UNKNOWN.
-            injury_flag=(
-                None if inp.garmin_data.get('injury_flag') is None
-                else bool(inp.garmin_data.get('injury_flag'))
-            ),
+            # An open /injury triggers H1; none declared leaves it UNKNOWN (ADR-0069 §3).
+            injury_flag=self._injury_flag(inp.garmin_data),
             subjective_fatigue_measured=getattr(self, "_subjective_fatigue_measured", None),
             priority_vector=apl_result.get('priority_vector', {}),
             lock_thresholds=apl_result.get('lock_thresholds', {}),
@@ -2149,6 +2146,24 @@ class DailyCoach:
             missed_nights = 0
         for _ in range(max(0, missed_nights)):
             self.glycogen.overnight_resynthesis()
+
+    def _injury_flag(self, garmin_data: dict) -> bool | None:
+        """H1's input: True while the athlete has an open /injury (ADR-0069 §3).
+
+        With no open injury the source's own flag stays, and without one H1 is UNKNOWN (D-134).
+        A failed read is True: a declared injury must not be missed (fail closed).
+        """
+        try:
+            injury = self.db.get_open_injury(athlete_id=getattr(self, "athlete_id", "owner"))
+        except Exception as e:
+            _log.exception("injury read failed: %s", e)
+            _daily_coach_event("injury_read_failed", error_class=type(e).__name__, error_message=str(e))
+            return True
+        if isinstance(injury, dict):
+            _daily_coach_event("open_injury_used", opened_at=injury.get("opened_at"))
+            return True
+        flag = garmin_data.get('injury_flag')
+        return None if flag is None else bool(flag)
 
     def _stored_fatigue_level(self) -> int | None:
         """The athlete's stored fatigue (0-10) for the morning: its own day, else the evening before.

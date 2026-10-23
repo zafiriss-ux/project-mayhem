@@ -345,6 +345,7 @@ class TitanTelegramBot:
                 "/shoes – Shoe recommendation for today\n"
                 "/calibration – Governance calibration summary\n"
                 "/manual_entry – Log metrics manually (HRV, RHR, Sleep, Fatigue, Weight)\n"
+                "/injury – Declare an injury (REST until /injury off)\n"
                 "/time_trial – Log a time-trial for Critical Speed (distance, time)\n"
             )
             self.bot.reply_to(message, text)
@@ -521,6 +522,18 @@ class TitanTelegramBot:
             reply = self.handle_manual_entry_text(args, chat_id=message.chat.id)
             self.bot.reply_to(message, reply)
 
+        @self.bot.message_handler(commands=["injury"])
+        def cmd_injury(message):
+            if not self._is_trusted(message.chat.id):
+                _log.warning("titan.telegram.untrusted_chat")
+                return
+            if not _check_rate_limit(message.chat.id, "injury"):
+                self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
+                return
+            parts = (message.text or "").strip().split(None, 1)
+            args = parts[1] if len(parts) > 1 else ""
+            self.bot.reply_to(message, self.handle_injury_text(args, chat_id=message.chat.id), parse_mode="")
+
         @self.bot.message_handler(commands=["time_trial"])
         def cmd_time_trial(message):
             if not self._is_trusted(message.chat.id):
@@ -634,6 +647,44 @@ class TitanTelegramBot:
             if col in parsed:
                 summary_parts.append(f"{label}={parsed[col]}")
         return "✅ Logged: " + ", ".join(summary_parts)
+
+    _INJURY_MAX_LEN = 200
+
+    def handle_injury_text(self, args: str, chat_id: int | str | None = None) -> str:
+        """``/injury <description>`` opens an injury, ``/injury off`` closes it (ADR-0069 §3).
+
+        While it is open H1 triggers and the morning is REST. The audit row is written first
+        (INV-22); without it nothing changes.
+        """
+        usage = "Usage: /injury <what hurts>  (REST until you send /injury off)"
+        if self.db is None:
+            return "❌ Database not available."
+        athlete_id = _OWNER_ATHLETE_ID
+        text = " ".join((args or "").split())
+        if not text:
+            try:
+                injury = self.db.get_open_injury(athlete_id=athlete_id)
+            except Exception as exc:
+                _log.error("titan.telegram.injury_read_failed", extra={"error_class": exc.__class__.__name__})
+                return "❌ Injury state unavailable."
+            if injury is None:
+                return usage
+            return f"🩹 Open injury since {str(injury['opened_at'])[:10]}: {injury['description']}\nSend /injury off when it has healed."
+        now = datetime.now(UTC).isoformat()
+        if text.lower() == "off":
+            if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_INJURY_CLOSE", athlete_id):
+                return _AUDIT_UNAVAILABLE_REPLY
+            if not self.db.close_injury(athlete_id=athlete_id, closed_at=now):
+                return "ℹ️ No open injury."
+            return "✅ Injury closed. Training resumes from the next morning."
+        description = text[: self._INJURY_MAX_LEN]
+        detail = json.dumps({"description": description}, sort_keys=True)
+        if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_INJURY_OPEN", athlete_id, detail):
+            return _AUDIT_UNAVAILABLE_REPLY
+        if not self.db.open_injury(athlete_id=athlete_id, description=description, opened_at=now):
+            injury = self.db.get_open_injury(athlete_id=athlete_id) or {}
+            return f"ℹ️ An injury is already open: {injury.get('description', '?')}\nSend /injury off first."
+        return f"🩹 Injury logged: {description}\nMornings are REST until you send /injury off."
 
     def handle_time_trial_text(self, args: str, chat_id: int | str | None = None) -> str:
         """Process ``/time_trial DISTANCE TIME [YYYY-MM-DD]``; store it for CS calibration (D-039)."""
