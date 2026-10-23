@@ -276,3 +276,35 @@ def test_an_athlete_tracker_records_for_its_athlete_when_no_id_is_passed(db_mana
     assert db.get_governance_decisions(athlete_id='owner') == []
     assert len(db.get_governance_decisions(athlete_id='a-0000000a')) == 1
     db.close()
+
+
+@pytest.mark.integration
+def test_an_athlete_tracker_reads_and_updates_its_own_athlete_by_default(db_manager_factory):
+    """M0-12 review: the query methods and record_outcome defaulted to "owner" on any tracker,
+    so an athlete's tracker read none of its own history and could update the owner's row."""
+    db = db_manager_factory(db_name='test.db')
+    for athlete in ('owner', 'a-0000000a'):
+        OutcomeTracker(db=db, athlete_id=athlete).record_decision(
+            session_planned='TEMPO',
+            session_post_governance='EASY',
+            locks_applied=[],
+            governance_clean=True,
+            phase='BASE',
+            vlg_color='GREEN',
+            apl_result=_apl_result(),
+            acwr=1.0,
+            tsb_value=-5.0,
+            readiness_score=70.0,
+            glycogen_debt=1.0,
+            date='2026-03-06',
+        )
+
+    tracker = OutcomeTracker(db=db, athlete_id='a-0000000a')
+    assert [d.athlete_profile_id for d in tracker.get_decisions()] == ['a-0000000a']
+    assert tracker.record_outcome('2026-03-06', rpe=6, completed=True, outcome_date='2026-03-06') is True
+
+    athlete_row = db.get_governance_decisions(athlete_id='a-0000000a')[0]
+    owner_row = db.get_governance_decisions(athlete_id='owner')[0]
+    assert athlete_row['outcome_rpe'] == 6
+    assert owner_row['outcome_rpe'] is None
+    db.close()

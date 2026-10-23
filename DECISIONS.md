@@ -18,11 +18,25 @@
 `"owner"`, ακόμη κι όταν ο tracker ήταν ενός αθλητή. Τώρα η ανάγνωση βάζει το
 `athlete_profile_id` της γραμμής και το `record_decision` πέφτει στον αθλητή του tracker.
 
-**Γιατί:** η απομόνωση αθλητών (ADR-0040, ADR-0067). Μια επόμενη `replace_same_day` ή μια
-αποθήκευση από τη μνήμη θα έγραφε την απόφαση του αθλητή στις γραμμές του ιδιοκτήτη.
+**Γιατί:** η απομόνωση αθλητών (ADR-0040, ADR-0067). Οι αποφάσεις ενός αθλητή, φορτωμένες ως
+`"owner"`, χάνονταν από κάθε ερώτημα του αθλητή (`get_decisions`, `get_calibration_summary`,
+`check_calibration_diversity`), άρα ο έλεγχος βαθμονόμησης (ADR-0033) δεν θα περνούσε ποτέ γι'
+αυτόν. Και ένα `record_outcome` στον tracker του αθλητή, με την προεπιλογή `"owner"`, θα έβρισκε
+μια τέτοια απόφαση και θα έγραφε το αποτέλεσμα στη γραμμή του ιδιοκτήτη. Σήμερα κανένας κώδικας
+παραγωγής δεν καλεί το `record_outcome`, και η μόνη κλήση του `record_decision` περνά ρητό
+`athlete_profile_id`: το κενό ήταν λανθάνον.
 
-**Δοκιμές:** δύο νέες στο `tests/test_outcome_tracker_persistence.py`, και οι δύο αποτυγχάνουν
-χωρίς τη διόρθωση. Ο PostgreSQL adapter δεν αλλάζει εδώ (δεν είναι σε χρήση, ADR-0044).
+**Μετά τον ανεξάρτητο έλεγχο:** και οι μέθοδοι ερωτημάτων του tracker (`record_outcome`,
+`get_decisions`, `get_lock_rate_by_phase`, `get_lock_outcome_correlation`,
+`get_calibration_summary`, `check_calibration_diversity`, `get_calibration_analytics`) έχουν τώρα
+προεπιλογή τον αθλητή του tracker αντί για `"owner"`. Στον tracker του ιδιοκτήτη δεν αλλάζει τίποτα.
+Τρίτο test: ο tracker ενός αθλητή διαβάζει τα δικά του και το `record_outcome` γράφει στη δική του
+γραμμή.
+
+**Δοκιμές:** τρεις νέες στο `tests/test_outcome_tracker_persistence.py`, όλες αποτυγχάνουν χωρίς τη
+διόρθωση. Ο PostgreSQL adapter (`persistence.py`) και το `database.py` στη διαδρομή PostgreSQL δεν
+επιστρέφουν ακόμη `athlete_profile_id`. Δεν είναι σε χρήση (ADR-0044) και καταγράφεται στο
+TECHNICAL_DEBT.
 
 **Εναλλακτικές:** να απαιτείται πάντα ρητό `athlete_profile_id` στο `record_decision`.
 Απορρίφθηκε για τώρα: αλλάζει κάθε κλήση, ενώ ο tracker ήδη ξέρει τον αθλητή του.
