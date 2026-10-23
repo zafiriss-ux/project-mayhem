@@ -58,11 +58,13 @@ class HRVGuidedEngine:
         syncs from inflating the rolling baseline window.
         """
         self.hrv_log.append((measurement_date, rmssd))
-        # Rebuild log keeping only the last entry per date (insertion-order preserved).
+        # Rebuild log keeping only the last entry per date, in date order: a sync can add
+        # nights newest first, and the latest reading and the baseline window are the most
+        # recent by date, not by arrival (OW-L5, D-131).
         seen: dict[str, float] = {}
         for date, val in self.hrv_log:
             seen[date] = val  # later writes overwrite earlier ones
-        self.hrv_log = list(seen.items())
+        self.hrv_log = sorted(seen.items(), key=lambda entry: str(entry[0])[:10])
 
     def calculate_baseline(
         self, days: int = 7, before_date: str | None = None
