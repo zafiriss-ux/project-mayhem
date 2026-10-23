@@ -136,6 +136,27 @@ def test_a_note_without_an_athlete_is_refused(api, query: str) -> None:
 
 @pytest.mark.integration
 @pytest.mark.governance
+def test_an_athlete_id_only_in_the_body_does_not_name_the_athlete(api) -> None:
+    csrf = _login(api, "coach", "coach-pass")
+    response = api.client.post("/coach/notes", json={"athlete_id": "a1", "text": "n"}, headers=csrf)
+    assert response.status_code in (403, 422)
+    assert api.db.get_coach_audit_log(coach_id="coach-1") == []
+
+
+@pytest.mark.integration
+@pytest.mark.governance
+def test_a_note_whose_audit_cannot_be_written_fails_closed(api, monkeypatch) -> None:
+    def _broken(**_kwargs) -> None:
+        raise RuntimeError("audit store down")
+
+    monkeypatch.setattr(api.db, "log_coach_action", _broken)
+    csrf = _login(api, "coach", "coach-pass")
+    response = api.client.post("/coach/notes?athlete_id=a1", json={"text": "n"}, headers=csrf)
+    assert response.status_code == 503
+
+
+@pytest.mark.integration
+@pytest.mark.governance
 def test_an_athlete_cannot_post_a_coach_note(api) -> None:
     csrf = _login(api, "bob", "bob-pass")
     response = api.client.post("/coach/notes?athlete_id=a2", json={"text": "n"}, headers=csrf)

@@ -27,8 +27,8 @@
     ανάθεσης (INV-11) και audit πριν το αποτέλεσμα (INV-22), όπως το `/coach/overrides`.
   - Το `test_system_coach_returns_all_athletes` έλεγχε την παράκαμψη ως σωστή συμπεριφορά. Αλλάζει
     σε `test_system_coach_returns_only_its_assignments`: ο έλεγχος γίνεται αυστηρότερος, όχι χαλαρότερος.
-  - Νέο `tests/test_coach_access_system_and_notes.py` (10 tests): αποτυγχάνουν 7 πριν τη διόρθωση,
-    περνούν όλα μετά.
+  - Νέο `tests/test_coach_access_system_and_notes.py` (12 tests): αποτυγχάνουν 11 πριν τη διόρθωση,
+    περνούν όλα μετά. Το `POST /coach/notes` θέλει πλέον `?athlete_id=` (χωρίς αυτό: 403 ή 422).
 - **Εναλλακτικές που απορρίφθηκαν:** απαγόρευση του id `system` στη δημιουργία χρηστών (θα άφηνε την
   παράκαμψη στον κώδικα για όποιο άλλο μονοπάτι περνά το ίδιο id)· σβήσιμο του `/coach/notes` (το
   AGENTS §8.13 το ονομάζει, και το AGENTS αλλάζει μόνο με ADR).
