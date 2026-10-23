@@ -14,7 +14,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeoutError
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -452,6 +452,22 @@ def _activity_utc_date(start_time_local: str) -> str:
         return dt.strftime("%Y-%m-%d")
     except (ValueError, TypeError):
         return start_time_local[:10]
+
+
+def _activity_day(activity: dict) -> str:
+    """The activity's UTC day, the clock sleep, HRV and the morning use (OW-L5, D-131).
+
+    Garmin's ``startTimeGMT`` is UTC; a run just after local midnight belongs to the UTC
+    day before, as that night's sleep does. Without it, ``startTimeLocal`` as before.
+    """
+    gmt = activity.get("startTimeGMT")
+    if isinstance(gmt, str) and len(gmt) >= 10:
+        try:
+            return date.fromisoformat(gmt[:10]).isoformat()
+        except ValueError:
+            # A malformed startTimeGMT is not a day: the local time is the fallback.
+            _log.debug("activity_start_gmt_unparsable")
+    return _activity_utc_date(activity.get("startTimeLocal", ""))
 
 
 def _resolve_sync_timeout_seconds() -> int:
@@ -996,7 +1012,7 @@ class GarminSync:
                     estimated_load = round(trimp_val, 1) if trimp_val else 0.0
                     activities.append(
                         {
-                            "date": _activity_utc_date(a.get("startTimeLocal", "")),
+                            "date": _activity_day(a),
                             "activity_type": a.get("activityType", {}).get("typeKey", "running"),
                             "distance_km": round(dist_m / 1000, 2),
                             "duration_sec": dur_sec,

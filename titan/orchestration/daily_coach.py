@@ -1073,6 +1073,7 @@ class DailyCoach:
         )
 
         # ── Step 5: TSB + kinetic state ──────────────────────────────────────
+        self.tsb.reference_date = _routine_day(self)  # the morning's day, not the clock's (D-131)
         tsb_value, tsb_status = _run_step(5, "calculate_tsb", self.tsb.calculate_tsb)
         today_temp = garmin_data.get('temperature_c') or 20.0
         cs_thermal = self.cs_tracker.apply_thermal(today_temp)

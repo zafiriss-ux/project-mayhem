@@ -153,6 +153,9 @@ class TSBEngine:
     def __init__(self):
         self.ctl, self.atl, self.tsb = 0.0, 0.0, 0.0
         self.daily_loads: list[tuple[str, float]] = []
+        # The day TSB is computed for; None is today. The morning sets its own day, so a
+        # morning that runs after midnight does not count its own day as a rest day (D-131).
+        self.reference_date: date | None = None
 
     def add_daily_load(self, date: str, load: float) -> None:
         self.daily_loads.append((date, load))
@@ -162,7 +165,7 @@ class TSBEngine:
             self.daily_loads,
             ctl_decay_days=ctl_decay_days,
             atl_decay_days=atl_decay_days,
-            reference_date=_today(),
+            reference_date=self.reference_date or _today(),
         )
 
     def calculate_ctl(self, decay: int | None = None) -> float | None:
