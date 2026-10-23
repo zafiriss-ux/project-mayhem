@@ -316,6 +316,48 @@ class OperationsRepository:
             )
             self._db.conn.commit()
 
+    # --- ATHLETE INJURIES (ADR-0069 §3, §4ε) ---
+
+    def open_injury(self, *, athlete_id: str, description: str, opened_at: str) -> bool:
+        """Open an injury; False when one is already open (at most one per athlete)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            try:
+                self._db.conn.cursor().execute(
+                    "INSERT INTO athlete_injuries (athlete_id, description, opened_at) VALUES (?, ?, ?)",
+                    (athlete_id, description, opened_at),
+                )
+            except sqlite3.IntegrityError:
+                self._db.conn.rollback()
+                return False
+            self._db.conn.commit()
+        return True
+
+    def close_injury(self, *, athlete_id: str, closed_at: str) -> bool:
+        """Close the open injury; False when none is open."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                "UPDATE athlete_injuries SET closed_at = ? WHERE athlete_id = ? AND closed_at IS NULL",
+                (closed_at, athlete_id),
+            )
+            self._db.conn.commit()
+            return cursor.rowcount > 0
+
+    def get_open_injury(self, *, athlete_id: str) -> dict[str, Any] | None:
+        """The athlete's open injury, or None."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT description, opened_at FROM athlete_injuries "
+                "WHERE athlete_id = ? AND closed_at IS NULL",
+                (athlete_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return {"description": row[0], "opened_at": row[1]}
+
     def mark_routine_delivered(
         self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
     ) -> None:

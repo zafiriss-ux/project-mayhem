@@ -893,6 +893,20 @@ class DatabaseManager:
             athlete_id=athlete_id, execution_date=execution_date, routine_type=routine_type,
         )
 
+    # --- ATHLETE INJURIES (ADR-0069 §3) (titan/core/repositories/operations.py) ---
+
+    def open_injury(self, *, athlete_id: str, description: str, opened_at: str) -> bool:
+        """Open an injury for the athlete; False when one is already open."""
+        return self._operations.open_injury(athlete_id=athlete_id, description=description, opened_at=opened_at)
+
+    def close_injury(self, *, athlete_id: str, closed_at: str) -> bool:
+        """Close the athlete's open injury; False when none is open."""
+        return self._operations.close_injury(athlete_id=athlete_id, closed_at=closed_at)
+
+    def get_open_injury(self, *, athlete_id: str) -> dict[str, Any] | None:
+        """The athlete's open injury ({"description", "opened_at"}), or None."""
+        return self._operations.get_open_injury(athlete_id=athlete_id)
+
     def get_routine_resume(self, *, athlete_id: str, execution_date: str, routine_type: str) -> dict[str, Any]:
         """What an earlier attempt of that day left for the next one; {} when nothing (D-109)."""
         return self._operations.get_routine_resume(
