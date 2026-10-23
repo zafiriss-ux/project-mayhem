@@ -17,6 +17,9 @@ services:
     image: ghcr.io/zafiriss-ux/titan-worker:${TITAN_VERSION:?set TITAN_VERSION to a release tag, e.g. v5.8.0}
     pull_policy: always
     # The released image carries its own scripts/; do not mount the host's copy.
+    # `!override` replaces the whole list: keep every named volume of the base file.
+    # titan-secrets holds the token key and the deletion record (M0-04).
     volumes: !override
       - titan-data:/data
       - titan-backups:/backups
+      - titan-secrets:/secrets

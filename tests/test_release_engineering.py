@@ -80,6 +80,35 @@ def test_release_compose_pins_registry_images_and_never_builds() -> None:
         assert f"image: ghcr.io/zafiriss-ux/{name}:${{TITAN_VERSION:?" in block
 
 
+def _worker_volume_mounts(compose_text: str) -> list[str]:
+    """The `- source:target` lines under titan-worker's `volumes:` key."""
+    worker = compose_text.split("\n  titan-worker:", 1)[1].split("\n  titan-", 1)[0]
+    lines = worker.split("\n    volumes:", 1)[1].splitlines()[1:]
+    mounts: list[str] = []
+    for line in lines:
+        if not line.startswith("      - "):
+            break
+        mounts.append(line.removeprefix("      - ").strip())
+    return mounts
+
+
+def test_release_worker_keeps_every_named_volume_of_the_base_compose() -> None:
+    """M0-04: `volumes: !override` replaces the whole list, so a named volume left
+    out of the release file is lost in production. Losing titan-secrets means a new
+    token key (stored Garmin tokens become unreadable) and an empty deletion record
+    (a restore could bring back deleted athletes, P4-08). Only the host bind of
+    ./scripts is meant to be dropped: the released image carries its own copy."""
+    base = _worker_volume_mounts((_ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    release = _worker_volume_mounts(
+        (_ROOT / "docker-compose.release.yml").read_text(encoding="utf-8")
+    )
+    named = [m for m in base if not m.startswith((".", "/"))]
+    assert "titan-secrets:/secrets" in named
+    missing = [m for m in named if m not in release]
+    assert not missing, f"release compose drops worker volumes: {missing}"
+    assert not [m for m in release if m.startswith((".", "/"))], "release must not bind host paths"
+
+
 # ── RE-03 ───────────────────────────────────────────────────────────────────
 
 

@@ -25,6 +25,22 @@ Named volume `titan-secrets` → `/secrets` on `titan-worker` only: the athletes
 the data cannot decrypt the tokens and a restored backup cannot bring back a deleted athlete
 (ADR-0067 D6.3, D9.2). `docker compose down -v` deletes it too. Athletes: [`multi-athlete.md`](multi-athlete.md).
 
+The release file (`docker-compose.release.yml`) keeps this volume as well (M0-04, D-144). Release
+v5.9.0 left it out, so `/secrets` lived inside the worker container and was lost whenever the
+container was recreated. If you ran released images before this fix, copy the files out of the
+running worker **before** you upgrade, then back in:
+
+```bash
+docker compose cp titan-worker:/secrets ./secrets-rescue        # old container, still running
+# upgrade as usual (docs/RUNBOOK_ROLLBACK.md), then:
+docker compose cp ./secrets-rescue/. titan-worker:/secrets
+docker compose restart titan-worker && rm -rf ./secrets-rescue
+```
+
+If the old container is already gone, the key is lost: run `python scripts/athletes.py new-key` and
+each athlete links Garmin again. Deletions made before the upgrade are no longer recorded, so check
+the athlete list after any restore.
+
 Worker advisory lock: `/data/worker.lock` — prevents duplicate workers on restart. The file holds the PID of the running worker. The kernel releases the lock when that process dies, so a crashed worker never blocks the next start.
 
 Worker health (INV-23): the worker writes `/data/worker.heartbeat` every 60 s. `docker compose ps` shows `titan-worker` as unhealthy once the heartbeat is older than 120 s: the loop has stopped, the scheduler thread could not be restarted, or, with only the owner, the morning routine has run past `WORKER_ROUTINE_BUDGET_S` (30 min, logged as CRITICAL `worker_routine_overrun`). With `TITAN_MULTI_ATHLETE=1` an athlete's attempt that runs past the budget is stopped instead (`worker_routine_killed`) and the worker stays healthy. Check it by hand with `docker compose exec titan-worker python scripts/worker_healthcheck.py`. Plain Docker Compose reports unhealthy but does not restart the container.
