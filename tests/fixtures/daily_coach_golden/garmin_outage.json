@@ -980,6 +980,7 @@
    ],
    "returned": true,
    "telegram": [
+    "⚠️ *TITAN missing data*\n\nHRV baseline missing for over 24h. Sessions stay at most EASY until it is back (ADR-0051).",
     "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -2361,6 +2362,7 @@
    "returned": true,
    "telegram": [
     "🛑 *CRITICAL*\n\nGarmin data is stale (>26h since last successful sync). Training prescription is conservative (EASY maintenance).",
+    "⚠️ *TITAN missing data*\n\nRHR missing for over 24h. Sessions stay at most EASY until it is back (ADR-0051).",
     "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 2.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: N/A\n  • Readiness: 83/100\n\n🍽 *Nutrition:* 450.0g carbs, 135.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -3469,6 +3471,18 @@
     "sleep_quality": 80,
     "soreness": null,
     "weight_kg": 70.0
+   }
+  ],
+  "degraded_mode_state": [
+   {
+    "athlete_id": "owner",
+    "degraded_since": "2026-03-02T07:30:00+00:00",
+    "failure_type": "hrv_missing"
+   },
+   {
+    "athlete_id": "owner",
+    "degraded_since": "2026-03-03T07:30:00+00:00",
+    "failure_type": "hrv_missing:alerted"
    }
   ],
   "governance_outcomes": [

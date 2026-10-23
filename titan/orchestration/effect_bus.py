@@ -156,7 +156,10 @@ class TitanEffectBus:
             tracker.update(  # type: ignore[union-attr]
                 flags={
                     "persistence_degraded": bool(trace.get("persistence_degraded", False)),
-                    "data_confidence_low": bool(trace.get("data_confidence_low", False)),
+                    # A missing input has its own timer and alert below (P4-01).
+                    "data_confidence_low": bool(
+                        trace.get("startup_confidence_low", trace.get("data_confidence_low", False))
+                    ),
                     "garmin_data_stale": bool(trace.get("garmin_data_stale", False)),
                     "garmin_api_degraded": bool(
                         getattr(garmin, "is_api_degraded", False)
@@ -171,5 +174,15 @@ class TitanEffectBus:
                     ),
                 ),
             )
+            update_missing = getattr(tracker, "update_missing_inputs", None)
+            missing = trace.get("missing_inputs")
+            if callable(update_missing) and isinstance(missing, dict):
+                update_missing(
+                    missing,
+                    lambda msg: alert_operator(
+                        telegram,  # type: ignore[arg-type]
+                        title="TITAN missing data", message=msg, level="warning", athlete_text=f"⚠️ {msg}",
+                    ),
+                )
 
         return hook
