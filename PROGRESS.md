@@ -148,7 +148,8 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | 6 MA-F7 + OW-L4: κανένα κομμάτι token ή προσωπικό στοιχείο στα logs· το e-mail και ο κωδικός Garmin στη redaction· ο μετρητής sync με τον σωστό αθλητή (D-120) | #1058 | Έγινε |
 | 7 MA-F8 (= P4-06): ο `PostgreSQLAdapter` γράφει το `athlete_id` της απόφασης, όπως το SQLite· το PostgreSQL μένει κλειστό (D-121) | #1059 | Έγινε |
 | 8α MA-F3: κενό athlete id (`""`, κενά, `None`) σε απόφαση governance απορρίπτεται στο tracker και σε κάθε writer του `governance_outcomes`· μόνο το id που δεν δόθηκε μένει owner (D-122) | #1060 | Έγινε |
-| 8β MA-F3: κάθε public μέθοδος του `DatabaseManager` με `athlete_id` απορρίπτει κενό id (και `None`, εκτός αν η υπογραφή το επιτρέπει)· μόνο το id που δεν δόθηκε μένει owner (D-123) | — | Σε έλεγχο |
+| 8β MA-F3: κάθε public μέθοδος του `DatabaseManager` με `athlete_id` απορρίπτει κενό id (και `None`, εκτός αν η υπογραφή το επιτρέπει)· μόνο το id που δεν δόθηκε μένει owner (D-123) | #1061 | Έγινε |
+| 8γ MA-F3: ο worker ονομάζει πάντα τον αθλητή· το `_run_morning` χωρίς προεπιλογή owner· AST fitness test για `titan/worker` και `titan/orchestration` (D-124) | — | Σε έλεγχο |
 
 ## Επόμενα
 
