@@ -32,7 +32,7 @@ from titan.orchestration.contracts import (
 )
 from titan.science.data_trust import DataTrustLevel, evaluate_garmin_trust
 from titan.science.trimp_engine import TRIMPEngine
-from titan.utils.secrets import SecretStr
+from titan.utils.secrets import SecretStr, register_secret
 
 _log = logging.getLogger(__name__)
 
@@ -540,6 +540,10 @@ class GarminSync:
         else:
             self.email = SecretStr(_value=email or get_settings().GARMIN_EMAIL.get_secret_value())
             self.password = SecretStr(_value=password or get_settings().GARMIN_PASSWORD.get_secret_value())
+            # Garmin's error texts can quote the login: the owner's e-mail and password are
+            # redacted from every log line like the bot token (OW-L4).
+            register_secret(self.email.get_secret_value())
+            register_secret(self.password.get_secret_value())
         self.client = None
         self.is_connected = False
         self.last_sync: str | None = None
@@ -1379,7 +1383,7 @@ class GarminSync:
             self._last_successful_sync_at = datetime.now(UTC).isoformat()
             payload["data_age_hours"] = 0.0
             from titan.observability.metrics import get_metrics
-            get_metrics().counter("garmin_sync_success", labels={"athlete": "owner"})
+            get_metrics().counter("garmin_sync_success", labels={"athlete": self.athlete_id})
         else:
             # Sync completed without data — count as a failure for C3 tracking.
             self._consecutive_failures += 1

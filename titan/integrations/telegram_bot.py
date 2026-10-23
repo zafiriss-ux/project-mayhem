@@ -246,22 +246,25 @@ class TitanTelegramBot:
                 if athlete_id == _OWNER_ATHLETE_ID:
                     self._register_handlers()
             except Exception as e:
+                # The library's error text can quote part of the token (the bot id before
+                # ":"), which no redaction knows: only the error class is logged (MA-F7).
+                _init_detail = "Telegram bot could not be created from TELEGRAM_BOT_TOKEN; check its format"
                 _telegram_event(
                     "failure",
                     failure_class=CALLBACK_ERROR,
                     subsystem="init",
                     error_class=e.__class__.__name__,
-                    error_message=redact_secrets(e),
+                    error_message=_init_detail,
                 )
                 _log.error(
                     "startup_failure",
                     extra={
                         "component": "telegram_bot_init",
                         "error_class": e.__class__.__name__,
-                        "detail": redact_secrets(e),
+                        "detail": _init_detail,
                     },
                 )
-                _log.warning("telegram_init_warning", extra={"detail": redact_secrets(e)})
+                _log.warning("telegram_init_warning", extra={"detail": _init_detail})
 
     # ------------------------------------------------------------------ #
     # AUTHORISATION
@@ -312,7 +315,7 @@ class TitanTelegramBot:
                 if self._athlete_for_chat(message.chat.id) is not None:
                     self.bot.reply_to(message, _ATHLETE_HELP)
                     return
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             self.chat_id = message.chat.id  # auto-capture only for trusted sender
             text = (
@@ -335,7 +338,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["today"])
         def cmd_today(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "today"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -349,7 +352,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["week"])
         def cmd_week(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "week"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -363,7 +366,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["stats"])
         def cmd_stats(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "stats" in self.cmd_callbacks:
                 result = self.cmd_callbacks["stats"]()
@@ -374,7 +377,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["recovery"])
         def cmd_recovery(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "recovery" in self.cmd_callbacks:
                 result = self.cmd_callbacks["recovery"]()
@@ -385,7 +388,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["nutrition"])
         def cmd_nutrition(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "nutrition" in self.cmd_callbacks:
                 result = self.cmd_callbacks["nutrition"]()
@@ -400,7 +403,7 @@ class TitanTelegramBot:
                 if athlete_id is not None:
                     self.bot.reply_to(message, self.handle_athlete_sync(message.chat.id, athlete_id))
                     return
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "sync"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -422,7 +425,7 @@ class TitanTelegramBot:
                 if self._is_trusted(message.chat.id):
                     self.bot.reply_to(message, "ℹ️ /stop is for athletes; the owner has no consent to withdraw.")
                 else:
-                    _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                    _log.warning("titan.telegram.untrusted_chat")
                 return
             self.bot.reply_to(message, self.handle_athlete_stop(message.chat.id, athlete_id))
 
@@ -433,7 +436,7 @@ class TitanTelegramBot:
                 if self._is_trusted(message.chat.id):
                     self.bot.reply_to(message, "ℹ️ The owner is exempt from consent.")
                 else:
-                    _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                    _log.warning("titan.telegram.untrusted_chat")
                 return
             command, _, args = (message.text or "").partition(" ")
             if command.lstrip("/").split("@")[0] == "agree":
@@ -445,7 +448,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "activities" in self.cmd_callbacks:
                 result = self.cmd_callbacks["activities"]()
@@ -456,7 +459,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["drift"])
         def cmd_drift(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "drift" in self.cmd_callbacks:
                 result = self.cmd_callbacks["drift"]()
@@ -467,7 +470,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["shoes"])
         def cmd_shoes(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if "shoes" in self.cmd_callbacks:
                 result = self.cmd_callbacks["shoes"]()
@@ -478,7 +481,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["calibration"])
         def cmd_calibration(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "calibration"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -492,7 +495,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["manual_entry"])
         def cmd_manual_entry(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "manual_entry"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -507,7 +510,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(commands=["time_trial"])
         def cmd_time_trial(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "time_trial"):
                 self.bot.reply_to(message, "⏳ Please wait 30 seconds before repeating this command.")
@@ -519,7 +522,7 @@ class TitanTelegramBot:
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
         def cb_override(call):
             if not self._is_trusted(call.message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": call.message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 self.bot.answer_callback_query(call.id)
                 return
             response = self.process_override_callback(call.message.chat.id, call.data)
@@ -530,7 +533,7 @@ class TitanTelegramBot:
         @self.bot.message_handler(func=lambda message: message.chat.id in self._pending_override_prompts)
         def msg_override_reason(message):
             if not self._is_trusted(message.chat.id):
-                _log.warning("titan.telegram.untrusted_chat", extra={"chat_id": message.chat.id})
+                _log.warning("titan.telegram.untrusted_chat")
                 return
             response = self.process_override_reason(message.chat.id, message.text or "")
             self.bot.reply_to(message, response)

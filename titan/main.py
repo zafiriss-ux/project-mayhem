@@ -480,15 +480,8 @@ def main():
 
     # ── Step 5: Athlete profile (built before DailyCoach so max_hr is available) ──
     athlete_profile = UniversalAthleteProfile.from_env()
-    log.info(
-        "athlete_profile_loaded",
-        extra={
-            "athlete_name": athlete_profile.name,
-            "age": athlete_profile.age,
-            "max_hr": athlete_profile.max_hr,
-            "source": "env",
-        },
-    )
+    # Logs name an athlete by athlete_id only, never by name, age or max HR (ADR-0067 D2.8, OW-L4).
+    log.info("athlete_profile_loaded", extra={"athlete_id": "owner", "source": "env"})
 
     # ── Step 6: Orchestration ────────────────────────────────────────────────
     daily_coach = DailyCoach(
