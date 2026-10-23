@@ -1175,7 +1175,8 @@ class GovernanceEngine:
     def _build_decision_rationale(self, context: dict, session_plan: dict, applied_locks: list[str]) -> DecisionRationale:
         findings: list[GateFinding] = []
 
-        # OW-F3 (ADR-0069 §3): a gate whose input was not measured is UNKNOWN, never CLEAR.
+        # OW-F3 (ADR-0069 §3): a gate H1-H5 (ADR-0009) whose input was not measured is UNKNOWN,
+        # never CLEAR.
         # Only the wording: the hard stops and the missing-data ceilings decide as before.
         raw_injury_flag = context.get("injury_flag")
         injury_flag = bool(raw_injury_flag)
