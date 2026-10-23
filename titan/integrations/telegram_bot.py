@@ -157,6 +157,20 @@ def _escape_markdown_v2(text: str) -> str:
     return _MARKDOWN_V2_SPECIAL.sub(r"\\\1", text)
 
 
+_MARKDOWN_LEGACY_SPECIAL = re.compile(r"([_*`\[])")
+
+
+def _escape_markdown_legacy(value: object) -> str:
+    """Escape dynamic text for the legacy ``parse_mode="Markdown"`` this module sends with.
+
+    Legacy Markdown has four entity characters: ``_``, ``*``, backtick and ``[``. Outside an
+    entity each one is escaped with a backslash. Unescaped, a lock code such as
+    ``HARD_STOP_SAFETY_GATES`` opens an italic that never closes and Telegram refuses the
+    whole message (OW-M1, D-127).
+    """
+    return _MARKDOWN_LEGACY_SPECIAL.sub(r"\\\1", str(value))
+
+
 def _telegram_event(
     action: str,
     *,
@@ -948,72 +962,83 @@ class TitanTelegramBot:
             return False
 
     def send_weekly_plan(self, plan: dict) -> bool:
+        # Plan values are escaped: a session type such as LONG_RUN broke the message (OW-M1, D-127).
+        esc = _escape_markdown_legacy
         lines = [
             "🎯 *WEEKLY TRAINING PLAN*",
-            f"Week of: {plan.get('week_start', 'N/A')}  |  Phase: {plan.get('phase', 'N/A')}",
+            f"Week of: {esc(plan.get('week_start', 'N/A'))}  |  Phase: {esc(plan.get('phase', 'N/A'))}",
             "",
             "📊 *Summary:*",
             f"• Volume: {_km(plan.get('total_km', 0))} km",
-            f"• Quality sessions: {plan.get('quality_count', 0)}",
-            f"• Easy days: {plan.get('easy_count', 0)}  |  Rest: {plan.get('rest_count', 0)}",
+            f"• Quality sessions: {esc(plan.get('quality_count', 0))}",
+            f"• Easy days: {esc(plan.get('easy_count', 0))}  |  Rest: {esc(plan.get('rest_count', 0))}",
             "",
             "💡 *Key Status:*",
-            f"• Lactate threshold: {plan.get('lactate_threshold', 'N/A')} bpm",
-            f"• HRV baseline: {plan.get('hrv_baseline', 'N/A')}",
-            f"• TSB: {plan.get('tsb_status', 'N/A')}",
+            f"• Lactate threshold: {esc(plan.get('lactate_threshold', 'N/A'))} bpm",
+            f"• HRV baseline: {esc(plan.get('hrv_baseline', 'N/A'))}",
+            f"• TSB: {esc(plan.get('tsb_status', 'N/A'))}",
             "",
             "📅 *Daily Breakdown:*",
         ]
         for d in plan.get("daily_sessions", []):
-            lines.append(f"*{d['day']}* – {d['session_type']} ({_km(d.get('distance_km', 0))} km)")
-            lines.append(f"  └ {d.get('details', '')}")
+            lines.append(
+                f"*{esc(d['day'])}* – {esc(d['session_type'])} ({_km(d.get('distance_km', 0))} km)"
+            )
+            lines.append(f"  └ {esc(d.get('details', ''))}")
             if d.get("optimal_time"):
-                lines.append(f"  └ ⏰ Best time: {d['optimal_time']}")
-        lines += ["", f"💪 {plan.get('motivation', 'Train smart!')}"]
+                lines.append(f"  └ ⏰ Best time: {esc(d['optimal_time'])}")
+        lines += ["", f"💪 {esc(plan.get('motivation', 'Train smart!'))}"]
         return self.send_message("\n".join(lines))
 
     def send_daily_coaching(self, data: dict) -> bool:
+        # Every value from `data` is escaped; only the fixed headings carry Markdown (OW-M1, D-127).
+        esc = _escape_markdown_legacy
+
+        def field(key: str, default: str) -> str:
+            return esc(data.get(key, default))
+
         sleep = data.get('sleep_quality', 'N/A')
         sleep_text = f"{sleep}/100" if isinstance(sleep, (int, float)) else "N/A"
         text = (
             f"🌅 *GOOD MORNING!*\n"
             f"{datetime.now(UTC).strftime('%A, %B %d, %Y')}\n\n"
-            f"🏃 *Today:* {data.get('session_type', 'REST')} – {data.get('duration', 'N/A')}\n\n"
-            f"⏰ *Optimal Run Time:* {data.get('optimal_time', 'N/A')}\n"
-            f"  └ Dew point: {data.get('dew_point', 'N/A')}°C  |  {data.get('conditions', '')}\n\n"
+            f"🏃 *Today:* {field('session_type', 'REST')} – {field('duration', 'N/A')}\n\n"
+            f"⏰ *Optimal Run Time:* {field('optimal_time', 'N/A')}\n"
+            f"  └ Dew point: {field('dew_point', 'N/A')}°C  |  {field('conditions', '')}\n\n"
             f"💊 *Recovery:*\n"
-            f"  • HRV: {data.get('hrv_status', 'N/A')}\n"
+            f"  • HRV: {field('hrv_status', 'N/A')}\n"
             f"  • Sleep: {sleep_text}\n"
-            f"  • Readiness: {data.get('readiness_score', 'N/A')}/100\n\n"
-            f"🍽 *Nutrition:* {data.get('nutrition_plan', 'See /nutrition')}\n\n"
-            f"👟 *Shoe:* {data.get('shoe', 'See /shoes')}\n"
+            f"  • Readiness: {field('readiness_score', 'N/A')}/100\n\n"
+            f"🍽 *Nutrition:* {field('nutrition_plan', 'See /nutrition')}\n\n"
+            f"👟 *Shoe:* {field('shoe', 'See /shoes')}\n"
         )
         if data.get("primary_reason"):
-            text += f"\n🧭 *Why this decision:* {_tidy_floats(data['primary_reason'])}"
+            text += f"\n🧭 *Why this decision:* {esc(_tidy_floats(data['primary_reason']))}"
         if data.get("actionable_guidance"):
-            text += f"\n✅ *Actionable guidance:* {_tidy_floats(data['actionable_guidance'])}"
+            text += f"\n✅ *Actionable guidance:* {esc(_tidy_floats(data['actionable_guidance']))}"
         if data.get("hrv_stress_context"):
-            text += f"\n🩺 *Stress context:* {_tidy_floats(data['hrv_stress_context'])}"
+            text += f"\n🩺 *Stress context:* {esc(_tidy_floats(data['hrv_stress_context']))}"
         fueling_gate = data.get("fueling_gate") or {}
         if fueling_gate.get("action") == "FLAG" and fueling_gate.get("phase") == 4:
             text += "\n🍌 *Fueling:* carry food or gels for this long run."
         if data.get("special_note"):
-            text += f"\n⚠️ {data['special_note']}"
+            text += f"\n⚠️ {esc(data['special_note'])}"
         return self.send_message(text)
 
     def send_post_run_analysis(self, data: dict) -> bool:
+        esc = _escape_markdown_legacy  # OW-M1, D-127
         text = (
             f"✅ *RUN ANALYSIS*\n\n"
             f"📊 *Stats:*\n"
-            f"  • Distance: {data.get('distance_km', 0)} km\n"
-            f"  • Duration: {data.get('duration', 'N/A')}\n"
-            f"  • Avg pace: {data.get('avg_pace', 'N/A')} /km\n"
-            f"  • Avg HR: {data.get('avg_hr', 'N/A')} bpm\n\n"
+            f"  • Distance: {esc(data.get('distance_km', 0))} km\n"
+            f"  • Duration: {esc(data.get('duration', 'N/A'))}\n"
+            f"  • Avg pace: {esc(data.get('avg_pace', 'N/A'))} /km\n"
+            f"  • Avg HR: {esc(data.get('avg_hr', 'N/A'))} bpm\n\n"
             f"🔬 *Analysis:*\n"
-            f"  • HR drift: {data.get('hr_drift', 'N/A')}%\n"
-            f"  • Efficiency: {data.get('efficiency', 'N/A')}\n"
-            f"  • Training load: {data.get('training_load', 'N/A')}\n\n"
-            f"📈 *Next steps:*\n{data.get('next_steps', 'Recover and refuel')}\n"
+            f"  • HR drift: {esc(data.get('hr_drift', 'N/A'))}%\n"
+            f"  • Efficiency: {esc(data.get('efficiency', 'N/A'))}\n"
+            f"  • Training load: {esc(data.get('training_load', 'N/A'))}\n\n"
+            f"📈 *Next steps:*\n{esc(data.get('next_steps', 'Recover and refuel'))}\n"
         )
         return self.send_message(text)
 
@@ -1035,7 +1060,10 @@ class TitanTelegramBot:
             )
             level = "warning"
         emoji = level_to_emoji[level]
-        return self.send_message(f"{emoji} *{title}*\n\n{message}")
+        # Titles and messages carry lock codes and athlete ids: plain text, escaped (OW-M1, D-127).
+        title_text = _escape_markdown_legacy(title)
+        message_text = _escape_markdown_legacy(message)
+        return self.send_message(f"{emoji} *{title_text}*\n\n{message_text}")
 
     def send_structured_alert(self, event_type: str, lock_code: str, message: str) -> bool:
         """Send deduplicated CRITICAL alerts and persistence summaries."""
