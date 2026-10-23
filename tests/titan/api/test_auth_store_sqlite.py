@@ -295,5 +295,5 @@ class TestAuthStoreBackwardCompat:
         """After migration v20 (biological_sex/menstrual_tracking addition), PRAGMA user_version must equal 20."""
         db = DatabaseManager(db_name="test_auth.db", db_dir=tmp_path)
         version = db.conn.cursor().execute("PRAGMA user_version").fetchone()[0]
-        assert version == 33
+        assert version == 34
         db.close()

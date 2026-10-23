@@ -33,6 +33,11 @@ def _utc_iso(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat(timespec="microseconds")
 
 
+def _float_or_none(value: Any) -> float | None:
+    """A stored ACWR or TSB: NULL stays unknown and is never read as 0.0 (OW-M2, ADR-0069 §4α)."""
+    return None if value is None else float(value)
+
+
 class GovernanceRepository:
     """Governance SQL, on the owning DatabaseManager's connection and lock."""
 
@@ -203,7 +208,12 @@ class GovernanceRepository:
             return cursor.rowcount
 
     def save_governance_decision(self, decision: dict[str, Any]) -> None:
-        """Persist a governance decision snapshot into governance_outcomes."""
+        """Persist a governance decision snapshot into governance_outcomes.
+
+        One row per athlete and day (v34, ADR-0069 §4δ): a second decision of the same day
+        replaces the first in place, as ``replace_governance_decision_on`` does, and the
+        outcome columns stay as they are. An unknown ACWR or TSB is stored as NULL (§4α).
+        """
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
@@ -217,7 +227,22 @@ class GovernanceRepository:
                        outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes,
                        decision_was_followed, override_outcome_exclusion,
                        outcome_independence_ok, algorithm_version_snapshot
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (athlete_id, date) DO UPDATE SET
+                       session_planned = excluded.session_planned,
+                       session_post_governance = excluded.session_post_governance,
+                       locks_applied_json = excluded.locks_applied_json,
+                       governance_clean = excluded.governance_clean,
+                       phase = excluded.phase,
+                       vlg_color = excluded.vlg_color,
+                       apl_priority_vector_json = excluded.apl_priority_vector_json,
+                       lock_thresholds_active_json = excluded.lock_thresholds_active_json,
+                       acwr = excluded.acwr,
+                       tsb_value = excluded.tsb_value,
+                       readiness_score = excluded.readiness_score,
+                       glycogen_debt = excluded.glycogen_debt,
+                       afi_value = excluded.afi_value,
+                       algorithm_version_snapshot = excluded.algorithm_version_snapshot""",
                 (
                     decision_athlete_id(decision),
                     decision['date'],
@@ -229,8 +254,8 @@ class GovernanceRepository:
                     decision.get('vlg_color', ''),
                     json.dumps(decision.get('apl_priority_vector', {}), default=str),
                     json.dumps(decision.get('lock_thresholds_active', {}), default=str),
-                    float(decision.get('acwr', 0.0)),
-                    float(decision.get('tsb_value', 0.0)),
+                    _float_or_none(decision.get('acwr')),
+                    _float_or_none(decision.get('tsb_value')),
                     float(decision.get('readiness_score', 0.0)),
                     float(decision.get('glycogen_debt', 0.0)),
                     decision.get('afi_value'),
@@ -274,8 +299,8 @@ class GovernanceRepository:
                     decision.get('vlg_color', ''),
                     json.dumps(decision.get('apl_priority_vector', {}), default=str),
                     json.dumps(decision.get('lock_thresholds_active', {}), default=str),
-                    float(decision.get('acwr', 0.0)),
-                    float(decision.get('tsb_value', 0.0)),
+                    _float_or_none(decision.get('acwr')),
+                    _float_or_none(decision.get('tsb_value')),
                     float(decision.get('readiness_score', 0.0)),
                     float(decision.get('glycogen_debt', 0.0)),
                     decision.get('afi_value'),
@@ -377,8 +402,8 @@ class GovernanceRepository:
                 'vlg_color': row[6],
                 'apl_priority_vector': _safe_json(row[7], {}, 'apl_priority_vector_json'),
                 'lock_thresholds_active': _safe_json(row[8], {}, 'lock_thresholds_active_json'),
-                'acwr': float(row[9]),
-                'tsb_value': float(row[10]),
+                'acwr': _float_or_none(row[9]),
+                'tsb_value': _float_or_none(row[10]),
                 'readiness_score': float(row[11]),
                 'glycogen_debt': float(row[12]),
                 'afi_value': float(row[13]) if row[13] is not None else None,

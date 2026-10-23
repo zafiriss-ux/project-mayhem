@@ -79,6 +79,13 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "biological_sex",
         "menstrual_tracking",
     ],
+    "athlete_injuries": [  # v34 — ADR-0069 §3, §4ε
+        "id",
+        "athlete_id",
+        "description",
+        "opened_at",
+        "closed_at",
+    ],
     "athlete_accounts": [  # v30 — ADR-0067 D9, D10 (D-091)
         "athlete_id",
         "garmin_user_id",
@@ -305,6 +312,8 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "delivered_at",
         "attempts",
         "resume_json",
+        "running_since",  # v34 — ADR-0069 §4β
+        "running_by",  # v34 — ADR-0069 §4β
     ],
     "weekly_plans": [  # v27 — D-020 (worker's Sunday weekly plan)
         "athlete_id",

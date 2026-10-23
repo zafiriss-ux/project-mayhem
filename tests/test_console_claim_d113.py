@@ -62,7 +62,7 @@ def _stop_on_first_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
 
 def test_the_worker_does_not_start_a_second_attempt_while_the_console_runs(db, monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(worker, "_utc_now", lambda: _SEVEN)
-    assert worker._claim_routine(db, "owner", _SEVEN, spaced=True, last_start=False) == 1  # the console's
+    assert worker._claim_routine(db, "owner", _SEVEN, spaced=True, last_start=False, runner="console") == 1
 
     monkeypatch.setattr(worker, "_utc_now", lambda: _SEVEN + timedelta(minutes=1))
     slept = _stop_on_first_sleep(monkeypatch)
@@ -88,7 +88,9 @@ def test_the_worker_stops_for_the_day_once_the_console_delivered(db, monkeypatch
 
 def test_the_worker_retries_after_the_gap_when_the_console_did_not_deliver(db, monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(worker, "_utc_now", lambda: _SEVEN)
-    assert worker._claim_routine(db, "owner", _SEVEN, spaced=True, last_start=False) == 1  # never delivered
+    # The console's attempt ended without delivering, so its "in progress" mark is gone (v34).
+    assert worker._claim_routine(db, "owner", _SEVEN, spaced=True, last_start=False, runner="console") == 1
+    worker._end_attempt(db, "owner", _DAY)
 
     later = _SEVEN + timedelta(seconds=worker.ROUTINE_RETRY_DELAY_S + 60)
     monkeypatch.setattr(worker, "_utc_now", lambda: later)

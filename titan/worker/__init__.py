@@ -264,6 +264,9 @@ ROUTINE_MAX_ATTEMPTS = 3
 # The next attempt of the same day starts at least this long after the previous one: the
 # owner loop sleeps it, the round counts it from the day's first attempt (D-109).
 ROUTINE_RETRY_DELAY_S = 15 * 60
+# This process in the "attempt in progress" mark (ADR-0069 §4β): a mark of the same runner
+# with another token is from a process that is gone, so it does not hold.
+_PROCESS_TOKEN = os.urandom(6).hex()
 # With several athletes no day's first attempt starts after this hour UTC (D-109): a briefing
 # that arrives in the afternoon or evening is no longer a morning briefing.
 ROUTINE_LAST_START_HOUR_UTC = 12
@@ -303,7 +306,7 @@ def _utc_now() -> _dt.datetime:
 
 def _claim_routine(
     db: DatabaseManager, athlete_id: str, now: _dt.datetime, *, spaced: bool = False,
-    last_start: bool | None = None,
+    last_start: bool | None = None, runner: str = "worker",
 ) -> int | bool | None:
     """Take the next attempt at today's morning (ADR-0060 D1, amended by ADR-0067 D8.4; INV-15).
 
@@ -314,6 +317,8 @@ def _claim_routine(
     again, even when recording that delivery failed (D-109). None: the claim itself failed;
     the routine does not run this cycle (fail closed) and the caller retries on its next cycle.
     ``last_start`` turns the noon limit on or off on its own; by default it follows ``spaced``.
+    ``runner`` (``"worker"`` or ``"console"``) marks the attempt as in progress; while another
+    attempt of the day runs, within its time limit, nothing is claimed (P4-03, ADR-0069 §4β).
     """
     if last_start is None:
         last_start = spaced
@@ -335,6 +340,8 @@ def _claim_routine(
             max_attempts=ROUTINE_MAX_ATTEMPTS,
             retry_gap=gap,
             start_by=start_by,
+            runner=f"{runner}:{_PROCESS_TOKEN}",
+            stale_after=_dt.timedelta(seconds=_routine_budget_s()),
         )
     except Exception as exc:
         logging.getLogger("titan.worker.runner").critical(
@@ -354,6 +361,20 @@ def _claim_routine(
                    "last_start_hour_utc": ROUTINE_LAST_START_HOUR_UTC},
         )
     return False
+
+
+def _end_attempt(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """Clear the day's "attempt in progress" mark (ADR-0069 §4β).
+
+    A failure is logged; the mark then stops holding at the attempt's time limit.
+    """
+    try:
+        db.end_routine_attempt(athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING)
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_end_failed",
+            extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": str(exc)},
+        )
 
 
 def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
@@ -604,6 +625,7 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
         log.exception("worker_cycle_error", extra={"athlete_id": athlete_id, "error": str(exc)})
         from titan.observability.metrics import get_metrics
         get_metrics().counter("worker_cycle_error")
+    _end_attempt(db, athlete_id, execution_date)
     if delivered:
         _mark_delivered(db, athlete_id, execution_date)
     elif attempt >= ROUTINE_MAX_ATTEMPTS:
@@ -1095,7 +1117,7 @@ def run_owner_morning_if_due(db: DatabaseManager) -> bool:
     now = _utc_now()
     if now.hour < ROUTINE_HOUR_UTC:
         return False
-    attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False)
+    attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False, runner="console")
     if attempt is None or attempt is False:
         return False
     return _attempt_morning(db, "owner", now.date().isoformat(), attempt)
@@ -1145,7 +1167,7 @@ def run_owner_today(db: DatabaseManager, lock: threading.Lock) -> str:
 
             get_metrics().counter("audit_write_failure", labels={"surface": "telegram"})
             return "audit_failed"
-        attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False)
+        attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False, runner="console")
         if attempt is None:
             return "claim_failed"
         if attempt is False:
@@ -1336,6 +1358,8 @@ def _run_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, atte
             "worker_routine_killed",
             extra={"athlete_id": athlete_id, "attempt": attempt, "budget_s": budget_s},
         )
+    # A killed child cannot clear its own mark (ADR-0069 §4β).
+    _end_attempt(db, athlete_id, execution_date)
     if process.exitcode == _CHILD_DELIVERED:
         return True
     if process.exitcode == _CHILD_SENT_UNRECORDED:

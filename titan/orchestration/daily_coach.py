@@ -1356,6 +1356,8 @@ class DailyCoach:
             # Minimum required fields (ADR-0018 B2.6)
             "hrv": inp.today_hrv,
             "tsb": tsb_for_vlg,
+            # The TSB as it was: None without load history, stored as NULL (OW-M2, ADR-0069 §4α).
+            "tsb_value": inp.tsb_value,
             "acwr": acwr,
             "lock_codes_active": today_session.get('governance_locks_applied', []),
             "session_planned_pre_governance": session_planned,
@@ -1862,8 +1864,9 @@ class DailyCoach:
                 phase=str(trace.get("phase", "BASE")),
                 vlg_color=str(trace.get("vlg_color", "GREEN")),
                 apl_result=dict(trace.get("apl_result", {})),
-                acwr=_safe_float(trace.get("acwr"), 0.0),
-                tsb_value=float(trace.get("tsb", 0.0)),
+                # Unknown ACWR or TSB stays unknown (NULL), not 0.0 (OW-M2, ADR-0069 §4α).
+                acwr=_safe_float(trace.get("acwr"), None),
+                tsb_value=_safe_float(trace.get("tsb_value", trace.get("tsb")), None),
                 readiness_score=float(trace.get("readiness_score", 50.0)),
                 glycogen_debt=float(trace.get("glycogen_debt", 0.0)),
                 afi_value=float(trace.get("afi_value", 0.0)),
