@@ -50,6 +50,8 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", str(OWNER_CHAT))
     monkeypatch.setenv("TITAN_TOKEN_KEY_FILE", str(key_file))
+    # relogin refuses to run without the owner's Garmin e-mail (M0-13)
+    monkeypatch.setenv("GARMIN_EMAIL", "owner@example.invalid")
     monkeypatch.setenv(lifecycle.DELETION_RECORD_ENV, str(tmp_path / "records" / "deletions.jsonl"))
     from titan.config.settings import get_settings
 
@@ -218,6 +220,24 @@ def test_relogin_refuses_the_owners_garmin_login_before_garmin_is_called(db, mon
     assert "credentials" not in seen, "Garmin must not be called with the owner's login"
     assert not _token(athlete_id).exists()
     assert db.get_athlete_account(athlete_id)["garmin_user_id"] is None
+
+
+@pytest.mark.integration
+def test_relogin_refuses_to_run_when_the_owner_email_is_not_set(db, monkeypatch) -> None:
+    """M0-13 review: without GARMIN_EMAIL the owner's account cannot be recognised, so relogin
+    stops before Garmin is called instead of skipping the check (fail closed)."""
+    from titan.config.settings import get_settings
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    monkeypatch.setenv("GARMIN_EMAIL", "")
+    get_settings.cache_clear()
+    seen = _fake_garmin(monkeypatch, display_name="zaf-owner")
+    athlete_id = _add(db, "Maria", 2000)
+
+    with pytest.raises(ValueError, match="GARMIN_EMAIL"):
+        relogin_athlete(db, athlete_id, "zaf@example.com", "p", None)
+    assert "credentials" not in seen, "Garmin must not be called without the owner check"
+    assert not _token(athlete_id).exists()
 
 
 @pytest.mark.integration
