@@ -3,6 +3,7 @@ TITAN Database Management
 Persistent storage for training data, athlete profiles, and performance metrics
 """
 import functools
+import inspect
 import json
 import logging
 import os
@@ -165,6 +166,38 @@ def _verify_backup_artifact(path: Path, *, expected_user_version: int | None = N
     return None
 
 
+def _refuse_empty_athlete_ids(cls: type) -> type:
+    """Make every public method that takes ``athlete_id`` refuse an empty one (MA-F3, D-123).
+
+    An id that is passed must name an athlete: ``""`` and blanks are refused, and so
+    is ``None`` unless the signature allows it (an auth user with no athlete). An id
+    that is not passed keeps the method's default, the owner's.
+    """
+    for name, method in list(vars(cls).items()):
+        if name.startswith("_") or not inspect.isfunction(method):
+            continue
+        signature = inspect.signature(method)
+        param = signature.parameters.get("athlete_id")
+        if param is None:
+            continue
+        none_allowed = "None" in str(param.annotation)
+
+        def _guarded(*args, __method=method, __signature=signature, __none_allowed=none_allowed, **kwargs):
+            bound = __signature.bind_partial(*args, **kwargs)
+            if "athlete_id" in bound.arguments:
+                athlete_id = bound.arguments["athlete_id"]
+                if athlete_id is None:
+                    if not __none_allowed:
+                        raise ValueError(f"{__method.__name__}: athlete_id is None")
+                elif not isinstance(athlete_id, str) or not athlete_id.strip():
+                    raise ValueError(f"{__method.__name__}: empty athlete_id")
+            return __method(*args, **kwargs)
+
+        setattr(cls, name, functools.wraps(method)(_guarded))
+    return cls
+
+
+@_refuse_empty_athlete_ids
 class DatabaseManager:
     """
     Permanent memory system for TITAN.

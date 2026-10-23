@@ -316,7 +316,7 @@ class TrainingRepository:
             warnings.warn(
                 "save_session(temperature=...) is deprecated; use temperature_c= instead.",
                 DeprecationWarning,
-                stacklevel=3,  # caller of DatabaseManager.save_session
+                stacklevel=4,  # caller of DatabaseManager.save_session (through its athlete_id check, D-123)
             )
             temperature_c = temperature
 

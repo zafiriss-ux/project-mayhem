@@ -1813,4 +1813,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | MA-F7 | Κομμάτι του token Telegram στο log όταν η μορφή του είναι άκυρη | LOW | RESOLVED (D-120) |
 | OW-L4 | Προσωπικά στοιχεία στα `extra` των logs· σταθερό label `owner` στον μετρητή sync | LOW | RESOLVED (D-120) |
 | MA-F8 | Ο `PostgreSQLAdapter` έγραφε αποφάσεις governance χωρίς `athlete_id` | HIGH | RESOLVED (D-121) |
-| MA-F3 | Κενό ή απόν athlete id καταλήγει στον owner | HIGH | OPEN: 8α (αποφάσεις governance) έγινε στο D-122· μένουν 8β (DatabaseManager) και 8γ (callers) |
+| MA-F3 | Κενό ή απόν athlete id καταλήγει στον owner | HIGH | OPEN: 8α (αποφάσεις governance, D-122) και 8β (DatabaseManager, D-123) έγιναν· μένει 8γ (callers) |
