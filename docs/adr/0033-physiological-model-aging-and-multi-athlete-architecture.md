@@ -406,3 +406,16 @@ upon update. Methods without `athlete_id` become non-compliant under AGENTS.md �
 ### Debt Items Created by This Amendment
 
 See TECHNICAL_DEBT.md T5-07-L3-A through T5-07-L3-D.
+
+---
+
+## Addendum (2026-10-23, ADR-0070): what the code does
+
+- `coaching_pipeline` puts `cold_start_conservative_factor` (0.80 during cold start) in the context,
+  but no gate reads it. The soft gates are not shifted during cold start (P4-11).
+- Outside cold start, the `ThresholdAdapter` is loaded and handed to a `GovernanceEngine` that is
+  then discarded (`titan/orchestration/coaching_pipeline.py`, "Stage 4 will wire this engine").
+  The learned offsets reach no decision yet (T-PRA-18).
+- The owner has no `athletes` cold-start row, so for the owner the cold-start state is unknown.
+- Hard-stop gates H1–H5 stay excluded from adaptation, as this ADR says. They are also guarded in
+  the database since schema v34 (ADR-0069 §4).

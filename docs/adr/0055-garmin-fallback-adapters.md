@@ -57,3 +57,13 @@ after `garmin_trust` is evaluated.
 - Governance gate logic (H1–H5) is **not changed** — the router only affects data
   delivery, not gate evaluation
 - `GarminSync` sync thread is **not changed** — sync still uses GarminSync directly
+
+## Addendum (2026-10-23, ADR-0070): what the code does
+
+- `DailyCoach` builds the `BiometricRouter` and calls `get_hrv` and `get_rhr`, but it does not use the
+  values they return. `today_hrv` and `today_rhr` still come from the Garmin data
+  (`titan/orchestration/daily_coach.py`, the block that sets `biometric_source`).
+- The router therefore only fills `biometric_source` and `biometric_fallback_active` in the context.
+  A manual HRV or RHR does not reach H2 or H3 through the router.
+- Wiring the values in is open as P4-10 in `TECHNICAL_DEBT.md`. It changes what H2 and H3 see, so it
+  needs its own decision (ADR-0009).

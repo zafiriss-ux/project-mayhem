@@ -56,7 +56,7 @@ Debt item(s) addressed: <!-- e.g. T4-18, T4-19 -->
 
 ### Notification / degraded mode
 
-- [ ] Any new notification path routes through `NotificationGateway` (not direct bot call)
+- [ ] Any new alert about an athlete goes through `alert_operator` (AGENTS §16.6, ADR-0069 §7)
 - [ ] New degraded-mode conditions registered with `DegradedModeTracker`
 
 ---

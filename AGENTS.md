@@ -3,7 +3,7 @@
 > Governs every AI agent and human engineer on this codebase. Rules are non-negotiable.
 > Deviations are bugs in the engineering process, not acceptable trade-offs.
 
-**Revision:** 2026-06-12 r5 (Pass 1–3 governance-ladder consolidation)
+**Revision:** 2026-10-23 r6 (documents reconciled with the code after the MA/OW/P4 audits, ADR-0070)
 **Governing contract:** TITAN Operating Contract v7.9 (document revision r3)
 
 **Contract relationship.** v7.9 constrains LLM patch behavior. This document is the canonical
@@ -347,7 +347,7 @@ re-run the same command without returning new evidence.
 | Thresholds from `thresholds.py` only | All science modules | Single source of truth (T4-19 enforced) |
 | ML kill-switch default-ON; evidence labels on ML payloads | Phase 7 engines | Correct failure mode + provenance; never invert/remove |
 | `PersistenceFailure` propagation | `daily_coach.py _persist_garmin_data()` | DB rollback must surface as degraded mode (ADR-0020) |
-| Notifications via `NotificationGateway` only | All notification + alert paths | Telegram→file fallback chain; direct bot calls forbidden (T3-09) |
+| Alerts about an athlete via `alert_operator` | Alert paths that concern a coached athlete (`titan/integrations/telegram_bot.py`) | The owner's bot sends directly; an athlete's alert goes to the athlete and to the owner's chat (D-107). Alerts only for the owner (worker-level) may call the owner bot's `send_alert`. `NotificationGateway` was deleted (ADR-0069 §7, D-139) |
 | `DegradedModeTracker` registration | `run_morning_routine()` | New degraded conditions must fire the 24h SLO alert (T2-13) |
 | Hard-stop key rejection is dual-layered from ONE frozenset | `ThresholdAdapter` + `DatabaseManager.save_threshold_offset` | Both reject H1–H5 from the same `frozenset`; introducing a second key source lets the layers diverge (verified-clean property — keep it) [SA] |
 
@@ -558,15 +558,16 @@ GATING ADR addendum before T-PRA-05 starts), all metrics are queryable while the
 recorded at phase close per §16.3 check 5, absence = phase NOT COMPLETE. The transport is the
 only free choice; observability of the named metrics is not.
 
-**Alert routing chokepoint [E-3, T-PRA-31]:** every alert-class condition (including `slo_alert`
-events) is emitted as a structured event with `severity` and delivered through
-`NotificationGateway` per §16.6 — JSON log lines that nothing routes do not satisfy any alerting
-requirement.
+**Alert routing [E-3]:** every alert-class condition is emitted as a structured event with
+`severity`, and the ones that must reach a person are sent directly by the worker: through `alert_operator`
+when they concern a coached athlete, or the owner bot's `send_alert` when only the owner needs
+them (ADR-0069 §7). JSON log lines that nothing routes do not satisfy any alerting
+requirement. Open gap: `slo_alert` events are still log lines only (P4-09).
 
 **INV-21 — chain verified end-to-end:** Garmin failure → `DegradedModeTracker` → CRITICAL alert →
-`NotificationGateway` Telegram attempt → file fallback. Test
-`tests/test_degradation_alert_chain.py` (Category B, mocks allowed, full chain incl. fallback
-mandatory). Note the chain's entry condition is INV-08: if retry exhaustion never registers as
+`alert_operator` Telegram send. Test `tests/test_degradation_alert_chain.py` (Category B, mocks
+allowed, full chain mandatory) does not exist yet (T-PRA-10); the parts are covered by
+`tests/test_degraded_tracker_persistence.py` and `tests/test_missing_input_alert_p4_01.py`. Note the chain's entry condition is INV-08: if retry exhaustion never registers as
 failure, the chain never starts — that is the audited first-incident path [M-1 chain].
 
 ### §8.9 Release Engineering — RE-01..06
@@ -660,9 +661,9 @@ data loss.
 
 ### §8.13 Transactional Auditability — INV-22
 
-**What:** Every authorized state-changing surface — `/coach/overrides`, `/coach/export`,
-`/coach/athlete-data` (delete), any future authorized mutation, **and Telegram-initiated state
-changes (`/sync`, `/manual_entry`, `/override`)** — writes its audit record (1) **durably** and
+**What:** Every authorized state-changing surface — `/coach/overrides`, `/coach/notes`, any
+future authorized mutation, **and Telegram-initiated state changes (`/sync`, `/manual_entry`,
+`/override`, `/today`, `/injury`, `/agree`, `/stop`)** — writes its audit record (1) **durably** and
 (2) **ordered before the externally visible effect**. Audit-write failure → the action fails
 closed (HTTP 5xx / command rejected, no mutation) and emits `audit_write_failure_total` at
 CRITICAL. Best-effort post-response auditing is forbidden.
@@ -671,6 +672,10 @@ audit record can vanish makes ADR-0042's "first-class audit" fiction and dispute
 [B-11, F-8].
 **Verify:** `tests/test_audit_durability.py` (T-PRA-21) injects an audit-store failure on a
 mutating route and asserts: no state change, failure status, metric emitted.
+**Export and delete** no longer have HTTP routes (D-097). They run from the command line, which
+writes its own audit record: `python scripts/athletes.py export <id> [--out FILE]`,
+`python scripts/athletes.py remove <id> [--yes]`, `purge-expired`, `reapply-deletions`; the worker
+re-applies deletions at start and on every round.
 
 ### §8.14 Worker Liveness & Watchdog — INV-23
 
@@ -705,8 +710,7 @@ presence and the limits/rotation observation are §16.3 check-5 phase-close item
 | `titan/config/evidence_registry.py` | Parameter provenance (STRONG / MODERATE / HEURISTIC) |
 | `titan/science/governance_engine.py` | 7-gate safety system — **architecture-locked** (ADR-0009, §16.1) |
 | `titan/orchestration/daily_coach.py` | Morning-routine orchestration; `DegradedModeTracker`; `PersistenceFailure` |
-| `titan/integrations/notification_gateway.py` | Ordered alert fallback chain (Telegram → file) — sole alert path |
-| `titan/integrations/telegram_bot.py` | `_is_trusted()` fail-closed (INV-16 / RBP-02) |
+| `titan/integrations/telegram_bot.py` | `_is_trusted()` fail-closed (INV-16 / RBP-02); `alert_operator`, the alert path for a coached athlete (§16.6) |
 | `titan/api/dependencies.py` | `require_coach` vs `require_coach_athlete_access` (INV-11) |
 | `titan/api/main.py` | App factory — `/coach/*` routes use assignment-scoped deps; audit middleware (INV-22) |
 | `titan/core/database.py` | `DatabaseManager` — FK rollout (INV-14), version guard (INV-25), busy_timeout (INV-20), RLock boundary (§8.12) |
@@ -735,7 +739,7 @@ One line each; the cited rule is the law, this table is a lookup aid.
 | Older binary opening a newer-schema DB | INV-25 |
 | Sync retry exhaustion not registered as failure | INV-08 |
 | `True` from `_is_trusted()` when chat id unset | INV-16 / RBP-02 |
-| Direct bot call bypassing `NotificationGateway`; `slo_alert` log lines as the only alert | §8 table / §8.8 / §16.6 |
+| Athlete alert sent around `alert_operator`; `slo_alert` log lines as the only alert | §8 table / §8.8 / §16.6 |
 | Hardcoded thresholds; gate change without ADR+boundary tests+lock code | §8 / §16.1 |
 | `'default'`/`'owner'` literals outside sanctioned forms | INV-18 / §16.10 |
 | Deploying untagged; backups on the DB volume; restore never exercised | RE-02 / DR-01 / DR-03 |
@@ -752,7 +756,7 @@ One line each; the cited rule is the law, this table is a lookup aid.
 [ ] Tests created/updated for every changed public function (ABSOLUTE RULE)
 [ ] No env overrides / suppression / undocumented skip-xfail used to reach green
 [ ] governance_engine.py untouched OR ADR ref + boundary tests + lock-code triple update (§16.1)
-[ ] Notifications/alerts via NotificationGateway only
+[ ] Alerts about an athlete via alert_operator (§16.6)
 [ ] Out-of-scope findings routed per §3.4 (OBS written, STATUS set; no solutions in OBS)
 [ ] /coach/* route touched → assignment-scoped dependency confirmed (INV-11)
 [ ] Safety-path touched → fail-closed handlers confirmed (INV-12); trust clamp intact (INV-24)
@@ -1010,10 +1014,10 @@ WARNING (soft downgrade/degraded/auth failure; Telegram always), INFO (telemetry
 DEBUG (high-cardinality; only at `LOG_LEVEL=DEBUG`). Omitting `severity` is a GATE VIOLATION
 (T2-14). Dedup: same `(event_type, lock_code)` suppressed within `ALERT_DEDUP_WINDOW_HOURS=20`;
 summary re-sent after `ALERT_PERSIST_SUMMARY_HOURS=72`. Rotation: `RotatingFileHandler`,
-`LOG_MAX_BYTES=10_485_760`, `LOG_BACKUP_COUNT=5` (env-overridable). **Alert-class conditions
-(including every `slo_alert`) are emitted as structured events with severity and therefore route
-through `NotificationGateway` — a JSON log line nothing consumes satisfies no alerting
-requirement** [E-3, T-PRA-31].
+`LOG_MAX_BYTES=10_485_760`, `LOG_BACKUP_COUNT=5` (env-overridable). **Alert-class conditions are
+emitted as structured events with severity; the worker sends the ones a person must see directly,
+through `alert_operator` when they concern a coached athlete (ADR-0069 §7, D-139). A JSON log line nothing consumes satisfies no
+alerting requirement** [E-3]. `slo_alert` events are not routed yet (P4-09).
 
 ### 16.7 OutcomeTracker Integrity (ex-ADR-0035)
 `governance_outcomes` guardrails — never remove or bypass (corrupted calibration data is Tier 1):
@@ -1069,9 +1073,8 @@ phase number). CI: `tests/test_athlete_isolation_invariant.py` (T4-31).
 The `titan/` module ceiling is enforced by
 `tests/test_documentation_consistency.py::test_module_count_within_budget`; **the asserted value
 in that test is canonical, and this section MUST state that exact number** (§16.3 check-6 sensor).
-Stated ceiling: **71** <!-- ARCHITECT: confirm equals the test constant before commit (T-PRA-12) -->.
-Audit-vs-test value reconciliation (the stale 80 in the 2026-06-10 audit) lives in T-PRA-12 — a
-debt item, not a second live value here; until reconciled the test assertion governs. Raising the
+Stated ceiling: **90** (the test constant; 89 of 90 used with the 12 subpackages, D-139).
+The 71 and 80 of earlier records are stale; the test assertion governs. Raising the
 ceiling: T4-27-C protocol — the Architect confirms the new value in the task's acceptance criteria
 **before** implementation (RP-8); the test constant updates in the same commit; retroactive
 corrections are PROCESS VIOLATIONS. ADR retirement at phase close (`Superseded by [NNNN]`, never
@@ -1362,12 +1365,12 @@ over-claims.
 | F-4 | JWT key validation deferred to lifespan | MED | INVARIANT-SPECIFIED:§8.11 + TRACKED:T-PRA-28 | RBP-04 |
 | F-5 | CSRF cookie not HttpOnly | MED | TRACKED:T-PRA-28 | RBP-05 |
 | F-10 | `TITAN_GARTH_TOKEN_KEY` optional → plaintext Garmin tokens | MED | INVARIANT-SPECIFIED:§8.11 + TRACKED:T-PRA-28 | RBP-04 |
-| SA:M-2 | Scheduler registers only `owner` under multi-athlete flag; docstring over-claims | HIGH | TRACKED:T-PRA-06 (no existing rule detects it — honest) + v7.9 §12 claim ban | v7.9 §14 index |
+| SA:M-2 | Scheduler registers only `owner` under multi-athlete flag; docstring over-claims | HIGH | RESOLVED: the worker round runs every ready athlete (ADR-0067, `athlete_accounts`); T-PRA-06 closed (ADR-0070) | v7.9 §14 index |
 | SA:m-1 | `_hydrate_from_db` silent swallow | MED | INVARIANT-SPECIFIED:§8.5 + TRACKED:T-PRA-02 | INV-13 |
 | SA:m-2 | Sync-age collapses errors to `inf` silently | LOW | INVARIANT-SPECIFIED:§8.5 (safety-path classification) + TRACKED:T-PRA-26 | INV-12 |
 | SA:m-4 / E-2 | Worker metrics dark; **no scrape/alert stack exists** [F-13 corrected] | MED | INVARIANT-SPECIFIED:§8.8 + TRACKED:T-PRA-05 | INV-19a/b |
 | K:PRA-13 / E-4 | Garmin 429/retry exhaustion invisible to degradation tracker | MED | INVARIANT-SPECIFIED:§8.3 INV-08 ext + TRACKED:T-PRA-26 | INV-08 |
-| E-3 | `slo_alert` events routed by nothing; alert mosaic | MED | INVARIANT-SPECIFIED:§16.6/§8.8 + TRACKED:T-PRA-31 | Gateway chokepoint |
+| E-3 | `slo_alert` events routed by nothing; alert mosaic | MED | INVARIANT-SPECIFIED:§16.6/§8.8 + TRACKED:P4-09 (T-PRA-31 superseded, D-139) | `alert_operator` |
 | SA:BENIGN1/2 | Calibration loop unwired (engine discarded; write path test-only) | MED | TRACKED:T-PRA-18 (fail-safe today; §16.7 corrected) | §16.7 |
 | K:PRA-15 / C-5 | EngineRegistry CS/APL cold-start TODOs shipped; Phase 26 closed over them | MED | TRACKED:T-PRA-32 + §16.12 clearance reminder | v7.9 §14 |
 | SA:BENIGN3 | Diagnostic scripts hardcode wrong DB path | LOW | TRACKED:T-PRA-20 | — |
@@ -1390,7 +1393,7 @@ non-`independent` Phase-13 implementation — §4 tier ordering applies with no 
 | T-PRA-03 | B-3, B-5 | INV-15 + INV-17 tables (§8.6; Architect ADR + Stage-1) + `test_worker_state_durability.py` | **1** |
 | T-PRA-04 | B-2, B-9 | INV-14 safe rollout (reconcile incl. `degraded_mode_state` + `persistence.py` `"owner"` defaults + `data_source` CHECK; verify; gated enable) + `test_db_integrity.py` | **1** |
 | T-PRA-05 | SA:m-4, E-2 | INV-19: transport ADR addendum + collectors + `test_worker_observability.py` | 2 |
-| T-PRA-06 | SA:M-2 | Multi-athlete scheduler registration from `athletes` table; docstring corrected | **1** |
+| T-PRA-06 | SA:M-2 | Multi-athlete scheduler registration from `athletes` table; docstring corrected — RESOLVED (ADR-0067, ADR-0070) | RESOLVED |
 | T-PRA-07 | B-4 | INV-12 fail-closed governance guard — RESOLVED 2026-06-12 (PR #865): apply_constraints inner wrapper + coaching_pipeline boundary guard, both forcing EASY/zone-2. REST-forcing sub-scope deliberately superseded — EASY/zone-2 is the existing fail-safe value and avoids a step-10/11 divide-by-zero that literal REST would risk. | RESOLVED |
 | T-PRA-08 | B-6 | DR-01..04: off-volume backup, retention, `integrity_check`, real-backup verify, restore drill, `RUNBOOK_DR.md` | **1** |
 | T-PRA-09 | B-7 | RE-01..04 + `test_release_engineering.py` (version-from-metadata CI test) | 2 |
@@ -1410,7 +1413,7 @@ non-`independent` Phase-13 implementation — §4 tier ordering applies with no 
 | T-PRA-28 | F-4/5/7/10 | RBP-04/05 bundle: JWT-at-construction, uniform auth failures, hybrid lockout, HttpOnly CSRF, token-key required | 2 |
 | T-PRA-29 | D-2 | One real e2e: compose up in CI → write → restart containers → assert persistence + `/readyz`; promote `docker_smoke_test.sh` into the gate | 2 |
 | T-PRA-30 | D-4, C-2, C-3 | Migration-chain v1→vN realistic-data test + SQLite↔Alembic schema-parity test (pre-Phase-8A gate) + frozen-migration (v8/v13/v24) column-manifest meta-test (absorbs T-PRA-33) | 2 |
-| T-PRA-31 | E-3 | Route all `slo_alert`/alert-class events through `NotificationGateway` chokepoint | 2 |
+| T-PRA-31 | E-3 | Route all `slo_alert`/alert-class events through `NotificationGateway` chokepoint — SUPERSEDED (gateway deleted, D-139); the `slo_alert` gap is P4-09 | SUPERSEDED |
 | T-PRA-32 | K:PRA-15 | Finish EngineRegistry CS/APL hydration (TODO-P26-04b/c); correct Phase-26 record | 2 |
 | T-PRA-35 | D-1, C-7, I-22 | Governance sensor bundle: snapshot generator + T4-22 wiring, `scripts/session_start.sh`, ceiling doc-agreement assert (T4-21 ext), ADR-status linter | 3 |
 | T-PRA-36 | D-6 | Convert the 6 skip-placeholders to strict xfail bound to debt items **+ meta-test forbidding undocumented skips** (standing enforcement, not one-time cleanup) | 3 |
@@ -1447,6 +1450,9 @@ in git history.
 ---
 
 *Changelog (newest first; full history in git):*
+- *2026-10-23 r6 — Documents reconciled with the code after the MA/OW/P4 audits (policy-only,
+  ADR-0070): §16.6 and the alert rows without `NotificationGateway` (ADR-0069 §7); §8.13 INV-22
+  surfaces; §16.11 ceiling 90; §30 SA:M-2/T-PRA-06 resolved, T-PRA-31 superseded.*
 - *2026-06-12 r5 — Governance ladder Pass 1–3 consolidation (policy-only): structural cleanup
   (Pass 1), authority/clearance/severity single-sourcing (Pass 2), evidence-record +
   orchestrator-obligation + lint/telemetry layer (Pass 3). Debt register 29 → 32 live items.
