@@ -1788,7 +1788,7 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 
 | ID | Θέμα | Tier | Σοβαρότητα | Πότε |
 |---|---|---|---|---|
-| P4-01 | Η σημαία `data_confidence_low` του decision trace βγαίνει μόνο από τη βεβαιότητα της εκκίνησης, όχι από τις πύλες με έλλειψη δεδομένων (H2/H3/H4_MISSING). Ο `DegradedModeTracker` δεν ανοίγει χρονόμετρο για αυτές (Codex στο #1050) | 1 | HIGH | Πριν από τον πιλότο· απόφαση Zaf (αλλάζει τα πρωινά του owner, ADR-0067 D3.4) |
+| P4-01 | Η σημαία `data_confidence_low` του decision trace βγαίνει μόνο από τη βεβαιότητα της εκκίνησης, όχι από τις πύλες με έλλειψη δεδομένων (H2/H3/H4_MISSING). Ο `DegradedModeTracker` δεν ανοίγει χρονόμετρο για αυτές (Codex στο #1050) | 1 | HIGH | RESOLVED (D-137, ADR-0069 §5) |
 | P4-02 | Το `HARD_STOP_SAFETY_GATES` μπαίνει και όταν λείπουν μόνο δεδομένα, όχι μόνο σε πραγματικό hard stop | 1 | HIGH | Πριν από τον πιλότο· ADR-0009 |
 | P4-03 | Προσπάθεια πρωινού που τρέχει πάνω από 15 λεπτά μπορεί να επικαλυφθεί από τη δεύτερη: χρειάζεται σήμα «σε εξέλιξη» στη βάση, σχήμα v34 (D-113) | 1 | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
 | P4-04 | Σκανδάλη hard-stop για τα offsets κατωφλίων στη βάση, σχήμα v34 (D-112) | 1 | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
