@@ -128,6 +128,6 @@ def test_worker_morning_runs_plan_routine_then_sunday_plan(db, monkeypatch):
     monkeypatch.setattr(worker, "_prepare_weekly_plan", lambda *a: order.append("this_week"))
     monkeypatch.setattr(worker, "_plan_next_week_on_sunday", lambda *a: order.append("next_week"))
 
-    worker._run_morning(db)
+    worker._run_morning(db, "owner")
 
     assert order == ["this_week", "routine", "next_week"]
