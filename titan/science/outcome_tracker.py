@@ -259,7 +259,7 @@ class OutcomeTracker:
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
-            athlete_profile_id="owner" if athlete_profile_id is None else athlete_profile_id,
+            athlete_profile_id=self._athlete_id if athlete_profile_id is None else athlete_profile_id,
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get("priority_vector", {})),
             lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),

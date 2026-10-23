@@ -222,3 +222,57 @@ def test_governance_decision_normalises_sentinel_athlete_id():
 
     dec_legacy = GovernanceDecision(**_base, athlete_profile_id="DEFAULT")
     assert dec_legacy.athlete_profile_id == "owner"
+
+
+@pytest.mark.integration
+def test_an_athletes_decisions_come_back_as_that_athletes(db_manager_factory):
+    """M0-12: read back from the database, an athlete's decisions kept the default
+    athlete_profile_id "owner", so a multi-athlete analysis of them would read the owner's."""
+    db = db_manager_factory(db_name='test.db')
+    for athlete in ('owner', 'a-0000000a'):
+        OutcomeTracker(db=db, athlete_id=athlete).record_decision(
+            session_planned='TEMPO',
+            session_post_governance='EASY',
+            locks_applied=[],
+            governance_clean=True,
+            phase='BASE',
+            vlg_color='GREEN',
+            apl_result=_apl_result(),
+            acwr=1.0,
+            tsb_value=-5.0,
+            readiness_score=70.0,
+            glycogen_debt=1.0,
+            athlete_profile_id=athlete,
+            date='2026-03-04',
+        )
+
+    athlete = OutcomeTracker(db=db, athlete_id='a-0000000a').get_decisions(athlete_id='a-0000000a')
+    owner = OutcomeTracker(db=db, athlete_id='owner').get_decisions(athlete_id='owner')
+
+    assert [d.athlete_profile_id for d in athlete] == ['a-0000000a']
+    assert [d.athlete_profile_id for d in owner] == ['owner']
+    assert db.get_governance_decisions(athlete_id='a-0000000a')[0]['athlete_profile_id'] == 'a-0000000a'
+    db.close()
+
+
+@pytest.mark.integration
+def test_an_athlete_tracker_records_for_its_athlete_when_no_id_is_passed(db_manager_factory):
+    """M0-12: record_decision fell back to "owner" even on an athlete's tracker."""
+    db = db_manager_factory(db_name='test.db')
+    OutcomeTracker(db=db, athlete_id='a-0000000a').record_decision(
+        session_planned='TEMPO',
+        session_post_governance='EASY',
+        locks_applied=[],
+        governance_clean=True,
+        phase='BASE',
+        vlg_color='GREEN',
+        apl_result=_apl_result(),
+        acwr=1.0,
+        tsb_value=-5.0,
+        readiness_score=70.0,
+        glycogen_debt=1.0,
+        date='2026-03-05',
+    )
+    assert db.get_governance_decisions(athlete_id='owner') == []
+    assert len(db.get_governance_decisions(athlete_id='a-0000000a')) == 1
+    db.close()
