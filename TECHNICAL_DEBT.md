@@ -1823,5 +1823,5 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | OW-L5 (14β) | HRV «τελευταίο» κατά σειρά άφιξης, TSB για τη μέρα του ρολογιού, δραστηριότητες σε τοπική ώρα | LOW | RESOLVED (D-131) |
 | OW-F1 | Η H4 έβλεπε το TSB μία μέρα πίσω (πριν από την αποθήκευση του πρωινού sync) | HIGH | RESOLVED (D-132, ADR-0069 §1) |
 | OW-F2 + P4-07 | Η κόπωση του /manual_entry δεν αποθηκευόταν πάνω σε υπάρχουσα γραμμή και δεν έφτανε στην H5 | HIGH | RESOLVED (D-133, ADR-0069 §2) |
-| OW-F3 | Η H1 δεν έχει πηγή και το rationale έγραφε CLEAR για πύλες που δεν μετρήθηκαν | HIGH | ΜΕΡΙΚΩΣ: UNKNOWN αντί για CLEAR (D-134)· ο πίνακας `athlete_injuries` μπήκε με το v34 (D-135)· η εντολή `/injury` ακολουθεί (ADR-0069 §3) |
+| OW-F3 | Η H1 δεν έχει πηγή και το rationale έγραφε CLEAR για πύλες που δεν μετρήθηκαν | HIGH | RESOLVED (D-134, D-135, D-136, ADR-0069 §3)· η `/injury` είναι μόνο για τον owner (ADR-0067 D10.3) |
 | OW-M2 | Άγνωστο TSB/ACWR γραφόταν 0,0 στο `governance_outcomes` και μετρούσε στον μέσο όρο της κονσόλας | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
