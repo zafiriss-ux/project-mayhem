@@ -310,6 +310,12 @@ def relogin_athlete(db, athlete_id: str, email: str, password: str, prompt_mfa) 
 
     if athlete_id == _OWNER_ATHLETE_ID:
         raise ValueError("the owner's Garmin login stays in .env")
+    # M0-13: the owner's account has no athlete_accounts row, so the D9.4 check below cannot
+    # see it. Refuse the owner's e-mail before Garmin is called: an athlete bound to it would
+    # get briefings built from the owner's data.
+    owner_email = get_settings().GARMIN_EMAIL.get_secret_value().strip().casefold()
+    if owner_email and str(email or "").strip().casefold() == owner_email:
+        raise ValueError("this is the owner's Garmin login; an athlete logs in with their own account")
     client = Garmin(email, password, prompt_mfa=prompt_mfa)
     client.login()
     garmin_user_id = str(getattr(client, "display_name", "") or "").strip()
