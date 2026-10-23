@@ -134,7 +134,8 @@ class _FakeGarmin:
     def connectapi(self, _path: str) -> dict:
         if self.display_name not in _BY_ACCOUNT:
             raise RuntimeError("unknown Garmin account")
-        return {}
+        # The account check after a token connect reads the display name (MA-F1).
+        return {"displayName": self.display_name}
 
     def get_user_summary(self, _iso: str) -> dict:
         return {}
