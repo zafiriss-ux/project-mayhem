@@ -83,6 +83,7 @@
 | [0066](0066-sleep-debt-easy-day.md) | Τρεις συνεχόμενες νύχτες με score ύπνου κάτω από 60 κάνουν τη μέρα EASY με 70% του όγκου | Governance (ADR-0009) | 🔲 Proposed (2026-10-16) |
 | [0067](0067-multi-athlete-activation.md) | Φάση 4, πολλοί αθλητές: διάρκεια και διαγραφή δεδομένων, συγκατάθεση, λογαριασμοί, πρωινό ανά αθλητή | Data / Worker / AGENTS §8.6, §16.10 | ✅ Accepted (2026-10-16) |
 | [0068](0068-governance-gate-fail-closed-fixes.md) | Οι πύλες δεν χαλαρώνουν ποτέ: κλείδωμα override ανά αθλητή, το REST μένει REST, μη πεπερασμένη τιμή σημαίνει έλλειψη δεδομένων | Governance (ADR-0009) | 🔲 Proposed (2026-10-17) |
+| [0069](0069-audit-category-b-decisions.md) | Οι αποφάσεις Κατηγορίας Β των ελέγχων MA/OW: TSB από τη βάση, κόπωση στην H5, `/injury`, σχήμα v34, ειδοποίηση 24 ωρών, HARD_STOP μόνο για αληθινό hard stop, χωρίς NotificationGateway, υπενθύμιση μετά από kill | Governance (ADR-0009) / Worker / Data | ✅ Accepted (2026-10-23) |
 
 ---
 
