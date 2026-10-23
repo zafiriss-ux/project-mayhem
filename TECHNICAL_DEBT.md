@@ -1809,3 +1809,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | MA-F6 | Coach με κενό `?athlete_id=` περνούσε χωρίς έλεγχο ανάθεσης και χωρίς audit | HIGH | RESOLVED (D-116) |
 | MA-F1 | Token Garmin αθλητή χρησιμοποιούνταν χωρίς έλεγχο ότι ανήκει στον δεμένο λογαριασμό Garmin | HIGH | RESOLVED (D-117) |
 | MA-F2 | Χωρίς αρχείο token ο αθλητής περνούσε ως έτοιμος και έφευγε briefing | HIGH | RESOLVED (D-118) |
+| MA-F9 | Το bot της κονσόλας δρομολογούσε chats αθλητών με σβηστή τη σημαία multi-athlete | HIGH | RESOLVED (D-119) |
