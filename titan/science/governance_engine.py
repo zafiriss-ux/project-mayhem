@@ -1404,7 +1404,10 @@ class GovernanceEngine:
             hard_stop_reasons = self._check_hard_stops(session_plan, context)
             if hard_stop_reasons:
                 session_plan["hard_stop_reasons"] = hard_stop_reasons
-                applied_locks.append("HARD_STOP_SAFETY_GATES")
+                # P4-02 (ADR-0069 §6, ADR-0009): the hard-stop label only when a gate really
+                # triggers; missing data alone carries its DATA_MISSING_* code below.
+                if any(not str(r.get("gate", "")).endswith("_MISSING") for r in hard_stop_reasons):
+                    applied_locks.append("HARD_STOP_SAFETY_GATES")
             # ADR-0051: conservative missing-data lock codes signalled by _check_hard_stops.
             if context.get("_h2_data_missing"):
                 applied_locks.append("DATA_MISSING_CONSERVATIVE_H2")
