@@ -34,11 +34,14 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # D-132 (OW-F1), ADR-0069 §1 (Accepted by Zaf 2026-10-23): TSB is computed after the morning's
 # sync stored yesterday's run, so it is lower; H4 now fires on 9/3, 10/3, 13/3, 14/3 (and more
 # in the three-week scenario). Every changed session is shorter or EASY; none is looser.
+# D-137 (P4-01), ADR-0069 §5 (Accepted by Zaf 2026-10-23): a missing HRV, RHR or TSB that lasts
+# 24 hours sends one "missing data" alert (3/3 for the HRV baseline, 6/3 for the RHR of the outage).
+# No session, lock or other text changes.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "95711e39dd8ccfc4e4a3e30627b9f58863cd3a3b9da17a4ec8ebab601204fb49",
-    "persistence_failure": "0ac46a14b14fa2b00b88a1fe75ac9d6412efb05bc6035ee2a00a4d56a13b2007",
-    "three_weeks_weekly_plan": "3de0bf0a5ed66fd596e7ed193406a87a795922fb1fd257c2b9246be42cb81fb7",
-    "two_weeks_worker": "1e8cecf2bdc17f2e35cde7bd7c695c4b65faa7406a6ae896aa85ec4b657e5476",
+    "garmin_outage": "c9164557496eb0298ce8af129067508bc7fd3c6bf35deee3e098486c408f451e",
+    "persistence_failure": "3f9e0f1e30ebc2fb646e72891b65259007244cb53704006b836ab5bfd6f955cc",
+    "three_weeks_weekly_plan": "08a8ca285baf4b59f0531a378fad769d6e55ad7fe457fd5bc3737f883b1768e6",
+    "two_weeks_worker": "e8b38ae0a8f15903d414bafc5bd24403c6a0856534d12c3dad978eac1b68fcfd",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"

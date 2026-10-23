@@ -238,12 +238,63 @@ class DegradedModeTracker:
                 self._degraded_since.pop(name, None)
                 self._persist_state(name, None)
 
+    # The inputs of H2, H3 and H4 (P4-01, ADR-0069 §5): one alert per gap, not one a day.
+    MISSING_INPUT_FLAGS = ("hrv_missing", "rhr_missing", "tsb_missing")
+
+    def update_missing_inputs(self, missing: dict[str, str], alert_fn: "Callable[[str], None]") -> None:
+        """Open, alert on and close the timers of a missing HRV, RHR or TSB (P4-01).
+
+        ``missing`` maps each missing input's flag to its label (e.g. "HRV baseline"). After
+        24 hours one alert is sent and marked as sent; the next comes only after the input has
+        come back and gone missing again. A failed alert is tried again at the next update.
+        """
+        now = datetime.now(UTC)
+        for name in self.MISSING_INPUT_FLAGS:
+            sent_key = f"{name}:alerted"
+            label = missing.get(name)
+            if label is None:
+                for key in (name, sent_key):
+                    if self._degraded_since.pop(key, None) is not None:
+                        self._persist_state(key, None)
+                continue
+            if name not in self._degraded_since:
+                self._degraded_since[name] = now
+                self._persist_state(name, now)
+                continue
+            if sent_key in self._degraded_since:
+                continue
+            hours = (now - self._degraded_since[name]).total_seconds() / 3600
+            if hours < _DEGRADED_ALERT_THRESHOLD_HOURS:
+                continue
+            try:
+                alert_fn(
+                    f"{label} missing for over {int(hours)}h. "
+                    "Sessions stay at most EASY until it is back (ADR-0051)."
+                )
+            except Exception as exc:
+                _daily_coach_event("degraded_alert_failed", failure_type=name, error_class=type(exc).__name__)
+                continue
+            self._degraded_since[sent_key] = now
+            self._persist_state(sent_key, now)
+
     def get_degraded_since(self) -> dict[str, str | None]:
         """Return ISO 8601 timestamps per failure type, or None when healthy."""
         result: dict[str, str | None] = {}
         for name, ts in self._degraded_since.items():
             result[name] = ts.isoformat()
         return result
+
+
+def _missing_inputs(context: dict) -> dict[str, str]:
+    """The H2, H3 and H4 inputs governance found missing, flag → label (P4-01)."""
+    missing: dict[str, str] = {}
+    if context.get("_h2_data_missing"):
+        missing["hrv_missing"] = "HRV" if context.get("today_hrv") is None else "HRV baseline"
+    if context.get("_h3_data_missing"):
+        missing["rhr_missing"] = "RHR" if context.get("today_rhr") is None else "RHR baseline"
+    if context.get("_h4_data_missing"):
+        missing["tsb_missing"] = "TSB"
+    return missing
 
 
 def _daily_coach_event(
@@ -1375,6 +1426,8 @@ class DailyCoach:
             "garmin_data_stale": garmin_data_stale,
             "data_trust_clamped": data_trust_clamped,
             "data_confidence_low": data_confidence_low,
+            "startup_confidence_low": getattr(self, "_startup_confidence_low", data_confidence_low),
+            "missing_inputs": dict(getattr(self, "_missing_inputs", {})),
         }
         planned_effects: tuple[PlannedEffect, ...] = (
             PlannedEffect(effect_type="record_outcome", payload={}),
@@ -1640,6 +1693,11 @@ class DailyCoach:
             context=context_payload,
         ))
         today_session = _rest_without_volume(_apply_volume_modifier(today_session))
+        # P4-01 (ADR-0069 §5): a missing HRV, RHR or TSB lowers the confidence and opens a
+        # degraded-mode timer. Governance marks them in the context it was given.
+        self._startup_confidence_low = data_confidence_low
+        self._missing_inputs = _missing_inputs(context_payload)
+        data_confidence_low = data_confidence_low or bool(self._missing_inputs)
         if today_session.get('governance_locks_applied'):
             _daily_coach_event(
                 "governance_locks_applied",
