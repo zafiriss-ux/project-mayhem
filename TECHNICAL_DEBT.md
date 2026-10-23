@@ -1816,3 +1816,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | MA-F3 | Κενό ή απόν athlete id καταλήγει στον owner | HIGH | RESOLVED (D-122, D-123, D-124) |
 | OW-L3 | Σιωπηλές προεπιλογές για max HR, threshold HR και φάση όταν λείπουν από το `.env` | LOW | RESOLVED (D-125) |
 | MA-F4 | Το εβδομαδιαίο πλάνο ξαναστελνόταν σε retry της ίδιας μέρας | MEDIUM | RESOLVED (D-126) |
+| OW-M1 | Δυναμικά πεδία χωρίς escaping έσπαγαν το legacy Markdown και το Telegram απέρριπτε το μήνυμα | MEDIUM | RESOLVED (D-127) |
