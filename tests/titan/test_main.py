@@ -732,10 +732,44 @@ def test_main_shutdown_logs_worker_timeout_before_database_close(monkeypatch, ca
 
     timeout_record = next(r for r in caplog.records if r.msg == "worker_shutdown_timeout")
     assert timeout_record.worker_name == "DailyCoachRoutine"
-    assert close_order == ["join_30", "db_close"]
+    assert close_order == ["join_30", "join_30", "db_close"]  # /today and the scheduled morning (D-113)
     assert garmin.stop_calls == 1
     assert weather.stop_calls == 1
     assert telegram.stop_calls == 1
+
+
+@pytest.mark.unit
+def test_main_shutdown_waits_for_the_scheduled_morning_before_closing_the_database(monkeypatch):
+    """The scheduled morning runs on its own runner; closing the console waits for it (D-113)."""
+    _garmin, _weather, _telegram, db, daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    close_order = []
+
+    class _AliveThread:
+        def is_alive(self):
+            return True
+
+        def join(self, timeout):
+            close_order.append("join_morning")
+
+    class _OnlyTheScheduledMorningRuns(titan_main.BackgroundRoutineRunner):
+        def __init__(self, target, *args, **kwargs):
+            super().__init__(target, *args, **kwargs)
+            if target != daily_coach.run_morning_routine:
+                self.thread = _AliveThread()
+
+    monkeypatch.setattr(titan_main, "BackgroundRoutineRunner", _OnlyTheScheduledMorningRuns)
+    monkeypatch.setattr(titan_main, "main_menu", lambda _: None)
+    original_close = db.close
+
+    def _tracking_close():
+        close_order.append("db_close")
+        original_close()
+
+    db.close = _tracking_close
+
+    titan_main.main()
+
+    assert close_order == ["join_morning", "db_close"]
 
 
 @pytest.mark.unit

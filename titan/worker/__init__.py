@@ -935,12 +935,19 @@ def _run_due_routine(
         if now.hour < ROUTINE_HOUR_UTC:
             log.info("worker_routine_not_due", extra={"due_hour_utc": ROUTINE_HOUR_UTC})
             return False
-        attempt = _claim_routine(db, "owner", now)
+        # Spaced like the console's claim, so an attempt the console just took is not taken
+        # again at once; no noon limit for the owner (D-111, D-113).
+        attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False)
         if attempt is None:
             if _sleep_with_heartbeat(stop, interval_s, interval_s, heartbeat):
                 return True
             continue
         if attempt is False:
+            if _owner_day_open(db, now.date().isoformat()):
+                # Another attempt (the console's) is not due again yet: wait for it (D-113).
+                if _sleep_with_heartbeat(stop, interval_s, interval_s, heartbeat):
+                    return True
+                continue
             log.info("worker_routine_already_ran", extra={"execution_date": now.date().isoformat()})
             return False
         delivered = _run_routine_supervised(
@@ -950,6 +957,21 @@ def _run_due_routine(
             return False
         if _sleep_with_heartbeat(stop, ROUTINE_RETRY_DELAY_S, interval_s, heartbeat):
             return True
+
+
+def _owner_day_open(db: DatabaseManager, execution_date: str) -> bool:
+    """True while the owner's morning of that day is neither delivered nor left (D-113).
+
+    A failed read counts as closed: the worker then sleeps to the next day instead of
+    polling a database it cannot read.
+    """
+    try:
+        return ("owner", ROUTINE_MORNING) in db.get_incomplete_routine_executions(execution_date)
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_state_read_failed", extra={"error": str(exc)},
+        )
+        return False
 
 
 def _run_routine_supervised(
