@@ -1777,3 +1777,22 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | F27-05 | `_make_record_outcome_handler` → `record_decision` | `athlete_profile_id` not passed → governance decisions persisted as `'owner'` for all athletes | MED | Handler closure now captures `athlete_profile_id` from `self.athlete_id` and passes it to `record_decision` ✅ RESOLVED 2026-06-09 |
 
 **G12 gate:** SATISFIED.
+
+---
+
+## Φάση 4 του refactor — ανοιχτά στο κλείσιμο (2026-10-23, D-114)
+
+Η Φάση 4 (πολλοί αθλητές, ADR-0067) έκλεισε με αυτά ανοιχτά. Κανένα δεν σταματά τον owner. Τα P4-01
+και P4-02 αγγίζουν πύλες του governance, άρα αλλάζουν μόνο μέσω ADR-0009, και πρέπει να γίνουν πριν
+από τον πιλότο (βήμα 13) με πραγματικό αθλητή.
+
+| ID | Θέμα | Tier | Σοβαρότητα | Πότε |
+|---|---|---|---|---|
+| P4-01 | Η σημαία `data_confidence_low` του decision trace βγαίνει μόνο από τη βεβαιότητα της εκκίνησης, όχι από τις πύλες με έλλειψη δεδομένων (H2/H3/H4_MISSING). Ο `DegradedModeTracker` δεν ανοίγει χρονόμετρο για αυτές (Codex στο #1050) | 1 | HIGH | Πριν από τον πιλότο· απόφαση Zaf (αλλάζει τα πρωινά του owner, ADR-0067 D3.4) |
+| P4-02 | Το `HARD_STOP_SAFETY_GATES` μπαίνει και όταν λείπουν μόνο δεδομένα, όχι μόνο σε πραγματικό hard stop | 1 | HIGH | Πριν από τον πιλότο· ADR-0009 |
+| P4-03 | Προσπάθεια πρωινού που τρέχει πάνω από 15 λεπτά μπορεί να επικαλυφθεί από τη δεύτερη: χρειάζεται σήμα «σε εξέλιξη» στη βάση, σχήμα v34 (D-113) | 1 | MEDIUM | Μαζί με το P4-04 |
+| P4-04 | Σκανδάλη hard-stop για τα offsets κατωφλίων στη βάση, σχήμα v34 (D-112) | 1 | MEDIUM | Μαζί με το P4-03 |
+| P4-05 | Οι ειδοποιήσεις του worker δεν περνούν από το `NotificationGateway`, που δεν χρησιμοποιείται πουθενά στο `titan/` (AGENTS §16.6, D-113) | 2 | MEDIUM | Απόφαση Zaf |
+| P4-06 | PostgreSQL: η εγγραφή `athlete_id` πριν ανοίξει ξανά ο σκελετός (ISO-5, D-112) | 4 | LOW | Όταν ανοίξει το PostgreSQL (ADR-0044) |
+| P4-07 | Προεπιλογή του H5 για νέο αθλητή (D-043) | 2 | MEDIUM | Απόφαση Zaf |
+| P4-08 | Έλεγχος του `docs/consent/v1.md` από δικηγόρο· να αναφέρει και το βάρος σώματος | — | — | Πριν από τον πιλότο |
