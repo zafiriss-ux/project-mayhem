@@ -131,3 +131,28 @@ def test_worker_morning_runs_plan_routine_then_sunday_plan(db, monkeypatch):
     worker._run_morning(db, "owner")
 
     assert order == ["this_week", "routine", "next_week"]
+
+
+@pytest.mark.unit
+def test_a_retry_the_same_day_does_not_send_the_plan_again(db):
+    # MA-F4 (D-126): the plan built mid-week starts tomorrow, so a lookup on or before
+    # today missed it and every retry that day built and sent a new one.
+    first = _coach("2026-10-08")
+    worker._prepare_weekly_plan(first, db, "owner", WEDNESDAY)
+    retry = _coach("2026-10-08")
+    worker._prepare_weekly_plan(retry, db, "owner", WEDNESDAY)
+
+    assert retry.weekly_planner.generated == 0
+    assert retry.telegram.plans == []
+    assert retry.weekly_planner.last_plan == first.weekly_planner.last_plan
+
+
+@pytest.mark.unit
+def test_a_plan_of_another_athlete_starting_tomorrow_is_not_taken(db):
+    db.save_weekly_plan(athlete_id="a-0000000b", week_start="2026-10-08", plan={"week_start": "2026-10-08"})
+    coach = _coach("2026-10-08")
+
+    worker._prepare_weekly_plan(coach, db, "owner", WEDNESDAY)
+
+    assert coach.weekly_planner.generated == 1
+    assert len(coach.telegram.plans) == 1

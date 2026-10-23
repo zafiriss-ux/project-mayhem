@@ -849,6 +849,13 @@ def _prepare_weekly_plan(coach, db: DatabaseManager, athlete_id: str, today: _dt
         if _plan_covers(stored, today):
             coach.weekly_planner.last_plan = stored
             return
+        # A plan built mid-week starts tomorrow (WeeklyPlanGenerator), so a retry the same
+        # day finds it here and does not build and send a second one (MA-F4, D-126).
+        tomorrow = (today + _dt.timedelta(days=1)).isoformat()
+        upcoming = db.get_latest_weekly_plan(athlete_id=athlete_id, on_or_before=tomorrow)
+        if upcoming is not None and str(upcoming.get("week_start"))[:10] == tomorrow:
+            coach.weekly_planner.last_plan = upcoming
+            return
         _generate_weekly_plan(coach, db, athlete_id)
     except Exception as exc:
         logging.getLogger("titan.worker.runner").exception(
