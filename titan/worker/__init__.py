@@ -786,7 +786,7 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     # The owner keeps WEATHER_LOCATION; any other athlete's weather is for the location in
     # their own profile (ADR-0067 D5.1), so two cities give two ESIs.
     weather = (
-        WeatherAPI() if athlete_id == "owner"
+        WeatherAPI(athlete_id="owner") if athlete_id == "owner"
         else WeatherAPI(location=f"{profile.location_city},{profile.location_country}", athlete_id=athlete_id)
     )
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
@@ -872,7 +872,7 @@ def _plan_next_week_on_sunday(coach, db: DatabaseManager, athlete_id: str, today
         )
 
 
-def _run_morning(db: DatabaseManager, athlete_id: str = "owner", *, day: _MorningDay | None = None) -> bool:
+def _run_morning(db: DatabaseManager, athlete_id: str, *, day: _MorningDay | None = None) -> bool:
     """One worker morning: this week's plan, the routine, and on Sunday next week's plan.
 
     Returns what the routine returns: True when the decision was made and the day's
@@ -1022,7 +1022,7 @@ def _run_routine_supervised(
             delivered[0] = _attempt_morning(db, "owner", execution_date, attempt)
             return
         try:
-            delivered[0] = _run_morning(db) is True
+            delivered[0] = _run_morning(db, "owner") is True
             log.info("morning_routine_complete")
         except Exception as exc:
             log.exception(
