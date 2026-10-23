@@ -216,8 +216,9 @@ def test_governance_decision_normalises_sentinel_athlete_id():
         "glycogen_debt": 2.0,
         "afi_value": None,
     }
-    dec_none = GovernanceDecision(**_base, athlete_profile_id=None)
-    assert dec_none.athlete_profile_id == "owner"
+    # MA-F3 (D-122): None is an empty id, refused rather than turned into the owner.
+    with pytest.raises(ValueError, match="athlete"):
+        GovernanceDecision(**_base, athlete_profile_id=None)
 
     dec_legacy = GovernanceDecision(**_base, athlete_profile_id="DEFAULT")
     assert dec_legacy.athlete_profile_id == "owner"

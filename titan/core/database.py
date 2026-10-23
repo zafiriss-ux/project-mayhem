@@ -23,7 +23,7 @@ except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
 from titan.core.athlete import OWNER_ATHLETE_ID, UniversalAthleteProfile, profile_problems
 from titan.core.repositories.access import AccessRepository
-from titan.core.repositories.governance import GovernanceRepository
+from titan.core.repositories.governance import GovernanceRepository, decision_athlete_id
 from titan.core.repositories.migrations import SchemaMigrations
 from titan.core.repositories.operations import OperationsRepository
 from titan.core.repositories.physiology import PhysiologyRepository
@@ -1533,7 +1533,7 @@ class PostgreSQLDatabaseManager:
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
-                    decision.get("athlete_profile_id", "owner"),
+                    decision_athlete_id(decision),
                     decision["date"],
                     decision["session_planned"],
                     decision["session_post_governance"],
