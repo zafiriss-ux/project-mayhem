@@ -26,7 +26,7 @@ Failure to update causes snapshot failures.
 
 ## Module Map
 
-Main package (78 modules, excl. __init__/__main__), ceiling 90. The ceiling test also counts the 12 subpackages: 90 of 90, no room left.
+Main package (77 modules, excl. __init__/__main__), ceiling 90. The ceiling test also counts the 12 subpackages: 89 of 90, one slot left.
 
 | Package | Responsibility |
 |---------|----------------|
