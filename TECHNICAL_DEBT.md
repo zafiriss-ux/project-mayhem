@@ -1812,3 +1812,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | MA-F9 | Το bot της κονσόλας δρομολογούσε chats αθλητών με σβηστή τη σημαία multi-athlete | HIGH | RESOLVED (D-119) |
 | MA-F7 | Κομμάτι του token Telegram στο log όταν η μορφή του είναι άκυρη | LOW | RESOLVED (D-120) |
 | OW-L4 | Προσωπικά στοιχεία στα `extra` των logs· σταθερό label `owner` στον μετρητή sync | LOW | RESOLVED (D-120) |
+| MA-F8 | Ο `PostgreSQLAdapter` έγραφε αποφάσεις governance χωρίς `athlete_id` | HIGH | RESOLVED (D-121) |
