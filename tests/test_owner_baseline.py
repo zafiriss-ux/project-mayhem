@@ -28,11 +28,14 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # and a first morning no longer sends the "check database health" RHR alert.
 # D-112 (SG-11), approved by Zaf: with no load history TSB reaches governance as None, so the
 # first mornings also log DATA_MISSING_CONSERVATIVE_H4; no session or Telegram text changes.
+# D-127 (OW-M1), approved by Zaf 2026-10-23: the Telegram texts gain Markdown escapes (\_ \* \`
+# \[) and nothing else; no session, lock or number changes. Before it, Telegram refused 33 of
+# the 54 messages in these goldens; after it, none.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "75ac6a953f5b24e0ff03c17ccb92be4cc94f9fa13a63425a408f2c8c82b99973",
-    "persistence_failure": "a7682c4ad4e80d6d10eb5f89252128b2030e7a1a99e2fca18bb99fac666ef23e",
-    "three_weeks_weekly_plan": "600f05c9bc54cc08ef3511befb93b668bc9edcc2d47eda79f9377644e9c64d9e",
-    "two_weeks_worker": "225cb747d02172d59207d4ab553efbd34a620267757ba6d697f601c62da3fda4",
+    "garmin_outage": "ae1863597c24e03cc9c333311487dbac7f63cf509be7bef577732761170ee440",
+    "persistence_failure": "2d7de6f77cbc098b6eb9163d276eedcb3093a5703e17a83ab231236aa4f1b6bc",
+    "three_weeks_weekly_plan": "e2ba76ebdb7610d413b1e733e4ed32172748093327ddd48b15fd60520a93726e",
+    "two_weeks_worker": "d6e3e1e8a393fbbfcf3f8306df0c060c6cc37d3a526f3e3253252648e1604f79",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"
