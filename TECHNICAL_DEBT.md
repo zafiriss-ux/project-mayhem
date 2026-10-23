@@ -1825,3 +1825,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | OW-F2 + P4-07 | Η κόπωση του /manual_entry δεν αποθηκευόταν πάνω σε υπάρχουσα γραμμή και δεν έφτανε στην H5 | HIGH | RESOLVED (D-133, ADR-0069 §2) |
 | OW-F3 | Η H1 δεν έχει πηγή και το rationale έγραφε CLEAR για πύλες που δεν μετρήθηκαν | HIGH | RESOLVED (D-134, D-135, D-136, ADR-0069 §3)· η `/injury` είναι μόνο για τον owner (ADR-0067 D10.3) |
 | OW-M2 | Άγνωστο TSB/ACWR γραφόταν 0,0 στο `governance_outcomes` και μετρούσε στον μέσο όρο της κονσόλας | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
+| MA-F5 | Μετά από crash στη μέση της αποστολής η επόμενη προσπάθεια ξανάστελνε όλο το briefing | MEDIUM | RESOLVED (D-140, ADR-0069 §8)· οι αθλητές διαβάζουν «let Zaf know», γιατί δεν έχουν /today |

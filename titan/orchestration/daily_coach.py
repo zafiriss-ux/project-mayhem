@@ -285,6 +285,16 @@ class DegradedModeTracker:
         return result
 
 
+def _briefing_hook(hook: "Callable[..., None] | None", *args: object) -> None:
+    """Call a worker hook around the briefing's send; its failure never stops the send (MA-F5)."""
+    if hook is None:
+        return
+    try:
+        hook(*args)
+    except Exception as exc:
+        _daily_coach_event("briefing_hook_failed", error_class=type(exc).__name__, error_message=str(exc))
+
+
 def _missing_inputs(context: dict) -> dict[str, str]:
     """The H2, H3 and H4 inputs governance found missing, flag → label (P4-01)."""
     missing: dict[str, str] = {}
@@ -691,6 +701,9 @@ class DailyCoach:
         self.on_decision_recorded: Callable[[dict], None] | None = None
         # Asked before the athlete is sent "TITAN system error"; False skips it (D-109).
         self.before_system_error_alert: Callable[[], bool] | None = None
+        # MA-F5 (ADR-0069 §8): the worker marks "sending" and clears the mark on a refused send.
+        self.before_briefing_send: Callable[[], None] | None = None
+        self.after_briefing_send: Callable[[bool], None] | None = None
         self._degraded_tracker = DegradedModeTracker(db=self.db, athlete_id=self.athlete_id)
         self._effect_bus = self._build_effect_bus()
         self._startup_hydration_confidence: dict[str, bool] = {
@@ -1945,9 +1958,11 @@ class DailyCoach:
             if note:
                 earlier = payload.get("special_note")
                 payload = {**payload, "special_note": f"{earlier}\n⚠️ {note}" if earlier else note}
+            _briefing_hook(getattr(self, "before_briefing_send", None))
             try:
                 delivery_ok = telegram.send_daily_coaching(payload)
             except Exception as exc:
+                _briefing_hook(getattr(self, "after_briefing_send", None), False)
                 _daily_coach_event(
                     "step_event",
                     step_number=12,
@@ -1958,6 +1973,7 @@ class DailyCoach:
                     error_message=str(exc),
                 )
                 raise
+            _briefing_hook(getattr(self, "after_briefing_send", None), bool(delivery_ok))
             if not delivery_ok:
                 _daily_coach_event(
                     "step_event",

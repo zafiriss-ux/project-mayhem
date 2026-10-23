@@ -105,7 +105,15 @@ class _Coach:
             hook(dict(cls.session))
         if not cls.delivers:
             return False
-        return self.telegram.send_daily_coaching({"session": cls.session["session_type"]})
+        # As DailyCoach's send step: mark "sending", send, clear the mark if Telegram refused (MA-F5).
+        before = getattr(self, "before_briefing_send", None)
+        if before is not None:
+            before()
+        ok = self.telegram.send_daily_coaching({"session": cls.session["session_type"]})
+        after = getattr(self, "after_briefing_send", None)
+        if after is not None:
+            after(bool(ok))
+        return ok
 
 
 _CLOCK = [_MORNING]
@@ -357,6 +365,7 @@ def _child_dies_after_sending(db_path: str, athlete_id: str, execution_date: str
         db_.save_governance_decision({"athlete_profile_id": athlete_id_, "date": execution_date,
                                       "session_planned": "EASY", "session_post_governance": "EASY",
                                       "locks_applied": []})
+        child_worker._mark_briefing_sending(db_, athlete_id_, execution_date)  # as the coach does (MA-F5)
         _FileBot().send_message("FULL_BRIEFING")
         os._exit(9)
 
@@ -366,7 +375,8 @@ def _child_dies_after_sending(db_path: str, athlete_id: str, execution_date: str
 
 
 @pytest.mark.slow
-def test_dw06_the_resend_after_a_crash_says_it_may_repeat_the_first_message(db, monkeypatch, tmp_path) -> None:
+def test_dw06_after_a_crash_mid_send_the_athlete_gets_one_reminder_line(db, monkeypatch, tmp_path) -> None:
+    """MA-F5 (ADR-0069 §8): the briefing is not sent a second time; one short line instead."""
     send_log = tmp_path / "sends.log"
     monkeypatch.setenv("TITAN_TEST_SEND_LOG", str(send_log))
     monkeypatch.setattr(worker, "_run_attempt", _RUN_ATTEMPT)
@@ -378,8 +388,75 @@ def test_dw06_the_resend_after_a_crash_says_it_may_repeat_the_first_message(db, 
 
     first, second = send_log.read_text(encoding="utf-8").splitlines()
     assert first == "FULL_BRIEFING"
-    assert "Today's session: EASY" in second and "repeats" in second
+    assert "Today's session" not in second
+    assert second == worker._crash_reminder_text(_A)
     assert _row(db) == (2, 1, 1)
+
+
+# ── MA-F5: the "sending" mark (ADR-0069 §8) ───────────────────────────────────
+
+def test_maf5_a_refused_send_clears_the_mark_and_the_retry_resends_the_decision(db, monkeypatch) -> None:
+    _Coach.delivers = True
+    with monkeypatch.context() as patch:
+        patch.setattr(_Bot, "send_daily_coaching", lambda self, data: False)  # Telegram refuses it
+        assert _attempt(db, 1) is False
+    assert not db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+
+    assert _attempt(db, 2) is True
+    [text] = _to_athlete()
+    assert "Today's session: TEMPO" in text and "repeats" in text
+
+
+def test_maf5_a_mark_left_by_a_crash_sends_one_line_and_closes_the_day(db) -> None:
+    _Coach.delivers = True
+    # Attempt 1 claimed the day, wrote the mark and died in the middle of the send.
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    worker._mark_briefing_sending(db, _A, _TODAY)
+    db.save_governance_decision({"athlete_profile_id": _A, "date": _TODAY, "session_planned": "TEMPO",
+                                 "session_post_governance": "TEMPO", "locks_applied": []})
+
+    assert _attempt(db, 2) is True
+
+    assert _Coach.runs == []  # nothing computed or sent again
+    assert _to_athlete() == [worker._crash_reminder_text(_A)]
+    assert _row(db)[1:] == (1, 1)
+
+
+def test_maf5_a_delivered_briefing_leaves_no_mark(db) -> None:
+    _Coach.delivers = True
+    assert _attempt(db, 1) is True
+    assert not db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+
+
+@pytest.mark.unit
+def test_maf5_the_owner_is_told_to_send_today() -> None:
+    assert "/today" in worker._crash_reminder_text("owner")
+    assert "/today" not in worker._crash_reminder_text(_A)  # athletes have no /today (ADR-0067 D10.3)
+
+
+@pytest.mark.unit
+def test_maf5_daily_coach_marks_before_sending_and_reports_after() -> None:
+    from titan.orchestration.daily_coach import DailyCoach
+
+    calls: list[object] = []
+
+    class _Telegram:
+        def send_daily_coaching(self, payload) -> bool:
+            calls.append("send")
+            return False
+
+    class _Result:
+        coaching_payload: dict = {}
+
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.telegram = _Telegram()
+    coach.routine_date = _TODAY
+    coach.before_briefing_send = lambda: calls.append("before")
+    coach.after_briefing_send = lambda ok: calls.append(("after", ok))
+
+    assert coach._make_send_telegram_handler()(None, _Result()) is False
+    assert calls == ["before", "send", ("after", False)]
 
 
 # ── DW-03: one date from the claim to the recorded decision ──────────────────

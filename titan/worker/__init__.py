@@ -417,6 +417,8 @@ def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -
             error = str(exc)
             continue
         _UNRECORDED_SENDS.discard(key)
+        # Only now: a crash before the delivery is recorded keeps the mark, so no second briefing (MA-F5).
+        _set_briefing_sending(db, athlete_id, execution_date, None)
         return True
     _UNRECORDED_SENDS.add(key)
     logging.getLogger("titan.worker.runner").critical(
@@ -480,6 +482,44 @@ _CAPPED_NOTE = (
     "Your data changed after TITAN's first decision today and today could not be computed "
     "again, so the session is at most EASY. If you already got a briefing today, follow this one."
 )
+
+
+# MA-F5 (ADR-0069 §8): a "sending" mark left by a crash means the briefing may have gone out.
+# The next attempt does not send the session again; it sends this one line. Athletes have no
+# /today (ADR-0067 D10.3), so theirs points to Zaf.
+_CRASH_REMINDER_OWNER = "If this morning's briefing did not reach you, send /today."
+_CRASH_REMINDER_ATHLETE = "If this morning's briefing did not reach you, let Zaf know."
+
+
+def _crash_reminder_text(athlete_id: str) -> str:
+    """The one line sent after a crash in the middle of the briefing's send (MA-F5)."""
+    return _CRASH_REMINDER_OWNER if athlete_id == "owner" else _CRASH_REMINDER_ATHLETE
+
+
+def _set_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str, value: str | None) -> None:
+    try:
+        db.update_routine_resume(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
+            fields={"sending": value},
+        )
+    except Exception as exc:  # the send goes ahead: a crash then resends, as before MA-F5
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_routine_resume_unsaved", extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+
+
+def _mark_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """Write "sending" before the briefing goes to Telegram (MA-F5, ADR-0069 §8)."""
+    _set_briefing_sending(db, athlete_id, execution_date, _utc_now().isoformat())
+
+
+def _send_crash_reminder(db: DatabaseManager, athlete_id: str) -> bool:
+    """One line instead of a second briefing; True once Telegram took it (MA-F5)."""
+    _require_consent(db, athlete_id)
+    logging.getLogger("titan.worker.runner").warning(
+        "worker_routine_crash_reminder", extra={"athlete_id": athlete_id},
+    )
+    return bool(_athlete_telegram(db, athlete_id).send_message(_crash_reminder_text(athlete_id), parse_mode=""))
 
 
 def _session_caps(session: dict | None) -> dict:
@@ -569,6 +609,11 @@ def _bind_day(coach, db: DatabaseManager, athlete_id: str, day: _MorningDay) -> 
     coach.briefing_note = day.note
     coach.on_decision_recorded = _recorded
     coach.before_system_error_alert = _alert_allowed
+    # MA-F5: "sending" before the send; a refused send clears it, a crash leaves it.
+    coach.before_briefing_send = lambda: _mark_briefing_sending(db, athlete_id, day.execution_date)
+    coach.after_briefing_send = (
+        lambda ok: None if ok else _set_briefing_sending(db, athlete_id, day.execution_date, None)
+    )
 
 
 def _resume_stored_day(db: DatabaseManager, athlete_id: str, stored: dict, day: _MorningDay) -> bool:
@@ -615,8 +660,14 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
     delivered = False
     day = _MorningDay(execution_date=execution_date, attempt=attempt)
     try:
+        resume = db.get_routine_resume(
+            athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
+        )
         stored = db.get_governance_decision_on(athlete_id, execution_date)
-        if stored is not None:
+        if resume.get("sending"):
+            # An earlier attempt died while sending (MA-F5): the briefing may have arrived.
+            delivered = _send_crash_reminder(db, athlete_id)
+        elif stored is not None:
             delivered = _resume_stored_day(db, athlete_id, stored, day)
         else:
             delivered = _run_morning(db, athlete_id, day=day) is True
