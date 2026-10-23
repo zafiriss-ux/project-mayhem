@@ -494,8 +494,18 @@ class GarminSync:
     token_only: bool = False
     token_expired: bool = False
 
-    def __init__(self, email: str = None, password: str = None, *, athlete_id: str = _OWNER_ATHLETE_ID):
+    def __init__(
+        self,
+        email: str = None,
+        password: str = None,
+        *,
+        athlete_id: str = _OWNER_ATHLETE_ID,
+        expected_garmin_user_id: str | None = None,
+    ):
         validate_token_encryption_key()
+        # The Garmin account bound to this athlete (athlete_accounts.garmin_user_id). An
+        # athlete's token is used only when Garmin says it belongs to that account (MA-F1).
+        self.expected_garmin_user_id = str(expected_garmin_user_id or "").strip() or None
         # The owner logs in with GARMIN_EMAIL/GARMIN_PASSWORD as before. Any other athlete
         # only ever uses their stored token: no password is held and no login happens in
         # the morning (ADR-0067 D9.1, D9.6). A missing or rejected token sets token_expired.
@@ -601,6 +611,31 @@ class GarminSync:
                 return True
             return self._connect_impl()
 
+    def _token_account_matches(self, profile) -> bool:  # noqa: ANN001
+        """True only when the token's Garmin account is the one bound to this athlete (MA-F1).
+
+        A token in an athlete's folder that answers for another Garmin account, or an athlete
+        with no bound account, is never used: the athlete is paused until relogin and the
+        token file is left as found for the operator.
+        """
+        token_account = str((profile or {}).get("displayName") or "").strip() if isinstance(profile, dict) else ""
+        if self.expected_garmin_user_id and token_account == self.expected_garmin_user_id:
+            return True
+        self.token_expired = True
+        self.last_connect_error = "Garmin token does not belong to this athlete's bound account; relogin needed"
+        _garmin_event(
+            "connect_token_account_mismatch",
+            severity=EventSeverity.CRITICAL,
+            subsystem="connect",
+            athlete_id=self.athlete_id,
+            detail=(
+                "Token answers for another Garmin account; athlete paused until relogin"
+                if self.expected_garmin_user_id
+                else "No Garmin account bound to this athlete; token not used"
+            ),
+        )
+        return False
+
     def _connect_impl(self) -> bool:
         """Actual connection logic. Must be called under ``_connect_lock``."""
         try:
@@ -656,9 +691,24 @@ class GarminSync:
                     # client.loads() only deserialises from disk — it does NOT check the
                     # server.  A single lightweight call here ensures we catch expired
                     # tokens before any sync attempt, preventing the silent 0/0/0 failure.
-                    client.connectapi("userprofile-service/socialProfile")
+                    profile = client.connectapi("userprofile-service/socialProfile")
                 except Exception as token_err:
                     _token_failure_class = _classify_failure(token_err)
+                    if _token_failure_class == GARMIN_RATE_LIMIT and self.token_only:
+                        # The account of an athlete's token cannot be checked while Garmin
+                        # rate-limits the profile call: keep the token, sync later (MA-F1).
+                        self.last_connect_error = (
+                            f"{token_err.__class__.__name__}: Garmin account check rate-limited; token kept"
+                        )
+                        _garmin_event(
+                            "connect_token_check_failed",
+                            subsystem="connect",
+                            athlete_id=self.athlete_id,
+                            error_class=token_err.__class__.__name__,
+                            failure_class=_token_failure_class,
+                            detail="Token account check rate-limited (429); token kept, sync retried later",
+                        )
+                        return False
                     if _token_failure_class == GARMIN_RATE_LIMIT:
                         # Garmin rate-limited the verification ping.  The token may
                         # still be valid, but we cannot confirm it.  Attempt one
@@ -764,6 +814,8 @@ class GarminSync:
                         with contextlib.suppress(Exception):
                             token_path.unlink(missing_ok=True)
                 else:
+                    if self.token_only and not self._token_account_matches(profile):
+                        return False
                     self.client = client
                     self.is_connected = True
                     self.last_connect_error = None
