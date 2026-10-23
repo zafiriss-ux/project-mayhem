@@ -116,6 +116,18 @@ def _print_banner():
 # ════════════════════════════════════════════════════════════════════════════
 # TELEGRAM COMMAND CALLBACKS
 # ════════════════════════════════════════════════════════════════════════════
+# What /today answers for each outcome of run_owner_today (OW-F4, D-128).
+_TODAY_REPLIES = {
+    "resent": "✅ Στάλθηκε ξανά η σημερινή απόφαση.",
+    "delivered": "✅ Σημερινό coaching στάλθηκε!",
+    "send_failed": "❌ Το σημερινό coaching δεν στάλθηκε. Θα ξαναδοκιμάσει το πρωινό πρόγραμμα.",
+    "busy": "⏳ Το σημερινό πρωινό τρέχει ήδη· το μήνυμα θα έρθει μόλις τελειώσει.",
+    "audit_failed": "❌ Audit log unavailable: command not performed.",
+    "claim_failed": "❌ Η βάση δεν απάντησε· δεν έτρεξε τίποτα. Δοκίμασε ξανά σε λίγο.",
+    "closed": "ℹ️ Δεν υπάρχει σημερινή απόφαση να σταλεί τώρα· η επόμενη προσπάθεια θα γίνει αυτόματα.",
+}
+
+
 def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
     """Wire engine methods to Telegram slash commands."""
 
@@ -193,13 +205,16 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
         )
 
     def cb_today():
+        # One decision per day: the stored one is sent again, or the day runs claimed and
+        # audited as the scheduled morning runs it (OW-F4, D-128). The reply says what happened.
+        from titan.worker import run_owner_today
+
         coach: DailyCoach = ctx["daily_coach"]
         try:
-            coach.run_morning_routine()
+            outcome = run_owner_today(ctx["db"], coach.routine_lock)
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
-        else:
-            return "✅ Σημερινό coaching στάλθηκε!"
+        return _TODAY_REPLIES.get(outcome, "❌ Το σημερινό coaching δεν στάλθηκε.")
 
     def cb_week():
         planner: WeeklyPlanGenerator = ctx["weekly_planner"]
@@ -620,8 +635,9 @@ def main():
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
-        # Both runners: /today runs on routine_runner, the scheduled morning on morning_runner
-        # (D-113). The database closes only after each has finished or timed out.
+        # Both runners (D-113); the scheduled morning runs on morning_runner. /today runs in the
+        # Telegram thread under the same routine lock (D-128), so the two never overlap. The
+        # database closes only after each runner has finished or timed out.
         for runner in (routine_runner, morning_runner):
             routine_thread = runner.thread
             if routine_thread is not None and routine_thread.is_alive():

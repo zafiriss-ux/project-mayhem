@@ -1101,6 +1101,60 @@ def run_owner_morning_if_due(db: DatabaseManager) -> bool:
     return _attempt_morning(db, "owner", now.date().isoformat(), attempt)
 
 
+_TODAY_NOTE = "You asked with /today: this is the decision TITAN made earlier today."
+
+
+def run_owner_today(db: DatabaseManager, lock: threading.Lock) -> str:
+    """The console's ``/today``: one decision per day, as the scheduled morning (OW-F4, D-128).
+
+    With today's decision stored, it is sent again and nothing is written. Without one, the
+    audit row is written first (INV-22), then the day is claimed and run as the worker runs
+    it, so ``governance_outcomes`` keeps one row for the owner's day (INV-15). ``lock`` is
+    the coach's routine lock: a morning already running is never started twice.
+
+    Returns what happened: ``"resent"``, ``"delivered"``, ``"send_failed"``, ``"busy"``,
+    ``"audit_failed"``, ``"claim_failed"`` or ``"closed"`` (the day was left or is not due
+    for another attempt yet, and no decision is stored).
+    """
+    if not lock.acquire(blocking=False):
+        return "busy"
+    try:
+        now = _utc_now()
+        execution_date = now.date().isoformat()
+        stored = db.get_governance_decision_on("owner", execution_date)
+        if stored is not None:
+            resume = db.get_routine_resume(
+                athlete_id="owner", execution_date=execution_date, routine_type=ROUTINE_MORNING,
+            )
+            sent = _send_stored_decision(db, "owner", stored, resume.get("session"), note=_TODAY_NOTE)
+            return "resent" if sent else "send_failed"
+        try:
+            db.log_coach_action(
+                coach_id="console:/today",
+                action_type="TELEGRAM_TODAY",
+                target_athlete_id="owner",
+                action_detail=execution_date,
+                resource="telegram",
+            )
+        except Exception as exc:
+            logging.getLogger("titan.worker.runner").critical(
+                "audit_write_failed",
+                extra={"surface": "telegram", "action_type": "TELEGRAM_TODAY", "error": str(exc)},
+            )
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("audit_write_failure", labels={"surface": "telegram"})
+            return "audit_failed"
+        attempt = _claim_routine(db, "owner", now, spaced=True, last_start=False)
+        if attempt is None:
+            return "claim_failed"
+        if attempt is False:
+            return "closed"
+        return "delivered" if _attempt_morning(db, "owner", execution_date, attempt) else "send_failed"
+    finally:
+        lock.release()
+
+
 def _run_with_scheduler(
     db: DatabaseManager,
     stop_event: threading.Event,
