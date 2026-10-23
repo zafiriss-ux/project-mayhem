@@ -23,6 +23,19 @@ def severity_value(severity: EventSeverity | str) -> str:
     return str(severity).lower()
 
 
+SLO_ALERT = "slo_alert"
+
+# Called with every slo_alert payload (P4-09). The worker registers one that counts the alert
+# and tells the owner; nothing is registered elsewhere, so other processes only log it.
+_slo_alert_listeners: list[Callable[[dict[str, Any]], None]] = []
+
+
+def add_slo_alert_listener(listener: Callable[[dict[str, Any]], None]) -> None:
+    """Call ``listener`` with every slo_alert payload from now on; adding it twice is a no-op."""
+    if listener not in _slo_alert_listeners:
+        _slo_alert_listeners.append(listener)
+
+
 def structured_event_payload(
     flow: str,
     action: str,
@@ -30,13 +43,25 @@ def structured_event_payload(
     severity: EventSeverity | str = EventSeverity.INFO,
     **fields: Any,
 ) -> dict[str, Any]:
-    """Build a structured-event payload with a shared severity contract."""
-    return {
+    """Build a structured-event payload with a shared severity contract.
+
+    Every structured event is built here, so this is the one place an ``slo_alert`` passes
+    through: it goes to the registered listeners too (P4-09). A failing listener never
+    stops the event.
+    """
+    payload = {
         "flow": flow,
         "action": action,
         "severity": severity_value(severity),
         **fields,
     }
+    if action == SLO_ALERT:
+        for listener in list(_slo_alert_listeners):
+            try:
+                listener(dict(payload))
+            except Exception:  # noqa: BLE001 — an alert listener never breaks the event itself
+                logging.getLogger(__name__).exception("slo_alert_listener_failed")
+    return payload
 
 
 def make_event_emitter(
