@@ -1806,3 +1806,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | ID | Θέμα | Σοβαρότητα | Κατάσταση |
 |---|---|---|---|
 | OW-L2 | Γραμμή του αρχείου διαγραφών με `owner` έσβηνε τα δεδομένα του owner μετά από επαναφορά | LOW | RESOLVED (D-115) |
+| MA-F6 | Coach με κενό `?athlete_id=` περνούσε χωρίς έλεγχο ανάθεσης και χωρίς audit | HIGH | RESOLVED (D-116) |

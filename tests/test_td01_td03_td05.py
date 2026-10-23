@@ -59,7 +59,7 @@ def _import_dependencies():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# TD-01: RBAC — require_athlete_access and require_coach_athlete_access
+# TD-01: RBAC — require_coach_athlete_access
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestCoachRBAC:
@@ -68,52 +68,52 @@ class TestCoachRBAC:
         self._deps = _import_dependencies()
 
     def test_coach_cannot_access_unassigned_athlete(self):
-        """COACH with no assignment to athlete-X must get 403."""
+        """COACH with no assignment to athlete-X (query param) must get 403."""
         from fastapi import HTTPException
 
         db = MagicMock()
         db.get_assigned_athletes.return_value = ["athlete-other"]
 
-        req = _make_request(path_params={"athlete_id": "athlete-X"}, db=db)
+        req = _make_request(query_params={"athlete_id": "athlete-X"}, db=db)
         coach = _make_auth_user("COACH", user_id="coach-1")
 
         with pytest.raises(HTTPException) as exc_info:
-            self._deps.require_athlete_access(coach, "athlete-X", request=req)
+            self._deps.require_coach_athlete_access(req, coach)
 
         assert exc_info.value.status_code == 403
         assert "athlete-X" in exc_info.value.detail
 
     def test_coach_can_access_assigned_athlete(self):
-        """COACH assigned to athlete-Y must pass without 403."""
+        """COACH assigned to athlete-Y (one of several) must pass without 403."""
         db = MagicMock()
         db.get_assigned_athletes.return_value = ["athlete-Y", "athlete-Z"]
 
         req = _make_request(path_params={"athlete_id": "athlete-Y"}, db=db)
         coach = _make_auth_user("COACH", user_id="coach-1")
 
-        # Must not raise
-        self._deps.require_athlete_access(coach, "athlete-Y", request=req)
+        assert self._deps.require_coach_athlete_access(req, coach) is coach
 
-    def test_coach_owner_endpoint_passes(self):
-        """COACH on owner-scoped request must not be blocked."""
+    def test_coach_owner_endpoint_passes_only_when_assigned(self):
+        """INV-11: the owner is assignment-scoped like any athlete; assigned → passes."""
         db = MagicMock()
-        db.get_assigned_athletes.return_value = []
+        db.get_assigned_athletes.return_value = ["owner"]
 
-        req = _make_request(db=db)
+        req = _make_request(path_params={"athlete_id": "owner"}, db=db)
         coach = _make_auth_user("COACH", user_id="coach-1")
 
-        # athlete_id == "owner" must bypass assignment check
-        self._deps.require_athlete_access(coach, "owner", request=req)
+        assert self._deps.require_coach_athlete_access(req, coach) is coach
 
-    def test_athlete_isolation_enforced(self):
-        """ATHLETE trying to access another athlete's data must get 403."""
+    def test_coach_empty_athlete_id_is_refused(self):
+        """MA-F6: an empty ?athlete_id= is no bypass of the assignment check."""
         from fastapi import HTTPException
 
-        athlete = _make_auth_user("ATHLETE", user_id="self-1", athlete_id="athlete-1")
-        req = _make_request()
+        db = MagicMock()
+        db.get_assigned_athletes.return_value = ["athlete-1"]
+        req = _make_request(query_params={"athlete_id": ""}, db=db)
+        coach = _make_auth_user("COACH", user_id="coach-1")
 
         with pytest.raises(HTTPException) as exc_info:
-            self._deps.require_athlete_access(athlete, "athlete-2", request=req)
+            self._deps.require_coach_athlete_access(req, coach)
 
         assert exc_info.value.status_code == 403
 

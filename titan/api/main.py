@@ -577,7 +577,12 @@ def _audit_before_effect(
         return
     athlete_id = _resolve_athlete_id(request)
     if athlete_id is None:
-        return
+        # An audited route always names its athlete; without one there is no record to write,
+        # so the coach is refused instead of passing unaudited (MA-F6, INV-22 fail-closed).
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Coach action names no athlete — access denied",
+        )
 
     db = getattr(request.app.state, "db", None)
     try:

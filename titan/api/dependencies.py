@@ -46,28 +46,6 @@ def require_coach(current_user: AuthUser = Depends(get_current_user)) -> AuthUse
     return current_user
 
 
-def require_athlete_access(
-    current_user: AuthUser,
-    requested_athlete_id: str,
-    request: Request | None = None,
-) -> None:
-    if current_user.role == "COACH":
-        # Verify coach is assigned to the requested athlete (TD-01 / ADR-0054)
-        athlete_id = requested_athlete_id
-        if athlete_id and athlete_id != "owner":
-            db = getattr(request.app.state, "db", None) if request is not None else None
-            if db is not None:
-                allowed = db.get_assigned_athletes(current_user.id)
-                if athlete_id not in allowed:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Coach not assigned to athlete {athlete_id}",
-                    )
-        return
-    if current_user.athlete_id != requested_athlete_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Athlete isolation violation")
-
-
 def require_coach_athlete_access(
     request: Request,
     current_user: AuthUser = Depends(get_current_user),
@@ -81,8 +59,14 @@ def require_coach_athlete_access(
         return current_user
     athlete_id = _get_athlete_id_from_request(request)
     # INV-11: owner is assignment-scoped like any athlete (no role-only bypass).
-    # A path with no athlete_id at all remains permissive (not an athlete-scoped route).
+    # A request with no athlete_id at all remains permissive (not an athlete-scoped route).
+    # One that names athlete_id with an empty value is refused (MA-F6): blank is no bypass.
     if not athlete_id:
+        if "athlete_id" in request.path_params or "athlete_id" in request.query_params:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Coach request names an empty athlete_id — access denied",
+            )
         return current_user
     db = getattr(request.app.state, "db", None)
     if db is None:
