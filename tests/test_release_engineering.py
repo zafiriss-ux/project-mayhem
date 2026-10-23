@@ -58,6 +58,16 @@ def test_release_workflow_runs_on_version_tags_and_checks_them() -> None:
     assert "needs: [check, images, windows]" in wf  # the Release waits for every artifact
 
 
+def test_release_attaches_the_exe_and_its_checksum_next_to_the_zip() -> None:
+    """The Release carries TITAN.exe and TITAN.exe.sha256 as their own files, not only inside the zip."""
+    wf = (_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert any(line.strip() == "dist/TITAN.exe" for line in wf.splitlines())
+    assert "dist/TITAN.exe.sha256" in wf
+    assert 'assets=("${zip}" TITAN.exe TITAN.exe.sha256)' in wf
+    assert 'gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber' in wf
+    assert 'gh release create "${GITHUB_REF_NAME}" "${assets[@]}"' in wf
+
+
 # ── RE-04 ───────────────────────────────────────────────────────────────────
 
 
