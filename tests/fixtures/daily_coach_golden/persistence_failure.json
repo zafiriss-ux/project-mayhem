@@ -491,7 +491,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nMonday, March 02, 2026\n\n🏃 *Today:* EASY – 3.9 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -991,7 +991,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1489,7 +1489,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 1.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nWednesday, March 04, 2026\n\n🏃 *Today:* EASY – 1.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 80/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -1988,7 +1988,7 @@
    "returned": true,
    "telegram": [
     "⚠️ *Persistence failure*\n\nToday's session data was not written to the database. Training prescription is conservative (EASY). Data will be re-synced on next cycle.",
-    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 2.6 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nThursday, March 05, 2026\n\n🏃 *Today:* EASY – 2.6 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 81/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
   {
@@ -2506,7 +2506,7 @@
    ],
    "returned": true,
    "telegram": [
-    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 2.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD_STOP_SAFETY_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
+    "🌅 *GOOD MORNING!*\nFriday, March 06, 2026\n\n🏃 *Today:* EASY – 2.0 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 78/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* HARD\\_STOP\\_SAFETY\\_GATES\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   }
  ],
