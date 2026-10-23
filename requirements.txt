@@ -1,4 +1,4 @@
-# TITAN OS v5.8.4 — Production Runtime Requirements
+# TITAN OS v5.9.0 — Production Runtime Requirements
 # Build Environment: Python 3.12 (garminconnect 0.3.5 requires >=3.12)
 # Last Updated: 2026-05-14
 

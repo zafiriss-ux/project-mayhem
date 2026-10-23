@@ -4,7 +4,7 @@ name: Release
 # The tag must equal the version in pyproject.toml (RE-01). The workflow builds
 # the api and worker images and pushes them to GitHub Container Registry pinned
 # to the tag, builds the Windows TITAN-vX.Y.Z-win64.zip, and creates the GitHub
-# Release with the zip attached.
+# Release with the zip, TITAN.exe and TITAN.exe.sha256 attached.
 #
 # Cost: runs only when a v* tag is pushed. The Windows job counts double against
 # the free plan's Actions minutes (a few minutes per release). GHCR storage and
@@ -123,7 +123,10 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: windows-zip
-          path: dist/TITAN-v${{ needs.check.outputs.version }}-win64.zip
+          path: |
+            dist/TITAN-v${{ needs.check.outputs.version }}-win64.zip
+            dist/TITAN.exe
+            dist/TITAN.exe.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -144,13 +147,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         # A Release published from the GitHub page creates its tag first, so the
-        # Release can already exist: then only attach the zip to it.
+        # Release can already exist: then only attach the files to it. The exe and
+        # its checksum go next to the zip, so it can be downloaded on its own.
         run: |
           zip="TITAN-v${{ needs.check.outputs.version }}-win64.zip"
+          assets=("${zip}" TITAN.exe TITAN.exe.sha256)
+          ls -l "${assets[@]}"
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" "${zip}" --clobber
+            gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" "${zip}" \
+            gh release create "${GITHUB_REF_NAME}" "${assets[@]}" \
               --title "TITAN OS ${GITHUB_REF_NAME}" \
               --generate-notes \
               --verify-tag
