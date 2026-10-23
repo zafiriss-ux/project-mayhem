@@ -176,3 +176,47 @@ def test_a_delivery_is_recorded_before_the_mark_is_cleared(tmp_path: Path, monke
         assert order == ["delivered", "mark cleared"]
     finally:
         db.close()
+
+
+@pytest.mark.unit
+def test_a_briefing_is_not_sent_for_a_decision_that_was_not_recorded() -> None:
+    """Review of #1089: the check failed in the record handler and passed in the send handler,
+    so the briefing went out with no governance_outcomes row. A lost day stays lost."""
+    sent: list[dict] = []
+    recorded: list[dict] = []
+    answers = iter([RuntimeError("database is locked"), True])
+
+    def flaky() -> bool:
+        answer = next(answers)
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    coach = SimpleNamespace(
+        telegram=_Telegram(sent), attempt_is_current=flaky, routine_date=DAY, athlete_id="owner",
+        outcome_tracker=SimpleNamespace(record_decision=lambda **kw: recorded.append(kw)),
+    )
+    result = SimpleNamespace(
+        decision_trace={"session_post_governance": "EASY"}, session_plan={}, coaching_payload={"session": "EASY"},
+    )
+    DailyCoach._make_record_outcome_handler(coach)(None, result)
+    assert DailyCoach._make_send_telegram_handler(coach)(None, result) is False
+    assert (recorded, sent) == ([], [])
+
+
+@pytest.mark.unit
+def test_a_sent_day_whose_delivery_cannot_be_recorded_keeps_its_mark(tmp_path: Path, monkeypatch) -> None:
+    """Review of #1089: clearing the mark then left the sent day with no mark and no delivery,
+    so another process could claim it at once and send it again."""
+    db = _db(tmp_path)
+    cleared: list[int] = []
+    monkeypatch.setattr(worker, "_run_morning", lambda *_a, **_k: True)
+    monkeypatch.setattr(worker, "_mark_delivered", lambda *_a, **_k: False)
+    monkeypatch.setattr(worker, "_end_attempt", lambda *_a, attempt, **_k: cleared.append(attempt))
+    try:
+        assert _begin(db, T0, "worker:aaa") == ("run", 1)
+        assert worker._attempt_morning(db, "owner", DAY, 1) is True
+        assert cleared == []
+        assert _row(db)[1] == "worker:aaa"
+    finally:
+        db.close()
