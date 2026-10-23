@@ -125,8 +125,11 @@ def test_personal_best_refuses_a_non_positive_distance_or_time(db, distance_km, 
 @pytest.mark.unit
 @pytest.mark.parametrize(("athlete_id", "date"), [(None, "2026-01-05"), ("", "2026-01-05"), ("owner", None), ("owner", "")])
 def test_save_session_refuses_a_missing_athlete_or_date(db, athlete_id, date) -> None:
-    """F1: INSERT OR IGNORE dropped a NOT NULL row silently; now the caller gets a ValueError."""
-    with pytest.raises(ValueError, match="athlete_id and date are required"):
+    """F1: INSERT OR IGNORE dropped a NOT NULL row silently; now the caller gets a ValueError.
+
+    An empty athlete id is refused one step earlier, by the DatabaseManager check (D-123).
+    """
+    with pytest.raises(ValueError, match="athlete_id and date are required|empty athlete_id|athlete_id is None"):
         db.save_session(date, "EASY", 5.0, 1800, garmin_activity_id="f1", athlete_id=athlete_id)
     assert db.conn.execute("SELECT COUNT(*) FROM training_log").fetchone() == (0,)
 
