@@ -31,11 +31,14 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # D-127 (OW-M1), approved by Zaf 2026-10-23: the Telegram texts gain Markdown escapes (\_ \* \`
 # \[) and nothing else; no session, lock or number changes. Before it, Telegram refused 33 of
 # the 54 messages in these goldens; after it, none.
+# D-132 (OW-F1), ADR-0069 §1 (Accepted by Zaf 2026-10-23): TSB is computed after the morning's
+# sync stored yesterday's run, so it is lower; H4 now fires on 9/3, 10/3, 13/3, 14/3 (and more
+# in the three-week scenario). Every changed session is shorter or EASY; none is looser.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "ae1863597c24e03cc9c333311487dbac7f63cf509be7bef577732761170ee440",
-    "persistence_failure": "2d7de6f77cbc098b6eb9163d276eedcb3093a5703e17a83ab231236aa4f1b6bc",
-    "three_weeks_weekly_plan": "e2ba76ebdb7610d413b1e733e4ed32172748093327ddd48b15fd60520a93726e",
-    "two_weeks_worker": "d6e3e1e8a393fbbfcf3f8306df0c060c6cc37d3a526f3e3253252648e1604f79",
+    "garmin_outage": "95711e39dd8ccfc4e4a3e30627b9f58863cd3a3b9da17a4ec8ebab601204fb49",
+    "persistence_failure": "0ac46a14b14fa2b00b88a1fe75ac9d6412efb05bc6035ee2a00a4d56a13b2007",
+    "three_weeks_weekly_plan": "3de0bf0a5ed66fd596e7ed193406a87a795922fb1fd257c2b9246be42cb81fb7",
+    "two_weeks_worker": "1e8cecf2bdc17f2e35cde7bd7c695c4b65faa7406a6ae896aa85ec4b657e5476",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"

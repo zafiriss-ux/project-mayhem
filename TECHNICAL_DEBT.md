@@ -1821,3 +1821,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | OW-L1 | Το `/sync` του owner και το background sync δεν αποθήκευαν τα δεδομένα Garmin | LOW | RESOLVED (D-129) |
 | OW-L5 (14α) | Η ημερομηνία του briefing ήταν του ρολογιού, όχι της μέρας του πρωινού | LOW | RESOLVED (D-130) |
 | OW-L5 (14β) | HRV «τελευταίο» κατά σειρά άφιξης, TSB για τη μέρα του ρολογιού, δραστηριότητες σε τοπική ώρα | LOW | RESOLVED (D-131) |
+| OW-F1 | Η H4 έβλεπε το TSB μία μέρα πίσω (πριν από την αποθήκευση του πρωινού sync) | HIGH | RESOLVED (D-132, ADR-0069 §1) |

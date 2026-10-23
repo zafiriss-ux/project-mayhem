@@ -185,6 +185,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 0,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -291,13 +298,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 0,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -698,6 +698,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 1,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -798,13 +805,6 @@
      "step_number": 8
     },
     {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 1,
-     "severity": "info"
-    },
-    {
      "action": "step_started",
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
@@ -817,15 +817,6 @@
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "H2_HRV",
-     "logger": "titan.science.governance_engine",
-     "reason": "governance_data_missing_conservative",
-     "severity": "WARNING"
-    },
-    {
-     "action": "EASY_ceiling_applied",
-     "garmin_data_age_hours": 0.0,
-     "garmin_data_trust_level": "TRUSTED",
-     "governance_gate": "H4_TSB",
      "logger": "titan.science.governance_engine",
      "reason": "governance_data_missing_conservative",
      "severity": "WARNING"
@@ -872,7 +863,6 @@
      "locks_applied": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
-      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -899,7 +889,6 @@
      "locks": [
       "HARD_STOP_SAFETY_GATES",
       "DATA_MISSING_CONSERVATIVE_H2",
-      "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -1218,6 +1207,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 2,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -1316,13 +1312,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 2,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -1638,6 +1627,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 2,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -1736,13 +1732,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 2,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -2089,6 +2078,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 2,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -2187,13 +2183,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 2,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -2530,6 +2519,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 2,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -2628,13 +2624,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 2,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -3051,6 +3040,13 @@
      "severity": "info"
     },
     {
+     "action": "load_engines_refreshed",
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "sessions": 2,
+     "severity": "info"
+    },
+    {
      "action": "step_event",
      "failure_class": null,
      "flow": "daily_coach",
@@ -3149,13 +3145,6 @@
      "severity": "info",
      "step_name": "load_today_session",
      "step_number": 8
-    },
-    {
-     "action": "load_engines_refreshed",
-     "flow": "daily_coach",
-     "logger": "titan.orchestration.daily_coach",
-     "sessions": 2,
-     "severity": "info"
     },
     {
      "action": "step_started",
@@ -3599,7 +3588,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"HARD_STOP_SAFETY_GATES\", \"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -3610,7 +3599,7 @@
     "readiness_score": 100.0,
     "session_planned": "INTERVALS",
     "session_post_governance": "EASY",
-    "tsb_value": 0.0,
+    "tsb_value": -11.9,
     "vlg_color": "GREEN"
    },
    {
@@ -3636,7 +3625,7 @@
     "readiness_score": 100.0,
     "session_planned": "EASY",
     "session_post_governance": "EASY",
-    "tsb_value": -9.9,
+    "tsb_value": -29.7,
     "vlg_color": "GREEN"
    },
    {
