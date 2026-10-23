@@ -129,7 +129,6 @@ launcher/main.py
 | `titan/integrations/biometric_source.py` | Biometric source abstraction |
 | `titan/integrations/telegram_bot.py` | Telegram bot — coaching delivery + override UI |
 | `titan/integrations/weather_api.py` | Weather API client |
-| `titan/integrations/notification_gateway.py` | Notification abstraction |
 | `titan/ui/menu_system.py` | Interactive CLI menu (main loop) |
 | `titan/ui/operator_console.py` | Operator readiness / session explorer console |
 | `titan/ui/setup_wizard.py` | In-UI credential setup |
