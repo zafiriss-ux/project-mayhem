@@ -312,6 +312,11 @@ def _ready(db: DatabaseManager, athlete_id: str) -> None:
     db.save_athlete_profile(athlete_id, _PROFILE)
     db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
     db.set_garmin_token_state(athlete_id, "ok")
+    from titan.integrations.garmin_sync import (
+        athlete_token_path,  # a ready athlete has the token file (MA-F2)
+    )
+    athlete_token_path(athlete_id).parent.mkdir(parents=True, exist_ok=True)
+    athlete_token_path(athlete_id).write_bytes(b"synthetic-token")
 
 
 @pytest.mark.integration
@@ -407,7 +412,7 @@ def test_an_athletes_sync_writes_only_that_athletes_data(db, key_file, monkeypat
     _ready(db, _A)
     _ready(db, _B)
     path = athlete_token_path(_A)
-    path.parent.mkdir(parents=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(encrypt_athlete_token("session-of-a"))
 
     def _sync_all(self, days_back: int = 14) -> dict:
@@ -430,8 +435,9 @@ def test_an_athletes_sync_without_a_token_pauses_them(db, key_file, monkeypatch)
 
     seen = _fake_garminconnect(monkeypatch)
     _ready(db, _A)
+    athlete_token_path(_A).unlink()  # the DB still says 'ok', the token file is gone (MA-F2)
 
-    assert "not connected" in worker.sync_athlete_on_request(db, _A)
+    assert "not complete" in worker.sync_athlete_on_request(db, _A)
     assert db.get_athlete_account(_A)["garmin_token_state"] == "expired"
     assert seen["logins"] == 0
 

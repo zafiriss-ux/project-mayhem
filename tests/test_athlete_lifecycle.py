@@ -74,6 +74,11 @@ def _seed(db: DatabaseManager, athlete_id: str, chat: int) -> None:
     db.grant_consent(athlete_id, "v1", now=_NOW - timedelta(days=40))
     db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
     db.set_garmin_token_state(athlete_id, "ok")
+    from titan.integrations.garmin_sync import (
+        athlete_token_path,  # a ready athlete has the token file (MA-F2)
+    )
+    athlete_token_path(athlete_id).parent.mkdir(parents=True, exist_ok=True)
+    athlete_token_path(athlete_id).write_bytes(b"synthetic-token")
     db.assign_athlete_to_coach("coach-1", athlete_id)
     db.log_coach_action(coach_id=f"telegram:{chat}", action_type="TELEGRAM_SYNC",
                         target_athlete_id=athlete_id, resource="telegram")

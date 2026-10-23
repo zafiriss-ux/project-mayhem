@@ -145,6 +145,11 @@ def db(tmp_path, monkeypatch):
     manager.save_athlete_profile(_A, _PROFILE)
     manager.bind_garmin_account(_A, f"garmin-{_A}")
     manager.set_garmin_token_state(_A, "ok")
+    from titan.integrations.garmin_sync import (
+        athlete_token_path,  # a ready athlete has the token file (MA-F2)
+    )
+    athlete_token_path(_A).parent.mkdir(parents=True, exist_ok=True)
+    athlete_token_path(_A).write_bytes(b"synthetic-token")
     manager.bind_telegram_chat(_A, _CHAT)
     manager.grant_consent(_A, CONSENT_TEXT_VERSION, now=_MORNING - timedelta(days=5))
     yield manager

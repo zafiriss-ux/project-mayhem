@@ -146,6 +146,11 @@ def test_a_legacy_chat_is_not_run_and_named_in_the_readiness(db, monkeypatch, le
     _add(db, _A, "1002", monkeypatch)
     db.bind_garmin_account(_A, "garmin-a")
     db.set_garmin_token_state(_A, "ok")
+    from titan.integrations.garmin_sync import (
+        athlete_token_path,  # a ready athlete has the token file (MA-F2)
+    )
+    athlete_token_path(_A).parent.mkdir(parents=True, exist_ok=True)
+    athlete_token_path(_A).write_bytes(b"synthetic-token")
     db.grant_consent(_A, CONSENT_TEXT_VERSION, now=_NOW)
     assert worker._readiness_problem(db, _A) is None
     _store_legacy_chat(db, _A, legacy)
