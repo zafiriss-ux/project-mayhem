@@ -86,6 +86,8 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(data))
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", str(OWNER_CHAT))
+    # Athletes' chats are routed only with multi-athlete mode on (MA-F9, D-119).
+    monkeypatch.setenv("TITAN_MULTI_ATHLETE", "1")
     from titan.config.settings import get_settings
 
     get_settings.cache_clear()
@@ -333,6 +335,20 @@ def test_agree_without_the_text_records_nothing(bot, db, monkeypatch) -> None:
 
     assert reply.startswith("❌")
     assert _audit(db) == [] and _consents(db) == []
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("command", ["/start", "/consent", f"/agree {CONSENT_TEXT_VERSION}", "/sync", "/stop"])
+def test_with_multi_athlete_mode_off_an_athletes_chat_gets_nothing(bot, db, monkeypatch, command) -> None:
+    # MA-F9: the console's bot must not route athletes' chats when TITAN_MULTI_ATHLETE is off.
+    from titan.config.settings import get_settings
+
+    monkeypatch.setenv("TITAN_MULTI_ATHLETE", "")
+    get_settings.cache_clear()
+
+    assert _send(bot, command, CHAT_A) == []
+    assert _consents(db) == []
+    assert _audit(db) == []
 
 
 @pytest.mark.integration

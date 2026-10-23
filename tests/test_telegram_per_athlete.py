@@ -62,6 +62,8 @@ def data_dir(tmp_path, monkeypatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(data))
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", str(OWNER_CHAT))
+    # Athletes' chats are routed only with multi-athlete mode on (MA-F9, D-119).
+    monkeypatch.setenv("TITAN_MULTI_ATHLETE", "1")
     from titan.config.settings import get_settings
 
     get_settings.cache_clear()
