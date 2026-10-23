@@ -297,6 +297,9 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             return f"❌ Σφάλμα: {e}"
 
     def cb_sync():
+        # The owner's /sync stores what it synced, as an athlete's /sync does (OW-L1, D-129).
+        from titan.orchestration import garmin_persistence
+
         garmin: GarminSync = ctx["garmin"]
         try:
             data = garmin.sync_all()
@@ -307,6 +310,14 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             ctx["last_garmin_data"] = data
         except Exception as e:
             return f"❌ Garmin sync failed: {e}"
+        try:
+            garmin_persistence.persist_garmin_data(
+                ctx["db"], data, datetime.now(UTC).date().isoformat(), athlete_id="owner",
+                emit=lambda action, **fields: log.info(action, extra={"athlete_id": "owner", **fields}),
+            )
+        except Exception as e:
+            log.exception("owner_sync_persist_failed", extra={"error_class": type(e).__name__})
+            return "❌ Garmin sync done, but saving it failed: nothing was stored. Try /sync again later."
         else:
             return (
                 f"🔄 *SYNC COMPLETE*\n"
@@ -561,7 +572,8 @@ def main():
     # ── Step 8: Start background threads ─────────────────────────────────────
     log.info("background_threads_starting")
 
-    garmin.start_background_sync(interval_hours=6)
+    # No background Garmin sync: it called Garmin every 6 hours and stored nothing. The
+    # morning routine and /sync sync and store (OW-L1, D-129).
     weather.start_background_updates(interval_hours=1)
     telegram.start_bot()
 
@@ -611,7 +623,7 @@ def main():
             "tasks": [
                 "Morning coaching: Daily from 07:00 (claimed as the worker claims it)",
                 "Weekly plan: Sunday @ 20:00",
-                "Garmin sync: Every 6 hours (background)",
+                "Garmin sync: morning routine and /sync (stored)",
                 "Weather updates: Every 1 hour (background)",
                 "Telegram polling: Continuous (background)",
             ]

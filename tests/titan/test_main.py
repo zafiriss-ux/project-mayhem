@@ -559,6 +559,10 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring(monkeypa
     import titan.worker
 
     monkeypatch.setattr(titan.worker, "run_owner_today", lambda db, lock: "delivered")
+    # /sync stores what it synced (OW-L1, D-129); the real save is in test_owner_sync_command.
+    from titan.orchestration import garmin_persistence
+
+    monkeypatch.setattr(garmin_persistence, "persist_garmin_data", lambda *a, **k: (0, None, 7.5))
     summary = {
         "status": "CALIBRATED",
         "n_decisions": 24,
