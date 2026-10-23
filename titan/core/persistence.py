@@ -1188,6 +1188,9 @@ class PostgreSQLAdapter(PersistenceAdapter):
                     algorithm_version_snapshot=json.dumps(
                         decision.get("algorithm_version_snapshot", {})
                     ),
+                    # MA-F8: same rule as the SQLite repository, so every
+                    # decision row names its athlete.
+                    athlete_id=decision.get("athlete_profile_id", "owner"),
                 )
             )
 
