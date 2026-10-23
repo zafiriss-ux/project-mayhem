@@ -150,7 +150,8 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 | 8α MA-F3: κενό athlete id (`""`, κενά, `None`) σε απόφαση governance απορρίπτεται στο tracker και σε κάθε writer του `governance_outcomes`· μόνο το id που δεν δόθηκε μένει owner (D-122) | #1060 | Έγινε |
 | 8β MA-F3: κάθε public μέθοδος του `DatabaseManager` με `athlete_id` απορρίπτει κενό id (και `None`, εκτός αν η υπογραφή το επιτρέπει)· μόνο το id που δεν δόθηκε μένει owner (D-123) | #1061 | Έγινε |
 | 8γ MA-F3: ο worker ονομάζει πάντα τον αθλητή· το `_run_morning` χωρίς προεπιλογή owner· AST fitness test για `titan/worker` και `titan/orchestration` (D-124) | #1062 | Έγινε |
-| 13 OW-L3: WARNING όταν λείπει `ATHLETE_MAX_HR`, `ATHLETE_THRESHOLD_HR` ή `TRAINING_PHASE`· μόνο το όνομα της μεταβλητής στο log (D-125) | — | Σε έλεγχο |
+| 13 OW-L3: WARNING όταν λείπει `ATHLETE_MAX_HR`, `ATHLETE_THRESHOLD_HR` ή `TRAINING_PHASE`· μόνο το όνομα της μεταβλητής στο log (D-125) | #1063 | Έγινε |
+| 11 MA-F4: το εβδομαδιαίο πλάνο δεν ξαναστέλνεται σε retry της ίδιας μέρας· ελέγχεται και πλάνο του ίδιου αθλητή που ξεκινά αύριο (D-126) | — | Σε έλεγχο |
 
 ## Επόμενα
 

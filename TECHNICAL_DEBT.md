@@ -1815,3 +1815,4 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | MA-F8 | Ο `PostgreSQLAdapter` έγραφε αποφάσεις governance χωρίς `athlete_id` | HIGH | RESOLVED (D-121) |
 | MA-F3 | Κενό ή απόν athlete id καταλήγει στον owner | HIGH | RESOLVED (D-122, D-123, D-124) |
 | OW-L3 | Σιωπηλές προεπιλογές για max HR, threshold HR και φάση όταν λείπουν από το `.env` | LOW | RESOLVED (D-125) |
+| MA-F4 | Το εβδομαδιαίο πλάνο ξαναστελνόταν σε retry της ίδιας μέρας | MEDIUM | RESOLVED (D-126) |
