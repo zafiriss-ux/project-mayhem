@@ -121,8 +121,11 @@ def test_before_0700_utc_nothing_is_claimed_or_run(data_dir, monkeypatch):
 
 
 def test_a_routine_that_crashed_midway_is_reported_and_resumes(data_dir, monkeypatch, caplog):
-    """ADR-0067 D8.4 (amends ADR-0060 D1 item 3): a crash before delivery is not a finished day."""
-    monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
+    """ADR-0067 D8.4 (amends ADR-0060 D1 item 3): a crash before delivery is not a finished day.
+
+    The restarted worker resumes once the retry gap after the crashed attempt has passed (D-113).
+    """
+    monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING + timedelta(seconds=worker.ROUTINE_RETRY_DELAY_S))
     db = DatabaseManager(db_dir=data_dir)
     assert db.begin_routine_attempt(
         athlete_id="owner", execution_date=_TODAY, routine_type="morning", started_at=_MORNING, max_attempts=3

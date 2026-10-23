@@ -81,7 +81,8 @@ def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(worker, "_run_backup", lambda db: None)
     monkeypatch.setattr(worker, "_seconds_until_next_run", lambda *a, **k: 0.01)
     monkeypatch.setattr(worker, "ROUTINE_RETRY_DELAY_S", 0.01)
-    monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
+    # One second after the earlier attempts: past the (patched) retry gap, as a restart is (D-113).
+    monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING + timedelta(seconds=1))
     monkeypatch.setattr(worker, "_build_daily_coach", _Coach)
     monkeypatch.setattr(telegram_bot, "TitanTelegramBot", _Bot)
     _Coach.calls, _Coach.delivers, _Coach.writes_decision, _Coach.stop_after = [], True, True, None
@@ -152,8 +153,10 @@ def test_a_crash_before_the_decision_runs_the_routine_again(data_dir) -> None:
     assert _day(data_dir) == [(2, 1, 1)]
 
 
-def test_an_undelivered_day_is_tried_three_times_then_left_with_one_message(data_dir, caplog) -> None:
+def test_an_undelivered_day_is_tried_three_times_then_left_with_one_message(data_dir, monkeypatch, caplog) -> None:
     _Coach.delivers, _Coach.writes_decision = False, False
+    ticks = iter(range(1, 10**6))  # the clock moves one second per read, past the patched gap (D-113)
+    monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING + timedelta(seconds=next(ticks)))
     stop = threading.Event()
     _Bot.stop_on_alert = stop
 

@@ -322,7 +322,8 @@ def test_shutdown_joins_routine_thread_before_db_close(monkeypatch):
 
     titan_main.main()
 
-    assert call_order == ["routine.join:30", "db.close"]
+    # Both runners (/today and the scheduled morning) are joined before the close (D-113).
+    assert call_order == ["routine.join:30", "routine.join:30", "db.close"]
 
 
 def test_shutdown_avoids_sqlite_programming_error_with_concurrent_routine(monkeypatch):

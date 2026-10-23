@@ -627,20 +627,23 @@ def main():
         garmin.stop_background_sync()
         weather.stop_background_updates()
         telegram.stop_bot()
-        routine_thread = routine_runner.thread
-        if routine_thread is not None and routine_thread.is_alive():
-            timeout_seconds = 30
-            routine_thread.join(timeout=timeout_seconds)
-            still_alive = routine_thread.is_alive()
-            if still_alive:
-                log.error(
-                    "worker_shutdown_timeout",
-                    extra={
-                        "worker_name": "DailyCoachRoutine",
-                        "timeout_seconds": timeout_seconds,
-                        "still_alive": still_alive,
-                    },
-                )
+        # Both runners: /today runs on routine_runner, the scheduled morning on morning_runner
+        # (D-113). The database closes only after each has finished or timed out.
+        for runner in (routine_runner, morning_runner):
+            routine_thread = runner.thread
+            if routine_thread is not None and routine_thread.is_alive():
+                timeout_seconds = 30
+                routine_thread.join(timeout=timeout_seconds)
+                still_alive = routine_thread.is_alive()
+                if still_alive:
+                    log.error(
+                        "worker_shutdown_timeout",
+                        extra={
+                            "worker_name": "DailyCoachRoutine",
+                            "timeout_seconds": timeout_seconds,
+                            "still_alive": still_alive,
+                        },
+                    )
         db.close()
         log.info("shutdown_completed")
 
