@@ -39,6 +39,46 @@ Phase 27 OPEN — Cohort analytics + CohortProfile (population-level calibration
 
 ---
 
+## Project Mayhem, Φάση 0 — ευρήματα κατηγορίας B (καταγραφή 2026-10-23)
+
+Ο έλεγχος της Φάσης 0 (Project Mayhem, 2026-10-23) βρήκε ευρήματα που δεν διορθώνονται στη Φάση 1.
+Καταγράφονται εδώ ως Tier 1 (ακεραιότητα δεδομένων, ασφάλεια, απομόνωση) ή Tier 2 (παρατηρησιμότητα,
+διακυβέρνηση), με στόχο τη Phase 27. Τα αναλυτικά στοιχεία είναι στην αναφορά της Φάσης 0. Τα ευρήματα
+σε μονοπάτια ασφάλειας ή απόφασης ανέβηκαν σε B λόγω του severity floor (CONTRACT 7.9 §10, έλεγχος
+DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίνεται χωρίς έγκριση του owner ανά εύρημα (Φάση 2 του
+σχεδίου). Ο έλεγχος είναι AI, όχι ανθρώπινη πιστοποίηση.
+
+| # | Tier | Εύρημα | Στοιχεία | Κατάσταση |
+|---|------|--------|----------|-----------|
+| M0-07 | 2 | Τα έγγραφα διακυβέρνησης διαφωνούν: τέσσερις αριθμήσεις «Φάση», το SA:C-1 μένει ανοιχτό μέχρι να κλείσουν τα M0-05 και M0-26, και το μητρώο AGENTS §30 είναι παλιό. Όσο ισχύει αυτό, δεν δίνεται clearance | `AGENTS.md` §30, `docs/ROADMAP.MD`, `PROGRESS.md`, `CLAUDE.md` | OPEN · στόχος Phase 27 |
+| M0-08 | 1 | Αν το Telegram αργήσει να απαντήσει ενώ το μήνυμα έφτασε, ξαναστέλνεται ολόκληρο το briefing | `telegram_bot.py` (send με timeout), `daily_coach.py` send handler | OPEN · στόχος Phase 27 |
+| M0-09 | 2 | Οι αθλητές τρέχουν ένας ένας. Όσοι δεν ξεκινήσουν ως τις 12:00 UTC χάνουν τη μέρα χωρίς ειδοποίηση στον owner | `worker/__init__.py` (`ROUTINE_LAST_START_HOUR_UTC`, round) | OPEN · στόχος Phase 27 |
+| M0-10 | 2 | Το εβδομαδιαίο πλάνο στέλνεται το πολύ μία φορά, και μια αποτυχημένη αποστολή δεν αναφέρεται | `worker/__init__.py` (`_prepare_weekly_plan`) | OPEN · στόχος Phase 27 |
+| M0-11 | 1 | Η βάση RHR και το ιστορικό φορτίου μετράνε από το ρολόι, όχι από τη μέρα του πρωινού. Σε επανάληψη μετά τα μεσάνυχτα η H3 μπορεί να χάσει άνοδο RHR | `repositories/physiology.py`, `repositories/training.py` | OPEN · στόχος Phase 27 |
+| M0-14 | 1 | Το `/metrics` του API δεν ζητά πιστοποίηση και η θύρα 8000 ακούει σε όλο το δίκτυο | `api/main.py` (`/metrics`), `docker-compose.yml` (ports) | OPEN · στόχος Phase 27 |
+| M0-15 | 2 | 6 tests παραλείπονται μόνιμα | `tests/test_t5_50_session_type_map.py` | OPEN · στόχος Phase 27 |
+| M0-16 | 2 | Η σχεδίαση (ένας αθλητής τη φορά, ένα SQLite, 07:00–12:00 UTC) δεν φτάνει για πολλούς αθλητές. Για πιλότο λίγων αθλητών δεν είναι θέμα | `worker/__init__.py` (round) | OPEN · στόχος Phase 27 |
+| M0-17 | 1 | Το φίλτρο που κρύβει στοιχεία από τα logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές log (MA-F7 μερικώς) | `utils/secrets.py`, `scripts/run_api.py`, `telegram_bot.py` | OPEN · στόχος Phase 27 |
+| M0-20 | 1 | Η κόπωση της πρώτης μέρας μετρά ως μετρημένη | `daily_coach.py` (fatigue) | OPEN · στόχος Phase 27 |
+| M0-21 | 1 | Το rationale λέει CLEAR όταν η βάση HRV είναι άκυρη ή το TSB είναι NaN | `governance_engine.py` (rationale) | OPEN · στόχος Phase 27 |
+| M0-22 | 1 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | `daily_coach.py` (load refresh) | OPEN · στόχος Phase 27 |
+| M0-23 | 1 | Η ετοιμότητα παίρνει RHR 50 ως προεπιλογή όταν λείπει | `daily_coach.py` (readiness) | OPEN · στόχος Phase 27 |
+| M0-25 | 1 | Το `get_recent_hrv_mean` καλείται χωρίς `athlete_id`. Ο έλεγχος ρητού id καλύπτει μόνο worker και orchestration | `repositories/physiology.py` | OPEN · στόχος Phase 27 |
+| M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | OPEN · ο owner διάλεξε «ομάδα + έλεγχος αποστολέα»· PR #1092 ανοιχτό |
+| M0-12 | 1 | Οι αποφάσεις αθλητή διαβάζονταν ως του owner | `outcome_tracker.py`, `repositories/governance.py` | RESOLVED · PR #1088 (D-147) |
+| M0-13 | 1 | Ο λογαριασμός Garmin του owner μπορούσε να δεθεί σε αθλητή | `garmin_sync.py` (`relogin_athlete`) | RESOLVED · PR #1087 (D-146) |
+| M0-26 | 1 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | `api/main.py` | RESOLVED · PR #1086 (μαζί με M0-05, D-145) |
+
+**Υπόλοιπα από τις διορθώσεις της Φάσης 1** (από τους ανεξάρτητους ελέγχους των PR):
+
+| # | Tier | Υπόλοιπο | Κατάσταση |
+|---|------|----------|-----------|
+| M0-13-R1 | 1 | Έλεγχος μετά το login με το `displayName` του owner, που σήμερα δεν αποθηκεύεται. Καλύπτει την περίπτωση που ο owner αλλάξει το Garmin e-mail του και το `.env` κρατήσει το παλιό (D-146) | OPEN · στόχος Phase 27 |
+| M0-12-R1 | 2 | Η διαδρομή PostgreSQL (`persistence.py` adapter, `database.py`) δεν επιστρέφει `athlete_profile_id` στις αποφάσεις governance. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-27 | OPEN · πριν ενεργοποιηθεί το PostgreSQL |
+| M0-01-R1 | 1 | Ο έλεγχος fencing και η αποστολή δεν είναι ατομικά: μένει παράθυρο κλασμάτων δευτερολέπτου (D-148, PR #1089) | OPEN · στόχος Phase 27 |
+
+---
+
 ## TIER 1 — Data Integrity (All Resolved ✅)
 
 All 23 Tier 1 items (T1-01 through T1-23) are **RESOLVED**.
@@ -1697,7 +1737,7 @@ RESOLVED disposition.
 | T-PRA-07 | B-4 | 1 | Fail-closed governance guard (INV-12) | RESOLVED 2026-06-12 (PR #865) | — |
 | T-PRA-08 | B-6 | 1 | Off-volume backups, retention, integrity check, restore drill, `RUNBOOK_DR.md` | FIX MERGED: PR #906 (`titan-backups` volume, verified artifacts, 7 daily + 4 weekly retention, `scripts/restore_drill.py`, `docs/RUNBOOK_DR.md`); DR-03 drill result recorded at next phase close; Architect close pending | Refactor plan task #15 |
 | T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | FIX MERGED: PR #909 (version only in `pyproject.toml`, read at runtime; `release.yml` builds `ghcr.io` images per `vX.Y.Z` tag on `main`; `docker-compose.release.yml` pins images; `docs/RUNBOOK_ROLLBACK.md`; `tests/test_release_engineering.py`); RE-03 staging drill pending the first tag; Architect close pending | Refactor plan task #16 |
-| T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | OPEN | Not scheduled |
+| T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | RESOLVED 2026-10-23 (D-143): `tests/test_degradation_alert_chain.py` runs the real GarminSync failure count → DegradedModeTracker (SQLite) → effect-bus hook → `alert_operator` chain, owner and athlete | — |
 | T-PRA-11 | B-13 | 2 | Request body-size middleware (RBP-01) | FIX MERGED: PR #928 (`BodySizeLimitMiddleware`: Content-Length pre-check + streamed-read cap → 413; `API_MAX_BODY_SIZE_BYTES` default 1 MiB; `tests/test_request_boundary.py`); Architect close pending | Refactor plan task #21 |
 | T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling) | OPEN (module ceiling: AGENTS §16.11 states 90, the test value, ADR-0070; T-PRA rows mirrored here) | Refactor plan task #11 |
 | T-PRA-14 | B-10 | 2 | MPC doc/comment corrections; ADR-0044 execution-date decision | OPEN | Refactor plan task #25 (Architect decision) |

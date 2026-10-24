@@ -305,16 +305,40 @@ class OperationsRepository:
                 raise
         return state, attempts
 
-    def end_routine_attempt(self, *, athlete_id: str, execution_date: str, routine_type: str) -> None:
-        """The attempt in progress ended, whatever its outcome: clear its mark (ADR-0069 §4β)."""
+    def end_routine_attempt(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, attempt: int,
+    ) -> None:
+        """Attempt ``attempt`` ended, whatever its outcome: clear its mark (ADR-0069 §4β).
+
+        Only that attempt's own mark is cleared (M0-01): when a later attempt took the day
+        over, the mark is the later attempt's and stays.
+        """
         with self._db._lock:
             self._db._ensure_open_locked()
             self._db.conn.cursor().execute(
                 "UPDATE worker_routine_executions SET running_since = NULL, running_by = NULL "
-                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
-                (athlete_id, execution_date, routine_type),
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? AND attempts = ?",
+                (athlete_id, execution_date, routine_type, attempt),
             )
             self._db.conn.commit()
+
+    def routine_attempt_is_current(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, attempt: int,
+    ) -> bool:
+        """True while attempt ``attempt`` is still the day's latest and the day is open (M0-01).
+
+        The attempt number is the fencing token: a later attempt that took the day over has a
+        higher number, and a delivered or left day is closed. An attempt that is no longer
+        current must not record a decision or send a briefing.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.cursor().execute(
+                "SELECT attempts, delivered_at, completed_at FROM worker_routine_executions "
+                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
+                (athlete_id, execution_date, routine_type),
+            ).fetchone()
+        return row is not None and row[0] == attempt and row[1] is None and row[2] is None
 
     # --- ATHLETE INJURIES (ADR-0069 §3, §4ε) ---
 
