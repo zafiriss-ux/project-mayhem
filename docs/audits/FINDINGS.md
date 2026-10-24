@@ -103,20 +103,20 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
 | — | M0-17 | Το φίλτρο των logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
 | — | M0-18 | Το τέλος της προσπάθειας γραφόταν πριν από το «παραδόθηκε» | LOW | Α | FIXED | #1089, D-148 | ναι | RC |
-| — | M0-19 | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | SD |
+| — | M0-19 | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | HIGH | Β | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SD |
 | — | M0-20 | Η κόπωση της πρώτης μέρας μετρά ως μετρημένη | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-21 | Το rationale λέει CLEAR για άκυρη baseline HRV ή TSB NaN | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-22 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-23 | Η ετοιμότητα παίρνει RHR 50 όταν λείπει | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
-| — | M0-24 | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | RC |
+| — | M0-24 | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | RC |
 | — | M0-25 | Το `get_recent_hrv_mean` χωρίς `athlete_id` | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
 | — | M0-26 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
-| — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | TRACKED: πριν από το PostgreSQL (εκτός χρήσης, ADR-0044) | TECHNICAL_DEBT, D-156 | — | IS |
-| — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | SP |
-| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | SP |
-| — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | SP |
-| — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | AT |
-| — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT, D-156 | — | AT |
+| — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044)· γράφτηκε στο TECHNICAL_DEBT (D-156) | TECHNICAL_DEBT, D-156 | — | IS |
+| — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
+| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
+| — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
+| — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
+| — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
 | — | M0-33 | Ομαδική συνομιλία ως αξιόπιστο chat του owner | HIGH | Β | FIXED | #1092, D-150 | ναι | IS |
 
 Ανεβαίνουν σε HIGH, γιατί αγγίζουν πιστοποίηση, κωδικούς, απομόνωση ή πύλες governance: M0-11, M0-12-R1,
@@ -128,8 +128,8 @@ M0-13-R1, M0-14, M0-19, M0-25, M0-27, M0-29. Το OW-M2 ανεβαίνει γι�
 |---|---|---|---|---|---|---|
 | — | F-02 | Test για όλη την αλυσίδα ειδοποίησης (T-PRA-10, INV-21) | MEDIUM | Α | FIXED: #1085, D-143 | RC |
 | — | F-03 | «80 αντί 90» στην περιγραφή του test ορίου modules | LOW | Α | FIXED: #1082 | AT |
-| — | F-06 | Η `/injury` υπάρχει μόνο για τον owner· οι αθλητές δεν έχουν πηγή για την H1 | HIGH | Β | TRACKED: Phase 27 (ADR-0067 D10.3· TECHNICAL_DEBT, D-156) | SD |
-| — | F-07 | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | LOW | Β | TRACKED: Phase 27 (TECHNICAL_DEBT, D-156) | SD |
+| — | F-06 | Η `/injury` υπάρχει μόνο για τον owner· οι αθλητές δεν έχουν πηγή για την H1 | HIGH | Β | ανοιχτό (ADR-0067 D10.3)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | SD |
+| — | F-07 | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | LOW | Β | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | SD |
 
 Το F-06 είναι HIGH: η H1 είναι πύλη governance.
 
@@ -150,4 +150,6 @@ M0-13-R1, M0-14, M0-19, M0-25, M0-27, M0-29. Το OW-M2 ανεβαίνει γι�
 Τα 24 ευρήματα των δύο audits του σχεδίου (R-01 ως R-16, A-01 ως A-08) αφορούν το κείμενο του
 πλάνου, όχι τον κώδικα. Η διάθεση του καθενός είναι στο
 [`2026-10-24-plan-review.md`](2026-10-24-plan-review.md): 21 κρατήθηκαν ολόκληρα και 3 εν μέρει, και
-όλα μπήκαν στην αναθεώρηση 1 του σχεδίου.
+όλα μπήκαν στην αναθεώρηση 1 του σχεδίου. Το R-09 ανέβηκε σε HIGH (οι εγκρίσεις Β των M0-02/03/11
+δόθηκαν με κάρτα σε κώδικα πυλών) και μένει ανοιχτό μέχρι ο Zaf να κάνει Accepted το ADR που τις
+καταγράφει.
