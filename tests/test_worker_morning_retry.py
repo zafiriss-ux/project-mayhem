@@ -240,7 +240,8 @@ def test_sg04_the_resend_probe_new_hrv_and_rhr_are_not_sent_as_tempo(db, monkeyp
     called: list[str] = []
     monkeypatch.setattr(worker, "_run_morning", lambda _db, aid, **_kw: called.append(aid) or True)
 
-    assert _attempt(db, 2) is True
+    # The day's first claimed attempt: the attempt number is the claim's (M0-01 fencing).
+    assert _attempt(db, 1) is True
 
     assert called == [_A]
     assert not any("TEMPO" in text for text in _to_athlete())

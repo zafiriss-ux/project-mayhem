@@ -39,7 +39,7 @@ def test_a_second_attempt_waits_while_the_first_runs(tmp_path: Path) -> None:
     try:
         assert _begin(db, T0, "console:aaa") == ("run", 1)
         assert _begin(db, T0 + dt.timedelta(minutes=16), "worker:bbb") == ("wait", 1)
-        db.end_routine_attempt(athlete_id="owner", execution_date="2026-03-02", routine_type="morning")
+        db.end_routine_attempt(athlete_id="owner", execution_date="2026-03-02", routine_type="morning", attempt=1)
         assert _begin(db, T0 + dt.timedelta(minutes=16), "worker:bbb") == ("run", 2)
     finally:
         db.close()
@@ -75,7 +75,7 @@ def test_the_worker_claim_waits_for_the_consoles_running_attempt(tmp_path: Path,
         assert worker._claim_routine(db, "owner", T0, spaced=True, last_start=False, runner="console") == 1
         later = T0 + dt.timedelta(minutes=16)
         assert worker._claim_routine(db, "owner", later, spaced=True, last_start=False) is False
-        worker._end_attempt(db, "owner", "2026-03-02")
+        worker._end_attempt(db, "owner", "2026-03-02", attempt=1)
         assert worker._claim_routine(db, "owner", later, spaced=True, last_start=False) == 2
     finally:
         db.close()
