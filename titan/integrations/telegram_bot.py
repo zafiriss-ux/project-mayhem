@@ -234,7 +234,11 @@ class TitanTelegramBot:
             # The owner's own Telegram user id. Needed only when TELEGRAM_CHAT_ID is a group:
             # there every member writes in the trusted chat, and only the owner's messages
             # are commands (M0-33). A user id is positive, like a private chat id.
-            self._owner_user_id = canonical_chat_id(get_settings().TELEGRAM_OWNER_USER_ID)
+            _raw_owner_user = str(get_settings().TELEGRAM_OWNER_USER_ID or "").strip()
+            self._owner_user_id = canonical_chat_id(_raw_owner_user)
+            if _raw_owner_user and self._owner_user_id is None:
+                # Set but not a user id ("+42", "-42", text): treated as unset, said once here.
+                _log.critical("titan.telegram.owner_user_id_invalid")
         try:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):

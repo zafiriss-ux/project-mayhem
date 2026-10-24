@@ -110,11 +110,41 @@ def test_in_the_group_another_members_command_gets_no_reply(monkeypatch) -> None
 
 
 @pytest.mark.unit
+def test_in_the_group_no_owner_command_runs_for_another_member(monkeypatch) -> None:
+    """Every registered command, not a sample: none replies or reaches a callback."""
+    _settings(monkeypatch, chat=str(GROUP), owner_user=str(OWNER_USER))
+    bot = _bot()
+    called: list[str] = []
+    for name in list(bot.fake.handlers):
+        bot.cmd_callbacks[name] = lambda name=name: called.append(name) or "ran"
+    monkeypatch.setattr(bot, "handle_manual_entry_text", lambda *a, **k: called.append("manual") or "ran")
+    monkeypatch.setattr(bot, "handle_injury_text", lambda *a, **k: called.append("injury") or "ran")
+    monkeypatch.setattr(bot, "handle_time_trial_text", lambda *a, **k: called.append("trial") or "ran")
+    assert len(bot.fake.handlers) >= 15
+    for name, handler in bot.fake.handlers.items():
+        handler(_message(GROUP, MEMBER_USER, f"/{name} HRV=50"))
+    assert bot.fake.replies == []
+    assert called == []
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("raw", ["+4242", "-4242", "abc"])
+def test_an_owner_user_id_that_is_not_one_trusts_nobody_and_says_so(monkeypatch, caplog, raw) -> None:
+    with caplog.at_level(logging.CRITICAL, logger="titan.integrations.telegram_bot"):
+        _settings(monkeypatch, chat=str(GROUP), owner_user=raw)
+        bot = _bot()
+    assert any("owner_user_id_invalid" in r.getMessage() for r in caplog.records)
+    bot.fake.handlers["stats"](_message(GROUP, OWNER_USER))
+    assert bot.fake.replies == []
+
+
+@pytest.mark.unit
 def test_in_the_group_a_sender_telegram_does_not_name_is_not_the_owner(monkeypatch) -> None:
     """An anonymous admin or a channel post has no from_user (or Telegram's stand-in id)."""
     _settings(monkeypatch, chat=str(GROUP), owner_user=str(OWNER_USER))
     bot = _bot()
     bot.fake.handlers["stats"](_message(GROUP, None))
+    bot.fake.handlers["stats"](_message(GROUP, 1087968824))  # Telegram's anonymous-admin id
     bot.fake.handlers["stats"](SimpleNamespace(chat=SimpleNamespace(id=GROUP), text="/stats"))
     assert bot.fake.replies == []
 

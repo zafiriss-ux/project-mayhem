@@ -24,7 +24,9 @@
   owner ως chat αθλητή.
 - **Fail closed (INV-16):** χωρίς `TELEGRAM_OWNER_USER_ID` κανένα μήνυμα ομάδας δεν είναι εντολή και
   γράφεται CRITICAL `titan.telegram.group_owner_user_not_configured`. Αποστολέας που το Telegram δεν
-  ονομάζει (ανώνυμος admin, κανάλι) δεν είναι ποτέ ο owner.
+  ονομάζει (ανώνυμος admin, κανάλι) δεν είναι ποτέ ο owner. Τιμή που δεν είναι user id (`+42`,
+  `-42`, κείμενο) μετρά ως κενή, και το λέει μία φορά στην εκκίνηση
+  (`titan.telegram.owner_user_id_invalid`).
 - **Προσοχή στην αναβάθμιση:** αν το chat του Zaf είναι σήμερα ομάδα, το bot σταματά να του απαντά
   ώσπου να οριστεί το `TELEGRAM_OWNER_USER_ID` στο `.env`. Το λέει το README και το
   `docs/runbooks/docker-deploy.md`.
@@ -32,8 +34,9 @@
   ομάδα)· έλεγχος μόνο μέσω λίστας admins της ομάδας από το Telegram API (κλήση δικτύου σε κάθε εντολή,
   και ένας admin δεν είναι ο owner)· ο οδηγός ρύθμισης (`setup_wizard.py`) δεν ρωτά ακόμη το user id,
   αφήνεται για όταν χρειαστεί.
-- **Test:** `tests/test_telegram_group_owner_m0_33.py`, 7 tests· τα 5 αρνητικά αποτυγχάνουν πριν τη
-  διόρθωση.
+- **Test:** `tests/test_telegram_group_owner_m0_33.py`, 11 tests (κάθε εντολή από άλλο μέλος, το
+  κουμπί και ο λόγος του override, ανώνυμος αποστολέας, λάθος τιμή της ρύθμισης)· όλα τα αρνητικά
+  αποτυγχάνουν πριν τη διόρθωση.
 
 ## D-142 · Έκδοση 5.9.0· το release φέρνει και το TITAN.exe
 
