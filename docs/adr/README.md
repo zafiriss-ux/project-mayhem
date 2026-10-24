@@ -87,7 +87,7 @@
 | [0070](0070-documents-reconciled-after-ma-ow-p4.md) | Τα έγγραφα συμφωνούν ξανά με τον κώδικα μετά τους ελέγχους MA/OW/P4: AGENTS §8.13, §16.6, §16.11, §30, ADR-0055, ADR-0033, DECISION_MODEL, TECHNICAL_DEBT | Governance (policy-only) | ✅ Accepted (2026-10-23) |
 | [0071](0071-main-branch-ruleset.md) | Το main δέχεται αλλαγές μόνο με PR και 13 πράσινους υποχρεωτικούς ελέγχους· κανένα force-push ή διαγραφή (M0-06) | Governance (policy-only) / CI | ✅ Accepted (2026-10-24) |
 | [0072](0072-card-approvals-m0-02-03-11.md) | Οι εγκρίσεις Κατηγορίας Β για τα M0-02, M0-03, M0-11 δόθηκαν με κάρτα· καταγράφονται εδώ, και από τώρα κάθε αλλαγή Β θέλει ADR Accepted πριν από τον κώδικα | Governance (policy-only) | ✅ Accepted (2026-10-24) |
-| [0073](0073-sd-urgent-conservative-measure.md) | Προσωρινό συντηρητικό μέτρο για τα επείγοντα του ελέγχου SD (M0-22, SD-01 ως SD-04): ό,τι δεν μετρήθηκε σωστά μετρά ως «δεν μετρήθηκε» και κλείνει | Governance | 🔲 Proposed (2026-10-24) |
+| [0073](0073-sd-urgent-conservative-measure.md) | Προσωρινό συντηρητικό μέτρο για τα επείγοντα του ελέγχου SD (M0-22, SD-01 ως SD-04): ό,τι δεν μετρήθηκε σωστά μετρά ως «δεν μετρήθηκε» και κλείνει | Governance | ✅ Accepted (2026-10-24) |
 
 ---
 
