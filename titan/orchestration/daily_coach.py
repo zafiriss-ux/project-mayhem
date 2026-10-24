@@ -606,7 +606,7 @@ class _PipelineInputs:
     today_rhr: int            # 0 when tonight's reading is missing
     today_sleep_score: int | None   # None when Garmin sent no score (ADR-0051, SV-06)
     today_sleep_hours: float
-    baseline_rhr_for_comparison: float
+    baseline_rhr_for_comparison: float | None  # None: no RHR in the 7 days before today (M0-02)
     persistence_degraded: bool
     garmin_data_stale: bool
     latest_hrv: float
@@ -1200,17 +1200,19 @@ class DailyCoach:
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
         self._baseline_rhr_read_failed = False
         baseline_rhr = self._get_baseline_rhr(days=7)
+        # No RHR in the 7 days before today reaches governance as None, which applies
+        # ADR-0051 (H3_MISSING, EASY ceiling) like a missing HRV baseline (M0-02). Today's
+        # RHR used as its own baseline gave a delta of 0, so H3 could never fire.
         baseline_rhr_for_comparison = baseline_rhr
         if baseline_rhr is None:
-            baseline_rhr_for_comparison = float(today_rhr or 50)
             _daily_coach_event(
                 "baseline_rhr_degraded_mode",
-                today_rhr=today_rhr or 50,
-                fallback_baseline_rhr=baseline_rhr_for_comparison,
+                today_rhr=today_rhr or None,
+                fallback_baseline_rhr=None,
             )
         # The operator alert is for a read that failed. No RHR before today (a new
-        # athlete's first morning, D-105) is not a database fault: H3 still runs in the
-        # same degraded mode, but nobody is told to check the database.
+        # athlete's first morning, D-105) is not a database fault: H3 applies the same
+        # EASY ceiling, but nobody is told to check the database.
         if baseline_rhr is None and getattr(self, "_baseline_rhr_read_failed", True):
             try:
                 alert_operator(
@@ -1219,7 +1221,7 @@ class DailyCoach:
                     message=(
                         "Baseline RHR could not be read from DB.\n"
                         "H3 gate is operating in degraded mode — "
-                        "using today's RHR as its own baseline (delta = 0).\n"
+                        "no RHR baseline, EASY ceiling applied.\n"
                         "Check database health."
                     ),
                     level="warning",
@@ -1289,7 +1291,7 @@ class DailyCoach:
         today_rhr: int,
         today_sleep_score: int,
         today_sleep_hours: float,
-        baseline_rhr_for_comparison: float,
+        baseline_rhr_for_comparison: float | None,
         persistence_degraded: bool,
         garmin_data_stale: bool,
         latest_hrv: float,
@@ -1487,7 +1489,13 @@ class DailyCoach:
             today_hrv    = inp.today_hrv,
             baseline_hrv = inp.baseline_hrv,
             today_rhr    = inp.today_rhr or 50,
-            baseline_rhr = inp.baseline_rhr_for_comparison,
+            # Readiness keeps its old neutral comparison when there is no baseline: H3
+            # governs the missing baseline (M0-02), readiness only scores.
+            baseline_rhr = (
+                inp.baseline_rhr_for_comparison
+                if inp.baseline_rhr_for_comparison is not None
+                else float(inp.today_rhr or 50)
+            ),
             sleep_score  = _sleep_score_or_default(inp.today_sleep_score),
             soreness     = inp.soreness,
         ))
@@ -2106,7 +2114,7 @@ class DailyCoach:
         baseline_hrv: float | None,
         hrv_std_dev: float | None,
         today_rhr: int | None,
-        baseline_rhr: float,
+        baseline_rhr: float | None,
         sleep_score: int | None,
         subjective_fatigue_score: int,
         tsb_value: float,
