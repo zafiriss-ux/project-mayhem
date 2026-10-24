@@ -43,7 +43,7 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # D-152 (M0-02), approved by Zaf 2026-10-24: with no RHR in the 7 days before today H3 gets no
 # baseline, so the first morning of each scenario (already EASY by H2 and H4) also logs
 # DATA_MISSING_CONSERVATIVE_H3 and a null fallback baseline. No session or Telegram text changes.
-# D-164 (SD-03), ADR-0073 point 4: an RHR baseline needs 4 nights in the 7 days before today,
+# D-164 (SD-03), ADR-0073 point 4, approved by Zaf 2026-10-24: an RHR baseline needs 4 nights in the 7 days before today,
 # so the first mornings of each scenario (already EASY by H2 and H4) and 8/3 of the outage also
 # log DATA_MISSING_CONSERVATIVE_H3. The H3 "missing data" alert goes out once on 3/3, for the
 # baseline, instead of on 6/3 for the outage RHR. No session, ceiling or volume changes.
