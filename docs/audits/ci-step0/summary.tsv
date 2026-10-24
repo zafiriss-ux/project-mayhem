@@ -14,4 +14,3 @@ run	sha	variant	start_utc	end_utc	seconds	exit	g2_line
 13	ae30e4a	normal	-	-	-	not run	the loop was stopped before it started
 14	4bcc3ee	nonet	2026-10-24T11:05:03Z	2026-10-24T11:11:36Z	393	0	4431 passed, 8 skipped, 3 warnings in 370.76s (0:06:10)
 15	ae30e4a	normal	2026-10-24T11:11:36Z	2026-10-24T11:40:31Z	1735	143	
-DONE2
