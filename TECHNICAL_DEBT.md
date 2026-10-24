@@ -95,6 +95,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | M0-32 | 2 | LOW | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | tests του CLAUDE.md | OPEN · στόχος Phase 27 · έλεγχος AT |
 | F-06 | 1 | HIGH | Η `/injury` υπάρχει μόνο για τον owner· οι αθλητές δεν έχουν πηγή για την H1 (ADR-0067 D10.3) | `telegram_bot.py` (`/injury`) | OPEN · στόχος Phase 27 · έλεγχος SD |
 | F-07 | 2 | LOW | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | `worker/__init__.py` (`_CRASH_REMINDER_ATHLETE`) | OPEN · στόχος Phase 27 · έλεγχος SD |
+| S0-01 | 2 | MEDIUM | Στο `ae30e4a` το `titan_ci.sh` αποτυγχάνει και κολλά πάντα με το ίδιο μοτίβο· στο `4bcc3ee` περνά. Αιτία άγνωστη (υπόθεση: διαρροή ρολογιού του freezegun ανάμεσα σε tests) | `docs/audits/2026-10-24-phase0-plan.md` §2.1, `docs/audits/ci-step0/` | OPEN · στόχος Phase 27 · έλεγχος AT |
 
 ---
 
