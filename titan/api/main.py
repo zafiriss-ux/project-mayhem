@@ -296,6 +296,7 @@ class LoginRateLimiter:
 class AuditActionType(StrEnum):
     VIEW_DATA = "VIEW_DATA"
     SUBMIT_OVERRIDE = "SUBMIT_OVERRIDE"
+    ADD_NOTE = "ADD_NOTE"
 
 
 @dataclass(frozen=True)
@@ -522,9 +523,15 @@ def create_app(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Athlete isolation violation")
         return {"athlete_id": athlete_id, "viewer": current_user.id}
 
+    # M0-26: a note names its athlete and passes the same assignment check and durable
+    # audit as an override (INV-11, INV-22), not the role check alone.
     @app.post("/coach/notes")
-    def create_coach_note(_: dict[str, Any], __: AuthUser = Depends(require_coach)) -> dict[str, str]:
-        return {"status": "created"}
+    def create_coach_note(
+        athlete_id: str,
+        _: dict[str, Any],
+        __: AuthUser = Depends(_audited(AuditActionType.ADD_NOTE, "coach_note")),
+    ) -> dict[str, str]:
+        return {"status": "created", "athlete_id": athlete_id}
 
     @app.post("/coach/overrides")
     def submit_coach_override(

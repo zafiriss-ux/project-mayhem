@@ -295,6 +295,29 @@ def _briefing_hook(hook: "Callable[..., None] | None", *args: object) -> None:
         _daily_coach_event("briefing_hook_failed", error_class=type(exc).__name__, error_message=str(exc))
 
 
+def _attempt_owns_day(coach: object) -> bool:
+    """False when the worker's attempt no longer owns the day (M0-01); True outside the worker.
+
+    A later attempt took the day over, or the day was delivered or left. A failing check
+    counts as not owning it (fail closed): nothing is recorded or sent.
+    """
+    check = getattr(coach, "attempt_is_current", None)
+    if check is None:
+        return True
+    if getattr(coach, "attempt_lost", False):
+        return False
+    try:
+        owns = bool(check())
+    except Exception as exc:
+        _daily_coach_event("attempt_check_failed", error_class=type(exc).__name__, error_message=str(exc))
+        owns = False
+    if not owns:
+        # Once lost, lost for the rest of the run: a briefing is never sent for a decision
+        # that this run did not record (M0-01 review).
+        coach.attempt_lost = True
+    return owns
+
+
 def _missing_inputs(context: dict) -> dict[str, str]:
     """The H2, H3 and H4 inputs governance found missing, flag → label (P4-01)."""
     missing: dict[str, str] = {}
@@ -703,6 +726,9 @@ class DailyCoach:
         self.before_system_error_alert: Callable[[], bool] | None = None
         # MA-F5 (ADR-0069 §8): the worker marks "sending" and clears the mark on a refused send.
         self.before_briefing_send: Callable[[], None] | None = None
+        # Set by the worker: False once its attempt no longer owns the day (M0-01).
+        self.attempt_is_current: Callable[[], bool] | None = None
+        self.attempt_lost = False
         self.after_briefing_send: Callable[[bool], None] | None = None
         self._degraded_tracker = DegradedModeTracker(db=self.db, athlete_id=self.athlete_id)
         self._effect_bus = self._build_effect_bus()
@@ -1921,6 +1947,9 @@ class DailyCoach:
         athlete_profile_id = getattr(self, "athlete_id", "owner")
 
         def _handle(effect, result):
+            if not _attempt_owns_day(self):
+                _daily_coach_event("decision_not_recorded", reason="attempt_superseded")
+                return
             trace = result.decision_trace
             outcome_tracker.record_decision(
                 date=_routine_day(self).isoformat(),
@@ -1958,6 +1987,10 @@ class DailyCoach:
             if note:
                 earlier = payload.get("special_note")
                 payload = {**payload, "special_note": f"{earlier}\n⚠️ {note}" if earlier else note}
+            if not _attempt_owns_day(self):
+                # Another attempt owns the day (M0-01): it sends, this one does not.
+                _daily_coach_event("briefing_not_sent", reason="attempt_superseded")
+                return False
             _briefing_hook(getattr(self, "before_briefing_send", None))
             try:
                 delivery_ok = telegram.send_daily_coaching(payload)

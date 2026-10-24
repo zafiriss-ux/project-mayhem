@@ -64,10 +64,10 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-22 | 1 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | `daily_coach.py` (load refresh) | OPEN · στόχος Phase 27 |
 | M0-23 | 1 | Η ετοιμότητα παίρνει RHR 50 ως προεπιλογή όταν λείπει | `daily_coach.py` (readiness) | OPEN · στόχος Phase 27 |
 | M0-25 | 1 | Το `get_recent_hrv_mean` καλείται χωρίς `athlete_id`. Ο έλεγχος ρητού id καλύπτει μόνο worker και orchestration | `repositories/physiology.py` | OPEN · στόχος Phase 27 |
-| M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | OPEN · περιμένει απόφαση του owner |
-| M0-12 | 1 | Οι αποφάσεις αθλητή διαβάζονταν ως του owner | `outcome_tracker.py`, `repositories/governance.py` | PR #1088 ανοιχτό |
-| M0-13 | 1 | Ο λογαριασμός Garmin του owner μπορούσε να δεθεί σε αθλητή | `garmin_sync.py` (`relogin_athlete`) | PR #1087 ανοιχτό |
-| M0-26 | 1 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | `api/main.py` | PR #1086 ανοιχτό (μαζί με M0-05) |
+| M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | OPEN · ο owner διάλεξε «ομάδα + έλεγχος αποστολέα»· PR #1092 ανοιχτό |
+| M0-12 | 1 | Οι αποφάσεις αθλητή διαβάζονταν ως του owner | `outcome_tracker.py`, `repositories/governance.py` | RESOLVED · PR #1088 (D-147) |
+| M0-13 | 1 | Ο λογαριασμός Garmin του owner μπορούσε να δεθεί σε αθλητή | `garmin_sync.py` (`relogin_athlete`) | RESOLVED · PR #1087 (D-146) |
+| M0-26 | 1 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | `api/main.py` | RESOLVED · PR #1086 (μαζί με M0-05, D-145) |
 
 **Υπόλοιπα από τις διορθώσεις της Φάσης 1** (από τους ανεξάρτητους ελέγχους των PR):
 
@@ -1737,7 +1737,7 @@ RESOLVED disposition.
 | T-PRA-07 | B-4 | 1 | Fail-closed governance guard (INV-12) | RESOLVED 2026-06-12 (PR #865) | — |
 | T-PRA-08 | B-6 | 1 | Off-volume backups, retention, integrity check, restore drill, `RUNBOOK_DR.md` | FIX MERGED: PR #906 (`titan-backups` volume, verified artifacts, 7 daily + 4 weekly retention, `scripts/restore_drill.py`, `docs/RUNBOOK_DR.md`); DR-03 drill result recorded at next phase close; Architect close pending | Refactor plan task #15 |
 | T-PRA-09 | B-7 | 2 | Release engineering RE-01..04 | FIX MERGED: PR #909 (version only in `pyproject.toml`, read at runtime; `release.yml` builds `ghcr.io` images per `vX.Y.Z` tag on `main`; `docker-compose.release.yml` pins images; `docs/RUNBOOK_ROLLBACK.md`; `tests/test_release_engineering.py`); RE-03 staging drill pending the first tag; Architect close pending | Refactor plan task #16 |
-| T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | OPEN | Not scheduled |
+| T-PRA-10 | SA chain | 2 | Degradation alert chain end-to-end test (INV-21) | RESOLVED 2026-10-23 (D-143): `tests/test_degradation_alert_chain.py` runs the real GarminSync failure count → DegradedModeTracker (SQLite) → effect-bus hook → `alert_operator` chain, owner and athlete | — |
 | T-PRA-11 | B-13 | 2 | Request body-size middleware (RBP-01) | FIX MERGED: PR #928 (`BodySizeLimitMiddleware`: Content-Length pre-check + streamed-read cap → 413; `API_MAX_BODY_SIZE_BYTES` default 1 MiB; `tests/test_request_boundary.py`); Architect close pending | Refactor plan task #21 |
 | T-PRA-12 | D-1/K:PRA-16, C-7 | 2 | Records pass (snapshot, ADR-0057 status, phase labels, module ceiling) | OPEN (module ceiling: AGENTS §16.11 states 90, the test value, ADR-0070; T-PRA rows mirrored here) | Refactor plan task #11 |
 | T-PRA-14 | B-10 | 2 | MPC doc/comment corrections; ADR-0044 execution-date decision | OPEN | Refactor plan task #25 (Architect decision) |

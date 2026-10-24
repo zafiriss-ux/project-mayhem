@@ -90,7 +90,7 @@ def test_the_worker_retries_after_the_gap_when_the_console_did_not_deliver(db, m
     monkeypatch.setattr(worker, "_utc_now", lambda: _SEVEN)
     # The console's attempt ended without delivering, so its "in progress" mark is gone (v34).
     assert worker._claim_routine(db, "owner", _SEVEN, spaced=True, last_start=False, runner="console") == 1
-    worker._end_attempt(db, "owner", _DAY)
+    worker._end_attempt(db, "owner", _DAY, attempt=1)
 
     later = _SEVEN + timedelta(seconds=worker.ROUTINE_RETRY_DELAY_S + 60)
     monkeypatch.setattr(worker, "_utc_now", lambda: later)
