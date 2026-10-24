@@ -460,3 +460,76 @@ def test_the_athlete_sync_is_not_for_the_owner(db) -> None:
 
     with pytest.raises(ValueError, match="owner"):
         worker.sync_athlete_on_request(db, "owner")
+
+
+# ── M0-03: an athlete's /sync stores the training load ─────────────────────────
+
+
+def _athlete_sync_of(db, monkeypatch, activities: list[dict]) -> None:
+    """An athlete's /sync as the worker runs it, through the real GarminSync.sync_all path."""
+    from titan import worker
+
+    _fake_garminconnect(monkeypatch)
+    _ready(db, _A)
+    path = athlete_token_path(_A)
+    path.write_bytes(encrypt_athlete_token("session-of-a"))
+
+    def _sync_all(self, days_back: int = 14) -> dict:
+        self.client = _ActivityClient(activities)
+        # What _sync_operation passes: the instance's max HR, not the 0 default.
+        return {"activities": self.sync_activities(days_back=3, athlete_max_hr=self.athlete_max_hr)}
+
+    monkeypatch.setattr(GarminSync, "sync_all", _sync_all)
+    monkeypatch.setattr(worker, "_utc_now", lambda: datetime(2026, 10, 15, 9, 0, tzinfo=UTC))
+    assert worker.sync_athlete_on_request(db, _A) == "✅ Sync complete."
+
+
+def _stored_load(db, activity_id: str) -> int:
+    return db.conn.execute(
+        "SELECT training_load FROM training_log WHERE athlete_id = ? AND garmin_activity_id = ?",
+        (_A, activity_id),
+    ).fetchone()[0]
+
+
+@pytest.mark.integration
+def test_an_athletes_sync_stores_the_load_from_their_max_hr(db, key_file, monkeypatch) -> None:
+    """Before M0-03 the /sync GarminSync had no max HR, so every run was stored with load 0."""
+    from titan.science.trimp_engine import TRIMPEngine
+
+    _athlete_sync_of(db, monkeypatch, [_run("2026-10-15T07:00:00", 701)])
+
+    expected, _ = TRIMPEngine.calculate_edwards_trimp(30.0, 150, _PROFILE["max_hr"])
+    assert expected > 0
+    assert _stored_load(db, "701") == int(round(expected, 1))
+
+
+@pytest.mark.integration
+def test_an_athletes_sync_does_not_erase_a_load_stored_before(db, key_file, monkeypatch) -> None:
+    """The morning stored the run with its load; an evening /sync sees it again (D-080)."""
+    db.save_session(
+        date="2026-10-15", session_type="EASY", distance_km=8.0, duration_sec=1800,
+        avg_hr=150, max_hr=170, training_load=77, garmin_activity_id=701, athlete_id=_A,
+    )
+
+    _athlete_sync_of(db, monkeypatch, [_run("2026-10-15T07:00:00", 701)])
+
+    from titan.science.trimp_engine import TRIMPEngine
+
+    expected, _ = TRIMPEngine.calculate_edwards_trimp(30.0, 150, _PROFILE["max_hr"])
+    assert _stored_load(db, "701") == int(round(expected, 1))  # the recomputed load, never 0
+
+
+@pytest.mark.integration
+def test_a_load_that_could_not_be_computed_keeps_the_stored_one(db) -> None:
+    """A re-seen activity with load 0 (no max HR) keeps the computed load; a new value replaces it."""
+    common = {
+        "date": "2026-10-15", "session_type": "EASY", "distance_km": 8.0, "duration_sec": 1800,
+        "avg_hr": 150, "max_hr": 170, "garmin_activity_id": 702, "athlete_id": _A,
+    }
+    db.save_session(training_load=77, **common)
+
+    db.save_session(training_load=None, **common)
+    assert _stored_load(db, "702") == 77
+
+    db.save_session(training_load=81, **common)
+    assert _stored_load(db, "702") == 81
