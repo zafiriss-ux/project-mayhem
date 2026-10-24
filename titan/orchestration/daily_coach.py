@@ -1614,12 +1614,21 @@ class DailyCoach:
 
         The HRV engine's latest value can be from an earlier day; deciding on it
         as if it were today's hid a missing reading from the governance gates.
+
+        SD-01 (ADR-0073 point 2): a reading above the physiological ceiling (300 ms) is a
+        sensor error, so it counts as missing (H2_MISSING, EASY ceiling) instead of a
+        valid high HRV that let H2 say CLEAR. A high HRV never fires H2, so nothing is
+        loosened. Below the floor nothing changes: a near-zero HRV is a drop and H2
+        already closes. persist_garmin_data logs the out-of-range value.
         """
+        from titan.science.physiological_bounds import BOUNDS  # deferred, as in physiology.py
+
         log = getattr(getattr(self, "hrv", None), "hrv_log", None) or []
         today = _routine_day(self).isoformat()
         for day, value in reversed(log):
             if str(day)[:10] == today:
-                return round(_safe_float(value, 0.0), 1)
+                hrv = round(_safe_float(value, 0.0), 1)
+                return None if hrv > BOUNDS["hrv_ms"][1] else hrv
         return None
 
     def _esi_weather(self, garmin_data: GarminSyncResult) -> tuple[float, float]:
