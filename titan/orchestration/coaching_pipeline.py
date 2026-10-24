@@ -41,7 +41,7 @@ class AthleteCoachingContext:
     today_rhr: int
     today_sleep_score: int
     today_sleep_hours: float
-    baseline_rhr_for_comparison: float
+    baseline_rhr_for_comparison: float | None  # None: no RHR in the 7 days before today (M0-02)
     persistence_degraded: bool
     garmin_data_stale: bool
     latest_hrv: float

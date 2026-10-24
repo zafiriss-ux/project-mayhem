@@ -246,7 +246,7 @@ def test_baseline_rhr_degraded_triggers_telegram_alert(tmp_path, caplog):
                     message=(
                         "Baseline RHR could not be read from DB.\n"
                         "H3 gate is operating in degraded mode — "
-                        "using today's RHR as its own baseline (delta = 0).\n"
+                        "no RHR baseline, EASY ceiling applied.\n"
                         "Check database health."
                     ),
                     level="warning",
