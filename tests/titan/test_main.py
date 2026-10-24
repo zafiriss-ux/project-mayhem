@@ -471,8 +471,15 @@ class _CallbackDailyCoach:
 
 
 class _CallbackHRV:
+    hrv_log = [("2026-10-20", 54.0)]
+
     def get_hrv_summary(self, before_date=None):
         return {"baseline": 52, "trend": "UP", "latest_hrv": 54}
+
+
+class _CallbackDB:
+    def get_governance_decision_on(self, athlete_id, date):
+        return {"readiness_score": 72.0}
 
 
 class _CallbackTSB:
@@ -593,7 +600,7 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring(monkeypa
     }
     telegram = _CallbackTelegram()
     ctx = _make_callback_context(summary)
-    ctx["db"] = object()
+    ctx["db"] = _CallbackDB()
 
     titan_main._register_telegram_callbacks(telegram, ctx)
 
@@ -615,7 +622,9 @@ def test_register_telegram_callbacks_success_paths_cover_command_wiring(monkeypa
     assert "✅" in telegram.commands["week"]()
     assert telegram.sent_weekly_plans[-1]["phase"] == "PEAK"
     assert "📊 *STATS*" in telegram.commands["stats"]()
-    assert "💊 *RECOVERY*" in telegram.commands["recovery"]()
+    recovery = telegram.commands["recovery"]()
+    assert "💊 *RECOVERY*" in recovery
+    assert "72/100" in recovery
     assert "🍽 *NUTRITION" in telegram.commands["nutrition"]()
     assert "🔄 *SYNC COMPLETE*" in telegram.commands["sync"]()
     assert "🏃 *RECENT ACTIVITIES*" in telegram.commands["activities"]()

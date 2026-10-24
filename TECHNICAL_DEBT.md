@@ -110,7 +110,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-07 | 2 | HIGH | Ετοιμότητα 100/100 χωρίς HRV και RHR (ADR-0051: 40) | `readiness_engine.py:35-61`, `daily_coach.py:1491-1497` | OPEN · στόχος Phase 27 · έλεγχος SD |
-| SD-08 | 2 | HIGH | Η `/recovery` με σταθερές εισόδους και HRV οποιασδήποτε ηλικίας | `titan/main.py:252-268` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-08 | 2 | HIGH | Η `/recovery` με σταθερές εισόδους και HRV οποιασδήποτε ηλικίας | `titan/main.py:252-268` | RESOLVED · PR #1103 (D-161) |
 | SD-09 | 2 | HIGH | Αθλητής που δεν συγχρονίστηκε ποτέ δεν σημειώνεται ποτέ παλιός | `daily_coach.py:1070-1090` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-10 | 2 | HIGH | Glycogen debt από πεδία που ο sync δεν επιστρέφει | `daily_coach.py:1183-1196` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-11 | 2 | HIGH | Το max HR του owner δεν ελέγχεται για όρια | `athlete.py:509` | OPEN · στόχος Phase 27 · έλεγχος SD |

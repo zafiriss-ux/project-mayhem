@@ -431,7 +431,8 @@ class GovernanceRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             row = self._db.conn.cursor().execute(
-                "SELECT session_post_governance, locks_applied_json, phase FROM governance_outcomes "
+                "SELECT session_post_governance, locks_applied_json, phase, readiness_score "
+                "FROM governance_outcomes "
                 "WHERE athlete_id = ? AND date = ? ORDER BY id DESC LIMIT 1",
                 (athlete_id, date),
             ).fetchone()
@@ -445,6 +446,7 @@ class GovernanceRepository:
             "session_post_governance": row[0],
             "locks_applied": _safe_json(row[1], [], "locks_applied_json"),
             "phase": row[2],
+            "readiness_score": float(row[3]),  # shown by /recovery (SD-08)
         }
 
     def annotate_governance_outcome(self, date: str, note: str, athlete_id: str = "owner") -> bool:
