@@ -372,12 +372,11 @@ class AccessRepository:
         return [r[0] for r in rows]
 
     def get_assigned_athletes(self, coach_id: str) -> list[str]:
-        """Return athlete_ids the coach is permitted to access.
+        """Return athlete_ids the coach is permitted to access: its assignment rows, nothing else.
 
-        'system' coach bypasses the assignment table and returns all athletes.
+        No coach id is special (M0-05, INV-11). ``system`` gets the ``system → owner`` row the
+        migration seeds, like any coach gets the rows assigned to it.
         """
-        if coach_id == "system":
-            return self._db._get_all_athlete_ids()
         with self._db._lock:
             self._db._ensure_open_locked()
             rows = self._db.conn.cursor().execute(
