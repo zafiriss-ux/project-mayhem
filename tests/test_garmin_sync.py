@@ -1040,3 +1040,23 @@ def test_activity_fetch_that_works_leaves_no_partial_status(monkeypatch):
     sync = _sync_with_other_feeds(_FakeClient(activities=[]), monkeypatch)
     payload = sync.sync_all(days_back=3)
     assert "status" not in payload, payload.get("status")
+
+
+@pytest.mark.integration
+def test_partial_status_survives_a_concurrent_activity_fetch(monkeypatch):
+    """SD-04 review: the background thread fetching activities successfully in the middle of
+    this sync must not reset this sync's failure (the flag is per thread)."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_k: None)
+    client = _FakeClient(activities=RuntimeError("synthetic: 503"))
+    sync = _sync_with_other_feeds(client, monkeypatch)
+
+    def _weight_while_another_thread_fetches(*_a, **_k):
+        client.activities = []  # the other thread's fetch works
+        worker = threading.Thread(target=sync.sync_activities, kwargs={"days_back": 1})
+        worker.start()
+        worker.join()
+        return []
+
+    monkeypatch.setattr(sync, "sync_weight", _weight_while_another_thread_fetches)
+    payload = sync.sync_all(days_back=3)
+    assert payload.get("status") == "partial", payload.get("status")
