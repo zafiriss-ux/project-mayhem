@@ -169,6 +169,9 @@ def persist_garmin_data(
     Returns:
         (today_rhr, today_sleep_score, today_sleep_hours). A missing RHR is 0 and a
         missing sleep score is None (ADR-0051, SV-06): the caller decides what they mean.
+        An RHR below the physiological floor is also returned as 0: the gates see it as
+        missing, not as the clamped floor (SD-02, ADR-0073). The stored row keeps the
+        clamped value, as before.
 
     Raises:
         PersistenceFailure: the transaction rolled back; it carries the values
@@ -278,6 +281,11 @@ def persist_garmin_data(
 
     validated_rhr = validated_inputs["rhr_bpm"]
     today_rhr = int(round(validated_rhr)) if validated_rhr is not None else 0
+    # SD-02 (ADR-0073 point 3): a reading under the floor is a sensor error. Clamped to the
+    # floor it looked like a normal RHR and H3 said CLEAR. The gates get 0 (missing) instead.
+    # Above the ceiling the clamp stays: clamped high, H3 already closes (REST).
+    rhr_below_floor = any(v.field == "rhr_bpm" and v.value < v.lo for v in input_violations)
+    gate_rhr = 0 if rhr_below_floor else today_rhr
     today_sleep_hours = validated_inputs["sleep_hours"] or 0.0
     latest_rmssd = validated_inputs["hrv_ms"]
     latest_weight = validated_inputs["weight_kg"]
@@ -370,9 +378,9 @@ def persist_garmin_data(
             error_class=type(exc).__name__,
             error_message=str(exc),
         )
-        raise PersistenceFailure(today_rhr, today_sleep_score, today_sleep_hours) from exc
+        raise PersistenceFailure(gate_rhr, today_sleep_score, today_sleep_hours) from exc
 
-    return today_rhr, today_sleep_score, today_sleep_hours
+    return gate_rhr, today_sleep_score, today_sleep_hours
 
 
 def backfill_training_history(
