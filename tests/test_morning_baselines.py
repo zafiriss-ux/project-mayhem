@@ -197,3 +197,21 @@ def test_hrv_summary_baseline_before_date_leaves_out_that_day():
         short.add_hrv_measurement(f"2026-10-0{i}", 70.0)
     short.add_hrv_measurement("2026-10-07", 35.0)
     assert short.get_hrv_summary(before_date="2026-10-07")["baseline"] is None
+
+
+def test_rhr_below_the_floor_counts_as_missing_for_h3(tmp_path, monkeypatch):
+    """SD-02 (ADR-0073 point 3, D-163): RHR 15 is a sensor error. It used to be clamped to 25
+    and passed H3 as measured, so the day stayed TEMPO. Now it counts as missing: EASY ceiling
+    with DATA_MISSING_CONSERVATIVE_H3."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=15)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H3" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_rhr_above_the_ceiling_still_rests(tmp_path, monkeypatch):
+    """SD-02 guard: RHR 200 is still clamped to 120 and H3 still gives REST (only tightens)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=200)
+    assert payload["session_type"] == "REST", payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H3" not in payload["governance_locks"]
