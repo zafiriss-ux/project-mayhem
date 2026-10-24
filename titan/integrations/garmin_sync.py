@@ -584,6 +584,8 @@ class GarminSync:
             skipped_days=0,
         ).to_payload()
         self.last_connect_error: str | None = None
+        # SD-04: the last activity fetch raised (the sync is then "partial").
+        self.last_activities_fetch_failed: bool = False
         self._connect_lock = threading.Lock()
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
@@ -995,6 +997,7 @@ class GarminSync:
         An activity without a heart rate gets a middle-zone load estimate and
         ``load_estimated=True`` (F6, D-075).
         """
+        self.last_activities_fetch_failed = False
         if not self._ensure_connected():
             return []
         activities = []
@@ -1052,6 +1055,7 @@ class GarminSync:
                     continue
             sync_succeeded = True
         except Exception as e:
+            self.last_activities_fetch_failed = True
             failure_class = _classify_failure(e)
             if failure_class == GARMIN_AUTH_FAIL:
                 self._invalidate_session(e)
@@ -1320,6 +1324,9 @@ class GarminSync:
             sleep=sleep,
             hrv=hrv,
             hrv_sync_metrics=hrv_metrics,
+            # SD-04 (ADR-0073 point 5): the other feeds may have worked, but the runs are
+            # missing, so the loads (and the TSB) lack them. The morning reads "partial".
+            status="partial" if self.last_activities_fetch_failed else None,
             data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
             data_age_hours=0.0,
         ).to_payload()

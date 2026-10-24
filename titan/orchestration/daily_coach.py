@@ -643,7 +643,7 @@ class _PipelineInputs:
     startup_hydration_confidence: dict
     startup_confidence_applies: bool
     rhr_baseline_thin: bool = False  # SD-03: H3 treats the RHR baseline as missing
-    tsb_unverified: bool = False  # M0-22: the load reload failed; H4 treats TSB as missing
+    tsb_unverified: bool = False  # M0-22 / SD-04: loads reload failed or sync partial; H4 treats TSB as missing
 
 
 class DailyCoach:
@@ -1199,7 +1199,10 @@ class DailyCoach:
         # yesterday's run, so it can be too high and let H4 say CLEAR. H4 then treats it as
         # missing (EASY ceiling, DATA_MISSING_CONSERVATIVE_H4), unless the old TSB already
         # fires H4, which is stricter (EASY with the volume cap). The VLG keeps the old value.
-        tsb_unverified = not loads_refreshed and not (
+        # SD-04 (ADR-0073 point 5): a "partial" sync lost the activity fetch, so the loads
+        # lack the latest runs and the TSB can be too high in the same way.
+        loads_complete = loads_refreshed and sync_status != "partial"
+        tsb_unverified = not loads_complete and not (
             tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR
         )
         today_temp = garmin_data.get('temperature_c') or 20.0

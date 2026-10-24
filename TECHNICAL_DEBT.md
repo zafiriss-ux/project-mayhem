@@ -106,7 +106,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-01 | 1 | HIGH | HRV > 300 ms φτάνει στην H2 χωρίς έλεγχο ορίων → TEMPO, H2 CLEAR (επείγον) | `daily_coach.py:1119`, `:1579-1590` | RESOLVED · PR #1106 (D-165, ADR-0073) |
 | SD-02 | 1 | HIGH | Τιμή εκτός ορίων κόβεται στο όριο και μετρά ως μετρημένη (RHR < 25 → 25, H3 CLEAR· επείγον) | `physiological_bounds.py:90-96` | RESOLVED για το RHR · PR #1104 (D-163, ADR-0073)· η κόπωση −3 δεν φτάνεται από το `/manual_entry` |
 | SD-03 | 1 | HIGH | Η baseline RHR δέχεται μία μόνο προηγούμενη νύχτα (επείγον) | `physiology.py:262-279` | RESOLVED · PR #1105 (D-164, ADR-0073) |
-| SD-04 | 1 | HIGH | Χαμένη λήψη δραστηριοτήτων: ο sync μετρά επιτυχία, η H4 CLEAR για ένα πρωινό (επείγον) | `garmin_sync.py:1054-1061`, `:1397-1404`, `data_trust.py:56-66` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-04 | 1 | HIGH | Χαμένη λήψη δραστηριοτήτων: ο sync μετρά επιτυχία, η H4 CLEAR για ένα πρωινό (επείγον) | `garmin_sync.py:1054-1061`, `:1397-1404`, `data_trust.py:56-66` | RESOLVED · PR #1108 (D-167, ADR-0073) |
 | SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-07 | 2 | HIGH | Ετοιμότητα 100/100 χωρίς HRV και RHR (ADR-0051: 40) | `readiness_engine.py:35-61`, `daily_coach.py:1491-1497` | OPEN · στόχος Phase 27 · έλεγχος SD |

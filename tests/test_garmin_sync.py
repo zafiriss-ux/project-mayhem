@@ -1011,3 +1011,32 @@ def test_sync_activity_without_heart_rate_gets_a_middle_zone_estimate(monkeypatc
     assert no_hr["load_estimated"] is True
     assert with_hr["estimated_training_load"] == 60.0
     assert with_hr["load_estimated"] is False
+
+
+def _sync_with_other_feeds(client, monkeypatch):
+    """A connected sync whose weight, sleep and HRV feeds return one record each."""
+    sync = _connected_sync(client)
+    monkeypatch.setattr(sync, "sync_weight", lambda *_a, **_k: [])
+    monkeypatch.setattr(sync, "sync_sleep", lambda *_a, **_k: [{"date": "2026-03-01", "resting_hr": 50}])
+    monkeypatch.setattr(sync, "sync_hrv", lambda *_a, **_k: [{"date": "2026-03-01", "rmssd": 70.0}])
+    return sync
+
+
+@pytest.mark.integration
+def test_failed_activity_fetch_marks_the_sync_partial(monkeypatch):
+    """SD-04 (ADR-0073 point 5, D-167): only the activity fetch failed. The sync used to report
+    success, so yesterday's run counted as a rest day. The payload now says "partial"."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_k: None)
+    sync = _sync_with_other_feeds(_FakeClient(activities=RuntimeError("synthetic: 503")), monkeypatch)
+    payload = sync.sync_all(days_back=3)
+    assert payload["activities"] == []
+    assert payload.get("status") == "partial", payload.get("status")
+
+
+@pytest.mark.integration
+def test_activity_fetch_that_works_leaves_no_partial_status(monkeypatch):
+    """SD-04: an activity fetch that works, even with no runs, is not partial."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_k: None)
+    sync = _sync_with_other_feeds(_FakeClient(activities=[]), monkeypatch)
+    payload = sync.sync_all(days_back=3)
+    assert "status" not in payload, payload.get("status")
