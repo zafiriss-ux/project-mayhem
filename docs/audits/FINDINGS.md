@@ -42,7 +42,7 @@
 | — | OW-F3 | Η H1 χωρίς πηγή· CLEAR για πύλες που δεν μετρήθηκαν | HIGH | Β | FIXED (η `/injury` μόνο για owner, βλ. F-06) | D-134–D-136, ADR-0069 §3 | ναι | SD |
 | — | OW-F4 | Το `/today` της κονσόλας έγραφε δεύτερη απόφαση | HIGH | Α | FIXED | D-128 | ναι | RC |
 | — | OW-M1 | Πεδία χωρίς escaping έσπαγαν το μήνυμα Telegram | MEDIUM | Α | FIXED | D-127 | ναι | SP |
-| — | OW-M2 | Άγνωστο TSB/ACWR γραφόταν 0,0 | MEDIUM | Β | FIXED | D-135, ADR-0069 §4 | ναι | SD |
+| — | OW-M2 | Άγνωστο TSB/ACWR γραφόταν 0,0 | HIGH | Β | FIXED | D-135, ADR-0069 §4 | ναι | SD |
 | — | OW-L1 | Το `/sync` του owner δεν αποθήκευε τα δεδομένα | LOW | Α | FIXED | D-129 | ναι | RC |
 | — | OW-L2 | Γραμμή διαγραφής με `owner` έσβηνε τον owner μετά από επαναφορά | LOW | Α | FIXED | D-115 | ναι | SP |
 | — | OW-L3 | Σιωπηλές προεπιλογές max HR, threshold HR, φάσης | LOW | Α | FIXED (ξαναελέγχεται μαζί με το 191 / «M») | D-125 | ναι | SD |
@@ -56,16 +56,17 @@
 | — | P4-01 | `data_confidence_low` μόνο από την εκκίνηση | HIGH | Β | FIXED | D-137, ADR-0069 §5 | ναι | SD |
 | — | P4-02 | `HARD_STOP_SAFETY_GATES` και για απλή έλλειψη δεδομένων | HIGH | Β | FIXED | D-138, ADR-0069 §6 | ναι | SD |
 | — | P4-03 | Δύο προσπάθειες πρωινού επικαλύπτονται | MEDIUM | Β | FIXED, με υπόλοιπο M0-01-R1 | D-135, ADR-0069 §4 | ναι | RC |
-| — | P4-04 | Σκανδάλη hard-stop για τα offsets κατωφλίων | MEDIUM | Β | FIXED | D-135, ADR-0069 §4 | ναι | SD |
-| — | P4-05 | Ειδοποιήσεις του worker εκτός `NotificationGateway` | MEDIUM | Β | FIXED (το AGENTS §16.6 εκκρεμεί) | D-139, ADR-0069 §7 | ναι | SP, AT |
-| — | P4-06 | PostgreSQL: εγγραφή `athlete_id` | LOW | Β | TRACKED: όταν ανοίξει το PostgreSQL | TECHNICAL_DEBT | — | IS |
-| — | P4-07 | Προεπιλογή του H5 για νέο αθλητή | MEDIUM | Β | FIXED | D-133, ADR-0069 §2 | ναι | SD |
-| — | P4-08 | Το κείμενο συναίνεσης `docs/consent/v1.md` χρειάζεται δικηγόρο | HIGH | Γ | ανοιχτό: πριν από τον πιλότο | — | — | SP |
+| — | P4-04 | Σκανδάλη hard-stop για τα offsets κατωφλίων | HIGH | Β | FIXED | D-135, ADR-0069 §4 | ναι | SD |
+| — | P4-05 | Ειδοποιήσεις του worker εκτός `NotificationGateway` | MEDIUM | Β | FIXED | D-139, ADR-0069 §7· το AGENTS §16.6 στο D-141 | ναι | SP, AT |
+| — | P4-06 | PostgreSQL: εγγραφή `athlete_id` | HIGH | Β | TRACKED: όταν ανοίξει το PostgreSQL | TECHNICAL_DEBT | — | IS |
+| — | P4-07 | Προεπιλογή του H5 για νέο αθλητή | HIGH | Β | FIXED | D-133, ADR-0069 §2 | ναι | SD |
+| — | P4-08 | Το κείμενο συναίνεσης `docs/consent/v1.md` χρειάζεται δικηγόρο | HIGH | Γ | TRACKED: πριν από τον πιλότο | — | — | SP |
 | — | P4-09 (F-01) | Τα `slo_alert` δεν έφταναν σε κανέναν | MEDIUM | Α | FIXED | #1091, D-149 | ναι | RC |
-| — | P4-10 (F-04) | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3 | MEDIUM | Β | ανοιχτό | ADR-0070 (addendum) | — | SD |
-| — | P4-11 (F-05) | Το `cold_start_conservative_factor` δεν το διαβάζει καμία πύλη | LOW | Β | ανοιχτό | ADR-0070 (addendum) | — | SD |
+| — | P4-10 (F-04) | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3 | HIGH | Β | TRACKED: χρειάζεται ADR-0009 | ADR-0070 (addendum) | — | SD |
+| — | P4-11 (F-05) | Το `cold_start_conservative_factor` δεν το διαβάζει καμία πύλη | HIGH | Β | TRACKED | ADR-0070 (addendum) | — | SD |
 
-Το P4-08 ανεβαίνει σε HIGH: αφορά τη συναίνεση.
+Ανεβαίνουν σε HIGH, γιατί αγγίζουν πύλες governance ή συναίνεση: P4-04, P4-06, P4-07, P4-08, P4-10, P4-11.
+Τα P4-06, M0-12-R1 και M0-27 αφορούν το PostgreSQL, που δεν χρησιμοποιείται (ADR-0044).
 
 ## 3. Από την προηγούμενη Φάση 0 (M0), main `c531166`, 2026-10-23
 
@@ -77,38 +78,39 @@
 | — | M0-03 | Το `/sync` αθλητή έγραφε φορτίο 0 | HIGH | Β | FIXED | #1095, D-153 | ναι | SD |
 | — | M0-04 | Ο worker του release έχανε τον φάκελο `/secrets` | HIGH | Α | FIXED | #1084, D-144 | ναι | SP |
 | — | M0-05 | Ο χρήστης `system` έβλεπε όλους τους αθλητές | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
-| — | M0-06 | Merge με τοπικό CI όταν τελειώνει το budget | HIGH | Γ | FIXED (ρύθμιση του owner) | #1093, D-151, ADR-0071 | — | AT |
+| — | M0-06 | Merge με τοπικό CI όταν τελειώνει το budget | HIGH | Γ | FIXED (ρύθμιση GitHub του owner· δεν υπάρχει test, ο έλεγχος είναι ο κανόνας του GitHub) | #1093, D-151, ADR-0071 | — | AT |
 | — | M0-07 | Τα έγγραφα διακυβέρνησης διαφωνούν μεταξύ τους | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | AT |
 | — | M0-08 | Timeout του Telegram μετά από παράδοση ξαναστέλνει όλο το briefing | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
 | — | M0-09 | Αθλητές που δεν ξεκινούν ως τις 12:00 UTC χάνουν τη μέρα σιωπηλά | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
 | — | M0-10 | Αποτυχημένη αποστολή εβδομαδιαίου πλάνου δεν αναφέρεται | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
-| — | M0-11 | Η baseline RHR μετρούσε από το ρολόι | MEDIUM | Β | FIXED | #1096, D-154 | ναι | SD |
+| — | M0-11 | Η baseline RHR μετρούσε από το ρολόι | HIGH | Β | FIXED | #1096, D-154 | ναι | SD |
 | — | M0-12 | Αποφάσεις αθλητή διαβάζονταν ως του owner | HIGH | Α | FIXED, με υπόλοιπο M0-12-R1 | #1088, D-147 | ναι | IS |
-| — | M0-12-R1 | PostgreSQL χωρίς `athlete_profile_id` στις αποφάσεις | LOW | Β | TRACKED: πριν από το PostgreSQL | TECHNICAL_DEBT | — | IS |
+| — | M0-12-R1 | PostgreSQL χωρίς `athlete_profile_id` στις αποφάσεις | HIGH | Β | TRACKED: πριν από το PostgreSQL | TECHNICAL_DEBT | — | IS |
 | — | M0-13 | Ο λογαριασμός Garmin του owner δενόταν σε αθλητή | HIGH | Α | FIXED, με υπόλοιπο M0-13-R1 | #1087, D-146 | ναι | IS |
-| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
+| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
 | — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
 | — | M0-15 | 6 tests παραλείπονται μόνιμα | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | AT |
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
 | — | M0-17 | Το φίλτρο των logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
 | — | M0-18 | Το τέλος της προσπάθειας γραφόταν πριν από το «παραδόθηκε» | LOW | Α | FIXED | #1089, D-148 | ναι | RC |
-| — | M0-19 | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | LOW | Β | ανοιχτό, δεν καταγράφηκε | — | — | SD |
+| — | M0-19 | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | HIGH | Β | ανοιχτό, δεν καταγράφηκε | — | — | SD |
 | — | M0-20 | Η κόπωση της πρώτης μέρας μετρά ως μετρημένη | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-21 | Το rationale λέει CLEAR για άκυρη baseline HRV ή TSB NaN | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-22 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-23 | Η ετοιμότητα παίρνει RHR 50 όταν λείπει | HIGH | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SD |
 | — | M0-24 | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | RC |
-| — | M0-25 | Το `get_recent_hrv_mean` χωρίς `athlete_id` | LOW | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
+| — | M0-25 | Το `get_recent_hrv_mean` χωρίς `athlete_id` | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
 | — | M0-26 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
-| — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | LOW | Β | ανοιχτό (εκτός χρήσης, ADR-0044) | — | — | IS |
+| — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044) | — | — | IS |
 | — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | SP |
-| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | SP |
+| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | ανοιχτό, δεν καταγράφηκε | — | — | SP |
 | — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | SP |
 | — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | AT |
 | — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | ανοιχτό, δεν καταγράφηκε | — | — | AT |
 | — | M0-33 | Ομαδική συνομιλία ως αξιόπιστο chat του owner | HIGH | Β | FIXED | #1092, D-150 | ναι | IS |
 
-Το M0-14 ανεβαίνει από MEDIUM σε HIGH: είναι διαδρομή πιστοποίησης.
+Ανεβαίνουν σε HIGH, γιατί αγγίζουν πιστοποίηση, κωδικούς, απομόνωση ή πύλες governance: M0-11, M0-12-R1,
+M0-13-R1, M0-14, M0-19, M0-25, M0-27, M0-29. Το OW-M2 ανεβαίνει για τον ίδιο λόγο.
 
 ## 4. Άλλα γνωστά θέματα
 
@@ -121,7 +123,7 @@
 
 Το F-06 είναι HIGH: η H1 είναι πύλη governance.
 
-## 5. Ύποπτα που δεν ελέγχθηκαν ποτέ (από τις οδηγίες του owner, 2026-10-24)
+## 5. Ύποπτα και παρατηρήσεις χωρίς καταγραφή
 
 | ID | Θέμα | Κατάσταση | Έλεγχος |
 |---|---|---|---|
