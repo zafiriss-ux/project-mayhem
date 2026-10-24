@@ -125,6 +125,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90. The ceiling test
 - `0070` — Documents reconciled after MA/OW/P4
 - `0071` — Main branch ruleset (required checks)
 - `0072` — Card approvals M0-02/03/11
+- `0073` — SD urgent conservative measure (Proposed)
 
 ## Docker
 
