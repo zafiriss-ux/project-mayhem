@@ -994,8 +994,10 @@ def test_run_morning_routine_uses_degraded_mode_when_baseline_missing(monkeypatc
     coach._get_baseline_rhr = lambda days=7: None
 
     assert coach.run_morning_routine() is True
+    # Readiness keeps a neutral comparison; governance gets the missing baseline as None,
+    # so H3 applies its EASY ceiling instead of comparing today's RHR with itself (M0-02).
     assert baseline_args["baseline_rhr"] == baseline_args["today_rhr"]
-    assert governance_baseline["baseline_rhr"] == baseline_args["today_rhr"]
+    assert governance_baseline["baseline_rhr"] is None
     assert any(event["action"] == "baseline_rhr_degraded_mode" for event in events)
 
 
@@ -3343,3 +3345,37 @@ def test_bad_sleep_nights_reads_only_this_athlete(tmp_path):
         assert DailyCoach._bad_sleep_nights(coach, 34) == 1
     finally:
         db.close()
+
+
+@pytest.mark.unit
+def test_no_rhr_before_today_reaches_the_real_h3_gate_as_missing(monkeypatch):
+    """M0-02 end to end: the morning hands H3 no baseline, and the real gate locks it.
+
+    Before the fix the morning used today's RHR as its own baseline, H3 saw a delta of 0,
+    and TEMPO went ahead with RHR 72 against a usual 55.
+    """
+    from titan.science.governance_engine import GovernanceEngine
+
+    coach = MinimalCoachFactory.build(telegram_success=True)
+    coach.weekly_planner = SimpleNamespace(
+        get_today_session=lambda: {"session_type": "TEMPO", "volume_pct": 1.0, "duration_min": 45, "distance_km": 8}
+    )
+    coach._get_baseline_rhr = lambda days=7: None
+    engine = GovernanceEngine()
+    seen: dict = {}
+
+    def _real_h3(session_plan, context):
+        # Only the H3 inputs: other gates see missing data too, so the lock, not the
+        # session type, is what this test reads.
+        gate_context = {"today_rhr": 72, "baseline_rhr": context["baseline_rhr"]}
+        out = engine.apply_constraints(session_plan=dict(session_plan), context=gate_context)
+        seen["baseline_rhr"] = context["baseline_rhr"]
+        seen["locks"] = list(out.get("governance_locks_applied") or [])
+        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
+
+    coach.governance = SimpleNamespace(apply_constraints=_real_h3, get_governance_report=lambda **_k: {})
+
+    assert coach.run_morning_routine() is True
+    assert seen["baseline_rhr"] is None
+    # The H3 lock is what caps the session; with today's RHR as baseline it never appeared.
+    assert "DATA_MISSING_CONSERVATIVE_H3" in seen["locks"]

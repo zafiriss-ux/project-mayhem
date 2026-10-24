@@ -221,7 +221,7 @@
     },
     {
      "action": "baseline_rhr_degraded_mode",
-     "fallback_baseline_rhr": 49.0,
+     "fallback_baseline_rhr": null,
      "flow": "daily_coach",
      "logger": "titan.orchestration.daily_coach",
      "severity": "info",
@@ -320,6 +320,15 @@
      "action": "EASY_ceiling_applied",
      "garmin_data_age_hours": 0.0,
      "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H3_RHR",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
      "governance_gate": "H4_TSB",
      "logger": "titan.science.governance_engine",
      "reason": "governance_data_missing_conservative",
@@ -363,6 +372,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -389,6 +399,7 @@
      "flow": "daily_coach",
      "locks": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "DATA_MISSING_CONSERVATIVE_H4",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
@@ -2633,7 +2644,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H3\", \"DATA_MISSING_CONSERVATIVE_H4\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
