@@ -257,7 +257,18 @@ def test_each_child_reaches_only_its_own_chat_garmin_account_and_city(runs: dict
     run = runs["all"]
     sent = run.from_child(athlete.athlete_id, "telegram")
     assert len(sent) >= len(pilot.mornings())
-    assert {(r["chat"], r["bot_athlete"]) for r in sent} == {(athlete.chat or pilot.OWNER_CHAT, athlete.athlete_id)}
+    # Zaf's copy of an operator alert about this athlete (D-107) goes from the owner's bot to the
+    # owner's chat, names the athlete and carries no health data. A new athlete's first mornings
+    # have fewer than 4 RHR nights, so the H3 "missing data" alert fires once (SD-03, D-164).
+    to_zaf = [r for r in sent if r["bot_athlete"] != athlete.athlete_id]
+    if athlete is not OWNER:
+        assert all(r["chat"] == pilot.OWNER_CHAT and r["bot_athlete"] == OWNER.athlete_id
+                   and r["text"].startswith(f"TITAN missing data — athlete {athlete.athlete_id} ")
+                   for r in to_zaf), to_zaf
+    else:
+        assert not to_zaf, to_zaf
+    own = [r for r in sent if r not in to_zaf]
+    assert own and {(r["chat"], r["bot_athlete"]) for r in own} == {(athlete.chat or pilot.OWNER_CHAT, athlete.athlete_id)}
     garmin = run.from_child(athlete.athlete_id, "garmin")
     assert garmin and {r["account"] for r in garmin} == {athlete.garmin_account}
     places = {str(r["params"].get("name")) for r in run.from_child(athlete.athlete_id, "weather") if "name" in r["params"]}
