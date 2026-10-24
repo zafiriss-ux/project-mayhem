@@ -1,0 +1,23 @@
+"""M0-22 variants: only the post-sync load reload fails (ACWR read still works)."""
+from __future__ import annotations
+
+import sqlite3
+
+from harness import Scenario, findings, run_morning, summary
+from test_sd_gate_matrix import _heavy_loads, _yesterday_run
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS
+
+
+def test_only_reload_fails(tmp_path, monkeypatch):
+    def _patch(coach, db, mp):
+        real = db.get_training_load_history
+
+        def _flaky(*a, **k):
+            if k.get("days") == LOAD_HISTORY_DAYS:
+                raise sqlite3.OperationalError("synthetic: database is locked")
+            return real(*a, **k)
+        mp.setattr(db, "get_training_load_history", _flaky)
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads=_heavy_loads(),
+                                                      activities=_yesterday_run(), patch=_patch))
+    print(f"\n[M0-22 only-reload] {summary(res)} missing_inputs_trace={res.context.get('_h4_data_missing')}")
+    assert findings(res)["H4"] != "CLEAR"
