@@ -174,12 +174,14 @@ class PersistenceAdapter(ABC):
 
     @abstractmethod
     def get_baseline_rhr(
-        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None,
+        min_nights: int = 1,
     ) -> float | None:
         """Return the baseline RHR over the *days* days before *before_date* (ISO day), or None.
 
         None is today (UTC). The day itself is left out (D-105); a morning replayed after
-        midnight passes its own day (M0-11).
+        midnight passes its own day (M0-11). Fewer than *min_nights* nights with an RHR
+        is no baseline either: None (SD-03).
         """
 
     @abstractmethod
@@ -461,10 +463,11 @@ class SQLiteAdapter(PersistenceAdapter):
         self._manager.save_daily_metric(date, **kwargs)
 
     def get_baseline_rhr(
-        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None,
+        min_nights: int = 1,
     ) -> float | None:
         return self._manager.get_baseline_rhr(
-            days=days, athlete_id=athlete_id, before_date=before_date
+            days=days, athlete_id=athlete_id, before_date=before_date, min_nights=min_nights
         )
 
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
@@ -830,7 +833,8 @@ class PostgreSQLAdapter(PersistenceAdapter):
             conn.execute(insert(self._daily_metrics).values(**values))
 
     def get_baseline_rhr(
-        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None,
+        min_nights: int = 1,
     ) -> float | None:
         # The day's own RHR is not part of its baseline (D-105); the day is the morning's (M0-11).
         today, start_date = baseline_window(days, before_date)
@@ -847,7 +851,7 @@ class PostgreSQLAdapter(PersistenceAdapter):
                 )
                 .order_by(self._daily_metrics.c.date.desc())
             ).scalars().all()
-        if not rows:
+        if not rows or len(rows) < min_nights:
             return None
         sorted_rows = sorted(float(v) for v in rows)
         mid = len(sorted_rows) // 2

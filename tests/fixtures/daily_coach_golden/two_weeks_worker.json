@@ -773,6 +773,14 @@
      "step_number": 7
     },
     {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -862,6 +870,15 @@
      "severity": "WARNING"
     },
     {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H3_RHR",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -902,6 +919,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -927,6 +945,7 @@
      "flow": "daily_coach",
      "locks": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -1019,6 +1038,7 @@
    "returned": true,
    "telegram": [
     "⚠️ *TITAN missing data*\n\nHRV baseline missing for over 24h. Sessions stay at most EASY until it is back (ADR-0051).",
+    "⚠️ *TITAN missing data*\n\nRHR baseline missing for over 24h. Sessions stay at most EASY until it is back (ADR-0051).",
     "🌅 *GOOD MORNING!*\nTuesday, March 03, 2026\n\n🏃 *Today:* EASY – 3.3 km\n\n⏰ *Optimal Run Time:* N/A\n  └ Dew point: N/A°C  |  N/A\n\n💊 *Recovery:*\n  • HRV: Need 14+ days for trend analysis\n  • Sleep: 79/100\n  • Readiness: 100/100\n\n🍽 *Nutrition:* 420.0g carbs, 126.0g protein\n\n👟 *Shoe:* See /shoes\n\n🧭 *Why this decision:* DATA\\_MISSING\\_CONSERVATIVE\\_H2\n✅ *Actionable guidance:* Continue with conservative training and monitor recovery signals.\n⚠️ ⚠️ Weather data unavailable — optimal time window omitted"
    ]
   },
@@ -1281,6 +1301,14 @@
      "step_number": 7
     },
     {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 49
+    },
+    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -1370,6 +1398,15 @@
      "severity": "WARNING"
     },
     {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H3_RHR",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
      "action": "CALIBRATION_REQUIRED",
      "apl_threshold_override": 0.85,
      "cause": "DATA_PROBLEM",
@@ -1399,6 +1436,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -1424,6 +1462,7 @@
      "flow": "daily_coach",
      "locks": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -1777,6 +1816,14 @@
      "step_number": 7
     },
     {
+     "action": "baseline_rhr_degraded_mode",
+     "fallback_baseline_rhr": null,
+     "flow": "daily_coach",
+     "logger": "titan.orchestration.daily_coach",
+     "severity": "info",
+     "today_rhr": 50
+    },
+    {
      "action": "computed",
      "components": {
       "hrv": 0,
@@ -1866,6 +1913,15 @@
      "severity": "WARNING"
     },
     {
+     "action": "EASY_ceiling_applied",
+     "garmin_data_age_hours": 0.0,
+     "garmin_data_trust_level": "TRUSTED",
+     "governance_gate": "H3_RHR",
+     "logger": "titan.science.governance_engine",
+     "reason": "governance_data_missing_conservative",
+     "severity": "WARNING"
+    },
+    {
      "action": "REDUCED",
      "downgraded_to": "EASY",
      "garmin_data_age_hours": 0.0,
@@ -1906,6 +1962,7 @@
      "governance_gate": "APPLY_CONSTRAINTS",
      "locks_applied": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -1931,6 +1988,7 @@
      "flow": "daily_coach",
      "locks": [
       "DATA_MISSING_CONSERVATIVE_H2",
+      "DATA_MISSING_CONSERVATIVE_H3",
       "CS_CONFIDENCE_LOCK",
       "STARTUP_DATA_CONFIDENCE_CEILING"
      ],
@@ -8692,7 +8750,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H3\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8744,7 +8802,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H3\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
@@ -8796,7 +8854,7 @@
     "governance_clean": 0,
     "id": "<volatile>",
     "lock_thresholds_active_json": "{\"acwr_ceiling\": 1.3, \"tsb_floor\": -50.0, \"cs_min_confidence\": 0.85}",
-    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
+    "locks_applied_json": "[\"DATA_MISSING_CONSERVATIVE_H2\", \"DATA_MISSING_CONSERVATIVE_H3\", \"CS_CONFIDENCE_LOCK\", \"STARTUP_DATA_CONFIDENCE_CEILING\"]",
     "outcome_completed": null,
     "outcome_independence_ok": 1,
     "outcome_notes": null,
