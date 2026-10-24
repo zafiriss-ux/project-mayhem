@@ -513,7 +513,10 @@ def test_an_athletes_sync_does_not_erase_a_load_stored_before(db, key_file, monk
 
     _athlete_sync_of(db, monkeypatch, [_run("2026-10-15T07:00:00", 701)])
 
-    assert _stored_load(db, "701") > 0
+    from titan.science.trimp_engine import TRIMPEngine
+
+    expected, _ = TRIMPEngine.calculate_edwards_trimp(30.0, 150, _PROFILE["max_hr"])
+    assert _stored_load(db, "701") == int(round(expected, 1))  # the recomputed load, never 0
 
 
 @pytest.mark.integration
