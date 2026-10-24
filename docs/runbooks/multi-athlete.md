@@ -31,7 +31,11 @@ export TITAN_DATA_DIR=~/Documents/TITAN
 export TITAN_TOKEN_KEY_FILE=~/.titan-secrets/athlete_token.key     # έξω από το TITAN_DATA_DIR
 export TITAN_DELETION_RECORD_FILE=~/.titan-secrets/deletions.jsonl # έξω από δεδομένα και backups
 export TITAN_MULTI_ATHLETE=1
+export GARMIN_EMAIL=you@example.com                          # το δικό σου Garmin e-mail
 ```
+
+Το `relogin` αρνείται να τρέξει χωρίς `GARMIN_EMAIL`: με αυτό αναγνωρίζει τον δικό σου λογαριασμό
+και δεν τον δένει σε αθλητή (M0-13). Στο Docker το παίρνει από το `.env`.
 
 Ο πρωινός κύκλος τρέχει τους άλλους αθλητές μόνο με `TITAN_MULTI_ATHLETE=1` (στο Docker, στο `.env`).
 Χωρίς αυτό τρέχει μόνο ο owner.
