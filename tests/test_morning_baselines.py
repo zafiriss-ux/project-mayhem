@@ -30,11 +30,11 @@ pytestmark = pytest.mark.integration
 class _Garmin:
     athlete_max_hr = 0
 
-    def __init__(self, today: str, hrv: float, rhr: int) -> None:
-        self.today, self.hrv, self.rhr = today, hrv, rhr
+    def __init__(self, today: str, hrv: float, rhr: int, status: str | None = None) -> None:
+        self.today, self.hrv, self.rhr, self.status = today, hrv, rhr, status
 
     def sync_all(self) -> dict:
-        return {
+        payload = {
             "activities": [],
             "sleep": [{"date": self.today, "resting_hr": self.rhr, "sleep_score": 82, "total_sleep_hours": 7.8}],
             "hrv": [{"date": self.today, "rmssd": self.hrv}],
@@ -42,6 +42,9 @@ class _Garmin:
             "weight": [{"date": self.today, "weight_kg": 70.0}],
             "fueling_confirmed": True,
         }
+        if self.status is not None:
+            payload["status"] = self.status
+        return payload
 
 
 class _Telegram:
@@ -84,7 +87,8 @@ class _Nutrition:
 
 def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float,
              today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None,
-             loads: dict[int, int] | None = None, fail_load_reload: bool = False) -> tuple[dict, dict]:
+             loads: dict[int, int] | None = None, fail_load_reload: bool = False,
+             sync_status: str | None = None) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -108,7 +112,7 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
         engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
         telegram = _Telegram()
         coach = DailyCoach(
-            garmin_sync=_Garmin(today, today_hrv, today_rhr), weather_api=None, telegram_bot=telegram,
+            garmin_sync=_Garmin(today, today_hrv, today_rhr, sync_status), weather_api=None, telegram_bot=telegram,
             hrv_engine=engines.hrv, tsb_engine=engines.tsb, readiness_engine=engines.readiness,
             optimal_time_calc=_OptimalTime(), nutrition_optimizer=_Nutrition(), weekly_planner=_Planner(),
             db=db, athlete_id=athlete_id, engines=engines,
@@ -312,3 +316,23 @@ def test_failed_reload_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
     assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
     assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
     assert payload["session_type"] in {"EASY", "REST"}, payload["session_type"]
+
+
+def test_partial_sync_counts_tsb_as_missing_for_h4(tmp_path, monkeypatch):
+    """SD-04 (ADR-0073 point 5, D-167): the activity fetch failed, so the sync is "partial" and
+    the TSB lacks yesterday's run. H4 used to say CLEAR on it; now it is missing (EASY ceiling)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=dict.fromkeys(range(1, 120), 40), sync_status="partial")
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H4" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_partial_sync_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
+    """SD-04 guard (only tightens): the TSB is already at the floor without the missing runs,
+    so H4 fires on it and keeps its volume cap."""
+    loads = dict.fromkeys(range(8, 120), 40)
+    loads.update(dict.fromkeys(range(1, 8), 250))
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=loads, sync_status="partial")
+    assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
