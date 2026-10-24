@@ -212,6 +212,16 @@ def test_rhr_baseline_from_one_night_counts_as_missing(tmp_path, monkeypatch):
     assert "DATA_MISSING_CONSERVATIVE_H3" in payload["governance_locks"], payload["governance_locks"]
 
 
+def test_rhr_below_the_floor_counts_as_missing_for_h3(tmp_path, monkeypatch):
+    """SD-02 (ADR-0073 point 3, D-163): RHR 15 is a sensor error. It used to be clamped to 25
+    and passed H3 as measured, so the day stayed TEMPO. Now it counts as missing: EASY ceiling
+    with DATA_MISSING_CONSERVATIVE_H3."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=15)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H3" in payload["governance_locks"], payload["governance_locks"]
+
+
 def test_rhr_baseline_with_four_nights_is_a_baseline(tmp_path, monkeypatch):
     """SD-03: 4 nights in the 7 days are enough; H3 compares as before (no missing-data lock)."""
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
@@ -226,3 +236,11 @@ def test_rhr_spike_over_one_night_still_rests(tmp_path, monkeypatch):
                           today_rhr=60, rhr_nights=1)
     assert payload["session_type"] == "REST", payload["session_type"]
     assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"]
+
+
+def test_rhr_above_the_ceiling_still_rests(tmp_path, monkeypatch):
+    """SD-02 guard: RHR 200 is still clamped to 120 and H3 still gives REST (only tightens)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=200)
+    assert payload["session_type"] == "REST", payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H3" not in payload["governance_locks"]
