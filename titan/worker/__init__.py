@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 from titan.config.settings import get_settings
+from titan.core.structured_events import add_slo_alert_listener
 from titan.utils.secrets import install_log_redaction
 
 logger = logging.getLogger(__name__)
@@ -683,6 +684,58 @@ def _resume_stored_day(db: DatabaseManager, athlete_id: str, stored: dict, day: 
     return _send_stored_decision(db, athlete_id, capped, caps, note=_CAPPED_NOTE)
 
 
+# P4-09: the slo_alert events of one morning attempt reach the owner as one message. An
+# alert about Telegram itself cannot be told over Telegram: it is counted and logged only.
+_SLO_PENDING: list[str] = []
+_SLO_LOCK = threading.Lock()
+_SLO_NOT_OVER_TELEGRAM = "telegram_"
+
+
+def _collect_slo_alert(payload: dict) -> None:
+    """Listener for every slo_alert in this process: count it, and keep it for the owner (P4-09)."""
+    key = str(payload.get("slo_key") or "unknown")
+    from titan.observability.metrics import get_metrics
+
+    get_metrics().counter("slo_alert", labels={"slo_key": key})
+    with _SLO_LOCK:
+        _SLO_PENDING.append(key)
+
+
+def _start_slo_capture() -> None:
+    """From here on, this process's slo_alerts belong to the attempt that starts (P4-09)."""
+    add_slo_alert_listener(_collect_slo_alert)
+    with _SLO_LOCK:
+        _SLO_PENDING.clear()
+
+
+def _report_slo_alerts(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
+    """Tell the owner, in one message, which SLO alerts the attempt raised (P4-09).
+
+    The message names the alerts only, never health data, and goes to the owner's chat
+    (TELEGRAM_CHAT_ID) whichever athlete's morning raised them. A failed send is logged.
+    """
+    with _SLO_LOCK:
+        keys = list(_SLO_PENDING)
+        _SLO_PENDING.clear()
+    told = sorted(k for k in keys if not k.startswith(_SLO_NOT_OVER_TELEGRAM))
+    if not told:
+        return
+    counts = {k: told.count(k) for k in dict.fromkeys(told)}
+    listed = ", ".join(f"{k} ({n}×)" if n > 1 else k for k, n in counts.items())
+    try:
+        from titan.integrations.telegram_bot import TitanTelegramBot
+
+        TitanTelegramBot(db=db).send_alert(
+            title="SLO alerts",
+            message=f"The morning of {athlete_id} for {execution_date} raised: {listed}.",
+            level="warning",
+        )
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").exception(
+            "worker_slo_alert_report_failed", extra={"athlete_id": athlete_id, "error": str(exc)},
+        )
+
+
 def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int) -> bool:
     """Run one claimed attempt of the day; True once the day's message is delivered (ADR-0067 D8.4).
 
@@ -694,6 +747,7 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
     log = logging.getLogger("titan.worker.runner")
     delivered = False
     day = _MorningDay(execution_date=execution_date, attempt=attempt)
+    _start_slo_capture()
     try:
         resume = db.get_routine_resume(
             athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
@@ -731,6 +785,7 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
         )
     if not keep_mark:
         _end_attempt(db, athlete_id, execution_date, attempt=attempt)
+    _report_slo_alerts(db, athlete_id, execution_date)
     return delivered
 
 
