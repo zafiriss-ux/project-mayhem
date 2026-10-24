@@ -61,7 +61,7 @@ def test_recovery_shows_todays_stored_morning_score(recovery):
     db, cmd = recovery
     db.save_governance_decision(_decision(55.0))
     text = cmd()
-    assert "55" in text
+    assert "55/100" in text
     assert "Σφάλμα" not in text
 
 
@@ -69,6 +69,7 @@ def test_recovery_without_a_morning_decision_shows_no_score(recovery):
     _db, cmd = recovery
     text = cmd()
     assert "/100" not in text
+    assert "δεν υπάρχει ακόμη" in text
     assert "Σφάλμα" not in text
 
 
