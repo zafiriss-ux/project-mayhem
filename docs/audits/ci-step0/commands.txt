@@ -1,0 +1,20 @@
+Εντολές του Βήματος 0 (2026-10-24). Από τα scripts της συνεδρίας και το ιστορικό της· δεν
+υπάρχουν μέσα στα logs. Όλες από τη ρίζα του αντίστοιχου worktree, με το .venv του repo.
+
+Εκτελέσεις 1-15 (titan_ci), μία τη φορά, όριο 30 λεπτά:
+  timeout 1800 bash scripts/titan_ci.sh
+Εκτέλεση 14 (χωρίς δίκτυο): η ίδια εντολή με
+  HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 https_proxy=http://127.0.0.1:9 http_proxy=http://127.0.0.1:9 NO_PROXY= no_proxy=
+
+Πρώτη διαγνωστική στο ae30e4a (το log ΔΕΝ κρατήθηκε· το αποτέλεσμα υπάρχει μόνο στο ιστορικό της συνεδρίας):
+  timeout 500 python -m pytest --tb=short -q --strict-markers -x --ignore=tests/test_backup.py --ignore=tests/test_backup_verification.py --ignore=tests/test_complexity_budget.py
+  Αποτέλεσμα: FAILED tests/test_daily_coach_characterization.py::test_two_weeks_as_the_worker_runs_them
+              1 failed, 676 passed, 1 skipped, 1 warning in 1773465789.06s (20526 days, 5:23:09)
+
+diag-ae30e4a-nocache-nocov.txt:
+  timeout 500 python -m pytest --no-cov --tb=short -q -p no:cacheprovider -x --strict-markers --ignore=tests/test_backup.py --ignore=tests/test_backup_verification.py --ignore=tests/test_complexity_budget.py
+
+diag-ae30e4a-nocache-cov.txt:
+  timeout 500 python -m pytest --tb=short -q -p no:cacheprovider -x --strict-markers --ignore=tests/test_backup.py --ignore=tests/test_backup_verification.py --ignore=tests/test_complexity_budget.py -o log_cli=false --show-capture=no
+
+Η εντολή της G2 μέσα στο titan_ci.sh: scripts/titan_ci.sh, γραμμή «run_gate "G2 Strict pytest"».

@@ -1,0 +1,16 @@
+run	sha	variant	start_utc	end_utc	seconds	exit	g2_line
+1	4bcc3ee	normal	2026-10-24T08:46:32Z	2026-10-24T08:52:45Z	373	0	4431 passed, 8 skipped, 3 warnings in 350.75s (0:05:50)
+2	4bcc3ee	normal	2026-10-24T08:52:46Z	2026-10-24T08:58:41Z	355	0	4431 passed, 8 skipped, 3 warnings in 338.55s (0:05:38)
+3	4bcc3ee	normal	2026-10-24T08:58:41Z	2026-10-24T09:04:30Z	349	0	4431 passed, 8 skipped, 3 warnings in 329.96s (0:05:29)
+4	4bcc3ee	normal	2026-10-24T09:04:30Z	2026-10-24T09:10:38Z	368	0	4431 passed, 8 skipped, 3 warnings in 349.43s (0:05:49)
+5	4bcc3ee	normal	2026-10-24T09:10:38Z	2026-10-24T09:16:42Z	364	0	4431 passed, 8 skipped, 3 warnings in 345.28s (0:05:45)
+6	4bcc3ee	normal	2026-10-24T09:16:42Z	2026-10-24T09:22:47Z	365	0	4431 passed, 8 skipped, 3 warnings in 345.99s (0:05:45)
+7	4bcc3ee	normal	2026-10-24T09:22:47Z	2026-10-24T09:29:03Z	376	0	4431 passed, 8 skipped, 3 warnings in 354.90s (0:05:54)
+8	4bcc3ee	normal	2026-10-24T09:29:03Z	2026-10-24T09:35:28Z	385	0	4431 passed, 8 skipped, 3 warnings in 364.20s (0:06:04)
+9	4bcc3ee	normal	2026-10-24T09:35:28Z	2026-10-24T09:41:55Z	387	0	4431 passed, 8 skipped, 3 warnings in 367.42s (0:06:07)
+10	4bcc3ee	normal	2026-10-24T09:41:55Z	2026-10-24T09:48:19Z	384	0	4431 passed, 8 skipped, 3 warnings in 364.94s (0:06:04)
+11	ae30e4a	normal	2026-10-24T09:48:19Z	2026-10-24T10:18:19Z	1800	124	
+12	ae30e4a	normal	2026-10-24T10:22Z	(killed)	-	killed	stopped by the session's 2h background limit while still running (log ends at ~75%, no summary)
+13	ae30e4a	normal	-	-	-	not run	the loop was stopped before it started
+14	4bcc3ee	nonet	2026-10-24T11:05:03Z	2026-10-24T11:11:36Z	393	0	4431 passed, 8 skipped, 3 warnings in 370.76s (0:06:10)
+15	ae30e4a	normal	2026-10-24T11:11:36Z	2026-10-24T11:40:31Z	1735	143	
