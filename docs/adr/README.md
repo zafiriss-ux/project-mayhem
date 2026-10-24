@@ -85,6 +85,7 @@
 | [0068](0068-governance-gate-fail-closed-fixes.md) | Οι πύλες δεν χαλαρώνουν ποτέ: κλείδωμα override ανά αθλητή, το REST μένει REST, μη πεπερασμένη τιμή σημαίνει έλλειψη δεδομένων | Governance (ADR-0009) | 🔲 Proposed (2026-10-17) |
 | [0069](0069-audit-category-b-decisions.md) | Οι αποφάσεις Κατηγορίας Β των ελέγχων MA/OW: TSB από τη βάση, κόπωση στην H5, `/injury`, σχήμα v34, ειδοποίηση 24 ωρών, HARD_STOP μόνο για αληθινό hard stop, χωρίς NotificationGateway, υπενθύμιση μετά από kill | Governance (ADR-0009) / Worker / Data | ✅ Accepted (2026-10-23) |
 | [0070](0070-documents-reconciled-after-ma-ow-p4.md) | Τα έγγραφα συμφωνούν ξανά με τον κώδικα μετά τους ελέγχους MA/OW/P4: AGENTS §8.13, §16.6, §16.11, §30, ADR-0055, ADR-0033, DECISION_MODEL, TECHNICAL_DEBT | Governance (policy-only) | ✅ Accepted (2026-10-23) |
+| [0071](0071-main-branch-ruleset.md) | Το main δέχεται αλλαγές μόνο με PR και 13 πράσινους υποχρεωτικούς ελέγχους· κανένα force-push ή διαγραφή (M0-06) | Governance (policy-only) / CI | ✅ Accepted (2026-10-24) |
 
 ---
 
