@@ -9,6 +9,28 @@
 
 ---
 
+## D-144 · M0-04: το release κρατά τον φάκελο `/secrets` του worker
+
+- **Πότε / ποιος:** 2026-10-23. Claude, Φάση 1 του σχεδίου Project Mayhem, εύρημα M0-04 της Φάσης 0.
+  Το σχέδιο το ενέκρινε ο Zaf.
+- **Το πρόβλημα:** το `docker-compose.release.yml` ορίζει `volumes: !override` στον worker, που
+  αντικαθιστά όλη τη λίστα του `docker-compose.yml`. Η λίστα του release είχε μόνο `titan-data` και
+  `titan-backups`, όχι το `titan-secrets:/secrets`. Οι `TITAN_TOKEN_KEY_FILE` και
+  `TITAN_DELETION_RECORD_FILE` έδειχναν έτσι σε φάκελο μέσα στο container. Σε κάθε αναδημιουργία του
+  container (νέα έκδοση, νέο image) χάνονταν το κλειδί των tokens Garmin των αθλητών και το αρχείο
+  διαγραφών, όπου είχαν δημιουργηθεί (`new-key`, διαγραφή αθλητή). Χωρίς το αρχείο διαγραφών, ένα restore μπορεί να επαναφέρει αθλητή που διαγράφηκε
+  (ADR-0067 D6.3).
+- **Απόφαση:** η λίστα του release παίρνει και το `titan-secrets:/secrets`. Νέο test στο
+  `tests/test_release_engineering.py` ελέγχει ότι κάθε named volume του worker στο βασικό compose
+  υπάρχει και στο release, και ότι το release δεν δένει φακέλους του host. Το
+  `docker compose -f docker-compose.yml -f docker-compose.release.yml config` δείχνει τώρα τον worker
+  με `/secrets`.
+- **Εναλλακτικές που απορρίφθηκαν:** αφαίρεση του `!override` (θα ξανάβαζε το bind `./scripts` του
+  host, που το release αποφεύγει σκόπιμα)· έλεγχος με PyYAML (δεν είναι δηλωμένη εξάρτηση, και τα tags
+  `!override`/`!reset` θέλουν δικό τους loader).
+- **Εγκαταστάσεις που ήδη τρέχουν release:** το κλειδί και το αρχείο διαγραφών μέσα στο container δεν
+  περνούν μόνα τους στο νέο volume. Τα βήματα είναι στο `docs/runbooks/docker-deploy.md`.
+
 ## D-142 · Έκδοση 5.9.0· το release φέρνει και το TITAN.exe
 
 - **Πότε / ποιος:** 2026-10-23. Claude, Φάση 4 του πλάνου διορθώσεων. Το release το ζήτησε ο Zaf
