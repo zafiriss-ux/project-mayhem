@@ -86,7 +86,7 @@
 | [0069](0069-audit-category-b-decisions.md) | Οι αποφάσεις Κατηγορίας Β των ελέγχων MA/OW: TSB από τη βάση, κόπωση στην H5, `/injury`, σχήμα v34, ειδοποίηση 24 ωρών, HARD_STOP μόνο για αληθινό hard stop, χωρίς NotificationGateway, υπενθύμιση μετά από kill | Governance (ADR-0009) / Worker / Data | ✅ Accepted (2026-10-23) |
 | [0070](0070-documents-reconciled-after-ma-ow-p4.md) | Τα έγγραφα συμφωνούν ξανά με τον κώδικα μετά τους ελέγχους MA/OW/P4: AGENTS §8.13, §16.6, §16.11, §30, ADR-0055, ADR-0033, DECISION_MODEL, TECHNICAL_DEBT | Governance (policy-only) | ✅ Accepted (2026-10-23) |
 | [0071](0071-main-branch-ruleset.md) | Το main δέχεται αλλαγές μόνο με PR και 13 πράσινους υποχρεωτικούς ελέγχους· κανένα force-push ή διαγραφή (M0-06) | Governance (policy-only) / CI | ✅ Accepted (2026-10-24) |
-| [0072](0072-card-approvals-m0-02-03-11.md) | Οι εγκρίσεις Κατηγορίας Β για τα M0-02, M0-03, M0-11 δόθηκαν με κάρτα· καταγράφονται εδώ, και από τώρα κάθε αλλαγή Β θέλει ADR Accepted πριν από τον κώδικα | Governance (policy-only) | 🔲 Proposed (2026-10-24) |
+| [0072](0072-card-approvals-m0-02-03-11.md) | Οι εγκρίσεις Κατηγορίας Β για τα M0-02, M0-03, M0-11 δόθηκαν με κάρτα· καταγράφονται εδώ, και από τώρα κάθε αλλαγή Β θέλει ADR Accepted πριν από τον κώδικα | Governance (policy-only) | ✅ Accepted (2026-10-24) |
 
 ---
 
