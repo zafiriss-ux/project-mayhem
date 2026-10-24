@@ -50,7 +50,7 @@ class _FakeBot:
 
 
 def _make_bot(monkeypatch: pytest.MonkeyPatch, chat_id: str | None) -> tg.TitanTelegramBot:
-    monkeypatch.setattr(tg, "get_settings", lambda: SimpleNamespace(TELEGRAM_CHAT_ID=chat_id))
+    monkeypatch.setattr(tg, "get_settings", lambda: SimpleNamespace(TELEGRAM_CHAT_ID=chat_id, TELEGRAM_OWNER_USER_ID=""))
     monkeypatch.setattr(tg, "telebot", SimpleNamespace(TeleBot=_FakeBot), raising=False)
     monkeypatch.setattr(tg, "TELEBOT_AVAILABLE", True)
     monkeypatch.setattr(tg, "_cmd_rate", tg.defaultdict(float))

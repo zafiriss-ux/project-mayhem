@@ -94,7 +94,9 @@ After `docker compose up -d`:
 
 ### Telegram (manual, needs credentials)
 
-- Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`
+- Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` in `.env`. If `TELEGRAM_CHAT_ID` is a group (a
+  negative id), also set `TELEGRAM_OWNER_USER_ID` to the owner's own user id: in a group only the
+  owner's messages are commands, and without it no group message is (M0-33, D-150).
 - `docker compose up -d titan-worker`
 - With one athlete the worker only sends messages; owner commands such as `/today` need local
   mode, `python -m titan`. With `TITAN_MULTI_ATHLETE=1` the worker listens (log line

@@ -134,6 +134,7 @@ TITAN_GARTH_TOKEN_KEY=           # κλειδί Fernet για κρυπτογρά
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE   # από τον @BotFather
 TELEGRAM_CHAT_ID=123456789               # από τον @userinfobot
+TELEGRAM_OWNER_USER_ID=                  # μόνο αν το chat είναι ομάδα (-…): το δικό σου user id
 
 # Καιρός (Open-Meteo, χωρίς API key)
 WEATHER_LOCATION=Athens,GR
@@ -236,6 +237,11 @@ Week of: 2026-02-17
 TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 TELEGRAM_CHAT_ID=123456789
 ```
+
+Αν το `TELEGRAM_CHAT_ID` είναι ομαδική συνομιλία (αρχίζει από `-`), όρισε και το
+`TELEGRAM_OWNER_USER_ID` με το δικό σου user id (σου το δίνει ο @userinfobot σε ιδιωτική
+συνομιλία). Στην ομάδα το bot εκτελεί μόνο τις δικές σου εντολές· χωρίς τη ρύθμιση δεν απαντά σε
+κανέναν εκεί.
 
 ## 📊 Βασικές Μετρικές
 

@@ -223,6 +223,7 @@ class TitanTelegramBot:
             if raw_id is None or raw_id != str(chat_id):
                 raise ValueError("an athlete's Telegram chat id is not in canonical form")
             self._trusted_chat_id: str | None = None
+            self._owner_user_id: str | None = None
         else:
             raw_id = chat_id or get_settings().TELEGRAM_CHAT_ID
             # Trusted inbound chat ID for per-handler authorisation, in the canonical form
@@ -230,6 +231,14 @@ class TitanTelegramBot:
             # (deny all, INV-16 / RBP-02); str = strict match.
             _raw_trusted = chat_id or get_settings().TELEGRAM_CHAT_ID or None
             self._trusted_chat_id = canonical_chat_id(_raw_trusted, allow_negative=True) if _raw_trusted else None
+            # The owner's own Telegram user id. Needed only when TELEGRAM_CHAT_ID is a group:
+            # there every member writes in the trusted chat, and only the owner's messages
+            # are commands (M0-33). A user id is positive, like a private chat id.
+            _raw_owner_user = str(get_settings().TELEGRAM_OWNER_USER_ID or "").strip()
+            self._owner_user_id = canonical_chat_id(_raw_owner_user)
+            if _raw_owner_user and self._owner_user_id is None:
+                # Set but not a user id ("+42", "-42", text): treated as unset, said once here.
+                _log.critical("titan.telegram.owner_user_id_invalid")
         try:
             self.chat_id = int(raw_id)
         except (ValueError, TypeError):
@@ -295,6 +304,28 @@ class TitanTelegramBot:
             return False
         return str(chat_id) == str(self._trusted_chat_id)
 
+    def _is_trusted_sender(self, chat_id: int | str, user: object) -> bool:
+        """Return True if a message in *chat_id* from *user* is the owner's command (M0-33).
+
+        In a private chat only the owner writes, so the chat is enough. When the trusted
+        chat is a group (a negative id), any member writes in it: the sender must also be
+        TELEGRAM_OWNER_USER_ID. Without that setting no group message is trusted (fail
+        closed, INV-16), and a CRITICAL is logged so the owner notices. A sender Telegram
+        does not name (an anonymous admin, a channel) is never the owner.
+        """
+        if not self._is_trusted(chat_id):
+            return False
+        if not str(self._trusted_chat_id).startswith("-"):
+            return True
+        if self._owner_user_id is None:
+            _log.critical("titan.telegram.group_owner_user_not_configured")
+            return False
+        return canonical_chat_id(getattr(user, "id", None)) == self._owner_user_id
+
+    def _is_owner_message(self, message: object) -> bool:
+        """Whether an inbound *message* is the owner's command: its chat and its sender (M0-33)."""
+        return self._is_trusted_sender(message.chat.id, getattr(message, "from_user", None))
+
     def _athlete_for_chat(self, chat_id: int | str) -> str | None:
         """Return the athlete whose private chat this is, or None (ADR-0067 D10.2).
 
@@ -325,7 +356,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["start", "help"])
         def cmd_help(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 if self._athlete_for_chat(message.chat.id) is not None:
                     self.bot.reply_to(message, _ATHLETE_HELP)
                     return
@@ -352,7 +383,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["today"])
         def cmd_today(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "today"):
@@ -366,7 +397,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["week"])
         def cmd_week(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "week"):
@@ -380,7 +411,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["stats"])
         def cmd_stats(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "stats" in self.cmd_callbacks:
@@ -391,7 +422,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["recovery"])
         def cmd_recovery(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "recovery" in self.cmd_callbacks:
@@ -402,7 +433,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["nutrition"])
         def cmd_nutrition(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "nutrition" in self.cmd_callbacks:
@@ -413,7 +444,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["sync"])
         def cmd_sync(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 athlete_id = self._athlete_for_chat(message.chat.id)
                 if athlete_id is not None:
                     self.bot.reply_to(message, self.handle_athlete_sync(message.chat.id, athlete_id))
@@ -437,7 +468,7 @@ class TitanTelegramBot:
         def cmd_stop(message):
             athlete_id = self._athlete_for_chat(message.chat.id)
             if athlete_id is None:
-                if self._is_trusted(message.chat.id):
+                if self._is_owner_message(message):
                     self.bot.reply_to(message, "ℹ️ /stop is for athletes; the owner has no consent to withdraw.")
                 else:
                     _log.warning("titan.telegram.untrusted_chat")
@@ -448,7 +479,7 @@ class TitanTelegramBot:
         def cmd_consent(message):
             athlete_id = self._athlete_for_chat(message.chat.id)
             if athlete_id is None:
-                if self._is_trusted(message.chat.id):
+                if self._is_owner_message(message):
                     self.bot.reply_to(message, "ℹ️ The owner is exempt from consent.")
                 else:
                     _log.warning("titan.telegram.untrusted_chat")
@@ -462,7 +493,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["activities"])
         def cmd_activities(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "activities" in self.cmd_callbacks:
@@ -473,7 +504,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["drift"])
         def cmd_drift(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "drift" in self.cmd_callbacks:
@@ -484,7 +515,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["shoes"])
         def cmd_shoes(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if "shoes" in self.cmd_callbacks:
@@ -495,7 +526,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["calibration"])
         def cmd_calibration(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "calibration"):
@@ -509,7 +540,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["manual_entry"])
         def cmd_manual_entry(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "manual_entry"):
@@ -524,7 +555,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["injury"])
         def cmd_injury(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "injury"):
@@ -536,7 +567,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(commands=["time_trial"])
         def cmd_time_trial(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             if not _check_rate_limit(message.chat.id, "time_trial"):
@@ -548,7 +579,7 @@ class TitanTelegramBot:
 
         @self.bot.callback_query_handler(func=lambda call: str(call.data).startswith("override:"))
         def cb_override(call):
-            if not self._is_trusted(call.message.chat.id):
+            if not self._is_trusted_sender(call.message.chat.id, getattr(call, "from_user", None)):
                 _log.warning("titan.telegram.untrusted_chat")
                 self.bot.answer_callback_query(call.id)
                 return
@@ -559,7 +590,7 @@ class TitanTelegramBot:
 
         @self.bot.message_handler(func=lambda message: message.chat.id in self._pending_override_prompts)
         def msg_override_reason(message):
-            if not self._is_trusted(message.chat.id):
+            if not self._is_owner_message(message):
                 _log.warning("titan.telegram.untrusted_chat")
                 return
             response = self.process_override_reason(message.chat.id, message.text or "")
