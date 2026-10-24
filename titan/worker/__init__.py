@@ -899,12 +899,15 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
         raise ValueError("the owner's /sync is the console callback, not this one")
     try:
         _require_consent(db, athlete_id)
-        load_athlete_profile(db, athlete_id)
+        profile = load_athlete_profile(db, athlete_id)
         _require_garmin_ready(db, athlete_id)
     except AthleteNotReady as exc:
         log.info("athlete_sync_not_ready", extra={"athlete_id": athlete_id, "reason": exc.reason})
         return "⏸ Your setup is not complete yet, so nothing was synced."
     garmin = GarminSync(athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id))
+    # The athlete's max HR sets the TRIMP zones, as in the morning (DailyCoach). Without it
+    # every activity was stored with load 0 and overwrote the load stored before (M0-03).
+    garmin.athlete_max_hr = int(profile.max_hr or 0)
     try:
         if not garmin.connect():
             return "⏸ Garmin is not connected for you, so nothing was synced."

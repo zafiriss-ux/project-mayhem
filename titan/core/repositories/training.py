@@ -369,7 +369,9 @@ class TrainingRepository:
         Only the athlete's own row is updated; the id stays unique across the database
         (D-079), so another athlete's row is left alone. Fields Garmin does not send
         (shoe, surface, temperature) keep their stored value when the new one is None,
-        and the old distance moves off the old shoe onto the current one.
+        and the old distance moves off the old shoe onto the current one. A load of 0 keeps
+        the stored load: it means the load could not be computed (no max HR), and it must not
+        erase a computed one (M0-03).
         """
         old = cursor.execute(
             "SELECT distance_km, shoe_id FROM training_log "
@@ -382,7 +384,8 @@ class TrainingRepository:
         cursor.execute("""
             UPDATE training_log
             SET date = ?, session_type = ?, distance_km = ?, duration_sec = ?, avg_hr = ?,
-                max_hr = ?, rpe = ?, training_load = ?, shoe_id = COALESCE(?, shoe_id),
+                max_hr = ?, rpe = ?, training_load = COALESCE(NULLIF(?, 0), training_load, 0),
+                shoe_id = COALESCE(?, shoe_id),
                 surface = COALESCE(?, surface), temperature_c = COALESCE(?, temperature_c),
                 notes = ?, quality_flag = ?, avg_pace_sec_per_km = ?
             WHERE garmin_activity_id = ? AND athlete_id = ?
