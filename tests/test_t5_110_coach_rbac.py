@@ -59,8 +59,9 @@ def test_coach_cannot_access_unassigned_athlete(db):
 
 @pytest.mark.integration
 @pytest.mark.governance
-def test_system_coach_returns_all_athletes(db):
-    """'system' coach must return all athletes regardless of assignment rows."""
+def test_system_coach_returns_only_its_assignments(db):
+    """'system' gets its assignment rows only, like any coach (M0-05: the old all-athletes
+    bypass let any user with id 'system' see every athlete)."""
     db.conn.execute(
         "INSERT OR IGNORE INTO athletes "
         "(athlete_id, display_name, created_at, is_cold_start, cold_start_sessions_count) "
@@ -77,9 +78,7 @@ def test_system_coach_returns_all_athletes(db):
     db.assign_athlete_to_coach("coach_a", "athlete_x")
     db.assign_athlete_to_coach("coach_b", "athlete_y")
 
-    all_athletes = db.get_assigned_athletes("system")
-    assert "athlete_x" in all_athletes
-    assert "athlete_y" in all_athletes
+    assert db.get_assigned_athletes("system") == ["owner"]
 
 
 @pytest.mark.integration
