@@ -259,7 +259,7 @@ class OutcomeTracker:
             locks_applied=list(locks_applied),
             governance_clean=bool(governance_clean),
             phase=str(phase),
-            athlete_profile_id="owner" if athlete_profile_id is None else athlete_profile_id,
+            athlete_profile_id=self._athlete_id if athlete_profile_id is None else athlete_profile_id,
             vlg_color=str(vlg_color),
             apl_priority_vector=dict(apl_result.get("priority_vector", {})),
             lock_thresholds_active=dict(apl_result.get("lock_thresholds", {})),
@@ -315,7 +315,7 @@ class OutcomeTracker:
         notes: str | None = None,
         decision_was_followed: bool | None = None,
         outcome_date: str | None = None,
-        athlete_id: str = "owner",
+        athlete_id: str | None = None,
     ) -> bool:
         """
         Attach post-session outcome to the recorded decision for that date.
@@ -324,6 +324,7 @@ class OutcomeTracker:
         Call this after the athlete's session (e.g., from Telegram /post-run command).
         Scoped to athlete_id — decisions belonging to other athletes are never matched.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         for decision in reversed(self._decisions):
             if decision.date == date and decision.athlete_profile_id == athlete_id:
                 decision.outcome_rpe = rpe
@@ -402,9 +403,10 @@ class OutcomeTracker:
         date: str | None = None,
         with_outcomes_only: bool = False,
         phase: str | None = None,
-        athlete_id: str = "owner",
+        athlete_id: str | None = None,
     ) -> list[GovernanceDecision]:
         """Return stored decisions for athlete_id, optionally filtered further."""
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         result = [d for d in self._decisions if d.athlete_profile_id == athlete_id]
         if date:
             result = [d for d in result if d.date == date]
@@ -414,7 +416,7 @@ class OutcomeTracker:
             result = [d for d in result if d.outcome_completed is not None]
         return result
 
-    def get_lock_rate_by_phase(self, athlete_id: str = "owner") -> dict[str, float]:
+    def get_lock_rate_by_phase(self, athlete_id: str | None = None) -> dict[str, float]:
         """
         Return governance lock rate grouped by training phase for athlete_id.
 
@@ -422,6 +424,7 @@ class OutcomeTracker:
         triggers more locks than expected, which may indicate miscalibrated
         thresholds for that phase context.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         by_phase: dict[str, list[bool]] = {}
         for d in self._decisions:
             if d.athlete_profile_id != athlete_id:
@@ -434,7 +437,7 @@ class OutcomeTracker:
         }
 
     def get_lock_outcome_correlation(
-        self, min_samples: int = 3, athlete_id: str = "owner"
+        self, min_samples: int = 3, athlete_id: str | None = None
     ) -> dict[str, dict]:
         """
         Correlate each lock trigger with downstream completion + RPE outcomes.
@@ -443,6 +446,7 @@ class OutcomeTracker:
         are most strongly associated with session success/failure.
         Scoped to athlete_id — cross-athlete pooling is forbidden here.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         decided = [
             d
             for d in self._decisions
@@ -493,7 +497,7 @@ class OutcomeTracker:
 
     # ── Calibration summary ──────────────────────────────────────────────────
 
-    def get_calibration_summary(self, athlete_id: str = "owner") -> dict:
+    def get_calibration_summary(self, athlete_id: str | None = None) -> dict:
         """
         Compute Phase-1 calibration metrics from recorded decisions + outcomes.
 
@@ -503,6 +507,7 @@ class OutcomeTracker:
 
         Returns a structured dict safe to log or display in Telegram /stats.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         athlete_decisions = [d for d in self._decisions if d.athlete_profile_id == athlete_id]
         n_total = len(athlete_decisions)
         decided = [d for d in athlete_decisions if d.outcome_completed is not None]
@@ -596,7 +601,7 @@ class OutcomeTracker:
             ),
         }
 
-    def check_calibration_diversity(self, athlete_id: str = "owner") -> bool:
+    def check_calibration_diversity(self, athlete_id: str | None = None) -> bool:
         """
         Per-athlete calibration diversity gate (ADR-0033 L3-B).
 
@@ -608,6 +613,7 @@ class OutcomeTracker:
           - No single session type accounts for > 60% of the dataset
         Cross-athlete pooling is explicitly forbidden.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         from collections import Counter
 
         reusable = [
@@ -653,13 +659,14 @@ class OutcomeTracker:
 
         return True
 
-    def get_calibration_analytics(self, athlete_id: str = "owner") -> list[dict]:
+    def get_calibration_analytics(self, athlete_id: str | None = None) -> list[dict]:
         """
         Return all decision records for athlete_id as dicts for calibration review.
 
         Cross-athlete pooling is explicitly forbidden — only records belonging
         to athlete_id are returned.
         """
+        athlete_id = self._athlete_id if athlete_id is None else athlete_id
         return [asdict(d) for d in self._decisions if d.athlete_profile_id == athlete_id]
 
     def _get_heuristic_promotion_candidates(
