@@ -62,6 +62,9 @@ class AthleteCoachingContext:
     cold_start_conservative_factor: float = 1.0
     # ADR-0058 Phase A: engine registry for per-athlete engine access
     engines: EngineRegistry | None = None
+    # SD-03 (ADR-0073 point 4): the RHR baseline has fewer than 4 nights and does not fire
+    # H3, so H3 treats it as missing. Readiness still scores against it.
+    rhr_baseline_thin: bool = False
 
 
 def coaching_pipeline(context: AthleteCoachingContext) -> bool:
@@ -126,6 +129,7 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
             garmin_report_payload=context.garmin_report_payload,
             startup_hydration_confidence=context.startup_hydration_confidence,
             startup_confidence_applies=context.startup_confidence_applies,
+            rhr_baseline_thin=context.rhr_baseline_thin,
         )
     except Exception as exc:
         # INV-12 boundary guard: decision pipeline failed — fail closed + loud.

@@ -49,6 +49,7 @@ from titan.config.thresholds import (
     ESI_PACE_ADJUSTMENT_HIGH_SEC_PER_KM,
     ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM,
     GARMIN_DATA_MAX_AGE_HOURS,
+    HARD_STOP_RHR_DELTA,
     HRV_DRIFT_THRESHOLD_MS,
     INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
     SLEEP_DEBT_NIGHTS,
@@ -433,6 +434,24 @@ def _stricter_h2_baseline(
     return before_today
 
 
+# SD-03 (ADR-0073 point 4): a 7-day RHR baseline needs at least this many nights.
+RHR_BASELINE_MIN_NIGHTS = 4
+
+
+def _stricter_h3_baseline(
+    enough_nights: float | None, any_nights: float | None, today_rhr: float | None,
+) -> float | None:
+    """The H3 baseline: None with fewer than 4 nights, unless the thin one fires H3 (SD-03).
+
+    Like ``_stricter_h2_baseline``: the change only tightens, so a REST that the thin
+    baseline gave is kept.
+    """
+    if (enough_nights is None and any_nights is not None and today_rhr is not None
+            and today_rhr >= any_nights + HARD_STOP_RHR_DELTA):
+        return any_nights
+    return enough_nights
+
+
 def _sleep_score_or_default(score: int | None) -> int:
     return _MISSING_SLEEP_SCORE if score is None else score
 
@@ -622,6 +641,7 @@ class _PipelineInputs:
     garmin_report_payload: dict
     startup_hydration_confidence: dict
     startup_confidence_applies: bool
+    rhr_baseline_thin: bool = False  # SD-03: H3 treats the RHR baseline as missing
 
 
 class DailyCoach:
@@ -1199,11 +1219,21 @@ class DailyCoach:
         # ── Pre-pipeline: baseline RHR (DB read; alert fires here if unavailable) ──
         _daily_coach_event("step_started", step_number=7, step_name="analyze_readiness")
         self._baseline_rhr_read_failed = False
-        baseline_rhr = self._get_baseline_rhr(days=7)
+        baseline_rhr_any = self._get_baseline_rhr(days=7)
         # No RHR in the 7 days before today reaches governance as None, which applies
         # ADR-0051 (H3_MISSING, EASY ceiling) like a missing HRV baseline (M0-02). Today's
         # RHR used as its own baseline gave a delta of 0, so H3 could never fire.
-        baseline_rhr_for_comparison = baseline_rhr
+        # SD-03 (ADR-0073 point 4): fewer than 4 nights in those 7 days is no baseline for
+        # H3 either, unless that thin baseline fires H3 (the fix never loses a REST).
+        # Readiness keeps comparing against any baseline, as before.
+        baseline_rhr = _stricter_h3_baseline(
+            self._get_baseline_rhr(days=7, min_nights=RHR_BASELINE_MIN_NIGHTS)
+            if baseline_rhr_any is not None else None,
+            baseline_rhr_any,
+            today_rhr or None,
+        )
+        baseline_rhr_for_comparison = baseline_rhr_any
+        rhr_baseline_thin = baseline_rhr is None and baseline_rhr_any is not None
         if baseline_rhr is None:
             _daily_coach_event(
                 "baseline_rhr_degraded_mode",
@@ -1273,6 +1303,7 @@ class DailyCoach:
             startup_hydration_confidence=startup_hydration_confidence,
             startup_confidence_applies=startup_confidence_applies,
             engines=getattr(self, "engines", None),
+            rhr_baseline_thin=rhr_baseline_thin,
         )
 
         # ── Delegated pipeline/effect execution ───────────────────────────────
@@ -1306,6 +1337,7 @@ class DailyCoach:
         garmin_report_payload: dict,
         startup_hydration_confidence: dict,
         startup_confidence_applies: bool,
+        rhr_baseline_thin: bool = False,
     ) -> DecisionResult:
         """Steps 7–11 of the morning routine; returns a DecisionResult (plan task 7, D-032).
 
@@ -1339,6 +1371,7 @@ class DailyCoach:
             garmin_report_payload=garmin_report_payload,
             startup_hydration_confidence=startup_hydration_confidence,
             startup_confidence_applies=startup_confidence_applies,
+            rhr_baseline_thin=rhr_baseline_thin,
         )
         readiness, fatigue_level, fatigue_tags = self._step_readiness(inp)
 
@@ -1704,7 +1737,7 @@ class DailyCoach:
             # Missing readings reach governance as None, which applies ADR-0051
             # itself: no RHR → EASY ceiling (H3_MISSING), no sleep score → 40 (SV-06).
             today_rhr=inp.today_rhr or None,
-            baseline_rhr=inp.baseline_rhr_for_comparison,
+            baseline_rhr=None if inp.rhr_baseline_thin else inp.baseline_rhr_for_comparison,
             sleep_score=inp.today_sleep_score,
             subjective_fatigue_score=inp.subjective_fatigue_score,
             # No load history gives no TSB, which reaches governance as None: H4_MISSING applies
@@ -2189,7 +2222,7 @@ class DailyCoach:
             emit=lambda action, **fields: _daily_coach_event(action, **fields),
         )
 
-    def _get_baseline_rhr(self, days: int = 7) -> float | None:
+    def _get_baseline_rhr(self, days: int = 7, min_nights: int = 1) -> float | None:
         """
         Calculate rolling N-day average resting HR from database.
         Returns None if unavailable.
@@ -2197,6 +2230,13 @@ class DailyCoach:
         try:
             # The 7 days before the morning's own day, not the clock's: a morning replayed
             # after midnight must not count its own RHR in its baseline (M0-11, D-105).
+            if min_nights > 1:
+                return self.db.get_baseline_rhr(
+                    days=days,
+                    athlete_id=getattr(self, "athlete_id", "owner"),
+                    before_date=_routine_day(self).isoformat(),
+                    min_nights=min_nights,
+                )
             return self.db.get_baseline_rhr(
                 days=days,
                 athlete_id=getattr(self, "athlete_id", "owner"),

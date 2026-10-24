@@ -81,7 +81,7 @@ class _Nutrition:
 
 
 def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float,
-             today_rhr: int = 50, prior_rhr: int = 50) -> tuple[dict, dict]:
+             today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -94,7 +94,9 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
             db.save_governance_decision({"athlete_profile_id": "owner", "date": (now - timedelta(days=i)).isoformat(),
                                          "session_planned": "EASY", "session_post_governance": "EASY"})
         for i in range(1, prior_nights + 1):
-            db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=75.0 + (i % 3), rhr=prior_rhr,
+            # rhr_nights: only the N most recent earlier nights carry an RHR (SD-03).
+            rhr = prior_rhr if rhr_nights is None or i <= rhr_nights else None
+            db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=75.0 + (i % 3), rhr=rhr,
                                  sleep_quality=80, weight=70.0, athlete_id=athlete_id)
         engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
         telegram = _Telegram()
@@ -199,6 +201,17 @@ def test_hrv_summary_baseline_before_date_leaves_out_that_day():
     assert short.get_hrv_summary(before_date="2026-10-07")["baseline"] is None
 
 
+def test_rhr_baseline_from_one_night_counts_as_missing(tmp_path, monkeypatch):
+    """SD-03 (ADR-0073 point 4, D-164): one earlier night is not a baseline. Before, H3
+    compared today against that one night and said CLEAR, so the day stayed TEMPO. Now a
+    baseline needs at least 4 nights in the 7 days before today: EASY ceiling with
+    DATA_MISSING_CONSERVATIVE_H3."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=52, rhr_nights=1)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H3" in payload["governance_locks"], payload["governance_locks"]
+
+
 def test_rhr_below_the_floor_counts_as_missing_for_h3(tmp_path, monkeypatch):
     """SD-02 (ADR-0073 point 3, D-163): RHR 15 is a sensor error. It used to be clamped to 25
     and passed H3 as measured, so the day stayed TEMPO. Now it counts as missing: EASY ceiling
@@ -207,6 +220,22 @@ def test_rhr_below_the_floor_counts_as_missing_for_h3(tmp_path, monkeypatch):
                           today_rhr=15)
     assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
     assert "DATA_MISSING_CONSERVATIVE_H3" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_rhr_baseline_with_four_nights_is_a_baseline(tmp_path, monkeypatch):
+    """SD-03: 4 nights in the 7 days are enough; H3 compares as before (no missing-data lock)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=52, rhr_nights=4)
+    assert "DATA_MISSING_CONSERVATIVE_H3" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_rhr_spike_over_one_night_still_rests(tmp_path, monkeypatch):
+    """SD-03 guard (only tightens): one night of 50 and today 60 (+10) fired H3 before.
+    The thin baseline stays when only it fires H3, so the REST is not lost."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          today_rhr=60, rhr_nights=1)
+    assert payload["session_type"] == "REST", payload["session_type"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"]
 
 
 def test_rhr_above_the_ceiling_still_rests(tmp_path, monkeypatch):
