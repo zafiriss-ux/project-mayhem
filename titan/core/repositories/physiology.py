@@ -4,7 +4,7 @@ HRR, glycogen debt and weight history."""
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -14,6 +14,16 @@ if TYPE_CHECKING:
 def _history_start(days: int) -> str:
     """First date (YYYY-MM-DD, UTC) of a "last N days" window, as the PostgreSQL adapter computes it."""
     return (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+
+def baseline_window(days: int, before_date: str | None = None) -> tuple[str, str]:
+    """``(end, start)`` ISO days of the N-day baseline before *before_date*.
+
+    The window is ``start <= date < end``: the day itself is left out (D-105). None is
+    today (UTC); a morning replayed after midnight passes its own day (M0-11).
+    """
+    end = date.fromisoformat(before_date) if before_date else datetime.now(UTC).date()
+    return end.isoformat(), (end - timedelta(days=days)).isoformat()
 
 
 class PhysiologyRepository:
@@ -239,18 +249,20 @@ class PhysiologyRepository:
             row = cursor.fetchone()
         return (str(row[0]), float(row[1])) if row else None
 
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        """Return the average resting HR of the N days before today, or None.
+    def get_baseline_rhr(
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+    ) -> float | None:
+        """Return the average resting HR of the N days before *before_date*, or None.
 
-        Today's row is left out (D-105, SG-06): the morning persists today's RHR
+        *before_date* (ISO day) is the day the baseline is for; None is today (UTC).
+        That day's row is left out (D-105, SG-06): the morning persists its RHR
         before H3 reads this baseline, and a spike must not dilute its own baseline.
+        A morning replayed after midnight passes its own day (M0-11).
         """
+        today, cutoff = baseline_window(days, before_date)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
-            now = datetime.now(UTC)
-            today = now.strftime("%Y-%m-%d")
-            cutoff = (now - timedelta(days=days)).strftime("%Y-%m-%d")
             cursor.execute(
                 """SELECT AVG(resting_hr) FROM daily_metrics
                    WHERE athlete_id = ? AND date >= ? AND date < ?

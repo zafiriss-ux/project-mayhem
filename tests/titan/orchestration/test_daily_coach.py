@@ -50,7 +50,7 @@ class DummyDB:
     def update_glycogen_debt(self, *args, **kwargs):
         return None
 
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner"):
+    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner", before_date=None):
         return None
 
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner"):
@@ -944,7 +944,7 @@ def test_persist_garmin_data_f32_today_entry_persisted_normally(tmp_path):
 @pytest.mark.unit
 def test_get_baseline_rhr_happy_path_returns_average():
     coach = DailyCoach.__new__(DailyCoach)
-    coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7, athlete_id="owner": 51.3)
+    coach.db = SimpleNamespace(get_baseline_rhr=lambda days=7, athlete_id="owner", before_date=None: 51.3)
 
     assert coach._get_baseline_rhr(days=7) == 51.3
 
@@ -956,7 +956,7 @@ def test_get_baseline_rhr_error_emits_unavailable_and_returns_none(monkeypatch):
 
     coach = DailyCoach.__new__(DailyCoach)
 
-    def _raise_value_error(days=7, athlete_id="owner"):
+    def _raise_value_error(days=7, athlete_id="owner", before_date=None):
         raise ValueError("broken_row")
 
     coach.db = SimpleNamespace(get_baseline_rhr=_raise_value_error)
@@ -1012,7 +1012,7 @@ def test_no_rhr_before_today_is_degraded_mode_without_a_database_alert(monkeypat
     """A first morning has no RHR before today (D-105): no "check database health" alert."""
     alerts = _alert_spy(monkeypatch)
     coach = MinimalCoachFactory.build(telegram_success=True)
-    coach.db.get_baseline_rhr = lambda days=7, athlete_id="owner": None
+    coach.db.get_baseline_rhr = lambda days=7, athlete_id="owner", before_date=None: None
 
     assert coach.run_morning_routine() is True
     assert not [a for a in alerts if "RHR Baseline Unavailable" in a["title"]]
@@ -1023,7 +1023,7 @@ def test_a_failed_rhr_baseline_read_still_alerts_the_operator(monkeypatch):
     alerts = _alert_spy(monkeypatch)
     coach = MinimalCoachFactory.build(telegram_success=True)
 
-    def _broken(days=7, athlete_id="owner"):
+    def _broken(days=7, athlete_id="owner", before_date=None):
         raise sqlite3.OperationalError("database is locked")
 
     coach.db.get_baseline_rhr = _broken

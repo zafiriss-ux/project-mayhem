@@ -2186,7 +2186,13 @@ class DailyCoach:
         Returns None if unavailable.
         """
         try:
-            return self.db.get_baseline_rhr(days=days, athlete_id=getattr(self, "athlete_id", "owner"))
+            # The 7 days before the morning's own day, not the clock's: a morning replayed
+            # after midnight must not count its own RHR in its baseline (M0-11, D-105).
+            return self.db.get_baseline_rhr(
+                days=days,
+                athlete_id=getattr(self, "athlete_id", "owner"),
+                before_date=_routine_day(self).isoformat(),
+            )
         except (sqlite3.Error, TypeError, ValueError, KeyError) as exc:
             self._baseline_rhr_read_failed = True
             _daily_coach_event(

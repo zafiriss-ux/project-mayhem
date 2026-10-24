@@ -1351,9 +1351,13 @@ class DatabaseManager:
         """Attach or replace the operator note on one athlete's latest decision of *date* (ISO-3)."""
         return self._governance.annotate_governance_outcome(date=date, note=note, athlete_id=athlete_id)
 
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        """Return rolling N-day average resting HR from daily_metrics, or None."""
-        return self._physiology.get_baseline_rhr(days=days, athlete_id=athlete_id)
+    def get_baseline_rhr(
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+    ) -> float | None:
+        """Return the average resting HR of the N days before *before_date* (None: today), or None."""
+        return self._physiology.get_baseline_rhr(
+            days=days, athlete_id=athlete_id, before_date=before_date
+        )
 
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
         """Return (date, hrv_rmssd) rows from the last N days, newest-first."""

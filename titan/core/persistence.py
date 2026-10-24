@@ -50,6 +50,7 @@ from sqlalchemy.exc import IntegrityError
 from titan.config.thresholds import ATL_DECAY_DAYS, CTL_DECAY_DAYS
 from titan.core.database import DatabaseManager, PostgreSQLDatabaseManager
 from titan.core.repositories.governance import decision_athlete_id
+from titan.core.repositories.physiology import baseline_window
 
 _log = logging.getLogger(__name__)
 
@@ -172,8 +173,14 @@ class PersistenceAdapter(ABC):
         """Persist a morning check-in row (upsert: overwrite if key exists)."""
 
     @abstractmethod
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        """Return the rolling median RHR over the *days* days before today, or None (D-105)."""
+    def get_baseline_rhr(
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+    ) -> float | None:
+        """Return the baseline RHR over the *days* days before *before_date* (ISO day), or None.
+
+        None is today (UTC). The day itself is left out (D-105); a morning replayed after
+        midnight passes its own day (M0-11).
+        """
 
     @abstractmethod
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
@@ -453,8 +460,12 @@ class SQLiteAdapter(PersistenceAdapter):
     def save_daily_metric(self, date: str, **kwargs: Any) -> None:
         self._manager.save_daily_metric(date, **kwargs)
 
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        return self._manager.get_baseline_rhr(days=days, athlete_id=athlete_id)
+    def get_baseline_rhr(
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+    ) -> float | None:
+        return self._manager.get_baseline_rhr(
+            days=days, athlete_id=athlete_id, before_date=before_date
+        )
 
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:
         return self._manager.get_hrv_history(days=days, athlete_id=athlete_id)
@@ -818,10 +829,11 @@ class PostgreSQLAdapter(PersistenceAdapter):
             conn.execute(self._daily_metrics.delete().where(self._daily_metrics.c.date == date))
             conn.execute(insert(self._daily_metrics).values(**values))
 
-    def get_baseline_rhr(self, days: int = 7, athlete_id: str = "owner") -> float | None:
-        now = datetime.now(UTC)
-        start_date = (now - timedelta(days=days)).strftime("%Y-%m-%d")
-        today = now.strftime("%Y-%m-%d")  # today's RHR is not part of its baseline (D-105)
+    def get_baseline_rhr(
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+    ) -> float | None:
+        # The day's own RHR is not part of its baseline (D-105); the day is the morning's (M0-11).
+        today, start_date = baseline_window(days, before_date)
         with self._engine.connect() as conn:
             rows = conn.execute(
                 select(self._daily_metrics.c.resting_hr)
