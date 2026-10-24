@@ -87,6 +87,18 @@ def test_a_morning_without_a_claimed_day_uses_the_week_before_today(db) -> None:
     assert coach._get_baseline_rhr(days=7) == pytest.approx(expected)
 
 
+@pytest.mark.unit
+def test_an_invalid_morning_day_reads_as_a_failed_baseline(db) -> None:
+    """Fail closed: no baseline (H3 EASY ceiling) and the operator alert flag (ADR-0051)."""
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.db = db
+    coach.athlete_id = "owner"
+    coach.routine_date = "not-a-day"
+
+    assert coach._get_baseline_rhr(days=7) is None
+    assert coach._baseline_rhr_read_failed is True
+
+
 @pytest.mark.integration
 def test_postgres_adapter_baseline_for_a_past_day_leaves_out_that_day() -> None:
     _engine, adapter = _build_test_engine()
