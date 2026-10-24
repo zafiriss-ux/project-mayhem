@@ -1836,7 +1836,7 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | P4-06 | PostgreSQL: η εγγραφή `athlete_id` πριν ανοίξει ξανά ο σκελετός (ISO-5, D-112) | 4 | LOW | Όταν ανοίξει το PostgreSQL (ADR-0044) |
 | P4-07 | Προεπιλογή του H5 για νέο αθλητή (D-043) | 2 | MEDIUM | RESOLVED (D-133, ADR-0069 §2) |
 | P4-08 | Έλεγχος του `docs/consent/v1.md` από δικηγόρο· να αναφέρει και το βάρος σώματος | — | — | Πριν από τον πιλότο |
-| P4-09 | Τα γεγονότα `slo_alert` γράφονται μόνο στο log και δεν φτάνουν σε κανέναν (E-3· το T-PRA-31 αντικαταστάθηκε, D-139) | 2 | MEDIUM | OPEN (ADR-0070) |
+| P4-09 | Τα γεγονότα `slo_alert` γράφονται μόνο στο log και δεν φτάνουν σε κανέναν (E-3· το T-PRA-31 αντικαταστάθηκε, D-139) | 2 | MEDIUM | RESOLVED · PR #1091 (D-149) |
 | P4-10 | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3, ενώ το ADR-0055 το έλεγε (addendum ADR-0070) | 2 | MEDIUM | OPEN· αλλάζει τι βλέπουν οι πύλες, θέλει ADR-0009 |
 | P4-11 | Ο `cold_start_conservative_factor` του ADR-0033 μπαίνει στο context αλλά δεν τον διαβάζει καμία πύλη (addendum ADR-0070· ο ThresholdAdapter είναι το T-PRA-18) | 3 | LOW | OPEN |
 
