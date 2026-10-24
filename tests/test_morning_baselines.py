@@ -13,6 +13,7 @@ engines, governance and the database are the real ones.
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -21,6 +22,7 @@ from titan.core.database import DatabaseManager
 from titan.orchestration.daily_coach import DailyCoach
 from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.hrv_engine import HRVGuidedEngine
+from titan.science.tsb_engine import LOAD_HISTORY_DAYS
 
 pytestmark = pytest.mark.integration
 
@@ -81,7 +83,8 @@ class _Nutrition:
 
 
 def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float,
-             today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None) -> tuple[dict, dict]:
+             today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None,
+             loads: dict[int, int] | None = None, fail_load_reload: bool = False) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -98,6 +101,10 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
             rhr = prior_rhr if rhr_nights is None or i <= rhr_nights else None
             db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=75.0 + (i % 3), rhr=rhr,
                                  sleep_quality=80, weight=70.0, athlete_id=athlete_id)
+        # loads: {days back: training load} stored before the morning (M0-22).
+        for back, load in (loads or {}).items():
+            db.save_session((now - timedelta(days=back)).isoformat(), "EASY", 10.0, 3000,
+                            training_load=load, athlete_id=athlete_id)
         engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
         telegram = _Telegram()
         coach = DailyCoach(
@@ -106,6 +113,16 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
             optimal_time_calc=_OptimalTime(), nutrition_optimizer=_Nutrition(), weekly_planner=_Planner(),
             db=db, athlete_id=athlete_id, engines=engines,
         )
+        if fail_load_reload:
+            # Only the post-sync reload of the load history fails (M0-22); the coach was
+            # built from the loads read before it.
+            real = db.get_training_load_history
+
+            def _locked(*a, **k):
+                if k.get("days") == LOAD_HISTORY_DAYS:
+                    raise sqlite3.OperationalError("synthetic: database is locked")
+                return real(*a, **k)
+            monkeypatch.setattr(db, "get_training_load_history", _locked)
         assert coach.run_morning_routine(soreness=2)
         assert telegram.daily, "no daily message was sent"
         return telegram.daily[-1], db.get_governance_decision_on(athlete_id, today) or {}
@@ -266,3 +283,32 @@ def test_hrv_below_the_floor_still_rests(tmp_path, monkeypatch):
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=0.05)
     assert payload["session_type"] == "REST", payload["session_type"]
     assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"]
+
+
+def test_failed_load_reload_counts_as_missing_for_h4(tmp_path, monkeypatch):
+    """M0-22 (ADR-0073 point 1, D-166): the reload of the loads after the sync failed. The TSB
+    came from loads without the last sync and H4 said CLEAR. Now H4 treats it as missing:
+    EASY ceiling with DATA_MISSING_CONSERVATIVE_H4."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=dict.fromkeys(range(1, 120), 40), fail_load_reload=True)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H4" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_loads_reloaded_keep_h4_measured(tmp_path, monkeypatch):
+    """M0-22: with the same loads and a working reload, H4 is measured (no missing-data lock)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=dict.fromkeys(range(1, 120), 40))
+    assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_failed_reload_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
+    """M0-22 guard (only tightens): the old TSB is already at the floor, so H4 fires on it and
+    the day keeps the H4 volume cap instead of the plain missing-data ceiling."""
+    loads = dict.fromkeys(range(8, 120), 40)
+    loads.update(dict.fromkeys(range(1, 8), 250))
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=loads, fail_load_reload=True)
+    assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
+    assert payload["session_type"] in {"EASY", "REST"}, payload["session_type"]
