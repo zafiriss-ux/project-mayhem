@@ -23,6 +23,8 @@ class TitanSettings(BaseSettings):
     GARMIN_PASSWORD: SecretStr = SecretStr("")
     TELEGRAM_BOT_TOKEN: SecretStr = SecretStr("")
     TELEGRAM_CHAT_ID: str = ""
+    # Needed only when TELEGRAM_CHAT_ID is a group: the owner's own user id (M0-33).
+    TELEGRAM_OWNER_USER_ID: str = ""
     TITAN_JWT_PRIVATE_KEY: SecretStr = SecretStr("")
     TITAN_JWT_PUBLIC_KEY: str = ""
     TITAN_DB_BACKEND: str = "sqlite"

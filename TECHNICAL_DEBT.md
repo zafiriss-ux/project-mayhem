@@ -64,7 +64,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-22 | 1 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | `daily_coach.py` (load refresh) | OPEN · στόχος Phase 27 |
 | M0-23 | 1 | Η ετοιμότητα παίρνει RHR 50 ως προεπιλογή όταν λείπει | `daily_coach.py` (readiness) | OPEN · στόχος Phase 27 |
 | M0-25 | 1 | Το `get_recent_hrv_mean` καλείται χωρίς `athlete_id`. Ο έλεγχος ρητού id καλύπτει μόνο worker και orchestration | `repositories/physiology.py` | OPEN · στόχος Phase 27 |
-| M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | OPEN · ο owner διάλεξε «ομάδα + έλεγχος αποστολέα»· PR #1092 ανοιχτό |
+| M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | RESOLVED · PR #1092 (D-150)· ο owner διάλεξε «ομάδα + έλεγχος αποστολέα» |
 | M0-12 | 1 | Οι αποφάσεις αθλητή διαβάζονταν ως του owner | `outcome_tracker.py`, `repositories/governance.py` | RESOLVED · PR #1088 (D-147) |
 | M0-13 | 1 | Ο λογαριασμός Garmin του owner μπορούσε να δεθεί σε αθλητή | `garmin_sync.py` (`relogin_athlete`) | RESOLVED · PR #1087 (D-146) |
 | M0-26 | 1 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | `api/main.py` | RESOLVED · PR #1086 (μαζί με M0-05, D-145) |
