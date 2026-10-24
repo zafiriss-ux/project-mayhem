@@ -65,6 +65,9 @@ class AthleteCoachingContext:
     # SD-03 (ADR-0073 point 4): the RHR baseline has fewer than 4 nights and does not fire
     # H3, so H3 treats it as missing. Readiness still scores against it.
     rhr_baseline_thin: bool = False
+    # M0-22 (ADR-0073 point 1): the post-sync load reload failed and the old TSB does not
+    # fire H4, so H4 treats TSB as missing. The VLG still uses the old value.
+    tsb_unverified: bool = False
 
 
 def coaching_pipeline(context: AthleteCoachingContext) -> bool:
@@ -130,6 +133,7 @@ def coaching_pipeline(context: AthleteCoachingContext) -> bool:
             startup_hydration_confidence=context.startup_hydration_confidence,
             startup_confidence_applies=context.startup_confidence_applies,
             rhr_baseline_thin=context.rhr_baseline_thin,
+            tsb_unverified=context.tsb_unverified,
         )
     except Exception as exc:
         # INV-12 boundary guard: decision pipeline failed — fail closed + loud.

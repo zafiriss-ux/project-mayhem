@@ -50,6 +50,7 @@ from titan.config.thresholds import (
     ESI_PACE_ADJUSTMENT_MODERATE_SEC_PER_KM,
     GARMIN_DATA_MAX_AGE_HOURS,
     HARD_STOP_RHR_DELTA,
+    HARD_STOP_TSB_FLOOR,
     HRV_DRIFT_THRESHOLD_MS,
     INTENSITY_GATE_VOLUME_MODIFIER_CONSERVATIVE,
     SLEEP_DEBT_NIGHTS,
@@ -642,6 +643,7 @@ class _PipelineInputs:
     startup_hydration_confidence: dict
     startup_confidence_applies: bool
     rhr_baseline_thin: bool = False  # SD-03: H3 treats the RHR baseline as missing
+    tsb_unverified: bool = False  # M0-22: the load reload failed; H4 treats TSB as missing
 
 
 class DailyCoach:
@@ -1190,9 +1192,16 @@ class DailyCoach:
         # ── Step 5: TSB + kinetic state ──────────────────────────────────────
         # Reload the stored loads first: step 2 has just stored yesterday's run, and the
         # history read when the coach was built does not have it (OW-F1, ADR-0069 §1).
-        self._feed_load_engines(garmin_data.get('activities', []))
+        loads_refreshed = self._feed_load_engines(garmin_data.get('activities', []))
         self.tsb.reference_date = _routine_day(self)  # the morning's day, not the clock's (D-131)
         tsb_value, tsb_status = _run_step(5, "calculate_tsb", self.tsb.calculate_tsb)
+        # M0-22 (ADR-0073 point 1): when the reload fails, the TSB comes from loads without
+        # yesterday's run, so it can be too high and let H4 say CLEAR. H4 then treats it as
+        # missing (EASY ceiling, DATA_MISSING_CONSERVATIVE_H4), unless the old TSB already
+        # fires H4, which is stricter (EASY with the volume cap). The VLG keeps the old value.
+        tsb_unverified = not loads_refreshed and not (
+            tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR
+        )
         today_temp = garmin_data.get('temperature_c') or 20.0
         cs_thermal = self.cs_tracker.apply_thermal(today_temp)
 
@@ -1304,6 +1313,7 @@ class DailyCoach:
             startup_confidence_applies=startup_confidence_applies,
             engines=getattr(self, "engines", None),
             rhr_baseline_thin=rhr_baseline_thin,
+            tsb_unverified=tsb_unverified,
         )
 
         # ── Delegated pipeline/effect execution ───────────────────────────────
@@ -1338,6 +1348,7 @@ class DailyCoach:
         startup_hydration_confidence: dict,
         startup_confidence_applies: bool,
         rhr_baseline_thin: bool = False,
+        tsb_unverified: bool = False,
     ) -> DecisionResult:
         """Steps 7–11 of the morning routine; returns a DecisionResult (plan task 7, D-032).
 
@@ -1372,6 +1383,7 @@ class DailyCoach:
             startup_hydration_confidence=startup_hydration_confidence,
             startup_confidence_applies=startup_confidence_applies,
             rhr_baseline_thin=rhr_baseline_thin,
+            tsb_unverified=tsb_unverified,
         )
         readiness, fatigue_level, fatigue_tags = self._step_readiness(inp)
 
@@ -1742,7 +1754,7 @@ class DailyCoach:
             subjective_fatigue_score=inp.subjective_fatigue_score,
             # No load history gives no TSB, which reaches governance as None: H4_MISSING applies
             # the EASY ceiling (ADR-0051, SG-11, D-112). A neutral 0.0 here hid it.
-            tsb_value=inp.tsb_value,
+            tsb_value=None if inp.tsb_unverified else inp.tsb_value,
             # An open /injury triggers H1; none declared leaves it UNKNOWN (ADR-0069 §3).
             injury_flag=self._injury_flag(inp.garmin_data),
             subjective_fatigue_measured=getattr(self, "_subjective_fatigue_measured", None),
@@ -2407,11 +2419,12 @@ class DailyCoach:
                 total += _safe_float(act.get('training_load', 0)) * 0.6
         return round(total, 1)
 
-    def _feed_load_engines(self, activities: list[dict]) -> None:
+    def _feed_load_engines(self, activities: list[dict]) -> bool:
         """
         Refresh TSBEngine from DB after Garmin sync. Clears and reloads the
         LOAD_HISTORY_DAYS window (5 CTL time constants, D-051).
         Uses training_load from DB so CTL/ATL are always current.
+        Returns False when the reload failed (M0-22): the engine keeps its old loads.
         """
         try:
             loads = self.db.get_training_load_history(
@@ -2428,6 +2441,8 @@ class DailyCoach:
                 error_class=type(e).__name__,
                 error_message=str(e),
             )
+            return False
+        return True
 
     def _hydrate_engines_from_db(self) -> dict[str, bool]:
         """
