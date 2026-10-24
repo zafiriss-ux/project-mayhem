@@ -394,6 +394,8 @@ class GovernanceRepository:
         for row in rows:
             decisions.append({
                 'date': row[0],
+                # the row's owner: an athlete's decision must come back as theirs (M0-12)
+                'athlete_profile_id': athlete_id,
                 'session_planned': row[1],
                 'session_post_governance': row[2],
                 'locks_applied': _safe_json(row[3], [], 'locks_applied_json'),

@@ -9,6 +9,38 @@
 
 ---
 
+## D-147 · Οι αποφάσεις governance ενός αθλητή μένουν δικές του (M0-12)
+
+**Τι:** δύο σημεία έγραφαν την απόφαση ενός αθλητή ως απόφαση του ιδιοκτήτη.
+`get_governance_decisions` δεν επέστρεφε το `athlete_profile_id`, οπότε ο `OutcomeTracker`
+ενός αθλητή, όταν φόρτωνε τις αποφάσεις του από τη βάση, τις έφτιαχνε με την προεπιλογή
+`"owner"`. Και το `record_decision` χωρίς ρητό `athlete_profile_id` έπεφτε κι αυτό στο
+`"owner"`, ακόμη κι όταν ο tracker ήταν ενός αθλητή. Τώρα η ανάγνωση βάζει το
+`athlete_profile_id` της γραμμής και το `record_decision` πέφτει στον αθλητή του tracker.
+
+**Γιατί:** η απομόνωση αθλητών (ADR-0040, ADR-0067). Οι αποφάσεις ενός αθλητή, φορτωμένες ως
+`"owner"`, χάνονταν από κάθε ερώτημα του αθλητή (`get_decisions`, `get_calibration_summary`,
+`check_calibration_diversity`), άρα ο έλεγχος βαθμονόμησης (ADR-0033) δεν θα περνούσε ποτέ γι'
+αυτόν. Και ένα `record_outcome` στον tracker του αθλητή, με την προεπιλογή `"owner"`, θα έβρισκε
+μια τέτοια απόφαση και θα έγραφε το αποτέλεσμα στη γραμμή του ιδιοκτήτη. Σήμερα κανένας κώδικας
+παραγωγής δεν καλεί το `record_outcome`, και η μόνη κλήση του `record_decision` περνά ρητό
+`athlete_profile_id`: το κενό ήταν λανθάνον.
+
+**Μετά τον ανεξάρτητο έλεγχο:** και οι μέθοδοι ερωτημάτων του tracker (`record_outcome`,
+`get_decisions`, `get_lock_rate_by_phase`, `get_lock_outcome_correlation`,
+`get_calibration_summary`, `check_calibration_diversity`, `get_calibration_analytics`) έχουν τώρα
+προεπιλογή τον αθλητή του tracker αντί για `"owner"`. Στον tracker του ιδιοκτήτη δεν αλλάζει τίποτα.
+Τρίτο test: ο tracker ενός αθλητή διαβάζει τα δικά του και το `record_outcome` γράφει στη δική του
+γραμμή.
+
+**Δοκιμές:** τρεις νέες στο `tests/test_outcome_tracker_persistence.py`, όλες αποτυγχάνουν χωρίς τη
+διόρθωση. Ο PostgreSQL adapter (`persistence.py`) και το `database.py` στη διαδρομή PostgreSQL δεν
+επιστρέφουν ακόμη `athlete_profile_id`. Δεν είναι σε χρήση (ADR-0044) και καταγράφεται στο
+TECHNICAL_DEBT.
+
+**Εναλλακτικές:** να απαιτείται πάντα ρητό `athlete_profile_id` στο `record_decision`.
+Απορρίφθηκε για τώρα: αλλάζει κάθε κλήση, ενώ ο tracker ήδη ξέρει τον αθλητή του.
+
 ## D-146 · M0-13: ο λογαριασμός Garmin του owner δεν δένεται σε αθλητή
 
 - **Πότε / ποιος:** 2026-10-23. Claude, Φάση 1 του σχεδίου Project Mayhem, εύρημα M0-13 της Φάσης 0.
