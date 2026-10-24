@@ -97,6 +97,26 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | F-07 | 2 | LOW | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | `worker/__init__.py` (`_CRASH_REMINDER_ATHLETE`) | OPEN · στόχος Phase 27 · έλεγχος SD |
 | S0-01 | 2 | HIGH | Στο `ae30e4a` το `titan_ci.sh` δεν τελείωσε σε καμία από 3 εκτελέσεις, με ίδιες αποτυχίες· στο `4bcc3ee` πέρασε 11/11. Αιτία άγνωστη (υπόθεση: διαρροή ρολογιού του freezegun ανάμεσα σε tests) | `docs/audits/2026-10-24-phase0-plan.md` §2.1, `docs/audits/ci-step0/` | OPEN · στόχος Phase 27 · έλεγχος AT |
 
+**Καταγραφή 2026-10-24, έλεγχος SD (D-159):** νέα ευρήματα του ελέγχου SD στο `28608d0`
+([`docs/audits/2026-10-24-sd.md`](docs/audits/2026-10-24-sd.md)). Το tier και ο στόχος είναι πρόταση του
+Claude και τα αποφασίζει ο owner· ως τότε κανένα δεν μετρά ως TRACKED.
+
+| # | Tier | Σοβαρότητα | Εύρημα | Στοιχεία | Κατάσταση |
+|------|------|------------|--------|----------|-----------|
+| SD-01 | 1 | HIGH | HRV > 300 ms φτάνει στην H2 χωρίς έλεγχο ορίων → TEMPO, H2 CLEAR (επείγον) | `daily_coach.py:1119`, `:1579-1590` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-02 | 1 | HIGH | Τιμή εκτός ορίων κόβεται στο όριο και μετρά ως μετρημένη (RHR < 25 → 25, H3 CLEAR· επείγον) | `physiological_bounds.py:90-96` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-03 | 1 | HIGH | Η baseline RHR δέχεται μία μόνο προηγούμενη νύχτα (επείγον) | `physiology.py:262-279` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-04 | 1 | HIGH | Χαμένη λήψη δραστηριοτήτων: ο sync μετρά επιτυχία, η H4 CLEAR για ένα πρωινό (επείγον) | `garmin_sync.py:1054-1061`, `:1397-1404`, `data_trust.py:56-66` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-07 | 2 | HIGH | Ετοιμότητα 100/100 χωρίς HRV και RHR (ADR-0051: 40) | `readiness_engine.py:35-61`, `daily_coach.py:1491-1497` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-08 | 2 | HIGH | Η `/recovery` με σταθερές εισόδους και HRV οποιασδήποτε ηλικίας | `titan/main.py:252-268` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-09 | 2 | HIGH | Αθλητής που δεν συγχρονίστηκε ποτέ δεν σημειώνεται ποτέ παλιός | `daily_coach.py:1070-1090` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-10 | 2 | HIGH | Glycogen debt από πεδία που ο sync δεν επιστρέφει | `daily_coach.py:1183-1196` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-11 | 2 | HIGH | Το max HR του owner δεν ελέγχεται για όρια | `athlete.py:509` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-12 | 2 | HIGH | Η πύλη fueling δεν ικανοποιείται ποτέ (κλείνει πάντα) | `daily_coach.py:1690` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-13 | 3 | LOW | TSB 0 και HRV οποιασδήποτε ηλικίας στο payload του coaching | `daily_coach.py:1901`, `:1913` | OPEN · στόχος Phase 27 · έλεγχος SD |
+
 ---
 
 ## TIER 1 — Data Integrity (All Resolved ✅)

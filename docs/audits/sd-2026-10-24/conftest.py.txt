@@ -1,0 +1,29 @@
+"""Audit-only conftest: send HOME to a throwaway dir, as the repo's root conftest does.
+
+No real database, .env or logs are touched; every DB is created under pytest's tmp_path.
+"""
+from __future__ import annotations
+
+import os
+import tempfile
+from pathlib import Path
+
+import pytest
+
+
+def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
+    home = Path(tempfile.mkdtemp(prefix="titan-sd-audit-home-"))
+    os.environ["HOME"] = str(home)
+    os.environ["USERPROFILE"] = str(home)
+    os.environ["LOCALAPPDATA"] = str(home / "AppData" / "Local")
+    for var in ("TELEGRAM_BOT_TOKEN", "GARMIN_EMAIL", "GARMIN_PASSWORD"):
+        os.environ.pop(var, None)
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache():
+    from titan.config.settings import get_settings
+
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()

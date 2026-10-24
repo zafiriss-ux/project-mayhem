@@ -1,0 +1,299 @@
+"""SD audit, Deliverable 1: gate matrix H1–H5 through the real DailyCoach morning.
+
+Each test asserts the EXPECTED behaviour written in the report table before the run
+(ADR-0009, ADR-0051, ADR-0069, CONTRACT 7.9 §13 core rule). A failing test is a MISMATCH.
+Every test prints the actual outcome (run with -s). Synthetic data only.
+"""
+from __future__ import annotations
+
+import math
+import sqlite3
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
+from harness import Scenario, findings, run_morning, summary
+
+ABOVE_EASY = {"TEMPO", "INTERVALS", "PROGRESSIVE", "HAMMER", "LONG_RUN", "RACE"}
+
+
+def _show(tag, res):
+    print(f"\n[{tag}] {summary(res)}")
+
+
+def _closed(res) -> bool:
+    return res.payload.get("session_type") in {"EASY", "REST"}
+
+
+# ── H1 ─────────────────────────────────────────────────────────────────────
+
+def test_h1_missing_is_unknown_and_told(tmp_path, monkeypatch):
+    """H1 no source: wording UNKNOWN (ADR-0069 §3); the athlete is told it was not measured."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}))
+    _show("H1-missing", res)
+    assert findings(res)["H1"] == "UNKNOWN"
+    reason = (res.governed.get("decision_rationale") or {}).get("primary_reason", "")
+    assert "H1" in reason, "the message does not say H1 was not measured"
+
+
+def test_h1_open_injury_rest(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, open_injury=True))
+    _show("H1-open", res)
+    assert res.payload["session_type"] == "REST"
+    assert "HARD_STOP_SAFETY_GATES" in res.payload["governance_locks"]
+    assert findings(res)["H1"] == "TRIGGERED"
+
+
+def test_h1_injury_read_fails_rest(tmp_path, monkeypatch):
+    def _patch(coach, db, mp):
+        def _boom(**_k):
+            raise sqlite3.OperationalError("synthetic")
+        mp.setattr(db, "get_open_injury", _boom)
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, patch=_patch))
+    _show("H1-readfail", res)
+    assert res.payload["session_type"] == "REST"
+
+
+def test_h1_garmin_flag_string_false(tmp_path, monkeypatch):
+    """Contradictory/invalid source flag: 'false' string. bool('false') is True → REST (closed)."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, extra_garmin={"injury_flag": "false"}))
+    _show("H1-strfalse", res)
+    assert _closed(res)
+
+
+# ── H2 ─────────────────────────────────────────────────────────────────────
+
+def test_h2_today_missing(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=None))
+    _show("H2-missing", res)
+    assert _closed(res)
+    assert "DATA_MISSING_CONSERVATIVE_H2" in res.payload["governance_locks"]
+    assert findings(res)["H2"] == "UNKNOWN"
+
+
+def test_h2_stale_only_yesterday(tmp_path, monkeypatch):
+    """Garmin sends yesterday's night only (no reading for today) → treated as missing."""
+    yday = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
+    res = run_morning(tmp_path, monkeypatch, Scenario(
+        fatigue={0: 2}, today_hrv=None, extra_garmin={"hrv": [{"date": yday, "rmssd": 30.0}]}))
+    _show("H2-stale", res)
+    assert _closed(res)
+    assert findings(res)["H2"] == "UNKNOWN"
+
+
+@pytest.mark.parametrize("bad", [400.0, 1000.0])
+def test_h2_invalid_high_not_clear(tmp_path, monkeypatch, bad):
+    """rMSSD above the physiological bound (300 ms, ADR-0023) is invalid → never CLEAR."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=bad))
+    _show(f"H2-invalid-{bad}", res)
+    assert findings(res)["H2"] != "CLEAR", "out-of-range HRV reached H2 as a valid reading"
+    assert _closed(res)
+
+
+def test_h2_nan(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=float("nan")))
+    _show("H2-nan", res)
+    assert _closed(res)
+    assert findings(res)["H2"] != "CLEAR"
+
+
+def test_h2_baseline_six_nights(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, prior_nights=6))
+    _show("H2-baseline6", res)
+    assert _closed(res)
+    assert "DATA_MISSING_CONSERVATIVE_H2" in res.payload["governance_locks"]
+
+
+def test_h2_collapse_rest(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=50.0))
+    _show("H2-collapse", res)
+    assert res.payload["session_type"] == "REST"
+
+
+def test_h2_h3_contradictory(tmp_path, monkeypatch):
+    """HRV very high (+40%) with RHR +10: OR semantics → REST (H3)."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=108.0, today_rhr=60))
+    _show("H2H3-contra", res)
+    assert res.payload["session_type"] == "REST"
+
+
+def test_garmin_timeout(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, sync_status="timeout_cancelled"))
+    _show("TIMEOUT", res)
+    assert _closed(res)
+    f = findings(res)
+    assert f["H2"] == "UNKNOWN" and f["H3"] == "UNKNOWN"
+
+
+def test_garmin_timeout_last_success_30h(tmp_path, monkeypatch):
+    def _patch(coach, db, mp):
+        db.record_sync_outcome(athlete_id="owner", source="garmin",
+                               attempted_at=datetime.now(UTC) - timedelta(hours=30), success=True,
+                               error_class=None)
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, sync_status="timeout_cancelled",
+                                                      patch=_patch))
+    _show("TIMEOUT-30h", res)
+    assert _closed(res)
+    assert res.decision.get("garmin_data_stale") in (1, True) or any(
+        "stale" in str(a).lower() for a in res.alerts)
+
+
+def test_garmin_timeout_never_synced_is_stale(tmp_path, monkeypatch):
+    """No successful sync ever: the staleness alert/flag should fire (hours default 27 > 26)."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, sync_status="timeout_cancelled"))
+    _show("TIMEOUT-never", res)
+    assert any("stale" in str(a).lower() for a in res.alerts), "no Garmin-stale alert for a never-synced athlete"
+
+
+# ── H3 ─────────────────────────────────────────────────────────────────────
+
+def test_h3_today_missing(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_rhr=None))
+    _show("H3-missing", res)
+    assert _closed(res)
+    assert "DATA_MISSING_CONSERVATIVE_H3" in res.payload["governance_locks"]
+    assert findings(res)["H3"] == "UNKNOWN"
+
+
+def test_h3_baseline_missing(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, prior_rhr=None))
+    _show("H3-nobaseline", res)
+    assert _closed(res)
+    assert "DATA_MISSING_CONSERVATIVE_H3" in res.payload["governance_locks"]
+
+
+def test_h3_baseline_single_night(tmp_path, monkeypatch):
+    """Only one earlier RHR night (62, itself elevated). Today 66 (+16 vs a normal 50).
+
+    The HRV baseline needs 7 earlier readings (D-105); a 1-night RHR baseline is accepted.
+    Expected (by analogy with D-105 / M0-02): an insufficient baseline is missing → closed.
+    """
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, prior_rhr=62, prior_rhr_nights=1,
+                                                      today_rhr=66))
+    _show("H3-baseline1", res)
+    assert findings(res)["H3"] != "CLEAR", "H3 CLEAR on a one-night RHR baseline"
+
+
+def test_h3_invalid_low_not_clear(tmp_path, monkeypatch):
+    """RHR 15 bpm is below the 25 bpm bound (artefact) → invalid → never CLEAR."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_rhr=15))
+    _show("H3-invalid-low", res)
+    assert findings(res)["H3"] != "CLEAR", "artefact RHR was clamped to 25 and passed H3 as CLEAR"
+
+
+def test_h3_invalid_high(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_rhr=200))
+    _show("H3-invalid-high", res)
+    assert _closed(res)
+
+
+def test_h3_far_out_of_range(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_rhr=400))
+    _show("H3-400", res)
+    assert _closed(res)
+    assert findings(res)["H3"] != "CLEAR"
+
+
+# ── H4 ─────────────────────────────────────────────────────────────────────
+
+def test_h4_no_history(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads={}))
+    _show("H4-nohistory", res)
+    assert _closed(res)
+    assert "DATA_MISSING_CONSERVATIVE_H4" in res.payload["governance_locks"]
+    assert findings(res)["H4"] == "UNKNOWN"
+
+
+def _heavy_loads():
+    loads = {i: 40 for i in range(8, 120)}
+    loads.update({i: 140 for i in range(2, 8)})
+    return loads
+
+
+def _yesterday_run(load=320):
+    yday = (datetime.now(UTC).date() - timedelta(days=1)).isoformat()
+    return [{"date": yday, "activity_type": "running", "activity_id": "syn-1", "distance_km": 30.0,
+             "duration_sec": 9000, "avg_hr": 160, "max_hr": 180, "estimated_training_load": load,
+             "name": "synthetic"}]
+
+
+def test_h4_reference_heavy_yesterday_triggers(tmp_path, monkeypatch):
+    """Reference: yesterday's heavy run synced → TSB ≤ −50 → H4."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads=_heavy_loads(),
+                                                      activities=_yesterday_run()))
+    _show("H4-ref", res)
+    assert findings(res)["H4"] == "TRIGGERED"
+
+
+def test_h4_load_refresh_failure_not_clear(tmp_path, monkeypatch):
+    """M0-22: the reload after the sync fails → TSB without yesterday's run; must not be CLEAR."""
+    def _patch(coach, db, mp):
+        def _boom(*_a, **_k):
+            raise sqlite3.OperationalError("synthetic")
+        mp.setattr(db, "get_training_load_history", _boom)
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads=_heavy_loads(),
+                                                      activities=_yesterday_run(), patch=_patch))
+    _show("H4-refreshfail", res)
+    assert findings(res)["H4"] != "CLEAR", "silent load-refresh failure gave H4 CLEAR"
+
+
+def test_h4_activity_sync_lost_not_clear(tmp_path, monkeypatch):
+    """Activity endpoint failed (sync returns no activities) while HRV/sleep synced.
+
+    The morning cannot tell 'no run' from 'run not synced'; expected: load not measured → not CLEAR.
+    """
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads=_heavy_loads(), activities=[]))
+    _show("H4-activitieslost", res)
+    assert findings(res)["H4"] != "CLEAR", "unsynced load counted as rest; H4 CLEAR"
+
+
+def test_h4_contradictory_low_tsb_high_readiness(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads=_heavy_loads(),
+                                                      activities=_yesterday_run(), today_hrv=90.0))
+    _show("H4-contra", res)
+    assert res.payload["session_type"] in {"EASY", "REST"}
+    assert res.governed.get("max_duration_min") == 60 or res.payload["session_type"] == "REST"
+
+
+# ── H5 ─────────────────────────────────────────────────────────────────────
+
+def test_h5_missing_unknown(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario())
+    _show("H5-missing", res)
+    assert findings(res)["H5"] == "UNKNOWN"
+
+
+def test_h5_evening_before_9(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={1: 9}))
+    _show("H5-evening9", res)
+    assert res.payload["session_type"] in {"EASY", "REST"}
+    assert findings(res)["H5"] == "TRIGGERED"
+
+
+def test_h5_yesterdays_entry_reused_is_stale(tmp_path, monkeypatch):
+    """M0-20 (interpretation): one entry stored yesterday counts for yesterday AND today.
+
+    Expected: a value not entered for this morning is not a measurement for it → H5 UNKNOWN.
+    The code cannot tell an evening entry from yesterday-morning's entry; both are 'yesterday'.
+    """
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={1: 2}))
+    _show("H5-reused", res)
+    assert findings(res)["H5"] == "UNKNOWN", "yesterday's fatigue reused as today's measured value"
+
+
+def test_h5_two_days_old_not_used(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={2: 9}))
+    _show("H5-2days", res)
+    assert findings(res)["H5"] == "UNKNOWN"
+
+
+def test_h5_invalid_negative_not_clear(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: -3}))
+    _show("H5-neg", res)
+    assert findings(res)["H5"] != "CLEAR", "out-of-range fatigue clamped to 0 and shown CLEAR"
+
+
+def test_h5_invalid_high(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 15}))
+    _show("H5-15", res)
+    assert _closed(res)
