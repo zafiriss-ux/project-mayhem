@@ -250,9 +250,13 @@ class PhysiologyRepository:
         return (str(row[0]), float(row[1])) if row else None
 
     def get_baseline_rhr(
-        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None,
+        min_nights: int = 1,
     ) -> float | None:
         """Return the average resting HR of the N days before *before_date*, or None.
+
+        Fewer than *min_nights* nights with an RHR in the window is no baseline: None
+        (SD-03, ADR-0073 point 4). The default 1 keeps the old behaviour.
 
         *before_date* (ISO day) is the day the baseline is for; None is today (UTC).
         That day's row is left out (D-105, SG-06): the morning persists its RHR
@@ -264,13 +268,13 @@ class PhysiologyRepository:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
             cursor.execute(
-                """SELECT AVG(resting_hr) FROM daily_metrics
+                """SELECT AVG(resting_hr), COUNT(resting_hr) FROM daily_metrics
                    WHERE athlete_id = ? AND date >= ? AND date < ?
                      AND resting_hr IS NOT NULL AND resting_hr > 0""",
                 (athlete_id, cutoff, today),
             )
             row = cursor.fetchone()
-        if row and row[0]:
+        if row and row[0] and int(row[1]) >= min_nights:
             from titan.science.physiological_bounds import (
                 validate_single,  # deferred: avoids circular import
             )

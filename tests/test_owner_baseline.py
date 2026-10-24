@@ -43,11 +43,15 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # D-152 (M0-02), approved by Zaf 2026-10-24: with no RHR in the 7 days before today H3 gets no
 # baseline, so the first morning of each scenario (already EASY by H2 and H4) also logs
 # DATA_MISSING_CONSERVATIVE_H3 and a null fallback baseline. No session or Telegram text changes.
+# D-164 (SD-03), ADR-0073 point 4: an RHR baseline needs 4 nights in the 7 days before today,
+# so the first mornings of each scenario (already EASY by H2 and H4) and 8/3 of the outage also
+# log DATA_MISSING_CONSERVATIVE_H3. The H3 "missing data" alert goes out once on 3/3, for the
+# baseline, instead of on 6/3 for the outage RHR. No session, ceiling or volume changes.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "c2d177d2b704258e65387844528376874356672351e6c683e90bd3075845309e",
-    "persistence_failure": "9cef171eef7da81cd8597ef0ced1b61dc1ae78ad044a5f0795909d4662ce3751",
-    "three_weeks_weekly_plan": "1ab84ef576a3ef388f8eaf78b96c9cb4f22eddeb4b23f5bc5ffd1588f17c5ebf",
-    "two_weeks_worker": "37ee4ab67b1b46ed7b37db8cd30fa906d99f2a4151d651262b47f7a6673c6af3",
+    "garmin_outage": "9da0c68d30640fa13b7189066347c3c154fd1f43ffd3b573643202c0bf977460",
+    "persistence_failure": "d3912d53601aedeb36a8af1272224a1b5d458a2ed0aaef98500f9e58030f09fe",
+    "three_weeks_weekly_plan": "702a4af9cc23750f5fdad10c57ff867415f5c6ede18485a30e13dc9c2f510348",
+    "two_weeks_worker": "81ca015b6b69086fd348993b10ba3bb2d54a2b132431b2c1939a83038ba09870",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"

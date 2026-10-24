@@ -1352,11 +1352,15 @@ class DatabaseManager:
         return self._governance.annotate_governance_outcome(date=date, note=note, athlete_id=athlete_id)
 
     def get_baseline_rhr(
-        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None
+        self, days: int = 7, athlete_id: str = "owner", before_date: str | None = None,
+        min_nights: int = 1,
     ) -> float | None:
-        """Return the average resting HR of the N days before *before_date* (None: today), or None."""
+        """Return the average resting HR of the N days before *before_date* (None: today), or None.
+
+        None also when fewer than *min_nights* nights have an RHR (SD-03).
+        """
         return self._physiology.get_baseline_rhr(
-            days=days, athlete_id=athlete_id, before_date=before_date
+            days=days, athlete_id=athlete_id, before_date=before_date, min_nights=min_nights,
         )
 
     def get_hrv_history(self, days: int = 14, athlete_id: str = "owner") -> list[tuple[str, float]]:

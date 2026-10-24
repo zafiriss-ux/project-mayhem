@@ -1049,7 +1049,7 @@ def test_run_morning_routine_h3_comparison_uses_valid_baseline(monkeypatch):
 
     coach.readiness = SimpleNamespace(analyze_readiness=_readiness_spy)
     coach.governance = SimpleNamespace(apply_constraints=_governance_spy, get_governance_report=lambda **_k: {})
-    coach._get_baseline_rhr = lambda days=7: 47.2
+    coach._get_baseline_rhr = lambda days=7, min_nights=1: 47.2
 
     assert coach.run_morning_routine() is True
     assert baseline_args["baseline_rhr"] == 47.2
