@@ -250,26 +250,30 @@ def _register_telegram_callbacks(telegram: TitanTelegramBot, ctx: TitanContext):
             return f"❌ Σφάλμα: {e}"
 
     def cb_recovery():
+        # SD-08 (D-161): the score is the one today's morning computed from the owner's own
+        # data; /recovery never scores readiness from fixed inputs.
         hrv = ctx["hrv_engine"]
-        readiness = ctx["readiness_engine"]
         try:
             hrv_s = hrv.get_hrv_summary()
-            latest = hrv_s.get("latest_hrv", 0)
-            baseline = hrv_s.get("baseline")  # None: fewer than 7 readings (D-105)
-            rec = readiness.analyze_readiness(
-                today_hrv=latest, baseline_hrv=baseline,
-                today_rhr=50, baseline_rhr=48,
-                sleep_score=8, soreness=3
+            last = hrv.hrv_log[-1] if hrv.hrv_log else None
+            hrv_line = (
+                f"{round(last[1], 1)} ({str(last[0])[:10]}, baseline {_baseline_text(hrv_s)})"
+                if last else "δεν υπάρχει μέτρηση"
             )
-            return (
-                f"💊 *RECOVERY*\n"
-                f"• Readiness score: {rec.get('score', 'N/A')}/100\n"
-                f"• Status: {rec.get('status', 'N/A')}\n"
-                f"• HRV: {latest} (baseline {_baseline_text(hrv_s)})\n"
-                f"• Recommendation: {rec.get('recommendation', 'N/A')}"
+            today = datetime.now(UTC).date().isoformat()
+            decision = ctx["db"].get_governance_decision_on("owner", today)
+            score_line = (
+                f"{round(decision['readiness_score'])}/100 (από το σημερινό πρωινό)"
+                if decision is not None
+                else "δεν υπάρχει ακόμη· βγαίνει με το πρωινό briefing"
             )
         except Exception as e:
             return f"❌ Σφάλμα: {e}"
+        return (
+            f"💊 *RECOVERY*\n"
+            f"• Readiness score: {score_line}\n"
+            f"• HRV: {hrv_line}"
+        )
 
     def cb_nutrition():
         nutrition: NutritionOptimizer = ctx["nutrition_optimizer"]
