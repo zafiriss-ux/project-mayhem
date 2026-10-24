@@ -1,0 +1,203 @@
+"""SD audit harness: one real DailyCoach morning on synthetic data.
+
+Only I/O collaborators are stubbed (Garmin, Telegram, planner, optimal time, nutrition),
+following tests/test_morning_baselines.py. Engines, governance and SQLite are real.
+All data is synthetic. The DB lives in pytest's tmp_path.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from titan.core.database import DatabaseManager
+from titan.orchestration.daily_coach import DailyCoach
+from titan.orchestration.engine_registry import EngineRegistry
+from titan.science.governance_engine import GovernanceEngine
+
+
+class FakeGarmin:
+    athlete_max_hr = 0
+
+    def __init__(self, payload: dict) -> None:
+        self.payload = payload
+
+    def sync_all(self) -> dict:
+        return dict(self.payload)
+
+
+class FakeTelegram:
+    def __init__(self) -> None:
+        self.daily: list[dict] = []
+        self.alerts: list[dict] = []
+
+    def send_daily_coaching(self, payload: dict) -> bool:
+        self.daily.append(payload)
+        return True
+
+    def send_alert(self, **k) -> bool:
+        self.alerts.append(k)
+        return True
+
+    def send_structured_alert(self, **k) -> bool:
+        self.alerts.append(k)
+        return True
+
+    def send_message(self, *a, **k) -> bool:
+        return True
+
+
+class FakePlanner:
+    last_plan = None
+
+    def __init__(self, session: dict) -> None:
+        self.session = session
+
+    def get_today_session(self, **_k) -> dict:
+        return dict(self.session)
+
+
+class FakeOptimalTime:
+    def calculate_optimal_time(self, **_k) -> dict:
+        return {"recommended_time": "07:00", "weather_data_quality": "live", "dew_point": 10.0}
+
+
+class FakeNutrition:
+    def analyze_weight_trend(self) -> dict:
+        return {"current_weight": 70.0}
+
+    def add_weight_entry(self, *_a, **_k) -> None:
+        return None
+
+    def calculate_daily_nutrition(self, **_k) -> dict:
+        return {}
+
+
+@dataclass
+class Scenario:
+    athlete_id: str = "owner"
+    # today's Garmin values (None → not sent)
+    today_hrv: float | None = 76.0
+    today_rhr: int | None = 50
+    sleep_score: int | None = 82
+    # history in the DB before today
+    prior_nights: int = 10
+    prior_hrv: float = 76.0
+    prior_rhr: int | None = 50
+    prior_rhr_nights: int | None = None  # None → same as prior_nights
+    # daily training loads stored for these days back (1 = yesterday)
+    loads: dict[int, int] = field(default_factory=lambda: {i: 50 for i in range(1, 60)})
+    # activities in today's sync (list of dicts)
+    activities: list[dict] = field(default_factory=list)
+    planned: dict = field(default_factory=lambda: {
+        "session_type": "TEMPO", "duration_min": 50, "distance_km": 10.0, "max_zone": 4, "volume_pct": 1.0,
+    })
+    # stored fatigue rows: days back → value (0 = today, 1 = yesterday)
+    fatigue: dict[int, int] = field(default_factory=dict)
+    open_injury: bool = False
+    sync_status: str | None = None  # "timeout_cancelled" for a Garmin timeout
+    empty_sync: bool = False
+    extra_garmin: dict = field(default_factory=dict)
+    soreness_arg: int | None = None
+    # last successful sync this many hours ago (None: today's sync records it)
+    patch: Any = None  # callable(coach, db) run after construction, before the morning
+
+
+@dataclass
+class Result:
+    payload: dict
+    decision: dict
+    governed: dict
+    context: dict
+    alerts: list
+
+
+def run_morning(tmp_path, monkeypatch, sc: Scenario) -> Result:
+    monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
+    captured: dict = {}
+    real_apply = GovernanceEngine.apply_constraints
+
+    def _spy(self, session_plan, context):
+        out = real_apply(self, session_plan, context)
+        captured["governed"] = dict(out)
+        captured["context"] = {k: v for k, v in context.items() if k not in ("db", "cs_tracker")}
+        return out
+
+    monkeypatch.setattr(GovernanceEngine, "apply_constraints", _spy)
+    try:
+        now = datetime.now(UTC).date()
+        today = now.isoformat()
+        for i in range(1, 15):
+            db.save_governance_decision({"athlete_profile_id": sc.athlete_id,
+                                         "date": (now - timedelta(days=i)).isoformat(),
+                                         "session_planned": "EASY", "session_post_governance": "EASY"})
+        rhr_nights = sc.prior_nights if sc.prior_rhr_nights is None else sc.prior_rhr_nights
+        for i in range(1, max(sc.prior_nights, rhr_nights) + 1):
+            db.save_daily_metric((now - timedelta(days=i)).isoformat(),
+                                 hrv=(sc.prior_hrv + (i % 3)) if i <= sc.prior_nights else None,
+                                 rhr=sc.prior_rhr if i <= rhr_nights else None,
+                                 sleep_quality=80, weight=70.0, athlete_id=sc.athlete_id)
+        for back, load in sc.loads.items():
+            db.save_session((now - timedelta(days=back)).isoformat(), "EASY", 10.0, 3000,
+                            training_load=load, athlete_id=sc.athlete_id)
+        for back, val in sc.fatigue.items():
+            db.save_daily_metric((now - timedelta(days=back)).isoformat(), fatigue=val,
+                                 athlete_id=sc.athlete_id)
+        if sc.open_injury:
+            db.open_injury(athlete_id=sc.athlete_id, description="synthetic", opened_at=f"{today}T06:00:00")
+
+        if sc.empty_sync or sc.sync_status == "timeout_cancelled":
+            garmin_payload = {"activities": [], "sleep": [], "hrv": [], "weight": [], "hrr": []}
+        else:
+            sleep = {"date": today, "sleep_score": sc.sleep_score, "total_sleep_hours": 7.8}
+            if sc.today_rhr is not None:
+                sleep["resting_hr"] = sc.today_rhr
+            garmin_payload = {
+                "activities": list(sc.activities),
+                "sleep": [sleep],
+                "hrv": [{"date": today, "rmssd": sc.today_hrv}] if sc.today_hrv is not None else [],
+                "hrr": [],
+                "weight": [{"date": today, "weight_kg": 70.0}],
+                "fueling_confirmed": True,
+            }
+        if sc.sync_status:
+            garmin_payload["status"] = sc.sync_status
+        garmin_payload.update(sc.extra_garmin)
+
+        engines = EngineRegistry.from_db(db=db, athlete_id=sc.athlete_id)
+        telegram = FakeTelegram()
+        coach = DailyCoach(
+            garmin_sync=FakeGarmin(garmin_payload), weather_api=None, telegram_bot=telegram,
+            hrv_engine=engines.hrv, tsb_engine=engines.tsb, readiness_engine=engines.readiness,
+            optimal_time_calc=FakeOptimalTime(), nutrition_optimizer=FakeNutrition(),
+            weekly_planner=FakePlanner(sc.planned), db=db, athlete_id=sc.athlete_id, engines=engines,
+        )
+        if sc.patch is not None:
+            sc.patch(coach, db, monkeypatch)
+        coach.run_morning_routine(soreness=sc.soreness_arg)
+        payload = telegram.daily[-1] if telegram.daily else {}
+        decision = db.get_governance_decision_on(sc.athlete_id, today) or {}
+        cur = db.conn.cursor()
+        cur.execute("SELECT * FROM governance_outcomes WHERE athlete_id = ? AND date = ? ORDER BY id DESC LIMIT 1",
+                    (sc.athlete_id, today))
+        row = cur.fetchone()
+        if row is not None:
+            decision["_row"] = dict(zip([d[0] for d in cur.description], row, strict=False))
+        return Result(payload, decision, captured.get("governed", {}), captured.get("context", {}),
+                      telegram.alerts)
+    finally:
+        db.close()
+
+
+def findings(res: Result) -> dict[str, str]:
+    rat = res.governed.get("decision_rationale") or {}
+    return {f["gate"]: f["status"] for f in rat.get("gate_findings", [])}
+
+
+def summary(res: Result) -> str:
+    rat = res.governed.get("decision_rationale") or {}
+    return (f"type={res.payload.get('session_type')} km={res.payload.get('duration')} "
+            f"locks={res.payload.get('governance_locks')} "
+            f"gates={findings(res)} reason={rat.get('primary_reason')!r} "
+            f"tsb_ctx={res.context.get('tsb_value')} readiness={res.payload.get('readiness_score')}")

@@ -1,0 +1,107 @@
+[H1-missing] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H1-open] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'TRIGGERED', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Injury flag active: full rest is required.' tsb_ctx=-5.9 readiness=100
+[H1-readfail] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'TRIGGERED', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Injury flag active: full rest is required.' tsb_ctx=-5.9 readiness=100
+[H1-strfalse] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'TRIGGERED', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Injury flag active: full rest is required.' tsb_ctx=-5.9 readiness=100
+[H2-missing] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=100
+[H2-stale] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=100
+[H2-invalid-400.0] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H2-invalid-1000.0] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H2-nan] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=100
+[H2-baseline6] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=100
+[H2-collapse] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'TRIGGERED', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='HRV collapse crossed safety threshold (27.0 vs 15.0, margin 12.0).' tsb_ctx=-5.9 readiness=80
+[H2H3-contra] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'TRIGGERED', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='RHR spike crossed safety threshold (10.0 vs 8.0, margin 2.0).' tsb_ctx=-5.9 readiness=96
+[TIMEOUT] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=83
+[TIMEOUT-30h] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=83
+[TIMEOUT-never] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=83
+[H3-missing] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H3' tsb_ctx=-5.9 readiness=100
+[H3-nobaseline] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H3' tsb_ctx=-5.9 readiness=100
+[H3-baseline1] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=93
+[H3-invalid-low] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H3-invalid-high] type=REST km=0 km locks=['HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'TRIGGERED', 'H4': 'CLEAR', 'H5': 'CLEAR', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='RHR spike crossed safety threshold (70.0 vs 8.0, margin 62.0).' tsb_ctx=-5.9 readiness=86
+[H3-400] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H3' tsb_ctx=-5.9 readiness=100
+[H4-nohistory] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H4', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'UNKNOWN', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H4': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H4' tsb_ctx=None readiness=100
+[H4-ref] type=EASY km=7.0 km locks=['INTENSITY_GATE_RED', 'HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'TRIGGERED', 'H5': 'CLEAR', 'INTENSITY_GATE_RED': 'TRIGGERED', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='TSB dropped below critical floor (-56.7 vs -50.0, margin 6.7).' tsb_ctx=-56.7 readiness=100
+[H4-refreshfail] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-25.0 readiness=100
+[H4-activitieslost] type=EASY km=7.0 km locks=['INTENSITY_GATE_RED', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'INTENSITY_GATE_RED': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='INTENSITY_GATE_RED' tsb_ctx=-25.0 readiness=100
+[H4-contra] type=EASY km=7.0 km locks=['INTENSITY_GATE_RED', 'HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'TRIGGERED', 'H5': 'CLEAR', 'INTENSITY_GATE_RED': 'TRIGGERED', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='TSB dropped below critical floor (-56.7 vs -50.0, margin 6.7).' tsb_ctx=-56.7 readiness=100
+[H5-missing] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'UNKNOWN', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H5-evening9] type=EASY km=7.0 km locks=['INTENSITY_GATE_YELLOW', 'READINESS_2OF4_DOWNGRADE', 'HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'TRIGGERED', 'INTENSITY_GATE_YELLOW': 'TRIGGERED', 'READINESS_2OF4_DOWNGRADE': 'TRIGGERED', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Subjective fatigue reached extreme level (9 vs 8, margin 1.0).' tsb_ctx=-5.9 readiness=86
+[H5-reused] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H5-2days] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'UNKNOWN', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H5-neg] type=TEMPO km=10.0 km locks=['CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Critical speed confidence below threshold; recalibration required.' tsb_ctx=-5.9 readiness=100
+[H5-15] type=EASY km=7.0 km locks=['INTENSITY_GATE_YELLOW', 'READINESS_2OF4_DOWNGRADE', 'HARD_STOP_SAFETY_GATES', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'TRIGGERED', 'INTENSITY_GATE_YELLOW': 'TRIGGERED', 'READINESS_2OF4_DOWNGRADE': 'TRIGGERED', 'HARD_STOP_SAFETY_GATES': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='Subjective fatigue reached extreme level (10 vs 8, margin 2.0).' tsb_ctx=-5.9 readiness=86
+[M0-21 {'baseline_hrv': 0.0}] type=EASY locks=['DATA_MISSING_CONSERVATIVE_H2', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'CLEAR', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[M0-21 {'baseline_hrv': nan}] type=EASY locks=['DATA_MISSING_CONSERVATIVE_H2', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'CLEAR', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[M0-21 {'today_hrv': nan}] type=EASY locks=['DATA_MISSING_CONSERVATIVE_H2', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'CLEAR', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[M0-21 {'tsb_value': nan}] type=EASY locks=['DATA_MISSING_CONSERVATIVE_H4', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'CLEAR', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H4': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[M0-21 {'today_rhr': nan}] type=EASY locks=['DATA_MISSING_CONSERVATIVE_H3', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'CLEAR', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[M0-19] after 2nd morning: []; after 3rd: ['HRV missing for over 47h. Sessions stay at most EASY until it is back (ADR-0051).']
+[READINESS-missing] type=EASY km=7.0 km locks=['DATA_MISSING_CONSERVATIVE_H2', 'DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING'] gates={'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'} reason='DATA_MISSING_CONSERVATIVE_H2' tsb_ctx=-5.9 readiness=100
+[OW-M2] stored row tsb/acwr={'acwr': None, 'tsb_value': None} payload tsb=0
+[PAYLOAD-TSB] payload tsb=0
+[FUELING] type=TEMPO km=7.0 km locks=['VO2_ELIGIBILITY_GATE', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'VO2_ELIGIBILITY_GATE': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='VO2 eligibility checks failed; intensity downgraded.' tsb_ctx=-5.9 readiness=100
+[ESI] esi=EXTREME adj=25 guidance='Run the required CS calibration session before race simulation.'
+[AGE-never] garmin_data_age_hours=27.0 stale=False locks=['DATA_MISSING_CONSERVATIVE_H2', 'DATA_MISSING_CONSERVATIVE_H3', 'CS_CONFIDENCE_LOCK', 'STARTUP_DATA_CONFIDENCE_CEILING']
+[TIMEOUT-H4] {'H1': 'UNKNOWN', 'H2': 'UNKNOWN', 'H3': 'UNKNOWN', 'H4': 'CLEAR', 'H5': 'CLEAR', 'DATA_MISSING_CONSERVATIVE_H2': 'TRIGGERED', 'DATA_MISSING_CONSERVATIVE_H3': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED', 'STARTUP_DATA_CONFIDENCE_CEILING': 'TRIGGERED'}
+[RECOVERY] inputs={'today_hrv': 70.0, 'baseline_hrv': 70.0, 'today_rhr': 50, 'baseline_rhr': 48, 'sleep_score': 8, 'soreness': 3}
+💊 *RECOVERY*
+• Readiness score: 85/100
+• Status: ✅ EXCELLENT
+• HRV: 70.0 (baseline 70.0)
+• Recommendation: N/A
+[M0-22 only-reload] type=EASY km=7.0 km locks=['INTENSITY_GATE_RED', 'CS_CONFIDENCE_LOCK'] gates={'H1': 'UNKNOWN', 'H2': 'CLEAR', 'H3': 'CLEAR', 'H4': 'CLEAR', 'H5': 'CLEAR', 'INTENSITY_GATE_RED': 'TRIGGERED', 'CS_CONFIDENCE_LOCK': 'TRIGGERED'} reason='INTENSITY_GATE_RED' tsb_ctx=-25.0 readiness=100 missing_inputs_trace=None
+>       assert findings(res)["H3"] != "CLEAR", "artefact RHR was clamped to 25 and passed H3 as CLEAR"
+E       AssertionError: artefact RHR was clamped to 25 and passed H3 as CLEAR
+ERROR    titan.orchestration.daily_coach:daily_coach.py:2376 load_engines refresh failed: synthetic
+ERROR    titan.orchestration.daily_coach:daily_coach.py:2330 ACWR from training history failed: synthetic
+        """Activity endpoint failed (sync returns no activities) while HRV/sleep synced.
+ERROR    titan.orchestration.daily_coach:daily_coach.py:2376 load_engines refresh failed: synthetic: database is locked
+ERROR    titan.orchestration.daily_coach:daily_coach.py:2280 injury read failed: synthetic
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h1_open_injury_rest
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h1_injury_read_fails_rest
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h1_garmin_flag_string_false
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h2_today_missing
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h2_stale_only_yesterday
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h2_baseline_six_nights
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h2_collapse_rest
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h2_h3_contradictory
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_garmin_timeout
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_garmin_timeout_last_success_30h
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h3_today_missing
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h3_baseline_missing
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h3_invalid_high
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h3_far_out_of_range
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h4_no_history
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h4_reference_heavy_yesterday_triggers
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h4_contradictory_low_tsb_high_readiness
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h5_missing_unknown
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h5_evening_before_9
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h5_two_days_old_not_used
+PASSED ../.audit-sd/test_sd_gate_matrix.py::test_h5_invalid_high
+PASSED ../.audit-sd/test_sd_extra.py::test_ow_m2_tsb_null
+PASSED ../.audit-sd/test_sd_extra.py::test_fueling_unconfirmed_hammer
+PASSED ../.audit-sd/test_sd_extra.py::test_esi_without_weather
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h1_missing_is_unknown_and_told
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h2_invalid_high_not_clear[400.0]
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h2_invalid_high_not_clear[1000.0]
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h2_nan - AssertionError: ass...
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_garmin_timeout_never_synced_is_stale
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h3_baseline_single_night - A...
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h3_invalid_low_not_clear - A...
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h4_load_refresh_failure_not_clear
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h4_activity_sync_lost_not_clear
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h5_yesterdays_entry_reused_is_stale
+FAILED ../.audit-sd/test_sd_gate_matrix.py::test_h5_invalid_negative_not_clear
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_21_rationale_not_clear_for_invalid[over0-H2]
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_21_rationale_not_clear_for_invalid[over1-H2]
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_21_rationale_not_clear_for_invalid[over2-H2]
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_21_rationale_not_clear_for_invalid[over3-H4]
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_21_rationale_not_clear_for_invalid[over4-H3]
+FAILED ../.audit-sd/test_sd_extra.py::test_m0_19_alert_on_second_morning - As...
+FAILED ../.audit-sd/test_sd_extra.py::test_readiness_not_full_when_hrv_and_rhr_missing
+FAILED ../.audit-sd/test_sd_extra.py::test_payload_tsb_zero_when_unknown - As...
+FAILED ../.audit-sd/test_sd_extra.py::test_never_synced_age - AssertionError:...
+FAILED ../.audit-sd/test_sd_extra.py::test_timeout_h4_not_clear - AssertionEr...
+FAILED ../.audit-sd/test_sd_extra.py::test_recovery_command_uses_fixed_inputs
+FAILED ../.audit-sd/test_sd_m0_22.py::test_only_reload_fails - AssertionError...
+23 failed, 24 passed in 2.59s

@@ -1,0 +1,174 @@
+"""SD audit, Deliverable 2: known suspects and new issues. Synthetic data only.
+
+Each test asserts the expected (safe / documented) behaviour; a failure is a finding.
+"""
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+from freezegun import freeze_time
+
+from harness import Scenario, findings, run_morning, summary
+from titan.science.governance_engine import GovernanceEngine
+
+
+def _ctx(**over):
+    base = {
+        "today_hrv": 60.0, "baseline_hrv": 60.0, "today_rhr": 50, "baseline_rhr": 50.0,
+        "tsb_value": -5.0, "subjective_fatigue_score": 2, "subjective_fatigue_measured": True,
+        "injury_flag": False, "sleep_score": 80, "readiness_score": 80, "acwr": 1.0,
+        "fueling_confirmed": True, "athlete_id": "owner",
+    }
+    base.update(over)
+    return base
+
+
+def _plan():
+    return {"session_type": "TEMPO", "duration_min": 50, "distance_km": 10.0, "max_zone": 4}
+
+
+def _gates(plan):
+    return {f["gate"]: f["status"] for f in plan["decision_rationale"]["gate_findings"]}
+
+
+# ── M0-21: rationale CLEAR while the engine applied the missing-data ceiling ─────────
+
+@pytest.mark.parametrize("over,gate", [
+    ({"baseline_hrv": 0.0}, "H2"),
+    ({"baseline_hrv": float("nan")}, "H2"),
+    ({"today_hrv": float("nan")}, "H2"),
+    ({"tsb_value": float("nan")}, "H4"),
+    ({"today_rhr": float("nan")}, "H3"),
+])
+def test_m0_21_rationale_not_clear_for_invalid(over, gate):
+    plan = GovernanceEngine().apply_constraints(_plan(), _ctx(**over))
+    print(f"\n[M0-21 {over}] type={plan['session_type']} locks={plan['governance_locks_applied']} "
+          f"gates={_gates(plan)}")
+    assert plan["session_type"] in {"EASY", "REST"}
+    assert _gates(plan)[gate] != "CLEAR", f"{gate} CLEAR in the rationale for an invalid input"
+
+
+# ── M0-19: the 24 h missing-input alert comes only on the third morning ──────────────
+
+def test_m0_19_alert_on_second_morning(tmp_path):
+    from titan.core.database import DatabaseManager
+    from titan.orchestration.daily_coach import DegradedModeTracker
+
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
+    sent: list[str] = []
+    try:
+        with freeze_time("2026-10-20 06:00:30"):
+            tr = DegradedModeTracker(db=db, athlete_id="owner")
+            tr.update_missing_inputs({"hrv_missing": "HRV"}, sent.append)
+        with freeze_time("2026-10-21 06:00:05"):  # next morning, 25 s earlier in the minute
+            DegradedModeTracker(db=db, athlete_id="owner").update_missing_inputs({"hrv_missing": "HRV"}, sent.append)
+        second = list(sent)
+        with freeze_time("2026-10-22 06:00:05"):
+            DegradedModeTracker(db=db, athlete_id="owner").update_missing_inputs({"hrv_missing": "HRV"}, sent.append)
+        print(f"\n[M0-19] after 2nd morning: {second}; after 3rd: {sent}")
+        assert second, "HRV missing on two consecutive mornings (~24 h) and no alert yet"
+    finally:
+        db.close()
+
+
+# ── M0-23 / SD: readiness shown as measured when HRV and RHR are missing ─────────────
+
+def test_readiness_not_full_when_hrv_and_rhr_missing(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, today_hrv=None, today_rhr=None))
+    print(f"\n[READINESS-missing] {summary(res)}")
+    assert res.payload["readiness_score"] != 100, "Readiness 100/100 shown with no HRV and no RHR today"
+
+
+# ── OW-M2: unknown TSB stored as NULL, not 0.0 ──────────────────────────────────────
+
+def test_ow_m2_tsb_null(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads={}))
+    row = res.decision.get("_row", {})
+    keys = {k: v for k, v in row.items() if "tsb" in k or "acwr" in k}
+    print(f"\n[OW-M2] stored row tsb/acwr={keys} payload tsb={res.payload.get('tsb')}")
+    assert keys, "no tsb/acwr columns found"
+    assert all(v is None for v in keys.values())
+
+
+def test_payload_tsb_zero_when_unknown(tmp_path, monkeypatch):
+    """The coaching payload (LLM narrative input) carries TSB 0 when TSB is unknown."""
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, loads={}))
+    print(f"\n[PAYLOAD-TSB] payload tsb={res.payload.get('tsb')!r}")
+    assert res.payload.get("tsb") is None
+
+
+# ── Fueling: never confirmed in production (Garmin payload has no such key) ─────────
+
+def test_fueling_unconfirmed_hammer(tmp_path, monkeypatch):
+    planned = {"session_type": "HAMMER", "duration_min": 50, "distance_km": 10.0, "max_zone": 5}
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, planned=planned,
+                                                      extra_garmin={"fueling_confirmed": False}))
+    print(f"\n[FUELING] {summary(res)}")
+    assert res.payload["session_type"] != "HAMMER"
+
+
+# ── ESI without weather: 20 °C / dew 18 °C → EXTREME ───────────────────────────────
+
+def test_esi_without_weather(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}))
+    print(f"\n[ESI] esi={res.payload.get('esi_level')} adj={res.payload.get('esi_pace_adjustment_sec_per_km')} "
+          f"guidance={res.payload.get('actionable_guidance')!r}")
+    assert res.payload.get("esi_level") == "EXTREME"
+
+
+# ── H6 / staleness: a never-synced athlete stays at 27 h forever ────────────────────
+
+def test_never_synced_age(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, sync_status="timeout_cancelled"))
+    print(f"\n[AGE-never] garmin_data_age_hours={res.context.get('garmin_data_age_hours')} "
+          f"stale={res.context.get('garmin_data_stale')} locks={res.payload.get('governance_locks')}")
+    assert res.context.get("garmin_data_stale") is True
+
+
+# ── Timeout: H4 shown CLEAR from loads that were not synced today ───────────────────
+
+def test_timeout_h4_not_clear(tmp_path, monkeypatch):
+    res = run_morning(tmp_path, monkeypatch, Scenario(fatigue={0: 2}, sync_status="timeout_cancelled"))
+    print(f"\n[TIMEOUT-H4] {findings(res)}")
+    assert findings(res)["H4"] != "CLEAR"
+
+
+# ── /recovery (owner bot): readiness from hard-coded RHR 50/48, sleep 8, soreness 3 ──
+
+def test_recovery_command_uses_fixed_inputs(monkeypatch):
+    import titan.main as tm
+    from titan.science.hrv_engine import HRVGuidedEngine
+    from titan.science.readiness_engine import ReadinessEngine
+
+    calls: dict = {}
+    real = ReadinessEngine.analyze_readiness
+
+    def _spy(*a, **k):
+        calls.update(k)
+        return real(*a, **k)
+
+    monkeypatch.setattr(ReadinessEngine, "analyze_readiness", staticmethod(_spy))
+
+    class _Bot:
+        def __init__(self):
+            self.cmds = {}
+
+        def register_command(self, name, fn):
+            self.cmds[name] = fn
+
+        def register_athlete_command(self, name, fn):
+            self.cmds["athlete_" + name] = fn
+
+        def __getattr__(self, _n):
+            return lambda *a, **k: None
+
+    hrv = HRVGuidedEngine()
+    for i in range(1, 9):
+        hrv.add_hrv_measurement(f"2026-01-0{i}", 70.0)  # last reading months old
+    bot = _Bot()
+    tm._register_telegram_callbacks(bot, {"hrv_engine": hrv, "readiness_engine": ReadinessEngine()})
+    text = bot.cmds["recovery"]()
+    print(f"\n[RECOVERY] inputs={calls}\n{text}")
+    assert not (calls.get("today_rhr") == 50 and calls.get("baseline_rhr") == 48), \
+        "/recovery scores readiness from fixed RHR 50/48, sleep 8, soreness 3"
