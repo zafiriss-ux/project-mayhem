@@ -215,3 +215,25 @@ def test_rhr_above_the_ceiling_still_rests(tmp_path, monkeypatch):
                           today_rhr=200)
     assert payload["session_type"] == "REST", payload["session_type"]
     assert "DATA_MISSING_CONSERVATIVE_H3" not in payload["governance_locks"]
+
+
+def test_hrv_above_the_ceiling_counts_as_missing_for_h2(tmp_path, monkeypatch):
+    """SD-01 (ADR-0073 point 2, D-165): HRV 400 ms is a sensor error. It reached H2 as a valid
+    high reading, so H2 said CLEAR and the day stayed TEMPO. Now it counts as missing: EASY
+    ceiling with DATA_MISSING_CONSERVATIVE_H2."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=400.0)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_hrv_at_the_ceiling_is_still_a_reading(tmp_path, monkeypatch):
+    """SD-01 boundary: 300 ms is inside the bounds and stays a reading (no missing-data lock)."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=300.0)
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_hrv_below_the_floor_still_rests(tmp_path, monkeypatch):
+    """SD-01 guard (only tightens): a near-zero HRV is still a collapse and H2 gives REST."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=0.05)
+    assert payload["session_type"] == "REST", payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"]
