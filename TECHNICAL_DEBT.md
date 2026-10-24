@@ -77,6 +77,23 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-12-R1 | 2 | Η διαδρομή PostgreSQL (`persistence.py` adapter, `database.py`) δεν επιστρέφει `athlete_profile_id` στις αποφάσεις governance. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-27 | OPEN · πριν ενεργοποιηθεί το PostgreSQL |
 | M0-01-R1 | 1 | Ο έλεγχος fencing και η αποστολή δεν είναι ατομικά: μένει παράθυρο κλασμάτων δευτερολέπτου (D-148, PR #1089) | OPEN · στόχος Phase 27 |
 
+**Καταγραφή 2026-10-24 (D-156):** ευρήματα της προηγούμενης Φάσης 0 και του παλιού σχεδίου που ήταν
+ανοιχτά χωρίς εγγραφή εδώ. Η σοβαρότητα είναι του μητρώου `docs/audits/FINDINGS.md`· οι έλεγχοι SD,
+IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ) είναι του μητρώου.
+
+| # | Tier | Σοβαρότητα | Εύρημα | Στοιχεία | Κατάσταση |
+|---|------|------------|--------|----------|-----------|
+| M0-19 | 1 | HIGH | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | `governance_engine.py` (`data_confidence_low`) | OPEN · στόχος Phase 27 · έλεγχος SD |
+| M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `telegram_bot.py` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC |
+| M0-27 | 1 | HIGH | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-12-R1 | `persistence.py` (PostgreSQL adapter) | OPEN · πριν ενεργοποιηθεί το PostgreSQL · έλεγχος IS |
+| M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | OPEN · στόχος Phase 27 · έλεγχος SP |
+| M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | `docker-compose.yml`, `api/` | OPEN · στόχος Phase 27 · έλεγχος SP |
+| M0-30 | 2 | LOW | Παλιό `--ignore-vuln` στο `ci.yml` | `.github/workflows/ci.yml` | OPEN · στόχος Phase 27 · έλεγχος SP |
+| M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · έλεγχος AT |
+| M0-32 | 2 | LOW | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | tests του CLAUDE.md | OPEN · στόχος Phase 27 · έλεγχος AT |
+| F-06 | 1 | HIGH | Η `/injury` υπάρχει μόνο για τον owner· οι αθλητές δεν έχουν πηγή για την H1 (ADR-0067 D10.3) | `telegram_bot.py` (`/injury`) | OPEN · στόχος Phase 27 · έλεγχος SD |
+| F-07 | 2 | LOW | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | `worker/__init__.py` (`_CRASH_REMINDER_ATHLETE`) | OPEN · στόχος Phase 27 · έλεγχος SD |
+
 ---
 
 ## TIER 1 — Data Integrity (All Resolved ✅)
@@ -1833,12 +1850,12 @@ athlete, corrupting the per-athlete corpus and nullifying cohort calibration.
 | P4-03 | Προσπάθεια πρωινού που τρέχει πάνω από 15 λεπτά μπορεί να επικαλυφθεί από τη δεύτερη: χρειάζεται σήμα «σε εξέλιξη» στη βάση, σχήμα v34 (D-113) | 1 | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
 | P4-04 | Σκανδάλη hard-stop για τα offsets κατωφλίων στη βάση, σχήμα v34 (D-112) | 1 | MEDIUM | RESOLVED (D-135, ADR-0069 §4) |
 | P4-05 | Οι ειδοποιήσεις του worker δεν περνούν από το `NotificationGateway`, που δεν χρησιμοποιείται πουθενά στο `titan/` (AGENTS §16.6, D-113) | 2 | MEDIUM | RESOLVED (D-139, ADR-0069 §7)· το AGENTS §16.6 αλλάζει στο Κύμα 4 |
-| P4-06 | PostgreSQL: η εγγραφή `athlete_id` πριν ανοίξει ξανά ο σκελετός (ISO-5, D-112) | 4 | LOW | Όταν ανοίξει το PostgreSQL (ADR-0044) |
+| P4-06 | PostgreSQL: η εγγραφή `athlete_id` πριν ανοίξει ξανά ο σκελετός (ISO-5, D-112) | 4 | HIGH (μητρώο, D-156) | Όταν ανοίξει το PostgreSQL (ADR-0044) |
 | P4-07 | Προεπιλογή του H5 για νέο αθλητή (D-043) | 2 | MEDIUM | RESOLVED (D-133, ADR-0069 §2) |
 | P4-08 | Έλεγχος του `docs/consent/v1.md` από δικηγόρο· να αναφέρει και το βάρος σώματος | — | — | Πριν από τον πιλότο |
 | P4-09 | Τα γεγονότα `slo_alert` γράφονται μόνο στο log και δεν φτάνουν σε κανέναν (E-3· το T-PRA-31 αντικαταστάθηκε, D-139) | 2 | MEDIUM | RESOLVED · PR #1091 (D-149) |
-| P4-10 | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3, ενώ το ADR-0055 το έλεγε (addendum ADR-0070) | 2 | MEDIUM | OPEN· αλλάζει τι βλέπουν οι πύλες, θέλει ADR-0009 |
-| P4-11 | Ο `cold_start_conservative_factor` του ADR-0033 μπαίνει στο context αλλά δεν τον διαβάζει καμία πύλη (addendum ADR-0070· ο ThresholdAdapter είναι το T-PRA-18) | 3 | LOW | OPEN |
+| P4-10 | Οι τιμές HRV/RHR του `BiometricRouter` δεν φτάνουν στις H2/H3, ενώ το ADR-0055 το έλεγε (addendum ADR-0070) | 2 | HIGH (μητρώο, D-156) | OPEN· αλλάζει τι βλέπουν οι πύλες, θέλει ADR-0009 |
+| P4-11 | Ο `cold_start_conservative_factor` του ADR-0033 μπαίνει στο context αλλά δεν τον διαβάζει καμία πύλη (addendum ADR-0070· ο ThresholdAdapter είναι το T-PRA-18) | 3 | HIGH (μητρώο, D-156) | OPEN |
 
 ---
 
