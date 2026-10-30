@@ -122,7 +122,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | IS-02 | 2 | HIGH | Απόν `athlete_id` γίνεται owner σε 45 συναρτήσεις· το sweep καλύπτει μόνο `worker/` και `orchestration/` | `tests/test_explicit_athlete_ids.py:15` | OPEN · Β για τις προεπιλογές, Α για την επέκταση του sweep · στόχος Phase 27 · έλεγχος IS (D-173) |
 | IS-03 | 1 | HIGH | Ροή override Telegram: fallback `"unknown_athlete"`, nonce χωρίς έλεγχο έναντι της εκκρεμούς απόφασης· χωρίς καλούντα | `telegram_bot.py:853-955` | OPEN · Α · στόχος Phase 27 · έλεγχος IS (D-173) |
 | IS-04 | 3 | LOW | Ίδιο `garmin_activity_id` δεύτερου αθλητή χάνεται σιωπηλά | `training.py:337-380` | OPEN · στόχος Phase 27 · έλεγχος IS (D-173) |
-| IS-05 | 1 | HIGH | Το PostgreSQL ενεργοποιείται με `TITAN_DB_BACKEND=postgres`· κλείνει μόνο με κανόνα (ADR-0044) | `persistence.py` `get_persistence_adapter` | OPEN · Α (η εκκίνηση το αρνείται) · στόχος Phase 27 · έλεγχος IS, 2ος έλεγχος (D-173) |
+| IS-05 | 1 | HIGH | Το PostgreSQL ενεργοποιείται με `TITAN_DB_BACKEND=postgres`· κλείνει μόνο με κανόνα (ADR-0044) | `persistence.py` `get_persistence_adapter` | RESOLVED · PR #1117 (D-174)· το `get_persistence_adapter` αρνείται το `postgres` όπως το `get_database_manager` |
 
 ---
 

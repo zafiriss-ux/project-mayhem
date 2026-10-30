@@ -133,10 +133,12 @@ def get_persistence_adapter(
     if selected_backend == "sqlite":
         return SQLiteAdapter(db_name=db_name, db_dir=db_dir)
     if selected_backend == "postgres":
-        dsn = postgres_dsn or os.environ.get("TITAN_POSTGRES_DSN")
-        if not dsn:
-            raise ValueError("TITAN_POSTGRES_DSN must be set for PostgreSQL backend")
-        return PostgreSQLAdapter(dsn=dsn)
+        # IS-05: fail closed, same as get_database_manager (database.py).
+        # PostgreSQLAdapter is still usable directly in tests.
+        raise NotImplementedError(
+            "TITAN_DB_BACKEND=postgres is disabled until ADR-0044 full parity is implemented. "
+            "See TECHNICAL_DEBT.md IS-05 / T5-08."
+        )
     raise ValueError(f"Unsupported TITAN_DB_BACKEND: {selected_backend}")
 
 
