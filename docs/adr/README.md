@@ -90,7 +90,7 @@
 | [0073](0073-sd-urgent-conservative-measure.md) | Προσωρινό συντηρητικό μέτρο για τα επείγοντα του ελέγχου SD (M0-22, SD-01 ως SD-04): ό,τι δεν μετρήθηκε σωστά μετρά ως «δεν μετρήθηκε» και κλείνει | Governance | ✅ Accepted (2026-10-24) |
 | [0074](0074-hrv-above-ceiling-missing.md) | HRV πάνω από 300 ms μετρά ως «λείπει» και στο ιστορικό (baseline, απόκλιση, AFI), όχι μόνο σήμερα (SD-14) | Governance | ✅ Accepted (2026-10-24) |
 | [0075](0075-h1-h5-unmeasured-exception.md) | Οι H1 και H5 χωρίς μέτρηση μένουν όπως σήμερα, ως ρητή εξαίρεση από το ADR-0051 (ερώτηση Γ του ελέγχου SD) | Governance | ✅ Accepted (2026-10-30) |
-| [0076](0076-owner-garmin-identity.md) | Η βάση κρατά το όνομα λογαριασμού Garmin του owner, ώστε να μη δεθεί ποτέ σε άλλον αθλητή (M0-13-R1) | Auth / Garmin (ADR-0067 D9) | 🔲 Proposed (2026-10-30) |
+| [0076](0076-owner-garmin-identity.md) | Η βάση κρατά το όνομα λογαριασμού Garmin του owner, ώστε να μη δεθεί ποτέ σε άλλον αθλητή (M0-13-R1) | Auth / Garmin (ADR-0067 D9) | ✅ Accepted (2026-10-30) |
 
 ---
 
