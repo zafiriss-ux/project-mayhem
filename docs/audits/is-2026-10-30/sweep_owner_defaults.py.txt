@@ -1,0 +1,36 @@
+"""IS audit: list every call site in titan/ (all folders) that relies on an athlete_id="owner" default.
+
+Reuses the logic of tests/test_explicit_athlete_ids.py but sweeps every folder, not only worker/orchestration.
+Run from the worktree root.
+"""
+import ast
+import sys
+from collections import Counter
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd() / "tests"))
+from test_explicit_athlete_ids import _owner_defaults  # noqa: E402
+
+ROOT = Path.cwd() / "titan"
+defaults = _owner_defaults()
+missing = []
+for path in sorted(ROOT.rglob("*.py")):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", None)
+        if name not in defaults:
+            continue
+        if any(k.arg == "athlete_id" or k.arg is None for k in node.keywords):
+            continue
+        if any(slot >= 0 and len(node.args) > slot for slot in defaults[name]):
+            continue
+        missing.append((str(path.relative_to(ROOT.parent)), node.lineno, name))
+
+print("owner-defaulted callables:", len(defaults))
+print("calls relying on default:", len(missing))
+print(Counter(p.split("/")[1] for p, _, _ in missing))
+for p, ln, n in missing:
+    print(f"{p}:{ln} {n}")

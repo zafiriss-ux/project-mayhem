@@ -118,6 +118,11 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-13 | 3 | LOW | TSB 0 και HRV οποιασδήποτε ηλικίας στο payload του coaching | `daily_coach.py:1901`, `:1913` | RESOLVED · PR #1114 (D-171) |
 | SD-14 | 2 | HIGH | HRV πάνω από 300 ms μπαίνει ακατέργαστη στο log HRV (αυριανή baseline, απόκλιση, AFI) | `daily_coach.py` βήμα 3 | RESOLVED · PR #1113 (D-170, ADR-0074 επιλογή Α) |
 | SD-14-R1 | 2 | HIGH | Ο adapter PostgreSQL `get_hrv_history` δεν ελέγχει όρια HRV (ούτε πάνω από 300 ούτε 0)· δεν χρησιμοποιείται (ADR-0044) | `titan/core/persistence.py` | OPEN · στόχος Phase 27, πριν ενεργοποιηθεί το PostgreSQL · από το #1113 (D-170) |
+| IS-01 | 2 | HIGH | Άγνωστο `athlete_id` γίνεται δεκτό σε εγγραφές· FK προς `athletes` μόνο σε 2 πίνακες | `database.py:169-197` | OPEN · Β, θέλει ADR · στόχος Phase 27 · έλεγχος IS (D-173) |
+| IS-02 | 2 | HIGH | Απόν `athlete_id` γίνεται owner σε 45 συναρτήσεις· το sweep καλύπτει μόνο `worker/` και `orchestration/` | `tests/test_explicit_athlete_ids.py:15` | OPEN · Β για τις προεπιλογές, Α για την επέκταση του sweep · στόχος Phase 27 · έλεγχος IS (D-173) |
+| IS-03 | 1 | HIGH | Ροή override Telegram: fallback `"unknown_athlete"`, nonce χωρίς έλεγχο έναντι της εκκρεμούς απόφασης· χωρίς καλούντα | `telegram_bot.py:853-955` | OPEN · Α · στόχος Phase 27 · έλεγχος IS (D-173) |
+| IS-04 | 3 | LOW | Ίδιο `garmin_activity_id` δεύτερου αθλητή χάνεται σιωπηλά | `training.py:337-380` | OPEN · στόχος Phase 27 · έλεγχος IS (D-173) |
+| IS-05 | 1 | HIGH | Το PostgreSQL ενεργοποιείται με `TITAN_DB_BACKEND=postgres`· κλείνει μόνο με κανόνα (ADR-0044) | `persistence.py` `get_persistence_adapter` | OPEN · Α (η εκκίνηση το αρνείται) · στόχος Phase 27 · έλεγχος IS, 2ος έλεγχος (D-173) |
 
 ---
 

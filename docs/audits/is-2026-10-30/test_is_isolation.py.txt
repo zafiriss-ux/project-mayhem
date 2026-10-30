@@ -1,0 +1,440 @@
+"""IS audit (2026-10-30): two athletes in one synthetic DB. Synthetic data only, tmp dirs only.
+
+Each test states the expected result. A test named ``test_defect_*`` PASSES when the defect is
+present (it reproduces the finding); the others pass when isolation holds.
+"""
+from __future__ import annotations
+
+import base64
+import inspect
+import json
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+import pytest
+
+from titan.config.settings import get_settings
+from titan.core.database import DatabaseManager
+
+TODAY = datetime.now(UTC).date().isoformat()
+A1, A2 = "a-11111111", "a-22222222"
+
+
+@pytest.fixture
+def env(tmp_path, monkeypatch):
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setenv("TITAN_DATA_DIR", str(data))
+    monkeypatch.setenv("TITAN_DELETION_RECORD_FILE", str(tmp_path / "outside" / "deletions.jsonl"))
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "1000")
+    monkeypatch.delenv("TITAN_MULTI_ATHLETE", raising=False)
+    get_settings.cache_clear()
+    yield data
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def db(env):
+    database = DatabaseManager(db_name="titan_core.db", db_dir=env)
+    with database._lock:
+        for aid in (A1, A2):
+            database.conn.execute(
+                "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, ?)",
+                (aid, aid, datetime.now(UTC).isoformat()),
+            )
+        database.conn.commit()
+    yield database
+    database.close()
+
+
+def _decision(day: str, athlete: str, session: str = "EASY") -> dict:
+    return {
+        "athlete_profile_id": athlete, "date": day, "session_planned": session,
+        "session_post_governance": session, "locks_applied": [], "governance_clean": True,
+        "phase": "BASE", "vlg_color": "GREEN", "apl_priority_vector": {},
+        "lock_thresholds_active": {}, "acwr": 1.1, "tsb_value": -5.0,
+        "readiness_score": 70.0, "glycogen_debt": 1.0,
+    }
+
+
+# ── reads and writes, two athletes ───────────────────────────────────────────
+
+def test_daily_metrics_two_athletes_see_only_their_own(db):
+    db.save_daily_metric(date=TODAY, hrv=50.0, rhr=50, athlete_id="owner")
+    db.save_daily_metric(date=TODAY, hrv=90.0, rhr=40, athlete_id=A1)
+    assert [v for _, v in db.get_hrv_history(days=7, athlete_id=A1)] == [90.0]
+    assert [v for _, v in db.get_hrv_history(days=7, athlete_id="owner")] == [50.0]
+    assert db.get_hrv_history(days=7, athlete_id=A2) == []
+    assert db.get_daily_metric(TODAY, athlete_id=A1)["resting_hr"] == 40
+
+
+def test_training_and_load_two_athletes_see_only_their_own(db):
+    db.save_session(date=TODAY, session_type="EASY", distance_km=5, duration_sec=1800, rpe=5,
+                    athlete_id="owner", garmin_activity_id="g-owner")
+    db.save_session(date=TODAY, session_type="LONG", distance_km=20, duration_sec=7200, rpe=6,
+                    athlete_id=A1, garmin_activity_id="g-a1")
+    assert len(db.get_recent_activities(athlete_id=A1)) == 1
+    assert sum(v for _, v in db.get_training_load_history(7, athlete_id=A2)) == 0
+    assert db.get_ctl_atl_tsb(athlete_id=A2) == (0.0, 0.0, 0.0) or db.get_ctl_atl_tsb(athlete_id=A2)[0] == 0
+
+
+def test_defect_same_garmin_activity_id_from_another_athlete_is_silently_dropped(db):
+    # D-079: garmin_activity_id is unique across the DB. A second athlete's row with the same id
+    # is ignored with no error (INSERT OR IGNORE) and the first athlete's row stays untouched.
+    db.save_session(date=TODAY, session_type="EASY", distance_km=5, duration_sec=1800, rpe=5,
+                    athlete_id=A1, garmin_activity_id="g-same")
+    db.save_session(date=TODAY, session_type="EASY", distance_km=9, duration_sec=3600, rpe=5,
+                    athlete_id=A2, garmin_activity_id="g-same")
+    assert len(db.get_recent_activities(athlete_id=A1)) == 1
+    assert db.get_recent_activities(athlete_id=A2) == []  # no error raised, A2's session lost
+
+
+def test_governance_two_athletes_same_day_isolated(db):
+    db.save_governance_decision(_decision(TODAY, "owner", "TEMPO"))
+    db.save_governance_decision(_decision(TODAY, A1, "REST"))
+    mine = db.get_governance_decisions(athlete_id=A1)
+    assert [d["session_post_governance"] for d in mine] == ["REST"]
+    assert all(d["athlete_profile_id"] == A1 for d in mine)
+    assert db.annotate_governance_outcome(TODAY, "note-a1", athlete_id=A1) is True
+    assert db.update_governance_outcome(TODAY, rpe=9, athlete_id=A1) is True
+    owner = db.get_governance_decision_on("owner", TODAY)
+    assert not owner.get("outcome_notes") and owner.get("outcome_rpe") is None
+    assert db.get_governance_decisions(athlete_id=A2) == []
+
+
+def test_defect_m0_25_recent_hrv_mean_has_no_athlete_and_returns_the_owners(db):
+    db.save_daily_metric(date=TODAY, hrv=50.0, athlete_id="owner")
+    db.save_daily_metric(date=TODAY, hrv=90.0, athlete_id=A1)
+    assert "athlete_id" not in inspect.signature(DatabaseManager.get_recent_hrv_mean).parameters
+    assert db.get_recent_hrv_mean(days=7) == 50.0  # the owner's, whatever athlete is meant
+
+
+# ── empty, absent, unknown ids ───────────────────────────────────────────────
+
+@pytest.mark.parametrize("bad", ["", "   ", None])
+def test_empty_id_is_refused_on_reads_and_writes(db, bad):
+    with pytest.raises(ValueError):
+        db.save_daily_metric(date=TODAY, hrv=60.0, athlete_id=bad)
+    with pytest.raises(ValueError):
+        db.get_governance_decisions(athlete_id=bad)
+    with pytest.raises(ValueError):
+        db.save_governance_decision(_decision(TODAY, bad))
+
+
+def test_absent_id_falls_back_to_the_owner(db):
+    # An id that is not passed keeps the owner default (by design, D-123): this is the residual.
+    db.save_daily_metric(date=TODAY, hrv=61.0)
+    assert db.get_daily_metric(TODAY, athlete_id="owner")["hrv_rmssd"] == 61.0
+
+
+@pytest.mark.parametrize("unknown", ["a-ffffffff", "OWNER", " owner", "nobody"])
+def test_defect_unknown_athlete_id_is_accepted_on_writes(db, unknown):
+    # Expected per §5.2: an unknown id ends in denial. Observed: the rows are written.
+    db.save_daily_metric(date=TODAY, hrv=70.0, athlete_id=unknown)
+    db.save_session(date=TODAY, session_type="EASY", distance_km=3, duration_sec=900, rpe=3,
+                    athlete_id=unknown)
+    db.save_governance_decision(_decision(TODAY, unknown))
+    db.log_override(date=TODAY, prescribed="EASY", actual="TEMPO", reason="x", athlete_id=unknown)
+    with db._lock:
+        known = {r[0] for r in db.conn.execute("SELECT athlete_id FROM athletes")}
+        rows = db.conn.execute("SELECT COUNT(*) FROM daily_metrics WHERE athlete_id = ?", (unknown,)).fetchone()[0]
+    assert unknown not in known
+    assert rows == 1
+    assert len(db.get_governance_decisions(athlete_id=unknown)) == 1
+    # Not the owner's data either way: the owner sees nothing of it.
+    assert db.get_daily_metric(TODAY, athlete_id="owner") is None
+
+
+def test_unknown_athlete_is_not_ready_for_the_worker(db):
+    from titan.worker import _readiness_problem
+    assert _readiness_problem(db, "a-ffffffff") is not None
+    assert _readiness_problem(db, A1) is not None  # no consent
+
+
+# ── coach assignments ────────────────────────────────────────────────────────
+
+def test_coach_assignment_scoping(db):
+    db.assign_athlete_to_coach("coach-1", A1)
+    assert db.get_assigned_athletes("coach-1") == [A1]
+    assert db.get_assigned_athletes("coach-2") == []
+    assert db.get_assigned_athletes("") == []
+    assert db.get_assigned_athletes("system") == ["owner"]  # M0-05: only the seeded row
+
+
+# ── export and deletion ──────────────────────────────────────────────────────
+
+def test_export_and_delete_touch_only_the_named_athlete(db):
+    from titan.core import athlete_lifecycle as lc
+    for aid in ("owner", A1, A2):
+        db.save_daily_metric(date=TODAY, hrv=55.0, athlete_id=aid)
+        db.save_governance_decision(_decision(TODAY, aid))
+    db.assign_athlete_to_coach("coach-1", A1)
+    doc = lc.export_athlete(db, A1)
+    for table, rows in doc["tables"].items():
+        assert all(r.get("athlete_id") == A1 for r in rows), table
+    assert doc["tables"]["daily_metrics"] and doc["tables"]["governance_outcomes"]
+    lc.delete_athlete(db, A1)
+    assert db.get_daily_metric(TODAY, athlete_id=A1) is None
+    assert db.get_daily_metric(TODAY, athlete_id=A2) is not None
+    assert db.get_daily_metric(TODAY, athlete_id="owner") is not None
+    assert db.get_assigned_athletes("coach-1") == []
+
+
+@pytest.mark.parametrize("bad", ["owner", "", "a-XYZ", "../owner", None])
+def test_export_and_delete_refuse_owner_empty_and_malformed(db, bad):
+    from titan.core import athlete_lifecycle as lc
+    with pytest.raises((ValueError, TypeError)):
+        lc.export_athlete(db, bad)
+    with pytest.raises((ValueError, TypeError)):
+        lc.delete_athlete(db, bad)
+
+
+def test_export_of_unknown_well_formed_id_is_refused(db):
+    from titan.core import athlete_lifecycle as lc
+    with pytest.raises(LookupError):
+        lc.export_athlete(db, "a-ffffffff")
+
+
+# ── Garmin token paths ───────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("bad", ["owner", "", "../owner", "a/../../x", "A-1"])
+def test_token_path_refuses_owner_and_path_tricks(env, bad):
+    from titan.integrations.garmin_sync import athlete_token_path
+    with pytest.raises(ValueError):
+        athlete_token_path(bad)
+    assert athlete_token_path(A1).parent.name == A1
+
+
+def test_bind_refuses_owner_and_cross_binding(db):
+    with pytest.raises(ValueError):
+        db.bind_garmin_account("owner", "garmin-owner")
+    db.bind_garmin_account(A1, "garmin-x")
+    with pytest.raises(ValueError):
+        db.bind_garmin_account(A2, "garmin-x")
+    with pytest.raises(ValueError):
+        db.bind_telegram_chat(A1, "1000")  # the owner's chat
+    db.bind_telegram_chat(A1, "2001")
+    with pytest.raises(ValueError):
+        db.bind_telegram_chat(A2, "2001")
+    with pytest.raises(ValueError):
+        db.bind_telegram_chat(A2, "-2002")  # a group
+
+
+def test_defect_m0_13_r1_owner_account_under_another_email_is_bindable(db, monkeypatch):
+    # The only owner check is the e-mail string. Garmin's account id (displayName) of the owner
+    # is not stored, so the owner's account reached through another login form is bound.
+    monkeypatch.setenv("GARMIN_EMAIL", "owner@example.com")
+    get_settings.cache_clear()
+    import sys
+    import types
+
+    class _Garmin:
+        def __init__(self, email, password, prompt_mfa=None):
+            self.display_name = "owner-display-name"
+            self.client = types.SimpleNamespace(dumps=lambda: "{}")
+
+        def login(self):
+            return None
+
+    monkeypatch.setitem(sys.modules, "garminconnect", types.SimpleNamespace(Garmin=_Garmin))
+    from titan.integrations import garmin_sync as gs
+    monkeypatch.setattr(gs, "write_athlete_token", lambda aid, s: Path("/nonexistent"))
+    with pytest.raises(ValueError):
+        gs.relogin_athlete(db, A1, " Owner@Example.com ", "pw", None)
+    bound = gs.relogin_athlete(db, A1, "owner-alias@example.com", "pw", None)
+    assert bound == "owner-display-name"
+    assert db.get_athlete_account(A1)["garmin_token_state"] == "ok"
+
+
+# ── Telegram routing ─────────────────────────────────────────────────────────
+
+def test_telegram_routing_respects_flag_owner_chat_and_groups(db, monkeypatch):
+    from titan.integrations.telegram_bot import TitanTelegramBot
+    db.bind_telegram_chat(A1, "2001")
+    bot = TitanTelegramBot(bot_token="", db=db)
+    assert bot._athlete_for_chat(2001) is None  # flag off (MA-F9)
+    monkeypatch.setenv("TITAN_MULTI_ATHLETE", "1")
+    get_settings.cache_clear()
+    assert bot._athlete_for_chat(2001) == A1
+    assert bot._athlete_for_chat(1000) is None  # the owner's chat
+    assert bot._athlete_for_chat(9999) is None  # unregistered
+    assert bot._athlete_for_chat("") is None
+    assert bot._is_trusted_sender(2001, None) is False
+    with pytest.raises(ValueError):
+        TitanTelegramBot(bot_token="", db=db, athlete_id=A1)  # no chat → refused
+    with pytest.raises(ValueError):
+        TitanTelegramBot(bot_token="", db=db, athlete_id=A1, chat_id="+2001")
+
+
+def test_group_trusted_chat_needs_owner_sender(db, monkeypatch):
+    from types import SimpleNamespace as NS
+
+    from titan.integrations.telegram_bot import TitanTelegramBot
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "-5000")
+    monkeypatch.setenv("TELEGRAM_OWNER_USER_ID", "")
+    get_settings.cache_clear()
+    bot = TitanTelegramBot(bot_token="", db=db)
+    assert bot._is_trusted_sender(-5000, NS(id=42)) is False
+    monkeypatch.setenv("TELEGRAM_OWNER_USER_ID", "42")
+    get_settings.cache_clear()
+    bot = TitanTelegramBot(bot_token="", db=db)
+    assert bot._is_trusted_sender(-5000, NS(id=42)) is True
+    assert bot._is_trusted_sender(-5000, NS(id=43)) is False
+    assert bot._is_trusted_sender(-5000, None) is False
+
+
+# ── API: roles × operations, tokens ──────────────────────────────────────────
+
+@pytest.fixture
+def api(env, db, monkeypatch):
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from fastapi.testclient import TestClient
+
+    from titan.api.auth import AuthStore, hash_password
+    from titan.api.main import CoachAuditStore, create_app
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode())
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode())
+    db.assign_athlete_to_coach("coach-1", A1)
+    store = AuthStore(db=db)
+    pw = hash_password("pw-123456")
+    store.upsert_user(user_id="coach-1", username="coach1", password_hash=pw, role="COACH", athlete_id=None)
+    store.upsert_user(user_id="coach-2", username="coach2", password_hash=pw, role="COACH", athlete_id=None)
+    store.upsert_user(user_id="system", username="system", password_hash=pw, role="COACH", athlete_id=None)
+    store.upsert_user(user_id="u-a1", username="ath1", password_hash=pw, role="ATHLETE", athlete_id=A1)
+    store.upsert_user(user_id="u-own", username="owner", password_hash=pw, role="ATHLETE", athlete_id="owner")
+    store.upsert_user(user_id="u-none", username="noath", password_hash=pw, role="ATHLETE", athlete_id=None)
+    app = create_app(auth_store=store, audit_store=CoachAuditStore(), db=db)
+    return app, store
+
+
+def _client(app, username=None):
+    from fastapi.testclient import TestClient
+
+    from titan.api.main import CSRF_HEADER_NAME
+    c = TestClient(app, base_url="https://testserver")
+    headers = {}
+    if username:
+        assert c.post("/auth/login", json={"username": username, "password": "pw-123456"}).status_code == 200
+        headers = {CSRF_HEADER_NAME: c.get("/api/csrf-token").json()["csrf_token"]}
+    return c, headers
+
+
+MATRIX = [
+    # (user, method, path, expected)
+    ("coach1", "GET", f"/athletes/{A1}/dashboard", 200),
+    ("coach1", "GET", f"/athletes/{A2}/dashboard", 403),
+    ("coach1", "GET", "/athletes/owner/dashboard", 403),
+    ("coach1", "POST", f"/coach/notes?athlete_id={A1}", 200),
+    ("coach1", "POST", f"/coach/notes?athlete_id={A2}", 403),
+    ("coach1", "POST", "/coach/notes?athlete_id=", 403),
+    ("coach1", "POST", "/coach/notes", 403),
+    ("coach1", "POST", f"/coach/overrides?athlete_id={A2}", 403),
+    ("coach1", "POST", f"/coach/overrides?athlete_id={A1}&athlete_id={A2}", 403),
+    ("coach1", "POST", f"/coach/overrides?athlete_id={A2}&athlete_id={A1}", None),
+    ("coach2", "GET", f"/athletes/{A1}/dashboard", 403),
+    ("coach2", "POST", f"/coach/overrides?athlete_id={A1}", 403),
+    ("system", "GET", "/athletes/owner/dashboard", 200),
+    ("system", "GET", f"/athletes/{A1}/dashboard", 403),
+    ("ath1", "GET", f"/athletes/{A1}/dashboard", 200),
+    ("ath1", "GET", f"/athletes/{A2}/dashboard", 403),
+    ("ath1", "GET", "/athletes/owner/dashboard", 403),
+    ("ath1", "POST", f"/coach/notes?athlete_id={A1}", 403),
+    ("ath1", "POST", f"/coach/overrides?athlete_id={A1}", 403),
+    ("owner", "GET", "/athletes/owner/dashboard", 200),
+    ("owner", "GET", f"/athletes/{A1}/dashboard", 403),
+    ("noath", "GET", f"/athletes/{A1}/dashboard", 403),
+    ("noath", "GET", "/athletes/None/dashboard", 403),
+    (None, "GET", f"/athletes/{A1}/dashboard", 401),
+    (None, "POST", f"/coach/notes?athlete_id={A1}", None),
+]
+
+
+@pytest.mark.parametrize("user,method,path,expected", MATRIX)
+def test_api_matrix(api, user, method, path, expected):
+    app, _ = api
+    c, h = _client(app, user)
+    r = c.get(path) if method == "GET" else c.post(path, json={}, headers=h)
+    print(f"MATRIX {user} {method} {path} -> {r.status_code}")
+    if expected is not None:
+        assert r.status_code == expected, r.text
+
+
+def test_duplicate_athlete_id_query_which_value_is_checked_and_used(api):
+    # Assignment check and handler must read the same value. Observed values printed.
+    app, _ = api
+    c, h = _client(app, "coach1")
+    r = c.post(f"/coach/overrides?athlete_id={A2}&athlete_id={A1}", json={}, headers=h)
+    print("DUP", r.status_code, r.text)
+    if r.status_code == 200:
+        assert r.json()["athlete_id"] == A1
+
+
+def _cookie(c):
+    from titan.api.auth import ACCESS_COOKIE_NAME
+    return c.cookies.get(ACCESS_COOKIE_NAME)
+
+
+def test_tampered_and_foreign_tokens_are_refused(api):
+    import jwt as pyjwt
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    from titan.api.auth import ACCESS_COOKIE_NAME, JWT_AUDIENCE, JWT_ISSUER
+    app, _ = api
+    c, _ = _client(app, "ath1")
+    token = _cookie(c)
+    head, body, sig = token.split(".")
+    claims = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    # 1) body changed to another athlete, old signature
+    forged = dict(claims, athlete_id=A2, sub="u-own")
+    fbody = base64.urlsafe_b64encode(json.dumps(forged).encode()).rstrip(b"=").decode()
+    fresh = __import__("fastapi.testclient", fromlist=["TestClient"]).TestClient(app, base_url="https://testserver")
+    fresh.cookies.set(ACCESS_COOKIE_NAME, f"{head}.{fbody}.{sig}")
+    assert fresh.get(f"/athletes/{A2}/dashboard").status_code == 401
+    # 2) signed with another key
+    other = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = other.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                              serialization.NoEncryption())
+    fresh.cookies.set(ACCESS_COOKIE_NAME, pyjwt.encode(forged, pem, algorithm="RS256"))
+    assert fresh.get("/athletes/owner/dashboard").status_code == 401
+    # 3) alg=none
+    none_tok = pyjwt.encode(forged, None, algorithm="none") if hasattr(pyjwt, "encode") else ""
+    fresh.cookies.set(ACCESS_COOKIE_NAME, none_tok)
+    assert fresh.get("/athletes/owner/dashboard").status_code == 401
+    # 4) a valid token whose claims say COACH for an ATHLETE user: the DB role wins
+    from titan.api.auth import _jwt_private_key
+    coach_claims = dict(claims, role="COACH", athlete_id=A2,
+                        exp=int((datetime.now(UTC) + timedelta(minutes=5)).timestamp()),
+                        iss=JWT_ISSUER, aud=JWT_AUDIENCE)
+    fresh.cookies.set(ACCESS_COOKIE_NAME, pyjwt.encode(coach_claims, _jwt_private_key(), algorithm="RS256"))
+    assert fresh.get(f"/athletes/{A2}/dashboard").status_code == 403
+    # 5) a valid token for a user that does not exist
+    ghost = dict(coach_claims, sub="ghost")
+    fresh.cookies.set(ACCESS_COOKIE_NAME, pyjwt.encode(ghost, _jwt_private_key(), algorithm="RS256"))
+    assert fresh.get(f"/athletes/{A1}/dashboard").status_code == 401
+
+
+def test_deleted_athlete_user_token_stops_working(api, db):
+    from titan.core import athlete_lifecycle as lc
+    app, _ = api
+    c, _ = _client(app, "ath1")
+    assert c.get(f"/athletes/{A1}/dashboard").status_code == 200
+    lc.delete_athlete(db, A1)
+    assert c.get(f"/athletes/{A1}/dashboard").status_code == 401
+
+
+def test_unknown_role_in_db_is_denied(api):
+    app, store = api
+    from titan.api.auth import hash_password
+    store.upsert_user(user_id="u-adm", username="adm", password_hash=hash_password("pw-123456"),
+                      role="ADMIN", athlete_id=None)
+    from fastapi.testclient import TestClient
+    c = TestClient(app, base_url="https://testserver", raise_server_exceptions=False)
+    r = c.post("/auth/login", json={"username": "adm", "password": "pw-123456"})
+    print("UNKNOWN ROLE login ->", r.status_code)
+    assert r.status_code >= 400
