@@ -37,7 +37,27 @@ fi
 cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}"
 
 echo "TITAN OS SessionStart: running canonical bootstrap (scripts/ci_bootstrap.sh)…"
-bash scripts/ci_bootstrap.sh
+# Retry the bootstrap. A transient network failure mid-pip used to leave a
+# half-built .venv (no pytest/ruff) and, under `set -e`, skipped the PATH step
+# below, so every later gate failed with "No module named pytest". Up to 3
+# attempts with 10s/20s backoff; each attempt is capped at 180s so a stalled pip
+# cannot hang the session (worst case 570s, inside the 600s hook timeout set in
+# .claude/settings.json). An attempt only counts if pytest and ruff import.
+bootstrap_ok=0
+for attempt in 1 2 3; do
+  if timeout 180 bash scripts/ci_bootstrap.sh && .venv/bin/python -c "import pytest, ruff" >/dev/null 2>&1; then
+    bootstrap_ok=1
+    break
+  fi
+  echo "TITAN OS SessionStart: bootstrap attempt ${attempt}/3 failed." >&2
+  if [ "${attempt}" -lt 3 ]; then
+    sleep $((attempt * 10))
+  fi
+done
+if [ "${bootstrap_ok}" -ne 1 ]; then
+  echo "TITAN OS SessionStart: bootstrap failed after 3 attempts; run 'bash scripts/ci_bootstrap.sh' manually." >&2
+  exit 1
+fi
 
 # Persist the venv onto PATH for the whole session so `python` == .venv python.
 # This lets the canonical entrypoints' `python -m pytest`/`python -m ruff` AND
