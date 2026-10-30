@@ -321,6 +321,13 @@ def relogin_athlete(db, athlete_id: str, email: str, password: str, prompt_mfa) 
         )
     if str(email or "").strip().casefold() == owner_email:
         raise ValueError("this is the owner's Garmin login; an athlete logs in with their own account")
+    # IS-06: login() falls back to GARMINTOKENS when no tokenstore is passed. It would then log
+    # in with the tokens found there (perhaps the owner's) instead of this athlete's password,
+    # or write this athlete's token there before any check below. Stop before Garmin is called.
+    if os.environ.get("GARMINTOKENS"):
+        raise ValueError(
+            "GARMINTOKENS is set; unset it before an athlete relogin so Garmin reads and writes no token there"
+        )
     client = Garmin(email, password, prompt_mfa=prompt_mfa)
     client.login()
     garmin_user_id = str(getattr(client, "display_name", "") or "").strip()
