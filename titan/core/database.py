@@ -1367,9 +1367,9 @@ class DatabaseManager:
         """Return (date, hrv_rmssd) rows from the last N days, newest-first."""
         return self._physiology.get_hrv_history(days=days, athlete_id=athlete_id)
 
-    def get_recent_hrv_mean(self, days: int = 30) -> float | None:
-        """Return rolling mean HRV over recent days, or None when unavailable."""
-        return self._physiology.get_recent_hrv_mean(days=days)
+    def get_recent_hrv_mean(self, days: int = 30, *, athlete_id: str) -> float | None:
+        """Return the athlete's rolling mean HRV over recent days, or None when unavailable."""
+        return self._physiology.get_recent_hrv_mean(days=days, athlete_id=athlete_id)
 
     def upsert_model_calibration_metadata(
         self,

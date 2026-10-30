@@ -318,10 +318,13 @@ class PhysiologyRepository:
                 validated.append((date_str, clean))
         return validated
 
-    def get_recent_hrv_mean(self, days: int = 30) -> float | None:
-        """Return rolling mean HRV over recent days, or None when unavailable."""
+    def get_recent_hrv_mean(self, days: int = 30, *, athlete_id: str) -> float | None:
+        """Return the athlete's rolling mean HRV over recent days, or None when unavailable.
+
+        M0-25: ``athlete_id`` is required, so a missing id fails instead of reading the owner.
+        """
         with self._db._lock:
-            hrv_history = self._db.get_hrv_history(days=days)
+            hrv_history = self._db.get_hrv_history(days=days, athlete_id=athlete_id)
             if not hrv_history:
                 return None
             values = [entry[1] for entry in hrv_history]

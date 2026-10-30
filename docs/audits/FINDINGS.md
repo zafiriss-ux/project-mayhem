@@ -109,7 +109,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-22 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | HIGH | Β | FIXED (#1107, D-166, ADR-0073 σημείο 1)· **επιβεβαιωμένο** (SD, 28608d0) | TECHNICAL_DEBT | — | SD |
 | — | M0-23 | Η ετοιμότητα παίρνει RHR 50 όταν λείπει | HIGH | Β | TRACKED: Phase 27· **επιβεβαιωμένο** (SD, 28608d0) | TECHNICAL_DEBT | — | SD |
 | — | M0-24 | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | RC |
-| — | M0-25 | Το `get_recent_hrv_mean` χωρίς `athlete_id` | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
+| — | M0-25 | Το `get_recent_hrv_mean` χωρίς `athlete_id` | HIGH | Α | FIXED (#1118, D-175)· το `athlete_id` υποχρεωτικό (keyword-only, χωρίς προεπιλογή)· επιβεβαιωμένο με test | TECHNICAL_DEBT | — | IS |
 | — | M0-26 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
 | — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044)· γράφτηκε στο TECHNICAL_DEBT (D-156) | TECHNICAL_DEBT, D-156 | — | IS |
 | — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |

@@ -9,6 +9,19 @@
 
 ---
 
+## D-175 · M0-25: το `get_recent_hrv_mean` θέλει ρητό `athlete_id`
+
+- **Πότε / ποιος:** 2026-10-30, Claude. Κατηγορία Α, μόνο σφίγγει.
+- **Απόφαση:** το `get_recent_hrv_mean` (repository και facade του `DatabaseManager`) παίρνει
+  υποχρεωτικό keyword-only `athlete_id` χωρίς προεπιλογή και το δίνει στο `get_hrv_history`. Πριν
+  διάβαζε πάντα τον owner. Κλήση χωρίς id σηκώνει `TypeError` αντί να διαβάσει τον owner. Σήμερα
+  δεν το καλεί κώδικας παραγωγής, μόνο tests.
+- **Εναλλακτικές:** προεπιλογή `athlete_id="owner"`, ώστε να το πιάνει το sweep του D-124·
+  απορρίφθηκε, γιατί η υποχρεωτική παράμετρος κλείνει τη σιωπηλή πτώση στον owner παντού, όχι
+  μόνο σε worker και orchestration (ADR-0067: νέα `athlete_id` χωρίς DEFAULT).
+
+---
+
 ## D-174 · IS-05: το `get_persistence_adapter` αρνείται το PostgreSQL
 
 - **Πότε / ποιος:** 2026-10-30, Claude. Κατηγορία Α, μόνο σφίγγει.
