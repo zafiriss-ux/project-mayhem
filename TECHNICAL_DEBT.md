@@ -63,7 +63,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-21 | 1 | Το rationale λέει CLEAR όταν η βάση HRV είναι άκυρη ή το TSB είναι NaN | `governance_engine.py` (rationale) | OPEN · στόχος Phase 27 |
 | M0-22 | 1 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | `daily_coach.py` (load refresh) | RESOLVED · PR #1107 (D-166, ADR-0073) |
 | M0-23 | 1 | Η ετοιμότητα παίρνει RHR 50 ως προεπιλογή όταν λείπει | `daily_coach.py` (readiness) | OPEN · στόχος Phase 27 |
-| M0-25 | 1 | Το `get_recent_hrv_mean` καλείται χωρίς `athlete_id`. Ο έλεγχος ρητού id καλύπτει μόνο worker και orchestration | `repositories/physiology.py` | OPEN · στόχος Phase 27 |
+| M0-25 | 1 | Το `get_recent_hrv_mean` καλείται χωρίς `athlete_id`. Ο έλεγχος ρητού id καλύπτει μόνο worker και orchestration | `repositories/physiology.py` | RESOLVED · PR #1118 (D-175)· το `athlete_id` είναι υποχρεωτικό, χωρίς προεπιλογή owner |
 | M0-33 | 1 | Το bot δέχεται εντολές owner από ομαδική συνομιλία όταν το `TELEGRAM_CHAT_ID` είναι ομάδα | `telegram_bot.py` (`_trusted_chat_id`) | RESOLVED · PR #1092 (D-150)· ο owner διάλεξε «ομάδα + έλεγχος αποστολέα» |
 | M0-12 | 1 | Οι αποφάσεις αθλητή διαβάζονταν ως του owner | `outcome_tracker.py`, `repositories/governance.py` | RESOLVED · PR #1088 (D-147) |
 | M0-13 | 1 | Ο λογαριασμός Garmin του owner μπορούσε να δεθεί σε αθλητή | `garmin_sync.py` (`relogin_athlete`) | RESOLVED · PR #1087 (D-146) |
