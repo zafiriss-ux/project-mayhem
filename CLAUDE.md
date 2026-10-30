@@ -127,6 +127,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90. The ceiling test
 - `0072` — Card approvals M0-02/03/11
 - `0073` — SD urgent conservative measure
 - `0074` — HRV above ceiling missing
+- `0075` — H1/H5 unmeasured exception
 
 ## Docker
 
