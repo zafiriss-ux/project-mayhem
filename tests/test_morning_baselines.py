@@ -30,14 +30,16 @@ pytestmark = pytest.mark.integration
 class _Garmin:
     athlete_max_hr = 0
 
-    def __init__(self, today: str, hrv: float, rhr: int, status: str | None = None) -> None:
+    def __init__(self, today: str, hrv: float, rhr: int, status: str | None = None,
+                 past_hrv: list[dict] | None = None) -> None:
         self.today, self.hrv, self.rhr, self.status = today, hrv, rhr, status
+        self.past_hrv = past_hrv or []
 
     def sync_all(self) -> dict:
         payload = {
             "activities": [],
             "sleep": [{"date": self.today, "resting_hr": self.rhr, "sleep_score": 82, "total_sleep_hours": 7.8}],
-            "hrv": [{"date": self.today, "rmssd": self.hrv}],
+            "hrv": [{"date": self.today, "rmssd": self.hrv}, *self.past_hrv],
             "hrr": [],
             "weight": [{"date": self.today, "weight_kg": 70.0}],
             "fueling_confirmed": True,
@@ -88,7 +90,8 @@ class _Nutrition:
 def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float,
              today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None,
              loads: dict[int, int] | None = None, fail_load_reload: bool = False,
-             sync_status: str | None = None) -> tuple[dict, dict]:
+             sync_status: str | None = None, stored_hrv: dict[int, float] | None = None,
+             garmin_past_hrv: dict[int, float] | None = None) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -103,7 +106,9 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
         for i in range(1, prior_nights + 1):
             # rhr_nights: only the N most recent earlier nights carry an RHR (SD-03).
             rhr = prior_rhr if rhr_nights is None or i <= rhr_nights else None
-            db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=75.0 + (i % 3), rhr=rhr,
+            # stored_hrv: {days back: HRV} replaces that night's stored value (SD-14).
+            hrv = (stored_hrv or {}).get(i, 75.0 + (i % 3))
+            db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=hrv, rhr=rhr,
                                  sleep_quality=80, weight=70.0, athlete_id=athlete_id)
         # loads: {days back: training load} stored before the morning (M0-22).
         for back, load in (loads or {}).items():
@@ -112,7 +117,10 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
         engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
         telegram = _Telegram()
         coach = DailyCoach(
-            garmin_sync=_Garmin(today, today_hrv, today_rhr, sync_status), weather_api=None, telegram_bot=telegram,
+            garmin_sync=_Garmin(today, today_hrv, today_rhr, sync_status,
+                                [{"date": (now - timedelta(days=back)).isoformat(), "rmssd": value}
+                                 for back, value in (garmin_past_hrv or {}).items()]),
+            weather_api=None, telegram_bot=telegram,
             hrv_engine=engines.hrv, tsb_engine=engines.tsb, readiness_engine=engines.readiness,
             optimal_time_calc=_OptimalTime(), nutrition_optimizer=_Nutrition(), weekly_planner=_Planner(),
             db=db, athlete_id=athlete_id, engines=engines,
@@ -280,6 +288,33 @@ def test_hrv_at_the_ceiling_is_still_a_reading(tmp_path, monkeypatch):
     """SD-01 boundary: 300 ms is inside the bounds and stays a reading (no missing-data lock)."""
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=300.0)
     assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_an_earlier_night_above_the_ceiling_from_the_sync_is_left_out_of_the_baseline(tmp_path, monkeypatch):
+    """SD-14 (ADR-0074 point 1, D-170): the sync brings last night at 350 ms. Step 3 put it in the
+    HRV log, the 7-day baseline rose to about 115 and a normal 76 looked like a 34% drop: false
+    REST. Now that night is missing and the baseline is the other nights: no REST, no H2 lock."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          garmin_past_hrv={1: 350.0})
+    assert payload["session_type"] != "REST", payload["governance_locks"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_a_stored_night_above_the_ceiling_is_left_out_of_the_baseline(tmp_path, monkeypatch):
+    """SD-14 (ADR-0074 point 2): a night stored at 350 ms before the fix. Hydration clamped it to
+    300 and it raised the baseline the same way. Now the DB read leaves it out."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          stored_hrv={1: 350.0})
+    assert payload["session_type"] != "REST", payload["governance_locks"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_an_earlier_night_at_the_ceiling_still_counts(tmp_path, monkeypatch):
+    """SD-14 boundary (only what ADR-0074 says): 300 ms stays a reading in the baseline, so the
+    same morning still rests, as before."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          garmin_past_hrv={1: 300.0})
+    assert payload["session_type"] == "REST", payload["governance_locks"]
 
 
 def test_hrv_below_the_floor_still_rests(tmp_path, monkeypatch):
