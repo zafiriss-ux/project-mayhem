@@ -9,6 +9,18 @@
 
 ---
 
+## D-174 · IS-05: το `get_persistence_adapter` αρνείται το PostgreSQL
+
+- **Πότε / ποιος:** 2026-10-30, Claude. Κατηγορία Α, μόνο σφίγγει.
+- **Απόφαση:** το `get_persistence_adapter` σηκώνει `NotImplementedError` για `postgres` (από όρισμα
+  ή από `TITAN_DB_BACKEND`), με το ίδιο μήνυμα για το ADR-0044 που έχει ήδη το `get_database_manager`.
+  Ο `PostgreSQLAdapter` μένει διαθέσιμος απευθείας για τα tests του.
+- **Εναλλακτικές:** `ValueError` όπως για άγνωστο backend· απορρίφθηκε, γιατί το `database.py` ήδη
+  χρησιμοποιεί `NotImplementedError` για την ίδια άρνηση. Αφαίρεση του κλάδου `postgres`·
+  απορρίφθηκε, γιατί θα έδινε το παραπλανητικό «Unsupported backend».
+
+---
+
 ## D-173 · Αναφορά του ελέγχου IS (απομόνωση αθλητών)
 
 - **Πότε / ποιος:** 2026-10-30. Ο έλεγχος από ανεξάρτητο agent στο main `8775941`, ο 2ος έλεγχος των

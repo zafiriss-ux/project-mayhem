@@ -495,6 +495,22 @@ def test_get_persistence_adapter_uses_backend_env(monkeypatch: pytest.MonkeyPatc
         adapter.close()
 
 
+@pytest.mark.parametrize("via_env", [False, True])
+def test_get_persistence_adapter_refuses_postgres_backend(
+    monkeypatch: pytest.MonkeyPatch, via_env: bool
+) -> None:
+    """IS-05: PostgreSQL stays closed until ADR-0044 parity, as in database.py."""
+    monkeypatch.setenv("TITAN_POSTGRES_DSN", "postgresql://synthetic/unused")
+    if via_env:
+        monkeypatch.setenv("TITAN_DB_BACKEND", "postgres")
+        with pytest.raises(NotImplementedError, match="ADR-0044"):
+            get_persistence_adapter()
+    else:
+        monkeypatch.delenv("TITAN_DB_BACKEND", raising=False)
+        with pytest.raises(NotImplementedError, match="ADR-0044"):
+            get_persistence_adapter("postgres")
+
+
 # ---------------------------------------------------------------------------
 # ADR-0033-L3-D-RESOLVED: athlete_id isolation tests
 # One test per updated read method confirming cross-athlete contamination
