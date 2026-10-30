@@ -1,0 +1,17 @@
+"""IS audit: build a fresh synthetic DB and list each table with its athlete-ish columns."""
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path.cwd()))
+from titan.core.database import DatabaseManager  # noqa: E402
+
+with tempfile.TemporaryDirectory() as d:
+    db = DatabaseManager(db_name=str(Path(d) / "t.db"))
+    cur = db.conn.cursor()
+    for (name,) in cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall():
+        cols = [c[1] for c in db.conn.execute(f'PRAGMA table_info("{name}")')]
+        ath = [c for c in cols if "athlete" in c or c in ("user_id", "coach_id", "chat_id")]
+        mark = "OK " if "athlete_id" in cols else "-- "
+        print(mark, name, ath, "" if "athlete_id" in cols else cols[:8])
+    db.close()
