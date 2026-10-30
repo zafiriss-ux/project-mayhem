@@ -1963,7 +1963,9 @@ class DailyCoach:
             'adjusted_target'   : today_session.get('adjusted_target', 'No pace adjustment'),
             # Autonomic / HRV
             'hrv_status'        : inp.hrv_summary.get('trend', 'N/A'),
-            'hrv_value'         : round(inp.latest_hrv, 1),
+            # SD-13: last night's reading only; none → None, as governance sees it. It was the
+            # latest stored reading, of any age.
+            'hrv_value'         : inp.today_hrv,
             'hrv_baseline'      : round(inp.baseline_hrv, 1) if inp.baseline_hrv is not None else None,
             'afi'               : inp.afi_final,
             # Sleep
@@ -1975,7 +1977,9 @@ class DailyCoach:
             'fatigue_level': fatigue_level,
             'fatigue_tags': fatigue_tags,
             # TSB / kinetic
-            'tsb'               : round(inp.tsb_value, 1) if inp.tsb_value is not None else 0,
+            # SD-13: an unknown TSB (H4_MISSING) is None, not a neutral-looking 0.
+            'tsb'               : (None if inp.tsb_unverified or inp.tsb_value is None
+                                   else round(inp.tsb_value, 1)),
             'tsb_status'        : inp.tsb_status,
             'cs_smoothed'       : round(self.cs_tracker.cs_smoothed, 3) if self.cs_tracker.cs_smoothed else None,
             'cs_thermal'        : round(inp.cs_thermal, 3) if inp.cs_thermal else None,

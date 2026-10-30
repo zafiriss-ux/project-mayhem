@@ -202,7 +202,7 @@ class DailyCoachingPayload(TypedDict):
     dew_point: float | str
     conditions: str
     hrv_status: str
-    hrv_value: float
+    hrv_value: float | None  # last night's reading; None when missing (SD-13)
     hrv_baseline: float | None
     afi: float
     sleep_quality: int | str
@@ -211,7 +211,7 @@ class DailyCoachingPayload(TypedDict):
     subjective_fatigue_score: int
     fatigue_level: str
     fatigue_tags: list[str]
-    tsb: float
+    tsb: float | None  # None when the TSB is unknown (SD-13)
     tsb_status: str
     cs_smoothed: float | None
     cs_thermal: float | None
