@@ -18,7 +18,9 @@ from titan.orchestration.daily_coach import DailyCoach
 def worker_db(tmp_path, monkeypatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
-    return DatabaseManager(db_dir=tmp_path)
+    manager = DatabaseManager(db_dir=tmp_path)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    return manager
 
 
 @pytest.mark.integration

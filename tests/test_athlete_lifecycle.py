@@ -60,9 +60,14 @@ def env(tmp_path, monkeypatch):
     get_settings.cache_clear()
 
 
+_OWNER_GARMIN_NAME = "owner-garmin-name"
+
+
 @pytest.fixture
 def db(env):
     manager = DatabaseManager(db_dir=env / "data")
+    # The owner's Garmin sync has run once (ADR-0076): without it no account is bound.
+    manager.record_owner_garmin_display_name(_OWNER_GARMIN_NAME)
     yield manager
     manager.close()
 
@@ -315,6 +320,40 @@ def test_relogin_binds_the_social_profile_display_name_not_the_client_attribute(
     assert relogin_athlete(db, athlete_id, "maria@example.com", "p", None) == "maria-runs"
     assert db.get_athlete_account(athlete_id)["garmin_user_id"] == "maria-runs"
     assert seen["api"] == ["userprofile-service/socialProfile"]
+
+
+@pytest.mark.integration
+def test_relogin_refuses_the_owners_account_under_another_email(db, monkeypatch) -> None:
+    """M0-13-R1 (ADR-0076 point 4): the owner logs in with an e-mail other than GARMIN_EMAIL.
+    The e-mail check passes, but the account is the owner's: nothing is bound or written.
+    This is the IS audit's ``test_defect_m0_13_r1_…`` turned into a refusal."""
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    _fake_garmin(monkeypatch, display_name=_OWNER_GARMIN_NAME)
+    athlete_id = _add(db, "Maria", 2000)
+
+    with pytest.raises(ValueError, match="owner's Garmin account"):
+        relogin_athlete(db, athlete_id, "owner-alias@example.com", "p", None)
+    assert not _token(athlete_id).exists()
+    account = db.get_athlete_account(athlete_id)
+    assert account["garmin_user_id"] is None
+    assert account["garmin_token_state"] != "ok"
+
+
+@pytest.mark.integration
+def test_relogin_refuses_while_the_owners_account_name_is_unknown(db, monkeypatch) -> None:
+    """ADR-0076 point 4: without the owner's recorded name the check cannot run (fail closed)."""
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    db.conn.execute("DELETE FROM owner_garmin_identity")
+    db.conn.commit()
+    _fake_garmin(monkeypatch)
+    athlete_id = _add(db, "Maria", 2000)
+
+    with pytest.raises(ValueError, match="owner's Garmin sync first"):
+        relogin_athlete(db, athlete_id, "maria@example.com", "p", None)
+    assert not _token(athlete_id).exists()
+    assert db.get_athlete_account(athlete_id)["garmin_user_id"] is None
 
 
 @pytest.mark.integration

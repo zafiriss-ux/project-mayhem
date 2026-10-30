@@ -582,6 +582,22 @@ t_athlete_injuries = Table(
 )
 
 # ---------------------------------------------------------------------------
+# Table 29 — owner_garmin_identity
+# Covers: _apply_v35_migrations() (ADR-0076, M0-13-R1)
+# One row, the owner's: athlete_id has no DEFAULT (ADR-0067 D3) and can only be 'owner'.
+# NOTE: ladder-created (v35); NOT in _BASE_TABLE_NAMES.
+# ---------------------------------------------------------------------------
+t_owner_garmin_identity = Table(
+    "owner_garmin_identity",
+    metadata,
+    Column("athlete_id", String, primary_key=True),
+    Column("garmin_display_name", String, nullable=False),
+    Column("updated_at", String, nullable=False),
+    CheckConstraint("athlete_id = 'owner'", name="owner"),
+    CheckConstraint("length(trim(garmin_display_name)) > 0", name="name"),
+)
+
+# ---------------------------------------------------------------------------
 # Registry — lookup by table name
 # ---------------------------------------------------------------------------
 _TABLE_REGISTRY: dict[str, Table] = {t.name: t for t in metadata.sorted_tables}

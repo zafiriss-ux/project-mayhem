@@ -967,7 +967,9 @@ def _build_daily_coach(db: DatabaseManager, athlete_id: str = "owner"):
     )
     engines = EngineRegistry.from_db(db=db, athlete_id=athlete_id)
     return DailyCoach(
-        garmin_sync=GarminSync(athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id)),
+        garmin_sync=GarminSync(
+            athlete_id=athlete_id, expected_garmin_user_id=_bound_garmin_account(db, athlete_id), db=db
+        ),
         weather_api=weather,
         # Another athlete's messages go to their own chat only, never the owner's (ADR-0067 D10.1).
         telegram_bot=_athlete_telegram(db, athlete_id),

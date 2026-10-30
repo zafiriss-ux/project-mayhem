@@ -147,6 +147,7 @@ def db(tmp_path, monkeypatch):
     _Coach.runs, _Coach.session, _Coach.delivers, _Coach.raises = [], dict(_TEMPO), False, False
     _Coach.hrv, _Coach.clock_during_run = 62.0, None
     manager = DatabaseManager(db_dir=data)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     manager.conn.execute("INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, ?)",
                          (_A, _A, "2026-10-01"))
     manager.conn.commit()

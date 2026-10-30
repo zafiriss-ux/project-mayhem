@@ -347,6 +347,11 @@ class SchemaMigrations:
                 "no H1-H5 offsets, injuries (ADR-0069 §4)",
                 None,  # rebuild + DDL — see _apply_v34_migrations() below
             ),
+            35: (
+                "owner_garmin_identity",
+                "the owner's Garmin account name, one row (ADR-0076, M0-13-R1)",
+                None,  # DDL — see _apply_v35_migrations() below
+            ),
         }
 
         if current_version < 1:
@@ -727,6 +732,15 @@ class SchemaMigrations:
                     "governance_outcomes nullable TSB/ACWR and one row per athlete and day; "
                     "attempt in progress; H1-H5 offsets refused; athlete_injuries (ADR-0069 §4)"
                 ),
+                "timestamp": datetime.now(UTC).isoformat() + "Z",
+            }))
+
+        if current_version < 35:
+            self._db._apply_v35_migrations(cursor)
+            _log.info(json.dumps({
+                "flow": "database", "action": "db_schema_migration",
+                "version": 35,
+                "changes": "owner_garmin_identity: the owner's Garmin account name (ADR-0076)",
                 "timestamp": datetime.now(UTC).isoformat() + "Z",
             }))
 
@@ -1773,3 +1787,22 @@ class SchemaMigrations:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_athlete_injuries_one_open "
             "ON athlete_injuries (athlete_id) WHERE closed_at IS NULL"
         )
+
+    def _apply_v35_migrations(self, cursor) -> None:
+        """Version 35: the owner's Garmin account name (ADR-0076, M0-13-R1).
+
+        One row, the owner's: ``athlete_id`` is the primary key, has no DEFAULT (ADR-0067 D3)
+        and can only be ``'owner'``. The name is the socialProfile ``displayName`` of the
+        owner's last connection that read the profile, never empty, never an e-mail.
+        """
+        # FROZEN HISTORICAL SNAPSHOT: column list fixed at v35.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS owner_garmin_identity (
+                athlete_id VARCHAR NOT NULL,
+                garmin_display_name VARCHAR NOT NULL,
+                updated_at VARCHAR NOT NULL,
+                CONSTRAINT pk_owner_garmin_identity PRIMARY KEY (athlete_id),
+                CONSTRAINT ck_owner_garmin_identity_owner CHECK (athlete_id = 'owner'),
+                CONSTRAINT ck_owner_garmin_identity_name CHECK (length(trim(garmin_display_name)) > 0)
+            )
+        """)

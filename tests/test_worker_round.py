@@ -67,6 +67,7 @@ def db(tmp_path, monkeypatch):
     monkeypatch.setattr(worker, "_utc_now", lambda: _MORNING)
     _Bot.sent = []
     manager = DatabaseManager(db_dir=data)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     # Registered in this order: B before A, C last, so the order is not the id order.
     for athlete, created in ((_B, "2026-10-01"), (_A, "2026-10-02"), (_C, "2026-10-03")):
         manager.conn.execute(

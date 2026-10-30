@@ -232,7 +232,7 @@ def test_v31_gives_old_rows_one_attempt_and_keeps_their_state(tmp_path) -> None:
 
     db = DatabaseManager(db_dir=tmp_path)
     try:
-        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 34
+        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 35
         rows = db.conn.execute(
             "SELECT execution_date, attempts, delivered_at, completed_at IS NOT NULL "
             "FROM worker_routine_executions ORDER BY execution_date"

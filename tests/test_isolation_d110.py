@@ -98,7 +98,7 @@ def test_v33_gives_old_rows_to_the_owner_and_keys_by_athlete(tmp_path: Path) -> 
 
     db = _db(tmp_path)
     try:
-        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 34
+        assert db.conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 35
         info = list(db.conn.execute("PRAGMA table_info(degraded_mode_state)"))
         key = [row[1] for row in sorted(info, key=lambda row: row[5]) if row[5]]
         assert key == ["athlete_id", "failure_type"]
