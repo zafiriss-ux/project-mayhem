@@ -1,0 +1,20 @@
+owner-defaulted callables: 45
+calls relying on default: 17
+Counter({'ui': 10, 'main.py': 4, 'core': 2, 'integrations': 1})
+titan/core/database.py:1593 get_training_load_history
+titan/core/repositories/physiology.py:324 get_hrv_history
+titan/integrations/telegram_bot.py:659 save_daily_metric
+titan/main.py:466 WeatherAPI
+titan/main.py:488 from_db
+titan/main.py:507 WeeklyPlanGenerator
+titan/main.py:537 get_training_load_history
+titan/ui/menu_system.py:379 get_recent_activities
+titan/ui/menu_system.py:687 get_recent_activities
+titan/ui/menu_system.py:703 get_training_load_history
+titan/ui/operator_console.py:95 get_governance_decisions
+titan/ui/operator_console.py:158 get_governance_decisions
+titan/ui/operator_console.py:222 annotate_governance_outcome
+titan/ui/operator_console.py:226 get_override_log
+titan/ui/operator_console.py:238 get_governance_decisions
+titan/ui/operator_console.py:342 get_governance_decisions
+titan/ui/operator_console.py:231 get_override_ratio

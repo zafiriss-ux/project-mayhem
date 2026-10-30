@@ -1,0 +1,76 @@
+"""IS audit: PostgreSQLAdapter writes across athletes (M0-27, P4-06, M0-12-R1).
+
+The adapter is fed a SQLite engine (the adapter accepts ``engine=``), so no PostgreSQL is
+needed. Every ``test_defect_*`` PASSES when the defect is present. Synthetic data only.
+"""
+from __future__ import annotations
+
+import pytest
+from sqlalchemy import create_engine, text
+
+from titan.core.persistence import PostgreSQLAdapter
+
+DAY = "2026-10-02"
+
+
+@pytest.fixture
+def pg():
+    engine = create_engine("sqlite:///:memory:")
+    adapter = PostgreSQLAdapter(dsn="postgres://unused/titan", engine=engine)
+    adapter._metadata.create_all(engine)
+    yield adapter, engine
+    adapter.close()
+
+
+def _rows(engine, sql):
+    with engine.connect() as conn:
+        return [tuple(r) for r in conn.execute(text(sql)).all()]
+
+
+def test_defect_save_daily_metric_deletes_every_athletes_row_of_the_day_and_writes_no_athlete(pg):
+    adapter, engine = pg
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO daily_metrics (athlete_id, date, hrv_rmssd) VALUES ('owner', :d, 50)"), {"d": DAY})
+        conn.execute(text("INSERT INTO daily_metrics (athlete_id, date, hrv_rmssd) VALUES ('a-1', :d, 90)"), {"d": DAY})
+    adapter.save_daily_metric(DAY, hrv=70.0, athlete_id="a-2")  # athlete_id is not even a parameter
+    rows = _rows(engine, "SELECT athlete_id, hrv_rmssd FROM daily_metrics")
+    print("daily_metrics after a-2 write:", rows)
+    assert rows == [(None, 70.0)]
+
+
+def test_defect_save_session_writes_no_athlete(pg):
+    adapter, engine = pg
+    adapter.save_session(DAY, "EASY", 5.0, 1800, rpe=5, athlete_id="a-1")
+    rows = _rows(engine, "SELECT athlete_id, date FROM training_log")
+    print("training_log:", rows)
+    assert rows == [(None, DAY)]
+    assert adapter.get_training_load_history(7, athlete_id="a-1") == [] or True
+
+
+def test_defect_log_override_marks_every_athletes_decision_of_the_day(pg):
+    adapter, engine = pg
+    base = {"session_planned": "EASY", "session_post_governance": "EASY", "locks_applied": [],
+            "governance_clean": True, "phase": "BASE", "vlg_color": "GREEN", "apl_priority_vector": {},
+            "lock_thresholds_active": {}, "acwr": 1.0, "tsb_value": 0.0, "readiness_score": 70.0,
+            "glycogen_debt": 0.0, "date": DAY}
+    adapter.save_governance_decision({**base, "athlete_profile_id": "owner"})
+    adapter.save_governance_decision({**base, "athlete_profile_id": "a-1"})
+    adapter.log_override(DAY, "EASY", "TEMPO", "felt good", athlete_id="a-1")
+    rows = _rows(engine, "SELECT athlete_id, outcome_notes, decision_was_followed FROM governance_outcomes ORDER BY athlete_id")
+    print("governance_outcomes after a-1 override:", rows)
+    assert ("owner", "felt good", 0) in rows
+
+
+def test_defect_record_override_signal_writes_into_every_athlete(pg):
+    adapter, engine = pg
+    base = {"session_planned": "EASY", "session_post_governance": "EASY", "locks_applied": [],
+            "governance_clean": True, "phase": "BASE", "vlg_color": "GREEN", "apl_priority_vector": {},
+            "lock_thresholds_active": {}, "acwr": 1.0, "tsb_value": 0.0, "readiness_score": 70.0,
+            "glycogen_debt": 0.0}
+    adapter.save_governance_decision({**base, "date": DAY, "athlete_profile_id": "owner"})
+    adapter.save_governance_decision({**base, "date": "2026-10-01", "athlete_profile_id": "a-1"})
+    adapter.record_override_signal(decision_id="d", athlete_id="a-1", override_source="t",
+                                   override_reason="r-a1", created_at=DAY)
+    rows = _rows(engine, "SELECT athlete_id, outcome_notes FROM governance_outcomes ORDER BY athlete_id")
+    print("after a-1 signal:", rows)
+    assert ("owner", "r-a1") in rows
