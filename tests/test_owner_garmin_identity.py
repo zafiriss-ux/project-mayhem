@@ -181,7 +181,7 @@ def owner_dev(data_dir, monkeypatch):
 
 
 def _fake_garmin(monkeypatch, *, profile=None, ping_error: Exception | None = None,
-                 login_profile_error: Exception | None = None) -> dict:
+                 login_profile_error: Exception | None = None, summary_error: Exception | None = None) -> dict:
     """garminconnect for the owner. ``profile`` answers the socialProfile call; with
     ``ping_error`` the call raises before a login (token check), with
     ``login_profile_error`` it raises after a login."""
@@ -209,6 +209,8 @@ def _fake_garmin(monkeypatch, *, profile=None, ping_error: Exception | None = No
             return profile
 
         def get_user_summary(self, _day):
+            if summary_error is not None:
+                raise summary_error
             return {}
 
         def login(self):
@@ -254,15 +256,21 @@ def test_a_profile_without_a_name_records_nothing_and_never_the_email(owner_dev,
 
 
 @pytest.mark.integration
-def test_a_rate_limited_check_connects_the_owner_and_records_nothing(owner_dev, db, monkeypatch) -> None:
-    """ADR-0076 point 2: the 'assume valid' branches write nothing and never stop the owner."""
+@pytest.mark.parametrize(
+    "summary_error", [None, RuntimeError("429 Too Many Requests")],
+    ids=["secondary-call-succeeds", "secondary-call-also-429"],
+)
+def test_a_rate_limited_check_connects_the_owner_and_records_nothing(owner_dev, db, monkeypatch, summary_error) -> None:
+    """ADR-0076 point 2: both 'assume valid' branches write nothing and never stop the owner."""
     owner_dev.write_bytes(b"owner-session")
-    _fake_garmin(monkeypatch, profile={"displayName": "someone-else"}, ping_error=RuntimeError("429 Too Many Requests"))
+    seen = _fake_garmin(monkeypatch, profile={"displayName": "someone-else"},
+                        ping_error=RuntimeError("429 Too Many Requests"), summary_error=summary_error)
 
     sync = GarminSync(db=db)
 
     assert sync.connect() is True
     assert sync.is_connected is True
+    assert seen["logins"] == 0
     assert db.get_owner_garmin_display_name() is None
 
 
