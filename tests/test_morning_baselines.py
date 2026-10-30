@@ -336,3 +336,29 @@ def test_partial_sync_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
                           loads=loads, sync_status="partial")
     assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
     assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
+
+
+def _stale_alerts(monkeypatch) -> list[str]:
+    """Record the event types of the operator alerts the morning sends."""
+    import titan.orchestration.daily_coach as dc
+    sent: list[str] = []
+    monkeypatch.setattr(dc, "alert_operator", lambda *_a, **k: sent.append(k.get("event_type")))
+    return sent
+
+
+def test_never_synced_athlete_counts_as_stale(tmp_path, monkeypatch):
+    """SD-09: no Garmin sync has ever succeeded and today's timed out. The data age defaults to
+    27 h, but the stale flag was only set when a past success existed. Now it is stale too:
+    the operator is told and the day is capped."""
+    sent = _stale_alerts(monkeypatch)
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          sync_status="timeout_cancelled")
+    assert "garmin_data_stale" in sent, sent
+    assert payload["session_type"] in {"EASY", "REST"}, payload["session_type"]
+
+
+def test_synced_athlete_is_not_stale(tmp_path, monkeypatch):
+    """SD-09 guard: today's sync worked, so the athlete is not stale."""
+    sent = _stale_alerts(monkeypatch)
+    _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0)
+    assert "garmin_data_stale" not in sent, sent

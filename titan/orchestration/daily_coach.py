@@ -1089,43 +1089,44 @@ class DailyCoach:
                 detail="Garmin sync returned zero records across all data types; staleness gate will evaluate.",
             )
 
-        garmin_data_stale = False
         hours_since_success = GARMIN_DATA_MAX_AGE_HOURS + 1
         garmin_sync_state = self.db.get_last_sync_outcome("garmin", athlete_id=getattr(self, "athlete_id", "owner")) or {}
         last_success_ts = garmin_sync_state.get("last_success_ts")
         if isinstance(last_success_ts, datetime):
             hours_since_success = (datetime.now(tz=UTC) - last_success_ts.astimezone(UTC)).total_seconds() / 3600
-            if hours_since_success > GARMIN_DATA_MAX_AGE_HOURS:
-                garmin_data_stale = True
-                _daily_coach_event(
-                    "garmin_data_stale",
-                    severity="CRITICAL",
-                    hours_since_last_success=round(hours_since_success, 2),
-                    max_age_hours=GARMIN_DATA_MAX_AGE_HOURS,
-                    last_error_class=garmin_sync_state.get("last_error_class"),
+        # SD-09: with no successful sync ever, the age stays at its default (above the limit),
+        # so the data is stale too; before, only an old success could set the flag.
+        garmin_data_stale = hours_since_success > GARMIN_DATA_MAX_AGE_HOURS
+        if garmin_data_stale:
+            _daily_coach_event(
+                "garmin_data_stale",
+                severity="CRITICAL",
+                hours_since_last_success=round(hours_since_success, 2),
+                max_age_hours=GARMIN_DATA_MAX_AGE_HOURS,
+                last_error_class=garmin_sync_state.get("last_error_class"),
+            )
+            try:
+                alert_operator(
+                    self.telegram,
+                    title="Garmin data stale",
+                    event_type="garmin_data_stale",
+                    lock_code="GARMIN_DATA_STALE",
+                    message=(
+                        "Garmin data is stale (>26h since last successful sync). "
+                        "Training prescription is conservative (EASY maintenance)."
+                    ),
+                    level="critical",
+                    athlete_text=(
+                        "⚠️ Your Garmin data has not synced for over a day, so today's "
+                        "session is a conservative EASY one. Zaf has been told."
+                    ),
                 )
-                try:
-                    alert_operator(
-                        self.telegram,
-                        title="Garmin data stale",
-                        event_type="garmin_data_stale",
-                        lock_code="GARMIN_DATA_STALE",
-                        message=(
-                            "Garmin data is stale (>26h since last successful sync). "
-                            "Training prescription is conservative (EASY maintenance)."
-                        ),
-                        level="critical",
-                        athlete_text=(
-                            "⚠️ Your Garmin data has not synced for over a day, so today's "
-                            "session is a conservative EASY one. Zaf has been told."
-                        ),
-                    )
-                except Exception as alert_exc:
-                    _daily_coach_event(
-                        "garmin_staleness_alert_failed",
-                        error_class=type(alert_exc).__name__,
-                        error_message=str(alert_exc),
-                    )
+            except Exception as alert_exc:
+                _daily_coach_event(
+                    "garmin_staleness_alert_failed",
+                    error_class=type(alert_exc).__name__,
+                    error_message=str(alert_exc),
+                )
 
         garmin_trust = evaluate_garmin_trust(
             data_age_hours=hours_since_success,
