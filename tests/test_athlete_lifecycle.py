@@ -253,6 +253,28 @@ def test_relogin_with_another_email_still_works_when_the_owner_email_is_set(db, 
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("tokenstore", ["/tmp/owner-tokens", '{"di_token": "x"}', " "])
+def test_relogin_refuses_when_garmintokens_is_set_before_garmin_is_called(db, monkeypatch, tokenstore) -> None:
+    """IS-06: garminconnect's login() reads GARMINTOKENS when no tokenstore is passed. It would
+    then log in with the tokens found there (perhaps the owner's) instead of the athlete's
+    password, or write the athlete's token there before any refusal. Relogin stops first."""
+    from titan.config.settings import get_settings
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    monkeypatch.setenv("GARMIN_EMAIL", "zaf@example.com")
+    monkeypatch.setenv("GARMINTOKENS", tokenstore)
+    get_settings.cache_clear()
+    seen = _fake_garmin(monkeypatch)
+    athlete_id = _add(db, "Maria", 2000)
+
+    with pytest.raises(ValueError, match="GARMINTOKENS"):
+        relogin_athlete(db, athlete_id, "maria@example.com", "p", None)
+    assert "credentials" not in seen, "Garmin must not be called while GARMINTOKENS is set"
+    assert not _token(athlete_id).exists()
+    assert db.get_athlete_account(athlete_id)["garmin_user_id"] is None
+
+
+@pytest.mark.integration
 def test_on_windows_no_token_is_written_without_the_acl(db, env, monkeypatch) -> None:
     from titan.integrations import garmin_sync
 
