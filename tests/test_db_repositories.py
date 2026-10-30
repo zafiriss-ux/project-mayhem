@@ -214,7 +214,24 @@ def test_recent_hrv_mean_reads_history_through_the_facade(db, monkeypatch) -> No
     monkeypatch.setattr(db, "get_hrv_history", lambda days=14, athlete_id="owner": [
         ("2026-10-02", 60.0), ("2026-10-01", 50.0),
     ])
-    assert db.get_recent_hrv_mean(days=2) == 55.0
+    assert db.get_recent_hrv_mean(days=2, athlete_id="owner") == 55.0
+
+
+@pytest.mark.unit
+def test_recent_hrv_mean_reads_only_the_named_athlete(db) -> None:
+    """M0-25: the mean belongs to the athlete asked for, never silently to the owner."""
+    today = datetime.now(UTC).strftime("%Y-%m-%d")
+    db.save_daily_metric(today, hrv=40.0, athlete_id="owner")
+    db.save_daily_metric(today, hrv=90.0, athlete_id="athlete_b")
+    assert db.get_recent_hrv_mean(days=7, athlete_id="athlete_b") == 90.0
+    assert db.get_recent_hrv_mean(days=7, athlete_id="owner") == 40.0
+
+
+@pytest.mark.unit
+def test_recent_hrv_mean_requires_an_athlete(db) -> None:
+    """M0-25: no owner default, a missing id fails instead of reading the owner."""
+    with pytest.raises(TypeError):
+        db.get_recent_hrv_mean(days=7)
 
 
 @pytest.mark.unit

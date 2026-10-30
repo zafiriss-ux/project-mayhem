@@ -517,7 +517,7 @@ def test_standalone_write_methods_commit_and_persist(tmp_path):
     assert metadata is not None
     assert metadata["baseline_hrv_ms"] == 55.0
     assert metadata["baseline_vo2"] == 56.0
-    assert db.get_recent_hrv_mean(days=30) == 30.0
+    assert db.get_recent_hrv_mean(days=30, athlete_id="owner") == 30.0
 
     db.close()
 
