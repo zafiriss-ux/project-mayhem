@@ -788,6 +788,64 @@ def test_process_override_callback_and_reason_records_signal(monkeypatch, tmp_pa
     assert db.rows[1]["decision_id"] == "d-2"
 
 
+class _RecordingOverrideDB:
+    def __init__(self):
+        self.rows = []
+
+    def record_override_signal(self, **kwargs):
+        self.rows.append(kwargs)
+
+    def log_coach_action(self, **kwargs):
+        self.rows.append({"audit": kwargs["action_type"]})
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("missing", ["athlete_id", "decision_id"])
+def test_override_reason_without_athlete_or_decision_is_refused(missing):
+    """IS-03 (a): no 'unknown_athlete' or invented decision id; nothing is written."""
+    db = _RecordingOverrideDB()
+    bot = TitanTelegramBot(bot_token="", chat_id=123)
+    bot.register_override_callback("db_provider", lambda: db)
+    pending = {"decision_id": "d-9", "athlete_id": "ATH_9", "awaiting_reason": "1"}
+    pending.pop(missing)
+    bot._pending_override_prompts[123] = pending
+
+    reply = bot.process_override_reason(123, "legs heavy")
+
+    assert reply.startswith("⚠️")
+    assert db.rows == []
+
+
+@pytest.mark.integration
+def test_stale_nonce_does_not_open_the_reason_of_a_newer_decision(tmp_path):
+    """IS-03 (b): a nonce of an older decision cannot start the override of a newer one."""
+    db = _RecordingOverrideDB()
+    bot = TitanTelegramBot(bot_token="", chat_id=123, db=DatabaseManager(db_dir=tmp_path))
+    bot.register_override_callback("db_provider", lambda: db)
+    stale = _create_override_nonce(bot.db, "d-old", "owner")
+    bot._pending_override_prompts[123] = {"decision_id": "d-new", "athlete_id": "owner"}
+
+    reply = bot.process_override_callback(123, f"override:request:{stale}")
+
+    assert reply.startswith("⚠️") and "required" not in reply
+    assert "awaiting_reason" not in bot._pending_override_prompts[123]
+    assert bot.process_override_reason(123, "legs heavy") == "⚠️ No override reason requested."
+    assert db.rows == []
+
+
+@pytest.mark.integration
+def test_stale_accept_nonce_does_not_clear_a_newer_decision(tmp_path):
+    """IS-03 (b): accepting with an older decision's nonce leaves the newer decision pending."""
+    bot = TitanTelegramBot(bot_token="", chat_id=123, db=DatabaseManager(db_dir=tmp_path))
+    stale = _create_override_nonce(bot.db, "d-old", "owner")
+    bot._pending_override_prompts[123] = {"decision_id": "d-new", "athlete_id": "owner"}
+
+    reply = bot.process_override_callback(123, f"override:accept:{stale}")
+
+    assert reply.startswith("⚠️")
+    assert bot._pending_override_prompts[123]["decision_id"] == "d-new"
+
+
 @pytest.mark.integration
 def test_process_override_reason_rejects_empty_reason():
     bot = TitanTelegramBot(bot_token="", chat_id=123)

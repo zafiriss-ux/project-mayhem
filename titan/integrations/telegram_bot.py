@@ -15,7 +15,6 @@ from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
-from uuid import uuid4
 
 from titan.config.settings import get_settings
 from titan.core.athlete import CONSENT_TEXT_VERSION, canonical_chat_id
@@ -115,6 +114,9 @@ def _create_override_nonce(db, decision_id: str, athlete_id: str) -> str | None:
         _log.critical("telegram_override_nonce_unavailable", extra={"reason": str(exc)})
         return None
     return nonce
+
+
+_OVERRIDE_STALE_REPLY = "⚠️ This button belongs to an older decision; use the latest message."
 
 
 def _consume_override_nonce(db, nonce: str) -> str | None:  # noqa: ANN001
@@ -907,17 +909,26 @@ class TitanTelegramBot:
         nonce = parts[2] if len(parts) >= 3 else None
 
         if action == "accept":
-            if nonce is None or _consume_override_nonce(self.db, nonce) is None:
+            nonce_decision = None if nonce is None else _consume_override_nonce(self.db, nonce)
+            if nonce_decision is None:
                 return "⚠️ This override request has already been used or has expired."
+            pending = self._pending_override_prompts.get(chat_id)
+            # IS-03 (b): an older decision's button never closes a newer pending decision.
+            if pending is not None and pending.get("decision_id") != nonce_decision:
+                return _OVERRIDE_STALE_REPLY
             self._pending_override_prompts.pop(chat_id, None)
             return "✅ Decision accepted."
 
         if action == "request":
-            if nonce is None or _consume_override_nonce(self.db, nonce) is None:
+            nonce_decision = None if nonce is None else _consume_override_nonce(self.db, nonce)
+            if nonce_decision is None:
                 return "⚠️ This override request has already been used or has expired."
             pending = self._pending_override_prompts.get(chat_id)
             if pending is None:
                 return "⚠️ No active decision to override."
+            # IS-03 (b): the nonce must belong to the decision that is pending now.
+            if pending.get("decision_id") != nonce_decision:
+                return _OVERRIDE_STALE_REPLY
             pending["awaiting_reason"] = "1"
             return "⚠️ Reply with your override reason (required)."
 
@@ -941,10 +952,15 @@ class TitanTelegramBot:
             athlete_id = athlete_provider()
         if db is None:
             return "⚠️ Override recording unavailable (db missing)."
+        decision_id = pending.get("decision_id")
+        # IS-03 (a): without the athlete or the decision nothing is written; no
+        # "unknown_athlete" row and no invented decision id.
+        if not athlete_id or not decision_id:
+            return "⚠️ Override recording unavailable (decision or athlete missing)."
 
         signal = OverrideSignal.create(
-            decision_id=pending.get("decision_id") or str(uuid4()),
-            athlete_id=athlete_id or "unknown_athlete",
+            decision_id=decision_id,
+            athlete_id=athlete_id,
             override_source="telegram_bot",
             override_reason=reason,
         )
