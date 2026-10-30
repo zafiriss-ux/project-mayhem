@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #1123 (2026-10-30) fix(garmin): το relogin αθλητή δένει το `displayName` του `socialProfile` και αρνείται όταν λείπει (IS-07, D-180)
 - #1122 (2026-10-30) fix(garmin): το relogin αθλητή σταματά όταν υπάρχει το `GARMINTOKENS`, πριν καλέσει το Garmin (IS-06, D-179)
 - #1120 (2026-10-30) docs(adr): ADR-0076, η βάση κρατά το όνομα λογαριασμού Garmin του owner ώστε να μη δεθεί σε αθλητή (M0-13-R1, Accepted, policy-only, D-177)
 - #1121 (2026-10-30) fix(telegram): το override δεν γράφει «unknown_athlete» ούτε δέχεται κουμπί παλιάς απόφασης (IS-03, D-178)

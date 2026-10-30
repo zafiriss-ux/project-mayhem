@@ -330,9 +330,13 @@ def relogin_athlete(db, athlete_id: str, email: str, password: str, prompt_mfa) 
         )
     client = Garmin(email, password, prompt_mfa=prompt_mfa)
     client.login()
-    garmin_user_id = str(getattr(client, "display_name", "") or "").strip()
+    # IS-07: bind the socialProfile displayName, the value the token check compares
+    # (_token_account_matches). Never client.display_name: without a displayName the library
+    # fills it with the login e-mail, which would then be stored as the account id.
+    profile = client.connectapi("userprofile-service/socialProfile")
+    garmin_user_id = str(profile.get("displayName") or "").strip() if isinstance(profile, dict) else ""
     if not garmin_user_id:
-        raise RuntimeError("Garmin did not return an account id after login")
+        raise RuntimeError("Garmin returned no displayName for this account after login; nothing was bound")
     db.bind_garmin_account(athlete_id, garmin_user_id)
     write_athlete_token(athlete_id, client.client.dumps())
     db.set_garmin_token_state(athlete_id, "ok")
