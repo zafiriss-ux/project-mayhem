@@ -303,11 +303,16 @@ class PhysiologyRepository:
             )
             rows = cursor.fetchall()
 
-        from titan.science.physiological_bounds import (
-            validate_single,  # deferred: avoids circular import
+        from titan.science.physiological_bounds import (  # deferred: avoids circular import
+            BOUNDS,
+            validate_single,
         )
         validated = []
         for date_str, rmssd in rows:
+            # SD-14 (ADR-0074 point 2): above the ceiling the night is missing, not clamped to
+            # 300, so it stays out of the baseline. The floor still clamps, as before.
+            if float(rmssd) > BOUNDS["hrv_ms"][1]:
+                continue
             clean = validate_single("hrv_ms", float(rmssd), "hrv_history")
             if clean is not None:
                 validated.append((date_str, clean))

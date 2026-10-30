@@ -237,6 +237,8 @@ def persist_garmin_data(
             sleep_hours_measured = True
 
     # ── HRV → daily_metrics ───────────────────────────────────────────
+    from titan.science.physiological_bounds import BOUNDS, validate_and_clamp
+
     hrv_entries = garmin_data.get('hrv', [])
     latest_rmssd = None
     past_hrv_entries: list[dict] = []
@@ -245,8 +247,9 @@ def persist_garmin_data(
         rmssd_val = _safe_float(entry.get('rmssd', 0)) or None
         if entry_date == today_str:
             latest_rmssd = rmssd_val
-        elif entry_date and rmssd_val is not None:
-            # F-32: collect historical HRV entries for multi-day persistence
+        elif entry_date and rmssd_val is not None and rmssd_val <= BOUNDS["hrv_ms"][1]:
+            # F-32: collect historical HRV entries for multi-day persistence.
+            # SD-14 (ADR-0074 point 3): a night above the ceiling is not stored.
             past_hrv_entries.append({'date': entry_date, 'rmssd': rmssd_val})
 
     # ── Weight → daily_metrics ────────────────────────────────────────
@@ -256,8 +259,6 @@ def persist_garmin_data(
         if entry.get('date') == today_str:
             latest_weight = _safe_float(entry.get('weight_kg', 0)) or None
             break
-
-    from titan.science.physiological_bounds import validate_and_clamp
 
     phys_inputs = {
         "rhr_bpm": float(today_rhr) if today_rhr > 0 else None,
@@ -288,6 +289,10 @@ def persist_garmin_data(
     gate_rhr = 0 if rhr_below_floor else today_rhr
     today_sleep_hours = validated_inputs["sleep_hours"] or 0.0
     latest_rmssd = validated_inputs["hrv_ms"]
+    # SD-14 (ADR-0074 point 3): HRV above the ceiling is stored empty, not clamped to 300.
+    # The violation is still logged above.
+    if any(v.field == "hrv_ms" and v.value > v.hi for v in input_violations):
+        latest_rmssd = None
     latest_weight = validated_inputs["weight_kg"]
 
     _sanity = DataSanityChecker()

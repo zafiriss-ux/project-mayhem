@@ -265,3 +265,37 @@ def test_hrv_rewrite_waits_for_a_morning_with_garmin_data(db):
 
     assert rewrite_recent_hrv_once(db, garmin, athlete_id="owner", emit=lambda *_a, **_f: None) == 0
     assert db.get_last_sync_outcome(HRV_REWRITE_MARKER) is None
+
+
+@pytest.mark.unit
+def test_todays_hrv_above_the_ceiling_is_stored_empty_and_logged(db):
+    """SD-14 (ADR-0074 point 3, D-170): 350 ms was stored clamped to 300. Now it is stored
+    empty and the out-of-range value is still logged."""
+    events: list[str] = []
+    payload = _payload()
+    payload["hrv"] = [{"date": DAY, "rmssd": 350.0}]
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=lambda action, **_f: events.append(action))
+
+    row = db.conn.execute("SELECT hrv_rmssd FROM daily_metrics WHERE date = ?", (DAY,)).fetchone()
+    assert row[0] is None
+    assert "physiological_input_validation_failed" in events
+
+
+@pytest.mark.unit
+def test_earlier_nights_above_the_ceiling_are_not_stored(db):
+    """SD-14 (ADR-0074 point 3): an earlier night at 350 ms was stored raw. Now it is not
+    stored; 300 ms exactly is still a reading."""
+    payload = _payload()
+    payload["hrv"] = [
+        {"date": DAY, "rmssd": 55.0},
+        {"date": "2026-03-03", "rmssd": 350.0},
+        {"date": "2026-03-02", "rmssd": 300.0},
+    ]
+
+    persist_garmin_data(db, payload, DAY, athlete_id="owner", emit=lambda *_a, **_f: None)
+
+    stored = dict(db.conn.execute(
+        "SELECT date, hrv_rmssd FROM daily_metrics WHERE date < ?", (DAY,),
+    ).fetchall())
+    assert stored == {"2026-03-02": 300.0}

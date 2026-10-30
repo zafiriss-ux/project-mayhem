@@ -1138,7 +1138,14 @@ class DailyCoach:
         # ── Step 3: Feed live HRV + HRR into engines ────────────────────────
         def _step3_feed_hrv_hrr() -> None:
             if garmin_data.get('hrv'):
+                # deferred, as in physiology.py
+                from titan.science.physiological_bounds import BOUNDS
+
                 for entry in garmin_data['hrv']:
+                    # SD-14 (ADR-0074 point 1): above the ceiling is a sensor error, so the
+                    # night is missing. It used to enter the 7-day baseline and cause false REST.
+                    if _safe_float(entry.get('rmssd'), 0.0) > BOUNDS["hrv_ms"][1]:
+                        continue
                     self.hrv.add_hrv_measurement(entry['date'], entry['rmssd'])
             if garmin_data.get('hrr'):
                 for entry in garmin_data['hrr']:

@@ -255,18 +255,22 @@ def test_get_hrv_history_filters_artefact_values(tmp_path):
 
 
 @pytest.mark.integration
-def test_get_hrv_history_clamps_mild_outlier(tmp_path):
-    """Mildly out-of-bounds HRV is clamped and returned (not excluded)."""
+def test_get_hrv_history_drops_rows_above_the_ceiling(tmp_path):
+    """SD-14 (ADR-0074 point 2, D-170): HRV above 300 ms is left out, not clamped to 300.
+    300 exactly stays; a value just under the floor is still clamped to it."""
     from titan.core.database import DatabaseManager
 
     db = DatabaseManager(db_name="test_bounds_clamp.db", db_dir=tmp_path)
 
-    # 310 ms: (310-300)=10 excess; span=299.9 → 10 <= 299.9 → clamped to 300.0
     db.save_daily_metric(date=_days_ago(2), hrv=310.0)
+    db.save_daily_metric(date=_days_ago(3), hrv=300.0)
+    db.save_daily_metric(date=_days_ago(4), hrv=0.05)
 
     rows = db.get_hrv_history(days=30)
-    assert len(rows) == 1
-    assert rows[0][1] == pytest.approx(300.0)  # clamped to hi bound
+    assert [(d, pytest.approx(v)) for d, v in rows] == [
+        (_days_ago(3), pytest.approx(300.0)),
+        (_days_ago(4), pytest.approx(0.1)),  # clamped to the floor, as before
+    ]
 
     db.close()
 
