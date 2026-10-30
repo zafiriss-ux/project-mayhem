@@ -116,7 +116,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-11 | 2 | HIGH | Το max HR του owner δεν ελέγχεται για όρια | `athlete.py:509` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-12 | 2 | HIGH | Η πύλη fueling δεν ικανοποιείται ποτέ (κλείνει πάντα) | `daily_coach.py:1690` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-13 | 3 | LOW | TSB 0 και HRV οποιασδήποτε ηλικίας στο payload του coaching | `daily_coach.py:1901`, `:1913` | OPEN · στόχος Phase 27 · έλεγχος SD |
-| SD-14 | 2 | HIGH | HRV πάνω από 300 ms μπαίνει ακατέργαστη στο log HRV (αυριανή baseline, απόκλιση, AFI) | `daily_coach.py` βήμα 3 | OPEN · στόχος Phase 27 · έλεγχος AI του #1106 |
+| SD-14 | 2 | HIGH | HRV πάνω από 300 ms μπαίνει ακατέργαστη στο log HRV (αυριανή baseline, απόκλιση, AFI) | `daily_coach.py` βήμα 3 | OPEN · στόχος Phase 27 · έλεγχος AI του #1106 · ADR-0074 Accepted (επιλογή Α, D-169) |
 
 ---
 
