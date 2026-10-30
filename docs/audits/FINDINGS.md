@@ -97,7 +97,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-12 | Αποφάσεις αθλητή διαβάζονταν ως του owner | HIGH | Α | FIXED, με υπόλοιπο M0-12-R1 | #1088, D-147 | ναι | IS |
 | — | M0-12-R1 | PostgreSQL χωρίς `athlete_profile_id` στις αποφάσεις | HIGH | Β | TRACKED: πριν από το PostgreSQL | TECHNICAL_DEBT | — | IS |
 | — | M0-13 | Ο λογαριασμός Garmin του owner δενόταν σε αθλητή | HIGH | Α | FIXED, με υπόλοιπο M0-13-R1 | #1087, D-146 | ναι | IS |
-| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
+| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Β (ADR-0076 Proposed, D-177· ο owner διάλεξε «Πρώτα ADR») | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
 | — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
 | — | M0-15 | 6 tests παραλείπονται μόνιμα | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | AT |
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
