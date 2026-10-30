@@ -97,7 +97,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-12 | Αποφάσεις αθλητή διαβάζονταν ως του owner | HIGH | Α | FIXED, με υπόλοιπο M0-12-R1 | #1088, D-147 | ναι | IS |
 | — | M0-12-R1 | PostgreSQL χωρίς `athlete_profile_id` στις αποφάσεις | HIGH | Β | TRACKED: πριν από το PostgreSQL | TECHNICAL_DEBT | — | IS |
 | — | M0-13 | Ο λογαριασμός Garmin του owner δενόταν σε αθλητή | HIGH | Α | FIXED, με υπόλοιπο M0-13-R1 | #1087, D-146 | ναι | IS |
-| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
+| — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Β (ADR-0076 Accepted, D-177) | TRACKED: Phase 27 | TECHNICAL_DEBT | — | IS |
 | — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
 | — | M0-15 | 6 tests παραλείπονται μόνιμα | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | AT |
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
@@ -198,9 +198,11 @@ ADR-0075 (D-172), χωρίς κώδικα.
 | IS-03 | Ροή override του Telegram: fallback σε `"unknown_athlete"`, nonce χωρίς έλεγχο έναντι της εκκρεμούς απόφασης (αφορά και τον owner με δύο εκκρεμείς)· χωρίς καλούντα στην παραγωγή | HIGH | Α | FIXED (#1121, D-178)· χωρίς αθλητή ή απόφαση άρνηση· nonce παλιάς απόφασης δεν ανοίγει ούτε κλείνει τη νεότερη· επιβεβαιωμένο με test | επιβεβαιώθηκε | `telegram_bot.py:853-955` |
 | IS-04 | Το `garmin_activity_id` είναι μοναδικό σε όλη τη βάση· ίδιο id δεύτερου αθλητή χάνεται σιωπηλά | LOW | Α (log)· Β αν γίνει μοναδικό ανά αθλητή | επιβεβαιωμένο με εκτέλεση | επιβεβαιώθηκε | `training.py:337-380` |
 | IS-05 | Το PostgreSQL κλείνει μόνο με κανόνα (ADR-0044): `TITAN_DB_BACKEND=postgres` με DSN δίνει τον adapter με τα M0-27/P4-06. Πρόταση: η εκκίνηση να το αρνείται όσο ισχύει το ADR-0044 | HIGH | Α (μόνο σφίγγει) | FIXED (#1117, D-174)· το `get_persistence_adapter` αρνείται το `postgres` (NotImplementedError, ADR-0044)· επιβεβαιωμένο με test | — (το βρήκε ο 2ος) | `persistence.py` `get_persistence_adapter` |
+| IS-06 | Το `relogin_athlete` καλεί `login()` χωρίς `tokenstore`· με `GARMINTOKENS` στο περιβάλλον, η `garminconnect` 0.3.17 γράφει το token εκεί μέσα στο `login()`, πριν από τις αρνήσεις (D9.4, ADR-0076) | HIGH | Α (μόνο σφίγγει) | ανάγνωση κώδικα και της βιβλιοθήκης (έλεγχος του owner στο #1120)· το Titan δεν ορίζει τη μεταβλητή | — | `garmin_sync.py:324-325` |
+| IS-07 | Το `relogin_athlete` δένει το `client.display_name`, που η βιβλιοθήκη γεμίζει με το `username` (e-mail του login) όταν λείπει το `displayName`· η βάση μπορεί να κρατήσει e-mail και η τιμή διαφέρει από αυτή που ελέγχει το `_token_account_matches` | HIGH | Α (μόνο σφίγγει) | ανάγνωση κώδικα και της βιβλιοθήκης (έλεγχος του owner στο #1120) | — | `garmin_sync.py:326` |
 
 Επανέλεγχος γνωστών (όλα HIGH, επιβεβαιωμένα και από τον 2ο): **M0-25** ανοιχτό (Α, με εκτέλεση)·
-**M0-13-R1** ανοιχτό (Α, με εκτέλεση και ψεύτικο `garminconnect`)· **M0-27** και **P4-06** ανοιχτά (Β,
+**M0-13-R1** ανοιχτό (Α, με εκτέλεση και ψεύτικο `garminconnect`· έγινε Β με το ADR-0076, D-177)· **M0-27** και **P4-06** ανοιχτά (Β,
 PostgreSQL: το `save_daily_metric` σβήνει τις γραμμές όλων των αθλητών της ημέρας, το `save_session`
 γράφει `NULL`, τα override γράφουν σε αποφάσεις όλων· με εκτέλεση σε μηχανή SQLite)· στο M0-27
 προστίθεται το `get_override_ratio` χωρίς φίλτρο (`persistence.py:1150`)· **M0-12-R1** ανοιχτό (Β,
