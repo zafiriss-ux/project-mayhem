@@ -45,6 +45,14 @@ echo "TITAN OS SessionStart: running canonical bootstrap (scripts/ci_bootstrap.s
 # .claude/settings.json). An attempt only counts if pytest and ruff import.
 bootstrap_ok=0
 for attempt in 1 2 3; do
+  # ci_bootstrap.sh reuses any existing .venv directory. If an earlier attempt
+  # (or session) was killed mid `venv`/`pip install --upgrade pip`, .venv can
+  # exist with no working pip, and every retry would fail the same way. Rebuild
+  # it from scratch in that case.
+  if [ -d .venv ] && ! .venv/bin/python -m pip --version >/dev/null 2>&1; then
+    echo "TITAN OS SessionStart: .venv has no working pip; recreating it." >&2
+    rm -rf .venv
+  fi
   if timeout 180 bash scripts/ci_bootstrap.sh && .venv/bin/python -c "import pytest, ruff" >/dev/null 2>&1; then
     bootstrap_ok=1
     break
