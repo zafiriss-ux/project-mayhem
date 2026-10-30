@@ -30,7 +30,7 @@ pytestmark = pytest.mark.integration
 class _Garmin:
     athlete_max_hr = 0
 
-    def __init__(self, today: str, hrv: float, rhr: int, status: str | None = None,
+    def __init__(self, today: str, hrv: float | None, rhr: int, status: str | None = None,
                  past_hrv: list[dict] | None = None) -> None:
         self.today, self.hrv, self.rhr, self.status = today, hrv, rhr, status
         self.past_hrv = past_hrv or []
@@ -39,7 +39,8 @@ class _Garmin:
         payload = {
             "activities": [],
             "sleep": [{"date": self.today, "resting_hr": self.rhr, "sleep_score": 82, "total_sleep_hours": 7.8}],
-            "hrv": [{"date": self.today, "rmssd": self.hrv}, *self.past_hrv],
+            # hrv None: Garmin sent no reading for last night (SD-13).
+            "hrv": [*([] if self.hrv is None else [{"date": self.today, "rmssd": self.hrv}]), *self.past_hrv],
             "hrr": [],
             "weight": [{"date": self.today, "weight_kg": 70.0}],
             "fueling_confirmed": True,
@@ -87,7 +88,7 @@ class _Nutrition:
         return {}
 
 
-def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float,
+def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today_hrv: float | None,
              today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None,
              loads: dict[int, int] | None = None, fail_load_reload: bool = False,
              sync_status: str | None = None, stored_hrv: dict[int, float] | None = None,
@@ -397,3 +398,30 @@ def test_synced_athlete_is_not_stale(tmp_path, monkeypatch):
     sent = _stale_alerts(monkeypatch)
     _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0)
     assert "garmin_data_stale" not in sent, sent
+
+
+def test_payload_tsb_is_empty_when_the_tsb_is_unknown(tmp_path, monkeypatch):
+    """SD-13 (D-171): without a load history the TSB is unknown (H4_MISSING). The coaching
+    payload carried it as 0, a neutral-looking value. Now it is None."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0)
+    assert payload["tsb"] is None, payload["tsb"]
+
+
+def test_payload_tsb_is_a_number_when_loads_are_known(tmp_path, monkeypatch):
+    """SD-13 guard: with a full load history the payload keeps the measured TSB."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=dict.fromkeys(range(1, 120), 40))
+    assert isinstance(payload["tsb"], float), payload["tsb"]
+
+
+def test_payload_hrv_is_empty_without_last_nights_reading(tmp_path, monkeypatch):
+    """SD-13 (D-171): with no HRV last night the payload carried the latest stored reading,
+    of any age (here yesterday's). Now it is None, as governance already sees it."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=None)
+    assert payload["hrv_value"] is None, payload["hrv_value"]
+
+
+def test_payload_hrv_is_last_nights_reading(tmp_path, monkeypatch):
+    """SD-13 guard: with a reading last night the payload carries it."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=81.0)
+    assert payload["hrv_value"] == 81.0, payload["hrv_value"]
