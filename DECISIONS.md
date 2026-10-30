@@ -9,6 +9,22 @@
 
 ---
 
+## D-180 · IS-07: το relogin αθλητή δένει το `displayName` του `socialProfile`
+
+- **Πότε / ποιος:** 2026-10-30, Claude. Κατηγορία Α, μόνο σφίγγει (CONTRACT §13). Προϋπόθεση του
+  ADR-0076 (σημείο 7).
+- **Απόφαση:** μετά το `login()`, το `relogin_athlete` καλεί το `userprofile-service/socialProfile`,
+  όπως ο έλεγχος του token (`connect()`), και δένει το `displayName` με `strip`. Αν το προφίλ δεν είναι
+  dict ή δεν έχει τιμή, αρνείται με `RuntimeError` πριν από το `bind_garmin_account` και το token.
+  Πριν έδενε το `client.display_name`, που η `garminconnect` 0.3.17 γεμίζει με το `username` (e-mail
+  του login) όταν λείπει το `displayName`. Έτσι η βάση μπορούσε να κρατήσει e-mail, και το token
+  αργότερα δεν θα ταίριαζε ποτέ στο `_token_account_matches`.
+- **Εναλλακτικές:** έλεγχος ότι το `client.display_name` δεν είναι το e-mail· απορρίφθηκε, γιατί
+  κρατά δεύτερο ορισμό του id. Χρήση του `profileId`· ξεχωριστή απόφαση («Τι δεν ξέρουμε» του
+  ADR-0076).
+
+---
+
 ## D-179 · IS-06: το relogin αθλητή σταματά όταν υπάρχει το `GARMINTOKENS`
 
 - **Πότε / ποιος:** 2026-10-30, Claude. Κατηγορία Α, μόνο σφίγγει (CONTRACT §13). Προϋπόθεση του

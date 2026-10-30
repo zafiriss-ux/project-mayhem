@@ -124,7 +124,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | IS-04 | 3 | LOW | Ίδιο `garmin_activity_id` δεύτερου αθλητή χάνεται σιωπηλά | `training.py:337-380` | OPEN · στόχος Phase 27 · έλεγχος IS (D-173) |
 | IS-05 | 1 | HIGH | Το PostgreSQL ενεργοποιείται με `TITAN_DB_BACKEND=postgres`· κλείνει μόνο με κανόνα (ADR-0044) | `persistence.py` `get_persistence_adapter` | RESOLVED · PR #1117 (D-174)· το `get_persistence_adapter` αρνείται το `postgres` όπως το `get_database_manager` |
 | IS-06 | 1 | HIGH | Το `relogin_athlete` αφήνει τη βιβλιοθήκη να γράψει token στο `GARMINTOKENS` πριν από τις αρνήσεις | `garmin_sync.py:324-325` | RESOLVED · PR #1122 (D-179)· με `GARMINTOKENS` στο περιβάλλον το `relogin_athlete` σταματά πριν από το `Garmin(...)`, άρα η βιβλιοθήκη δεν διαβάζει ούτε γράφει token εκεί |
-| IS-07 | 1 | HIGH | Το `relogin_athlete` δένει το `client.display_name` (μπορεί να είναι το e-mail του login) αντί για το `displayName` του `socialProfile` | `garmin_sync.py:326` | OPEN · Α · στόχος Phase 27 · έλεγχος του owner στο #1120 (D-177) |
+| IS-07 | 1 | HIGH | Το `relogin_athlete` δένει το `client.display_name` (μπορεί να είναι το e-mail του login) αντί για το `displayName` του `socialProfile` | `garmin_sync.py:326` | RESOLVED · PR #1123 (D-180)· το `relogin_athlete` διαβάζει το `socialProfile` μετά το login και δένει το `displayName` του (strip)· χωρίς τιμή αρνείται πριν από το δέσιμο και το token |
 
 ---
 

@@ -145,8 +145,15 @@ def test_a_refused_add_writes_nothing(db, profile, chat, match) -> None:
 # ── Relogin ───────────────────────────────────────────────────────────────────
 
 
-def _fake_garmin(monkeypatch, display_name: str = "maria-runs") -> dict:
+_FROM_DISPLAY_NAME = object()
+
+
+def _fake_garmin(monkeypatch, display_name: str = "maria-runs", social_profile=_FROM_DISPLAY_NAME) -> dict:
+    """Fake garminconnect. ``social_profile`` is what the socialProfile call returns; by default
+    it carries ``display_name``. The library fills ``client.display_name`` with the login e-mail
+    when the profile has no displayName (0.3.17), which the IS-07 tests reproduce."""
     seen: dict = {}
+    profile = {"displayName": display_name} if social_profile is _FROM_DISPLAY_NAME else social_profile
 
     class _Garth:
         def dumps(self) -> str:
@@ -162,6 +169,10 @@ def _fake_garmin(monkeypatch, display_name: str = "maria-runs") -> dict:
         def login(self):
             seen["mfa_code"] = self_mfa = seen["mfa"]() if seen["mfa"] else None
             return self_mfa
+
+        def connectapi(self, path):
+            seen.setdefault("api", []).append(path)
+            return profile
 
     module = MagicMock()
     module.Garmin = _Garmin
@@ -272,6 +283,38 @@ def test_relogin_refuses_when_garmintokens_is_set_before_garmin_is_called(db, mo
     assert "credentials" not in seen, "Garmin must not be called while GARMINTOKENS is set"
     assert not _token(athlete_id).exists()
     assert db.get_athlete_account(athlete_id)["garmin_user_id"] is None
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("social_profile", [{}, {"displayName": "  "}, {"displayName": None}, None, ["x"]])
+def test_relogin_refuses_when_the_social_profile_has_no_display_name(db, monkeypatch, social_profile) -> None:
+    """IS-07: without a displayName the library sets ``client.display_name`` to the login e-mail.
+    Relogin must not bind that e-mail as the account id; it refuses before binding or writing."""
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    _fake_garmin(monkeypatch, display_name="maria@example.com", social_profile=social_profile)
+    athlete_id = _add(db, "Maria", 2000)
+
+    with pytest.raises(RuntimeError, match="displayName"):
+        relogin_athlete(db, athlete_id, "maria@example.com", "p", None)
+    assert not _token(athlete_id).exists()
+    account = db.get_athlete_account(athlete_id)
+    assert account["garmin_user_id"] is None
+    assert account["garmin_token_state"] != "ok"
+
+
+@pytest.mark.integration
+def test_relogin_binds_the_social_profile_display_name_not_the_client_attribute(db, monkeypatch) -> None:
+    """IS-07: the bound id is the socialProfile displayName (stripped), the same value the token
+    check compares (``_token_account_matches``), never ``client.display_name``."""
+    from titan.integrations.garmin_sync import relogin_athlete
+
+    seen = _fake_garmin(monkeypatch, display_name="maria@example.com", social_profile={"displayName": " maria-runs "})
+    athlete_id = _add(db, "Maria", 2000)
+
+    assert relogin_athlete(db, athlete_id, "maria@example.com", "p", None) == "maria-runs"
+    assert db.get_athlete_account(athlete_id)["garmin_user_id"] == "maria-runs"
+    assert seen["api"] == ["userprofile-service/socialProfile"]
 
 
 @pytest.mark.integration
