@@ -58,7 +58,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-14 | 1 | Το `/metrics` του API δεν ζητά πιστοποίηση και η θύρα 8000 ακούει σε όλο το δίκτυο | `api/main.py` (`/metrics`), `docker-compose.yml` (ports) | RESOLVED · PR #1125 (D-182)· 404 χωρίς `TITAN_METRICS_TOKEN`, 401 χωρίς σωστό Bearer· θύρα `127.0.0.1:8000` |
 | M0-15 | 2 | 6 tests παραλείπονται μόνιμα | `tests/test_t5_50_session_type_map.py` | RESOLVED · PR #1126 (D-183)· τα 6 tests καλούν το `garmin_persistence._save_activities`, χωρίς skip· ένα test αποτυγχάνει αν ξαναμπεί skip στο αρχείο |
 | M0-16 | 2 | Η σχεδίαση (ένας αθλητής τη φορά, ένα SQLite, 07:00–12:00 UTC) δεν φτάνει για πολλούς αθλητές. Για πιλότο λίγων αθλητών δεν είναι θέμα | `worker/__init__.py` (round) | OPEN · στόχος Phase 27 |
-| M0-17 | 1 | Το φίλτρο που κρύβει στοιχεία από τα logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές log (MA-F7 μερικώς) | `utils/secrets.py`, `scripts/run_api.py`, `telegram_bot.py` | OPEN · στόχος Phase 27 |
+| M0-17 | 1 | Το φίλτρο που κρύβει στοιχεία από τα logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές log (MA-F7 μερικώς) | `utils/secrets.py`, `scripts/run_api.py`, `telegram_bot.py` | OPEN · στόχος Phase 27 · επιβεβαιώθηκε ανοιχτό στον έλεγχο SP· μέρος του: SP-04 (D-192) |
 | M0-20 | 1 | Η κόπωση της πρώτης μέρας μετρά ως μετρημένη | `daily_coach.py` (fatigue) | OPEN · στόχος Phase 27 |
 | M0-21 | 1 | Το rationale λέει CLEAR όταν η βάση HRV είναι άκυρη ή το TSB είναι NaN | `governance_engine.py` (rationale) | OPEN · στόχος Phase 27 |
 | M0-22 | 1 | Αποτυχία ανανέωσης φορτίου καταπίνεται σιωπηλά | `daily_coach.py` (load refresh) | RESOLVED · PR #1107 (D-166, ADR-0073) |
@@ -90,7 +90,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `titan/main.py:217-232` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC: επιβεβαιώθηκε με εκτέλεση (D-185) |
 | M0-27 | 1 | HIGH | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-12-R1 | `persistence.py` (PostgreSQL adapter) | OPEN · πριν ενεργοποιηθεί το PostgreSQL · έλεγχος IS |
 | M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | OPEN · στόχος Phase 27 · έλεγχος SP |
-| M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | `docker-compose.yml`, `api/` | OPEN · στόχος Phase 27 · έλεγχος SP |
+| M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env`· ο έλεγχος SP βρήκε ότι παίρνει και το `TITAN_GARTH_TOKEN_KEY` και τον τόμο με το `.garth_token` του owner (D-192) | `docker-compose.yml`, `api/` | OPEN · στόχος Phase 27 · επιβεβαιώθηκε ανοιχτό στον έλεγχο SP (D-192) |
 | M0-30 | 2 | LOW | Παλιό `--ignore-vuln` στο `ci.yml` | `.github/workflows/ci.yml` | OPEN · στόχος Phase 27 · έλεγχος SP |
 | M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · έλεγχος AT |
 | M0-32 | 2 | LOW | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | tests του CLAUDE.md | OPEN · στόχος Phase 27 · έλεγχος AT |
@@ -135,6 +135,13 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | RC-06 | 2 | HIGH | Ημερομηνία χωρίς ώρα διαβάζεται ως 00:00 UTC και απορρίπτεται ως μελλοντική κοντά στα μεσάνυχτα UTC· ώρα χωρίς ζώνη διαβάζεται ως UTC (κανόνας: είσοδος πυλών) | `data_sanity.py:239-249`, `:342-350` | OPEN · Β · Φάση 2, θέλει ADR (απόφαση Zaf, κάρτα 2026-10-31· D-191) · έλεγχος RC (D-185) |
 | RC-07 | 2 | HIGH | Κενό λειτουργίας πάνω από 14 μέρες δεν συμπληρώνεται ποτέ· τρύπα στο ιστορικό φορτίου (CTL/TSB/ACWR, H4)· η κατεύθυνση που μετρήθηκε είναι συντηρητική | `garmin_sync.py:1426`, `garmin_persistence.py:414` | RESOLVED · PR #1133 (D-190)· το backfill φέρνει τις μέρες από το τελευταίο επιτυχημένο sync· όρια στο D-190 |
 | RC-08 | 3 | LOW | Το `multi-athlete.md` λέει ότι κονσόλα και worker στέλνουν δύο πρωινά· ο κώδικας κάνει claim και στις δύο πλευρές | `docs/runbooks/multi-athlete.md:114-116` | RESOLVED · PR #1132 (D-189)· η φράση διορθώθηκε, μένει η προειδοποίηση για το 409· επιβεβαιωμένο με test |
+| — | — | — | **Καταγραφή 2026-10-31, έλεγχος SP (D-192):** το tier και ο στόχος είναι πρόταση του Claude και τα αποφασίζει ο owner· ως τότε κανένα δεν μετρά ως TRACKED | — | — |
+| SP-01 | 1 | HIGH | Coach με id `system` βλέπει τον owner, από τη σπορά `('system','owner')` της μετανάστευσης· λανθάνον, κανένα endpoint δεν φτιάχνει χρήστη | `migrations.py:131-136`, `access.py:102-119` | OPEN · Α (φρουρά), Β (σπορά) · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-02 | 1 | HIGH | Το `/auth/login` δίνει tokens σε απενεργοποιημένο λογαριασμό· τα tokens απορρίπτονται μετά | `auth.py:64-76`, `main.py:443-456` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-03 | 2 | HIGH | Το `/stop` απορρίπτεται όταν αποτυγχάνει μόνο το audit· ορίζεται από το INV-22 | `telegram_bot.py:800-848` | OPEN · Β, θέλει ADR · μέρος Α: ειδοποίηση του owner · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος SP (D-192) |
+| SP-04 | 2 | MEDIUM | Το redaction χάνει κωδικό σε μορφή `json.dumps`/`repr` (μέρος του M0-17) | `secrets.py:50-58` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-05 | 3 | LOW | Chat id του owner στο event override-silence· το test δεν κοιτά πεδία events (μέρος του M0-28) | `telegram_bot.py:982-988` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-06 | 3 | LOW | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | `setup_wizard.py:249-250` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
 
 ---
 

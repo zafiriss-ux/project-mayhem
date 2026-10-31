@@ -1,0 +1,87 @@
+RBAC coach_a /athletes/a-00000001/dashboard 200
+.RBAC coach_a /athletes/owner/dashboard 403
+.RBAC coach_a /athletes/a-00000002/dashboard 403
+.RBAC ath_1 /athletes/a-00000001/dashboard 200
+.RBAC ath_1 /athletes/a-00000002/dashboard 403
+.RBAC ath_1 /athletes/owner/dashboard 403
+.RBAC coach_a /athletes/a-00000001/dashboard?athlete_id=a-00000002 200
+.RBAC coach_a /athletes/a-00000002/dashboard?athlete_id=a-00000001 403
+.COACH ROUTES 200 403 403 {"detail":"Coach not assigned to athlete a-00000002"} 200 {"status":"created","athlete_id":"a-00000001"} 403 403
+.ATHLETE ON COACH ROUTE 403
+.NO DB coach -> 403 {'detail': 'Coach assignment cannot be verified (datastore unavailable) — access denied'}
+.METRICS no token configured -> 404
+.NO CSRF -> 403
+.SYSTEM COACH -> owner dashboard 200 {'athlete_id': 'owner', 'viewer': 'system'}
+.INACTIVE LOGIN -> 200 cookies: ['titan_access_token', 'titan_csrf', 'titan_refresh_token'] refresh rows: 1 | then dashboard -> 401
+.INVALID BODY -> 422 audit rows before/after 0 0
+.JSON LINE AFTER REDACTION: {"flow": "garmin", "action": "failure", "error_message": "login failed with \u039a\u03c9\u03b4\"\u03b9\u03ba\u03cc\u03c2\\canary-77"}
+REPR AFTER REDACTION: ValueError('bad password Κωδ"ικός\\canary-77')
+.API PROC stdout: ROOT_HANDLERS 0 FILTER_ON_ROOT False FILTER_ON_URLLIB3 False | stderr tail: ['readyz db check failed: OperationalError: 123456789:CANARYcanaryCANARYcanary_abc']
+.URL REDACTED: ConnectionError: https://api.telegram.org/bot<redacted>/sendMessage
+.EVENT: ['{"flow": "telegram", "action": "failure", "severity": "info", "failure_class": "OVERRIDE_SILENCE", "subsystem": "override_followup", "chat_id": 424242, "timeout_hours": 4}']
+.EVENT KWARGS WITH PERSONAL KEYS: ['titan/integrations/telegram_bot.py:983:chat_id']
+.API env_file: ['.env'] | volumes: ['titan-data:/data'] | secrets listed in .env.example: ['GARMIN_PASSWORD', 'TELEGRAM_BOT_TOKEN', 'TITAN_GARTH_TOKEN_KEY']
+.API ports: ['127.0.0.1:8000:8000']
+.CONSENT none/granted/after-stop/re-same-day/re-next-day: False True False False True
+..STOP with audit down -> ❌ Audit log unavailable: command not performed. | revoked: False
+.IGNORE-VULN occurrences: 2 | requests pin: ['requests==2.34.2        # HTTP client (Garmin, weather, webhooks) — bumped 2.32.4→2.33.0 (GHSA-gc5v-m9x4-r6x2), 2.33.0→2.34.2 (patch)']
+.
+=============================== warnings summary ===============================
+test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/a-00000001/dashboard-200]
+  /home/claude/project-mayhem/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+_______________ test_defect_override_silence_event_logs_chat_id ________________
+------------------------------ Captured log call -------------------------------
+INFO     titan.integrations.telegram_bot:telegram_bot.py:183 {"flow": "telegram", "action": "failure", "severity": "info", "failure_class": "OVERRIDE_SILENCE", "subsystem": "override_followup", "chat_id": 424242, "timeout_hours": 4}
+______________ test_holds_bot_consent_check_fails_closed_on_error ______________
+------------------------------ Captured log call -------------------------------
+ERROR    titan.integrations.telegram_bot:telegram_bot.py:766 titan.telegram.consent_check_failed
+_______________ test_defect_stop_refused_when_audit_write_fails ________________
+------------------------------ Captured log call -------------------------------
+CRITICAL titan.integrations.telegram_bot:telegram_bot.py:840 audit_write_failed
+Traceback (most recent call last):
+  File "/home/claude/project-mayhem/.wt-rc0506/titan/integrations/telegram_bot.py", line 832, in _audit_before_effect
+    db.log_coach_action(
+    ~~~~~~~~~~~~~~~~~~~^
+        coach_id=f"telegram:{chat_id}",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        resource="telegram",
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py", line 382, in log_coach_action
+    raise RuntimeError("audit table locked")
+RuntimeError: audit table locked
+=========================== short test summary info ============================
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/a-00000001/dashboard-200]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/owner/dashboard-403]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/a-00000002/dashboard-403]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[ath_1-/athletes/a-00000001/dashboard-200]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[ath_1-/athletes/a-00000002/dashboard-403]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[ath_1-/athletes/owner/dashboard-403]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/a-00000001/dashboard?athlete_id=a-00000002-200]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_dashboard_isolation_matrix[coach_a-/athletes/a-00000002/dashboard?athlete_id=a-00000001-403]
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_coach_routes_scoped_and_duplicate_query_consistent
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_athlete_cannot_use_coach_routes
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_no_cookie_no_access_and_no_db_fails_closed
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_metrics_closed_without_token
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_csrf_required_for_state_change
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_coach_with_user_id_system_reads_owner
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_login_issues_tokens_to_inactive_user
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_no_audit_row_for_request_that_fails_validation
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_registered_secret_leaks_when_json_escaped
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_api_process_installs_no_redaction
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_worker_handler_redacts
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_override_silence_event_logs_chat_id
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_privacy_test_ignores_event_kwargs
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_api_container_gets_whole_env_and_owner_token_volume
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_release_worker_keeps_secrets_and_api_port_local
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_consent_gate_fail_closed
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_holds_bot_consent_check_fails_closed_on_error
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_stop_refused_when_audit_write_fails
+PASSED ../../home/claude/project-mayhem/.audit-sd/sp/test_sp_audit.py::test_defect_stale_ignore_vuln_still_in_ci
+27 passed, 1 warning in 16.26s
