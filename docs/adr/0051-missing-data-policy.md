@@ -8,6 +8,8 @@
 **Related:** ADR-0009 (safety gate hardening), ADR-0023 (physiological input validation),
   ADR-0030 (external data source resilience), T5-63, T5-64, OBS-028, OBS-029, OBS-030,
   OBS-033
+**Amended by:** ADR-0075 (2026-10-30): οι H1 και H5 χωρίς μέτρηση μένουν όπως σήμερα, ως ρητή
+  εξαίρεση από αυτό το ADR (AD-02, 2026-10-31).
 
 ---
 
