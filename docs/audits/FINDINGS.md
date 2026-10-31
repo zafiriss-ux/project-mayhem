@@ -114,7 +114,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-26 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
 | — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044)· γράφτηκε στο TECHNICAL_DEBT (D-156) | TECHNICAL_DEBT, D-156 | — | IS |
 | — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
-| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
+| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | FIXED (#1138, D-195)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156, D-195 | #1138 | SP |
 | — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
 | — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
 | — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
@@ -290,7 +290,7 @@ SD, Φάση 2).
 Επανέλεγχος γνωστών: **M0-17**, **M0-28**, **M0-29** και **M0-30** επιβεβαιώθηκαν ανοιχτά με εκτέλεση.
 Το **M0-29** είναι βαρύτερο απ' όσο γράφει η γραμμή του: το API παίρνει όλο το `.env` (μαζί το
 `TITAN_GARTH_TOKEN_KEY`) και τον τόμο όπου βρίσκεται το `/data/.garth_token`, άρα μπορεί να
-αποκρυπτογραφήσει το session Garmin του owner (επιβεβαιώθηκε και από τον 2ο έλεγχο). Το `--ignore-vuln`
+αποκρυπτογραφήσει το session Garmin του owner (επιβεβαιώθηκε και από τον 2ο έλεγχο). FIXED στο #1138 (D-195). Το `--ignore-vuln`
 του M0-30 φεύγει χωρίς κόστος: το `pip-audit` χωρίς ignore δεν βρίσκει τίποτα. Στέκουν οι διορθώσεις MA-F7,
 OW-M1, OW-L2, OW-L4 (με υπόλοιπο το SP-04), P4-05, M0-04 και M0-14 (επανέλεγχος, όχι διάθεση FIXED). Η
 ανάλυση των CodeQL #22 και #50 ισχύει. Δεν ελέγχθηκε όλο το ιστορικό git (shallow clone, χωρίς gitleaks).
