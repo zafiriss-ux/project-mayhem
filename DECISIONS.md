@@ -9,6 +9,32 @@
 
 ---
 
+## D-209 · AT-02 (μέρος 1): το stub του Garmin στα e2e έχει το σχήμα του πραγματικού sync· παγωμένη ημέρα
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-02, MEDIUM), πρώτο από δύο βήματα.
+- **Πρόβλημα:** το `StubGarminSync` των e2e έστελνε ύπνο χωρίς `date` με τα ακατέργαστα κλειδιά του Garmin
+  (`restingHeartRate`, `sleepScores`), δραστηριότητα με `session_type`/`name` αντί για `activity_type`, και 12
+  κλειδιά πρώτου επιπέδου που ο `GarminSync.sync_all()` δεν βγάζει ποτέ. Ο ύπνος χωρίς ημερομηνία στέλνει το
+  `garmin_persistence` στον legacy κλάδο «τελευταία εγγραφή κερδίζει», που ο πραγματικός sync δεν παίρνει. Το
+  fixture έπαιρνε τη μέρα από `datetime.now()` χωρίς πάγωμα.
+- **Απόφαση:** το stub φτιάχνει το payload με το `GarminSyncResultContract` και εγγραφές με τα ίδια κλειδιά που
+  βγάζουν τα `sync_sleep()`, `sync_activities()`, `sync_hrv()`, `sync_weight()`. Ο ύπνος είναι δύο νύχτες, η
+  νεότερη πρώτη, όπως τις δίνει το `sync_sleep()`. Το fixture `morning_routine_setup` παγώνει το ρολόι στις
+  07:30 της `E2E_TODAY` (2026-03-04).
+- **Τι μένει (μέρος 2):** τα e2e τρέχουν ακόμα με `StubGovernance` και stubs για κόπωση, TSB, readiness, HRV και
+  γλυκογόνο. Επόμενο βήμα: πραγματική governance, ή ονομασία «wiring smoke» για ό,τι μείνει με stubs.
+- **Παρατήρηση στην πορεία:** το `DailyCoach` διαβάζει από το `garmin_data` 11 κλειδιά που ο πραγματικός sync δεν
+  βγάζει (`temperature_c`, `time_above_lt2_min`, `dprime_fraction`, `intra_carb_g`, `weight_kg`, `drift_pct`,
+  `hr_suppression`, `rpe_mismatch`, `pace_hr_divergence`, `hrr` και το `acwr` στα contracts). Στην παραγωγή
+  παίρνουν πάντα την προεπιλογή τους. Δεν αλλάζει εδώ· είναι υλικό για τις προτεραιότητες της Phase 2 (κοντά στο
+  AT-01).
+- **Tests:** νέο `tests/e2e/test_stub_garmin_shape_at02.py` (3 tests), που αποτύγχανε όλο πριν. (1) Τα κλειδιά
+  πρώτου επιπέδου είναι του `GarminSyncResult`. (2) Οι εγγραφές ύπνου και δραστηριότητας έχουν τα κλειδιά του
+  πραγματικού sync. (3) Το πρωινό αποθηκεύει τον ύπνο της τελευταίας νύχτας (82, RHR 50) και όχι της παλαιότερης
+  (61, 57)· όταν αφαιρέθηκε προσωρινά το φίλτρο ημερομηνίας από το `garmin_persistence`, το test απέτυχε.
+
+---
+
 ## D-208 · AT-09 (κώδικας): ένας ορισμός για το rotation του log· το `should_replan` γράφει ότι δεν καλείται
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-09, LOW), μόνο το κομμάτι του κώδικα.

@@ -1,56 +1,78 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, timedelta
 
 import pytest
+from freezegun import freeze_time
 
 from titan.core.database import DatabaseManager
+from titan.orchestration.contracts import GarminSyncResultContract
 from titan.orchestration.daily_coach import DailyCoach
 from titan.orchestration.engine_registry import EngineRegistry
 from titan.science.biomechanics import BiomechanicsEngine
+from titan.science.data_trust import evaluate_garmin_trust
 from titan.science.durability_engine import DurabilityEngine
 from titan.science.lactate_logic import LactateLogic
 
+# AT-02: a fixed day, so a run near midnight cannot see two dates.
+E2E_TODAY = "2026-03-04"
+
 
 class StubGarminSync:
+    """Returns what GarminSync.sync_all() returns on a good morning (AT-02).
+
+    Same top-level keys as GarminSyncResultContract and the same record keys as
+    sync_sleep() / sync_activities() / sync_hrv() / sync_weight(). Sleep is one
+    dated entry per night, newest first, as sync_sleep() returns it.
+    """
+
     def __init__(self, today: str) -> None:
         self.today = today
 
     def sync_all(self):
-        return {
-            "activities": [
+        yesterday = (date.fromisoformat(self.today) - timedelta(days=1)).isoformat()
+        return GarminSyncResultContract(
+            activities=[
                 {
                     "date": self.today,
-                    "session_type": "EASY",
+                    "activity_type": "running",
                     "distance_km": 6.0,
                     "duration_sec": 2100,
                     "avg_hr": 142,
                     "max_hr": 165,
-                    "name": "Morning easy run",
+                    "avg_pace_sec_per_km": 350,
+                    "calories": 420,
+                    "elevation_gain_m": 30,
                     "activity_id": "act-001",
+                    "training_effect_label": "RECOVERY",
+                    "estimated_training_load": 45.0,
+                    "load_estimated": False,
                 }
             ],
-            "sleep": [
+            weight=[{"date": self.today, "weight_kg": 70.5}],
+            sleep=[
                 {
-                    "restingHeartRate": 50,
-                    "sleepScores": {"overall": {"value": 82}},
-                    "sleepTimeSeconds": 27000,
-                }
+                    "date": self.today,
+                    "total_sleep_hours": 7.5,
+                    "deep_sleep_hours": 1.4,
+                    "rem_sleep_hours": 1.6,
+                    "sleep_score": 82,
+                    "resting_hr": 50,
+                },
+                {
+                    "date": yesterday,
+                    "total_sleep_hours": 6.1,
+                    "deep_sleep_hours": 0.9,
+                    "rem_sleep_hours": 1.1,
+                    "sleep_score": 61,
+                    "resting_hr": 57,
+                },
             ],
-            "hrv": [{"date": self.today, "rmssd": 49.0}],
-            "hrr": [],
-            "weight": [{"date": self.today, "weight_kg": 70.5}],
-            "temperature_c": 17.0,
-            "time_above_lt2_min": 8,
-            "dprime_fraction": 0.1,
-            "intra_carb_g": 0.0,
-            "weight_kg": 70.5,
-            "acwr": 1.0,
-            "drift_pct": 0.0,
-            "hr_suppression": False,
-            "rpe_mismatch": False,
-            "pace_hr_divergence": False,
-        }
+            hrv=[{"date": self.today, "rmssd": 49.0, "status": "BALANCED", "source": "garmin"}],
+            hrv_sync_metrics={"days_back": 14, "synced_days": 1, "skipped_days": 0},
+            data_trust=evaluate_garmin_trust(data_age_hours=0.0).to_payload(),
+            data_age_hours=0.0,
+        ).to_payload()
 
 
 class StubTelegram:
@@ -222,7 +244,9 @@ def stub_engine_registry() -> EngineRegistry:
 
 @pytest.fixture
 def morning_routine_setup(tmp_path):
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = E2E_TODAY
+    freezer = freeze_time(f"{today} 07:30:00")
+    freezer.start()
     db = DatabaseManager(db_name="e2e_gold_path.db", db_dir=tmp_path)
     telegram = StubTelegram()
 
@@ -250,3 +274,4 @@ def morning_routine_setup(tmp_path):
         yield {"coach": coach, "db": db, "telegram": telegram, "today": today}
     finally:
         db.close()
+        freezer.stop()
