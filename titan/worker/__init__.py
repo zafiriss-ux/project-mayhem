@@ -181,6 +181,59 @@ def _run_backup(db: DatabaseManager) -> None:
         log.info("backup_complete", extra={"path": str(backed_up)})
 
 
+def _drain_pending_audit(db: DatabaseManager) -> None:
+    """Write queued consent withdrawals to the database (ADR-0079 §4, §5).
+
+    Runs before anything else in a round. While entries stay queued, the owner is
+    reminded once per UTC day; the marker is the owner's ``worker_routine_executions`` row.
+    A failure is logged at CRITICAL and never stops the round.
+    """
+    from titan.core.repositories.access import PendingAuditUnreadable
+    from titan.observability.metrics import get_metrics
+
+    log = logging.getLogger("titan.worker.runner")
+    unreadable = False
+    try:
+        remaining = db.drain_pending_audit()
+    except Exception as exc:
+        unreadable = isinstance(exc, PendingAuditUnreadable)
+        log.critical(
+            "pending_audit_unreadable" if unreadable else "pending_audit_drain_failed",
+            extra={"error_class": type(exc).__name__},
+        )
+        get_metrics().counter("audit_write_failure", labels={"surface": "pending_audit"})
+        remaining = -1
+    if remaining == 0:
+        return
+    now = _utc_now()
+    day = now.date().isoformat()
+    try:
+        state, _attempt = db.begin_routine_attempt(
+            athlete_id="owner", execution_date=day, routine_type=PENDING_AUDIT_REMINDER,
+            started_at=now, max_attempts=ROUTINE_MAX_ATTEMPTS,
+            retry_gap=_dt.timedelta(seconds=ROUTINE_RETRY_DELAY_S),
+        )
+        if state != "run":
+            return
+        from titan.integrations.telegram_bot import TitanTelegramBot
+
+        text = (
+            "⚠️ The pending-audit queue cannot be read, so no athlete but you has consent until it is "
+            "fixed (ADR-0079). See docs/runbooks/multi-athlete.md."
+            if unreadable
+            else "⚠️ The pending-audit queue could not be drained (ADR-0079). Check the worker logs."
+            if remaining < 0
+            else f"⚠️ {remaining} consent withdrawal(s) are still in the pending-audit queue: their audit "
+            "rows could not be written yet (ADR-0079). Check the audit log."
+        )
+        if TitanTelegramBot(db=db).send_message(text, parse_mode=""):
+            db.mark_routine_delivered(
+                athlete_id="owner", execution_date=day, routine_type=PENDING_AUDIT_REMINDER, delivered_at=_utc_now(),
+            )
+    except Exception as exc:
+        log.exception("pending_audit_reminder_failed", extra={"error": str(exc)})
+
+
 def _athlete_housekeeping(db: DatabaseManager, *, at_start: bool = False) -> None:
     """Re-apply recorded deletions at start (ADR-0067 D2.7), then delete athletes 30 days after /stop (D4.3).
 
@@ -189,6 +242,7 @@ def _athlete_housekeeping(db: DatabaseManager, *, at_start: bool = False) -> Non
     from titan.core import athlete_lifecycle
 
     log = logging.getLogger("titan.worker.runner")
+    _drain_pending_audit(db)
     try:
         if at_start:
             athlete_lifecycle.reapply_deletions(db)
@@ -265,6 +319,8 @@ ROUTINE_MAX_ATTEMPTS = 3
 # The next attempt of the same day starts at least this long after the previous one: the
 # owner loop sleeps it, the round counts it from the day's first attempt (D-109).
 ROUTINE_RETRY_DELAY_S = 15 * 60
+# Owner reminder while consent withdrawals stay in the pending-audit queue (ADR-0079 §5).
+PENDING_AUDIT_REMINDER = "pending_audit_reminder"
 # This process in the "attempt in progress" mark (ADR-0069 §4β): a mark of the same runner
 # with another token is from a process that is gone, so it does not hold.
 _PROCESS_TOKEN = os.urandom(6).hex()
@@ -811,8 +867,14 @@ def _require_consent(db: DatabaseManager, athlete_id: str) -> None:
     The owner is exempt (D4.5).
     """
     from titan.core.athlete import AthleteNotReady
+    from titan.core.repositories.access import PendingAuditUnreadable
 
-    if not db.has_current_consent(athlete_id, now=_utc_now()):
+    try:
+        current = db.has_current_consent(athlete_id, now=_utc_now())
+    except (PendingAuditUnreadable, OSError) as exc:
+        # ADR-0079 §3: an unreadable pending-audit queue is no consent for every athlete but the owner.
+        raise AthleteNotReady(athlete_id, "consent: pending-audit queue unreadable") from exc
+    if not current:
         raise AthleteNotReady(athlete_id, "consent: none current")
 
 
@@ -1358,6 +1420,8 @@ def _run_with_scheduler(
     backed_up_on: list[str] = []
 
     def _round() -> None:
+        # ADR-0079 §4: queued withdrawals first, before the backup and the 07:00 check.
+        _drain_pending_audit(db)
         # The daily backup, as the owner loop takes it (DR-01); a restart may take one more.
         today = _utc_now().date().isoformat()
         if today not in backed_up_on:

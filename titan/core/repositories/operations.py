@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import sqlite3
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
@@ -609,8 +610,40 @@ class OperationsRepository:
                 "integrity": "ok",
             })
         )
+        self._backup_pending_audit(dest)
         self._db._prune_old_backups(backup_dir, keep=keep, keep_weekly=keep_weekly)
         return dest
+
+    def _backup_pending_audit(self, dest: Path) -> None:
+        """Copy the pending-audit queue beside today's backup (ADR-0079, Consequences).
+
+        Taken under the shared queue lock, so the copy is never a half-compacted file. A
+        restore then knows of the withdrawals still waiting. A failure is logged and counted;
+        the database backup stays valid.
+        """
+        queue = self._db.pending_audit
+        if queue is None:
+            return
+        target = dest.with_name(dest.stem + ".pending_audit.jsonl")
+        try:
+            with queue.locked(exclusive=False):
+                if not queue.path.exists():
+                    return
+                data = queue.path.read_bytes()
+            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            try:
+                os.write(fd, data)
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        except Exception as exc:
+            from titan.core.database import _log
+
+            _log.critical(json.dumps({"flow": "database", "action": "pending_audit_backup_failed", "error_class": type(exc).__name__}))
+            with suppress(Exception):
+                from titan.observability.metrics import get_metrics
+
+                get_metrics().counter("backup_failure_total")
 
     def _record_backup_failure(self, dest: Path, problem: str) -> None:
         """Quarantine a failed backup artifact; log CRITICAL and count the failure."""
@@ -660,6 +693,8 @@ class OperationsRepository:
             if old not in retained:
                 with suppress(OSError):
                     old.unlink()
+                with suppress(OSError):
+                    old.with_name(old.stem + ".pending_audit.jsonl").unlink(missing_ok=True)
 
     def check_integrity(self) -> bool:
         """Runs PRAGMA integrity_check. Returns True if OK, False otherwise."""

@@ -35,9 +35,23 @@ con.close()
 print(f'Backup OK: {dst}')
 " "$DB_FILE" "$BACKUP_FILE"
 
+# The pending-audit queue of consent withdrawals goes with the database (ADR-0079).
+# The copy is taken under the shared queue lock when flock is available.
+QUEUE_FILE="$DATA_DIR/pending_audit.jsonl"
+if [ -f "$QUEUE_FILE" ]; then
+  QUEUE_BACKUP="$BACKUP_DIR/pending_audit.jsonl.$DATE"
+  ( umask 077
+    if command -v flock >/dev/null 2>&1; then
+      flock -s "$DATA_DIR/pending_audit.lock" cp "$QUEUE_FILE" "$QUEUE_BACKUP"
+    else
+      cp "$QUEUE_FILE" "$QUEUE_BACKUP"
+    fi )
+  echo "Pending-audit queue copied: $QUEUE_BACKUP"
+fi
+
 # Prune old backups (keep last 7)
 find "$BACKUP_DIR" \
-  -name "titan_core.db.*" \
+  \( -name "titan_core.db.*" -o -name "pending_audit.jsonl.*" \) \
   -mtime +$KEEP_DAYS \
   -delete
 

@@ -1,10 +1,24 @@
 """Access domain SQL: login lockout, auth users and refresh tokens (HD-04 /
 T5-70), coach-athlete RBAC scoping (ADR-0054), the coach audit log (T5-111) and
-the external accounts of athletes other than the owner (ADR-0067 D9, D10)."""
+the external accounts of athletes other than the owner (ADR-0067 D9, D10), and the
+pending-audit queue of consent withdrawals (ADR-0079)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import json
+import logging
+import os
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+try:  # POSIX; the worker and the Docker image run on Linux
+    import fcntl
+except ImportError:  # pragma: no cover - Windows: one process only, see PendingAuditQueue
+    fcntl = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
@@ -429,6 +443,67 @@ class AccessRepository:
             self._db.conn.commit()
             return cursor.rowcount
 
+    def revoke_consent_with_audit(
+        self, athlete_id: str, *, revoked_at: str, coach_id: str, action_type: str, resource: str
+    ) -> int:
+        """Revoke the athlete's current consent and write its audit row in ONE transaction (ADR-0079 §1).
+
+        Either both rows are written or neither. Returns the consent rows revoked.
+        """
+        with self._db.transaction():
+            cursor = self._db.conn.cursor()
+            cursor.execute(
+                "UPDATE consent_log SET revoked_at = ? WHERE athlete_id = ? AND revoked_at IS NULL",
+                (revoked_at, athlete_id),
+            )
+            revoked = cursor.rowcount
+            cursor.execute(
+                """INSERT INTO coach_audit_log
+                   (coach_id, athlete_id, action_type, resource, action_detail, performed_at)
+                   VALUES (?, ?, ?, ?, '', datetime('now'))""",
+                (coach_id, athlete_id, action_type, resource),
+            )
+        return revoked
+
+    def apply_queued_withdrawal(self, entry: dict[str, Any], *, coach_id: str, resource: str) -> None:
+        """Write one queued withdrawal to the database in ONE transaction (ADR-0079 §4).
+
+        Nothing is written for an athlete who no longer exists. Revokes only the consents
+        granted at or before the queued time (a later /agree is a new consent), and writes the audit row with the original time unless a row with the
+        same queue id is already there, so a repeated drain never writes it twice.
+        """
+        revoked_at = datetime.fromisoformat(entry["revoked_at"])
+        marker = f"queue_id:{entry['id']}"
+        with self._db.transaction():
+            cursor = self._db.conn.cursor()
+            # An athlete erased since the /stop gets nothing written back (ADR-0079 §3).
+            if cursor.execute("SELECT 1 FROM athletes WHERE athlete_id = ?", (entry["athlete_id"],)).fetchone() is None:
+                return
+            rows = cursor.execute(
+                "SELECT id, granted_at FROM consent_log WHERE athlete_id = ? AND revoked_at IS NULL",
+                (entry["athlete_id"],),
+            ).fetchall()
+            for row_id, granted_at in rows:
+                if _granted_no_later_than(granted_at, revoked_at):
+                    cursor.execute(
+                        "UPDATE consent_log SET revoked_at = ? WHERE id = ?", (entry["revoked_at"], row_id)
+                    )
+            already = cursor.execute(
+                "SELECT 1 FROM coach_audit_log WHERE athlete_id = ? AND instr(action_detail, ?) = 1",
+                (entry["athlete_id"], marker),
+            ).fetchone()
+            if already is None:
+                cursor.execute(
+                    """INSERT INTO coach_audit_log
+                       (coach_id, athlete_id, action_type, resource, action_detail, performed_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        coach_id, entry["athlete_id"], entry["action"], resource,
+                        f"{marker} written late from the pending-audit queue (ADR-0079)",
+                        revoked_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    ),
+                )
+
     def _get_all_athlete_ids(self) -> list[str]:
         """Return all athlete_ids from the athletes table."""
         with self._db._lock:
@@ -519,3 +594,196 @@ class AccessRepository:
             rows = cursor.fetchall()
             cols = [d[0] for d in cursor.description]
         return [dict(zip(cols, row, strict=True)) for row in rows]
+
+
+def _granted_no_later_than(granted_at: str, revoked_at: datetime) -> bool:
+    """True when a consent was given at or before the queued withdrawal (ADR-0079 §4).
+
+    A time without a zone is read as UTC. A time that cannot be read counts as earlier, so
+    the consent is revoked: an unreadable row never keeps a consent the athlete withdrew.
+    """
+    from datetime import UTC
+
+    try:
+        granted = datetime.fromisoformat(granted_at)
+    except (TypeError, ValueError):
+        return True
+    if granted.tzinfo is None:
+        granted = granted.replace(tzinfo=UTC)
+    if revoked_at.tzinfo is None:
+        revoked_at = revoked_at.replace(tzinfo=UTC)
+    return granted <= revoked_at
+
+
+class PendingAuditUnreadable(Exception):
+    """A complete line of the pending-audit queue cannot be read (ADR-0079 §3).
+
+    Callers treat it as "no consent" for every athlete but the owner.
+    """
+
+
+class PendingAuditQueue:
+    """The pending-audit queue of consent withdrawals (ADR-0079 §2–§4).
+
+    One JSON object per line in ``pending_audit.jsonl`` beside the database: a withdrawal
+    ``{"id", "athlete_id", "revoked_at", "action"}`` or a drained marker ``{"id", "done": true}``.
+    It holds no chat id, token or health data.
+
+    Every access takes ``flock`` on the separate ``pending_audit.lock`` (never renamed), so an
+    append never lands in a file that compaction replaced. Appends, drains, compaction and
+    removals take it exclusively; reads and the /agree path take it shared. The queue lock is
+    always taken before ``DatabaseManager._lock``. Without ``fcntl`` (Windows) only a lock
+    inside this process is taken.
+    """
+
+    FILE_NAME = "pending_audit.jsonl"
+    LOCK_NAME = "pending_audit.lock"
+    _thread_lock = threading.RLock()
+
+    def __init__(self, directory: Path) -> None:
+        self.path = directory / self.FILE_NAME
+        self.lock_path = directory / self.LOCK_NAME
+        self._log = logging.getLogger("titan.core.pending_audit")
+
+    @contextmanager
+    def locked(self, *, exclusive: bool) -> Iterator[None]:
+        """Hold the queue lock (exclusive or shared) for the block."""
+        if fcntl is None:  # pragma: no cover - Windows
+            with self._thread_lock:
+                yield
+            return
+        fd = os.open(self.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH)
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
+
+    # --- reads ------------------------------------------------------------------------
+
+    def read_locked(self) -> list[dict[str, Any]]:
+        """The withdrawals not yet drained. The caller holds the lock.
+
+        A missing file is an empty queue. An unterminated last line is ignored and logged:
+        its append never finished, so its /stop was never confirmed. A complete line that
+        cannot be read raises PendingAuditUnreadable; an OSError propagates.
+        """
+        try:
+            data = self.path.read_bytes()
+        except FileNotFoundError:
+            return []
+        lines = data.split(b"\n")
+        if lines[-1]:
+            self._log.warning("pending_audit_torn_tail_ignored", extra={"bytes": len(lines[-1])})
+        pending: dict[str, dict[str, Any]] = {}
+        done: set[str] = set()
+        for raw in lines[:-1]:
+            if not raw.strip():
+                continue
+            try:
+                item = json.loads(raw)
+            except ValueError as exc:
+                raise PendingAuditUnreadable("a line of the pending-audit queue is not JSON") from exc
+            if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                raise PendingAuditUnreadable("a line of the pending-audit queue has no id")
+            if item.get("done") is True:
+                done.add(item["id"])
+                continue
+            if not all(isinstance(item.get(k), str) and item.get(k) for k in ("athlete_id", "revoked_at", "action")):
+                raise PendingAuditUnreadable("a withdrawal in the pending-audit queue is incomplete")
+            try:
+                datetime.fromisoformat(item["revoked_at"])
+            except ValueError as exc:
+                raise PendingAuditUnreadable("a withdrawal in the pending-audit queue has a bad time") from exc
+            pending[item["id"]] = item
+        return [item for key, item in pending.items() if key not in done]
+
+    def pending(self) -> list[dict[str, Any]]:
+        """The withdrawals not yet drained, under a shared lock."""
+        with self.locked(exclusive=False):
+            return self.read_locked()
+
+    def pending_athletes(self) -> set[str]:
+        """Athletes with a withdrawal not yet drained, under a shared lock."""
+        return {item["athlete_id"] for item in self.pending()}
+
+    # --- writes (the caller holds the exclusive lock) -------------------------------------
+
+    def append_locked(self, item: dict[str, Any]) -> None:
+        """Append one line durably (O_APPEND, one write, fsync). The caller holds the exclusive lock.
+
+        A torn tail left by an earlier crash is cut off first, so the new line starts on
+        its own line and a complete line is never corrupted (ADR-0079 §4).
+        """
+        created = not self.path.exists()
+        fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_APPEND, 0o600)
+        try:
+            size = os.fstat(fd).st_size
+            if size and os.pread(fd, 1, size - 1) != b"\n":
+                data = os.pread(fd, size, 0)
+                keep = data.rfind(b"\n") + 1
+                os.ftruncate(fd, keep)
+                os.fsync(fd)
+                self._log.warning("pending_audit_torn_tail_dropped", extra={"bytes": size - keep})
+            line = (json.dumps(item, sort_keys=True) + "\n").encode("utf-8")
+            if os.write(fd, line) != len(line):
+                raise OSError("short write to the pending-audit queue")
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        if created:
+            self._fsync_dir()
+
+    def append(self, item: dict[str, Any]) -> bool:
+        """Append a withdrawal under the exclusive lock; True when the queue was empty before.
+
+        An item without ``revoked_at`` is stamped here, under the lock, so no /agree that
+        committed before this append can carry a later time than the withdrawal.
+        """
+        with self.locked(exclusive=True):
+            try:
+                was_empty = not self.read_locked()
+            except (PendingAuditUnreadable, OSError):
+                was_empty = False
+            if "revoked_at" not in item:
+                from datetime import UTC
+
+                item["revoked_at"] = datetime.now(UTC).isoformat()
+            self.append_locked(item)
+        return was_empty
+
+    def rewrite_locked(self, keep: list[dict[str, Any]]) -> None:
+        """Replace the file with ``keep`` only: temp file, fsync, rename, fsync of the folder.
+
+        The caller holds the exclusive lock and has read the file without error, so no
+        unreadable line is ever dropped here (ADR-0079 §4).
+        """
+        tmp = self.path.with_name(self.path.name + ".tmp")
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            for item in keep:
+                os.write(fd, (json.dumps(item, sort_keys=True) + "\n").encode("utf-8"))
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        os.replace(tmp, self.path)
+        self._fsync_dir()
+
+    def remove_athlete(self, athlete_id: str) -> int:
+        """Drop an erased athlete's withdrawals, under the exclusive lock (ADR-0079 §3)."""
+        with self.locked(exclusive=True):
+            items = self.read_locked()
+            keep = [item for item in items if item["athlete_id"] != athlete_id]
+            if len(keep) != len(items):
+                self.rewrite_locked(keep)
+        return len(items) - len(keep)
+
+    def _fsync_dir(self) -> None:
+        if not hasattr(os, "O_DIRECTORY"):  # pragma: no cover - Windows
+            return
+        fd = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)

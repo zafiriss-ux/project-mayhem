@@ -45,6 +45,10 @@ def _utc_day(timestamp: str) -> date:
     return datetime.fromisoformat(timestamp).astimezone(UTC).date()
 
 
+class ConsentWithdrawalPending(Exception):
+    """/agree while the athlete's /stop is still in the pending-audit queue (ADR-0079 §3)."""
+
+
 def consent_is_current(rows: list[dict[str, Any]], today: date) -> bool:
     """True when the athlete may be coached on ``today`` (UTC) under ADR-0067 D4.
 

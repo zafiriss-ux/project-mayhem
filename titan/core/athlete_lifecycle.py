@@ -250,9 +250,25 @@ def delete_athlete(db: DatabaseManager, athlete_id: str, *, now: datetime | None
             extra={"athlete_id": athlete_id, "error_class": type(exc).__name__, "deletion_record_kept": True},
         )
         raise
+    _drop_queued_withdrawals(db, athlete_id)
     _remove_token_folder(athlete_id)
     _log.warning("athlete_deleted", extra={"athlete_id": athlete_id, "rows": sum(counts.values())})
     return counts
+
+
+def _drop_queued_withdrawals(db: DatabaseManager, athlete_id: str) -> None:
+    """An erased athlete leaves the pending-audit queue too (ADR-0079 §3).
+
+    A failure is logged: the drain skips athletes that no longer exist, so nothing is
+    written back for them.
+    """
+    queue = db.pending_audit
+    if queue is None:
+        return
+    try:
+        queue.remove_athlete(athlete_id)
+    except Exception as exc:
+        _log.error("athlete_queue_entries_not_removed", extra={"athlete_id": athlete_id, "error_class": type(exc).__name__})
 
 
 class TokenFolderNotRemoved(RuntimeError):
@@ -326,7 +342,14 @@ def expired_athletes(db: DatabaseManager, *, now: datetime | None = None) -> lis
 
 
 def purge_expired_athletes(db: DatabaseManager, *, now: datetime | None = None) -> list[str]:
-    """Delete every athlete whose 30 days after /stop have passed (D4.3, D6)."""
+    """Delete every athlete whose 30 days after /stop have passed (D4.3, D6).
+
+    Queued withdrawals are written to the database first, so their time counts (ADR-0079 §3).
+    """
+    try:
+        db.drain_pending_audit()
+    except Exception as exc:
+        _log.error("pending_audit_drain_before_purge_failed", extra={"error_class": type(exc).__name__})
     purged: list[str] = []
     for athlete_id in expired_athletes(db, now=now):
         delete_athlete(db, athlete_id, now=now)

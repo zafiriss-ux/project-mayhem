@@ -579,6 +579,11 @@ def main():
     # No background Garmin sync: it called Garmin every 6 hours and stored nothing. The
     # morning routine and /sync sync and store (OW-L1, D-129).
     weather.start_background_updates(interval_hours=1)
+    # ADR-0079 §4: without a worker, queued consent withdrawals are written at bot start.
+    try:
+        db.drain_pending_audit()
+    except Exception as exc:
+        log.critical("pending_audit_unreadable", extra={"error_class": type(exc).__name__})
     telegram.start_bot()
 
     # ── Step 9: Schedule automated tasks ─────────────────────────────────────
