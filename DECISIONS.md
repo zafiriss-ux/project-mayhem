@@ -9,6 +9,22 @@
 
 ---
 
+## D-198 · SP-05 και M0-28: το event override-silence χωρίς chat id· το test ιδιωτικότητας κοιτά και τα events
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (TECHNICAL_DEBT M0-28, Tier 2· SP-05, μέρος του).
+- **Πρόβλημα:** το `check_override_silence` έγραφε το chat id του Telegram του owner στο event `override_followup`
+  (`chat_id=chat_id`). Το ADR-0067 D2.8 θέλει τα logs να λένε τον αθλητή μόνο με το `athlete_id`. Το
+  `test_no_log_call_passes_a_personal_detail_as_extra` κοιτούσε μόνο τα κλειδιά του `extra={...}`, ενώ τα πεδία
+  ενός structured event γράφονται κι αυτά στο log.
+- **Απόφαση:** το event γράφει `athlete_id` από την εκκρεμή απόφαση αντί για το chat id. Το test σαρώνει πια και
+  τα kwargs των κλήσεων event (συνάρτηση με όνομα `*_event` ή `structured_event_payload`) με την ίδια λίστα
+  προσωπικών κλειδιών. Η σάρωση βρήκε μόνο αυτή την περίπτωση σε όλο το `titan/`, όπως και ο έλεγχος SP.
+- **Tests:** στο `tests/test_log_privacy.py`, ένα νέο (το event δεν γράφει το chat id) και η επέκταση του
+  υπάρχοντος. Και τα δύο αποτύγχαναν πριν.
+- **Όρια:** η σάρωση βρίσκει event από το όνομα της συνάρτησης. Event με άλλο όνομα ή με πεδία από `**kwargs`
+  δεν πιάνεται. Το `check_override_silence` δεν το καλεί κανείς στον κώδικα του `titan/` (grep), άρα η διαρροή
+  ήταν λανθάνουσα.
+
 ## D-197 · M0-30: το `pip-audit` του CI δεν αγνοεί πια καμία ευπάθεια
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (TECHNICAL_DEBT M0-30, Tier 2). Ο έλεγχος μόνο σφίγγει.

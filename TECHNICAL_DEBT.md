@@ -89,7 +89,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | M0-19 | 1 | HIGH | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | `daily_coach.py:266–267` (`_DEGRADED_ALERT_THRESHOLD_HOURS`) | OPEN · στόχος Phase 27 · έλεγχος SD |
 | M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `titan/main.py:217-232` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC: επιβεβαιώθηκε με εκτέλεση (D-185) |
 | M0-27 | 1 | HIGH | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-12-R1 | `persistence.py` (PostgreSQL adapter) | OPEN · πριν ενεργοποιηθεί το PostgreSQL · έλεγχος IS |
-| M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | OPEN · στόχος Phase 27 · έλεγχος SP |
+| M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | RESOLVED · PR #1141 (D-198) |
 | M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env`· ο έλεγχος SP βρήκε ότι παίρνει και το `TITAN_GARTH_TOKEN_KEY` και τον τόμο με το `.garth_token` του owner (D-192) | `docker-compose.yml`, `api/` | RESOLVED · PR #1138 (D-195): το API δεν έχει `env_file`· το `.garth_token` στο `titan-data` μένει επόμενο βήμα |
 | M0-30 | 2 | LOW | Παλιό `--ignore-vuln` στο `ci.yml` | `.github/workflows/ci.yml` | RESOLVED · PR #1140 (D-197) |
 | M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · έλεγχος AT |
@@ -140,7 +140,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SP-02 | 1 | HIGH | Το `/auth/login` δίνει tokens σε απενεργοποιημένο λογαριασμό· τα tokens απορρίπτονται μετά | `auth.py:64-76`, `main.py:443-456` | RESOLVED · PR #1136 (D-193)· ο ανενεργός λογαριασμός παίρνει την απάντηση λάθος κωδικού, χωρίς tokens, και μετρά ως αποτυχία· επιβεβαιωμένο με test |
 | SP-03 | 2 | HIGH | Το `/stop` απορρίπτεται όταν αποτυγχάνει μόνο το audit· ορίζεται από το INV-22 | `telegram_bot.py:800-848` | OPEN · Β, θέλει ADR · μέρος Α: ειδοποίηση του owner · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος SP (D-192) |
 | SP-04 | 2 | MEDIUM | Το redaction χάνει κωδικό σε μορφή `json.dumps`/`repr` (μέρος του M0-17) | `secrets.py:50-58` | RESOLVED · PR #1139 (D-196) |
-| SP-05 | 3 | LOW | Chat id του owner στο event override-silence· το test δεν κοιτά πεδία events (μέρος του M0-28) | `telegram_bot.py:982-988` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-05 | 3 | LOW | Chat id του owner στο event override-silence· το test δεν κοιτά πεδία events (μέρος του M0-28) | `telegram_bot.py:982-988` | RESOLVED · PR #1141 (D-198) |
 | SP-06 | 3 | LOW | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | `setup_wizard.py:249-250` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
 | SP-07 | 2 | HIGH | Άγνωστο username απορρίπτεται χωρίς bcrypt, πιο γρήγορα από λάθος κωδικό· πιθανό oracle χρονισμού (RBP-05)· από ανάγνωση κώδικα | `auth.py:66-67` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος AI του #1136 (D-194) |
 

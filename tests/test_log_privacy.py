@@ -97,11 +97,19 @@ def test_an_untrusted_chat_is_logged_without_its_chat_id(settings_env, caplog) -
     assert str(_STRANGER) not in _all_text(caplog.records)
 
 
+def _is_event_call(node: ast.Call) -> bool:
+    """A structured-event emitter (``_telegram_event``, ``_sync_event``...): its kwargs are logged."""
+    name = getattr(node.func, "id", None) or getattr(node.func, "attr", None) or ""
+    return name.endswith("_event") or name == "structured_event_payload"
+
+
 def _personal_extra_keys(path: Path) -> list[tuple[int, str]]:
     found = []
     for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
         if not isinstance(node, ast.Call):
             continue
+        if _is_event_call(node):  # M0-28: an event's fields reach the log like extra={...}
+            found.extend((node.lineno, kw.arg) for kw in node.keywords if kw.arg in _PERSONAL_EXTRA_KEYS)
         for kw in node.keywords:
             if kw.arg == "extra" and isinstance(kw.value, ast.Dict):
                 found.extend(
@@ -110,6 +118,21 @@ def _personal_extra_keys(path: Path) -> list[tuple[int, str]]:
                     if isinstance(key, ast.Constant) and key.value in _PERSONAL_EXTRA_KEYS
                 )
     return found
+
+
+@pytest.mark.unit
+def test_the_override_silence_event_does_not_log_the_chat_id(settings_env, caplog) -> None:
+    # SP-05: the follow-up event names the athlete, never the owner's Telegram chat id.
+    caplog.set_level(logging.DEBUG)
+    bot = TitanTelegramBot(bot_token="", chat_id=_STRANGER)
+    bot._pending_override_prompts[_STRANGER] = {
+        "athlete_id": "owner", "created_at": "2000-01-01T00:00:00+00:00",
+    }
+
+    assert bot.check_override_silence() == [_STRANGER]
+    text = _all_text(caplog.records)
+    assert "override_followup" in text
+    assert str(_STRANGER) not in text
 
 
 @pytest.mark.unit

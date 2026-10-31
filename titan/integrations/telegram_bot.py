@@ -984,7 +984,8 @@ class TitanTelegramBot:
                     "failure",
                     failure_class=OVERRIDE_SILENCE,
                     subsystem="override_followup",
-                    chat_id=chat_id,
+                    # SP-05: the athlete, never the chat id (ADR-0067 D2.8).
+                    athlete_id=payload.get("athlete_id"),
                     timeout_hours=timeout_hours,
                 )
         return due_chat_ids
