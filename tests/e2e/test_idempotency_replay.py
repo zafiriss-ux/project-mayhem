@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from freezegun import freeze_time
 
 from tests.e2e.conftest import (
+    E2E_TODAY,
     StubGarminSync,
     StubGlycogen,
     StubGovernance,
@@ -23,8 +25,10 @@ from titan.orchestration.daily_coach import DailyCoach
 
 
 @pytest.mark.integration
+# AT-02: the clock sits on the scenario day, so the dated sleep of the stub is read.
+@freeze_time(f"{E2E_TODAY} 07:30:00")
 def test_idempotency_replay_garmin_day_persisted_twice(tmp_path):
-    fixed_today = "2026-03-04"
+    fixed_today = E2E_TODAY
     db = DatabaseManager(db_name="e2e_idempotency_replay.db", db_dir=tmp_path)
 
     coach = DailyCoach(

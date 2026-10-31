@@ -4,8 +4,10 @@ import hashlib
 import json
 
 import pytest
+from freezegun import freeze_time
 
 from tests.e2e.conftest import (
+    E2E_TODAY,
     StubGarminSync,
     StubGlycogen,
     StubGovernance,
@@ -71,8 +73,10 @@ def _run_once(tmp_path, fixed_today: str, run_idx: int):
 
 
 @pytest.mark.integration
+# AT-02: the clock sits on the scenario day, so the dated sleep of the stub is read.
+@freeze_time(f"{E2E_TODAY} 07:30:00")
 def test_determinism_snapshot_same_inputs_same_output(tmp_path):
-    fixed_today = "2026-03-04"
+    fixed_today = E2E_TODAY
     runs = [_run_once(tmp_path, fixed_today=fixed_today, run_idx=i) for i in range(10)]
 
     payload_hashes = {result[0] for result in runs}
