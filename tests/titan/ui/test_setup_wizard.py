@@ -326,3 +326,34 @@ def test_save_credentials_without_keyring_keeps_secrets_out_of_env_unless_confir
 
     assert backend == "secrets_not_saved"
     assert saved_env == {"TELEGRAM_CHAT_ID": "123"}
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permissions")
+def test_save_env_never_writes_a_credential_into_a_readable_file(tmp_path, monkeypatch):
+    # SP-06: the file is 600 before the first byte, not after; chmod alone left a window.
+    env_path = tmp_path / ".env"
+    monkeypatch.setattr(setup_wizard, "ENV_PATH", env_path)
+    monkeypatch.setattr(type(env_path), "chmod", lambda self, mode: None)  # no fix after the fact
+    old_umask = os.umask(0o022)
+    try:
+        setup_wizard._save_env({"GARMIN_PASSWORD": "canary-sp06"})
+    finally:
+        os.umask(old_umask)
+
+    assert stat.S_IMODE(env_path.stat().st_mode) == stat.S_IRUSR | stat.S_IWUSR
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permissions")
+def test_a_profile_update_tightens_a_readable_env(tmp_path, monkeypatch):
+    # SP-06: the profile update rewrites the file that holds the credentials.
+    env_path = tmp_path / ".env"
+    env_path.write_text("GARMIN_PASSWORD=canary-sp06\n")
+    env_path.chmod(0o644)
+    monkeypatch.setattr(setup_wizard, "ENV_PATH", env_path)
+
+    setup_wizard._save_athlete_profile_to_env({"TRAINING_PHASE": "base"})
+
+    assert stat.S_IMODE(env_path.stat().st_mode) == stat.S_IRUSR | stat.S_IWUSR
+    assert "GARMIN_PASSWORD=canary-sp06" in env_path.read_text()
