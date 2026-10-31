@@ -188,3 +188,14 @@ def test_a_stop_that_succeeds_does_not_alert_the_owner(env, monkeypatch) -> None
 
     assert env.bot.handle_athlete_stop(987654321, "a-0000abcd").startswith("⏹")
     assert sent == []
+
+
+def test_a_failed_owner_alert_still_answers_the_athlete(env, monkeypatch) -> None:
+    _break_audit(monkeypatch, env.db)
+
+    def _raise(text, parse_mode="Markdown"):
+        raise RuntimeError("telegram down")
+
+    monkeypatch.setattr(env.bot, "send_message", _raise)
+
+    assert env.bot.handle_athlete_stop(987654321, "a-0000abcd") == _AUDIT_UNAVAILABLE_REPLY
