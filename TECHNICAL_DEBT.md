@@ -55,7 +55,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | M0-09 | 2 | Οι αθλητές τρέχουν ένας ένας. Όσοι δεν ξεκινήσουν ως τις 12:00 UTC χάνουν τη μέρα χωρίς ειδοποίηση στον owner | `worker/__init__.py` (`ROUTINE_LAST_START_HOUR_UTC`, round) | OPEN · στόχος Phase 27 |
 | M0-10 | 2 | Το εβδομαδιαίο πλάνο στέλνεται το πολύ μία φορά, και μια αποτυχημένη αποστολή δεν αναφέρεται | `worker/__init__.py` (`_prepare_weekly_plan`) | OPEN · στόχος Phase 27 |
 | M0-11 | 1 | Η βάση RHR και το ιστορικό φορτίου μετράνε από το ρολόι, όχι από τη μέρα του πρωινού. Σε επανάληψη μετά τα μεσάνυχτα η H3 μπορεί να χάσει άνοδο RHR | `repositories/physiology.py`, `repositories/training.py` | RESOLVED · PR #1096 (D-154)· το ιστορικό φορτίου ήταν ήδη σωστό (D-131) |
-| M0-14 | 1 | Το `/metrics` του API δεν ζητά πιστοποίηση και η θύρα 8000 ακούει σε όλο το δίκτυο | `api/main.py` (`/metrics`), `docker-compose.yml` (ports) | OPEN · στόχος Phase 27 |
+| M0-14 | 1 | Το `/metrics` του API δεν ζητά πιστοποίηση και η θύρα 8000 ακούει σε όλο το δίκτυο | `api/main.py` (`/metrics`), `docker-compose.yml` (ports) | RESOLVED · PR #1125 (D-182)· 404 χωρίς `TITAN_METRICS_TOKEN`, 401 χωρίς σωστό Bearer· θύρα `127.0.0.1:8000` |
 | M0-15 | 2 | 6 tests παραλείπονται μόνιμα | `tests/test_t5_50_session_type_map.py` | OPEN · στόχος Phase 27 |
 | M0-16 | 2 | Η σχεδίαση (ένας αθλητής τη φορά, ένα SQLite, 07:00–12:00 UTC) δεν φτάνει για πολλούς αθλητές. Για πιλότο λίγων αθλητών δεν είναι θέμα | `worker/__init__.py` (round) | OPEN · στόχος Phase 27 |
 | M0-17 | 1 | Το φίλτρο που κρύβει στοιχεία από τα logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές log (MA-F7 μερικώς) | `utils/secrets.py`, `scripts/run_api.py`, `telegram_bot.py` | OPEN · στόχος Phase 27 |

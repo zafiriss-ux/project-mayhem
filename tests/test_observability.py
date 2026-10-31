@@ -26,13 +26,14 @@ def test_prometheus_gauge_registered():
 
 
 @pytest.mark.integration
-def test_metrics_endpoint_returns_200(jwt_keys):  # noqa: ARG001
+def test_metrics_endpoint_returns_200(jwt_keys, monkeypatch):  # noqa: ARG001
     from fastapi.testclient import TestClient
 
     from titan.api.main import create_app
 
+    monkeypatch.setenv("TITAN_METRICS_TOKEN", "synthetic-scrape-token")  # M0-14
     client = TestClient(create_app())
-    r = client.get("/metrics")
+    r = client.get("/metrics", headers={"Authorization": "Bearer synthetic-scrape-token"})
     assert r.status_code == 200
     assert "titan_api_startup" in r.text or "python_" in r.text
 
