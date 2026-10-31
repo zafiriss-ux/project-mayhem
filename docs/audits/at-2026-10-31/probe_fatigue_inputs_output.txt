@@ -1,0 +1,4 @@
+key present in real sync result: {'hr_suppression': False, 'rpe_mismatch': False, 'pace_hr_divergence': False, 'fueling_confirmed': False, 'time_above_lt2_min': False, 'dprime_fraction': False, 'temperature_c': False, 'quality_flags': False}
+fatigue_level by soreness 0..10 with production inputs: {0: 'LOW', 1: 'LOW', 2: 'LOW', 3: 'LOW', 4: 'LOW', 5: 'MEDIUM', 6: 'MEDIUM', 7: 'MEDIUM', 8: 'MEDIUM', 9: 'MEDIUM', 10: 'MEDIUM'}
+HIGH reachable in production: False
+HIGH reachable with fake keys (tests): HIGH

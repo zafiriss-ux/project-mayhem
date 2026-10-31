@@ -1,0 +1,22 @@
+EMITTED by real sync_all: ['activities', 'data_age_hours', 'data_trust', 'hrv', 'hrv_sync_metrics', 'sleep', 'status', 'weight']
+READ but NEVER emitted (20):
+  days_since_last_vo2    titan/orchestration/daily_coach.py:1610
+  dew_point              titan/orchestration/daily_coach.py:1667
+  dprime_fraction        titan/orchestration/daily_coach.py:1229
+  drift_pct              titan/orchestration/daily_coach.py:1408
+  fueling_confirmed      titan/orchestration/daily_coach.py:1755
+  governance_events      titan/features/weekly_planner.py:492
+  hr_suppression         titan/orchestration/daily_coach.py:1566
+  hrr                    titan/orchestration/daily_coach.py:1150, titan/orchestration/daily_coach.py:1151
+  hrv_latest_ms          titan/features/weekly_planner.py:484
+  hrv_rmssd              titan/orchestration/daily_coach.py:1793
+  illness_flag           titan/features/weekly_planner.py:498
+  injury_flag            titan/orchestration/daily_coach.py:2362
+  intra_carb_g           titan/orchestration/daily_coach.py:1230
+  pace_hr_divergence     titan/orchestration/daily_coach.py:1568
+  quality_flags          titan/orchestration/daily_coach.py:1134
+  resting_hr             titan/orchestration/daily_coach.py:1794
+  rpe_mismatch           titan/orchestration/daily_coach.py:1567
+  temperature_c          titan/orchestration/daily_coach.py:1666, titan/orchestration/daily_coach.py:1216
+  time_above_lt2_min     titan/orchestration/daily_coach.py:1228
+  weight_kg              titan/orchestration/daily_coach.py:1231

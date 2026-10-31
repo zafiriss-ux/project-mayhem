@@ -1,0 +1,67 @@
+"""AT probe plugin: refuse every non-loopback network connection during pytest.
+
+Loaded with `-p at_nonet` (PYTHONPATH=.audit-sd/at). Unix sockets and loopback stay open.
+Every refused attempt is appended to $AT_NONET_LOG with the current test id.
+Subprocesses are not covered (they do not load the plugin).
+"""
+import os
+import socket
+
+_LOG = os.environ.get("AT_NONET_LOG", "/tmp/at_nonet.log")
+_CURRENT = {"id": "<collection>"}
+_LOCAL = {"127.0.0.1", "::1", "localhost", "0.0.0.0", ""}
+_orig_connect = socket.socket.connect
+_orig_connect_ex = socket.socket.connect_ex
+_orig_getaddrinfo = socket.getaddrinfo
+_orig_create_connection = socket.create_connection
+
+
+def _record(kind, target):
+    with open(_LOG, "a", encoding="utf-8") as fh:
+        fh.write(f"{_CURRENT['id']}\t{kind}\t{target!r}\n")
+
+
+def _is_local(addr):
+    if isinstance(addr, (str, bytes)):
+        return True  # AF_UNIX path
+    host = addr[0] if isinstance(addr, tuple) and addr else ""
+    host = host.decode() if isinstance(host, bytes) else str(host)
+    return host in _LOCAL or host.startswith("127.")
+
+
+def _guard(self, addr):
+    if self.family == getattr(socket, "AF_UNIX", object()) or _is_local(addr):
+        return None
+    _record("connect", addr)
+    raise OSError(101, f"AT network block: {addr!r}")
+
+
+def connect(self, addr):
+    _guard(self, addr)
+    return _orig_connect(self, addr)
+
+
+def connect_ex(self, addr):
+    _guard(self, addr)
+    return _orig_connect_ex(self, addr)
+
+
+def getaddrinfo(host, *args, **kwargs):
+    h = host.decode() if isinstance(host, bytes) else (host or "")
+    if h not in _LOCAL and not h.startswith("127.") and h != "testserver":
+        _record("dns", h)
+        raise socket.gaierror(-3, f"AT network block (dns): {h}")
+    return _orig_getaddrinfo(host, *args, **kwargs)
+
+
+socket.socket.connect = connect
+socket.socket.connect_ex = connect_ex
+socket.getaddrinfo = getaddrinfo
+
+
+def pytest_runtest_setup(item):
+    _CURRENT["id"] = item.nodeid
+
+
+def pytest_runtest_teardown(item):
+    _CURRENT["id"] = "<between>"

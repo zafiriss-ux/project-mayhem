@@ -1,0 +1,15 @@
+import os
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization as s
+k=rsa.generate_private_key(public_exponent=65537,key_size=2048)
+os.environ["TITAN_JWT_PRIVATE_KEY"]=k.private_bytes(s.Encoding.PEM,s.PrivateFormat.PKCS8,s.NoEncryption()).decode()
+os.environ["TITAN_JWT_PUBLIC_KEY"]=k.public_key().public_bytes(s.Encoding.PEM,s.PublicFormat.SubjectPublicKeyInfo).decode()
+import tempfile, pathlib
+from titan.core.database import DatabaseManager
+from titan.api.main import create_app
+from fastapi.testclient import TestClient
+d=tempfile.mkdtemp()
+db=DatabaseManager("titan_core.db", db_dir=pathlib.Path(d))
+c=TestClient(create_app(db=db))
+for p in ["/docs","/redoc","/openapi.json","/docs/oauth2-redirect","/health","/readyz","/metrics","/athletes","/api/csrf-token"]:
+    print(p, c.get(p).status_code)

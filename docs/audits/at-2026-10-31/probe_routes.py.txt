@@ -1,0 +1,36 @@
+"""AT probe: list every route of create_app() and test each without credentials.
+
+Synthetic only: a fresh RSA key pair, throwaway HOME, no DB.
+"""
+import os, sys, tempfile
+sys.path.insert(0, os.getcwd())
+os.environ["HOME"] = tempfile.mkdtemp(prefix="at-home-")
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+k = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+os.environ["TITAN_JWT_PRIVATE_KEY"] = k.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+os.environ["TITAN_JWT_PUBLIC_KEY"] = k.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo).decode()
+os.environ.pop("TITAN_METRICS_TOKEN", None)
+from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
+from titan.api.main import create_app
+
+def deps(d, acc):
+    for sub in d.dependencies:
+        acc.append(getattr(sub.call, "__qualname__", repr(sub.call)))
+        deps(sub, acc)
+    return acc
+
+app = create_app()
+print("== routes ==")
+for r in app.routes:
+    if isinstance(r, APIRoute):
+        print(f"{','.join(sorted(r.methods)):10} {r.path:35} deps={sorted(set(deps(r.dependant, [])))}")
+    else:
+        print(f"{type(r).__name__:10} {getattr(r,'path',r)}")
+print("== unauthenticated GET/POST, no cookies ==")
+c = TestClient(app)
+for method, path in [("GET","/health"),("GET","/readyz"),("GET","/api/csrf-token"),("GET","/docs"),("GET","/redoc"),("GET","/openapi.json"),("GET","/docs/oauth2-redirect"),("GET","/metrics"),("GET","/athletes/owner/dashboard"),("POST","/auth/logout")]:
+    resp = c.request(method, path)
+    print(f"{method:5} {path:30} -> {resp.status_code}")
+print("openapi paths:", sorted(c.get("/openapi.json").json().get("paths", {}).keys()))

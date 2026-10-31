@@ -1,0 +1,33 @@
+"""AT probe: keys the morning reads from the Garmin sync result vs keys the real sync can emit.
+
+Real sync result = GarminSyncResult TypedDict (built by GarminSync._sync_operation via
+GarminSyncResultContract.to_payload). Reads = every literal key in garmin_data.get("k") /
+garmin_data["k"] (any receiver ending in garmin_data) under titan/.
+"""
+import ast, os, sys, pathlib
+sys.path.insert(0, os.getcwd())
+from typing import get_type_hints
+from titan.orchestration.contracts import GarminSyncResult
+
+emitted = set(GarminSyncResult.__annotations__)
+reads = {}
+for path in pathlib.Path("titan").rglob("*.py"):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        recv = key = None
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get" and node.args:
+            recv, a = node.func.value, node.args[0]
+            key = a.value if isinstance(a, ast.Constant) and isinstance(a.value, str) else None
+        elif isinstance(node, ast.Subscript):
+            recv, s = node.value, node.slice
+            key = s.value if isinstance(s, ast.Constant) and isinstance(s.value, str) else None
+        if key is None or recv is None:
+            continue
+        name = recv.attr if isinstance(recv, ast.Attribute) else getattr(recv, "id", None)
+        if name == "garmin_data":
+            reads.setdefault(key, []).append(f"{path}:{node.lineno}")
+print("EMITTED by real sync_all:", sorted(emitted))
+never = {k: v for k, v in reads.items() if k not in emitted}
+print(f"READ but NEVER emitted ({len(never)}):")
+for k in sorted(never):
+    print(f"  {k:22} {', '.join(never[k])}")
