@@ -116,8 +116,11 @@ CREATE TABLE auth_tokens (
 );
 ```
 
-**Public endpoint exception (sole exception):**
-`GET /health` — no auth required. All other endpoints require a valid JWT.
+**Public endpoint exceptions (allow-list; amended by ADR-0077, 2026-10-31):**
+`GET /health`, `GET /readyz`, `GET /api/csrf-token`, `POST /auth/login`, `POST /auth/refresh` and
+`POST /auth/logout` need no JWT. `/metrics` is guarded by its own token (M0-14). `/docs`, `/redoc` and
+`/openapi.json` are not served (AT-03). All other endpoints require a valid JWT. The allow-list lives
+in `tests/titan/api/test_public_routes_at03.py` (`PUBLIC_ROUTES`); changing it requires an ADR.
 
 ---
 
@@ -171,7 +174,7 @@ T5-11 is DONE when:
 1. `auth_users` and `auth_tokens` tables exist in Alembic migration
 2. `titan/api/auth.py` — JWT create/verify with RS256
 3. `titan/api/dependencies.py` — `get_current_user()`, `require_coach()` FastAPI dependencies
-4. Every existing or new endpoint is behind `Depends(get_current_user)` except `GET /health`
+4. Every existing or new endpoint is behind `Depends(get_current_user)` except the allow-listed routes of §2 (ADR-0077)
 5. Application-level isolation check: `ATHLETE` role sees only their own data
 6. `tests/titan/api/test_auth.py` — happy path + token expiry + role violation + isolation violation
 7. All mandatory gates green: `ruff check .` → `pytest -q -W error::pytest.PytestWarning` → `pytest -q`
