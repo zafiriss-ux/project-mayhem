@@ -162,6 +162,25 @@ def test_an_unknown_username_costs_one_bcrypt_check_like_a_known_one(store: Auth
 
 
 @pytest.mark.integration
+def test_a_password_over_72_bytes_answers_401_and_counts(client: TestClient, store: AuthStore) -> None:
+    """SP-07 review: bcrypt 5 raises on > 72 bytes; that was a 500 that skipped the failure count."""
+    store.upsert_user(
+        user_id="coach-4", username="longpw", password_hash=hash_password("short-pass"),
+        role="COACH", athlete_id=None,
+    )
+    long_password = "x" * 100
+
+    known = client.post("/auth/login", json={"username": "longpw", "password": long_password})
+    unknown = client.post("/auth/login", json={"username": "nobody-long", "password": long_password})
+
+    assert known.status_code == unknown.status_code == 401
+    assert known.json() == unknown.json() == {"detail": "Invalid credentials"}
+    for _ in range(LOCKOUT_MAX_ATTEMPTS - 1):
+        client.post("/auth/login", json={"username": "longpw", "password": long_password})
+    assert store.is_locked_out("longpw")
+
+
+@pytest.mark.integration
 def test_successful_login_after_lockout_expiry(store: AuthStore, rsa_keys: None) -> None:
     base = 1_000_000.0
 

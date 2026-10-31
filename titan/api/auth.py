@@ -171,8 +171,17 @@ def hash_password(plain_password: str) -> str:
     return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
+_BCRYPT_MAX_BYTES = 72
+
+
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), password_hash.encode("utf-8"))
+    candidate = plain_password.encode("utf-8")
+    if len(candidate) > _BCRYPT_MAX_BYTES:
+        # bcrypt 5 raises on more than 72 bytes, and hash_password could never have stored
+        # such a password: deny, after the same bcrypt work, instead of a 500 (SP-07).
+        bcrypt.checkpw(candidate[:_BCRYPT_MAX_BYTES], password_hash.encode("utf-8"))
+        return False
+    return bcrypt.checkpw(candidate, password_hash.encode("utf-8"))
 
 
 @functools.cache
