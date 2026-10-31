@@ -141,7 +141,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SP-03 | 2 | HIGH | Το `/stop` απορρίπτεται όταν αποτυγχάνει μόνο το audit· ορίζεται από το INV-22 | `telegram_bot.py:800-848` | OPEN · Β, θέλει ADR · μέρος Α: ειδοποίηση του owner · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος SP (D-192) |
 | SP-04 | 2 | MEDIUM | Το redaction χάνει κωδικό σε μορφή `json.dumps`/`repr` (μέρος του M0-17) | `secrets.py:50-58` | RESOLVED · PR #1139 (D-196) |
 | SP-05 | 3 | LOW | Chat id του owner στο event override-silence· το test δεν κοιτά πεδία events (μέρος του M0-28) | `telegram_bot.py:982-988` | RESOLVED · PR #1141 (D-198) |
-| SP-06 | 3 | LOW | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | `setup_wizard.py:249-250` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος SP (D-192) |
+| SP-06 | 3 | LOW | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | `setup_wizard.py:249-250` | RESOLVED · PR #1142 (D-199) |
 | SP-07 | 2 | HIGH | Άγνωστο username απορρίπτεται χωρίς bcrypt, πιο γρήγορα από λάθος κωδικό· πιθανό oracle χρονισμού (RBP-05)· από ανάγνωση κώδικα | `auth.py:66-67` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος AI του #1136 (D-194) |
 
 ---

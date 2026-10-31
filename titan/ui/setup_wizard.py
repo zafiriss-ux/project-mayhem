@@ -237,6 +237,26 @@ def _save_keyring_credentials(creds: dict, keyring) -> None:
         keyring.set_password(service_name, KEYRING_USERNAME, creds[env_key])
 
 
+def _write_private(path, text: str) -> None:
+    """Write ``text`` to ``path`` so that no one else can read it at any moment (SP-06).
+
+    A new file is created as 600; an existing one is truncated, then set to 600
+    before any new byte is written. The old write-then-chmod order left the
+    credentials readable by others until the chmod.
+    """
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
+    try:
+        if hasattr(os, "fchmod"):  # POSIX only
+            os.fchmod(fd, stat.S_IRUSR | stat.S_IWUSR)
+        # The locale encoding, as write_text used and as load_env_file reads.
+        with os.fdopen(fd, "w") as handle:  # noqa: PLW1514
+            fd = -1  # owned by the file object now
+            handle.write(text)
+    finally:
+        if fd != -1:
+            os.close(fd)
+
+
 def _save_env(creds: dict):
     lines = [f"# TITAN v{__version__} – Auto-generated credentials", "# ΜΗΝ κοινοποιήσεις αυτό το αρχείο!\n"]
     for k, v in creds.items():
@@ -246,7 +266,7 @@ def _save_env(creds: dict):
     # plaintext .env by design for local
     # single-user deployment. Keyring
     # integration is tracked in P15-ARCH5.
-    ENV_PATH.write_text("\n".join(lines) + "\n")
+    _write_private(ENV_PATH, "\n".join(lines) + "\n")
     ENV_PATH.chmod(stat.S_IRUSR | stat.S_IWUSR)
     if os.name == "nt":
         print("  ⚠️  Windows limitation: .env file permissions could not be restricted automatically.")
@@ -286,7 +306,7 @@ def _save_athlete_profile_to_env(changes: dict) -> None:
         if key not in updated:
             value = str(value).replace("\n", "").replace("\r", "")
             result.append(f"{key}={value}")
-    ENV_PATH.write_text("\n".join(result) + "\n")
+    _write_private(ENV_PATH, "\n".join(result) + "\n")
 
 
 def ensure_credentials() -> bool:
