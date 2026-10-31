@@ -534,7 +534,9 @@ class OperationsRepository:
         the SQLite online backup API which does not require exclusive access.
 
         One backup per calendar day is created. If today's backup already exists
-        the call is a no-op and returns None. Every new artifact is verified
+        the call is a no-op and returns None. The backup is written to
+        ``titan_<date>.db.partial`` and renamed only after it passes
+        verification, so an interrupted run never leaves a dated file (RC-01). Every new artifact is verified
         (AGENTS DR-02): ``PRAGMA integrity_check`` must return ``ok`` and its
         ``user_version`` must match the live database. A failed artifact is
         renamed to ``*.db.corrupt``, logged CRITICAL and counted in
@@ -565,17 +567,35 @@ class OperationsRepository:
         # deferred: titan.core.database imports this module
         from titan.core.database import _log, _verify_backup_artifact
 
+        # RC-01: build and verify under a temporary name, then rename. A process
+        # killed mid-backup leaves only the ``.partial`` file, which neither counts
+        # as today's backup nor matches the retention glob.
+        partial = dest.with_name(dest.name + ".partial")
         try:
+            # Leftovers of any earlier interrupted run, today's or an older day's.
+            for stale in backup_dir.glob("titan_????-??-??.db.partial"):
+                stale.unlink(missing_ok=True)
             with self._db._lock:
                 self._db._ensure_open_locked()
-                with sqlite3.connect(str(dest)) as dst_conn:
+                dst_conn = sqlite3.connect(str(partial))
+                try:
                     self._db.conn.backup(dst_conn)
+                    # One self-contained file, so the rename below moves all of it
+                    # (no ``-wal``/``-shm`` left beside the ``.partial`` name).
+                    dst_conn.execute("PRAGMA journal_mode=DELETE")
+                finally:
+                    dst_conn.close()
                 source_version = int(self._db.conn.execute("PRAGMA user_version").fetchone()[0])
-            problem = _verify_backup_artifact(dest, expected_user_version=source_version)
+            problem = _verify_backup_artifact(partial, expected_user_version=source_version)
+            if problem is None:
+                partial.replace(dest)
         except Exception as exc:
             problem = f"{type(exc).__name__}: {exc}"
 
         if problem is not None:
+            if partial.exists():
+                with suppress(OSError):
+                    partial.replace(dest.with_name(dest.name + ".corrupt"))
             self._db._record_backup_failure(dest, problem)
             return None
 
