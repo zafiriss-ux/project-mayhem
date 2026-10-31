@@ -31,10 +31,19 @@ def _call_name(func: ast.expr) -> str | None:
 
 
 def _top_level_entries() -> set[str]:
-    return {p.name for p in REPO_ROOT.iterdir() if not p.name.startswith(".git")} | {
-        ".github",
-        ".semgrep",
-    }
+    # Only ``.git`` itself is skipped: ``.gitignore``, ``.github`` and friends are repo files.
+    return {p.name for p in REPO_ROOT.iterdir() if p.name != ".git"} | {".github", ".semgrep"}
+
+
+def _literal_prefix(node: ast.expr) -> str | None:
+    """The leading constant text of a string literal or f-string, else None."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr) and node.values:
+        head = node.values[0]
+        if isinstance(head, ast.Constant) and isinstance(head.value, str):
+            return head.value
+    return None
 
 
 def cwd_relative_paths(source: str, top_level: set[str]) -> list[tuple[int, str]]:
@@ -56,8 +65,9 @@ def cwd_relative_paths(source: str, top_level: set[str]) -> list[tuple[int, str]
         name = _call_name(node.func)
         arg = node.args[0]
         if name in _PATH_CALLS:
-            if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and is_repo_relative(arg.value):
-                hits.append((node.lineno, arg.value))
+            value = _literal_prefix(arg)
+            if value is not None and is_repo_relative(value):
+                hits.append((node.lineno, value))
         elif name in _SUBPROCESS_CALLS and isinstance(arg, (ast.List, ast.Tuple)):
             if any(kw.arg == "cwd" for kw in node.keywords):
                 continue
@@ -104,6 +114,15 @@ def test_detector_flags_cwd_dot_alembic_config_and_subprocess_without_cwd():
         (1, "."),
         (2, "alembic.ini"),
         (3, "scripts/backup.sh"),
+    ]
+
+
+@pytest.mark.unit
+def test_detector_flags_dotfiles_and_fstring_prefixes():
+    src = 'Path(".gitignore")\nPath(f"titan/{name}.py")\nPath(f"{base}/titan")\n'
+    assert cwd_relative_paths(src, {".gitignore", "titan"}) == [
+        (1, ".gitignore"),
+        (2, "titan/"),
     ]
 
 

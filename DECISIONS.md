@@ -24,11 +24,14 @@
   απόλυτο `alembic.ini` και `script_location`, επειδή το `script_location = alembic` του `alembic.ini` λύνεται
   από τον τρέχοντα φάκελο. Το `alembic.ini` δεν αλλάζει. Απορρίφθηκε ένα `os.chdir(REPO_ROOT)` στο `conftest.py`:
   θα έκρυβε το πρόβλημα αντί να το λύσει, και θα άλλαζε τον φάκελο και για τα tests που δουλεύουν σε `tmp_path`.
-- **Tests:** νέο `tests/test_repo_relative_paths_at07.py` (4 tests). Ελέγχει με AST ότι κανένα test δεν περνά
-  διαδρομή του repo σχετική με τον τρέχοντα φάκελο σε `Path`/`open`/`os.path`/`Config`, ούτε σε subprocess
-  χωρίς `cwd=`. Πριν τη διόρθωση αποτύγχανε με 74 ευρήματα σε 38 αρχεία. Δεν πιάνει διαδρομές που περνούν μέσω μεταβλητής
-  (π.χ. `helper("titan/x.py")` → `Path(path)`). Αυτές διορθώθηκαν με το χέρι, και επιβεβαιώθηκε ότι όλο το
-  suite περνά και από άλλον φάκελο.
+- **Tests:** νέο `tests/test_repo_relative_paths_at07.py` (5 tests). Ελέγχει με AST τη συνηθισμένη μορφή του
+  προβλήματος: ένα string literal ή την αρχή ενός f-string, ως πρώτο όρισμα σε `Path`/`open`/`os.path`/`Config`,
+  που ξεκινά από όνομα στη ρίζα του repo (και τα `.gitignore`, `.github` κ.λπ.) ή είναι το `"."`. Ελέγχει επίσης
+  τέτοια literals μέσα σε λίστα argv subprocess χωρίς `cwd=`. Πριν τη διόρθωση αποτύγχανε με 75 ευρήματα σε
+  39 αρχεία. Δεν πιάνει διαδρομές που περνούν μέσω μεταβλητής (π.χ. `helper("titan/x.py")` → `Path(path)`,
+  ή `cmd = [...]`· `subprocess.run(cmd)`), ούτε `glob`/`os.walk`/`os.listdir`/`shutil`. Αυτές διορθώθηκαν με το
+  χέρι, και επιβεβαιώθηκε με εκτέλεση ότι όλο το suite περνά και από άλλον φάκελο. Το `test_new_modules`
+  (T4-17) διάβαζε και ξανάγραφε το `.gitignore` του τρέχοντος φακέλου· τώρα αυτό του repo.
 
 ---
 

@@ -51,6 +51,8 @@ from titan.science.readiness_engine import ReadinessEngine
 from titan.science.tsb_engine import TSBEngine
 from titan.ui import setup_wizard
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 # ══════════════════════════════════════════════════════════════════════════════
 # HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1258,7 +1260,7 @@ class TestSetupWizard:
     @pytest.mark.skipif(platform.system() == "Windows", reason="POSIX permissions not enforceable on Windows")
     def test_save_env_sanitizes_newlines_and_sets_permissions(self, tmp_path):
         env_file = tmp_path / ".env"
-        repo_gitignore = Path(".gitignore")
+        repo_gitignore = REPO_ROOT / ".gitignore"
         original_gitignore = repo_gitignore.read_text() if repo_gitignore.exists() else ""
 
         try:
