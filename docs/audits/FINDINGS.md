@@ -313,7 +313,7 @@ owner. Το CI είναι πράσινο: ένα πλήρες `titan_ci.sh` (6/6
 | AT-05 | Το pytest γράφει στο `titan.log` της ρίζας (≈8 MB ανά εκτέλεση)· ο handler του root logger μένει· η 2η εκτέλεση αφήνει `titan.log.1`, που δεν το πιάνει το `.gitignore` | MEDIUM | Α | FIXED (#1148, D-205)· επιβεβαιωμένο με test | — | `titan/main.py:75-95, 447`, `.gitignore:59` |
 | AT-06 | Τρεις πύλες για το όριο modules με δύο μετρήσεις (77 με `find`, 89 με `pkgutil`) και ένα literal 90 | LOW | Α | ανοιχτό· επιβεβαιωμένο με εκτέλεση | — | `test_complexity_budget.py:17-39`, `test_documentation_consistency.py:201-210`, `ci.yml:510-533` |
 | AT-07 | Σχετικές διαδρομές στα tests (11/47 αποτυγχάνουν από άλλον φάκελο) και 74 ελέγχοι string μέσα στον πηγαίο κώδικα | LOW | Α | ανοιχτό· επιβεβαιωμένο με εκτέλεση | — | `test_opus_critical_fixes.py:10-53` κ.ά. |
-| AT-08 | Κανένα όριο χρόνου ανά test (`timeout`, `faulthandler_timeout`), ενώ το `pytest-timeout` είναι εγκατεστημένο | LOW | Α | ανοιχτό· από ανάγνωση κώδικα | — | `pyproject.toml`, `requirements-dev.txt:10` |
+| AT-08 | Κανένα όριο χρόνου ανά test (`timeout`, `faulthandler_timeout`), ενώ το `pytest-timeout` είναι εγκατεστημένο | LOW | Α | FIXED (#1149, D-206)· επιβεβαιωμένο με test | — | `pyproject.toml`, `requirements-dev.txt:10` |
 | AT-09 | Διπλές και αχρησιμοποίητες σταθερές `LOG_*`· το AGENTS §16.6 λέει «env-overridable» και δεν ισχύει· το `should_replan` δεν καλείται στην παραγωγή | LOW | Α (το §16.6 με PR policy-only) | ανοιχτό· επιβεβαιωμένο με εκτέλεση | — | `titan/main.py:65-66`, `utils/constants.py:124-125`, `weekly_planner.py:463-501` |
 
 Επανέλεγχος γνωστών:
