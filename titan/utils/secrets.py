@@ -49,6 +49,9 @@ def _escaped_forms(value: str) -> set[str]:
     """
     forms = {value, json.dumps(value)[1:-1], json.dumps(value, ensure_ascii=False)[1:-1]}
     forms.add(repr(value)[1:-1])
+    # repr escapes ' only inside single quotes, which it picks when the whole string also has
+    # a ". Appending both quotes forces that form; the slice drops the quote and \'".
+    forms.add(repr(value + "'\"")[1:-4])
     return forms
 
 

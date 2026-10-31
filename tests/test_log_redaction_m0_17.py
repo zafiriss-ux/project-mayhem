@@ -15,12 +15,23 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from titan.utils import secrets
 from titan.utils.secrets import RedactingFilter, redact_secrets, register_secret
 
 REPO = Path(__file__).resolve().parents[1]
 CANARY_TOKEN = "123456789:CANARYcanaryCANARYcanary_abc"  # bot-token shape, fake
 # Greek letters, a quote and a backslash: json.dumps and repr both escape it.
 CANARY_PW = 'Κωδ"ικός\\canary-m017'
+
+
+@pytest.fixture(autouse=True)
+def _restore_known_secrets():
+    """The registered secrets are process-wide; leave them as they were."""
+    saved = set(secrets._known_secrets)
+    yield
+    with secrets._known_lock:
+        secrets._known_secrets.clear()
+        secrets._known_secrets.update(saved)
 
 
 @pytest.mark.unit
@@ -41,6 +52,11 @@ def test_a_registered_secret_is_redacted_after_json_dumps() -> None:
 def test_a_registered_secret_is_redacted_in_repr() -> None:
     register_secret(CANARY_PW)
     assert "canary-m017" not in redact_secrets(repr(ValueError(f"bad password {CANARY_PW}")))
+    # A ' in the secret is escaped only when the surrounding text also has a ".
+    quoted = "it's-canary-m017"
+    register_secret(quoted)
+    assert "canary-m017" not in redact_secrets(repr(ValueError(f'pw {quoted} "x"')))
+    assert "canary-m017" not in redact_secrets(repr(ValueError(f"pw {quoted}")))
 
 
 def _rsa_pair() -> tuple[str, str]:
@@ -67,15 +83,16 @@ def test_the_api_process_redacts_a_token_on_stderr(tmp_path) -> None:
         logging.getLogger("titan.api").warning("readyz db check failed: {CANARY_TOKEN}")
         """
     )
+    # Only what the child needs: no secret or TITAN_* setting of the calling shell leaks in.
     env = {
-        **os.environ,
+        "PATH": os.environ.get("PATH", ""),
+        "HOME": str(tmp_path),
         "PYTHONPATH": str(REPO),
         "TITAN_DATA_DIR": str(data),
         "TITAN_JWT_PRIVATE_KEY": private,
         "TITAN_JWT_PUBLIC_KEY": public,
         "TELEGRAM_BOT_TOKEN": "",
     }
-    env.pop("TITAN_METRICS_TOKEN", None)
     result = subprocess.run(
         [sys.executable, "-c", code],
         cwd=tmp_path, env=env, capture_output=True, text=True, timeout=120, check=False,
