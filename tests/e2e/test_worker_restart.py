@@ -57,7 +57,6 @@ def build(db, athlete_id="owner"):
         athlete_id=athlete_id,
         engines=stubs.stub_engine_registry(),
         glycogen_accum=stubs.StubGlycogen(),
-        governance=stubs.StubGovernance(),
         volume_load_gauge=stubs.StubVLG(),
         outcome_tracker=stubs.StubOutcomeTracker(),
     )

@@ -10,7 +10,6 @@ from tests.e2e.conftest import (
     E2E_TODAY,
     StubGarminSync,
     StubGlycogen,
-    StubGovernance,
     StubNutrition,
     StubOptimalTime,
     StubOutcomeTracker,
@@ -46,7 +45,6 @@ def _run_once(tmp_path, fixed_today: str, run_idx: int):
         db=db,
         engines=stub_engine_registry(),
         glycogen_accum=StubGlycogen(),
-        governance=StubGovernance(),
         volume_load_gauge=StubVLG(),
         outcome_tracker=StubOutcomeTracker(),
     )

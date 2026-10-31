@@ -1,3 +1,15 @@
+"""Shared fixtures for the e2e tests.
+
+What is real and what is a stub (AT-02):
+- Real: the database, the DailyCoach pipeline, the GovernanceEngine (as in
+  production, where DailyCoach builds its own), and the Garmin payload shape
+  (StubGarminSync returns what GarminSync.sync_all() returns).
+- Stubs: the science engines (TSB, HRV, readiness, fatigue, glycogen, ...),
+  weather, nutrition, the weekly planner and Telegram. For those engines these
+  tests are a wiring smoke test: they show the pipeline runs and persists, not
+  that the engines compute the right numbers. tests/synthetic/ covers that.
+"""
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -192,14 +204,6 @@ class StubGlycogen:
         return "none"
 
 
-class StubGovernance:
-    def apply_constraints(self, session_plan, context):
-        return {**session_plan, "governance_locks_applied": [], "governance_clean": True}
-
-    def get_governance_report(self, **_kwargs):
-        return {}
-
-
 class StubFatigue:
     def classify_fatigue(self, **_kwargs):
         return ("LOW", [])
@@ -263,7 +267,6 @@ def morning_routine_setup(tmp_path):
                 db=db,
                 engines=stub_engine_registry(),
                 glycogen_accum=StubGlycogen(),
-                governance=StubGovernance(),
                 volume_load_gauge=StubVLG(),
                 outcome_tracker=StubOutcomeTracker(),
             )

@@ -5,7 +5,6 @@ import pytest
 from tests.e2e.conftest import (
     StubGarminSync,
     StubGlycogen,
-    StubGovernance,
     StubNutrition,
     StubOptimalTime,
     StubOutcomeTracker,
@@ -57,7 +56,6 @@ def _build_production_daily_coach(db: DatabaseManager, fixed_today: str) -> Dail
         db=db,
         engines=stub_engine_registry(),
         glycogen_accum=StubGlycogen(),
-        governance=StubGovernance(),
         volume_load_gauge=StubVLG(),
         outcome_tracker=StubOutcomeTracker(),
     )
