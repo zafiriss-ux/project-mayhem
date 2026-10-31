@@ -161,3 +161,30 @@ def test_sync_is_rejected_without_a_database(env) -> None:
 
     assert synced == []
     assert fake.replies == [_AUDIT_UNAVAILABLE_REPLY]
+
+
+def test_a_refused_stop_tells_the_owner(env, monkeypatch) -> None:
+    # SP-03 (part A): /stop is refused while the audit log is down (INV-22). The athlete is
+    # told to retry and the owner hears of it, so the withdrawal is not lost in a log.
+    _break_audit(monkeypatch, env.db)
+    sent: list[str] = []
+    monkeypatch.setattr(env.bot, "send_message", lambda text, parse_mode="Markdown": sent.append(text) or True)
+
+    assert env.bot.handle_athlete_stop(987654321, "a-0000abcd") == _AUDIT_UNAVAILABLE_REPLY
+
+    assert len(sent) == 1
+    assert "a-0000abcd" in sent[0] and "/stop" in sent[0]
+    assert "987654321" not in sent[0]  # the athlete's chat id stays out (ADR-0067 D2.8)
+
+
+def test_a_stop_that_succeeds_does_not_alert_the_owner(env, monkeypatch) -> None:
+    sent: list[str] = []
+    monkeypatch.setattr(env.bot, "send_message", lambda text, parse_mode="Markdown": sent.append(text) or True)
+    env.db.conn.execute(
+        "INSERT INTO athletes (athlete_id, display_name, created_at, is_cold_start, cold_start_sessions_count)"
+        " VALUES ('a-0000abcd', 'S', datetime('now'), 1, 0)"
+    )
+    env.db.conn.commit()
+
+    assert env.bot.handle_athlete_stop(987654321, "a-0000abcd").startswith("⏹")
+    assert sent == []

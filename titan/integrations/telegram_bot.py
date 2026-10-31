@@ -800,6 +800,7 @@ class TitanTelegramBot:
     def handle_athlete_stop(self, chat_id: int | str, athlete_id: str) -> str:
         """/stop from an athlete's own chat: audit first, then withdraw consent (ADR-0067 D4.3)."""
         if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_STOP", athlete_id):
+            self._tell_owner_stop_refused(athlete_id)
             return _AUDIT_UNAVAILABLE_REPLY
         try:
             self.db.revoke_consent(athlete_id)
@@ -810,6 +811,25 @@ class TitanTelegramBot:
             )
             return "❌ Could not record your stop. Please try again."
         return "⏹ Stopped. Your consent is withdrawn and no coaching runs for you."
+
+    def _tell_owner_stop_refused(self, athlete_id: str) -> None:
+        """SP-03 (part A): a withdrawal refused by INV-22 reaches the owner, not only a log.
+
+        Only the owner's bot polls, so self.chat_id is the owner's chat. The message names
+        the athlete by athlete_id only (ADR-0067 D2.8). A failed send is logged and ignored:
+        the athlete's reply must still go out.
+        """
+        if self.athlete_id != _OWNER_ATHLETE_ID:
+            return
+        try:
+            self.send_message(
+                f"⚠️ /stop from athlete {athlete_id} was refused: the audit log could not be "
+                "written (INV-22), so the consent is still active. Fix the audit log; the athlete "
+                "was asked to try again.",
+                parse_mode="",
+            )
+        except Exception as exc:  # noqa: BLE001 - the athlete's reply comes first
+            _log.critical("titan.telegram.stop_refused_alert_failed", extra={"error_class": exc.__class__.__name__})
 
     def register_athlete_command(self, command: str, callback: Callable[[str], str]) -> None:
         """Register the callback for a command from an athlete's own chat (ATHLETE_COMMANDS)."""
