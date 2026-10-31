@@ -1,0 +1,403 @@
+"""SP audit (security and privacy), 2026-10-31. Synthetic data only: tmp_path DBs, fake keys,
+canary strings. Nothing here reads a real DB, .env, log or token.
+
+test_defect_* passes WHEN the problem exists. test_holds_* passes when the property holds.
+Run (from a scratch cwd):
+  PYTHONPATH=<worktree> python -m pytest -q -p no:cacheprovider -c <this dir>/pytest.ini <this file> -rA -s
+"""
+
+from __future__ import annotations
+
+import ast
+import json
+import logging
+import os
+import subprocess
+import sys
+import textwrap
+from pathlib import Path
+
+import pytest
+import yaml
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+REPO = Path(os.environ.get("SP_REPO", "/home/claude/project-mayhem/.wt-rc0506"))
+CANARY_TOKEN = "123456789:CANARYcanaryCANARYcanary_abc"  # bot-token shape, fake
+
+
+def _rsa_pair() -> tuple[str, str]:
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    priv = key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
+    ).decode()
+    pub = key.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()
+    return priv, pub
+
+
+@pytest.fixture
+def env(tmp_path, monkeypatch):
+    priv, pub = _rsa_pair()
+    data = tmp_path / "data"
+    data.mkdir()
+    monkeypatch.setenv("TITAN_DATA_DIR", str(data))
+    monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", priv)
+    monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", pub)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "1000")
+    monkeypatch.delenv("TITAN_METRICS_TOKEN", raising=False)
+    from titan.config.settings import get_settings
+
+    get_settings.cache_clear()
+    yield {"data": data, "priv": priv, "pub": pub}
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def api(env):
+    from fastapi.testclient import TestClient
+
+    from titan.api.auth import AuthStore, hash_password
+    from titan.api.main import create_app
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager("titan_core.db", db_dir=env["data"])
+    store = AuthStore(db=db)
+    pw = hash_password("synthetic-pw-1")
+    store.upsert_user("coach-a", "coach_a", pw, "COACH", None)
+    store.upsert_user("system", "sys_coach", pw, "COACH", None)  # id equal to the seeded coach id
+    store.upsert_user("ath-1", "ath_1", pw, "ATHLETE", "a-00000001")
+    store.upsert_user("gone", "gone_user", pw, "COACH", None, is_active=False)
+    db.assign_athlete_to_coach("coach-a", "a-00000001")
+    app = create_app(db=db, auth_store=store)
+
+    def client():
+        c = TestClient(app, base_url="https://testserver")
+        tok = c.get("/api/csrf-token").json()["csrf_token"]
+        c.headers["X-CSRF-Token"] = tok
+        return c
+
+    yield {"app": app, "db": db, "store": store, "client": client}
+    db.close()
+
+
+def _login(c, username):
+    return c.post("/auth/login", json={"username": username, "password": "synthetic-pw-1"})
+
+
+# --------------------------------------------------------------------------- RBAC / isolation
+@pytest.mark.parametrize(
+    "user,path,expected",
+    [
+        ("coach_a", "/athletes/a-00000001/dashboard", 200),  # assigned
+        ("coach_a", "/athletes/owner/dashboard", 403),  # not assigned, owner is not special
+        ("coach_a", "/athletes/a-00000002/dashboard", 403),
+        ("ath_1", "/athletes/a-00000001/dashboard", 200),  # own
+        ("ath_1", "/athletes/a-00000002/dashboard", 403),  # other athlete
+        ("ath_1", "/athletes/owner/dashboard", 403),
+        ("coach_a", "/athletes/a-00000001/dashboard?athlete_id=a-00000002", 200),  # path wins, path is assigned
+        ("coach_a", "/athletes/a-00000002/dashboard?athlete_id=a-00000001", 403),  # path wins, query cannot widen
+    ],
+)
+def test_holds_dashboard_isolation_matrix(api, user, path, expected):
+    c = api["client"]()
+    assert _login(c, user).status_code == 200
+    r = c.get(path)
+    print("RBAC", user, path, r.status_code)
+    assert r.status_code == expected
+
+
+def test_holds_coach_routes_scoped_and_duplicate_query_consistent(api):
+    c = api["client"]()
+    _login(c, "coach_a")
+    ok = c.post("/coach/overrides?athlete_id=a-00000001", json={})
+    bad = c.post("/coach/overrides?athlete_id=a-00000002", json={})
+    # duplicate parameter: the dependency and the handler must see the same value
+    dup = c.post("/coach/overrides?athlete_id=a-00000001&athlete_id=a-00000002", json={})
+    dup2 = c.post("/coach/notes?athlete_id=a-00000002&athlete_id=a-00000001", json={})
+    empty = c.post("/coach/notes?athlete_id=", json={})
+    none = c.post("/coach/notes", json={})
+    print("COACH ROUTES", ok.status_code, bad.status_code, dup.status_code, dup.text[:80],
+          dup2.status_code, dup2.text[:80], empty.status_code, none.status_code)
+    assert ok.status_code == 200 and bad.status_code == 403
+    assert dup.status_code == 403  # last value a-00000002 is checked and refused
+    assert dup2.status_code == 200 and dup2.json()["athlete_id"] == "a-00000001"  # same value both sides
+    assert empty.status_code == 403
+    assert none.status_code in (403, 422)
+
+
+def test_holds_athlete_cannot_use_coach_routes(api):
+    c = api["client"]()
+    _login(c, "ath_1")
+    r = c.post("/coach/notes?athlete_id=a-00000001", json={})
+    print("ATHLETE ON COACH ROUTE", r.status_code)
+    assert r.status_code == 403
+
+
+def test_holds_no_cookie_no_access_and_no_db_fails_closed(env):
+    from fastapi.testclient import TestClient
+
+    from titan.api.auth import AuthStore, hash_password
+    from titan.api.main import create_app
+
+    store = AuthStore()  # in-memory
+    store.upsert_user("c", "c", hash_password("synthetic-pw-1"), "COACH", None)
+    app = create_app(db=None, auth_store=store)
+    c = TestClient(app, base_url="https://testserver")
+    assert c.get("/athletes/x/dashboard").status_code == 401
+    tok = c.get("/api/csrf-token").json()["csrf_token"]
+    c.headers["X-CSRF-Token"] = tok
+    assert _login(c, "c").status_code == 200
+    r = c.get("/athletes/a-00000001/dashboard")
+    print("NO DB coach ->", r.status_code, r.json())
+    assert r.status_code == 403
+
+
+def test_holds_metrics_closed_without_token(api):
+    c = api["client"]()
+    r = c.get("/metrics")
+    print("METRICS no token configured ->", r.status_code)
+    assert r.status_code == 404
+
+
+def test_holds_csrf_required_for_state_change(api):
+    from fastapi.testclient import TestClient
+
+    c = TestClient(api["app"], base_url="https://testserver")
+    _login(c, "coach_a")  # /auth/login is CSRF-exempt
+    r = c.post("/coach/notes?athlete_id=a-00000001", json={})
+    print("NO CSRF ->", r.status_code)
+    assert r.status_code == 403
+
+
+# --------------------------------------------------------------------------- SP-new findings
+def test_defect_coach_with_user_id_system_reads_owner(api):
+    """The migration seeds coach 'system' -> 'owner'. Any COACH auth user whose id is 'system'
+    gets the owner's data, though no code uses that coach id (M0-05 residue)."""
+    c = api["client"]()
+    _login(c, "sys_coach")
+    r = c.get("/athletes/owner/dashboard")
+    print("SYSTEM COACH -> owner dashboard", r.status_code, r.json())
+    assert r.status_code == 200
+
+
+def test_defect_login_issues_tokens_to_inactive_user(api):
+    c = api["client"]()
+    r = _login(c, "gone_user")
+    active_rows = api["db"].get_active_auth_tokens_for_user("gone", "1970-01-01T00:00:00+00:00")
+    dash = c.get("/athletes/a-00000001/dashboard")
+    print("INACTIVE LOGIN ->", r.status_code, "cookies:", sorted(c.cookies.keys()),
+          "refresh rows:", len(active_rows), "| then dashboard ->", dash.status_code)
+    assert r.status_code == 200  # the defect: a disabled account gets a 200 and fresh tokens
+    assert len(active_rows) == 1
+    assert dash.status_code == 401  # the tokens are refused later, so the impact is limited
+
+
+def test_holds_no_audit_row_for_request_that_fails_validation(api):
+    """Suspicion checked and refuted: an invalid body gets 422 before the audit dependency runs."""
+    c = api["client"]()
+    _login(c, "coach_a")
+    before = len(api["db"].get_coach_audit_log(coach_id="coach-a"))
+    r = c.post("/coach/overrides?athlete_id=a-00000001", content=b"not json",
+               headers={"Content-Type": "application/json"})
+    after = len(api["db"].get_coach_audit_log(coach_id="coach-a"))
+    print("INVALID BODY ->", r.status_code, "audit rows before/after", before, after)
+    assert r.status_code == 422
+    assert after == before
+
+
+# --------------------------------------------------------------------------- M0-17: redaction formats
+def test_defect_registered_secret_leaks_when_json_escaped():
+    """Structured events are json.dumps'd before logging (and _telegram_event redacts after
+    json.dumps). A registered secret with a quote, backslash or non-ASCII character is escaped
+    by json.dumps, so str.replace no longer finds it."""
+    from titan.utils.secrets import RedactingFilter, redact_secrets, register_secret
+
+    pw = 'Κωδ"ικός\\canary-77'  # synthetic: Greek letters, a quote and a backslash
+    register_secret(pw)
+    assert pw not in redact_secrets(f"login failed with {pw}")  # plain form: redacted
+
+    line = json.dumps({"flow": "garmin", "action": "failure", "error_message": f"login failed with {pw}"})
+    out = redact_secrets(line)
+    rec = logging.LogRecord("titan.x", logging.ERROR, "", 0, line, None, None)
+    RedactingFilter().filter(rec)
+    escaped = json.dumps(pw)[1:-1]
+    print("JSON LINE AFTER REDACTION:", out)
+    assert escaped in out and escaped in rec.getMessage()
+    # repr() form (exception args in a traceback or %r) leaks too
+    rep = redact_secrets(repr(ValueError(f"bad password {pw}")))
+    print("REPR AFTER REDACTION:", rep)
+    assert "canary-77" in rep
+
+
+def test_defect_api_process_installs_no_redaction(env, tmp_path):
+    """scripts/run_api.py composes the API with log_config=None and never calls
+    install_log_redaction: no handler and no RedactingFilter, so a token in a log line
+    reaches stderr unchanged (M0-17)."""
+    code = textwrap.dedent(
+        f"""
+        import logging, runpy, sys
+        sys.argv = ["run_api.py"]
+        ns = runpy.run_path({str(REPO / "scripts" / "run_api.py")!r}, run_name="not_main")
+        from titan.utils.secrets import RedactingFilter
+        root = logging.getLogger()
+        on_root = any(isinstance(f, RedactingFilter) for h in root.handlers for f in h.filters)
+        on_url = any(isinstance(f, RedactingFilter) for f in logging.getLogger("urllib3.connectionpool").filters)
+        print("ROOT_HANDLERS", len(root.handlers), "FILTER_ON_ROOT", on_root, "FILTER_ON_URLLIB3", on_url)
+        logging.getLogger("titan.api").warning("readyz db check failed: OperationalError: {CANARY_TOKEN}")
+        """
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", code], cwd=tmp_path, env={**os.environ, "PYTHONPATH": str(REPO)},
+        capture_output=True, text=True, timeout=120,
+    )
+    print("API PROC stdout:", r.stdout.strip(), "| stderr tail:", r.stderr.strip().splitlines()[-1:])
+    assert r.returncode == 0, r.stderr
+    assert "FILTER_ON_ROOT False" in r.stdout and "FILTER_ON_URLLIB3 False" in r.stdout
+    assert CANARY_TOKEN in r.stderr
+
+
+def test_holds_worker_handler_redacts(env):
+    from titan.utils.secrets import RedactingFilter, redact_secrets
+
+    assert CANARY_TOKEN not in redact_secrets(f"x {CANARY_TOKEN} y")
+    url = f"https://api.telegram.org/bot{CANARY_TOKEN}/sendMessage?chat_id=555&text=HRV+41"
+    out = redact_secrets(f"ConnectionError: {url}")
+    print("URL REDACTED:", out)
+    assert CANARY_TOKEN not in out and "chat_id=555" not in out and "HRV" not in out
+    rec = logging.LogRecord("any.child", logging.ERROR, "", 0, "e %s", (CANARY_TOKEN,), None)
+    RedactingFilter().filter(rec)
+    assert CANARY_TOKEN not in rec.getMessage()
+
+
+# --------------------------------------------------------------------------- M0-28: event fields
+def test_defect_override_silence_event_logs_chat_id(env, caplog):
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    caplog.set_level(logging.DEBUG)
+    bot = TitanTelegramBot(bot_token="", chat_id=1000)
+    bot._pending_override_prompts[424242] = {"created_at": "2000-01-01T00:00:00+00:00"}
+    bot.check_override_silence()
+    text = "\n".join(r.getMessage() for r in caplog.records)
+    print("EVENT:", [m for m in text.splitlines() if "override" in m][:1])
+    assert "424242" in text
+
+
+def test_defect_privacy_test_ignores_event_kwargs():
+    """tests/test_log_privacy.py looks only at extra={...} keys. An event kwarg such as
+    chat_id=... passes it: the scan below finds one in titan/ that the test does not see."""
+    found = []
+    keys = {"chat_id", "email", "password", "name", "display_name", "birth_date", "telegram_chat_id"}
+    for p in sorted((REPO / "titan").rglob("*.py")):
+        for n in ast.walk(ast.parse(p.read_text(encoding="utf-8"))):
+            if isinstance(n, ast.Call):
+                fn = getattr(n.func, "id", None) or getattr(n.func, "attr", None) or ""
+                if fn.endswith("_event") or fn == "structured_event_payload":
+                    found += [f"{p.relative_to(REPO)}:{n.lineno}:{kw.arg}" for kw in n.keywords if kw.arg in keys]
+    print("EVENT KWARGS WITH PERSONAL KEYS:", found)
+    assert found
+
+
+# --------------------------------------------------------------------------- M0-29 / M0-04 / M0-14 config
+def _compose(name):
+    return yaml.safe_load((REPO / name).read_text(encoding="utf-8"))
+
+
+def test_defect_api_container_gets_whole_env_and_owner_token_volume():
+    base = _compose("docker-compose.yml")
+    api = base["services"]["titan-api"]
+    example = (REPO / ".env.example").read_text(encoding="utf-8")
+    secrets_in_example = [k for k in ("GARMIN_PASSWORD", "TELEGRAM_BOT_TOKEN", "TITAN_GARTH_TOKEN_KEY")
+                          if f"\n{k}=" in example]
+    print("API env_file:", api.get("env_file"), "| volumes:", api.get("volumes"),
+          "| secrets listed in .env.example:", secrets_in_example)
+    assert ".env" in api.get("env_file", [])
+    assert "titan-data:/data" in api.get("volumes", [])  # where the owner's .garth_token lives
+    assert len(secrets_in_example) == 3
+
+
+def test_holds_release_worker_keeps_secrets_and_api_port_local():
+    rel = (REPO / "docker-compose.release.yml").read_text(encoding="utf-8")
+    base = _compose("docker-compose.yml")
+    assert "titan-secrets:/secrets" in rel.split("\n  titan-worker:\n")[1]
+    ports = base["services"]["titan-api"]["ports"]
+    print("API ports:", ports)
+    assert all(str(p).startswith("127.0.0.1:") for p in ports)
+    assert "titan-secrets:/secrets" not in base["services"]["titan-api"].get("volumes", [])
+
+
+# --------------------------------------------------------------------------- consent
+def test_holds_consent_gate_fail_closed(env):
+    from datetime import UTC, datetime, timedelta
+
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager("titan_core.db", db_dir=env["data"])
+    try:
+        aid = "a-0000abcd"
+        db.conn.execute(
+            "INSERT INTO athletes (athlete_id, display_name, created_at, is_cold_start, cold_start_sessions_count)"
+            " VALUES (?, 'S', datetime('now'), 1, 0)", (aid,))
+        db.conn.commit()
+        now = datetime(2026, 10, 31, 9, tzinfo=UTC)
+        no = db.has_current_consent(aid, now=now)
+        db.grant_consent(aid, "v1", now=now)
+        yes = db.has_current_consent(aid, now=now)
+        db.revoke_consent(aid)
+        after_stop = db.has_current_consent(aid, now=datetime.now(UTC))
+        db.grant_consent(aid, "v1", now=datetime.now(UTC))
+        same_day = db.has_current_consent(aid, now=datetime.now(UTC))
+        next_day = db.has_current_consent(aid, now=datetime.now(UTC) + timedelta(days=1))
+        with pytest.raises(ValueError):
+            db.grant_consent(aid, "v0")
+        print("CONSENT none/granted/after-stop/re-same-day/re-next-day:", no, yes, after_stop, same_day, next_day)
+        assert (no, yes, after_stop, same_day, next_day) == (False, True, False, False, True)
+    finally:
+        db.close()
+
+
+def test_holds_bot_consent_check_fails_closed_on_error(env):
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    class _Boom:
+        def has_current_consent(self, *_a, **_k):
+            raise RuntimeError("db gone")
+
+    bot = TitanTelegramBot(bot_token="", chat_id=1000)
+    bot.db = _Boom()
+    assert bot._has_consent("a-00000001") is False
+
+
+def test_defect_stop_refused_when_audit_write_fails(env):
+    """/stop withdraws consent only after the audit row is written (INV-22). If that write fails,
+    the withdrawal is refused and consent stays current."""
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    class _DB:
+        revoked = False
+
+        def log_coach_action(self, **_k):
+            raise RuntimeError("audit table locked")
+
+        def revoke_consent(self, _aid):
+            self.revoked = True
+            return 1
+
+    db = _DB()
+    bot = TitanTelegramBot(bot_token="", chat_id=1000)
+    bot.db = db
+    reply = bot.handle_athlete_stop(555, "a-00000001")
+    print("STOP with audit down ->", reply, "| revoked:", db.revoked)
+    assert db.revoked is False
+
+
+# --------------------------------------------------------------------------- CI M0-30
+def test_defect_stale_ignore_vuln_still_in_ci():
+    ci = (REPO / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    req = (REPO / "requirements.txt").read_text(encoding="utf-8")
+    n = ci.count("--ignore-vuln GHSA-gc5v-m9x4-r6x2")
+    pin = [ln for ln in req.splitlines() if ln.startswith("requests==")]
+    print("IGNORE-VULN occurrences:", n, "| requests pin:", pin)
+    assert n == 2 and pin and pin[0].startswith("requests==2.34")
