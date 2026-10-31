@@ -1014,7 +1014,7 @@ WARNING (soft downgrade/degraded/auth failure; Telegram always), INFO (telemetry
 DEBUG (high-cardinality; only at `LOG_LEVEL=DEBUG`). Omitting `severity` is a GATE VIOLATION
 (T2-14). Dedup: same `(event_type, lock_code)` suppressed within `ALERT_DEDUP_WINDOW_HOURS=20`;
 summary re-sent after `ALERT_PERSIST_SUMMARY_HOURS=72`. Rotation: `RotatingFileHandler`,
-`LOG_MAX_BYTES=10_485_760`, `LOG_BACKUP_COUNT=5` (env-overridable). **Alert-class conditions are
+`LOG_MAX_BYTES=10_485_760`, `LOG_BACKUP_COUNT=5` (constants in `titan/utils/constants.py`; no env override, ADR-0077). **Alert-class conditions are
 emitted as structured events with severity; the worker sends the ones a person must see directly,
 through `alert_operator` when they concern a coached athlete (ADR-0069 §7, D-139). A JSON log line nothing consumes satisfies no
 alerting requirement** [E-3]. `slo_alert` events are not routed yet (P4-09).
@@ -1450,6 +1450,8 @@ in git history.
 ---
 
 *Changelog (newest first; full history in git):*
+- *2026-10-31 r7 — Documents reconciled with the code after the AT audit (policy-only, ADR-0077):
+  §16.6 log rotation constants are not env-overridable (AT-09); ADR-0048 public-route allow-list (AT-03).*
 - *2026-10-23 r6 — Documents reconciled with the code after the MA/OW/P4 audits (policy-only,
   ADR-0070): §16.6 and the alert rows without `NotificationGateway` (ADR-0069 §7); §8.13 INV-22
   surfaces; §16.11 ceiling 90; §30 SA:M-2/T-PRA-06 resolved, T-PRA-31 superseded.*
