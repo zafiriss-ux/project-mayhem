@@ -99,7 +99,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-13 | Ο λογαριασμός Garmin του owner δενόταν σε αθλητή | HIGH | Α | FIXED, με υπόλοιπο M0-13-R1 | #1087, D-146 | ναι | IS |
 | — | M0-13-R1 | Έλεγχος με το `displayName` του owner | HIGH | Β (ADR-0076 Accepted, D-177) | FIXED, με υπόλοιπο M0-13-R2 | #1124, D-181 | ναι | IS |
 | — | M0-13-R2 | Το `displayName` αλλάζει: μετά από αλλαγή username του owner, ως την επόμενη σύνδεσή του, ο έλεγχος δεν πιάνει τον λογαριασμό του | HIGH | Β (νέο ADR για `profileId`) | TRACKED: Phase 27, πριν από τον πρώτο αθλητή πιλότου | TECHNICAL_DEBT, ADR-0076, D-181 | — | IS |
-| — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
+| — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | FIXED | #1125, D-182 | ναι | SP |
 | — | M0-15 | 6 tests παραλείπονται μόνιμα | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | AT |
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
 | — | M0-17 | Το φίλτρο των logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |

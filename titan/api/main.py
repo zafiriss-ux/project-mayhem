@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
+import os
 import secrets
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
@@ -545,11 +547,47 @@ def create_app(
     # deletion that never happened. They are removed (ADR-0067 D2.5, D6.2; D-097): export and
     # deletion run on the routine machine with `python scripts/athletes.py export|remove`.
 
-    # Mount Prometheus scrape endpoint — no auth; internal scrape only.
-    # Bind to localhost in prod via compose network policy.
-    app.mount("/metrics", _prom_asgi())
+    # Prometheus scrape endpoint: closed unless TITAN_METRICS_TOKEN is set, and then only for a
+    # request that carries that token (M0-14). Compose publishes port 8000 on localhost only.
+    app.mount("/metrics", _metrics_asgi(_prom_asgi()))
 
     return app
+
+
+METRICS_TOKEN_ENV = "TITAN_METRICS_TOKEN"  # nosec B105 — the variable's name, not a secret
+
+
+def _metrics_asgi(prom_app: Callable[..., Awaitable[None]]) -> Callable[..., Awaitable[None]]:
+    """Wrap the Prometheus app so it serves only a request with the scrape token (M0-14).
+
+    No token configured (unset or blank) -> 404, so the endpoint does not exist. A missing or
+    wrong ``Authorization: Bearer <token>`` -> 401. The token is read on every request and
+    compared in constant time. Anything that is not plain HTTP gets no response and is closed.
+    """
+
+    async def _app(scope: dict[str, Any], receive: Callable[..., Awaitable[Any]], send: Callable[..., Awaitable[None]]) -> None:
+        if scope.get("type") != "http":
+            return
+        expected = os.environ.get(METRICS_TOKEN_ENV, "").strip()
+        if not expected:
+            await JSONResponse({"detail": "Not Found"}, status_code=status.HTTP_404_NOT_FOUND)(scope, receive, send)
+            return
+        auth = b""
+        for name, value in scope.get("headers") or []:
+            if name.lower() == b"authorization":
+                auth = value
+                break
+        scheme, _, presented = auth.partition(b" ")
+        if scheme.lower() != b"bearer" or not hmac.compare_digest(presented.strip(), expected.encode()):
+            await JSONResponse(
+                {"detail": "Not authenticated"},
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers={"WWW-Authenticate": "Bearer"},
+            )(scope, receive, send)
+            return
+        await prom_app(scope, receive, send)
+
+    return _app
 
 
 def _audited(action: AuditActionType, resource: str, *, coach_only: bool = True) -> Callable[..., AuthUser]:
