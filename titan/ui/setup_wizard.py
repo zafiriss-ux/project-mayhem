@@ -240,9 +240,9 @@ def _save_keyring_credentials(creds: dict, keyring) -> None:
 def _write_private(path, text: str) -> None:
     """Write ``text`` to ``path`` so that no one else can read it at any moment (SP-06).
 
-    A new file is created as 600; an existing one is set to 600 before it is
-    truncated and rewritten. The old write-then-chmod order left the credentials
-    readable by others until the chmod.
+    A new file is created as 600; an existing one is truncated, then set to 600
+    before any new byte is written. The old write-then-chmod order left the
+    credentials readable by others until the chmod.
     """
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
     try:

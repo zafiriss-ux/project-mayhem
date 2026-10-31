@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -219,3 +221,17 @@ def test_garmin_token_key_lets_the_kernel_save_the_session(monkeypatch, tmp_path
     encrypted = garmin_sync._encrypt_token("session")
 
     assert garmin_sync._decrypt_token(encrypted) == "session"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX permissions")
+def test_write_env_never_writes_a_credential_into_a_readable_file(monkeypatch, tmp_path: Path) -> None:
+    # SP-06: the launcher's .env is 600 before the first byte; chmod after the write left a window.
+    env_path = _set_env_path(monkeypatch, tmp_path)
+    env_path.write_text("OLD=1\n")
+    env_path.chmod(0o644)
+    monkeypatch.setattr(type(env_path), "chmod", lambda self, mode: None)  # no fix after the fact
+
+    wizard.write_env({"GARMIN_PASSWORD": "canary-sp06"})
+
+    assert stat.S_IMODE(env_path.stat().st_mode) == stat.S_IRUSR | stat.S_IWUSR
+    assert "GARMIN_PASSWORD=canary-sp06" in env_path.read_text(encoding="utf-8")
