@@ -23,8 +23,9 @@ Architect)», και τα ADR 0072 έως 0077 έγιναν Accepted με κάρ
 
 1. **Architect είναι ο owner (Zaf).** Οι Reserved Powers του AGENTS §1.2 (RP-1 έως RP-10) ασκούνται
    μόνο από αυτόν.
-2. **Το Claude γράφει, αναλύει και υλοποιεί.** Συντάσσει ADR ως Proposed, αμφισβητεί τον σχεδιασμό και
-   υλοποιεί ό,τι έχει εγκριθεί. Δεν κάνει ποτέ Accept ADR. Δεν δίνει μόνο του clearance verdict
+2. **Το Claude γράφει, αναλύει και υλοποιεί.** Ετοιμάζει το κείμενο ενός ADR ως Proposed μόνο όταν το
+   ζητήσει ο owner· το κείμενο δεν έχει καμία ισχύ μέχρι να το κάνει Accepted ο owner. Αμφισβητεί τον
+   σχεδιασμό και υλοποιεί ό,τι έχει εγκριθεί. Δεν κάνει ποτέ Accept ADR. Δεν δίνει μόνο του clearance verdict
    (CONTRACT 7.9 §14). Δεν ασκεί Reserved Power με δική του κρίση.
 3. **Η έγκριση μετρά μόνο όταν είναι γραμμένη** (CONTRACT 7.9 §1.5): σε ADR με Status Accepted, ή στο
    πεδίο `Authorizes:` ενός handoff (AGENTS §23). Μια κάρτα απόφασης του owner, ή μήνυμά του στη
@@ -37,8 +38,10 @@ Architect)», και τα ADR 0072 έως 0077 έγιναν Accepted με κάρ
    ενότητα Decision του 0057 (AD-04) επιβεβαιώνονται από τον owner ένα-ένα, σε ξεχωριστό policy-only
    PR. Μέχρι τότε καταγράφονται στο TECHNICAL_DEBT (Tier 2, στόχος Phase 27).
 
-Κανένας έλεγχος δεν χαλαρώνει. Το Claude χάνει την εξουσία που του έδινε το κείμενο του AGENTS και δεν
-παίρνει καμία νέα.
+Κανένας έλεγχος δεν χαλαρώνει. Το Claude χάνει την εξουσία Architect που του έδινε το κείμενο του AGENTS.
+Η προετοιμασία κειμένου Proposed είναι η πρακτική των ADR 0072–0077, τώρα γραμμένη: γίνεται μόνο όταν
+τη ζητήσει ο owner και δεν έχει ισχύ χωρίς την αποδοχή του. Το Claude δεν ετοιμάζει ADR με δική του
+πρωτοβουλία (AGENTS §1).
 
 ## Αλλαγές σε έγγραφα (policy-only)
 
@@ -47,8 +50,12 @@ Architect)», και τα ADR 0072 έως 0077 έγιναν Accepted με κάρ
 | AGENTS §1, πίνακας ρόλων | Architect = «Claude in an architectural session»· Owner «not automatic Architect authority» | Architect = ο owner (ADR-0078)· το Claude γράφει ADR ως Proposed |
 | AGENTS §1, παράγραφος κάτω από τον πίνακα | Χωρίς αρχιτεκτονική συνεδρία το agent σταματά | Χωρίς ADR Accepted ή πεδίο `Authorizes:` το agent σταματά |
 | AGENTS §1.2 | «Exclusively the Architect (Claude in an architectural session, §3.6)» | «Exclusively the Architect (the Owner, ADR-0078)» |
+| AGENTS §1.2, RP-1 | «ADR authorship / amendment / acceptance» | Το ίδιο, και: το Claude ετοιμάζει κείμενο Proposed μόνο όταν το ζητήσει ο Architect· χωρίς αποδοχή δεν έχει ισχύ |
+| AGENTS §12.4 | «ADR authorship is Architect-only (RP-1)» | Το ίδιο, με την ίδια διευκρίνιση για το κείμενο Proposed |
 | AGENTS §14.1 | «(ADR / Architect session)» | «(Accepted ADR or §23 `Authorizes:` field)» |
-| TECHNICAL_DEBT | — | Γραμμές AD-03, AD-04 (OPEN, Tier 2, Phase 27) και AD-08 (RESOLVED με αυτό το ADR) |
+| AGENTS §28 | «Chat-Architect-only» | «Architect-only (the Owner, ADR-0078)» |
+| `docs/AI_GOVERNANCE.md` §1, §2, §3 | «Claude (Architect)», «Architect (Claude in architectural session)», έγκριση «in the architectural session» | Το Claude ετοιμάζει κείμενο· Architect ο owner· έγκριση μόνο γραμμένη σε ADR Accepted ή πεδίο `Authorizes:` |
+| TECHNICAL_DEBT | — | Γραμμές AD-03, AD-04 (OPEN, Tier 2, Phase 27) και AD-08 (κλείνει όταν αυτό το ADR γίνει Accepted) |
 
 ## Consequences
 
