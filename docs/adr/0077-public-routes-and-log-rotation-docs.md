@@ -1,9 +1,9 @@
 # ADR-0077: Τα έγγραφα γράφουν τα δημόσια routes του API και ότι το rotation του log δεν αλλάζει από το περιβάλλον (AT-03, AT-09)
 
-**Status:** 📝 Proposed (2026-10-31· περιμένει την έγκριση του owner)
+**Status:** ✅ Accepted (2026-10-31· ο owner ενέκρινε το κείμενο με κάρτα «Εγκρίνω (Accepted)» στις 19:16 UTC, D-212)
 **Date:** 2026-10-31
 **Author:** Claude (κείμενο) / Zaf (Owner, αποφασίζει)
-**Related:** ADR-0048 §2 και §5 (API auth)· ADR-0070 (το προηγούμενο policy-only)· AGENTS §3.6, §16.6
+**Related:** ADR-0048 §2 και §6 (API auth)· ADR-0070 (το προηγούμενο policy-only)· AGENTS §3.6, §16.6
 και §19 (policy-only)· έλεγχος AT (`docs/audits/FINDINGS.md` §12, AT-03 και AT-09)· D-203, D-208.
 
 ---
@@ -31,7 +31,7 @@
 | Έγγραφο | Τι έλεγε | Τι γράφει τώρα |
 |---|---|---|
 | ADR-0048 §2, γραμμή 120 | Μόνη εξαίρεση το `GET /health` | Η επιτρεπτή λίστα: `/health`, `/readyz`, `/api/csrf-token`, `/auth/login`, `/auth/refresh`, `/auth/logout`. Το `/metrics` έχει δικό του token (M0-14). Τα `/docs`, `/redoc`, `/openapi.json` δεν σερβίρονται (AT-03). Η λίστα ζει στο test, και μια αλλαγή της θέλει ADR |
-| ADR-0048 §5, κριτήριο 4 | «except `GET /health`» | «except the allow-listed routes of §2» |
+| ADR-0048 §6, κριτήριο 4 | «except `GET /health`» | «except the allow-listed routes of §2» |
 | AGENTS §16.6 | `LOG_MAX_BYTES`, `LOG_BACKUP_COUNT` «(env-overridable)» | Σταθερές στο `titan/utils/constants.py`, χωρίς override από το περιβάλλον |
 
 Απορρίφθηκε η αντίστροφη λύση για το AT-09, να διαβάζει ο κώδικας μεταβλητές περιβάλλοντος. Θα ήταν
