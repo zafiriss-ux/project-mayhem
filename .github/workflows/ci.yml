@@ -467,7 +467,6 @@ jobs:
         run: |
           pip-audit -r requirements.txt \
             -r requirements-dev.txt \
-            --ignore-vuln GHSA-gc5v-m9x4-r6x2 \
             --format json \
             --output /tmp/audit.json || true
 
@@ -489,8 +488,7 @@ jobs:
           "
 
       - name: Runtime CVE audit (former dependency-audit job)
-        # GHSA-gc5v-m9x4-r6x2 is tracked manually in requirements.txt (requests bump)
-        run: pip-audit -r requirements.txt --ignore-vuln GHSA-gc5v-m9x4-r6x2
+        run: pip-audit -r requirements.txt
 
   complexity-budget:
     name: Complexity Budget (module count ceiling)

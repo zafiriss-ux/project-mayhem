@@ -9,6 +9,20 @@
 
 ---
 
+## D-197 · M0-30: το `pip-audit` του CI δεν αγνοεί πια καμία ευπάθεια
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (TECHNICAL_DEBT M0-30, Tier 2). Ο έλεγχος μόνο σφίγγει.
+- **Πρόβλημα:** δύο βήματα του `ci.yml` (η πύλη CVE του drift audit και το runtime audit) έτρεχαν το `pip-audit`
+  με `--ignore-vuln GHSA-gc5v-m9x4-r6x2`. Η ευπάθεια αφορά το `requests`, που είναι ήδη στο 2.34.2, μετά τη
+  διόρθωση (`requirements.txt:9`). Το ignore θα έκρυβε την ευπάθεια αν το `requests` γύριζε ποτέ πίσω.
+- **Απόφαση:** φεύγουν και τα δύο `--ignore-vuln` και το σχόλιο που τα εξηγούσε. Το
+  `test_dependency_drift_audit_cve_only_gate` απαιτούσε το ignore· τώρα απαιτεί να μην υπάρχει κανένα
+  `--ignore-vuln` στο workflow.
+- **Έλεγχος:** `pip-audit -r requirements.txt -r requirements-dev.txt` χωρίς ignore: «No known vulnerabilities
+  found» (τοπικά, 2026-10-31, και στον έλεγχο SP). Το test άλλαξε πρώτα και απέτυχε πριν από την αλλαγή του workflow.
+- **Όριο:** μια νέα ευπάθεια χωρίς διόρθωση θα σταματά το runtime audit. Τότε η εξαίρεση γράφεται ξανά με
+  απόφαση και ημερομηνία λήξης, όχι σιωπηλά.
+
 ## D-196 · M0-17 και SP-04: το API περνά τα logs του από το φίλτρο· το φίλτρο βρίσκει και τις μορφές JSON/repr
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (TECHNICAL_DEBT M0-17, Tier 1, Phase 27· SP-04, μέρος του).

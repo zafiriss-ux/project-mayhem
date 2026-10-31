@@ -62,6 +62,7 @@ def test_dependency_drift_audit_cve_only_gate() -> None:
 
     assert "CVE-only dependency gate" in content
     assert "pip-audit" in content
-    assert "--ignore-vuln GHSA-gc5v-m9x4-r6x2" in content
+    # M0-30: no advisory is ignored; requests is past the fix of GHSA-gc5v-m9x4-r6x2.
+    assert "--ignore-vuln" not in content
     assert "No actionable CVEs found." in content
     assert "sys.exit(1)" in content

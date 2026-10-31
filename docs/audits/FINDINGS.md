@@ -115,7 +115,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044)· γράφτηκε στο TECHNICAL_DEBT (D-156) | TECHNICAL_DEBT, D-156 | — | IS |
 | — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
 | — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | FIXED (#1138, D-195)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156, D-195 | ναι | SP |
-| — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
+| — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | FIXED (#1140, D-197)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156, D-197 | ναι | SP |
 | — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
 | — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
 | — | M0-33 | Ομαδική συνομιλία ως αξιόπιστο chat του owner | HIGH | Β | FIXED | #1092, D-150 | ναι | IS |
