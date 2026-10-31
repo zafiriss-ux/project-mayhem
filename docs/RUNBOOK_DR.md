@@ -12,7 +12,7 @@
 | **RTO** (χρόνος μέχρι να ξαναδουλέψει) | ≤ 4 ώρες | Η επαναφορά παρακάτω είναι 4 εντολές και διαρκεί λίγα λεπτά. Το όριο αφήνει χρόνο για διάγνωση. |
 
 **Υπεύθυνος:** ο ιδιοκτήτης και διαχειριστής της εγκατάστασης (Zaf).
-**Κλιμάκωση:** δεν υπάρχει δεύτερο πρόσωπο. Αν η επαναφορά αποτύχει, **μην σβήσεις τίποτα**: κράτα το `titan_core.db.before-restore` και όλα τα αρχεία `*.db.corrupt`, και δοκίμασε το αμέσως προηγούμενο αντίγραφο.
+**Κλιμάκωση:** δεν υπάρχει δεύτερο πρόσωπο. Αν η επαναφορά αποτύχει, **μην σβήσεις τίποτα**: κράτα το `titan_core.db.before-restore` (μαζί με το `titan_core.db.before-restore-wal`, αν υπάρχει) και όλα τα αρχεία `*.db.corrupt`, και δοκίμασε το αμέσως προηγούμενο αντίγραφο.
 
 ## Πού είναι τα αντίγραφα (DR-01)
 
@@ -67,13 +67,15 @@ python -m pytest tests/ -k db_integrity -v
    ```bash
    docker compose stop titan-api titan-worker
    ```
-3. Κράτα την τωρινή βάση και βάλε στη θέση της το αντίγραφο (άλλαξε την ημερομηνία):
+3. Κράτα την τωρινή βάση μαζί με το `-wal` της (οι τελευταίες εγγραφές μπορεί να είναι μόνο εκεί), σβήσε το παλιό `-wal`/`-shm` και βάλε στη θέση της το αντίγραφο (άλλαξε την ημερομηνία):
    ```bash
    docker compose run --rm --no-deps --entrypoint sh titan-worker -c \
      "cp /data/titan_core.db /data/titan_core.db.before-restore && \
-      cp /backups/titan_2026-10-06.db /data/titan_core.db && \
-      rm -f /data/titan_core.db-wal /data/titan_core.db-shm"
+      if [ -f /data/titan_core.db-wal ]; then cp /data/titan_core.db-wal /data/titan_core.db.before-restore-wal; fi && \
+      rm -f /data/titan_core.db-wal /data/titan_core.db-shm && \
+      cp /backups/titan_2026-10-06.db /data/titan_core.db"
    ```
+   Το `titan_core.db.before-restore-wal` ανήκει στο `titan_core.db.before-restore`: κράτα τα μαζί (RC-03).
 4. Ξεκίνα και επιβεβαίωσε:
    ```bash
    docker compose up -d
