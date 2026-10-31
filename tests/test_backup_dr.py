@@ -282,19 +282,16 @@ def _rows(path: Path) -> int:
         conn.close()
 
 
-@pytest.mark.skipif(shutil.which("bash") is None, reason="the runbook commands are bash")
-def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_path: Path) -> None:
-    backup = tmp_path / "titan_core.db.20261030"
+def _backup_and_crashed_live_db(backup: Path, live_dir: Path) -> None:
+    """A backup with 1 row, and a live database after a crash: its pages plus 18 rows only in its -wal."""
     conn = sqlite3.connect(backup)
     conn.execute("CREATE TABLE t (x)")
     conn.execute("INSERT INTO t VALUES (1)")
     conn.commit()
     conn.close()
 
-    # The live database after a crash: the backup's pages plus 18 rows that exist only in its -wal.
-    live_dir = tmp_path / "run"
-    live_dir.mkdir()
-    work = tmp_path / "work.db"
+    live_dir.mkdir(parents=True, exist_ok=True)
+    work = backup.parent / "work.db"
     work.write_bytes(backup.read_bytes())
     writer = sqlite3.connect(work)
     writer.execute("PRAGMA journal_mode=WAL")
@@ -304,6 +301,13 @@ def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_
     (live_dir / "titan_core.db").write_bytes(work.read_bytes())
     (live_dir / "titan_core.db-wal").write_bytes(Path(f"{work}-wal").read_bytes())
     writer.close()
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="the runbook commands are bash")
+def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_path: Path) -> None:
+    backup = tmp_path / "titan_core.db.20261030"
+    live_dir = tmp_path / "run"
+    _backup_and_crashed_live_db(backup, live_dir)
 
     commands = _scenario_b_file_commands()
     assert any(_BACKUP_PLACEHOLDER in c for c in commands)
@@ -315,3 +319,38 @@ def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_
     kept = sorted(p.name for p in live_dir.iterdir() if "before-restore" in p.name)
     assert kept, "the damaged database must be kept before the restore"
     assert _rows(live_dir / kept[0]) == 19, "the kept copy must include the writes that lived only in the -wal"
+
+
+# ── RC-03: the Docker restore runbook (RUNBOOK_DR.md step 3) ────────────────
+
+
+def _docker_restore_script() -> str:
+    """The ``sh -c "..."`` script of step 3 of the Docker restore in RUNBOOK_DR.md."""
+    text = (_ROOT / "docs" / "RUNBOOK_DR.md").read_text(encoding="utf-8")
+    section = text.split("## Επαναφορά (Docker)", 1)[1]
+    step3 = section.split("\n3. ", 1)[1].split("\n4. ", 1)[0]
+    block = step3.split("```bash", 1)[1].split("```", 1)[0]
+    script = block.split('-c \\', 1)[1].split("```", 1)[0].strip()
+    assert script.startswith('"') and script.endswith('"'), script
+    return script[1:-1].replace("\\\n", "")  # bash drops backslash-newline inside double quotes
+
+
+@pytest.mark.skipif(shutil.which("sh") is None, reason="the runbook script is sh")
+def test_docker_restore_runbook_keeps_the_old_wal_with_the_kept_copy(tmp_path: Path) -> None:
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    data = tmp_path / "data"
+    _backup_and_crashed_live_db(backups / "titan_2026-10-06.db", data)
+
+    script = _docker_restore_script().replace("/data/", f"{data}/").replace("/backups/", f"{backups}/")
+    result = subprocess.run(["sh", "-c", script], check=False, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+    assert _rows(data / "titan_core.db") == 1, "the restored database must be the backup"
+    assert not (data / "titan_core.db-wal").exists()
+    assert _rows(data / "titan_core.db.before-restore") == 19, "the kept copy must include the writes in the -wal"
+
+    # Running step 3 again must not overwrite the kept copy or leave its -wal beside another database.
+    again = subprocess.run(["sh", "-c", script], check=False, capture_output=True, text=True)
+    assert again.returncode != 0
+    assert _rows(data / "titan_core.db.before-restore") == 19
