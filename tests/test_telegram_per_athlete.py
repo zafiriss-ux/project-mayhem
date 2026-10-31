@@ -231,15 +231,24 @@ def test_an_athletes_stop_audits_first_and_revokes_that_athlete_only(bot, db) ->
 
 
 @pytest.mark.integration
-def test_an_athletes_stop_without_its_audit_row_revokes_nothing(bot, db, monkeypatch) -> None:
+def test_an_athletes_stop_without_its_audit_row_still_takes_effect(bot, db, monkeypatch) -> None:
+    # ADR-0079 (SP-03 part B): the withdrawal always applies; the audit row waits in the queue.
     _grant_consent(db, _A)
-    monkeypatch.setattr(db, "log_coach_action", MagicMock(side_effect=RuntimeError("disk full")))
-    monkeypatch.setattr(
-        "titan.observability.metrics.get_metrics", lambda: SimpleNamespace(counter=lambda *a, **k: None)
+    db.conn.execute(
+        "CREATE TRIGGER broken_audit BEFORE INSERT ON coach_audit_log BEGIN SELECT RAISE(ABORT, 'damaged'); END"
     )
+    db.conn.commit()
+    monkeypatch.setattr(
+        "titan.observability.metrics.get_metrics",
+        lambda: SimpleNamespace(counter=lambda *a, **k: None, gauge=lambda *a, **k: None),
+    )
+    monkeypatch.setattr(bot, "send_message", lambda text, parse_mode="Markdown": True)
 
-    assert _send(bot, "stop", CHAT_A) == [_AUDIT_UNAVAILABLE_REPLY]
-    assert _open_consents(db) == [_A]
+    (reply,) = _send(bot, "stop", CHAT_A)
+
+    assert reply.startswith("⏹ Stopped.")
+    assert _open_consents(db) == []
+    assert [item["athlete_id"] for item in db.pending_audit.pending()] == [_A]
 
 
 @pytest.mark.integration

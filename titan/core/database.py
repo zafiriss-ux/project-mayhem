@@ -10,7 +10,7 @@ import os
 import re
 import sqlite3
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -22,8 +22,13 @@ try:
     import psycopg2
 except ModuleNotFoundError:  # pragma: no cover - optional backend dependency
     psycopg2 = None
-from titan.core.athlete import OWNER_ATHLETE_ID, UniversalAthleteProfile, profile_problems
-from titan.core.repositories.access import AccessRepository
+from titan.core.athlete import (
+    OWNER_ATHLETE_ID,
+    ConsentWithdrawalPending,
+    UniversalAthleteProfile,
+    profile_problems,
+)
+from titan.core.repositories.access import AccessRepository, PendingAuditQueue
 from titan.core.repositories.governance import GovernanceRepository, decision_athlete_id
 from titan.core.repositories.migrations import SchemaMigrations
 from titan.core.repositories.operations import OperationsRepository
@@ -726,23 +731,49 @@ class DatabaseManager:
 
         if athlete_id == OWNER_ATHLETE_ID:
             return True
+        # ADR-0079 §3: a withdrawal still in the pending-audit queue already counts as no
+        # consent. An unreadable queue raises; every caller treats that as no consent.
+        queue = self.pending_audit
+        if queue is not None and athlete_id in queue.pending_athletes():
+            return False
         today = (now or datetime.now(UTC)).astimezone(UTC).date()
         return consent_is_current(self._access.get_consent_rows(athlete_id=athlete_id), today)
+
+    @property
+    def pending_audit(self) -> PendingAuditQueue | None:
+        """The pending-audit queue beside the database file; None for ``:memory:`` (ADR-0079 §4)."""
+        if str(self.db_path) == ":memory:":
+            return None
+        return PendingAuditQueue(self.db_path.parent)
 
     def grant_consent(self, athlete_id: str, text_version: str, *, now: datetime | None = None) -> bool:
         """Record the athlete's own consent to ``text_version`` via Telegram (ADR-0067 D4.1, D4.4).
 
         Returns False when that version is already consented to and not revoked. Raises
         ValueError for the owner, for any version but the current one, and when the
-        30 days after the last /stop have passed.
+        30 days after the last /stop have passed; ConsentWithdrawalPending while the
+        athlete's /stop is still in the pending-audit queue (ADR-0079 §3).
         """
-        from titan.core.athlete import CONSENT_FREEZE_DAYS, CONSENT_TEXT_VERSION, CONSENT_TYPE
+        from titan.core.athlete import CONSENT_TEXT_VERSION
 
         if athlete_id == OWNER_ATHLETE_ID:
             raise ValueError("the owner is exempt from consent (ADR-0067 D4.5)")
         if text_version != CONSENT_TEXT_VERSION:
             raise ValueError(f"only the current consent text {CONSENT_TEXT_VERSION} can be agreed to")
         moment = (now or datetime.now(UTC)).astimezone(UTC)
+        queue = self.pending_audit
+        if queue is None:
+            return self._grant_consent_checked(athlete_id, text_version, moment)
+        # ADR-0079 §3: no new consent while a withdrawal is pending. The shared queue lock
+        # is held from the check to the commit, so a /stop cannot slip in between.
+        with queue.locked(exclusive=False):
+            if any(item["athlete_id"] == athlete_id for item in queue.read_locked()):
+                raise ConsentWithdrawalPending(athlete_id)
+            return self._grant_consent_checked(athlete_id, text_version, moment)
+
+    def _grant_consent_checked(self, athlete_id: str, text_version: str, moment: datetime) -> bool:
+        from titan.core.athlete import CONSENT_FREEZE_DAYS, CONSENT_TYPE
+
         rows = self._access.get_consent_rows(athlete_id=athlete_id)
         if any(r["text_version"] == text_version and not r["revoked_at"] for r in rows):
             return False
@@ -760,6 +791,82 @@ class DatabaseManager:
         if athlete_id == OWNER_ATHLETE_ID:
             raise ValueError("the owner is exempt from consent (ADR-0067 D4.5)")
         return self._access.revoke_consent(athlete_id=athlete_id, revoked_at=datetime.now(UTC).isoformat())
+
+    def withdraw_consent(self, athlete_id: str, *, coach_id: str, action_type: str) -> str:
+        """Withdraw consent so that it always takes effect (ADR-0079, INV-22 exception).
+
+        Returns ``"recorded"`` when the revocation and its audit row were written in one
+        transaction, or ``"queued_first"`` / ``"queued"`` when that failed and the withdrawal
+        went to the pending-audit queue (it already counts as no consent); ``"queued_first"``
+        when the queue was empty before, so the owner is told once (ADR-0079 §5). Raises when neither could be
+        written; the caller refuses the /stop and tells the owner.
+        """
+        if athlete_id == OWNER_ATHLETE_ID:
+            raise ValueError("the owner is exempt from consent (ADR-0067 D4.5)")
+        revoked_at = datetime.now(UTC).isoformat()
+        try:
+            self._access.revoke_consent_with_audit(
+                athlete_id, revoked_at=revoked_at, coach_id=coach_id, action_type=action_type, resource="telegram",
+            )
+        except Exception as exc:
+            _log.critical(
+                "audit_write_failed",
+                extra={"surface": "telegram", "action_type": action_type, "error_class": exc.__class__.__name__},
+            )
+            from titan.observability.metrics import get_metrics
+
+            get_metrics().counter("audit_write_failure", labels={"surface": "telegram"})
+        else:
+            return "recorded"
+        queue = self.pending_audit
+        if queue is None:
+            raise RuntimeError("no pending-audit queue for an in-memory database")
+        import uuid
+
+        # The queue lock is taken only now, after the failed transaction let go of self._lock.
+        # The time is stamped under the queue lock (see PendingAuditQueue.append).
+        item: dict[str, Any] = {"id": uuid.uuid4().hex, "athlete_id": athlete_id, "action": action_type}
+        first = queue.append(item)
+        try:
+            self._access.revoke_consent(athlete_id=athlete_id, revoked_at=item["revoked_at"])
+        except Exception as exc:
+            _log.critical("consent_revoke_failed_queued", extra={"error_class": exc.__class__.__name__})
+        from titan.observability.metrics import get_metrics
+
+        with suppress(Exception):
+            get_metrics().gauge("pending_audit_queue_depth", len(queue.pending()))
+        return "queued_first" if first else "queued"
+
+    def drain_pending_audit(self) -> int:
+        """Write queued withdrawals to the database; return how many are still pending (ADR-0079 §4).
+
+        Holds the exclusive queue lock for the whole run. Each entry is written in one
+        transaction, then marked done; the file is compacted at the end. A failure stops the
+        drain, counts ``audit_write_failure`` and leaves the rest queued. An unreadable queue
+        raises PendingAuditUnreadable and nothing is changed.
+        """
+        from titan.observability.metrics import get_metrics
+
+        queue = self.pending_audit
+        if queue is None:
+            return 0
+        with queue.locked(exclusive=True):
+            items = queue.read_locked()
+            drained: set[str] = set()
+            for item in items:
+                try:
+                    self._access.apply_queued_withdrawal(item, coach_id="telegram:pending-audit", resource="telegram")
+                except Exception as exc:
+                    _log.critical("pending_audit_drain_failed", extra={"error_class": exc.__class__.__name__})
+                    get_metrics().counter("audit_write_failure", labels={"surface": "pending_audit"})
+                    break
+                queue.append_locked({"id": item["id"], "done": True})
+                drained.add(item["id"])
+            remaining = [item for item in items if item["id"] not in drained]
+            if items:
+                queue.rewrite_locked(remaining)
+        get_metrics().gauge("pending_audit_queue_depth", len(remaining))
+        return len(remaining)
 
     def is_athlete_cold_start(self, athlete_id: str) -> bool:
         """Return True if the athlete is in the cold-start bootstrapping period."""

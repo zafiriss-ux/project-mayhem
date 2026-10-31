@@ -106,7 +106,10 @@ def cmd_list(_args: argparse.Namespace, db: DatabaseManager) -> int:
         "WHERE a.athlete_id != 'owner' ORDER BY a.created_at"
     ).fetchall()
     for athlete_id, name, garmin, chat in rows:
-        consent = "yes" if db.has_current_consent(athlete_id) else "no"
+        try:
+            consent = "yes" if db.has_current_consent(athlete_id) else "no"
+        except Exception:  # an unreadable pending-audit queue counts as no consent (ADR-0079 §3)
+            consent = "no (pending-audit queue unreadable)"
         problem = _readiness_problem(db, athlete_id)
         ready = "yes" if problem is None else f"no ({problem})"
         print(

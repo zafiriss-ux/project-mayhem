@@ -159,6 +159,12 @@ docker compose exec -it titan-worker python scripts/athletes.py remove a-1234abc
   μόνος του 30 ημέρες μετά. Για να γίνει τώρα: `python scripts/athletes.py purge-expired`.
 - **Μετά από restore backup:** ο worker ξανασβήνει μόνος του, στην εκκίνηση, όσους γράφει το αρχείο
   διαγραφών. Με το χέρι: `python scripts/athletes.py reapply-deletions`.
+- **Restore και ανακλήσεις (ADR-0079):** πριν από restore παλιάς βάσης, κοίτα τις γραμμές
+  `TELEGRAM_STOP` του audit μετά την ημερομηνία του backup, και το `pending_audit.jsonl` (και τα
+  αντίγραφά του: `titan_<ημέρα>.pending_audit.jsonl` από τον worker, `backups/pending_audit.jsonl.<ημέρα>`
+  από το `scripts/backup.sh`). Κάθε ανάκληση μετά το backup
+  ξαναγράφεται, αλλιώς το restore «ξυπνά» συναίνεση που ανακλήθηκε. Ο πιο απλός τρόπος: μην σβήσεις το
+  τρέχον `pending_audit.jsonl` στο restore, και ζήτα από τον αθλητή να ξαναστείλει `/stop`.
 - Το αρχείο εξαγωγής περιέχει προσωπικά δεδομένα: δώσ' το στον αθλητή και σβήσ' το.
 
 ---
@@ -174,6 +180,7 @@ python scripts/athletes.py list
 | Στήλη | Σημαίνει | Τι κάνεις |
 |---|---|---|
 | `ready=no (consent: none current)` | Δεν έχει συγκατάθεση, ή έστειλε `/stop` | Ο αθλητής στέλνει `/consent` και `/agree v1` (§1.5). Μέσα στις 30 ημέρες μετά το `/stop` μπορεί να ξαναδώσει |
+| `ready=no (consent: pending-audit queue unreadable)` | Το `pending_audit.jsonl` έχει γραμμή που δεν διαβάζεται· κανένας αθλητής εκτός από σένα δεν τρέχει (ADR-0079) | §5 |
 | `ready=no (no profile)` ή όνομα πεδίου | Λείπει ή είναι άκυρο πεδίο του προφίλ | Σβήσε και πρόσθεσε ξανά τον αθλητή με σωστό προφίλ (§2, §1) |
 | `ready=no (garmin: no account bound)` | Δεν έγινε ποτέ `relogin` | §1.4 |
 | `ready=no (garmin: token missing)` ή `token expired` | Το token δεν υπάρχει ή το Garmin το απέρριψε | §4 |
@@ -261,3 +268,25 @@ python scripts/athletes.py list            # garmin=ok  ready=yes
 `new-key` και κάνε `relogin` σε κάθε αθλητή. Με `connect_token_key_mismatch` το `TITAN_TOKEN_KEY_FILE`
 δείχνει σε άλλο κλειδί από αυτό που έγραψε τα token: βάλε πίσω το σωστό κλειδί· αν δεν υπάρχει πια,
 `relogin` στον αθλητή.
+
+---
+
+## 5. Η ουρά εκκρεμών audit (`pending_audit.jsonl`, ADR-0079)
+
+Όταν ένας αθλητής στέλνει `/stop` και η γραμμή audit δεν γράφεται, η ανάκληση ισχύει κανονικά και το
+audit της μπαίνει στο `pending_audit.jsonl`, δίπλα στη βάση (στο Docker στον τόμο `titan-data`). Ο
+worker το αδειάζει σε κάθε κύκλο. Σου έρχεται μήνυμα όταν μπαίνει κάτι στην ουρά, και μία υπενθύμιση
+την ημέρα όσο δεν αδειάζει.
+
+- **Η ουρά δεν αδειάζει:** τα logs γράφουν `pending_audit_drain_failed`. Το audit της βάσης δεν
+  γράφεται: έλεγξε χώρο στον δίσκο και `PRAGMA integrity_check`. Μόλις διορθωθεί, ο επόμενος κύκλος
+  την αδειάζει μόνος του. Όσο περιμένει, ο αθλητής δεν μπορεί να ξαναδώσει συγκατάθεση.
+- **Η ουρά δεν διαβάζεται** (`pending_audit_unreadable`, `ready=no (consent: pending-audit queue
+  unreadable)`): σταμάτα τον worker. Άνοιξε το αρχείο. Για κάθε πλήρη γραμμή με `athlete_id` και
+  `revoked_at` που δεν είναι `{"id": ..., "done": true}`, γράψε την ανάκληση με το χέρι:
+  `UPDATE consent_log SET revoked_at = '<revoked_at>' WHERE athlete_id = '<id>' AND revoked_at IS NULL`.
+  Μετά σβήσε μόνο τη χαλασμένη γραμμή, ποτέ ολόκληρο το αρχείο, και ξεκίνα τον worker.
+- **Κομμένη τελευταία γραμμή:** αγνοείται και κόβεται μόνη της στην επόμενη εγγραφή
+  (`pending_audit_torn_tail_dropped`). Ήταν `/stop` που δεν επιβεβαιώθηκε ποτέ στον αθλητή.
+- Το αρχείο δεν έχει chat id, token ή δεδομένα υγείας. Το `pending_audit.lock` είναι το αρχείο
+  κλειδώματος: μην το σβήνεις όσο τρέχει ο worker.
