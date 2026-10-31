@@ -146,7 +146,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | — | — | — | **Καταγραφή 2026-10-31, έλεγχος AT (D-202):** το tier και ο στόχος είναι πρόταση του Claude και τα αποφασίζει ο owner· ως τότε κανένα δεν μετρά ως TRACKED | — | — |
 | AT-01 | 2 | HIGH | 20 κλειδιά `garmin_data` που ο sync δεν βγάζει· η κόπωση δεν γίνεται ποτέ HIGH, η V4 δεν κόβει από κόπωση· τα fakes τα δίνουν (εν μέρει SD-10, D-058, D-088) | `daily_coach.py:1134, 1216, 1228-1231`, `fatigue_engine.py:9-29` | OPEN · Β, θέλει ADR (ADR-0009)· Α για test-συμβόλαιο · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος AT (D-202) |
 | AT-02 | 2 | MEDIUM | Τα e2e τρέχουν με `StubGovernance` και σχήμα Garmin που ο sync δεν βγάζει | `tests/e2e/conftest.py:15-53` | OPEN · στόχος Phase 27 · έλεγχος AT (D-202) |
-| AT-03 | 1 | HIGH | `/docs`, `/redoc`, `/openapi.json` χωρίς πιστοποίηση (κανόνας: authentication) | `titan/api/main.py:343` | OPEN · Α, επόμενο PR · έλεγχος AT (D-202) |
+| AT-03 | 1 | HIGH | `/docs`, `/redoc`, `/openapi.json` χωρίς πιστοποίηση (κανόνας: authentication) | `titan/api/main.py:343` | RESOLVED · PR #1146 (D-203)· τα routes της τεκμηρίωσης είναι κλειστά και κάθε route έξω από την επιτρεπτή λίστα θέλει login· επιβεβαιωμένο με test |
 | AT-04 | 1 | HIGH | Gitleaks στο push στο main μόνο `HEAD~1..HEAD`· HIGH στο AGENTS §30, LOW στο M0-31 | `secret-scan.yml:38-40` | OPEN · Α · έλεγχος AT (D-202) |
 | AT-05 | 3 | MEDIUM | Το pytest γράφει `titan.log`/`titan.log.1` στη ρίζα του repo | `titan/main.py:75-95` | OPEN · Α · έλεγχος AT (D-202) |
 | AT-06 | 3 | LOW | Δύο μετρήσεις modules και literal 90 στις πύλες ορίου | `test_complexity_budget.py:17-39` | OPEN · Α · έλεγχος AT (D-202) |

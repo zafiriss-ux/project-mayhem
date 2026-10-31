@@ -340,7 +340,17 @@ def create_app(
         get_metrics().counter("api_startup")
         yield
 
-    app = FastAPI(title="TITAN OS API", version="8B", lifespan=lifespan)
+    # AT-03: no /docs, /redoc or /openapi.json. They answered without a login and
+    # gave out the API map (ADR-0048: only the allow-listed routes are public).
+    # app.openapi() still builds the schema for the contract tests.
+    app = FastAPI(
+        title="TITAN OS API",
+        version="8B",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.auth_store = auth_store or AuthStore()
     app.state.audit_store = audit_store or CoachAuditStore()
     app.state.db = db
