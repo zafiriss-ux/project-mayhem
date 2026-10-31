@@ -69,6 +69,7 @@ def db(tmp_path, monkeypatch):
 
     get_settings.cache_clear()
     manager = DatabaseManager(db_dir=tmp_path)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     for index, (athlete, city) in enumerate(((_A, "Thessaloniki"), (_B, "Florina")), start=1):
         manager.conn.execute(
             "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')",

@@ -104,6 +104,7 @@ def _run(base: Path, athletes: tuple[PilotAthlete, ...]) -> PilotRun:
         evening = datetime.combine(pilot.FIRST_MORNING, datetime.min.time(), UTC) - timedelta(hours=6)
         with freeze_time(evening):
             db = DatabaseManager(db_dir=data)
+            db.record_owner_garmin_display_name(OWNER.garmin_account)  # the owner's sync ran once (ADR-0076)
             for athlete in athletes:
                 if athlete is not OWNER:
                     _add(db, athlete, evening + timedelta(minutes=ATHLETES.index(athlete)), mp)

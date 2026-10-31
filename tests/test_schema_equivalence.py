@@ -241,6 +241,11 @@ AUTHORITATIVE_COLUMNS: dict[str, list[str]] = {
         "menstrual_tracking",
         "updated_at",
     ],
+    "owner_garmin_identity": [  # v35 — ADR-0076 (M0-13-R1)
+        "athlete_id",
+        "garmin_display_name",
+        "updated_at",
+    ],
     "override_log": [
         "id",
         "athlete_id",  # v30 — ADR-0067 D3 (D-091)

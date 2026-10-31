@@ -476,6 +476,8 @@ def main():
 
     # ── Step 3: Persistent database (moved before engines for EngineRegistry) ──
     db = DatabaseManager()
+    # The owner's Garmin account name is recorded in this database (ADR-0076).
+    garmin.db = db
     # INV-22: /sync and /manual_entry write their audit row to this database first.
     telegram.db = db
     log.info(

@@ -337,6 +337,14 @@ def relogin_athlete(db, athlete_id: str, email: str, password: str, prompt_mfa) 
     garmin_user_id = str(profile.get("displayName") or "").strip() if isinstance(profile, dict) else ""
     if not garmin_user_id:
         raise RuntimeError("Garmin returned no displayName for this account after login; nothing was bound")
+    # ADR-0076 point 4 (M0-13-R1): the owner's account is refused even when the owner logged in
+    # with another e-mail than GARMIN_EMAIL. Without the owner's recorded name the check cannot
+    # run, so nothing is bound (fail closed). bind_garmin_account refuses both cases too.
+    owner_account = db.get_owner_garmin_display_name()
+    if owner_account is None:
+        raise ValueError("the owner's Garmin account name is not recorded yet; run the owner's Garmin sync first")
+    if garmin_user_id == owner_account:
+        raise ValueError("this is the owner's Garmin account; an athlete logs in with their own account")
     db.bind_garmin_account(athlete_id, garmin_user_id)
     write_athlete_token(athlete_id, client.client.dumps())
     db.set_garmin_token_state(athlete_id, "ok")
@@ -531,6 +539,7 @@ class GarminSync:
     athlete_id: str = _OWNER_ATHLETE_ID
     token_only: bool = False
     token_expired: bool = False
+    db = None  # the caller's DatabaseManager, for the owner's Garmin account name (ADR-0076)
 
     def __init__(
         self,
@@ -539,8 +548,12 @@ class GarminSync:
         *,
         athlete_id: str = _OWNER_ATHLETE_ID,
         expected_garmin_user_id: str | None = None,
+        db=None,  # noqa: ANN001 - DatabaseManager; the caller's, never a new one (ADR-0076)
     ):
         validate_token_encryption_key()
+        # Where the owner's Garmin account name is recorded after a connection that read the
+        # profile (ADR-0076 point 2). Unused for any other athlete.
+        self.db = db
         # The Garmin account bound to this athlete (athlete_accounts.garmin_user_id). An
         # athlete's token is used only when Garmin says it belongs to that account (MA-F1).
         self.expected_garmin_user_id = str(expected_garmin_user_id or "").strip() or None
@@ -680,6 +693,54 @@ class GarminSync:
             ),
         )
         return False
+
+    def _record_owner_identity(self, profile) -> None:  # noqa: ANN001
+        """Record the owner's Garmin account name from a profile Garmin returned (ADR-0076).
+
+        Only for the owner, and only with the caller's database. The value is the
+        socialProfile ``displayName`` (stripped), never ``client.display_name``, which the
+        library fills with the login e-mail when the name is missing. An empty name is not
+        recorded. A failure here is logged and never stops the owner's connection. The name
+        itself is never logged.
+        """
+        if self.token_only or self.db is None:
+            return
+        name = str(profile.get("displayName") or "").strip() if isinstance(profile, dict) else ""
+        if not name:
+            _garmin_event(
+                "owner_identity_missing_in_profile",
+                subsystem="connect",
+                detail="Garmin profile has no displayName; the owner's Garmin account name is not updated",
+            )
+            return
+        try:
+            result = self.db.record_owner_garmin_display_name(name)
+        except Exception as record_err:
+            _garmin_error_event(
+                "owner_identity_not_recorded",
+                subsystem="connect",
+                error_class=record_err.__class__.__name__,
+                detail="The owner's Garmin account name could not be stored; athlete relogin stays refused until it is",
+            )
+            return
+        if not result:
+            return
+        if result.get("changed"):
+            _garmin_event(
+                "owner_garmin_account_name_changed",
+                subsystem="connect",
+                severity=EventSeverity.WARNING,
+                detail="The owner's Garmin account name changed; the new name replaced the old one",
+            )
+        for athlete_id in result.get("expired_athletes") or ():
+            # Point 6: told like every token expiry (D9.5), with its own cause.
+            _log.warning(
+                "athlete_garmin_account_is_owners",
+                extra={
+                    "athlete_id": athlete_id,
+                    "detail": "This athlete was bound to the owner's Garmin account; paused until Zaf rebinds the right account",
+                },
+            )
 
     def _connect_impl(self) -> bool:
         """Actual connection logic. Must be called under ``_connect_lock``."""
@@ -861,6 +922,7 @@ class GarminSync:
                 else:
                     if self.token_only and not self._token_account_matches(profile):
                         return False
+                    self._record_owner_identity(profile)
                     self.client = client
                     self.is_connected = True
                     self.last_connect_error = None
@@ -920,6 +982,21 @@ class GarminSync:
                     error_class=save_err.__class__.__name__,
                     detail="Could not persist Garth session token",
                 )
+
+            # ADR-0076 point 2: after a full login the owner's account name is read explicitly.
+            # A failed read records nothing and never stops the owner's connection.
+            try:
+                login_profile = client.connectapi("userprofile-service/socialProfile")
+            except Exception as profile_err:
+                login_profile = None
+                _garmin_event(
+                    "owner_identity_profile_unread",
+                    subsystem="connect",
+                    error_class=profile_err.__class__.__name__,
+                    detail="Profile not read after login; the owner's Garmin account name is not updated",
+                )
+            if login_profile is not None:
+                self._record_owner_identity(login_profile)
 
             self.client = client
             self.is_connected = True

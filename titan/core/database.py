@@ -141,7 +141,7 @@ def _derive_field_hint(error: Exception) -> str:
 # Current schema version. Increment by 1 for every new migration added to
 # _run_migrations(). The value is stored in PRAGMA user_version so the DB
 # self-reports its schema state on every startup.
-SCHEMA_VERSION = 34
+SCHEMA_VERSION = 35
 
 # Largest size the WAL file is kept at after a checkpoint resets it (D-078).
 WAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024
@@ -520,6 +520,10 @@ class DatabaseManager:
         """Version 34: the schema step of ADR-0069 §4 (OW-M2, P4-03, P4-04, injuries)."""
         self._migrations._apply_v34_migrations(cursor=cursor)
 
+    def _apply_v35_migrations(self, cursor) -> None:
+        """Version 35: the owner's Garmin account name (ADR-0076, M0-13-R1)."""
+        self._migrations._apply_v35_migrations(cursor=cursor)
+
     def record_failed_login(
         self,
         username: str,
@@ -620,8 +624,9 @@ class DatabaseManager:
     def bind_garmin_account(self, athlete_id: str, garmin_user_id: str) -> None:
         """Bind a Garmin account to an athlete other than the owner (ADR-0067 D9.4).
 
-        Raises ValueError for the owner, whose Garmin login stays in .env (D1.3), or
-        when the account is already bound to another athlete.
+        Raises ValueError for the owner, whose Garmin login stays in .env (D1.3), when the
+        account is already bound to another athlete, when it is the owner's account, or
+        while the owner's account name is not recorded yet (ADR-0076 point 5, fail closed).
         """
         if athlete_id == OWNER_ATHLETE_ID:
             raise ValueError("the owner's Garmin account lives in .env, not in athlete_accounts")
@@ -630,6 +635,24 @@ class DatabaseManager:
         self._access.bind_garmin_account(
             athlete_id=athlete_id, garmin_user_id=str(garmin_user_id).strip(),
             updated_at=datetime.now(UTC).isoformat(),
+        )
+
+    def get_owner_garmin_display_name(self) -> str | None:
+        """The owner's Garmin account name (socialProfile displayName), or None (ADR-0076)."""
+        return self._access.get_owner_garmin_display_name()
+
+    def record_owner_garmin_display_name(self, display_name: str) -> dict | None:
+        """Store the owner's current Garmin account name (ADR-0076 points 1, 3 and 6).
+
+        An empty or missing name is never stored and leaves the stored one as it is
+        (returns None). Otherwise returns ``{"changed": bool, "expired_athletes": [...]}``:
+        a new name replaced the old one, and athletes bound to this account were stopped.
+        """
+        name = str(display_name or "").strip()
+        if not name:
+            return None
+        return self._access.record_owner_garmin_display_name(
+            display_name=name, updated_at=datetime.now(UTC).isoformat()
         )
 
     def set_garmin_token_state(self, athlete_id: str, state: str) -> None:

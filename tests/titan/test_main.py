@@ -290,6 +290,25 @@ def test_main_smoke_uses_env_overrides_and_passes_profile_to_context(monkeypatch
 
 
 @pytest.mark.unit
+def test_main_gives_the_owner_garmin_sync_the_one_database(monkeypatch):
+    """main() opens one DatabaseManager and hands that same instance to GarminSync (ADR-0076)."""
+    garmin, _weather, _telegram, db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
+    opened = []
+
+    def _open_db():
+        opened.append(db)
+        return db
+
+    monkeypatch.setattr(titan_main, "DatabaseManager", _open_db)
+    monkeypatch.setattr(titan_main, "main_menu", lambda _ctx: None)
+
+    titan_main.main()
+
+    assert len(opened) == 1
+    assert garmin.db is db
+
+
+@pytest.mark.unit
 def test_main_smoke_uses_profile_defaults_when_env_missing(monkeypatch):
     _garmin, _weather, _telegram, _db, _daily_coach, _weekly_planner = _patch_main_dependencies(monkeypatch)
     captured_ctx = {}

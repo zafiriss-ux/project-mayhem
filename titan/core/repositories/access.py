@@ -241,6 +241,17 @@ class AccessRepository:
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = self._db.conn.cursor()
+            # ADR-0076 point 5: the owner's account is never bound to an athlete, and while
+            # the owner's account name is unknown no account is bound at all (fail closed).
+            owner = cursor.execute(
+                "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
+            ).fetchone()
+            if owner is None:
+                raise ValueError(
+                    "the owner's Garmin account name is not recorded yet; run the owner's Garmin sync first"
+                )
+            if owner[0] == garmin_user_id:
+                raise ValueError("this is the owner's Garmin account; an athlete binds their own account")
             holder = cursor.execute(
                 "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ?",
                 (garmin_user_id,),
@@ -259,6 +270,61 @@ class AccessRepository:
                 (athlete_id, garmin_user_id, updated_at),
             )
             self._db.conn.commit()
+
+    def get_owner_garmin_display_name(self) -> str | None:
+        """The owner's Garmin account name (socialProfile displayName), or None (ADR-0076)."""
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            row = self._db.conn.execute(
+                "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
+            ).fetchone()
+        return row[0] if row else None
+
+    def record_owner_garmin_display_name(self, display_name: str, *, updated_at: str) -> dict:
+        """Store the owner's current Garmin account name and stop athletes bound to it (ADR-0076).
+
+        One current value: a new name replaces the old one (point 3). An athlete bound to
+        that account gets token state 'expired' (point 6), the only write to another
+        athlete's state from the owner's flow, and only towards closed. All in one
+        transaction. Returns ``{"changed": bool, "expired_athletes": [athlete_id, ...]}``.
+        """
+        with self._db._lock:
+            self._db._ensure_open_locked()
+            cursor = self._db.conn.cursor()
+            try:
+                previous = cursor.execute(
+                    "SELECT garmin_display_name FROM owner_garmin_identity WHERE athlete_id = 'owner'"
+                ).fetchone()
+                cursor.execute(
+                    """INSERT INTO owner_garmin_identity (athlete_id, garmin_display_name, updated_at)
+                       VALUES ('owner', ?, ?)
+                       ON CONFLICT(athlete_id) DO UPDATE SET
+                            garmin_display_name = excluded.garmin_display_name,
+                            updated_at = excluded.updated_at""",
+                    (display_name, updated_at),
+                )
+                bound = [
+                    row[0]
+                    for row in cursor.execute(
+                        "SELECT athlete_id FROM athlete_accounts WHERE garmin_user_id = ? "
+                        "AND athlete_id != 'owner' AND garmin_token_state != 'expired' ORDER BY athlete_id",
+                        (display_name,),
+                    )
+                ]
+                for athlete_id in bound:
+                    cursor.execute(
+                        "UPDATE athlete_accounts SET garmin_token_state = 'expired', updated_at = ? "
+                        "WHERE athlete_id = ?",
+                        (updated_at, athlete_id),
+                    )
+                self._db.conn.commit()
+            except Exception:
+                self._db.conn.rollback()
+                raise
+        return {
+            "changed": previous is not None and previous[0] != display_name,
+            "expired_athletes": bound,
+        }
 
     def set_garmin_token_state(self, athlete_id: str, state: str, *, updated_at: str) -> None:
         """Record the athlete's Garmin token state ('missing', 'ok' or 'expired')."""

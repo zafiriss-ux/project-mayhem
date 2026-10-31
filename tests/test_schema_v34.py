@@ -56,7 +56,7 @@ def test_a_new_database_is_v34(tmp_path: Path) -> None:
     db = _db(tmp_path)
     try:
         conn = db.conn
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 34
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION == 35
         notnull = _notnull(conn, "governance_outcomes")
         assert notnull["acwr"] == 0 and notnull["tsb_value"] == 0
         assert {"running_since", "running_by"} <= set(_notnull(conn, "worker_routine_executions"))
@@ -212,7 +212,7 @@ def test_v33_upgrades_in_one_step_and_keeps_the_latest_decision_of_a_day(tmp_pat
     db = _db(tmp_path)
     try:
         conn = db.conn
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 34
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 35
         rows = conn.execute(
             "SELECT id, athlete_id, date, session_post_governance, tsb_value, outcome_rpe "
             "FROM governance_outcomes ORDER BY id"

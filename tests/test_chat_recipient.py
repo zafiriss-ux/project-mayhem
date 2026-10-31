@@ -54,6 +54,7 @@ def db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(data))
     _settings(monkeypatch)
     manager = DatabaseManager(db_dir=data)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     yield manager
     manager.close()
     get_settings.cache_clear()
@@ -344,6 +345,7 @@ def test_a_worker_morning_sends_each_athlete_only_to_its_own_chat(tmp_path, monk
     evening = datetime.combine(pilot.FIRST_MORNING, datetime.min.time(), UTC) - timedelta(hours=6)
     with freeze_time(evening):
         db = DatabaseManager(db_dir=data)
+        db.record_owner_garmin_display_name(pilot.OWNER.garmin_account)  # the owner's sync ran once (ADR-0076)
         for i, athlete in enumerate((ATHLETE_A, ATHLETE_B)):
             monkeypatch.setattr(lifecycle, "new_athlete_id", lambda a=athlete: a.athlete_id)
             lifecycle.add_athlete(db, athlete.key, pilot.athlete_profile_record(athlete), athlete.chat,

@@ -312,6 +312,8 @@ def test_an_athletes_decision_comes_without_override_buttons(data_dir, monkeypat
 def _ready(db: DatabaseManager, athlete_id: str) -> None:
     _grant_consent(db, athlete_id)
     db.save_athlete_profile(athlete_id, _PROFILE)
+    if db.get_owner_garmin_display_name() is None:
+        db.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     db.bind_garmin_account(athlete_id, f"garmin-{athlete_id}")
     db.set_garmin_token_state(athlete_id, "ok")
     from titan.integrations.garmin_sync import (

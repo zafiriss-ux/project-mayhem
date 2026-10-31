@@ -18,7 +18,9 @@ from titan.orchestration.daily_coach import DailyCoach
 def worker_db(tmp_path, monkeypatch):
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "")
-    return DatabaseManager(db_dir=tmp_path)
+    manager = DatabaseManager(db_dir=tmp_path)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
+    return manager
 
 
 @pytest.mark.integration
@@ -29,6 +31,8 @@ def test_build_daily_coach_returns_wired_coach(worker_db):
 
     assert isinstance(coach, DailyCoach)
     assert coach.db is worker_db
+    # The owner's Garmin account name is recorded in this same database (ADR-0076).
+    assert coach.garmin.db is worker_db
     assert coach.athlete_id == "owner"
     assert coach.hrv_engine is coach.engines.hrv
     assert coach.weekly_planner.hrv_engine is coach.engines.hrv
@@ -66,6 +70,7 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     assert coach.athlete_profile.athlete_id == "a-00000002"
     assert coach.athlete_profile.max_hr == 186
     assert coach.garmin.athlete_id == "a-00000002"
+    assert coach.garmin.db is worker_db
     assert coach.garmin.token_only is True
     assert coach.telegram.chat_id == 20000002
 

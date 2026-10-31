@@ -99,6 +99,7 @@ def data_dir(tmp_path, monkeypatch):
 @pytest.fixture
 def db(data_dir):
     manager = DatabaseManager(db_dir=data_dir)
+    manager.record_owner_garmin_display_name("owner-garmin-name")  # the owner's sync ran once (ADR-0076)
     for athlete in (_A, _B):
         manager.conn.execute(
             "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')",
