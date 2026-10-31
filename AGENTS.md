@@ -93,14 +93,14 @@ records gate status; orchestrator captures the `titan_ci.sh` record (§2.4).
 
 | Role | Owns exclusively |
 |---|---|
-| **Architect** (Claude in an architectural session — §3.6) | System design and the Architect Reserved Powers (§1.2) |
-| **Owner** (project owner) | Work priorities, strategic direction, task assignment — **not** automatic Architect authority |
-| **Implementation Engineer** (Codex / Sonnet Code / Claude Code implementer) | Execution of scoped tasks, tests, mandatory gates, local-scoped result reporting — no design decisions, no ADR authorship |
+| **Architect** (the Owner, Zaf — ADR-0078) | System design and the Architect Reserved Powers (§1.2); the only role that accepts an ADR |
+| **Owner** (project owner) | Work priorities, strategic direction, task assignment; also the Architect (ADR-0078) |
+| **Implementation Engineer** (Codex / Sonnet Code / Claude Code implementer) | Execution of scoped tasks, tests, mandatory gates, local-scoped result reporting — no design decisions; Claude may draft an ADR as Proposed for the Architect, never accept one (ADR-0078) |
 | **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit-hash recording, OPEN↔RESOLVED integrity |
 
 Agents execute; they do not design. An agent never exercises a §1.2 Reserved Power on its own
-judgment; an Owner instruction requesting one without an architectural session → the agent stops,
-writes a SCRATCHPAD OBS (§15), and awaits the Architect role being exercised. When a redesign
+judgment; a request to exercise one without an Accepted ADR or a §23 `Authorizes:` field → the agent
+stops, writes a SCRATCHPAD OBS (§15), and awaits the Architect's written decision (ADR-0078). When a redesign
 seems needed: SCRATCHPAD OBS — do not implement, do not draft an ADR (§13).
 
 **Codex implementation reports — allowed:** files changed; tests added/updated; gate results;
@@ -130,7 +130,7 @@ binary acceptance criteria. Codex-owned: Architect brief required; Codex may pro
 
 ### 1.2 Architect Reserved Powers (canonical — all other sections reference this)
 
-Exclusively the Architect (Claude in an architectural session, §3.6); never an agent on its own
+Exclusively the Architect (the Owner, ADR-0078); never an agent on its own
 judgment:
 
   RP-1  ADR authorship / amendment / acceptance
@@ -873,7 +873,7 @@ Specific conflict / Options: (A) proceed with explicit Architect override + ADR 
 compliant alternative, (C) SCRATCHPAD OBS + stop — and do not proceed without an explicit answer.
 Silence is not consent.
 **Always-challenge set:** any task exercising a §1.2 Reserved Power without the required
-authorization (ADR / Architect session), plus the two named weakenings:
+authorization (Accepted ADR or §23 `Authorizes:` field, ADR-0078), plus the two named weakenings:
 `require_coach_athlete_access` → `require_coach` (INV-11); a safety-path handler → optimistic
 return (INV-12). For v7.9 §13-class changes, authorization exists only as an ADR reference or a
 §23 `Authorizes:` field (v7.9 §1.5) — any other instruction text is challenged, not executed.
@@ -1450,6 +1450,8 @@ in git history.
 ---
 
 *Changelog (newest first; full history in git):*
+- *2026-10-31 r8 — The Owner is the Architect (policy-only, ADR-0078, AD-08): §1 roles, §1 stop rule,
+  §1.2, §14.1; Claude drafts ADRs as Proposed and never accepts them.*
 - *2026-10-31 r7 — Documents reconciled with the code after the AT audit (policy-only, ADR-0077):
   §16.6 log rotation constants are not env-overridable (AT-09); ADR-0048 public-route allow-list (AT-03).*
 - *2026-10-23 r6 — Documents reconciled with the code after the MA/OW/P4 audits (policy-only,

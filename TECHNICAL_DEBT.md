@@ -153,6 +153,10 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | AT-07 | 3 | LOW | Tests εξαρτώνται από τον φάκελο εκτέλεσης· 74 ελέγχοι string στον πηγαίο κώδικα | `test_opus_critical_fixes.py:10-53` | PARTIAL · PR #1154 (D-211) οι διαδρομές από το `REPO_ROOT`, με έλεγχο AST· μένουν οι 74 έλεγχοι string · έλεγχος AT (D-202) |
 | AT-08 | 3 | LOW | Κανένα όριο χρόνου ανά test | `pyproject.toml` | RESOLVED · PR #1149 (D-206)· `timeout = 300` στο pytest· επιβεβαιωμένο με test |
 | AT-09 | 3 | LOW | Διπλές `LOG_*`· το §16.6 «env-overridable» δεν ισχύει· νεκρό `should_replan` | `titan/main.py:65-66` | RESOLVED · το §16.6: PR #1155 (ADR-0077, D-212)· ο κώδικας: PR #1151 (D-208), ένας ορισμός `LOG_*`, το `should_replan` σημειωμένο ότι δεν καλείται· επιβεβαιωμένο με test |
+| — | — | — | **Καταγραφή 2026-10-31, ADR-0078 (D-213):** τα ευρήματα AD του ελέγχου εγγράφων, που δεν είχαν γραμμή | — | — |
+| AD-03 | 2 | HIGH | Τα ADR 0061–0066 και 0068 γράφουν «Proposed (accepted on merge)» | αρχεία ADR, ευρετήριο | OPEN · Β · ο owner τα επιβεβαιώνει ένα-ένα σε policy-only PR (ADR-0078 σημείο 5) · στόχος Phase 27 |
+| AD-04 | 2 | MEDIUM | Το ADR-0057 είναι Accepted, αλλά η ενότητα Decision γράφει «PENDING — requires architect review» | `docs/adr/0057-*` | OPEN · Β · επιβεβαίωση από τον owner μαζί με το AD-03 · στόχος Phase 27 |
+| AD-08 | 2 | HIGH | Ποιος είναι ο Architect (AGENTS §1, §1.2 έναντι ADR-0061, 0072–0077) | AGENTS §1, §1.2 | RESOLVED · PR #1156 (ADR-0078, D-213): ο owner είναι ο Architect, το Claude γράφει |
 
 ---
 
