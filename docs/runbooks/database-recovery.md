@@ -107,6 +107,14 @@ sqlite3 titan_core.db "PRAGMA integrity_check;"
 # Locate backup
 ls ~/Documents/TITAN/backups/titan_core.db.*
 
+# Keep the damaged database WITH its -wal/-shm: the last writes may exist only in the -wal
+cp titan_core.db titan_core.db.before-restore
+[ -f titan_core.db-wal ] && cp titan_core.db-wal titan_core.db.before-restore-wal
+[ -f titan_core.db-shm ] && cp titan_core.db-shm titan_core.db.before-restore-shm
+
+# Remove the old -wal/-shm, otherwise SQLite replays them on top of the backup (RC-02)
+rm -f titan_core.db-wal titan_core.db-shm
+
 # Restore most recent backup
 cp ~/Documents/TITAN/backups/titan_core.db.YYYYMMDD titan_core.db
 
