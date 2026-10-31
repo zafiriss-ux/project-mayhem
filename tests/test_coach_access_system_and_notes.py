@@ -2,7 +2,8 @@
 
 - M0-05: the coach id ``system`` used to bypass the assignment table and see every athlete.
   Any API user whose id is ``system`` got that bypass. Access now comes only from
-  assignment rows; ``system`` keeps the ``system → owner`` row seeded by the migration.
+  assignment rows; ``system`` keeps the ``system → owner`` row seeded by the migration, but
+  since SP-01 no API coach may use the id ``system`` (D-194).
 - M0-26: ``POST /coach/notes`` checked the role only. It now names its athlete and goes
   through the same assignment check and durable audit as ``/coach/overrides`` (INV-22).
 
@@ -54,8 +55,14 @@ def api(tmp_path, jwt_keys):  # noqa: ARG001
     store = AuthStore()
     store.upsert_user(user_id="coach-1", username="coach", password_hash=hash_password("coach-pass"),
                       role="COACH", athlete_id=None)
-    store.upsert_user(user_id="system", username="sys", password_hash=hash_password("sys-pass"),
-                      role="COACH", athlete_id=None)
+    # SP-01: upsert refuses the id "system", so this user is written straight to the table,
+    # as someone could do by hand.
+    store._db.conn.execute(
+        "INSERT INTO auth_users (id, username, password_hash, role, athlete_id, is_active) "
+        "VALUES ('system', 'sys', ?, 'COACH', NULL, 1)",
+        (hash_password("sys-pass"),),
+    )
+    store._db.conn.commit()
     store.upsert_user(user_id="ath-2", username="bob", password_hash=hash_password("bob-pass"),
                       role="ATHLETE", athlete_id="a2")
     client = TestClient(create_app(auth_store=store, audit_store=CoachAuditStore(), db=database),
@@ -90,7 +97,8 @@ def test_system_sees_a_new_athlete_only_once_assigned(api) -> None:
 def test_a_coach_user_named_system_cannot_read_an_unassigned_athlete(api) -> None:
     _login(api, "sys", "sys-pass")
     assert api.client.get("/athletes/a2/dashboard").status_code == 403
-    assert api.client.get("/athletes/owner/dashboard").status_code == 200
+    # SP-01: the seed row ('system', 'owner') no longer opens the owner to an API coach.
+    assert api.client.get("/athletes/owner/dashboard").status_code == 403
 
 
 @pytest.mark.integration
