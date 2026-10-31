@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import uuid
 from datetime import UTC, datetime, timedelta
 from threading import Lock
@@ -64,6 +65,9 @@ class AuthStore:
     def verify_credentials(self, username: str, plain_password: str) -> AuthUser | None:
         row = self._db.get_auth_user_by_username(username)
         if row is None:
+            # SP-07: run bcrypt anyway, so an unknown username answers as slowly as a wrong
+            # password and the timing does not tell which usernames exist (RBP-05).
+            verify_password(plain_password, _dummy_password_hash())
             return None
         if not verify_password(plain_password, row["password_hash"]):
             return None
@@ -167,8 +171,26 @@ def hash_password(plain_password: str) -> str:
     return bcrypt.hashpw(plain_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
+_BCRYPT_MAX_BYTES = 72
+
+
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode("utf-8"), password_hash.encode("utf-8"))
+    candidate = plain_password.encode("utf-8")
+    if len(candidate) > _BCRYPT_MAX_BYTES:
+        # bcrypt 5 raises on more than 72 bytes, and hash_password could never have stored
+        # such a password: deny, after the same bcrypt work, instead of a 500 (SP-07).
+        bcrypt.checkpw(candidate[:_BCRYPT_MAX_BYTES], password_hash.encode("utf-8"))
+        return False
+    return bcrypt.checkpw(candidate, password_hash.encode("utf-8"))
+
+
+@functools.cache
+def _dummy_password_hash() -> str:
+    """A hash of nothing anyone knows, at the cost hash_password uses (SP-07).
+
+    Made once, on the first unknown username, so the API start does not pay for it.
+    """
+    return hash_password(uuid.uuid4().hex)
 
 
 def create_access_token(user: AuthUser, now: datetime | None = None) -> tuple[str, datetime]:
