@@ -1,6 +1,8 @@
 # RUNBOOK_DR — Αντίγραφα ασφαλείας και επαναφορά
 
 Καλύπτει το AGENTS §8.10 (DR-01..04) για την εγκατάσταση Docker ενός αθλητή (ADR-0057).
+Για τη διάγνωση μιας χαλασμένης βάσης και για το χειροκίνητο αντίγραφο (`scripts/backup.sh`), δες το
+[`runbooks/database-recovery.md`](runbooks/database-recovery.md).
 
 ## Στόχοι
 
