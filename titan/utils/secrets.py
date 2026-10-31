@@ -1,5 +1,6 @@
 """Helpers for handling sensitive strings without exposing raw values in repr traces or logs."""
 
+import json
 import logging
 import re
 import threading
@@ -40,11 +41,22 @@ _known_secrets: set[str] = set()
 _known_lock = threading.Lock()
 
 
+def _escaped_forms(value: str) -> set[str]:
+    """``value`` as written, and as json.dumps (ASCII or not) and repr write it (SP-04).
+
+    Structured events are json.dumps'd before the filter sees them, and a traceback shows
+    exception args in repr, so a quote, a backslash or a Greek letter would hide the secret.
+    """
+    forms = {value, json.dumps(value)[1:-1], json.dumps(value, ensure_ascii=False)[1:-1]}
+    forms.add(repr(value)[1:-1])
+    return forms
+
+
 def register_secret(value: str) -> None:
     """Add a secret (such as the bot token in use) that ``redact_secrets`` always replaces."""
     if value and len(value) >= 8:  # noqa: PLR2004 - shorter is no secret and would over-match
         with _known_lock:
-            _known_secrets.add(value)
+            _known_secrets.update(_escaped_forms(value))
 
 
 def redact_secrets(text: object) -> str:
@@ -92,6 +104,23 @@ class RedactingFilter(logging.Filter):
 _FILTER = RedactingFilter()
 # Loggers that see Telegram request URLs: telebot's own (it has its own handler) and urllib3's.
 _URL_LOGGERS = ("TeleBot", "urllib3.connectionpool", "titan.integrations.telegram_bot")
+
+
+def install_root_log_redaction() -> None:
+    """Give a process with no log handler a stderr one that redacts (M0-17, the API).
+
+    Without a handler Python's last-resort handler prints WARNING and above to stderr
+    unfiltered. The new handler prints the same levels (the root level is left as it is),
+    formatted and through the filter. Nothing changes when the root logger has a handler.
+    """
+    root = logging.getLogger()
+    if root.handlers:
+        install_log_redaction(*root.handlers)
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    install_log_redaction(handler)
+    root.addHandler(handler)
 
 
 def install_log_redaction(*handlers: logging.Handler) -> None:
