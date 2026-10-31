@@ -7,6 +7,10 @@ from fastapi import Depends, HTTPException, Request, status
 from titan.api.auth import ACCESS_COOKIE_NAME, AuthError, AuthStore, decode_token
 from titan.api.models import AuthUser
 
+# Coach id of the migrations' ('system', 'owner') seed row (titan/core/repositories/access.py
+# SEED_COACH_ID). No API coach may use it, even if a row was written by hand (SP-01).
+_SEED_COACH_ID = "system"
+
 
 def get_auth_store(request: Request) -> AuthStore:
     return request.app.state.auth_store  # type: ignore[no-any-return]
@@ -57,6 +61,11 @@ def require_coach_athlete_access(
     """
     if current_user.role != "COACH":
         return current_user
+    if current_user.id == _SEED_COACH_ID:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Coach id is reserved for the seed assignment — access denied",
+        )
     athlete_id = _get_athlete_id_from_request(request)
     # INV-11: owner is assignment-scoped like any athlete (no role-only bypass).
     # A request with no athlete_id at all remains permissive (not an athlete-scoped route).

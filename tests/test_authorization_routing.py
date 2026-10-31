@@ -173,3 +173,41 @@ def test_an_athlete_cannot_open_another_athletes_dashboard(api) -> None:
     _login(api, "bob", "bob-pass")
     assert api.client.get("/athletes/a1/dashboard").status_code == 403
     assert api.client.get("/athletes/a2/dashboard").status_code == 200
+
+
+# ── SP-01: the id of the migration's seed row is not an API coach ─────────────
+
+@pytest.mark.unit
+def test_a_coach_with_the_seeded_system_id_is_refused_even_with_its_seed_row() -> None:
+    db = MagicMock()
+    db.get_assigned_athletes.return_value = ["owner"]  # the ('system', 'owner') seed
+    system = AuthUser(id="system", username="sys", role="COACH", athlete_id=None)
+    with pytest.raises(HTTPException) as exc_info:
+        deps.require_coach_athlete_access(_request(path_params={"athlete_id": "owner"}, db=db), system)
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.integration
+def test_a_system_coach_written_straight_to_the_table_cannot_open_the_owner(api) -> None:
+    """SP-01: a row written without upsert_auth_user (e.g. by hand) still gets no access."""
+    store = api.client.app.state.auth_store
+    store._db.conn.execute(
+        "INSERT INTO auth_users (id, username, password_hash, role, athlete_id, is_active) "
+        "VALUES ('system', 'sys', ?, 'COACH', NULL, 1)",
+        (hash_password("sys-pass"),),
+    )
+    store._db.conn.commit()
+    assert "owner" in api.db.get_assigned_athletes("system")  # the seed is still there
+    _login(api, "sys", "sys-pass")
+    assert api.client.get("/athletes/owner/dashboard").status_code == 403
+
+
+@pytest.mark.integration
+def test_no_auth_user_can_be_created_with_the_seeded_system_id(tmp_path) -> None:
+    database = DatabaseManager(db_dir=tmp_path)
+    try:
+        with pytest.raises(ValueError, match="system"):
+            database.upsert_auth_user("system", "sys", hash_password("x"), "COACH", None)
+        assert database.get_auth_user_by_id("system") is None
+    finally:
+        database.close()

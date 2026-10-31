@@ -10,6 +10,10 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 
+# Coach id of the seed assignment written by the migrations (system -> owner); never an API user.
+SEED_COACH_ID = "system"
+
+
 class AccessRepository:
     """Access SQL, on the owning DatabaseManager's connection and lock."""
 
@@ -108,7 +112,13 @@ class AccessRepository:
         athlete_id: str | None,
         is_active: bool = True,
     ) -> None:
-        """Insert or replace an auth user record."""
+        """Insert or replace an auth user record.
+
+        SP-01: ``system`` is the coach id of the migration's ``('system', 'owner')`` seed row, so
+        a user with that id would read the owner without a real assignment. It is refused.
+        """
+        if user_id == SEED_COACH_ID:
+            raise ValueError(f"auth user id {SEED_COACH_ID!r} is reserved for the migration's seed row")
         with self._db._lock:
             self._db.conn.cursor().execute(
                 "INSERT OR REPLACE INTO auth_users "
