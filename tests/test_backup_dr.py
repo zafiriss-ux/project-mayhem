@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import shutil
 import sqlite3
+import subprocess
 from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -256,3 +258,60 @@ def test_db_integrity_restore_drill_fails_on_corrupt_backup(tmp_path: Path) -> N
 def test_db_integrity_restore_drill_fails_without_backups(tmp_path: Path) -> None:
     drill = _load_restore_drill()
     assert drill.run_drill(tmp_path)["ok"] is False
+
+
+# ── RC-02: the local restore runbook (Scenario B) ───────────────────────────
+
+_BACKUP_PLACEHOLDER = "~/Documents/TITAN/backups/titan_core.db.YYYYMMDD"
+
+
+def _scenario_b_file_commands() -> list[str]:
+    """The file-handling lines of Scenario B in database-recovery.md (cp, mv, rm, tests)."""
+    text = (_ROOT / "docs" / "runbooks" / "database-recovery.md").read_text(encoding="utf-8")
+    section = text.split("### Scenario B", 1)[1].split("### Scenario C", 1)[0]
+    block = section.split("```bash", 1)[1].split("```", 1)[0]
+    lines = [line.strip() for line in block.splitlines()]
+    return [line for line in lines if line.split(" ", 1)[0] in {"cp", "mv", "rm", "["}]
+
+
+def _rows(path: Path) -> int:
+    conn = sqlite3.connect(path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM t").fetchone()[0]
+    finally:
+        conn.close()
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="the runbook commands are bash")
+def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_path: Path) -> None:
+    backup = tmp_path / "titan_core.db.20261030"
+    conn = sqlite3.connect(backup)
+    conn.execute("CREATE TABLE t (x)")
+    conn.execute("INSERT INTO t VALUES (1)")
+    conn.commit()
+    conn.close()
+
+    # The live database after a crash: the backup's pages plus 18 rows that exist only in its -wal.
+    live_dir = tmp_path / "run"
+    live_dir.mkdir()
+    work = tmp_path / "work.db"
+    work.write_bytes(backup.read_bytes())
+    writer = sqlite3.connect(work)
+    writer.execute("PRAGMA journal_mode=WAL")
+    writer.execute("PRAGMA wal_autocheckpoint=0")
+    writer.executemany("INSERT INTO t VALUES (?)", [(i,) for i in range(18)])
+    writer.commit()
+    (live_dir / "titan_core.db").write_bytes(work.read_bytes())
+    (live_dir / "titan_core.db-wal").write_bytes(Path(f"{work}-wal").read_bytes())
+    writer.close()
+
+    commands = _scenario_b_file_commands()
+    assert any(_BACKUP_PLACEHOLDER in c for c in commands)
+    script = "\n".join(c.replace(_BACKUP_PLACEHOLDER, str(backup)) for c in commands)
+    result = subprocess.run(["bash", "-c", script], cwd=live_dir, check=False, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+    assert _rows(live_dir / "titan_core.db") == 1, "the restored database must be the backup, not backup + old WAL"
+    kept = sorted(p.name for p in live_dir.iterdir() if "before-restore" in p.name)
+    assert kept, "the damaged database must be kept before the restore"
+    assert _rows(live_dir / kept[0]) == 19, "the kept copy must include the writes that lived only in the -wal"
