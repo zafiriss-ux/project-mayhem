@@ -572,7 +572,9 @@ class OperationsRepository:
         # as today's backup nor matches the retention glob.
         partial = dest.with_name(dest.name + ".partial")
         try:
-            partial.unlink(missing_ok=True)
+            # Leftovers of any earlier interrupted run, today's or an older day's.
+            for stale in backup_dir.glob("titan_????-??-??.db.partial"):
+                stale.unlink(missing_ok=True)
             with self._db._lock:
                 self._db._ensure_open_locked()
                 dst_conn = sqlite3.connect(str(partial))

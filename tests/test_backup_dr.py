@@ -133,6 +133,18 @@ def test_leftover_partial_file_from_a_killed_backup_does_not_block_the_backup(
     assert not leftover.exists()
 
 
+def test_leftover_partial_file_from_an_earlier_day_is_removed(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    old_leftover = backup_dir / "titan_2026-01-02.db.partial"
+    old_leftover.write_bytes(b"cut off by SIGKILL on an earlier day")
+
+    dest = db.backup_database(backup_dir=backup_dir)
+
+    assert dest is not None
+    assert not old_leftover.exists()
+
+
 # ── DR-02: retention ────────────────────────────────────────────────────────
 
 

@@ -29,6 +29,7 @@
 
 - **Επιτυχία:** log INFO `db_backup_created`, με `size_bytes` και `"integrity": "ok"`.
 - **Αποτυχία:** το αρχείο μετονομάζεται σε `titan_YYYY-MM-DD.db.corrupt`, γράφεται log CRITICAL `db_backup_failed` και αυξάνεται ο μετρητής `titan_backup_failure_total`. Το αποτυχημένο αντίγραφο δεν μετράει ποτέ ως έγκυρο.
+- **Διακοπή στη μέση** (π.χ. `docker stop` πάνω από το grace, OOM): το αντίγραφο γράφεται πρώτα ως `titan_YYYY-MM-DD.db.partial` και παίρνει το τελικό όνομα μόνο αφού περάσει τον έλεγχο (RC-01). Ένα `.partial` δεν είναι αντίγραφο· το σβήνει το επόμενο backup, και μπορείς να το σβήσεις κι εσύ.
 
 Διατήρηση από το `.env`:
 
