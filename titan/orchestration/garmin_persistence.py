@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from titan.core.database import DatabaseManager
 
 PERSIST_ERROR = "PERSIST_ERROR"
+# Days a normal sync fetches: GarminSync.sync_all's default (a test keeps the two equal).
+SYNC_WINDOW_DAYS = 14
 
 # Mapping from Garmin activityType.typeKey values to internal session_type constants.
 # The act dict produced by GarminSync uses 'activity_type' (not 'session_type'), so
@@ -396,32 +398,50 @@ def backfill_training_history(
     athlete_id: str,
     emit: Callable[..., None],
 ) -> int:
-    """Fetch ``LOAD_HISTORY_DAYS`` of activities when the stored history is too short (D-055).
+    """Fetch older activities when the stored history is too short (D-055) or has a gap (RC-07).
 
     CTL starts from 0 (D-051), so with only the 14 days of a normal sync a new athlete's TSB
     falls far below the H4 floor. When ``training_log`` has no session on or before
     ``today - CTL_DECAY_DAYS``, the activities of the last ``LOAD_HISTORY_DAYS`` days are
     fetched once and stored like any synced activity (a known ``garmin_activity_id``
-    updates its row, D-080). Returns the number of activities fetched.
+    updates its row, D-080).
+
+    RC-07: when the last successful Garmin sync is older than the sync window (the worker was
+    down), the days the normal sync no longer reaches would stay empty for good. Then the
+    activities since that sync are fetched (at most ``LOAD_HISTORY_DAYS``). This runs before
+    today's sync outcome is recorded, so it fires once. Returns the number fetched.
     """
-    from datetime import date, timedelta
+    from datetime import UTC, date, datetime, timedelta
 
     from titan.config.thresholds import CTL_DECAY_DAYS
     from titan.science.tsb_engine import LOAD_HISTORY_DAYS
 
-    oldest_needed = (date.fromisoformat(today_str) - timedelta(days=CTL_DECAY_DAYS)).isoformat()
+    today = date.fromisoformat(today_str)
+    oldest_needed = (today - timedelta(days=CTL_DECAY_DAYS)).isoformat()
     rows = db.get_training_load_history(LOAD_HISTORY_DAYS, athlete_id=athlete_id)
-    if any(str(d)[:10] <= oldest_needed for d, _load in rows):
+    days_back = 0
+    if not any(str(d)[:10] <= oldest_needed for d, _load in rows):
+        days_back = LOAD_HISTORY_DAYS
+    else:
+        last = db.get_last_sync_outcome("garmin", athlete_id=athlete_id) or {}
+        last_success = last.get("last_success_ts")
+        if isinstance(last_success, datetime):
+            if last_success.tzinfo is None:
+                last_success = last_success.replace(tzinfo=UTC)
+            since = (today - last_success.astimezone(UTC).date()).days
+            if since > SYNC_WINDOW_DAYS:
+                days_back = min(since + 1, LOAD_HISTORY_DAYS)
+    if days_back == 0:
         return 0
     activities = garmin.sync_activities(
-        LOAD_HISTORY_DAYS, athlete_max_hr=getattr(garmin, "athlete_max_hr", 0) or 0,
+        days_back, athlete_max_hr=getattr(garmin, "athlete_max_hr", 0) or 0,
     )
     if activities:
         with db.transaction():
             _save_activities(
                 db, activities, today_str, athlete_id=athlete_id, emit=emit, sanity=DataSanityChecker(),
             )
-    emit("training_history_backfilled", count=len(activities), days_back=LOAD_HISTORY_DAYS)
+    emit("training_history_backfilled", count=len(activities), days_back=days_back)
     return len(activities)
 
 

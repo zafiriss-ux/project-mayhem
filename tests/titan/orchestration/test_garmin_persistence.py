@@ -231,6 +231,58 @@ def test_long_enough_history_is_not_fetched_again(db):
     assert len(garmin.calls) == 1
 
 
+def _seed_old_history(db, ages: list[int]) -> None:
+    today = date.fromisoformat(_today())
+    for age in ages:
+        db.save_session(
+            date=(today - timedelta(days=age)).isoformat(), session_type="EASY",
+            distance_km=8.0, duration_sec=2700, training_load=60, athlete_id="owner",
+        )
+
+
+@pytest.mark.unit
+def test_a_gap_longer_than_the_sync_window_is_fetched_once(db):
+    """RC-07: after 20 days without a successful sync, the 6 days the 14-day sync misses are fetched."""
+    _seed_old_history(db, [25, 60])  # long enough history: the D-055 rule does not fire
+    db.record_sync_outcome(
+        athlete_id="owner", source="garmin", attempted_at=datetime.now(UTC) - timedelta(days=20), success=True,
+    )
+    garmin = _HistoryGarmin([3, 16, 18, 60])
+    events: list[str] = []
+
+    count = backfill_training_history(db, garmin, _today(), athlete_id="owner", emit=lambda a, **_f: events.append(a))
+
+    assert garmin.calls == [21]
+    assert count == 3
+    today = date.fromisoformat(_today())
+    stored = {r[0] for r in db.conn.execute("SELECT date FROM training_log")}
+    assert {(today - timedelta(days=age)).isoformat() for age in (16, 18)} <= stored
+    assert events[-1] == "training_history_backfilled"
+
+
+@pytest.mark.unit
+def test_a_recent_successful_sync_fetches_nothing_more(db):
+    _seed_old_history(db, [60])
+    db.record_sync_outcome(
+        athlete_id="owner", source="garmin", attempted_at=datetime.now(UTC) - timedelta(days=1), success=True,
+    )
+    garmin = _HistoryGarmin([3, 60])
+
+    assert backfill_training_history(db, garmin, _today(), athlete_id="owner", emit=lambda *_a, **_f: None) == 0
+    assert garmin.calls == []
+
+
+@pytest.mark.unit
+def test_the_gap_window_matches_the_sync_window():
+    import inspect
+
+    from titan.integrations.garmin_sync import GarminSync
+    from titan.orchestration import garmin_persistence
+
+    default = inspect.signature(GarminSync.sync_all).parameters["days_back"].default
+    assert default == garmin_persistence.SYNC_WINDOW_DAYS
+
+
 class _HrvGarmin:
     def __init__(self, nights: dict[str, float]) -> None:
         self.nights = nights
