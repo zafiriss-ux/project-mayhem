@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #1153 (2026-10-31) test(e2e): τα e2e τρέχουν με το πραγματικό `GovernanceEngine` αντί για `StubGovernance`· τα υπόλοιπα stubs περιγράφονται ως wiring smoke (AT-02 μέρος 2, D-210)
 - #1152 (2026-10-31) test(e2e): το stub του Garmin έχει το σχήμα του `GarminSync.sync_all()` (ύπνος με ημερομηνία, `activity_type`, χωρίς κλειδιά που ο sync δεν βγάζει)· παγωμένη ημέρα στο fixture (AT-02 μέρος 1, D-209)
 - #1151 (2026-10-31) refactor: το rotation του log ορίζεται μόνο στο `titan/utils/constants.py` (10 MB × 5, όπως ήδη στο `main.py`)· το docstring του `should_replan` λέει ότι δεν καλείται στην παραγωγή (AT-09 κώδικας, D-208)
 - #1150 (2026-10-31) test: οι πύλες του ορίου modules μετρούν με `pkgutil` όπως το CI και διαβάζουν το `MODULE_COUNT_CEILING`· το `test_complexity_budget.py` τρέχει και στο τοπικό CI (AT-06, D-207)

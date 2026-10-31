@@ -7,7 +7,6 @@ from tests.e2e.conftest import (
     E2E_TODAY,
     StubGarminSync,
     StubGlycogen,
-    StubGovernance,
     StubNutrition,
     StubOptimalTime,
     StubOutcomeTracker,
@@ -44,7 +43,6 @@ def test_idempotency_replay_garmin_day_persisted_twice(tmp_path):
         db=db,
         engines=stub_engine_registry(),
         glycogen_accum=StubGlycogen(),
-        governance=StubGovernance(),
         volume_load_gauge=StubVLG(),
         outcome_tracker=StubOutcomeTracker(),
     )

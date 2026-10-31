@@ -9,6 +9,24 @@
 
 ---
 
+## D-210 · AT-02 (μέρος 2): τα e2e τρέχουν με την πραγματική governance· τα υπόλοιπα stubs λέγονται wiring smoke
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-02, MEDIUM), δεύτερο και τελευταίο βήμα (το πρώτο: D-209).
+- **Πρόβλημα:** τα e2e (gold path, determinism, idempotency, shutdown, worker restart) έδιναν στο `DailyCoach`
+  ένα `StubGovernance` που γύριζε το πλάνο ως είχε, με `governance_clean: True` και κενή αναφορά. Μια αλλαγή στη
+  σειρά των πυλών ή στο cold-start lockdown άφηνε το gold path πράσινο.
+- **Απόφαση:** το `StubGovernance` σβήνεται και τα e2e δεν περνούν `governance=`. Το `DailyCoach` φτιάχνει τότε
+  το δικό του `GovernanceEngine()`, όπως κάνει και στην παραγωγή (καμία κλήση στο `titan/` δεν περνά
+  `governance=`). Τα stubs που μένουν (TSB, HRV, readiness, κόπωση, γλυκογόνο, καιρός, διατροφή, πλάνο,
+  Telegram) περιγράφονται στο docstring του `tests/e2e/conftest.py` ως wiring smoke: δείχνουν ότι το pipeline
+  τρέχει και αποθηκεύει, όχι ότι τα engines βγάζουν σωστούς αριθμούς. Αυτό το καλύπτει το `tests/synthetic/`.
+- **Tests:** νέο `tests/e2e/test_real_governance_at02.py` (1 test), που αποτύγχανε πριν. Το πρωινό του gold path
+  έχει `GovernanceEngine` και η αναφορά του δείχνει το πραγματικό cold-start lockdown (`locked`, λόγος
+  `cold_start_no_history`, και η συνεδρία δεν είναι από τις απαγορευμένες). Τα υπόλοιπα 16 e2e περνούν με την
+  πραγματική governance χωρίς αλλαγή στα asserts τους.
+
+---
+
 ## D-209 · AT-02 (μέρος 1): το stub του Garmin στα e2e έχει το σχήμα του πραγματικού sync· παγωμένη ημέρα
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-02, MEDIUM), πρώτο από δύο βήματα.
