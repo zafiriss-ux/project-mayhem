@@ -1,46 +1,42 @@
 """
 Module count budget gate — replaces hardcoded literal in ci.yml.
 ADR-0028 / AGENTS.md §16.11 / T4-27-C.
+
+AT-06: one way to count (pkgutil, as the CI job does: modules and subpackages,
+without dunder files) and one ceiling (MODULE_COUNT_CEILING, read at call time).
 """
 
 from __future__ import annotations
 
-import subprocess
+import pkgutil
 
 import pytest
 
-from titan.config.thresholds import MODULE_COUNT_CEILING
+import titan
+from titan.config import thresholds
 
 
-@pytest.mark.integration
+def titan_modules() -> list[str]:
+    """Modules and subpackages of ``titan``, the count every budget gate uses."""
+    return [
+        module.name
+        for module in pkgutil.walk_packages(titan.__path__, "titan.")
+        if "__" not in module.name
+    ]
+
+
+@pytest.mark.unit
 def test_module_count_within_budget() -> None:
-    result = subprocess.run(
-        [
-            "find",
-            "titan/",
-            "-name",
-            "*.py",
-            "!",
-            "-name",
-            "__init__.py",
-            "!",
-            "-name",
-            "__main__.py",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    modules = [line for line in result.stdout.strip().split("\n") if line]
-    count = len(modules)
-    assert count <= MODULE_COUNT_CEILING, (
-        f"Module count {count} exceeds ceiling {MODULE_COUNT_CEILING} "
+    count = len(titan_modules())
+    ceiling = thresholds.MODULE_COUNT_CEILING
+    assert count <= ceiling, (
+        f"Module count {count} exceeds ceiling {ceiling} "
         "(AGENTS.md §16.11). Retire or merge modules, or raise ceiling via ADR."
     )
 
 
-@pytest.mark.integration
+@pytest.mark.unit
 def test_module_ceiling_constant_is_positive_integer() -> None:
     """Smoke guard: the ceiling must be a positive integer (import sanity)."""
-    assert isinstance(MODULE_COUNT_CEILING, int)
-    assert MODULE_COUNT_CEILING > 0
+    assert isinstance(thresholds.MODULE_COUNT_CEILING, int)
+    assert thresholds.MODULE_COUNT_CEILING > 0

@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #1150 (2026-10-31) test: οι πύλες του ορίου modules μετρούν με `pkgutil` όπως το CI και διαβάζουν το `MODULE_COUNT_CEILING`· το `test_complexity_budget.py` τρέχει και στο τοπικό CI (AT-06, D-207)
 - #1149 (2026-10-31) test: όριο χρόνου 300 s ανά test, ώστε ένα test που κολλάει να αποτυγχάνει με stack trace αντί να σταματά το CI· το freezegun παρακάμπτει το dateutil, ώστε ένα σφάλμα στο `freeze_time` να μην αφήνει παγωμένο ρολόι (AT-08, D-206)
 - #1148 (2026-10-31) test: τα logs ενός τρεξίματος των tests γράφονται εκτός repo· οι handlers του root logger δεν περνούν από test σε test· το `.gitignore` πιάνει τα `titan.log.N` (AT-05, D-205)
 - #1147 (2026-10-31) ci(secrets): το gitleaks ελέγχει όλα τα commits ενός push στο main, και όλο το ιστορικό όταν δεν υπάρχει προηγούμενο commit (AT-04, D-204)

@@ -76,15 +76,16 @@ run_gate "G1 Ruff Phase A" "$PY" -m ruff check .
 # vulture, lint-imports, the CVE/drift gates, the G-CI invariants, and a 3.12+3.13
 # matrix). A green run here is necessary but not sufficient for GitHub-green; the
 # remote workflow remains the authoritative merge gate.
-# The three --ignore'd files are @pytest.mark.integration tests that shell out
-# (subprocess → find / bash scripts/backup.sh / python3 scripts/verify_backup.py).
+# The two --ignore'd files are @pytest.mark.integration tests that shell out
+# (subprocess → bash scripts/backup.sh / python3 scripts/verify_backup.py).
+# tests/test_complexity_budget.py used to shell out to `find` too; since AT-06 it
+# counts with pkgutil like the CI job, so it runs here.
 # They pass on Linux/CI but are fragile on the documented Windows dev box, so they
 # are excluded here for cross-platform determinism; GitHub's ubuntu `test` job
 # runs them with no ignores.
 run_gate "G2 Strict pytest" "$PY" -m pytest --tb=short -q --strict-markers \
     --ignore=tests/test_backup.py \
-    --ignore=tests/test_backup_verification.py \
-    --ignore=tests/test_complexity_budget.py
+    --ignore=tests/test_backup_verification.py
 
 # ── G3: Schema equivalence (TD-08 fitness net) ───────────────────────────────
 run_gate "G3 Schema equivalence" "$PY" -m pytest tests/test_schema_equivalence.py -q --no-cov
