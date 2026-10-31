@@ -13,6 +13,12 @@
 > ADR-0022 επαναχρησιμοποιείται ως Phase 8 Entry Gate Review (architect sign-off).
 > Τα historical bug-fix ADRs (0001–0005, 0019, 0043) έχουν αποσυρθεί — το περιεχόμενό
 > τους υπάρχει στο `CHANGES.md` και στο `FUTURE_UPGRADES.md`.
+>
+> **Καταμέτρηση (2026-10-31, AD-01):** η σημείωση πιο πάνω είναι ιστορική. Από τότε γράφτηκαν
+> πολλά ADR, και τα 0024 και 0040 ξαναγράφτηκαν ως αρχεία Accepted (2026-05-08). Σήμερα ο φάκελος
+> έχει 71 αριθμημένα αρχεία (0006–0076): 61 ADR και 10 αριθμούς που κρατήθηκαν χωρίς ADR («Skipped»).
+> Τα 0061–0066 και 0068 γράφουν ακόμα «Proposed (accepted on merge)»· η επιβεβαίωσή τους είναι
+> ανοιχτή (AD-03).
 
 ---
 
@@ -38,7 +44,7 @@
 | [0021](0021-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0022](0022-review-phase8-go.md) | Phase 8 Entry Gate Review and Architect Sign-off | Architecture / Governance | ✅ Accepted — Phase 8 OPEN (2026-03-08) | — |
 | [0023](0023-physiological-input-validation-contract.md) | Physiological Input Validation Contract: bounds validation at DB→engine boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-18 execution pending | — |
-| [0024](0024-canonical-lock-codes.md) | Canonical Lock Codes | Architecture / Governance | Pending — author in Phase 13 | — |
+| [0024](0024-canonical-lock-codes.md) | Canonical Lock Codes | Architecture / Governance | ✅ Accepted (2026-05-08) | — |
 | [0025](0025-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
 | [0026](0026-input-data-sanity-layer.md) | Input Data Sanity Layer: structural/temporal validation at Garmin sync boundary | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-19 execution pending | — |
 | [0027](0027-hidden-inter-module-coupling-prevention.md) | Hidden Inter-Module Coupling Prevention: TypedDict contracts + coupling invariant test | Architecture / Quality | ✅ Accepted (2026-03-06) — T4-26 execution pending | — |
@@ -54,7 +60,7 @@
 | [0037](0037-non-training-stress-safety-partition.md) | Non-Training Stress Safety Partition: classify HRV/RHR anomalies as training-explained vs. illness-pattern vs. unexplained | Architecture / Safety | ✅ Accepted (2026-03-06) — T1-21 execution pending | — |
 | [0038](0038-governance-decision-rationale-protocol.md) | Governance Decision Rationale Protocol: DecisionRationale contract + gate templates + override-rate monitoring | Architecture / Observability | ✅ Accepted (2026-03-06) — T2-16 execution pending | — |
 | [0039](0039-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
-| [0040](0040-athlete-identity-isolation.md) | Athlete Identity Isolation | Architecture / Invariant | Pending — referenced by INV-04; author in Phase 13 | — |
+| [0040](0040-athlete-identity-isolation.md) | Athlete Identity Isolation | Architecture / Invariant | ✅ Accepted (2026-05-08) — INV-04 | — |
 | [0041](0041-unified-external-data-trust-contract.md) | Unified External Data Trust Contract: DataTrustLevel enum + DataTrustReport + mandatory onboarding gate for new data sources | Architecture / Invariant | ✅ Accepted (2026-03-06) — ACTIVE IMMEDIATELY — T1-23 implementation pending (Phase 8 prerequisite) | — |
 | [0042](0042-human-override-first-class-invariant.md) | Human Override as First-Class Architectural Invariant: OverrideSignal contract + Telegram override button + override handler registry per lock code | Architecture / Invariant | ✅ Accepted (2026-03-06) — ACTIVE IMMEDIATELY — T4-32 implementation pending | — |
 | [0043](0043-skipped-number-reserved.md) | Skipped — number reserved, not authored | — | Skipped | — |
@@ -71,7 +77,7 @@
 | [0054](0054-coach-athlete-rbac.md) | Coach-Athlete RBAC Scoping: coach_athlete_assignments table, get_assigned_athletes enforcement contract; application-level only (PostgreSQL RLS deferred Phase 9) | Architecture / Auth | ✅ Accepted (2026-05-03) — T5-110 Implemented |
 | [0055](0055-garmin-fallback-adapters.md) | Garmin Fallback Adapter Interface: BiometricSourceAdapter protocol, ManualEntryAdapter fallback, BiometricRouter arbitration (Garmin preferred <48h; manual_entry fallback ≥48h) | Architecture / Integrations | ✅ Accepted (2026-05-09) — T5-100 Implemented |
 | [0056](0056-nutrition-personalization.md) | Nutrition Personalization Layer: NutritionPreferences dataclass, nutrition_preferences table (SCHEMA_VERSION 21), sex-aware calorie/protein/hydration adjustments, meal schedule builder | Architecture / Features | ✅ Accepted (2026-05-22) |
-| [0057](0057-docker-api-deployment.md) | Docker API Deployment: FastAPI not reachable from container; TUI ENTRYPOINT; two-container vs single-container options | Architecture / Deployment | 🔲 Proposed (2026-05-22) |
+| [0057](0057-docker-api-deployment.md) | Docker API Deployment: FastAPI not reachable from container; TUI ENTRYPOINT; two-container vs single-container options | Architecture / Deployment | ✅ Accepted (2026-06-07) — η ενότητα Decision γράφει ακόμα PENDING (AD-04, ανοιχτό) |
 | [0058](0058-dailycoach-decomposition.md) | DailyCoach God-Orchestrator Decomposition: EngineRegistry Phase A; EffectBus Phase B stub; daemon extraction Phase C stub | Architecture / Orchestration | ✅ Accepted (2026-05-24) |
 | [0059](0059-pytest-execution-model.md) | Unified pytest Execution Model: `python -m pytest` as single canonical invocation across all CI artifacts | Architecture / CI | ✅ Accepted (2026-06-04) |
 | [0060](0060-durable-worker-state.md) | Durable Worker State: `worker_routine_executions` (INV-15) and `telegram_override_nonces` (INV-17) tables, v26 Stage-1 migration | Architecture / Persistence | ✅ Accepted (2026-10-07) |

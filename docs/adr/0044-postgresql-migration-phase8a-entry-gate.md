@@ -9,6 +9,9 @@
 defined there), ADR-0022 (Phase 8 entry gate — G10 added here), ADR-0033 (multi-athlete
 architecture — Layer 3 implementation prerequisite), ADR-0040 (athlete identity invariant),
 ADR-0043 (product direction — companion decision)
+**See also:** ADR-0067 (2026-10-16): οι πολλοί αθλητές μένουν σε SQLite («SQLite stays») και το
+PostgreSQL είναι εκτός. D-174 (IS-05): η εκκίνηση αρνείται το PostgreSQL όσο ισχύει αυτό το ADR.
+(AD-05, 2026-10-31.)
 
 ---
 
