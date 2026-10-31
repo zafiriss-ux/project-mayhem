@@ -15,7 +15,7 @@ services:
       - .env
     # M0-14: published on this machine only, never on every network interface.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8000:8000"  # DevSkim: ignore DS162092 (localhost only is the point, M0-14)
     volumes:
       - titan-data:/data
     environment:

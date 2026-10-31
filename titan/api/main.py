@@ -554,7 +554,7 @@ def create_app(
     return app
 
 
-METRICS_TOKEN_ENV = "TITAN_METRICS_TOKEN"
+METRICS_TOKEN_ENV = "TITAN_METRICS_TOKEN"  # nosec B105 — the variable's name, not a secret
 
 
 def _metrics_asgi(prom_app: Callable[..., Awaitable[None]]) -> Callable[..., Awaitable[None]]:
@@ -562,7 +562,7 @@ def _metrics_asgi(prom_app: Callable[..., Awaitable[None]]) -> Callable[..., Awa
 
     No token configured (unset or blank) -> 404, so the endpoint does not exist. A missing or
     wrong ``Authorization: Bearer <token>`` -> 401. The token is read on every request and
-    compared in constant time. Anything that is not plain HTTP is refused.
+    compared in constant time. Anything that is not plain HTTP gets no response and is closed.
     """
 
     async def _app(scope: dict[str, Any], receive: Callable[..., Awaitable[Any]], send: Callable[..., Awaitable[None]]) -> None:

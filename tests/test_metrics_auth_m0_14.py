@@ -62,6 +62,19 @@ def test_metrics_subpaths_need_the_token_too(jwt_keys, monkeypatch):  # noqa: AR
     assert r.status_code == 401
 
 
+@pytest.mark.integration
+def test_metrics_subpaths_are_closed_without_a_configured_token(jwt_keys, monkeypatch):  # noqa: ARG001
+    monkeypatch.delenv("TITAN_METRICS_TOKEN", raising=False)
+    assert _client().get("/metrics/").status_code == 404
+
+
+@pytest.mark.integration
+def test_metrics_refuses_a_non_ascii_token_without_an_error(jwt_keys, monkeypatch):  # noqa: ARG001
+    monkeypatch.setenv("TITAN_METRICS_TOKEN", _TOKEN)
+    r = _client().get("/metrics", headers={"Authorization": "Bearer \u00e9".encode("latin-1")})
+    assert r.status_code == 401
+
+
 @pytest.mark.unit
 def test_compose_publishes_every_port_on_localhost_only():
     compose = yaml.safe_load(Path("docker-compose.yml").read_text(encoding="utf-8"))
