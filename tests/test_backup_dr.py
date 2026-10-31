@@ -330,9 +330,9 @@ def _docker_restore_script() -> str:
     section = text.split("## Επαναφορά (Docker)", 1)[1]
     step3 = section.split("\n3. ", 1)[1].split("\n4. ", 1)[0]
     block = step3.split("```bash", 1)[1].split("```", 1)[0]
-    script = block.split('-c \\', 1)[1].strip()
+    script = block.split('-c \\', 1)[1].split("```", 1)[0].strip()
     assert script.startswith('"') and script.endswith('"'), script
-    return script[1:-1].replace("\\\n", "\n")
+    return script[1:-1].replace("\\\n", "")  # bash drops backslash-newline inside double quotes
 
 
 @pytest.mark.skipif(shutil.which("sh") is None, reason="the runbook script is sh")
@@ -349,3 +349,8 @@ def test_docker_restore_runbook_keeps_the_old_wal_with_the_kept_copy(tmp_path: P
     assert _rows(data / "titan_core.db") == 1, "the restored database must be the backup"
     assert not (data / "titan_core.db-wal").exists()
     assert _rows(data / "titan_core.db.before-restore") == 19, "the kept copy must include the writes in the -wal"
+
+    # Running step 3 again must not overwrite the kept copy or leave its -wal beside another database.
+    again = subprocess.run(["sh", "-c", script], check=False, capture_output=True, text=True)
+    assert again.returncode != 0
+    assert _rows(data / "titan_core.db.before-restore") == 19
