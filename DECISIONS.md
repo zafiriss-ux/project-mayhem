@@ -9,6 +9,27 @@
 
 ---
 
+## D-205 · AT-05: ένα τρέξιμο των tests δεν γράφει logs μέσα στο repo
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-05, MEDIUM).
+- **Πρόβλημα:** η προεπιλογή `TITAN_LOG_PATH` είναι το σχετικό `titan.log`. Τα tests που καλούν `main()` έγραφαν
+  έτσι στη ρίζα του repo (≈8 MB ανά τρέξιμο), και στο δεύτερο τρέξιμο έμενε `titan.log.1`. Το `.gitignore` πιάνει
+  το `*.log` αλλά όχι το `titan.log.1`, οπότε ένα `git add -A` το έβαζε στο commit. Ο handler που προσθέτει το
+  `main()` στον root logger έμενε για τα επόμενα tests, που εξαρτιόνταν έτσι από τη σειρά τους.
+- **Απόφαση:**
+  - Το `pytest_configure` του `conftest.py` βάζει `TITAN_LOG_PATH` στον προσωρινό φάκελο home του τρεξίματος, όπως ήδη
+    το `HOME`.
+  - Ένα autouse fixture αφαιρεί και κλείνει τους handlers που πρόσθεσε ένα test στον root logger, και επαναφέρει το
+    level.
+  - Το `.gitignore` πιάνει και τα `*.log.<αριθμός>`.
+- **Tests:** νέο `tests/test_test_logs_outside_repo_at05.py` (4 tests). Το καθένα από τα τρία σημεία αποτύγχανε πριν.
+  (1) Το log path ενός τρεξίματος δεν είναι μέσα στο repo. (2) Ένα καθαρό repo με το δικό μας `.gitignore` αγνοεί
+  τα `titan.log`, `titan.log.1` και `titan.log.5`· το `.git/info/exclude` ενός clone δεν μετρά. (3) Ένας handler που
+  πρόσθεσε ένα test δεν υπάρχει στο επόμενο.
+- **Διόρθωση στο D-204 (έλεγχος AI του #1147):** για τα PR το εύρος είναι `PR_BASE...PR_HEAD`.
+
+---
+
 ## D-204 · AT-04: το gitleaks ελέγχει όλα τα commits ενός push στο main
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α. Διαδρομή governance (AGENTS §30 RE-05, B-12, T-PRA-27).
@@ -22,7 +43,7 @@
 - **Tests:** νέο `tests/test_secret_scan_workflow_at04.py` (6 tests), που αποτύγχανε όλο πριν. Τρέχει το script
   του βήματος με bash πάνω σε προσωρινό repo 3 commits, με ψεύτικο `gitleaks` που γράφει τα ορίσματά του.
   (1) Push από το 1ο commit: εύρος `<1ο>..HEAD`. (2) `before` κενό, μηδενικό ή άγνωστο: χωρίς `--log-opts`, άρα
-  όλο το ιστορικό. (3) PR: εύρος `BASE...HEAD`. (4) Το workflow δεν περιέχει πια `HEAD~1..HEAD`.
+  όλο το ιστορικό. (3) PR: εύρος `PR_BASE...PR_HEAD`. (4) Το workflow δεν περιέχει πια `HEAD~1..HEAD`.
 - **Όριο:** το test δεν τρέχει το πραγματικό gitleaks ούτε το GitHub Actions· ελέγχει το εύρος που ζητείται.
   Το πρώτο push μετά το merge θα δείξει στο CI ότι το βήμα τρέχει.
 

@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #1148 (2026-10-31) test: τα logs ενός τρεξίματος των tests γράφονται εκτός repo· οι handlers του root logger δεν περνούν από test σε test· το `.gitignore` πιάνει τα `titan.log.N` (AT-05, D-205)
 - #1147 (2026-10-31) ci(secrets): το gitleaks ελέγχει όλα τα commits ενός push στο main, και όλο το ιστορικό όταν δεν υπάρχει προηγούμενο commit (AT-04, D-204)
 - #1146 (2026-10-31) fix(api): το API δεν σερβίρει `/docs`, `/redoc` και `/openapi.json` χωρίς login· test επιτρεπτής λίστας για τα δημόσια routes (AT-03, D-203)
 - #1145 (2026-10-31) docs(audit): έλεγχος AT (αρχιτεκτονική και tests): αναφορά, μητρώο και TECHNICAL_DEBT (AT-01 ως AT-09, D-202)
