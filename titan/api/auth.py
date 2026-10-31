@@ -67,6 +67,9 @@ class AuthStore:
             return None
         if not verify_password(plain_password, row["password_hash"]):
             return None
+        if not row["is_active"]:
+            # SP-02: a disabled account gets the wrong-password answer, no token (RBP-05).
+            return None
         return AuthUser(
             id=row["id"],
             username=row["username"],

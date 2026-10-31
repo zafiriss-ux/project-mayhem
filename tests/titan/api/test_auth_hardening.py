@@ -126,6 +126,25 @@ def test_locked_account_answers_like_a_wrong_password(client: TestClient, store:
 
 
 @pytest.mark.integration
+def test_a_disabled_account_answers_like_a_wrong_password(client: TestClient, store: AuthStore) -> None:
+    """SP-02: the right password of a disabled account gives no token and counts as a failure."""
+    store.upsert_user(
+        user_id="coach-2", username="gone", password_hash=hash_password("gone-pass"),
+        role="COACH", athlete_id=None, is_active=False,
+    )
+    wrong = client.post("/auth/login", json={"username": "gone", "password": "wrong"})
+    for _ in range(LOCKOUT_MAX_ATTEMPTS - 2):
+        client.post("/auth/login", json={"username": "gone", "password": "wrong"})
+
+    disabled = client.post("/auth/login", json={"username": "gone", "password": "gone-pass"})
+
+    assert disabled.status_code == wrong.status_code == 401
+    assert disabled.json() == wrong.json() == {"detail": "Invalid credentials"}
+    assert "set-cookie" not in disabled.headers
+    assert store.is_locked_out("gone")  # counted, not cleared
+
+
+@pytest.mark.integration
 def test_successful_login_after_lockout_expiry(store: AuthStore, rsa_keys: None) -> None:
     base = 1_000_000.0
 
