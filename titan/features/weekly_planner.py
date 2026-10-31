@@ -479,6 +479,10 @@ class WeeklyPlanGenerator:
 
         Returns:
             True when the plan should be regenerated; False otherwise.
+
+        Not called outside tests (AT-09): no production code calls it or builds a
+        dict with these keys, so a HARD_STOP does not trigger a mid-week replan
+        today. Wiring it in is a separate decision.
         """
         # ── Condition 1: HRV drop > 10 ms below baseline ─────────────────────
         hrv_latest = garmin_data.get("hrv_latest_ms")

@@ -121,5 +121,6 @@ ATHLETE_DB_PATH = "athletes"
 
 # Logging
 LOG_DIR = "logs"
-LOG_MAX_BYTES = 5 * 1024 * 1024  # 5MB
-LOG_BACKUP_COUNT = 3
+# The rotation titan.main uses (AT-09: one definition; main imports these).
+LOG_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+LOG_BACKUP_COUNT = 5

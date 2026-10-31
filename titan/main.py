@@ -58,12 +58,10 @@ from titan.science.tsb_engine import LOAD_HISTORY_DAYS, tsb_status_for_phase
 # ── UI ───────────────────────────────────────────────────────────────────────
 from titan.ui.menu_system import main_menu
 from titan.ui.setup_wizard import ensure_credentials
+from titan.utils.constants import LOG_BACKUP_COUNT, LOG_MAX_BYTES
 from titan.utils.secrets import install_log_redaction
 
 log = logging.getLogger(__name__)
-
-LOG_MAX_BYTES = 10 * 1024 * 1024
-LOG_BACKUP_COUNT = 5
 
 
 def _baseline_text(hrv_summary: dict) -> str:
