@@ -4,7 +4,7 @@ The act dict from Garmin sync contains `activity_type` (not `session_type`).
 The old code used `act.get('session_type', 'EASY')` which always fell through to
 'EASY' because the key is `activity_type`. This test verifies the correct mapping.
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -58,34 +58,19 @@ class TestGarminActivityTypeMapping:
         assert result == "EASY"
 
 
-class TestDailyCoachSaveSessionUsesActivityType:
-    """Integration-style tests: DailyCoach.persist_synced_activities uses activity_type."""
+class TestSavedActivityUsesActivityType:
+    """The real write path maps ``activity_type`` to the stored ``session_type`` (M0-15).
 
-    def _make_coach(self):
-        """Build a minimal DailyCoach with all heavy deps mocked out."""
-        from titan.orchestration.daily_coach import DailyCoach
+    These tests used to look for ``DailyCoach._persist_garmin_activities``, which was
+    moved to ``garmin_persistence._save_activities`` (D-029), and skipped when it was
+    missing, so they never ran. They now call the function the morning and the backfill
+    both use, with the real sanity checker, and never skip.
+    """
 
-        mock_db = MagicMock()
-        mock_db.get_latest_metrics.return_value = None
-        mock_db.get_training_load_history.return_value = []
-
-        coach = DailyCoach.__new__(DailyCoach)
-        coach.db = mock_db
-        coach.garmin_sync = MagicMock()
-        coach.weather_api = MagicMock()
-        coach.athlete = MagicMock()
-        coach.athlete.vo2_max = 50.0
-        coach.athlete.resting_hr = 50
-        coach.athlete.max_hr = 180
-        coach.athlete.athlete_id = "test-athlete"
-        coach._degraded_mode = False
-        return coach, mock_db
-
-    def _make_act(self, activity_type, **kwargs):
-        """Return a minimal act dict as produced by garmin_sync."""
+    def _make_act(self, activity_type=None, **kwargs):
+        """Return a synthetic act dict shaped like GarminSync's output."""
         base = {
             "date": "2026-03-26",
-            "activity_type": activity_type,
             "distance_km": 10.0,
             "duration_sec": 3600,
             "avg_hr": 140,
@@ -94,34 +79,24 @@ class TestDailyCoachSaveSessionUsesActivityType:
             "estimated_training_load": 50.0,
             "name": "Morning Run",
         }
+        if activity_type is not None:
+            base["activity_type"] = activity_type
         base.update(kwargs)
         return base
 
-    def _call_persist(self, coach, acts):
-        """Call the method that persists Garmin activities into the DB."""
-        # The method name is step 10 in the 12-step pipeline; find it by searching.
-        import titan.orchestration.daily_coach as dc
-        # Call the private helper that iterates over acts and calls db.save_session.
-        # We patch the sanity validation to always pass (no violations).
-        with patch("titan.orchestration.daily_coach.validate_activity_fields", return_value=[]):
-            coach._persist_garmin_activities(acts)
+    def _saved_session_type(self, act):
+        from titan.orchestration.garmin_persistence import _save_activities
+        from titan.science.data_sanity import DataSanityChecker
 
-    def _find_persist_method(self, coach):
-        """Return the method responsible for persisting garmin activities."""
-        # Inspect which public/private method calls db.save_session with activity data.
-        import titan.orchestration.daily_coach as dc
-        return getattr(coach, "_persist_garmin_activities", None)
-
-    def _extract_session_type_call(self, mock_db):
-        """Return the session_type kwarg from the first save_session call."""
-        assert mock_db.save_session.called, "db.save_session was not called"
-        call_kwargs = mock_db.save_session.call_args
-        if call_kwargs.kwargs:
-            return call_kwargs.kwargs.get("session_type")
-        # positional — unlikely but handle it
-        return call_kwargs.args[1] if len(call_kwargs.args) > 1 else None
-
-    # ---- parametrised mapping tests via DailyCoach ----
+        db = MagicMock()
+        _save_activities(
+            db, [act], "2026-03-26", athlete_id="owner", emit=lambda *a, **k: None,
+            sanity=DataSanityChecker(),
+        )
+        assert db.save_session.call_count == 1, "the synthetic activity was not written"
+        kwargs = db.save_session.call_args.kwargs
+        assert kwargs["athlete_id"] == "owner"
+        return kwargs["session_type"]
 
     @pytest.mark.parametrize("activity_type,expected_session_type", [
         ("running",           "EASY"),
@@ -131,42 +106,13 @@ class TestDailyCoachSaveSessionUsesActivityType:
         ("unknown_type",      "EASY"),
     ])
     def test_save_session_uses_mapped_session_type(self, activity_type, expected_session_type):
-        """DailyCoach must pass the mapped session_type to db.save_session."""
-        coach, mock_db = self._make_coach()
-        method = self._find_persist_method(coach)
-        if method is None:
-            pytest.skip("_persist_garmin_activities not yet implemented")
-
-        act = self._make_act(activity_type)
-        with patch("titan.orchestration.daily_coach.validate_activity_fields", return_value=[]):
-            method([act])
-
-        session_type = self._extract_session_type_call(mock_db)
-        assert session_type == expected_session_type, (
-            f"activity_type={activity_type!r}: expected session_type={expected_session_type!r}, "
-            f"got {session_type!r}"
-        )
+        assert self._saved_session_type(self._make_act(activity_type)) == expected_session_type
 
     def test_missing_activity_type_defaults_to_easy(self):
-        """Acts without activity_type key must default to EASY."""
-        coach, mock_db = self._make_coach()
-        method = self._find_persist_method(coach)
-        if method is None:
-            pytest.skip("_persist_garmin_activities not yet implemented")
+        assert self._saved_session_type(self._make_act()) == "EASY"
 
-        # act has no activity_type key
-        act = {
-            "date": "2026-03-26",
-            "distance_km": 10.0,
-            "duration_sec": 3600,
-            "avg_hr": 140,
-            "max_hr": 165,
-            "activity_id": "ACT002",
-            "estimated_training_load": 50.0,
-            "name": "Morning Run",
-        }
-        with patch("titan.orchestration.daily_coach.validate_activity_fields", return_value=[]):
-            method([act])
+    def test_this_file_never_skips(self):
+        """A missing function must fail here, never skip quietly again (M0-15)."""
+        from pathlib import Path
 
-        session_type = self._extract_session_type_call(mock_db)
-        assert session_type == "EASY", f"Expected EASY for missing activity_type, got {session_type!r}"
+        assert "pytest" + ".skip(" not in Path(__file__).read_text(encoding="utf-8")
