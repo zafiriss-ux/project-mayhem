@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import bcrypt
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -142,6 +143,22 @@ def test_a_disabled_account_answers_like_a_wrong_password(client: TestClient, st
     assert disabled.json() == wrong.json() == {"detail": "Invalid credentials"}
     assert "set-cookie" not in disabled.headers
     assert store.is_locked_out("gone")  # counted, not cleared
+
+
+@pytest.mark.integration
+def test_an_unknown_username_costs_one_bcrypt_check_like_a_known_one(store: AuthStore) -> None:
+    """SP-07: an unknown username runs bcrypt too, so its answer time does not tell it apart."""
+    store.upsert_user(
+        user_id="coach-3", username="known", password_hash=hash_password("known-pass"),
+        role="COACH", athlete_id=None,
+    )
+    with patch("titan.api.auth.bcrypt.checkpw", wraps=bcrypt.checkpw) as checkpw:
+        assert store.verify_credentials("nobody-here", "any-pass") is None
+        unknown_calls = checkpw.call_count
+        assert store.verify_credentials("known", "wrong-pass") is None
+        known_calls = checkpw.call_count - unknown_calls
+
+    assert unknown_calls == known_calls == 1
 
 
 @pytest.mark.integration
