@@ -4,8 +4,11 @@ import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 SAFE_BUCKETS = "I001,UP006,UP045,W293,W291"
 
@@ -28,7 +31,7 @@ def _ruff_bucket_count() -> int:
         ]
     )
 
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=REPO_ROOT, check=False, capture_output=True, text=True)
     out = f"{proc.stdout}\n{proc.stderr}"
     if proc.returncode == 127:
         pytest.skip("ruff is not installed in this environment")

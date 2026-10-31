@@ -9,6 +9,29 @@
 
 ---
 
+## D-211 · AT-07 (μέρος 1): τα tests βρίσκουν τα αρχεία του repo από το `REPO_ROOT`, όχι από τον τρέχοντα φάκελο
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-07, LOW), πρώτο βήμα. Το δεύτερο (οι 74 έλεγχοι string
+  μέσα στον πηγαίο κώδικα να γίνουν tests συμπεριφοράς) μένει ανοιχτό.
+- **Πρόβλημα:** όταν το pytest ξεκινούσε από άλλο φάκελο (π.χ. `cd /tmp && pytest /path/to/repo/tests`),
+  88 tests σε 42 αρχεία αποτύγχαναν, επειδή άνοιγαν `Path("titan/...")`, `Config("alembic.ini")` ή έτρεχαν
+  `scripts/...` χωρίς `cwd=`. Χειρότερα, μερικά περνούσαν χωρίς να ελέγχουν τίποτα: το `Path("titan").rglob()`
+  (`test_ema_kernel`, `test_adr0058_fitness`) δεν έβρισκε κανένα αρχείο, το `test_archive_v50_ruff` ελέγχει ότι
+  ένα αρχείο *δεν* υπάρχει, και το `ruff check titan tests` του `test_t4_01_safe_autofix_buckets` δεν έβρισκε
+  τους φακέλους.
+- **Απόφαση:** κάθε τέτοιο test ορίζει `REPO_ROOT = Path(__file__).resolve().parents[N]` και διαβάζει από εκεί.
+  Τα subprocess που τρέχουν scripts ή `ruff` του repo παίρνουν `cwd=REPO_ROOT`. Τα tests του alembic δίνουν
+  απόλυτο `alembic.ini` και `script_location`, επειδή το `script_location = alembic` του `alembic.ini` λύνεται
+  από τον τρέχοντα φάκελο. Το `alembic.ini` δεν αλλάζει. Απορρίφθηκε ένα `os.chdir(REPO_ROOT)` στο `conftest.py`:
+  θα έκρυβε το πρόβλημα αντί να το λύσει, και θα άλλαζε τον φάκελο και για τα tests που δουλεύουν σε `tmp_path`.
+- **Tests:** νέο `tests/test_repo_relative_paths_at07.py` (4 tests). Ελέγχει με AST ότι κανένα test δεν περνά
+  διαδρομή του repo σχετική με τον τρέχοντα φάκελο σε `Path`/`open`/`os.path`/`Config`, ούτε σε subprocess
+  χωρίς `cwd=`. Πριν τη διόρθωση αποτύγχανε με 74 ευρήματα σε 38 αρχεία. Δεν πιάνει διαδρομές που περνούν μέσω μεταβλητής
+  (π.χ. `helper("titan/x.py")` → `Path(path)`). Αυτές διορθώθηκαν με το χέρι, και επιβεβαιώθηκε ότι όλο το
+  suite περνά και από άλλον φάκελο.
+
+---
+
 ## D-210 · AT-02 (μέρος 2): τα e2e τρέχουν με την πραγματική governance· τα υπόλοιπα stubs λέγονται wiring smoke
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (AT-02, MEDIUM), δεύτερο και τελευταίο βήμα (το πρώτο: D-209).

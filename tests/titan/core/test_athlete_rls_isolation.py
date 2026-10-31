@@ -8,7 +8,9 @@ from types import SimpleNamespace
 
 import pytest
 
-MIGRATION_PATH = Path("alembic/versions/20260313_04_d4_add_athlete_rls_policies.py")
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+MIGRATION_PATH = REPO_ROOT / "alembic/versions/20260313_04_d4_add_athlete_rls_policies.py"
 
 
 class _FakeOp:

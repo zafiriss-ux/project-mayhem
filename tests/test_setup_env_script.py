@@ -2,9 +2,11 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _setup_env_script() -> str:
-    return Path("scripts/setup_env.sh").read_text(encoding="utf-8")
+    return (REPO_ROOT / "scripts/setup_env.sh").read_text(encoding="utf-8")
 
 
 @pytest.mark.unit

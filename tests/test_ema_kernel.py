@@ -9,6 +9,8 @@ import pytest
 
 from titan.science.tsb_engine import compute_ctl_atl_tsb
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.unit
 def test_single_kernel_site() -> None:
@@ -16,7 +18,7 @@ def test_single_kernel_site() -> None:
     # ctl_decay\s*= catches the old inline variable assignment (ctl_decay = 2/...)
     # but NOT the delegation call keyword arg (ctl_decay_days=CTL_DECAY_DAYS)
     ema_pattern = re.compile(r"ctl\s*=.*ctl_k|ctl_decay\s*=")
-    files = list(pathlib.Path("titan").rglob("*.py"))
+    files = list((REPO_ROOT / "titan").rglob("*.py"))
     violations = []
     for f in files:
         if "tsb_engine" in f.name:

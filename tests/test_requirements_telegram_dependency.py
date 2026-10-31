@@ -1,6 +1,8 @@
 import re
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 # Package names only: exact versions live in the requirements files and are
 # bumped by Dependabot. This test guards the runtime/dev/build split, so it
 # compares names; pinning (==) is asserted separately below.
@@ -57,7 +59,7 @@ def _package_name(requirement: str) -> str:
 
 
 def _read_dependency_lines(path: str) -> set[str]:
-    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    lines = (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
     dependencies: set[str] = set()
 
     for raw_line in lines:
@@ -74,8 +76,8 @@ def _read_dependency_lines(path: str) -> set[str]:
 
 def test_telegram_dependency_matches_telebot_import():
     """requirements.txt must install the package that provides `import telebot`."""
-    requirements = Path("requirements.txt").read_text(encoding="utf-8")
-    telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
+    requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    telegram_module = (REPO_ROOT / "titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
 
     assert "pyTelegramBotAPI==" in requirements
     assert "python-telegram-bot" not in requirements
@@ -113,7 +115,7 @@ def test_all_requirements_are_pinned_exactly():
 
 def test_pyproject_reads_dependencies_from_requirements_files():
     """pyproject.toml must not carry its own dependency list (task #8: one source)."""
-    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
 
     assert 'dependencies = { file = ["requirements.txt"] }' in pyproject
     assert 'optional-dependencies.dev = { file = ["requirements-dev.txt"] }' in pyproject
@@ -122,7 +124,7 @@ def test_pyproject_reads_dependencies_from_requirements_files():
 
 def test_ci_ruff_comes_from_dev_requirements():
     """The Ruff gate jobs must install Ruff from requirements-dev.txt, not a separate pin."""
-    ci = Path(".github/workflows/ci.yml").read_text(encoding="utf-8")
+    ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
 
     assert "grep -E '^ruff==' requirements-dev.txt" in ci
     assert re.search(r"ruff==[0-9]", ci) is None

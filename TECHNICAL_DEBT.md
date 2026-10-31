@@ -150,7 +150,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | AT-04 | 1 | HIGH | Gitleaks στο push στο main μόνο `HEAD~1..HEAD`· HIGH στο AGENTS §30, LOW στο M0-31 | `secret-scan.yml:38-40` | RESOLVED · PR #1147 (D-204)· στο push ελέγχεται το εύρος από το προηγούμενο commit, αλλιώς όλο το ιστορικό· επιβεβαιωμένο με test που τρέχει το script |
 | AT-05 | 3 | MEDIUM | Το pytest γράφει `titan.log`/`titan.log.1` στη ρίζα του repo | `titan/main.py:75-95` | RESOLVED · PR #1148 (D-205)· το log των tests πάει στον προσωρινό home, οι handlers καθαρίζουν μετά από κάθε test, το `.gitignore` πιάνει τα `*.log.N`· επιβεβαιωμένο με test |
 | AT-06 | 3 | LOW | Δύο μετρήσεις modules και literal 90 στις πύλες ορίου | `test_complexity_budget.py:17-39` | RESOLVED · PR #1150 (D-207)· μία μέτρηση (`titan_modules()`, ίδια με το CI) και μία σταθερά σε όλες τις πύλες· επιβεβαιωμένο με test |
-| AT-07 | 3 | LOW | Tests εξαρτώνται από τον φάκελο εκτέλεσης· 74 ελέγχοι string στον πηγαίο κώδικα | `test_opus_critical_fixes.py:10-53` | OPEN · Α, σταδιακά · έλεγχος AT (D-202) |
+| AT-07 | 3 | LOW | Tests εξαρτώνται από τον φάκελο εκτέλεσης· 74 ελέγχοι string στον πηγαίο κώδικα | `test_opus_critical_fixes.py:10-53` | PARTIAL · PR #1154 (D-211) οι διαδρομές από το `REPO_ROOT`, με έλεγχο AST· μένουν οι 74 έλεγχοι string · έλεγχος AT (D-202) |
 | AT-08 | 3 | LOW | Κανένα όριο χρόνου ανά test | `pyproject.toml` | RESOLVED · PR #1149 (D-206)· `timeout = 300` στο pytest· επιβεβαιωμένο με test |
 | AT-09 | 3 | LOW | Διπλές `LOG_*`· το §16.6 «env-overridable» δεν ισχύει· νεκρό `should_replan` | `titan/main.py:65-66` | OPEN · μένει μόνο το §16.6 (policy-only)· ο κώδικας: PR #1151 (D-208), ένας ορισμός `LOG_*`, το `should_replan` σημειωμένο ότι δεν καλείται· επιβεβαιωμένο με test |
 

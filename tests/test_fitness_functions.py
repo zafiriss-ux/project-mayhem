@@ -10,6 +10,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 # ── Item 1 — Hard-stop gate exclusion from ThresholdAdapter ───────────────────
 
 
@@ -29,7 +31,7 @@ def test_get_soft_threshold_never_called_on_hard_stop_gates() -> None:
             HARD_STOP_THRESHOLD_KEYS as HARD_STOP_GATE_NAMES,  # type: ignore[no-redef]
         )
 
-    source = Path("titan/science/governance_engine.py").read_text()
+    source = (REPO_ROOT / "titan/science/governance_engine.py").read_text()
     tree = ast.parse(source)
     for node in ast.walk(tree):
         if (
@@ -57,7 +59,7 @@ def test_outcome_tracker_queries_always_scoped_to_athlete() -> None:
     governance_outcomes must contain 'athlete_id'.
     INV-04 partial enforcement (full enforcement: T5-07-L3-B).
     """
-    source = Path("titan/science/outcome_tracker.py").read_text()
+    source = (REPO_ROOT / "titan/science/outcome_tracker.py").read_text()
     tree = ast.parse(source)
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
@@ -78,7 +80,7 @@ def test_coaching_pipeline_no_direct_dailycoach_import() -> None:
     coaching_pipeline.py must not import DailyCoach directly.
     Enforces T5-07-L3-D (coach:Any elimination).
     """
-    source = Path("titan/orchestration/coaching_pipeline.py").read_text()
+    source = (REPO_ROOT / "titan/orchestration/coaching_pipeline.py").read_text()
     tree = ast.parse(source)
     for node in ast.walk(tree):
         if isinstance(node, (ast.Import, ast.ImportFrom)):

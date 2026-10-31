@@ -11,6 +11,8 @@ import pytest
 
 from titan.core.database import DatabaseManager
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
 
 def _seed_rows(db: DatabaseManager, n: int) -> None:
     for i in range(n):
@@ -75,7 +77,7 @@ def _repository_method(method: ast.FunctionDef) -> str | None:
     if not (isinstance(holder, ast.Attribute) and isinstance(holder.value, ast.Name)
             and holder.value.id == "self" and holder.attr.startswith("_")):
         return None
-    for repo in sorted(pathlib.Path("titan/core/repositories").glob("*.py")):
+    for repo in sorted((REPO_ROOT / "titan/core/repositories").glob("*.py")):
         repo_src = repo.read_text()
         for node in ast.walk(ast.parse(repo_src)):
             if isinstance(node, ast.FunctionDef) and node.name == call.func.attr:
@@ -87,7 +89,7 @@ def _repository_method(method: ast.FunctionDef) -> str | None:
 @pytest.mark.governance
 def test_all_read_methods_use_lock():
     """Fitness function — CI-blocking: every get_/fetch_/load_ must hold the lock."""
-    src = pathlib.Path("titan/core/database.py").read_text()
+    src = (REPO_ROOT / "titan/core/database.py").read_text()
     tree = ast.parse(src)
     dm_class = next(
         n for n in ast.walk(tree)

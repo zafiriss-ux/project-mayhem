@@ -9,6 +9,8 @@ import titan.integrations.telegram_bot as telegram_bot
 from titan.core.database import DatabaseManager
 from titan.integrations.telegram_bot import TitanTelegramBot, _create_override_nonce
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 class _FakeTeleBot:
     def __init__(self):
@@ -704,7 +706,7 @@ def test_send_alert_uses_info_default_for_unknown_level(monkeypatch):
 
 @pytest.mark.integration
 def test_telegram_bot_has_no_print_calls():
-    source = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
     assert "print(" not in source
 
 

@@ -3,9 +3,11 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _parsed_imports(path: str):
-    module = ast.parse(Path(path).read_text())
+    module = ast.parse((REPO_ROOT / path).read_text())
     imports = []
     for node in ast.walk(module):
         if isinstance(node, ast.ImportFrom):

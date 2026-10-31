@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.integration
 def test_verify_backup_exits_0_on_valid(tmp_path: Path) -> None:
@@ -14,9 +16,10 @@ def test_verify_backup_exits_0_on_valid(tmp_path: Path) -> None:
     conn.execute("CREATE TABLE t (id INTEGER)")
     conn.commit()
     conn.close()
-    subprocess.run(["bash", "scripts/backup.sh", str(tmp_path)], check=True)
+    subprocess.run(["bash", "scripts/backup.sh", str(tmp_path)], cwd=REPO_ROOT, check=True)
     result = subprocess.run(
         ["python3", "scripts/verify_backup.py", str(tmp_path)],
+        cwd=REPO_ROOT,
         capture_output=True,
     )
     assert result.returncode == 0, result.stderr
@@ -30,6 +33,7 @@ def test_verify_backup_exits_1_on_corrupt(tmp_path: Path) -> None:
     corrupt.write_bytes(b"notadb" * 100)
     result = subprocess.run(
         ["python3", "scripts/verify_backup.py", str(tmp_path)],
+        cwd=REPO_ROOT,
         capture_output=True,
     )
     assert result.returncode == 1
@@ -40,6 +44,7 @@ def test_verify_backup_exits_1_no_backups(tmp_path: Path) -> None:
     (tmp_path / "backups").mkdir()
     result = subprocess.run(
         ["python3", "scripts/verify_backup.py", str(tmp_path)],
+        cwd=REPO_ROOT,
         capture_output=True,
     )
     assert result.returncode == 1

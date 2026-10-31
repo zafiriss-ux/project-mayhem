@@ -3,10 +3,12 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.integration
 def test_gui_wizard_is_ruff_clean() -> None:
-    target = Path("launcher/gui_wizard.py")
+    target = REPO_ROOT / "launcher/gui_wizard.py"
 
     result = subprocess.run(
         ["ruff", "check", str(target)],
@@ -20,7 +22,7 @@ def test_gui_wizard_is_ruff_clean() -> None:
 
 @pytest.mark.integration
 def test_wizard_is_ruff_clean() -> None:
-    target = Path("launcher/wizard.py")
+    target = REPO_ROOT / "launcher/wizard.py"
 
     result = subprocess.run(
         ["ruff", "check", str(target)],

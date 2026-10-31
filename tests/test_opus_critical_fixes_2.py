@@ -3,11 +3,13 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.unit
 def test_healthcheck_uses_readyz():
     for path in ["Dockerfile", "docker-compose.yml"]:
-        txt = Path(path).read_text()
+        txt = (REPO_ROOT / path).read_text()
         assert "/readyz" in txt, (
             f"{path}: HEALTHCHECK must use /readyz not /health"
         )
@@ -15,14 +17,14 @@ def test_healthcheck_uses_readyz():
 
 @pytest.mark.unit
 def test_worker_has_sigterm_handler():
-    src = Path("titan/worker/__init__.py").read_text()
+    src = (REPO_ROOT / "titan/worker/__init__.py").read_text()
     assert "SIGTERM" in src, "Worker must handle SIGTERM"
     assert "shutdown" in src.lower(), "Worker must support graceful shutdown"
 
 
 @pytest.mark.unit
 def test_worker_schedule_aligned():
-    src = Path("titan/worker/__init__.py").read_text()
+    src = (REPO_ROOT / "titan/worker/__init__.py").read_text()
     assert "86400" not in src, (
         "Worker must not use raw 86400s sleep — use scheduled alignment instead"
     )
@@ -51,7 +53,7 @@ def test_override_lockdown_fail_closed():
 
 @pytest.mark.unit
 def test_rbac_coach_checks_assignments():
-    src = Path("titan/api/dependencies.py").read_text()
+    src = (REPO_ROOT / "titan/api/dependencies.py").read_text()
     assert "coach_athlete_assignments" in src or "get_assigned_athletes" in src, (
         "RBAC must query assignment table"
     )
@@ -59,6 +61,6 @@ def test_rbac_coach_checks_assignments():
 
 @pytest.mark.unit
 def test_run_api_script_exists():
-    assert Path("scripts/run_api.py").exists(), (
+    assert (REPO_ROOT / "scripts/run_api.py").exists(), (
         "Reviewable API entrypoint must exist"
     )

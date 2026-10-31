@@ -3,8 +3,11 @@ from __future__ import annotations
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 GOVERNANCE_FILES = (
     "titan/science/governance_contracts.py",
@@ -20,6 +23,7 @@ def test_governance_files_are_ruff_clean() -> None:
 
     proc = subprocess.run(
         cmd,
+        cwd=REPO_ROOT,
         check=False,
         capture_output=True,
         text=True,

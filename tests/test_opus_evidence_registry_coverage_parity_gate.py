@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _assert_evidence_registry_coverage_parity(
     thresholds_source: str,
@@ -61,8 +63,8 @@ def _assert_evidence_registry_coverage_parity(
 def test_ci_gate_evidence_registry_coverage_parity() -> None:
     """CI gate: every threshold constant must have EVIDENCE_REGISTRY coverage."""
 
-    thresholds_source = Path("titan/config/thresholds.py").read_text(encoding="utf-8")
-    registry_source = Path("titan/config/evidence_registry.py").read_text(encoding="utf-8")
+    thresholds_source = (REPO_ROOT / "titan/config/thresholds.py").read_text(encoding="utf-8")
+    registry_source = (REPO_ROOT / "titan/config/evidence_registry.py").read_text(encoding="utf-8")
 
     _assert_evidence_registry_coverage_parity(
         thresholds_source,

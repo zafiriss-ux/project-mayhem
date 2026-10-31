@@ -1,10 +1,13 @@
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from titan import __version__
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.integration
@@ -24,6 +27,7 @@ def test_python_m_titan_entrypoint_exits_deterministically_without_traceback():
         capture_output=True,
         text=True,
         env=env,
+        cwd=REPO_ROOT,
         timeout=30,
         check=False,
     )

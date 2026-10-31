@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _make_db(path: Path) -> None:
     conn = sqlite3.connect(str(path))
@@ -24,6 +26,7 @@ def test_backup_script_creates_file(tmp_path):
 
     result = subprocess.run(
         ["bash", "scripts/backup.sh", str(tmp_path)],
+        cwd=REPO_ROOT,
         capture_output=True,
         text=True,
     )
@@ -42,6 +45,7 @@ def test_backup_is_readable_sqlite(tmp_path):
 
     subprocess.run(
         ["bash", "scripts/backup.sh", str(tmp_path)],
+        cwd=REPO_ROOT,
         check=True,
     )
     backup = list((tmp_path / "backups").glob("titan_core.db.*"))[0]
@@ -69,6 +73,7 @@ def test_backup_pruning_keeps_7(tmp_path):
 
     subprocess.run(
         ["bash", "scripts/backup.sh", str(tmp_path)],
+        cwd=REPO_ROOT,
         check=True,
     )
 
@@ -78,7 +83,7 @@ def test_backup_pruning_keeps_7(tmp_path):
 
 @pytest.mark.unit
 def test_worker_run_forever_calls_backup():
-    src = Path("titan/worker/__init__.py").read_text()
+    src = (REPO_ROOT / "titan/worker/__init__.py").read_text()
     assert "_run_backup" in src or "backup" in src.lower(), (
         "C-4: worker must call backup"
     )
