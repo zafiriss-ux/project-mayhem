@@ -31,6 +31,8 @@ def test_build_daily_coach_returns_wired_coach(worker_db):
 
     assert isinstance(coach, DailyCoach)
     assert coach.db is worker_db
+    # The owner's Garmin account name is recorded in this same database (ADR-0076).
+    assert coach.garmin.db is worker_db
     assert coach.athlete_id == "owner"
     assert coach.hrv_engine is coach.engines.hrv
     assert coach.weekly_planner.hrv_engine is coach.engines.hrv
@@ -68,6 +70,7 @@ def test_build_daily_coach_scopes_engines_to_athlete(worker_db):
     assert coach.athlete_profile.athlete_id == "a-00000002"
     assert coach.athlete_profile.max_hr == 186
     assert coach.garmin.athlete_id == "a-00000002"
+    assert coach.garmin.db is worker_db
     assert coach.garmin.token_only is True
     assert coach.telegram.chat_id == 20000002
 
