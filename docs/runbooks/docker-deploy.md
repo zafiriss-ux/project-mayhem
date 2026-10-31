@@ -12,7 +12,7 @@ docker compose up --build -d
 
 | Service | Description |
 |---------|-------------|
-| `titan-api` | FastAPI/uvicorn — `http://localhost:8000`, published on `127.0.0.1` only (M0-14). `/metrics` answers 404 unless `TITAN_METRICS_TOKEN` is set in `.env`; then it needs `Authorization: Bearer <token>` |
+| `titan-api` | FastAPI/uvicorn — `http://localhost:8000`, published on `127.0.0.1` only (M0-14). `/metrics` answers 404 unless `TITAN_METRICS_TOKEN` is set in `.env`; then it needs `Authorization: Bearer <token>`. It does not load the whole `.env` (M0-29): it gets only `TITAN_JWT_PRIVATE_KEY`, `TITAN_JWT_PUBLIC_KEY`, `TITAN_METRICS_TOKEN` and `API_MAX_BODY_SIZE_BYTES`, named in `docker-compose.yml`. A new setting the API reads must be added there too |
 | `titan-worker` | Background daemon (Garmin sync, sending Telegram messages, morning routine; on Sunday the weekly plan, stored in `weekly_plans`, D-020; athletes' deletions re-applied at start and the 30-day purge after `/stop`, ADR-0067). With `TITAN_MULTI_ATHLETE=1` it also answers the athletes' Telegram commands (`/consent`, `/agree`, `/sync`, `/stop`, D-103); otherwise it answers no commands |
 
 ## Data

@@ -9,6 +9,29 @@
 
 ---
 
+## D-195 · M0-29: το API παίρνει μόνο ό,τι διαβάζει ο κώδικάς του
+
+- **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α (TECHNICAL_DEBT M0-29, Tier 1, Phase 27).
+- **Πρόβλημα:** το `titan-api` φόρτωνε όλο το `.env` (`env_file`): κωδικούς Garmin και Telegram και το
+  `TITAN_GARTH_TOKEN_KEY`. Με τον τόμο `titan-data`, όπου είναι το `/data/.garth_token`, μπορούσε να
+  αποκρυπτογραφήσει το session Garmin του owner (έλεγχος SP, D-192). Ο κώδικας του API δεν εισάγει τίποτα από
+  Garmin ή Telegram· διαβάζει μόνο τα κλειδιά JWT, το `TITAN_METRICS_TOKEN`, το `API_MAX_BODY_SIZE_BYTES`,
+  το `TITAN_DATA_DIR` και το `TITAN_DB_BACKEND`.
+- **Απόφαση:** το `titan-api` δεν έχει πια `env_file`. Παίρνει ονομαστικά μόνο αυτές τις μεταβλητές, με
+  interpolation του Compose από το ίδιο `.env` (`${VAR:-}`). Ο worker κρατά το `env_file`, αλλά το
+  `TITAN_JWT_PRIVATE_KEY` του γίνεται κενό: το κλειδί υπογραφής είναι μόνο του API.
+- **Tests:** τέσσερα στο `tests/test_compose_secrets_m0_29.py` (τα τρία αποτύγχαναν πριν). Το job «Compose up,
+  restart, persistence» του CI φτιάχνει κλειδιά JWT στο `.env` και ελέγχει ότι το API ξεκινά: στην εκκίνηση το
+  API υπογράφει και επαληθεύει ένα δοκιμαστικό token, άρα κλειδί που χάλασε στο interpolation σταματά το
+  container. Login δεν δοκιμάζει.
+- **Όρια:** (1) το `.garth_token` μένει στο `titan-data`, που το βλέπει και το API· είναι κρυπτογραφημένο και το
+  κλειδί δεν φτάνει πια στο API. Η μεταφορά του σε τόμο μόνο του worker αλλάζει τη διάταξη του deploy και είναι
+  επόμενο βήμα. (2) Το interpolation του Compose ερμηνεύει το `$` μέσα σε τιμή· τα κλειδιά PEM και τα tokens
+  που φτιάχνουν τα scripts δεν έχουν `$`. (3) Νέα μεταβλητή που θα διαβάζει το API πρέπει να προστεθεί και στο
+  `docker-compose.yml`.
+- **Εναλλακτικές:** δεύτερο αρχείο `.env.api`· απορρίφθηκε γιατί θέλει αλλαγή στη ρύθμιση του χρήστη και στο
+  runbook εγκατάστασης. Το interpolation κρατά ένα `.env`.
+
 ## D-194 · SP-01: το id `system` της σποράς δεν είναι coach του API· καταγραφή SP-07
 
 - **Πότε / ποιος:** 2026-10-31, Claude. Κατηγορία Α. Διαδρομή authorization: ο έλεγχος μόνο σφίγγει.

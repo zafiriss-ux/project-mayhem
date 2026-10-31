@@ -11,8 +11,8 @@ services:
     build:
       context: .
       target: api
-    env_file:
-      - .env
+    # M0-29: no env_file. The API gets only what its code reads, never the Garmin or Telegram
+    # credentials or TITAN_GARTH_TOKEN_KEY (the owner's Garmin token, on titan-data, stays sealed).
     # M0-14: published on this machine only, never on every network interface.
     ports:
       - "127.0.0.1:8000:8000"  # DevSkim: ignore DS162092 (localhost only is the point, M0-14)
@@ -21,6 +21,10 @@ services:
     environment:
       - TITAN_DATA_DIR=/data
       - TITAN_DB_BACKEND=sqlite
+      - TITAN_JWT_PRIVATE_KEY=${TITAN_JWT_PRIVATE_KEY:-}
+      - TITAN_JWT_PUBLIC_KEY=${TITAN_JWT_PUBLIC_KEY:-}
+      - TITAN_METRICS_TOKEN=${TITAN_METRICS_TOKEN:-}
+      - API_MAX_BODY_SIZE_BYTES=${API_MAX_BODY_SIZE_BYTES:-1048576}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]  # DevSkim: ignore DS162092
       interval: 30s
@@ -46,6 +50,8 @@ services:
       - TITAN_TOKEN_KEY_FILE=/secrets/athlete_token.key
       - TITAN_DELETION_RECORD_FILE=/secrets/deletions.jsonl
       - TITAN_DB_BACKEND=sqlite
+      # M0-29: the JWT signing key is the API's; blank it over the .env value.
+      - TITAN_JWT_PRIVATE_KEY=
     # AGENTS INV-23: unhealthy once the worker's heartbeat is older than 2x its 60s tick.
     healthcheck:
       test: ["CMD", "python", "scripts/worker_healthcheck.py"]

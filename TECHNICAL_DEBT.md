@@ -90,7 +90,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `titan/main.py:217-232` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC: επιβεβαιώθηκε με εκτέλεση (D-185) |
 | M0-27 | 1 | HIGH | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-12-R1 | `persistence.py` (PostgreSQL adapter) | OPEN · πριν ενεργοποιηθεί το PostgreSQL · έλεγχος IS |
 | M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | OPEN · στόχος Phase 27 · έλεγχος SP |
-| M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env`· ο έλεγχος SP βρήκε ότι παίρνει και το `TITAN_GARTH_TOKEN_KEY` και τον τόμο με το `.garth_token` του owner (D-192) | `docker-compose.yml`, `api/` | OPEN · στόχος Phase 27 · επιβεβαιώθηκε ανοιχτό στον έλεγχο SP (D-192) |
+| M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env`· ο έλεγχος SP βρήκε ότι παίρνει και το `TITAN_GARTH_TOKEN_KEY` και τον τόμο με το `.garth_token` του owner (D-192) | `docker-compose.yml`, `api/` | RESOLVED · PR #1138 (D-195): το API δεν έχει `env_file`· το `.garth_token` στο `titan-data` μένει επόμενο βήμα |
 | M0-30 | 2 | LOW | Παλιό `--ignore-vuln` στο `ci.yml` | `.github/workflows/ci.yml` | OPEN · στόχος Phase 27 · έλεγχος SP |
 | M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · έλεγχος AT |
 | M0-32 | 2 | LOW | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | tests του CLAUDE.md | OPEN · στόχος Phase 27 · έλεγχος AT |
