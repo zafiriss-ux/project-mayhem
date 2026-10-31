@@ -82,6 +82,57 @@ def test_verify_rejects_schema_version_mismatch(db: DatabaseManager, tmp_path: P
     assert database_mod._verify_backup_artifact(dest, expected_user_version=SCHEMA_VERSION + 1) is not None
 
 
+class _ConnKilledDuringBackup:
+    """The live connection, except that ``backup()`` dies part-way, like a SIGKILL (RC-01)."""
+
+    def __init__(self, real: sqlite3.Connection) -> None:
+        self._real = real
+
+    def backup(self, target: sqlite3.Connection, *args, **kwargs) -> None:
+        target.execute("CREATE TABLE half_written (x)")
+        target.commit()
+        raise KeyboardInterrupt  # not an Exception: nothing in backup_database may catch it
+
+    def __getattr__(self, name: str):
+        return getattr(self._real, name)
+
+
+def test_backup_killed_midway_leaves_no_dated_file_and_the_next_call_backs_up(
+    db: DatabaseManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    backup_dir = tmp_path / "backups"
+    real = db.conn
+    monkeypatch.setattr(db, "conn", _ConnKilledDuringBackup(real))
+    with pytest.raises(KeyboardInterrupt):
+        db.backup_database(backup_dir=backup_dir)
+    monkeypatch.setattr(db, "conn", real)
+
+    assert list(backup_dir.glob("titan_????-??-??.db")) == []
+
+    dest = db.backup_database(backup_dir=backup_dir)
+    assert dest is not None
+    assert database_mod._verify_backup_artifact(dest, expected_user_version=SCHEMA_VERSION) is None
+    assert [p.name for p in backup_dir.iterdir()] == [dest.name]
+
+
+def test_leftover_partial_file_from_a_killed_backup_does_not_block_the_backup(
+    db: DatabaseManager, tmp_path: Path
+) -> None:
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    dest = db.backup_database(backup_dir=backup_dir)
+    assert dest is not None
+    dest.unlink()
+    leftover = dest.with_name(dest.name + ".partial")
+    leftover.write_bytes(b"not a database, cut off by SIGKILL")
+
+    again = db.backup_database(backup_dir=backup_dir)
+
+    assert again == dest
+    assert database_mod._verify_backup_artifact(again, expected_user_version=SCHEMA_VERSION) is None
+    assert not leftover.exists()
+
+
 # ── DR-02: retention ────────────────────────────────────────────────────────
 
 
