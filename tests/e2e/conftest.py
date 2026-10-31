@@ -245,33 +245,28 @@ def stub_engine_registry() -> EngineRegistry:
 @pytest.fixture
 def morning_routine_setup(tmp_path):
     today = E2E_TODAY
-    freezer = freeze_time(f"{today} 07:30:00")
-    freezer.start()
-    db = DatabaseManager(db_name="e2e_gold_path.db", db_dir=tmp_path)
-    telegram = StubTelegram()
-
-    engines = stub_engine_registry()
-
-    coach = DailyCoach(
-        garmin_sync=StubGarminSync(today=today),
-        weather_api=StubWeather(),
-        telegram_bot=telegram,
-        hrv_engine=StubSimpleEngine(),
-        tsb_engine=StubTSB(),
-        readiness_engine=StubReadiness(),
-        optimal_time_calc=StubOptimalTime(),
-        nutrition_optimizer=StubNutrition(),
-        weekly_planner=StubWeeklyPlanner(),
-        db=db,
-        engines=engines,
-        glycogen_accum=StubGlycogen(),
-        governance=StubGovernance(),
-        volume_load_gauge=StubVLG(),
-        outcome_tracker=StubOutcomeTracker(),
-    )
-
-    try:
-        yield {"coach": coach, "db": db, "telegram": telegram, "today": today}
-    finally:
-        db.close()
-        freezer.stop()
+    # The context manager stops the freeze even if the setup below raises.
+    with freeze_time(f"{today} 07:30:00"):
+        db = DatabaseManager(db_name="e2e_gold_path.db", db_dir=tmp_path)
+        try:
+            telegram = StubTelegram()
+            coach = DailyCoach(
+                garmin_sync=StubGarminSync(today=today),
+                weather_api=StubWeather(),
+                telegram_bot=telegram,
+                hrv_engine=StubSimpleEngine(),
+                tsb_engine=StubTSB(),
+                readiness_engine=StubReadiness(),
+                optimal_time_calc=StubOptimalTime(),
+                nutrition_optimizer=StubNutrition(),
+                weekly_planner=StubWeeklyPlanner(),
+                db=db,
+                engines=stub_engine_registry(),
+                glycogen_accum=StubGlycogen(),
+                governance=StubGovernance(),
+                volume_load_gauge=StubVLG(),
+                outcome_tracker=StubOutcomeTracker(),
+            )
+            yield {"coach": coach, "db": db, "telegram": telegram, "today": today}
+        finally:
+            db.close()

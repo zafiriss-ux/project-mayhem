@@ -20,13 +20,16 @@
 - **Απόφαση:** το stub φτιάχνει το payload με το `GarminSyncResultContract` και εγγραφές με τα ίδια κλειδιά που
   βγάζουν τα `sync_sleep()`, `sync_activities()`, `sync_hrv()`, `sync_weight()`. Ο ύπνος είναι δύο νύχτες, η
   νεότερη πρώτη, όπως τις δίνει το `sync_sleep()`. Το fixture `morning_routine_setup` παγώνει το ρολόι στις
-  07:30 της `E2E_TODAY` (2026-03-04).
+  07:30 της `E2E_TODAY` (2026-03-04), με context manager ώστε το πάγωμα να σταματά και αν αποτύχει το setup.
+  Τα tests ντετερμινισμού και idempotency παγώνουν στην ίδια ώρα, για να διαβάζουν τον ύπνο της ημέρας.
 - **Τι μένει (μέρος 2):** τα e2e τρέχουν ακόμα με `StubGovernance` και stubs για κόπωση, TSB, readiness, HRV και
   γλυκογόνο. Επόμενο βήμα: πραγματική governance, ή ονομασία «wiring smoke» για ό,τι μείνει με stubs.
-- **Παρατήρηση στην πορεία:** το `DailyCoach` διαβάζει από το `garmin_data` 11 κλειδιά που ο πραγματικός sync δεν
-  βγάζει (`temperature_c`, `time_above_lt2_min`, `dprime_fraction`, `intra_carb_g`, `weight_kg`, `drift_pct`,
-  `hr_suppression`, `rpe_mismatch`, `pace_hr_divergence`, `hrr` και το `acwr` στα contracts). Στην παραγωγή
-  παίρνουν πάντα την προεπιλογή τους. Δεν αλλάζει εδώ· είναι υλικό για τις προτεραιότητες της Phase 2 (κοντά στο
+- **Παρατήρηση στην πορεία:** το παλιό stub είχε 11 τέτοια κλειδιά (η αναφορά AT έγραφε 12). Τα 10 από αυτά το
+  `DailyCoach` τα διαβάζει από το `garmin_data`, ενώ ο πραγματικός sync δεν τα βγάζει: `temperature_c`,
+  `time_above_lt2_min`, `dprime_fraction`, `intra_carb_g`, `weight_kg`, `drift_pct`, `hr_suppression`,
+  `rpe_mismatch`, `pace_hr_divergence`, `hrr`. Το `acwr` το υπολογίζει το ίδιο το `DailyCoach`. Η ανασκόπηση
+  βρήκε κι άλλα τέτοια κλειδιά (π.χ. `dew_point`, `injury_flag`, `illness_flag`, `governance_events`), άρα η
+  λίστα δεν είναι πλήρης. Στην παραγωγή παίρνουν πάντα την προεπιλογή τους. Δεν αλλάζει εδώ· είναι υλικό για τις προτεραιότητες της Phase 2 (κοντά στο
   AT-01).
 - **Tests:** νέο `tests/e2e/test_stub_garmin_shape_at02.py` (3 tests), που αποτύγχανε όλο πριν. (1) Τα κλειδιά
   πρώτου επιπέδου είναι του `GarminSyncResult`. (2) Οι εγγραφές ύπνου και δραστηριότητας έχουν τα κλειδιά του
