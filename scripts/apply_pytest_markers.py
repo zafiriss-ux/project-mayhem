@@ -19,7 +19,7 @@ MARKERS: dict[str, list[str]] = {
     "test_claude_md_integrity.py": ["unit"],
     "test_cli_entrypoint.py": ["integration"],
     "test_combined_gate_interactions.py": ["unit", "governance"],
-    "test_complexity_budget.py": ["integration"],
+    "test_complexity_budget.py": ["unit"],
     "test_concurrency_consistency.py": ["integration"],
     "test_constants_hygiene.py": ["unit"],
     "test_cp_copilot_fixes.py": ["unit"],

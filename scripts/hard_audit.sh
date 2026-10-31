@@ -221,15 +221,16 @@ fi
 _section "H. Complexity budget"
 # ─────────────────────────────────────────────────────────────────────────────
 
-MODULE_COUNT=$(find titan/ -name "*.py" \
-  ! -name "__init__.py" ! -name "__main__.py" | wc -l | tr -d ' ')
-CEILING=$(python -c \
-  "from titan.config.thresholds import MODULE_COUNT_CEILING; \
-   print(MODULE_COUNT_CEILING)" 2>/dev/null || echo "71")
+# AT-06: the same count as every other gate (modules and subpackages, pkgutil).
+# If either value cannot be read, the check fails instead of using a default.
+MODULE_COUNT=$(python -c "from tests.test_complexity_budget import titan_modules; print(len(titan_modules()))" 2>/dev/null || echo "")
+CEILING=$(python -c "from titan.config.thresholds import MODULE_COUNT_CEILING; print(MODULE_COUNT_CEILING)" 2>/dev/null || echo "")
 
-echo "  → $MODULE_COUNT modules / ceiling $CEILING"
+echo "  → ${MODULE_COUNT:-?} modules / ceiling ${CEILING:-?}"
 
-if [ "$MODULE_COUNT" -le "$CEILING" ]; then
+if [ -z "$MODULE_COUNT" ] || [ -z "$CEILING" ]; then
+  _fail "Module count or ceiling could not be read"
+elif [ "$MODULE_COUNT" -le "$CEILING" ]; then
   _pass "Module count $MODULE_COUNT ≤ ceiling $CEILING"
 else
   _fail "Module count $MODULE_COUNT > ceiling $CEILING — raise ceiling via ADR"

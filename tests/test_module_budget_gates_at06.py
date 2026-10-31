@@ -8,8 +8,13 @@ MODULE_COUNT_CEILING. Lowering the constant left both tests green.
 
 from __future__ import annotations
 
+import os
 import pkgutil
+import re
+import subprocess
+import sys
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +22,8 @@ import tests.test_complexity_budget as budget
 import tests.test_documentation_consistency as docs
 import titan
 from titan.config import thresholds
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 GATES: dict[str, Callable[[], None]] = {
     "test_complexity_budget": budget.test_module_count_within_budget,
@@ -50,3 +57,17 @@ def test_the_count_matches_the_ci_job() -> None:
     )
     assert len(budget.titan_modules()) == ci_count
     assert "titan.core.repositories" in budget.titan_modules(), "subpackages count too"
+
+
+def test_the_hard_audit_counts_like_the_other_gates(tmp_path: Path) -> None:
+    # Run the script's own MODULE_COUNT= line, with `python` meaning this interpreter.
+    script = (REPO_ROOT / "scripts" / "hard_audit.sh").read_text(encoding="utf-8")
+    match = re.search(r"^MODULE_COUNT=\$\(.*?\)(?:\n|$)", script, re.MULTILINE | re.DOTALL)
+    assert match, "hard_audit.sh has no MODULE_COUNT= line"
+    (tmp_path / "python").symlink_to(sys.executable)
+    env = {**os.environ, "PATH": f"{tmp_path}{os.pathsep}{os.environ.get('PATH', '')}"}
+    result = subprocess.run(
+        ["bash", "-c", match.group(0) + 'printf %s "$MODULE_COUNT"'],
+        cwd=REPO_ROOT, env=env, capture_output=True, text=True, timeout=60, check=True,
+    )
+    assert result.stdout == str(len(budget.titan_modules()))
