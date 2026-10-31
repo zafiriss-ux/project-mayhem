@@ -1,0 +1,4 @@
+=========================== short test summary info ============================
+FAILED ../../home/claude/project-mayhem/.wt-rc0506/tests/test_metrics_auth_m0_14.py::test_compose_publishes_every_port_on_localhost_only
+1 failed, 44 passed, 1 warning in 8.08s
+1 passed, 11 deselected, 1 warning in 0.37s
