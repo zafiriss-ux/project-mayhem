@@ -44,7 +44,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | MA-F4 | Το εβδομαδιαίο πλάνο ξαναστελνόταν σε retry | MEDIUM | Α | FIXED | D-126 | ναι | RC |
 | — | MA-F5 | Μετά από crash στη μέση της αποστολής ξαναστελνόταν όλο το briefing | MEDIUM | Β | FIXED | D-140, ADR-0069 §8 | ναι | RC |
 | — | MA-F6 | Coach με κενό `?athlete_id=` περνούσε χωρίς έλεγχο ανάθεσης | HIGH | Α | FIXED | D-116 | ναι | IS |
-| — | MA-F7 | Κομμάτι του token Telegram στο log | LOW | Α | FIXED, με υπόλοιπο M0-17 | D-120 | ναι | SP |
+| — | MA-F7 | Κομμάτι του token Telegram στο log | LOW | Α | FIXED· το υπόλοιπο M0-17 FIXED (#1139, D-196) | D-120 | ναι | SP |
 | — | MA-F8 | Ο `PostgreSQLAdapter` έγραφε αποφάσεις χωρίς `athlete_id` | HIGH | Α | FIXED (PostgreSQL εκτός χρήσης, ADR-0044) | D-121 | ναι | IS |
 | — | MA-F9 | Το bot της κονσόλας δρομολογούσε αθλητές με σβηστή τη σημαία | HIGH | Α | FIXED | D-119 | ναι | IS |
 | — | OW-F1 | Η H4 έβλεπε το TSB μία μέρα πίσω | HIGH | Β | επαληθευμένο (SD, 28608d0)· κενό: M0-22· ήταν FIXED | D-132, ADR-0069 §1 | ναι | SD |
@@ -56,7 +56,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | OW-L1 | Το `/sync` του owner δεν αποθήκευε τα δεδομένα | LOW | Α | FIXED | D-129 | ναι | RC |
 | — | OW-L2 | Γραμμή διαγραφής με `owner` έσβηνε τον owner μετά από επαναφορά | LOW | Α | FIXED | D-115 | ναι | SP |
 | — | OW-L3 | Σιωπηλές προεπιλογές max HR, threshold HR, φάσης | LOW | Α | επαληθευμένο (SD, 28608d0)· κενό: SD-11· ήταν FIXED (ξαναελέγχεται μαζί με το 191 / «M») | D-125 | ναι | SD |
-| — | OW-L4 | Προσωπικά στοιχεία στα logs | LOW | Α | FIXED, με υπόλοιπο M0-17 | D-120 | ναι | SP |
+| — | OW-L4 | Προσωπικά στοιχεία στα logs | LOW | Α | FIXED· το υπόλοιπο M0-17 FIXED (#1139, D-196) | D-120 | ναι | SP |
 | — | OW-L5 | Ημερομηνίες του ρολογιού αντί της μέρας του πρωινού | LOW | Α | FIXED | D-130, D-131 | ναι | RC |
 
 ## 2. Από την αναφορά μετά τη Φάση 4 (P4)
@@ -102,7 +102,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-14 | Το `/metrics` χωρίς πιστοποίηση· η θύρα 8000 σε όλο το δίκτυο | HIGH | Α | FIXED | #1125, D-182 | ναι | SP |
 | — | M0-15 | 6 tests παραλείπονται μόνιμα | MEDIUM | Α | FIXED | #1126, D-183 | ναι | AT |
 | — | M0-16 | Η σχεδίαση δεν φτάνει για πολλούς αθλητές | MEDIUM | Β | TRACKED: Phase 27 | TECHNICAL_DEBT | — | RC |
-| — | M0-17 | Το φίλτρο των logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές | MEDIUM | Α | TRACKED: Phase 27 | TECHNICAL_DEBT | — | SP |
+| — | M0-17 | Το φίλτρο των logs δεν τρέχει στο API και δεν καλύπτει όλες τις μορφές | MEDIUM | Α | FIXED (#1139, D-196) | TECHNICAL_DEBT, D-196 | ναι | SP |
 | — | M0-18 | Το τέλος της προσπάθειας γραφόταν πριν από το «παραδόθηκε» | LOW | Α | FIXED | #1089, D-148 | ναι | RC |
 | — | M0-19 | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | HIGH | Β | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156)· **επιβεβαιωμένο** (SD, 28608d0) | TECHNICAL_DEBT, D-156 | — | SD |
 | — | M0-20 | Η κόπωση της πρώτης μέρας μετρά ως μετρημένη | HIGH | Β | TRACKED: Phase 27· **επιβεβαιωμένο** (SD, 28608d0) | TECHNICAL_DEBT | — | SD |
@@ -114,7 +114,7 @@ audits του σχεδίου (D-156, [`2026-10-24-plan-review.md`](2026-10-24-pl
 | — | M0-26 | Το `POST /coach/notes` έλεγχε μόνο ρόλο | HIGH | Α | FIXED | #1086, D-145 | ναι | IS |
 | — | M0-27 | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5 | HIGH | Β | ανοιχτό (εκτός χρήσης, ADR-0044)· γράφτηκε στο TECHNICAL_DEBT (D-156) | TECHNICAL_DEBT, D-156 | — | IS |
 | — | M0-28 | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
-| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | FIXED (#1138, D-195)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156, D-195 | #1138 | SP |
+| — | M0-29 | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | HIGH | Α | FIXED (#1138, D-195)· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156, D-195 | ναι | SP |
 | — | M0-30 | Παλιό `--ignore-vuln` στο `ci.yml` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | SP |
 | — | M0-31 | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
 | — | M0-32 | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | LOW | Α | ανοιχτό· γράφτηκε στο TECHNICAL_DEBT με πρόταση tier/στόχου (D-156) | TECHNICAL_DEBT, D-156 | — | AT |
@@ -282,7 +282,7 @@ SD, Φάση 2).
 | SP-01 | Coach με id `system` βλέπει τον owner και κάνει override, από τη γραμμή `('system','owner')` που σπέρνει η μετανάστευση | HIGH (κανόνας: authorization) | Α για φρουρά στο `upsert_auth_user`· Β για αφαίρεση της σποράς | FIXED για το Α (#1137, D-194)· η σπορά μένει Β· επιβεβαιωμένο με test | μερικώς: λανθάνον, κανένα endpoint δεν φτιάχνει χρήστη· η φρουρά δεν πιάνει γραμμή που υπάρχει ήδη | `migrations.py:131-136`, `:1180-1183`, `access.py:102-119` |
 | SP-02 | Το `/auth/login` δίνει tokens σε απενεργοποιημένο λογαριασμό, καθαρίζει το κλείδωμα και γράφει refresh token· τα tokens απορρίπτονται μετά | HIGH (κανόνας: authentication)· πρακτικά χαμηλό | Α | FIXED (#1136, D-193)· επιβεβαιωμένο με test | μερικώς: τα tokens δεν περνούν πουθενά | `auth.py:64-76`, `main.py:443-456` |
 | SP-03 | Το `/stop` (ανάκληση συναίνεσης) απορρίπτεται όταν αποτυγχάνει μόνο η εγγραφή audit· η συναίνεση μένει ενεργή | HIGH (κανόνας: συναίνεση)· πιθανότητα μικρή | Β (σύγκρουση INV-22 με το δικαίωμα ανάκλησης)· μέρος Α: ειδοποίηση του owner | επιβεβαιωμένο με εκτέλεση | επιβεβαιώθηκε· η συμπεριφορά ορίζεται ρητά από το INV-22 (AGENTS §8.13) | `telegram_bot.py:800-848` |
-| SP-04 | Το redaction (απλό `str.replace`) χάνει κωδικό που έχει περάσει από `json.dumps` ή `repr` (ελληνικά, `"`, `\`)· διαδρομή: event `connect_failed` | MEDIUM (μέρος του M0-17) | Α | επιβεβαιωμένο με εκτέλεση | — | `secrets.py:50-58`, `structured_events.py:84-95`, `garmin_sync.py:1017` |
+| SP-04 | Το redaction (απλό `str.replace`) χάνει κωδικό που έχει περάσει από `json.dumps` ή `repr` (ελληνικά, `"`, `\`)· διαδρομή: event `connect_failed` | MEDIUM (μέρος του M0-17) | Α | FIXED (#1139, D-196)· επιβεβαιωμένο με εκτέλεση | — | `secrets.py:50-58`, `structured_events.py:84-95`, `garmin_sync.py:1017` |
 | SP-05 | Το chat id του owner γράφεται στο event override-silence· το test ιδιωτικότητας δεν κοιτά πεδία events | LOW (περίπτωση του M0-28) | Α | επιβεβαιωμένο με εκτέλεση | — | `telegram_bot.py:982-988`, `test_log_privacy.py:100-121` |
 | SP-06 | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | LOW | Α | από ανάγνωση κώδικα | — | `setup_wizard.py:249-250` |
 | SP-07 | Άγνωστο username απορρίπτεται χωρίς bcrypt, πιο γρήγορα από γνωστό με λάθος κωδικό: πιθανό oracle χρονισμού (RBP-05). Βρέθηκε στον έλεγχο AI του #1136 | HIGH (κανόνας: authentication) | Α | από ανάγνωση κώδικα· δεν μετρήθηκε | — | `auth.py:66-67` |
