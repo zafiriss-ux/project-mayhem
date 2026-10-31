@@ -51,7 +51,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | # | Tier | Εύρημα | Στοιχεία | Κατάσταση |
 |---|------|--------|----------|-----------|
 | M0-07 | 2 | Τα έγγραφα διακυβέρνησης διαφωνούν: τέσσερις αριθμήσεις «Φάση», το SA:C-1 μένει ανοιχτό μέχρι να κλείσουν τα M0-05 και M0-26, και το μητρώο AGENTS §30 είναι παλιό. Όσο ισχύει αυτό, δεν δίνεται clearance | `AGENTS.md` §30, `docs/ROADMAP.MD`, `PROGRESS.md`, `CLAUDE.md` | OPEN · στόχος Phase 27 |
-| M0-08 | 1 | Αν το Telegram αργήσει να απαντήσει ενώ το μήνυμα έφτασε, ξαναστέλνεται ολόκληρο το briefing | `telegram_bot.py` (send με timeout), `daily_coach.py` send handler | OPEN · στόχος Phase 27 |
+| M0-08 | 1 | Αν το Telegram αργήσει να απαντήσει ενώ το μήνυμα έφτασε, ξαναστέλνεται ολόκληρο το briefing | `telegram_bot.py` (send με timeout), `daily_coach.py` send handler | OPEN · στόχος Phase 27 · έλεγχος RC (D-185): επιβεβαιώθηκε με εκτέλεση· ξαναστέλνεται η σύντομη αποθηκευμένη απόφαση με σημείωση επανάληψης, όχι όλο το briefing |
 | M0-09 | 2 | Οι αθλητές τρέχουν ένας ένας. Όσοι δεν ξεκινήσουν ως τις 12:00 UTC χάνουν τη μέρα χωρίς ειδοποίηση στον owner | `worker/__init__.py` (`ROUTINE_LAST_START_HOUR_UTC`, round) | OPEN · στόχος Phase 27 |
 | M0-10 | 2 | Το εβδομαδιαίο πλάνο στέλνεται το πολύ μία φορά, και μια αποτυχημένη αποστολή δεν αναφέρεται | `worker/__init__.py` (`_prepare_weekly_plan`) | OPEN · στόχος Phase 27 |
 | M0-11 | 1 | Η βάση RHR και το ιστορικό φορτίου μετράνε από το ρολόι, όχι από τη μέρα του πρωινού. Σε επανάληψη μετά τα μεσάνυχτα η H3 μπορεί να χάσει άνοδο RHR | `repositories/physiology.py`, `repositories/training.py` | RESOLVED · PR #1096 (D-154)· το ιστορικό φορτίου ήταν ήδη σωστό (D-131) |
@@ -87,7 +87,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | # | Tier | Σοβαρότητα | Εύρημα | Στοιχεία | Κατάσταση |
 |---|------|------------|--------|----------|-----------|
 | M0-19 | 1 | HIGH | Η σύγκριση 24 ωρών του P4-01 είναι αυστηρή | `daily_coach.py:266–267` (`_DEGRADED_ALERT_THRESHOLD_HOURS`) | OPEN · στόχος Phase 27 · έλεγχος SD |
-| M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `telegram_bot.py` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC |
+| M0-24 | 2 | LOW | Το `/week` στέλνει πλάνο που δεν αποθηκεύτηκε | `titan/main.py:217-232` (`/week`) | OPEN · στόχος Phase 27 · έλεγχος RC: επιβεβαιώθηκε με εκτέλεση (D-185) |
 | M0-27 | 1 | HIGH | Το PostgreSQL χωρίς φίλτρο αθλητή και χωρίς σκανδάλες H1–H5. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-12-R1 | `persistence.py` (PostgreSQL adapter) | OPEN · πριν ενεργοποιηθεί το PostgreSQL · έλεγχος IS |
 | M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | OPEN · στόχος Phase 27 · έλεγχος SP |
 | M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env` | `docker-compose.yml`, `api/` | OPEN · στόχος Phase 27 · έλεγχος SP |
@@ -126,6 +126,15 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | IS-05 | 1 | HIGH | Το PostgreSQL ενεργοποιείται με `TITAN_DB_BACKEND=postgres`· κλείνει μόνο με κανόνα (ADR-0044) | `persistence.py` `get_persistence_adapter` | RESOLVED · PR #1117 (D-174)· το `get_persistence_adapter` αρνείται το `postgres` όπως το `get_database_manager` |
 | IS-06 | 1 | HIGH | Το `relogin_athlete` αφήνει τη βιβλιοθήκη να γράψει token στο `GARMINTOKENS` πριν από τις αρνήσεις | `garmin_sync.py:324-325` | RESOLVED · PR #1122 (D-179)· με `GARMINTOKENS` στο περιβάλλον το `relogin_athlete` σταματά πριν από το `Garmin(...)`, άρα η βιβλιοθήκη δεν διαβάζει ούτε γράφει token εκεί |
 | IS-07 | 1 | HIGH | Το `relogin_athlete` δένει το `client.display_name` (μπορεί να είναι το e-mail του login) αντί για το `displayName` του `socialProfile` | `garmin_sync.py:326` | RESOLVED · PR #1123 (D-180)· το `relogin_athlete` διαβάζει το `socialProfile` μετά το login και δένει το `displayName` του (strip)· χωρίς τιμή αρνείται πριν από το δέσιμο και το token |
+| — | — | — | **Καταγραφή 2026-10-31, έλεγχος RC (D-185):** το tier και ο στόχος είναι πρόταση του Claude και τα αποφασίζει ο owner· ως τότε κανένα δεν μετρά ως TRACKED | — | — |
+| RC-01 | 1 | MEDIUM | Backup που σκοτώνεται στη μέση αφήνει άδειο `titan_<σήμερα>.db`· η ίδια μέρα δεν ξαναπαίρνει backup, χωρίς log, και η διατήρηση το κρατά | `operations.py:562`, `:616-642` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-02 | 1 | MEDIUM | Η τοπική επαναφορά (Scenario B) δεν σβήνει το παλιό `-wal`· μετά από crash ξαναπαίζεται πάνω στο αντίγραφο | `docs/runbooks/database-recovery.md:111` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-03 | 3 | LOW | Το `.before-restore` της επαναφοράς Docker κρατιέται χωρίς το `-wal` του | `docs/RUNBOOK_DR.md:72-74` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-04 | 3 | LOW | Δεύτερη ζωντανή κονσόλα θεωρείται «διεργασία που επανεκκίνησε» και παίρνει την προσπάθεια 2· το fencing προστατεύει | `operations.py:21-33` | OPEN · Β · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος RC (D-185) |
+| RC-05 | 2 | HIGH | Χωρίς `startTimeGMT` η μέρα της δραστηριότητας είναι η τοπική, όχι η UTC (κανόνας: είσοδος πυλών) | `garmin_sync.py:466-500` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-06 | 2 | HIGH | Ημερομηνία χωρίς ώρα διαβάζεται ως 00:00 UTC και απορρίπτεται ως μελλοντική κοντά στα μεσάνυχτα UTC· ώρα χωρίς ζώνη διαβάζεται ως UTC (κανόνας: είσοδος πυλών) | `data_sanity.py:239-249`, `:342-350` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-07 | 2 | HIGH | Κενό λειτουργίας πάνω από 14 μέρες δεν συμπληρώνεται ποτέ· τρύπα στο ιστορικό φορτίου (CTL/TSB/ACWR, H4)· η κατεύθυνση που μετρήθηκε είναι συντηρητική | `garmin_sync.py:1426`, `garmin_persistence.py:414` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
+| RC-08 | 3 | LOW | Το `multi-athlete.md` λέει ότι κονσόλα και worker στέλνουν δύο πρωινά· ο κώδικας κάνει claim και στις δύο πλευρές | `docs/runbooks/multi-athlete.md:114-116` | OPEN · Α · στόχος Phase 27 (πρόταση) · έλεγχος RC (D-185) |
 
 ---
 

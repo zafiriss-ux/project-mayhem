@@ -1,0 +1,76 @@
+CLAIM ROUNDS [[['wait', 1], ['wait', 1], ['run', 1], ['wait', 1], ['wait', 1], ['wait', 1]], [['wait', 1], ['wait', 1], ['wait', 1], ['run', 1], ['wait', 1], ['wait', 1]], [['wait', 1], ['wait', 1], ['run', 1], ['wait', 1], ['wait', 1], ['wait', 1]], [['wait', 1], ['run', 1], ['wait', 1], ['wait', 1], ['wait', 1], ['wait', 1]], [['wait', 1], ['run', 1], ['wait', 1], ['wait', 1], ['wait', 1], ['wait', 1]]]
+.OPEN [0, 0, 0, 0, 0] ['35', '35', '35', '35', '35'] []
+.LOCK got refused
+.SAME-KIND ('run', 2) OTHER-KIND ('wait', 2)
+.LOCKED CLAIM -> None 0.30s rows 0
+.UNRECORDED False reclaim -> False row (1, 1)
+.AFTER RAISE (user_version, tables): (0, 0) restart -> 35
+.KILLED AT INSIDE restart user_version 35 integrity True
+.PROGRESS 3057 3061
+PROGRESS 3053 3061
+PROGRESS 3049 3061
+SECOND CALL -> None | partial size 0 | verify: user_version 0 != expected 35 | CRITICAL logs: 0 | corrupt files: [] | drill: {'backup_dir': '/tmp/pytest-of-root/pytest-350/test_defect_a_backup_killed_mi0/backups', 'ok': False, 'backup': 'titan_2026-10-31.db', 'error': 'user_version 0 != expected 35'}
+.KILLED rc -9 | wal bytes 271952 | rows in before-restore copy: error: no such table: daily_metrics | rows in live db+wal: 1
+.ATTEMPT1 delivered False messages 1 | ATTEMPT2 2 delivered True messages ["🌅 Today's session: TEMPO\n10 km\nThe morning briefing was interrupted; this is the decision TITAN made earlier today. If you already got this morning's message, this one repeats it."]
+.LATE CLAIM -> False rows 0 telegram [] [] log ['worker_routine_too_late']
+.WEEKLY sends 1 stored True warnings []
+.WEEK reply ✅ Εβδομαδιαίο πλάνο στάλθηκε! | sends 1 | stored None
+.SENT by superseded attempt: True 1 attempt 1 still current: False
+.DAY local-only: 2026-10-31 with GMT: 2026-10-30
+.REJECTED at 22:30 UTC: ['timestamp_in_future']
+.NAIVE LOCAL 09:30 at 07:00 UTC -> ['timestamp_in_future']
+.WAIT on DST night (s): 23400.0
+.BACKFILL fetched 0 garmin calls []
+.CRASH rc -9 | old wal bytes 16512 | restored file: integrity ok rows 19 | rows in the backup itself 1
+.ALL (ctl, atl, tsb) (58.2, 51.4, 6.8) acwr 0.883 | GAP (52.6, 47.8, 4.7) acwr 0.909
+.
+==================================== PASSES ====================================
+__________ test_holds_claim_fails_closed_when_the_database_is_locked ___________
+------------------------------ Captured log call -------------------------------
+CRITICAL titan.worker.runner:__init__.py:348 worker_routine_claim_failed
+_________ test_holds_delivery_unrecorded_under_lock_is_not_sent_again __________
+------------------------------ Captured log call -------------------------------
+CRITICAL titan.worker.runner:__init__.py:453 worker_routine_delivery_unrecorded
+________ test_defect_m0_08_a_timeout_after_delivery_sends_the_day_again ________
+------------------------------ Captured log call -------------------------------
+WARNING  titan.worker.runner:__init__.py:782 worker_routine_not_delivered
+_ test_defect_m0_09_an_athlete_not_started_by_noon_loses_the_day_without_telling_zaf _
+------------------------------ Captured log call -------------------------------
+WARNING  titan.worker.runner:__init__.py:359 worker_routine_too_late
+_ test_defect_m0_10_a_failed_weekly_plan_send_is_neither_reported_nor_retried __
+------------------------------ Captured log call -------------------------------
+INFO     titan.worker.runner:__init__.py:1002 worker_weekly_plan_saved
+_________ test_defect_m0_01_r1_fence_check_and_send_are_separate_steps _________
+------------------------------ Captured log call -------------------------------
+WARNING  titan.worker.runner:__init__.py:402 worker_routine_superseded
+_____ test_defect_local_day_dates_are_rejected_as_future_near_utc_midnight _____
+------------------------------ Captured log call -------------------------------
+WARNING  titan.science.data_sanity:data_sanity.py:60 {"flow": "data_sanity", "action": "data_sanity_reject", "context": "activity", "record_type": "activity", "field": "date", "rule": "timestamp_in_future", "value": "2026-10-31", "severity": "reject"}
+WARNING  titan.science.data_sanity:data_sanity.py:60 {"flow": "data_sanity", "action": "data_sanity_reject", "context": "hrv", "record_type": "hrv", "field": "date", "rule": "timestamp_in_future", "value": "2026-10-31", "severity": "reject"}
+_______________ test_defect_naive_full_timestamp_is_read_as_utc ________________
+------------------------------ Captured log call -------------------------------
+WARNING  titan.science.data_sanity:data_sanity.py:60 {"flow": "data_sanity", "action": "data_sanity_reject", "context": "hrv", "record_type": "hrv", "field": "date", "rule": "timestamp_in_future", "value": "2026-07-01T09:30:00", "severity": "reject"}
+=========================== short test summary info ============================
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_concurrent_claims_from_separate_processes_give_exactly_one_run
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_several_processes_opening_a_new_database_at_once
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_two_workers_cannot_both_take_the_worker_lock
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_a_live_second_runner_of_the_same_kind_is_treated_as_restarted
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_claim_fails_closed_when_the_database_is_locked
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_delivery_unrecorded_under_lock_is_not_sent_again
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_a_migration_that_raises_midway_leaves_nothing_and_the_restart_completes
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_a_migration_killed_midway_leaves_the_old_state
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_a_backup_killed_midway_blocks_that_days_backup_and_is_kept
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_runbook_restore_step_copies_the_db_without_its_wal
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_m0_08_a_timeout_after_delivery_sends_the_day_again
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_m0_09_an_athlete_not_started_by_noon_loses_the_day_without_telling_zaf
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_m0_10_a_failed_weekly_plan_send_is_neither_reported_nor_retried
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_m0_24_week_command_sends_an_unsaved_plan_and_says_sent_even_when_it_failed
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_m0_01_r1_fence_check_and_send_are_separate_steps
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_activity_day_from_start_time_local_is_the_local_day
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_local_day_dates_are_rejected_as_future_near_utc_midnight
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_naive_full_timestamp_is_read_as_utc
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_holds_the_scheduler_is_utc_across_the_dst_change
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_a_gap_longer_than_the_14_day_sync_is_never_backfilled
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_defect_local_restore_scenario_b_keeps_the_old_wal_beside_the_restored_file
+PASSED ../../../../tmp/rc_run/test_rc_reliability.py::test_measure_the_effect_of_a_lost_6_day_block_on_ctl_atl_tsb
+22 passed in 32.79s
