@@ -6,6 +6,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+import freezegun
 import pytest
 from freezegun import freeze_time as _freeze_time
 
@@ -27,6 +28,13 @@ def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
     # AT-05: the default log path is a relative "titan.log", so main() wrote the
     # test logs into the repo root (titan.log, then titan.log.1 on rotation).
     os.environ["TITAN_LOG_PATH"] = str(home / "titan.log")
+    # AT-08: freeze_time() patches time.time first, then walks every loaded module
+    # with dir(). dateutil's __dir__ walks its own globals in Python, so a lazy
+    # import that lands mid-walk raises "dictionary changed size during iteration".
+    # The raise escapes __enter__, the patch is never undone, and every later test
+    # runs on a frozen clock (57 failures and 3 hung tests in one full run).
+    # TITAN code does not call dateutil, so freezegun can skip it.
+    freezegun.configure(extend_ignore_list=["dateutil"])
 
 
 @pytest.fixture(autouse=True)

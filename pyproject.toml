@@ -21,6 +21,10 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+# AT-08: a hung test fails with its stack trace instead of stalling the run until
+# the CI job is killed. The slowest setup today (the module fixture of
+# tests/synthetic/test_multi_athlete_pilot.py) takes about 100 s locally.
+timeout = 300
 markers = [
     "timeout: mark test with a timeout budget",
     "unit: isolated, no DB, no IO",

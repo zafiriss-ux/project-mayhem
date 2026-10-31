@@ -6,6 +6,7 @@
 
 ## Επόμενη έκδοση
 
+- #1149 (2026-10-31) test: όριο χρόνου 300 s ανά test, ώστε ένα test που κολλάει να αποτυγχάνει με stack trace αντί να σταματά το CI· το freezegun παρακάμπτει το dateutil, ώστε ένα σφάλμα στο `freeze_time` να μην αφήνει παγωμένο ρολόι (AT-08, D-206)
 - #1148 (2026-10-31) test: τα logs ενός τρεξίματος των tests γράφονται εκτός repo· οι handlers του root logger δεν περνούν από test σε test· το `.gitignore` πιάνει τα `titan.log.N` (AT-05, D-205)
 - #1147 (2026-10-31) ci(secrets): το gitleaks ελέγχει όλα τα commits ενός push στο main, και όλο το ιστορικό όταν δεν υπάρχει προηγούμενο commit (AT-04, D-204)
 - #1146 (2026-10-31) fix(api): το API δεν σερβίρει `/docs`, `/redoc` και `/openapi.json` χωρίς login· test επιτρεπτής λίστας για τα δημόσια routes (AT-03, D-203)
