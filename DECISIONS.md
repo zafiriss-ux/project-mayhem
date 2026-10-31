@@ -20,8 +20,10 @@
 - **Απόφαση:** το `titan-api` δεν έχει πια `env_file`. Παίρνει ονομαστικά μόνο αυτές τις μεταβλητές, με
   interpolation του Compose από το ίδιο `.env` (`${VAR:-}`). Ο worker κρατά το `env_file`, αλλά το
   `TITAN_JWT_PRIVATE_KEY` του γίνεται κενό: το κλειδί υπογραφής είναι μόνο του API.
-- **Tests:** τέσσερα στο `tests/test_compose_secrets_m0_29.py` (τα τρία αποτύγχαναν πριν). Η πραγματική
-  εκκίνηση και το login ελέγχονται από το job «Compose up, restart, persistence» του CI.
+- **Tests:** τέσσερα στο `tests/test_compose_secrets_m0_29.py` (τα τρία αποτύγχαναν πριν). Το job «Compose up,
+  restart, persistence» του CI φτιάχνει κλειδιά JWT στο `.env` και ελέγχει ότι το API ξεκινά: στην εκκίνηση το
+  API υπογράφει και επαληθεύει ένα δοκιμαστικό token, άρα κλειδί που χάλασε στο interpolation σταματά το
+  container. Login δεν δοκιμάζει.
 - **Όρια:** (1) το `.garth_token` μένει στο `titan-data`, που το βλέπει και το API· είναι κρυπτογραφημένο και το
   κλειδί δεν φτάνει πια στο API. Η μεταφορά του σε τόμο μόνο του worker αλλάζει τη διάταξη του deploy και είναι
   επόμενο βήμα. (2) Το interpolation του Compose ερμηνεύει το `$` μέσα σε τιμή· τα κλειδιά PEM και τα tokens

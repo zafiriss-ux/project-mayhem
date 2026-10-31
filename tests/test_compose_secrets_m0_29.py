@@ -51,4 +51,7 @@ def test_the_api_still_gets_its_jwt_keys() -> None:
 
 @pytest.mark.unit
 def test_the_worker_does_not_get_the_jwt_signing_key() -> None:
-    assert _environment(_service("titan-worker")).get("TITAN_JWT_PRIVATE_KEY") == ""
+    worker = _service("titan-worker")
+    assert _environment(worker).get("TITAN_JWT_PRIVATE_KEY") == ""
+    # The worker still needs the rest of .env (Garmin, Telegram).
+    assert ".env" in (worker.get("env_file") or [])
