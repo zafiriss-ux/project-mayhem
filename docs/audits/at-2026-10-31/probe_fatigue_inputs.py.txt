@@ -1,0 +1,21 @@
+"""AT probe: with the keys the real Garmin sync emits, can fatigue_level ever be HIGH?
+
+DailyCoach passes hr_suppression / rpe_mismatch / pace_hr_divergence from garmin_data.get(..., False);
+the real sync result (GarminSyncResult) has none of them, so all three are False in production.
+"""
+import os, sys
+sys.path.insert(0, os.getcwd())
+from titan.orchestration.contracts import GarminSyncResult
+from titan.science.fatigue_engine import FatigueEngine
+
+real_keys = set(GarminSyncResult.__annotations__)
+flags = {k: (k in real_keys) for k in ("hr_suppression", "rpe_mismatch", "pace_hr_divergence", "fueling_confirmed",
+                                       "time_above_lt2_min", "dprime_fraction", "temperature_c", "quality_flags")}
+print("key present in real sync result:", flags)
+fe = FatigueEngine()
+levels = {s: fe.classify_fatigue(hr_suppression=False, rpe_mismatch=False, pace_hr_divergence=False, soreness=s)[0]
+          for s in range(0, 11)}
+print("fatigue_level by soreness 0..10 with production inputs:", levels)
+print("HIGH reachable in production:", "HIGH" in levels.values())
+print("HIGH reachable with fake keys (tests):",
+      fe.classify_fatigue(hr_suppression=True, rpe_mismatch=False, pace_hr_divergence=True, soreness=0)[0])

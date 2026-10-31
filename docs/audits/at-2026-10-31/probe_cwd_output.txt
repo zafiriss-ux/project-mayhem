@@ -1,0 +1,12 @@
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_runbook_db_name_correct
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_assert_replaced_with_raise
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_readyz_uses_is_db_reachable
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_audit_handler_emits_metric
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_worker_run_forever_not_stub
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_metrics_no_utcnow
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_dockerfile_non_root
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_opus_critical_fixes.py::test_semgrep_config_exists
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_metrics_auth_m0_14.py::test_compose_publishes_every_port_on_localhost_only
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/test_complexity_budget.py::test_module_count_within_budget
+FAILED ../../home/claude/project-mayhem/.wt-at/tests/titan/test_main.py::test_main_has_no_print_calls_for_operational_output_guard
+11 failed, 36 passed, 1 warning in 2.55s

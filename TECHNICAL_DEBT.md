@@ -92,7 +92,7 @@ IS, RC, SP, AT τα επιβεβαιώνουν. Η κατηγορία (Α/Β/Γ)
 | M0-28 | 2 | LOW | Το test ιδιωτικότητας των logs δεν ελέγχει τα πεδία των events | tests ιδιωτικότητας logs | RESOLVED · PR #1141 (D-198) |
 | M0-29 | 1 | HIGH | Το API παίρνει τους κωδικούς Garmin και Telegram από το κοινό `.env`· ο έλεγχος SP βρήκε ότι παίρνει και το `TITAN_GARTH_TOKEN_KEY` και τον τόμο με το `.garth_token` του owner (D-192) | `docker-compose.yml`, `api/` | RESOLVED · PR #1138 (D-195): το API δεν έχει `env_file`· το `.garth_token` στο `titan-data` μένει επόμενο βήμα |
 | M0-30 | 2 | LOW | Παλιό `--ignore-vuln` στο `ci.yml` | `.github/workflows/ci.yml` | RESOLVED · PR #1140 (D-197) |
-| M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · έλεγχος AT |
+| M0-31 | 2 | LOW | Κενά στο CI: φίλτρο docker-smoke, gitleaks μόνο στο τελευταίο commit, release χωρίς tests, coverage μόνο στο `titan.science` | `.github/workflows/` | OPEN · στόχος Phase 27 · επανελέγχθηκε στον AT (D-202): στέκει· το μέρος του gitleaks είναι το AT-04 (HIGH) |
 | M0-32 | 2 | LOW | Παλιό HD-04· ο έλεγχος του CLAUDE.md ανέχεται ±50 tests | tests του CLAUDE.md | OPEN · στόχος Phase 27 · έλεγχος AT |
 | F-06 | 1 | HIGH | Η `/injury` υπάρχει μόνο για τον owner· οι αθλητές δεν έχουν πηγή για την H1 (ADR-0067 D10.3) | `telegram_bot.py` (`/injury`) | OPEN · στόχος Phase 27 · έλεγχος SD |
 | F-07 | 2 | LOW | Οι αθλητές διαβάζουν «let Zaf know» αντί για εντολή που έχουν | `worker/__init__.py` (`_CRASH_REMINDER_ATHLETE`) | OPEN · στόχος Phase 27 · έλεγχος SD |
@@ -143,6 +143,16 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SP-05 | 3 | LOW | Chat id του owner στο event override-silence· το test δεν κοιτά πεδία events (μέρος του M0-28) | `telegram_bot.py:982-988` | RESOLVED · PR #1141 (D-198) |
 | SP-06 | 3 | LOW | Το `.env` γράφεται πρώτα και μετά παίρνει 600 | `setup_wizard.py:249-250` | RESOLVED · PR #1142 (D-199) |
 | SP-07 | 2 | HIGH | Άγνωστο username απορρίπτεται χωρίς bcrypt, πιο γρήγορα από λάθος κωδικό· πιθανό oracle χρονισμού (RBP-05)· από ανάγνωση κώδικα | `auth.py:66-67` | RESOLVED · PR #1143 (D-200) |
+| — | — | — | **Καταγραφή 2026-10-31, έλεγχος AT (D-202):** το tier και ο στόχος είναι πρόταση του Claude και τα αποφασίζει ο owner· ως τότε κανένα δεν μετρά ως TRACKED | — | — |
+| AT-01 | 2 | HIGH | 20 κλειδιά `garmin_data` που ο sync δεν βγάζει· η κόπωση δεν γίνεται ποτέ HIGH, η V4 δεν κόβει από κόπωση· τα fakes τα δίνουν (εν μέρει SD-10, D-058, D-088) | `daily_coach.py:1134, 1216, 1228-1231`, `fatigue_engine.py:9-29` | OPEN · Β, θέλει ADR (ADR-0009)· Α για test-συμβόλαιο · προτεραιότητες Φάσης 2 (πρόταση) · έλεγχος AT (D-202) |
+| AT-02 | 2 | MEDIUM | Τα e2e τρέχουν με `StubGovernance` και σχήμα Garmin που ο sync δεν βγάζει | `tests/e2e/conftest.py:15-53` | OPEN · στόχος Phase 27 · έλεγχος AT (D-202) |
+| AT-03 | 1 | HIGH | `/docs`, `/redoc`, `/openapi.json` χωρίς πιστοποίηση (κανόνας: authentication) | `titan/api/main.py:343` | OPEN · Α, επόμενο PR · έλεγχος AT (D-202) |
+| AT-04 | 1 | HIGH | Gitleaks στο push στο main μόνο `HEAD~1..HEAD`· HIGH στο AGENTS §30, LOW στο M0-31 | `secret-scan.yml:38-40` | OPEN · Α · έλεγχος AT (D-202) |
+| AT-05 | 3 | MEDIUM | Το pytest γράφει `titan.log`/`titan.log.1` στη ρίζα του repo | `titan/main.py:75-95` | OPEN · Α · έλεγχος AT (D-202) |
+| AT-06 | 3 | LOW | Δύο μετρήσεις modules και literal 90 στις πύλες ορίου | `test_complexity_budget.py:17-39` | OPEN · Α · έλεγχος AT (D-202) |
+| AT-07 | 3 | LOW | Tests εξαρτώνται από τον φάκελο εκτέλεσης· 74 ελέγχοι string στον πηγαίο κώδικα | `test_opus_critical_fixes.py:10-53` | OPEN · Α, σταδιακά · έλεγχος AT (D-202) |
+| AT-08 | 3 | LOW | Κανένα όριο χρόνου ανά test | `pyproject.toml` | OPEN · Α · έλεγχος AT (D-202) |
+| AT-09 | 3 | LOW | Διπλές `LOG_*`· το §16.6 «env-overridable» δεν ισχύει· νεκρό `should_replan` | `titan/main.py:65-66` | OPEN · Α (§16.6 με policy-only) · έλεγχος AT (D-202) |
 
 ---
 

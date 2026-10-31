@@ -1,0 +1,1 @@
+no attempts recorded (log file never created): 0 refused connect/DNS calls in-process
