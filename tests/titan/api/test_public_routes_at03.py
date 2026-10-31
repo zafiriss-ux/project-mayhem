@@ -61,7 +61,7 @@ def test_no_route_besides_the_api_and_metrics(client: TestClient) -> None:
 def test_every_route_outside_the_allow_list_needs_a_login(client: TestClient) -> None:
     routes = [r for r in client.app.routes if isinstance(r, APIRoute)]
     paths = {r.path for r in routes}
-    assert PUBLIC_ROUTES <= paths, "an allow-listed route is gone; update the list"
+    assert paths >= PUBLIC_ROUTES, "an allow-listed route is gone; update the list"
 
     csrf = client.get("/api/csrf-token").json()["csrf_token"]
     checked = 0
