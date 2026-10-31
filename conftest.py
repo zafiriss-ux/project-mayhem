@@ -24,6 +24,9 @@ def pytest_configure(config: pytest.Config) -> None:  # noqa: ARG001
     os.environ["HOME"] = str(home)
     os.environ["USERPROFILE"] = str(home)
     os.environ["LOCALAPPDATA"] = str(home / "AppData" / "Local")
+    # AT-05: the default log path is a relative "titan.log", so main() wrote the
+    # test logs into the repo root (titan.log, then titan.log.1 on rotation).
+    os.environ["TITAN_LOG_PATH"] = str(home / "titan.log")
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +48,26 @@ def _reset_titan_settings_cache():
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _restore_root_logging():
+    """Remove root-logger handlers a test added, and restore the root level (AT-05).
+
+    ``main()`` attaches a rotating file handler to the root logger. Left in place,
+    every later test logs through it, so tests depend on the order they run in.
+    """
+    import logging
+
+    root = logging.getLogger()
+    handlers = list(root.handlers)
+    level = root.level
+    yield
+    for handler in root.handlers:
+        if handler not in handlers:
+            root.removeHandler(handler)
+            handler.close()
+    root.setLevel(level)
 
 
 @pytest.fixture
