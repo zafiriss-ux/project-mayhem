@@ -4,7 +4,7 @@
 **Date:** 2026-03-17
 **Revision:** 2026-04-12 — §1/§2 agent role updated per AGENTS.md §28; §5 RLS operational caveat added; Opus audit findings recorded.
 **Canonical location:** `docs/AI_GOVERNANCE.md`
-**Authored by:** Architect (Claude operating in architectural session)
+**Authored by:** Architect (Claude operating in architectural session) — historical; since ADR-0078 (2026-10-31) the Architect is the Owner
 **Change Type:** architect-decision
 **Referenced by:** `AGENTS.md §1`, `AGENTS.md §23`
 
@@ -23,7 +23,7 @@ Each surface has a defined role, layer, and scope boundary.
 
 | Agent | Role | Layer | Scope |
 |-------|------|-------|-------|
-| **Claude (Architect)** | Architectural advisor operating in sessions with the project owner | Design authority | ADR authorship, governance interpretation, task sequencing, escalation decisions, this document |
+| **Claude** | Advisor and drafter for the Architect (the Owner, ADR-0078) | Drafting | Prepares Proposed ADR text and analysis at the Architect's request; never accepts an ADR or exercises a Reserved Power (AGENTS §1.2) |
 | **Codex / Claude Code** | Implementation engineer | Execution | Scoped task implementation, tests, mandatory gates, audit observations — Implementation Engineer for routine operations. Under AGENTS.md §28 (effective 2026-03-17), also holds architect authority for status closures, gate verification, and records passes. On any conflict: AGENTS.md wins. |
 | **Opus QA** | Advisory test quality reviewer (PILOT-01) | Quality advisory | Category B test quality review for Path B tasks — verdict only, no implementation authority |
 
@@ -38,8 +38,8 @@ All such changes require explicit architect authorization followed by human revi
 
 | Role | Can decide | Cannot decide without explicit authorization |
 |------|-----------|----------------------------------------------|
-| **Owner** | Work priorities, strategic direction, task assignment, deployment context | Architectural decisions, ADR authorship, governance gate changes — these require the Architect role |
-| **Architect** (Claude in architectural session) | System design, ADR authorship, tier ordering, governance interpretation, scope approval, this document | Cannot bypass safety invariants, governance gates, or tier ordering — rules apply to architect equally (GOVERNANCE_PRINCIPLES.md §3) |
+| **Owner** | Work priorities, strategic direction, task assignment, deployment context; also the Architect (ADR-0078) | — (as Architect, see next row) |
+| **Architect** (the Owner, ADR-0078) | System design, ADR authorship, tier ordering, governance interpretation, scope approval, this document | Cannot bypass safety invariants, governance gates, or tier ordering — rules apply to architect equally (GOVERNANCE_PRINCIPLES.md §3) |
 | **Codex** | Implementation of explicitly scoped tasks, test authorship, mandatory gate execution, audit observations | Design decisions, ADR authorship, canonical document edits beyond §3.6 and §12 permissions, closure wording, commit hash recording in canonical docs |
 | **Records Steward** | `TECHNICAL_DEBT.md` closure wording, commit hash recording, OPEN↔RESOLVED integrity | Sequencing decisions, governance interpretation, architectural decisions |
 | **Opus QA** | QA PASS / QA FAIL verdict with rationale for Path B tasks | Commit/push instructions, RESOLVED marking, next-task directives — these are out of QA role scope |
@@ -55,7 +55,7 @@ See `AGENTS.md §13.2` and `§14.1`.
 ## §3 Human Oversight Checkpoints
 
 The following decision categories require explicit human authorization before any AI agent proceeds.
-"Human authorization" means the project owner confirming the action in the architectural session — not an instruction inferred from prior context.
+"Human authorization" means the project owner's decision written in an Accepted ADR or in a §23 `Authorizes:` field (ADR-0078) — not a chat message alone and not an instruction inferred from prior context.
 
 | Decision category | Authorization required | Mechanism |
 |-------------------|----------------------|-----------|

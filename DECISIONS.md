@@ -9,6 +9,20 @@
 
 ---
 
+## D-213 · AD-08: ο owner είναι ο Architect (policy-only, ADR-0078)
+
+- **Πότε / ποιος:** 2026-10-31, Claude (κείμενο). Ο owner διάλεξε «Εγώ, το Claude γράφει» με κάρτα (19:37 UTC)
+  και ενέκρινε το κείμενο του ADR-0078 με κάρτα («Εγκρίνω (Accepted)», 20:02 UTC).
+- **Πρόβλημα:** το AGENTS §1 και §1.2 έλεγαν ότι Architect είναι το Claude σε αρχιτεκτονική συνεδρία, ενώ
+  τα ADR 0072–0077 έγιναν Accepted με κάρτα του owner (AD-08).
+- **Απόφαση:** [ADR-0078](docs/adr/0078-owner-is-architect.md). Architect είναι ο owner. Το Claude γράφει ADR
+  ως Proposed και δεν κάνει ποτέ Accept. Η έγκριση μετρά μόνο γραμμένη σε ADR Accepted ή σε πεδίο `Authorizes:`.
+  Τα AD-03 και AD-04 μένουν ανοιχτά στο TECHNICAL_DEBT (Tier 2, Phase 27).
+- **Εναλλακτικές:** (α) το Claude ως Architect με έγκριση του owner ανά ADR· απορρίφθηκε από τον owner στην κάρτα.
+  Χωρίς αλλαγή κώδικα ή tests.
+
+---
+
 ## D-212 · AT-03 και AT-09 (έγγραφα): policy-only με το ADR-0077
 
 - **Πότε / ποιος:** 2026-10-31, Claude (κείμενο). Ο owner ενέκρινε το ADR-0077 με κάρτα («Εγκρίνω (Accepted)», 19:16 UTC).

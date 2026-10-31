@@ -130,6 +130,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90. The ceiling test
 - `0075` — H1/H5 unmeasured exception
 - `0076` — Owner Garmin identity
 - `0077` — Public routes, log rotation docs
+- `0078` — Owner is Architect
 
 ## Docker
 
