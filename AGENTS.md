@@ -669,13 +669,15 @@ future authorized mutation, **and Telegram-initiated state changes (`/sync`, `/m
 closed (HTTP 5xx / command rejected, no mutation) and emits `audit_write_failure_total` at
 CRITICAL. Best-effort post-response auditing is forbidden.
 **Single exception — consent withdrawal (`/stop`, ADR-0079; effective when its implementation
-merges, until then `/stop` is refused fail-closed as above):** withdrawal always takes effect. The
+merges, until then `/stop` is refused fail-closed as above):** withdrawal always takes effect
+whenever it can be recorded durably (in the database or the queue); if neither can be written, `/stop`
+is refused, the athlete is told to try again, and the owner is alerted. The
 revocation and its audit row are written in one transaction; if that fails, the revocation is still
 applied and the audit record goes to a durable pending-audit queue (fsync'd before the reply) that the
 worker drains, never dropping an entry before commit. A pending revocation already counts as no consent;
 an unreadable queue counts as no consent for every athlete except the owner. Every other surface above
 stays fail-closed on audit failure. Duplicate audit rows on drain are prevented by the queue id;
-the drain revokes only consents granted before the queued revocation time.
+the drain revokes only consents granted at or before the queued revocation time.
 **Why:** the most authorization-sensitive actions are exactly the B-1 routes; an override whose
 audit record can vanish makes ADR-0042's "first-class audit" fiction and disputes unresolvable
 [B-11, F-8].
