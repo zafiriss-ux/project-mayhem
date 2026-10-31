@@ -109,6 +109,17 @@ def test_the_console_does_not_send_a_morning_the_worker_already_sent(db, monkeyp
     assert _Coach.calls == ["owner"]
 
 
+def test_the_multi_athlete_runbook_does_not_say_console_and_worker_send_two_mornings() -> None:
+    """RC-08: the test above shows one morning; the runbook said the owner's would go out twice."""
+    runbook = (Path(__file__).resolve().parents[1] / "docs" / "runbooks" / "multi-athlete.md").read_text(
+        encoding="utf-8"
+    )
+    flat = " ".join(runbook.split())
+    assert "πρωινή ρουτίνα του owner φεύγει δύο φορές" not in flat
+    assert "πρωινή ρουτίνα του owner δεν φεύγει δύο φορές" in flat
+    assert "409" in flat  # the real reason not to run both with one token stays
+
+
 def test_the_console_waits_while_the_workers_attempt_is_not_due_again(db, monkeypatch) -> None:
     """The worker's first attempt did not deliver: the console waits the retry gap, then tries."""
     _Coach.delivers = False

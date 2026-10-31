@@ -112,8 +112,10 @@ python scripts/athletes.py new-key
    Τις εντολές τις ακούει ο `titan-worker` με `TITAN_MULTI_ATHLETE=1` (D-103). Στο log του worker
    φαίνεται `command_listener_started`· αν λέει `command_listener_not_started`, λείπει το
    `TELEGRAM_BOT_TOKEN`. ⚠️ Μην τρέχεις ταυτόχρονα το `python -m titan` με το ίδιο token: το
-   Telegram δίνει τις εντολές μόνο σε έναν από τους δύο (σφάλμα 409), και αν μοιράζονται τη βάση η
-   πρωινή ρουτίνα του owner φεύγει δύο φορές.
+   Telegram δίνει τις εντολές μόνο σε έναν από τους δύο (σφάλμα 409), άρα μια εντολή του owner μπορεί
+   να πάει στον worker και να πάρει απάντηση «not ready». Η πρωινή ρουτίνα του owner δεν φεύγει δύο
+   φορές: κονσόλα και worker στην ίδια βάση παίρνουν τη μέρα με το ίδιο claim, και τη στέλνει μόνο ένας
+   (D-111, D-113, RC-08).
 
 6. Έλεγχος:
 
