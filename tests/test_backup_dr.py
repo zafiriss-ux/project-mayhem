@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import shutil
 import sqlite3
 import subprocess
 from datetime import date, timedelta
@@ -281,6 +282,7 @@ def _rows(path: Path) -> int:
         conn.close()
 
 
+@pytest.mark.skipif(shutil.which("bash") is None, reason="the runbook commands are bash")
 def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_path: Path) -> None:
     backup = tmp_path / "titan_core.db.20261030"
     conn = sqlite3.connect(backup)
@@ -306,7 +308,8 @@ def test_local_restore_runbook_brings_back_the_backup_and_keeps_the_old_wal(tmp_
     commands = _scenario_b_file_commands()
     assert any(_BACKUP_PLACEHOLDER in c for c in commands)
     script = "\n".join(c.replace(_BACKUP_PLACEHOLDER, str(backup)) for c in commands)
-    subprocess.run(["bash", "-c", script], cwd=live_dir, check=False)
+    result = subprocess.run(["bash", "-c", script], cwd=live_dir, check=False, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
 
     assert _rows(live_dir / "titan_core.db") == 1, "the restored database must be the backup, not backup + old WAL"
     kept = sorted(p.name for p in live_dir.iterdir() if "before-restore" in p.name)

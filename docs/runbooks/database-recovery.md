@@ -85,6 +85,8 @@ sqlite3 titan_core.db "PRAGMA integrity_check;"
 
 ```bash
 ls -la titan_core.db-wal titan_core.db-shm 2>/dev/null
+# The checkpoint below changes the damaged file. If you may restore a backup, first keep the
+# damaged database with its -wal/-shm (the first three lines of Scenario B).
 # If WAL file exists and is non-empty, SQLite may recover automatically on next open
 sqlite3 titan_core.db "PRAGMA wal_checkpoint(TRUNCATE);"
 sqlite3 titan_core.db "PRAGMA integrity_check;"
@@ -110,7 +112,7 @@ ls ~/Documents/TITAN/backups/titan_core.db.*
 # Keep the damaged database WITH its -wal/-shm: the last writes may exist only in the -wal
 cp titan_core.db titan_core.db.before-restore
 [ -f titan_core.db-wal ] && cp titan_core.db-wal titan_core.db.before-restore-wal
-[ -f titan_core.db-shm ] && cp titan_core.db-shm titan_core.db.before-restore-shm
+[ -f titan_core.db-shm ] && cp titan_core.db-shm titan_core.db.before-restore-shm  # informational; SQLite rebuilds it
 
 # Remove the old -wal/-shm, otherwise SQLite replays them on top of the backup (RC-02)
 rm -f titan_core.db-wal titan_core.db-shm
