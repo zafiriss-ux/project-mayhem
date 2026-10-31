@@ -7,6 +7,8 @@ import pytest
 
 from titan.science.governance_engine import GovernanceEngine
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 GOVERNANCE_CRITICAL_MODULES = [
     "titan/science/governance_engine.py",
     "titan/science/outcome_tracker.py",
@@ -52,7 +54,7 @@ class TestADR0051PolicyAST:
 
     @pytest.mark.parametrize("module_path", GOVERNANCE_CRITICAL_MODULES)
     def test_no_optimistic_get_defaults_in_governance_modules(self, module_path):
-        source = Path(module_path).read_text(encoding="utf-8")
+        source = (REPO_ROOT / module_path).read_text(encoding="utf-8")
         tree = ast.parse(source)
         violations = []
 

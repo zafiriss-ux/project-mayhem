@@ -40,7 +40,7 @@ def test_blocking_targets_are_ruff_clean() -> None:
     targets = _get_blocking_targets()
     cmd = [sys.executable, "-m", "ruff", "check", *targets]
 
-    proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
+    proc = subprocess.run(cmd, cwd=ROOT, check=False, capture_output=True, text=True)
 
     assert proc.returncode == 0, (
         "Expected CI blocking Ruff targets to be clean.\n"

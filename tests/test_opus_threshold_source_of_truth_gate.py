@@ -14,6 +14,8 @@ from titan.config.thresholds import (
     SUBJECTIVE_FATIGUE_EXTREME,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _threshold_sentinel_values() -> set[float]:
     return {
@@ -47,7 +49,7 @@ def _assert_no_inline_threshold_literals(module_source: str, module_label: str) 
 @pytest.mark.governance
 def test_ci_gate_threshold_source_of_truth_enforcement() -> None:
     """CI gate: governance gate code must not inline governed threshold values."""
-    source = Path("titan/science/governance_engine.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/science/governance_engine.py").read_text(encoding="utf-8")
     _assert_no_inline_threshold_literals(source, "titan/science/governance_engine.py")
 
 

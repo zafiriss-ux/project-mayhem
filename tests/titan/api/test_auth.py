@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -21,6 +22,8 @@ from titan.api.auth import (
 )
 from titan.api.main import CSRF_HEADER_NAME, create_app
 from titan.api.models import AuthUser
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _csrf_headers(client: TestClient) -> dict[str, str]:
@@ -260,4 +263,4 @@ def test_refresh_rate_limit_blocks_after_5(client: TestClient) -> None:
 @pytest.mark.integration
 def test_systemd_unit_exists() -> None:
     from pathlib import Path
-    assert Path("docs/titan.service").exists()
+    assert (REPO_ROOT / "docs/titan.service").exists()

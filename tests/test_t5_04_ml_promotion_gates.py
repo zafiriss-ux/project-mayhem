@@ -2,11 +2,13 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.unit
 @pytest.mark.governance
 def test_adr_0014_records_t5_04_promotion_controls():
-    text = Path("docs/adr/0014-phase7-ml-scaffold-shadow-advisory-mode.md").read_text(
+    text = (REPO_ROOT / "docs/adr/0014-phase7-ml-scaffold-shadow-advisory-mode.md").read_text(
         encoding="utf-8"
     )
 
@@ -21,7 +23,7 @@ def test_adr_0014_records_t5_04_promotion_controls():
 @pytest.mark.unit
 @pytest.mark.governance
 def test_roadmap_tracks_t5_04_gate_policy():
-    text = Path("docs/ROADMAP.MD").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "docs/ROADMAP.MD").read_text(encoding="utf-8")
 
     assert "T5-04 · ML promotion gates (DECIDED)" in text
     assert "recall ≥0.80" in text
@@ -32,7 +34,7 @@ def test_roadmap_tracks_t5_04_gate_policy():
 @pytest.mark.unit
 @pytest.mark.governance
 def test_readme_deployment_env_documents_kill_switch_disable():
-    text = Path("README.md").read_text(encoding="utf-8")
+    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "Phase 7 ML promotion control" in text
     assert "TITAN_ML_KILL_SWITCH=0" in text

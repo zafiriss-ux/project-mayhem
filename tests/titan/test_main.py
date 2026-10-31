@@ -7,9 +7,11 @@ import pytest
 
 from titan import main as titan_main
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 def _main_print_calls():
-    source = Path("titan/main.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/main.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     return [
         node
@@ -429,7 +431,7 @@ def test_main_runtime_error_still_executes_shutdown_cleanup(monkeypatch):
 
 @pytest.mark.integration
 def test_main_has_no_print_calls_for_operational_output_guard():
-    source = Path("titan/main.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/main.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     _attach_parents(tree)
     print_calls = [

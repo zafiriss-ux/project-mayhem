@@ -16,8 +16,10 @@ import pytest
 from titan.config.evidence_registry import EVIDENCE_REGISTRY
 from titan.config.thresholds import ESI_DEW_POINT_FALLBACK_C
 
-DAILY_COACH_PATH = pathlib.Path("titan/orchestration/daily_coach.py")
-THRESHOLDS_PATH = pathlib.Path("titan/config/thresholds.py")
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+DAILY_COACH_PATH = REPO_ROOT / "titan/orchestration/daily_coach.py"
+THRESHOLDS_PATH = REPO_ROOT / "titan/config/thresholds.py"
 
 
 class TestEsiDewPointFallbackConstant:

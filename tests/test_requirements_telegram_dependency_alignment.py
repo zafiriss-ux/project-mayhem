@@ -2,10 +2,12 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _dependency_lines(path: str) -> list[str]:
     dependencies: list[str] = []
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
+    for line in (REPO_ROOT / path).read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
@@ -19,7 +21,7 @@ def _dependency_lines(path: str) -> list[str]:
 @pytest.mark.governance
 def test_requirements_use_pytelegrambotapi_for_telebot():
     requirements = _dependency_lines("requirements.txt")
-    telegram_module = Path("titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
+    telegram_module = (REPO_ROOT / "titan/integrations/telegram_bot.py").read_text(encoding="utf-8")
 
     assert any(dependency.startswith("pyTelegramBotAPI==") for dependency in requirements)
     assert "import telebot" in telegram_module

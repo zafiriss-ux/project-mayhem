@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 _PATTERN_4_LITERAL_DENYLIST_BY_MODULE: dict[str, frozenset[str]] = {
     "titan/science/acwr_engine.py": frozenset({"0.5", "0.8", "1.0", "1.3", "1.5", "1.7"}),
     "titan/science/adaptive_memory.py": frozenset({"1.08", "24", "36", "48", "72"}),
@@ -76,7 +78,7 @@ def test_ci_gate_category_a_literal_regression_presence_check() -> None:
     """CI gate: denylist Category A literals must not be reintroduced inline."""
 
     module_sources = {
-        module_path: Path(module_path).read_text(encoding="utf-8")
+        module_path: (REPO_ROOT / module_path).read_text(encoding="utf-8")
         for module_path in _PATTERN_4_LITERAL_DENYLIST_BY_MODULE
     }
 

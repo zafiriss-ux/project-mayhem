@@ -7,6 +7,8 @@ import pytest
 # Import at module level to register Prometheus instruments in REGISTRY.
 import titan.observability.metrics  # noqa: F401
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.mark.unit
 def test_prometheus_counter_registered():
@@ -57,5 +59,5 @@ def test_metrics_collector_emits_to_prom():
 
 @pytest.mark.unit
 def test_metrics_endpoint_exempt_from_csrf():
-    src = Path("titan/api/main.py").read_text()
+    src = (REPO_ROOT / "titan/api/main.py").read_text()
     assert '"/metrics"' in src, "/metrics must be CSRF-exempt"

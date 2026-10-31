@@ -15,9 +15,12 @@ from alembic.config import Config
 
 from alembic import command
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 
 def _make_config(db_path: Path) -> Config:
-    config = Config("alembic.ini")
+    config = Config(str(REPO_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(REPO_ROOT / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
     return config
 

@@ -20,6 +20,8 @@ from titan.science.lactate_logic import LactateLogic
 from titan.science.readiness_engine import ReadinessEngine
 from titan.science.tsb_engine import TSBEngine
 
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
 
 class _DummyDB:
     """Minimal DB stub for DailyCoach construction in fitness tests."""
@@ -86,7 +88,7 @@ def test_effect_runner_is_delegation_shim() -> None:
     import ast
     import pathlib
 
-    source = pathlib.Path("titan/orchestration/daily_coach.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/orchestration/daily_coach.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     effect_runner_body: list[ast.stmt] = []
@@ -127,7 +129,7 @@ def test_effect_bus_handlers_are_registered_not_hardcoded() -> None:
     import ast
     import pathlib
 
-    source = pathlib.Path("titan/orchestration/effect_bus.py").read_text(encoding="utf-8")
+    source = (REPO_ROOT / "titan/orchestration/effect_bus.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     dispatch_body: list[ast.stmt] = []
@@ -228,12 +230,12 @@ def test_engine_registry_single_construction_site():  # noqa: ANN201
         "AdaptivePriorityLock",
     }
     violations = []
-    for path in pathlib.Path("titan").rglob("*.py"):
+    for path in (REPO_ROOT / "titan").rglob("*.py"):
         if "engine_registry" in path.name:
             continue  # canonical construction site
-        if path == pathlib.Path("titan/orchestration/daily_coach.py"):
+        if path == REPO_ROOT / "titan/orchestration/daily_coach.py":
             continue  # constructs 7 engines directly in __init__
-        if path == pathlib.Path("titan/main.py"):
+        if path == REPO_ROOT / "titan/main.py":
             continue  # composition root — extracts vars from EngineRegistry
         src = path.read_text()
         for cls in engine_classes:

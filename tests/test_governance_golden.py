@@ -18,7 +18,9 @@ import pytest
 
 from titan.science.governance_engine import GovernanceEngine
 
-GOLDEN_PATH = Path("tests/fixtures/governance_golden.json")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+GOLDEN_PATH = REPO_ROOT / "tests/fixtures/governance_golden.json"
 
 
 # ── Stubs ──────────────────────────────────────────────────────────────────────

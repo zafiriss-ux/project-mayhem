@@ -8,6 +8,8 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 _TOKEN = "synthetic-scrape-token-0123456789"
 
 
@@ -77,7 +79,7 @@ def test_metrics_refuses_a_non_ascii_token_without_an_error(jwt_keys, monkeypatc
 
 @pytest.mark.unit
 def test_compose_publishes_every_port_on_localhost_only():
-    compose = yaml.safe_load(Path("docker-compose.yml").read_text(encoding="utf-8"))
+    compose = yaml.safe_load((REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
     published = [
         (name, str(port))
         for name, service in compose["services"].items()

@@ -21,6 +21,8 @@ import pytest
 from titan.config.thresholds import HARD_STOP_THRESHOLD_KEYS
 from titan.core.database import SCHEMA_VERSION, DatabaseManager
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
@@ -189,7 +191,8 @@ def test_alembic_migration_upgrade_downgrade(tmp_path: Path) -> None:
     from alembic import command
 
     db_path = tmp_path / "alembic_migration_test.db"
-    cfg = Config("alembic.ini")
+    cfg = Config(str(REPO_ROOT / "alembic.ini"))
+    cfg.set_main_option("script_location", str(REPO_ROOT / "alembic"))
     cfg.set_main_option("sqlalchemy.url", f"sqlite:///{db_path}")
 
     # Upgrade to head — table must exist

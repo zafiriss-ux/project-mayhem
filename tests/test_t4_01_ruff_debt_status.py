@@ -8,7 +8,9 @@ from pathlib import Path
 
 import pytest
 
-DEBT_DOC = Path("TECHNICAL_DEBT.md")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+DEBT_DOC = REPO_ROOT / "TECHNICAL_DEBT.md"
 T4_01_HEADER = "### T4-01 · Ruff debt burn-down (lint hygiene)"
 
 
@@ -29,6 +31,7 @@ def _ruff_error_count() -> int:
 
     proc = subprocess.run(
         cmd,
+        cwd=REPO_ROOT,
         check=False,
         capture_output=True,
         text=True,
