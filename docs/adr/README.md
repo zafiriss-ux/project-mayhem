@@ -98,7 +98,7 @@
 | [0075](0075-h1-h5-unmeasured-exception.md) | Οι H1 και H5 χωρίς μέτρηση μένουν όπως σήμερα, ως ρητή εξαίρεση από το ADR-0051 (ερώτηση Γ του ελέγχου SD) | Governance | ✅ Accepted (2026-10-30) |
 | [0076](0076-owner-garmin-identity.md) | Η βάση κρατά το όνομα λογαριασμού Garmin του owner, ώστε να μη δεθεί ποτέ σε άλλον αθλητή (M0-13-R1) | Auth / Garmin (ADR-0067 D9) | ✅ Accepted (2026-10-30) |
 | [0077](0077-public-routes-and-log-rotation-docs.md) | Τα έγγραφα γράφουν τα δημόσια routes του API και ότι το rotation του log δεν αλλάζει από το περιβάλλον (AT-03, AT-09) | Governance (policy-only) | ✅ Accepted (2026-10-31) |
-| [0078](0078-owner-is-architect.md) | Ο owner είναι ο Architect και ο μόνος που κάνει Accept τα ADR· το Claude γράφει (AD-08) | Governance (policy-only) | 🔲 Proposed (2026-10-31) |
+| [0078](0078-owner-is-architect.md) | Ο owner είναι ο Architect και ο μόνος που κάνει Accept τα ADR· το Claude γράφει (AD-08) | Governance (policy-only) | ✅ Accepted (2026-10-31) |
 
 ---
 

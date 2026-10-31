@@ -1,6 +1,6 @@
 # ADR-0078: Ο owner είναι ο Architect και ο μόνος που κάνει Accept τα ADR· το Claude γράφει (AD-08)
 
-**Status:** 🔲 Proposed (2026-10-31· ο owner διάλεξε «Εγώ, το Claude γράφει» με κάρτα στις 19:37 UTC· το κείμενο περιμένει την έγκρισή του)
+**Status:** ✅ Accepted (2026-10-31· ο owner διάλεξε «Εγώ, το Claude γράφει» με κάρτα στις 19:37 UTC και ενέκρινε το κείμενο με κάρτα «Εγκρίνω (Accepted)» στις 20:02 UTC, D-213)
 **Date:** 2026-10-31
 **Author:** Claude (κείμενο) / Zaf (Owner, αποφασίζει)
 **Related:** AGENTS §1, §1.2, §3.6, §14.1· CONTRACT 7.9 §1.4, §1.5, §9A· ADR-0061, ADR-0072 (αλλαγή Β μόνο
@@ -55,7 +55,7 @@ Architect)», και τα ADR 0072 έως 0077 έγιναν Accepted με κάρ
 | AGENTS §14.1 | «(ADR / Architect session)» | «(Accepted ADR or §23 `Authorizes:` field)» |
 | AGENTS §28 | «Chat-Architect-only» | «Architect-only (the Owner, ADR-0078)» |
 | `docs/AI_GOVERNANCE.md` §1, §2, §3 | «Claude (Architect)», «Architect (Claude in architectural session)», έγκριση «in the architectural session» | Το Claude ετοιμάζει κείμενο· Architect ο owner· έγκριση μόνο γραμμένη σε ADR Accepted ή πεδίο `Authorizes:` |
-| TECHNICAL_DEBT | — | Γραμμές AD-03, AD-04 (OPEN, Tier 2, Phase 27) και AD-08 (κλείνει όταν αυτό το ADR γίνει Accepted) |
+| TECHNICAL_DEBT | — | Γραμμές AD-03, AD-04 (OPEN, Tier 2, Phase 27) και AD-08 (RESOLVED με αυτό το ADR) |
 
 ## Consequences
 
