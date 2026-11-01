@@ -13,6 +13,8 @@
 
 - **Πότε / ποιος:** 2026-11-01, Claude. Κατηγορία Β με ADR Accepted (ADR-0081, D-221). Αλλάζει μόνο κείμενο του
   governance· καμία πύλη, όριο ή επιλογή συνεδρίας (CONTRACT 7.9 §13).
+- **ADR-0009:** το `governance_engine.py` είναι αρχείο της πύλης ασφάλειας του ADR-0009 (H1–H5)· οι πύλες H1–H5,
+  τα όριά τους και η σειρά εφαρμογής μένουν ίδια. Αλλάζει μόνο το κείμενο του rationale.
 - **Τι άλλαξε:** στο `_build_decision_rationale` το «Not measured: …» μπαίνει και όταν πιάσει lock ή πύλη· η λίστα είναι
   οι πύλες UNKNOWN μαζί με κάθε Hn με `DATA_MISSING_CONSERVATIVE_Hn`, με σειρά H1→H5. Εννέα νέα templates (κάθε κωδικός
   του `CANONICAL_LOCK_CODES` έχει πια ένα)· άγνωστος κωδικός → «Safety rule applied ({code}).».
