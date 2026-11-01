@@ -643,7 +643,7 @@ class _PipelineInputs:
     startup_hydration_confidence: dict
     startup_confidence_applies: bool
     rhr_baseline_thin: bool = False  # SD-03: H3 treats the RHR baseline as missing
-    tsb_unverified: bool = False  # M0-22 / SD-04: loads reload failed or sync partial; H4 treats TSB as missing
+    tsb_unverified: bool = False  # M0-22 / SD-04 / SD-05: the loads lack runs; H4 treats TSB as missing
 
 
 class DailyCoach:
@@ -1209,7 +1209,13 @@ class DailyCoach:
         # fires H4, which is stricter (EASY with the volume cap). The VLG keeps the old value.
         # SD-04 (ADR-0073 point 5): a "partial" sync lost the activity fetch, so the loads
         # lack the latest runs and the TSB can be too high in the same way.
-        loads_complete = loads_refreshed and sync_status != "partial"
+        # SD-05 (ADR-0080 points 1 and 3): a timed-out sync brought no runs, and a rolled-back
+        # step 2 did not store them, so the loads lack them in the same way.
+        loads_complete = (
+            loads_refreshed
+            and sync_status not in ("partial", "timeout_cancelled")
+            and not persistence_degraded
+        )
         tsb_unverified = not loads_complete and not (
             tsb_value is not None and tsb_value <= HARD_STOP_TSB_FLOOR
         )

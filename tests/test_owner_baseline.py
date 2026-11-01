@@ -47,9 +47,13 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # so the first mornings of each scenario (already EASY by H2 and H4) and 8/3 of the outage also
 # log DATA_MISSING_CONSERVATIVE_H3. The H3 "missing data" alert goes out once on 3/3, for the
 # baseline, instead of on 6/3 for the outage RHR. No session, ceiling or volume changes.
+# D-218 (SD-05), ADR-0080, approved by Zaf 2026-11-01 04:14 UTC (decision card): a timed-out sync and a
+# rolled-back step 2 count the TSB as missing, so those mornings of garmin_outage and persistence_failure
+# also log DATA_MISSING_CONSERVATIVE_H4, and the outage sends one "TSB missing" alert after 24 hours.
+# No session, ceiling or volume changes.
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "9da0c68d30640fa13b7189066347c3c154fd1f43ffd3b573643202c0bf977460",
-    "persistence_failure": "d3912d53601aedeb36a8af1272224a1b5d458a2ed0aaef98500f9e58030f09fe",
+    "garmin_outage": "38c0dfee8d2c3abdcb8276f3fec8cdc9b68ef880af5fffd05abcbf84a358f452",
+    "persistence_failure": "2c3fdf10abfd8eaa06b79e4e92774400cc9820955dee0bbc5f5bb89d35939dae",
     "three_weeks_weekly_plan": "702a4af9cc23750f5fdad10c57ff867415f5c6ede18485a30e13dc9c2f510348",
     "two_weeks_worker": "81ca015b6b69086fd348993b10ba3bb2d54a2b132431b2c1939a83038ba09870",
 }

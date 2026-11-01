@@ -1088,6 +1088,9 @@ class GarminSync:
         """
         self._activities_fetch.failed = False
         if not self._ensure_connected():
+            # SD-05 (ADR-0080 point 2): no runs were fetched, so the sync is "partial"
+            # even if the other feeds reconnect and bring HRV and RHR.
+            self._activities_fetch.failed = True
             return []
         activities = []
         skipped_records = 0
