@@ -108,7 +108,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-02 | 1 | HIGH | Τιμή εκτός ορίων κόβεται στο όριο και μετρά ως μετρημένη (RHR < 25 → 25, H3 CLEAR· επείγον) | `physiological_bounds.py:90-96` | RESOLVED για το RHR · PR #1104 (D-163, ADR-0073)· η κόπωση −3 δεν φτάνεται από το `/manual_entry` |
 | SD-03 | 1 | HIGH | Η baseline RHR δέχεται μία μόνο προηγούμενη νύχτα (επείγον) | `physiology.py:262-279` | RESOLVED · PR #1105 (D-164, ADR-0073) |
 | SD-04 | 1 | HIGH | Χαμένη λήψη δραστηριοτήτων: ο sync μετρά επιτυχία, η H4 CLEAR για ένα πρωινό (επείγον) | `garmin_sync.py:1054-1061`, `:1397-1404`, `data_trust.py:56-66` | RESOLVED · PR #1108 (D-167, ADR-0073) |
-| SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | OPEN · στόχος Phase 27 · έλεγχος SD · ADR-0080 Accepted (D-217) |
 | SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-07 | 2 | HIGH | Ετοιμότητα 100/100 χωρίς HRV και RHR (ADR-0051: 40) | `readiness_engine.py:35-61`, `daily_coach.py:1491-1497` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-08 | 2 | HIGH | Η `/recovery` με σταθερές εισόδους και HRV οποιασδήποτε ηλικίας | `titan/main.py:252-268` | RESOLVED · PR #1103 (D-161) |
@@ -119,6 +119,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-13 | 3 | LOW | TSB 0 και HRV οποιασδήποτε ηλικίας στο payload του coaching | `daily_coach.py:1901`, `:1913` | RESOLVED · PR #1114 (D-171) |
 | SD-14 | 2 | HIGH | HRV πάνω από 300 ms μπαίνει ακατέργαστη στο log HRV (αυριανή baseline, απόκλιση, AFI) | `daily_coach.py` βήμα 3 | RESOLVED · PR #1113 (D-170, ADR-0074 επιλογή Α) |
 | SD-14-R1 | 2 | HIGH | Ο adapter PostgreSQL `get_hrv_history` δεν ελέγχει όρια HRV (ούτε πάνω από 300 ούτε 0)· δεν χρησιμοποιείται (ADR-0044) | `titan/core/persistence.py` | OPEN · στόχος Phase 27, πριν ενεργοποιηθεί το PostgreSQL · από το #1113 (D-170) |
+| SD-15 | 2 | HIGH | Κακοσχηματισμένες προπονήσεις παραλείπονται χωρίς σημάδι· τα φορτία της H4 μένουν ελλιπή | `garmin_sync.py:1132-1143` | OPEN · στόχος Phase 27 · έλεγχος Opus του ADR-0080 |
 | IS-01 | 2 | HIGH | Άγνωστο `athlete_id` γίνεται δεκτό σε εγγραφές· FK προς `athletes` μόνο σε 2 πίνακες | `database.py:169-197` | OPEN · Β, θέλει ADR · στόχος Phase 27 · έλεγχος IS (D-173) |
 | IS-02 | 2 | HIGH | Απόν `athlete_id` γίνεται owner σε 45 συναρτήσεις· το sweep καλύπτει μόνο `worker/` και `orchestration/` | `tests/test_explicit_athlete_ids.py:15` | OPEN · Β για τις προεπιλογές, Α για την επέκταση του sweep · στόχος Phase 27 · έλεγχος IS (D-173) |
 | IS-03 | 1 | HIGH | Ροή override Telegram: fallback `"unknown_athlete"`, nonce χωρίς έλεγχο έναντι της εκκρεμούς απόφασης· χωρίς καλούντα | `telegram_bot.py:853-955` | RESOLVED · PR #1121 (D-178)· χωρίς αθλητή ή απόφαση δεν γράφεται τίποτα· το nonce πρέπει να ανήκει στην εκκρεμή απόφαση |
