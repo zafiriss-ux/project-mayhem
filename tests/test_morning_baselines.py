@@ -383,8 +383,11 @@ def test_partial_sync_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
 
 
 def test_sync_timeout_counts_tsb_as_missing_for_h4(tmp_path, monkeypatch):
-    """SD-05 (ADR-0080 point 1, D-217): the sync timed out, so no runs came in and the TSB comes
-    from the loads stored before. H4 used to say CLEAR on it; now it is missing."""
+    """SD-05 (ADR-0080 point 1, D-218): the sync timed out, so no runs came in and the TSB comes
+    from the loads stored before. H4 used to say CLEAR on it; now it is missing.
+
+    A real timeout returns empty feeds. The stub keeps HRV and RHR on purpose, so the H2 and H3
+    missing-data locks do not hide what H4 does; the empty payload is in the garmin_outage golden."""
     payload, decision = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
                                  loads=dict.fromkeys(range(1, 120), 40), sync_status="timeout_cancelled")
     assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
@@ -399,12 +402,13 @@ def test_sync_timeout_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
     loads.update(dict.fromkeys(range(1, 8), 250))
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
                           loads=loads, sync_status="timeout_cancelled")
+    assert payload["tsb"] is not None and payload["tsb"] <= -50, payload.get("tsb")  # H4 itself fires
     assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
     assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
 
 
 def test_failed_persistence_counts_tsb_as_missing_for_h4(tmp_path, monkeypatch):
-    """SD-05 (ADR-0080 point 3, D-217): step 2 rolled back, so the runs of the sync are not in the
+    """SD-05 (ADR-0080 point 3, D-218): step 2 rolled back, so the runs of the sync are not in the
     database and the reloaded TSB lacks them. H4 used to say CLEAR; now it is missing."""
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
                           loads=dict.fromkeys(range(1, 120), 40), fail_persistence=True)

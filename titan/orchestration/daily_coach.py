@@ -643,7 +643,7 @@ class _PipelineInputs:
     startup_hydration_confidence: dict
     startup_confidence_applies: bool
     rhr_baseline_thin: bool = False  # SD-03: H3 treats the RHR baseline as missing
-    tsb_unverified: bool = False  # M0-22 / SD-04: loads reload failed or sync partial; H4 treats TSB as missing
+    tsb_unverified: bool = False  # M0-22 / SD-04 / SD-05: the loads lack runs; H4 treats TSB as missing
 
 
 class DailyCoach:

@@ -23,10 +23,17 @@
 - **Tests:** 4 νέα. Τρία αποτύγχαναν στο `origin/main`: timeout, αποτυχία εγγραφής (`test_morning_baselines.py`),
   αποτυχία σύνδεσης μόνο για τις δραστηριότητες με HRV και RHR παρόντα (`test_garmin_sync.py`). Το τέταρτο φυλάει ότι με
   παλιό TSB ≤ −50 η H4 μένει TRIGGERED στο timeout. Ο sync χωρίς προπονήσεις μένει μετρημένος
-  (`test_loads_reloaded_keep_h4_measured`, `test_activity_fetch_that_works_leaves_no_partial_status`). Δύο golden του
+  (`test_loads_reloaded_keep_h4_measured`, `test_activity_fetch_that_works_leaves_no_partial_status`).
+  Η αποτυχία σύνδεσης ελέγχεται σε δύο κομμάτια: σύνδεση που αποτυγχάνει → «partial» (`test_garmin_sync.py`), και
+  «partial» → H4 UNKNOWN με ταβάνι EASY (`test_partial_sync_counts_tsb_as_missing_for_h4`, SD-04). Δύο golden του
   `test_daily_coach_characterization.py` άλλαξαν (`garmin_outage`, `persistence_failure`): μπαίνει το lock
   `DATA_MISSING_CONSERVATIVE_H4` και, μετά από 24 ώρες διακοπής, το μήνυμα «TSB missing» (ADR-0051). Οι προπονήσεις
-  μένουν ίδιες. Ο owner ρωτήθηκε με κάρτα πριν από το merge.
+  μένουν ίδιες. Ο owner τα ενέκρινε με κάρτα απόφασης (2026-11-01, 04:14 UTC)·
+  τα νέα hash είναι στο `tests/test_owner_baseline.py`.
+- **Έλεγχος Opus:** VERDICT: PASS. Τα μη κρίσιμα σημεία διορθώθηκαν (σχόλιο για το payload του timeout, έλεγχος ότι
+  πιάνει η ίδια η H4, αριθμοί D). Ένα σημείο είναι νέο εύρημα: το `governance_outcomes.tsb_value` κρατά το TSB που δεν
+  ελέγχθηκε (`daily_coach.py`, και πριν από αυτό το PR για M0-22 και SD-04)· `NULL` γράφεται μόνο στο payload. Το ADR-0080
+  το έλεγε για «την απόφαση»· καταγράφεται ως SD-16.
 
 ---
 
