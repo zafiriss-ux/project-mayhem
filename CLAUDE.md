@@ -133,6 +133,7 @@ Main package (77 modules, excl. __init__/__main__), ceiling 90. The ceiling test
 - `0078` — Owner is Architect
 - `0079` — Consent revocation always applies
 - `0080` — H4 after failed sync
+- `0081` — Unmeasured gates in message
 
 ## Docker
 
