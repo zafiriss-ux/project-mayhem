@@ -75,7 +75,22 @@ GATE_RATIONALE_TEMPLATES: dict[str, str] = {
     "FUELING_GATE_FLAG": "Fueling warning raised; proceed conservatively.",
     "STARTUP_DATA_CONFIDENCE_CEILING": "Startup confidence low; easy-ceiling safety mode applied.",
     "PERSISTENCE_DEGRADED_CEILING": "Persistence degraded; easy-ceiling safety mode applied.",
+    # SD-06 (ADR-0081): every canonical lock code has a sentence, so no bare code reaches the message.
+    "INTENSITY_GATE_RED": "Intensity gate RED (recovery/load signals): session limited to easy, volume reduced.",
+    "INTENSITY_GATE_YELLOW": "Intensity gate YELLOW: intensity capped and volume reduced.",
+    "HARD_STOP_SAFETY_GATES": "A hard-stop safety gate triggered: session reduced or replaced by rest.",
+    "DATA_MISSING_CONSERVATIVE_H2": "HRV or its baseline not available: easy-ceiling safety mode applied.",
+    "DATA_MISSING_CONSERVATIVE_H3": "Resting HR or its baseline not available: easy-ceiling safety mode applied.",
+    "DATA_MISSING_CONSERVATIVE_H4": "Training stress balance (TSB) not available: easy-ceiling safety mode applied.",
+    "DATA_MISSING_CONSERVATIVE_H5": "Fatigue entry missing or not a number: moderate ceiling applied.",
+    "DATA_VOID_CONSERVATIVE": "No fresh Garmin data for too long: zone ceiling applied.",
+    "FAIL_SAFE_LOCK": "A safety check could not run: conservative lock applied.",
 }
+
+_HARD_STOP_GATES: tuple[str, ...] = ("H1", "H2", "H3", "H4", "H5")
+
+# SD-06 (ADR-0081): a code without a template is shown inside a sentence, never alone.
+UNKNOWN_LOCK_TEMPLATE = "Safety rule applied ({code})."
 
 OVERRIDE_HANDLERS: dict[str, Any] = dict.fromkeys(CANONICAL_LOCK_CODES, record_override_signal)
 
@@ -1139,7 +1154,9 @@ class GovernanceEngine:
 
     @staticmethod
     def _format_template(template_key: str, *, actual: Any = None, threshold: Any = None, margin: Any = None) -> str:
-        template = GATE_RATIONALE_TEMPLATES.get(template_key, template_key)
+        template = GATE_RATIONALE_TEMPLATES.get(template_key)
+        if template is None:
+            return UNKNOWN_LOCK_TEMPLATE.format(code=template_key)
         return template.format(actual=actual, threshold=threshold, margin=margin)
 
     @staticmethod
@@ -1295,16 +1312,21 @@ class GovernanceEngine:
                 )
             )
 
+        # SD-06 (ADR-0081): the gates that were not measured are named whether or not a lock
+        # triggered: UNKNOWN gates plus every Hn whose missing-data lock fired (NaN, baseline <= 0,
+        # not a number), in H1->H5 order. Only the wording changes.
+        missing = {f.gate for f in findings if f.status == "UNKNOWN" and f.gate in _HARD_STOP_GATES}
+        missing.update(g for g in _HARD_STOP_GATES if f"DATA_MISSING_CONSERVATIVE_{g}" in applied_locks)
+        not_measured = [g for g in _HARD_STOP_GATES if g in missing]
         primary = next((f for f in findings if f.status == "TRIGGERED"), None)
         if primary is None:
             primary_reason = "No governance lock triggered: training proceeds as planned."
-            not_measured = [f.gate for f in findings if f.status == "UNKNOWN"]
-            if not_measured:
-                primary_reason += f" Not measured: {', '.join(not_measured)}."
             actionable_guidance = "Execute planned session and continue normal monitoring."
         else:
             primary_reason = primary.reason
             actionable_guidance = self._guidance_for_gate(primary.gate)
+        if not_measured:
+            primary_reason += f" Not measured: {', '.join(not_measured)}."
 
         return DecisionRationale(
             primary_reason=primary_reason,

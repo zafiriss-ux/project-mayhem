@@ -109,7 +109,7 @@ Claude και τα αποφασίζει ο owner· ως τότε κανένα δ
 | SD-03 | 1 | HIGH | Η baseline RHR δέχεται μία μόνο προηγούμενη νύχτα (επείγον) | `physiology.py:262-279` | RESOLVED · PR #1105 (D-164, ADR-0073) |
 | SD-04 | 1 | HIGH | Χαμένη λήψη δραστηριοτήτων: ο sync μετρά επιτυχία, η H4 CLEAR για ένα πρωινό (επείγον) | `garmin_sync.py:1054-1061`, `:1397-1404`, `data_trust.py:56-66` | RESOLVED · PR #1108 (D-167, ADR-0073) |
 | SD-05 | 2 | HIGH | Σε timeout του Garmin η H4 λέει CLEAR από φορτία που δεν συγχρονίστηκαν | `governance_engine.py:1239-1247` | RESOLVED · PR #1160 (D-218, ADR-0080) |
-| SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | OPEN · στόχος Phase 27 · έλεγχος SD |
+| SD-06 | 2 | HIGH | Το μήνυμα κρύβει τις πύλες που δεν μετρήθηκαν όταν πιάσει lock· ωμοί κωδικοί lock | `governance_engine.py:1299-1303`, `:1142` | RESOLVED · PR #1164 (D-222, ADR-0081) |
 | SD-07 | 2 | HIGH | Ετοιμότητα 100/100 χωρίς HRV και RHR (ADR-0051: 40) | `readiness_engine.py:35-61`, `daily_coach.py:1491-1497` | OPEN · στόχος Phase 27 · έλεγχος SD |
 | SD-08 | 2 | HIGH | Η `/recovery` με σταθερές εισόδους και HRV οποιασδήποτε ηλικίας | `titan/main.py:252-268` | RESOLVED · PR #1103 (D-161) |
 | SD-09 | 2 | HIGH | Αθλητής που δεν συγχρονίστηκε ποτέ δεν σημειώνεται ποτέ παλιός | `daily_coach.py:1070-1090` | RESOLVED · PR #1109 (D-168) |

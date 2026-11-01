@@ -51,11 +51,14 @@ _FIXTURES = Path(__file__).parent / "fixtures"
 # rolled-back step 2 count the TSB as missing, so those mornings of garmin_outage and persistence_failure
 # also log DATA_MISSING_CONSERVATIVE_H4, and the outage sends one "TSB missing" alert after 24 hours.
 # No session, ceiling or volume changes.
+# D-222 (SD-06), ADR-0081, approved by Zaf 2026-11-01 06:21 UTC (decision card): only the "Why this
+# decision" line changes in all four scenarios. It names the gates that were not measured even when a lock
+# or gate fires, and no bare lock code is shown (DATA_MISSING_CONSERVATIVE_H2 becomes a sentence).
 _DAILY_COACH_DAYS = {
-    "garmin_outage": "38c0dfee8d2c3abdcb8276f3fec8cdc9b68ef880af5fffd05abcbf84a358f452",
-    "persistence_failure": "2c3fdf10abfd8eaa06b79e4e92774400cc9820955dee0bbc5f5bb89d35939dae",
-    "three_weeks_weekly_plan": "702a4af9cc23750f5fdad10c57ff867415f5c6ede18485a30e13dc9c2f510348",
-    "two_weeks_worker": "81ca015b6b69086fd348993b10ba3bb2d54a2b132431b2c1939a83038ba09870",
+    "garmin_outage": "fb1265b7f3caab8cce3ca8c0ddb491ed436c6106c30617fddfedf14275bb91bb",
+    "persistence_failure": "35d15b420f646bf61686e93b348e96de9cabeda1118d0cc6944458f7625d1685",
+    "three_weeks_weekly_plan": "0c688ba7d362b311d0b6ce2cf6b80bf1f835cd1701b058f2a67e4d3862d10b6b",
+    "two_weeks_worker": "69de8a96a03d6c42f6b77a94fa6c0c254e3734b06c0ae4b8fdf6902f8f18e760",
 }
 # sha256 of json.dumps(governance_golden, sort_keys=True, ensure_ascii=False) at 39aee23.
 _GOVERNANCE = "3c632d5e10c546fde441b965dfb138e816372dcf9aa8f5472b9e984f9d8359b1"
