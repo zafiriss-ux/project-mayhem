@@ -92,7 +92,8 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
              today_rhr: int = 50, prior_rhr: int = 50, rhr_nights: int | None = None,
              loads: dict[int, int] | None = None, fail_load_reload: bool = False,
              sync_status: str | None = None, stored_hrv: dict[int, float] | None = None,
-             garmin_past_hrv: dict[int, float] | None = None) -> tuple[dict, dict]:
+             garmin_past_hrv: dict[int, float] | None = None,
+             fail_persistence: bool = False) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -126,6 +127,13 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
             optimal_time_calc=_OptimalTime(), nutrition_optimizer=_Nutrition(), weekly_planner=_Planner(),
             db=db, athlete_id=athlete_id, engines=engines,
         )
+        if fail_persistence:
+            # Step 2 rolls back: the sync's data is not stored (ADR-0080 point 3).
+            from titan.orchestration.garmin_persistence import PersistenceFailure
+
+            def _rolled_back(*_a, **_k):
+                raise PersistenceFailure(today_rhr, 82, 7.8)
+            monkeypatch.setattr(coach, "_persist_garmin_data", _rolled_back)
         if fail_load_reload:
             # Only the post-sync reload of the load history fails (M0-22); the coach was
             # built from the loads read before it.
@@ -372,6 +380,36 @@ def test_partial_sync_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
                           loads=loads, sync_status="partial")
     assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
     assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_sync_timeout_counts_tsb_as_missing_for_h4(tmp_path, monkeypatch):
+    """SD-05 (ADR-0080 point 1, D-217): the sync timed out, so no runs came in and the TSB comes
+    from the loads stored before. H4 used to say CLEAR on it; now it is missing."""
+    payload, decision = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                                 loads=dict.fromkeys(range(1, 120), 40), sync_status="timeout_cancelled")
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H4" in payload["governance_locks"], payload["governance_locks"]
+    assert payload.get("tsb") is None, payload.get("tsb")
+
+
+def test_sync_timeout_keeps_an_old_tsb_that_fires_h4(tmp_path, monkeypatch):
+    """SD-05 guard (only tightens): the stored TSB is already at the floor, so H4 fires on it
+    and keeps its volume cap instead of the plain missing-data ceiling."""
+    loads = dict.fromkeys(range(8, 120), 40)
+    loads.update(dict.fromkeys(range(1, 8), 250))
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=loads, sync_status="timeout_cancelled")
+    assert "DATA_MISSING_CONSERVATIVE_H4" not in payload["governance_locks"], payload["governance_locks"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_failed_persistence_counts_tsb_as_missing_for_h4(tmp_path, monkeypatch):
+    """SD-05 (ADR-0080 point 3, D-217): step 2 rolled back, so the runs of the sync are not in the
+    database and the reloaded TSB lacks them. H4 used to say CLEAR; now it is missing."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=76.0,
+                          loads=dict.fromkeys(range(1, 120), 40), fail_persistence=True)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H4" in payload["governance_locks"], payload["governance_locks"]
 
 
 def _stale_alerts(monkeypatch) -> list[str]:

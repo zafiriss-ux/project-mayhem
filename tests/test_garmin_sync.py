@@ -1034,6 +1034,21 @@ def test_failed_activity_fetch_marks_the_sync_partial(monkeypatch):
 
 
 @pytest.mark.integration
+def test_failed_connection_for_the_activity_fetch_marks_the_sync_partial(monkeypatch):
+    """SD-05 (ADR-0080 point 2, D-217): the connection failed only for the activity fetch and
+    worked again for the other feeds, so HRV and RHR came in. The sync used to report success
+    without the runs, and H4 said CLEAR on stale loads. The payload now says "partial"."""
+    monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_k: None)
+    sync = _sync_with_other_feeds(_FakeClient(activities=[]), monkeypatch)
+    sync.is_connected = False
+    monkeypatch.setattr(sync, "connect", lambda: False)
+    payload = sync.sync_all(days_back=3)
+    assert payload["activities"] == []
+    assert payload["hrv"] and payload["sleep"]
+    assert payload.get("status") == "partial", payload.get("status")
+
+
+@pytest.mark.integration
 def test_activity_fetch_that_works_leaves_no_partial_status(monkeypatch):
     """SD-04: an activity fetch that works, even with no runs, is not partial."""
     monkeypatch.setattr(garmin_sync, "_garmin_event", lambda *_a, **_k: None)
