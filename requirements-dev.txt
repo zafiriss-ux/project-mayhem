@@ -2,26 +2,26 @@
 # Install after runtime deps:
 #   pip install -r requirements.txt -r requirements-dev.txt
 
-pytest==9.1.1
+pytest==9.2.0
 pytest-cov==7.1.0
-hypothesis==6.168.5
-ruff==0.16.10
-mypy==2.4.0
+hypothesis==6.170.13
+ruff==0.17.3
+mypy==2.4.1
 pytest-timeout==2.4.0
 
 httpx==0.28.1
-pre-commit==4.6.2
+pre-commit==4.7.0
 freezegun==1.5.5
 
 # Architectural dependency linting (T5-93)
 import-linter==2.15
 
 # Contract testing (T5-94)
-schemathesis==4.29.3
+schemathesis==4.32.7
 
 # Mutation testing (T5-84)
 # NOTE: mutmut 2.x (spec) uninstallable — glob2 dependency fails to build; using 3.x API
-mutmut==3.8.0
+mutmut==3.8.1
 
 # Dependency CVE audit (D5)
 pip-audit==2.10.1
