@@ -54,3 +54,12 @@ GitHub δεν εμπόδιζε ένα merge ή ένα push όσο κάποιος
   repo. Αλλαγή του κανόνα θέλει νέο ADR ή addendum εδώ.
 - Τι **δεν** λύνει: δεν υπάρχει ανθρώπινος δεύτερος έλεγχος. Η ανεξάρτητη ανασκόπηση από AI που
   κάνει ο Claude σε κάθε PR δεν είναι πιστοποίηση από άνθρωπο.
+
+
+## Owner-approved addendum — 2026-11-02
+
+The Owner approved using the eleven active required check contexts of ruleset `25769097`, together with all relevant conditional checks when they run, and recording the difference from the historical thirteen-name decision above. Owner approval in this session: “Εγκρίνω. Τα pr κάνε τα εσύ merge εάν βγαίνουν πράσινα και σύμφωνα με τους κανόνες που σου είχα δώσει”. This is the record of that accepted Owner decision, not an acceptance by an agent.
+
+The current required contexts are: Ruff Phase A (full repo, blocking); Ruff Phase B (clean folders, blocking); Test Suite (Python 3.12); Invariants, policy and security scans; Dependency Drift Audit (unpinned + CVE gate); Complexity Budget (module count ceiling); Analyze (python); Analyze (actions); Bandit; DevSkim; gitleaks. The historical additional names `CodeQL` and lowercase `devskim` are not separate active required contexts. Their removal from the recorded list does not remove the Analyze jobs or the capitalized DevSkim check.
+
+Strict status policy, PR-only changes, no force pushes/deletion and no bypass actors remain in force. A green required check is not evidence that its configuration detects every finding. Relevant conditional checks (including Compose and Windows build when triggered) must also succeed before merge. New or renamed check contexts require Owner reconciliation; never add phantom required names or bypass a failing check. No GitHub rule was edited by this addendum.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # TITAN OS — Canonical CI Entrypoint
-# Operating Contract v7.8 §9C: all VERIFY fields reference this script.
+# Operating Contract v7.9 §9C: all VERIFY fields reference this script.
 # Usage: bash scripts/titan_ci.sh
 # Exit 0 = all gates pass. Non-zero = at least one gate failed.
 # =============================================================================
@@ -29,12 +29,7 @@ if [[ -z "${PY}" ]]; then
 fi
 
 # ── Dependency preflight: actionable remediation, not a cryptic ImportError ────
-# The import set is the closure the gates actually require, not a token sample:
-# pytest_cov is hard-required by `--no-cov` in G3–G6 (the flag is registered only
-# when the plugin is installed; otherwise pytest exits 4 mid-gate), and hypothesis
-# is imported at collection time by the G2 full-suite sweep. Probing them here turns
-# a partial closure into the bootstrap remediation below instead of a cryptic late
-# failure.
+# Keep the established dependency closure check before running the full gates.
 if ! "${PY}" -c "import pytest, pytest_cov, freezegun, hypothesis, sqlalchemy, fastapi" >/dev/null 2>&1 \
    || ! "${PY}" -m ruff --version >/dev/null 2>&1; then
     echo "❌ CI dependency closure missing for interpreter: ${PY}" >&2
@@ -43,22 +38,18 @@ if ! "${PY}" -c "import pytest, pytest_cov, freezegun, hypothesis, sqlalchemy, f
     exit 1
 fi
 
-PASS=0
-FAIL=0
-FAILED_GATES=()
-
 run_gate() {
     local name="$1"
+    local status
     shift
     echo ""
     echo "══ $name ══"
     if "$@"; then
         echo "  ✅ PASS — $name"
-        PASS=$((PASS + 1))
     else
-        echo "  ❌ FAIL — $name"
-        FAIL=$((FAIL + 1))
-        FAILED_GATES+=("$name")
+        status=$?
+        echo "  ❌ FAIL — $name (exit $status)" >&2
+        exit "$status"
     fi
 }
 
@@ -66,54 +57,12 @@ echo "═══ TITAN OS Local CI ═══"
 echo "Date: $(date '+%Y-%m-%d')"
 echo "Repo: $REPO_ROOT"
 echo "Interpreter: $PY"
+echo "Environment fingerprint:"
+bash "$REPO_ROOT/scripts/env_fingerprint.sh" "$PY"
 
-# ── G1: Ruff Phase A (full repo, blocking) ────────────────────────────────────
-run_gate "G1 Ruff Phase A" "$PY" -m ruff check .
+run_gate "G1 Ruff" "$PY" -m ruff check .
+run_gate "G2 Strict pytest" "$PY" -m pytest -q -W error::pytest.PytestWarning
+run_gate "G3 Full pytest" "$PY" -m pytest -q
 
-# ── G2: Strict pytest (full suite) ───────────────────────────────────────────
-# Scope note: this script is the §9C *local pre-commit* gate — a curated subset of
-# the remote .github/workflows/ci.yml (which additionally runs semgrep, pylint,
-# vulture, lint-imports, the CVE/drift gates, the G-CI invariants, and a 3.12+3.13
-# matrix). A green run here is necessary but not sufficient for GitHub-green; the
-# remote workflow remains the authoritative merge gate.
-# The two --ignore'd files are @pytest.mark.integration tests that shell out
-# (subprocess → bash scripts/backup.sh / python3 scripts/verify_backup.py).
-# tests/test_complexity_budget.py used to shell out to `find` too; since AT-06 it
-# counts with pkgutil like the CI job, so it runs here.
-# They pass on Linux/CI but are fragile on the documented Windows dev box, so they
-# are excluded here for cross-platform determinism; GitHub's ubuntu `test` job
-# runs them with no ignores.
-run_gate "G2 Strict pytest" "$PY" -m pytest --tb=short -q --strict-markers \
-    --ignore=tests/test_backup.py \
-    --ignore=tests/test_backup_verification.py
-
-# ── G3: Schema equivalence (TD-08 fitness net) ───────────────────────────────
-run_gate "G3 Schema equivalence" "$PY" -m pytest tests/test_schema_equivalence.py -q --no-cov
-
-# ── G4: Governance invariants (AST) ──────────────────────────────────────────
-run_gate "G4 Governance invariants" "$PY" -m pytest tests/test_architectural_invariants.py -q --no-cov
-
-# ── G5: ADR-0058 fitness gates ────────────────────────────────────────────────
-run_gate "G5 ADR-0058 fitness" "$PY" -m pytest tests/test_adr0058_fitness.py -q --no-cov
-
-# ── G6: Schema contract tests ────────────────────────────────────────────────
-run_gate "G6 Schema contracts" "$PY" -m pytest tests/test_db_schema_contracts.py tests/titan/core/ -q --no-cov
-
-# ── SUMMARY ───────────────────────────────────────────────────────────────────
 echo ""
-echo "══ TITAN CI SUMMARY ══"
-echo "  Passed: $PASS"
-echo "  Failed: $FAIL"
-
-if [[ $FAIL -eq 0 ]]; then
-    echo ""
-    echo "  ✅ TITAN CI: ALL GATES PASS"
-    exit 0
-else
-    echo ""
-    echo "  ❌ TITAN CI: $FAIL FAILURE(S)"
-    for gate in "${FAILED_GATES[@]}"; do
-        echo "    → $gate"
-    done
-    exit 1
-fi
+echo "  ✅ TITAN CI: ALL GATES PASS"
