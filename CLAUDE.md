@@ -14,7 +14,7 @@ python -m pytest --no-cov -q
 python -m pytest --no-cov -q -k "name"
 ```
 
-**Historical snapshot:** 4658 tests all green (4658 passed, 2 skipped, 4660 collected — 2026-11-01, full pytest)
+**Historical snapshot:** 4686 tests all green (4686 passed, 2 skipped, 4688 collected — 2026-11-02, full pytest)
 
 Update after every commit adding/removing tests:
 
@@ -148,7 +148,7 @@ Smoke: `bash scripts/docker_smoke_test.sh`. Readiness: `GET /readyz`→200.
 
 ## CI Gates
 
-**Blocking:** `python -m ruff check .` and `python -m pytest -q`.
+**Blocking:** `bash scripts/titan_ci.sh` runs `python -m ruff check .`, `python -m pytest -q -W error::pytest.PytestWarning`, then `python -m pytest -q`, stopping on the first failure and preserving its exit status. `scripts/titan_check.sh` is an exec wrapper for the same gates. Each run emits the selected interpreter’s environment fingerprint.
 
 **Advisory:** pylint >=7.0, vulture >=80%.
 

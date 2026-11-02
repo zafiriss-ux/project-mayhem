@@ -8,6 +8,33 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## CI-08 / #1237 — canonical local gates (owner authorization, 2026-11-02)
+
+**Status:** OPEN. **Tier:** 2 — **independent**, approved as the first infrastructure task by the Owner. **Change Type:** implementation. **Workflow Path:** A.
+
+The Owner approved the first independent #1237 reconciliation and its canonical §23 recording, with VERIFY `bash scripts/titan_ci.sh`, the three HARD GATE commands, the actual eleven required checks plus relevant conditional checks, and serial PR/merge. Approval: “Εγκρίνω. Τα pr κάνε τα εσύ merge εάν βγαίνουν πράσινα και σύμφωνα με τους κανόνες που σου είχα δώσει”. This records the Owner's decision; it does not declare a phase closed or create a new clinical/runtime policy.
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: First independent CI-08 task: reconcile canonical local gates with AGENTS HARD GATE; no runtime behavior change.
+Deliverable: Exact Ruff→strict-full→full runner, thin exec wrapper, machine environment fingerprint, focused regression tests, captured full verification, independent fix review and one PR.
+Stop condition: Any failed acceptance/gate or blocking review stops commit/push/merge; success is reviewed patch with green PR and verified green main.
+Closure rule: Parent task stays OPEN; no phase or issue clearance.
+Canonical doc update: TECHNICAL_DEBT.md canonical brief/owner authorization; ADR-0071 owner-approved 11-context addendum; CLAUDE.md test-count snapshot; PROGRESS.md affected progress; docs/governance/ledger.jsonl actual orchestration events. These required records are Bundled with implementation because the owner explicitly approved canonical recording and the 11-context reconciliation as part of the first unit; no unrelated closure.
+Authorizes: Owner approval in this conversation ('Εγκρίνω. Τα pr κάνε τα εσύ merge εάν βγαίνουν πράσινα και σύμφωνα με τους κανόνες που σου είχα δώσει') of the preceding three-point proposal: first independent #1237, record in canonical card/§23, VERIFY bash scripts/titan_ci.sh and the three AGENTS gates, use actual 11 required plus relevant conditional checks and record the 13-name difference. This handoff transcribes that accepted scope; it does not accept a new ADR or change AGENTS/Contract.
+Allowed / Forbidden: Only listed files below. No app modules, schema, scientific thresholds, goldens, branch rules, credentials, live provider sends, force push or bypass.
+Expected response format: AGENTS§23 delivery report with actual files/gate output/review/PR/main evidence, blockers and no invented clearance.
+
+
+**Allowed files:** `scripts/titan_ci.sh`, `scripts/titan_check.sh`, `scripts/env_fingerprint.sh`, `tests/test_canonical_ci_contract.py`, `tests/test_env_fingerprint.py`, and the task-specific records named in Canonical doc update above. The fingerprint helper is required integration for AGENTS §2.4; no application package/module is added.
+
+**Binary acceptance:** exact Ruff → strict full (`-W error::pytest.PytestWarning`) → full commands, no ignores; stop on first failure and preserve that exit; checker is an argv/status-preserving exec wrapper; actual stdlib environment fingerprint; paired success/failure regression tests; full verification and independent fix review; required and relevant triggered conditional checks green before authorized merge. No branch-rule changes or bypass.
+
+**Bundled required records:** this brief/authorization, the Owner-approved ADR-0071 context-name addendum, actual test snapshot/progress and orchestration ledger. Bundled because the Owner expressly approved canonical recording and the context-name reconciliation in this first unit. **Closure:** parent stays OPEN; this pass does not authorize canonical closure.
+
+---
+
 ## Triage Philosophy
 
 > The same priority framework that governs training governs code: **safety of data
