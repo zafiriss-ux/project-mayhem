@@ -42,14 +42,16 @@ def repo(tmp_path: Path) -> tuple[Path, list[str]]:
     return work, shas
 
 
-def _run(work: Path, tmp_path: Path, **event: str) -> str:
+def _run(work: Path, tmp_path: Path, *, scanner_exit: int = 0, **event: str) -> str:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     fake = bin_dir / "gitleaks"
-    fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$GITLEAKS_ARGS"\n', encoding="utf-8")
+    fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$GITLEAKS_ARGS"\nexit "$GITLEAKS_EXIT"\n',
+                    encoding="utf-8")
     fake.chmod(0o755)
     args_file = tmp_path / "args.txt"
     env = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "GITLEAKS_ARGS": str(args_file),
+           "GITLEAKS_EXIT": str(scanner_exit),
            "EVENT_NAME": "push", "PR_BASE": "", "PR_HEAD": "", "PUSH_BEFORE": "", **event}
     subprocess.run(["bash", "-c", _scan_script()], cwd=work, env=env, check=True)
     return args_file.read_text(encoding="utf-8")
@@ -76,3 +78,17 @@ def test_a_pull_request_is_scanned_over_its_whole_range(repo, tmp_path) -> None:
 
 def test_the_workflow_never_scans_only_the_last_commit() -> None:
     assert "HEAD~1..HEAD" not in WORKFLOW.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("scanner_exit", [1, 2, 127])
+@pytest.mark.parametrize("event_name", ["pull_request", "push", "history"])
+def test_scanner_failures_block_the_actual_scan_step(
+    repo, tmp_path, scanner_exit: int, event_name: str,
+) -> None:
+    work, shas = repo
+    event = {"EVENT_NAME": "pull_request" if event_name == "pull_request" else "push",
+             "PR_BASE": shas[0], "PR_HEAD": shas[2],
+             "PUSH_BEFORE": shas[0] if event_name == "push" else ""}
+    with pytest.raises(subprocess.CalledProcessError) as exc_info:
+        _run(work, tmp_path, scanner_exit=scanner_exit, **event)
+    assert exc_info.value.returncode == scanner_exit
