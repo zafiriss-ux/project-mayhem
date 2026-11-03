@@ -87,6 +87,8 @@ refactor χωρίς ερώτηση· καμία διαγραφή χωρίς απ
 
 CI-08 / #1237: owner-approved πρώτη ανεξάρτητη εργασία συμφιλίωσης των canonical gates. Τα scripts εφαρμόζουν τις τρεις πλήρεις πύλες με fail-fast και διατήρηση exit status, ο checker είναι exec wrapper και καταγράφεται environment fingerprint. Προστέθηκαν 28 regression tests. Η πλήρης τοπική επαλήθευση έδωσε 4686 passed / 2 skipped / 3 warnings σε strict και full run· ο ανεξάρτητος fix reviewer επιβεβαίωσε τα controls και την ανίχνευση των αρχικών defects. Το canonical parent παραμένει OPEN για την προβλεπόμενη records διαδικασία· δεν δηλώνεται κλείσιμο issue ή φάσης από αυτή την εγγραφή.
 
+CI-01 / #1230 (SEC-01): ενεργοποιήθηκαν οι default κανόνες του υπάρχοντος Gitleaks 8.18.4, με τις στενές εξαιρέσεις fixtures ανέπαφες. Το required job εκτελεί πρώτα πραγματικό clean/positive συνθετικό control· απαιτεί σωστό exit και JSON εύρημα, ώστε σφάλμα scanner/config να μην περνά ως ανίχνευση. Η επιλογή PR/push/history range έμεινε ίδια. Προστέθηκαν 29 regression cases· η πλήρης τοπική strict/full επαλήθευση έδωσε 4715 passed / 2 skipped / 3 warnings. Το issue κλείνει με αναφορά PR μόνο μετά από επιτυχές merge και πράσινο main· καμία δήλωση συνολικής ασφάλειας ή κλεισίματος tracker.
+
 - #20: τα δεδομένα Garmin και Telegram ανά αθλητή έγιναν στη Φάση 4 (βήματα 4 και 5). Το issue #926 μπορεί να κλείσει.
 - #21: μένει ο έλεγχος κλειδιών στην κατασκευή της εφαρμογής (RBP-04, T-PRA-28).
 - #23: το T-PRA-18 περιμένει αρκετές αποφάσεις στο `governance_outcomes` για τον owner (`CALIBRATION_MIN_OUTCOME_COUNT`). Ο πίνακας `worker_routine_executions` (B-3) υπάρχει από το #945.

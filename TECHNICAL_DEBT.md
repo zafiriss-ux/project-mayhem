@@ -8,6 +8,41 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## CI-01 / #1230 — enable and prove Gitleaks default rules (owner assignment, 2026-11-02)
+
+**Status:** OPEN pending independently reviewed PR, successful merge and green main. **Tier:** 1 — security/data integrity. **Severity (source / effective):** HIGH / HIGH. Alias: SEC-01. No phase clearance.
+
+Owner source: accepted plan places #1230 next after the prerequisite canonical-gate reconciliation delivered in PR #1453. Standing approval: “Εγκρίνω. Τα pr κάνε τα εσύ merge εάν βγαίνουν πράσινα και σύμφωνα με τους κανόνες που σου είχα δώσει”. Closure instruction: “Απλά, να κλείνεις και τα issues όταν περνάνε τα pr, με σχετική αναφορά του pr ή όπως αλλιώς νομίζεις καλύτερα”. Current assignment: “Προχώρα στα επόμενα, σύμφωνα με το σχέδιο και τις οδηγίες που σου έχουν δοθεί”. This records that bounded routine repair, not a new security policy or production-credential finding.
+
+Pass type: implementation
+Change Type: implementation (Bundled required task records)
+Workflow Path: Path A
+Execution unit: CI-01 / #1230 only: the existing required Gitleaks scanner must load its bundled default detection rules while retaining existing narrow fixture exceptions.
+Deliverable: Configuration repair, an executable synthetic clean/positive scanner control in the existing required CI job, paired fail-closed regression tests, independent initial and fix review, captured full gates and one PR.
+Stop condition: Any failed acceptance, full gate, blocking review, required check or triggered relevant conditional check blocks commit/push/merge; any suspected real credential is redacted and escalated, never allowlisted to obtain green. Completion requires reviewed green PR, merge pinned to its reviewed head, and verified green resulting main.
+Closure rule: #1230 becomes closure-capable only when every criterion is evidenced after merge and green main; link the PR and evidence on closure. #1165, #1237, #1438 and all other parents/issues stay OPEN; no project/phase clearance.
+Canonical doc update: TECHNICAL_DEBT.md task handoff; CLAUDE.md actual test-count snapshot; PROGRESS.md scoped result; docs/governance/ledger.jsonl actual orchestration events. Bundled because these records are required to make this owner-approved one-task/one-PR delivery reviewable; no unrelated records closure.
+Authorizes: The Owner's accepted #1230 Category-A repair plan and standing merge/issue-closure authorization quoted above, renewed by the current proceed-next assignment. v7.9 §13 scope: only secret-scanner configuration and its synthetic failure-path proof; no auth/runtime error-path change, schema, scientific rule, clearance or branch-policy change.
+Allowed / Forbidden: Only files listed below. Preserve all current narrow allowlist patterns and existing PR/push range selection, scanner version and required check identity. No broad exclusions, scanner bypass, credentials, real messages, production restore, Docker smoke, application modules, ADR/AGENTS/Contract amendments, ruleset changes, force push or admin merge.
+Expected response format: AGENTS §23 delivery with actual file sizes, full gate results, independent review, PR/main evidence and explicit limitations.
+
+**Allowed files and reasons:**
+- `.gitleaks.toml`: extend the pinned scanner's default rules without broadening exceptions.
+- `scripts/check_gitleaks.sh` (new): prove the actual configured scanner accepts a clean fixture and detects a constructed, non-real synthetic token; reject operational errors or missing/wrong report evidence.
+- `.github/workflows/secret-scan.yml`: run that control after installing the existing pinned binary and before the unchanged real commit-range scan.
+- `tests/test_gitleaks_control.py` (new): exercise control success and fail-closed boundary/error cases with a recording CLI double; prove the CI control is wired before the real scan. Actual binary proof is separately mandatory.
+- `tests/test_secret_scan_workflow_at04.py`: preserve range tests and verify nonzero scanner exits block the actual scan step.
+- The four task-specific record files named under Canonical doc update, for the stated reasons only.
+
+**Binary acceptance:** (1) actual Gitleaks 8.18.4 detects a synthetic GitHub PAT under repo config and accepts clean content; original config demonstrably misses the same positive; (2) clean exit alone cannot satisfy the positive control, and operational errors, invalid/missing/empty/wrong-rule reports fail the control; (3) required gitleaks CI job runs the control before its existing redacted PR/push/history scan, which preserves failures; (4) existing narrow exceptions and pinned version remain; (5) tests cover both success and boundary/error paths, no skip/suppression or new runtime module; (6) all three full canonical gates, independent reviews and every required/triggered check pass before merge; resulting main is verified green before issue closure.
+
+**Ordered edits:** fix config first, then add control and regression tests, then wire CI and add scan-failure propagation cases; tests target repaired behavior. The intentionally failing “before” proof runs only in an owned temporary fixture outside the checkout. No commits between edits; every commit is guarded by full canonical gates and the installed hook.
+
+**READY:** complete §23 handoff above plus DoR §17.5: scope clear; all files identified; criteria binary; tests known. DoR: PASS. Independent initial diagnosis and clean-state full baseline must both be recorded before any implementation.
+
+---
+
+
 ## CI-08 / #1237 — canonical local gates (owner authorization, 2026-11-02)
 
 **Status:** OPEN. **Tier:** 2 — **independent**, approved as the first infrastructure task by the Owner. **Change Type:** implementation. **Workflow Path:** A.

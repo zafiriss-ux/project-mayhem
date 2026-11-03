@@ -1,5 +1,8 @@
 title = "TITAN gitleaks config"
 
+[extend]
+useDefault = true
+
 # Test fixtures and unit-test credential stubs are intentionally fake.
 # They exercise validation logic and must not be flagged as real secrets.
 # Pattern-scoped so only known fixture shapes are exempted, not entire files.
