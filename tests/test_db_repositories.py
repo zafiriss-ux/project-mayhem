@@ -430,6 +430,87 @@ def test_calibration_upsert_inside_a_transaction_rolls_back_with_it(db) -> None:
     assert db.get_model_calibration_metadata("m") is None
 
 
+# #1412: these four training writers committed on their own, so a failed
+# transaction kept every earlier write in it (here a daily metric).
+_TRAINING_WRITERS = {
+    "add_shoe": lambda db, shoe: db.add_shoe("synthetic-second"),
+    "update_shoe_mileage": lambda db, shoe: db.update_shoe_mileage(shoe, 5.0, "2026-11-01"),
+    "save_personal_best": lambda db, shoe: db.save_personal_best(5.0, 1500, "2026-11-01"),
+    "log_cs_performance": lambda db, shoe: db.log_cs_performance("2026-11-01", 5000.0, 1500.0),
+}
+_EXPECTED_CHANGE = {
+    "add_shoe": lambda b: {"gear_usage": b["gear_usage"] + 1},
+    "update_shoe_mileage": lambda b: {"total_km": b["total_km"] + 5.0},
+    "save_personal_best": lambda b: {"personal_bests": b["personal_bests"] + 1},
+    "log_cs_performance": lambda b: {"cs_performances": b["cs_performances"] + 1},
+}
+
+
+def _rows_on_disk(db_path: Path) -> dict[str, object]:
+    """Read the file with a separate connection, after the manager is closed."""
+    conn = sqlite3.connect(db_path)
+    try:
+        return {
+            "daily_metrics": conn.execute("SELECT COUNT(*) FROM daily_metrics").fetchone()[0],
+            "gear_usage": conn.execute("SELECT COUNT(*) FROM gear_usage").fetchone()[0],
+            "total_km": conn.execute("SELECT SUM(total_km) FROM gear_usage").fetchone()[0],
+            "personal_bests": conn.execute("SELECT COUNT(*) FROM personal_bests").fetchone()[0],
+            "cs_performances": conn.execute("SELECT COUNT(*) FROM cs_performances").fetchone()[0],
+        }
+    finally:
+        conn.close()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("writer", sorted(_TRAINING_WRITERS))
+def test_training_writer_inside_a_failed_transaction_rolls_back_with_it(
+    tmp_path, writer: str
+) -> None:
+    manager = DatabaseManager(db_dir=tmp_path)
+    path = manager.db_path
+    shoe = manager.add_shoe("synthetic-first")
+    before = _rows_on_disk(path)
+    with pytest.raises(RuntimeError, match="sentinel"), manager.transaction():
+        manager.save_daily_metric("2026-11-01", hrv=47, rhr=52)
+        _TRAINING_WRITERS[writer](manager, shoe)
+        raise RuntimeError("sentinel")
+    manager.close()
+    assert _rows_on_disk(path) == before
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("writer", sorted(_TRAINING_WRITERS))
+def test_training_writer_inside_a_successful_transaction_is_kept(
+    tmp_path, writer: str
+) -> None:
+    manager = DatabaseManager(db_dir=tmp_path)
+    path = manager.db_path
+    shoe = manager.add_shoe("synthetic-first")
+    before = _rows_on_disk(path)
+    with manager.transaction():
+        manager.save_daily_metric("2026-11-01", hrv=47, rhr=52)
+        _TRAINING_WRITERS[writer](manager, shoe)
+    manager.close()
+    after = _rows_on_disk(path)
+    expected = {**before, "daily_metrics": before["daily_metrics"] + 1}
+    expected.update(_EXPECTED_CHANGE[writer](before))
+    assert after == expected
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("writer", sorted(_TRAINING_WRITERS))
+def test_training_writer_outside_a_transaction_still_commits(tmp_path, writer: str) -> None:
+    manager = DatabaseManager(db_dir=tmp_path)
+    path = manager.db_path
+    shoe = manager.add_shoe("synthetic-first")
+    before = _rows_on_disk(path)
+    _TRAINING_WRITERS[writer](manager, shoe)
+    # Read while the manager is still open: the write must already be on disk.
+    after = _rows_on_disk(path)
+    manager.close()
+    assert after == {**before, **_EXPECTED_CHANGE[writer](before)}
+
+
 @pytest.mark.unit
 def test_new_database_has_its_tables_and_owner_rows(db) -> None:
     assert db.is_db_reachable() is True
