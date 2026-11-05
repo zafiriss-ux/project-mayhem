@@ -99,7 +99,8 @@ def add_athlete(
     if db.get_athlete_for_telegram_chat(chat) is not None:
         raise ValueError("this Telegram chat is already bound to an athlete")
     athlete_id = new_athlete_id()
-    while athlete_exists(db, athlete_id):
+    # An id still in the deletion record would be stopped and deleted again (#1378).
+    while athlete_exists(db, athlete_id) or deletion_pending(athlete_id):
         athlete_id = new_athlete_id()
     with db._lock:
         db._ensure_open_locked()
@@ -175,6 +176,23 @@ def read_deletion_records() -> list[dict[str, str]]:
     if not path.exists():
         return []
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def deletion_pending(athlete_id: str) -> bool:
+    """True when the deletion record names *athlete_id* (ADR-0067 D6.1, #1378).
+
+    A recorded deletion leaves the athlete out of the scheduler at once, even when deleting
+    the rows failed or a restore brought them back: nothing more is processed for the
+    athlete until ``reapply_deletions`` finishes it. Without the record file set no deletion
+    can be recorded, so none is pending. An unreadable record raises; callers treat that as
+    pending.
+    """
+    if not os.environ.get(DELETION_RECORD_ENV, "").strip():
+        return False
+    return any(
+        isinstance(record, dict) and record.get("athlete_id") == athlete_id
+        for record in read_deletion_records()
+    )
 
 
 def _append_deletion_record(athlete_id: str, deleted_at: str) -> None:

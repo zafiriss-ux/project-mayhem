@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## PRIV-NEW-01 / #1378 — a recorded deletion stops the athlete until it finishes (owner assignment, 2026-11-05)
+
+**Status:** OPEN — tracked in GitHub issue #1378 (the only bug register); this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/data integrity. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D6.1 ("First the athlete leaves the scheduler").
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1378 only: an athlete named in the deletion record is not ready (worker `_require_consent`) and has no consent for its own Telegram commands (`_has_consent`) until `reapply_deletions` removes the rows; an unreadable record counts as pending (fail closed); the owner is exempt (D4.5) and nothing changes when no record file is set (no deletion can be recorded then).
+Deliverable: `athlete_lifecycle.deletion_pending`, the two checks, no consent or audit row from `/agree` while pending, no new id taken from the record, regression tests (failed delete, regular housekeeping, restart, reapply, Telegram, `/agree`, new id, unreadable record, other-athlete and owner controls), runbook line, full canonical gates, independent review with the extra consent-path review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1378 closes after merge and green main; the joint acceptance D04 of plan v2 (#1245, #1379, #1380) stays with those issues.
+Canonical doc update: this brief, the DB-NEW-01 closure line, CLAUDE.md test snapshot, docs/runbooks/multi-athlete.md, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, order 2 = #1378), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01 above) with its four conditions; this is a consent-path change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/core/athlete_lifecycle.py`, `titan/worker/__init__.py` (`_require_consent` only), `titan/integrations/telegram_bot.py` (`_has_consent`, `/agree` and their shared check only), `add_athlete` id choice, `tests/test_athlete_lifecycle.py`, the records above. No schema, threshold, consent text, retention or deletion-timing change; no automatic re-deletion outside start and the CLI.
+
+---
+
 ## DB-NEW-01 / #1412 — training writers respect the enclosing transaction (owner assignment, 2026-11-05)
 
-**Status:** OPEN — tracked in GitHub issue #1412 (the only bug register, owner instruction 2026-11-05); this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data integrity (SQLite transaction atomicity). **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α (tightens, no policy change).
+**Status:** RESOLVED 2026-11-05 — PR #1475, squash `5d20bb8`; main green; issue #1412 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data integrity (SQLite transaction atomicity). **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α (tightens, no policy change).
 
 Pass type: implementation
 Change Type: implementation
