@@ -20,7 +20,7 @@ Deliverable: Four guarded commits, regression tests (failed transaction rolls ba
 Stop condition: Any failed gate or blocking review stops commit/push/merge.
 Closure rule: #1412 closes only after owner-approved merge and green main.
 Canonical doc update: this brief, CLAUDE.md test snapshot, docs/governance/ledger.jsonl. Detail and status live in issue #1412 and its PR, not here.
-Authorizes: Owner instruction in the project thread, 2026-11-05 ('Ξεκίνα από το πρώτο πραγματικά επιλέξιμο issue του υφιστάμενου πλάνου'; plan v2 #1434 order 1 = #1412), within category Α of the standing instructions. Merge still needs the owner's explicit approval.
+Authorizes: Owner instruction in the project thread, 2026-11-05 ('Ξεκίνα από το πρώτο πραγματικά επιλέξιμο issue του υφιστάμενου πλάνου'; plan v2 #1434 order 1 = #1412), within category Α of the standing instructions. Merge: standing owner authorization, project thread 2026-11-05 21:56 UTC, for all current and future PRs ('Σου παρέχω τη ρητή και πάγια εξουσιοδότησή μου να πραγματοποιείς αυτόνομα merge σε όλα τα υφιστάμενα και μελλοντικά Pull Requests'), only when all hold: (1) independent reviewer passed the final PR version with no unresolved or material notes; (2) all required CI checks green on the last commit; (3) no conflicts or branch-protection violations; (4) high-risk changes also passed the extra security checks of their category. Otherwise the agent fixes the cause and repeats the checks; it does not merge.
 Allowed / Forbidden: `titan/core/repositories/training.py`, `tests/test_db_repositories.py` and the records above. No schema, threshold, golden, other writer or behavior change outside an open transaction.
 
 ---
