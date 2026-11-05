@@ -864,9 +864,11 @@ def _require_consent(db: DatabaseManager, athlete_id: str) -> None:
     """Raise AthleteNotReady unless the athlete has a current consent (ADR-0067 D4.2).
 
     Checked first, so without consent nothing is called or written for the athlete.
+    A recorded deletion that has not finished counts as no consent (D6.1, #1378).
     The owner is exempt (D4.5).
     """
-    from titan.core.athlete import AthleteNotReady
+    from titan.core import athlete_lifecycle
+    from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady
     from titan.core.repositories.access import PendingAuditUnreadable
 
     try:
@@ -876,6 +878,14 @@ def _require_consent(db: DatabaseManager, athlete_id: str) -> None:
         raise AthleteNotReady(athlete_id, "consent: pending-audit queue unreadable") from exc
     if not current:
         raise AthleteNotReady(athlete_id, "consent: none current")
+    if athlete_id == OWNER_ATHLETE_ID:
+        return
+    try:
+        pending = athlete_lifecycle.deletion_pending(athlete_id)
+    except (OSError, ValueError, RuntimeError) as exc:
+        raise AthleteNotReady(athlete_id, "deletion record unreadable") from exc
+    if pending:
+        raise AthleteNotReady(athlete_id, "deletion pending: run athletes.py reapply-deletions")
 
 
 def _require_garmin_ready(db: DatabaseManager, athlete_id: str) -> None:

@@ -461,6 +461,106 @@ def test_a_failed_delete_rolls_back_every_table(db, monkeypatch) -> None:
     assert _rows(db, maria) == before
 
 
+def _failed_delete(db: DatabaseManager, athlete_id: str) -> None:
+    """Delete *athlete_id* while one table is missing: the transaction fails, as a transient
+    SQL error would, after the deletion is recorded."""
+    tables = lifecycle.athlete_tables(db)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(lifecycle, "athlete_tables", lambda _db: [*tables[:3], "no_such_table", *tables[3:]])
+        with pytest.raises(sqlite3.OperationalError):
+            lifecycle.delete_athlete(db, athlete_id, now=_NOW)
+
+
+@pytest.mark.integration
+def test_a_failed_delete_stops_the_athlete_until_the_deletion_is_reapplied(db, env) -> None:
+    """#1378: the recorded deletion keeps the athlete out of the scheduler (ADR-0067 D6.1)."""
+    from titan import worker
+
+    maria, nikos = _add(db, "Maria", 2000), _add(db, "Nikos", 3000)
+    _seed(db, maria, 2000)
+    _seed(db, nikos, 3000)
+    assert worker._readiness_problem(db, maria) is None
+    _failed_delete(db, maria)
+    assert _rows(db, maria)  # the rows are still here and consent is still current
+    assert db.has_current_consent(maria, now=_NOW)
+
+    assert worker._readiness_problem(db, maria) == "deletion pending: run athletes.py reapply-deletions"
+    worker._athlete_housekeeping(db)  # the regular round does not finish the deletion
+    assert worker._readiness_problem(db, maria) == "deletion pending: run athletes.py reapply-deletions"
+    assert worker._readiness_problem(db, nikos) is None
+    worker._require_consent(db, "owner")  # the owner is never stopped by the record
+
+    db.close()  # a restart: the record is a file, so it still holds
+    again = DatabaseManager(db_dir=env / "data")
+    try:
+        assert worker._readiness_problem(again, maria) == "deletion pending: run athletes.py reapply-deletions"
+        assert lifecycle.reapply_deletions(again) == [maria]
+        assert _rows(again, maria) == {}
+        assert worker._readiness_problem(again, nikos) is None
+    finally:
+        again.close()
+
+
+@pytest.mark.integration
+def test_a_failed_delete_stops_the_athletes_own_telegram_commands(db) -> None:
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    maria, nikos = _add(db, "Maria", 2000), _add(db, "Nikos", 3000)
+    _seed(db, maria, 2000)
+    _seed(db, nikos, 3000)
+    bot = TitanTelegramBot(db=db)
+    assert bot._has_consent(maria) and bot._has_consent(nikos)
+    _failed_delete(db, maria)
+
+    assert bot._has_consent(maria) is False
+    assert bot._has_consent(nikos) is True
+    audit_rows = len(db.get_coach_audit_log())
+    consent_rows = db.conn.execute("SELECT COUNT(*) FROM consent_log WHERE athlete_id = ?", (maria,)).fetchone()[0]
+    from titan.core.athlete import CONSENT_TEXT_VERSION
+
+    reply = bot.handle_athlete_agree(2000, maria, CONSENT_TEXT_VERSION)
+    assert reply == "⏸ Your data is being deleted, so nothing was recorded."
+    assert len(db.get_coach_audit_log()) == audit_rows
+    assert db.conn.execute("SELECT COUNT(*) FROM consent_log WHERE athlete_id = ?", (maria,)).fetchone()[0] == consent_rows
+
+
+@pytest.mark.integration
+def test_an_unreadable_deletion_record_stops_every_athlete_but_the_owner(db) -> None:
+    from titan import worker
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    maria = _add(db, "Maria", 2000)
+    _seed(db, maria, 2000)
+    record = lifecycle.deletion_record_path()
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text('{"athlete_id": "a-00000000", "deleted_at": "2026-10-01"}\n{not json\n', encoding="utf-8")
+
+    assert worker._readiness_problem(db, maria) == "deletion record unreadable"
+    assert TitanTelegramBot(db=db)._has_consent(maria) is False
+    worker._require_consent(db, "owner")  # the owner's routine does not read the record
+
+
+@pytest.mark.integration
+def test_a_new_athlete_never_gets_an_id_still_in_the_deletion_record(db, monkeypatch) -> None:
+    record = lifecycle.deletion_record_path()
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text('{"athlete_id": "a-0000dead", "deleted_at": "2026-10-01"}\n', encoding="utf-8")
+    ids = iter(["a-0000dead", "a-0000beef"])
+    monkeypatch.setattr(lifecycle, "new_athlete_id", lambda: next(ids))
+    assert _add(db, "Maria", 2000) == "a-0000beef"
+
+
+@pytest.mark.integration
+def test_without_a_deletion_record_file_nothing_is_pending(db, monkeypatch) -> None:
+    from titan import worker
+
+    maria = _add(db, "Maria", 2000)
+    _seed(db, maria, 2000)
+    monkeypatch.delenv(lifecycle.DELETION_RECORD_ENV)
+    assert lifecycle.deletion_pending(maria) is False
+    assert worker._readiness_problem(db, maria) is None
+
+
 @pytest.mark.integration
 def test_a_restore_deletes_the_athlete_again(db, env) -> None:
     maria, nikos = _add(db, "Maria", 2000), _add(db, "Nikos", 3000)

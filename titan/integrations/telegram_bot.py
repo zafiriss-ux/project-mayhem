@@ -760,12 +760,31 @@ class TitanTelegramBot:
         return callback(athlete_id) or "✅ Sync complete."
 
     def _has_consent(self, athlete_id: str) -> bool:
-        """The athlete's current consent (ADR-0067 D4.2); an unreadable answer counts as none."""
+        """The athlete's current consent (ADR-0067 D4.2); an unreadable answer counts as none.
+
+        A recorded deletion that has not finished counts as none too (D6.1, #1378).
+        """
+        if self._deletion_pending(athlete_id):
+            return False
         try:
             return bool(self.db.has_current_consent(athlete_id))
         except Exception as exc:
             _log.error("titan.telegram.consent_check_failed", extra={"error_class": exc.__class__.__name__})
             return False
+
+    @staticmethod
+    def _deletion_pending(athlete_id: str) -> bool:
+        """The deletion record names the athlete (#1378); an unreadable record counts as yes. Never the owner."""
+        from titan.core import athlete_lifecycle
+        from titan.core.athlete import OWNER_ATHLETE_ID
+
+        if athlete_id == OWNER_ATHLETE_ID:
+            return False
+        try:
+            return athlete_lifecycle.deletion_pending(athlete_id)
+        except Exception as exc:
+            _log.error("titan.telegram.deletion_record_unreadable", extra={"error_class": exc.__class__.__name__})
+            return True
 
     @staticmethod
     def handle_athlete_consent() -> str:
@@ -782,6 +801,9 @@ class TitanTelegramBot:
             return f"ℹ️ Send /consent to read the text, then /agree {CONSENT_TEXT_VERSION} to agree to it."
         if _consent_text(version) is None:
             return "❌ The consent text is not available right now, so nothing was recorded."
+        if self._deletion_pending(athlete_id):
+            # The athlete is being deleted: no consent row, no audit row (ADR-0067 D6.1, #1378).
+            return "⏸ Your data is being deleted, so nothing was recorded."
         if not self._audit_before_effect(self.db, chat_id, "TELEGRAM_CONSENT", athlete_id, detail=version):
             return _AUDIT_UNAVAILABLE_REPLY
         try:
