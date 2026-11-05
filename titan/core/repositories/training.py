@@ -39,7 +39,8 @@ class TrainingRepository:
                 SET total_km = total_km + ?, last_used = ?
                 WHERE id = ? AND athlete_id = ?
             """, (distance_km, date, shoe_id, athlete_id))
-            self._db.conn.commit()
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
 
     def add_shoe(
         self, name: str, shoe_type: str = "DAILY", max_km: int = 800, athlete_id: str = "owner"
@@ -63,7 +64,8 @@ class TrainingRepository:
                 INSERT INTO gear_usage (shoe_name, shoe_type, max_km_limit, athlete_id)
                 VALUES (?, ?, ?, ?)
             """, (name, shoe_type, max_km, athlete_id))
-            self._db.conn.commit()
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
         return cursor.lastrowid
 
     def get_active_shoes(self, athlete_id: str = "owner") -> list[tuple]:
@@ -180,7 +182,8 @@ class TrainingRepository:
                 (distance_km, time_sec, pace_sec_per_km, date, race_name, athlete_id)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (distance_km, time_sec, pace_per_km, date, race_name, athlete_id))
-            self._db.conn.commit()
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
 
     def get_pr(
         self, distance_km: float, athlete_id: str = "owner"
@@ -236,7 +239,8 @@ class TrainingRepository:
                    VALUES (?, ?, ?, ?, ?, ?)""",
                 (date, distance_m, time_sec, surface, int(wind_adjusted), athlete_id),
             )
-            self._db.conn.commit()
+            if self._db._transaction_depth == 0:
+                self._db.conn.commit()
 
     def get_cs_performances(
         self, limit: int = 10, athlete_id: str = "owner"

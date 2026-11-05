@@ -8,6 +8,23 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## DB-NEW-01 / #1412 — training writers respect the enclosing transaction (owner assignment, 2026-11-05)
+
+**Status:** OPEN — tracked in GitHub issue #1412 (the only bug register, owner instruction 2026-11-05); this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data integrity (SQLite transaction atomicity). **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α (tightens, no policy change).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1412 only: `add_shoe`, `update_shoe_mileage`, `save_personal_best`, `log_cs_performance` commit only when no transaction is open, as `save_session`/`save_daily_metric` already do.
+Deliverable: Four guarded commits, regression tests (failed transaction rolls back, successful transaction keeps, standalone call still commits), full canonical gates, independent review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1412 closes only after owner-approved merge and green main.
+Canonical doc update: this brief, CLAUDE.md test snapshot, docs/governance/ledger.jsonl. Detail and status live in issue #1412 and its PR, not here.
+Authorizes: Owner instruction in the project thread, 2026-11-05 ('Ξεκίνα από το πρώτο πραγματικά επιλέξιμο issue του υφιστάμενου πλάνου'; plan v2 #1434 order 1 = #1412), within category Α of the standing instructions. Merge still needs the owner's explicit approval.
+Allowed / Forbidden: `titan/core/repositories/training.py`, `tests/test_db_repositories.py` and the records above. No schema, threshold, golden, other writer or behavior change outside an open transaction.
+
+---
+
 ## CI-01 / #1230 — enable and prove Gitleaks default rules (owner assignment, 2026-11-02)
 
 **Status:** OPEN pending independently reviewed PR, successful merge and green main. **Tier:** 1 — security/data integrity. **Severity (source / effective):** HIGH / HIGH. Alias: SEC-01. No phase clearance.
