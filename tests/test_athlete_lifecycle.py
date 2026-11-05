@@ -541,6 +541,43 @@ def test_an_unreadable_deletion_record_stops_every_athlete_but_the_owner(db) -> 
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("bad", ["first", "middle", "interrupted tail"])
+def test_a_damaged_deletion_record_leaves_no_recorded_athlete_ready(db, caplog, monkeypatch, bad) -> None:
+    """#1380: a damaged line stops the replay, which is said at CRITICAL; no athlete runs and Zaf is told."""
+    from titan import worker
+    from titan.integrations.telegram_bot import TitanTelegramBot
+
+    maria, nikos = _add(db, "Maria", 2000), _add(db, "Nikos", 3000)
+    _seed(db, maria, 2000)
+    _seed(db, nikos, 3000)
+    lines = [json.dumps({"athlete_id": who, "deleted_at": "2026-10-01T00:00:00+00:00"}) + "\n" for who in (maria, nikos)]
+    damaged = {
+        "first": ["{not json\n", *lines],
+        "middle": [lines[0], "{not json\n", lines[1]],
+        "interrupted tail": [*lines, '{"athlete_id": "a-'],
+    }[bad]
+    record = lifecycle.deletion_record_path()
+    record.parent.mkdir(parents=True, exist_ok=True)
+    record.write_text("".join(damaged), encoding="utf-8")
+
+    with caplog.at_level(logging.CRITICAL):
+        worker._athlete_housekeeping(db, at_start=True)
+
+    assert "worker_athlete_housekeeping_failed" in caplog.text
+    assert _rows(db, maria) and _rows(db, nikos)  # nothing was deleted from a damaged record
+    for athlete_id in (maria, nikos):
+        assert worker._readiness_problem(db, athlete_id) == "deletion record unreadable"
+    worker._require_consent(db, "owner")  # the owner still runs
+
+    sent: list[str] = []
+    monkeypatch.setattr(TitanTelegramBot, "send_message", lambda _self, text, **_kw: sent.append(text) or True)
+    monkeypatch.setattr(worker, "_utc_now", lambda: _NOW)
+    monkeypatch.setattr(worker, "_run_attempt", lambda *_a: pytest.fail("an athlete ran on a damaged record"))
+    worker._scheduled_morning(db, maria)
+    assert sent == [f"⏸ {maria} is not run today: deletion record unreadable."]
+
+
+@pytest.mark.integration
 def test_a_new_athlete_never_gets_an_id_still_in_the_deletion_record(db, monkeypatch) -> None:
     record = lifecycle.deletion_record_path()
     record.parent.mkdir(parents=True, exist_ok=True)
