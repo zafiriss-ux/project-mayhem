@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## PRIV-NEW-03 / #1380 — a damaged deletion record leaves no recorded athlete ready (owner assignment, 2026-11-05)
+
+**Status:** OPEN — tracked in GitHub issue #1380; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy. **Severity:** HIGH (issue). **Change Type:** implementation (regression evidence). **Workflow Path:** A. Category Α.
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1380 only. Re-check on main `cf7b74e`: the fix for #1378 (PR #1477) already makes a damaged record stop every athlete but the owner (`deletion record unreadable`), and the failed replay is logged at CRITICAL (`worker_athlete_housekeeping_failed`) with Zaf told once a day per athlete. This pass adds the regression for the issue's own scenarios (damaged first line, middle line, interrupted tail), including the owner notice from the real scheduler path; no application code changes.
+Deliverable: parametrized regression test (fails on `5d20bb8`, passes on `cf7b74e`), full canonical gates, independent review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1380 closes after merge and green main. The 30-day purge that the same failed replay skips is issue #1478.
+Canonical doc update: this brief, the PRIV-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, order 3 = #1380), category Α. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions.
+Allowed / Forbidden: `tests/test_athlete_lifecycle.py` and the records above. No application code, schema or record-format change.
+
+---
+
 ## PRIV-NEW-01 / #1378 — a recorded deletion stops the athlete until it finishes (owner assignment, 2026-11-05)
 
-**Status:** OPEN — tracked in GitHub issue #1378 (the only bug register); this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/data integrity. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D6.1 ("First the athlete leaves the scheduler").
+**Status:** RESOLVED 2026-11-05 — PR #1477, squash `cf7b74e`; main green; issue #1378 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/data integrity. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D6.1 ("First the athlete leaves the scheduler").
 
 Pass type: implementation
 Change Type: implementation
