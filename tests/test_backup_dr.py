@@ -472,3 +472,112 @@ def test_1452_a_copy_without_the_owner_row_fails(db: DatabaseManager, tmp_path: 
 
     assert result["ok"] is False
     assert result["error"] == "no owner athlete row", result
+
+
+# ── #1496 (BKP-NEW-04): the drill checks the indexes, triggers and views too ──
+
+
+@pytest.mark.parametrize(
+    ("kind", "name"),
+    [
+        ("trigger", "trg_threshold_offsets_no_hard_stop_insert"),
+        ("trigger", "trg_threshold_offsets_no_hard_stop_update"),
+        ("index", "uq_governance_outcomes_athlete_date"),
+        ("index", "idx_training_log_garmin_id"),
+    ],
+)
+def test_1496_a_backup_without_a_guard_object_fails(
+    db: DatabaseManager, tmp_path: Path, kind: str, name: str,
+) -> None:
+    # The H1–H5 guard triggers and these unique indexes come only from the v34 step and are
+    # not made again when the database opens: a restore from this backup would run without them.
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, f"DROP {kind.upper()} {name}")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == f"missing indexes, triggers or views: {kind} {name}", result
+
+
+def test_1496_a_missing_object_is_still_missing_after_the_code_opens_the_copy(
+    db: DatabaseManager, tmp_path: Path,
+) -> None:
+    # Why the drill must check the copy as stored: opening it does not bring the trigger back.
+    _backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert")
+    copy_dir = tmp_path / "opened"
+    copy_dir.mkdir()
+    shutil.copyfile(dest, copy_dir / "titan_core.db")
+    DatabaseManager("titan_core.db", db_dir=copy_dir).close()
+
+    conn = sqlite3.connect(copy_dir / "titan_core.db")
+    try:
+        names = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'")}
+    finally:
+        conn.close()
+    assert "trg_threshold_offsets_no_hard_stop_insert" not in names
+
+
+def test_1496_every_missing_object_is_named(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert",
+          "DROP TRIGGER trg_threshold_offsets_no_hard_stop_update")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["error"] == (
+        "missing indexes, triggers or views: trigger trg_threshold_offsets_no_hard_stop_insert, "
+        "trigger trg_threshold_offsets_no_hard_stop_update"
+    ), result
+
+
+def test_1496_a_trigger_this_code_does_not_make_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "CREATE TRIGGER reopen_consent AFTER UPDATE ON consent_log "
+                "BEGIN UPDATE consent_log SET revoked_at = NULL WHERE id = NEW.id; END")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == "triggers this code does not make: reopen_consent", result
+
+
+def test_1496_an_extra_index_or_view_passes(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "CREATE INDEX operator_extra_idx ON training_log (date)",
+          "CREATE VIEW operator_extra_view AS SELECT 1")
+
+    assert _load_restore_drill().run_drill(backup_dir)["ok"] is True
+
+
+def test_1496_names_only_a_weakened_guard_with_the_same_name_still_passes(
+    db: DatabaseManager, tmp_path: Path,
+) -> None:
+    # The known limit, pinned so it stays visible: #1505 checks what the guard does.
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "DROP TRIGGER trg_threshold_offsets_no_hard_stop_insert",
+          "CREATE TRIGGER trg_threshold_offsets_no_hard_stop_insert AFTER INSERT ON athlete_threshold_offsets "
+          "WHEN 0 BEGIN SELECT 1; END")
+
+    assert _load_restore_drill().run_drill(backup_dir)["ok"] is True
+
+
+def test_1496_a_trigger_named_like_sqlites_own_still_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    # SQLite refuses the name through normal SQL, but a crafted file can carry it.
+    backup_dir, dest = _real_backup(db, tmp_path)
+    conn = sqlite3.connect(str(dest))
+    try:
+        conn.execute("CREATE TRIGGER evil_1496 AFTER UPDATE ON consent_log BEGIN SELECT 1; END")
+        conn.commit()
+        conn.execute("PRAGMA writable_schema = ON")
+        conn.execute("UPDATE sqlite_master SET name = 'sqlite_evil' WHERE name = 'evil_1496'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    # Either SQLite refuses the schema or the drill names the trigger: it never passes.
+    assert result["ok"] is False
+    assert "sqlite_evil" in result["error"], result

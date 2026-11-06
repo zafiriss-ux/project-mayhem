@@ -62,7 +62,7 @@ python -m pytest tests/ -k db_integrity -v
    docker compose run --rm --no-deps --entrypoint ls titan-worker -l /backups
    docker compose run --rm --no-deps titan-worker python scripts/restore_drill.py
    ```
-   Το `restore_drill.py` ελέγχει πάντα το πιο πρόσφατο αντίγραφο. Αν αυτό έχει πρόβλημα, πάρε το προηγούμενο από τη λίστα και βάλε το όνομά του στο βήμα 3.
+   Το `restore_drill.py` ελέγχει πάντα το πιο πρόσφατο αντίγραφο. Αν αυτό έχει πρόβλημα, πάρε το προηγούμενο από τη λίστα και βάλε το όνομά του στο βήμα 3. Προσοχή: τότε το drill δεν έχει ελέγξει το αρχείο που βάζεις, ούτε τους φρουρούς H1–H5 του (#1505).
 2. Σταμάτησε τις υπηρεσίες ώστε να μη γράφει τίποτα στη βάση:
    ```bash
    docker compose stop titan-api titan-worker
