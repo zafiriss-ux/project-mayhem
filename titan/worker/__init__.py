@@ -336,7 +336,7 @@ _EASY_MAX_DURATION_MIN = 45
 # Days of this process whose briefing reached Telegram but whose delivery could not be
 # recorded, days already left, and days logged as too late; keyed by database file,
 # athlete and date (D-109).
-_UNRECORDED_SENDS: set[tuple[str, str, str]] = set()
+_UNRECORDED_SENDS: dict[tuple[str, str, str], int | None] = {}  # day -> the attempt that sent it
 _LEFT_DAYS: set[tuple[str, str, str]] = set()
 _LATE_LOGGED: set[tuple[str, str, str]] = set()
 
@@ -382,7 +382,7 @@ def _claim_routine(
     execution_date = now.date().isoformat()
     key = _day_key(db, athlete_id, execution_date)
     if key in _UNRECORDED_SENDS:
-        _mark_delivered(db, athlete_id, execution_date)
+        _mark_delivered(db, athlete_id, execution_date, _UNRECORDED_SENDS[key])
         return False
     gap = _dt.timedelta(seconds=ROUTINE_RETRY_DELAY_S) if spaced else None
     start_by = (
@@ -479,12 +479,17 @@ def _complete_routine(db: DatabaseManager, athlete_id: str, execution_date: str)
         )
 
 
-def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -> bool:
+def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int | None = None) -> bool:
     """Record the day's delivery; a delivered day is never sent again (ADR-0067 D8.3).
 
     A failure (such as "database is locked") is tried again after short pauses. If it still
     fails, this process remembers that the day was sent, so it neither sends it again nor
     reports it as not delivered (D-109). False when the delivery is still unrecorded.
+
+    With ``attempt``, the delivery is recorded, and its "sending" mark cleared, only while
+    that attempt still owns the open day (#1444). A later attempt that took the day over
+    keeps its own day: its delivery, its failure and its "sending" mark. Nothing is then
+    left for this attempt to record, so True.
     """
     key = _day_key(db, athlete_id, execution_date)
     error = ""
@@ -492,20 +497,28 @@ def _mark_delivered(db: DatabaseManager, athlete_id: str, execution_date: str) -
         if delay:
             time.sleep(delay)
         try:
-            db.mark_routine_delivered(
+            recorded = db.mark_routine_delivered(
                 athlete_id=athlete_id,
                 execution_date=execution_date,
                 routine_type=ROUTINE_MORNING,
                 delivered_at=_utc_now(),
+                attempt=attempt,
             )
         except Exception as exc:
             error = str(exc)
             continue
-        _UNRECORDED_SENDS.discard(key)
+        _UNRECORDED_SENDS.pop(key, None)
+        if attempt is not None and recorded is False:
+            logging.getLogger("titan.worker.runner").warning(
+                "worker_routine_delivery_superseded",
+                extra={"athlete_id": athlete_id, "execution_date": execution_date, "attempt": attempt},
+            )
+            return True
         # Only now: a crash before the delivery is recorded keeps the mark, so no second briefing (MA-F5).
+        # The day is now this attempt's and closed, so no later attempt has a mark to lose.
         _set_briefing_sending(db, athlete_id, execution_date, None)
         return True
-    _UNRECORDED_SENDS.add(key)
+    _UNRECORDED_SENDS[key] = attempt
     logging.getLogger("titan.worker.runner").critical(
         "worker_routine_delivery_unrecorded",
         extra={"athlete_id": athlete_id, "execution_date": execution_date, "error": error},
@@ -873,7 +886,7 @@ def _attempt_morning(db: DatabaseManager, athlete_id: str, execution_date: str, 
         # could be claimed by the next attempt in between, which would send it again. When
         # the delivery cannot be recorded, the mark stays until its time limit, so another
         # process does not claim the sent day at once (M0-01 review).
-        keep_mark = not _mark_delivered(db, athlete_id, execution_date)
+        keep_mark = not _mark_delivered(db, athlete_id, execution_date, attempt)
     elif not _attempt_is_current(db, athlete_id, execution_date, attempt):
         pass  # superseded or closed: the day is the later attempt's, not this one's to leave
     elif attempt >= ROUTINE_MAX_ATTEMPTS:
@@ -1655,7 +1668,7 @@ def _run_attempt(db: DatabaseManager, athlete_id: str, execution_date: str, atte
     if process.exitcode == _CHILD_SENT_UNRECORDED:
         # The briefing reached Telegram: record it here, and never send it again (D-109).
         # Before the mark is cleared (M0-18); if it still cannot be recorded, the mark stays.
-        recorded = _mark_delivered(db, athlete_id, execution_date)
+        recorded = _mark_delivered(db, athlete_id, execution_date, attempt)
     # A killed child cannot clear its own mark (ADR-0069 §4β).
     if recorded:
         _end_attempt(db, athlete_id, execution_date, attempt=attempt)

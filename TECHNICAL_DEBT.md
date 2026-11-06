@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## DEL-NEW-01 / #1444 — a late delivery of a superseded attempt never closes the newer day (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1444; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — delivery record / safety. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token) and ADR-0067 D8.3/D8.4 (a day is delivered once; after the last failed attempt Zaf is told and the day is left).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1444 only: a worker attempt records its delivery with its attempt number, checked in the same SQL statement: only while that attempt is still the day's latest and the day is open. A delivery that arrives after a later attempt took the day over closes nothing and leaves the later attempt's "sending" mark alone; the later attempt's own delivery or failure (and the last-attempt warning to Zaf) stays as it is. A delivery remembered as unrecorded keeps its attempt number. Calls without an attempt are unchanged.
+Deliverable: the fence, regression tests (the issue's interleaving in two connections and threads: old acknowledgement then the newer REST refused, the day stays open and is then left with Zaf told; old acknowledgement then the newer REST accepted; the fence at the database: superseded, owning, already closed), full canonical gates, independent review with the extra safety review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1444 closes after merge and green main.
+Canonical doc update: this brief, the CR-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1444), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a delivery-record change on the safety path, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/core/repositories/operations.py` (`mark_routine_delivered` only), `titan/core/database.py` (its wrapper), `titan/worker/__init__.py` (`_mark_delivered`, `_UNRECORDED_SENDS` and the calls passing the attempt), `tests/test_worker_morning_retry.py`, the records above. No schema, retry, claim, budget or message change.
+
+---
+
 ## CR-NEW-02 / #1248 — a superseded morning attempt never overwrites the newer decision (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1248; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate / governance record. **Severity:** HIGH (issue; governance path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token; an attempt that no longer owns the day records and sends nothing) and ADR-0067 D8.4 (one decision per athlete and day).
+**Status:** RESOLVED 2026-11-06 — PR #1485, squash `f6c0f68`; main green; issue #1248 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate / governance record. **Severity:** HIGH (issue; governance path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token; an attempt that no longer owns the day records and sends nothing) and ADR-0067 D8.4 (one decision per athlete and day).
 
 Pass type: implementation
 Change Type: implementation
