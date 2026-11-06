@@ -964,7 +964,7 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
     """
     from titan.core.athlete import OWNER_ATHLETE_ID, AthleteNotReady, load_athlete_profile
     from titan.integrations.garmin_sync import GarminSync
-    from titan.orchestration.garmin_persistence import persist_garmin_data
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore, persist_garmin_data
 
     log = logging.getLogger("titan.worker.runner")
     if athlete_id == OWNER_ATHLETE_ID:
@@ -988,11 +988,24 @@ def sync_athlete_on_request(db: DatabaseManager, athlete_id: str) -> str:
             db, data, _utc_now().date().isoformat(), athlete_id=athlete_id,
             emit=lambda action, **fields: log.info(action, extra={"athlete_id": athlete_id, **fields}),
         )
-    except Exception:
+    except Exception as exc:
+        # A /stop or a deletion during the fetch: the write transaction refused it and
+        # nothing was stored (PRIV-NEW-02, #1379). Not a sync failure to retry.
+        if isinstance(exc.__cause__, AthleteMayNotStore):
+            log.warning(
+                "athlete_sync_not_stored", extra={"athlete_id": athlete_id, "reason": exc.__cause__.reason},
+            )
+            return "⏸ Nothing was stored: your consent is withdrawn or your data is being deleted."
         log.exception("athlete_sync_failed", extra={"athlete_id": athlete_id})
         return "❌ Sync failed. Please try again later."
     finally:
-        _record_garmin_token_state(db, athlete_id, garmin)
+        try:
+            _record_garmin_token_state(db, athlete_id, garmin)
+        except Exception as exc:  # a deleted athlete has no account row left; the reply stands
+            log.warning(
+                "athlete_garmin_token_state_not_recorded",
+                extra={"athlete_id": athlete_id, "error_class": exc.__class__.__name__},
+            )
     return "✅ Sync complete."
 
 
@@ -1147,7 +1160,13 @@ def _run_morning(db: DatabaseManager, athlete_id: str, *, day: _MorningDay | Non
     try:
         delivered = coach.run_morning_routine()
     finally:
-        _record_garmin_token_state(db, athlete_id, getattr(coach, "garmin", None))
+        try:
+            _record_garmin_token_state(db, athlete_id, getattr(coach, "garmin", None))
+        except Exception as exc:  # a deleted athlete has no account row left (#1379); keep the routine's own outcome
+            logging.getLogger("titan.worker.runner").warning(
+                "athlete_garmin_token_state_not_recorded",
+                extra={"athlete_id": athlete_id, "error_class": exc.__class__.__name__},
+            )
     _plan_next_week_on_sunday(coach, db, athlete_id, today)
     return delivered is True
 

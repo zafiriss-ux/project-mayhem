@@ -157,6 +157,8 @@ def test_morning_routine_writes_to_correct_athlete() -> None:
                 (aid, aid.replace("_", " ").title()),
             )
         db.conn.commit()
+        for aid in ("athlete_a", "athlete_b"):  # data is stored only with consent (#1379)
+            db.grant_consent(aid, "v1")
 
         coach_a = _make_coach(db, "athlete_a")
         coach_b = _make_coach(db, "athlete_b")

@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## PRIV-NEW-02 / #1379 — a Garmin sync stores nothing after a /stop or deletion that landed during the fetch (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1379; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/consent. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 and D6.1 and ADR-0079 (a withdrawal or deletion stops all processing).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1379 only: every Garmin write of `titan/orchestration/garmin_persistence.py` (`persist_garmin_data`, `backfill_training_history`, `rewrite_recent_hrv_once`) for an athlete other than the owner first checks, as the first read of its write transaction, that the athlete still exists, has no deletion recorded and has current consent (database and pending-audit queue). Otherwise nothing of the sync is written; any error counts as "may not". In WAL mode a /stop or deletion committed after that read makes the writes fail, so the whole sync rolls back. The athlete's /sync answers that nothing was stored. In the morning pipeline the refusal ends the morning for that athlete: nothing more is written or sent, and the worker's next attempt stops at its consent check. The owner is exempt (D4.5).
+Deliverable: the check, the /sync reply (also when the token state can no longer be written for a deleted athlete), the end of the morning on a refusal, regression tests (/stop and deletion during the athlete's /sync through the worker, /stop during the morning's fetch, /stop before the write, /stop committed after the check, deletion, pending deletion, unreadable consent, backfill and HRV rewrite; controls: athlete with consent, owner), three existing per-athlete tests now enrol their athlete with consent, a precondition (assertions unchanged), full canonical gates, independent review with the extra consent-path review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1379 closes after merge and green main; with #1245 and #1380 already closed, this completes the joint acceptance D04 of plan v2.
+Canonical doc update: this brief, the ISO-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1379), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a consent-path change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/orchestration/garmin_persistence.py`, `titan/orchestration/daily_coach.py` (step 2 refusal only), `titan/worker/__init__.py` (`sync_athlete_on_request` only), `tests/titan/orchestration/test_garmin_persistence.py`, `tests/test_telegram_per_athlete.py`, `tests/test_morning_baselines.py`, `tests/test_garmin_per_athlete.py` and `tests/test_athlete_isolation_behavioral.py` (consent precondition only), the records above. No schema or foreign-key change, no consent rule, threshold or owner change.
+
+---
+
 ## ISO-NEW-02 / #1245 — a /stop after an athlete's sender was built ends its sending (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1245; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent/athlete isolation. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 (a withdrawal stops coaching) and ADR-0079 (the withdrawal always takes effect, a queued one already counts).
+**Status:** RESOLVED 2026-11-06 — PR #1482, squash `d94b344`; main green; issue #1245 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent/athlete isolation. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 (a withdrawal stops coaching) and ADR-0079 (the withdrawal always takes effect, a queued one already counts).
 
 Pass type: implementation
 Change Type: implementation

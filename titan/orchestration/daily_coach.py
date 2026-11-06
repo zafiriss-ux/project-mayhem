@@ -73,6 +73,7 @@ from titan.orchestration.engine_registry import EngineRegistry
 from titan.orchestration.garmin_persistence import (  # noqa: F401 — re-exported for callers and tests
     _GARMIN_ACTIVITY_TYPE_MAP,
     PERSIST_ERROR,
+    AthleteMayNotStore,
     PersistenceFailure,
     _safe_float,
     _safe_int,
@@ -1004,6 +1005,12 @@ class DailyCoach:
                 lambda: self._persist_garmin_data(garmin_data, today_str),
             )
         except PersistenceFailure as pf:
+            if isinstance(pf.__cause__, AthleteMayNotStore):
+                # A /stop or a deletion landed during the Garmin fetch (PRIV-NEW-02, #1379):
+                # nothing was stored, and nothing more is written or sent for this athlete
+                # this morning. The worker's next attempt stops at its consent check.
+                _daily_coach_event("morning_stopped_may_not_store", reason=pf.__cause__.reason)
+                raise
             today_rhr = pf.today_rhr
             today_sleep_score = pf.today_sleep_score
             today_sleep_hours = pf.today_sleep_hours

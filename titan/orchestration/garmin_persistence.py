@@ -70,6 +70,54 @@ class PersistenceFailure(Exception):
         self.today_sleep_hours = today_sleep_hours
 
 
+class AthleteMayNotStore(Exception):
+    """An athlete other than the owner may not have new data stored (PRIV-NEW-02, #1379).
+
+    Raised inside the write transaction, so nothing of the sync is written. The reason
+    names the condition only, never data.
+    """
+
+    def __init__(self, athlete_id: str, reason: str) -> None:
+        super().__init__(f"{athlete_id}: {reason}")
+        self.athlete_id = athlete_id
+        self.reason = reason
+
+
+def _require_may_store(db: DatabaseManager, athlete_id: str) -> None:
+    """Check, inside the write transaction, that the athlete may still have data stored.
+
+    A /stop or a deletion can land while Garmin is being fetched, after the check made
+    before the fetch (ADR-0067 D4.3, D6.1; ADR-0079). The athlete must still exist, have
+    no deletion recorded and have current consent. This is the transaction's first read,
+    so in WAL mode a /stop or deletion committed after it makes this transaction's writes
+    fail, and the whole sync rolls back. Any error here counts as "may not" (fail closed).
+    Every Garmin write of this module (the sync, the history backfill, the HRV rewrite)
+    calls it first. The owner is exempt (D4.5) and never reaches this check.
+    """
+    from titan.core import athlete_lifecycle
+
+    try:
+        exists = athlete_lifecycle.athlete_exists(db, athlete_id)
+        pending = athlete_lifecycle.deletion_pending(athlete_id)
+        consent = bool(db.has_current_consent(athlete_id))
+    except Exception as exc:
+        raise AthleteMayNotStore(athlete_id, f"state unreadable ({exc.__class__.__name__})") from exc
+    if not exists:
+        raise AthleteMayNotStore(athlete_id, "athlete deleted")
+    if pending:
+        raise AthleteMayNotStore(athlete_id, "deletion pending")
+    if not consent:
+        raise AthleteMayNotStore(athlete_id, "no current consent")
+
+
+def _require_may_store_unless_owner(db: DatabaseManager, athlete_id: str) -> None:
+    """``_require_may_store`` for every athlete but the owner, who needs no consent (D4.5)."""
+    from titan.core.athlete import OWNER_ATHLETE_ID
+
+    if athlete_id != OWNER_ATHLETE_ID:
+        _require_may_store(db, athlete_id)
+
+
 def _safe_float(value, default: float = 0.0) -> float:
     """Convert value to float safely."""
     try:
@@ -300,6 +348,7 @@ def persist_garmin_data(
     _sanity = DataSanityChecker()
     try:
         with db.transaction():
+            _require_may_store_unless_owner(db, athlete_id)
             _save_activities(
                 db, activities, today_str, athlete_id=athlete_id, emit=emit, sanity=_sanity,
             )
@@ -438,6 +487,7 @@ def backfill_training_history(
     )
     if activities:
         with db.transaction():
+            _require_may_store_unless_owner(db, athlete_id)
             _save_activities(
                 db, activities, today_str, athlete_id=athlete_id, emit=emit, sanity=DataSanityChecker(),
             )
@@ -476,6 +526,7 @@ def rewrite_recent_hrv_once(
     sanity = DataSanityChecker()
     rewritten = 0
     with db.transaction():
+        _require_may_store_unless_owner(db, athlete_id)
         for entry in entries:
             rmssd = _safe_float(entry.get("rmssd")) or None
             if not entry.get("date") or rmssd is None:

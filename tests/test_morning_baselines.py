@@ -100,6 +100,15 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
     try:
         now = datetime.now(UTC).date()
         today = now.isoformat()
+        if athlete_id != "owner":
+            # An athlete other than the owner reaches the morning enrolled and with consent;
+            # without them nothing of the sync is stored (#1379).
+            db.conn.execute(
+                "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, ?)",
+                (athlete_id, athlete_id, today),
+            )
+            db.conn.commit()
+            db.grant_consent(athlete_id, "v1")
         # A shared DB, as in the pilot: the owner has 14 days of decisions and no
         # overrides, so the override-lockdown ceiling does not hide the HRV/RHR gates.
         for i in range(1, 15):
@@ -467,3 +476,51 @@ def test_payload_hrv_is_last_nights_reading(tmp_path, monkeypatch):
     """SD-13 guard: with a reading last night the payload carries it."""
     payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=81.0)
     assert payload["hrv_value"] == 81.0, payload["hrv_value"]
+
+
+def test_a_stop_during_the_mornings_garmin_fetch_ends_the_morning(tmp_path, monkeypatch):
+    """PRIV-NEW-02 (#1379): the /stop lands on another connection while Garmin is fetched.
+
+    Nothing of the sync is stored, no decision or sync record is written for the athlete
+    and nothing is sent; the worker's next attempt stops at its consent check.
+    """
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore, PersistenceFailure
+
+    athlete = "a-0000000s"
+    monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
+    other = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
+    try:
+        today = datetime.now(UTC).date().isoformat()
+        db.conn.execute(
+            "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, ?)", (athlete, athlete, today),
+        )
+        db.conn.commit()
+        db.grant_consent(athlete, "v1")
+
+        class _StoppedDuringFetch(_Garmin):
+            def sync_all(self) -> dict:
+                other.withdraw_consent(athlete, coach_id="telegram:1", action_type="TELEGRAM_STOP")
+                return super().sync_all()
+
+        engines = EngineRegistry.from_db(db=db, athlete_id=athlete)
+        telegram = _Telegram()
+        coach = DailyCoach(
+            garmin_sync=_StoppedDuringFetch(today, 60.0, 50), weather_api=None, telegram_bot=telegram,
+            hrv_engine=engines.hrv, tsb_engine=engines.tsb, readiness_engine=engines.readiness,
+            optimal_time_calc=_OptimalTime(), nutrition_optimizer=_Nutrition(), weekly_planner=_Planner(),
+            db=db, athlete_id=athlete, engines=engines,
+        )
+
+        with pytest.raises(PersistenceFailure) as failure:
+            coach.run_morning_routine(soreness=2)
+
+        assert isinstance(failure.value.__cause__, AthleteMayNotStore)
+        assert telegram.daily == []
+        for table in ("daily_metrics", "training_log", "sync_metadata"):
+            count = db.conn.execute(f"SELECT COUNT(*) FROM {table} WHERE athlete_id = ?", (athlete,)).fetchone()[0]  # noqa: S608
+            assert count == 0, table
+        assert db.get_governance_decision_on(athlete, today) is None
+    finally:
+        other.close()
+        db.close()
