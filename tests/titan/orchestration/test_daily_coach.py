@@ -1691,6 +1691,81 @@ def test_hydrated_cs_tracker_stays_locked_with_two_trials():
     assert GovernanceEngine().check_cs_confidence_lock(coach.cs_tracker)["locked"] is True
 
 
+# ── #1349 / #1350: reproduction only (ING-NEW-03, ING-NEW-04) ────────────────
+# The trials are synthetic. The xfails fail for the bug and turn into plain
+# tests when it is fixed.
+
+_PAIR_1349 = [(3000.0, 600.0), (5000.0, 1100.0)]
+_INCOMPATIBLE_1350 = [(3000.0 + 500 * i, 1200.0 - 50 * i) for i in range(6)]
+
+
+def _hydrated_cs_tracker(trials):
+    """Hydrate a real tracker from trials all dated today, the newest first."""
+    from titan.science.critical_speed import CriticalSpeedTracker
+
+    today = datetime.now(UTC).date().isoformat()
+    coach = _make_hydration_coach(_HydrationDB(cs=[(today, d, t) for d, t in reversed(trials)]))
+    coach.cs_tracker = CriticalSpeedTracker()
+    coach._hydrate_engines_from_db()
+    return coach.cs_tracker
+
+
+def _cs_lock(tracker):
+    from titan.science.governance_engine import GovernanceEngine
+
+    return GovernanceEngine().check_cs_confidence_lock(tracker)
+
+
+@pytest.mark.unit
+def test_1349_control_two_distinct_trials_keep_the_cs_lock():
+    tracker = _hydrated_cs_tracker(_PAIR_1349)
+    assert tracker.cs_smoothed is not None and tracker.cs_smoothed > 0
+    assert _cs_lock(tracker)["locked"] is True
+
+
+@pytest.mark.unit
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="ING-NEW-03 (#1349): the same two trials entered three times lift the CS lock",
+)
+def test_1349_the_same_two_trials_entered_again_keep_the_cs_lock():
+    tracker = _hydrated_cs_tracker(_PAIR_1349 * 3)
+    assert _cs_lock(tracker)["locked"] is True
+
+
+@pytest.mark.unit
+def test_1350_control_the_fit_of_these_trials_is_a_negative_speed():
+    from titan.science.critical_speed import CriticalSpeedEngine
+
+    for dist, time_s in _INCOMPATIBLE_1350:
+        assert 2.0 < dist / time_s < 6.0
+    cs, _ = CriticalSpeedEngine.estimate_cs_and_dprime(_INCOMPATIBLE_1350)
+    assert cs < 0
+
+
+@pytest.mark.unit
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="ING-NEW-04 (#1350): a negative critical speed reaches the tracker",
+)
+def test_1350_a_negative_critical_speed_does_not_reach_the_tracker():
+    tracker = _hydrated_cs_tracker(_INCOMPATIBLE_1350)
+    assert tracker.cs_smoothed is None or tracker.cs_smoothed > 0
+
+
+@pytest.mark.unit
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="ING-NEW-04 (#1350): trials whose fit is a negative speed lift the CS lock",
+)
+def test_1350_trials_whose_fit_is_a_negative_speed_keep_the_cs_lock():
+    tracker = _hydrated_cs_tracker(_INCOMPATIBLE_1350)
+    assert _cs_lock(tracker)["locked"] is True
+
+
 @pytest.mark.unit
 def test_hydrate_engines_from_db_reads_the_coachs_own_cs_performances():
     db = _HydrationDB()
