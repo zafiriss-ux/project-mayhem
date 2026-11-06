@@ -14,6 +14,8 @@ DATE=$(date +%Y%m%d)
 BACKUP_FILE="$BACKUP_DIR/titan_core.db.$DATE"
 KEEP_DAYS=7
 
+# The backups hold health data: only the owner of the files can read them (#1451 review).
+umask 077
 mkdir -p "$BACKUP_DIR"
 
 if [ ! -f "$DB_FILE" ]; then
@@ -21,7 +23,11 @@ if [ ! -f "$DB_FILE" ]; then
   exit 1
 fi
 
-# SQLite online backup API — safe during concurrent writes
+# SQLite online backup API — safe during concurrent writes.
+# Written under a hidden name of its own and renamed only when complete and sound, so an
+# interrupted or overlapping run never leaves a titan_core.db.YYYYMMDD that looks finished
+# (#1451, BKP-NEW-01). A leftover partial is removed by the prune below.
+PARTIAL_FILE="$(mktemp "$BACKUP_DIR/.titan_core.db.$DATE.partial.XXXXXX")"
 python3 -c "
 import sqlite3, sys
 src = sys.argv[1]
@@ -30,10 +36,17 @@ con = sqlite3.connect(src)
 bak = sqlite3.connect(dst)
 with bak:
     con.backup(bak)
+ok = bak.execute('PRAGMA integrity_check').fetchone()
+pages = bak.execute('PRAGMA page_count').fetchone()
 bak.close()
 con.close()
-print(f'Backup OK: {dst}')
-" "$DB_FILE" "$BACKUP_FILE"
+if ok is None or ok[0] != 'ok':
+    sys.exit(f'Backup FAILED integrity_check: {ok}')
+if not pages or pages[0] < 1:
+    sys.exit('Backup FAILED: empty database')
+" "$DB_FILE" "$PARTIAL_FILE" || { rm -f "$PARTIAL_FILE" "$PARTIAL_FILE-journal"; exit 1; }
+mv -f "$PARTIAL_FILE" "$BACKUP_FILE"
+echo "Backup OK: $BACKUP_FILE"
 
 # The pending-audit queue of consent withdrawals goes with the database (ADR-0079).
 # The copy is taken under the shared queue lock when flock is available.
@@ -51,7 +64,7 @@ fi
 
 # Prune old backups (keep last 7)
 find "$BACKUP_DIR" \
-  \( -name "titan_core.db.*" -o -name "pending_audit.jsonl.*" \) \
+  \( -name "titan_core.db.*" -o -name ".titan_core.db.*.partial.*" -o -name "pending_audit.jsonl.*" \) \
   -mtime +$KEEP_DAYS \
   -delete
 

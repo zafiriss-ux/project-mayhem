@@ -186,8 +186,15 @@ docker compose run --rm --no-deps titan-worker python scripts/restore_drill.py
 python3 scripts/verify_backup.py ~/Documents/TITAN
 ```
 
-`verify_backup.py` looks only for `titan_core.db.*` files, so it does not see the worker's
-backups. If a check fails, try the next most-recent file.
+`verify_backup.py` looks only for finished `titan_core.db.YYYYMMDD` files, so it does not see the
+worker's backups, a backup still being written (`.titan_core.db.YYYYMMDD.partial.*`) or SQLite
+sidecar files. It passes only a TITAN database that a restore can start from: integrity `ok`, a
+TITAN schema version this code can open (older ones are migrated on start, newer ones are refused)
+and the core tables present with at least one athlete. An empty (0-byte) file fails (#1451).
+`backup.sh` writes the copy readable only by its owner and renames it into place only after its
+own integrity check. It reads TITAN's schema version
+from the code, so run it with the project's Python environment (the one TITAN runs with). If a
+check fails, try the next most-recent file.
 
 ---
 
