@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## CR-NEW-02 / #1248 — a superseded morning attempt never overwrites the newer decision (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1248; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate / governance record. **Severity:** HIGH (issue; governance path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token; an attempt that no longer owns the day records and sends nothing) and ADR-0067 D8.4 (one decision per athlete and day).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1248 only: a worker attempt writes the day's decision with a fence `(routine_type, attempt)`; the governance upsert, the in-place replace and the resume write check, in the writing SQL statement itself, that the attempt is still the day's latest and the day is open. A refused write records nothing (database or memory), marks the attempt lost, skips the resume hook, and the send step then sends nothing. The attempt's "sending" mark is fenced the same way, and a failed fenced write rolls back so no stale snapshot stays open on the shared connection. Writes outside the worker (no fence) are unchanged.
+Deliverable: the fence, regression tests (the issue's interleaving with a second connection: attempt 1 passes its check, attempt 2 records and delivers REST, attempt 1 then writes TEMPO, for a first and a recomputed decision; refused writes for a superseded, delivered or left day; fenced decision without a database; the superseded attempt's sending mark; a failed fenced write leaves no transaction open; control: the owning attempt records), full canonical gates, independent review with the extra safety-gate review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1248 closes after merge and green main. #1444 (delivery ACK) and #1445 (weekly plan) are separate issues and stay open.
+Canonical doc update: this brief, the CR-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1248), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a governance-path change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/core/repositories/governance.py` (`save_governance_decision`, `replace_governance_decision_on` and the fence helper), `titan/core/repositories/operations.py` (`update_routine_resume` only), `titan/core/database.py` and `titan/core/persistence.py` (their wrappers and the adapter interface; the PostgreSQL adapter refuses a fenced write), `titan/science/outcome_tracker.py` (`record_decision` and `DecisionNotRecorded`), `titan/orchestration/daily_coach.py` (record-outcome handler and `_decision_fence` only), `titan/worker/__init__.py` (`_bind_day` and the sending-mark helpers only), `tests/test_worker_morning_retry.py`, the records above. No schema, gate, threshold, delivery-ACK or weekly-plan change.
+
+---
+
 ## CR-NEW-01 / #1247 — a resent stored decision never sends a quality session while an injury is open (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1247; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H1). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0069 §3 (an open `/injury` triggers H1 and the morning is REST) and D-109 (a retry resends only while the inputs are unchanged).
+**Status:** RESOLVED 2026-11-06 — PR #1484, squash `3ae1903`; main green; issue #1247 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H1). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0069 §3 (an open `/injury` triggers H1 and the morning is REST) and D-109 (a retry resends only while the inputs are unchanged).
 
 Pass type: implementation
 Change Type: implementation

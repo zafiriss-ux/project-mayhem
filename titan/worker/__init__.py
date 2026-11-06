@@ -581,11 +581,13 @@ def _crash_reminder_text(athlete_id: str) -> str:
     return _CRASH_REMINDER_OWNER if athlete_id == "owner" else _CRASH_REMINDER_ATHLETE
 
 
-def _set_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str, value: str | None) -> None:
+def _set_briefing_sending(
+    db: DatabaseManager, athlete_id: str, execution_date: str, value: str | None, attempt: int | None = None,
+) -> None:
     try:
         db.update_routine_resume(
             athlete_id=athlete_id, execution_date=execution_date, routine_type=ROUTINE_MORNING,
-            fields={"sending": value},
+            fields={"sending": value}, attempt=attempt,
         )
     except Exception as exc:  # the send goes ahead: a crash then resends, as before MA-F5
         logging.getLogger("titan.worker.runner").exception(
@@ -593,9 +595,12 @@ def _set_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: 
         )
 
 
-def _mark_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str) -> None:
-    """Write "sending" before the briefing goes to Telegram (MA-F5, ADR-0069 §8)."""
-    _set_briefing_sending(db, athlete_id, execution_date, _utc_now().isoformat())
+def _mark_briefing_sending(db: DatabaseManager, athlete_id: str, execution_date: str, attempt: int | None = None) -> None:
+    """Write "sending" before the briefing goes to Telegram (MA-F5, ADR-0069 §8).
+
+    With ``attempt``, only while that attempt still owns the open day (#1248).
+    """
+    _set_briefing_sending(db, athlete_id, execution_date, _utc_now().isoformat(), attempt)
 
 
 def _send_crash_reminder(db: DatabaseManager, athlete_id: str) -> bool:
@@ -710,7 +715,7 @@ def _bind_day(coach, db: DatabaseManager, athlete_id: str, day: _MorningDay) -> 
     def _recorded(session: dict) -> None:
         day.decided = True
         try:
-            db.update_routine_resume(**where, fields={
+            db.update_routine_resume(**where, attempt=day.attempt, fields={
                 "session": _session_caps(session),
                 "inputs": db.routine_inputs_fingerprint(athlete_id, day.execution_date),
             })
@@ -730,14 +735,16 @@ def _bind_day(coach, db: DatabaseManager, athlete_id: str, day: _MorningDay) -> 
     # M0-01: a decision is recorded and a briefing sent only while this attempt owns the day.
     coach.attempt_is_current = lambda: _attempt_is_current(db, athlete_id, day.execution_date, day.attempt)
     coach.attempt_lost = False
+    # #1248: the decision is written only while this attempt owns the day, in the same statement.
+    coach.decision_fence = (ROUTINE_MORNING, day.attempt)
     coach.replace_decision = day.replace_decision
     coach.briefing_note = day.note
     coach.on_decision_recorded = _recorded
     coach.before_system_error_alert = _alert_allowed
     # MA-F5: "sending" before the send; a refused send clears it, a crash leaves it.
-    coach.before_briefing_send = lambda: _mark_briefing_sending(db, athlete_id, day.execution_date)
+    coach.before_briefing_send = lambda: _mark_briefing_sending(db, athlete_id, day.execution_date, day.attempt)
     coach.after_briefing_send = (
-        lambda ok: None if ok else _set_briefing_sending(db, athlete_id, day.execution_date, None)
+        lambda ok: None if ok else _set_briefing_sending(db, athlete_id, day.execution_date, None, day.attempt)
     )
 
 

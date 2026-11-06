@@ -465,6 +465,172 @@ def test_dw06_after_a_crash_mid_send_the_athlete_gets_one_reminder_line(db, monk
     assert _row(db) == (2, 1, 1)
 
 
+# ── CR-NEW-02 (#1248): a superseded attempt never overwrites the newer decision ──
+
+def _decision(session: str) -> dict:
+    return {"athlete_profile_id": _A, "date": _TODAY, "session_planned": "TEMPO",
+            "session_post_governance": session, "locks_applied": []}
+
+
+def _stored(db: DatabaseManager) -> list[str]:
+    return [row[1] for row in _decisions(db)]
+
+
+def _stale_coach(db: DatabaseManager, takeover, *, replace: bool = False):
+    """Attempt 1's real DailyCoach effects, bound as the worker binds them.
+
+    Its ownership check passes, and ``takeover`` then runs: a later attempt in another
+    connection (as another process) takes the day over before attempt 1 writes.
+    """
+    from titan.orchestration.daily_coach import DailyCoach
+
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.athlete_id = _A
+    coach.db = db
+    coach.telegram = _Bot(chat_id=_CHAT)
+    coach.outcome_tracker = OutcomeTracker(db=db, athlete_id=_A)
+    worker._bind_day(coach, db, _A, worker._MorningDay(execution_date=_TODAY, attempt=1, replace_decision=replace))
+    real_check, checks = coach.attempt_is_current, []
+
+    def _check() -> bool:
+        owns = real_check()
+        if not checks:  # attempt 1 passed the check; attempt 2 runs before its write
+            takeover()
+        checks.append(owns)
+        return owns
+
+    coach.attempt_is_current = _check
+    return coach
+
+
+def _result(session: str):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        decision_trace={"session_planned_pre_governance": "TEMPO", "session_post_governance": session,
+                        "locks_applied": [], "phase": "BASE"},
+        session_plan={"session_type": session, "distance_km": 10.0},
+        coaching_payload={"session": session},
+    )
+
+
+def _newer_attempt_delivers_rest(data_dir: Path):
+    def _takeover() -> None:
+        other = DatabaseManager(db_dir=data_dir)
+        try:
+            state = other.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                                started_at=_MORNING, max_attempts=3)
+            assert state == ("run", 2)
+            other.save_governance_decision(_decision("REST"))
+            other.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                        fields={"session": {"session_type": "REST"}})
+            other.mark_routine_delivered(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                         delivered_at=_MORNING)
+        finally:
+            other.close()
+    return _takeover
+
+
+def _data_dir() -> Path:
+    return Path(os.environ["TITAN_DATA_DIR"])
+
+
+@pytest.mark.parametrize("replace", [False, True], ids=["first decision", "recomputed decision"])
+def test_1248_a_superseded_attempt_does_not_overwrite_the_newer_rest(db, replace) -> None:
+    if replace:  # attempt 1 is itself a recompute that replaces an earlier TEMPO in place
+        db.save_governance_decision(_decision("TEMPO"))
+    coach = _stale_coach(db, _newer_attempt_delivers_rest(_data_dir()), replace=replace)
+
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))
+    sent = coach._make_send_telegram_handler()(None, _result("TEMPO"))
+
+    assert _stored(db) == ["REST"]  # the durable row is attempt 2's REST
+    resume = db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+    assert resume.get("session") == {"session_type": "REST"} and "inputs" not in resume
+    assert coach.attempt_lost is True
+    assert sent is False and _to_athlete() == []  # attempt 1 sends nothing
+    assert _row(db) == (2, 1, 1)
+
+
+def test_1248_the_attempt_that_owns_the_day_records_its_decision(db) -> None:
+    coach = _stale_coach(db, lambda: None)
+
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))
+
+    assert _stored(db) == ["TEMPO"]
+    resume = db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+    assert resume["session"]["session_type"] == "TEMPO" and "inputs" in resume
+    assert coach.attempt_lost is False
+
+
+@pytest.mark.parametrize("closed", ["delivered", "left"])
+def test_1248_the_fence_refuses_a_closed_or_superseded_day_at_the_database(db, closed) -> None:
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    assert db.save_governance_decision(_decision("REST"), fence=("morning", 1)) is True
+    assert db.save_governance_decision(_decision("TEMPO"), fence=("morning", 2)) is False  # not its attempt
+    assert db.replace_governance_decision_on(_decision("TEMPO"), fence=("morning", 2)) is False
+    with pytest.raises(LookupError):
+        db.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                 fields={"session": "TEMPO"}, attempt=2)
+    if closed == "delivered":
+        db.mark_routine_delivered(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                  delivered_at=_MORNING)
+    else:
+        db.conn.execute("UPDATE worker_routine_executions SET completed_at = ? WHERE athlete_id = ?",
+                        (_MORNING.isoformat(), _A))
+        db.conn.commit()
+    assert db.save_governance_decision(_decision("TEMPO"), fence=("morning", 1)) is False
+    assert db.replace_governance_decision_on(_decision("TEMPO"), fence=("morning", 1)) is False
+    with pytest.raises(LookupError):
+        db.update_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                 fields={"session": "TEMPO"}, attempt=1)
+    assert _stored(db) == ["REST"]
+    assert "session" not in db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+
+
+def test_1248_a_superseded_attempt_does_not_touch_the_newer_attempts_sending_mark(db) -> None:
+    coach = _stale_coach(db, lambda: None)
+    coach._make_record_outcome_handler()(None, _result("TEMPO"))  # attempt 1 still owns the day here
+    _newer_attempt_delivers_rest(_data_dir())()  # attempt 2 takes over before attempt 1 marks its send
+
+    coach.before_briefing_send()
+    coach.after_briefing_send(False)
+
+    resume = db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning")
+    assert "sending" not in resume and resume["session"] == {"session_type": "REST"}
+
+
+def test_1248_a_failed_fenced_write_leaves_no_transaction_open(db) -> None:
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    broken = {**_decision("TEMPO"), "session_planned": None}  # NOT NULL: the statement fails
+    with pytest.raises(sqlite3.IntegrityError):
+        db.save_governance_decision(broken, fence=("morning", 1))
+    assert db.conn.in_transaction is False
+    db.save_governance_decision(_decision("REST"))
+    with pytest.raises(sqlite3.IntegrityError):
+        db.replace_governance_decision_on(broken, fence=("morning", 1))
+    assert db.conn.in_transaction is False
+    assert _stored(db) == ["REST"]
+
+
+@pytest.mark.unit
+def test_1248_a_fenced_decision_without_a_database_is_refused() -> None:
+    from titan.science.outcome_tracker import DecisionNotRecorded
+
+    tracker = OutcomeTracker(db=None, athlete_id=_A)
+    with pytest.raises(DecisionNotRecorded):
+        tracker.record_decision(
+            session_planned="TEMPO", session_post_governance="TEMPO", locks_applied=[], governance_clean=True,
+            phase="BASE", vlg_color="GREEN", apl_result={}, acwr=1.0, tsb_value=0.0, readiness_score=60.0,
+            glycogen_debt=0.0, date=_TODAY, fence=("morning", 1),
+        )
+    assert tracker._decisions == []
+
+
 # ── MA-F5: the "sending" mark (ADR-0069 §8) ───────────────────────────────────
 
 def test_maf5_a_refused_send_clears_the_mark_and_the_retry_resends_the_decision(db, monkeypatch) -> None:

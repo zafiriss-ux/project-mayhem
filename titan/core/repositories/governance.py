@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -36,6 +37,30 @@ def _utc_iso(moment: datetime) -> str:
 def _float_or_none(value: Any) -> float | None:
     """A stored ACWR or TSB: NULL stays unknown and is never read as 0.0 (OW-M2, ADR-0069 §4α)."""
     return None if value is None else float(value)
+
+
+
+# #1248 (M0-01): the attempt that writes the day's decision must still own the open day.
+# The check is part of the writing statement, so no later attempt can take the day over
+# between the check and the write. The statements end with this condition, whose first
+# argument is 1 when there is no fence (always true).
+def _routine_fence(decision: dict[str, Any], fence: tuple[str, int] | None) -> tuple:
+    """The arguments of the fence condition: no fence, or the attempt that must own the day."""
+    if fence is None:
+        return (1, None, None, None, None)
+    routine_type, attempt = fence
+    return (0, decision_athlete_id(decision), decision['date'], routine_type, int(attempt))
+
+
+def _execute_or_roll_back(db: Any, sql: str, args: tuple) -> sqlite3.Cursor:
+    """Run one writing statement; on any error roll back, so no stale snapshot stays open (#1248)."""
+    cursor = db.conn.cursor()
+    try:
+        cursor.execute(sql, args)
+    except BaseException:
+        db.conn.rollback()
+        raise
+    return cursor
 
 
 class GovernanceRepository:
@@ -207,17 +232,24 @@ class GovernanceRepository:
             self._db.conn.commit()
             return cursor.rowcount
 
-    def save_governance_decision(self, decision: dict[str, Any]) -> None:
+    def save_governance_decision(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
         """Persist a governance decision snapshot into governance_outcomes.
 
         One row per athlete and day (v34, ADR-0069 §4δ): a second decision of the same day
         replaces the first in place, as ``replace_governance_decision_on`` does, and the
         outcome columns stay as they are. An unknown ACWR or TSB is stored as NULL (§4α).
+
+        ``fence`` is ``(routine_type, attempt)`` of a worker attempt (#1248, M0-01): the row
+        is written only while that attempt still owns the open day, checked in the same SQL
+        statement as the write. Returns False when the fence refused the write.
         """
+        fence_args = _routine_fence(decision, fence)
         with self._db._lock:
             self._db._ensure_open_locked()
-            cursor = self._db.conn.cursor()
-            cursor.execute(
+            cursor = _execute_or_roll_back(
+                self._db,
                 """INSERT INTO governance_outcomes (
                        athlete_id,
                        date, session_planned, session_post_governance,
@@ -227,7 +259,10 @@ class GovernanceRepository:
                        outcome_rpe, outcome_completed, outcome_session_type_actual, outcome_notes,
                        decision_was_followed, override_outcome_exclusion,
                        outcome_independence_ok, algorithm_version_snapshot
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                   WHERE (? = 1 OR EXISTS (SELECT 1 FROM worker_routine_executions
+                          WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? AND attempts = ?
+                            AND delivered_at IS NULL AND completed_at IS NULL))
                    ON CONFLICT (athlete_id, date) DO UPDATE SET
                        session_planned = excluded.session_planned,
                        session_post_governance = excluded.session_post_governance,
@@ -267,29 +302,39 @@ class GovernanceRepository:
                     int(bool(decision.get('override_outcome_exclusion', False))),
                     int(bool(decision.get('outcome_independence_ok', True))),
                     json.dumps(decision.get('algorithm_version_snapshot', {}), default=str),
+                    *fence_args,
                 ),
             )
+            saved = cursor.rowcount > 0
             self._db.conn.commit()
+        return saved
 
-    def replace_governance_decision_on(self, decision: dict[str, Any]) -> bool:
+    def replace_governance_decision_on(
+        self, decision: dict[str, Any], *, fence: tuple[str, int] | None = None,
+    ) -> bool:
         """Overwrite the athlete's decision of that date with a recomputed one (D-109).
 
         A morning retry that computes the day again on newer inputs supersedes the
         stored decision in place, so ``governance_outcomes`` keeps one row for one athlete
         and day (ADR-0067 D8.4, D-098). The latest row of that day keeps its id; the
-        outcome columns are left as they are. False when there is no row to replace.
+        outcome columns are left as they are. False when there is no row to replace, or
+        when ``fence`` (as in ``save_governance_decision``) refused the write (#1248).
         """
+        fence_args = _routine_fence(decision, fence)
         with self._db._lock:
             self._db._ensure_open_locked()
-            cursor = self._db.conn.cursor()
-            cursor.execute(
+            cursor = _execute_or_roll_back(
+                self._db,
                 """UPDATE governance_outcomes SET
                        session_planned = ?, session_post_governance = ?, locks_applied_json = ?,
                        governance_clean = ?, phase = ?, vlg_color = ?, apl_priority_vector_json = ?,
                        lock_thresholds_active_json = ?, acwr = ?, tsb_value = ?, readiness_score = ?,
                        glycogen_debt = ?, afi_value = ?, algorithm_version_snapshot = ?
                    WHERE id = (SELECT id FROM governance_outcomes WHERE athlete_id = ? AND date = ?
-                               ORDER BY id DESC LIMIT 1)""",
+                               ORDER BY id DESC LIMIT 1)
+                     AND (? = 1 OR EXISTS (SELECT 1 FROM worker_routine_executions
+                          WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? AND attempts = ?
+                            AND delivered_at IS NULL AND completed_at IS NULL))""",
                 (
                     decision['session_planned'],
                     decision['session_post_governance'],
@@ -307,6 +352,7 @@ class GovernanceRepository:
                     json.dumps(decision.get('algorithm_version_snapshot', {}), default=str),
                     decision_athlete_id(decision),
                     decision['date'],
+                    *fence_args,
                 ),
             )
             replaced = cursor.rowcount > 0
