@@ -19,6 +19,8 @@ auth_store = AuthStore(db=db)
 app = create_app(db=db, auth_store=auth_store)
 
 if __name__ == "__main__":
+    # One process only: the refresh-token reuse check orders its steps with a lock inside
+    # this process's AuthStore (#1494). Do not add workers without #1503.
     uvicorn.run(
         app,
         host="0.0.0.0",

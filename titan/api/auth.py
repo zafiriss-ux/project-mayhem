@@ -118,6 +118,27 @@ class AuthStore:
         """Use a refresh token once: True only for the one call that revoked it (#1392)."""
         return self._db.consume_auth_token(jti, _utc_now().isoformat())
 
+    def revoke_all_refresh_tokens(self, user_id: str) -> int:
+        """Revoke every refresh token of *user_id*; return how many were active (#1494)."""
+        return self._db.revoke_auth_tokens_for_user(user_id)
+
+    def rotate_refresh_token(self, jti: str, user: AuthUser) -> tuple[str, str, datetime] | None:
+        """Use refresh token *jti* once and issue the next one; None when it was already used.
+
+        A token used twice may be stolen (#1494): then every refresh token of the user is
+        revoked, so the other holder's session ends too. The store lock holds from the use
+        to the new token, so a revoke for a second use cannot run before the new token of the
+        first use exists and leave it active. That order holds only inside one API process
+        with one ``AuthStore`` (``scripts/run_api.py`` runs one uvicorn worker); several
+        processes need one database transaction instead (#1503). A failure raises; the
+        caller answers 401.
+        """
+        with self._lock:
+            if self.consume_refresh_token(jti):
+                return create_refresh_token(user, self)
+            self.revoke_all_refresh_tokens(user.id)
+            return None
+
     def is_refresh_token_active(self, jti: str) -> bool:
         row = self._db.get_auth_token(jti)
         if row is None or row["revoked"]:

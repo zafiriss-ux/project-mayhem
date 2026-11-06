@@ -503,14 +503,27 @@ def create_app(
 
         # #1392 (ADR-0048): the old token is used up in one check-and-revoke statement, so a
         # second refresh with it at the same moment gets 401 and never a second session.
-        if not store.consume_refresh_token(payload.jti):
-            logging.getLogger("titan.api").info(json.dumps({
+        # #1494: that second use may be a stolen token, so every refresh token of the user is
+        # revoked. The log names the account and the first 8 characters of the jti only.
+        reuse_log = {"sub": user.id, "jti_prefix": payload.jti[:8]}
+        try:
+            rotated = store.rotate_refresh_token(payload.jti, user)
+        except Exception as exc:
+            logging.getLogger("titan.api").exception(json.dumps({
+                "flow": "api", "action": "auth_token_rejected",
+                "failure_class": "REFRESH_ROTATION_FAILED", "severity": "CRITICAL",
+                "error_type": type(exc).__name__, **reuse_log,
+            }, default=str))
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked") from exc
+        if rotated is None:
+            logging.getLogger("titan.api").warning(json.dumps({
                 "flow": "api", "action": "auth_token_rejected",
                 "failure_class": "REFRESH_TOKEN_REUSED", "severity": "WARNING",
+                "all_refresh_tokens_revoked": True, **reuse_log,
             }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
         access_token, access_expires_at = create_access_token(user)
-        new_refresh_token, _, _ = create_refresh_token(user, store)
+        new_refresh_token, _, _ = rotated
         _set_auth_cookies(response, access_token, new_refresh_token)
         return LoginResponse(access_token=access_token, expires_at=access_expires_at)
 

@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## AUTH-NEW-02 / #1494 — a refresh token used twice at the same moment revokes every refresh token of the user (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1494; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1494 only. `/auth/refresh`: when the one-statement use of the refresh token finds it already used (the second request of a race, `REFRESH_TOKEN_REUSED`), every unrevoked refresh token of that user is revoked in one statement (`revoke_auth_tokens_for_user`), and the answer stays 401. `AuthStore.rotate_refresh_token` holds the store lock from the use to the new token, so the revoke for a second use runs after the first use's new token exists and revokes it too. A failure of the use, the new token or the revoke answers 401 and logs `REFRESH_ROTATION_FAILED`. The reuse log names `sub` and the first 8 characters of the `jti`, never the token or the whole `jti`. Scope, on purpose: only two uses that overlap (the second passes the active check before the first used the token) are caught; a later replay of a token already rotated still gets a plain 401 without the revoke, because rotation and logout are not told apart today (follow-up #1503, HIGH). A client that sends two refreshes at once, or a logout that overlaps a refresh, now ends every session of that user (password login again on every device); that is the trade-off the issue asks for. The lock order relies on one API process (`scripts/run_api.py`, comment added; several processes: #1503).
+Deliverable: the change and regression tests (a reuse ends every session of the user, also the one the first use was given, and not another user's; the log has `sub` and a `jti` prefix only; a failed revoke still answers 401 with no cookie; the store revokes only that user's tokens; the #1392 race now leaves no active token). 5 tests fail on main.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1494 closes after merge and green main.
+Canonical doc update: this brief, the DR-NEW-06 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, next = #1494), category Α (tightening only, contract §13 not weakened: every new path answers 401, nothing refused today is accepted). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/api/main.py` (refresh only), `titan/api/auth.py` (`AuthStore`), `scripts/run_api.py` (comment only), `titan/core/database.py` and `titan/core/repositories/access.py` (one revoke method), `tests/titan/api/test_auth.py`, the records above. No schema, token format, cookie, CSRF, logout, AGENTS.md or ADR change.
+
+---
+
 ## DR-NEW-06 / #1497 — a restore loses no consent withdrawal from a damaged database or with --skip-live-withdrawals (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1497; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH, ADR-0079). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1502, squash `79c3219`; main green; issue #1497 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH, ADR-0079). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation
