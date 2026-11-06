@@ -1237,3 +1237,68 @@ def test_empty_token_key_counts_as_unset(monkeypatch, caplog):
 def test_garmin_sync_accepts_a_valid_token_key(monkeypatch):
     monkeypatch.setenv("TITAN_GARTH_TOKEN_KEY", Fernet.generate_key().decode())
     assert GarminSync(email="a@example.com", password="pw").is_connected is False
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# #1256 (INT-NEW-01, SD-15): reproduction only, no fix in this change
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def _sync_with_runs(monkeypatch, runs=None, fetch_error=None):  # noqa: ANN001, ANN202
+    """The real ``_sync_operation`` over a synthetic Garmin client; the other feeds are empty."""
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    if fetch_error is not None:
+        sync.client.get_activities_by_date.side_effect = fetch_error
+    else:
+        sync.client.get_activities_by_date.return_value = runs
+    for feed in ("sync_weight", "sync_sleep", "sync_hrv"):
+        monkeypatch.setattr(sync, feed, lambda *a, **k: [])
+    sync.athlete_max_hr = 190
+    return sync._sync_operation(7)
+
+
+def _heavy_run(duration: object) -> dict:
+    run = _make_activity_payload(avg_hr=175, max_hr=185)
+    run.update(duration=duration, distance=25000.0, activityId="act-1256-heavy")
+    return run
+
+
+@pytest.mark.integration
+def test_1256_control_a_failed_activity_fetch_makes_the_sync_partial(monkeypatch):
+    payload = _sync_with_runs(monkeypatch, fetch_error=RuntimeError("synthetic transport error"))
+
+    assert payload["status"] == "partial"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("field", ["duration", "calories"])
+def test_1256_a_heavy_run_with_an_unreadable_field_is_dropped_from_the_loads(monkeypatch, field):
+    valid = _sync_with_runs(monkeypatch, runs=[_heavy_run(9000)])
+    bad_run = _heavy_run(9000)
+    bad_run[field] = "bad" if field == "duration" else None  # also a null Garmin field
+    malformed = _sync_with_runs(monkeypatch, runs=[bad_run])
+
+    assert [a["activity_id"] for a in valid["activities"]] == ["act-1256-heavy"]
+    assert valid["activities"][0]["estimated_training_load"] > 0
+    # The run and its load are gone. A fix that keeps the run (instead of marking the sync
+    # partial) changes this line on purpose; it is today's behaviour, not a requirement.
+    assert malformed["activities"] == []
+
+
+@pytest.mark.integration
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="INT-NEW-01 / SD-15 (#1256): a run skipped as malformed leaves the sync 'ok', so the morning counts the "
+    "loads as complete and H4 can read CLEAR from a TSB without that run. Remove this mark "
+    "with the fix.",
+)
+@pytest.mark.parametrize("field", ["duration", "calories"])
+def test_1256_a_run_skipped_as_malformed_makes_the_sync_partial(monkeypatch, field):
+    malformed = _heavy_run(9000)
+    malformed[field] = "bad" if field == "duration" else None  # also a null Garmin field
+    payload = _sync_with_runs(monkeypatch, runs=[malformed, _make_activity_payload()])
+
+    assert payload.get("status") == "partial"  # today the key is absent, which reads as "ok"
