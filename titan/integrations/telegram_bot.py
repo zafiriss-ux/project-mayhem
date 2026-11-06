@@ -1102,6 +1102,22 @@ class TitanTelegramBot:
                 athlete_id=self.athlete_id,
             )
             return False
+        # A /stop (or a recorded deletion) after this sender was built ends sending too, not
+        # only the next run (ISO-NEW-02, #1245; ADR-0067 D4.3, ADR-0079). The
+        # owner needs no consent (D4.5); an unreadable answer counts as none and is logged as
+        # an error by _has_consent. As with the binding, a /stop between this read and the send
+        # can still let that one message through. A refusal after a /stop is expected, so it is
+        # a warning, not a critical.
+        if self.athlete_id != _OWNER_ATHLETE_ID and not self._has_consent(self.athlete_id):
+            _log.warning("titan.telegram.send_without_consent_refused", extra={"athlete_id": self.athlete_id})
+            _telegram_event(
+                "failure",
+                failure_class=SEND_FAIL,
+                subsystem="send_message",
+                reason="no_current_consent",
+                athlete_id=self.athlete_id,
+            )
+            return False
         if self.bot and TELEBOT_AVAILABLE:
             try:
                 self.bot.send_message(int(self.chat_id), text, parse_mode=parse_mode)

@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ISO-NEW-02 / #1245 — a /stop after an athlete's sender was built ends its sending (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1245; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent/athlete isolation. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 (a withdrawal stops coaching) and ADR-0079 (the withdrawal always takes effect, a queued one already counts).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1245 only: `TitanTelegramBot.send_message` of an athlete other than the owner also requires the athlete's current consent before every send, through the existing `_has_consent` (database consent, pending-audit queue, recorded deletion; an unreadable answer counts as none). Without it nothing is sent, the send returns False and a CRITICAL is logged. The owner is exempt (D4.5).
+Deliverable: the check, regression tests (/stop through the real handler after the sender was built, /stop held only in the pending-audit queue, recorded deletion, unreadable consent, unreadable deletion record, unreadable pending-audit queue; controls: operator alert still reaches the owner only, another athlete's /stop, owner not checked), full canonical gates, independent review with the extra consent-path review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1245 closes after merge and green main; the joint acceptance D04 of plan v2 (#1245, #1379, #1380) stays with #1379.
+Canonical doc update: this brief, the ISO-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1245), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a consent-path change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/integrations/telegram_bot.py` (`send_message` only), `tests/test_telegram_per_athlete.py`, the records above. No schema, consent rule, queue format, worker retry or message-content change.
+
+---
+
 ## ISO-NEW-01 / #1244 — an athlete's sender sends only to the chat still bound to that athlete (owner assignment, 2026-11-05)
 
-**Status:** OPEN — tracked in GitHub issue #1244; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation. **Severity:** HIGH (issue; recipient authorization). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0040 (athlete isolation) and ADR-0067 D10.1 (an athlete's messages go to their own private chat).
+**Status:** RESOLVED 2026-11-06 — PR #1481, squash `ba9b660`; main green; issue #1244 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation. **Severity:** HIGH (issue; recipient authorization). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0040 (athlete isolation) and ADR-0067 D10.1 (an athlete's messages go to their own private chat).
 
 Pass type: implementation
 Change Type: implementation

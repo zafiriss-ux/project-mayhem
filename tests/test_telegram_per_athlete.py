@@ -496,9 +496,135 @@ def test_the_owners_sender_is_not_rechecked(db, monkeypatch) -> None:
         raise AssertionError("the owner's chat lives in .env and is not looked up")
 
     monkeypatch.setattr(db, "get_athlete_account", _fail)
+    monkeypatch.setattr(db, "has_current_consent", _fail)  # the owner needs no consent (D4.5)
 
     assert sender.send_message("owner's briefing") is True
     assert sender.bot.sent == [(OWNER_CHAT, "owner's briefing")]
+
+
+# ── A /stop after the sender was built (ISO-NEW-02, #1245) ───────────────────
+
+
+@pytest.mark.integration
+def test_a_stop_after_the_sender_was_built_ends_sending(bot, db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+    assert db.has_current_consent(_A)
+
+    reply = bot.handle_athlete_stop(CHAT_A, _A)  # the real /stop path of the owner's polling bot
+
+    assert reply.startswith("⏹ Stopped")
+    assert not db.has_current_consent(_A)
+    assert sender.send_daily_coaching({"decision": "EASY"}) is False
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_stop_only_in_the_pending_audit_queue_ends_sending_too(bot, db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    def _audit_down(*_args, **_kwargs):  # noqa: ANN002, ANN003, ANN202
+        raise RuntimeError("coach_audit_log unavailable")
+
+    # The revocation with its audit row fails, and so does the revocation alone: the
+    # withdrawal is only in the pending-audit queue and already counts (ADR-0079 §2-3).
+    monkeypatch.setattr(db._access, "revoke_consent_with_audit", _audit_down)
+    monkeypatch.setattr(db._access, "revoke_consent", _audit_down)
+    reply = bot.handle_athlete_stop(CHAT_A, _A)
+
+    assert reply.startswith("⏹ Stopped")
+    assert db.conn.execute(
+        "SELECT COUNT(*) FROM consent_log WHERE athlete_id = ? AND revoked_at IS NULL", (_A,)
+    ).fetchone()[0] == 1  # the database row is still open; only the queue holds the /stop
+    assert not db.has_current_consent(_A)
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_recorded_deletion_after_the_sender_was_built_ends_sending(db, monkeypatch) -> None:
+    from titan.core import athlete_lifecycle
+
+    sender = _built_sender(db, monkeypatch)
+    monkeypatch.setattr(athlete_lifecycle, "deletion_pending", lambda athlete_id: athlete_id == _A)
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_consent_that_cannot_be_read_sends_nothing(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    def _fail(_athlete_id, **_kwargs):  # noqa: ANN001, ANN003, ANN202
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(db, "has_current_consent", _fail)
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_an_unreadable_deletion_record_sends_nothing(db, monkeypatch) -> None:
+    from titan.core import athlete_lifecycle
+
+    sender = _built_sender(db, monkeypatch)
+
+    def _unreadable(_athlete_id):  # noqa: ANN001, ANN202
+        raise ValueError("damaged deletion record line")
+
+    monkeypatch.setattr(athlete_lifecycle, "deletion_pending", _unreadable)
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_an_unreadable_pending_audit_queue_sends_nothing(db, monkeypatch) -> None:
+    from titan.core.repositories.access import PendingAuditUnreadable
+
+    sender = _built_sender(db, monkeypatch)
+    # A complete line that is not JSON: the queue is unreadable (ADR-0079 §3).
+    db.pending_audit.path.write_text("not json\n", encoding="utf-8")
+    with pytest.raises(PendingAuditUnreadable):
+        db.pending_audit.pending_athletes()
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_after_a_stop_an_operator_alert_still_reaches_the_owner_only(bot, db, monkeypatch) -> None:
+    from titan.integrations import telegram_bot
+
+    sender = _built_sender(db, monkeypatch)
+    bot.handle_athlete_stop(CHAT_A, _A)
+    owner_copies: list[str] = []
+    monkeypatch.setattr(
+        telegram_bot.TitanTelegramBot,
+        "send_message",
+        lambda self, text, parse_mode="Markdown", _real=telegram_bot.TitanTelegramBot.send_message: (
+            owner_copies.append(text) or True if self.athlete_id == "owner" else _real(self, text, parse_mode)
+        ),
+    )
+
+    telegram_bot.alert_operator(sender, title="Sync failed", message="detail", athlete_text="Sync failed today.")
+
+    assert sender.bot.sent == []
+    assert len(owner_copies) == 1 and _A in owner_copies[0]
+
+
+@pytest.mark.integration
+def test_another_athletes_stop_leaves_this_sender_sending(bot, db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+    _grant_consent(db, _B)
+
+    bot.handle_athlete_stop(CHAT_B, _B)
+
+    assert db.has_current_consent(_A)
+    assert sender.send_message("A's morning briefing") is True
+    assert sender.bot.sent == [(CHAT_A, "A's morning briefing")]
 
 
 # ── /sync for an athlete ──────────────────────────────────────────────────────
