@@ -1821,6 +1821,47 @@ def test_cs_hydrated_event_reports_distinct_trials_and_rejected_fits(monkeypatch
     assert [(e["performances"], e["distinct_trials"], e["rejected_fits"]) for e in hydrated] == [(6, 2, 0), (6, 6, 5)]
 
 
+_NEGATIVE_D_PRIME_1419 = [(3000, 900), (5000, 1200), (3000, 880), (5000, 1180), (3000, 860), (5000, 1160)]
+
+
+@pytest.mark.unit
+def test_1419_control_every_fit_of_these_trials_has_a_negative_d_prime():
+    from titan.science.critical_speed import CriticalSpeedEngine, parse_time_trial
+
+    trials = [parse_time_trial(str(d), str(t)) for d, t in _NEGATIVE_D_PRIME_1419]
+    for k in range(2, len(trials) + 1):
+        cs, d_prime = CriticalSpeedEngine.estimate_cs_and_dprime(trials[:k])
+        assert cs > 0 and d_prime < 0
+
+
+@pytest.mark.unit
+def test_1419_trials_whose_fit_has_a_negative_d_prime_keep_the_cs_lock(tmp_path, monkeypatch):
+    """SCI-NEW-03 (#1419): the real database path; guarded since #1515 (D' > 0)."""
+    from titan.science.critical_speed import CriticalSpeedTracker, parse_time_trial
+
+    events = []
+    monkeypatch.setattr(daily_coach, "_daily_coach_event", lambda action, **fields: events.append({"action": action, **fields}))
+    db = DatabaseManager(db_dir=tmp_path)
+    try:
+        today = datetime.now(UTC).date()
+        for i, (dist, time_s) in enumerate(_NEGATIVE_D_PRIME_1419):
+            distance_m, time_sec = parse_time_trial(str(dist), str(time_s))
+            db.log_cs_performance((today - timedelta(days=5 - i)).isoformat(), distance_m, time_sec)
+        coach = _make_hydration_coach(db)
+        coach.cs_tracker = CriticalSpeedTracker()
+        confidence = coach._hydrate_engines_from_db()
+    finally:
+        db.close()
+    assert confidence["cs"] is True
+    assert coach.cs_tracker.cs_raw_history == []
+    assert coach.cs_tracker.d_prime is None
+    assert _cs_lock(coach.cs_tracker)["locked"] is True
+    # The step ran and rejected every fit (it did not fail and skip them).
+    assert not any(e["action"] == "cs_hydration_failed" for e in events)
+    hydrated = [e for e in events if e["action"] == "cs_hydrated"]
+    assert [(e["distinct_trials"], e["rejected_fits"]) for e in hydrated] == [(6, 5)]
+
+
 @pytest.mark.unit
 def test_hydrate_engines_from_db_reads_the_coachs_own_cs_performances():
     db = _HydrationDB()
