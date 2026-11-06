@@ -260,6 +260,89 @@ def test_db_integrity_restore_drill_fails_without_backups(tmp_path: Path) -> Non
     assert drill.run_drill(tmp_path)["ok"] is False
 
 
+# ── #1452 (BKP-NEW-02): the drill checks this code's schema and opens the copy ──
+
+
+def _real_backup(db: DatabaseManager, tmp_path: Path) -> tuple[Path, Path]:
+    backup_dir = tmp_path / "backups"
+    dest = db.backup_database(backup_dir=backup_dir)
+    assert dest is not None
+    return backup_dir, dest
+
+
+def _edit(path: Path, *statements: str) -> None:
+    conn = sqlite3.connect(str(path))
+    conn.execute("PRAGMA foreign_keys = OFF")
+    for statement in statements:
+        conn.execute(statement)
+    conn.commit()
+    conn.close()
+
+
+def test_1452_core_table_names_without_their_columns_fail(tmp_path: Path) -> None:
+    backup_dir = tmp_path / "backups"
+    backup_dir.mkdir()
+    artifact = backup_dir / "titan_2026-11-02.db"
+    _edit(artifact, "CREATE TABLE athletes (x)", "CREATE TABLE training_log (x)", "CREATE TABLE daily_metrics (x)",
+          f"PRAGMA user_version = {SCHEMA_VERSION}")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"].startswith("missing tables: "), result
+
+
+def test_1452_a_missing_operational_table_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "DROP TABLE auth_tokens")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == "missing tables: auth_tokens", result
+
+
+def test_1452_a_missing_column_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "ALTER TABLE auth_tokens DROP COLUMN athlete_id")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == "missing columns: auth_tokens.athlete_id", result
+
+
+def test_1452_a_copy_the_code_cannot_read_fails(
+    db: DatabaseManager, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from titan.api.auth import AuthStore
+
+    backup_dir, _ = _real_backup(db, tmp_path)
+
+    def _broken(self, jti: str) -> bool:
+        raise sqlite3.OperationalError("synthetic: no such table: auth_tokens")
+
+    monkeypatch.setattr(AuthStore, "is_refresh_token_active", _broken)
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert "OperationalError" in result["error"], result
+
+
+def test_1452_a_valid_backup_passes_and_is_never_modified(db: DatabaseManager, tmp_path: Path) -> None:
+    import hashlib
+
+    backup_dir, dest = _real_backup(db, tmp_path)
+    before = hashlib.sha256(dest.read_bytes()).hexdigest()
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is True, result
+    assert hashlib.sha256(dest.read_bytes()).hexdigest() == before
+    assert sorted(p.name for p in backup_dir.iterdir()) == [dest.name]
+
+
 # ── RC-02: the local restore runbook (Scenario B) ───────────────────────────
 
 _BACKUP_PLACEHOLDER = "~/Documents/TITAN/backups/titan_core.db.YYYYMMDD"
@@ -354,3 +437,23 @@ def test_docker_restore_runbook_keeps_the_old_wal_with_the_kept_copy(tmp_path: P
     again = subprocess.run(["sh", "-c", script], check=False, capture_output=True, text=True)
     assert again.returncode != 0
     assert _rows(data / "titan_core.db.before-restore") == 19
+
+
+def test_1452_a_missing_core_table_column_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "ALTER TABLE daily_metrics DROP COLUMN sleep_quality")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == "missing columns: daily_metrics.sleep_quality", result
+
+
+def test_1452_a_copy_without_the_owner_row_fails(db: DatabaseManager, tmp_path: Path) -> None:
+    backup_dir, dest = _real_backup(db, tmp_path)
+    _edit(dest, "DELETE FROM athletes WHERE athlete_id = 'owner'")
+
+    result = _load_restore_drill().run_drill(backup_dir)
+
+    assert result["ok"] is False
+    assert result["error"] == "no owner athlete row", result

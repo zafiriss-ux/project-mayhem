@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## BKP-NEW-02 / #1452 — the restore drill checks this code's schema and that the code can open the copy (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1452; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 2 — data recovery. **Severity:** MEDIUM (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-03 (the restore drill shows the latest real backup is a usable TITAN database).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1452 only: `scripts/restore_drill.py` keeps its checks (integrity, `user_version` equal to SCHEMA_VERSION, core tables) and adds three, all on the scratch copy: (1) every table and column of a fresh database that this code creates in the scratch directory is present in the copy (no hand-kept list; an upgraded database has the same tables and columns, `tests/e2e/test_legacy_db_upgrade.py`); (2) the owner's athlete row is present, checked read-only before the code opens the copy (opening would seed it); (3) the code opens the copy (`DatabaseManager`) and reads it: an athlete's activities and a refresh-token lookup (`AuthStore`). Any failure is reported and the drill exits 1. The backup itself is never opened for writing. The drill's role in phase close (AGENTS DR-03 phase-close evidence) is unchanged.
+Deliverable: the three checks, regression tests (core table names without their columns, a missing operational table, a missing column in an operational and in a core table, a copy without the owner row, a copy the code cannot read → fail; a valid backup passes and is byte-for-byte unchanged), full canonical gates, independent review with the extra review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1452 closes after merge and green main. The joint recovery acceptance D03 (#1451 #1452 #1251 #1252 #1255) stays with those issues.
+Canonical doc update: this brief, the BKP-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1452), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; condition (4) applies only to HIGH/CRITICAL, this issue is MEDIUM, and an extra review is still run.
+Allowed / Forbidden: `scripts/restore_drill.py`, `tests/test_backup_dr.py`, the records above. No schema, worker backup, `verify_backup.py`, version policy or `titan/` change.
+
+---
+
 ## BKP-NEW-01 / #1451 — a manual backup passes verification only when it is a usable TITAN database (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1451; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data recovery. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-02/DR-03 (a backup is checked before it is relied on; the restore drill's core tables).
+**Status:** RESOLVED 2026-11-06 — PR #1490, squash `3432be7`; main green; issue #1451 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — data recovery. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies AGENTS DR-02/DR-03 (a backup is checked before it is relied on; the restore drill's core tables).
 
 Pass type: implementation
 Change Type: implementation
