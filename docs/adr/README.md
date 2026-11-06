@@ -102,6 +102,7 @@
 | [0079](0079-consent-revocation-always-applies.md) | Η ανάκληση συναίνεσης (`/stop`) ισχύει πάντα· το audit που αποτυγχάνει μπαίνει σε ουρά που δεν χάνεται (SP-03, εξαίρεση στο INV-22) | Governance (policy-only) | ✅ Accepted (2026-10-31) · Implemented (#1158) |
 | [0080](0080-h4-after-failed-sync.md) | Η H4 δεν λέει CLEAR όταν οι προπονήσεις της μέρας δεν μπήκαν στη βάση: timeout, αποτυχία σύνδεσης, αποτυχία εγγραφής (SD-05) | Safety (Κατηγορία Β) | ✅ Accepted (2026-11-01) · Implemented (#1160) |
 | [0081](0081-unmeasured-gates-in-message.md) | Το πρωινό μήνυμα λέει ποιες πύλες δεν μετρήθηκαν και όταν πιάσει lock, χωρίς ωμούς κωδικούς (SD-06) | Safety (Κατηγορία Β) | ✅ Accepted (2026-11-01) · Implemented (#1164) |
+| [0083](0083-owner-garmin-profile-id.md) | Ο λογαριασμός Garmin αναγνωρίζεται και από το σταθερό `profileId`, όχι μόνο από το `displayName` (M0-13-R2) | Security (Κατηγορία Β) | Proposed (2026-11-06) |
 
 ---
 
