@@ -487,7 +487,8 @@ class GovernanceEngine:
             _h2_missing = "today_hrv" in context or "baseline_hrv" in context
         # #1456 (ADR-0073 point 2, owner decision 2026-11-06): a same-day resync above the
         # HRV ceiling counts as missing even when an earlier reading of the day is kept.
-        # The earlier reading still runs H2 above, so a REST it gives stays REST.
+        # The earlier reading still runs H2 above (ADR-0009 C1: a collapse alone is enough),
+        # so a REST it gives stays REST.
         if context.get("today_hrv_rejected"):
             _h2_missing = True
         if _h2_missing:
