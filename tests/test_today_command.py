@@ -137,3 +137,41 @@ def test_a_failed_send_is_reported(setup):
     today = _today_command(setup)
     assert today().startswith("❌")
     assert not setup.lock.locked()
+
+
+# ── #1247 (CR-NEW-01): /today under an injury opened after the decision ──────
+
+def _tempo() -> dict:
+    return {**_decision(), "session_post_governance": "TEMPO", "locks_applied": []}
+
+
+def test_today_sends_rest_while_an_injury_opened_after_the_decision_is_open(setup):
+    setup.db.save_governance_decision(_tempo())
+    assert setup.db.open_injury(athlete_id="owner", description="synthetic knee", opened_at=_NOW.isoformat())
+
+    assert worker.run_owner_today(setup.db, setup.lock) == "resent"
+
+    [text] = setup.chat.sent
+    assert "Today's session: REST" in text and "/injury off" in text and "TEMPO" not in text
+    assert _governance_rows(setup.db) == 1 and setup.runs == [] and _audit_rows(setup.db) == []
+
+
+def test_today_sends_rest_when_the_injury_state_cannot_be_read(setup, monkeypatch):
+    setup.db.save_governance_decision(_tempo())
+
+    def _broken(**_kw):
+        raise RuntimeError("synthetic: injuries unreadable")
+
+    monkeypatch.setattr(setup.db, "get_open_injury", _broken)
+    assert worker.run_owner_today(setup.db, setup.lock) == "resent"
+    assert "Today's session: REST" in setup.chat.sent[0] and "TEMPO" not in setup.chat.sent[0]
+    assert "could not check for an open injury" in setup.chat.sent[0]
+
+
+def test_today_after_the_injury_is_closed_sends_the_stored_decision(setup):
+    setup.db.save_governance_decision(_tempo())
+    assert setup.db.open_injury(athlete_id="owner", description="synthetic knee", opened_at=_NOW.isoformat())
+    assert setup.db.close_injury(athlete_id="owner", closed_at=_NOW.isoformat())
+
+    assert worker.run_owner_today(setup.db, setup.lock) == "resent"
+    assert "Today's session: TEMPO" in setup.chat.sent[0]

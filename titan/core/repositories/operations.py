@@ -460,7 +460,9 @@ class OperationsRepository:
         """A hash of the athlete's stored inputs of that date, or None when there are none (D-109).
 
         The inputs are the ``daily_metrics`` row and the ``training_log`` rows of that athlete
-        and date, without their ids. Taken when the day's decision is recorded and again
+        and date, without their ids, and the athlete's open ``/injury`` when there is one
+        (#1247: an injury opened after the decision changes the hash, so a retry computes the
+        day again and H1 decides it). Taken when the day's decision is recorded and again
         before a retry resends it: a different hash means the inputs changed since.
         """
         parts: list[Any] = []
@@ -478,6 +480,12 @@ class OperationsRepository:
                                sort_keys=True, default=str)
                     for row in rows.fetchall()
                 )])
+            injury = cursor.execute(
+                "SELECT description, opened_at FROM athlete_injuries WHERE athlete_id = ? AND closed_at IS NULL",
+                (athlete_id,),
+            ).fetchone()
+            if injury is not None:  # only when open, so a day without one keeps its earlier hash
+                parts.append(["athlete_injuries", [json.dumps(list(injury), default=str)]])
         if not any(found for _table, found in parts):
             return None
         return hashlib.sha256(json.dumps(parts, sort_keys=True).encode("utf-8")).hexdigest()
