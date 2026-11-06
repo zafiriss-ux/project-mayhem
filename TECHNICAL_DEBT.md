@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## BIO-NEW-01 / #1456 — a same-day HRV resync above 300 ms counts as missing; a stricter earlier result stays (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1456; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H2). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0073 point 2 (today's HRV above 300 ms counts as missing, H2 missing-data ceiling; an older stricter REST does not loosen).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1456 only: when the morning sync sends a reading for the routine's own day above the HRV ceiling, the coach tells governance (`today_hrv_rejected`), and H2 applies its missing-data EASY ceiling (`DATA_MISSING_CONSERVATIVE_H2`) even though the database and the HRV engine kept an earlier valid reading of the day. That earlier reading still runs every gate, so a REST it gives stays REST. The missing-input message names HRV. Without such a reading nothing changes; 300 ms stays a reading.
+Deliverable: the flag, regression tests (real morning: earlier 76 then 400 → EASY ceiling with the lock; earlier 35 then 400 → REST with both locks; earlier 76 then 300 → no lock; the flag only for the routine's own day; governance boundary on/off), full canonical gates, independent review with the extra safety-gate review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1456 closes after merge and green main.
+Canonical doc update: this brief, the TIME-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner decision 2026-11-06 on the decision card "Αν το ίδιο πρωί έρθει HRV πάνω από 300, τι μετρά;": option "Το αυστηρότερο" (the reading counts as missing, EASY; if the earlier reading already gave REST, REST stays). Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a safety-gate change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/science/governance_engine.py` (H2 missing condition only), `titan/orchestration/contracts.py` (the context field), `titan/orchestration/daily_coach.py` (`_today_hrv_rejected`, the context call, `_missing_inputs` label only), `tests/test_morning_baselines.py`, `tests/test_governance_mutation.py`, the records above. No threshold, bounds, schema, persistence (UPSERT) or gate-order change.
+
+---
+
 ## TIME-NEW-01 / #1442 — a morning that crosses UTC midnight keeps the claimed day's planned session (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1442; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — training prescription. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies D-109 (the claimed day, not the clock, dates the whole routine) and D-020 (Sunday builds the plan of the week that starts on Monday).
+**Status:** RESOLVED 2026-11-06 — PR #1487, squash `623bfb2`; main green; issue #1442 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — training prescription. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies D-109 (the claimed day, not the clock, dates the whole routine) and D-020 (Sunday builds the plan of the week that starts on Monday).
 
 Pass type: implementation
 Change Type: implementation

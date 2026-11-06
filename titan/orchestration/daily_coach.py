@@ -335,7 +335,8 @@ def _missing_inputs(context: dict) -> dict[str, str]:
     """The H2, H3 and H4 inputs governance found missing, flag → label (P4-01)."""
     missing: dict[str, str] = {}
     if context.get("_h2_data_missing"):
-        missing["hrv_missing"] = "HRV" if context.get("today_hrv") is None else "HRV baseline"
+        hrv_unusable = context.get("today_hrv") is None or bool(context.get("today_hrv_rejected"))
+        missing["hrv_missing"] = "HRV" if hrv_unusable else "HRV baseline"
     if context.get("_h3_data_missing"):
         missing["rhr_missing"] = "RHR" if context.get("today_rhr") is None else "RHR baseline"
     if context.get("_h4_data_missing"):
@@ -1677,6 +1678,31 @@ class DailyCoach:
                 return None if hrv > BOUNDS["hrv_ms"][1] else hrv
         return None
 
+    def _today_hrv_rejected(self, garmin_data: GarminSyncResult) -> bool:
+        """True when this sync sent a reading for today above the HRV ceiling (#1456).
+
+        Step 3 skips such a reading and the database keeps an earlier valid one of the day,
+        so ``_today_hrv`` still finds that one. ADR-0073 point 2 counts the day's HRV as
+        missing all the same; governance then adds the H2 missing-data ceiling, and the
+        earlier reading keeps any stricter result it gives (owner decision 2026-11-06).
+        A payload that cannot be checked counts as rejected (fail closed).
+        """
+        from titan.science.physiological_bounds import BOUNDS  # deferred, as in physiology.py
+
+        try:
+            today = _routine_day(self).isoformat()
+            return any(
+                str(entry.get("date"))[:10] == today and _safe_float(entry.get("rmssd"), 0.0) > BOUNDS["hrv_ms"][1]
+                for entry in (garmin_data.get("hrv") or [])
+                if isinstance(entry, dict)
+            )
+        except Exception as exc:
+            _daily_coach_event(
+                "today_hrv_check_failed", severity=EventSeverity.WARNING,
+                error_class=type(exc).__name__, error_message=str(exc),
+            )
+            return True
+
     def _esi_weather(self, garmin_data: GarminSyncResult) -> tuple[float, float]:
         """Temperature and dew point for the ESI (SV-21).
 
@@ -1798,6 +1824,7 @@ class DailyCoach:
                 sum(inp.startup_hydration_confidence.values()) < 3 if inp.startup_confidence_applies else None
             ),
             persistence_degraded=inp.persistence_degraded,
+            today_hrv_rejected=self._today_hrv_rejected(inp.garmin_data),
             garmin_data_stale=inp.garmin_data_stale,
             data_trust=data_trust,
         )
@@ -2226,6 +2253,7 @@ class DailyCoach:
         persistence_degraded: bool = False,
         garmin_data_stale: bool | None = None,
         data_trust: dict[str, Any] | None = None,
+        today_hrv_rejected: bool = False,
     ) -> DailyCoachContext:
         """Construct typed governance context payload consumed by GovernanceEngine."""
         payload = DailyCoachContextContract(
@@ -2255,6 +2283,7 @@ class DailyCoach:
             garmin_data_stale=garmin_data_stale,
             data_trust=data_trust,
             athlete_id=getattr(self, "athlete_id", None),  # ADR-0068: no owner default
+            today_hrv_rejected=today_hrv_rejected,
         ).to_payload()
         if data_confidence_low is not None:
             payload["data_confidence_low"] = data_confidence_low

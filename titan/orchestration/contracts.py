@@ -120,6 +120,9 @@ class DailyCoachContext(TypedDict):
     data_trust: NotRequired[Mapping[str, object]]
     # ADR-0068: whose override ratio the lockdown reads; absent → the lockdown fails closed.
     athlete_id: NotRequired[str]
+    # #1456 (ADR-0073 point 2): today's resync sent an HRV above the ceiling, so H2 also
+    # applies its missing-data ceiling; an earlier valid reading still runs its gates.
+    today_hrv_rejected: NotRequired[bool]
 
 
 @dataclass(frozen=True)
@@ -151,6 +154,7 @@ class DailyCoachContextContract:
     data_trust: Mapping[str, object] | None = None
     athlete_id: str | None = None
     subjective_fatigue_measured: bool | None = None
+    today_hrv_rejected: bool = False
 
     def to_payload(self) -> DailyCoachContext:
         payload: DailyCoachContext = {
@@ -187,6 +191,8 @@ class DailyCoachContextContract:
             payload["athlete_id"] = self.athlete_id
         if self.subjective_fatigue_measured is not None:
             payload["subjective_fatigue_measured"] = self.subjective_fatigue_measured
+        if self.today_hrv_rejected:
+            payload["today_hrv_rejected"] = True
         return payload
 
 
