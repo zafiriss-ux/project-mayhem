@@ -362,6 +362,145 @@ def test_the_worker_sends_an_athletes_morning_to_their_own_chat(db) -> None:
     assert owner_coach.telegram.athlete_id == "owner"
 
 
+# ── A sender built before its chat was bound again (ISO-NEW-01, #1244) ───────
+
+CHAT_A_NEW = 4000
+
+
+class _Transport:
+    """A fake Telegram transport that records every message it would have sent."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[int, str]] = []
+
+    def send_message(self, chat_id: int, text: str, **_kwargs) -> None:
+        self.sent.append((chat_id, text))
+
+
+def _built_sender(db: DatabaseManager, monkeypatch, athlete_id: str = _A):  # noqa: ANN001, ANN202
+    """The worker's own sender for an athlete, as built at the start of a morning run."""
+    from titan import worker
+    from titan.integrations import telegram_bot
+
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    if athlete_id != "owner":
+        _ready(db, athlete_id)
+    sender = worker._build_daily_coach(db, athlete_id=athlete_id).telegram
+    sender.bot = _Transport()
+    return sender
+
+
+def _rebind_a_chat_to_b(db: DatabaseManager) -> None:
+    """A moves to another chat and B is then bound to A's former chat."""
+    db.bind_telegram_chat(_A, CHAT_A_NEW)
+    db.bind_telegram_chat(_B, CHAT_A)
+
+
+@pytest.mark.integration
+def test_a_built_sender_sends_nothing_after_its_chat_is_bound_to_another_athlete(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+    assert sender.chat_id == CHAT_A
+
+    _rebind_a_chat_to_b(db)
+
+    assert db.get_athlete_for_telegram_chat(CHAT_A) == _B
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.send_daily_coaching({"decision": "EASY"}) is False
+    assert sender.send_alert(title="Alert", message="A's data") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_built_sender_sends_nothing_after_its_athletes_chat_moves(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    db.bind_telegram_chat(_A, CHAT_A_NEW)
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_new_sender_after_the_move_reaches_the_new_chat(db, monkeypatch) -> None:
+    _rebind_a_chat_to_b(db)
+
+    sender = _built_sender(db, monkeypatch)
+
+    assert sender.send_message("A's morning briefing") is True
+    assert sender.bot.sent == [(CHAT_A_NEW, "A's morning briefing")]
+
+
+@pytest.mark.integration
+def test_a_sender_whose_chat_is_unchanged_still_sends(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    assert sender.send_message("A's morning briefing") is True
+    assert sender.bot.sent == [(CHAT_A, "A's morning briefing")]
+
+
+@pytest.mark.integration
+def test_a_sender_sends_nothing_when_its_athletes_account_is_gone(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    db.conn.execute("DELETE FROM athlete_accounts WHERE athlete_id = ?", (_A,))
+    db.conn.commit()
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("stored", [None, f"0{CHAT_A}"], ids=["no chat", "legacy non-canonical form"])
+def test_a_sender_sends_nothing_when_the_stored_chat_is_not_its_canonical_chat(db, monkeypatch, stored) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    db.conn.execute("UPDATE athlete_accounts SET telegram_chat_id = ? WHERE athlete_id = ?", (stored, _A))
+    db.conn.commit()
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_a_sender_sends_nothing_when_the_binding_cannot_be_read(db, monkeypatch, caplog) -> None:
+    sender = _built_sender(db, monkeypatch)
+
+    def _fail(_athlete_id):  # noqa: ANN001, ANN202
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(db, "get_athlete_account", _fail)
+
+    with caplog.at_level("CRITICAL"):
+        assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+    assert any(r.getMessage() == "titan.telegram.chat_binding_unreadable" for r in caplog.records)
+
+
+@pytest.mark.unit
+def test_an_athletes_sender_without_a_database_sends_nothing(data_dir, monkeypatch) -> None:
+    from titan.integrations import telegram_bot
+
+    monkeypatch.setattr(telegram_bot, "TELEBOT_AVAILABLE", True)
+    sender = TitanTelegramBot(bot_token="", chat_id=str(CHAT_A), athlete_id=_A)
+    sender.bot = _Transport()
+
+    assert sender.send_message("A's morning briefing") is False
+    assert sender.bot.sent == []
+
+
+@pytest.mark.integration
+def test_the_owners_sender_is_not_rechecked(db, monkeypatch) -> None:
+    sender = _built_sender(db, monkeypatch, athlete_id="owner")
+
+    def _fail(_athlete_id):  # noqa: ANN001, ANN202
+        raise AssertionError("the owner's chat lives in .env and is not looked up")
+
+    monkeypatch.setattr(db, "get_athlete_account", _fail)
+
+    assert sender.send_message("owner's briefing") is True
+    assert sender.bot.sent == [(OWNER_CHAT, "owner's briefing")]
+
+
 # ── /sync for an athlete ──────────────────────────────────────────────────────
 
 

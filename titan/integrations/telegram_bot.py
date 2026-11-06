@@ -1051,6 +1051,35 @@ class TitanTelegramBot:
     # ------------------------------------------------------------------ #
     # SEND MESSAGES
     # ------------------------------------------------------------------ #
+    def _chat_still_bound(self) -> bool:
+        """True when this sender may still send to its chat (ISO-NEW-01, #1244).
+
+        The owner's chat is TELEGRAM_CHAT_ID from .env and is not re-checked. An athlete's
+        sender was built with the chat bound at that moment; the chat may since have been
+        bound to another athlete. So the binding is read again before every send, and
+        anything else (no db, no row, another chat, a failed read) sends nothing. The read
+        and the send are not one step, so a rebind in between can still let that one
+        message through; holding the database across the network call would be worse.
+        """
+        if self.athlete_id == _OWNER_ATHLETE_ID:
+            return True
+        try:
+            account = self.db.get_athlete_account(self.athlete_id) if self.db is not None else None
+            stored = account.get("telegram_chat_id") if account else None
+            # Only the stored canonical form counts, as in the worker's readiness check (D-107).
+            bound = stored if stored is not None and canonical_chat_id(stored) == stored else None
+        except Exception as exc:  # noqa: BLE001 - any failed read sends nothing (fail closed)
+            # Only the error class: a database error text may carry stored values.
+            _log.critical(
+                "titan.telegram.chat_binding_unreadable",
+                extra={"athlete_id": self.athlete_id, "error_class": exc.__class__.__name__},
+            )
+            return False
+        if bound is None or bound != str(self.chat_id):
+            _log.critical("titan.telegram.chat_no_longer_bound", extra={"athlete_id": self.athlete_id})
+            return False
+        return True
+
     def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         if not self.chat_id:
             _telegram_event(
@@ -1063,6 +1092,15 @@ class TitanTelegramBot:
                 reason="missing_chat_id",
             )
             _log.warning("telegram_send_skipped_missing_chat_id")
+            return False
+        if not self._chat_still_bound():
+            _telegram_event(
+                "failure",
+                failure_class=SEND_FAIL,
+                subsystem="send_message",
+                reason="chat_no_longer_bound",
+                athlete_id=self.athlete_id,
+            )
             return False
         if self.bot and TELEBOT_AVAILABLE:
             try:
