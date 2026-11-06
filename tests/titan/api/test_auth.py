@@ -264,3 +264,69 @@ def test_refresh_rate_limit_blocks_after_5(client: TestClient) -> None:
 def test_systemd_unit_exists() -> None:
     from pathlib import Path
     assert (REPO_ROOT / "docs/titan.service").exists()
+
+
+# ── #1392 (AUTH-NEW-01): one refresh token is used once, also at the same moment ──
+
+def _two_refreshes_at_once(client: TestClient) -> tuple[list[int], int]:
+    """Two refreshes with the same token, held together after both passed the active check.
+
+    Returns the two status codes and how many refresh tokens of the user are active.
+    """
+    import threading
+
+    login = client.post("/auth/login", json={"username": "coach", "password": "coach-pass"})
+    assert login.status_code == 200
+    store = client.app.state.auth_store
+    real_check = store.is_refresh_token_active
+    barrier = threading.Barrier(2, timeout=10)
+
+    def _check_then_wait(jti: str) -> bool:
+        active = real_check(jti)
+        barrier.wait()  # both requests have read "active" before either uses the token
+        return active
+
+    headers = _csrf_headers(client)
+    cookies = dict(client.cookies)
+    statuses: list[int] = []
+
+    def _refresh() -> None:
+        with TestClient(client.app, base_url="https://testserver", cookies=cookies) as other:
+            statuses.append(other.post("/auth/refresh", headers=headers).status_code)
+
+    store.is_refresh_token_active = _check_then_wait
+    try:
+        threads = [threading.Thread(target=_refresh, daemon=True) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        assert not any(thread.is_alive() for thread in threads)
+    finally:
+        store.is_refresh_token_active = real_check
+    now_iso = datetime.now(UTC).isoformat()
+    return sorted(statuses), len(store._db.get_active_auth_tokens_for_user("coach-1", now_iso))
+
+
+@pytest.mark.integration
+def test_1392_two_refreshes_with_one_token_at_once_give_one_session(client: TestClient) -> None:
+    statuses, active = _two_refreshes_at_once(client)
+
+    assert statuses == [200, 401]
+    assert active == 1
+
+
+@pytest.mark.integration
+def test_1392_a_token_is_consumed_once_at_the_database() -> None:
+    store = AuthStore()
+    store.upsert_user(user_id="u1", username="u", password_hash="x", role="COACH", athlete_id=None)
+    now = datetime.now(UTC)
+    store.add_refresh_token("jti-1", "u1", now + timedelta(days=1), now)
+
+    assert store.consume_refresh_token("jti-1") is True
+    assert store.consume_refresh_token("jti-1") is False
+    assert store.consume_refresh_token("ghost") is False
+    assert store.is_refresh_token_active("jti-1") is False
+    # A token past its expiry is never consumed, whatever the earlier check said.
+    store.add_refresh_token("jti-old", "u1", now - timedelta(seconds=1), now - timedelta(days=1))
+    assert store.consume_refresh_token("jti-old") is False

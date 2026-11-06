@@ -501,7 +501,14 @@ def create_app(
         if user is None or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
 
-        store.revoke_refresh_token(payload.jti)
+        # #1392 (ADR-0048): the old token is used up in one check-and-revoke statement, so a
+        # second refresh with it at the same moment gets 401 and never a second session.
+        if not store.consume_refresh_token(payload.jti):
+            logging.getLogger("titan.api").info(json.dumps({
+                "flow": "api", "action": "auth_token_rejected",
+                "failure_class": "REFRESH_TOKEN_REUSED", "severity": "WARNING",
+            }, default=str))
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
         access_token, access_expires_at = create_access_token(user)
         new_refresh_token, _, _ = create_refresh_token(user, store)
         _set_auth_cookies(response, access_token, new_refresh_token)
