@@ -113,8 +113,10 @@ ls ~/Documents/TITAN/backups/titan_core.db.*
 # -wal/-shm (RC-02) and restore the backup TOGETHER with its pending-audit queue copy
 # (pending_audit.jsonl.YYYYMMDD): a consent withdrawal that reached only the queue would
 # otherwise be lost and the athlete would appear to consent again (#1251, ADR-0079). It also
-# keeps the withdrawals recorded in the damaged database; if that cannot be read it stops: check
-# the stopped athletes by hand and run it again with --skip-live-withdrawals
+# keeps the withdrawals recorded in the damaged database; if that cannot be read or fails
+# PRAGMA quick_check it stops. Run it again with --skip-live-withdrawals: every athlete but the
+# owner then has consent withdrawn (#1497). Tell each athlete: they send /agree within 30 days
+# and are coached again from the next UTC day; after 30 days the worker deletes them (D4.3)
 python3 scripts/restore_backup.py ~/Documents/TITAN/backups/titan_core.db.YYYYMMDD --data-dir ~/Documents/TITAN
 
 # Verify integrity of restored backup
