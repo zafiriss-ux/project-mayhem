@@ -59,6 +59,14 @@ class WeeklyPlanGenerator:
         self.db = db
         self.athlete_id = athlete_id
         self.last_plan = None
+        # The day the plan is read for and built from. None means the UTC calendar day now.
+        # The worker sets its claimed routine day, so a run that crosses UTC midnight keeps
+        # that day's session and Sunday's plan still starts on Monday (#1442, TIME-NEW-01).
+        self.planning_day: date | None = None
+
+    def _today(self) -> date:
+        """The planning day: ``planning_day`` when set, otherwise today's UTC date."""
+        return self.planning_day or datetime.now(UTC).date()
 
     def get_today_session(
         self,
@@ -83,7 +91,7 @@ class WeeklyPlanGenerator:
                 "esi_pace_adjustment_sec_per_km": int(esi_pace_adjustment_sec_per_km),
             }
 
-        today_name = datetime.now(UTC).strftime("%A")
+        today_name = self._today().strftime("%A")
         for session in self.last_plan.get("daily_sessions", []):
             if session.get("day") == today_name:
                 result = dict(session)
@@ -227,7 +235,7 @@ class WeeklyPlanGenerator:
 
         # Package the plan
         plan = {
-            "week_start": (datetime.now(UTC) + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "week_start": (self._today() + timedelta(days=1)).isoformat(),
             "phase": phase,
             "total_km": sum(d["distance_km"] for d in structure),
             "quality_count": sum(
@@ -392,7 +400,7 @@ class WeeklyPlanGenerator:
         """
         if self.db is None:
             return None
-        today = datetime.now(UTC).date()
+        today = self._today()
         activities = self.db.get_recent_activities(limit=500, athlete_id=self.athlete_id)
         dated = [(str(a.get("date", ""))[:10], float(a.get("distance_km") or 0.0)) for a in activities]
         dated = [(d, km) for d, km in dated if d and d < today.isoformat()]

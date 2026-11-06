@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## TIME-NEW-01 / #1442 — a morning that crosses UTC midnight keeps the claimed day's planned session (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1442; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — training prescription. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies D-109 (the claimed day, not the clock, dates the whole routine) and D-020 (Sunday builds the plan of the week that starts on Monday).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1442 only: the weekly planner takes a planning day. The worker sets it to the claimed routine day before the plan is loaded, so the day's planned session, the Sunday plan's `week_start` and the recent-volume window all use the claimed day, also when the run crosses UTC midnight. Without a planning day (console, API) the planner keeps the UTC date as before.
+Deliverable: the planning day, regression tests (claimed Sunday run at Sunday 23:59, Monday 00:01 and Monday 02:30 keeps Sunday's REST and builds the Monday week; the planner alone: session, week_start and volume window follow the planning day; control: without a planning day the clock day is kept), full canonical gates, independent review with the extra safety review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1442 closes after merge and green main.
+Canonical doc update: this brief, the DEL-NEW-01 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1442), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; the issue is HIGH and changes the prescribed session, so condition (4) needs the extra independent safety review.
+Allowed / Forbidden: `titan/features/weekly_planner.py` (`planning_day`, `_today` and its three readers), `titan/worker/__init__.py` (`_run_morning` only), `tests/test_worker_weekly_plan.py`, `tests/titan/features/test_weekly_planner.py`, the records above. No schema, threshold, gate, template or `daily_coach.py` change.
+
+---
+
 ## DEL-NEW-01 / #1444 — a late delivery of a superseded attempt never closes the newer day (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1444; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — delivery record / safety. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token) and ADR-0067 D8.3/D8.4 (a day is delivered once; after the last failed attempt Zaf is told and the day is left).
+**Status:** RESOLVED 2026-11-06 — PR #1486, squash `cc65721`; main green; issue #1444 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — delivery record / safety. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies M0-01 (the attempt number is the fencing token) and ADR-0067 D8.3/D8.4 (a day is delivered once; after the last failed attempt Zaf is told and the day is left).
 
 Pass type: implementation
 Change Type: implementation

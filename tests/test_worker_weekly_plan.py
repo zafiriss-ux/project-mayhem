@@ -156,3 +156,60 @@ def test_a_plan_of_another_athlete_starting_tomorrow_is_not_taken(db):
 
     assert coach.weekly_planner.generated == 1
     assert len(coach.telegram.plans) == 1
+
+
+def _claimed_sunday_morning(db, monkeypatch, wall_clock):
+    """Run the worker morning for the claimed Sunday 2026-11-01 with the clock at ``wall_clock``.
+
+    The planner is the real WeeklyPlanGenerator; only the coach around it is a stand-in.
+    Returns the session the routine was given and the coach.
+    """
+    from datetime import UTC, datetime
+
+    from titan.features.weekly_planner import WeeklyPlanGenerator
+
+    class _Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return wall_clock.astimezone(tz or UTC)
+
+    monkeypatch.setattr("titan.features.weekly_planner.datetime", _Clock)
+    db.save_weekly_plan(athlete_id="owner", week_start="2026-10-26", plan={
+        "week_start": "2026-10-26",
+        "daily_sessions": [
+            {"day": "Sunday", "session_type": "REST", "distance_km": 0.0, "duration_min": 0, "details": "Rest"},
+            {"day": "Monday", "session_type": "EASY", "distance_km": 7.3, "duration_min": 43, "details": "Easy"},
+        ],
+    })
+    sessions: list[dict] = []
+    planner = WeeklyPlanGenerator(
+        hrv_engine=SimpleNamespace(get_hrv_summary=lambda **_: {"baseline": 60, "latest_hrv": 57}),
+        tsb_engine=SimpleNamespace(calculate_tsb=lambda: (-5.0, "BALANCED")),
+        acwr_engine=SimpleNamespace(),
+    )
+    coach = SimpleNamespace(
+        weekly_planner=planner,
+        telegram=_Telegram(),
+        athlete_profile=SimpleNamespace(to_dict=dict, training_phase="BUILD"),
+        run_morning_routine=lambda: sessions.append(planner.get_today_session()) or True,
+    )
+    monkeypatch.setattr(worker, "_build_daily_coach", lambda _db, athlete_id="owner": coach)
+    monkeypatch.setattr(worker, "_bind_day", lambda *a: None)
+    monkeypatch.setattr(worker, "_record_garmin_token_state", lambda *a: None)
+
+    assert worker._run_morning(db, "owner", day=worker._MorningDay(execution_date="2026-11-01", attempt=1))
+    return sessions, coach
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("hour, minute, day", [(23, 59, 1), (0, 1, 2), (2, 30, 2)])
+def test_1442_a_sunday_claim_keeps_sundays_rest_and_a_monday_week_on_either_side_of_midnight(
+    db, monkeypatch, hour, minute, day,
+):
+    from datetime import UTC, datetime
+
+    sessions, coach = _claimed_sunday_morning(db, monkeypatch, datetime(2026, 11, day, hour, minute, tzinfo=UTC))
+
+    assert [s["session_type"] for s in sessions] == ["REST"]
+    assert [p["week_start"] for p in coach.telegram.plans] == ["2026-11-02"]
+    assert db.get_latest_weekly_plan(athlete_id="owner", on_or_before="2026-11-08")["week_start"] == "2026-11-02"
