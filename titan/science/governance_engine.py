@@ -485,6 +485,12 @@ class GovernanceEngine:
             # ADR-0051: keys present but non-castable → conservative fail.
             # Absent keys mean the caller does not supply HRV; treat as no-op.
             _h2_missing = "today_hrv" in context or "baseline_hrv" in context
+        # #1456 (ADR-0073 point 2, owner decision 2026-11-06): a same-day resync above the
+        # HRV ceiling counts as missing even when an earlier reading of the day is kept.
+        # The earlier reading still runs H2 above (ADR-0009 C1: a collapse alone is enough),
+        # so a REST it gives stays REST.
+        if context.get("today_hrv_rejected"):
+            _h2_missing = True
         if _h2_missing:
             _gate_event(
                 "H2_HRV",
@@ -503,7 +509,7 @@ class GovernanceEngine:
             reasons.append({
                 "gate": "H2_MISSING",
                 "reason": (
-                    "HRV data missing, non-finite or without a positive baseline — "
+                    "HRV data missing, above the ceiling, non-finite or without a positive baseline — "
                     "EASY ceiling applied (ADR-0051, ADR-0068)"
                 ),
             })

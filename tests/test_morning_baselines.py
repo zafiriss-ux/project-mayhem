@@ -93,7 +93,7 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
              loads: dict[int, int] | None = None, fail_load_reload: bool = False,
              sync_status: str | None = None, stored_hrv: dict[int, float] | None = None,
              garmin_past_hrv: dict[int, float] | None = None,
-             fail_persistence: bool = False) -> tuple[dict, dict]:
+             fail_persistence: bool = False, earlier_today_hrv: float | None = None) -> tuple[dict, dict]:
     """Run one real morning; return (Telegram payload, stored governance decision)."""
     monkeypatch.setenv("TITAN_DATA_DIR", str(tmp_path))
     db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path)
@@ -121,6 +121,10 @@ def _morning(tmp_path, monkeypatch, *, athlete_id: str, prior_nights: int, today
             hrv = (stored_hrv or {}).get(i, 75.0 + (i % 3))
             db.save_daily_metric((now - timedelta(days=i)).isoformat(), hrv=hrv, rhr=rhr,
                                  sleep_quality=80, weight=70.0, athlete_id=athlete_id)
+        if earlier_today_hrv is not None:
+            # An earlier sync of the same day (e.g. /sync at 06:30) already stored a valid HRV (#1456).
+            db.save_daily_metric(today, hrv=earlier_today_hrv, rhr=today_rhr, sleep_quality=80,
+                                 weight=70.0, athlete_id=athlete_id)
         # loads: {days back: training load} stored before the morning (M0-22).
         for back, load in (loads or {}).items():
             db.save_session((now - timedelta(days=back)).isoformat(), "EASY", 10.0, 3000,
@@ -524,3 +528,48 @@ def test_a_stop_during_the_mornings_garmin_fetch_ends_the_morning(tmp_path, monk
     finally:
         other.close()
         db.close()
+
+
+def test_1456_a_resync_above_the_ceiling_after_a_valid_reading_counts_as_missing(tmp_path, monkeypatch):
+    """BIO-NEW-01 (#1456, ADR-0073 point 2): a valid 76 ms was stored by an earlier sync of the
+    day, then the morning sync sends 400 ms. The database kept 76 and the day went TEMPO with no
+    missing-data lock. Now the day's HRV counts as missing: EASY ceiling, DATA_MISSING_CONSERVATIVE_H2."""
+    payload, decision = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=400.0,
+                                 earlier_today_hrv=76.0)
+    assert payload["session_type"] not in _ABOVE_EASY, payload["session_type"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" in payload["governance_locks"], payload["governance_locks"]
+    assert decision.get("session_post_governance") not in _ABOVE_EASY, decision
+
+
+def test_1456_a_resync_above_the_ceiling_keeps_the_rest_of_an_earlier_collapse(tmp_path, monkeypatch):
+    """Owner decision 2026-11-06 (the stricter counts): an earlier 35 ms already gave REST (H2
+    collapse). The 400 ms resync adds the missing-data lock and the day stays REST."""
+    payload, decision = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=400.0,
+                                 earlier_today_hrv=35.0)
+    assert payload["session_type"] == "REST", payload["governance_locks"]
+    assert "HARD_STOP_SAFETY_GATES" in payload["governance_locks"], payload["governance_locks"]
+    assert "DATA_MISSING_CONSERVATIVE_H2" in payload["governance_locks"], payload["governance_locks"]
+    assert decision.get("session_post_governance") == "REST", decision
+
+
+def test_1456_a_resync_at_the_ceiling_is_still_a_reading(tmp_path, monkeypatch):
+    """Boundary control: 300 ms after an earlier 76 ms is inside the bounds, so no missing-data lock."""
+    payload, _ = _morning(tmp_path, monkeypatch, athlete_id="owner", prior_nights=10, today_hrv=300.0,
+                          earlier_today_hrv=76.0)
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in payload["governance_locks"], payload["governance_locks"]
+
+
+def test_1456_a_reading_above_the_ceiling_for_another_day_does_not_mark_today():
+    """Only a reading for the routine's own day counts; the message names HRV, not its baseline."""
+    from titan.orchestration.daily_coach import _missing_inputs
+
+    coach = DailyCoach.__new__(DailyCoach)
+    coach.routine_date = "2026-11-01"
+    assert coach._today_hrv_rejected({"hrv": [{"date": "2026-11-01", "rmssd": 400.0}]}) is True
+    assert coach._today_hrv_rejected({"hrv": [{"date": "2026-10-31", "rmssd": 400.0}]}) is False
+    assert coach._today_hrv_rejected({"hrv": [{"date": "2026-11-01", "rmssd": 300.0}]}) is False
+    assert coach._today_hrv_rejected({}) is False
+    # A payload that cannot be checked counts as rejected (fail closed).
+    assert coach._today_hrv_rejected({"hrv": 5}) is True
+    context = {"_h2_data_missing": True, "today_hrv": 76.0, "today_hrv_rejected": True}
+    assert _missing_inputs(context) == {"hrv_missing": "HRV"}

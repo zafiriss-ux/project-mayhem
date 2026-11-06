@@ -1063,3 +1063,37 @@ def test_intensity_gate_volume_modifier_boundary_off_in_range_kept_out_of_range_
     result = _engine().apply_constraints(_base_session(session_type="EASY"), ctx)
     assert result["volume_modifier"] == pytest.approx(expected)
     assert result["max_zone"] == 3
+
+
+# #1456 (BIO-NEW-01, ADR-0073 point 2) — a same-day HRV above the ceiling counts as missing.
+@pytest.mark.unit
+@pytest.mark.governance
+def test_1456_rejected_today_hrv_boundary_on_applies_the_h2_missing_ceiling():
+    """Boundary-ON: a valid kept reading plus a rejected resync → H2_MISSING EASY ceiling."""
+    result = _engine().apply_constraints(
+        _base_session(session_type="TEMPO", max_zone=4), _base_context(today_hrv_rejected=True),
+    )
+    assert result["session_type"] == "EASY"
+    assert "DATA_MISSING_CONSERVATIVE_H2" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+def test_1456_rejected_today_hrv_keeps_the_rest_of_an_h2_collapse():
+    """The stricter counts: the kept reading still fires H2, so REST stays REST."""
+    ctx = _base_context(today_hrv=20.0, baseline_hrv=60.0, today_hrv_rejected=True)
+    result = _engine().apply_constraints(_base_session(session_type="TEMPO", max_zone=4), ctx)
+    assert result["session_type"] == "REST"
+    assert "DATA_MISSING_CONSERVATIVE_H2" in result["governance_locks_applied"]
+
+
+@pytest.mark.unit
+@pytest.mark.governance
+@pytest.mark.parametrize("flag", [False, None])
+def test_1456_no_rejection_leaves_a_valid_reading_alone(flag):
+    """Boundary-OFF: without a rejected resync a valid reading is evaluated as before."""
+    result = _engine().apply_constraints(
+        _base_session(session_type="TEMPO", max_zone=4), _base_context(today_hrv_rejected=flag),
+    )
+    assert result["session_type"] == "TEMPO"
+    assert "DATA_MISSING_CONSERVATIVE_H2" not in result["governance_locks_applied"]
