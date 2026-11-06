@@ -346,3 +346,61 @@ class TestMenuHelpers:
 
     def test_data_browser_exit_immediately(self, ctx):
         self._run_data_browser_option(ctx, "0")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# #1246 (E2E-01): reproduction only — the CLI shows the plan, not the stored day
+# ════════════════════════════════════════════════════════════════════════════
+# The decision and the plan are synthetic. The xfail fails for the bug and
+# turns into a plain test when the screen reads the stored decision.
+
+
+def _today_screen(capsys, tmp_path, stored_session):
+    """Render "Σημερινό Πλάνο" for today with a LONG_RUN plan and, if given, a stored decision."""
+    from datetime import UTC, datetime
+
+    from titan.core.database import DatabaseManager
+    from titan.ui.menu_system import menu_daily_plan
+
+    now = datetime.now(UTC)
+    db = DatabaseManager(db_dir=tmp_path)
+    try:
+        if stored_session is not None:
+            db.save_governance_decision({
+                "athlete_profile_id": "owner", "date": now.date().isoformat(),
+                "session_planned": "LONG_RUN", "session_post_governance": stored_session,
+                "locks_applied": [],
+            })
+        plan = {"daily_sessions": [{
+            "day": now.strftime("%A"), "session_type": "LONG_RUN",
+            "distance_km": 5.1, "details": "template",
+        }]}
+        with patch("builtins.input", return_value=""), patch("os.system"):
+            menu_daily_plan({"db": db, "last_weekly_plan": plan})
+        stored = db.get_governance_decision_on("owner", now.date().isoformat())
+    finally:
+        db.close()
+    return capsys.readouterr().out, stored
+
+
+def test_1246_control_the_stored_decision_of_today_is_rest(capsys, tmp_path):
+    _, stored = _today_screen(capsys, tmp_path, "REST")
+    assert stored["session_post_governance"] == "REST"
+
+
+def test_1246_control_without_a_stored_decision_the_screen_shows_the_plan(capsys, tmp_path):
+    out, stored = _today_screen(capsys, tmp_path, None)
+    assert stored is None
+    assert "ΠΡΟΠΟΝΗΣΗ: LONG_RUN" in out
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="E2E-01 (#1246): the CLI today screen shows the plan's LONG_RUN, not the stored REST",
+)
+def test_1246_the_today_screen_shows_the_stored_rest(capsys, tmp_path):
+    out, _ = _today_screen(capsys, tmp_path, "REST")
+    # The plan may still be named next to the decision; the instruction line may not be it.
+    assert "ΠΡΟΠΟΝΗΣΗ: LONG_RUN" not in out
+    assert "REST" in out
