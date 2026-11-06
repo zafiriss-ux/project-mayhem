@@ -1240,7 +1240,7 @@ def test_garmin_sync_accepts_a_valid_token_key(monkeypatch):
 
 
 # ────────────────────────────────────────────────────────────────────────────
-# #1256 (INT-NEW-01, SD-15): reproduction only, no fix in this change
+# #1256 (INT-NEW-01, SD-15): a run skipped as malformed makes the sync partial
 # ────────────────────────────────────────────────────────────────────────────
 
 
@@ -1266,6 +1266,29 @@ def _heavy_run(duration: object) -> dict:
 
 
 @pytest.mark.integration
+def test_1256_a_sync_without_a_skipped_run_is_not_partial(monkeypatch):
+    payload = _sync_with_runs(monkeypatch, runs=[_heavy_run(9000), _make_activity_payload()])
+
+    assert payload.get("status") is None
+    assert len(payload["activities"]) == 2
+
+
+@pytest.mark.integration
+def test_1256_a_skipped_run_in_one_sync_does_not_mark_the_next(monkeypatch):
+    sync = GarminSync(email="e", password="p")
+    sync._ensure_connected = lambda: True
+    sync.client = MagicMock()
+    for feed in ("sync_weight", "sync_sleep", "sync_hrv"):
+        monkeypatch.setattr(sync, feed, lambda *a, **k: [])
+    sync.athlete_max_hr = 190
+    sync.client.get_activities_by_date.return_value = [_heavy_run("bad")]
+    assert sync._sync_operation(7).get("status") == "partial"
+
+    sync.client.get_activities_by_date.return_value = [_heavy_run(9000)]
+    assert sync._sync_operation(7).get("status") is None
+
+
+@pytest.mark.integration
 def test_1256_control_a_failed_activity_fetch_makes_the_sync_partial(monkeypatch):
     payload = _sync_with_runs(monkeypatch, fetch_error=RuntimeError("synthetic transport error"))
 
@@ -1288,17 +1311,10 @@ def test_1256_a_heavy_run_with_an_unreadable_field_is_dropped_from_the_loads(mon
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="INT-NEW-01 / SD-15 (#1256): a run skipped as malformed leaves the sync 'ok', so the morning counts the "
-    "loads as complete and H4 can read CLEAR from a TSB without that run. Remove this mark "
-    "with the fix.",
-)
 @pytest.mark.parametrize("field", ["duration", "calories"])
 def test_1256_a_run_skipped_as_malformed_makes_the_sync_partial(monkeypatch, field):
     malformed = _heavy_run(9000)
     malformed[field] = "bad" if field == "duration" else None  # also a null Garmin field
     payload = _sync_with_runs(monkeypatch, runs=[malformed, _make_activity_payload()])
 
-    assert payload.get("status") == "partial"  # today the key is absent, which reads as "ok"
+    assert payload.get("status") == "partial"

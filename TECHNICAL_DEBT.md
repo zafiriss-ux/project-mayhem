@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## INT-NEW-01 / #1256 — fix: a run skipped as malformed makes the Garmin sync "partial", so H4 does not trust a TSB without it (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1256; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1256 only. `GarminSync.sync_activities`: when the fetch succeeded but one or more runs were skipped as malformed, the activity fetch counts as failed for this sync, so `_sync_operation` returns `status="partial"` — the same status as a failed fetch (SD-04/SD-05). The morning then treats the TSB as unverified (`loads_complete` false): H4 applies `DATA_MISSING_CONSERVATIVE_H4` (EASY ceiling) unless the TSB already fires H4, which is stricter (ADR-0073 point 5, ADR-0080). The other runs are still returned and stored; the skip events are unchanged; the flag is per thread and reset at the start of each sync, so one bad morning does not mark the next. Trade-off, stated for the operator: a malformed run stays in Garmin's answer for as long as it is inside the sync window (`days_back`, 14 days for the morning), so each of those mornings is "partial" and capped at EASY unless H4 already fires; the run is never stored, so the TSB really lacks it. Out of scope: reading a malformed run instead of skipping it (a different change; the dropped-run test pins today's skip).
+Deliverable: the change; the two strict-xfail cases of #1509 now pass with the mark removed; new tests (a sync without a skipped run is not partial; a skipped run in one sync does not mark the next). The partial-to-H4 step stays covered by `test_partial_sync_counts_tsb_as_missing_for_h4`.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1256 closes after merge and green main.
+Canonical doc update: this brief, the reproduction brief's status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3); merge waits for the owner's answer on fixing #1256 now (decision card of 2026-11-06, plan v3 row 10 is reproduction only). Category Α (tightening only, contract §13 not weakened: more mornings treat the TSB as unverified, none fewer). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/integrations/garmin_sync.py` (`sync_activities` only), `tests/titan/integrations/test_garmin_sync.py`, the records above. No `daily_coach.py`, schema, threshold, AGENTS.md or ADR change.
+
+---
+
 ## INT-NEW-01 / #1256 — reproduction only: a run skipped as malformed leaves the Garmin sync "ok" and its load out of the TSB (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1256 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 10: reproduction only, `REPRO_FIRST`).
+**Status:** DONE 2026-11-06 — reproduction merged in PR #1509, squash `e13509f`; #1256 stays open for the fix (INT-NEW-01 fix brief above). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 10: reproduction only, `REPRO_FIRST`).
 
 Pass type: reproduction
 Change Type: test-only
