@@ -207,11 +207,11 @@ def test_import_activity_laps_writes_to_db(tmp_path):
     conn.execute(
         "CREATE TABLE training_log (id INTEGER PRIMARY KEY, date TEXT, "
         "session_type TEXT, distance_km REAL, duration_sec INTEGER, "
-        "avg_hr INTEGER, training_load INTEGER, athlete_id TEXT)"
+        "avg_hr INTEGER, training_load INTEGER, athlete_id TEXT, garmin_activity_id TEXT)"
     )
     conn.execute(
-        "INSERT INTO training_log (date, session_type, athlete_id) "
-        "VALUES ('2026-05-10', 'EASY', 'owner')"
+        "INSERT INTO training_log (date, session_type, athlete_id, garmin_activity_id) "
+        "VALUES ('2026-05-10', 'EASY', 'owner', '12345')"
     )
     conn.commit()
     conn.close()
@@ -233,8 +233,10 @@ def test_import_activity_laps_writes_to_db(tmp_path):
     count = conn.execute(
         "SELECT COUNT(*) FROM activity_laps WHERE activity_id = 'activity_12345'"
     ).fetchone()[0]
+    drift = conn.execute("SELECT cardiac_drift FROM training_log WHERE garmin_activity_id = '12345'").fetchone()[0]
     conn.close()
     assert count == 10
+    assert drift is not None
 
 
 # ---------------------------------------------------------------------------
@@ -395,3 +397,106 @@ def _make_lap_csv_at(tmp_path: Path, target: Path, num_laps: int = 10) -> None:
         ])
     with target.open("w", newline="", encoding="utf-8") as fh:
         csv.writer(fh).writerows(rows)
+
+
+# ---------------------------------------------------------------------------
+# #1347 (ING-NEW-01): the drift reaches only the owner's row of this activity
+# ---------------------------------------------------------------------------
+
+_DAY = "2026-03-26"
+
+
+def _three_runs_on_one_day(tmp_path: Path) -> Path:
+    """Two owner runs and another athlete's run on the same day (the issue's fixture)."""
+    from titan.core.database import DatabaseManager
+
+    db = DatabaseManager(db_name="titan_core.db", db_dir=tmp_path / "data")
+    db.conn.execute(
+        "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES ('a-0000000c', 'synthetic', 'now')"
+    )
+    for athlete, garmin_id in (("owner", "12345"), ("owner", "67890"), ("a-0000000c", "24680")):
+        db.conn.execute(
+            "INSERT INTO training_log (athlete_id, date, session_type, distance_km, duration_sec, garmin_activity_id) "
+            "VALUES (?, ?, 'EASY', 8.0, 2400, ?)",
+            (athlete, _DAY, garmin_id),
+        )
+    db.conn.commit()
+    path = db.db_path
+    db.close()
+    return path
+
+
+def _drifts(db_path: Path) -> dict[str, float | None]:
+    conn = sqlite3.connect(str(db_path))
+    try:
+        return dict(conn.execute("SELECT garmin_activity_id, cardiac_drift FROM training_log"))
+    finally:
+        conn.close()
+
+
+@pytest.mark.integration
+def test_1347_the_lap_import_updates_only_the_owner_row_of_its_activity(tmp_path):
+    from scripts.import_activity_laps import _import_one
+
+    db_path = _three_runs_on_one_day(tmp_path)
+    csv_path = _make_lap_csv(tmp_path, num_laps=8)  # activity_12345.csv
+
+    inserted, updated = _import_one(csv_path, _DAY, False, db_path)
+
+    assert (inserted, updated) == (8, 1)
+    drifts = _drifts(db_path)
+    assert drifts["12345"] is not None
+    assert drifts["67890"] is None, "another run of the owner that day must not change"
+    assert drifts["24680"] is None, "another athlete's run must not change"
+
+
+@pytest.mark.integration
+def test_1347_the_local_date_need_not_be_the_stored_utc_day(tmp_path):
+    # training_log keeps the UTC day; a run at 01:30 in Athens is the previous UTC day.
+    from scripts.import_activity_laps import _import_one
+
+    db_path = _three_runs_on_one_day(tmp_path)
+    csv_path = _make_lap_csv(tmp_path, num_laps=8)
+
+    assert _import_one(csv_path, "2026-03-27", False, db_path)[1] == 1
+
+    drifts = _drifts(db_path)
+    assert drifts["12345"] is not None and drifts["67890"] is None and drifts["24680"] is None
+
+
+@pytest.mark.integration
+def test_1347_an_activity_without_a_training_row_updates_nothing(tmp_path, capsys):
+    from scripts.import_activity_laps import _import_one
+
+    db_path = _three_runs_on_one_day(tmp_path)
+    csv_path = _make_lap_csv(tmp_path, num_laps=8).rename(tmp_path / "activity_99999.csv")
+
+    assert _import_one(csv_path, _DAY, False, db_path)[1] == 0
+
+    assert all(value is None for value in _drifts(db_path).values())
+    out = capsys.readouterr().out
+    assert "99999" in out and "activity_laps only" in out
+
+
+@pytest.mark.integration
+def test_1347_a_file_name_without_an_id_updates_nothing(tmp_path):
+    from scripts.import_activity_laps import _import_one
+
+    db_path = _three_runs_on_one_day(tmp_path)
+    csv_path = _make_lap_csv(tmp_path, num_laps=8).rename(tmp_path / "laps.csv")
+
+    assert _import_one(csv_path, _DAY, False, db_path)[1] == 0
+
+    assert all(value is None for value in _drifts(db_path).values())
+
+
+@pytest.mark.integration
+def test_1347_another_athletes_activity_id_is_not_updated(tmp_path):
+    from scripts.import_activity_laps import _import_one
+
+    db_path = _three_runs_on_one_day(tmp_path)
+    csv_path = _make_lap_csv(tmp_path, num_laps=8).rename(tmp_path / "activity_24680.csv")
+
+    assert _import_one(csv_path, _DAY, False, db_path)[1] == 0
+
+    assert all(value is None for value in _drifts(db_path).values())

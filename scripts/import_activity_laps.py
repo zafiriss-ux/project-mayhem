@@ -22,7 +22,8 @@ Usage:
 
 Reads a Garmin lap-detail CSV (Greek locale), computes cardiac drift from
 the lap HR data, writes rows into the activity_laps table, and back-fills
-the cardiac_drift column on the matching training_log row.
+the cardiac_drift column on the owner's training_log row with the same Garmin
+activity id (the digits in the file name); no other row is changed (#1347).
 """
 
 from __future__ import annotations
@@ -260,14 +261,37 @@ def _update_activity_laps_drift(
     )
 
 
+OWNER_ATHLETE_ID = "owner"
+
+
 def _update_training_log_drift(
-    conn: sqlite3.Connection, activity_date: str, cardiac_drift: float
+    conn: sqlite3.Connection, garmin_activity_id: str | None, activity_date: str, cardiac_drift: float
 ) -> int:
+    """Write the drift to the owner's one training_log row of this Garmin activity (#1347).
+
+    The row is found by its Garmin activity id (unique) and the owner together, never by
+    the date: other runs that day and other athletes are left untouched. The date is not
+    part of the match because training_log keeps the UTC day while the lap export and
+    Activities.csv give the local one. Without an id in the file name nothing is written;
+    the drift stays in activity_laps.
+    """
+    del activity_date  # reported by the caller; not an identity
+    if not garmin_activity_id:
+        return 0
     cur = conn.execute(
-        "UPDATE training_log SET cardiac_drift = ? WHERE date = ?",
-        (cardiac_drift, activity_date),
+        "UPDATE training_log SET cardiac_drift = ? WHERE garmin_activity_id = ? AND athlete_id = ?",
+        (cardiac_drift, garmin_activity_id, OWNER_ATHLETE_ID),
     )
     return cur.rowcount
+
+
+def _report_training_log(csv_path: Path, activity_date: str, updated: int) -> None:
+    if updated == 0:
+        print(
+            f"  NOTE {csv_path.name}: no training_log row of the owner has Garmin activity id "
+            f"{_extract_numeric_id(csv_path) or '(none in the file name)'}; "
+            f"the cardiac drift ({activity_date}) is stored in activity_laps only."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -358,11 +382,12 @@ def _import_one(
         _ensure_training_log_cardiac_drift_column(conn)
         inserted = _insert_laps(conn, laps, activity_id, activity_date, cardiac_drift)
         _update_activity_laps_drift(conn, activity_id, cardiac_drift)
-        tl_updated = _update_training_log_drift(conn, activity_date, cardiac_drift)
+        tl_updated = _update_training_log_drift(conn, _extract_numeric_id(csv_path), activity_date, cardiac_drift)
         conn.commit()
     finally:
         conn.close()
 
+    _report_training_log(csv_path, activity_date, tl_updated)
     return inserted, tl_updated
 
 
@@ -494,12 +519,14 @@ def main(argv: list[str] | None = None) -> int:
 
         inserted = _insert_laps(conn, laps, activity_id, activity_date, cardiac_drift)
         _update_activity_laps_drift(conn, activity_id, cardiac_drift)
-        tl_updated = _update_training_log_drift(conn, activity_date, cardiac_drift)
+        tl_updated = _update_training_log_drift(conn, _extract_numeric_id(csv_path), activity_date, cardiac_drift)
 
         conn.commit()
+        _report_training_log(csv_path, activity_date, tl_updated)
 
         print(f"\nInserted {inserted} new lap row(s) into activity_laps.")
-        print(f"Updated  {tl_updated} training_log row(s) with cardiac_drift={cardiac_drift:.2f}%.")
+        if tl_updated:
+            print(f"Updated  {tl_updated} training_log row(s) with cardiac_drift={cardiac_drift:.2f}%.")
     finally:
         conn.close()
 
