@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ING-NEW-03 / #1349 and ING-NEW-04 / #1350 — guard: a repeated trial counts once and a fit with CS or D' at or below zero is not used (owner assignment, 2026-11-06)
+
+**Status:** OPEN — in review; #1349 and #1350 close with this PR. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1349 and #1350 only, in the CS step of `DailyCoach._hydrate_engines_from_db` (D-040). (1) ING-NEW-03: the trials are replayed oldest first with the same windows as before, but a window whose newest row repeats an earlier (date, distance, time) adds no tracker update, so a trial entered again adds no confidence. Distinct trials of the same day stay distinct. The updates made are a subset of the updates the previous code made for the same rows in the same order (same windows, same fits, some skipped), so the lock is on at least as often for any input. A first version that removed the repeats from the windows was dropped, because it changes the fits and, for a contrived set with one exact repeat, could turn a rejected exact-zero fit into an accepted one. Same-day rows have no defined order in the database (`ORDER BY date DESC` only), so the result for some same-day sets can depend on that order, as it already did; a sort was tried and dropped, because for a contrived same-day set (two trials of the same distance) it could unlock where the database order kept the lock — a fixed tie order is follow-up issue #1514. (2) ING-NEW-04: a fit is used only when CS > 0 and D' > 0; any other fit (negative, zero or none) is not passed to the tracker, so it adds neither an estimate nor confidence. Earlier valid estimates are kept. (3) The `cs_hydrated` event also reports `distinct_trials` and `rejected_fits`. Effect: fewer or equal tracker updates in every case, so CS_CONFIDENCE_LOCK stays on at least as often as before and never less. Out of scope: a UNIQUE constraint or duplicate check where trials are entered (`log_cs_performance`, Telegram and the menu; the stored rows are unchanged), a guard inside `CriticalSpeedTracker.update` (the hydration is its only caller in `titan/`), and near-repeats: the dedupe is exact, so a trial re-entered with a one-second difference or on another date counts as a new trial; a minimum spread of distance or dates before the lock lifts would be an owner decision (#1514) (the 70% threshold and the tracker's confidence formula are unchanged).
+Deliverable: the change; the three strict-xfail tests of #1513 now pass with the marks removed; new tests (distinct same-day trials both count; repeats do not raise confidence; skipping a repeat never adds an update, the exact-zero case of the security review; a valid estimate is kept when a later fit is negative; a negative D' is not used; the event fields). Every new test fails on main, except the exact-zero test, which passes on main and pins that the fix adds no update (it fails with a version that removes repeats from the windows).
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1349 and #1350 close after merge and green main.
+Canonical doc update: this brief, the reproduction brief's status line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 14 = #1349, #1350, reproduction then guard). Category Α (tightening only; contract §13 not weakened: no path from locked to unlocked is added). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/orchestration/daily_coach.py` (the CS hydration step only), `tests/titan/orchestration/test_daily_coach.py`, the records above. No schema, threshold, `critical_speed.py`, `governance_engine.py`, AGENTS.md or ADR change.
+
+---
+
 ## ING-NEW-03 / #1349 and ING-NEW-04 / #1350 — reproduction only: repeated or incompatible time trials lift the CS confidence lock (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issues #1349 and #1350 (both stay open; this pass does not fix them). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: reproduction, then a guard).
+**Status:** DONE 2026-11-06 — reproduction merged in PR #1513, squash `3be719c`; main green; #1349 and #1350 stay open for the guard (ING-NEW-03/04 guard brief above). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: reproduction, then a guard).
 
 Pass type: reproduction
 Change Type: test-only
