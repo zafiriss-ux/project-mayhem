@@ -454,14 +454,13 @@ class OperationsRepository:
             if not isinstance(data, dict):
                 data = {}
             data.update(fields)
-            fence, fence_args = "", ()
-            if attempt is not None:
-                fence = " AND attempts = ? AND delivered_at IS NULL AND completed_at IS NULL"
-                fence_args = (int(attempt),)
+            # The fence's first argument is 1 when there is no attempt to check (always true).
+            fence_args = (1, None) if attempt is None else (0, int(attempt))
             try:
                 cursor.execute(
                     "UPDATE worker_routine_executions SET resume_json = ? "
-                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?" + fence,
+                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? "
+                    "AND (? = 1 OR (attempts = ? AND delivered_at IS NULL AND completed_at IS NULL))",
                     (json.dumps(data, sort_keys=True, default=str), *key, *fence_args),
                 )
             except BaseException:

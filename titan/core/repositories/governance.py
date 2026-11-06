@@ -42,19 +42,14 @@ def _float_or_none(value: Any) -> float | None:
 
 # #1248 (M0-01): the attempt that writes the day's decision must still own the open day.
 # The check is part of the writing statement, so no later attempt can take the day over
-# between the check and the write.
-_ROUTINE_FENCE_SQL = (
-    "EXISTS (SELECT 1 FROM worker_routine_executions WHERE athlete_id = ? AND execution_date = ? "
-    "AND routine_type = ? AND attempts = ? AND delivered_at IS NULL AND completed_at IS NULL)"
-)
-
-
-def _routine_fence(decision: dict[str, Any], fence: tuple[str, int] | None) -> tuple[str, tuple]:
-    """The SQL condition and its arguments for ``fence``; no fence is always true."""
+# between the check and the write. The statements end with this condition, whose first
+# argument is 1 when there is no fence (always true).
+def _routine_fence(decision: dict[str, Any], fence: tuple[str, int] | None) -> tuple:
+    """The arguments of the fence condition: no fence, or the attempt that must own the day."""
     if fence is None:
-        return "1", ()
+        return (1, None, None, None, None)
     routine_type, attempt = fence
-    return _ROUTINE_FENCE_SQL, (decision_athlete_id(decision), decision['date'], routine_type, int(attempt))
+    return (0, decision_athlete_id(decision), decision['date'], routine_type, int(attempt))
 
 
 def _execute_or_roll_back(db: Any, sql: str, args: tuple) -> sqlite3.Cursor:
@@ -250,7 +245,7 @@ class GovernanceRepository:
         is written only while that attempt still owns the open day, checked in the same SQL
         statement as the write. Returns False when the fence refused the write.
         """
-        fence_sql, fence_args = _routine_fence(decision, fence)
+        fence_args = _routine_fence(decision, fence)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = _execute_or_roll_back(
@@ -265,7 +260,9 @@ class GovernanceRepository:
                        decision_was_followed, override_outcome_exclusion,
                        outcome_independence_ok, algorithm_version_snapshot
                    ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                   WHERE """ + fence_sql + """
+                   WHERE (? = 1 OR EXISTS (SELECT 1 FROM worker_routine_executions
+                          WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? AND attempts = ?
+                            AND delivered_at IS NULL AND completed_at IS NULL))
                    ON CONFLICT (athlete_id, date) DO UPDATE SET
                        session_planned = excluded.session_planned,
                        session_post_governance = excluded.session_post_governance,
@@ -323,7 +320,7 @@ class GovernanceRepository:
         outcome columns are left as they are. False when there is no row to replace, or
         when ``fence`` (as in ``save_governance_decision``) refused the write (#1248).
         """
-        fence_sql, fence_args = _routine_fence(decision, fence)
+        fence_args = _routine_fence(decision, fence)
         with self._db._lock:
             self._db._ensure_open_locked()
             cursor = _execute_or_roll_back(
@@ -335,7 +332,9 @@ class GovernanceRepository:
                        glycogen_debt = ?, afi_value = ?, algorithm_version_snapshot = ?
                    WHERE id = (SELECT id FROM governance_outcomes WHERE athlete_id = ? AND date = ?
                                ORDER BY id DESC LIMIT 1)
-                     AND """ + fence_sql,
+                     AND (? = 1 OR EXISTS (SELECT 1 FROM worker_routine_executions
+                          WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? AND attempts = ?
+                            AND delivered_at IS NULL AND completed_at IS NULL))""",
                 (
                     decision['session_planned'],
                     decision['session_post_governance'],
