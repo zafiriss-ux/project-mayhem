@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ING-NEW-01 / #1347 — the lap import writes cardiac drift only to the owner's row of its own activity (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1347; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / data integrity. **Severity:** HIGH (issue). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0040 (athlete isolation) and ADR-0067 (multi-athlete).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1347 only. `scripts/import_activity_laps.py` writes the cardiac drift to `training_log` only where the Garmin activity id (the digits in the lap file name, unique) and the owner (`athlete_id = 'owner'`, the script works on the owner's database) both match; it no longer updates every row of the date, and the date is not used as an identity (training_log keeps the UTC day, the lap export the local one). No id in the file name or no matching row → nothing is written to `training_log`, the drift stays in `activity_laps` and the script says so. `activity_laps` writes are unchanged.
+Deliverable: the change, regression tests (the issue's fixture: two owner runs and another athlete's run on one day → only the owner's row of that activity changes; a local date that differs from the stored UTC day still finds it; an activity with no training row, a file name without an id and another athlete's activity id change nothing), the existing write test updated to the real column, full canonical gates, independent review plus the extra security review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1347 closes after merge and green main.
+Canonical doc update: this brief, the DR-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1347), category Α (tightening only). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions, including the extra security review for HIGH.
+Allowed / Forbidden: `scripts/import_activity_laps.py`, `tests/test_import_activity_laps.py`, the records above. No schema, `titan/`, activity_laps format, AGENTS.md or ADR change.
+
+---
+
 ## DR-NEW-02 / #1252 — the backup copies the database and the pending-audit queue as one snapshot (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1252; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 §4 (a withdrawal always takes effect; the queue lock is taken before the database lock).
+**Status:** RESOLVED 2026-11-06 — PR #1493, squash `ac1cd91`; main green; issue #1252 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies ADR-0079 §4 (a withdrawal always takes effect; the queue lock is taken before the database lock).
 
 Pass type: implementation
 Change Type: implementation
