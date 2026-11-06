@@ -490,7 +490,11 @@ def create_app(
             }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from exc
 
-        if payload.jti is None or not store.is_refresh_token_active(payload.jti):
+        # #1503: a token already used by a refresh goes on to the rotation, which treats it as
+        # a replay and revokes every refresh token of the user.
+        if payload.jti is None or not (
+            store.is_refresh_token_active(payload.jti) or store.was_refresh_token_used(payload.jti)
+        ):
             logging.getLogger("titan.api").info(json.dumps({
                 "flow": "api", "action": "auth_token_rejected",
                 "failure_class": "REFRESH_TOKEN_REVOKED", "severity": "WARNING",
@@ -501,10 +505,11 @@ def create_app(
         if user is None or not user.is_active:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
 
-        # #1392 (ADR-0048): the old token is used up in one check-and-revoke statement, so a
-        # second refresh with it at the same moment gets 401 and never a second session.
-        # #1494: that second use may be a stolen token, so every refresh token of the user is
-        # revoked. The log names the account and the first 8 characters of the jti only.
+        # #1392 (ADR-0048): the old token is used up once, so a second refresh with it gets 401
+        # and never a second session. #1494, #1503: that second use, at the same moment or
+        # later, may be a stolen token, so every refresh token of the user is revoked. One
+        # database transaction does the use, the new token and the revoke. The log names the
+        # account and the first 8 characters of the jti only.
         reuse_log = {"sub": user.id, "jti_prefix": payload.jti[:8]}
         try:
             rotated = store.rotate_refresh_token(payload.jti, user)
@@ -515,15 +520,21 @@ def create_app(
                 "error_type": type(exc).__name__, **reuse_log,
             }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked") from exc
-        if rotated is None:
-            logging.getLogger("titan.api").warning(json.dumps({
-                "flow": "api", "action": "auth_token_rejected",
-                "failure_class": "REFRESH_TOKEN_REUSED", "severity": "WARNING",
-                "all_refresh_tokens_revoked": True, **reuse_log,
-            }, default=str))
+        if rotated.token is None:
+            if rotated.reused:
+                logging.getLogger("titan.api").warning(json.dumps({
+                    "flow": "api", "action": "auth_token_rejected",
+                    "failure_class": "REFRESH_TOKEN_REUSED", "severity": "WARNING",
+                    "all_refresh_tokens_revoked": True, **reuse_log,
+                }, default=str))
+            else:
+                logging.getLogger("titan.api").info(json.dumps({
+                    "flow": "api", "action": "auth_token_rejected",
+                    "failure_class": "REFRESH_TOKEN_REVOKED", "severity": "WARNING",
+                }, default=str))
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
         access_token, access_expires_at = create_access_token(user)
-        new_refresh_token, _, _ = rotated
+        new_refresh_token, _, _ = rotated.token
         _set_auth_cookies(response, access_token, new_refresh_token)
         return LoginResponse(access_token=access_token, expires_at=access_expires_at)
 
@@ -541,6 +552,22 @@ def create_app(
                 payload = None
             if payload and payload.jti:
                 store.revoke_refresh_token(payload.jti)
+                # #1503: a used token at logout may mean a thief holds the next one, and this
+                # browser will never send the old token again, so end every session now.
+                replay_log = {"sub": payload.sub, "jti_prefix": payload.jti[:8]}
+                try:
+                    if store.revoke_all_if_used(payload.jti, payload.sub):
+                        logging.getLogger("titan.api").warning(json.dumps({
+                            "flow": "api", "action": "auth_logout",
+                            "failure_class": "REFRESH_TOKEN_REUSED", "severity": "WARNING",
+                            "all_refresh_tokens_revoked": True, **replay_log,
+                        }, default=str))
+                except Exception as exc:
+                    logging.getLogger("titan.api").exception(json.dumps({
+                        "flow": "api", "action": "auth_logout",
+                        "failure_class": "LOGOUT_REPLAY_REVOKE_FAILED", "severity": "CRITICAL",
+                        "error_type": type(exc).__name__, **replay_log,
+                    }, default=str))
 
         response.delete_cookie(ACCESS_COOKIE_NAME)
         response.delete_cookie(REFRESH_COOKIE_NAME)

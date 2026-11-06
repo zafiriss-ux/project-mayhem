@@ -974,20 +974,24 @@ class DatabaseManager:
         return self._access.get_auth_token(jti=jti)
 
     def set_auth_token_revoked(self, jti: str) -> None:
-        """Mark a refresh token as revoked."""
+        """Mark an active refresh token as revoked; a used one keeps its mark (#1503)."""
         self._access.set_auth_token_revoked(jti=jti)
 
-    def consume_auth_token(self, jti: str, now_iso: str) -> bool:
-        """Revoke a refresh token only if unrevoked and unexpired; True when this call did it (#1392)."""
-        return self._access.consume_auth_token(jti=jti, now_iso=now_iso)
+    def rotate_auth_token(
+        self, old_jti: str, user_id: str, new_token: tuple[str, str, str], now_iso: str, max_active: int
+    ) -> str:
+        """Use a refresh token once and store the next one in one transaction (#1503)."""
+        return self._access.rotate_auth_token(
+            old_jti=old_jti, user_id=user_id, new_token=new_token, now_iso=now_iso, max_active=max_active
+        )
+
+    def revoke_auth_tokens_if_used(self, jti: str, user_id: str) -> bool:
+        """Revoke every token of the user when *jti* was already used by a refresh (#1503)."""
+        return self._access.revoke_auth_tokens_if_used(jti=jti, user_id=user_id)
 
     def delete_expired_auth_tokens(self, before_iso: str) -> None:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
         self._access.delete_expired_auth_tokens(before_iso=before_iso)
-
-    def revoke_auth_tokens_for_user(self, user_id: str) -> int:
-        """Revoke every unrevoked refresh token of the user; return the count (#1494)."""
-        return self._access.revoke_auth_tokens_for_user(user_id=user_id)
 
     def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
         """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""

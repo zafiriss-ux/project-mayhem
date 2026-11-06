@@ -6,7 +6,7 @@ import functools
 import uuid
 from datetime import UTC, datetime, timedelta
 from threading import Lock
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import bcrypt
 import jwt
@@ -30,6 +30,13 @@ LOCKOUT_DURATION_SECONDS: float = 900.0
 
 JWT_ISSUER = "titan-os"
 JWT_AUDIENCE = "titan-api"
+
+
+class RefreshRotation(NamedTuple):
+    """Result of one refresh: the next token, or None and whether the old one was a replay."""
+
+    token: tuple[str, str, datetime] | None
+    reused: bool
 
 
 class AuthError(Exception):
@@ -114,30 +121,29 @@ class AuthStore:
     def revoke_refresh_token(self, jti: str) -> None:
         self._db.set_auth_token_revoked(jti)
 
-    def consume_refresh_token(self, jti: str) -> bool:
-        """Use a refresh token once: True only for the one call that revoked it (#1392)."""
-        return self._db.consume_auth_token(jti, _utc_now().isoformat())
+    def rotate_refresh_token(self, jti: str, user: AuthUser) -> RefreshRotation:
+        """Use refresh token *jti* once and issue the next one.
 
-    def revoke_all_refresh_tokens(self, user_id: str) -> int:
-        """Revoke every refresh token of *user_id*; return how many were active (#1494)."""
-        return self._db.revoke_auth_tokens_for_user(user_id)
-
-    def rotate_refresh_token(self, jti: str, user: AuthUser) -> tuple[str, str, datetime] | None:
-        """Use refresh token *jti* once and issue the next one; None when it was already used.
-
-        A token used twice may be stolen (#1494): then every refresh token of the user is
-        revoked, so the other holder's session ends too. The store lock holds from the use
-        to the new token, so a revoke for a second use cannot run before the new token of the
-        first use exists and leave it active. That order holds only inside one API process
-        with one ``AuthStore`` (``scripts/run_api.py`` runs one uvicorn worker); several
-        processes need one database transaction instead (#1503). A failure raises; the
-        caller answers 401.
+        The use, the new token and the trim of the oldest active tokens are one database
+        transaction (#1503), so this holds across API processes too. A token already used by
+        a refresh may be stolen (#1494, #1503): every refresh token of the user is revoked,
+        also when the second use comes much later, and ``reused`` is True. A token that was
+        logged out, revoked, expired or is unknown is refused and changes nothing. A failure
+        raises; the caller answers 401.
         """
+        issued_at = _utc_now()
+        token, new_jti, expires_at = _encode_refresh_token(user, issued_at)
         with self._lock:
-            if self.consume_refresh_token(jti):
-                return create_refresh_token(user, self)
-            self.revoke_all_refresh_tokens(user.id)
-            return None
+            outcome = self._db.rotate_auth_token(
+                jti,
+                user.id,
+                (new_jti, issued_at.isoformat(), expires_at.isoformat()),
+                issued_at.isoformat(),
+                MAX_ACTIVE_REFRESH_TOKENS,
+            )
+        if outcome == "rotated":
+            return RefreshRotation(token=(token, new_jti, expires_at), reused=False)
+        return RefreshRotation(token=None, reused=outcome == "reused")
 
     def is_refresh_token_active(self, jti: str) -> bool:
         row = self._db.get_auth_token(jti)
@@ -148,6 +154,16 @@ class AuthStore:
         except (ValueError, TypeError):
             return False
         return expires_at > _utc_now()
+
+    def revoke_all_if_used(self, jti: str, user_id: str) -> bool:
+        """Revoke every refresh token of *user_id* when *jti* was already used (#1503)."""
+        with self._lock:
+            return self._db.revoke_auth_tokens_if_used(jti, user_id)
+
+    def was_refresh_token_used(self, jti: str) -> bool:
+        """True when a refresh already used *jti*: one more use is a replay (#1503)."""
+        row = self._db.get_auth_token(jti)
+        return row is not None and bool(row.get("used"))
 
     def cleanup_expired(self) -> None:
         """Remove tokens past their expiry time (housekeeping)."""
@@ -240,6 +256,13 @@ def create_refresh_token(
     now: datetime | None = None,
 ) -> tuple[str, str, datetime]:
     issued_at = now or _utc_now()
+    token, jti, expires_at = _encode_refresh_token(user, issued_at)
+    store.add_refresh_token(jti, user.id, expires_at, issued_at)
+    return token, jti, expires_at
+
+
+def _encode_refresh_token(user: AuthUser, issued_at: datetime) -> tuple[str, str, datetime]:
+    """A signed refresh token for *user* with a new jti; the caller stores it."""
     expires_at = issued_at + REFRESH_TOKEN_TTL
     jti = str(uuid.uuid4())
     payload = {
@@ -253,7 +276,6 @@ def create_refresh_token(
         "iss": JWT_ISSUER,
         "aud": JWT_AUDIENCE,
     }
-    store.add_refresh_token(jti, user.id, expires_at, issued_at)
     return jwt.encode(payload, _jwt_private_key(), algorithm="RS256"), jti, expires_at
 
 
