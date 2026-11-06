@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## BKP-NEW-04 / #1496 — the restore drill fails a backup without this code's indexes, triggers or views, or with a trigger it does not make (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1496; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery. **Severity:** HIGH (issue; governance path, floor HIGH, ADR-0052). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1496 only. `scripts/restore_drill.py`: after the table and column check, every index, trigger and view (by type and name, SQLite's own `sqlite_…` objects left out) of a fresh database of this code must be in the restored copy, else the drill fails and names each one missing. It covers the H1–H5 guard triggers `trg_threshold_offsets_no_hard_stop_insert`/`_update` and the unique indexes `uq_governance_outcomes_athlete_date` and `idx_training_log_garmin_id`, which come only from the v34 step and are not made again when the database opens. A trigger the code does not make also fails it (it would run on every write once restored); an extra index or view does not. SQLite's own index names are left out with `substr`, not `LIKE`; no trigger or view is left out, whatever its name. The copy is read by its encoded path. Scope, on purpose: names only (a weakened trigger or a non-unique index with the right name passes, pinned by a test), and only the drill (`restore_backup.py` does not run it): follow-up #1505, HIGH.
+Deliverable: the change and regression tests (a backup without each of those four objects fails and names it; opening the copy does not bring a dropped trigger back; every missing object is named; a trigger the code does not make fails; an extra index or view passes; the names-only limit; a trigger named like SQLite's own never passes). 6 tests fail on main.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1496 closes after merge and green main.
+Canonical doc update: this brief, the AUTH-NEW-02 closure line, the RUNBOOK_DR step-1 sentence, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, next = #1496), category Α (tightening only, contract §13 not weakened: the drill fails on more backups, never on fewer). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `scripts/restore_drill.py`, `tests/test_backup_dr.py`, one sentence in `docs/RUNBOOK_DR.md`, the records above. No schema, migration, `titan/`, `scripts/restore_backup.py`, AGENTS.md or ADR change.
+
+---
+
 ## AUTH-NEW-02 / #1494 — a refresh token used twice at the same moment revokes every refresh token of the user (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1494; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1504, squash `8d480f9`; main green; issue #1494 closed (overlapping uses only; a later replay is #1503). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation

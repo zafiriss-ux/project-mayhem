@@ -6,7 +6,9 @@ checks that it is a usable TITAN database:
 * ``PRAGMA integrity_check`` returns ``ok``;
 * ``PRAGMA user_version`` equals the code's ``SCHEMA_VERSION`` (or ``--expect-version``);
 * the core tables are present, and every table and column of a fresh database of
-  this code is there too (#1452);
+  this code is there too (#1452), and every index, trigger and view of it, with no
+  trigger it lacks (#1496): some, such as the H1–H5 guard triggers, are not made again
+  when the database opens. Names only: definitions are #1505;
 * the code opens the copy and reads it: an athlete's activities and a refresh-token
   lookup (#1452);
 * the backup's pending-audit queue copy, when there is one, is restored beside it and
@@ -58,7 +60,7 @@ def _schema(path: Path) -> dict[str, set[str]]:
     try:
         tables = [
             row[0] for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                "SELECT name FROM sqlite_master WHERE type='table' AND substr(name, 1, 7) != 'sqlite_'"
             )
         ]
         return {t: {col[0] for col in conn.execute("SELECT name FROM pragma_table_info(?)", (t,))} for t in tables}
@@ -66,8 +68,29 @@ def _schema(path: Path) -> dict[str, set[str]]:
         conn.close()
 
 
+def _objects(path: Path) -> set[tuple[str, str]]:
+    """(type, name) of every index, trigger and view of the database at *path*, read-only.
+
+    SQLite's own indexes (``sqlite_autoindex_…``) are left out; SQLite makes no trigger or
+    view, so none is left out, whatever its name. Names only: an object with
+    the right name but another definition passes (#1505).
+    """
+    conn = sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+    try:
+        return {
+            (kind, name)
+            for kind, name in conn.execute(
+                "SELECT type, name FROM sqlite_master "
+                "WHERE type IN ('trigger', 'view') OR (type = 'index' AND substr(name, 1, 7) != 'sqlite_')"
+            )
+        }
+    finally:
+        conn.close()
+
+
 def _schema_problem(restored: Path, scratch: Path) -> str | None:
-    """None when *restored* has every table and column a fresh database of this code has (#1452).
+    """None when *restored* has every table, column, index, trigger and view a fresh database
+    of this code has, and no trigger it lacks (#1452, #1496).
 
     The reference is a new, empty database that this code creates in the scratch directory,
     so the check follows the code's own schema and needs no hand-kept list.
@@ -86,6 +109,18 @@ def _schema_problem(restored: Path, scratch: Path) -> str | None:
     if columns:
         shown = ", ".join(columns[:10]) + (" …" if len(columns) > 10 else "")
         return f"missing columns: {shown}"
+    # #1496: an index, trigger or view of this code's schema that the copy lacks fails it.
+    # The H1–H5 guard triggers and the unique indexes come only from their migration step,
+    # so a restore from such a copy would run without them.
+    reference, copy = _objects(reference_dir / "titan_core.db"), _objects(restored)
+    objects = sorted(reference - copy)
+    if objects:
+        return "missing indexes, triggers or views: " + ", ".join(f"{kind} {name}" for kind, name in objects)
+    # A trigger this code does not make would run on every write once restored (for example
+    # one that turns a withdrawn consent back on). An extra index or view changes no data.
+    extra = sorted(name for kind, name in copy - reference if kind == "trigger")
+    if extra:
+        return "triggers this code does not make: " + ", ".join(extra)
     return None
 
 
@@ -134,8 +169,8 @@ def _check_consumer(restored: Path) -> int:
 def run_drill(backup_dir: Path, expect_version: int = SCHEMA_VERSION) -> dict:
     """Restore the latest backup into a scratch copy and verify it. Never raises.
 
-    Beyond integrity and version, the copy must have this code's schema (every table and
-    column of a fresh database) and the code must open it and read it: an athlete's
+    Beyond integrity and version, the copy must have this code's schema (every table,
+    column, index, trigger and view of a fresh database, and no other trigger) and the code must open it and read it: an athlete's
     activities and a refresh-token lookup (#1452, BKP-NEW-02). The schema and read checks
     always use this code's current schema, whatever *expect_version* says.
     """
