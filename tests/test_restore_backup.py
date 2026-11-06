@@ -11,8 +11,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import sqlite3
 import subprocess  # nosec B404 - runs the repo's own script on synthetic data
 import sys
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -233,6 +235,8 @@ def test_1251_an_unreadable_current_database_stops_the_restore_unless_skipped(li
     skipped = restore(dest, data, skip_live_withdrawals=True)
     assert skipped["ok"] is True and "live_withdrawals_skipped" in skipped, skipped
     assert _consent_after_start(data) == (False, False)
+    # #1497: B's consent cannot be checked against the unreadable database, so it is withdrawn too.
+    assert _consent_after_start(data, _B) == (False, False)
 
 
 def test_1251_an_unreadable_live_queue_changes_nothing(live, tmp_path: Path) -> None:
@@ -310,6 +314,303 @@ def test_1251_a_missing_queue_copy_is_reported(live, tmp_path: Path) -> None:
 
     assert result["ok"] is True and result["queue_copy_found"] is False, result
     assert result["withdrawals_in_backup"] == 0
+
+
+# ── #1497 (DR-NEW-06): no withdrawal is lost from a damaged database or with the skip flag ──
+
+
+def _recorded_after_backup(tmp_path: Path) -> tuple[Path, Path]:
+    """A backup where A and B consent, then A's /stop recorded in the database only."""
+    data = tmp_path / "live"
+    db = DatabaseManager(db_name="titan_core.db", db_dir=data)
+    for athlete in (_A, _B):
+        db.conn.execute(
+            "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, 'now')", (athlete, athlete)
+        )
+    db.conn.commit()
+    for athlete in (_A, _B):
+        db.grant_consent(athlete, CONSENT_TEXT_VERSION, now=datetime.now(UTC) - timedelta(days=1))
+    dest = db.backup_database(backup_dir=tmp_path / "backups")
+    assert dest is not None
+    assert db.withdraw_consent(_A, coach_id="telegram:test", action_type="TELEGRAM_STOP") == "recorded"
+    db.close()
+    return dest, data
+
+
+def _empty_the_consent_index(database: Path) -> None:
+    """Point the consent index at an empty b-tree: indexed reads of consent_log then find nothing."""
+    with closing(sqlite3.connect(database)) as conn:
+        conn.execute("CREATE TABLE spare_1497 (a TEXT)")
+        conn.execute("CREATE INDEX spare_1497_idx ON spare_1497 (a)")
+        conn.commit()
+        (root,) = conn.execute("SELECT rootpage FROM sqlite_master WHERE name = 'spare_1497_idx'").fetchone()
+        conn.execute("PRAGMA writable_schema = ON")
+        conn.execute("UPDATE sqlite_master SET rootpage = ? WHERE name = 'idx_consent_log_athlete'", (root,))
+        conn.execute("PRAGMA writable_schema = OFF")
+        conn.commit()
+
+
+def test_1497_a_damaged_consent_index_stops_the_restore(tmp_path: Path) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    _empty_the_consent_index(data / "titan_core.db")
+    before = (data / "titan_core.db").read_bytes()
+
+    result = _load("restore_backup").restore(dest, data)
+
+    # Before #1497 the indexed read returned no rows, the restore went on and A's consent came back.
+    assert result["ok"] is False and "--skip-live-withdrawals" in result["error"], result
+    assert (data / "titan_core.db").read_bytes() == before
+    assert not (data / "titan_core.db.before-restore").exists()
+
+
+def test_1497_the_skip_flag_withdraws_every_athlete_but_the_owner(tmp_path: Path) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    _empty_the_consent_index(data / "titan_core.db")
+    module = _load("restore_backup")
+
+    result = module.restore(dest, data, skip_live_withdrawals=True)
+
+    assert result["ok"] is True and result["consents_withdrawn_unverified"] == 2, result
+    unverified = [item for item in PendingAuditQueue(data).pending() if item["action"] == module.UNVERIFIED_ACTION]
+    assert sorted(item["athlete_id"] for item in unverified) == [_A, _B]
+    assert _consent_after_start(data) == (False, False)
+    assert _consent_after_start(data, _B) == (False, False)
+
+
+def test_1497_a_consent_given_after_the_restore_is_kept(tmp_path: Path) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    _empty_the_consent_index(data / "titan_core.db")
+    assert _load("restore_backup").restore(dest, data, skip_live_withdrawals=True)["ok"] is True
+    db = DatabaseManager(db_name="titan_core.db", db_dir=data)
+    try:
+        db.drain_pending_audit()
+        db.grant_consent(_B, CONSENT_TEXT_VERSION)  # /agree after the restore
+        assert db.drain_pending_audit() == 0
+        assert db.has_current_consent(_B, now=datetime.now(UTC) + timedelta(days=1))  # from the next day (D4.4)
+    finally:
+        db.close()
+
+
+def test_1497_the_latest_withdrawal_is_compared_as_a_time(tmp_path: Path) -> None:
+    data = tmp_path / "live"
+    db = DatabaseManager(db_name="titan_core.db", db_dir=data)
+    # As text "…T10:00:00+05:00" sorts after "…T08:00:00+00:00", but it is 05:00 UTC, three hours earlier.
+    for granted, revoked in (
+        ("2026-11-05T01:00:00+00:00", "2026-11-05T10:00:00+05:00"),
+        ("2026-11-05T06:00:00+00:00", "2026-11-05T08:00:00+00:00"),
+    ):
+        db.conn.execute(
+            "INSERT INTO consent_log (athlete_id, consent_type, text_version, granted_at, revoked_at, channel) "
+            "VALUES (?, 'data_processing', ?, ?, ?, 'telegram')",
+            (_A, CONSENT_TEXT_VERSION, granted, revoked),
+        )
+    db.conn.commit()
+    db.close()
+
+    (item,) = _load("restore_backup").recorded_withdrawals(data / "titan_core.db")
+
+    assert item["athlete_id"] == _A and item["revoked_at"] == "2026-11-05T08:00:00+00:00"
+
+
+@pytest.mark.parametrize("name", [".titan_core.db.restoring", "titan_core.db.before-restore.partial"])
+def test_1497_a_symlink_at_a_staging_name_is_refused(live, tmp_path: Path, name: str) -> None:
+    dest = _backup(live, tmp_path)
+    data = live.db_path.parent
+    live.close()
+    victim = tmp_path / "victim"
+    victim.write_bytes(b"untouched")
+    (data / name).symlink_to(victim)
+
+    result = _load("restore_backup").restore(dest, data)
+
+    assert result["ok"] is False, result
+    assert victim.read_bytes() == b"untouched"
+
+
+def test_1497_again_reads_the_withdrawals_in_the_kept_database(tmp_path: Path) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    for side in ("", "-wal"):
+        if (data / f"titan_core.db{side}").exists():
+            shutil.copyfile(data / f"titan_core.db{side}", data / f"titan_core.db.before-restore{side}")
+    shutil.copyfile(dest, data / "titan_core.db")  # the first try already swapped the backup in
+    for side in ("-wal", "-shm"):
+        (data / f"titan_core.db{side}").unlink(missing_ok=True)
+
+    result = _load("restore_backup").restore(dest, data, again=True)
+
+    assert result["ok"] is True and result["withdrawals_recorded"] == 1, result
+    assert _consent_after_start(data) == (False, False)
+    assert _consent_after_start(data, _B) == (True, True)
+
+
+def test_1497_a_stop_between_keeping_the_database_and_its_wal_can_be_finished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    db = DatabaseManager(db_name="titan_core.db", db_dir=data)  # an open connection keeps the -wal
+    try:
+        assert (data / "titan_core.db-wal").exists()
+        module = _load("restore_backup")
+        real_copy = module._private_copy
+
+        def _stop_at_the_wal(source: Path, target: Path) -> None:
+            if source.name.endswith("-wal"):
+                raise OSError("power cut")
+            real_copy(source, target)
+
+        monkeypatch.setattr(module, "_private_copy", _stop_at_the_wal)
+        assert module.restore(dest, data)["ok"] is False
+        monkeypatch.setattr(module, "_private_copy", real_copy)
+        assert (data / "titan_core.db.before-restore").exists()
+        assert not (data / "titan_core.db.before-restore-wal").exists()
+
+        stuck = module.restore(dest, data, again=True)
+        assert stuck["ok"] is False and "copy titan_core.db-wal to titan_core.db.before-restore-wal" in stuck["error"]
+
+        shutil.copyfile(data / "titan_core.db-wal", data / "titan_core.db.before-restore-wal")
+        finished = module.restore(dest, data, again=True)
+    finally:
+        db.close()
+
+    assert finished["ok"] is True and finished["withdrawals_recorded"] >= 1, finished
+    assert _consent_after_start(data) == (False, False)
+
+
+def test_1497_a_clock_behind_the_backup_stops_the_skip(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    _empty_the_consent_index(data / "titan_core.db")
+    module = _load("restore_backup")
+    behind = datetime.now(UTC) - timedelta(days=3)  # before the consents in the backup
+
+    class _SlowClock(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN001, ANN206
+            return behind
+
+    monkeypatch.setattr(module, "datetime", _SlowClock)
+    before = (data / "titan_core.db").read_bytes()
+
+    result = module.restore(dest, data, skip_live_withdrawals=True)
+
+    # A withdrawal dated before a consent does not withdraw it: the restore must not go on.
+    assert result["ok"] is False and "clock" in result["error"], result
+    assert (data / "titan_core.db").read_bytes() == before
+
+
+def test_1497_the_skip_flag_includes_an_athlete_without_a_consent_row(tmp_path: Path) -> None:
+    dest, _data = _recorded_after_backup(tmp_path)
+    with closing(sqlite3.connect(dest)) as conn:
+        conn.execute("INSERT INTO athletes (athlete_id, display_name, created_at) VALUES ('a-0000000c', 'c', 'now')")
+        conn.commit()
+
+    items = _load("restore_backup").unverified_withdrawals(dest, datetime.now(UTC))
+
+    assert [item["athlete_id"] for item in items] == [_A, _B, "a-0000000c"]
+
+
+def test_1497_a_damaged_kept_database_stops_again(tmp_path: Path) -> None:
+    dest, data = _recorded_after_backup(tmp_path)
+    for side in ("", "-wal"):
+        if (data / f"titan_core.db{side}").exists():
+            shutil.copyfile(data / f"titan_core.db{side}", data / f"titan_core.db.before-restore{side}")
+    _empty_the_consent_index(data / "titan_core.db.before-restore")
+    shutil.copyfile(dest, data / "titan_core.db")
+    for side in ("-wal", "-shm"):
+        (data / f"titan_core.db{side}").unlink(missing_ok=True)
+
+    result = _load("restore_backup").restore(dest, data, again=True)
+
+    assert result["ok"] is False and "--skip-live-withdrawals" in result["error"], result
+
+
+def test_1497_a_time_without_an_offset_is_read_as_utc(tmp_path: Path) -> None:
+    data = tmp_path / "live"
+    db = DatabaseManager(db_name="titan_core.db", db_dir=data)
+    for granted, revoked in (
+        ("2026-11-05T01:00:00+00:00", "2026-11-05T09:00:00"),  # no offset: 09:00 UTC, the latest
+        ("2026-11-05T06:00:00+00:00", "2026-11-05T10:00:00+05:00"),  # 05:00 UTC
+    ):
+        db.conn.execute(
+            "INSERT INTO consent_log (athlete_id, consent_type, text_version, granted_at, revoked_at, channel) "
+            "VALUES (?, 'data_processing', ?, ?, ?, 'telegram')",
+            (_A, CONSENT_TEXT_VERSION, granted, revoked),
+        )
+    db.conn.commit()
+    db.close()
+
+    (item,) = _load("restore_backup").recorded_withdrawals(data / "titan_core.db")
+
+    assert item["revoked_at"] == "2026-11-05T09:00:00"
+
+
+def test_1497_the_withdrawals_are_read_without_the_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # quick_check is made to pass, so only the table read itself can find A's withdrawal.
+    dest, data = _recorded_after_backup(tmp_path)
+    _empty_the_consent_index(data / "titan_core.db")
+    module = _load("restore_backup")
+    real_connect = sqlite3.connect
+
+    class _Passing:
+        def __init__(self, conn: sqlite3.Connection) -> None:
+            self._conn = conn
+
+        def execute(self, sql: str, *args):  # noqa: ANN002, ANN201
+            return self._conn.execute("SELECT 'ok'" if sql == "PRAGMA quick_check" else sql, *args)
+
+        def close(self) -> None:
+            self._conn.close()
+
+    monkeypatch.setattr(module.sqlite3, "connect", lambda *a, **k: _Passing(real_connect(*a, **k)))
+    items = module.recorded_withdrawals(data / "titan_core.db")
+
+    assert [item["athlete_id"] for item in items] == [_A]
+
+
+def test_1497_a_hard_link_at_a_staging_name_is_refused(live, tmp_path: Path) -> None:
+    dest = _backup(live, tmp_path)
+    data = live.db_path.parent
+    live.close()
+    victim = tmp_path / "victim"
+    victim.write_bytes(b"untouched")
+    (data / ".titan_core.db.restoring").hardlink_to(victim)
+
+    result = _load("restore_backup").restore(dest, data)
+
+    assert result["ok"] is False and "not a plain file" in result["error"], result
+    assert victim.read_bytes() == b"untouched"
+
+
+def test_1497_a_backup_path_with_uri_characters_is_refused(live, tmp_path: Path) -> None:
+    dest = _backup(live, tmp_path)
+    odd = tmp_path / "we?ird#dir%41"
+    odd.mkdir()
+    for source in (dest, dest.with_name(dest.stem + ".pending_audit.jsonl")):
+        shutil.copyfile(source, odd / source.name)
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+
+    result = _load("restore_backup").restore(odd / dest.name, fresh)
+
+    # A raw "file:" URI would check (and create) tmp_path / "we" instead of the backup restored.
+    assert result["ok"] is False and "?, # or %" in result["error"], result
+    assert not (tmp_path / "we").exists()
+    assert list(fresh.iterdir()) == []
+
+
+def test_1497_a_uri_character_in_a_symlinked_directory_is_refused(live, tmp_path: Path) -> None:
+    dest = _backup(live, tmp_path)
+    linked = tmp_path / "a?b"
+    linked.symlink_to(dest.parent, target_is_directory=True)  # resolves to a clean path
+    fresh = tmp_path / "fresh"
+    fresh.mkdir()
+
+    result = _load("restore_backup").restore(linked / dest.name, fresh)
+
+    assert result["ok"] is False and "?, # or %" in result["error"], result
+    assert not (tmp_path / "a").exists()
+    assert list(fresh.iterdir()) == []
 
 
 # ── #1252 (DR-NEW-02): the database and the queue are copied as one snapshot ──

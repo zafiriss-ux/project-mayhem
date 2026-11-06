@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## DR-NEW-06 / #1497 — a restore loses no consent withdrawal from a damaged database or with --skip-live-withdrawals (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1497; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — consent / data recovery. **Severity:** HIGH (issue; consent path, floor HIGH, ADR-0079). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1497 only. `scripts/restore_backup.py`: the scratch copy of the database being replaced (and of a kept one) must pass `PRAGMA quick_check`, else it counts as unreadable and the restore stops; `consent_log` is read `NOT INDEXED`; each athlete's latest withdrawal is chosen by time, not text; with `--skip-live-withdrawals` every athlete of the backup but the owner gets a withdrawal dated now (`CONSENT_WITHDRAWN_RESTORE_UNVERIFIED`), so each gives consent again with /agree; the database is kept before its `-wal` and `--again` names the step left after a stop in between; a stale staging file (`.partial`/`.restoring`) is removed before an exclusive `O_NOFOLLOW` create, and a symlink or hard link there is refused; with the skip flag a clock behind a consent time in the backup stops the restore; a time without an offset is read as UTC; the backup is opened read-only by its encoded path, and a backup path with `?`, `#` or `%` is refused. The two runbook restore steps, including the 30-day re-consent window.
+Deliverable: the change and regression tests (a damaged consent index stops the restore; the skip flag withdraws every athlete but the owner; a consent given after the restore is kept; the latest withdrawal compared as a time; a symlink at a staging name is refused; `--again` reads the kept database; a stop between keeping the database and its `-wal` can be finished; a clock behind the backup stops the skip; an athlete without a consent row is included; a damaged kept database stops `--again`; a time without an offset is read as UTC; the withdrawals are read without the index; a hard link at a staging name is refused; a backup path with URI characters is refused, also through a symlinked directory). 15 tests fail on main.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1497 closes after merge and green main.
+Canonical doc update: this brief, the M0-13-R2 closure (brief, table row, docs/audits/FINDINGS.md), CLAUDE.md test snapshot, docs/governance/ledger.jsonl, the two runbook restore steps.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, next = #1497), category Α (tightening only, contract §13 not weakened: an unreadable or damaged database still stops the restore, and the skip flag now withdraws consent instead of keeping it). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `scripts/restore_backup.py`, `tests/test_restore_backup.py`, `docs/RUNBOOK_DR.md`, `docs/runbooks/database-recovery.md`, the records above. No schema, queue format, drain, `titan/`, AGENTS.md or ADR change.
+
+---
+
 ## M0-13-R2 / #1268 — the Garmin account is also its stable profileId (ADR-0083 implementation, owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1268; this entry is only the brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / authorization. **Severity:** HIGH (issue; authorization path, floor HIGH). **Change Type:** implementation. **Workflow Path:** B (category Β, ADR-0083 Accepted, D-223). Only tightens: every new check refuses, nothing that is refused today is accepted.
+**Status:** RESOLVED 2026-11-06 — PR #1500, squash `0ea806b`; main green; issue #1268 closed. This entry is only the brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete isolation / authorization. **Severity:** HIGH (issue; authorization path, floor HIGH). **Change Type:** implementation. **Workflow Path:** B (category Β, ADR-0083 Accepted, D-223). Only tightens: every new check refuses, nothing that is refused today is accepted.
 
 Pass type: implementation
 Change Type: implementation
@@ -442,7 +459,7 @@ DOC-03). Καμία διόρθωση σε αυτή τη λίστα δεν γίν
 | # | Tier | Υπόλοιπο | Κατάσταση |
 |---|------|----------|-----------|
 | M0-13-R1 | 1 | Έλεγχος μετά το login με το `displayName` του owner, που σήμερα δεν αποθηκεύεται. Καλύπτει την περίπτωση που ο owner αλλάξει το Garmin e-mail του και το `.env` κρατήσει το παλιό (D-146) | RESOLVED · PR #1124 (D-181)· σχήμα v35 `owner_garmin_identity`· η σύνδεση του owner που διαβάζει προφίλ γράφει το όνομα· relogin και `bind_garmin_account` αρνούνται το όνομα του owner και όσο είναι άγνωστο· αθλητής ήδη δεμένος → `expired` (ADR-0076)· υπόλοιπο: M0-13-R2 |
-| M0-13-R2 | 1 | Η ταυτότητα του owner είναι το `displayName`, που αλλάζει. Αν ο owner αλλάξει username, ως την επόμενη σύνδεσή του που διαβάζει προφίλ η βάση κρατά το παλιό όνομα, και ένα relogin αθλητή με τον λογαριασμό του owner δεν πιάνεται από αυτόν τον έλεγχο (μένει ο έλεγχος e-mail του D-146). Λύση: σταθερό `profileId` σε `owner_garmin_identity`, `athlete_accounts`, relogin, `bind_garmin_account`, `_token_account_matches`. Ήδη γραμμένο στο ADR-0076 «Τι δεν ξέρουμε» (ανεξάρτητος έλεγχος του #1124, 2026-10-31) | OPEN · HIGH · Β: ADR-0083 Accepted (D-223, PR #1499)· υλοποίηση εκκρεμεί (#1268) · στόχος Phase 27, πριν από τον πρώτο αθλητή πιλότου |
+| M0-13-R2 | 1 | Η ταυτότητα του owner είναι το `displayName`, που αλλάζει. Αν ο owner αλλάξει username, ως την επόμενη σύνδεσή του που διαβάζει προφίλ η βάση κρατά το παλιό όνομα, και ένα relogin αθλητή με τον λογαριασμό του owner δεν πιάνεται από αυτόν τον έλεγχο (μένει ο έλεγχος e-mail του D-146). Λύση: σταθερό `profileId` σε `owner_garmin_identity`, `athlete_accounts`, relogin, `bind_garmin_account`, `_token_account_matches`. Ήδη γραμμένο στο ADR-0076 «Τι δεν ξέρουμε» (ανεξάρτητος έλεγχος του #1124, 2026-10-31) | RESOLVED 2026-11-06 · HIGH · Β: ADR-0083 Accepted (D-223, PR #1499)· υλοποίηση PR #1500 (squash `0ea806b`), main πράσινο, #1268 κλειστό |
 | M0-12-R1 | 2 | Η διαδρομή PostgreSQL (`persistence.py` adapter, `database.py`) δεν επιστρέφει `athlete_profile_id` στις αποφάσεις governance. Δεν είναι σε χρήση (ADR-0044). Μαζί με το M0-27 | OPEN · πριν ενεργοποιηθεί το PostgreSQL |
 | M0-01-R1 | 1 | Ο έλεγχος fencing και η αποστολή δεν είναι ατομικά: μένει παράθυρο κλασμάτων δευτερολέπτου (D-148, PR #1089) | OPEN · στόχος Phase 27 |
 

@@ -10,7 +10,11 @@ is missing from the backup too. This script keeps both:
    and reads its queue copy; an unreadable copy stops the restore before anything changes;
 2. reads every consent withdrawal recorded in the database being replaced (and in a
    database kept by an earlier restore), from a scratch copy with its ``-wal``; when that
-   database cannot be read the restore stops, unless ``--skip-live-withdrawals`` is given;
+   database cannot be read, or ``PRAGMA quick_check`` on the copy is not ``ok``, the restore
+   stops. With ``--skip-live-withdrawals`` it goes on, and instead every athlete of the
+   backup other than the owner gets a withdrawal dated now, so no consent comes back that
+   cannot be checked: each such athlete gives consent again with /agree within 30 days, or
+   the worker deletes them (D4.3). A clock behind a consent time in the backup stops it (#1497);
 3. under the queue lock: adds those withdrawals to the queue in the data directory,
    keeping every withdrawal already there (a withdrawal is applied once per id, and only
    to consents given at or before it, so one written twice is harmless); keeps the current
@@ -40,7 +44,7 @@ import stat
 import sys
 import tempfile
 from contextlib import closing
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -52,6 +56,7 @@ DB_NAME = "titan_core.db"
 KEPT = DB_NAME + ".before-restore"
 OWNER = "owner"
 CARRIED_ACTION = "CONSENT_WITHDRAWN_BEFORE_RESTORE"
+UNVERIFIED_ACTION = "CONSENT_WITHDRAWN_RESTORE_UNVERIFIED"
 _MANUAL = re.compile(r"^titan_core\.db\.(\d{8})$")
 
 
@@ -106,19 +111,76 @@ def recorded_withdrawals(database: Path) -> list[dict]:
             shutil.copyfile(wal, Path(scratch) / (DB_NAME + "-wal"))
         conn = sqlite3.connect(copy)
         try:
+            # A damaged index can return fewer rows without an error, which would lose a
+            # withdrawal (#1497): the copy must pass quick_check, and the table is read
+            # without its index.
+            check = [row[0] for row in conn.execute("PRAGMA quick_check").fetchall()]
+            if check != ["ok"]:
+                raise sqlite3.DatabaseError("quick_check did not return ok")
             rows = conn.execute(
-                "SELECT athlete_id, MAX(revoked_at) FROM consent_log "
-                "WHERE revoked_at IS NOT NULL AND athlete_id != ? GROUP BY athlete_id",
+                "SELECT athlete_id, revoked_at FROM consent_log NOT INDEXED "
+                "WHERE revoked_at IS NOT NULL AND athlete_id != ?",
                 (OWNER,),
             ).fetchall()
         finally:
             conn.close()
-    items = []
+    # The latest withdrawal of each athlete, compared as times, not as text (#1497). A time
+    # the queue cannot read stops the restore.
+    latest: dict[str, tuple[datetime, str]] = {}
     for athlete_id, revoked_at in rows:
-        datetime.fromisoformat(revoked_at)  # a time the queue cannot read stops the restore
+        when = _as_utc(revoked_at)
+        if athlete_id not in latest or when > latest[athlete_id][0]:
+            latest[athlete_id] = (when, revoked_at)
+    items = []
+    for athlete_id, (_when, revoked_at) in sorted(latest.items()):
         key = hashlib.sha256(f"{athlete_id}\n{revoked_at}".encode()).hexdigest()[:32]
         items.append({"id": f"restore-{key}", "athlete_id": athlete_id, "revoked_at": revoked_at, "action": CARRIED_ACTION})
     return items
+
+
+def _as_utc(text: str) -> datetime:
+    """*text* as an aware time; a time without an offset is UTC, as the drain reads it."""
+    when = datetime.fromisoformat(text)
+    return when if when.tzinfo is not None else when.replace(tzinfo=UTC)
+
+
+def _read_only(path: Path) -> sqlite3.Connection:
+    """Open *path* read-only; the URI is built from the encoded path, so ``?``, ``#`` or ``%``
+    in a file name cannot make SQLite open another file."""
+    return sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+
+
+def unverified_withdrawals(backup: Path, now: datetime) -> list[dict]:
+    """A withdrawal dated *now* for every athlete in *backup* other than the owner (#1497).
+
+    Used when the withdrawals recorded in the current database cannot be read: a consent
+    that cannot be checked is not restored, so each athlete gives consent again with /agree.
+    A consent in the backup dated after *now* would not be withdrawn (the drain withdraws
+    only consents given at or before the withdrawal), so a clock behind the backup stops
+    the restore.
+    """
+    with closing(_read_only(backup)) as conn:
+        athletes = sorted({
+            row[0]
+            for table in ("athletes", "consent_log")
+            for row in conn.execute(f"SELECT DISTINCT athlete_id FROM {table} NOT INDEXED WHERE athlete_id != ?", (OWNER,))  # nosec B608 - fixed table names
+        })
+        times = [
+            text
+            for row in conn.execute("SELECT granted_at, revoked_at FROM consent_log NOT INDEXED WHERE athlete_id != ?", (OWNER,))
+            for text in row
+            if text
+        ]
+    if any(_as_utc(text) > now for text in times):
+        raise ValueError("this computer's clock is behind a consent time in the backup: set the clock, then try again")
+    revoked_at = now.isoformat()
+    return [
+        {
+            "id": "restore-unverified-" + hashlib.sha256(f"{athlete_id}\n{revoked_at}".encode()).hexdigest()[:32],
+            "athlete_id": athlete_id, "revoked_at": revoked_at, "action": UNVERIFIED_ACTION,
+        }
+        for athlete_id in athletes
+    ]
 
 
 def merge_withdrawals_locked(queue: PendingAuditQueue, withdrawals: list[dict]) -> int:
@@ -141,8 +203,20 @@ def merge_withdrawals_locked(queue: PendingAuditQueue, withdrawals: list[dict]) 
 
 
 def _private_copy(source: Path, target: Path) -> None:
-    """Copy *source* to *target* readable by the owner only, and fsync it."""
-    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    """Copy *source* to *target* readable by the owner only, and fsync it.
+
+    A stale regular file left at *target* is removed first. A symlink, a hard link or any
+    other file type there is refused, so the write never reaches another file (#1497).
+    """
+    try:
+        info = target.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+            raise ValueError(f"{target.name} is not a plain file: remove it, then try again (with --again once {KEPT} exists)")
+        target.unlink()
+    fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
     try:
         os.fchmod(fd, 0o600)
         with source.open("rb") as src:
@@ -171,10 +245,16 @@ def restore(backup: Path, data_dir: Path, *, again: bool = False, skip_live_with
     try:
         if not _regular_file(backup):
             raise ValueError("the backup does not exist")
-        problem = _verify_backup_artifact(backup)
+        # The shared backup check opens a raw "file:" URI (#1501), where these characters would
+        # make SQLite check another file than the one restored: neither the path as given nor
+        # the resolved one may hold them, and the check gets the resolved path.
+        resolved = backup.resolve()
+        if any(char in path for path in (str(backup), str(resolved)) for char in "?#%"):
+            raise ValueError("the backup's path contains ?, # or %: move or rename it, then try again")
+        problem = _verify_backup_artifact(resolved)
         if problem is not None:
             raise ValueError(f"the backup failed its check: {problem}")
-        with closing(sqlite3.connect(f"file:{backup}?mode=ro", uri=True)) as conn:
+        with closing(_read_only(backup)) as conn:
             version = int(conn.execute("PRAGMA user_version").fetchone()[0])
         if version > SCHEMA_VERSION:
             raise ValueError(f"the backup's schema version {version} is newer than this code's {SCHEMA_VERSION}")
@@ -187,7 +267,10 @@ def restore(backup: Path, data_dir: Path, *, again: bool = False, skip_live_with
             if not kept.exists():
                 raise ValueError(f"--again needs {KEPT} from the first restore")
             if wal.exists() and not kept_wal.exists():
-                raise ValueError(f"{DB_NAME}-wal exists but {KEPT}-wal does not: keep it before trying again")
+                raise ValueError(
+                    f"{DB_NAME}-wal exists but {KEPT}-wal does not: keep it before trying again "
+                    f"(after a first restore that stopped while keeping, copy {DB_NAME}-wal to {KEPT}-wal)"
+                )
         elif kept.exists() or kept_wal.exists():
             raise ValueError(f"{KEPT} already exists: move it away with its -wal, or use --again")
         recorded: list[dict] = []
@@ -198,19 +281,24 @@ def restore(backup: Path, data_dir: Path, *, again: bool = False, skip_live_with
             if not skip_live_withdrawals:
                 raise ValueError(
                     f"the withdrawals in the current database cannot be read ({type(exc).__name__}); "
-                    "check the stopped athletes by hand and pass --skip-live-withdrawals"
+                    "pass --skip-live-withdrawals to restore with every athlete's consent withdrawn"
                 ) from exc
             result["live_withdrawals_skipped"] = f"{type(exc).__name__}: {exc}"
+            # Fail closed (#1497): no consent the current database might have withdrawn comes back.
+            recorded = unverified_withdrawals(backup, datetime.now(UTC))
+            result["consents_withdrawn_unverified"] = len(recorded)
         result["withdrawals_recorded"] = len(recorded)
         queue = PendingAuditQueue(data_dir)
         with queue.locked(exclusive=True):
             result["withdrawals_added"] = merge_withdrawals_locked(queue, withdrawals + recorded)
-            if not again and wal.exists():
-                _private_copy(wal, data_dir / (KEPT + "-wal.partial"))
-                os.replace(data_dir / (KEPT + "-wal.partial"), kept_wal)
+            # The database is kept before its -wal: a stop in between leaves the kept database,
+            # and --again then names the one step left (copy the -wal) instead of being stuck.
             if not again and target.exists():
                 _private_copy(target, data_dir / (KEPT + ".partial"))
                 os.replace(data_dir / (KEPT + ".partial"), kept)
+            if not again and wal.exists():
+                _private_copy(wal, data_dir / (KEPT + "-wal.partial"))
+                os.replace(data_dir / (KEPT + "-wal.partial"), kept_wal)
             staged = data_dir / f".{DB_NAME}.restoring"
             _private_copy(backup, staged)
             _fsync_dir(data_dir)
@@ -234,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--again", action="store_true", help=f"a later try: keep the existing {KEPT}")
     parser.add_argument(
         "--skip-live-withdrawals", action="store_true",
-        help="restore even when the current database cannot be read; check the stopped athletes by hand",
+        help="restore even when the current database cannot be read; every athlete's consent is then withdrawn",
     )
     args = parser.parse_args(argv)
     data_dir = args.data_dir
