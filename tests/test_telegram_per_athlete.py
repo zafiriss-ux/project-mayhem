@@ -708,6 +708,45 @@ def test_an_athletes_sync_writes_only_that_athletes_data(db, key_file, monkeypat
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("change", ["stop", "delete", "delete, token rejected"])
+def test_a_stop_or_deletion_during_an_athletes_sync_stores_nothing(db, key_file, data_dir, tmp_path, monkeypatch, change) -> None:
+    """PRIV-NEW-02 (#1379): the change lands on another connection while Garmin is fetched."""
+    from titan import worker
+    from titan.core import athlete_lifecycle
+
+    monkeypatch.setenv(athlete_lifecycle.DELETION_RECORD_ENV, str(tmp_path / "deletions.jsonl"))
+    _fake_garminconnect(monkeypatch)
+    _ready(db, _A)
+    athlete_token_path(_A).write_bytes(encrypt_athlete_token("session-of-a"))
+    other = DatabaseManager(db_dir=data_dir)
+
+    def _sync_all(self, days_back: int = 14) -> dict:
+        if change == "stop":
+            other.withdraw_consent(_A, coach_id=f"telegram:{CHAT_A}", action_type="TELEGRAM_STOP")
+        else:
+            athlete_lifecycle.delete_athlete(other, _A)
+        if change.endswith("token rejected"):
+            # The token state is then written in /sync's finally, for an account row that is gone.
+            self.token_expired = True
+        self.client = _ActivityClient([_run("2026-10-15T07:00:00", 702)])
+        return {
+            "activities": self.sync_activities(days_back=3),
+            "sleep": [{"date": "2026-10-15", "resting_hr": 50, "sleep_score": 80, "total_sleep_hours": 7.0}],
+        }
+
+    monkeypatch.setattr(GarminSync, "sync_all", _sync_all)
+    monkeypatch.setattr(worker, "_utc_now", lambda: datetime(2026, 10, 15, 9, 0, tzinfo=UTC))
+    try:
+        reply = worker.sync_athlete_on_request(db, _A)
+    finally:
+        other.close()
+
+    assert reply == "⏸ Nothing was stored: your consent is withdrawn or your data is being deleted."
+    for table in ("training_log", "daily_metrics"):
+        assert db.conn.execute(f"SELECT COUNT(*) FROM {table} WHERE athlete_id = ?", (_A,)).fetchone()[0] == 0  # noqa: S608
+
+
+@pytest.mark.integration
 def test_an_athletes_sync_without_a_token_pauses_them(db, key_file, monkeypatch) -> None:
     from titan import worker
 

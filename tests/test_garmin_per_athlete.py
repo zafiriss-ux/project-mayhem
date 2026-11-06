@@ -431,6 +431,8 @@ class _ActivityClient:
 @pytest.mark.integration
 def test_two_garmin_accounts_each_write_to_their_own_athlete(db, key_file, monkeypatch) -> None:
     _fake_garminconnect(monkeypatch)
+    for athlete in (_A, _B):  # data is stored only for an athlete with consent (#1379)
+        db.grant_consent(athlete, "v1")
     feeds = {
         _A: [_run("2026-10-15T07:00:00", 501, 10000)],
         _B: [_run("2026-10-15T08:00:00", 502, 5000), _run("2026-10-14T08:00:00", 503, 7000)],

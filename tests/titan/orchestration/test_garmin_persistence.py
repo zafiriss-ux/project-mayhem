@@ -1,6 +1,7 @@
 """Garmin persistence moved out of DailyCoach (plan task 6, D-029)."""
 from __future__ import annotations
 
+import sqlite3
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -351,3 +352,172 @@ def test_earlier_nights_above_the_ceiling_are_not_stored(db):
         "SELECT date, hrv_rmssd FROM daily_metrics WHERE date < ?", (DAY,),
     ).fetchall())
     assert stored == {"2026-03-02": 300.0}
+
+
+# ── A /stop or deletion during the Garmin fetch (PRIV-NEW-02, #1379) ──────────
+# Only synthetic athletes and values; the second DatabaseManager is the other
+# connection (the Telegram /stop or the operator's delete) racing the sync.
+
+_ATHLETE = "a-0000000a"
+
+
+def _enrol(db: DatabaseManager, athlete_id: str = _ATHLETE, *, consent: bool = True) -> None:
+    db.conn.execute(
+        "INSERT INTO athletes (athlete_id, display_name, created_at) VALUES (?, ?, '2026-01-01')",
+        (athlete_id, athlete_id),
+    )
+    db.conn.commit()
+    if consent:
+        db.grant_consent(athlete_id, "v1")
+
+
+def _rows(db: DatabaseManager, athlete_id: str = _ATHLETE) -> tuple[int, int]:
+    count = db.conn.execute
+    return (
+        count("SELECT COUNT(*) FROM training_log WHERE athlete_id = ?", (athlete_id,)).fetchone()[0],
+        count("SELECT COUNT(*) FROM daily_metrics WHERE athlete_id = ?", (athlete_id,)).fetchone()[0],
+    )
+
+
+def _persist(db: DatabaseManager, athlete_id: str = _ATHLETE):  # noqa: ANN202
+    return persist_garmin_data(db, _payload(), DAY, athlete_id=athlete_id, emit=lambda *_a, **_k: None)
+
+
+@pytest.fixture
+def other(tmp_path):
+    """A second connection to the same database file."""
+    manager = DatabaseManager(db_name="garmin_persistence.db", db_dir=tmp_path)
+    yield manager
+    manager.close()
+
+
+@pytest.mark.integration
+def test_an_athlete_with_consent_is_stored(db):
+    _enrol(db)
+
+    _persist(db)
+
+    assert _rows(db) == (1, 1)
+
+
+@pytest.mark.integration
+def test_a_stop_before_the_write_stores_nothing(db, other):
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore
+
+    _enrol(db)
+    assert other.withdraw_consent(_ATHLETE, coach_id="telegram:1", action_type="TELEGRAM_STOP") == "recorded"
+
+    with pytest.raises(PersistenceFailure) as failure:
+        _persist(db)
+
+    assert isinstance(failure.value.__cause__, AthleteMayNotStore)
+    assert failure.value.__cause__.reason == "no current consent"
+    assert _rows(db) == (0, 0)
+
+
+@pytest.mark.integration
+def test_a_deleted_athlete_gets_no_rows_back(db, other, tmp_path, monkeypatch):
+    from titan.core import athlete_lifecycle
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore
+
+    monkeypatch.setenv(athlete_lifecycle.DELETION_RECORD_ENV, str(tmp_path.parent / f"{tmp_path.name}-deletions.jsonl"))
+    _enrol(db)
+    athlete_lifecycle.delete_athlete(other, _ATHLETE)
+
+    with pytest.raises(PersistenceFailure) as failure:
+        _persist(db)
+
+    assert isinstance(failure.value.__cause__, AthleteMayNotStore)
+    assert failure.value.__cause__.reason == "athlete deleted"
+    assert _rows(db) == (0, 0)
+
+
+@pytest.mark.integration
+def test_a_stop_committed_after_the_check_still_stores_nothing(db, other, monkeypatch):
+    """The check is the transaction's first read: a /stop committed after it fails the writes."""
+    from titan.core import athlete_lifecycle
+
+    _enrol(db)
+    real_pending = athlete_lifecycle.deletion_pending
+
+    def _stop_in_between(athlete_id):  # noqa: ANN001, ANN202
+        # Runs inside _require_may_store, after this transaction's snapshot was taken.
+        other.withdraw_consent(athlete_id, coach_id="telegram:1", action_type="TELEGRAM_STOP")
+        return real_pending(athlete_id)
+
+    monkeypatch.setattr(athlete_lifecycle, "deletion_pending", _stop_in_between)
+
+    with pytest.raises(PersistenceFailure) as failure:
+        _persist(db)
+
+    # SQLite refuses the writes of a snapshot older than the committed /stop (WAL).
+    assert isinstance(failure.value.__cause__, sqlite3.OperationalError)
+    assert not other.has_current_consent(_ATHLETE)
+    assert _rows(db) == (0, 0)
+
+
+@pytest.mark.integration
+def test_an_unreadable_consent_stores_nothing(db, monkeypatch):
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore
+
+    _enrol(db)
+
+    def _fail(*_a, **_k):  # noqa: ANN002, ANN003, ANN202
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(db, "has_current_consent", _fail)
+
+    with pytest.raises(PersistenceFailure) as failure:
+        _persist(db)
+
+    assert isinstance(failure.value.__cause__, AthleteMayNotStore)
+    assert _rows(db) == (0, 0)
+
+
+@pytest.mark.integration
+def test_a_recorded_deletion_still_pending_stores_nothing(db, monkeypatch):
+    from titan.core import athlete_lifecycle
+
+    _enrol(db)
+    monkeypatch.setattr(athlete_lifecycle, "deletion_pending", lambda athlete_id: athlete_id == _ATHLETE)
+
+    with pytest.raises(PersistenceFailure):
+        _persist(db)
+
+    assert _rows(db) == (0, 0)
+
+
+@pytest.mark.integration
+def test_the_backfill_and_hrv_rewrite_store_nothing_without_consent(db):
+    from titan.orchestration.garmin_persistence import AthleteMayNotStore
+
+    _enrol(db, consent=False)
+
+    class _Garmin:
+        athlete_max_hr = 0
+
+        def sync_activities(self, _days_back, athlete_max_hr=0):  # noqa: ANN001, ANN202
+            return _payload()["activities"]
+
+        def sync_hrv(self, _nights):  # noqa: ANN001, ANN202
+            return [{"date": DAY, "rmssd": 55.0}]
+
+    with pytest.raises(AthleteMayNotStore):
+        backfill_training_history(db, _Garmin(), DAY, athlete_id=_ATHLETE, emit=lambda *_a, **_k: None)
+    with pytest.raises(AthleteMayNotStore):
+        rewrite_recent_hrv_once(db, _Garmin(), athlete_id=_ATHLETE, emit=lambda *_a, **_k: None)
+
+    assert _rows(db) == (0, 0)
+    assert db.get_last_sync_outcome(HRV_REWRITE_MARKER, athlete_id=_ATHLETE) is None
+
+
+@pytest.mark.unit
+def test_the_owner_is_stored_without_any_consent_lookup(db, monkeypatch):
+    def _fail(*_a, **_k):  # noqa: ANN002, ANN003, ANN202
+        raise AssertionError("the owner needs no consent (ADR-0067 D4.5)")
+
+    monkeypatch.setattr(db, "has_current_consent", _fail)
+
+    _persist(db, "owner")
+
+    assert _rows(db, "owner") == (1, 1)
