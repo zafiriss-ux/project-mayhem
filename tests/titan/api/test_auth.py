@@ -313,7 +313,9 @@ def test_1392_two_refreshes_with_one_token_at_once_give_one_session(client: Test
     statuses, active = _two_refreshes_at_once(client)
 
     assert statuses == [200, 401]
-    assert active == 1
+    # #1494: the second use revokes every refresh token of the user, also the one the first
+    # use was just given, so neither holder keeps a session.
+    assert active == 0
 
 
 @pytest.mark.integration
@@ -330,3 +332,116 @@ def test_1392_a_token_is_consumed_once_at_the_database() -> None:
     # A token past its expiry is never consumed, whatever the earlier check said.
     store.add_refresh_token("jti-old", "u1", now - timedelta(seconds=1), now - timedelta(days=1))
     assert store.consume_refresh_token("jti-old") is False
+
+
+# ── #1494 (AUTH-NEW-02): a reused refresh token revokes every refresh token of the user ──
+
+def _login_cookie(client: TestClient, username: str, password: str) -> str:
+    client.cookies.clear()
+    assert client.post("/auth/login", json={"username": username, "password": password}).status_code == 200
+    token = client.cookies.get(REFRESH_COOKIE_NAME)
+    assert token is not None
+    return token
+
+
+def _refresh_response(client: TestClient, token: str):  # noqa: ANN202
+    """One refresh with *token* from a fresh browser (only that cookie and a CSRF token)."""
+    with TestClient(client.app, base_url="https://testserver") as browser:
+        headers = _csrf_headers(browser)
+        browser.cookies.set(REFRESH_COOKIE_NAME, token)
+        return browser.post("/auth/refresh", headers=headers)
+
+
+def _refresh_with(client: TestClient, token: str) -> int:
+    return _refresh_response(client, token).status_code
+
+
+def _reuse(client: TestClient, token: str) -> int:
+    """Use *token* a second time as the losing request of a race does: it passed the active check."""
+    store = client.app.state.auth_store
+    store.is_refresh_token_active = lambda jti: True
+    try:
+        return _refresh_with(client, token)
+    finally:
+        del store.is_refresh_token_active
+
+
+@pytest.mark.integration
+def test_1494_a_reused_token_ends_every_session_of_the_user(client: TestClient) -> None:
+    phone = _login_cookie(client, "coach", "coach-pass")
+    laptop = _login_cookie(client, "coach", "coach-pass")
+    other_user = _login_cookie(client, "athlete", "athlete-pass")
+    first = _refresh_response(client, phone)
+    assert first.status_code == 200
+    rotated = first.cookies.get(REFRESH_COOKIE_NAME)
+    assert rotated is not None
+
+    assert _reuse(client, phone) == 401
+
+    assert _refresh_with(client, rotated) == 401  # the session the first use was given
+    assert _refresh_with(client, laptop) == 401  # every other session of the same user
+    assert _refresh_with(client, other_user) == 200  # another user is not touched
+
+
+@pytest.mark.integration
+def test_1494_the_reuse_log_names_the_account_and_a_jti_prefix_only(
+    client: TestClient, caplog: pytest.LogCaptureFixture,
+) -> None:
+    import json
+
+    from titan.api.auth import decode_token
+
+    token = _login_cookie(client, "coach", "coach-pass")
+    jti = decode_token(token, expected_type="refresh").jti
+    assert _refresh_with(client, token) == 200
+
+    with caplog.at_level("INFO", logger="titan.api"):
+        assert _reuse(client, token) == 401
+
+    (line,) = [
+        json.loads(r.getMessage()) for r in caplog.records
+        if "REFRESH_TOKEN_REUSED" in r.getMessage()
+    ]
+    assert line["sub"] == "coach-1"
+    assert line["jti_prefix"] == jti[:8]
+    assert line["all_refresh_tokens_revoked"] is True
+    text = json.dumps(line)
+    assert jti not in text and token not in text
+
+
+@pytest.mark.integration
+def test_1494_a_failed_revoke_still_refuses(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
+) -> None:
+    token = _login_cookie(client, "coach", "coach-pass")
+    assert _refresh_with(client, token) == 200
+    store = client.app.state.auth_store
+
+    def _broken(user_id: str) -> int:
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(store._db, "revoke_auth_tokens_for_user", _broken)
+    monkeypatch.setattr(store, "is_refresh_token_active", lambda jti: True)
+    with caplog.at_level("INFO", logger="titan.api"):
+        response = _refresh_response(client, token)
+
+    assert response.status_code == 401
+    assert REFRESH_COOKIE_NAME not in response.cookies
+    assert any("REFRESH_ROTATION_FAILED" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.integration
+def test_1494_the_store_revokes_only_that_users_tokens() -> None:
+    store = AuthStore()
+    for user_id in ("u1", "u2"):
+        store.upsert_user(user_id=user_id, username=user_id, password_hash="x", role="COACH", athlete_id=None)
+    now = datetime.now(UTC)
+    for jti, user_id in (("a", "u1"), ("b", "u1"), ("c", "u2")):
+        store.add_refresh_token(jti, user_id, now + timedelta(days=1), now)
+    user = AuthUser(id="u1", username="u1", role="COACH", athlete_id=None)
+    assert store.consume_refresh_token("a") is True
+
+    assert store.rotate_refresh_token("a", user) is None
+
+    assert store.is_refresh_token_active("b") is False
+    assert store.is_refresh_token_active("c") is True

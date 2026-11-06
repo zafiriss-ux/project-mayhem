@@ -253,6 +253,22 @@ class AccessRepository:
             )
             self._db.conn.commit()
 
+    def revoke_auth_tokens_for_user(self, user_id: str) -> int:
+        """Revoke every unrevoked refresh token of *user_id* in one statement; return the count.
+
+        Used when a refresh token is reused (#1494). A failure rolls back and raises.
+        """
+        with self._db._lock:
+            try:
+                cur = self._db.conn.cursor()
+                cur.execute("UPDATE auth_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0", (user_id,))
+                count = cur.rowcount
+                self._db.conn.commit()
+            except Exception:
+                self._db.conn.rollback()
+                raise
+            return count
+
     def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
         """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""
         with self._db._lock:

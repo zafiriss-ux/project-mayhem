@@ -985,6 +985,10 @@ class DatabaseManager:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
         self._access.delete_expired_auth_tokens(before_iso=before_iso)
 
+    def revoke_auth_tokens_for_user(self, user_id: str) -> int:
+        """Revoke every unrevoked refresh token of the user; return the count (#1494)."""
+        return self._access.revoke_auth_tokens_for_user(user_id=user_id)
+
     def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
         """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""
         return self._access.get_active_auth_tokens_for_user(user_id=user_id, now_iso=now_iso)
