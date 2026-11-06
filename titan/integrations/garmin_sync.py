@@ -1236,6 +1236,12 @@ class GarminSync:
                     _garmin_event("activity_skipped_malformed", subsystem="sync_activities", activity_id=activity_id, error_class=e.__class__.__name__, detail=f"Skipping malformed activity ({activity_id})", error_message=str(e))
                     continue
             sync_succeeded = True
+            if skipped_records:
+                # INT-NEW-01 (#1256): a run skipped as malformed is missing from the loads,
+                # so the TSB can be too high, as when the whole fetch fails. The sync is
+                # "partial" and the morning treats the TSB as unverified for H4 (ADR-0073
+                # point 5, ADR-0080).
+                self._activities_fetch.failed = True
         except Exception as e:
             self._activities_fetch.failed = True
             failure_class = _classify_failure(e)
