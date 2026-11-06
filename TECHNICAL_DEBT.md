@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## INT-NEW-01 / #1256 — reproduction only: a run skipped as malformed leaves the Garmin sync "ok" and its load out of the TSB (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1256 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (H4). **Severity:** HIGH (issue; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 10: reproduction only, `REPRO_FIRST`).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: #1256 reproduction at the current main, no application code. Three tests on the real `GarminSync._sync_operation` with a synthetic Garmin client: (1) control, a failed activity fetch makes the sync `partial` (passes); (2) a heavy run (25 km, average HR 175) with `duration="bad"` or a null `calories` is dropped from the activities, so its load never reaches the TSB, while the same run with `duration=9000` carries a load (passes); (3) a run skipped as malformed (`duration="bad"`, or a null `calories` as Garmin can send) makes the sync `partial` — `xfail(strict=True, raises=AssertionError)`, two cases: today the `status` key is absent, which the morning reads as complete loads (`loads_complete`, `daily_coach.py` step 5), so H4 can read CLEAR from a TSB without the run when the run would have moved the TSB past the floor. The skip is logged (`activity_skipped_malformed`, `activity_skip_summary`) but is not visible to the morning pipeline. Test (2) records today's drop; a fix that keeps the run changes it on purpose. The step from `partial` to `DATA_MISSING_CONSERVATIVE_H4` is already covered by `test_partial_sync_counts_tsb_as_missing_for_h4` (`tests/test_morning_baselines.py`). The fix is a separate PR; when it lands, the strict mark turns the third test red until it is removed.
+Deliverable: the three tests (five cases); an issue comment with the reproduction at this SHA.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1256; it closes with the fix PR.
+Canonical doc update: this brief, the AUTH-NEW-03 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 10 = #1256, reproduction only). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/titan/integrations/test_garmin_sync.py`, the records above. No `titan/`, `scripts/`, schema, AGENTS.md or ADR change.
+
+---
+
 ## AUTH-NEW-03 / #1503 — a used refresh token replayed later ends every session of the user, also across API processes (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1503; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1508, squash `7d5def8`; main green; issue #1503 closed (tokens used before the change replay as a plain 401 until they expire; BOOLEAN wording is #1507). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation
