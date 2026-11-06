@@ -1070,12 +1070,16 @@ class DatabaseManager:
         return self._operations.routine_inputs_fingerprint(athlete_id=athlete_id, date=date)
 
     def mark_routine_delivered(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
-    ) -> None:
-        """Record that the day's message was delivered; the day is never sent again (ADR-0067 D8.3)."""
-        self._operations.mark_routine_delivered(
+        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime,
+        attempt: int | None = None,
+    ) -> bool:
+        """Record that the day's message was delivered; the day is never sent again (ADR-0067 D8.3).
+
+        ``attempt`` fences it to the attempt that owns the open day (#1444); False when not recorded.
+        """
+        return self._operations.mark_routine_delivered(
             athlete_id=athlete_id, execution_date=execution_date,
-            routine_type=routine_type, delivered_at=delivered_at,
+            routine_type=routine_type, delivered_at=delivered_at, attempt=attempt,
         )
 
     def complete_routine_execution(

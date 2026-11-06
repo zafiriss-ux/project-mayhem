@@ -631,6 +631,102 @@ def test_1248_a_fenced_decision_without_a_database_is_refused() -> None:
     assert tracker._decisions == []
 
 
+# ── DEL-NEW-01 (#1444): a late delivery of a superseded attempt is not the newer day's ──
+
+def _late_ack_then(db: DatabaseManager, monkeypatch, *, newer_send_ok: bool) -> dict:
+    """The issue's interleaving, attempts 2 and 3 in their own connections and threads.
+
+    Attempt 1 stored TEMPO (Telegram failed). Attempt 2 resends it; while Telegram holds its
+    acknowledgement, new inputs arrive and attempt 3 takes the day over, records REST and
+    marks its send. Attempt 2's acknowledgement then returns; only after that does Telegram
+    answer attempt 3 (``newer_send_ok``).
+    """
+    import threading
+
+    assert _attempt(db, 1) is False  # TEMPO decided and recorded, Telegram failed
+    newer_sending, older_acked = threading.Event(), threading.Event()
+    seen: dict = {}
+    _Coach.session, _Coach.delivers, _Coach.hrv = {"session_type": "REST"}, True, 30.0
+
+    def _newer_attempt() -> None:
+        other = DatabaseManager(db_dir=_data_dir())
+        try:
+            seen["newer"] = _attempt(other, 3)
+        finally:
+            other.close()
+
+    def _held_rest(self, data: dict) -> bool:  # attempt 3's briefing
+        _Bot.sent.append((self.chat_id, f"BRIEFING {data['session']}"))
+        newer_sending.set()
+        assert older_acked.wait(10)
+        return newer_send_ok
+
+    newer = threading.Thread(target=_newer_attempt)
+    real_send = _Bot.send_message
+
+    def _held_ack(self, text: str, parse_mode: str = "Markdown") -> bool:  # attempt 2's resend
+        if "Today's session: TEMPO" in text:
+            db.save_daily_metric(_TODAY, hrv=30.0, rhr=68, athlete_id=_A)  # new inputs meanwhile
+            newer.start()
+            assert newer_sending.wait(10)  # attempt 3 recorded REST and marked its send
+            seen["before_ack"] = (_stored(db), db.get_routine_resume(
+                athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending"))
+        return real_send(self, text, parse_mode)
+
+    monkeypatch.setattr(_Bot, "send_message", _held_ack)
+    monkeypatch.setattr(_Bot, "send_daily_coaching", _held_rest)
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    seen["older"] = worker._attempt_morning(db, _A, _TODAY, 2)
+    seen["after_ack"] = _row(db), db.get_routine_resume(
+        athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+    older_acked.set()
+    newer.join(10)
+    return seen
+
+
+def test_1444_a_late_ack_does_not_close_the_newer_day_and_its_failure_is_reported(db, monkeypatch) -> None:
+    seen = _late_ack_then(db, monkeypatch, newer_send_ok=False)
+
+    stored, sending = seen["before_ack"]
+    assert stored == ["REST"] and sending
+    assert seen["older"] is True  # attempt 2's TEMPO did reach Telegram
+    assert seen["after_ack"] == ((3, 0, 0), sending)  # the newer day stays open, its mark stays
+    assert seen["newer"] is False
+    assert _row(db) == (3, 0, 1)  # attempt 3 was the last: the day is left, not delivered
+    assert _stored(db) == ["REST"]
+    assert any("Morning briefing not delivered" in text for text in _to_zaf())  # the failure is told
+
+
+def test_1444_a_late_ack_then_the_newer_rest_delivers(db, monkeypatch) -> None:
+    seen = _late_ack_then(db, monkeypatch, newer_send_ok=True)
+
+    assert seen["after_ack"][0] == (3, 0, 0)
+    assert seen["newer"] is True
+    assert _row(db) == (3, 1, 1)  # delivered by attempt 3's own briefing
+    assert "BRIEFING REST" in _to_athlete()
+    assert not any("not delivered" in text for text in _to_zaf())
+
+
+def test_1444_the_delivery_fence_at_the_database(db) -> None:
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    db.begin_routine_attempt(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                             started_at=_MORNING, max_attempts=3)
+    worker._mark_briefing_sending(db, _A, _TODAY, 2)
+
+    assert worker._mark_delivered(db, _A, _TODAY, 1) is True  # nothing left for attempt 1 to record
+    assert _row(db) == (2, 0, 0)
+    assert db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+    assert worker._day_key(db, _A, _TODAY) not in worker._UNRECORDED_SENDS
+
+    assert worker._mark_delivered(db, _A, _TODAY, 2) is True  # the owning attempt records
+    assert _row(db) == (2, 1, 1)
+    assert not db.get_routine_resume(athlete_id=_A, execution_date=_TODAY, routine_type="morning").get("sending")
+    assert db.mark_routine_delivered(athlete_id=_A, execution_date=_TODAY, routine_type="morning",
+                                     delivered_at=_MORNING, attempt=2) is False  # closed: not twice
+
+
 # ── MA-F5: the "sending" mark (ADR-0069 §8) ───────────────────────────────────
 
 def test_maf5_a_refused_send_clears_the_mark_and_the_retry_resends_the_decision(db, monkeypatch) -> None:

@@ -384,18 +384,34 @@ class OperationsRepository:
         return {"description": row[0], "opened_at": row[1]}
 
     def mark_routine_delivered(
-        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime
-    ) -> None:
-        """Record the delivery of the day's message; it also closes the day (ADR-0067 D8.3)."""
+        self, *, athlete_id: str, execution_date: str, routine_type: str, delivered_at: datetime,
+        attempt: int | None = None,
+    ) -> bool:
+        """Record the delivery of the day's message; it also closes the day (ADR-0067 D8.3).
+
+        With ``attempt`` it is recorded only while that attempt still owns the open day, in
+        the same statement (#1444): a late delivery of an attempt that a later one took over
+        must not close the later attempt's day. False when nothing was recorded.
+        """
         at = delivered_at.astimezone(UTC).isoformat()
+        # The fence's first argument is 1 when there is no attempt to check (always true).
+        fence_args = (1, None) if attempt is None else (0, int(attempt))
         with self._db._lock:
             self._db._ensure_open_locked()
-            self._db.conn.cursor().execute(
-                "UPDATE worker_routine_executions SET delivered_at = ?, completed_at = COALESCE(completed_at, ?) "
-                "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ?",
-                (at, at, athlete_id, execution_date, routine_type),
-            )
-            self._db.conn.commit()
+            cursor = self._db.conn.cursor()
+            try:
+                cursor.execute(
+                    "UPDATE worker_routine_executions SET delivered_at = ?, completed_at = COALESCE(completed_at, ?) "
+                    "WHERE athlete_id = ? AND execution_date = ? AND routine_type = ? "
+                    "AND (? = 1 OR (attempts = ? AND delivered_at IS NULL AND completed_at IS NULL))",
+                    (at, at, athlete_id, execution_date, routine_type, *fence_args),
+                )
+                recorded = cursor.rowcount > 0
+                self._db.conn.commit()
+            except BaseException:
+                self._db.conn.rollback()  # a failed write or commit leaves no transaction open
+                raise
+        return recorded
 
     def complete_routine_execution(
         self, *, athlete_id: str, execution_date: str, routine_type: str, completed_at: datetime
