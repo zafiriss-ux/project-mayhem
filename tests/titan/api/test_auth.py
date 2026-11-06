@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -32,7 +33,8 @@ def _csrf_headers(client: TestClient) -> dict[str, str]:
 
 
 @pytest.fixture
-def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
+def jwt_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A fresh synthetic RS256 key pair in the environment."""
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -47,6 +49,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("TITAN_JWT_PRIVATE_KEY", private_pem)
     monkeypatch.setenv("TITAN_JWT_PUBLIC_KEY", public_pem)
 
+
+@pytest.fixture
+def client(jwt_keys: None) -> TestClient:
     store = AuthStore()
     store.upsert_user(
         user_id="coach-1",
@@ -325,13 +330,17 @@ def test_1392_a_token_is_consumed_once_at_the_database() -> None:
     now = datetime.now(UTC)
     store.add_refresh_token("jti-1", "u1", now + timedelta(days=1), now)
 
-    assert store.consume_refresh_token("jti-1") is True
-    assert store.consume_refresh_token("jti-1") is False
-    assert store.consume_refresh_token("ghost") is False
+    def _rotate(jti: str) -> str:
+        new_token = (str(uuid.uuid4()), now.isoformat(), (now + timedelta(days=1)).isoformat())
+        return store._db.rotate_auth_token(jti, "u1", new_token, now.isoformat(), 3)
+
+    assert _rotate("jti-1") == "rotated"
+    assert _rotate("jti-1") == "reused"
+    assert _rotate("ghost") == "refused"
     assert store.is_refresh_token_active("jti-1") is False
     # A token past its expiry is never consumed, whatever the earlier check said.
     store.add_refresh_token("jti-old", "u1", now - timedelta(seconds=1), now - timedelta(days=1))
-    assert store.consume_refresh_token("jti-old") is False
+    assert _rotate("jti-old") == "refused"
 
 
 # ── #1494 (AUTH-NEW-02): a reused refresh token revokes every refresh token of the user ──
@@ -357,13 +366,8 @@ def _refresh_with(client: TestClient, token: str) -> int:
 
 
 def _reuse(client: TestClient, token: str) -> int:
-    """Use *token* a second time as the losing request of a race does: it passed the active check."""
-    store = client.app.state.auth_store
-    store.is_refresh_token_active = lambda jti: True
-    try:
-        return _refresh_with(client, token)
-    finally:
-        del store.is_refresh_token_active
+    """Use *token* a second time, after the refresh that used it (#1503: no race needed)."""
+    return _refresh_with(client, token)
 
 
 @pytest.mark.integration
@@ -417,11 +421,10 @@ def test_1494_a_failed_revoke_still_refuses(
     assert _refresh_with(client, token) == 200
     store = client.app.state.auth_store
 
-    def _broken(user_id: str) -> int:
+    def _broken(*args: object, **kwargs: object) -> str:
         raise RuntimeError("database unavailable")
 
-    monkeypatch.setattr(store._db, "revoke_auth_tokens_for_user", _broken)
-    monkeypatch.setattr(store, "is_refresh_token_active", lambda jti: True)
+    monkeypatch.setattr(store._db, "rotate_auth_token", _broken)
     with caplog.at_level("INFO", logger="titan.api"):
         response = _refresh_response(client, token)
 
@@ -431,6 +434,7 @@ def test_1494_a_failed_revoke_still_refuses(
 
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("jwt_keys")
 def test_1494_the_store_revokes_only_that_users_tokens() -> None:
     store = AuthStore()
     for user_id in ("u1", "u2"):
@@ -439,9 +443,168 @@ def test_1494_the_store_revokes_only_that_users_tokens() -> None:
     for jti, user_id in (("a", "u1"), ("b", "u1"), ("c", "u2")):
         store.add_refresh_token(jti, user_id, now + timedelta(days=1), now)
     user = AuthUser(id="u1", username="u1", role="COACH", athlete_id=None)
-    assert store.consume_refresh_token("a") is True
+    assert store.rotate_refresh_token("a", user).token is not None
 
-    assert store.rotate_refresh_token("a", user) is None
+    assert store.rotate_refresh_token("a", user) == (None, True)
 
     assert store.is_refresh_token_active("b") is False
     assert store.is_refresh_token_active("c") is True
+
+
+# ── #1503 (AUTH-NEW-03): a used refresh token replayed later, and across API processes ──
+
+@pytest.mark.integration
+def test_1503_a_stolen_token_replayed_later_ends_every_session(
+    client: TestClient, caplog: pytest.LogCaptureFixture,
+) -> None:
+    stolen = _login_cookie(client, "coach", "coach-pass")
+    laptop = _login_cookie(client, "coach", "coach-pass")
+    attacker = _refresh_response(client, stolen)  # the thief uses the token first
+    assert attacker.status_code == 200
+    attacker_token = attacker.cookies.get(REFRESH_COOKIE_NAME)
+    assert attacker_token is not None
+
+    with caplog.at_level("INFO", logger="titan.api"):
+        assert _refresh_with(client, stolen) == 401  # the owner's browser sends it later
+
+    assert any("REFRESH_TOKEN_REUSED" in r.getMessage() for r in caplog.records)
+    assert _refresh_with(client, attacker_token) == 401  # the thief's session ends
+    assert _refresh_with(client, laptop) == 401
+
+
+@pytest.mark.integration
+def test_1503_a_logged_out_token_replayed_is_only_refused(
+    client: TestClient, caplog: pytest.LogCaptureFixture,
+) -> None:
+    phone = _login_cookie(client, "coach", "coach-pass")
+    laptop = _login_cookie(client, "coach", "coach-pass")
+    assert _logout_with(client, phone).status_code == 200
+
+    with caplog.at_level("INFO", logger="titan.api"):
+        assert _refresh_with(client, phone) == 401
+
+    assert not any("REFRESH_TOKEN_REUSED" in r.getMessage() for r in caplog.records)
+    assert _refresh_with(client, laptop) == 200  # an old tab after logout ends no other session
+
+
+@pytest.mark.integration
+def test_1503_a_token_dropped_by_the_three_token_limit_is_only_refused(client: TestClient) -> None:
+    oldest = _login_cookie(client, "coach", "coach-pass")
+    newer = [_login_cookie(client, "coach", "coach-pass") for _ in range(3)]  # oldest is revoked
+
+    assert _refresh_with(client, oldest) == 401
+    assert _refresh_with(client, newer[-1]) == 200
+
+
+@pytest.mark.integration
+def test_1503_a_logout_with_a_used_token_does_not_hide_its_replay(client: TestClient) -> None:
+    stolen = _login_cookie(client, "coach", "coach-pass")
+    attacker = _refresh_response(client, stolen)
+    assert attacker.status_code == 200
+    attacker_token = attacker.cookies.get(REFRESH_COOKIE_NAME)
+    assert _logout_with(client, stolen).status_code == 200  # thief tries to hide it
+
+    assert _refresh_with(client, stolen) == 401
+    assert _refresh_with(client, attacker_token) == 401
+
+
+def _logout_with(client: TestClient, token: str):  # noqa: ANN202
+    with TestClient(client.app, base_url="https://testserver") as browser:
+        headers = _csrf_headers(browser)
+        browser.cookies.set(REFRESH_COOKIE_NAME, token)
+        return browser.post("/auth/logout", headers=headers)
+
+
+@pytest.mark.integration
+def test_1503_the_victims_logout_with_a_used_token_ends_the_thiefs_session(
+    client: TestClient, caplog: pytest.LogCaptureFixture,
+) -> None:
+    stolen = _login_cookie(client, "coach", "coach-pass")
+    attacker = _refresh_response(client, stolen)
+    assert attacker.status_code == 200
+    attacker_token = attacker.cookies.get(REFRESH_COOKIE_NAME)
+
+    with caplog.at_level("INFO", logger="titan.api"):
+        assert _logout_with(client, stolen).status_code == 200  # the victim never refreshes again
+
+    assert any("REFRESH_TOKEN_REUSED" in r.getMessage() for r in caplog.records)
+    assert _refresh_with(client, attacker_token) == 401
+
+
+@pytest.mark.integration
+def test_1503_a_failed_revoke_at_logout_still_logs_out(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture,
+) -> None:
+    stolen = _login_cookie(client, "coach", "coach-pass")
+    assert _refresh_with(client, stolen) == 200
+    store = client.app.state.auth_store
+
+    def _broken(*args: object, **kwargs: object) -> bool:
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(store._db, "revoke_auth_tokens_if_used", _broken)
+    with caplog.at_level("INFO", logger="titan.api"):
+        response = _logout_with(client, stolen)
+
+    assert response.status_code == 200
+    assert any("LOGOUT_REPLAY_REVOKE_FAILED" in r.getMessage() for r in caplog.records)
+
+
+@pytest.mark.integration
+def test_1503_another_users_token_id_is_refused_and_changes_nothing() -> None:
+    store = AuthStore()
+    for user_id in ("u1", "u2"):
+        store.upsert_user(user_id=user_id, username=user_id, password_hash="x", role="COACH", athlete_id=None)
+    now = datetime.now(UTC)
+    store.add_refresh_token("u2-token", "u2", now + timedelta(days=1), now)
+    new_token = ("next", now.isoformat(), (now + timedelta(days=1)).isoformat())
+
+    assert store._db.rotate_auth_token("u2-token", "u1", new_token, now.isoformat(), 3) == "refused"
+    assert store.is_refresh_token_active("u2-token") is True
+    assert store._db.get_auth_token("next") is None
+
+
+@pytest.mark.integration
+@pytest.mark.usefixtures("jwt_keys")
+def test_1503_two_api_processes_cannot_leave_the_new_token_active(tmp_path: Path) -> None:
+    """Process A uses a token; process B replays it while A has not yet stored the next one.
+
+    Two ``DatabaseManager`` objects on one file stand for two API processes: they share no
+    Python lock, only the database. B must not finish its replay check between A's use of the
+    token and A's new token, or the new token survives the revoke.
+    """
+    import sqlite3
+    import threading
+
+    from titan.core.database import DatabaseManager
+
+    db_a = DatabaseManager(db_dir=tmp_path)
+    db_b = DatabaseManager(db_dir=tmp_path)
+    try:
+        store_a, store_b = AuthStore(db=db_a), AuthStore(db=db_b)
+        store_a.upsert_user(user_id="u1", username="u1", password_hash="x", role="COACH", athlete_id=None)
+        user = AuthUser(id="u1", username="u1", role="COACH", athlete_id=None)
+        now = datetime.now(UTC)
+        store_a.add_refresh_token("stolen", "u1", now + timedelta(days=1), now)
+        replay = threading.Thread(target=store_b.rotate_refresh_token, args=("stolen", user), daemon=True)
+
+        def _pause_before_new_token(action: int, arg1: str | None, *_: object) -> int:
+            if action == sqlite3.SQLITE_INSERT and arg1 == "auth_tokens" and replay.ident is None:
+                replay.start()
+                replay.join(timeout=1.0)  # B runs now unless A holds the database write lock
+            return sqlite3.SQLITE_OK
+
+        db_a.conn.set_authorizer(_pause_before_new_token)
+        try:
+            store_a.rotate_refresh_token("stolen", user)
+        finally:
+            db_a.conn.set_authorizer(None)
+        assert replay.ident is not None  # the pause ran
+        replay.join(timeout=10)
+        assert not replay.is_alive()
+
+        active = db_b.get_active_auth_tokens_for_user("u1", datetime.now(UTC).isoformat())
+        assert active == []
+    finally:
+        db_a.close()
+        db_b.close()

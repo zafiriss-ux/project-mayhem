@@ -46,7 +46,7 @@ _OPERATIONS_METHODS = (
 _ACCESS_METHODS = (
     "record_failed_login", "is_login_locked_out", "clear_login_lockout", "upsert_auth_user",
     "get_auth_user_by_id", "get_auth_user_by_username", "insert_auth_token", "get_auth_token",
-    "set_auth_token_revoked", "consume_auth_token", "delete_expired_auth_tokens", "get_active_auth_tokens_for_user",
+    "set_auth_token_revoked", "rotate_auth_token", "revoke_auth_tokens_if_used", "delete_expired_auth_tokens", "get_active_auth_tokens_for_user",
     "_get_all_athlete_ids", "get_assigned_athletes", "assign_athlete_to_coach", "log_coach_action",
     "get_coach_audit_log",
 )

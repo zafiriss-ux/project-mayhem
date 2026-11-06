@@ -213,36 +213,87 @@ class AccessRepository:
             "issued_at": row[2],
             "expires_at": row[3],
             "revoked": bool(row[4]),
+            "used": row[4] == 2,
         }
 
     def set_auth_token_revoked(self, jti: str) -> None:
-        """Mark a refresh token as revoked."""
+        """Mark an active refresh token as revoked.
+
+        A token already used by a refresh keeps its mark (``revoked = 2``, #1503), so a logout
+        with a stolen old token cannot hide a later reuse of it.
+        """
         with self._db._lock:
             self._db.conn.cursor().execute(
-                "UPDATE auth_tokens SET revoked = 1 WHERE id = ?",
+                "UPDATE auth_tokens SET revoked = 1 WHERE id = ? AND revoked = 0",
                 (jti,),
             )
             self._db.conn.commit()
 
-    def consume_auth_token(self, jti: str, now_iso: str) -> bool:
-        """Revoke a refresh token only if it is unrevoked and unexpired; True when this call did it.
+    def rotate_auth_token(
+        self,
+        old_jti: str,
+        user_id: str,
+        new_token: tuple[str, str, str],
+        now_iso: str,
+        max_active: int,
+    ) -> str:
+        """Use refresh token *old_jti* of *user_id* once and store the next one, in one transaction.
 
-        One statement checks and revokes, so two refreshes with the same token can never
-        both consume it (#1392, ADR-0048 single use). A failure rolls back and raises.
+        *new_token* is ``(jti, issued_at, expires_at)``. Returns ``"rotated"`` when the old token
+        was active: it is marked as used (``revoked = 2``), the new one is stored and the user's
+        oldest active tokens past *max_active* are revoked. Returns ``"reused"`` when the old
+        token was already used by a refresh: a stolen token is being replayed (#1494, #1503), so
+        every refresh token of the user is revoked. Returns ``"refused"`` for any other token
+        (logged out, revoked, expired, unknown or another user's), which changes nothing.
+
+        The checks and the writes are one ``BEGIN IMMEDIATE`` transaction, so two API processes
+        cannot both use one token or leave the new token of the first use active after the
+        second use revoked the rest (#1503). A failure rolls back and raises.
         """
-        with self._db._lock:
-            try:
-                cur = self._db.conn.cursor()
+        new_jti, issued_at, expires_at = new_token
+        with self._db._lock, self._immediate_transaction() as cur:
+            cur.execute(
+                "UPDATE auth_tokens SET revoked = 2 "
+                "WHERE id = ? AND user_id = ? AND revoked = 0 AND expires_at > ?",
+                (old_jti, user_id, now_iso),
+            )
+            if cur.rowcount == 1:
                 cur.execute(
-                    "UPDATE auth_tokens SET revoked = 1 WHERE id = ? AND revoked = 0 AND expires_at > ?",
-                    (jti, now_iso),
+                    "INSERT INTO auth_tokens (id, user_id, issued_at, expires_at, revoked) "
+                    "VALUES (?, ?, ?, ?, 0)",
+                    (new_jti, user_id, issued_at, expires_at),
                 )
-                consumed = cur.rowcount == 1
-                self._db.conn.commit()
-            except Exception:
-                self._db.conn.rollback()
-                raise
-            return consumed
+                active = cur.execute(
+                    "SELECT id FROM auth_tokens WHERE user_id = ? AND revoked = 0 AND expires_at > ? "
+                    "ORDER BY issued_at, rowid",
+                    (user_id, now_iso),
+                ).fetchall()
+                for (jti,) in active[: max(0, len(active) - max_active)]:
+                    cur.execute("UPDATE auth_tokens SET revoked = 1 WHERE id = ?", (jti,))
+                return "rotated"
+            return "reused" if self._revoke_all_if_used(cur, old_jti, user_id) else "refused"
+
+    def revoke_auth_tokens_if_used(self, jti: str, user_id: str) -> bool:
+        """When *jti* of *user_id* was already used by a refresh, revoke every token of the user.
+
+        A logout that presents a used token means someone else may hold its successor (#1503):
+        the logout must end that chain too. True when the tokens were revoked. One
+        ``BEGIN IMMEDIATE`` transaction; a failure rolls back and raises.
+        """
+        with self._db._lock, self._immediate_transaction() as cur:
+            return self._revoke_all_if_used(cur, jti, user_id)
+
+    @staticmethod
+    def _revoke_all_if_used(cur, jti: str, user_id: str) -> bool:  # noqa: ANN001
+        """In the caller's transaction: if *jti* of *user_id* is marked used, revoke all the user's tokens."""
+        row = cur.execute(
+            "SELECT revoked FROM auth_tokens WHERE id = ? AND user_id = ?",
+            (jti, user_id),
+        ).fetchone()
+        if row is None or row[0] != 2:
+            return False
+        cur.execute("UPDATE auth_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0", (user_id,))
+        return True
 
     def delete_expired_auth_tokens(self, before_iso: str) -> None:
         """Delete auth_tokens with expires_at < before_iso (housekeeping)."""
@@ -252,22 +303,6 @@ class AccessRepository:
                 (before_iso,),
             )
             self._db.conn.commit()
-
-    def revoke_auth_tokens_for_user(self, user_id: str) -> int:
-        """Revoke every unrevoked refresh token of *user_id* in one statement; return the count.
-
-        Used when a refresh token is reused (#1494). A failure rolls back and raises.
-        """
-        with self._db._lock:
-            try:
-                cur = self._db.conn.cursor()
-                cur.execute("UPDATE auth_tokens SET revoked = 1 WHERE user_id = ? AND revoked = 0", (user_id,))
-                count = cur.rowcount
-                self._db.conn.commit()
-            except Exception:
-                self._db.conn.rollback()
-                raise
-            return count
 
     def get_active_auth_tokens_for_user(self, user_id: str, now_iso: str) -> list[dict]:
         """Return active (non-revoked, non-expired) tokens for a user, by issued_at."""

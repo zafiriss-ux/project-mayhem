@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## AUTH-NEW-03 / #1503 — a used refresh token replayed later ends every session of the user, also across API processes (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1503; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — authentication. **Severity:** HIGH (issue; auth path, floor HIGH, ADR-0048). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1503 only. A refresh token used by a refresh is marked `revoked = 2` (used); logout, the three-token limit and a revoke of every token still write `revoked = 1`. `/auth/refresh` sends a used token on to the rotation, which treats it as a replay: every unrevoked refresh token of the user is revoked and `REFRESH_TOKEN_REUSED` is logged (`sub` and an 8-character `jti` prefix only), however long after the first use it comes. A logged-out, limit-dropped, expired, unknown or other user's token is only refused (401, nothing else changes), so an old tab after logout ends no other session. The use, the new token, the three-token trim and the revoke are one `BEGIN IMMEDIATE` transaction (`rotate_auth_token`), so two API processes cannot leave the new token of a first use active after a second use. Logout revokes only an active token (`AND revoked = 0`), so a thief's logout with the old token cannot hide its replay; a logout that presents a used token revokes every refresh token of the user and logs `REFRESH_TOKEN_REUSED` (the victim's browser would never send it again), and a failure there is logged `LOGOUT_REPLAY_REVOKE_FAILED` while the logout still answers 200 and clears the cookies. Trade-off the issue asks for, stated for the operator: any replay of a used token ends every session of the user on every device, also a client's retry after a lost refresh response and a replay by anyone who holds a leaked old token (up to 7 days, at the refresh rate limit, or through logout, which has none); no grace window is added. The single-step helpers `consume_auth_token` and `revoke_auth_tokens_for_user` are removed (no caller left). `scripts/run_api.py` comment: the reuse check no longer needs one process; the in-memory rate limiters still do. Scope, on purpose: tokens used before this change carry `revoked = 1` and replay as a plain 401 until they expire (7 days at most). ADR-0048, `titan/core/schema.py` and the Alembic file declare `revoked` as BOOLEAN; the SQLite column is INTEGER without a CHECK and now holds 0, 1 or 2. The ADR text and the PostgreSQL gate (ADR-0044) item are a policy-only follow-up (#1507, LOW). No schema version or migration change.
+Deliverable: the change and regression tests (a stolen token replayed later ends the thief's and every other session of the user and logs the reuse; a logged-out token and a token dropped by the three-token limit are only refused; a logout with a used token does not hide its replay; another user's token id is refused and changes nothing; two API processes on one database cannot leave the new token active; the victim's logout with a used token ends the thief's session; a failed revoke at logout still logs out), and the #1392/#1494 tests moved to the new rotation. 6 of the 8 new tests fail on main.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1503 closes after merge and green main.
+Canonical doc update: this brief, the BKP-NEW-04 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3), and the owner's choice of 2026-11-06 to take #1503 right after #1496; category Α (tightening only, contract §13 not weakened: every new path answers 401 or revokes more, nothing refused today is accepted). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `titan/api/main.py` (refresh and logout), `titan/api/auth.py` (`AuthStore`, refresh-token encoding), `scripts/run_api.py` (comment only), `titan/core/database.py` and `titan/core/repositories/access.py` (auth-token methods), `tests/titan/api/test_auth.py`, `tests/test_db_repositories.py` (method list), the records above. No schema version, migration, token format, cookie, CSRF, AGENTS.md or ADR change.
+
+---
+
 ## BKP-NEW-04 / #1496 — the restore drill fails a backup without this code's indexes, triggers or views, or with a trigger it does not make (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1496; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery. **Severity:** HIGH (issue; governance path, floor HIGH, ADR-0052). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
+**Status:** RESOLVED 2026-11-06 — PR #1506, squash `82e2c4c`; main green; issue #1496 closed (names only; the behaviour of the guard and the file `restore_backup.py` restores are #1505). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance / data recovery. **Severity:** HIGH (issue; governance path, floor HIGH, ADR-0052). **Change Type:** implementation. **Workflow Path:** A (category Α, tightening only).
 
 Pass type: implementation
 Change Type: implementation
