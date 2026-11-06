@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## ING-NEW-03 / #1349 and ING-NEW-04 / #1350 — reproduction only: repeated or incompatible time trials lift the CS confidence lock (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issues #1349 and #1350 (both stay open; this pass does not fix them). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — governance input (CS_CONFIDENCE_LOCK). **Severity:** HIGH (both issues; governance path, floor HIGH). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 14: reproduction, then a guard).
+
+Pass type: reproduction
+Change Type: test-only
+Workflow Path: Path A
+Execution unit: #1349 and #1350 reproduction at the current main, no application code. In `tests/titan/orchestration/test_daily_coach.py`, with the real `DailyCoach._hydrate_engines_from_db` CS step (D-040), a real `CriticalSpeedTracker`, `CriticalSpeedEngine` and `GovernanceEngine.check_cs_confidence_lock`, and synthetic trials all dated today. #1349: (1) control, two distinct trials (3000 m / 600 s, 5000 m / 1100 s) give a positive CS and keep the lock (passes); (2) the same pair entered three times (six rows) keeps the lock — `xfail(strict=True, raises=AssertionError)`: today each repeat is one more tracker update, so the confidence passes 70% with no new evidence. #1350: (3) control, the six trials 3000+500·i m in 1200−50·i s (i = 0..5) each have a speed between 2 and 6 m/s and their fit is a negative speed (passes); (4) the negative speed does not reach the tracker — same strict xfail: today `if cs_raw and d_prime` lets −10.0 m/s in; (5) those trials keep the lock — same strict xfail: today the confidence counts updates, not the validity of the fit. The guards (one count per distinct trial; a fit with CS ≤ 0 is not used) are a separate PR and a separate decision; they touch `daily_coach.py` and/or `critical_speed.py`, so they wait for the one-PR rule.
+Deliverable: the five tests; an issue comment on each issue with the reproduction at this SHA.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: this pass does not close #1349 or #1350; they close with the guard PR.
+Canonical doc update: this brief, the ING-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan issues in order (#1434 plan v3, row 14 = #1349, #1350, reproduction then guard). No application change, so contract §13 is not touched. Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with independent review and the extra security review.
+Allowed / Forbidden: `tests/titan/orchestration/test_daily_coach.py`, the records above. No `titan/`, `scripts/`, schema, threshold, AGENTS.md or ADR change.
+
+---
+
 ## ING-NEW-02 / #1348 — reproduction only: the laps of an athlete's run are left out of their export and kept after their deletion (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1348 (stays open; this pass does not fix it). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete data lifecycle (export / deletion, ADR-0067). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 13: reproduction only).
+**Status:** DONE 2026-11-06 — reproduction merged in PR #1512, squash `f26f501`; main green; #1348 stays open for the fix (the owner is asked on a decision card whether to fix it now). This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — athlete data lifecycle (export / deletion, ADR-0067). **Severity:** HIGH (issue). **Change Type:** test-only. **Workflow Path:** A (plan v3 row 13: reproduction only).
 
 Pass type: reproduction
 Change Type: test-only
