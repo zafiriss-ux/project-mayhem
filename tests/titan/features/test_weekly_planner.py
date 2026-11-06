@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 
 from titan.features.weekly_planner import WeeklyPlanGenerator
@@ -160,19 +162,9 @@ def test_get_today_session_when_today_missing_returns_rest_fallback():
 
 
 @pytest.mark.unit
-def test_get_today_session_estimates_duration_for_missing_duration(monkeypatch):
+def test_get_today_session_estimates_duration_for_missing_duration():
     planner = _planner()
-
-    class _FakeNow:
-        def strftime(self, _format):
-            return "Monday"
-
-    class _FakeDateTime:
-        @staticmethod
-        def now(tz=None):
-            return _FakeNow()
-
-    monkeypatch.setattr("titan.features.weekly_planner.datetime", _FakeDateTime)
+    planner.planning_day = date(2026, 11, 2)  # a Monday
     planner.last_plan = {
         "daily_sessions": [
             {"day": "Monday", "session_type": "TEMPO", "distance_km": 10.0, "details": "Tempo"}
@@ -560,3 +552,65 @@ def test_taper_plan_labels_a_high_tsb_fresh_not_detraining():
     )
 
     assert plan["tsb_status"] == "✅ FRESH (taper)"
+
+
+def _freeze_clock(monkeypatch, moment):
+    """Pin the planner's wall clock to ``moment`` (UTC)."""
+    from datetime import UTC, datetime
+
+    class _Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return moment.astimezone(tz or UTC)
+
+    monkeypatch.setattr("titan.features.weekly_planner.datetime", _Clock)
+
+
+_SUNDAY_REST_WEEK = {
+    "week_start": "2026-10-26",
+    "daily_sessions": [
+        {"day": "Sunday", "session_type": "REST", "distance_km": 0.0, "duration_min": 0, "details": "Rest"},
+        {"day": "Monday", "session_type": "EASY", "distance_km": 7.3, "duration_min": 43, "details": "Easy"},
+    ],
+}
+
+
+@pytest.mark.unit
+def test_1442_a_sunday_planning_day_after_utc_midnight_keeps_sundays_session_and_monday_week(monkeypatch):
+    from datetime import UTC, datetime
+
+    _freeze_clock(monkeypatch, datetime(2026, 11, 2, 0, 1, tzinfo=UTC))  # Monday 00:01
+    planner = _planner()
+    planner.planning_day = date(2026, 11, 1)  # the claimed Sunday
+    planner.last_plan = _SUNDAY_REST_WEEK
+
+    assert planner.get_today_session()["session_type"] == "REST"
+    assert planner.generate_weekly_plan(athlete_profile={}, phase="BUILD")["week_start"] == "2026-11-02"
+
+
+@pytest.mark.unit
+def test_1442_without_a_planning_day_the_planner_keeps_the_utc_day(monkeypatch):
+    from datetime import UTC, datetime
+
+    _freeze_clock(monkeypatch, datetime(2026, 11, 1, 23, 59, tzinfo=UTC))  # Sunday 23:59
+    planner = _planner()
+    planner.last_plan = _SUNDAY_REST_WEEK
+
+    assert planner.get_today_session()["session_type"] == "REST"
+    assert planner.generate_weekly_plan(athlete_profile={}, phase="BUILD")["week_start"] == "2026-11-02"
+
+
+@pytest.mark.unit
+def test_1442_recent_volume_counts_runs_before_the_planning_day(monkeypatch):
+    from datetime import UTC, datetime
+
+    class _Db:
+        def get_recent_activities(self, limit, athlete_id):
+            return [{"date": "2026-10-31", "distance_km": 10.0}, {"date": "2026-11-01", "distance_km": 8.0}]
+
+    _freeze_clock(monkeypatch, datetime(2026, 11, 2, 0, 1, tzinfo=UTC))
+    planner = WeeklyPlanGenerator(_FakeHRVEngine(), _FakeTSBEngine(), _FakeACWR(), db=_Db())
+    planner.planning_day = date(2026, 11, 1)
+
+    # Sunday's own run is not yet part of the volume the Sunday plan is built on.
+    assert planner.recent_weekly_km() == 10.0

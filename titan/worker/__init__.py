@@ -1213,6 +1213,10 @@ def _run_morning(db: DatabaseManager, athlete_id: str, *, day: _MorningDay | Non
     else:  # the claimed day, so a run that crosses midnight stays on it (D-109)
         today = _dt.date.fromisoformat(day.execution_date)
         _bind_day(coach, db, athlete_id, day)
+    # The planner reads and builds plans for this day, not the clock's (#1442, TIME-NEW-01).
+    planner = getattr(coach, "weekly_planner", None)  # stand-in coaches in tests have none
+    if planner is not None:
+        planner.planning_day = today
     _prepare_weekly_plan(coach, db, athlete_id, today)
     try:
         delivered = coach.run_morning_routine()
