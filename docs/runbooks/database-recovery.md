@@ -109,16 +109,13 @@ sqlite3 titan_core.db "PRAGMA integrity_check;"
 # Locate backup
 ls ~/Documents/TITAN/backups/titan_core.db.*
 
-# Keep the damaged database WITH its -wal/-shm: the last writes may exist only in the -wal
-cp titan_core.db titan_core.db.before-restore
-[ -f titan_core.db-wal ] && cp titan_core.db-wal titan_core.db.before-restore-wal
-[ -f titan_core.db-shm ] && cp titan_core.db-shm titan_core.db.before-restore-shm  # informational; SQLite rebuilds it
-
-# Remove the old -wal/-shm, otherwise SQLite replays them on top of the backup (RC-02)
-rm -f titan_core.db-wal titan_core.db-shm
-
-# Restore most recent backup
-cp ~/Documents/TITAN/backups/titan_core.db.YYYYMMDD titan_core.db
+# Keep the damaged database WITH its -wal (titan_core.db.before-restore[-wal]), remove the old
+# -wal/-shm (RC-02) and restore the backup TOGETHER with its pending-audit queue copy
+# (pending_audit.jsonl.YYYYMMDD): a consent withdrawal that reached only the queue would
+# otherwise be lost and the athlete would appear to consent again (#1251, ADR-0079). It also
+# keeps the withdrawals recorded in the damaged database; if that cannot be read it stops: check
+# the stopped athletes by hand and run it again with --skip-live-withdrawals
+python3 scripts/restore_backup.py ~/Documents/TITAN/backups/titan_core.db.YYYYMMDD --data-dir ~/Documents/TITAN
 
 # Verify integrity of restored backup
 sqlite3 titan_core.db "PRAGMA integrity_check;"

@@ -8,7 +8,10 @@ checks that it is a usable TITAN database:
 * the core tables are present, and every table and column of a fresh database of
   this code is there too (#1452);
 * the code opens the copy and reads it: an athlete's activities and a refresh-token
-  lookup (#1452).
+  lookup (#1452);
+* the backup's pending-audit queue copy, when there is one, is restored beside it and
+  every withdrawal in it is written to the copy, leaving each stopped athlete with no
+  current consent (#1251, ADR-0079).
 
 The original backup is never opened for writing. Prints one JSON line and
 exits 0 on success, 1 on any failure.
@@ -99,11 +102,14 @@ def _owner_problem(restored: Path) -> str | None:
     return None if row else "no owner athlete row"
 
 
-def _check_consumer(restored: Path) -> None:
+def _check_consumer(restored: Path) -> int:
     """Open the restored copy with the code and read it as it does at start (#1452).
 
-    Raises when the code cannot open or read it; the caller reports that as a failure.
-    Only the scratch copy is opened for writing; the backup itself is never touched.
+    Then write the restored pending-audit queue to it as the worker does at start, and
+    require that nothing stays queued and that no athlete with a withdrawal has a current
+    consent (#1251). Returns how many withdrawals were in the queue. Raises when any of
+    this fails; the caller reports that as a failure. Only the scratch copy is opened for
+    writing; the backup itself is never touched.
     """
     from titan.api.auth import AuthStore
     from titan.core.database import DatabaseManager
@@ -112,6 +118,15 @@ def _check_consumer(restored: Path) -> None:
     try:
         AuthStore(db).is_refresh_token_active("restore-drill-probe")
         db.get_recent_activities(limit=1, athlete_id="owner")
+        queue = db.pending_audit
+        withdrawals = queue.pending() if queue is not None else []
+        if db.drain_pending_audit():
+            raise RuntimeError("withdrawals from the pending-audit queue could not be written")
+        stopped = {item["athlete_id"] for item in withdrawals} - {"owner"}
+        still = sorted(a for a in stopped if db.has_current_consent(a))
+        if still:
+            raise RuntimeError(f"consent still current after a queued withdrawal: {', '.join(still)}")
+        return len(withdrawals)
     finally:
         db.close()
 
@@ -135,20 +150,23 @@ def run_drill(backup_dir: Path, expect_version: int = SCHEMA_VERSION) -> dict:
         try:
             restored.parent.mkdir()
             shutil.copy2(backup, restored)
+            queue_copy = backup.with_name(backup.stem + ".pending_audit.jsonl")
+            if queue_copy.exists():
+                shutil.copyfile(queue_copy, restored.parent / "pending_audit.jsonl")
             problem = _verify_backup_artifact(restored, expected_user_version=expect_version)
             if problem is None:
                 problem = _schema_problem(restored, Path(scratch))
             if problem is None:
                 problem = _owner_problem(restored)
             if problem is None:
-                _check_consumer(restored)
+                withdrawals = _check_consumer(restored)
                 tables = len(_schema(restored))
         except Exception as exc:  # the drill reports every failure, never raises
             problem = f"{type(exc).__name__}: {exc}"
     if problem is not None:
         result["error"] = problem
         return result
-    result.update(ok=True, user_version=expect_version, tables=tables)
+    result.update(ok=True, user_version=expect_version, tables=tables, withdrawals=withdrawals)
     return result
 
 
