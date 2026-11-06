@@ -630,6 +630,31 @@ def _caps_text(caps: dict | None) -> str | None:
     return " · ".join(parts) or None
 
 
+_INJURY_REST_NOTE = (
+    "An injury is open (/injury), so today is REST until it is closed with /injury off. "
+    "If you already got a briefing today, follow this one."
+)
+_INJURY_UNREADABLE_NOTE = (
+    "TITAN could not check for an open injury, so today is REST. "
+    "If you already got a briefing today, follow this one."
+)
+
+
+def _injury_rest_note(db: DatabaseManager, athlete_id: str) -> str | None:
+    """Why the day must be REST: an open ``/injury``, or a state that cannot be read (#1247).
+
+    None when no injury is open. As ``DailyCoach._injury_flag``: a declared injury must not
+    be missed, so a failed read is REST too (fail closed).
+    """
+    try:
+        return None if db.get_open_injury(athlete_id=athlete_id) is None else _INJURY_REST_NOTE
+    except Exception as exc:
+        logging.getLogger("titan.worker.runner").critical(
+            "worker_injury_read_failed", extra={"athlete_id": athlete_id, "error_class": type(exc).__name__},
+        )
+        return _INJURY_UNREADABLE_NOTE
+
+
 def _send_stored_decision(
     db: DatabaseManager, athlete_id: str, decision: dict, caps: dict | None = None, *, note: str = _RESEND_NOTE,
 ) -> bool:
@@ -637,8 +662,20 @@ def _send_stored_decision(
 
     ``caps`` is the session computed with it, so the resend keeps its distance, duration
     and caps (D-109). The note says that it may repeat an earlier message (DW-06).
+    While an injury is open the session sent is REST, whatever was stored: H1 is the first
+    gate and makes the day REST, and the stored decision may predate the injury (#1247).
     """
     _require_consent(db, athlete_id)
+    rest_note = (
+        _injury_rest_note(db, athlete_id)
+        if str(decision.get("session_post_governance", "")).upper() != "REST" else None
+    )
+    if rest_note is not None:
+        logging.getLogger("titan.worker.runner").warning(
+            "worker_stored_decision_rest_for_injury",
+            extra={"athlete_id": athlete_id, "stored": decision.get("session_post_governance")},
+        )
+        decision, caps, note = {**decision, "session_post_governance": "REST"}, {"session_type": "REST"}, rest_note
     lines = [f"🌅 Today's session: {decision['session_post_governance']}"]
     volume = _caps_text(caps)
     if volume:

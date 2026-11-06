@@ -8,9 +8,26 @@ issue/PR that references the tier and item number below.
 
 ---
 
+## CR-NEW-01 / #1247 — a resent stored decision never sends a quality session while an injury is open (owner assignment, 2026-11-06)
+
+**Status:** OPEN — tracked in GitHub issue #1247; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — safety gate (H1). **Severity:** HIGH (issue; governance/safety-gate path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0069 §3 (an open `/injury` triggers H1 and the morning is REST) and D-109 (a retry resends only while the inputs are unchanged).
+
+Pass type: implementation
+Change Type: implementation
+Workflow Path: Path A
+Execution unit: #1247 only: (1) the day's inputs hash (`routine_inputs_fingerprint`) also covers the athlete's open injury, only when one is open, so an injury opened after the stored decision makes a retry compute the day again through the gated pipeline; (2) every resend of a stored decision (retry, its at-most-EASY fallback, the console's `/today`) sends REST while an injury is open, and also when the injury state cannot be read (fail closed, as `DailyCoach._injury_flag`). Without an open injury nothing changes.
+Deliverable: the two changes, regression tests (retry after an injury computes again, fallback sends REST not EASY, unreadable state sends REST, `/today` under an open injury and under an unreadable state, hash follows only this athlete's open injury; controls: no injury, another athlete's injury, closed injury), full canonical gates, independent review with the extra safety-gate review, one PR.
+Stop condition: Any failed gate or blocking review stops commit/push/merge.
+Closure rule: #1247 closes after merge and green main.
+Canonical doc update: this brief, the PRIV-NEW-02 closure line, CLAUDE.md test snapshot, docs/governance/ledger.jsonl.
+Authorizes: Owner instruction 2026-11-05 to fix the plan-v2 issues in order (#1434, next = #1247; #1456 waits on the owner's decision), category Α (tightening only, contract §13 not weakened). Merge: the owner's standing merge authorization of 2026-11-05 (transcribed in DB-NEW-01) with its four conditions; this is a safety-gate change, so condition (4) needs the extra independent security review.
+Allowed / Forbidden: `titan/core/repositories/operations.py` (`routine_inputs_fingerprint` only), `titan/worker/__init__.py` (`_send_stored_decision` and its new injury read only), `tests/test_worker_morning_retry.py`, `tests/test_today_command.py`, the records above. No schema, threshold, gate order, `/injury` command or `daily_coach.py` change.
+
+---
+
 ## PRIV-NEW-02 / #1379 — a Garmin sync stores nothing after a /stop or deletion that landed during the fetch (owner assignment, 2026-11-06)
 
-**Status:** OPEN — tracked in GitHub issue #1379; this entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/consent. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 and D6.1 and ADR-0079 (a withdrawal or deletion stops all processing).
+**Status:** RESOLVED 2026-11-06 — PR #1483, squash `207493c`; main green; issue #1379 closed. This entry is only the Path A brief AGENTS §17.2/§17.4 E16 requires. **Tier:** 1 — privacy/consent. **Severity:** HIGH (issue; consent path). **Change Type:** implementation. **Workflow Path:** A. Fix category Α: only tightens, applies the accepted ADR-0067 D4.3 and D6.1 and ADR-0079 (a withdrawal or deletion stops all processing).
 
 Pass type: implementation
 Change Type: implementation

@@ -248,6 +248,76 @@ def test_sg04_the_resend_probe_new_hrv_and_rhr_are_not_sent_as_tempo(db, monkeyp
     assert not any("TEMPO" in text for text in _to_athlete())
 
 
+
+# ── #1247 (CR-NEW-01): an injury opened after the decision ───────────────────
+
+def _open_injury(db: DatabaseManager, athlete_id: str = _A) -> None:
+    assert db.open_injury(athlete_id=athlete_id, description="synthetic calf", opened_at=_MORNING.isoformat())
+
+
+def test_1247_an_injury_opened_after_the_decision_makes_the_retry_compute_the_day_again(db) -> None:
+    assert _attempt(db, 1) is False  # TEMPO decided and recorded, Telegram failed
+    _open_injury(db)  # nothing else changed: same metrics, same training log
+    _Coach.session, _Coach.delivers = {"session_type": "REST"}, True  # H1 makes the day REST
+
+    assert _attempt(db, 2) is True
+
+    assert _Coach.runs == [_A, _A]  # the gated routine ran again
+    assert not any("TEMPO" in text for text in _to_athlete())
+    assert _decisions(db) == [(_TODAY, "REST")]  # replaced in place: one row
+
+
+def test_1247_when_the_day_cannot_be_computed_again_an_open_injury_sends_rest_not_easy(db) -> None:
+    assert _attempt(db, 1) is False
+    _open_injury(db)
+    _Coach.raises = True
+
+    assert _attempt(db, 2) is True
+
+    [text] = _to_athlete()
+    assert "Today's session: REST" in text and "/injury off" in text
+    assert "TEMPO" not in text and "EASY" not in text and "min" not in text
+
+
+def test_1247_an_unreadable_injury_state_sends_rest_on_the_resend(db, monkeypatch) -> None:
+    assert _attempt(db, 1) is False
+
+    def _broken(**_kw):
+        raise sqlite3.OperationalError("synthetic: injuries unreadable")
+
+    monkeypatch.setattr(db, "get_open_injury", _broken)
+    assert _attempt(db, 2) is True
+
+    assert _Coach.runs == [_A]  # the inputs hash did not change: the stored decision is resent
+    [text] = _to_athlete()
+    assert "Today's session: REST" in text and "TEMPO" not in text
+    assert "could not check for an open injury" in text
+
+
+def test_1247_without_an_injury_the_resend_is_unchanged(db) -> None:
+    _open_injury(db, "owner")  # another athlete's injury is not this athlete's
+    assert _attempt(db, 1) is False
+
+    assert _attempt(db, 2) is True
+
+    assert _Coach.runs == [_A]
+    [text] = _to_athlete()
+    assert "Today's session: TEMPO" in text and "10 km" in text
+
+
+def test_1247_the_inputs_hash_follows_the_open_injury_only(db) -> None:
+    db.save_daily_metric(_TODAY, hrv=62.0, rhr=50, athlete_id=_A)
+    before = db.routine_inputs_fingerprint(_A, _TODAY)
+    _open_injury(db, "owner")
+    assert db.routine_inputs_fingerprint(_A, _TODAY) == before  # another athlete's injury
+    _open_injury(db)
+    opened = db.routine_inputs_fingerprint(_A, _TODAY)
+    assert opened not in (before, None)
+    assert db.close_injury(athlete_id=_A, closed_at=_MORNING.isoformat())
+    assert db.routine_inputs_fingerprint(_A, _TODAY) == before  # closed: the earlier hash again
+    assert db.routine_inputs_fingerprint(_A, "2026-10-14") is None  # no day inputs: still None
+
+
 @pytest.mark.unit
 def test_sg04_a_replaced_decision_keeps_one_row(tmp_path) -> None:
     db = DatabaseManager(db_dir=tmp_path)
